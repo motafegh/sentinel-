@@ -1,0 +1,6 @@
+outs:
+- md5: ebad5cf4ad7201caa969d276527efdc4.dir
+  size: 548824
+  nfiles: 3
+  hash: md5
+  path: splits

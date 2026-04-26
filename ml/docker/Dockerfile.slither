@@ -1,0 +1,41 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        curl \
+        wget \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --upgrade pip
+
+# Install slither (solc-select comes with it)
+RUN pip install --no-cache-dir slither-analyzer==0.10.0
+
+# Download pre-compiled solc binaries directly (bypasses GitHub API)
+RUN mkdir -p /root/.solc-select/artifacts && \
+    cd /root/.solc-select/artifacts && \
+    for version in 0.8.20 0.8.0 0.7.6 0.6.12 0.5.17 0.5.8 0.5.7 0.5.4 0.5.2 0.5.1 0.5.0 0.4.26 0.4.25 0.4.24 0.4.23 0.4.21 0.4.20 0.4.19 0.4.18 0.4.17 0.4.16 0.4.15 0.4.12 0.4.11 0.4.8 0.4.4 0.4.2; do \
+        echo "Downloading solc-$version..." && \
+        wget -q https://github.com/ethereum/solidity/releases/download/v${version}/solc-static-linux || true; \
+        if [ -f solc-static-linux ]; then \
+            mkdir -p solc-$version && \
+            mv solc-static-linux solc-$version/solc-$version && \
+            chmod +x solc-$version/solc-$version; \
+        fi; \
+    done
+
+
+# Set default version
+RUN echo "0.8.20" > /root/.solc-select/global-version
+
+WORKDIR /workspace
+
+CMD ["tail", "-f", "/dev/null"]

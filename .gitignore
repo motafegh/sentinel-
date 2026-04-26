@@ -1,0 +1,117 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.Python
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+.env
+
+# ── DVC-managed data (stubs kept, actual data ignored) ────────────────────────
+ml/data/graphs/
+ml/data/tokens/
+ml/data/splits/
+ml/checkpoints/
+
+# ── Raw datasets (too large for git) ──────────────────────────────────────────
+BCCC-SCsVul-2024/
+ml/data/smartbugs-curated/
+ml/data/smartbugs-wild/
+ml/data/smartbugs-results-master/
+ml/data/smartbugs-results-master_2.zip
+ml/data/SolidiFI/
+ml/data/SolidiFI-benchmark/
+ml/data/SolidiFI-processed/
+ml/data/tokens_test/
+ml/data/archive/
+
+# ── MLflow ─────────────────────────────────────────────────────────────────────
+mlruns/
+mlruns.db
+
+# ── Logs & runtime files ───────────────────────────────────────────────────────
+logs/
+ml/logs/
+*.log
+*.pid
+
+# ── Generated outputs ──────────────────────────────────────────────────────────
+validation_full_output.txt
+slither_output.json
+ml/data/validation_report.json
+ml/data/checkpoint_v0426.json
+ml/data/test_*.json
+ml/data/solidifi_splits.json
+ml/data/BCCC-SCsVul-2024_README.md
+ml/analysis/
+
+# ── Jupyter ────────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Foundry build artifacts ────────────────────────────────────────────────────
+contracts/out/
+contracts/cache/
+
+# ── Cache ──────────────────────────────────────────────────────────────────────
+.cache/
+
+# ── IDE ────────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ─────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+zkml/ezkl/proving_key.pk
+zkml/ezkl/srs.params
+
+# ── Windows / WSL downloaded-file metadata ───────────────────────────────────
+*:Zone.Identifier*
+
+# ── RAG generated index/state ─────────────────────────────────────────────────
+agents/data/index/
+
+# ── Local generated/cache artifacts ───────────────────────────────────────────
+ml/data/cached_dataset.pkl
+ml/peft.zip
+*.backup
+nohup.out
+contracts/
+
+# ── Large processed ML datasets / generated caches ───────────────────────────
+ml/data/processed/_cache/
+ml/data/processed/*.parquet
+ml/data/processed/contract_labels*.csv
+
+# ── Local project docs / notes excluded from source-only GitHub push ─────────
+Project-docs/
+docs/
+CLAUDE.md
+*.md
+
+# ── Archive folders excluded from source-only push ───────────────────────────
+ml/_archive/
+
+# ── Generated ML reports / notebooks excluded for now ────────────────────────
+ml/data/reports/
+ml/data/processed/*.csv
+ml/notebooks/
+
+# ── ZKML generated artifacts / model outputs excluded for now ────────────────
+zkml/ezkl/
+zkml/models/
+
+# ── Runtime/data state excluded from source-only push ────────────────────────
+agents/data/
+ml/data/processed/
+create_cache.py

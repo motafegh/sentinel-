@@ -1,0 +1,6 @@
+outs:
+- md5: c3c07f42e22aaeb27a0c10f0284e440e.dir
+  size: 734294837
+  nfiles: 68570
+  hash: md5
+  path: tokens

@@ -1,0 +1,74 @@
+[tool.poetry]
+name = "sentinel-workspace"
+version = "0.1.0"
+description = "SENTINEL - Verifiable AI Security Oracle for Smart Contracts"
+authors = ["Ali Motafegh <ali.rajabi99@ut.ac.ir>"]
+readme = "README.md"
+packages = [{include = "ml"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12.0 || >3.12.0,<3.13"
+solc-select = "^1.2.0"
+slither-analyzer = "^0.11.5"
+pandas = "^2.2.0"
+numpy = "^1.26.0"
+matplotlib = "^3.10.8"
+seaborn = "^0.13.2"
+scikit-learn = "^1.8.0"
+torch = "^2.10.0"
+tqdm = "^4.67.2"
+transformers = "^5.1.0"
+tokenizers = "^0.22.2"
+datasets = "^4.5.0"
+torch-geometric = "^2.7.0"
+networkx = "^3.6.1"
+torchvision = "^0.25.0"
+huggingface-hub = {extras = ["hf-transfer"], version = "^1.4.1"}
+loguru = "^0.7.3"
+mlflow = "^3.10.0"
+ezkl = "^23.0.5"
+onnxruntime = "^1.24.4"
+onnxscript = "^0.6.2"
+
+[tool.poetry.group.dev.dependencies]
+# Shared dev tools across all modules
+pytest = "^8.0.0"
+pytest-cov = "^4.1.0"
+black = "^24.0.0"
+flake8 = "^7.0.0"
+mypy = "^1.8.0"
+isort = "^5.13.0"
+pre-commit = "^3.6.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["ml/tests", "agents/tests", "api/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov --cov-report=html --cov-report=term"
