@@ -17,6 +17,13 @@ CHANGES (2026-04-11):
   FIX-8:  FileLock guards all index writes — concurrent runs can't corrupt.
   FIX-7:  Atomic writes via temp-file + rename — crash-safe index updates.
 
+CHANGES (2026-04-29):
+  FIX-BugA: tmp_faiss.rename(FAISS_PATH) → tmp_faiss.replace(FAISS_PATH).
+            .rename() raises FileExistsError on Windows/WSL2 when the
+            destination already exists. .replace() is POSIX-atomic on Linux
+            AND silently overwrites on Windows — correct on both platforms.
+            Same fix applied to feedback_loop.py (cross-project issue).
+
 Run from agents/ directory:
   poetry run python -m src.ingestion.pipeline
 """
@@ -30,9 +37,9 @@ from typing import Optional
 
 import faiss
 import numpy as np
-from filelock import FileLock, Timeout      # FIX-8: concurrency lock
+from filelock import FileLock, Timeout
 from loguru import logger
-from rank_bm25 import BM25Okapi             # FIX-9: was buried inside run() at Step 7
+from rank_bm25 import BM25Okapi
 
 from ..rag.fetchers.base_fetcher import BaseFetcher, Document
 from ..rag.fetchers.github_fetcher import DeFiHackLabsFetcher
@@ -41,10 +48,6 @@ from ..rag.embedder import Embedder
 from .deduplicator import Deduplicator
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-# FIX-23: Absolute paths anchored to this file's location.
-# Old pattern: Path("data/index") — only resolved correctly when CWD was agents/.
-# New pattern: __file__-relative — works when imported from any context.
-#   agents/src/ingestion/pipeline.py  →  parent.parent.parent  =  agents/
 _AGENTS_DIR       = Path(__file__).parent.parent.parent
 
 INDEX_DIR         = _AGENTS_DIR / "data" / "index"
@@ -57,31 +60,26 @@ SEEN_HASHES_PATH  = INDEX_DIR / "seen_hashes.json"
 DEFIHACKLABS_DIR  = _AGENTS_DIR / "data" / "defihacklabs"
 EXPLOITS_DIR      = _AGENTS_DIR / "data" / "exploits"
 
-# FIX-8: All index writes are guarded by this lock file.
-# Cron, Dagster, and the feedback loop all share one lock — only one writer at a time.
 INDEX_LOCK_PATH    = INDEX_DIR / ".index.lock"
-INDEX_LOCK_TIMEOUT = 300   # seconds — fail loudly rather than hang forever
+INDEX_LOCK_TIMEOUT = 300
 
 
 def _atomic_write_binary(path: Path, write_fn) -> None:
     """
     FIX-7: Write a binary file atomically.
 
-    Writes to a .tmp sibling first, then renames to the real path.
-    On POSIX (Linux/WSL2), os.rename() is atomic — no reader ever sees a
-    partially-written file. On crash mid-write, only the .tmp is orphaned;
-    the real file is intact and readable.
-
-    Args:
-        path:     destination path
-        write_fn: callable(tmp_path: Path) that writes the file content
+    Writes to a .tmp sibling first, then replaces the real path.
+    On POSIX (Linux/WSL2), Path.replace() is atomic — no reader ever sees a
+    partially-written file. On Windows, .replace() silently overwrites the
+    destination (unlike .rename() which raises FileExistsError).
+    On crash mid-write, only the .tmp is orphaned; the real file is intact.
     """
     tmp = path.with_suffix(".tmp")
     try:
         write_fn(tmp)
-        tmp.rename(path)
+        tmp.replace(path)   # FIX-BugA: was .rename() — fails on Windows when dest exists
     except Exception:
-        tmp.unlink(missing_ok=True)   # clean up orphaned temp on failure
+        tmp.unlink(missing_ok=True)
         raise
 
 
@@ -92,11 +90,6 @@ class IngestionPipeline:
     Open/Closed principle:
       Open for extension — pass new fetchers at init time.
       Closed for modification — pipeline code unchanged per source.
-
-    Usage:
-        pipeline = IngestionPipeline()
-        result = pipeline.run()
-        print(f"Added {result['new_chunks']} new chunks")
     """
 
     def __init__(self, fetchers: Optional[list[BaseFetcher]] = None):
@@ -141,8 +134,7 @@ class IngestionPipeline:
             "duration_sec": 0,
         }
 
-        # ── Step 1: Fetch from all sources ───────────────────────────────
-        # Each fetcher is independent — one failing doesn't block others.
+        # ── Step 1: Fetch ────────────────────────────────────────────────
         all_documents: list[Document] = []
 
         for fetcher in self.fetchers:
@@ -167,8 +159,7 @@ class IngestionPipeline:
             logger.warning("No documents fetched — pipeline complete (nothing to do)")
             return stats
 
-        # ── Step 2: Deduplicate ───────────────────────────────────────────
-        # Filter already-indexed documents BEFORE the expensive embedding step.
+        # ── Step 2: Deduplicate ──────────────────────────────────────────
         new_documents     = self.deduplicator.filter_new(all_documents)
         stats["skipped"]  = len(all_documents) - len(new_documents)
         stats["new_docs"] = len(new_documents)
@@ -180,21 +171,18 @@ class IngestionPipeline:
 
         logger.info(f"New documents to index: {len(new_documents)}")
 
-        # ── Step 3: Chunk ─────────────────────────────────────────────────
+        # ── Step 3: Chunk ────────────────────────────────────────────────
         logger.info("Chunking new documents...")
         new_chunks          = self.chunker.chunk_documents(new_documents)
         stats["new_chunks"] = len(new_chunks)
 
-        # ── Step 4: Embed ─────────────────────────────────────────────────
+        # ── Step 4: Embed ────────────────────────────────────────────────
         logger.info("Embedding new chunks...")
         new_vectors         = self.embedder.embed_chunks(new_chunks)
         new_vectors_np      = np.array(new_vectors, dtype=np.float32)
         stats["new_vectors"] = len(new_vectors)
 
-        # ── Steps 5-8: Write index (locked + atomic) ──────────────────────
-        # FIX-8: Acquire the index lock before any write.
-        # Cron, Dagster, and the feedback loop all share this one lock.
-        # Timeout=300s so a hung process doesn't block forever.
+        # ── Steps 5-8: Write index (locked + atomic) ─────────────────────
         try:
             INDEX_DIR.mkdir(parents=True, exist_ok=True)
             with FileLock(str(INDEX_LOCK_PATH), timeout=INDEX_LOCK_TIMEOUT):
@@ -206,11 +194,10 @@ class IngestionPipeline:
                 f"Delete {INDEX_LOCK_PATH} to reset."
             )
 
-        # ── Step 9: Update metadata ───────────────────────────────────────
+        # ── Step 9: Update metadata ──────────────────────────────────────
         duration            = round(time.time() - run_start, 1)
         stats["duration_sec"] = duration
 
-        # Reload chunk count from disk (accurate after the lock is released)
         try:
             with open(CHUNKS_PATH, "rb") as f:
                 total_chunks = len(pickle.load(f))
@@ -256,11 +243,11 @@ class IngestionPipeline:
         """
         Write FAISS / chunks.pkl / bm25.pkl under the held FileLock.
 
-        FIX-7: Every write goes to a .tmp file first, then renames atomically.
-               A crash mid-write leaves a harmless .tmp — the real files untouched.
-        FIX-8: Only called from inside FileLock context — single writer guaranteed.
+        FIX-7:    Every write goes to .tmp first, then replaces atomically.
+        FIX-8:    Only called from inside FileLock context.
+        FIX-BugA: _atomic_write_binary now uses .replace() — cross-platform safe.
         """
-        # ── Step 5: FAISS ─────────────────────────────────────────────────
+        # ── Step 5: FAISS ────────────────────────────────────────────────
         logger.info("Updating FAISS index...")
         if FAISS_PATH.exists():
             index     = faiss.read_index(str(FAISS_PATH))
@@ -275,10 +262,9 @@ class IngestionPipeline:
 
         tmp_faiss = FAISS_PATH.with_suffix(".tmp")
         faiss.write_index(index, str(tmp_faiss))
-        tmp_faiss.rename(FAISS_PATH)                                # FIX-7: atomic rename
+        tmp_faiss.replace(FAISS_PATH)   # FIX-BugA: was .rename(), fails on Windows
 
-        # ── Step 6: Chunks list ───────────────────────────────────────────
-        # chunks[N] ↔ FAISS position N — this mapping must never break.
+        # ── Step 6: Chunks ───────────────────────────────────────────────
         if CHUNKS_PATH.exists():
             with open(CHUNKS_PATH, "rb") as f:
                 all_chunks: list[Chunk] = pickle.load(f)
@@ -292,12 +278,10 @@ class IngestionPipeline:
             with open(tmp, "wb") as f:
                 pickle.dump(all_chunks, f)
 
-        _atomic_write_binary(CHUNKS_PATH, _write_chunks)           # FIX-7
+        _atomic_write_binary(CHUNKS_PATH, _write_chunks)
         logger.info(f"Chunks: {prev_len} → {len(all_chunks)}")
 
-        # ── Step 7: BM25 (rebuild from full corpus) ───────────────────────
-        # RECALL — BM25 has no incremental mode; rebuild from all chunks.
-        # Fast: no embedding step, just word-frequency counting.
+        # ── Step 7: BM25 ─────────────────────────────────────────────────
         logger.info("Rebuilding BM25 index...")
         corpus = [chunk.content.lower().split() for chunk in all_chunks]
         bm25   = BM25Okapi(corpus)
@@ -306,12 +290,10 @@ class IngestionPipeline:
             with open(tmp, "wb") as f:
                 pickle.dump(bm25, f)
 
-        _atomic_write_binary(BM25_PATH, _write_bm25)               # FIX-7
+        _atomic_write_binary(BM25_PATH, _write_bm25)
         logger.info(f"BM25 rebuilt — {len(corpus)} documents")
 
-        # ── Step 8: Mark documents as seen ───────────────────────────────
-        # RECALL — Mark AFTER successful writes. Checkpoint pattern:
-        # if embedding failed mid-batch, those docs aren't marked seen → retry next run.
+        # ── Step 8: Mark seen ────────────────────────────────────────────
         self.deduplicator.mark_seen([doc.doc_id for doc in new_documents])
 
 
