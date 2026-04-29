@@ -24,6 +24,11 @@ CHANGES (2026-04-29):
             AND silently overwrites on Windows — correct on both platforms.
             Same fix applied to feedback_loop.py (cross-project issue).
 
+CHANGES (2026-04-29 Issue #1):
+  BRIDGE: Added REPORTS_DIR constant — data/reports/.
+          Orchestrator (nodes.py) writes final_report JSON here.
+          feedback_loop.py reads it to recover vulnerability_class.
+
 Run from agents/ directory:
   poetry run python -m src.ingestion.pipeline
 """
@@ -59,6 +64,11 @@ SEEN_HASHES_PATH  = INDEX_DIR / "seen_hashes.json"
 
 DEFIHACKLABS_DIR  = _AGENTS_DIR / "data" / "defihacklabs"
 EXPLOITS_DIR      = _AGENTS_DIR / "data" / "exploits"
+
+# BRIDGE (Issue #1): Orchestrator writes final_report JSON here before
+# on-chain submission. feedback_loop.py reads by contract_address to recover
+# vulnerability_class. Directory is created on first write.
+REPORTS_DIR       = _AGENTS_DIR / "data" / "reports"
 
 INDEX_LOCK_PATH    = INDEX_DIR / ".index.lock"
 INDEX_LOCK_TIMEOUT = 300
