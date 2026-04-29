@@ -1,4 +1,3 @@
-# agents/src/orchestration/state.py
 """
 AuditState — the shared state dict that flows through every LangGraph node.
 
@@ -52,8 +51,26 @@ class AuditState(TypedDict, total=False):
     # ── Node outputs ────────────────────────────────────────────────────────
     ml_result: dict[str, Any]
     # Set by ml_assessment.
-    # Keys: label, confidence, threshold, truncated, num_nodes, num_edges.
-    # Example: {"label": "vulnerable", "confidence": 0.82, "threshold": 0.50, ...}
+    # Track 3 (multi-label) schema — NO "confidence" field (removed in Track 3):
+    #   label:           str   — "vulnerable" | "safe"
+    #   vulnerabilities: list  — [{vulnerability_class: str, probability: float}, ...]
+    #                            empty list when label == "safe"
+    #   threshold:       float — per-class decision boundary (default 0.50)
+    #   truncated:       bool  — True if contract exceeded 512 CodeBERT tokens
+    #   num_nodes:       int   — AST node count
+    #   num_edges:       int   — AST edge count
+    # Example:
+    #   {
+    #     "label": "vulnerable",
+    #     "vulnerabilities": [
+    #       {"vulnerability_class": "Reentrancy", "probability": 0.91},
+    #       {"vulnerability_class": "AccessControl", "probability": 0.43},
+    #     ],
+    #     "threshold": 0.50,
+    #     "truncated": False,
+    #     "num_nodes": 142,
+    #     "num_edges": 187,
+    #   }
 
     rag_results: list[dict[str, Any]]
     # Set by rag_research (deep path only).
@@ -71,7 +88,11 @@ class AuditState(TypedDict, total=False):
 
     final_report: dict[str, Any]
     # Set by synthesizer.
-    # The structured audit output — see synthesizer.py for the full schema.
+    # Track 3 report schema (matches SENTINEL-SPEC §8.1):
+    #   contract_address, overall_label, risk_probability, top_vulnerability,
+    #   vulnerabilities, threshold, ml_truncated, num_nodes, num_edges,
+    #   rag_evidence, audit_history, static_findings, recommendation,
+    #   error, path_taken
 
     error: str | None
     # Set by any node that encounters a non-fatal error.
