@@ -17,6 +17,14 @@ WHAT CHANGED FROM TRACK 3 ORIGINAL:
        If file missing, falls back to user-supplied threshold (or 0.5).
 
     5. Stores self.architecture for health endpoint (avoid reloading checkpoint)
+
+FIXES (2026-04-29):
+    Bug 4 — Unknown architecture now raises ValueError (was silent fallthrough to 64).
+             _ARCH_TO_FUSION_DIM allowlist replaces if/else.
+    Bug 5 — num_classes > len(CLASS_NAMES) now raises ValueError before slicing.
+             Prevents zip() silent truncation if a future checkpoint adds new classes.
+    Bug 3 — _score() emits 'vulnerability_class' key (was 'class').
+             predictor.py is the canonical schema owner; no consumer remapping needed.
 """
 
 from __future__ import annotations
@@ -33,6 +41,17 @@ from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.trainer import CLASS_NAMES
 
 _BINARY_CLASS_NAME = "BinaryScore"
+
+# ---------------------------------------------------------------------------
+# Bug 4 fix — explicit architecture allowlist (replaces silent else-64 branch)
+# ---------------------------------------------------------------------------
+# Registry pattern: adding a new architecture = one dict entry, not an elif hunt.
+# Keys must match exactly what trainer.py writes into checkpoint["config"]["architecture"].
+_ARCH_TO_FUSION_DIM: dict[str, int] = {
+    "cross_attention_lora": 128,
+    "legacy":               64,
+    "legacy_binary":        64,
+}
 
 
 class Predictor:
@@ -82,8 +101,18 @@ class Predictor:
             num_classes = saved_cfg.get("num_classes", len(CLASS_NAMES))
             architecture = saved_cfg.get("architecture", "legacy")
 
-            # fusion_output_dim changed: cross_attention_lora=128, legacy=64
-            fusion_output_dim = 128 if architecture == "cross_attention_lora" else 64
+            # Bug 4 fix — reject unknown architecture immediately.
+            # The old `else 64` silently loaded wrong weights when architecture
+            # was misspelled or a new value was added — causing cryptic shape
+            # mismatches deep in load_state_dict, or worse, silent wrong inference.
+            if architecture not in _ARCH_TO_FUSION_DIM:
+                raise ValueError(
+                    f"Unknown checkpoint architecture: '{architecture}'. "
+                    f"Known architectures: {list(_ARCH_TO_FUSION_DIM.keys())}. "
+                    "Add the new architecture to _ARCH_TO_FUSION_DIM in predictor.py "
+                    "and set the correct fusion_output_dim before loading this checkpoint."
+                )
+            fusion_output_dim = _ARCH_TO_FUSION_DIM[architecture]
 
             logger.info(
                 f"Checkpoint — epoch: {raw.get('epoch', '?')} | "
@@ -99,6 +128,17 @@ class Predictor:
             fusion_output_dim = 64
             architecture = "legacy_binary"
             logger.warning("Old-format checkpoint — loading as binary (num_classes=1)")
+
+        # Bug 5 fix — guard before slice so zip() never silently drops classes.
+        # CLASS_NAMES[:11] returns 10 items without error when len(CLASS_NAMES)==10;
+        # zip then stops at 10, silently dropping the 11th model output forever.
+        if num_classes > len(CLASS_NAMES):
+            raise ValueError(
+                f"Checkpoint num_classes={num_classes} exceeds "
+                f"CLASS_NAMES length={len(CLASS_NAMES)}. "
+                f"Append the new class name(s) to CLASS_NAMES in "
+                f"ml/src/training/trainer.py before loading this checkpoint."
+            )
 
         self.num_classes = num_classes
         self.architecture = architecture          # stored for health endpoint
@@ -170,6 +210,19 @@ class Predictor:
 
         Sigmoid applied here — NOT inside model (BCEWithLogitsLoss compatibility).
         Per‑class thresholds are applied instead of a single global threshold.
+
+        Result schema (canonical — all consumers must read this shape):
+            {
+                "label": "vulnerable" | "safe",
+                "vulnerabilities": [
+                    {"vulnerability_class": str, "probability": float},
+                    ...
+                ],
+                "threshold": float,
+                "truncated": bool,
+                "num_nodes": int,
+                "num_edges": int,
+            }
         """
         self.model.eval()
 
@@ -185,9 +238,11 @@ class Predictor:
         if isinstance(probs_list, float):
             probs_list = [probs_list]
 
-        # Apply per‑class thresholds
+        # Bug 3 fix — emit canonical key 'vulnerability_class' (was 'class').
+        # predictor.py owns the schema; api.py, inference_server.py, nodes.py, and
+        # any script calling predict_source() directly all read this key without remapping.
         vulnerabilities = [
-            {"class": name, "probability": round(prob, 4)}
+            {"vulnerability_class": name, "probability": round(prob, 4)}
             for name, prob, thresh in zip(self._class_names, probs_list, self.thresholds.cpu())
             if prob >= thresh.item()
         ]
