@@ -1,4 +1,3 @@
-# agents/src/orchestration/nodes.py
 """
 LangGraph node functions for the SENTINEL audit graph.
 
@@ -20,10 +19,10 @@ RECALL — MCP client pattern:
     for M5. In M6 the connection can be promoted to a module-level
     persistent client if latency becomes an issue.
 
-Node execution order:
+Node execution order (Track 3 / multi-label):
     ml_assessment
-        ├─ [confidence > 0.70] → rag_research → audit_check → synthesizer
-        └─ [confidence ≤ 0.70] → synthesizer  (fast path)
+        ├─ [max(probability) > 0.70] → rag_research → audit_check → synthesizer
+        └─ [max(probability) ≤ 0.70] → synthesizer  (fast path)
 
 Nodes (M5):
     ml_assessment   — calls sentinel-inference: predict
@@ -68,25 +67,28 @@ def _is_high_risk(ml_result: dict[str, Any]) -> bool:
     """
     Return True if the ML result warrants deep analysis.
 
-    BINARY PHASE (current):
-        Checks ml_result["confidence"] > 0.70.
-        Threshold 0.70 deliberately higher than inference threshold (0.50):
-        we want deep analysis for high-confidence vulnerable contracts,
-        not every contract that crosses the binary boundary.
-
-    MULTI-LABEL PHASE (Track 3 swap):
-        Replace the confidence check with:
-            max(v["probability"] for v in ml_result["vulnerabilities"]) > 0.70
-        This function is the single place to update — no other code changes.
+    Track 3 (multi-label, current):
+        Uses max(v["probability"]) across all detected vulnerabilities.
+        Threshold 0.70 is deliberately higher than the per-class inference
+        threshold (0.50): we want deep analysis only for high-confidence
+        detections, not every contract that crosses any class boundary.
+        Safe contracts have an empty vulnerabilities list → max() returns
+        0.0 → fast path. Correct behaviour.
 
     Args:
-        ml_result: dict from ml_assessment node (label, confidence, …)
+        ml_result: dict from ml_assessment node.
+                   Track 3 schema: label, vulnerabilities, threshold,
+                   truncated, num_nodes, num_edges.
+                   NO "confidence" field — removed in Track 3.
 
     Returns:
         True  → deep path: rag_research → audit_check → synthesizer
         False → fast path: synthesizer only
     """
-    return ml_result.get("confidence", 0.0) > 0.70
+    vulns = ml_result.get("vulnerabilities", [])
+    if not vulns:
+        return False
+    return max(v.get("probability", 0.0) for v in vulns) > 0.70
 
 
 # ---------------------------------------------------------------------------
@@ -142,15 +144,18 @@ async def _call_mcp_tool(
 
 async def ml_assessment(state: AuditState) -> dict[str, Any]:
     """
-    Call sentinel-inference to get a vulnerability score for the contract.
+    Call sentinel-inference to get a vulnerability assessment for the contract.
 
     RECALL — what this node does:
         POSTs the contract source to Module 1 via MCP.
         Module 1 runs the full dual-path model:
             raw Solidity → Slither AST → GNNEncoder(8-dim features)
                         → CodeBERT tokens → TransformerEncoder
-                        → FusionLayer → Sigmoid → score [0,1]
-        Returns: label, confidence, threshold, truncated, num_nodes, num_edges.
+                        → CrossAttentionFusion → per-class sigmoid → thresholds
+        Returns (Track 3): label, vulnerabilities, threshold,
+                           truncated, num_nodes, num_edges.
+        NOTE: NO "confidence" field — removed in Track 3. Use
+              max(v["probability"]) across vulnerabilities instead.
 
     State updates:
         ml_result → full predict response dict
@@ -174,12 +179,25 @@ async def ml_assessment(state: AuditState) -> dict[str, Any]:
                 "error": f"ml_assessment: {result.get('error')} — {result.get('detail', '')}",
             }
 
-        logger.info(
-            "ml_assessment complete | label={} | confidence={:.3f} | nodes={}",
-            result.get("label"),
-            result.get("confidence", 0.0),
-            result.get("num_nodes"),
-        )
+        # Bug 8 fix: "confidence" no longer exists in Track 3 schema.
+        # Log top vulnerability class and its probability instead.
+        vulns = result.get("vulnerabilities", [])
+        if vulns:
+            top = max(vulns, key=lambda v: v.get("probability", 0.0))
+            logger.info(
+                "ml_assessment complete | label={} | top_vuln={} | prob={:.3f} | nodes={}",
+                result.get("label"),
+                top.get("vulnerability_class"),
+                top.get("probability", 0.0),
+                result.get("num_nodes"),
+            )
+        else:
+            logger.info(
+                "ml_assessment complete | label={} | no vulnerabilities detected | nodes={}",
+                result.get("label"),
+                result.get("num_nodes"),
+            )
+
         return {"ml_result": result}
 
     except Exception as exc:
@@ -206,24 +224,31 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
         The synthesizer uses these chunks to enrich the audit report with
         real-world precedent for the detected vulnerability pattern.
 
-    Query construction:
-        The query combines the vulnerability label with a leading code snippet.
-        The snippet (first 200 chars) gives the RAG model lexical context —
-        it helps distinguish "reentrancy in a vault" from "reentrancy in a DEX".
+    Query construction (Track 3):
+        Uses the top vulnerability class name (highest probability) as the
+        primary topic anchor. Falls back to label if vulnerabilities empty.
+        The code snippet (first 200 chars) gives lexical context.
 
     State updates:
         rag_results → list of ranked exploit chunk dicts
         error       → set on failure (does not replace existing error)
     """
     ml_result = state.get("ml_result", {})
-    label     = ml_result.get("label", "unknown")
+    vulns     = ml_result.get("vulnerabilities", [])
+
+    # Use the top detected vulnerability class as the query topic.
+    # More precise than the binary label — "Reentrancy exploit" retrieves
+    # better RAG results than "vulnerable exploit".
+    if vulns:
+        top_class = max(vulns, key=lambda v: v.get("probability", 0.0))
+        topic = top_class.get("vulnerability_class", ml_result.get("label", "unknown"))
+    else:
+        topic = ml_result.get("label", "unknown")
+
     contract_snippet = state.get("contract_code", "")[:200].strip()
 
-    # Build a natural-language query that the embedding model can match against
-    # DeFiHackLabs exploit write-ups. "vulnerability" and the label give the
-    # topic; the code snippet anchors it to the specific pattern.
     query = (
-        f"smart contract vulnerability {label} "
+        f"smart contract {topic} vulnerability "
         f"exploit attack pattern: {contract_snippet}"
     )
     logger.info("rag_research | query_prefix='{}…'", query[:80])
@@ -329,40 +354,47 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             produce a natural-language audit summary + recommendation.
             The M5 structured report becomes the LLM's context.
 
-    Report schema (binary phase):
-        contract_address:  str
-        overall_label:     str          "vulnerable" | "safe" | "unknown"
-        confidence:        float        ML score in [0,1]
-        threshold:         float        decision boundary used
-        ml_truncated:      bool         True if contract exceeded 512 tokens
-        num_nodes:         int          AST node count
-        num_edges:         int          AST edge count
-        rag_evidence:      list         matched exploit chunks (deep path)
-        audit_history:     list         prior on-chain audit records
-        static_findings:   dict | None  reserved for M6
-        recommendation:    str          rule-based in M5, LLM-generated in M6
-        error:             str | None   any non-fatal error during the run
-        path_taken:        str          "deep" or "fast" — for observability
-
-    NOTE — After Track 3 (multi-label):
-        overall_label → most likely class name (or "safe" if all < 0.5)
-        confidence    → max(probability across 11 vulnerability classes)
-        Add:  vulnerabilities: list[{class, probability}]
+    Report schema (Track 3 / multi-label) — matches SENTINEL-SPEC §8.1:
+        contract_address:   str
+        overall_label:      str          "vulnerable" | "safe" | "unknown"
+        risk_probability:   float        max(probability) across detected vulns
+        top_vulnerability:  str | None   class name with highest probability
+        vulnerabilities:    list         [{vulnerability_class, probability}, ...]
+        threshold:          float        per-class decision boundary used
+        ml_truncated:       bool         True if contract exceeded 512 tokens
+        num_nodes:          int          AST node count
+        num_edges:          int          AST edge count
+        rag_evidence:       list         matched exploit chunks (deep path)
+        audit_history:      list         prior on-chain audit records
+        static_findings:    dict | None  reserved for M6
+        recommendation:     str          rule-based in M5, LLM-generated in M6
+        error:              str | None   any non-fatal error during the run
+        path_taken:         str          "deep" or "fast" — for observability
 
     State updates:
         final_report → complete report dict
     """
-    ml_result    : dict = state.get("ml_result",    {})
-    rag_results  : list = state.get("rag_results",  [])
-    audit_history: list = state.get("audit_history", [])
+    ml_result    : dict      = state.get("ml_result",    {})
+    rag_results  : list      = state.get("rag_results",  [])
+    audit_history: list      = state.get("audit_history", [])
     error        : str | None = state.get("error")
 
-    label      = ml_result.get("label",      "unknown")
-    confidence = ml_result.get("confidence", 0.0)
-    threshold  = ml_result.get("threshold",  0.50)
-    truncated  = ml_result.get("truncated",  False)
-    num_nodes  = ml_result.get("num_nodes",  0)
-    num_edges  = ml_result.get("num_edges",  0)
+    label     = ml_result.get("label",     "unknown")
+    vulns     = ml_result.get("vulnerabilities", [])
+    threshold = ml_result.get("threshold", 0.50)
+    truncated = ml_result.get("truncated", False)
+    num_nodes = ml_result.get("num_nodes", 0)
+    num_edges = ml_result.get("num_edges", 0)
+
+    # Derive risk_probability and top_vulnerability from the vulnerabilities list.
+    # These replace the binary-era "confidence" field (removed in Track 3).
+    if vulns:
+        top_vuln      = max(vulns, key=lambda v: v.get("probability", 0.0))
+        risk_prob     = round(top_vuln.get("probability", 0.0), 4)
+        top_vuln_name = top_vuln.get("vulnerability_class")
+    else:
+        risk_prob     = 0.0
+        top_vuln_name = None
 
     # Determine which path was taken — useful for debugging and observability.
     # If rag_results is populated, we went deep. If empty, fast path.
@@ -376,24 +408,27 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             "ML assessment failed — manual review required. "
             "Check that the inference server (port 8001) is running."
         )
-    elif label == "vulnerable" and confidence >= 0.70:
-        rag_count = len(rag_results)
+    elif label == "vulnerable" and risk_prob >= 0.70:
+        rag_count   = len(rag_results)
         prior_count = len(audit_history)
         recommendation = (
-            f"HIGH RISK — ML confidence {confidence:.1%}. "
+            f"HIGH RISK — top vulnerability: {top_vuln_name} "
+            f"(probability {risk_prob:.1%}). "
             f"{rag_count} similar exploit pattern(s) found in DeFiHackLabs corpus. "
             f"{prior_count} prior on-chain audit(s). "
             "Recommend full manual audit before deployment."
         )
     elif label == "vulnerable":
         recommendation = (
-            f"MODERATE RISK — ML confidence {confidence:.1%} (above 0.50 threshold). "
+            f"MODERATE RISK — top vulnerability: {top_vuln_name} "
+            f"(probability {risk_prob:.1%}, above per-class threshold). "
             "Contract crossed the vulnerability boundary but below high-confidence threshold. "
             "Recommend targeted review of flagged patterns."
         )
     else:
         recommendation = (
-            f"LOW RISK — ML confidence {confidence:.1%} below vulnerability threshold ({threshold:.0%}). "
+            f"LOW RISK — no vulnerability exceeded per-class threshold "
+            f"(max probability: {risk_prob:.1%}, threshold: {threshold:.0%}). "
             "Standard due diligence recommended."
         )
 
@@ -404,26 +439,29 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         )
 
     report = {
-        "contract_address": state.get("contract_address", ""),
-        "overall_label":    label,
-        "confidence":       round(confidence, 4),
-        "threshold":        threshold,
-        "ml_truncated":     truncated,
-        "num_nodes":        num_nodes,
-        "num_edges":        num_edges,
-        "rag_evidence":     rag_results,
-        "audit_history":    audit_history,
-        "static_findings":  state.get("static_findings"),  # None until M6
-        "recommendation":   recommendation,
-        "error":            error,
-        "path_taken":       path_taken,
+        "contract_address":  state.get("contract_address", ""),
+        "overall_label":     label,
+        "risk_probability":  risk_prob,
+        "top_vulnerability": top_vuln_name,
+        "vulnerabilities":   vulns,
+        "threshold":         threshold,
+        "ml_truncated":      truncated,
+        "num_nodes":         num_nodes,
+        "num_edges":         num_edges,
+        "rag_evidence":      rag_results,
+        "audit_history":     audit_history,
+        "static_findings":   state.get("static_findings"),  # None until M6
+        "recommendation":    recommendation,
+        "error":             error,
+        "path_taken":        path_taken,
     }
 
     logger.info(
-        "synthesizer complete | label={} | confidence={:.3f} | path={} | "
-        "rag_chunks={} | prior_audits={}",
+        "synthesizer complete | label={} | risk_prob={:.3f} | top_vuln={} | "
+        "path={} | rag_chunks={} | prior_audits={}",
         label,
-        confidence,
+        risk_prob,
+        top_vuln_name,
         path_taken,
         len(rag_results),
         len(audit_history),
