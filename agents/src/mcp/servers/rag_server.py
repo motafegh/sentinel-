@@ -1,4 +1,3 @@
-# agents/src/mcp/servers/rag_server.py
 """
 MCP server — sentinel-rag
 Transport: SSE (HTTP)
@@ -59,10 +58,6 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 # A-15 fix: replace relative import with absolute path-anchored import.
-# `from src.rag.retriever import ...` assumes the process cwd is agents/,
-# which breaks when the server is started from the project root or from Docker.
-# Adding agents/ to sys.path at module load time makes the import work
-# from any working directory.
 import sys
 from pathlib import Path as _Path
 sys.path.insert(0, str(_Path(__file__).resolve().parents[3]))  # → agents/
@@ -72,35 +67,54 @@ from src.rag.retriever import HybridRetriever
 # Configuration — all values overridable via agents/.env
 # ---------------------------------------------------------------------------
 
-# Port this MCP server listens on.
-# 8011 avoids collision with Module 1 (8001), inference MCP (8010).
 _SERVER_PORT: int = int(os.getenv("MCP_RAG_PORT", "8011"))
+_DEFAULT_K:   int = int(os.getenv("RAG_DEFAULT_K", "5"))
+_MAX_K:       int = 20
 
-# Default number of chunks returned per search call.
-# Agents can override per call via the `k` argument.
-_DEFAULT_K: int = int(os.getenv("RAG_DEFAULT_K", "5"))
-
-# Hard cap on k — prevents agents from accidentally pulling the entire index.
-_MAX_K: int = 20
+# Track 3 vulnerability class names (11 classes, Title Case).
+# Used in the vuln_type filter description so agents build correct queries.
+_VULN_CLASSES: list[str] = [
+    "Reentrancy",
+    "AccessControl",
+    "ArithmeticOverflow",
+    "UncheckedReturn",
+    "FrontRunning",
+    "OracleManipulation",
+    "FlashLoan",
+    "LogicError",
+    "DenialOfService",
+    "Phishing",
+    "Other",
+]
 
 # ---------------------------------------------------------------------------
-# Retriever — loaded once at startup, shared across all tool calls
+# Retriever — lazy-loaded at startup, NOT at import time
 # ---------------------------------------------------------------------------
+# Bug 10 fix: HybridRetriever() loads FAISS + BM25 + chunks from disk.
+# Running this at module level crashes in CI (no index built), unit tests,
+# and any import-time inspection. Move to _on_startup() so import is always safe.
 
-# HybridRetriever.__init__ loads FAISS + BM25 + chunks from disk.
-# This happens once when the server starts, not per request.
-# If the index is missing or corrupt, it raises RuntimeError here —
-# which is the correct behaviour: fail fast, don't serve broken results.
-logger.info("Loading HybridRetriever index…")
-_retriever = HybridRetriever()
-logger.info("HybridRetriever ready — {} chunks indexed", len(_retriever.chunks))
+_retriever: HybridRetriever | None = None
+
+
+def _on_startup() -> None:
+    """
+    Load the HybridRetriever index. Called once from run_server() before
+    uvicorn starts accepting connections.
+
+    Raises RuntimeError (from HybridRetriever) if the FAISS index or
+    BM25 corpus is missing — correct behaviour: fail fast before serving.
+    """
+    global _retriever
+    logger.info("Loading HybridRetriever index…")
+    _retriever = HybridRetriever()
+    logger.info("HybridRetriever ready — {} chunks indexed", len(_retriever.chunks))
+
 
 # ---------------------------------------------------------------------------
 # Server instantiation
 # ---------------------------------------------------------------------------
 
-# "sentinel-rag" is the server's identity in the MCP handshake.
-# Matches the key used in M5's SERVER_CONFIG — keep it stable.
 server = Server("sentinel-rag")
 
 # ---------------------------------------------------------------------------
@@ -150,9 +164,9 @@ async def list_tools() -> list[Tool]:
                             "vuln_type": {
                                 "type": "string",
                                 "description": (
-                                    "Filter by vulnerability class. "
-                                    "Known values: reentrancy, flash_loan, access_control, "
-                                    "oracle_manipulation, logic_error, other."
+                                    "Filter by Track 3 vulnerability class (Title Case). "
+                                    "Known values: "
+                                    + ", ".join(_VULN_CLASSES) + "."
                                 ),
                             },
                             "date_gte": {
@@ -192,7 +206,6 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if name == "search":
         return await _handle_search(arguments)
     else:
-        # Defensive — SDK enforces name is from list_tools(), but surface clearly.
         logger.error("call_tool received unknown tool name: {}", name)
         return [TextContent(
             type="text",
@@ -212,27 +225,31 @@ async def _handle_search(arguments: dict[str, Any]) -> list[TextContent]:
     completes in < 100ms on the RTX 3070. If latency becomes a problem in
     M6, wrap with asyncio.run_in_executor to avoid blocking the event loop.
     """
-    query: str = arguments["query"]
-    k: int = arguments.get("k", _DEFAULT_K)
+    # Guard: _retriever is None if someone calls the tool before run_server().
+    # This can happen in tests that import the module and call call_tool directly.
+    if _retriever is None:
+        logger.error("_handle_search called before _on_startup() — retriever not loaded")
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "error": "retriever_not_initialised",
+                "detail": "HybridRetriever was not loaded. Ensure run_server() was called.",
+            }),
+        )]
+
+    query:   str           = arguments["query"]
+    k:       int           = arguments.get("k", _DEFAULT_K)
     filters: dict[str, Any] = arguments.get("filters", {})
 
-    # Enforce hard cap — schema declares maximum: _MAX_K.
-    # Defence-in-depth: MCP 1.27.0+ enforces this via JSON Schema but a direct
-    # HTTP client could bypass that layer.
+    # Enforce hard cap — defence-in-depth against schema bypass.
     if k > _MAX_K:
         k = _MAX_K
         logger.warning("k capped at {} (requested {})", _MAX_K, arguments.get("k"))
 
-    # A-08: full query at DEBUG level, truncated at INFO level.
-    # DEBUG is off by default — enable for troubleshooting retrieval quality.
-    # INFO shows only [:60] to keep logs readable during normal operation.
     logger.debug("search | full_query='{}'", query)
 
     try:
         chunks = _retriever.search(query=query, k=k, filters=filters or None)
-
-        # Chunk is a dataclass — json.dumps() can't serialise it natively.
-        # dataclasses.asdict() recursively converts to plain dicts.
         serialised = [dataclasses.asdict(chunk) for chunk in chunks]
 
         logger.info(
@@ -246,34 +263,32 @@ async def _handle_search(arguments: dict[str, Any]) -> list[TextContent]:
         return [TextContent(
             type="text",
             text=json.dumps({
-                "query": query,
-                "k_requested": k,
-                "k_returned": len(serialised),
+                "query":         query,
+                "k_requested":   k,
+                "k_returned":    len(serialised),
                 "filters_applied": filters,
-                "results": serialised,
+                "results":       serialised,
             }),
         )]
 
     except Exception as exc:
-        # Don't let a retriever failure crash the MCP session.
-        # Log the full traceback server-side; return a structured error to the agent.
         logger.exception("search failed | query='{}' | error: {}", query[:60], exc)
         return [TextContent(
             type="text",
             text=json.dumps({
-                "error": "retriever_error",
+                "error":  "retriever_error",
                 "detail": str(exc),
-                "query": query,
+                "query":  query,
             }),
         )]
 
 # ---------------------------------------------------------------------------
-# SSE server entrypoint — identical wiring to inference_server.py
+# SSE server entrypoint
 # ---------------------------------------------------------------------------
 
 def run_server() -> None:
     """
-    Wire up the MCP server to SSE transport and start uvicorn.
+    Load the retriever, wire up SSE transport, and start uvicorn.
 
     Architecture:
         SseServerTransport — handles /sse (persistent event stream)
@@ -288,6 +303,9 @@ def run_server() -> None:
             "timeout": 30.0,
         }
     """
+    # Bug 10 fix: load retriever here, not at module level.
+    _on_startup()
+
     sse_transport = SseServerTransport("/messages/")
 
     async def handle_sse(request: Request) -> Response:
@@ -303,25 +321,22 @@ def run_server() -> None:
                 write_stream,
                 server.create_initialization_options(),
             )
-        # Return Response() so Starlette doesn't raise a TypeError
-        # when it tries to call handle_sse as a response callable.
-        # Same fix applied to inference_server.py (Starlette teardown bug).
         return Response()
 
     async def health(request: Request) -> JSONResponse:
         """Liveness probe — used by Docker Compose and monitoring."""
         return JSONResponse({
-            "status": "ok",
-            "server": "sentinel-rag",
-            "chunks_indexed": len(_retriever.chunks),
-            "default_k": _DEFAULT_K,
+            "status":         "ok",
+            "server":         "sentinel-rag",
+            "chunks_indexed": len(_retriever.chunks) if _retriever else 0,
+            "default_k":      _DEFAULT_K,
         })
 
     starlette_app = Starlette(
         routes=[
-            Route("/sse", endpoint=handle_sse),
+            Route("/sse",       endpoint=handle_sse),
             Mount("/messages/", app=sse_transport.handle_post_message),
-            Route("/health", endpoint=health),
+            Route("/health",    endpoint=health),
         ]
     )
 
