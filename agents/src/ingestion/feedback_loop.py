@@ -35,6 +35,13 @@ CHANGES (2026-04-29):
             AND silently overwrites on Windows — correct on both platforms.
             Same fix applied to pipeline.py (cross-project issue).
 
+CHANGES (2026-04-29 Issue #1):
+  BRIDGE: process_event() now reads data/reports/{contract_address}.json
+          (written by synthesizer in nodes.py) to recover vulnerability_class.
+          On-chain findings are now indexed with the actual Track 3 class
+          name instead of the hardcoded "unknown" placeholder. Graceful
+          fallback to "unknown" for legacy events without a report file.
+
 Run from agents/ directory:
   poetry run python -m src.ingestion.feedback_loop
   (runs continuously until Ctrl+C)
@@ -62,6 +69,7 @@ from .pipeline import (
     SEEN_HASHES_PATH,
     INDEX_LOCK_PATH,
     INDEX_LOCK_TIMEOUT,
+    REPORTS_DIR,
     _atomic_write_binary,
 )
 
@@ -111,6 +119,40 @@ AUDIT_REGISTRY_ABI = [
         "type": "function",
     },
 ]
+
+
+def _read_vuln_type_from_report(contract_address: str) -> str:
+    """
+    BRIDGE (Issue #1): read vulnerability_class from the shared report store.
+
+    The orchestrator (synthesizer in nodes.py) writes the final_report to
+    data/reports/{contract_address}.json before returning. This function
+    reads that file to recover the Track 3 vulnerability class name.
+
+    Returns the top_vulnerability string if found, else "unknown".
+    "unknown" is the correct fallback for:
+      - Legacy events ingested before the bridge was deployed
+      - Safe contracts where top_vulnerability is None / label == "safe"
+      - Any I/O failure reading the report file
+    """
+    report_path = REPORTS_DIR / f"{contract_address}.json"
+    try:
+        if report_path.exists():
+            report = json.loads(report_path.read_text())
+            vuln_type = report.get("top_vulnerability") or "unknown"
+            logger.debug(
+                "bridge | recovered vuln_type='{}' for {}",
+                vuln_type,
+                contract_address[:10],
+            )
+            return vuln_type
+    except Exception as exc:
+        logger.warning(
+            "bridge | could not read report for {} (non-fatal): {}",
+            contract_address[:10],
+            exc,
+        )
+    return "unknown"
 
 
 class OnChainListener:
@@ -234,8 +276,9 @@ class FeedbackIngester:
         """
         Convert an audit event to a RAG document and ingest it.
 
-        FIX-1: BM25 rebuilt after each ingestion.
-        FIX-6: Uses path constants from pipeline.py.
+        FIX-1:    BM25 rebuilt after each ingestion.
+        FIX-6:    Uses path constants from pipeline.py.
+        BRIDGE:   vuln_type resolved from shared report store (Issue #1).
 
         Returns:
             True if ingested, False if skipped (low score or already seen)
@@ -260,6 +303,11 @@ class FeedbackIngester:
             logger.debug(f"Already ingested: {doc_id}")
             return False
 
+        # BRIDGE (Issue #1): recover the Track 3 vulnerability class from the
+        # shared report file written by the orchestrator's synthesizer node.
+        # Fallback to "unknown" for legacy events or safe contracts.
+        vuln_type = _read_vuln_type_from_report(contract_address)
+
         content = f"""SENTINEL Audit Finding
 Contract: {contract_address}
 Risk Score: {human_score} ({score} field element)
@@ -275,26 +323,6 @@ via a zero-knowledge proof — the model computation is cryptographically
 guaranteed to be honest. This pattern should be considered when auditing
 similar contracts."""
 
-        # TODO-B (design gap — tracked in GitHub Issue #<TBD>):
-        # vuln_type is hardcoded "unknown" because AuditRegistry.sol's
-        # AuditSubmitted event and getLatestAudit() carry only:
-        #   score, proofHash, agent, timestamp, verified
-        # The vulnerability_class produced by the ML orchestrator (nodes.py)
-        # never reaches this loop. On-chain documents are indexed without a
-        # class label, making all vuln_type filters in retriever.py return
-        # 0 results for on-chain docs.
-        #
-        # Three bridge options are documented in GitHub Issue — a design
-        # decision is required before implementing any of them:
-        #   Option 1: Contract upgrade — add vulnerabilityClass to AuditResult struct
-        #   Option 2: Shared store   — orchestrator writes final_report to
-        #             data/reports/{contract_address}.json; this loop reads it
-        #   Option 3: Re-query inference server — call sentinel-inference with
-        #             the contract address (adds ML dependency to this module)
-        #
-        # RECOMMENDATION: Option 2 (shared store). Lowest coupling, no contract
-        # changes, no re-inference. Orchestrator already has final_report;
-        # writing it to disk before on-chain submission costs one json.dump().
         doc = Document(
             content=content,
             source="SENTINEL_ONCHAIN",
@@ -308,7 +336,7 @@ similar contracts."""
                 "agent":            event["agent"],
                 "date":             datetime.now().strftime("%Y-%m-%d"),
                 "source":           "SENTINEL_ONCHAIN",
-                "vuln_type":        "unknown",   # TODO-B: see comment above
+                "vuln_type":        vuln_type,   # BRIDGE: real class or "unknown"
                 "verified_onchain": True,
             }
         )
@@ -333,7 +361,7 @@ similar contracts."""
         logger.info(
             f"Ingested on-chain finding: "
             f"contract={contract_address[:10]}... "
-            f"score={human_score:.1%} chunks={len(chunks)}"
+            f"score={human_score:.1%} vuln_type={vuln_type} chunks={len(chunks)}"
         )
         return True
 
