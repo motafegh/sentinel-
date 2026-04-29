@@ -37,6 +37,15 @@ Usage:
     poetry run python agents/src/mcp/servers/audit_server.py
     → http://localhost:8012/health
     → http://localhost:8012/sse  (MCP SSE endpoint)
+
+FIX (2026-04-29):
+    Bug 2 — ABI was loaded at module import time (_load_abi() called unconditionally
+             at module level). Any environment without compiled contracts
+             (CI, mock mode, any dev box that hasn’t run forge build) crashed
+             with FileNotFoundError before the server could start.
+             Fix: _ABI=None at module level; loaded lazily in _on_startup()
+             only when _MOCK_MODE is False. Mock mode starts cleanly with no
+             compiled contracts present.
 """
 
 from __future__ import annotations
@@ -58,7 +67,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
-# ── sys.path — make agents/ importable when started from project root ──────
+# ── sys.path — make agents/ importable when started from project root ───────────
 # __file__ = agents/src/mcp/servers/audit_server.py
 # parents[3] = agents/
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -96,17 +105,23 @@ _MOCK_MODE: bool = (
 )
 
 # ---------------------------------------------------------------------------
-# ABI — load from Foundry build output
+# ABI — path resolution only at module level; actual load deferred to startup
 # ---------------------------------------------------------------------------
-# Foundry out/ directory is at project root / contracts / out.
-# The JSON has structure: {"abi": [...], "bytecode": {...}, ...}
-# We extract only the ABI array needed by web3.py.
+# Bug 2 fix: _load_abi() was previously called at module level unconditionally.
+# This crashed with FileNotFoundError in any environment without compiled contracts
+# (CI, mock mode, dev boxes that haven’t run `forge build`) before the server
+# could even start. _ABI is now None at import time and populated lazily inside
+# _on_startup() only when _MOCK_MODE is False.
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]   # sentinel/
 _ABI_PATH = _PROJECT_ROOT / "contracts/out/AuditRegistry.sol/AuditRegistry.json"
 
+
 def _load_abi() -> list:
     """Load and return the AuditRegistry ABI from Foundry build output.
+
+    Called lazily from _on_startup() only when _MOCK_MODE is False.
+    Never called at module import time.
 
     Raises:
         FileNotFoundError: if contracts/ haven't been compiled yet.
@@ -123,7 +138,10 @@ def _load_abi() -> list:
     # Foundry artifact format: top-level "abi" key contains the ABI array
     return artifact["abi"]
 
-_ABI: list = _load_abi()
+
+# Bug 2 fix — was: _ABI: list = _load_abi()  (unconditional module-level call)
+# Now: None at import time; set inside _on_startup() only in real mode.
+_ABI: list | None = None
 
 # ---------------------------------------------------------------------------
 # Web3 client — initialised on startup, shared across all tool calls
@@ -228,20 +246,24 @@ async def list_tools() -> list[Tool]:
 # ---------------------------------------------------------------------------
 
 async def _on_startup() -> None:
-    """Initialise the AsyncWeb3 client and contract object at server start."""
-    # Declare all globals that this function may modify at the TOP of the function.
-    # Python requires global declarations to come before any use of the name
-    # as a local — even reads before the declaration are a SyntaxError.
-    global _w3, _registry, _MOCK_MODE
+    """Initialise the AsyncWeb3 client and contract object at server start.
+
+    Bug 2 fix: _load_abi() is now called here, inside the mock guard,
+    not at module import time. Mock mode starts without any compiled contracts.
+    """
+    global _w3, _registry, _MOCK_MODE, _ABI
 
     if _MOCK_MODE:
         logger.info(
             "Audit server starting in MOCK MODE — "
             "no RPC calls will be made (AUDIT_MOCK=true or SEPOLIA_RPC_URL not set)"
         )
-        return
+        return  # _ABI stays None — mock handlers never use it
 
     try:
+        # Bug 2 fix — ABI loaded here, only in real mode, after mock guard.
+        _ABI = _load_abi()
+
         # Lazy import — only needed when running in real mode.
         # web3 v7 — AsyncWeb3 for non-blocking HTTP RPC calls.
         from web3 import AsyncWeb3
