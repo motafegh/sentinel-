@@ -15,6 +15,12 @@ WHAT DID NOT CHANGE:
     - /predict endpoint logic
     - Lifespan pattern (Predictor loaded once at startup)
     - Error handling: 400/413/500/503/504
+
+FIXES (2026-04-29):
+    Bug 1 — import torch added. Was missing — caused NameError on every CUDA OOM
+             instead of the intended HTTP 413 response.
+    Bug 3 — v['class'] → v['vulnerability_class'] to match canonical key
+             now emitted by predictor._score().
 """
 
 from __future__ import annotations
@@ -24,6 +30,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import torch  # Bug 1 fix — was missing; needed for torch.cuda.OutOfMemoryError + empty_cache()
 from fastapi import FastAPI, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator
@@ -144,7 +151,7 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
         logger.warning(f"Bad input: {exc}")
         raise HTTPException(status_code=400, detail=str(exc))
 
-    except torch.cuda.OutOfMemoryError:
+    except torch.cuda.OutOfMemoryError:  # Bug 1 fix — now resolves correctly (torch is imported)
         torch.cuda.empty_cache()
         raise HTTPException(status_code=413, detail="Contract too large for GPU memory.")
 
@@ -161,7 +168,7 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
         label=result["label"],
         vulnerabilities=[
             VulnerabilityResult(
-                vulnerability_class=v["class"],
+                vulnerability_class=v["vulnerability_class"],  # Bug 3 fix — was v["class"]
                 probability=v["probability"],
             )
             for v in result["vulnerabilities"]
