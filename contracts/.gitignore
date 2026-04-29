@@ -1,0 +1,11 @@
+# Foundry build artifacts
+out/
+cache/
+broadcast/
+
+# EZKL-generated verifier - produced by zkml/src/ezkl/setup_circuit.py
+# Copy here manually after generation, but do NOT commit.
+src/ZKMLVerifier.sol
+
+# Foundry dependencies - installed via `forge install`
+lib/
