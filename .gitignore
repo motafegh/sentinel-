@@ -103,6 +103,10 @@ CLAUDE.md
 !README.md
 !*/README.md
 !*/*/README.md
+# Allow changelog entries — these are developer-facing change records.
+!docs/
+!docs/changes/
+!docs/changes/*.md
 
 # ── Archive folders excluded from source-only push ───────────────────────────
 ml/_archive/
