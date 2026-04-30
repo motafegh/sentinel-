@@ -98,6 +98,11 @@ Project-docs/
 docs/
 CLAUDE.md
 *.md
+# Allow module README.md files — these are developer-facing module docs,
+# not session notes or spec files.
+!README.md
+!*/README.md
+!*/*/README.md
 
 # ── Archive folders excluded from source-only push ───────────────────────────
 ml/_archive/

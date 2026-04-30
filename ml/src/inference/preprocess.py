@@ -16,7 +16,7 @@ graph_builder.py uses one-hot encoding for node features:
   type_onehot(4) + visibility_onehot(4) + mutability_onehot(6) + flags(3) = 17 dims
 
 The training data (68,555 .pt files in ml/data/graphs/) was built by
-ml/scripts/ast_extractor_v4_production.py, which uses a completely different
+ml/data_extraction/ast_extractor.py, which uses a completely different
 feature function producing 8 raw floats per node:
   [type_id, visibility, pure, view, payable, reentrant, complexity, loc]
 
@@ -28,11 +28,11 @@ graph_builder.py was written as a separate experiment and was NEVER used to
 produce the training data. It is not deleted — it may be used if the model
 is retrained with richer features — but it must NOT be used here.
 
-The _extract_graph() method below replicates ast_extractor_v4_production.py
+The _extract_graph() method below replicates ast_extractor.ASTExtractorV4
 node_features() exactly. Any future change to feature engineering must update:
-  1. ast_extractor_v4_production.py  (offline dataset build)
-  2. _extract_graph() in this file   (online inference)
-  3. GNNEncoder(in_channels=N)       (model architecture)
+  1. ml/data_extraction/ast_extractor.py  (offline dataset build)
+  2. _extract_graph() in this file        (online inference)
+  3. GNNEncoder(in_channels=N)            (model architecture)
   4. Retrain the model from scratch
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -121,6 +121,9 @@ class ContractPreprocessor:
 
     TOKENIZER_NAME   = "microsoft/codebert-base"
     MAX_TOKEN_LENGTH = 512
+    # Reject source_code over this size before any Slither/tokenizer work begins.
+    # api.py also enforces this at the HTTP boundary; this is a defence-in-depth guard.
+    MAX_SOURCE_BYTES = 1 * 1024 * 1024  # 1 MB
 
     def __init__(self) -> None:
         logger.info("ContractPreprocessor initialising...")
@@ -206,15 +209,27 @@ class ContractPreprocessor:
         if not source_code or not source_code.strip():
             raise ValueError("source_code is empty")
 
+        source_bytes = len(source_code.encode("utf-8"))
+        if source_bytes > self.MAX_SOURCE_BYTES:
+            raise ValueError(
+                f"source_code too large ({source_bytes:,} bytes > "
+                f"{self.MAX_SOURCE_BYTES:,} limit). "
+                "Consider splitting or summarising the contract before analysis."
+            )
+
         logger.info(f"Preprocessing source: {name!r} ({len(source_code)} chars)")
 
         contract_hash = hashlib.md5(source_code.encode("utf-8")).hexdigest()
+
+        # Sanitize name for use as a temp-file prefix — strip characters that are
+        # unsafe in file names (path separators, spaces, etc.).
+        safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name[:32])
 
         # delete=False: close before Slither opens (required on some platforms).
         # finally block guarantees cleanup even if extraction raises.
         tmp = tempfile.NamedTemporaryFile(
             suffix=".sol",
-            prefix=f"sentinel_{name}_",
+            prefix=f"sentinel_{safe_name}_",
             mode="w",
             encoding="utf-8",
             delete=False,
@@ -245,9 +260,9 @@ class ContractPreprocessor:
 
         ⚠️  CRITICAL — DO NOT CHANGE NODE FEATURE LOGIC WITHOUT RETRAINING ⚠️
 
-        Replicates node_features() from ast_extractor_v4_production.py EXACTLY.
-        That script built all 68,555 training .pt files. The checkpoint was
-        trained on those exact 8-dim float vectors.
+        Replicates node_features() from ml/data_extraction/ast_extractor.py
+        (ASTExtractorV4) EXACTLY. That script built all 68,555 training .pt files.
+        The checkpoint was trained on those exact 8-dim float vectors.
 
         Node feature vector (8 dims, float32):
           Index  Feature      Notes
@@ -347,35 +362,40 @@ class ContractPreprocessor:
                 raise ValueError("Contract produced zero graph nodes")
 
             # ── Edge extraction ───────────────────────────────────────────
+            # edge_attr records the edge type ID matching _EDGE_TYPES.
+            # GNNEncoder does not currently use edge_attr, but storing it here
+            # ensures online/offline graph object parity (offline .pt files include it).
 
-            edges: list[list[int]] = []
+            edges:      list[list[int]] = []
+            edge_types: list[int]       = []
 
-            def _add_edge(src: str, dst: str) -> None:
+            def _add_edge(src: str, dst: str, etype: int) -> None:
                 si, di = node_map.get(src), node_map.get(dst)
                 if si is not None and di is not None:
                     edges.append([si, di])
+                    edge_types.append(etype)
 
             for func in contract.functions:
                 fn = func.canonical_name
                 for call in func.internal_calls:
                     if hasattr(call, "canonical_name"):
-                        _add_edge(fn, call.canonical_name)
+                        _add_edge(fn, call.canonical_name, _EDGE_TYPES["CALLS"])
                 for var in func.state_variables_read:
-                    _add_edge(fn, var.canonical_name)
+                    _add_edge(fn, var.canonical_name, _EDGE_TYPES["READS"])
                 for var in func.state_variables_written:
-                    _add_edge(fn, var.canonical_name)
+                    _add_edge(fn, var.canonical_name, _EDGE_TYPES["WRITES"])
                 # events_emitted not available in all Slither versions — guarded.
                 if hasattr(func, "events_emitted"):
                     try:
                         for evt in func.events_emitted:
-                            _add_edge(fn, evt.canonical_name)
+                            _add_edge(fn, evt.canonical_name, _EDGE_TYPES["EMITS"])
                     except Exception:
                         pass
 
             # INHERITS edges — contract → parent contracts.
             try:
                 for parent in contract.inheritance:
-                    _add_edge(contract.name, parent.name)
+                    _add_edge(contract.name, parent.name, _EDGE_TYPES["INHERITS"])
             except Exception:
                 pass
 
@@ -383,13 +403,14 @@ class ContractPreprocessor:
 
             x = torch.tensor(node_features_list, dtype=torch.float)  # [N, 8]
 
-            edge_index = (
-                torch.tensor(edges, dtype=torch.long).t().contiguous()
-                if edges
-                else torch.zeros((2, 0), dtype=torch.long)
-            )
+            if edges:
+                edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+                edge_attr  = torch.tensor(edge_types, dtype=torch.long)  # [E]
+            else:
+                edge_index = torch.zeros((2, 0), dtype=torch.long)
+                edge_attr  = torch.zeros(0, dtype=torch.long)
 
-            graph = Data(x=x, edge_index=edge_index)
+            graph = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
             graph.contract_hash = contract_hash
             graph.contract_path = str(sol_path.resolve())
             graph.contract_name = contract.name
@@ -398,9 +419,22 @@ class ContractPreprocessor:
 
             return graph
 
+        except ImportError as exc:
+            raise RuntimeError(
+                "Slither is not installed. "
+                "Run: pip install slither-analyzer  (or: poetry add slither-analyzer)"
+            ) from exc
         except Exception as exc:
-            raise ValueError(
-                f"Graph extraction failed for '{sol_path.name}': {exc}"
+            exc_str = str(exc).lower()
+            # Distinguish user-input errors (bad Solidity) from infrastructure failures.
+            # Solc/compilation errors are the user's fault → ValueError (HTTP 400).
+            # Missing solc, Slither internals, OS errors → RuntimeError (HTTP 500).
+            if any(kw in exc_str for kw in ("solc", "compil", "syntax", "parsing", "invalid solidity")):
+                raise ValueError(
+                    f"Solidity compilation error in '{sol_path.name}': {exc}"
+                ) from exc
+            raise RuntimeError(
+                f"Graph extraction failed (infrastructure error) for '{sol_path.name}': {exc}"
             ) from exc
 
     def _tokenize(self, source_code: str, contract_hash: str) -> dict:
@@ -447,17 +481,20 @@ class ContractPreprocessor:
             )
 
         # Shape invariant — must match training data and GNNEncoder in_channels.
-        # If tokenizer settings change (max_length, padding) these fire immediately
-        # rather than producing a cryptic shape error deep in the model forward pass.
+        # RuntimeError (not assert) so python -O cannot strip these guards silently.
         expected = torch.Size([1, self.MAX_TOKEN_LENGTH])
-        assert encoded["input_ids"].shape == expected, (
-            f"input_ids shape mismatch: got {encoded['input_ids'].shape}, "
-            f"expected {expected}. Check tokenizer max_length and padding settings."
-        )
-        assert encoded["attention_mask"].shape == expected, (
-            f"attention_mask shape mismatch: got {encoded['attention_mask'].shape}, "
-            f"expected {expected}."
-        )
+        if encoded["input_ids"].shape != expected:
+            raise RuntimeError(
+                f"input_ids shape mismatch: got {encoded['input_ids'].shape}, "
+                f"expected {expected}. "
+                "Check tokenizer max_length and padding settings — "
+                f"TOKENIZER_NAME={self.TOKENIZER_NAME}, MAX_TOKEN_LENGTH={self.MAX_TOKEN_LENGTH}."
+            )
+        if encoded["attention_mask"].shape != expected:
+            raise RuntimeError(
+                f"attention_mask shape mismatch: got {encoded['attention_mask'].shape}, "
+                f"expected {expected}."
+            )
 
         return {
             "input_ids":      encoded["input_ids"],       # [1, 512]

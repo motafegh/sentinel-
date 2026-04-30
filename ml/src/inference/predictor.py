@@ -25,6 +25,15 @@ FIXES (2026-04-29):
              Prevents zip() silent truncation if a future checkpoint adds new classes.
     Bug 3 — _score() emits 'vulnerability_class' key (was 'class').
              predictor.py is the canonical schema owner; no consumer remapping needed.
+
+IMPROVEMENTS:
+    - self.thresholds_loaded flag exposed for /health endpoint.
+    - Warns per-class when threshold JSON is missing a class entry (uses fallback silently).
+    - Strict checkpoint metadata validation: fusion_output_dim and class_names in config
+      are cross-checked when present, catching stale checkpoints early.
+    - Warmup forward pass at startup catches CUDA / model-shape issues before first request.
+    - Legacy binary mode (legacy_binary) logs an explicit warning so production operators
+      notice an accidental legacy checkpoint load.
 """
 
 from __future__ import annotations
@@ -34,7 +43,7 @@ from pathlib import Path
 
 import torch
 from loguru import logger
-from torch_geometric.data import Batch
+from torch_geometric.data import Batch, Data
 
 from ml.src.inference.preprocess import ContractPreprocessor
 from ml.src.models.sentinel_model import SentinelModel
@@ -114,6 +123,30 @@ class Predictor:
                 )
             fusion_output_dim = _ARCH_TO_FUSION_DIM[architecture]
 
+            # Strict metadata cross-check: if checkpoint config explicitly records
+            # fusion_output_dim, it must match the architecture's expected value.
+            cfg_dim = saved_cfg.get("fusion_output_dim")
+            if cfg_dim is not None and cfg_dim != fusion_output_dim:
+                raise ValueError(
+                    f"Checkpoint config.fusion_output_dim={cfg_dim} does not match "
+                    f"expected {fusion_output_dim} for architecture '{architecture}'. "
+                    "Checkpoint may be corrupt or from an incompatible training run."
+                )
+
+            # Strict metadata cross-check: if checkpoint records class_names, verify
+            # they are a prefix-match of CLASS_NAMES (same order, no renames).
+            cfg_class_names = saved_cfg.get("class_names")
+            if cfg_class_names is not None:
+                expected = CLASS_NAMES[:len(cfg_class_names)]
+                if cfg_class_names != expected:
+                    raise ValueError(
+                        f"Checkpoint class_names mismatch.\n"
+                        f"  Checkpoint: {cfg_class_names}\n"
+                        f"  Expected:   {expected}\n"
+                        "CLASS_NAMES must not be reordered or renamed. "
+                        "Only append new classes at the end."
+                    )
+
             logger.info(
                 f"Checkpoint — epoch: {raw.get('epoch', '?')} | "
                 f"best_f1: {raw.get('best_f1', 0):.4f} | "
@@ -127,7 +160,11 @@ class Predictor:
             num_classes = 1
             fusion_output_dim = 64
             architecture = "legacy_binary"
-            logger.warning("Old-format checkpoint — loading as binary (num_classes=1)")
+            logger.warning(
+                "Old-format checkpoint — loading as binary (num_classes=1). "
+                "This checkpoint predates Track 3 multi-label mode. "
+                "Do NOT use in production without explicit intent."
+            )
 
         # Bug 5 fix — guard before slice so zip() never silently drops classes.
         # CLASS_NAMES[:11] returns 10 items without error when len(CLASS_NAMES)==10;
@@ -166,15 +203,29 @@ class Predictor:
                 thresholds_data = json.load(f)
             class_thresholds_dict = thresholds_data.get("thresholds", {})
 
-            # Build thresholds tensor aligned with self._class_names
+            # Build thresholds tensor aligned with self._class_names.
+            # Warn per class when a threshold is absent — the fallback is used but
+            # the operator should know which classes are relying on the default.
             per_class_thresholds = []
+            missing_classes = []
             for cls_name in self._class_names:
-                thresh = class_thresholds_dict.get(cls_name, self.threshold)
-                per_class_thresholds.append(thresh)
+                if cls_name in class_thresholds_dict:
+                    per_class_thresholds.append(class_thresholds_dict[cls_name])
+                else:
+                    per_class_thresholds.append(self.threshold)
+                    missing_classes.append(cls_name)
+
+            if missing_classes:
+                logger.warning(
+                    f"Threshold JSON missing entries for: {missing_classes} — "
+                    f"using fallback threshold {self.threshold} for these classes. "
+                    "Re-run tune_threshold.py to generate complete per-class thresholds."
+                )
 
             self.thresholds = torch.tensor(
                 per_class_thresholds, dtype=torch.float32, device=self.device
             )
+            self.thresholds_loaded = True
             logger.info(
                 f"Loaded per‑class thresholds from {thresholds_path} — "
                 f"min={self.thresholds.min().item():.3f}, max={self.thresholds.max().item():.3f}"
@@ -183,6 +234,7 @@ class Predictor:
             self.thresholds = torch.full(
                 (self.num_classes,), self.threshold, dtype=torch.float32, device=self.device
             )
+            self.thresholds_loaded = False
             logger.warning(
                 f"No thresholds JSON found at {thresholds_path} — "
                 f"using uniform threshold {self.threshold} for all classes"
@@ -192,7 +244,42 @@ class Predictor:
         # Preprocessor — loaded once, reused per call
         # ------------------------------------------------------------------
         self.preprocessor = ContractPreprocessor()
+
+        # ------------------------------------------------------------------
+        # Warmup forward pass — catches CUDA / shape issues at startup,
+        # not on the first real request. Uses minimal dummy tensors (no Slither).
+        # ------------------------------------------------------------------
+        self._warmup()
         logger.info(f"Predictor ready | {self.num_classes} classes | {architecture}")
+
+    def _warmup(self) -> None:
+        """
+        Run one minimal forward pass with dummy tensors to surface CUDA
+        and model-shape issues at startup instead of on the first real request.
+
+        Uses a single-node graph and all-PAD token sequence — enough to exercise
+        every layer path without requiring Slither or a real Solidity file.
+        """
+        try:
+            dummy_x = torch.zeros(1, 8, dtype=torch.float32, device=self.device)
+            dummy_edge_index = torch.zeros(2, 0, dtype=torch.long, device=self.device)
+            dummy_graph = Data(x=dummy_x, edge_index=dummy_edge_index)
+            dummy_batch = Batch.from_data_list([dummy_graph]).to(self.device)
+
+            # attention_mask: first token real, rest PAD — avoids empty masked mean
+            dummy_ids = torch.zeros(1, 512, dtype=torch.long, device=self.device)
+            dummy_mask = torch.zeros(1, 512, dtype=torch.long, device=self.device)
+            dummy_mask[0, 0] = 1
+
+            with torch.no_grad():
+                _ = self.model(dummy_batch, dummy_ids, dummy_mask)
+
+            logger.info("Warmup forward pass succeeded — model ready")
+        except Exception as exc:
+            raise RuntimeError(
+                f"Model warmup failed — checkpoint may be incompatible with current code. "
+                f"Error: {exc}"
+            ) from exc
 
     def predict(self, sol_path: str | Path) -> dict:
         """Score a Solidity contract file on disk."""
