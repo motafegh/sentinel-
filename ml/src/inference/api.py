@@ -21,6 +21,13 @@ FIXES (2026-04-29):
              instead of the intended HTTP 413 response.
     Bug 3 — v['class'] → v['vulnerability_class'] to match canonical key
              now emitted by predictor._score().
+
+IMPROVEMENTS:
+    - /health now reports thresholds_loaded from predictor.
+    - SENTINEL_PREDICT_TIMEOUT env var controls inference timeout (default 60 s).
+    - logger.exception used in catch-all so full traceback appears in logs.
+    - Source size enforced before preprocessing: reject requests > MAX_SOURCE_BYTES (1 MB).
+    - Solidity validator gives a clearer message distinguishing missing keyword vs empty input.
 """
 
 from __future__ import annotations
@@ -41,6 +48,13 @@ CHECKPOINT: str = os.getenv(
     "SENTINEL_CHECKPOINT",
     "ml/checkpoints/multilabel_crossattn_best.pt",
 )
+
+# Inference timeout in seconds — override via SENTINEL_PREDICT_TIMEOUT env var.
+PREDICT_TIMEOUT: float = float(os.getenv("SENTINEL_PREDICT_TIMEOUT", "60"))
+
+# Hard upper bound on source_code size.  Slither and the tokenizer are expensive;
+# reject oversized payloads before any preprocessing work begins.
+MAX_SOURCE_BYTES: int = 1 * 1024 * 1024  # 1 MB
 
 
 # ------------------------------------------------------------------
@@ -121,12 +135,14 @@ async def health(request: Request) -> dict:
     predictor_loaded = predictor is not None
 
     architecture = predictor.architecture if predictor_loaded else "unknown"
+    thresholds_loaded = predictor.thresholds_loaded if predictor_loaded else False
 
     return {
         "status": "ok" if predictor_loaded else "degraded",
         "predictor_loaded": predictor_loaded,
         "checkpoint": CHECKPOINT,
-        "architecture": architecture,   # "cross_attention_lora" confirms upgrade loaded
+        "architecture": architecture,       # "cross_attention_lora" confirms upgrade loaded
+        "thresholds_loaded": thresholds_loaded,  # False → uniform fallback threshold active
     }
 
 
@@ -137,15 +153,25 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
     if predictor is None:
         raise HTTPException(status_code=503, detail="Model not loaded.")
 
+    source_bytes = len(body.source_code.encode())
+    if source_bytes > MAX_SOURCE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"source_code too large ({source_bytes:,} bytes > {MAX_SOURCE_BYTES:,} limit).",
+        )
+
     try:
         logger.info(f"Inference request — {len(body.source_code)} chars")
         result: dict = await asyncio.wait_for(
             asyncio.to_thread(predictor.predict_source, body.source_code),
-            timeout=60.0,
+            timeout=PREDICT_TIMEOUT,
         )
 
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="Inference timeout.")
+        raise HTTPException(
+            status_code=504,
+            detail=f"Inference timeout after {PREDICT_TIMEOUT:.0f} s.",
+        )
 
     except ValueError as exc:
         logger.warning(f"Bad input: {exc}")
@@ -156,7 +182,7 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
         raise HTTPException(status_code=413, detail="Contract too large for GPU memory.")
 
     except Exception as exc:
-        logger.error(f"Inference error: {exc}")
+        logger.exception(f"Inference error: {exc}")  # exception() logs full traceback
         raise HTTPException(status_code=500, detail="Inference failed.")
 
     logger.info(
