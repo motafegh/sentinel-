@@ -16,15 +16,15 @@ RECALL — why calibration data is needed:
       Scale too large → circuit unnecessarily huge → slow proving
 
 RECALL — what the calibration data actually is:
-    A sample of real 64-dim FusionLayer outputs from the teacher model.
-    The same kind of data the proxy sees at inference time.
+    A sample of real 128-dim CrossAttentionFusion outputs from the teacher model.
+    The same kind of data the proxy sees at inference time (ADR-025, v2.0).
     EZKL needs this as a JSON file in its specific input format.
 
 EZKL calibration data format:
     {
-        "input_data": [[f1, f2, ..., f64], [f1, f2, ..., f64], ...]
+        "input_data": [[f1, f2, ..., f128], [f1, f2, ..., f128], ...]
     }
-    A list of input samples — each sample is a list of 64 floats.
+    A list of input samples — each sample is a list of 128 floats.
     EZKL runs these through the ONNX model and observes value ranges.
 
 Output:
@@ -51,7 +51,7 @@ from torch_geometric.loader import DataLoader
 # Config
 # ------------------------------------------------------------------
 
-TEACHER_CHECKPOINT  = "ml/checkpoints/run-alpha-tune_best.pt"
+TEACHER_CHECKPOINT  = "ml/checkpoints/multilabel_crossattn_best.pt"
 GRAPHS_DIR          = "ml/data/graphs"
 TOKENS_DIR          = "ml/data/tokens"
 SPLITS_DIR          = "ml/data/splits"
@@ -71,7 +71,7 @@ def generate(
     device:    str = "cuda" if torch.cuda.is_available() else "cpu",
 ) -> None:
     """
-    Extract real 64-dim FusionLayer features from the teacher model
+    Extract real 128-dim CrossAttentionFusion features from the teacher model
     and save them in EZKL's calibration JSON format.
 
     Args:
@@ -82,17 +82,32 @@ def generate(
     logger.info(f"Generating {n_samples} calibration samples on: {device}")
 
     # ------------------------------------------------------------------
-    # Load teacher — same as train_proxy.py
+    # Load teacher — same pattern as train_proxy.py
     # ------------------------------------------------------------------
-    teacher = SentinelModel().to(device)
-    state_dict = torch.load(
+    checkpoint = torch.load(
         TEACHER_CHECKPOINT,
         map_location=device,
         weights_only=True,
     )
+    if isinstance(checkpoint, dict) and "model" in checkpoint:
+        state_dict = checkpoint["model"]
+        config     = checkpoint.get("config", {})
+    else:
+        state_dict = checkpoint
+        config     = {}
+
+    num_classes       = config.get("num_classes", 10)
+    fusion_output_dim = config.get("fusion_output_dim", 128)
+
+    teacher = SentinelModel(
+        num_classes=num_classes,
+        fusion_output_dim=fusion_output_dim,
+    ).to(device)
     teacher.load_state_dict(state_dict)
     teacher.eval()
-    logger.info("Teacher loaded")
+    logger.info(
+        f"Teacher loaded — num_classes={num_classes} fusion_output_dim={fusion_output_dim}"
+    )
 
     # ------------------------------------------------------------------
     # Load val set — use val not train for calibration
@@ -123,14 +138,14 @@ def generate(
     logger.info(f"Val subset loaded — {len(dataset)} contracts")
 
     # ------------------------------------------------------------------
-    # Extract FusionLayer features
+    # Extract CrossAttentionFusion features
     # ------------------------------------------------------------------
-    # RECALL — we intercept at FusionLayer output, not final score.
-    #   The proxy receives 64-dim features as input.
-    #   EZKL needs to see the actual distribution of those 64 values
+    # RECALL — we intercept at CrossAttentionFusion output, not final score.
+    #   The proxy receives 128-dim features as input (ADR-025, v2.0).
+    #   EZKL needs to see the actual distribution of those 128 values
     #   to calibrate the integer scale correctly.
-    #   Final score is a single scalar — too little information for
-    #   calibrating the full circuit's value ranges.
+    #   Final logits are [B, 10] — value range different from the fused
+    #   embedding; calibrating on the embedding is more representative.
     all_features = []
 
     for graphs, tokens, _ in loader:
@@ -138,24 +153,26 @@ def generate(
         input_ids      = tokens["input_ids"].to(device)
         attention_mask = tokens["attention_mask"].to(device)
 
-        # Run teacher up to FusionLayer — same interception as train_proxy
-        gnn_out         = teacher.gnn(graphs.x, graphs.edge_index, graphs.batch)
+        # GNN path: returns (node_embs [N, 64], batch [N])
+        node_embs, batch = teacher.gnn(graphs.x, graphs.edge_index, graphs.batch)
+        # Transformer path: returns [B, 512, 768]
         transformer_out = teacher.transformer(input_ids, attention_mask)
-        features        = teacher.fusion(gnn_out, transformer_out)  # [B, 64]
+        # CrossAttentionFusion: (node_embs, batch, token_embs, attention_mask) → [B, 128]
+        features = teacher.fusion(node_embs, batch, transformer_out, attention_mask)
 
         all_features.append(features.cpu())
 
         if sum(f.shape[0] for f in all_features) >= n_samples:
             break
 
-    features_tensor = torch.cat(all_features)[:n_samples]  # [N, 64]
+    features_tensor = torch.cat(all_features)[:n_samples]  # [N, 128]
     logger.info(f"Features extracted — shape: {features_tensor.shape}")
 
     # ------------------------------------------------------------------
     # Format for EZKL
     # ------------------------------------------------------------------
     # EZKL calibration format:
-    #   {"input_data": [[64 floats], [64 floats], ...]}
+    #   {"input_data": [[128 floats], [128 floats], ...]}
     #
     # Each inner list = one contract's feature vector.
     # Python floats required — not numpy floats, not torch tensors.

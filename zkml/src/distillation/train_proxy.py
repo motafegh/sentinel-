@@ -11,12 +11,12 @@ RECALL — what knowledge distillation means here:
     behaviour. This is the "distillation" — the teacher's knowledge gets
     compressed into a much smaller form.
 
-RECALL — why we use FusionLayer output as proxy input, not raw Solidity:
-    The teacher's FusionLayer output [B, 64] already encodes everything:
-    GNN structural understanding + CodeBERT semantic understanding, fused.
-    The proxy receives the teacher's complete understanding in 64 numbers.
-    Mapping 64 rich features to a scalar is trivially easy —
-    that's why agreement hit 99.82% in epoch 1.
+RECALL — why we use CrossAttentionFusion output as proxy input, not raw Solidity:
+    The teacher's CrossAttentionFusion output [B, 128] already encodes everything:
+    GNN structural understanding + CodeBERT semantic understanding, fused via
+    bidirectional cross-attention. The proxy receives the teacher's complete
+    understanding in 128 numbers. Mapping 128 rich features to a scalar is easy —
+    that's why agreement converges rapidly.
 
 RECALL — why labels are discarded (the _ in the loop):
     This is intentional distillation behaviour, not a bug.
@@ -30,6 +30,13 @@ RECALL — why MSE loss, not BCE or FocalLoss:
     Here we're comparing proxy_score against teacher_score — two floats.
     MSE measures distance between two continuous values. That's the right
     loss for "make the proxy output match the teacher output numerically."
+
+RECALL — multi-label distillation target:
+    The teacher produces 10 logits (one per vulnerability class).
+    We apply sigmoid to get per-class probabilities [B, 10], then take
+    the mean across classes → [B] scalar per contract.
+    This single scalar is the distillation target: it captures the teacher's
+    overall confidence level and maps cleanly to the proxy's [B] output.
 
 Usage:
     cd ~/projects/sentinel
@@ -61,7 +68,7 @@ from zkml.src.distillation.proxy_model import CIRCUIT_VERSION, ProxyModel
 # Config
 # ------------------------------------------------------------------
 
-TEACHER_CHECKPOINT = "ml/checkpoints/run-alpha-tune_best.pt"
+TEACHER_CHECKPOINT = "ml/checkpoints/multilabel_crossattn_best.pt"
 PROXY_CHECKPOINT   = "zkml/models/proxy_best.pt"
 
 GRAPHS_DIR  = "ml/data/graphs"
@@ -95,24 +102,29 @@ def extract_features(
     device: str,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    Extract 64-dim FusionLayer outputs and final scores from the teacher.
+    Extract 128-dim CrossAttentionFusion outputs and distillation targets from the teacher.
 
     RECALL — why @torch.no_grad():
         Teacher weights are frozen — we never update them.
         No gradient computation needed → faster + less GPU memory.
         Gradients are only needed during proxy training, not here.
 
-    RECALL — why we intercept at FusionLayer, not at the classifier output:
-        teacher.classifier output = single scalar per contract
-        teacher.fusion output     = 64-dim rich representation
+    RECALL — why we intercept at CrossAttentionFusion, not at the classifier output:
+        teacher.classifier output = 10 logits per contract  [B, 10]
+        teacher.fusion output     = 128-dim rich representation [B, 128]
 
-        The proxy trains on 64 features, not 1. More information →
+        The proxy trains on 128 features, not 10. More information →
         easier learning task → higher agreement rate.
-        This is why agreement hit 99.82% in epoch 1.
+
+    RECALL — multi-label distillation target (ADR-025, Track 3):
+        teacher.classifier gives [B, 10] raw logits.
+        sigmoid([B, 10]) → per-class probabilities.
+        mean(dim=1) → [B] scalar: average confidence across all 10 classes.
+        This single scalar is the proxy's training target.
 
     Returns:
-        features: [N, 64] — FusionLayer outputs (proxy inputs)
-        scores:   [N]     — teacher's final sigmoid scores (proxy targets)
+        features: [B, 128] — CrossAttentionFusion outputs (proxy inputs)
+        scores:   [B]      — teacher's mean sigmoid score (proxy distillation target)
     """
     teacher.eval()
 
@@ -120,13 +132,19 @@ def extract_features(
     input_ids      = input_ids.to(device)
     attention_mask = attention_mask.to(device)
 
-    # Run teacher forward pass — intercept at FusionLayer
-    gnn_out         = teacher.gnn(graphs.x, graphs.edge_index, graphs.batch)
-    transformer_out = teacher.transformer(input_ids, attention_mask)
-    features        = teacher.fusion(gnn_out, transformer_out)  # [N, 64]
+    # GNN path: returns (node_embs [N, 64], batch [N])
+    node_embs, batch = teacher.gnn(graphs.x, graphs.edge_index, graphs.batch)
 
-    # Teacher's final score — this is what proxy learns to match
-    scores = teacher.classifier(features).squeeze(1)  # [N]
+    # Transformer path: returns [B, 512, 768]
+    transformer_out = teacher.transformer(input_ids, attention_mask)
+
+    # CrossAttentionFusion: needs node_embs, batch, token_embs, attention_mask
+    # Returns [B, 128]
+    features = teacher.fusion(node_embs, batch, transformer_out, attention_mask)
+
+    # Multi-label teacher score: sigmoid([B, 10]).mean(dim=1) → [B]
+    # This is the proxy's training target — teacher's mean confidence.
+    scores = torch.sigmoid(teacher.classifier(features)).mean(dim=1)  # [B]
 
     return features.cpu(), scores.cpu()
 
@@ -188,15 +206,33 @@ def train(
     # ------------------------------------------------------------------
     # Step 2 — Load teacher (frozen)
     # ------------------------------------------------------------------
-    teacher = SentinelModel().to(device)
-    state_dict = torch.load(
+    # Checkpoint format: {"model": state_dict, "config": {...}, ...}
+    # The "config" dict carries architecture params (fusion_output_dim, num_classes).
+    checkpoint = torch.load(
         TEACHER_CHECKPOINT,
         map_location=device,
         weights_only=True,
     )
+    if isinstance(checkpoint, dict) and "model" in checkpoint:
+        state_dict = checkpoint["model"]
+        config     = checkpoint.get("config", {})
+    else:
+        state_dict = checkpoint   # legacy: bare state_dict
+        config     = {}
+
+    num_classes       = config.get("num_classes", 10)
+    fusion_output_dim = config.get("fusion_output_dim", 128)
+
+    teacher = SentinelModel(
+        num_classes=num_classes,
+        fusion_output_dim=fusion_output_dim,
+    ).to(device)
     teacher.load_state_dict(state_dict)
     teacher.eval()
-    logger.info("Teacher loaded and frozen — weights will not update")
+    logger.info(
+        f"Teacher loaded and frozen — "
+        f"num_classes={num_classes} fusion_output_dim={fusion_output_dim}"
+    )
 
     # ------------------------------------------------------------------
     # Step 3 — Load data via DualPathDataset
@@ -283,9 +319,9 @@ def train(
         val_features_list.append(feats)
         val_scores_list.append(scores)
 
-    train_features       = torch.cat(train_features_list)   # [N_train, 64]
+    train_features       = torch.cat(train_features_list)   # [N_train, 128]
     train_teacher_scores = torch.cat(train_scores_list)     # [N_train]
-    val_features         = torch.cat(val_features_list)     # [N_val, 64]
+    val_features         = torch.cat(val_features_list)     # [N_val, 128]
     val_teacher_scores   = torch.cat(val_scores_list)       # [N_val]
 
     logger.info(
@@ -298,7 +334,7 @@ def train(
     # Step 5 — Build proxy DataLoaders from cached features
     # ------------------------------------------------------------------
     # TensorDataset is much simpler than DualPathDataset —
-    # just pairs of (64-dim features, teacher score).
+    # just pairs of (128-dim features, teacher distillation score).
     # No graphs, no tokens, no collate_fn needed.
     proxy_train_dataset = TensorDataset(train_features, train_teacher_scores)
     proxy_val_dataset   = TensorDataset(val_features,   val_teacher_scores)
@@ -406,7 +442,7 @@ def train(
             "Fixes to try in order: "
             "(1) increase EPOCHS, "
             "(2) lower LR to 5e-4, "
-            "(3) verify feature extraction shape is [N, 64]"
+            "(3) verify feature extraction shape is [B, 128] (CrossAttentionFusion output)"
         )
 
 

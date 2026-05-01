@@ -82,9 +82,11 @@ class AuditState(TypedDict, total=False):
     # Each item: one historical AuditResult from AuditRegistry.
     # Empty list if the contract has never been audited on-chain.
 
-    static_findings: dict[str, Any]
-    # Reserved for M6 static_analyzer agent (Slither + Mythril).
-    # None until M6 is built.
+    static_findings: list[dict]
+    # Set by static_analysis node (deep path, parallel with rag_research).
+    # Each item: one Slither detector finding —
+    #   {tool, detector, impact, confidence, description, lines: list[int]}
+    # Empty list on fast path or if Slither finds nothing.
 
     final_report: dict[str, Any]
     # Set by synthesizer.

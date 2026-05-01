@@ -25,10 +25,10 @@ RECALL — why opset_version=11 is non-negotiable:
     Higher opsets introduce new variants EZKL cannot convert to constraints.
     Symptom if wrong: compile_model fails with "unsupported op" error.
 
-RECALL — why dummy_input shape is (1, 64):
+RECALL — why dummy_input shape is (1, 128):
     PyTorch traces by running the model once on a sample input.
-    64 = FusionLayer output dim — fixed by ADR-007, never changes.
-    1  = batch size for the trace (dynamic_axes handles variable B later).
+    128 = CrossAttentionFusion output dim — fixed by ADR-025, CIRCUIT_VERSION v2.0.
+    1   = batch size for the trace (dynamic_axes handles variable B later).
     Wrong shape here = wrong input expectation in ONNX = EZKL fails.
 
 RECALL — why do_constant_folding=True:
@@ -104,11 +104,11 @@ def export(
     # Step 2 — Create dummy input for tracing
     # ------------------------------------------------------------------
     # RECALL — PyTorch traces by running the model once on this input.
-    # Shape (1, 64):
-    #   1  = single contract for the trace
-    #   64 = FusionLayer output dim (ADR-007 — never changes)
+    # Shape (1, 128):
+    #   1   = single contract for the trace
+    #   128 = CrossAttentionFusion output dim (ADR-025, CIRCUIT_VERSION v2.0)
     # This shape is what EZKL will expect at gen_settings time.
-    dummy_input = torch.randn(1, 64)
+    dummy_input = torch.randn(1, 128)
     logger.info(f"Dummy input shape: {dummy_input.shape}")
 
     # ------------------------------------------------------------------
@@ -158,7 +158,7 @@ def export(
     session = ort.InferenceSession(output)
 
     # Use a fixed verification input — reproducible check
-    verify_input = torch.randn(4, 64)  # batch of 4 for a stronger check
+    verify_input = torch.randn(4, 128)  # batch of 4 for a stronger check
 
     # PyTorch output
     with torch.no_grad():

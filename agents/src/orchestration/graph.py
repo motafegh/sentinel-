@@ -2,7 +2,7 @@
 """
 M5 — SENTINEL audit graph (LangGraph).
 
-Wires ml_assessment → [rag_research → audit_check →] synthesizer
+Wires ml_assessment → [rag_research ‖ static_analysis → audit_check →] synthesizer
 into a stateful, checkpointed LangGraph.
 
 RECALL — LangGraph execution model:
@@ -20,17 +20,24 @@ RECALL — why conditional routing:
     The routing function (_route_after_ml) is the single place to update
     for Track 3 (multi-label) — see nodes._is_high_risk() docstring.
 
+RECALL — parallel branches (deep path):
+    _route_after_ml returns a list ["rag_research", "static_analysis"] for
+    high-risk contracts. LangGraph fans out to both nodes in the same
+    superstep (parallel execution). audit_check waits for BOTH to complete
+    before running — LangGraph's fan-in semantics handle this automatically.
+
 Graph topology:
     START
       │
       ▼
     ml_assessment
       │
-      ├─ confidence > 0.70 (deep)──► rag_research ──► audit_check ──► synthesizer
+      ├─ high risk (deep)──► rag_research ──┐
+      │                   ├─ static_analysis ──► audit_check ──► synthesizer
       │
-      └─ confidence ≤ 0.70 (fast)────────────────────────────────────► synthesizer
-                                                                            │
-                                                                           END
+      └─ low risk (fast)──────────────────────────────────────► synthesizer
+                                                                     │
+                                                                    END
 
 Usage (standalone):
     from src.orchestration.graph import build_graph
@@ -74,6 +81,7 @@ from src.orchestration.nodes import (
     audit_check,
     ml_assessment,
     rag_research,
+    static_analysis,
     synthesizer,
     _is_high_risk,
 )
@@ -83,37 +91,49 @@ from src.orchestration.nodes import (
 # Routing function
 # ---------------------------------------------------------------------------
 
-def _route_after_ml(state: AuditState) -> str:
+def _route_after_ml(state: AuditState) -> str | list[str]:
     """
     Decide which path to take after ml_assessment completes.
 
     Returns:
-        "deep" → run rag_research + audit_check before synthesizer
-        "fast" → skip directly to synthesizer
+        list["rag_research", "static_analysis"]
+            → fan out to both nodes in parallel (deep path)
+        "synthesizer"
+            → skip directly to synthesizer (fast path)
 
-    RECALL — routing criteria (binary phase):
-        confidence > 0.70 → deep path (full analysis)
-        confidence ≤ 0.70 → fast path (ML result only)
+    RECALL — parallel fan-out semantics:
+        Returning a list from a LangGraph conditional edge function causes
+        LangGraph to execute all listed nodes concurrently in the same
+        superstep. Both nodes write to independent state keys (rag_results
+        and static_findings), so there are no write conflicts.
+        audit_check will NOT run until BOTH branches complete — LangGraph's
+        fan-in handles the synchronisation automatically.
 
     NOTE — error fallback:
         If ml_assessment failed (ml_result is empty), route to fast path.
         The synthesizer produces a partial report noting the failure.
-        Routing to deep would produce empty RAG results — not useful.
     """
     ml_result = state.get("ml_result", {})
 
     if not ml_result:
         logger.warning("_route_after_ml | ml_result empty — using fast path")
-        return "fast"
+        return "synthesizer"
 
-    decision = "deep" if _is_high_risk(ml_result) else "fast"
+    if _is_high_risk(ml_result):
+        vulns = ml_result.get("vulnerabilities", [])
+        top_prob = max((v.get("probability", 0.0) for v in vulns), default=0.0)
+        logger.info(
+            "_route_after_ml | label={} | top_prob={:.3f} | path=deep (parallel)",
+            ml_result.get("label"),
+            top_prob,
+        )
+        return ["rag_research", "static_analysis"]
+
     logger.info(
-        "_route_after_ml | label={} | confidence={:.3f} | path={}",
+        "_route_after_ml | label={} | path=fast",
         ml_result.get("label"),
-        ml_result.get("confidence", 0.0),
-        decision,
     )
-    return decision
+    return "synthesizer"
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +169,7 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     # ── Register nodes ──────────────────────────────────────────────────────
     graph.add_node("ml_assessment",  ml_assessment)
     graph.add_node("rag_research",   rag_research)
+    graph.add_node("static_analysis", static_analysis)
     graph.add_node("audit_check",    audit_check)
     graph.add_node("synthesizer",    synthesizer)
 
@@ -156,20 +177,18 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     graph.set_entry_point("ml_assessment")
 
     # ── Conditional routing after ml_assessment ─────────────────────────────
-    # _route_after_ml returns "deep" or "fast".
-    # The map translates the string into the target node name.
-    graph.add_conditional_edges(
-        "ml_assessment",
-        _route_after_ml,
-        {
-            "deep": "rag_research",  # full deep-analysis path
-            "fast": "synthesizer",   # bypass RAG + on-chain lookup
-        },
-    )
+    # _route_after_ml returns either:
+    #   ["rag_research", "static_analysis"] → LangGraph fans out to BOTH in parallel
+    #   "synthesizer"                       → skip directly to synthesizer
+    # No path_map — function returns node name(s) directly.
+    graph.add_conditional_edges("ml_assessment", _route_after_ml)
 
-    # ── Deep path: rag_research → audit_check → synthesizer ─────────────────
-    graph.add_edge("rag_research", "audit_check")
-    graph.add_edge("audit_check",  "synthesizer")
+    # ── Deep path fan-in: both parallel branches converge at audit_check ─────
+    # LangGraph waits for ALL nodes with edges pointing to audit_check before
+    # executing it — so audit_check sees both rag_results and static_findings.
+    graph.add_edge("rag_research",    "audit_check")
+    graph.add_edge("static_analysis", "audit_check")
+    graph.add_edge("audit_check",     "synthesizer")
 
     # ── Terminal edge ────────────────────────────────────────────────────────
     graph.add_edge("synthesizer", END)
@@ -181,7 +200,7 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     logger.info(
         "Audit graph compiled | checkpointer={} | nodes={}",
         "MemorySaver" if use_checkpointer else "None",
-        ["ml_assessment", "rag_research", "audit_check", "synthesizer"],
+        ["ml_assessment", "rag_research", "static_analysis", "audit_check", "synthesizer"],
     )
     return compiled
 
