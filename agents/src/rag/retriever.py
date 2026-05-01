@@ -26,6 +26,7 @@ CHANGES (2026-04-11):
   FIX-23: Paths anchored to __file__ — no longer CWD-dependent.
 """
 
+import dataclasses
 import json
 import pickle
 from pathlib import Path
@@ -181,10 +182,22 @@ class HybridRetriever:
 
         sorted_indices = sorted(rrf_scores.keys(), key=lambda i: rrf_scores[i], reverse=True)
 
-        # ── Step 4: Apply metadata filters ────────────────────────────────
-        # Post-retrieval filtering: retrieve 20, filter, return k.
-        # We don't pre-filter the index (more complex, not needed at this scale).
-        results = [self.chunks[i] for i in sorted_indices]
+        # ── Step 4: Attach RRF scores and apply metadata filters ───────────
+        # Explicitly construct new Chunk objects so that old pickled chunks
+        # (which pre-date the score field) are handled safely without AttributeError.
+        # Each returned Chunk carries its RRF score so agents and the MCP server
+        # can surface relevance alongside content.
+        results = [
+            Chunk(
+                content=self.chunks[i].content,
+                doc_id=self.chunks[i].doc_id,
+                chunk_id=self.chunks[i].chunk_id,
+                total_chunks=self.chunks[i].total_chunks,
+                metadata=self.chunks[i].metadata,
+                score=rrf_scores[i],
+            )
+            for i in sorted_indices
+        ]
 
         if filters:
             results = self._apply_filters(results, filters, query)

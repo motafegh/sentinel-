@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -341,6 +342,117 @@ async def audit_check(state: AuditState) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Node: static_analysis
+# ---------------------------------------------------------------------------
+
+async def static_analysis(state: AuditState) -> dict[str, Any]:
+    """
+    Run Slither directly on the contract source and return per-finding dicts.
+
+    RECALL — why direct Slither call, not MCP:
+        Slither is a Python library installed in this process.
+        Spawning it via MCP would add latency for no benefit.
+        The result is merged into state alongside rag_research output — both
+        run in parallel in the deep path (LangGraph fan-out semantics).
+
+    RECALL — what this node produces:
+        Each finding is:
+            {
+                "tool":        "slither",
+                "detector":    str   — detector name (e.g. "reentrancy-eth"),
+                "impact":      str   — "High" | "Medium" | "Low" | "Informational",
+                "confidence":  str   — "High" | "Medium" | "Low",
+                "description": str   — human-readable finding description,
+                "lines":       list  — source line numbers affected (may be []),
+            }
+
+    RECALL — why Slither in detectors_to_run default (all detectors):
+        For calibration we want everything — the synthesizer filters by impact.
+        The ML model already caught what it caught; Slither catches rule-based
+        patterns the GNN/BERT may have missed (e.g. tx.origin misuse).
+
+    State updates:
+        static_findings → list of finding dicts (may be empty)
+        error           → set on failure (non-fatal; node returns empty list)
+    """
+    contract_code = state.get("contract_code", "")
+    if not contract_code or not contract_code.strip():
+        logger.warning("static_analysis | contract_code empty — skipping")
+        return {"static_findings": []}
+
+    logger.info(
+        "static_analysis | running Slither | contract_address={}",
+        state.get("contract_address", "unknown"),
+    )
+
+    tmp_path: str | None = None
+    try:
+        from slither import Slither
+        from slither.core.declarations import Function
+
+        # Slither requires a real file path — write to temp file.
+        with tempfile.NamedTemporaryFile(
+            suffix=".sol",
+            prefix="sentinel_static_",
+            mode="w",
+            encoding="utf-8",
+            delete=False,
+        ) as tmp:
+            tmp.write(contract_code)
+            tmp_path = tmp.name
+
+        # Run all detectors (default). detectors_to_run=[] disables them;
+        # omitting the argument runs all available detectors.
+        sl = Slither(tmp_path)
+
+        findings: list[dict] = []
+        for result in sl.run_detectors():
+            for finding in result:
+                # Normalise: extract line numbers from source mappings when present.
+                elements = finding.get("elements", [])
+                lines: list[int] = []
+                for elem in elements:
+                    src = elem.get("source_mapping", {})
+                    elem_lines = src.get("lines", [])
+                    if isinstance(elem_lines, list):
+                        lines.extend(int(ln) for ln in elem_lines if isinstance(ln, int))
+
+                findings.append({
+                    "tool":        "slither",
+                    "detector":    finding.get("check", "unknown"),
+                    "impact":      finding.get("impact", "Unknown"),
+                    "confidence":  finding.get("confidence", "Unknown"),
+                    "description": finding.get("description", ""),
+                    "lines":       sorted(set(lines)),
+                })
+
+        logger.info(
+            "static_analysis complete | {} finding(s) | contract_address={}",
+            len(findings),
+            state.get("contract_address", "unknown"),
+        )
+        return {"static_findings": findings}
+
+    except ImportError:
+        logger.warning("static_analysis | slither not installed — skipping")
+        return {"static_findings": []}
+
+    except Exception as exc:
+        logger.error("static_analysis failed: {}", exc)
+        return {
+            "static_findings": [],
+            "error": f"static_analysis: {exc}",
+        }
+
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except OSError as e:
+                logger.warning("static_analysis | failed to delete temp file {}: {}", tmp_path, e)
+
+
+# ---------------------------------------------------------------------------
 # Node: synthesizer
 # ---------------------------------------------------------------------------
 
@@ -387,10 +499,11 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     State updates:
         final_report → complete report dict
     """
-    ml_result    : dict      = state.get("ml_result",    {})
-    rag_results  : list      = state.get("rag_results",  [])
-    audit_history: list      = state.get("audit_history", [])
-    error        : str | None = state.get("error")
+    ml_result      : dict      = state.get("ml_result",      {})
+    rag_results    : list      = state.get("rag_results",    [])
+    audit_history  : list      = state.get("audit_history",  [])
+    static_findings: list      = state.get("static_findings", [])
+    error          : str | None = state.get("error")
 
     label     = ml_result.get("label",     "unknown")
     vulns     = ml_result.get("vulnerabilities", [])
@@ -410,8 +523,8 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         top_vuln_name = None
 
     # Determine which path was taken — useful for debugging and observability.
-    # If rag_results is populated, we went deep. If empty, fast path.
-    path_taken = "deep" if rag_results else "fast"
+    # If rag_results or static_findings is populated, we went deep.
+    path_taken = "deep" if (rag_results or static_findings) else "fast"
 
     # ── Rule-based recommendation (M5) ──────────────────────────────────────
     # M6 will replace this with an LLM-generated narrative.
@@ -422,12 +535,16 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             "Check that the inference server (port 8001) is running."
         )
     elif label == "vulnerable" and risk_prob >= 0.70:
-        rag_count   = len(rag_results)
-        prior_count = len(audit_history)
+        rag_count    = len(rag_results)
+        prior_count  = len(audit_history)
+        slither_high = sum(
+            1 for f in static_findings if f.get("impact") in ("High", "Medium")
+        )
         recommendation = (
             f"HIGH RISK — top vulnerability: {top_vuln_name} "
             f"(probability {risk_prob:.1%}). "
             f"{rag_count} similar exploit pattern(s) found in DeFiHackLabs corpus. "
+            f"{slither_high} Slither High/Medium finding(s). "
             f"{prior_count} prior on-chain audit(s). "
             "Recommend full manual audit before deployment."
         )
@@ -463,7 +580,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         "num_edges":         num_edges,
         "rag_evidence":      rag_results,
         "audit_history":     audit_history,
-        "static_findings":   state.get("static_findings"),  # None until M6
+        "static_findings":   static_findings,
         "recommendation":    recommendation,
         "error":             error,
         "path_taken":        path_taken,
