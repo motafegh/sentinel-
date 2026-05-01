@@ -70,6 +70,7 @@ from tqdm import tqdm
 
 from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
 from ml.src.models.sentinel_model import SentinelModel
+from ml.src.training.focalloss import FocalLoss
 
 # ---------------------------------------------------------------------------
 # Force offline mode for HuggingFace models (no internet attempts)
@@ -152,6 +153,13 @@ class TrainConfig:
     # Set to 0 only if you hit CUDA multiprocessing issues.
     num_workers:         int  = 2
     persistent_workers:  bool = True   # avoids re-spawning workers each epoch
+
+    # --- Loss function ---
+    # "bce"   (default): BCEWithLogitsLoss with class-balanced pos_weight.
+    # "focal": FocalLoss(gamma=2.0, alpha=0.25) — down-weights easy examples,
+    #          useful when class imbalance is severe and pos_weight is insufficient.
+    #          Applies sigmoid internally so it receives raw logits identically to bce.
+    loss_fn: str = "bce"
 
     # --- Cache ---
     cache_path: str | None = "ml/data/cached_dataset.pkl"
@@ -400,8 +408,20 @@ def train(config: TrainConfig) -> None:
     # ------------------------------------------------------------------
     # Model, loss, optimizer, scheduler
     # ------------------------------------------------------------------
-    model   = SentinelModel(num_classes=config.num_classes).to(device)
-    loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    model = SentinelModel(num_classes=config.num_classes).to(device)
+
+    if config.loss_fn == "focal":
+        # FocalLoss expects post-sigmoid probabilities; wrap so it receives raw logits
+        # identically to BCEWithLogitsLoss — no change needed in train_one_epoch.
+        _focal = FocalLoss(gamma=2.0, alpha=0.25)
+        class _FocalFromLogits(nn.Module):
+            def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+                return _focal(torch.sigmoid(logits), targets)
+        loss_fn: nn.Module = _FocalFromLogits()
+        logger.info("Loss: FocalLoss(gamma=2.0, alpha=0.25) — pos_weight ignored")
+    else:
+        loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
 
     optimizer = AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),

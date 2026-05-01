@@ -144,6 +144,46 @@ class TestApplyFilters:
         assert "0 results" in full_log or "filter" in full_log.lower()
 
 
+class TestSearchScores:
+    """Returned chunks must carry a positive RRF score."""
+
+    def test_search_returns_chunks_with_score(self, retriever):
+        """
+        search() must populate chunk.score > 0.0 for every returned chunk.
+
+        score=0.0 means the chunk came from an old pickle or was never ranked —
+        agents rely on score to weight evidence, so zero scores are silent bugs.
+        """
+        # Mock the embedding and FAISS search to return controlled indices
+        retriever.embedder.embed_query.return_value = [0.0] * 768
+        retriever.faiss_index.search.return_value = (
+            None,
+            [[0, 1, 2]],  # FAISS returns first 3 chunk indices
+        )
+        # BM25 scores: chunk 0 highest, then 1, then 2
+        retriever.bm25.get_scores.return_value = [3.0, 2.0, 1.0]
+
+        results = retriever.search("reentrancy vulnerability", k=3)
+
+        assert len(results) > 0, "search returned no results"
+        for chunk in results:
+            assert chunk.score > 0.0, (
+                f"chunk.score must be > 0.0 after search(); got {chunk.score}"
+            )
+
+    def test_search_scores_descending(self, retriever):
+        """Returned chunks must be sorted highest score first."""
+        retriever.embedder.embed_query.return_value = [0.0] * 768
+        retriever.faiss_index.search.return_value = (None, [[0, 1, 2]])
+        retriever.bm25.get_scores.return_value = [3.0, 2.0, 1.0]
+
+        results = retriever.search("flash loan", k=3)
+        scores = [c.score for c in results]
+        assert scores == sorted(scores, reverse=True), (
+            f"scores not descending: {scores}"
+        )
+
+
 class TestFAISSChunksSyncValidation:
     """FIX-10: Retriever must detect FAISS ↔ chunks count mismatch on init."""
 

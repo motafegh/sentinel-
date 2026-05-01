@@ -86,7 +86,6 @@ ml/data/cached_dataset.pkl
 ml/peft.zip
 *.backup
 nohup.out
-contracts/
 
 # ── Large processed ML datasets / generated caches ───────────────────────────
 ml/data/processed/_cache/
