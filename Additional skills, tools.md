@@ -1,7 +1,41 @@
 
+# Additional Skills, Tools & Frameworks — SENTINEL Reference
+
+Last updated: 2026-05-01
+
+Each entry format:
 1. **Tool/framework/skill**  
 2. **Current gap** (what the project lacks)  
 3. **How exactly it fills the gap** (brief mechanism)
+
+## Implementation Status (as of 2026-05-01)
+
+| Category | Tool/Skill | Status |
+|---|---|---|
+| Smart Contract Testing | **Foundry Invariant Testing** | ✅ IMPLEMENTED (Sprint 2: InvariantAuditRegistry.t.sol) |
+| Smart Contract Testing | Aderyn | ⏳ Planned Sprint 2 (not yet run) |
+| Smart Contract Testing | SMTChecker | ⏳ Planned Sprint 2 (not yet run) |
+| Smart Contract Testing | Echidna | ⏳ Planned Sprint 8 |
+| Smart Contract Testing | Halmos | ⏳ Planned Sprint 8 |
+| MLOps | **FocalLoss (trainer)** | ✅ IMPLEMENTED (Sprint 3: TrainConfig.loss_fn="focal") |
+| MLOps | Feature Store (Redis cache) | ⏳ Planned Sprint 9 |
+| MLOps | Online Drift Detection | ⏳ Planned Sprint 9 |
+| MLOps | Model Registry with Staging | ⏳ Planned Sprint 9 |
+| MLOps | LLM Vulnerability Engine | ⏳ Planned Sprint 9 |
+| RAG / Agents | **Foundry Invariant Testing** | ✅ IMPLEMENTED (Sprint 2) |
+| RAG / Agents | Cross-encoder re-ranking | ⏳ Planned Sprint 4 |
+| RAG / Agents | Solodit knowledge source | ⏳ Planned Sprint 4 |
+| RAG / Agents | Immunefi bug bounty RAG | ⏳ Planned Sprint 4 |
+| RAG / Agents | DeFi Llama economic context | ⏳ Planned Sprint 4 |
+| Infrastructure | Docker Multi-Stage Builds | ⏳ Planned Sprint 5 |
+| Observability | Prometheus Metrics | ⏳ Planned Sprint 6 |
+| Observability | Distributed Tracing (OpenTelemetry) | ⏳ Planned Sprint 6 |
+| Security | Semgrep / Bandit SAST | ⏳ Planned Sprint 7 |
+| Security | SBOM + Grype CVE scanning | ⏳ Planned Sprint 7 |
+| ZK Infrastructure | Recursive Proof Aggregation | ⏳ Planned Sprint 10 |
+
+---
+
 
 ---
 

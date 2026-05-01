@@ -79,8 +79,11 @@ def _is_high_risk(ml_result: dict) -> bool:
         return False
     return max(v["probability"] for v in vulns) >= 0.70
 
-# True  → deep path: rag_research → static_analysis → synthesizer
-# False → fast path: synthesizer directly
+# True  → deep path (parallel fan-out): ["rag_research", "static_analysis"]
+#          both nodes run concurrently in the same LangGraph superstep.
+#          audit_check waits for BOTH to complete (fan-in) before running.
+#          synthesizer runs after audit_check.
+# False → fast path: "synthesizer" directly (string, not list)
 ```
 
 ---
@@ -236,6 +239,7 @@ BCCC SHA256 vs internal MD5 — never mix:
 | 028 | Deduplication strategy | JSON file of seen document hashes | SQLite | Simple, human-readable, git-trackable at current scale (~1K docs); upgradable to SQLite without API change | Document count >100K |
 | 029 | RAG index write safety | FileLock + atomic rename (.tmp → real) | In-place overwrites | Concurrent cron/Dagster/feedback cycles could corrupt index; lock serialises writes; atomic rename prevents partial reads on crash | — |
 | 030 | Feedback loop back-pressure | Exponential backoff on RPC error (capped 5 min) | Fixed 30s retry | Protects public RPC from hammering; respects provider rate limits | — |
+| 031 | LangGraph parallel deep path | list["rag_research","static_analysis"] return from conditional edge | Sequential rag→static→audit, Send objects | List return from conditional edge is the simplest parallel fan-out; LangGraph executes both in same superstep, audit_check fan-in waits automatically; no explicit sync needed | Needs ordered execution or state write conflicts between parallel branches |
 
 ## 8. Module Technical Facts
 
@@ -468,7 +472,8 @@ ml/src/datasets/
   dual_path_dataset.py       DualPathDataset + dual_path_collate_fn
 
 ml/src/training/
-  trainer.py                 Training loop, TrainConfig, CLASS_NAMES, NUM_CLASSES
+  trainer.py                 Training loop, TrainConfig (loss_fn: "bce"|"focal"), CLASS_NAMES, NUM_CLASSES
+  focalloss.py               FocalLoss(gamma, alpha) — activatable via TrainConfig.loss_fn="focal"
 
 ml/data/
   graphs/                    68,555 .pt PyG Data files (MD5 stem)
@@ -479,6 +484,12 @@ ml/data/
     contract_labels_correct.csv  44,442 rows binary+class labels (historical)
     label_index.csv          68,555 rows binary labels (historical)
   cached_dataset.pkl         RAM cache — loaded into DualPathDataset at startup
+
+ml/tests/
+  test_model.py              SentinelModel forward shapes; _StubTransformer avoids 500MB load
+  test_preprocessing.py      ContractPreprocessor — error types, shapes, hash consistency
+  test_dataset.py            DualPathDataset — length, shapes, collation, binary vs multi-label
+  test_trainer.py            TrainConfig, FocalLoss, evaluate(), 3-epoch loss decrease
 
 ml/checkpoints/              .pt files — not in git
   multilabel_crossattn_best.pt               Active checkpoint (489MB)
@@ -687,12 +698,12 @@ agents/scripts/
 
 agents/tests/
   test_inference_server.py
-  test_rag_server.py (pending verify — may not exist yet)
+  test_rag_server.py
   test_audit_server.py
   test_chunker.py
   test_deduplicator.py
   test_github_fetcher.py
-  test_retriever_filters.py
+  test_retriever_filters.py   incl. TestSearchScores (score > 0, descending order)
   test_graph_routing.py
 
 agents/data/
@@ -767,7 +778,9 @@ rag_server.py (port 8011):
     vuln_type, date_gte, loss_gte, source, has_summary
   Returns: {query, k_requested, k_returned, filters_applied, results[]}
   Result shape: {chunk_id, content, doc_id, chunk_index, total_chunks, metadata{}, score}
-  Known issue: score not currently returned (retriever returns plain Chunk, not scored)
+  score field: populated from RRF ranking; Chunk.score: float = 0.0 (dataclass field,
+    retriever explicitly constructs Chunk(..., score=rrf_scores[i]) for backward compat
+    with old pickled chunks that lack score in __dict__)
 
 audit_server.py (port 8012):
   AsyncWeb3 client (one client reused)
@@ -778,9 +791,8 @@ audit_server.py (port 8012):
     get_audit_history(contract_address, limit=10) → list of AuditResult, newest first
     check_audit_exists(contract_address) → {exists: bool, count: int}
     submit_audit — deferred (requires valid ZK proof + MIN_STAKE tokens staked)
-  Known issue: ABI loaded at import even in mock mode
-    — crashes if contracts/out/AuditRegistry.sol/AuditRegistry.json is missing
-    — fix: lazy load ABI only in real mode (A-P2)
+  ABI lazy-load: fixed (commit b9d4663, 2026-04-29) — ABI loaded only in real mode,
+    not at import time. Mock mode works without contracts/out/.
 ```
 
 #### LangGraph Orchestration
@@ -797,7 +809,7 @@ AuditState TypedDict:
   ml_result:        dict | None
   rag_results:      list | None
   audit_history:    list | None
-  static_findings:  dict | None
+  static_findings:  list[dict] | None    # set by static_analysis (Slither findings)
   final_report:     dict | None
   error:            str | None
 
@@ -810,8 +822,12 @@ Graph nodes:
 
 Conditional routing:
   After ml_assessment:
-    _is_high_risk() == True  → rag_research → static_analysis → synthesizer
-    _is_high_risk() == False → synthesizer (fast path)
+    _is_high_risk() == True  → parallel fan-out: [rag_research ‖ static_analysis]
+                                → audit_check (fan-in, waits for both) → synthesizer
+    _is_high_risk() == False → synthesizer (fast path, static_findings=[])
+
+  _route_after_ml returns list[str] for deep path (LangGraph parallel execution)
+  or str for fast path. No path_map — function returns node name(s) directly.
 
   _is_high_risk(ml_result):
     vulns = ml_result.get("vulnerabilities", [])
@@ -886,6 +902,27 @@ Key patterns:
   keccak256(proof) not full bytes — gas cost at scale
   IZKMLVerifier interface — AuditRegistry references verifier via interface, swappable
   _disableInitializers() in constructor — standard UUPS re-init protection
+
+File inventory:
+  contracts/src/
+    SentinelToken.sol        ERC-20 + stake/unstake/slash
+    AuditRegistry.sol        UUPS upgradeable audit registry
+    IZKMLVerifier.sol        Interface (ZKMLVerifier not yet generated)
+
+  contracts/test/
+    SentinelToken.t.sol      14 unit tests (stake, unstake, slash, events)
+    AuditRegistry.t.sol      Registry tests: 3 guards, pause, UUPS upgrade, history
+    InvariantAuditRegistry.t.sol  Stateful fuzz: audit count monotonic, staked ≤ supply
+    mocks/MockZKMLVerifier.sol    Configurable true/false mock for AuditRegistry tests
+
+  contracts/script/
+    Deploy.s.sol             Sepolia deployment (SentinelToken → AuditRegistry proxy)
+
+  contracts/lib/             (not yet created — run forge install first)
+    forge-std/               Foundry test utilities
+    openzeppelin-contracts/  ERC-20, UUPS, Ownable
+
+  NOTE: forge install + forge build + forge test not yet run (forge not installed in env).
 ```
 
 ### 8.6 Module 6 — Integration (Planned Architecture)
