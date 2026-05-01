@@ -29,6 +29,7 @@ ARCHITECTURE:
     3. Pad nodes → [B,max_nodes,256] via to_dense_batch(); build node padding mask
     4. Node→Token cross-attention (key_padding_mask=token PAD positions)
          → enriched nodes [B,max_n,256]
+    4b. Zero-out padded node positions in enriched_nodes (Fix #8)
     5. Token→Node cross-attention (key_padding_mask=padded node positions)
          → enriched tokens [B,512,256]
     6. Pool enriched nodes  — masked mean over real nodes  → [B,256]
@@ -41,6 +42,12 @@ REVIEW FIXES APPLIED (see inline comments):
     #5  Removed dead global_mean_pool import
     #6  Token pooling now masked mean (was plain mean — included PAD positions)
     #7  Python padding loop replaced with to_dense_batch() (vectorised)
+    #8  Zero-out padded positions in enriched_nodes after node→token attention
+        Padding nodes went through attention and received nonzero values from
+        token content. Pooling already excluded them via node_real_mask, but
+        those nonzero values were still present in the tensor passed implicitly
+        to any future refactor. Explicit zeroing makes the invariant structural,
+        not just documented.
 """
 
 from __future__ import annotations
@@ -195,6 +202,20 @@ class CrossAttentionFusion(nn.Module):
         )
         # enriched_nodes:    [B, max_nodes, 256]
         # node_attn_weights: [B, max_nodes, 512] — interpretable: which tokens each node used
+
+        # Fix #8: Zero-out padded node positions in enriched_nodes.
+        # Padding nodes (zero-input) still went through node→token attention and
+        # received nonzero values — their softmax distributed weight over real tokens
+        # and returned a valid (but meaningless) weighted sum of token values.
+        # Pooling in Step 5 already excludes them via node_real_mask, so this has
+        # no effect on the current numerical output. The zeroing makes the invariant
+        # structural: any future refactor that reads enriched_nodes directly (e.g.
+        # using it as K/V in an additional attention layer) will not silently ingest
+        # garbage from padding positions.
+        enriched_nodes = enriched_nodes * node_real_mask.float().unsqueeze(-1)
+        # node_real_mask: True=real → 1.0, False=padding → 0.0
+        # unsqueeze(-1): [B, max_nodes] → [B, max_nodes, 1] for broadcast over 256 dims
+        # result: padding node positions are exactly zero in enriched_nodes
 
         # ── Step 4: Token → Node cross-attention ──────────────────────────
         # Each token asks: "which REAL graph nodes am I structurally relevant to?"
