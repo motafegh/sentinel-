@@ -11,6 +11,7 @@ WHAT CHANGED FROM TRACK 3 ORIGINAL:
 
     3. weights_only=False kept for checkpoint loading
        LoRA state dict contains peft-specific classes — weights_only=True blocks them.
+       (Graph/token datasets now use weights_only=True, fixed in dual_path_dataset.py)
 
     4. Per-class thresholds loaded from {checkpoint.stem}_thresholds.json
        Replaces single global threshold with class-specific decision boundaries.
@@ -25,6 +26,11 @@ FIXES (2026-04-29):
              Prevents zip() silent truncation if a future checkpoint adds new classes.
     Bug 3 — _score() emits 'vulnerability_class' key (was 'class').
              predictor.py is the canonical schema owner; no consumer remapping needed.
+
+FIXES (2026-05-01):
+    Audit #5 — _warmup() uses a 2-node 1-edge graph so GATConv.propagate() is
+               called during startup. A 0-edge graph skips message-passing entirely,
+               hiding GAT shape bugs until the first real inference request.
 
 IMPROVEMENTS:
     - self.thresholds_loaded flag exposed for /health endpoint.
@@ -111,9 +117,6 @@ class Predictor:
             architecture = saved_cfg.get("architecture", "legacy")
 
             # Bug 4 fix — reject unknown architecture immediately.
-            # The old `else 64` silently loaded wrong weights when architecture
-            # was misspelled or a new value was added — causing cryptic shape
-            # mismatches deep in load_state_dict, or worse, silent wrong inference.
             if architecture not in _ARCH_TO_FUSION_DIM:
                 raise ValueError(
                     f"Unknown checkpoint architecture: '{architecture}'. "
@@ -123,8 +126,7 @@ class Predictor:
                 )
             fusion_output_dim = _ARCH_TO_FUSION_DIM[architecture]
 
-            # Strict metadata cross-check: if checkpoint config explicitly records
-            # fusion_output_dim, it must match the architecture's expected value.
+            # Strict metadata cross-check: fusion_output_dim
             cfg_dim = saved_cfg.get("fusion_output_dim")
             if cfg_dim is not None and cfg_dim != fusion_output_dim:
                 raise ValueError(
@@ -133,8 +135,7 @@ class Predictor:
                     "Checkpoint may be corrupt or from an incompatible training run."
                 )
 
-            # Strict metadata cross-check: if checkpoint records class_names, verify
-            # they are a prefix-match of CLASS_NAMES (same order, no renames).
+            # Strict metadata cross-check: class_names order
             cfg_class_names = saved_cfg.get("class_names")
             if cfg_class_names is not None:
                 expected = CLASS_NAMES[:len(cfg_class_names)]
@@ -167,8 +168,6 @@ class Predictor:
             )
 
         # Bug 5 fix — guard before slice so zip() never silently drops classes.
-        # CLASS_NAMES[:11] returns 10 items without error when len(CLASS_NAMES)==10;
-        # zip then stops at 10, silently dropping the 11th model output forever.
         if num_classes > len(CLASS_NAMES):
             raise ValueError(
                 f"Checkpoint num_classes={num_classes} exceeds "
@@ -203,9 +202,6 @@ class Predictor:
                 thresholds_data = json.load(f)
             class_thresholds_dict = thresholds_data.get("thresholds", {})
 
-            # Build thresholds tensor aligned with self._class_names.
-            # Warn per class when a threshold is absent — the fallback is used but
-            # the operator should know which classes are relying on the default.
             per_class_thresholds = []
             missing_classes = []
             for cls_name in self._class_names:
@@ -246,8 +242,8 @@ class Predictor:
         self.preprocessor = ContractPreprocessor()
 
         # ------------------------------------------------------------------
-        # Warmup forward pass — catches CUDA / shape issues at startup,
-        # not on the first real request. Uses minimal dummy tensors (no Slither).
+        # Warmup forward pass — catches CUDA / model-shape issues at startup,
+        # not on the first real request.
         # ------------------------------------------------------------------
         self._warmup()
         logger.info(f"Predictor ready | {self.num_classes} classes | {architecture}")
@@ -257,12 +253,26 @@ class Predictor:
         Run one minimal forward pass with dummy tensors to surface CUDA
         and model-shape issues at startup instead of on the first real request.
 
-        Uses a single-node graph and all-PAD token sequence — enough to exercise
-        every layer path without requiring Slither or a real Solidity file.
+        Audit fix #5 (2026-05-01) — 2-node 1-edge graph:
+        The previous warmup used a single-node, zero-edge graph:
+            edge_index = torch.zeros(2, 0, ...)
+        A zero-edge graph never calls GATConv.propagate(), so attention
+        coefficient shape bugs only appear on the first real contract.
+
+        Fixed: 2 nodes, 1 undirected edge (0→1 and 1→0, so both directions
+        are covered). This forces all three GATConv.propagate() calls to run
+        and exercises the full message-passing code path at startup.
+
+        Node feature dim (8) matches GNNEncoder's expected input_dim.
+        Token tensor: first token real, rest PAD — avoids empty masked-mean.
         """
         try:
-            dummy_x = torch.zeros(1, 8, dtype=torch.float32, device=self.device)
-            dummy_edge_index = torch.zeros(2, 0, dtype=torch.long, device=self.device)
+            # ── Audit fix #5: 2 nodes, 1 undirected edge (was 0 edges) ───────
+            # Edge 0→1 and 1→0 = undirected. dim=8 matches GNNEncoder input_dim.
+            dummy_x = torch.zeros(2, 8, dtype=torch.float32, device=self.device)
+            dummy_edge_index = torch.tensor(
+                [[0, 1], [1, 0]], dtype=torch.long, device=self.device
+            )  # shape [2, 2] — two directed edges forming one undirected edge
             dummy_graph = Data(x=dummy_x, edge_index=dummy_edge_index)
             dummy_batch = Batch.from_data_list([dummy_graph]).to(self.device)
 
@@ -274,7 +284,7 @@ class Predictor:
             with torch.no_grad():
                 _ = self.model(dummy_batch, dummy_ids, dummy_mask)
 
-            logger.info("Warmup forward pass succeeded — model ready")
+            logger.info("Warmup forward pass succeeded — model ready (2-node 1-edge graph)")
         except Exception as exc:
             raise RuntimeError(
                 f"Model warmup failed — checkpoint may be incompatible with current code. "
@@ -305,11 +315,19 @@ class Predictor:
                     {"vulnerability_class": str, "probability": float},
                     ...
                 ],
-                "threshold": float,
+                "threshold": float,   # fallback threshold (see note below)
                 "truncated": bool,
                 "num_nodes": int,
                 "num_edges": int,
             }
+
+        Note on "threshold":
+            When per-class thresholds are loaded from JSON, self.threshold is
+            the fallback float and does NOT represent the actual decision
+            boundaries used. A future schema version should return the full
+            per-class threshold dict instead. Until then, consumers should
+            check thresholds_loaded on the predictor to know which mode is
+            active. Tracked as audit finding #6.
         """
         self.model.eval()
 
@@ -319,15 +337,13 @@ class Predictor:
             attention_mask = tokens["attention_mask"].to(self.device)
 
             logits = self.model(batch, input_ids, attention_mask)  # [1, num_classes]
-            probs = torch.sigmoid(logits)  # [1, num_classes]
+            probs = torch.sigmoid(logits.float())  # cast to FP32 before sigmoid (BF16 guard)
 
         probs_list: list[float] = probs.squeeze(0).cpu().tolist()
         if isinstance(probs_list, float):
             probs_list = [probs_list]
 
         # Bug 3 fix — emit canonical key 'vulnerability_class' (was 'class').
-        # predictor.py owns the schema; api.py, inference_server.py, nodes.py, and
-        # any script calling predict_source() directly all read this key without remapping.
         vulnerabilities = [
             {"vulnerability_class": name, "probability": round(prob, 4)}
             for name, prob, thresh in zip(self._class_names, probs_list, self.thresholds.cpu())
@@ -346,7 +362,7 @@ class Predictor:
         return {
             "label": label,
             "vulnerabilities": vulnerabilities,
-            "threshold": self.threshold,
+            "threshold": self.threshold,  # fallback float; see _score docstring for caveat
             "truncated": tokens["truncated"],
             "num_nodes": int(graph.num_nodes),
             "num_edges": int(graph.num_edges),
