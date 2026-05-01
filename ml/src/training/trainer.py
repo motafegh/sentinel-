@@ -47,6 +47,13 @@ SPEED OPTIMISATIONS APPLIED (vs original):
      Monitors validation F1‑macro, stops training when no improvement
      for `early_stop_patience` consecutive epochs. Restores best model
      automatically (implicitly because the best checkpoint is saved).
+
+AUDIT FIXES (2026-05-01):
+────────────────────────────────────────────────────────────────────────────
+Fix #4 — Unknown loss_fn now raises ValueError (was silent BCE fallthrough).
+Fix #7 — clip_grad_norm_ scans only trainable params (not frozen CodeBERT).
+Fix #8 — OneCycleLR uses remaining_epochs=config.epochs-start_epoch+1 on resume.
+Fix #2 — FocalLoss sigmoid called on logits.float() to prevent BF16 underflow.
 """
 
 from __future__ import annotations
@@ -86,7 +93,8 @@ os.environ["HF_HUB_OFFLINE"]       = "1"
 # ---------------------------------------------------------------------------
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32       = True
-torch.backends.cudnn.benchmark = True   
+torch.backends.cudnn.benchmark = True
+
 # ---------------------------------------------------------------------------
 # Logging setup
 # ---------------------------------------------------------------------------
@@ -109,6 +117,14 @@ CLASS_NAMES = [
     "UnusedReturn",                # 9
 ]
 NUM_CLASSES = len(CLASS_NAMES)
+
+# ---------------------------------------------------------------------------
+# Valid loss function names — Audit fix #4
+# ---------------------------------------------------------------------------
+# Centralised here so the ValueError message and the dispatch logic
+# always stay in sync. Add new loss names to this set before adding
+# the corresponding elif branch below.
+_VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal"})
 
 
 # ---------------------------------------------------------------------------
@@ -155,10 +171,12 @@ class TrainConfig:
     persistent_workers:  bool = True   # avoids re-spawning workers each epoch
 
     # --- Loss function ---
+    # Valid values: "bce" | "focal"
     # "bce"   (default): BCEWithLogitsLoss with class-balanced pos_weight.
     # "focal": FocalLoss(gamma=2.0, alpha=0.25) — down-weights easy examples,
     #          useful when class imbalance is severe and pos_weight is insufficient.
     #          Applies sigmoid internally so it receives raw logits identically to bce.
+    # Audit fix #4: any other value raises ValueError immediately at train() entry.
     loss_fn: str = "bce"
 
     # --- Cache ---
@@ -271,7 +289,7 @@ def train_one_epoch(
     model:        SentinelModel,
     loader:       DataLoader,
     optimizer:    AdamW,
-    loss_fn:      nn.BCEWithLogitsLoss,
+    loss_fn:      nn.Module,
     scheduler:    OneCycleLR,
     scaler:       torch.amp.GradScaler,
     device:       str,
@@ -281,6 +299,13 @@ def train_one_epoch(
 ) -> float:
     model.train()
     total_loss = 0.0
+
+    # ── Audit fix #7: pre-compute trainable param list once per epoch ───────
+    # model.parameters() includes ~125 M frozen CodeBERT weights whose grads
+    # are None. clip_grad_norm_ was iterating over all of them unnecessarily.
+    # Filtering to requires_grad=True params is both correct (we're only
+    # clipping what we're training) and saves one full-model tensor scan per step.
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
 
     pbar = tqdm(loader, desc="Training", unit="batch", leave=False)
     for batch_idx, batch in enumerate(pbar):
@@ -308,7 +333,10 @@ def train_one_epoch(
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip)
+
+        # ── Audit fix #7: clip trainable params only (not frozen CodeBERT) ──
+        torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=grad_clip)
+
         scaler.step(optimizer)
         scaler.update()
         scheduler.step()
@@ -331,6 +359,17 @@ def train(config: TrainConfig) -> None:
     os.makedirs(config.checkpoint_dir, exist_ok=True)
     device = config.device
     logger.info(f"Training on: {device} | classes: {config.num_classes}")
+
+    # ── Audit fix #4: validate loss_fn before any expensive setup ───────────
+    # Previously a typo (e.g. "Focal" instead of "focal") silently fell
+    # through to BCE. Now fails early with a clear message so the user
+    # never discovers the error after hours of training with the wrong loss.
+    if config.loss_fn not in _VALID_LOSS_FNS:
+        raise ValueError(
+            f"Unknown loss_fn='{config.loss_fn}'. "
+            f"Valid options: {sorted(_VALID_LOSS_FNS)}. "
+            "Check your TrainConfig or the --loss_fn argument."
+        )
 
     if config.use_amp and device == "cpu":
         logger.warning("use_amp=True but device=cpu — AMP disabled (CUDA only)")
@@ -367,8 +406,8 @@ def train(config: TrainConfig) -> None:
     # Optimisation #3 + #4: workers + pin_memory consistent
     # pin_memory only helps when workers exist to do the pinning asynchronously.
     # persistent_workers keeps worker processes alive between epochs.
-    _use_workers   = config.num_workers > 0
-    _prefetch      = 2 if _use_workers else None  # pre-fetch 2 batches ahead
+    _use_workers = config.num_workers > 0
+    _prefetch    = 2 if _use_workers else None  # pre-fetch 2 batches ahead
 
     train_loader = DataLoader(
         train_dataset,
@@ -406,48 +445,16 @@ def train(config: TrainConfig) -> None:
     )
 
     # ------------------------------------------------------------------
-    # Model, loss, optimizer, scheduler
+    # Model
     # ------------------------------------------------------------------
     model = SentinelModel(num_classes=config.num_classes).to(device)
 
-    if config.loss_fn == "focal":
-        # FocalLoss expects post-sigmoid probabilities; wrap so it receives raw logits
-        # identically to BCEWithLogitsLoss — no change needed in train_one_epoch.
-        _focal = FocalLoss(gamma=2.0, alpha=0.25)
-        class _FocalFromLogits(nn.Module):
-            def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-                return _focal(torch.sigmoid(logits), targets)
-        loss_fn: nn.Module = _FocalFromLogits()
-        logger.info("Loss: FocalLoss(gamma=2.0, alpha=0.25) — pos_weight ignored")
-    else:
-        loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-        logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
-
-    optimizer = AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=config.lr,
-        weight_decay=config.weight_decay,
-    )
-
-    scheduler = OneCycleLR(
-        optimizer,
-        max_lr=config.lr,
-        epochs=config.epochs,
-        steps_per_epoch=len(train_loader),
-        pct_start=config.warmup_pct,
-        anneal_strategy="cos",
-    )
-
-    # Optimisation #1: GradScaler for AMP backward pass.
-    # enabled=False when AMP is off — scaler becomes a transparent pass-through,
-    # so the train_one_epoch code path is identical regardless of use_amp.
-    scaler = torch.amp.GradScaler("cuda", enabled=config.use_amp)
-
     # ------------------------------------------------------------------
-    # Resume (safe: model only by default)
+    # Resume: load model weights BEFORE building the scheduler so we know
+    # start_epoch and can compute remaining_epochs correctly (fix #8).
     # ------------------------------------------------------------------
-    start_epoch = 1
-    best_f1     = 0.0
+    start_epoch      = 1
+    best_f1          = 0.0
     patience_counter = 0   # for early stopping
 
     if config.resume_from:
@@ -460,18 +467,84 @@ def train(config: TrainConfig) -> None:
         model.load_state_dict(ckpt["model"])
         start_epoch = ckpt.get("epoch", 0) + 1
         best_f1     = ckpt.get("best_f1", 0.0)
-
-        if not config.resume_model_only:
-            if "optimizer" in ckpt:
-                optimizer.load_state_dict(ckpt["optimizer"])
-                logger.info("Optimizer state restored.")
-            if "scheduler" in ckpt:
-                scheduler.load_state_dict(ckpt["scheduler"])
-                logger.info("Scheduler state restored.")
-        else:
-            logger.info("Resumed model weights only (fresh optimizer/scheduler).")
-
         logger.info(f"Resumed from epoch {start_epoch-1} | best_f1={best_f1:.4f}")
+
+    # ------------------------------------------------------------------
+    # Loss, optimizer, scheduler
+    # ------------------------------------------------------------------
+    # ── Audit fix #4: validated above; dispatch is now exhaustive ─────────
+    if config.loss_fn == "focal":
+        # FocalLoss expects post-sigmoid probabilities.
+        # ── Audit fix #2: apply sigmoid on logits.float() not raw BF16 logits.
+        # Under autocast, logits are BF16. sigmoid(BF16) of a very negative
+        # logit produces exactly 0.0 in BF16 (underflow), causing log(0)=-inf
+        # inside FocalLoss. Casting to float32 first keeps the probability
+        # representable (e.g. 0.0009 instead of 0.0).
+        _focal = FocalLoss(gamma=2.0, alpha=0.25)
+
+        class _FocalFromLogits(nn.Module):
+            """Thin wrapper so FocalLoss receives FP32 probabilities, not raw logits."""
+            def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+                # Cast logits to FP32 BEFORE sigmoid to prevent BF16 underflow.
+                # FocalLoss.forward() also has its own .float() guard, but the
+                # sigmoid result is what matters — fixing it here at the source.
+                return _focal(torch.sigmoid(logits.float()), targets)
+
+        loss_fn: nn.Module = _FocalFromLogits()
+        logger.info("Loss: FocalLoss(gamma=2.0, alpha=0.25) with FP32 sigmoid guard")
+    else:  # "bce"
+        loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
+
+    optimizer = AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=config.lr,
+        weight_decay=config.weight_decay,
+    )
+
+    # ── Audit fix #8: OneCycleLR uses remaining_epochs on resume ──────────
+    # When resuming at epoch N of T total, the cosine LR curve should cover
+    # the remaining T-N epochs, not the full T epochs again. Using epochs=T
+    # restarted the LR from max_lr and kept it too high through the final
+    # epochs, harming convergence after resume.
+    # Fresh runs: start_epoch=1 → remaining_epochs=config.epochs (unchanged).
+    # Resumed runs: start_epoch=N → remaining_epochs=T-N+1 (correct tail).
+    remaining_epochs = config.epochs - start_epoch + 1
+    if remaining_epochs <= 0:
+        logger.warning(
+            f"start_epoch={start_epoch} ≥ config.epochs={config.epochs}: "
+            "nothing left to train. Increase config.epochs before resuming."
+        )
+        return
+
+    scheduler = OneCycleLR(
+        optimizer,
+        max_lr=config.lr,
+        epochs=remaining_epochs,          # ← fix #8: was config.epochs
+        steps_per_epoch=len(train_loader),
+        pct_start=config.warmup_pct,
+        anneal_strategy="cos",
+    )
+
+    # Optimisation #1: GradScaler for AMP backward pass.
+    # enabled=False when AMP is off — scaler becomes a transparent pass-through,
+    # so the train_one_epoch code path is identical regardless of use_amp.
+    scaler = torch.amp.GradScaler("cuda", enabled=config.use_amp)
+
+    # ------------------------------------------------------------------
+    # Restore optimizer + scheduler state if doing a full resume
+    # (must happen AFTER scheduler is constructed)
+    # ------------------------------------------------------------------
+    if config.resume_from and not config.resume_model_only:
+        ckpt = torch.load(config.resume_from, map_location=device, weights_only=False)
+        if "optimizer" in ckpt:
+            optimizer.load_state_dict(ckpt["optimizer"])
+            logger.info("Optimizer state restored.")
+        if "scheduler" in ckpt:
+            scheduler.load_state_dict(ckpt["scheduler"])
+            logger.info("Scheduler state restored.")
+    elif config.resume_from:
+        logger.info("Resumed model weights only (fresh optimizer/scheduler).")
 
     # ------------------------------------------------------------------
     # MLflow
@@ -483,6 +556,7 @@ def train(config: TrainConfig) -> None:
         params = {
             "num_classes":          config.num_classes,
             "epochs":               config.epochs,
+            "remaining_epochs":     remaining_epochs,   # visible in MLflow for resumed runs
             "batch_size":           config.batch_size,
             "lr":                   config.lr,
             "weight_decay":         config.weight_decay,
@@ -491,6 +565,7 @@ def train(config: TrainConfig) -> None:
             "warmup_pct":           config.warmup_pct,
             "num_workers":          config.num_workers,
             "use_amp":              config.use_amp,
+            "loss_fn":              config.loss_fn,
             "device":               device,
             "architecture":         "cross_attention_lora",
             "label_csv":            config.label_csv,
@@ -580,7 +655,10 @@ def train(config: TrainConfig) -> None:
                 patience_counter += 1
                 logger.info(f"  No improvement for {patience_counter} / {config.early_stop_patience} epochs")
                 if patience_counter >= config.early_stop_patience:
-                    logger.info(f"  Early stopping triggered after {epoch} epochs (best F1-macro = {best_f1:.4f})")
+                    logger.info(
+                        f"  Early stopping triggered after {epoch} epochs "
+                        f"(best F1-macro = {best_f1:.4f})"
+                    )
                     break
 
         # Optimisation #6: log artifact once at end, not on every checkpoint save.
