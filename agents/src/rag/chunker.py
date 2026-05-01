@@ -55,6 +55,11 @@ class Chunk:
     #   chunk_id:     int  — position in document
     #   total_chunks: int  — how many chunks this document produced
 
+    # RRF retrieval score — populated by HybridRetriever.search().
+    # 0.0 for chunks that came from the index without going through search
+    # (e.g., directly constructed in tests or loaded from old pickles).
+    score: float = 0.0
+
 
 class Chunker:
     """
