@@ -13,6 +13,7 @@ belong to the same contract.
 
 LABEL MODES
 ───────────
+
 Binary mode (label_csv=None, default):
     Labels come from graph.y — scalar 0/1 long tensor.
     Collate produces [B] long. Used for binary training and inference with
@@ -28,6 +29,7 @@ Multi-label mode (label_csv=Path(...)):
 
 RAM CACHE
 ─────────
+
 Pass cache_path=Path("ml/data/cached_dataset.pkl") to __init__ to use a
 pre-built pickle that maps each hash to its (graph, token) pair.
 If present, __getitem__ reads from the dict instead of individual .pt files,
@@ -60,6 +62,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # PyTorch 2.6+ safe-globals allowlist
 # ---------------------------------------------------------------------------
+# These classes appear inside .pt graph files saved by the AST extractor.
+# Registering them here allows weights_only=True (safe deserialization) to
+# work without disabling the pickle-security check entirely.
+#
+# Audit fix #3 (2026-05-01): safe globals were already registered but
+# weights_only=False was still being used. Now switched to weights_only=True.
+# If a new PyG release adds more wrapper classes that cause UnpicklingError,
+# add them to this list rather than reverting to weights_only=False.
 torch.serialization.add_safe_globals([
     Data,
     DataEdgeAttr,
@@ -110,7 +120,7 @@ class DualPathDataset(Dataset):
         self.graphs_dir = Path(graphs_dir)
         self.tokens_dir = Path(tokens_dir)
 
-        # ── Multi-label mode setup ─────────────────────────────────────────
+        # ── Multi-label mode setup ──────────────────────────────────────────────────
         self._label_map: Optional[Dict[str, torch.Tensor]] = None
         if label_csv is not None:
             label_csv = Path(label_csv)
@@ -130,7 +140,7 @@ class DualPathDataset(Dataset):
                 f"{len(class_cols)} classes"
             )
 
-        # ── Discover files and compute paired set ──────────────────────────
+        # ── Discover files and compute paired set ─────────────────────────────────
         graph_files = list(self.graphs_dir.glob("*.pt"))
         token_files = list(self.tokens_dir.glob("*.pt"))
         logger.info(
@@ -169,7 +179,7 @@ class DualPathDataset(Dataset):
             self.paired_hashes = [self.paired_hashes[i] for i in indices]
             logger.info(f"Split applied: {len(self.paired_hashes)} samples selected")
 
-        # ── RAM Cache ──────────────────────────────────────────────────────
+        # ── RAM Cache ───────────────────────────────────────────────────────────
         # Bonus fix: was a hardcoded absolute path — now an explicit argument.
         # Callers who want the cache pass cache_path=Path("ml/data/cached_dataset.pkl").
         # Callers who don't pass nothing; they will never silently miss a cache.
@@ -192,7 +202,7 @@ class DualPathDataset(Dataset):
         else:
             logger.info("No cache_path provided; reading individual .pt files from disk")
 
-        # ── Eager validation ───────────────────────────────────────────────
+        # ── Eager validation ──────────────────────────────────────────────────────
         if validate and len(self.paired_hashes) > 0:
             try:
                 _ = self[0]
@@ -216,16 +226,21 @@ class DualPathDataset(Dataset):
         """
         hash_id = self.paired_hashes[idx]
 
-        # ── Load graph and tokens ──────────────────────────────────────────
+        # ── Load graph and tokens ───────────────────────────────────────────────
         if self.cached_data is not None:
             graph, tokens = self.cached_data[hash_id]
         else:
             graph_path = self.graphs_dir / f"{hash_id}.pt"
             token_path = self.tokens_dir / f"{hash_id}.pt"
-            graph  = torch.load(graph_path, weights_only=False)
+            # ── Audit fix #3 (2026-05-01): weights_only=True ──────────────────────
+            # Safe globals are registered at module level above. This call now
+            # uses safe (non-pickle) deserialization. If a future PyG update
+            # adds new internal classes that cause UnpicklingError, add them
+            # to the add_safe_globals() list above — do NOT revert this flag.
+            graph  = torch.load(graph_path, weights_only=True)
             tokens = torch.load(token_path, weights_only=True)
 
-        # ── Extract label ──────────────────────────────────────────────────
+        # ── Extract label ────────────────────────────────────────────────────────
         if self._label_map is not None:
             # Multi-label mode: float32 [10]
             if hash_id not in self._label_map:
@@ -240,7 +255,7 @@ class DualPathDataset(Dataset):
                 label = torch.tensor(label, dtype=torch.long)
             label = label.view(1).long()  # [1] long
 
-        # ── Validate token shapes ──────────────────────────────────────────
+        # ── Validate token shapes ───────────────────────────────────────────────
         if tokens["input_ids"].shape != torch.Size([512]):
             raise ValueError(
                 f"input_ids shape {tokens['input_ids'].shape} != [512]"
