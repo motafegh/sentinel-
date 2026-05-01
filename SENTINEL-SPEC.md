@@ -150,11 +150,12 @@ CodeBERT model = "microsoft/codebert-base"
 MAX_TOKEN_LENGTH = 512
   — matches training data; change requires token .pt rebuild + retrain
 
-Node feature vector — 8-dim ordinal, fixed order:
+Node feature vector — 8-dim ordinal, fixed order (FEATURE_NAMES in graph_schema.py):
   [type_id, visibility, pure, view, payable, reentrant, complexity, loc]
   — any change: rebuild all 68K graph .pt files + retrain
+  — bump FEATURE_SCHEMA_VERSION in graph_schema.py to invalidate inference caches
 
-Node insertion order in graph builder:
+Node insertion order in graph builder (graph_extractor.extract_contract_graph):
   CONTRACT → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs
   — edge_index values are positional; reordering breaks edges
 
@@ -240,6 +241,7 @@ BCCC SHA256 vs internal MD5 — never mix:
 | 029 | RAG index write safety | FileLock + atomic rename (.tmp → real) | In-place overwrites | Concurrent cron/Dagster/feedback cycles could corrupt index; lock serialises writes; atomic rename prevents partial reads on crash | — |
 | 030 | Feedback loop back-pressure | Exponential backoff on RPC error (capped 5 min) | Fixed 30s retry | Protects public RPC from hammering; respects provider rate limits | — |
 | 031 | LangGraph parallel deep path | list["rag_research","static_analysis"] return from conditional edge | Sequential rag→static→audit, Send objects | List return from conditional edge is the simplest parallel fan-out; LangGraph executes both in same superstep, audit_check fan-in waits automatically; no explicit sync needed | Needs ordered execution or state write conflicts between parallel branches |
+| 032 | Shared graph extraction core | ml/src/preprocessing/ package (graph_schema.py + graph_extractor.py) | Duplicate inline constants in ast_extractor.py and preprocess.py | Divergence between offline and online feature encoding causes silent accuracy regression with no error signal; single source of truth makes it structurally impossible for them to drift | Never — this is the correct architecture for any dual-pipeline ML system |
 
 ## 8. Module Technical Facts
 
@@ -463,8 +465,19 @@ ml/src/models/
   fusion_layer.py            CrossAttentionFusion — output_dim=128
   classifier.py              nn.Linear(128, 10), no sigmoid
 
+ml/src/preprocessing/                 ← single source of truth for graph feature engineering
+  __init__.py                re-exports all public symbols
+  graph_schema.py            NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES, FEATURE_NAMES,
+                             FEATURE_SCHEMA_VERSION, NODE_FEATURE_DIM, NUM_EDGE_TYPES
+  graph_extractor.py         extract_contract_graph(sol_path, config) → Data
+                             GraphExtractionConfig dataclass
+                             GraphExtractionError / SolcCompilationError /
+                             SlitherParseError / EmptyGraphError exception hierarchy
+
 ml/src/inference/
-  preprocess.py              ContractPreprocessor — Slither + tokenizer
+  preprocess.py              ContractPreprocessor — thin wrapper: temp-file mgmt,
+                             exception translation, tokenization, sliding-window (T1-C)
+                             imports graph extraction from ml/src/preprocessing/
   predictor.py               Predictor — sigmoid + per-class thresholds + result dict
   api.py                     FastAPI — lifespan, Pydantic schemas, /predict, /health
 
@@ -495,6 +508,12 @@ ml/checkpoints/              .pt files — not in git
   multilabel_crossattn_best.pt               Active checkpoint (489MB)
   multilabel_crossattn_best_thresholds.json  Per-class sweep-derived thresholds
   run-alpha-tune_best.pt                     Legacy binary checkpoint (477MB)
+
+ml/data_extraction/
+  ast_extractor.py           ASTExtractorV4 — thin offline wrapper; parquet loading,
+                             solc version resolution (get_solc_binary), mp.Pool,
+                             checkpoint/resume, writes <md5>.pt files to ml/data/graphs/
+                             imports graph extraction from ml/src/preprocessing/
 
 ml/_archive/                 Legacy files (git mv — history preserved)
 ```

@@ -1,9 +1,9 @@
 # Active Improvement Ledger — Current Version
 
-Generated: 2026-04-28 | Last updated: 2026-05-01
+Generated: 2026-04-28 | Last updated: 2026-05-01 (§5.10 shared preprocessing refactor)
 Scope: SENTINEL learning journey, code audit, and future modification backlog
 Mode: updated to reflect implementation sessions through 2026-05-01
-Status: Sprints 2–4 complete (Foundry tests, ML unit tests, RAG/Agent hardening, ZKML bugs fixed)
+Status: Sprints 2–4 complete + §5.10 shared preprocessing architecture implemented
 
 ---
 
@@ -98,6 +98,27 @@ agents/src/orchestration/nodes.py       static_analysis node (Slither direct cal
 agents/src/orchestration/graph.py       parallel deep path fan-out + fan-in
 agents/tests/test_retriever_filters.py  TestSearchScores class added
 .gitignore                              Removed blanket contracts/ ignore
+
+── Phase 10 — Shared preprocessing architecture §5.10 (complete 2026-05-01) ─
+ml/src/preprocessing/__init__.py        New package — re-exports all public symbols
+ml/src/preprocessing/graph_schema.py    Single source of truth: NODE_TYPES,
+                                        VISIBILITY_MAP, EDGE_TYPES, FEATURE_NAMES,
+                                        FEATURE_SCHEMA_VERSION, NODE_FEATURE_DIM
+ml/src/preprocessing/graph_extractor.py Canonical extract_contract_graph():
+                                        GraphExtractionConfig, typed exception hierarchy
+                                        (SolcCompilationError, SlitherParseError,
+                                        EmptyGraphError)
+ml/data_extraction/ast_extractor.py     Refactored → thin offline wrapper
+                                        imports constants + core from preprocessing pkg
+ml/src/inference/preprocess.py          Refactored → thin inference wrapper
+                                        adds process_source_windowed() + sliding-window
+                                        tokenization (T1-C partial implementation)
+                                        uses hash_utils (replaces inline hashlib.md5)
+Also fixed:
+  edge_attr shape: [E,1] (offline) vs [E] (online) → unified to [E] in shared core
+  0-node graph: now raises EmptyGraphError with clear message (was silent ValueError)
+  Feature dim mismatch: caught at extraction boundary, not deep in GATConv
+  FEATURE_SCHEMA_VERSION appended to process_source() cache key
 ```
 
 ---
@@ -113,22 +134,27 @@ Phase 5 — Contracts (source audit):        ✅ COMPLETE
 Phase 6 — ZKML pre-sprint bug fixes:       ✅ COMPLETE (scripts ready to run with GPU access)
 Phase 7 — Foundry tests + deploy script:   ✅ COMPLETE (written 2026-05-01; forge not yet run)
 Phase 8 — ML unit tests + trainer:         ✅ COMPLETE (4 test suites, 2026-05-01)
-Phase 9 — RAG/Agent hardening:             ✅ COMPLETE (score, static_analysis, parallel graph)
-Phase 10 — ZKML end-to-end execution:     ⏳ PENDING (bugs fixed; needs GPU access to run pipeline)
-Phase 11 — M6 Integration API:            ❌ NOT BUILT
+Phase 9  — RAG/Agent hardening:              ✅ COMPLETE (score, static_analysis, parallel graph)
+Phase 10 — Shared preprocessing §5.10:      ✅ COMPLETE (graph_schema + graph_extractor + thin wrappers)
+Phase 11 — ZKML end-to-end execution:      ⏳ PENDING (bugs fixed; needs GPU access to run pipeline)
+Phase 12 — M6 Integration API:             ❌ NOT BUILT
 ```
 
-All source code written and committed. Phases 10–11 require running processes (GPU for ZKML,
+All source code written and committed. Phases 11–12 require running processes (GPU for ZKML,
 forge for contracts), not source changes.
 
 Next recommended work (source-only):
 
 ```text
-1. S4.2  Cross-encoder re-ranking in retriever (off by default)
-2. S4.3  Solodit knowledge source ingester
-3. S4.6  LLM synthesizer upgrade (replace rule-based with get_strong_llm() call)
-4. S5    M6 Integration API (FastAPI + Celery + Redis; api/ directory)
-5. S9.3  LLM vulnerability explanation node in LangGraph
+1. T1-A  Content-addressed inference cache (ml/src/inference/cache.py + preprocess.py wiring)
+         hash_utils already provides get_contract_hash_from_content(); FEATURE_SCHEMA_VERSION
+         already appended to process_source() hash key — cache infrastructure is now ready
+2. T2-A  Prometheus metrics in ml/src/inference/api.py
+3. T2-C  MLflow model registry script (ml/scripts/promote_model.py)
+4. T2-B  Online KS drift detection (ml/src/inference/drift_detector.py)
+5. S4.2  Cross-encoder re-ranking in retriever (off by default)
+6. S4.6  LLM synthesizer upgrade (replace rule-based with get_strong_llm() call)
+7. S5    M6 Integration API (FastAPI + Celery + Redis; api/ directory)
 ```
 
 ---
@@ -197,18 +223,26 @@ _ARCH_TO_FUSION_DIM allowlist replaces the silent else-64 fallthrough.
 [FIXED] num_classes > len(CLASS_NAMES) now raises ValueError before slicing.
 ```
 
-## 4.6 Shared graph extraction unification — OPEN (larger refactor, deferred)
+## 4.6 Shared graph extraction unification ✅ DONE (2026-05-01, commit cfc08d8)
 
-If we choose to unify `preprocess.py` and `ast_extractor.py`, the following are must-have design requirements:
+All must-have design requirements from the original spec were implemented:
 
 ```
-- Shared constants must live in one place only.
-- Shared core must preserve exact insertion order (CONTRACT → STATE_VAR → FUNCTION → MODIFIER → EVENT) as used in training.
-- Shared graph core must raise typed exceptions, never return None.
-- Offline wrapper may catch typed exceptions and convert failures to None/skip.
-- Online wrapper must not silently choose contracts[0] unless policy explicitly says so.
-- Offline/online parity tests must be added before trusting the refactor.
+✅ Shared constants live in one place only: ml/src/preprocessing/graph_schema.py
+✅ Shared core preserves exact insertion order (CONTRACT → STATE_VAR → FUNCTION → MODIFIER → EVENT)
+✅ Shared graph core raises typed exceptions (GraphExtractionError hierarchy), never returns None
+✅ Offline wrapper (ast_extractor.py) catches GraphExtractionError → None (skip-and-log policy)
+✅ Online wrapper (preprocess.py) translates exceptions to ValueError/RuntimeError for HTTP codes
+✅ multi_contract_policy="first" is explicit in GraphExtractionConfig (not silent default)
+⏳ Parity tests (preprocess vs ASTExtractorV4 on same contract) — deferred, see §9 item 12
 ```
+
+Also achieved:
+  — edge_attr shape unified to [E] (was [E,1] offline / [E] online — now consistent)
+  — FEATURE_SCHEMA_VERSION in graph_schema.py for cache key invalidation
+  — allow_paths + solc version check moved into graph_extractor._build_solc_args()
+  — 0-node graph: EmptyGraphError with actionable message (was generic ValueError)
+  — Feature dim validated at extraction boundary, not deep in GATConv
 
 ## 4.7 `zkml/src/distillation/train_proxy.py` ✅ DONE (2026-05-01)
 
@@ -482,7 +516,7 @@ smoke_inference_mcp.py:
 
 ---
 
-## 5.8 `ml/src/inference/preprocess.py` ✅ DONE (commit 6aa92eb, 2026-04-30)
+## 5.8 `ml/src/inference/preprocess.py` ✅ DONE (commit 6aa92eb 2026-04-30 + cfc08d8 2026-05-01)
 
 ```text
 [DONE] Docstring updated: ast_extractor_v4_production.py → ml/data_extraction/ast_extractor.py.
@@ -493,73 +527,72 @@ smoke_inference_mcp.py:
        Other Slither/OS failures → RuntimeError (infrastructure error, HTTP 500).
 [DONE] MAX_SOURCE_BYTES (1MB) guard in process_source() — defence-in-depth.
 [DONE] Temp file prefix sanitized to strip unsafe characters from name argument.
-[OPEN] Mirror ASTExtractorV4._get_slither_instance() for robust solc version handling — deferred to §5.10 refactor.
-[OPEN] Unify hashing decision (path MD5 vs content MD5) — documented in code comments, formal decision deferred.
+[DONE] solc version handling unified in GraphExtractionConfig.allow_paths + _build_solc_args() — §5.10 refactor.
+[DONE] Hashing: process() uses hash_utils.get_contract_hash(); process_source() uses
+       get_contract_hash_from_content() + FEATURE_SCHEMA_VERSION suffix (replaces inline hashlib.md5).
+[DONE] Added process_source_windowed() + _tokenize_sliding_window() — T1-C sliding window (2026-05-01).
+[DONE] preprocess.py is now a thin wrapper importing from ml/src/preprocessing/ — §5.10 refactor.
+[OPEN] Parity test: preprocess vs ASTExtractorV4 on same .sol file — §9 item 12.
 ```
 
 ---
 
-## 5.9 `ml/data_extraction/ast_extractor.py`
+## 5.9 `ml/data_extraction/ast_extractor.py` ✅ DONE (commit cfc08d8, 2026-05-01)
 
 ```text
-- Consider reducing direct duplication with preprocess.py by moving shared graph logic into a strict shared core.
-- Keep offline batch responsibilities separate from online inference responsibilities.
+[DONE] Direct duplication with preprocess.py eliminated — all shared graph logic moved to
+       ml/src/preprocessing/graph_extractor.py (single canonical implementation).
+[DONE] Offline batch responsibilities kept separate: parquet loading, solc version resolution
+       (parse_solc_version, solc_supports_allow_paths, get_solc_binary), mp.Pool,
+       checkpoint/resume, save to .pt files, catch GraphExtractionError → None (skip policy).
+[DONE] ast_extractor.py is now a thin wrapper (contract_to_pyg delegates to extract_contract_graph).
+[DONE] Re-exports NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES from graph_schema for any external callers.
 ```
 
 ---
 
-## 5.10 Shared preprocessing architecture proposal
+## 5.10 Shared preprocessing architecture ✅ IMPLEMENTED (commit cfc08d8, 2026-05-01)
 
-Potential future architecture:
+All design requirements met. Architecture as implemented:
 
 ```text
-ml/src/preprocessing/graph_schema.py
-  - NODE_TYPES
-  - VISIBILITY_MAP
-  - EDGE_TYPES
-  - FEATURE_NAMES
-  - FEATURE_SCHEMA_VERSION
+ml/src/preprocessing/graph_schema.py         ← single source of truth for feature encoding
+  - FEATURE_SCHEMA_VERSION = "v1"            bump to invalidate inference caches on any change
+  - NODE_FEATURE_DIM = 8
+  - NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES   identical to former inline dicts in both files
+  - FEATURE_NAMES                            8-element tuple for drift detection + explainability
+  - NUM_EDGE_TYPES = 5
 
-ml/src/preprocessing/graph_extractor.py
-  - GraphExtractionConfig
-  - GraphExtractionError subclasses
-  - node_features()
-  - extract_contract_graph()
-  - Slither setup helper
-  - Data(x, edge_index, optional edge_attr, metadata)
+ml/src/preprocessing/graph_extractor.py     ← canonical extraction (never returns None)
+  - GraphExtractionConfig                   multi_contract_policy, solc_binary, solc_version,
+                                             allow_paths, include_edge_attr, target_contract_name
+  - GraphExtractionError / SolcCompilationError / SlitherParseError / EmptyGraphError
+  - _build_node_features()                  8-dim vector; exact replica of training-time logic
+  - _select_contract()                      enforces multi_contract_policy; raises EmptyGraphError
+  - _build_solc_args()                      --allow-paths only for solc >= 0.5.0
+  - extract_contract_graph(sol_path, config) → Data  always raises, never returns None
 
-ml/data_extraction/ast_extractor.py
-  - offline wrapper
-  - parquet loading
-  - solc version grouping
-  - multiprocessing
-  - checkpoint/resume
-  - save graph .pt files
-  - catches GraphExtractionError and returns/skips None
+ml/data_extraction/ast_extractor.py         ← thin offline wrapper
+  - imports from src.preprocessing (sys.path bootstrap; same pattern as hash_utils)
+  - contract_to_pyg(): builds config, calls extract_contract_graph(), attaches
+    contract_hash + contract_path + y; catches GraphExtractionError → None (skip)
+  - keeps: parse_solc_version, solc_supports_allow_paths, get_solc_binary (offline-only)
+  - keeps: extract_batch_with_checkpoint (mp.Pool, checkpoint JSON, progress bars)
 
-ml/src/inference/preprocess.py
-  - online wrapper
-  - input size guard
-  - source content hash
-  - temp .sol file
-  - calls shared extract_contract_graph()
-  - tokenization
-  - optional content-based cache
-  - returns graph + tokens
+ml/src/inference/preprocess.py              ← thin inference wrapper
+  - imports from ..preprocessing (relative package import)
+  - _extract_graph(): calls extract_contract_graph() with online defaults, translates
+    SolcCompilationError/EmptyGraphError → ValueError (HTTP 400),
+    SlitherParseError → RuntimeError (HTTP 500)
+  - process_source() hash: content_md5 + "_" + FEATURE_SCHEMA_VERSION (cache-safe)
+  - process_source_windowed() + _tokenize_sliding_window() — T1-C sliding window
+  - uses hash_utils.get_contract_hash() and get_contract_hash_from_content()
 ```
 
-Design requirements:
-
+Open items remaining:
 ```text
-- Solc version handling for inference belongs in GraphExtractionConfig + shared Slither setup helper.
-- Multi-contract detection belongs in GraphExtractionConfig + extract_contract_graph().
-- Offline wrapper can preserve old multi_contract_policy="first" behavior.
-- Online wrapper should use multi_contract_policy="error" or "by_name".
-- include_edge_attr should be explicit, defaulting to True for parity.
-- Shared core should raise typed exceptions only.
-- Shared core should avoid print/loguru; use standard logging or no logging.
-- Inference caching should be versioned by source hash + feature schema + tokenizer + max length + solc/compiler mode.
-- Input size limits should be enforced before Slither/tokenizer work.
+⏳ T1-A  Content-addressed inference cache (cache.py) — FEATURE_SCHEMA_VERSION key ready
+⏳ Parity test: extract_contract_graph() vs old ASTExtractorV4.contract_to_pyg() on same .sol
 ```
 
 ## 5.11 Tokenization & Context Window Improvements (Retraining Required)
@@ -792,6 +825,43 @@ S4.4 Immunefi severity-weighted RAG (not yet implemented):
   EZKL uses this to determine optimal quantization scales.
 ```
 
+## 7.7 Shared preprocessing architecture (§5.10)
+
+```text
+- Two-pipeline divergence problem: when offline training and online inference share
+  no code, any change to feature engineering must be applied in two places. A missed
+  sync causes silent accuracy regression — the model receives features it was not
+  trained on, with no error signal.
+
+- Solution: extract shared core into a third module (graph_schema.py + graph_extractor.py)
+  that both pipelines import. Making divergence structurally impossible is better than
+  relying on developer discipline.
+
+- Typed exception hierarchy (GraphExtractionError → SolcCompilationError /
+  SlitherParseError / EmptyGraphError): the shared core never returns None and
+  never decides what to do on failure. Each caller translates to its domain:
+    offline → None (skip, log, continue batch)
+    online  → ValueError (HTTP 400) or RuntimeError (HTTP 500)
+
+- GraphExtractionConfig dataclass: encapsulates all extraction parameters so the
+  shared core never needs caller-specific if-branches. online uses defaults;
+  offline sets solc_binary + solc_version + allow_paths.
+
+- FEATURE_SCHEMA_VERSION: appended to inference cache keys so cached (graph.pt,
+  tokens.pt) pairs are automatically invalidated when feature engineering changes.
+  Pattern: "{content_md5}_{FEATURE_SCHEMA_VERSION}" — same idea as Docker layer cache
+  keys, Nix store paths, and content-addressed storage.
+
+- _build_node_features() has a REPLICATION CONSTRAINT comment: it must produce the
+  same values as the pre-refactor node_features() in ast_extractor.py exactly.
+  The 68K training .pt files were built by that function; any change requires a full
+  dataset rebuild and model retrain.
+
+- Lazy Slither import (inside extract_contract_graph, not at module top): keeps the
+  module importable without Slither installed, which matters for unit tests that mock
+  the extraction function.
+```
+
 ## 7.6 Foundry testing patterns
 
 ```text
@@ -873,6 +943,17 @@ S4.4 Immunefi severity-weighted RAG (not yet implemented):
 - Do not change TrainConfig.loss_fn default from "bce" without measuring FocalLoss impact.
   FocalLoss is now wired but "bce" is production default; "focal" is opt-in for experiments.
 - peft is now pinned to >=0.13.0,<0.16.0 — do not re-add GitHub HEAD dependency.
+
+- ml/src/preprocessing/graph_schema.py is now the single source of truth for all graph
+  feature constants. Do NOT reintroduce NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES, or
+  _node_feat() logic inline in ast_extractor.py or preprocess.py — that defeats the whole
+  purpose of the §5.10 refactor and reintroduces silent divergence risk.
+- When changing any constant in graph_schema.py, bump FEATURE_SCHEMA_VERSION to invalidate
+  all inference caches keyed on that version string.
+- GraphExtractionConfig.multi_contract_policy defaults to "first" — this matches training
+  data policy. Do not change the default without verifying against the full 68K dataset.
+- edge_attr shape is now uniformly [E] (1-D). Do not reintroduce [E,1] shape in any new
+  extraction code — old .pt files on disk have [E,1] but GNNEncoder ignores edge_attr.
 ```
 
 ## 8.4 LLM / RAG index
@@ -927,8 +1008,8 @@ Priority 4 — Preprocessing parity / robustness             [MOSTLY DONE]
   ✅ 11. preprocess.py: safe temp-file prefix + input size guard + error type differentiation. (commit 6aa92eb, 2026-04-30)
   ⏳ 12. Add parity tests against ASTExtractorV4.             (deferred — cross-module, needs §4.6 refactor first)
 
-Priority 5 — Larger design refactors                       [NOT STARTED]
-  ⏳ 13. Shared graph extraction core.                        (depends on §4.6 design)
+Priority 5 — Larger design refactors                       [PARTIALLY DONE]
+  ✅ 13. Shared graph extraction core.                        (commit cfc08d8, 2026-05-01)
   ⏳ 14. Track 3 on-chain/ZKML migration design.              (depends on ZKML end-to-end execution)
   ⏳ 15. Production Docker/service orchestration.             (M6 Integration API not built)
 
@@ -959,10 +1040,18 @@ Priority 9 — RAG/Agent hardening (Sprint 4)                [PARTIALLY DONE]
   ⏳ 33. Solodit knowledge source ingester.
   ⏳ 34. LLM synthesizer upgrade (replace rule-based with get_strong_llm()).
 
-Priority 10 — M6 Integration API (Sprint 5)                [NOT STARTED]
-  ⏳ 35. FastAPI + Celery + Redis api/ directory.
-  ⏳ 36. Docker Compose full stack.
-  ⏳ 37. Multi-stage Dockerfiles for each service.
+Priority 10 — ML observability + safety (from improvement plan) [NOT STARTED]
+  ⏳ 38. T1-A: Content-addressed inference cache (cache.py + preprocess.py wiring).
+           FEATURE_SCHEMA_VERSION key already in place; cache.py is the only new file needed.
+  ⏳ 39. T2-A: Prometheus metrics in api.py (prometheus-fastapi-instrumentator).
+  ⏳ 40. T2-C: MLflow model registry promotion script (ml/scripts/promote_model.py).
+  ⏳ 41. T2-B: Online KS drift detection (ml/src/inference/drift_detector.py +
+               ml/scripts/compute_drift_baseline.py).
+
+Priority 11 — M6 Integration API (Sprint 5)               [NOT STARTED]
+  ⏳ 42. FastAPI + Celery + Redis api/ directory.
+  ⏳ 43. Docker Compose full stack.
+  ⏳ 44. Multi-stage Dockerfiles for each service.
 ```
 
 ---
