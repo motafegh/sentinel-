@@ -222,6 +222,88 @@ Add a `S5.5 ZKML Validation` sprint row to the later sprints table once the deci
 
 ---
 
+## Post-M6: Multi-Contract Parsing (Move 9)
+
+**Why this is tracked here and not in Immediate Next:**
+This is not a pre-retrain requirement and does not block any current Move. It is
+a production gap: users submitting a file that defines `OwnerContract` + `TokenContract`
+get only the first non-dependency contract analysed. The second contract is silently
+ignored with no warning in the API response.
+
+Documented as Known Limitation #2 in `ml/README.md`.
+
+### What already exists (do not re-implement)
+
+`GraphExtractionConfig` in `ml/src/preprocessing/graph_extractor.py` already has:
+
+```python
+multi_contract_policy: str = "first"   # also supports "by_name"
+target_contract_name:  str | None = None
+```
+
+The `"by_name"` policy is already implemented and falls back to `"first"` with a
+warning if the name is not found. **Do not add a new flag.** The correct change
+is adding a `"all"` value to the existing `multi_contract_policy` field.
+
+### Implementation scope
+
+**Primary implementation point:**
+- `ml/src/preprocessing/graph_extractor.py` — `_select_contract()` and
+  `extract_contract_graph()`: add `policy="all"` branch that iterates all
+  non-dependency candidates and returns a list of `Data` objects instead of one.
+  This is the only file that changes the core extraction logic.
+
+**Pipeline propagation (each caller must handle a list):**
+- `ml/src/inference/preprocess.py` — `_extract_graph()` currently calls
+  `extract_contract_graph()` and returns a single `Data`. Needs a new method
+  `_extract_graphs_all()` (or a `multi=True` param) that returns `list[Data]`.
+  `process_source()` and `process_source_windowed()` stay single-contract by
+  default; a new `process_source_all_contracts()` entry point handles multi.
+- `ml/src/inference/predictor.py` — `predict_source()` and `_score_windowed()`
+  operate on one graph. A new `predict_source_multi()` method calls
+  `process_source_all_contracts()`, scores each contract independently, then
+  aggregates per-class probabilities with `max` across contracts (same strategy
+  as the existing `_aggregate_window_predictions()` for windows).
+- `ml/src/inference/api.py` — `PredictResponse` currently returns one implicit
+  contract result. Multi-contract mode needs either:
+  - Option A: a new `contracts_analysed: list[str]` field listing contract names,
+    with aggregated vulnerabilities (max per class) — simpler, backward compatible.
+  - Option B: a `per_contract: list[ContractResult]` field with per-contract
+    breakdowns — richer, but a breaking schema change.
+  Decide before implementing. Option A is recommended for the first version.
+
+**Cache design consideration:**
+- `ml/src/inference/cache.py` — current cache key is
+  `"{content_md5}_{FEATURE_SCHEMA_VERSION}"` and maps to one `(graph, tokens)` pair.
+  A multi-contract result from the same file is multiple graphs. The cache must
+  either store `list[(graph, tokens)]` under the same key (with a `multi=True`
+  flag in the lookup) or use per-contract sub-keys
+  `"{content_md5}_{FEATURE_SCHEMA_VERSION}_{contract_name}"`. Decide and document
+  before touching cache.py.
+
+**Documentation:**
+- `ml/README.md` — Known Limitation #2 should be updated from "not yet supported"
+  to "supported via `multi_contract_policy='all'`" once implemented.
+
+### What does NOT change
+- `graph_schema.py` — no constants change; node features are per-contract, not per-file
+- Training data / retrain — not required; this is an inference-pipeline-only change
+- `ast_extractor.py` — offline batch pipeline processes one contract per file by design
+  (the BCCC-SCsVul-2024 dataset has one contract per `.sol` file)
+
+### Affected files summary
+
+| File | Change type |
+|------|-------------|
+| `ml/src/preprocessing/graph_extractor.py` | Core logic — add `"all"` policy to `_select_contract()` and `extract_contract_graph()` |
+| `ml/src/inference/preprocess.py` | New `process_source_all_contracts()` entry point |
+| `ml/src/inference/predictor.py` | New `predict_source_multi()` + max aggregation across contracts |
+| `ml/src/inference/api.py` | `PredictResponse` schema extension; new optional `contracts_analysed` field |
+| `ml/src/inference/cache.py` | Cache key strategy decision for multi-contract results |
+| `ml/README.md` | Known Limitation #2 update once implemented |
+
+---
+
 ## Unit Test Plan for New Stateful Modules
 
 These modules are IO-heavy and stateful — bugs are silent and expensive without tests.
@@ -232,6 +314,7 @@ Add these before or alongside each Move:
 | `cache.py` | Move 2 | Cache miss writes files; cache hit returns same object; TTL expiry evicts entry; cache key includes schema version |
 | `drift_detector.py` | Move 7 | Warm-up mode suppresses alerts; KS fires on p < 0.05; buffer rolls after 200 requests |
 | `promote_model.py` | Move 4 | CLI rejects unknown stage names; MLflow tags are written; dry-run mode does not register |
+| Multi-contract pipeline | Move 9 | Two-contract file returns two graphs; max aggregation takes highest prob per class; cache stores and retrieves multi-result correctly; `contracts_analysed` list in response matches input file |
 
 ---
 
