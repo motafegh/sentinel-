@@ -40,9 +40,17 @@ from pathlib import Path
 import torch  # Bug 1 fix — was missing; needed for torch.cuda.OutOfMemoryError + empty_cache()
 from fastapi import FastAPI, HTTPException, Request
 from loguru import logger
+from prometheus_client import Gauge
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field, field_validator
 
 from ml.src.inference.predictor import Predictor
+
+# ---------------------------------------------------------------------------
+# Prometheus — custom gauges
+# ---------------------------------------------------------------------------
+_gauge_model_loaded  = Gauge("sentinel_model_loaded",      "1 if the predictor is loaded, 0 otherwise")
+_gauge_gpu_mem_bytes = Gauge("sentinel_gpu_memory_bytes",  "Current GPU memory allocated (bytes)")
 
 CHECKPOINT: str = os.getenv(
     "SENTINEL_CHECKPOINT",
@@ -72,8 +80,10 @@ async def lifespan(app: FastAPI):
         )
 
     app.state.predictor = Predictor(checkpoint=CHECKPOINT)
+    _gauge_model_loaded.set(1)
     logger.info("Predictor ready — API accepting requests")
     yield
+    _gauge_model_loaded.set(0)
     logger.info("SENTINEL API shutting down")
 
 
@@ -87,6 +97,8 @@ app = FastAPI(
     version="3.0.0",
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 
 # ------------------------------------------------------------------
@@ -185,6 +197,9 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
     except Exception as exc:
         logger.exception(f"Inference error: {exc}")  # exception() logs full traceback
         raise HTTPException(status_code=500, detail="Inference failed.")
+
+    if torch.cuda.is_available():
+        _gauge_gpu_mem_bytes.set(torch.cuda.memory_allocated())
 
     logger.info(
         f"Complete — label={result['label']} "
