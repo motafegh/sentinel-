@@ -401,7 +401,12 @@ def train(config: TrainConfig) -> None:
     val_indices   = np.load(Path(config.splits_dir) / "val_indices.npy")
 
     label_csv_path = Path(config.label_csv) if config.label_csv else None
-    cache_path     = Path(config.cache_path) if config.cache_path else None
+    if label_csv_path is not None and not label_csv_path.exists():
+        raise FileNotFoundError(
+            f"label_csv not found: {label_csv_path}. "
+            "Check TrainConfig.label_csv or run build_multilabel_index.py first."
+        )
+    cache_path = Path(config.cache_path) if config.cache_path else None
 
     logger.info("Creating training dataset...")
     train_dataset = DualPathDataset(
@@ -500,6 +505,24 @@ def train(config: TrainConfig) -> None:
         start_epoch = ckpt.get("epoch", 0) + 1
         best_f1     = ckpt.get("best_f1", 0.0)
         logger.info(f"Resumed from epoch {start_epoch-1} | best_f1={best_f1:.4f}")
+
+        # Cross-check checkpoint config against current training config to catch
+        # accidental resume from a checkpoint trained with different settings.
+        ckpt_cfg = ckpt.get("config", {})
+        ckpt_num_classes = ckpt_cfg.get("num_classes")
+        if ckpt_num_classes is not None and ckpt_num_classes != config.num_classes:
+            raise ValueError(
+                f"Checkpoint num_classes={ckpt_num_classes} does not match "
+                f"config.num_classes={config.num_classes}. "
+                "Fix TrainConfig or remove resume_from."
+            )
+        ckpt_arch = ckpt_cfg.get("architecture")
+        if ckpt_arch is not None and ckpt_arch != config.architecture:
+            raise ValueError(
+                f"Checkpoint architecture='{ckpt_arch}' does not match "
+                f"config.architecture='{config.architecture}'. "
+                "Mismatched architectures will corrupt the state_dict load."
+            )
 
     # ------------------------------------------------------------------
     # Loss, optimizer, scheduler
