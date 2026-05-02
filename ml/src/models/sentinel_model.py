@@ -27,6 +27,8 @@ WHAT DID NOT CHANGE:
 
 from __future__ import annotations
 
+from typing import List, Optional
+
 import torch
 import torch.nn as nn
 from loguru import logger
@@ -42,50 +44,81 @@ class SentinelModel(nn.Module):
     Dual-path smart contract vulnerability detection model.
 
     Two parallel paths:
-        GNN path:         contract graph  → node embeddings [N, 64]
+        GNN path:         contract graph  → node embeddings [N, gnn_hidden_dim]
         Transformer path: token sequence  → all token embeddings [B, 512, 768]
 
     CrossAttentionFusion:
         Nodes attend to real tokens (PAD positions masked).
         Tokens attend to real nodes (padding positions masked).
         Both pools use masked mean. Pool AFTER enrichment.
-        Output: [B, 128]
+        Output: [B, fusion_output_dim]
 
     Classifier:
-        Linear(128, num_classes) → raw logits (no Sigmoid).
+        Linear(fusion_output_dim, num_classes) → raw logits (no Sigmoid).
         Sigmoid applied externally.
 
     Args:
-        num_classes:       10 for Track 3 multi-label (default).
-                           Pass num_classes=1 explicitly for binary mode.
-        fusion_output_dim: width of the fused representation (default: 128)
-        dropout:           shared dropout rate for fusion + classifier (default: 0.3)
+        num_classes:          10 for Track 3 multi-label (default).
+                              Pass num_classes=1 explicitly for binary mode.
+        fusion_output_dim:    Width of the fused representation (default: 128).
+        dropout:              Shared dropout for fusion + classifier (default: 0.3).
+
+        --- GNN hyperparameters ---
+        gnn_hidden_dim:       GNN node embedding width (default: 64).
+        gnn_heads:            GAT attention heads (default: 8).
+        gnn_dropout:          GNN attention + node dropout (default: 0.2).
+        use_edge_attr:        Feed edge type embeddings into GATConv (default: True).
+        gnn_edge_emb_dim:     Dimension of learned edge-type embedding (default: 16).
+
+        --- LoRA hyperparameters (forwarded to TransformerEncoder) ---
+        lora_r:               LoRA rank (default: 8).
+        lora_alpha:           LoRA scale alpha (default: 16; effective scale = alpha/r).
+        lora_dropout:         LoRA path dropout (default: 0.1).
+        lora_target_modules:  Which attention projections to adapt (default: ["query","value"]).
     """
 
     def __init__(
         self,
-        fusion_output_dim: int   = 128,
-        dropout:           float = 0.3,
+        fusion_output_dim:    int            = 128,
+        dropout:              float          = 0.3,
         # Fix #3: default changed from 1 → 10.
-        # Old default of 1 silently activated binary mode when the caller
-        # forgot to pass num_classes, making it very easy to train the wrong head.
-        # Callers that genuinely want binary mode must now pass num_classes=1.
-        num_classes:       int   = 10,
+        num_classes:          int            = 10,
+        # GNN architecture
+        gnn_hidden_dim:       int            = 64,
+        gnn_heads:            int            = 8,
+        gnn_dropout:          float          = 0.2,
+        use_edge_attr:        bool           = True,
+        gnn_edge_emb_dim:     int            = 16,
+        # LoRA architecture
+        lora_r:               int            = 8,
+        lora_alpha:           int            = 16,
+        lora_dropout:         float          = 0.1,
+        lora_target_modules:  Optional[List[str]] = None,
     ) -> None:
         super().__init__()
 
-        self.num_classes = num_classes
+        self.num_classes  = num_classes
+        self.use_edge_attr = use_edge_attr
 
-        # Sub-modules are registered automatically for .to(device) / .eval() /
-        # optimizer parameter collection.
-        self.gnn         = GNNEncoder()
-        self.transformer = TransformerEncoder()   # LoRA inside; returns all tokens
-        self.fusion      = CrossAttentionFusion(
-            node_dim=64,
+        self.gnn = GNNEncoder(
+            hidden_dim=gnn_hidden_dim,
+            heads=gnn_heads,
+            dropout=gnn_dropout,
+            use_edge_attr=use_edge_attr,
+            edge_emb_dim=gnn_edge_emb_dim,
+        )
+        self.transformer = TransformerEncoder(
+            lora_r=lora_r,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            lora_target_modules=lora_target_modules,
+        )
+        self.fusion = CrossAttentionFusion(
+            node_dim=gnn_hidden_dim,   # must match GNNEncoder output width
             token_dim=768,
             attn_dim=256,
             num_heads=8,
-            output_dim=fusion_output_dim,         # 128
+            output_dim=fusion_output_dim,
             dropout=dropout,
         )
 
@@ -94,7 +127,9 @@ class SentinelModel(nn.Module):
 
         logger.info(
             f"SentinelModel initialised — cross-attention architecture | "
-            f"num_classes={num_classes} | fusion_output={fusion_output_dim}"
+            f"num_classes={num_classes} | fusion_output={fusion_output_dim} | "
+            f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} edge_attr={use_edge_attr} | "
+            f"lora_r={lora_r} lora_alpha={lora_alpha}"
         )
 
     def forward(
@@ -117,9 +152,10 @@ class SentinelModel(nn.Module):
         # ── GNN path ──────────────────────────────────────────────────────
         # Returns un-pooled node embeddings so each node can query tokens
         # BEFORE pooling loses node-level resolution.
-        node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch)
-        # node_embs: [N, 64]  — N = total nodes across all B contracts in batch
-        # batch:     [N]      — maps each node to its contract index 0…B-1
+        edge_attr = getattr(graphs, "edge_attr", None) if self.use_edge_attr else None
+        node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
+        # node_embs: [N, gnn_hidden_dim]  — N = total nodes across B contracts
+        # batch:     [N]                  — maps each node to its contract index 0…B-1
 
         # ── Transformer path ───────────────────────────────────────────────
         # Returns all 512 token positions, not just the CLS summary.

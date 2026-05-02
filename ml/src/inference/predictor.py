@@ -294,16 +294,67 @@ class Predictor:
     def predict(self, sol_path: str | Path) -> dict:
         """Score a Solidity contract file on disk."""
         graph, tokens = self.preprocessor.process(sol_path)
-        return self._score(graph, tokens)
+        result = self._score(graph, tokens)
+        result["windows_used"] = 1
+        return result
 
     def predict_source(self, source_code: str, name: str = "contract") -> dict:
-        """Score a raw Solidity source string."""
-        graph, tokens = self.preprocessor.process_source(source_code, name=name)
-        return self._score(graph, tokens)
+        """
+        Score a raw Solidity source string.
+
+        For contracts ≤ 512 tokens: single forward pass (same as before).
+        For contracts > 512 tokens: sliding-window tokenization (T1-C).
+            Each window is scored independently; class probabilities are aggregated
+            by max across windows so late-file patterns (e.g. withdrawal logic at
+            line 400+) are not silently truncated.
+        """
+        graph, windows = self.preprocessor.process_source_windowed(source_code)
+
+        if len(windows) == 1:
+            result = self._score(graph, windows[0])
+            result["windows_used"] = 1
+            return result
+
+        return self._score_windowed(graph, windows)
+
+    @staticmethod
+    def _aggregate_window_predictions(
+        probs_list: list[torch.Tensor],
+    ) -> torch.Tensor:
+        """
+        Aggregate per-window probability tensors into a single class vector.
+
+        Strategy: max probability per class across all windows.
+        Rationale: a vulnerability is present if ANY window detects it above
+        threshold. Taking the max preserves the strongest signal regardless of
+        window position — a reentrancy buried at line 400 will not be diluted
+        by averaging with the safe preamble at lines 1-100.
+        """
+        return torch.stack(probs_list).max(dim=0).values  # [num_classes]
+
+    def _score_windowed(self, graph, windows: list[dict]) -> dict:
+        """Run forward pass for each window, aggregate, and format result."""
+        self.model.eval()
+        batch = Batch.from_data_list([graph]).to(self.device)
+
+        per_window_probs: list[torch.Tensor] = []
+        with torch.no_grad():
+            for window in windows:
+                input_ids = window["input_ids"].to(self.device)      # [1, 512]
+                attention_mask = window["attention_mask"].to(self.device)  # [1, 512]
+                logits = self.model(batch, input_ids, attention_mask)
+                per_window_probs.append(torch.sigmoid(logits.float()).squeeze(0))
+
+        agg_probs = self._aggregate_window_predictions(per_window_probs)  # [num_classes]
+
+        # Use the truncated flag from the first window (it reflects the source length)
+        first_window = windows[0]
+        result = self._format_result(graph, agg_probs, first_window, len(windows))
+        return result
 
     def _score(self, graph, tokens: dict) -> dict:
         """
-        Run forward pass, return structured multi-label result.
+        Run forward pass for a single token window and return structured result.
 
         Sigmoid applied here — NOT inside model (BCEWithLogitsLoss compatibility).
         Per‑class thresholds are applied instead of a single global threshold.
@@ -317,6 +368,7 @@ class Predictor:
                 ],
                 "threshold": float,   # fallback threshold (see note below)
                 "truncated": bool,
+                "windows_used": int,  # always 1 from this path
                 "num_nodes": int,
                 "num_edges": int,
             }
@@ -324,29 +376,39 @@ class Predictor:
         Note on "threshold":
             When per-class thresholds are loaded from JSON, self.threshold is
             the fallback float and does NOT represent the actual decision
-            boundaries used. A future schema version should return the full
-            per-class threshold dict instead. Until then, consumers should
-            check thresholds_loaded on the predictor to know which mode is
-            active. Tracked as audit finding #6.
+            boundaries used. Tracked as audit finding #6.
         """
         self.model.eval()
 
         with torch.no_grad():
             batch = Batch.from_data_list([graph]).to(self.device)
-            input_ids = tokens["input_ids"].to(self.device)
-            attention_mask = tokens["attention_mask"].to(self.device)
+            input_ids = tokens["input_ids"].to(self.device)       # [1, 512]
+            attention_mask = tokens["attention_mask"].to(self.device)  # [1, 512]
 
             logits = self.model(batch, input_ids, attention_mask)  # [1, num_classes]
-            probs = torch.sigmoid(logits.float())  # cast to FP32 before sigmoid (BF16 guard)
+            probs = torch.sigmoid(logits.float()).squeeze(0)       # [num_classes]
 
-        probs_list: list[float] = probs.squeeze(0).cpu().tolist()
+        return self._format_result(graph, probs, tokens, windows_used=1)
+
+    def _format_result(
+        self,
+        graph,
+        probs: torch.Tensor,   # [num_classes] CPU or GPU
+        tokens: dict,
+        windows_used: int,
+    ) -> dict:
+        """Convert probability tensor + metadata into the canonical result dict."""
+        probs_cpu = probs.cpu()
+        probs_list: list[float] = probs_cpu.tolist()
         if isinstance(probs_list, float):
             probs_list = [probs_list]
 
         # Bug 3 fix — emit canonical key 'vulnerability_class' (was 'class').
         vulnerabilities = [
-            {"vulnerability_class": name, "probability": round(prob, 4)}
-            for name, prob, thresh in zip(self._class_names, probs_list, self.thresholds.cpu())
+            {"vulnerability_class": cls_name, "probability": round(prob, 4)}
+            for cls_name, prob, thresh in zip(
+                self._class_names, probs_list, self.thresholds.cpu()
+            )
             if prob >= thresh.item()
         ]
         vulnerabilities.sort(key=lambda x: x["probability"], reverse=True)
@@ -356,14 +418,15 @@ class Predictor:
         logger.info(
             f"Label: {label} | {len(vulnerabilities)} class(es) above thresholds | "
             f"nodes={graph.num_nodes} edges={graph.num_edges} "
-            f"truncated={tokens['truncated']}"
+            f"truncated={tokens.get('truncated', False)} windows={windows_used}"
         )
 
         return {
             "label": label,
             "vulnerabilities": vulnerabilities,
-            "threshold": self.threshold,  # fallback float; see _score docstring for caveat
-            "truncated": tokens["truncated"],
+            "threshold": self.threshold,
+            "truncated": tokens.get("truncated", False),
+            "windows_used": windows_used,
             "num_nodes": int(graph.num_nodes),
             "num_edges": int(graph.num_edges),
         }
