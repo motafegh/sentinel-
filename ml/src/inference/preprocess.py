@@ -81,6 +81,7 @@ from ..preprocessing.graph_extractor import (
 )
 from ..preprocessing.graph_schema import FEATURE_SCHEMA_VERSION
 from ..utils.hash_utils import get_contract_hash, get_contract_hash_from_content
+from .cache import InferenceCache
 
 
 class ContractPreprocessor:
@@ -90,6 +91,11 @@ class ContractPreprocessor:
     Instantiate once per process; reuse across many requests.
     The only expensive initialisation is AutoTokenizer.from_pretrained()
     which downloads/caches the CodeBERT vocab on first call.
+
+    Args:
+        cache: Optional InferenceCache. When supplied, process_source() checks
+               the cache before running Slither and writes on miss. Eliminates
+               the 3-5s Slither cost for repeated contracts (T1-A).
 
     Public API:
       process(sol_path)            — contract file already on disk
@@ -104,12 +110,15 @@ class ContractPreprocessor:
     # api.py also enforces this at the HTTP boundary; this is a defence-in-depth guard.
     MAX_SOURCE_BYTES = 1 * 1024 * 1024  # 1 MB
 
-    def __init__(self) -> None:
+    def __init__(self, cache: InferenceCache | None = None) -> None:
         logger.info("ContractPreprocessor initialising...")
         # Load CodeBERT tokenizer once — reused for every request.
         # Must match tokenizer_v1_production.py used during offline preprocessing.
         self.tokenizer = AutoTokenizer.from_pretrained(self.TOKENIZER_NAME)
-        logger.info("ContractPreprocessor ready")
+        self._cache    = cache
+        logger.info(
+            f"ContractPreprocessor ready | cache={'enabled' if cache else 'disabled'}"
+        )
 
     # ─────────────────────────────────────────────────────────────────────────
     # Public API
@@ -203,6 +212,16 @@ class ContractPreprocessor:
         # loaded after a feature-engineering change.
         contract_hash = f"{content_hash}_{FEATURE_SCHEMA_VERSION}"
 
+        # ── T1-A: Cache lookup ─────────────────────────────────────────────
+        # Hit: skip Slither (3-5 s) and tokenizer; return cached tensors directly.
+        # Miss: run full pipeline and write to cache at the end.
+        if self._cache is not None:
+            cached = self._cache.get(contract_hash)
+            if cached is not None:
+                graph, tokens = cached
+                logger.info(f"Cache hit — skipped Slither for {name!r}")
+                return graph, tokens
+
         # Sanitise name for use as a temp-file prefix.
         safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name[:32])
 
@@ -227,6 +246,11 @@ class ContractPreprocessor:
                 logger.warning(f"Failed to delete temp file {tmp.name}: {exc}")
 
         tokens = self._tokenize(source_code, contract_hash)
+
+        # ── T1-A: Cache write ──────────────────────────────────────────────
+        if self._cache is not None:
+            self._cache.put(contract_hash, graph, tokens)
+
         self._log_result(graph, tokens)
         return graph, tokens
 

@@ -140,7 +140,26 @@ class TrainConfig:
     checkpoint_name: str = "multilabel_crossattn_best.pt"
 
     # --- Model ---
-    num_classes: int = NUM_CLASSES
+    num_classes:       int   = NUM_CLASSES
+    fusion_output_dim: int   = 128
+    fusion_dropout:    float = 0.3
+
+    # --- GNN architecture (P0-C) ---
+    # Defaults match original hardcoded architecture; change before retraining
+    # to explore wider GNNs or different head counts.
+    gnn_hidden_dim:   int   = 64
+    gnn_heads:        int   = 8
+    gnn_dropout:      float = 0.2
+    use_edge_attr:    bool  = True   # feed edge-type embeddings into GATConv (P0-B)
+    gnn_edge_emb_dim: int   = 16     # dimension of learned edge-type embedding
+
+    # --- LoRA architecture (P0-A) ---
+    # Defaults match original hardcoded LORA_CONFIG; tune r/alpha before retraining.
+    # Higher r → more capacity and params; scale = lora_alpha/lora_r.
+    lora_r:               int        = 8
+    lora_alpha:           int        = 16
+    lora_dropout:         float      = 0.1
+    lora_target_modules:  list[str]  = field(default_factory=lambda: ["query", "value"])
 
     # --- Label source ---
     label_csv: str = "ml/data/processed/multilabel_index.csv"
@@ -447,7 +466,20 @@ def train(config: TrainConfig) -> None:
     # ------------------------------------------------------------------
     # Model
     # ------------------------------------------------------------------
-    model = SentinelModel(num_classes=config.num_classes).to(device)
+    model = SentinelModel(
+        num_classes=config.num_classes,
+        fusion_output_dim=config.fusion_output_dim,
+        dropout=config.fusion_dropout,
+        gnn_hidden_dim=config.gnn_hidden_dim,
+        gnn_heads=config.gnn_heads,
+        gnn_dropout=config.gnn_dropout,
+        use_edge_attr=config.use_edge_attr,
+        gnn_edge_emb_dim=config.gnn_edge_emb_dim,
+        lora_r=config.lora_r,
+        lora_alpha=config.lora_alpha,
+        lora_dropout=config.lora_dropout,
+        lora_target_modules=config.lora_target_modules,
+    ).to(device)
 
     # ------------------------------------------------------------------
     # Resume: load model weights BEFORE building the scheduler so we know
@@ -556,7 +588,7 @@ def train(config: TrainConfig) -> None:
         params = {
             "num_classes":          config.num_classes,
             "epochs":               config.epochs,
-            "remaining_epochs":     remaining_epochs,   # visible in MLflow for resumed runs
+            "remaining_epochs":     remaining_epochs,
             "batch_size":           config.batch_size,
             "lr":                   config.lr,
             "weight_decay":         config.weight_decay,
@@ -572,6 +604,18 @@ def train(config: TrainConfig) -> None:
             "resume_from":          config.resume_from or "none",
             "resume_model_only":    config.resume_model_only,
             "early_stop_patience":  config.early_stop_patience,
+            # GNN architecture (P0-C)
+            "gnn_hidden_dim":       config.gnn_hidden_dim,
+            "gnn_heads":            config.gnn_heads,
+            "gnn_dropout":          config.gnn_dropout,
+            "use_edge_attr":        config.use_edge_attr,
+            "gnn_edge_emb_dim":     config.gnn_edge_emb_dim,
+            # LoRA architecture (P0-A)
+            "lora_r":               config.lora_r,
+            "lora_alpha":           config.lora_alpha,
+            "lora_dropout":         config.lora_dropout,
+            "lora_target_modules":  ",".join(config.lora_target_modules),
+            "fusion_output_dim":    config.fusion_output_dim,
         }
         for name, pw in zip(CLASS_NAMES[:config.num_classes], pos_weight.cpu().tolist()):
             params[f"pos_weight_{name}"] = round(pw, 3)
