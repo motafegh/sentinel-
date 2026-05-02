@@ -59,7 +59,6 @@ Last updated: 2026-05-02
 | T3-A LLM synthesizer | `nodes.py:synthesizer()` still uses rule-based output |
 | T3-B Cross-encoder reranking | `retriever.py` rerank param not yet added |
 | Audit items #9/#11 | Temp file SIGKILL (`preprocess.py`), RAM cache integrity check (`dual_path_dataset.py`) |
-| Audit item #13 | **Already fixed** — FocalLoss `.float()` cast committed 2026-05-01 (Fix #2 + Fix #6 in focalloss.py and _FocalFromLogits). Remove from open items. |
 | Graph dataset edge_attr | No script confirms `edge_attr` tensors are present in `ml/data/graphs/*.pt` files. P0-B degrades gracefully to zero-vectors if absent — but **signal is lost silently**. `validate_graph_dataset.py` needed before retrain. |
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
 | ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it |
