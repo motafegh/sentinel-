@@ -48,9 +48,10 @@ try:
 except ImportError as e:
     raise ImportError("transformers not installed. Run: poetry add transformers") from e
 
-# Our hash utility
+# Our hash utility + schema version for metadata tracking
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.utils.hash_utils import get_contract_hash, get_filename_from_hash
+from src.preprocessing.graph_schema import FEATURE_SCHEMA_VERSION
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -173,14 +174,15 @@ def tokenize_single_contract(contract_path: str) -> Optional[Dict[str, Any]]:
         
         # Step 6: Package result
         result = {
-            'input_ids': input_ids,                    # (512,) tensor
-            'attention_mask': attention_mask,          # (512,) tensor
-            'contract_hash': contract_hash,            # MD5 hash
-            'contract_path': str(contract_path),       # Source file
-            'num_tokens': num_real_tokens,             # Actual tokens
-            'truncated': truncated,                    # Was it cut?
-            'tokenizer_name': TOKENIZER_MODEL,         # Reproducibility
-            'max_length': MAX_LENGTH                   # Config
+            'input_ids': input_ids,                            # (512,) tensor
+            'attention_mask': attention_mask,                  # (512,) tensor
+            'contract_hash': contract_hash,                    # MD5 hash
+            'contract_path': str(contract_path),               # Source file
+            'num_tokens': num_real_tokens,                     # Actual tokens
+            'truncated': truncated,                            # Was it cut?
+            'tokenizer_name': TOKENIZER_MODEL,                 # Reproducibility
+            'max_length': MAX_LENGTH,                          # Config
+            'feature_schema_version': FEATURE_SCHEMA_VERSION,  # Graph schema version at extraction time
         }
         
         return result

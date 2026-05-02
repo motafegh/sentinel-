@@ -117,6 +117,7 @@ class PredictResponse(BaseModel):
     vulnerabilities: list[VulnerabilityResult]
     threshold: float
     truncated: bool
+    windows_used: int = Field(default=1, ge=1, description="Number of token windows scored (>1 for long contracts)")
     num_nodes: int
     num_edges: int
 
@@ -187,7 +188,8 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
 
     logger.info(
         f"Complete — label={result['label']} "
-        f"detected={len(result['vulnerabilities'])} classes"
+        f"detected={len(result['vulnerabilities'])} classes "
+        f"windows={result.get('windows_used', 1)}"
     )
 
     return PredictResponse(
@@ -201,6 +203,7 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
         ],
         threshold=result["threshold"],
         truncated=result["truncated"],
+        windows_used=result.get("windows_used", 1),
         num_nodes=result["num_nodes"],
         num_edges=result["num_edges"],
     )
