@@ -26,6 +26,8 @@ from pathlib import Path
 
 import torch
 
+NUM_EDGE_TYPES = 5  # CALLS READS WRITES EMITS INHERITS — mirror of graph_schema.py
+
 
 def validate(graphs_dir: Path) -> int:
     pt_files = sorted(graphs_dir.glob("*.pt"))
@@ -34,9 +36,11 @@ def validate(graphs_dir: Path) -> int:
         return 1
 
     total = len(pt_files)
-    has_attr: list[Path] = []
+    has_attr:    list[Path] = []
     missing_attr: list[Path] = []
-    load_errors: list[tuple[Path, str]] = []
+    shape_errors: list[tuple[Path, str]] = []   # [E,1] instead of [E], etc.
+    value_errors: list[tuple[Path, str]] = []   # values outside [0, NUM_EDGE_TYPES)
+    load_errors:  list[tuple[Path, str]] = []
 
     for path in pt_files:
         try:
@@ -45,40 +49,68 @@ def validate(graphs_dir: Path) -> int:
             load_errors.append((path, str(exc)))
             continue
 
-        if hasattr(data, "edge_attr") and data.edge_attr is not None:
-            has_attr.append(path)
-        else:
+        if not hasattr(data, "edge_attr") or data.edge_attr is None:
             missing_attr.append(path)
+            continue
+
+        ea = data.edge_attr
+
+        # Shape check: must be 1-D [E].  Pre-refactor files may be [E, 1].
+        if ea.dim() != 1:
+            shape_errors.append((
+                path,
+                f"edge_attr.shape={tuple(ea.shape)} — expected 1-D [E], "
+                f"got {ea.dim()}-D. Regenerate with ast_extractor.py.",
+            ))
+            continue
+
+        # Value-range check: all IDs must be in [0, NUM_EDGE_TYPES).
+        if ea.numel() > 0:
+            mn, mx = int(ea.min().item()), int(ea.max().item())
+            if mn < 0 or mx >= NUM_EDGE_TYPES:
+                value_errors.append((
+                    path,
+                    f"edge_attr values [{mn}, {mx}] outside [0, {NUM_EDGE_TYPES}). "
+                    "Check EDGE_TYPES in graph_schema.py.",
+                ))
+                continue
+
+        has_attr.append(path)
+
+    failed = len(missing_attr) + len(shape_errors) + len(value_errors) + len(load_errors)
 
     print(f"\nGraph dataset validation — {graphs_dir}")
     print(f"  Total files      : {total}")
-    print(f"  With edge_attr   : {len(has_attr)}")
+    print(f"  PASS             : {len(has_attr)}")
     print(f"  Missing edge_attr: {len(missing_attr)}")
+    print(f"  Shape errors     : {len(shape_errors)}  (expected [E], got [E,1] or other)")
+    print(f"  Value errors     : {len(value_errors)}  (IDs outside [0, {NUM_EDGE_TYPES}))")
     print(f"  Load errors      : {len(load_errors)}")
 
-    if load_errors:
-        print("\nLoad errors:")
-        for path, err in load_errors[:5]:
-            print(f"  {path.name}: {err}")
-        if len(load_errors) > 5:
-            print(f"  ... and {len(load_errors) - 5} more")
+    def _print_list(items: list, label: str) -> None:
+        if not items:
+            return
+        print(f"\n{label}:")
+        for path, msg in items[:5]:
+            print(f"  {path.name}: {msg}")
+        if len(items) > 5:
+            print(f"  ... and {len(items) - 5} more")
+
+    _print_list(load_errors,  "Load errors")
+    _print_list(missing_attr, "Files missing edge_attr")  # type: ignore[arg-type]
+    _print_list(shape_errors, "Shape errors")
+    _print_list(value_errors, "Value errors")
 
     if missing_attr:
-        print("\nFiles missing edge_attr (first 10):")
-        for path in missing_attr[:10]:
-            print(f"  {path.name}")
-        if len(missing_attr) > 10:
-            print(f"  ... and {len(missing_attr) - 10} more")
         print(
             "\nFIX: re-run ast_extractor.py to regenerate graphs with edge_attr.\n"
             "     See ml/src/preprocessing/graph_schema.py CHANGE POLICY."
         )
+
+    if failed:
         return 1
 
-    if load_errors:
-        return 1
-
-    print("\nPASS: all graph files have edge_attr. Safe to retrain.")
+    print("\nPASS: all graph files have valid edge_attr. Safe to retrain.")
     return 0
 
 
