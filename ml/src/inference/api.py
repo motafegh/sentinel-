@@ -40,9 +40,25 @@ from pathlib import Path
 import torch  # Bug 1 fix — was missing; needed for torch.cuda.OutOfMemoryError + empty_cache()
 from fastapi import FastAPI, HTTPException, Request
 from loguru import logger
+from prometheus_client import Gauge
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field, field_validator
 
+from ml.src.inference.drift_detector import DriftDetector
 from ml.src.inference.predictor import Predictor
+
+DRIFT_BASELINE_PATH: str = os.getenv(
+    "SENTINEL_DRIFT_BASELINE",
+    "ml/data/drift_baseline.json",
+)
+# Run a KS check every N requests (balance: lower = more responsive, higher = cheaper).
+DRIFT_CHECK_INTERVAL: int = int(os.getenv("SENTINEL_DRIFT_CHECK_INTERVAL", "50"))
+
+# ---------------------------------------------------------------------------
+# Prometheus — custom gauges
+# ---------------------------------------------------------------------------
+_gauge_model_loaded  = Gauge("sentinel_model_loaded",      "1 if the predictor is loaded, 0 otherwise")
+_gauge_gpu_mem_bytes = Gauge("sentinel_gpu_memory_bytes",  "Current GPU memory allocated (bytes)")
 
 CHECKPOINT: str = os.getenv(
     "SENTINEL_CHECKPOINT",
@@ -72,8 +88,14 @@ async def lifespan(app: FastAPI):
         )
 
     app.state.predictor = Predictor(checkpoint=CHECKPOINT)
+    _gauge_model_loaded.set(1)
+
+    app.state.drift_detector = DriftDetector(baseline_path=DRIFT_BASELINE_PATH)
+    app.state.request_count  = 0
+
     logger.info("Predictor ready — API accepting requests")
     yield
+    _gauge_model_loaded.set(0)
     logger.info("SENTINEL API shutting down")
 
 
@@ -87,6 +109,8 @@ app = FastAPI(
     version="3.0.0",
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 
 # ------------------------------------------------------------------
@@ -150,7 +174,8 @@ async def health(request: Request) -> dict:
 @app.post("/predict", response_model=PredictResponse)
 async def predict(request: Request, body: PredictRequest) -> PredictResponse:
     """Score a Solidity contract for multi-label vulnerability detection."""
-    predictor: Predictor | None = getattr(request.app.state, "predictor", None)
+    predictor:       Predictor | None       = getattr(request.app.state, "predictor", None)
+    drift_detector:  DriftDetector | None   = getattr(request.app.state, "drift_detector", None)
     if predictor is None:
         raise HTTPException(status_code=503, detail="Model not loaded.")
 
@@ -185,6 +210,25 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
     except Exception as exc:
         logger.exception(f"Inference error: {exc}")  # exception() logs full traceback
         raise HTTPException(status_code=500, detail="Inference failed.")
+
+    try:
+        if torch.cuda.is_available():
+            _gauge_gpu_mem_bytes.set(torch.cuda.memory_allocated())
+    except Exception as _prom_exc:
+        logger.debug(f"Prometheus gauge update failed: {_prom_exc}")
+
+    # T2-B: drift detection — update per request, check every DRIFT_CHECK_INTERVAL
+    if drift_detector is not None:
+        try:
+            drift_detector.update_stats({
+                "num_nodes": float(result["num_nodes"]),
+                "num_edges": float(result["num_edges"]),
+            })
+            request.app.state.request_count += 1
+            if request.app.state.request_count % DRIFT_CHECK_INTERVAL == 0:
+                drift_detector.check()
+        except Exception as _drift_exc:
+            logger.debug(f"Drift detector update failed: {_drift_exc}")
 
     logger.info(
         f"Complete — label={result['label']} "

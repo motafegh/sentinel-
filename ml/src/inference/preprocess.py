@@ -62,6 +62,8 @@ SHAPE CONTRACT  (must match training data — do not change without retraining)
 
 from __future__ import annotations
 
+import atexit
+import glob
 import os
 import tempfile
 from pathlib import Path
@@ -82,6 +84,43 @@ from ..preprocessing.graph_extractor import (
 from ..preprocessing.graph_schema import FEATURE_SCHEMA_VERSION
 from ..utils.hash_utils import get_contract_hash, get_contract_hash_from_content
 from .cache import InferenceCache
+
+# ---------------------------------------------------------------------------
+# SIGKILL-safe temp file management (Audit #9)
+# ---------------------------------------------------------------------------
+# SIGKILL cannot be caught. We use two complementary strategies:
+#   1. atexit handler — runs on normal exit and SIGTERM; cleans in-flight temps.
+#   2. Startup scan   — purges orphaned files left by a prior SIGKILL.
+# Both strategies rely on the fixed prefix "sentinel_prep_" to identify files.
+
+_SENTINEL_TMP_PREFIX = "sentinel_prep_"
+_active_temp_files: set[str] = set()
+
+
+def _cleanup_active_temp_files() -> None:
+    """atexit handler: remove any temp files that are still registered."""
+    for path in list(_active_temp_files):
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+atexit.register(_cleanup_active_temp_files)
+
+
+def _purge_orphaned_sentinel_temps() -> None:
+    """
+    Delete any sentinel_prep_*.sol files left in the system temp dir by a
+    previous process that was killed with SIGKILL.  Called once at startup.
+    """
+    pattern = os.path.join(tempfile.gettempdir(), f"{_SENTINEL_TMP_PREFIX}*.sol")
+    for orphan in glob.glob(pattern):
+        try:
+            os.unlink(orphan)
+            logger.debug(f"Purged orphaned temp file from previous run: {orphan}")
+        except OSError:
+            pass
 
 
 class ContractPreprocessor:
@@ -112,6 +151,7 @@ class ContractPreprocessor:
 
     def __init__(self, cache: InferenceCache | None = None) -> None:
         logger.info("ContractPreprocessor initialising...")
+        _purge_orphaned_sentinel_temps()  # Audit #9: clean up SIGKILL survivors
         # Load CodeBERT tokenizer once — reused for every request.
         # Must match tokenizer_v1_production.py used during offline preprocessing.
         self.tokenizer = AutoTokenizer.from_pretrained(self.TOKENIZER_NAME)
@@ -227,13 +267,15 @@ class ContractPreprocessor:
 
         # delete=False: we must close the file before Slither opens it (required
         # on some platforms). The finally block guarantees cleanup.
+        # Fixed prefix lets _purge_orphaned_sentinel_temps() find leftovers on restart.
         tmp = tempfile.NamedTemporaryFile(
             suffix=".sol",
-            prefix=f"sentinel_{safe_name}_",
+            prefix=_SENTINEL_TMP_PREFIX,
             mode="w",
             encoding="utf-8",
             delete=False,
         )
+        _active_temp_files.add(tmp.name)
         try:
             tmp.write(source_code)
             tmp.close()
@@ -242,8 +284,8 @@ class ContractPreprocessor:
             try:
                 os.unlink(tmp.name)
             except OSError as exc:
-                # Log so temp-file accumulation is visible; do not suppress.
                 logger.warning(f"Failed to delete temp file {tmp.name}: {exc}")
+            _active_temp_files.discard(tmp.name)
 
         tokens = self._tokenize(source_code, contract_hash)
 

@@ -189,6 +189,33 @@ class DualPathDataset(Dataset):
             if cache_path.exists():
                 with open(cache_path, "rb") as f:
                     self.cached_data = pickle.load(f)
+
+                # Audit #11: integrity check on the loaded cache.
+                if not isinstance(self.cached_data, dict):
+                    raise RuntimeError(
+                        f"RAM cache at {cache_path} is malformed — "
+                        f"expected dict, got {type(self.cached_data).__name__}. "
+                        "Delete the cache file and re-run create_cache.py."
+                    )
+                if self.paired_hashes:
+                    _spot = self.paired_hashes[0]
+                    if _spot not in self.cached_data:
+                        raise RuntimeError(
+                            f"RAM cache is stale — hash {_spot!r} not found. "
+                            "Delete the cache file and re-run create_cache.py."
+                        )
+                    try:
+                        _g, _t = self.cached_data[_spot]
+                        if not hasattr(_g, "x"):
+                            raise ValueError("cached graph missing 'x' attribute")
+                        if "input_ids" not in _t:
+                            raise ValueError("cached tokens missing 'input_ids'")
+                    except (ValueError, TypeError) as _exc:
+                        raise RuntimeError(
+                            f"RAM cache entry for {_spot!r} is malformed: {_exc}. "
+                            "Delete the cache file and re-run create_cache.py."
+                        ) from _exc
+
                 logger.info(
                     f"Loaded {len(self.cached_data)} samples from RAM cache "
                     f"({cache_path})"

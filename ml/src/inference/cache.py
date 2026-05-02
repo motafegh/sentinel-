@@ -83,7 +83,7 @@ class InferenceCache:
             return None
 
         if self.ttl_seconds > 0:
-            age = time.time() - graph_path.stat().st_mtime
+            age = max(0.0, time.time() - graph_path.stat().st_mtime)
             if age > self.ttl_seconds:
                 logger.debug(f"Cache expired ({age:.0f}s > {self.ttl_seconds}s): {key[:16]}…")
                 self._evict(key)
@@ -92,6 +92,19 @@ class InferenceCache:
         try:
             graph  = torch.load(graph_path,  map_location="cpu", weights_only=False)
             tokens = torch.load(tokens_path, map_location="cpu", weights_only=False)
+
+            # Validate schema: catch stale cached files that predate a schema change.
+            if not hasattr(graph, "x") or graph.x.shape[1] != 8:
+                raise ValueError(
+                    f"Cached graph has x.shape={tuple(graph.x.shape) if hasattr(graph, 'x') else '?'}, "
+                    "expected [N, 8]. Schema may have changed — evicting."
+                )
+            expected_tok = torch.Size([1, 512])
+            if tokens.get("input_ids", torch.empty(0)).shape != expected_tok:
+                raise ValueError(
+                    f"Cached tokens input_ids shape {tokens['input_ids'].shape} != {expected_tok}."
+                )
+
             logger.debug(f"Cache hit: {key[:16]}…")
             return graph, tokens
         except Exception as exc:
@@ -126,12 +139,12 @@ class InferenceCache:
         return self.cache_dir / f"{key}_tokens.pt"
 
     def _evict(self, key: str) -> None:
-        """Remove both files for a key (best-effort; ignores errors)."""
+        """Remove both files for a key (best-effort)."""
         for path in (self._graph_path(key), self._tokens_path(key)):
             try:
                 path.unlink(missing_ok=True)
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.warning(f"Cache eviction failed for {path.name}: {exc}")
 
     @staticmethod
     def _atomic_save(obj: object, dest: Path) -> None:

@@ -53,6 +53,7 @@ py-solc-ast = "^1.2.10"
 solc = "^0.0.0a0"
 solc-select = "^1.2.0"
 dvc = "^3.66.1"
+prometheus-fastapi-instrumentator = ">=0.9,<1.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
