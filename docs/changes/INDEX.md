@@ -12,3 +12,4 @@ One-line summary per dated changelog. See individual files for full details.
 | 2026-05-01 | [2026-05-01-sprint-2-4-foundry-ml-rag.md](2026-05-01-sprint-2-4-foundry-ml-rag.md) | Sprint 2–4: Foundry test suite, ML improvements, RAG/agent wiring |
 | 2026-05-02 | [2026-05-02-next-movements-plan.md](2026-05-02-next-movements-plan.md) | Strategic plan: Phase 0 pre-retrain, Move 1 T1-C, Move 2 T1-A, Phase 2 observability |
 | 2026-05-02 | [2026-05-02-pre-execution-audit-gaps.md](2026-05-02-pre-execution-audit-gaps.md) | Pre-execution audit: 7 gaps corrected in STATUS + ROADMAP before Moves 3–8 proceed |
+| 2026-05-02 | [2026-05-02-multi-contract-parsing-gap.md](2026-05-02-multi-contract-parsing-gap.md) | Multi-contract parsing tracked as Move 9; reviewer proposal audited and corrected against source code |

@@ -14,6 +14,7 @@ Last updated: 2026-05-02
 | M1 ML Core — data extraction | ✅ Complete | ast_extractor.py V4.3, tokenizer.py (schema version metadata) |
 | M1 ML Core — shared preprocessing | ✅ Complete | graph_schema.py, graph_extractor.py (typed exceptions) |
 | M1 ML Scripts | ✅ Complete | train.py, tune_threshold.py, analyse_truncation.py, build_multilabel_index.py |
+| M1 ML — known limitation | ⚠️ Tracked | **Single-contract scope**: only the first non-dependency contract per file is analysed. `GraphExtractionConfig.multi_contract_policy` scaffold exists; `"all"` policy not yet implemented. See Move 9 in ROADMAP. |
 | M2 ZKML | ✅ Source complete | Z1/Z2/Z3 bugs fixed; pipeline not yet run. **No resolution path in ROADMAP — needs explicit move or descope decision.** |
 | M3 MLOps | ⚠️ Partial | MLflow + DVC + Dagster wired; model registry promotion script missing |
 | M4 Agents/RAG | ⚠️ Partial | Core complete; LLM synthesizer not yet upgraded; cross-encoder not wired |
@@ -63,6 +64,7 @@ Last updated: 2026-05-02
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
 | ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it |
 | Unit test plan | `cache.py`, `drift_detector.py`, `promote_model.py` have no test coverage planned |
+| Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. Cache key strategy and `PredictResponse` schema extension must be decided before implementing. See ROADMAP Move 9. |
 
 ---
 
