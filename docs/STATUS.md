@@ -16,8 +16,8 @@ Last updated: 2026-05-02
 | M1 ML Scripts | ✅ Complete | train.py, tune_threshold.py, analyse_truncation.py, build_multilabel_index.py |
 | M1 ML — known limitation | ⚠️ Tracked | **Single-contract scope**: only the first non-dependency contract per file is analysed. `GraphExtractionConfig.multi_contract_policy` scaffold exists; `"all"` policy not yet implemented. See Move 9 in ROADMAP. |
 | M2 ZKML | ✅ Source complete | Z1/Z2/Z3 bugs fixed; pipeline not yet run. **No resolution path in ROADMAP — needs explicit move or descope decision.** |
-| M3 MLOps | ⚠️ Partial | MLflow + DVC + Dagster wired; model registry promotion script missing |
-| M4 Agents/RAG | ⚠️ Partial | Core complete; LLM synthesizer not yet upgraded; cross-encoder not wired |
+| M3 MLOps | ✅ Complete | MLflow + DVC + Dagster wired; `promote_model.py` CLI added for Staging/Production promotion |
+| M4 Agents/RAG | ✅ Complete | Core complete; LLM synthesizer upgraded (T3-A, qwen3.5-9b-ud, rule-based fallback); cross-encoder reranking added (T3-B, off by default) |
 | M5 Contracts | ✅ Source complete | Foundry tests written; forge not yet run (not installed in env) |
 | M6 Integration API | ❌ Not built | api/ directory does not exist. Auth/rate-limit design required before building routes. |
 
@@ -53,17 +53,24 @@ Last updated: 2026-05-02
 
 | Item | Missing piece |
 |------|--------------|
-| T2-A Prometheus | `prometheus-fastapi-instrumentator` not yet added to `api.py` |
-| T2-B Drift detection | `drift_detector.py` not yet created. **Drift baseline strategy must be resolved before implementing** — see note below. |
-| T2-C MLflow registry | `promote_model.py` not yet created |
-| T3-A LLM synthesizer | `nodes.py:synthesizer()` still uses rule-based output |
-| T3-B Cross-encoder reranking | `retriever.py` rerank param not yet added |
-| Audit items #9/#11 | Temp file SIGKILL (`preprocess.py`), RAM cache integrity check (`dual_path_dataset.py`) |
-| Graph dataset edge_attr | No script confirms `edge_attr` tensors are present in `ml/data/graphs/*.pt` files. P0-B degrades gracefully to zero-vectors if absent — but **signal is lost silently**. `validate_graph_dataset.py` needed before retrain. |
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
-| ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it |
-| Unit test plan | `cache.py`, `drift_detector.py`, `promote_model.py` have no test coverage planned |
-| Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. Cache key strategy and `PredictResponse` schema extension must be decided before implementing. See ROADMAP Move 9. |
+| ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it (see ROADMAP S5.5) |
+| Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. See ROADMAP Move 9. |
+| Retrain | `validate_graph_dataset.py` must exit 0 before retrain. Success gate: val F1-macro > 0.4679. |
+
+### Closed loops (completed 2026-05-02 / 2026-05-03)
+
+| Item | Resolution |
+|------|-----------|
+| T2-A Prometheus | `prometheus-fastapi-instrumentator` added to `api.py`; custom gauges for model load + GPU memory |
+| T2-B Drift detection | `drift_detector.py` + `compute_drift_baseline.py` added; KS test + rolling buffer + warm-up mode |
+| T2-C MLflow registry | `promote_model.py` CLI added (Staging/Production, dry-run, git tags) |
+| T3-A LLM synthesizer | `synthesizer()` node upgraded — calls qwen3.5-9b-ud; rule-based fallback on timeout/unavailable |
+| T3-B Cross-encoder reranking | `retriever.py` `rerank=False` param added; `_rerank()` uses `ms-marco-MiniLM-L-6-v2` |
+| Audit #9 | `preprocess.py` SIGKILL-safe temp files (atexit registry + startup purge) |
+| Audit #11 | `dual_path_dataset.py` RAM cache integrity check (type, hash, graph.x, tokens shape) |
+| Graph dataset edge_attr | `validate_graph_dataset.py` added — checks presence, shape `[E]`, values in `[0, 5)` |
+| Unit test plan | `test_cache.py`, `test_drift_detector.py`, `test_promote_model.py`, `test_gnn_encoder.py`, `test_fusion_layer.py` all added |
 
 ---
 
@@ -115,9 +122,9 @@ Correct strategy:
 
 ## Next Action
 
-See `docs/ROADMAP.md` for the ordered list of remaining work.
-Before proceeding with Moves 3–8, confirm:
-1. Audit item #13 is closed (already done — verify in `focalloss.py` and `trainer.py`)
-2. `validate_graph_dataset.py` is run — confirm `edge_attr` presence in `.pt` files
-3. Retrain evaluation protocol above is agreed
-4. Drift baseline strategy is decided
+All ROADMAP Moves 0–8 and T3-A/T3-B complete. Remaining work in priority order:
+
+1. **Retrain** — run `python ml/scripts/validate_graph_dataset.py` first to confirm `edge_attr` present in `.pt` files (exit 0 required). Then retrain per protocol above (success gate: val F1-macro > 0.4679).
+2. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10). See ROADMAP S5.5.
+3. **M6 Integration API** — design auth/rate-limit before writing any routes. See ROADMAP M6 section.
+4. **Move 9 (post-M6)** — multi-contract parsing (`multi_contract_policy="all"` in `graph_extractor.py`). See ROADMAP Move 9.
