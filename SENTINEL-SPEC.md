@@ -1,12 +1,11 @@
-
-
 ## How to Use This File
 
 This file contains timeless project facts: architecture, data contracts, locked constraints,
 ADRs, file inventories, and module technical specifications.
 
-Current state (what is built, what is broken, what is next) lives in session handovers, not here.
-Do not treat any section of this file as a status update. Verify against actual files when in doubt.
+Current state (what is built, what is broken, what is next) lives in `docs/STATUS.md` and
+`docs/ROADMAP.md`, not here. Do not treat any section of this file as a status update.
+Verify against actual files when in doubt.
 
 ---
 
@@ -18,7 +17,7 @@ correct via a ZK circuit (EZKL / Groth16) and stored on-chain via AuditRegistry.
 LangGraph orchestrates five specialised agents. The RAG knowledge base grounds findings
 in historical DeFi exploits.
 
-**GitHub:** https://github.com/motafegh/-sentinel
+**GitHub:** <https://github.com/motafegh/sentinel->
 **Environment:** WSL2 Ubuntu, RTX 3070 8GB VRAM, Python 3.12, Poetry
 
 ---
@@ -39,9 +38,11 @@ User uploads .sol contract
   │       ▼
   │   [M1 — FastAPI port 8001]
   │       │ ContractPreprocessor → SentinelModel → per-class thresholds
+  │       │   Long contracts (>512 tokens): sliding-window path (T1-C)
+  │       │   → aggregate via max() across windows
   │       ▼
   │   {label, vulnerabilities[{vulnerability_class, probability}],
-  │    threshold, truncated, num_nodes, num_edges}
+  │    threshold, truncated, windows_used, num_nodes, num_edges}
   │       ← NO top-level confidence field. confidence was binary-era. Removed.
   │
   ├── rag_research    → RAG MCP (port 8011)
@@ -58,7 +59,8 @@ User uploads .sol contract
   │
   └── synthesizer     → AuditReport
         {overall_label, risk_probability, top_vulnerability,
-         vulnerabilities[], rag_evidence[], audit_history[]}
+         vulnerabilities[], rag_evidence[], audit_history[],
+         static_findings[]}
         │
         ▼
 [M2 — ZKML Proof Generation]
@@ -72,7 +74,7 @@ User uploads .sol contract
 
 **Routing logic (LangGraph conditional):**
 
-```python
+```
 def _is_high_risk(ml_result: dict) -> bool:
     vulns = ml_result.get("vulnerabilities", [])
     if not vulns:
@@ -119,7 +121,7 @@ M6 (Integration) — depends on all modules
 ## 4. Port Map
 
 | Port | Service | Notes |
-|---|---|---|
+| --- | --- | --- |
 | 8000 | M6 API gateway | FastAPI + Celery |
 | 8001 | M1 FastAPI inference | uvicorn, CUDA startup ~6s |
 | 8010 | sentinel-inference MCP | SSE transport |
@@ -133,7 +135,7 @@ M6 (Integration) — depends on all modules
 
 ## 5. Environment Variables
 
-As it might be changed thorough the progress ask me whatever you need and i will give you 
+As it might be changed through the progress ask me whatever you need and I will give you.
 
 ## 6. Critical Constraints
 
@@ -155,9 +157,31 @@ Node feature vector — 8-dim ordinal, fixed order (FEATURE_NAMES in graph_schem
   — any change: rebuild all 68K graph .pt files + retrain
   — bump FEATURE_SCHEMA_VERSION in graph_schema.py to invalidate inference caches
 
+  type_id encoding (NODE_TYPES):
+    STATE_VAR=0, FUNCTION=1, MODIFIER=2, EVENT=3,
+    FALLBACK=4, RECEIVE=5, CONSTRUCTOR=6, CONTRACT=7
+
 Node insertion order in graph builder (graph_extractor.extract_contract_graph):
   CONTRACT → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs
   — edge_index values are positional; reordering breaks edges
+
+FEATURE_SCHEMA_VERSION = "v1"  (in graph_schema.py)
+  — appended to InferenceCache keys: "{content_md5}_v1"
+  — bump on ANY node/edge feature encoding change; automatically invalidates all disk-cached
+    preprocessed graphs without touching the 68K training .pt files
+  — single source of truth: ml/src/preprocessing/graph_schema.py
+
+NUM_EDGE_TYPES = 5  (CALLS=0, READS=1, WRITES=2, EMITS=3, INHERITS=4)
+  — stored in graph.edge_attr [E] int64, shape 1-D (NOT [E, 1])
+  — GNNEncoder.edge_emb: nn.Embedding(5, 16) consumes this
+  — changing NUM_EDGE_TYPES requires: graph dataset rebuild + retrain + ZKML rebuild
+  — old .pt files without edge_attr: GNNEncoder degrades gracefully to zero-vectors
+    (training completes but gains no benefit from P0-B edge-type signal)
+  — BEFORE retraining: run validate_graph_dataset.py; must exit 0
+
+edge_attr shape: [E] 1-D int64 (NOT [E, 1])
+  — old ast_extractor.py produced [E, 1]; shared graph_extractor.py produces [E]
+  — validate_graph_dataset.py detects and reports shape mismatches
 
 Fusion architecture = CrossAttentionFusion
   — output_dim = 128 (changed from 64 when cross-attention replaced concat+MLP)
@@ -167,8 +191,12 @@ CLASS_NAMES order in trainer.py — source of truth for all downstream code
   — never INSERT into the middle; only APPEND new classes at the end
   — indices 0–9 must remain stable across any future additions
 
-weights_only = False for all torch.load() calls
-  — LoRA state dict is not a plain state_dict; weights_only=True rejects it silently
+weights_only — TWO policies; do NOT mix:
+  — DualPathDataset graph .pt files: weights_only=True
+      (add_safe_globals([Data, DataEdgeAttr, DataTensorAttr]) registered at import)
+      (future new PyG internal classes → add to safe_globals, do not revert to False)
+  — Checkpoint .pt files (training/inference): weights_only=False
+      (LoRA state dict contains peft-specific classes; weights_only=True rejects silently)
 
 TRANSFORMERS_OFFLINE = 1 — must be set at shell level
   — cannot be set inside Python; if set inside Python it has no effect
@@ -177,13 +205,28 @@ Per-class thresholds companion file:
   ml/checkpoints/multilabel_crossattn_best_thresholds.json
   — must travel with the checkpoint; threshold values are sweep-derived per class
 
-DO NOT RETRAIN — locked decision
-  — 8/10 classes are healthy; DoS + CallToUnknown are data-limited
-  — use per-class thresholds as the lever, not retraining
-  — open a new explicit ML milestone before any retrain
+DO NOT RETRAIN without running validate_graph_dataset.py first
+  — P0-B GNNEncoder degrades gracefully to zero-vectors when edge_attr absent
+  — training on zero-vectors means P0-B provides no benefit; silent quality regression
+  — Retrain evaluation protocol:
+      baseline:  val F1-macro 0.4679 on ml/data/splits/val_indices.npy (fixed seed)
+      success:   val F1-macro > 0.4679 on the SAME split (do NOT regenerate)
+      floor:     no single class drops > 0.05 F1 from pre-retrain values
+      rollback:  if F1 < 0.4679 after 40 epochs: revert checkpoint;
+                 investigate P0-B edge_emb_dim (try 8 instead of 16) before re-running
+      MLflow:    experiment "sentinel-retrain-v2"; compare against "sentinel-multilabel" baseline
 
 ONNX opset version = 11
   — EZKL compatibility requirement; do not change
+
+ZKML CIRCUIT_VERSION = "v2.0"
+  — Linear(128→64→32→10) multi-label architecture
+  — v1.0 was Linear(64→32→16→1) binary — all v1.0 EZKL artifacts are invalid
+  — bumping requires: re-export ONNX, full EZKL pipeline rebuild, ZKMLVerifier.sol redeploy
+
+EZKL scale factor = 8192 (2^13)
+  — audit_server.py score decoding: score = field_element / 8192
+  — baked into circuit settings; change requires full EZKL pipeline rebuild
 
 Files never to commit:
   zkml/ezkl/proving_key.pk   (~10MB, gitignored)
@@ -209,25 +252,25 @@ BCCC SHA256 vs internal MD5 — never mix:
 ## 7. Architecture Decision Records
 
 | # | Decision | Chosen | Rejected | Reason | Revisit if |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | 001 | GNN architecture | 3-layer GAT | GCN, GraphSAGE | GAT learns per-edge attention weights; GCN averages all neighbours equally | Dataset grows to protocol-scale graphs (1000s of nodes) |
 | 002 | CodeBERT training | LoRA fine-tuning (r=8, peft) | Frozen feature extractor / full fine-tune | Frozen gave weak rare-class F1; full fine-tune risks catastrophic forgetting on 68K samples; LoRA trains ~500K params safely | Dataset > 500K samples; switch to full fine-tune |
 | 003 | Fusion method | CrossAttentionFusion (bidirectional, 128-dim) | Concat+MLP / GMU | Cross-attention: nodes and tokens enrich each other BEFORE pooling; withdraw() node attends to "call.value" directly. Concat+MLP pooled before fusing — node/token detail already gone. GMU requires equal-dim projections. | Val F1 plateau after retrain |
-| 004 | Classifier loss | BCEWithLogitsLoss + pos_weight | FocalLoss + external sigmoid | BCEWithLogitsLoss numerically stable; external sigmoid collapses to float32 zero at logit > ±38 | — |
-| 005 | Sigmoid location | Removed from model; applied in predictor._score() | nn.Sigmoid inside model | BCEWithLogitsLoss requires raw logits; inference side sigmoid keeps training/inference consistent | — |
-| 006 | Label source for retrain | External CSV (multilabel_index.csv) keyed by MD5 stem | Patch graph.y in 68K .pt files | CSV is auditable, updatable; patching 68K binary files is slow and irreversible | — |
-| 007 | Output classes | 10 (WeakAccessMod excluded) | 11 | Zero .pt graph files for WeakAccessMod (Slither failures); zero positives → pos_weight=inf → NaN | Re-extract WeakAccessMod contracts |
-| 008 | pos_weight scope | Training split only | Full dataset | Full dataset leaks val/test label distribution into loss hyperparameter | — |
-| 009 | Node features | 8-dim ordinal | 17-dim one-hot | Ordinal encodes security-relevant ordering; GNNEncoder in_channels=8 locked to 68K training graphs | Full retrain with richer features (B-06) |
-| 010 | Graph scope | First non-dependency contract only | All user contracts merged | Works for single-file contracts; simpler | Multi-contract protocol audits (C-01) |
+| 004 | Classifier loss | BCEWithLogitsLoss + pos\_weight | FocalLoss + external sigmoid | BCEWithLogitsLoss numerically stable; external sigmoid collapses to float32 zero at logit > ±38 | — |
+| 005 | Sigmoid location | Removed from model; applied in predictor.\_score() | nn.Sigmoid inside model | BCEWithLogitsLoss requires raw logits; inference side sigmoid keeps training/inference consistent | — |
+| 006 | Label source for retrain | External CSV (multilabel\_index.csv) keyed by MD5 stem | Patch graph.y in 68K .pt files | CSV is auditable, updatable; patching 68K binary files is slow and irreversible | — |
+| 007 | Output classes | 10 (WeakAccessMod excluded) | 11 | Zero .pt graph files for WeakAccessMod (Slither failures); zero positives → pos\_weight=inf → NaN | Re-extract WeakAccessMod contracts |
+| 008 | pos\_weight scope | Training split only | Full dataset | Full dataset leaks val/test label distribution into loss hyperparameter | — |
+| 009 | Node features | 8-dim ordinal | 17-dim one-hot | Ordinal encodes security-relevant ordering; GNNEncoder in\_channels=8 locked to 68K training graphs | Full retrain with richer features (B-06) |
+| 010 | Graph scope | First non-dependency contract only | All user contracts merged | Works for single-file contracts; simpler. `GraphExtractionConfig.multi_contract_policy` scaffold exists ("first", "by_name"); "all" policy not yet implemented — see ROADMAP Move 9 | Multi-contract protocol audits (Move 9) |
 | 011 | MCP transport | SSE (HTTP) | stdio (subprocess) | Production standard; survives Docker network hops; multi-client capable | Tools only run on same machine |
 | 012 | MCP schema validation | inputSchema + handler defensive cap | Handler-only | mcp 1.27.0 enforces inputSchema at protocol level | — |
 | 013 | HybridRetriever instantiation | Module-level at import time | Per-request | 400ms + 5MB per request if per-call; single RAM instance | Multiple retriever configs per session |
-| 014 | Batch inference loop | Sequential in _handle_batch_predict | asyncio.gather concurrent | GPU-bound — concurrent serialises on GPU anyway | M1 adds native batched CUDA forward pass |
-| 015 | ZKML proxy architecture | ~6K param MLP (128→64→32→num_classes) | Full SentinelModel in ZK circuit | Full model ~125M params — far too large for EZKL; proxy via knowledge distillation; input_dim=128 matches CrossAttentionFusion output (was 64 with old FusionLayer) | EZKL supports larger circuits |
+| 014 | Batch inference loop | Sequential in \_handle\_batch\_predict | asyncio.gather concurrent | GPU-bound — concurrent serialises on GPU anyway | M1 adds native batched CUDA forward pass |
+| 015 | ZKML proxy architecture | ~8K param MLP (128→64→32→10) | Full SentinelModel in ZK circuit | Full model ~125M params — far too large for EZKL; proxy via knowledge distillation; input\_dim=128 matches CrossAttentionFusion output | EZKL supports larger circuits |
 | 016 | On-chain proof storage | keccak256(zkProof) hash only | Full proof bytes (~2KB) | Gas cost at scale; hash sufficient for verification reference | — |
 | 017 | Solidity proxy pattern | UUPS | Transparent proxy | Gas efficient; upgrade logic in implementation; OpenZeppelin v5 compatible | — |
-| 018 | Checkpoint format | Dict {model, optimizer, scheduler, epoch, best_f1, config{architecture}} | Plain state_dict | config.architecture field enables predictor to auto-detect fusion_output_dim without code change | — |
+| 018 | Checkpoint format | Dict {model, optimizer, scheduler, epoch, best\_f1, config{architecture}} | Plain state\_dict | config.architecture field enables predictor to auto-detect fusion\_output\_dim without code change | — |
 | 019 | assert → RuntimeError in ZKML | RuntimeError with message | Python assert | python -O strips assert silently; EZKL cascade means silent failure corrupts circuit | — |
 | 020 | DualPathDataset CSV loading | Vectorised numpy | iterrows() per-row | iterrows() on 68K rows took 45s; vectorised takes <2s | — |
 | 021 | RAG chunk size | 1536 chars, overlap 128 | 512 chars (original) | 512 too small for Solidity exploit context; 1536 preserves full function bodies | Embedding model changes |
@@ -235,13 +278,15 @@ BCCC SHA256 vs internal MD5 — never mix:
 | 023 | TransformerEncoder output | All token embeddings [B,512,768] | CLS only [B,768] | CLS is a blurry contract-level summary; cross-attention requires all 512 positions so each GNN node can identify its specific relevant tokens | — |
 | 024 | LoRA target modules | query + value projections only | All attention / FFN | Q+V control what CodeBERT attends to and extracts; 295K trainable params with maximum security-pattern adaptation | — |
 | 025 | CrossAttentionFusion output dim | 128 | 64 (old FusionLayer) | Both enriched modalities (256-dim each after pooling) concatenated → 512 → 128; wider justified because both paths contribute semantically enriched representations | Retrain shows diminishing returns; reduce if VRAM constrained |
-| 026 | batch_size for cross-attention | 16 | 32 (old) | CrossAttentionFusion padding [B,max_nodes,256] + LoRA gradients increase VRAM vs old frozen concat+MLP; 16 safe on RTX 3070 8GB | GPU with >8GB VRAM |
+| 026 | batch\_size for cross-attention | 16 | 32 (old) | CrossAttentionFusion padding [B,max\_nodes,256] + LoRA gradients increase VRAM vs old frozen concat+MLP; 16 safe on RTX 3070 8GB | GPU with >8GB VRAM |
 | 027 | RAG ingestion scheduling | Dagster single asset `rag_index` | Multi-asset fake chain | Old 3-asset chain had no data flow, re-fetched source 3×; single asset encapsulates full pipeline with honest lineage | True multi-asset lineage with IO managers |
 | 028 | Deduplication strategy | JSON file of seen document hashes | SQLite | Simple, human-readable, git-trackable at current scale (~1K docs); upgradable to SQLite without API change | Document count >100K |
 | 029 | RAG index write safety | FileLock + atomic rename (.tmp → real) | In-place overwrites | Concurrent cron/Dagster/feedback cycles could corrupt index; lock serialises writes; atomic rename prevents partial reads on crash | — |
 | 030 | Feedback loop back-pressure | Exponential backoff on RPC error (capped 5 min) | Fixed 30s retry | Protects public RPC from hammering; respects provider rate limits | — |
-| 031 | LangGraph parallel deep path | list["rag_research","static_analysis"] return from conditional edge | Sequential rag→static→audit, Send objects | List return from conditional edge is the simplest parallel fan-out; LangGraph executes both in same superstep, audit_check fan-in waits automatically; no explicit sync needed | Needs ordered execution or state write conflicts between parallel branches |
-| 032 | Shared graph extraction core | ml/src/preprocessing/ package (graph_schema.py + graph_extractor.py) | Duplicate inline constants in ast_extractor.py and preprocess.py | Divergence between offline and online feature encoding causes silent accuracy regression with no error signal; single source of truth makes it structurally impossible for them to drift | Never — this is the correct architecture for any dual-pipeline ML system |
+| 031 | LangGraph parallel deep path | list["rag\_research","static\_analysis"] return from conditional edge | Sequential rag→static→audit, Send objects | List return from conditional edge is the simplest parallel fan-out; LangGraph executes both in same superstep, audit\_check fan-in waits automatically; no explicit sync needed | Needs ordered execution or state write conflicts between parallel branches |
+| 032 | Shared graph extraction core | ml/src/preprocessing/ package (graph\_schema.py + graph\_extractor.py) | Duplicate inline constants in ast\_extractor.py and preprocess.py | Divergence between offline and online feature encoding causes silent accuracy regression with no error signal; single source of truth makes it structurally impossible for them to drift | Never — this is the correct architecture for any dual-pipeline ML system |
+| 033 | GNNEncoder edge-type embeddings | nn.Embedding(NUM\_EDGE\_TYPES, edge\_emb\_dim=16) fed to all GATConv layers | Ignore edge\_attr (discard computed values) | CALLS vs READS vs WRITES are structurally different patterns; reentrancy requires a CALLS edge back; ignoring edge\_attr means attention scores are purely node-feature-based and cannot distinguish relation types | edge\_emb\_dim causes VRAM pressure; reduce to 8 |
+| 034 | DualPathDataset graph .pt loading | weights\_only=True with add\_safe\_globals allowlist | weights\_only=False (pickle-unsafe) | Supply-chain attack: a tampered .pt graph file can execute arbitrary code on every training batch load; allowlist (Data, DataEdgeAttr, DataTensorAttr) is precise; future new PyG classes → add to allowlist rather than reverting | — |
 
 ## 8. Module Technical Facts
 
@@ -251,18 +296,19 @@ BCCC SHA256 vs internal MD5 — never mix:
 
 #### Tech Stack
 
-| Tool                           | Role                                     |
-| ------------------------------ | ---------------------------------------- |
-| PyTorch ^2.2                   | Model training and inference             |
-| PyTorch Geometric ^2.5         | GNN layers, PyG Data, Batch, DataLoader  |
-| HuggingFace Transformers ^4.40 | CodeBERT tokenizer and model             |
-| peft                           | LoRA fine-tuning of CodeBERT             |
-| scikit-learn ^1.4              | f1_score, hamming_loss, train_test_split |
-| MLflow ^2.12                   | Experiment tracking                      |
-| DVC ^3.49                      | Dataset and model versioning             |
-| Slither 0.10.x                 | Solidity AST extraction                  |
-| FastAPI ^0.111                 | Inference HTTP API                       |
-| loguru ^0.7                    | Structured logging                       |
+| Tool | Role |
+| --- | --- |
+| PyTorch ^2.2 | Model training and inference |
+| PyTorch Geometric ^2.5 | GNN layers, PyG Data, Batch, DataLoader |
+| HuggingFace Transformers ^4.40 | CodeBERT tokenizer and model |
+| peft ≥0.13.0,<0.16.0 | LoRA fine-tuning of CodeBERT |
+| scikit-learn ^1.4 | f1\_score, hamming\_loss, train\_test\_split |
+| MLflow ^2.12 | Experiment tracking |
+| DVC ^3.49 | Dataset and model versioning |
+| Slither 0.10.x | Solidity AST extraction |
+| FastAPI ^0.111 | Inference HTTP API |
+| loguru ^0.7 | Structured logging |
+| prometheus-fastapi-instrumentator | /metrics endpoint + custom gauges (T2-A, Move 3) |
 
 #### Model Architecture
 
@@ -270,7 +316,7 @@ BCCC SHA256 vs internal MD5 — never mix:
 Input: Solidity source string
         │
         ├── ContractPreprocessor
-        │     ├── Slither AST extraction
+        │     ├── Slither AST extraction  (InferenceCache check first — T1-A)
         │     │     Node features [N, 8]:
         │     │       [0] type_id      STATE_VAR=0 FUNCTION=1 MODIFIER=2
         │     │                        EVENT=3 FALLBACK=4 RECEIVE=5
@@ -282,31 +328,35 @@ Input: Solidity source string
         │     │       [5] reentrant    0/1
         │     │       [6] complexity   float (CFG nodes)
         │     │       [7] loc          float (lines of source)
+        │     │     Edge attributes: graph.edge_attr [E] int64 (1-D)
+        │     │       CALLS=0, READS=1, WRITES=2, EMITS=3, INHERITS=4
         │     │     Node insertion order: CONTRACT → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs
-        │     │     Edge types: CALLS, READS, WRITES, EMITS, INHERITS
-        │     │     edge_index [2, E] int64
-        │     │     Output: PyG Data — graph.x [N, 8], graph.edge_index [2, E]
+        │     │     Output: PyG Data — graph.x [N, 8], graph.edge_index [2, E], graph.edge_attr [E]
         │     │
         │     └── CodeBERT tokenizer
         │           model: microsoft/codebert-base
-        │           max_length=512, truncation=True, padding="max_length"
+        │           Short contracts (≤512 tokens): single window
+        │           Long contracts (>512 tokens): sliding-window T1-C
+        │             stride=256, max_windows=8; returns list[dict]
         │           Output: input_ids [1, 512], attention_mask [1, 512]
         │
         ▼
 SentinelModel.forward(graphs, input_ids, attention_mask)
   │
-  ├── GNNEncoder
+  ├── GNNEncoder                              (P0-B: edge-type embeddings added)
+  │     edge_emb: nn.Embedding(5, 16)        ← NEW (P0-B) — CALLS/READS/WRITES/EMITS/INHERITS
+  │     Graceful degradation: edge_attr=None → zero-vectors (old .pt files run; lose edge signal)
   │     3-layer GATConv:
-  │       conv1: in=8,  out=8,  heads=8, concat=True  → [N, 64]
-  │       conv2: in=64, out=8,  heads=8, concat=True  → [N, 64]
-  │       conv3: in=64, out=64, heads=1, concat=False → [N, 64]
+  │       conv1: in=8,  out=8,  heads=8, edge_dim=16, concat=True  → [N, 64]
+  │       conv2: in=64, out=8,  heads=8, edge_dim=16, concat=True  → [N, 64]
+  │       conv3: in=64, out=64, heads=1, edge_dim=16, concat=False → [N, 64]
   │     Dropout p=0.2 on attention coefficients AND on node activations
   │     NO global_mean_pool — pooling DEFERRED to CrossAttentionFusion
   │     Returns: (node_embeddings [N, 64], batch [N])
   │     N = total nodes across all B contracts in the batch
   │
   ├── TransformerEncoder
-  │     CodeBERT with LoRA: r=8, lora_alpha=16, lora_dropout=0.1
+  │     CodeBERT with LoRA: r=8, lora_alpha=16, lora_dropout=0.1  (P0-A: now configurable via TrainConfig)
   │     LoRA injected into query+value of all 12 layers (~295K trainable)
   │     Backbone frozen: 124,705,536 params
   │     Returns ALL token embeddings: last_hidden_state → [B, 512, 768]
@@ -321,7 +371,6 @@ SentinelModel.forward(graphs, input_ids, attention_mask)
   │     Step 3: Node → Token cross-attention
   │       Q=nodes [B,max_n,256], K=V=tokens [B,512,256]
   │       Output: enriched_nodes [B, max_nodes, 256]
-  │       Each node attends to which tokens are relevant to it
   │     Step 4: Token → Node cross-attention
   │       Q=tokens [B,512,256], K=V=nodes [B,max_n,256]
   │       key_padding_mask=node_padding_mask (ignores padded positions)
@@ -338,7 +387,7 @@ SentinelModel.forward(graphs, input_ids, attention_mask)
         Output: [B, 10]
 
 Parameter counts:
-  GNNEncoder:            ~100K trainable
+  GNNEncoder:            ~100K trainable (including edge_emb Embedding(5,16))
   TransformerEncoder:    ~295K trainable (LoRA only) + 124,705,536 frozen
   CrossAttentionFusion:  ~530K trainable (projections + 2× MHA + output MLP)
   Classifier:            128×10 + 10 = 1,290 trainable
@@ -347,17 +396,28 @@ Parameter counts:
 
 Predictor._score():
   logits = model.forward()           → [1, 10]
-  probs  = torch.sigmoid(logits)     → [1, 10]
+  probs  = torch.sigmoid(logits.float())  → [1, 10]  (FP32 cast before sigmoid — BF16 guard)
   Per-class thresholds from multilabel_crossattn_best_thresholds.json
   vulnerabilities = [{vulnerability_class, probability} for prob >= threshold[class]]
   label = "vulnerable" if vulnerabilities else "safe"
+
+Long-contract path (T1-C — sliding window):
+  Contracts exceeding 512 CodeBERT tokens are split into overlapping 512-token windows
+  (stride=256, max_windows=8). GNN graph is built once from the full AST.
+  predictor.predict_source() automatically routes to the windowed path and aggregates
+  per-class probabilities via max() across windows. Response includes windows_used: int.
 
 Predictor backward compatibility:
   architecture = ckpt["config"].get("architecture", "legacy")
   "cross_attention_lora" → fusion_output_dim = 128
   "legacy"               → fusion_output_dim = 64  (old binary concat+MLP checkpoints)
   Prevents silent Linear(64→10) vs Linear(128→10) shape mismatch.
-  weights_only=False required everywhere — LoRA state dict contains peft-specific classes.
+  weights_only=False required for checkpoint load — LoRA state dict contains peft-specific classes.
+
+Predictor startup warmup (_warmup()):
+  2-node 1-undirected-edge synthetic graph (so GATConv.propagate() actually runs)
+  dummy_x [2,8], dummy_edge_index [[0,1],[1,0]] → catches GAT shape bugs before first real request
+  (1-node 0-edge graph would skip GATConv.propagate() entirely — shape bugs invisible)
 ```
 
 #### Active Checkpoint
@@ -368,22 +428,61 @@ Thresholds: ml/checkpoints/multilabel_crossattn_best_thresholds.json
 Best val F1-macro: 0.4679 (epoch 34)
 Architecture key: "cross_attention_lora"
 
+⚠️  This checkpoint was trained WITHOUT edge_attr support (pre-P0-B).
+    The next retrain (after validate_graph_dataset.py exits 0) will incorporate
+    edge relation type embeddings — expected quality improvement.
+
 Load pattern:
   raw = torch.load(path, weights_only=False)   # weights_only=True breaks LoRA
   state_dict = raw["model"] if "model" in raw else raw
 ```
 
+#### TrainConfig Key Fields
+
+```
+num_classes:          10
+architecture:         "cross_attention_lora"   # written into checkpoint config
+batch_size:           16                        # safe on RTX 3070 8GB
+grad_clip:            1.0                       # clips trainable params only (not frozen)
+lora_r:               8                         # LoRA rank — try 16/32 for next retrain (P0-A)
+lora_alpha:           16
+lora_dropout:         0.1
+lora_target_modules:  ["query", "value"]        # LoRA injection points
+use_edge_attr:        True                      # P0-B edge relation embeddings
+gnn_edge_emb_dim:     16                        # Embedding(5, 16)
+gnn_hidden_dim:       64                        # P0-C: now configurable
+gnn_heads:            8
+gnn_dropout:          0.2
+fusion_output_dim:    128                       # LOCKED — ZKML proxy depends on this
+
+loss_fn validation: must be one of {"bce", "focal"} — unknown value raises ValueError immediately
+OneCycleLR on resume: uses remaining_epochs = config.epochs - start_epoch + 1
+  (not config.epochs — otherwise LR never reaches cosine minimum on resumed runs)
+```
+
 #### Start ML API
 
-```bash
+```
 TRANSFORMERS_OFFLINE=1 \
 SENTINEL_CHECKPOINT=ml/checkpoints/multilabel_crossattn_best.pt \
 ml/.venv/bin/uvicorn ml.src.inference.api:app --port 8001
+
+Optional env vars:
+  SENTINEL_PREDICT_TIMEOUT    (default 60s)
+  SENTINEL_DRIFT_BASELINE     (default ml/data/drift_baseline.json)
+  SENTINEL_DRIFT_CHECK_INTERVAL (default 50 requests)
 ```
 
-Health check response must include:
+Health check response:
+
 ```json
-{"architecture": "cross_attention_lora", "thresholds_loaded": true}
+{
+  "status": "ok",
+  "predictor_loaded": true,
+  "checkpoint": "ml/checkpoints/multilabel_crossattn_best.pt",
+  "architecture": "cross_attention_lora",
+  "thresholds_loaded": true
+}
 ```
 
 #### API Contract
@@ -394,23 +493,29 @@ POST /predict
   Response: {
     "label": "vulnerable" | "safe",
     "vulnerabilities": [{"vulnerability_class": str, "probability": float}],
-    "threshold": float,
-    "truncated": bool,
+    "threshold": float,            ← fallback float when per-class thresholds loaded;
+                                     does NOT reflect per-class boundaries (audit #6 caveat)
+    "truncated": bool,             ← True if single window reached 512-token limit
+    "windows_used": int,           ← 1 for short contracts; >1 when sliding-window triggered
     "num_nodes": int,
     "num_edges": int
   }
   NOTE: NO top-level "confidence" field. Removed in Track 3. Any code using
   ml_result["confidence"] is stale and will KeyError or produce silent wrong routing.
+  Max source size: 1 MB (1 * 1024 * 1024 bytes) — enforced before preprocessing
 
-GET /health → {"status": "ok"|"degraded", "architecture": str, "thresholds_loaded": bool}
-HTTP errors: 400 bad input | 413 GPU OOM | 422 Pydantic | 503 not loaded | 504 timeout
+GET /health → see health check response above
+GET /metrics → Prometheus text format (T2-A, Move 3)
+  Custom gauges: sentinel_model_loaded, sentinel_gpu_memory_bytes
+  Counter: sentinel_drift_alerts_total{stat} (T2-B, Move 7)
+HTTP errors: 400 bad input | 413 GPU OOM or source > 1MB | 422 Pydantic | 503 not loaded | 504 timeout
 ```
 
 #### 10 Output Classes
 
 Defined in `ml/src/training/trainer.py` as `CLASS_NAMES` — single source of truth.
 
-```python
+```
 CLASS_NAMES = [
     "CallToUnknown",               # index 0
     "DenialOfService",             # index 1
@@ -459,34 +564,56 @@ Class distribution (training split pos_weights):
 
 ```
 ml/src/models/
-  sentinel_model.py          SentinelModel — orchestrates all sub-modules
-  gnn_encoder.py             GNNEncoder — 3-layer GAT
-  transformer_encoder.py     TransformerEncoder — CodeBERT + LoRA
+  sentinel_model.py          SentinelModel — orchestrates all sub-modules; accepts arch config params (P0-C)
+  gnn_encoder.py             GNNEncoder — 3-layer GAT + edge-type embeddings (P0-B); configurable hidden_dim/heads (P0-C)
+  transformer_encoder.py     TransformerEncoder — CodeBERT + LoRA; configurable r/alpha/dropout (P0-A)
   fusion_layer.py            CrossAttentionFusion — output_dim=128
-  classifier.py              nn.Linear(128, 10), no sigmoid
 
 ml/src/preprocessing/                 ← single source of truth for graph feature engineering
   __init__.py                re-exports all public symbols
   graph_schema.py            NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES, FEATURE_NAMES,
-                             FEATURE_SCHEMA_VERSION, NODE_FEATURE_DIM, NUM_EDGE_TYPES
+                             FEATURE_SCHEMA_VERSION="v1", NODE_FEATURE_DIM=8, NUM_EDGE_TYPES=5
+                             compile-time assert: len(FEATURE_NAMES) == NODE_FEATURE_DIM
   graph_extractor.py         extract_contract_graph(sol_path, config) → Data
-                             GraphExtractionConfig dataclass
+                             GraphExtractionConfig dataclass:
+                               multi_contract_policy: "first"|"by_name" (scaffold; "all" not implemented — Move 9)
+                               target_contract_name: str | None
+                               include_edge_attr: bool = True
+                               solc_binary, solc_version, allow_paths
+                             edge_attr shape: [E] 1-D int64 (validated at extraction boundary)
                              GraphExtractionError / SolcCompilationError /
                              SlitherParseError / EmptyGraphError exception hierarchy
+                             Never returns None — always raises on failure
 
 ml/src/inference/
-  preprocess.py              ContractPreprocessor — thin wrapper: temp-file mgmt,
-                             exception translation, tokenization, sliding-window (T1-C)
-                             imports graph extraction from ml/src/preprocessing/
-  predictor.py               Predictor — sigmoid + per-class thresholds + result dict
-  api.py                     FastAPI — lifespan, Pydantic schemas, /predict, /health
+  preprocess.py              ContractPreprocessor — Slither graph + tokenization; optional InferenceCache;
+                             process_source() single-window; process_source_windowed() sliding-window (T1-C)
+                             _extract_graph() is thin exception translator (SolcCompilationError→ValueError HTTP 400)
+                             cache key: "{content_md5}_{FEATURE_SCHEMA_VERSION}"
+  predictor.py               Predictor — sigmoid (FP32 cast) + per-class thresholds + result dict
+                             routes long contracts to windowed path; aggregates via max() across windows
+                             _warmup(): 2-node 1-edge graph at startup (GATConv.propagate() guaranteed to run)
+  api.py                     FastAPI — lifespan, Pydantic schemas, /predict, /health, /metrics
+  cache.py                   InferenceCache — disk-backed content-addressed cache (T1-A)
+                             key: "{content_md5}_{FEATURE_SCHEMA_VERSION}"; TTL via file mtime (default 24h)
+  drift_detector.py          DriftDetector — KS-based feature drift monitoring (T2-B, Move 7)
+                             rolling buffer 200 requests; warm-up suppression until N≥500
+                             baseline from warmup data (NOT training data — BCCC-2024 causes false alerts)
 
 ml/src/datasets/
   dual_path_dataset.py       DualPathDataset + dual_path_collate_fn
+                             graph .pt loading: weights_only=True with add_safe_globals
 
 ml/src/training/
   trainer.py                 Training loop, TrainConfig (loss_fn: "bce"|"focal"), CLASS_NAMES, NUM_CLASSES
-  focalloss.py               FocalLoss(gamma, alpha) — activatable via TrainConfig.loss_fn="focal"
+                             _VALID_LOSS_FNS frozenset — unknown value raises ValueError immediately
+                             OneCycleLR uses remaining_epochs on resume (not config.epochs)
+                             clip_grad_norm_ clips trainable params only (not frozen CodeBERT)
+  focalloss.py               FocalLoss(gamma, alpha) — FP32 cast at top of forward() (BF16 underflow guard)
+                             activatable via TrainConfig.loss_fn="focal"
+
+ml/src/utils/
+  hash_utils.py              get_contract_hash(), get_contract_hash_from_content() (MD5-based)
 
 ml/data/
   graphs/                    68,555 .pt PyG Data files (MD5 stem)
@@ -498,22 +625,47 @@ ml/data/
     label_index.csv          68,555 rows binary labels (historical)
   cached_dataset.pkl         RAM cache — loaded into DualPathDataset at startup
 
-ml/tests/
+ml/tests/                    10 test modules (all synthetic data; no real contracts or checkpoints)
   test_model.py              SentinelModel forward shapes; _StubTransformer avoids 500MB load
+  test_gnn_encoder.py        GNNEncoder: edge_attr embedding, graceful degradation, head divisibility
+  test_fusion_layer.py       CrossAttentionFusion: output shape, masked pooling, device mismatch
   test_preprocessing.py      ContractPreprocessor — error types, shapes, hash consistency
   test_dataset.py            DualPathDataset — length, shapes, collation, binary vs multi-label
   test_trainer.py            TrainConfig, FocalLoss, evaluate(), 3-epoch loss decrease
+  test_api.py                /predict and /health endpoint contracts; windows_used field
+  test_cache.py              InferenceCache: miss/hit/TTL/schema-version invalidation
+  test_drift_detector.py     DriftDetector: warm-up suppression, KS fires on drift, buffer rolling
+  test_promote_model.py      promote_model.py: stage validation, dry-run, MLflow tags
 
-ml/checkpoints/              .pt files — not in git
-  multilabel_crossattn_best.pt               Active checkpoint (489MB)
+ml/checkpoints/              .pt files — not in git; managed by DVC
+  multilabel_crossattn_best.pt               Active checkpoint (489MB, pre-P0-B)
   multilabel_crossattn_best_thresholds.json  Per-class sweep-derived thresholds
   run-alpha-tune_best.pt                     Legacy binary checkpoint (477MB)
 
 ml/data_extraction/
-  ast_extractor.py           ASTExtractorV4 — thin offline wrapper; parquet loading,
+  ast_extractor.py           ASTExtractorV4.3 — thin offline wrapper; parquet loading,
                              solc version resolution (get_solc_binary), mp.Pool,
                              checkpoint/resume, writes <md5>.pt files to ml/data/graphs/
                              imports graph extraction from ml/src/preprocessing/
+                             contract_to_pyg() catches GraphExtractionError → None (skip-and-log)
+  tokenizer.py               Offline CodeBERT tokenisation; stores feature_schema_version
+                             in output .pt files (P0-D)
+
+ml/scripts/
+  train.py                   Main training entry point
+  tune_threshold.py          Per-class threshold sweep
+  analyse_truncation.py      Measure token truncation across dataset (5%/<25%/>25% decision tiers)
+  build_multilabel_index.py  Build multilabel_index.csv from BCCC labels
+  create_splits.py           Fixed train/val/test split indices
+  validate_graph_dataset.py  Validate edge_attr presence + shape [E] + value range [0,5) in .pt files
+                             MUST exit 0 before retraining (Move 0)
+  compute_drift_baseline.py  Build drift_baseline.json; --source warmup|training
+                             WARNING: --source training causes false alerts on modern contracts
+  promote_model.py           MLflow model registry CLI (Staging/Production); --dry-run available (Move 4)
+  run_overnight_experiments.py Overnight hyperparameter sweep runner
+
+ml/docker/
+  docker/Dockerfile.slither  Isolated Slither extraction environment
 
 ml/_archive/                 Legacy files (git mv — history preserved)
 ```
@@ -527,7 +679,7 @@ ml/_archive/                 Legacy files (git mv — history preserved)
 #### Tech Stack
 
 | Tool | Role |
-|---|---|
+| --- | --- |
 | EZKL 23.0.5 | ZK circuit generation, proving, verification |
 | PyTorch | Proxy model definition and distillation |
 | ONNX opset 11 | Intermediate representation for EZKL |
@@ -539,17 +691,31 @@ ml/_archive/                 Legacy files (git mv — history preserved)
 ```
 Full SentinelModel: ~315K trainable params → too large for EZKL (~10K limit)
 
-Proxy MLP:
+Proxy MLP (CIRCUIT_VERSION = "v2.0"):
   Input:  128-dim fused embedding (CrossAttentionFusion output — BEFORE classifier)
   Layers: Linear(128→64) → ReLU → Linear(64→32) → ReLU → Linear(32→10)
   Params: ~8K
   Target: proxy agrees with full model ≥95% per class
   Loss:   MSE(proxy_output, full_model_output)
 
+CIRCUIT_VERSION history:
+  v1.0 — Linear(64→32→16→1) binary, old FusionLayer — OBSOLETE; all v1.0 EZKL artifacts invalid
+  v2.0 — Linear(128→64→32→10) multi-label, CrossAttentionFusion — CURRENT
+
+Bugs fixed (Z1/Z2/Z3, 2026-05-01):
+  Z1 train_proxy.py:     Wrong checkpoint path (run-alpha-tune → multilabel_crossattn_best),
+                         wrong feature dim comments (64→128), wrong distillation target shape
+  Z2 export_onnx.py:     dummy_input was torch.randn(1, 64) → corrected to torch.randn(1, 128)
+  Z3 generate_calibration.py: feature extraction updated 64-dim → 128-dim
+
 ONNX export:
   opset_version=11        — EZKL requirement
   dynamic_axes: batch     — required for variable batch sizes
   dummy_input shape: (1, 128)   — must match CrossAttentionFusion output exactly
+
+Status: source complete, pipeline not yet run.
+  Resolution required: Option A (run pipeline with GPU + EZKL env) or
+  Option B (formally descope to S10). See docs/ROADMAP.md ZKML Pipeline Resolution.
 ```
 
 #### EZKL Pipeline
@@ -564,7 +730,7 @@ Step 5: prove()  ← PER AUDIT, ~30-60s
 Step 6: verify()  ← on-chain or off-chain
   gas: ~250K on-chain
 
-CRITICAL: use RuntimeError not assert in setup_circuit.py
+CRITICAL: use RuntimeError not assert in setup_circuit.py (ADR-019)
   python -O strips assert silently; EZKL cascade means silent failure corrupts circuit
 
 EZKL 23.0.5 function names:
@@ -577,6 +743,9 @@ EZKL instance value encoding:
   Values stored as little-endian 32-byte hex strings
   Correct decode: int.from_bytes(bytes.fromhex(x), byteorder='little')
   int(x, 16) treats as big-endian — produces garbage values
+
+EZKL scale factor = 8192 (2^13)
+  audit_server.py: score = field_element / 8192
 ```
 
 #### File Inventory
@@ -588,9 +757,11 @@ zkml/src/ezkl/
   extract_calldata.py      Format proof for Solidity calldata
 
 zkml/src/distillation/
-  proxy_model.py           Proxy MLP definition (input_dim=128)
-  train_proxy.py           Knowledge distillation training
-  export_onnx.py           ONNX export
+  proxy_model.py           Proxy MLP definition (input_dim=128, CIRCUIT_VERSION="v2.0")
+                           Guards: RuntimeError (not assert) on dim mismatch (ADR-019)
+  train_proxy.py           Knowledge distillation training (Z1 fixed)
+  export_onnx.py           ONNX export; dummy_input (1, 128) (Z2 fixed)
+  generate_calibration.py  128-dim calibration data (Z3 fixed)
 
 zkml/ezkl/
   proof.json               Most recent proof artifact
@@ -609,8 +780,8 @@ zkml/ezkl/
 #### Tech Stack
 
 | Tool | Role |
-|---|---|
-| MLflow ^2.12 | Experiment tracking, metric logging |
+| --- | --- |
+| MLflow ^2.12 | Experiment tracking, metric logging, model registry |
 | DVC ^3.49 | Dataset and model versioning |
 | Dagster 1.12.22 | Asset orchestration (RAG ingestion pipeline) |
 
@@ -620,13 +791,17 @@ zkml/ezkl/
 Tracking URI: sqlite:///mlruns.db (project root)
 Experiments:
   "sentinel-training"     — binary model (historical)
-  "sentinel-multilabel"   — Track 3 multi-label runs
+  "sentinel-multilabel"   — Track 3 multi-label runs (baseline)
+  "sentinel-retrain-v2"   — next retrain run (post-P0-A/B/C)
 
 Per training run params logged:
   num_classes, epochs, batch_size=16, lr, weight_decay, threshold,
   grad_clip, warmup_pct, num_workers, device,
   architecture="cross_attention_lora",
-  label_csv, resume_from, resume_model_only,
+  lora_r, lora_alpha, lora_dropout, lora_target_modules,
+  use_edge_attr, gnn_edge_emb_dim, gnn_hidden_dim, gnn_heads, gnn_dropout,
+  fusion_output_dim,
+  label_csv, resume_from, resume_model_only, remaining_epochs, start_epoch,
   pos_weight_{classname} × 10
 
 Metrics/epoch:
@@ -634,6 +809,25 @@ Metrics/epoch:
   val_f1_{classname} × 10
 
 Start UI: mlflow ui --port 5000
+
+Model Registry (Move 4 — promote_model.py):
+  promote_model.py --checkpoint ... --stage Staging|Production --note "..."
+  Tags: val_f1_macro, architecture, git_commit, threshold_path
+  --dry-run to preview without writing to MLflow
+```
+
+#### Drift Detection Baseline (T2-B, Move 7)
+
+```
+⚠️  DO NOT compute drift baseline from ml/data/graphs/ (training data)
+    BCCC-SCsVul-2024 is a 2024 historical snapshot.
+    KS test will fire on virtually every modern 2026 contract → alerts useless.
+
+Correct strategy:
+  Phase 1 (warm-up): collect stats from first 500 real audit requests; suppress alerts.
+  Phase 2 (active): write drift_baseline.json from warm-up data; enable KS alerts.
+  compute_drift_baseline.py --source warmup|training
+  --source training: available for offline testing with a prominent warning printed.
 ```
 
 #### Dagster (RAG ingestion)
@@ -659,20 +853,20 @@ Start UI:
 #### Tech Stack
 
 | Tool | Version | Role |
-|---|---|---|
-| LangChain ^0.3 | Agent framework base |
-| LangGraph ^0.2 | State machine orchestration |
-| langchain-openai ^0.2 | OpenAI-compatible → LM Studio |
-| mcp 1.27.0 | MCP protocol SDK — enforces inputSchema at protocol level |
-| httpx ^0.27 | Async HTTP for ML API calls |
-| faiss-cpu ^1.8 | Vector similarity search |
-| rank-bm25 ^0.2 | BM25Okapi keyword search |
-| pydantic ^2.0 | Structured outputs |
-| filelock ^3.13 | Single-writer lock on index writes |
-| web3 ^7.15 | Ethereum RPC (feedback loop + audit MCP) |
-| dagster 1.12.22 | RAG ingestion scheduling |
-| loguru ^0.7 | Structured logging |
-| python-dotenv ^1.0 | .env loading |
+| --- | --- | --- |
+| LangChain ^0.3 | Agent framework base | |
+| LangGraph ^0.2 | State machine orchestration | |
+| langchain-openai ^0.2 | OpenAI-compatible → LM Studio | |
+| mcp 1.27.0 | MCP protocol SDK — enforces inputSchema at protocol level | |
+| httpx ^0.27 | Async HTTP for ML API calls | |
+| faiss-cpu ^1.8 | Vector similarity search | |
+| rank-bm25 ^0.2 | BM25Okapi keyword search | |
+| pydantic ^2.0 | Structured outputs | |
+| filelock ^3.13 | Single-writer lock on index writes | |
+| web3 ^7.15 | Ethereum RPC (feedback loop + audit MCP) | |
+| dagster 1.12.22 | RAG ingestion scheduling | |
+| loguru ^0.7 | Structured logging | |
+| python-dotenv ^1.0 | .env loading | |
 
 #### File Inventory
 
@@ -701,9 +895,11 @@ agents/src/
 
   rag/
     build_index.py           Full rebuild: lock + atomic writes + rollback snapshot
-    chunker.py               chunk_size=1536, overlap=128
+    chunker.py               chunk_size=1536, overlap=128; Chunk dataclass with score: float = 0.0
     embedder.py              nomic-embed-text-v1.5 via direct OpenAI client
     retriever.py             HybridRetriever: FAISS + BM25 + RRF (k=60)
+                             results constructed via explicit Chunk(..., score=rrf_scores[i]) ctor
+                             for backward compat with old pickled chunks lacking score in __dict__
     fetchers/
       base_fetcher.py        Abstract base
       github_fetcher.py      DeFiHackLabsFetcher — scans src/test/ AND past/
@@ -810,7 +1006,7 @@ audit_server.py (port 8012):
     get_audit_history(contract_address, limit=10) → list of AuditResult, newest first
     check_audit_exists(contract_address) → {exists: bool, count: int}
     submit_audit — deferred (requires valid ZK proof + MIN_STAKE tokens staked)
-  ABI lazy-load: fixed (commit b9d4663, 2026-04-29) — ABI loaded only in real mode,
+  ABI lazy-load: fixed (2026-04-29) — ABI loaded only in real mode,
     not at import time. Mock mode works without contracts/out/.
 ```
 
@@ -831,13 +1027,20 @@ AuditState TypedDict:
   static_findings:  list[dict] | None    # set by static_analysis (Slither findings)
   final_report:     dict | None
   error:            str | None
+  # narrative: str | None — PLANNED (T3-A, Move 5); not yet in TypedDict
 
 Graph nodes:
   ml_assessment    → calls predict tool via MultiServerMCPClient
   rag_research     → calls search (query built from top vulnerability class)
   audit_check      → calls get_audit_history
-  static_analysis  → Slither direct call (not via MCP)
-  synthesizer      → assembles final_report
+  static_analysis  → Slither direct call (not via MCP); returns list[dict] per finding
+  synthesizer      → assembles final_report (currently rule-based; T3-A upgrade pending)
+
+Pending upgrades:
+  T3-A (Move 5): LLM synthesizer — structured prompt → markdown with severity/exploit/fix;
+    fallback to rule-based when LM Studio unavailable; adds narrative: str | None to AuditState
+  T3-B (Move 6): cross-encoder re-ranking — retriever.search(rerank=True) calls
+    CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2") after RRF top-20
 
 Conditional routing:
   After ml_assessment:
@@ -854,7 +1057,7 @@ Conditional routing:
 
 Final report schema:
   overall_label, risk_probability, top_vulnerability,
-  vulnerabilities[], rag_evidence[], audit_history[]
+  vulnerabilities[], rag_evidence[], audit_history[], static_findings[]
   — NO confidence field anywhere in this schema
 
 MultiServerMCPClient config:
@@ -879,7 +1082,7 @@ Test patterns (non-obvious):
 #### Tech Stack
 
 | Tool | Role |
-|---|---|
+| --- | --- |
 | Foundry (forge, cast) | Build, test, deploy |
 | OpenZeppelin v5 | ERC-20, UUPS, Ownable |
 | solc-select | Compiler version management |
@@ -922,38 +1125,62 @@ Key patterns:
   IZKMLVerifier interface — AuditRegistry references verifier via interface, swappable
   _disableInitializers() in constructor — standard UUPS re-init protection
 
-File inventory:
-  contracts/src/
-    SentinelToken.sol        ERC-20 + stake/unstake/slash
-    AuditRegistry.sol        UUPS upgradeable audit registry
-    IZKMLVerifier.sol        Interface (ZKMLVerifier not yet generated)
+.gitignore: blanket contracts/ entry removed; Solidity source files tracked.
+  Build artifacts (contracts/out/, contracts/cache/) remain gitignored.
+```
 
-  contracts/test/
-    SentinelToken.t.sol      14 unit tests (stake, unstake, slash, events)
-    AuditRegistry.t.sol      Registry tests: 3 guards, pause, UUPS upgrade, history
-    InvariantAuditRegistry.t.sol  Stateful fuzz: audit count monotonic, staked ≤ supply
-    mocks/MockZKMLVerifier.sol    Configurable true/false mock for AuditRegistry tests
+#### File Inventory
 
-  contracts/script/
-    Deploy.s.sol             Sepolia deployment (SentinelToken → AuditRegistry proxy)
+```
+contracts/src/
+  SentinelToken.sol        ERC-20 + stake/unstake/slash
+  AuditRegistry.sol        UUPS upgradeable audit registry
+  IZKMLVerifier.sol        Interface (ZKMLVerifier not yet generated — pending ZKML pipeline run)
 
-  contracts/lib/             (not yet created — run forge install first)
-    forge-std/               Foundry test utilities
-    openzeppelin-contracts/  ERC-20, UUPS, Ownable
+contracts/test/
+  SentinelToken.t.sol      14 unit tests (stake, unstake, slash, events)
+  AuditRegistry.t.sol      Registry tests: 3 guards, pause, UUPS upgrade, history
+  InvariantAuditRegistry.t.sol  Stateful fuzz: audit count monotonic, staked ≤ supply
+  mocks/MockZKMLVerifier.sol    Configurable setReturnValue(bool) mock for AuditRegistry tests
 
-  NOTE: forge install + forge build + forge test not yet run (forge not installed in env).
+contracts/script/
+  Deploy.s.sol             Sepolia deployment (SentinelToken → AuditRegistry proxy);
+                           env-driven addresses, post-deploy sanity checks
+
+contracts/foundry.toml     Foundry project config
+
+contracts/lib/             Run forge install first:
+  forge-std/               Foundry test utilities
+  openzeppelin-contracts/  ERC-20, UUPS, Ownable
+
+NOTE: forge install + forge build + forge test not yet run (forge not installed in env).
+      Source complete; execution blocked on environment setup.
 ```
 
 ### 8.6 Module 6 — Integration (Planned Architecture)
 
-**Path:** `root/` (not built)
+**Path:** `api/` (not built)
 
 ```
+Security Design — complete before building routes:
+  Auth: Authorization: Bearer <key> header; validated via FastAPI Depends()
+  API key storage: env var SENTINEL_API_KEYS (comma-separated); never hardcoded
+  Rate limiting: slowapi or Redis token bucket; max 10 audits/min per key
+  Contract confidentiality: audit job payloads logged at DEBUG only (not INFO)
+  Input validation: 500KB max contract size; reject non-UTF-8 before Slither
+
 API Gateway (FastAPI + Celery + Redis):
   POST /v1/audit        → {job_id}           (immediate, spawns Celery task)
   GET  /v1/audit/{id}   → {status, result?}  (poll for completion)
   GET  /v1/proof/{id}   → {proof, signals, on_chain_tx?}
   GET  /health          → {status, services: {ml, agents, db}}
+
+New directory: api/
+  api/main.py              FastAPI + lifespan + Prometheus
+  api/routes/audit.py      POST /v1/audit, GET /v1/audit/{id}
+  api/routes/proof.py      GET /v1/proof/{id}
+  api/tasks/audit_task.py  Celery task wrapping build_graph().ainvoke()
+  api/tasks/proof_task.py  Celery task wrapping EZKL run_proof.py
 
 Docker Compose services:
   Port 8000  api             FastAPI gateway
@@ -979,4 +1206,38 @@ CI/CD (GitHub Actions):
 
 ## 12. Improvement Backlog
 
-Ask me if needed to send you the current version and then update it and give me the final version it is dynamic 
+Current state (module completion, open half-open loops) lives in `docs/STATUS.md`.
+Ordered remaining work lives in `docs/ROADMAP.md`.
+
+**Active Moves (as of 2026-05-02):**
+
+| Move | What | Blocks |
+|------|------|--------|
+| 0 | validate_graph_dataset.py exits 0 — confirm edge_attr in .pt files | Retrain |
+| 1 | Confirm audit #13 (FocalLoss FP32 cast) already closed | — |
+| 2 | T1-A inference cache integration verification | — |
+| 3 | T2-A Prometheus metrics (api.py, pyproject.toml) | Move 7 |
+| 4 | T2-C MLflow registry script (promote_model.py) | — |
+| 5 | T3-A LLM synthesizer (nodes.py with fallback) | — |
+| 6 | T3-B cross-encoder re-ranking (retriever.py) | — |
+| 7 | T2-B drift detection (drift_detector.py, compute_drift_baseline.py) | — |
+| 8 | Audit items #9 (temp file SIGKILL) and #11 (RAM cache integrity) | — |
+| Retrain | After Moves 0–8: retrain with P0-A/B/C architecture | M6 |
+| M6 | Integration API sprint (after Moves + retrain) | — |
+| 9 | Multi-contract parsing (post-M6) | — |
+
+**Open audit findings (lower severity, deferred):**
+
+| # | Severity | Description |
+|---|---|---|
+| 3 | High | evaluate() uses fixed 0.5 threshold; needs per-class threshold param |
+| 6 | Medium | PredictResponse.threshold: return full per-class dict (breaking schema change) |
+| 9 | Medium | process_source() temp files not cleaned on SIGKILL |
+| 10 | Medium | File-path vs content hashing two incompatible namespaces (hash_utils.py) |
+| 11 | Medium | RAM cache loaded via pickle.load() without integrity check |
+| 12 | Medium | hash_utils.py partially dead code; hashing diverges from pipeline |
+| 14 | Low | Shape logging always silent; add SENTINEL_TRACE=1 env flag |
+| 15 | Low | FocalLoss docstring binary/multi-label mismatch |
+| 16 | Low | CLASS_NAMES imported from trainer.py into predictor.py |
+| 17 | Info | peft check at module import time makes unit tests verbose |
+| 18 | Info | Checkpoint pickle (weights_only=False) still present in trainer.py/predictor.py |
