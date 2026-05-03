@@ -17,23 +17,23 @@ Usage examples
 ──────────────
 Promote to Staging:
     python ml/scripts/promote_model.py \\
-        --checkpoint ml/checkpoints/multilabel_crossattn_best.pt \\
+        --checkpoint ml/checkpoints/multilabel_crossattn_v2_best.pt \\
         --stage Staging \\
-        --val-f1-macro 0.4679 \\
-        --note "P0-B retrain with edge_attr embeddings"
+        --val-f1-macro 0.4812 \\
+        --note "v2 retrain: edge_attr embeddings (P0-B) active"
 
 Promote to Production:
     python ml/scripts/promote_model.py \\
-        --checkpoint ml/checkpoints/multilabel_crossattn_best.pt \\
+        --checkpoint ml/checkpoints/multilabel_crossattn_v2_best.pt \\
         --stage Production \\
         --val-f1-macro 0.4812 \\
-        --note "Validated; F1 > 0.4679 gate passed"
+        --note "Validated; F1 > 0.4679 gate passed; edge_attr active"
 
 Dry run (no MLflow writes):
     python ml/scripts/promote_model.py \\
-        --checkpoint ml/checkpoints/multilabel_crossattn_best.pt \\
+        --checkpoint ml/checkpoints/multilabel_crossattn_v2_best.pt \\
         --stage Staging \\
-        --val-f1-macro 0.4679 \\
+        --val-f1-macro 0.4812 \\
         --dry-run
 
 Exit codes:

@@ -137,7 +137,7 @@ class TrainConfig:
     tokens_dir:      str = "ml/data/tokens"
     splits_dir:      str = "ml/data/splits"
     checkpoint_dir:  str = "ml/checkpoints"
-    checkpoint_name: str = "multilabel_crossattn_best.pt"
+    checkpoint_name: str = "multilabel_crossattn_v2_best.pt"
 
     # --- Model ---
     num_classes:       int   = NUM_CLASSES
