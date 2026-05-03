@@ -16,6 +16,7 @@ langgraph = "^0.2"               # Agent graph orchestration
 # RAG
 faiss-cpu = "^1.8"               # Vector similarity search
 rank-bm25 = "^0.2"               # BM25 keyword search for hybrid RAG
+sentence-transformers = ">=2.2"  # Cross-encoder reranking (T3-B)
 
 # Structured outputs
 pydantic = "^2.0"                # Type-safe schemas

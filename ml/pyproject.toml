@@ -53,6 +53,16 @@ py-solc-ast = "^1.2.10"
 solc = "^0.0.0a0"
 solc-select = "^1.2.0"
 dvc = "^3.66.1"
+
+# Inference API
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.30.0"}
+loguru = "^0.7.0"
+httpx = "^0.27.0"
+
+# Drift detection
+scipy = "^1.13.0"
+
 prometheus-fastapi-instrumentator = ">=0.9,<1.1"
 
 [tool.poetry.group.dev.dependencies]
