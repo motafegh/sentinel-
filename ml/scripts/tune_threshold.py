@@ -179,6 +179,13 @@ def load_model_from_checkpoint(
     model = SentinelModel(
         num_classes=num_classes,
         fusion_output_dim=fusion_output_dim,
+        gnn_hidden_dim=ckpt_config.get("gnn_hidden_dim", 64),
+        gnn_heads=ckpt_config.get("gnn_heads", 8),
+        use_edge_attr=ckpt_config.get("use_edge_attr", True),
+        gnn_edge_emb_dim=ckpt_config.get("gnn_edge_emb_dim", 16),
+        lora_r=ckpt_config.get("lora_r", 8),
+        lora_alpha=ckpt_config.get("lora_alpha", 16),
+        lora_dropout=ckpt_config.get("lora_dropout", 0.1),
     ).to(device)
 
     state_dict = raw["model"] if isinstance(raw, dict) and "model" in raw else raw

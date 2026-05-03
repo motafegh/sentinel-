@@ -186,6 +186,13 @@ class Predictor:
         self.model = SentinelModel(
             num_classes=num_classes,
             fusion_output_dim=fusion_output_dim,
+            gnn_hidden_dim=saved_cfg.get("gnn_hidden_dim", 64),
+            gnn_heads=saved_cfg.get("gnn_heads", 8),
+            use_edge_attr=saved_cfg.get("use_edge_attr", True),
+            gnn_edge_emb_dim=saved_cfg.get("gnn_edge_emb_dim", 16),
+            lora_r=saved_cfg.get("lora_r", 8),
+            lora_alpha=saved_cfg.get("lora_alpha", 16),
+            lora_dropout=saved_cfg.get("lora_dropout", 0.1),
         ).to(self.device)
         self.model.load_state_dict(state_dict)
         self.model.eval()

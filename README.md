@@ -130,7 +130,7 @@ cd agents && poetry install && cd ..
 
 ```bash
 TRANSFORMERS_OFFLINE=1 \
-SENTINEL_CHECKPOINT=ml/checkpoints/multilabel_crossattn_best.pt \
+SENTINEL_CHECKPOINT=ml/checkpoints/multilabel_crossattn_v2_best.pt \
 ml/.venv/bin/uvicorn ml.src.inference.api:app --port 8001
 
 # Health check
@@ -138,7 +138,7 @@ curl http://localhost:8001/health
 # → {
 #      "status": "ok",
 #      "predictor_loaded": true,
-#      "checkpoint": "ml/checkpoints/multilabel_crossattn_best.pt",
+#      "checkpoint": "ml/checkpoints/multilabel_crossattn_v2_best.pt",
 #      "architecture": "cross_attention_lora",
 #      "thresholds_loaded": true
 #    }
