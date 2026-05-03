@@ -1,11 +1,16 @@
 """
 Creates stratified train/val/test split indices.
 
-Reads label_index.csv (lightweight, ~3MB).
+Reads multilabel_index.csv and derives binary labels (any vuln class = 1).
 Saves indices as .npy files in ml/data/splits/.
 
 Split ratio: 70% train / 15% val / 15% test
 Stratified: preserves label distribution in each split.
+
+Note: label_index_path is IGNORED — binary labels are derived from
+multilabel_index.csv (sum of class columns > 0) because ast_extractor.py
+hardcodes graph.y=0 for all contracts, making label_index.csv unusable
+for stratification.
 """
 
 import sys
@@ -24,19 +29,27 @@ def create_splits(
     train_ratio: float = 0.70,
     val_ratio: float = 0.15,
     test_ratio: float = 0.15,
-    random_seed: int = 42
+    random_seed: int = 42,
+    multilabel_index_path: str = "ml/data/processed/multilabel_index.csv",
 ) -> None:
 
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, \
         "Ratios must sum to 1.0"
 
-    # === STEP 1: Load label index (instant — tiny CSV) ===
-    df = pd.read_csv(label_index_path)
-    print(f"Loaded label index: {len(df)} samples")
+    # === STEP 1: Derive binary labels from multilabel_index.csv ===
+    # ast_extractor.py hardcodes graph.y=0 for all contracts, so label_index.csv
+    # always shows 100% safe. Instead, use multilabel_index.csv: any contract
+    # with at least one positive vulnerability class is labelled vulnerable (1).
+    multilabel_path = Path(multilabel_index_path)
+    if not multilabel_path.is_absolute():
+        multilabel_path = project_root / multilabel_path
+    df = pd.read_csv(multilabel_path)
+    class_cols = [c for c in df.columns if c != "md5_stem"]
+    print(f"Loaded multilabel index: {len(df)} samples, {len(class_cols)} classes")
 
-    # indices = positions in the sorted list (0 to 68554)
+    # indices = positions in the sorted list (0 to N-1)
     all_indices = np.arange(len(df))
-    all_labels = df['label'].values
+    all_labels = (df[class_cols].sum(axis=1) > 0).astype(int).values
 
     # === STEP 2: Split into train and temp (val+test) ===
     # stratify=all_labels tells sklearn: preserve label ratio in both splits
@@ -93,6 +106,7 @@ def create_splits(
 
 if __name__ == "__main__":
     create_splits(
-        label_index_path="ml/data/processed/label_index.csv",
-        splits_dir="ml/data/splits"
+        label_index_path="ml/data/processed/label_index.csv",  # unused; kept for API compat
+        splits_dir="ml/data/splits",
+        multilabel_index_path="ml/data/processed/multilabel_index.csv",
     )
