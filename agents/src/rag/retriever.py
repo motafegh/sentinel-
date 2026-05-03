@@ -129,6 +129,7 @@ class HybridRetriever:
         k: int = 5,
         filters: Optional[dict] = None,
         faiss_candidates: int = 20,
+        rerank: bool = False,
     ) -> list[Chunk]:
         """
         Hybrid search: FAISS semantic + BM25 keyword → RRF → top k.
@@ -139,6 +140,9 @@ class HybridRetriever:
             filters:          optional metadata filters (see _apply_filters)
             faiss_candidates: candidates fetched from each system before merge.
                               Higher = better recall, slower filtering. Default 20.
+            rerank:           if True, re-score the RRF candidates with a
+                              cross-encoder before slicing to k. Requires
+                              sentence-transformers. Off by default.
 
         Returns:
             List of up to k Chunk objects ranked by relevance.
@@ -202,9 +206,39 @@ class HybridRetriever:
         if filters:
             results = self._apply_filters(results, filters, query)
 
+        if rerank and results:
+            results = self._rerank(query, results)
+
         final = results[:k]
         logger.debug(f"Found {len(final)} results (from {len(sorted_indices)} candidates)")
         return final
+
+    def _rerank(self, query: str, chunks: list[Chunk]) -> list[Chunk]:
+        """
+        Re-score chunks with a cross-encoder for higher precision.
+
+        Reads query + chunk content jointly (bidirectional attention) —
+        more accurate than the bi-encoder recall from RRF but slower.
+        Falls back silently to the existing order if sentence-transformers
+        is not installed or the model fails to load.
+        """
+        try:
+            from sentence_transformers import CrossEncoder
+            ce = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+            pairs = [(query, c.content) for c in chunks]
+            scores = ce.predict(pairs)
+            ranked = sorted(zip(scores, chunks), key=lambda x: x[0], reverse=True)
+            logger.debug(f"Cross-encoder reranked {len(chunks)} chunks")
+            return [c for _, c in ranked]
+        except ImportError:
+            logger.warning(
+                "rerank=True but sentence-transformers is not installed — "
+                "falling back to RRF order"
+            )
+            return chunks
+        except Exception as exc:
+            logger.warning(f"Cross-encoder reranking failed (falling back to RRF order): {exc}")
+            return chunks
 
     def _apply_filters(
         self,

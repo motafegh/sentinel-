@@ -96,6 +96,11 @@ class AuditState(TypedDict, total=False):
     #   rag_evidence, audit_history, static_findings, recommendation,
     #   error, path_taken
 
+    narrative: str | None
+    # Set by synthesizer when the LLM narrative call succeeds.
+    # Structured Markdown with sections: Severity, Vulnerability Summary,
+    # Exploit Pattern, Recommended Fix. None when LLM is unavailable.
+
     error: str | None
     # Set by any node that encounters a non-fatal error.
     # The synthesizer includes it in the final report if set.

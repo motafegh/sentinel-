@@ -36,6 +36,7 @@ Nodes added in M6:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import tempfile
@@ -526,9 +527,8 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # If rag_results or static_findings is populated, we went deep.
     path_taken = "deep" if (rag_results or static_findings) else "fast"
 
-    # ── Rule-based recommendation (M5) ──────────────────────────────────────
-    # M6 will replace this with an LLM-generated narrative.
-    # Keep this block clearly separated so it's easy to swap out.
+    # ── Rule-based recommendation (fallback) ─────────────────────────────────
+    # Used when the LLM is unavailable or times out.
     if not ml_result:
         recommendation = (
             "ML assessment failed — manual review required. "
@@ -562,11 +562,81 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             "Standard due diligence recommended."
         )
 
-    if truncated:
-        recommendation += (
-            " NOTE: Contract exceeded 512 CodeBERT tokens — tail code was not analysed. "
-            "For large contracts, manual review of the unanalysed portion is recommended."
-        )
+    # ── LLM narrative (T3-A / Move 5) ────────────────────────────────────────
+    # Attempt a structured Markdown security narrative from the strong LLM.
+    # Falls back silently to the rule-based recommendation above on any failure
+    # (LLM unavailable, timeout, malformed response).
+    narrative: str | None = None
+    if ml_result:
+        try:
+            from langchain_core.messages import HumanMessage, SystemMessage
+            from src.llm.client import get_strong_llm
+
+            vuln_lines = "\n".join(
+                f"  - {v.get('vulnerability_class', '?')}: {v.get('probability', 0.0):.1%}"
+                for v in vulns
+            ) or "  (none detected)"
+
+            rag_lines = "\n".join(
+                f"  [{i + 1}] {c.get('metadata', {}).get('protocol', 'unknown')}: "
+                f"{c.get('content', '')[:120]}..."
+                for i, c in enumerate(rag_results[:3])
+            ) if rag_results else "  (no matching exploit evidence retrieved)"
+
+            slither_lines = "\n".join(
+                f"  [{f.get('impact', '')}] {f.get('detector', '')}: "
+                f"{f.get('description', '')[:100]}"
+                for f in static_findings[:5]
+                if f.get("impact") in ("High", "Medium")
+            ) if static_findings else "  (no High/Medium static analysis findings)"
+
+            code_snippet = state.get("contract_code", "")[:500].strip()
+
+            system_msg = SystemMessage(content=(
+                "You are a senior smart contract security auditor. "
+                "Produce a concise, structured Markdown security assessment with exactly "
+                "these four sections:\n"
+                "## Severity\n"
+                "ONE of: CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL\n"
+                "## Vulnerability Summary\n"
+                "2–3 sentences describing what was detected and why it is dangerous.\n"
+                "## Exploit Pattern\n"
+                "How an attacker could exploit this — reference exploit evidence if available.\n"
+                "## Recommended Fix\n"
+                "Concrete, actionable mitigation steps specific to the detected vulnerability.\n"
+                "Be concise. Output only the Markdown, no preamble."
+            ))
+
+            user_msg = HumanMessage(content=(
+                f"**Contract address:** {state.get('contract_address', 'unknown')}\n"
+                f"**ML model assessment:** {label} (threshold: {threshold:.0%})\n\n"
+                f"**Detected vulnerabilities:**\n{vuln_lines}\n\n"
+                f"**RAG exploit evidence:**\n{rag_lines}\n\n"
+                f"**Static analysis findings (High/Medium):**\n{slither_lines}\n\n"
+                f"**Contract code snippet (first 500 chars):**\n```solidity\n{code_snippet}\n```"
+            ))
+
+            llm = get_strong_llm()
+            response = await asyncio.wait_for(
+                asyncio.to_thread(llm.invoke, [system_msg, user_msg]),
+                timeout=45.0,
+            )
+            narrative = response.content.strip()
+            logger.info("synthesizer | LLM narrative generated ({} chars)", len(narrative))
+
+        except Exception as _llm_exc:
+            logger.warning(
+                "synthesizer | LLM narrative failed (using rule-based fallback): {}",
+                _llm_exc,
+            )
+            narrative = None
+
+    truncated_note = (
+        "\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens — "
+        "tail code was not analysed. Manual review of the unanalysed portion is recommended."
+    ) if truncated else ""
+
+    final_recommendation = (narrative or recommendation) + truncated_note
 
     report = {
         "contract_address":  state.get("contract_address", ""),
@@ -581,7 +651,8 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         "rag_evidence":      rag_results,
         "audit_history":     audit_history,
         "static_findings":   static_findings,
-        "recommendation":    recommendation,
+        "recommendation":    final_recommendation,
+        "narrative":         narrative,
         "error":             error,
         "path_taken":        path_taken,
     }
