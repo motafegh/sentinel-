@@ -15,10 +15,16 @@ Usage:
         --lr 3e-4 \\
         --batch-size 32
 
-    # Resume from a checkpoint
+    # Resume from a checkpoint (model weights only, fresh optimizer/scheduler)
     poetry run python ml/scripts/train.py \\
         --resume ml/checkpoints/multilabel-v1_best.pt \\
         --run-name multilabel-v1-resumed
+
+    # Full resume (model + optimizer + scheduler state restored exactly)
+    poetry run python ml/scripts/train.py \\
+        --resume ml/checkpoints/multilabel-v1_best.pt \\
+        --run-name multilabel-v1-resumed \\
+        --no-resume-model-only
 
     # Binary legacy run (for comparison)
     poetry run python ml/scripts/train.py \\
@@ -125,6 +131,16 @@ def parse_args() -> argparse.Namespace:
             "Old plain state_dict checkpoints are NOT resumable."
         ),
     )
+    p.add_argument(
+        "--no-resume-model-only",
+        dest="resume_model_only",
+        action="store_false",
+        default=True,
+        help=(
+            "When set, restores optimizer AND scheduler state from checkpoint "
+            "(full resume). Default is model-weights-only resume (fresh optimizer/scheduler)."
+        ),
+    )
 
     return p.parse_args()
 
@@ -136,21 +152,22 @@ def main() -> None:
     label_csv = args.label_csv if args.label_csv else None
 
     config = TrainConfig(
-        run_name        = args.run_name,
-        experiment_name = args.experiment_name,
-        num_classes     = args.num_classes,
-        label_csv       = label_csv,
-        epochs          = args.epochs,
-        batch_size      = args.batch_size,
-        lr              = args.lr,
-        weight_decay    = args.weight_decay,
-        threshold       = args.threshold,
-        graphs_dir      = args.graphs_dir,
-        tokens_dir      = args.tokens_dir,
-        splits_dir      = args.splits_dir,
-        checkpoint_dir  = args.checkpoint_dir,
-        checkpoint_name = args.checkpoint_name or f"{args.run_name}_best.pt",
-        resume_from     = args.resume,
+        run_name          = args.run_name,
+        experiment_name   = args.experiment_name,
+        num_classes       = args.num_classes,
+        label_csv         = label_csv,
+        epochs            = args.epochs,
+        batch_size        = args.batch_size,
+        lr                = args.lr,
+        weight_decay      = args.weight_decay,
+        threshold         = args.threshold,
+        graphs_dir        = args.graphs_dir,
+        tokens_dir        = args.tokens_dir,
+        splits_dir        = args.splits_dir,
+        checkpoint_dir    = args.checkpoint_dir,
+        checkpoint_name   = args.checkpoint_name or f"{args.run_name}_best.pt",
+        resume_from       = args.resume,
+        resume_model_only = args.resume_model_only,
     )
 
     train(config)
