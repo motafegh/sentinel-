@@ -30,7 +30,7 @@ Before you study a single file, write these down and keep them visible.
 
 | Objective | Specific | Measurable | Achievable | Relevant | Time-bound |
 |-----------|----------|------------|------------|----------|------------|
-| Own the architecture | Explain SENTINEL end-to-end, draw it on a whiteboard from memory | Can answer all 25 interview questions without notes | 8 weeks of structured study | Core to Senior ML Engineer role | Week 8 |
+| Own the architecture | Explain SENTINEL end-to-end, draw it on a whiteboard from memory | Can answer all 33 interview questions without notes | 8 weeks of structured study | Core to Senior ML Engineer role | Week 8 |
 | Own the data pipeline | Trace a raw `.sol` file to model input, name every function and file | Teach-back exercises passed without notes | 2 weeks of pipeline focus | Data pipeline literacy separates ML engineers from researchers | Week 4 |
 | Own the production ML layer | Describe monitoring, drift, rollback, threshold tuning, model promotion | Can diagnose any of the 5 production failure modes cold | 2 weeks of inference focus | Production ownership is the highest-value senior skill | Week 7 |
 | Own AI-generated code | Narrate audit fixes as your own code review | Can recite each fix with "the original did X, which caused Y, I changed it to Z" | Ongoing across all phases | The 2026 meta-skill. Companies test this directly. | Week 6 |
@@ -188,9 +188,9 @@ pytest ml/tests/ -v --tb=short
 # 6. Verify MLflow tracking
 mlflow ui --port 5000  # open http://localhost:5000
 
-# 7. Start the inference API
-uvicorn ml.src.inference.api:app --reload
-# Confirm: curl http://localhost:8000/health
+# 7. Start the inference API (TRANSFORMERS_OFFLINE=1 prevents HuggingFace download)
+TRANSFORMERS_OFFLINE=1 ml/.venv/bin/uvicorn ml.src.inference.api:app --port 8001
+# Confirm: curl http://localhost:8001/health
 ```
 
 ### Orientation questions (answer before Phase 0)
@@ -378,7 +378,7 @@ The key property that matters here is *stability*: same input → same output, a
 Before any code: read every dependency and ask why it is here.
 - `torch-geometric` = GNN support
 - `transformers` + `peft` = CodeBERT + LoRA
-- `mlflow` + `wandb` + `dvc` = MLOps stack (experiment tracking + data versioning)
+- `mlflow` + `dvc` = MLOps stack (experiment tracking + data versioning); `wandb` is declared in pyproject.toml but not called in any Python source — MLflow is the only tracker used
 - `fastapi` = production inference API
 - `scipy` = drift detection (KS test)
 - `slither-analyzer` = Solidity static analysis (graph extraction)
@@ -389,8 +389,9 @@ This is the architecture described in 60 lines of TOML. Reading it first gives y
 
 **graph_schema.py:**
 - Why does this file exist instead of defining constants in `graph_extractor.py`? What silent failure did it make structurally impossible?
-- `VISIBILITY_MAP` uses ordinal encoding (0, 1, 2) not one-hot. When would the ordinal assumption be wrong?
-- The `assert len(FEATURE_NAMES) == NODE_FEATURE_DIM` fires at import time, not in a test. Why is import-time the right boundary for this assertion?
+- `VISIBILITY_MAP` uses ordinal encoding (0, 1, 2) not one-hot. When would the ordinal assumption be wrong? (→ `graph_schema.py:56` for `NODE_FEATURE_DIM`, `:123` for `EDGE_TYPES`)
+- The `assert len(FEATURE_NAMES) == NODE_FEATURE_DIM` fires at import time, not in a test. Why is import-time the right boundary? (→ `graph_schema.py:173`)
+- Where is `FEATURE_SCHEMA_VERSION` defined and what is its current value? What two things does it protect against? (→ `graph_schema.py:42`)
 
 **hash_utils.py:**
 - `get_contract_hash()` hashes the file *path*; `get_contract_hash_from_content()` hashes the *content*. Which pipeline uses each? What breaks if they're swapped?
@@ -489,9 +490,9 @@ Run this before reading `graph_extractor.py`. Then when you read how the extract
 ### Questions to answer
 
 **graph_extractor.py:**
-- The comment says "REPLICATION CONSTRAINT — DO NOT CHANGE WITHOUT RETRAINING." What was the concrete silent failure before this function existed?
+- The comment says "REPLICATION CONSTRAINT — DO NOT CHANGE WITHOUT RETRAINING." What was the concrete silent failure before this function existed? (→ `graph_extractor.py:256` for `contract_to_pyg()`)
 - Node insertion order: `CONTRACT → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs`. What breaks if you reverse two of them? Trace it to a tensor shape error inside GATConv.
-- `SolcCompilationError` → HTTP 400; `SlitherParseError` → HTTP 500. Why is that distinction meaningful to a caller?
+- Three exception types map to HTTP codes (→ `graph_extractor.py:76`): `SolcCompilationError` → HTTP 400; `SlitherParseError` → HTTP 500; `EmptyGraphError` → HTTP 400. Why is the compilation vs parse distinction meaningful to a caller? Why do SolcCompilationError and EmptyGraphError both map to 400?
 
 **ast_extractor.py:**
 - It's "orchestration only" after the refactor. What 3 things does it still own exclusively?
@@ -503,7 +504,7 @@ Run this before reading `graph_extractor.py`. Then when you read how the extract
 **build_multilabel_index.py:**
 - `GROUP BY SHA256 then max()` = OR-reduction for multi-label. Why OR and not AND?
 - `WeakAccessMod` is excluded with zero training examples. What would happen at training time if it were included?
-- Trace how `pos_weight` per class flows from this script to `trainer.py` and ultimately to `BCEWithLogitsLoss`.
+- Trace how `pos_weight` per class flows from this script to `trainer.py` and ultimately to `BCEWithLogitsLoss`. Where exactly is it computed and what format does it take? (→ `build_multilabel_index.py:204` for the printed summary, `trainer.py:222` for `compute_pos_weight()`, `trainer.py:551` for its use in `BCEWithLogitsLoss`)
 
 **dual_path_dataset.py:**
 - What happens in `__getitem__` when the graph `.pt` exists but the matching token `.pt` is missing?
