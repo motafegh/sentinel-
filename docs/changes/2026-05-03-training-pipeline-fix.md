@@ -127,10 +127,31 @@ Once all 40 epochs complete (or early stopping triggers):
 3. **Promote checkpoint** if val F1-macro > 0.4679
    ```bash
    ml/.venv/bin/python ml/scripts/promote_model.py \
-     --run-id <mlflow-run-id> \
-     --stage Staging
+     --checkpoint ml/checkpoints/multilabel_crossattn_v2_best.pt \
+     --stage Staging \
+     --val-f1-macro <actual_f1> \
+     --note "v2 retrain: edge_attr embeddings (P0-B) active"
    ```
 
-4. **Rollback** if val F1-macro ≤ 0.4679 after 40 epochs — keep
+4. **Start inference server** — `api.py` default already points to v2 checkpoint
+   ```bash
+   TRANSFORMERS_OFFLINE=1 ml/.venv/bin/uvicorn ml.src.inference.api:app --port 8001
+   ```
+
+5. **Rollback** if val F1-macro ≤ 0.4679 after 40 epochs — keep
    `multilabel_crossattn_best.pt`; investigate `edge_emb_dim` (try 8 instead
    of 16) before re-running.
+
+---
+
+## Post-training alignment fixes (same date)
+
+Five files were also updated to ensure the post-training tools are correct:
+
+| File | Fix |
+|---|---|
+| `tune_threshold.py` | `SentinelModel` now constructed with all GNN/LoRA params from `ckpt_config` (`gnn_hidden_dim`, `gnn_heads`, `use_edge_attr`, `gnn_edge_emb_dim`, `lora_r`, `lora_alpha`, `lora_dropout`). Previously only `num_classes`+`fusion_output_dim` were passed — worked for current defaults but would silently build wrong model if any param ever diverged. |
+| `predictor.py` | Same fix — reads all GNN/LoRA params from `saved_cfg` when constructing `SentinelModel`. |
+| `api.py` | Default `SENTINEL_CHECKPOINT` updated to `multilabel_crossattn_v2_best.pt`. Stale comment removed. |
+| `trainer.py` | `TrainConfig.checkpoint_name` default updated to `multilabel_crossattn_v2_best.pt`. |
+| `promote_model.py` | Usage examples updated to v2 checkpoint name. |
