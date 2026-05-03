@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-02
+Last updated: 2026-05-03
 
 ---
 
@@ -20,6 +20,36 @@ Last updated: 2026-05-02
 | M4 Agents/RAG | ✅ Complete | Core complete; LLM synthesizer upgraded (T3-A, qwen3.5-9b-ud, rule-based fallback); cross-encoder reranking added (T3-B, off by default) |
 | M5 Contracts | ✅ Source complete | Foundry tests written; forge not yet run (not installed in env) |
 | M6 Integration API | ❌ Not built | api/ directory does not exist. Auth/rate-limit design required before building routes. |
+
+---
+
+## Recent Changes (2026-05-03)
+
+### Graph Dataset Re-Extraction
+- **Full re-extraction completed**: All 68,523 graph `.pt` files regenerated using the
+  unified `graph_extractor.py` pipeline. New files have `edge_attr` shape `[E]` (1-D),
+  required by `GNNEncoder.edge_emb` (P0-B). Old files had shape `[E, 1]` which crashes
+  `nn.Embedding` at the first training step.
+- **32 orphaned files removed**: Files not present in `contracts_metadata.parquet`
+  (couldn't be regenerated). Represent ~0.05% of the dataset.
+- **`validate_graph_dataset.py` exit 0**: 68,523/68,523 PASS, 0 shape errors.
+  Retrain is now unblocked.
+- **`ml/pyproject.toml` completed**: Added `fastapi`, `uvicorn[standard]`, `loguru`,
+  `httpx`, `scipy` — were installed manually but undeclared. `poetry lock --no-update`
+  run to regenerate lock file.
+- **`graph_schema.py` docstrings corrected**: Two comments stating "GNNEncoder ignores
+  edge_attr" updated to reflect P0-B reality (embedding is now active).
+- **Local data paths confirmed**:
+  - Contracts metadata: `ml/data/processed/_cache/contracts_metadata.parquet`
+  - Graphs output: `ml/data/graphs/`
+  - DVC remote: `/mnt/d/sentinel-dvc-remote` (Windows D drive via WSL2)
+- **Re-extraction command** (for future reference):
+  ```bash
+  rm -f ml/data/graphs/checkpoint.json   # clear checkpoint to force full run
+  TRANSFORMERS_OFFLINE=1 ml/.venv/bin/python ml/data_extraction/ast_extractor.py \
+    --input ml/data/processed/_cache/contracts_metadata.parquet \
+    --output ml/data/graphs --workers 11 --verbose
+  ```
 
 ---
 
@@ -56,7 +86,7 @@ Last updated: 2026-05-02
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
 | ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it (see ROADMAP S5.5) |
 | Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. See ROADMAP Move 9. |
-| Retrain | `validate_graph_dataset.py` must exit 0 before retrain. Success gate: val F1-macro > 0.4679. |
+| Retrain | ✅ Graph validation passed (68,523/68,523 PASS, 2026-05-03). **Ready to retrain.** Success gate: val F1-macro > 0.4679 on fixed `val_indices.npy` split. |
 
 ### Closed loops (completed 2026-05-02 / 2026-05-03)
 
@@ -124,7 +154,7 @@ Correct strategy:
 
 All ROADMAP Moves 0–8 and T3-A/T3-B complete. Remaining work in priority order:
 
-1. **Retrain** — run `python ml/scripts/validate_graph_dataset.py` first to confirm `edge_attr` present in `.pt` files (exit 0 required). Then retrain per protocol above (success gate: val F1-macro > 0.4679).
+1. **Retrain** — ✅ graph validation passed. Dataset ready. Run retrain per protocol above (success gate: val F1-macro > 0.4679). See `docs/changes/2026-05-03-graph-reextraction.md` for exact command.
 2. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10). See ROADMAP S5.5.
 3. **M6 Integration API** — design auth/rate-limit before writing any routes. See ROADMAP M6 section.
 4. **Move 9 (post-M6)** — multi-contract parsing (`multi_contract_policy="all"` in `graph_extractor.py`). See ROADMAP Move 9.
