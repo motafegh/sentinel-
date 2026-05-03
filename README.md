@@ -44,7 +44,7 @@ User uploads .sol contract
 
 | # | Path | What it does | Status |
 |---|------|-------------|--------|
-| M1 | `ml/` | Dual-path GNN + CodeBERT vulnerability detector, FastAPI inference server | Complete |
+| M1 | `ml/` | Dual-path GNN (edge-type embeddings) + CodeBERT+LoRA + CrossAttention multi-label detector; windowed inference for long contracts; FastAPI server with Prometheus metrics and KS drift detection | Complete |
 | M2 | `zkml/` | Proxy model distillation, EZKL circuit setup, per-audit proof generation | Scripts ready |
 | M3 | `ml/` (mlops) | MLflow experiment tracking, DVC data versioning, Dagster RAG scheduling | Complete |
 | M4 | `agents/` | LangGraph orchestration, 3 MCP servers, RAG, ingestion, feedback loop | Complete |
@@ -72,13 +72,16 @@ User uploads .sol contract
 sentinel-/
 ├── ml/                        # M1 — ML Core (GNN + CodeBERT model + inference API)
 │   ├── src/
-│   │   ├── models/            # SentinelModel, GNNEncoder, TransformerEncoder, CrossAttentionFusion
-│   │   ├── inference/         # FastAPI, Predictor, ContractPreprocessor
-│   │   ├── training/          # Trainer, FocalLoss, CLASS_NAMES
-│   │   └── datasets/          # DualPathDataset, dual_path_collate_fn
+│   │   ├── models/            # SentinelModel, GNNEncoder, TransformerEncoder, CrossAttentionFusion, FocalLoss
+│   │   ├── inference/         # api.py, predictor.py, cache.py, drift_detector.py, preprocess.py
+│   │   ├── preprocessing/     # graph_extractor.py, graph_schema.py (edge-type vocab)
+│   │   ├── training/          # trainer.py, CLASS_NAMES
+│   │   └── datasets/          # dual_path_dataset.py, dual_path_collate_fn
 │   ├── data_extraction/       # Offline Slither AST extractor (batch)
-│   ├── scripts/               # train.py, create_splits.py, tune_threshold.py
-│   ├── tests/                 # pytest unit tests
+│   ├── scripts/               # train.py, create_splits.py, tune_threshold.py,
+│   │                          # validate_graph_dataset.py, compute_drift_baseline.py,
+│   │                          # promote_model.py
+│   ├── tests/                 # pytest unit tests (10 modules)
 │   └── docker/                # Dockerfile.slither for offline extraction
 │
 ├── zkml/                      # M2 — ZK-ML Proof Generation (EZKL)
@@ -132,7 +135,13 @@ ml/.venv/bin/uvicorn ml.src.inference.api:app --port 8001
 
 # Health check
 curl http://localhost:8001/health
-# → {"status":"ok","architecture":"cross_attention_lora","thresholds_loaded":true}
+# → {
+#      "status": "ok",
+#      "predictor_loaded": true,
+#      "checkpoint": "ml/checkpoints/multilabel_crossattn_best.pt",
+#      "architecture": "cross_attention_lora",
+#      "thresholds_loaded": true
+#    }
 ```
 
 ### 3 — Start the MCP servers
@@ -192,7 +201,7 @@ curl -s -X POST http://localhost:8001/predict \
 cd agents && poetry run pytest tests/ -v
 # → 41 tests, all green
 
-# ML inference
+# ML inference (10 test modules)
 cd ml && poetry run pytest tests/ -v
 
 # Contracts (requires forge)
@@ -228,6 +237,8 @@ Violating any of these without the matching rebuild/retrain produces silent fail
 | `solc` for all other contracts | **0.8.20** |
 | EZKL scale factor | **8192** (2¹³) |
 | `weights_only=False` on `torch.load` | LoRA state dict requires it |
+| `FEATURE_SCHEMA_VERSION` | **"v1"** — bump on any node/edge feature change; invalidates disk cache |
+| `NUM_EDGE_TYPES` | **5** (CALLS/READS/WRITES/EMITS/INHERITS) — changing requires dataset rebuild |
 
 ---
 
