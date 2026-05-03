@@ -101,8 +101,10 @@ Last updated: 2026-05-03
 | Audit #11 | `dual_path_dataset.py` RAM cache integrity check (type, hash, graph.x, tokens shape) |
 | Graph dataset edge_attr | `validate_graph_dataset.py` added — checks presence, shape `[E]`, values in `[0, 5)` |
 | Unit test plan | `test_cache.py`, `test_drift_detector.py`, `test_promote_model.py`, `test_gnn_encoder.py`, `test_fusion_layer.py` all added |
-| Training pipeline regeneration | All training inputs rebuilt fresh: graphs (68,523), tokens (68,568), multilabel_index.csv, splits (64.3% vuln stratified) |
+| Training pipeline regeneration | All training inputs rebuilt fresh: graphs (68,523), tokens (68,568), multilabel_index.csv, splits (47,966/10,278/10,279; 64.3% vuln stratified) |
 | `create_splits.py` stratification fix | Binary labels now derived from `multilabel_index.csv` (sum > 0); `graph.y` is hardcoded 0 by extractor so `label_index.csv` is obsolete |
+| Post-training arch alignment | `tune_threshold.py` + `predictor.py` now pass all GNN/LoRA params from checkpoint config when constructing `SentinelModel`; previously only `num_classes`+`fusion_output_dim` were passed (silent wrong-model risk) |
+| Checkpoint name alignment | `api.py` default, `TrainConfig`, `tune_threshold.py`, `promote_model.py` examples all updated to `multilabel_crossattn_v2_best.pt` |
 
 ---
 

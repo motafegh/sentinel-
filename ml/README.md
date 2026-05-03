@@ -93,10 +93,10 @@ Defined in `src/training/trainer.py` as `CLASS_NAMES` — the single source of t
 | Item | Value |
 |------|-------|
 | Source | BCCC-SCsVul-2024 |
-| Graph `.pt` files | 68 555 (MD5 stem, in `ml/data/graphs/`) |
-| Token `.pt` files | 68 570 (MD5 stem, in `ml/data/tokens/`) |
-| Splits | train 47 988 / val 10 283 / test 10 284 |
-| Label CSV | `ml/data/processed/multilabel_index.csv` (68 555 rows × 10 classes) |
+| Graph `.pt` files | 68 523 (MD5 stem, in `ml/data/graphs/`) — re-extracted 2026-05-03 for `edge_attr [E]` shape |
+| Token `.pt` files | 68 568 (MD5 stem, in `ml/data/tokens/`) |
+| Splits | train 47 966 / val 10 278 / test 10 279 — 64.3% vulnerable (stratified from multilabel_index.csv) |
+| Label CSV | `ml/data/processed/multilabel_index.csv` (68 523 rows × 10 classes) |
 
 **Two hash systems — never mix:**
 - SHA256 = hash of `.sol` file content → BCCC filename, CSV column 2
@@ -119,15 +119,22 @@ python ml/scripts/validate_graph_dataset.py [--graphs-dir ml/data/graphs]
 ## Active Checkpoint
 
 ```
+── Baseline (still active) ──────────────────────────────────────────────────
 File:         ml/checkpoints/multilabel_crossattn_best.pt
 Thresholds:   ml/checkpoints/multilabel_crossattn_best_thresholds.json
 Val F1-macro: 0.4679  (epoch 34)
-Architecture: "cross_attention_lora"
-Note:         Trained WITHOUT edge_attr (pre-P0-B). Next retrain incorporates
-              edge relation embeddings — expected quality improvement.
+Architecture: "cross_attention_lora"  (trained WITHOUT edge_attr, pre-P0-B)
+
+── Retrain in progress ───────────────────────────────────────────────────────
+File:         ml/checkpoints/multilabel_crossattn_v2_best.pt   ← will be written
+Run name:     multilabel-v2-edge-attr
+Experiment:   sentinel-retrain-v2
+Epochs:       40 (running as of 2026-05-03)
+edge_attr:    True  (P0-B active — Embedding(5,16) for CALLS/READS/WRITES/EMITS/INHERITS)
 ```
 
-The thresholds companion file must travel with the checkpoint. Values are sweep-derived per class.
+The thresholds companion file must travel with the checkpoint. Run `tune_threshold.py`
+after the retrain completes to produce `multilabel_crossattn_v2_best_thresholds.json`.
 
 ### Retrain Evaluation Protocol
 
@@ -164,7 +171,7 @@ Optional env vars:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel_crossattn_best.pt` | Checkpoint path |
+| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel_crossattn_v2_best.pt` | Checkpoint path |
 | `SENTINEL_PREDICT_TIMEOUT` | `60` | Inference timeout (seconds) |
 | `SENTINEL_DRIFT_BASELINE` | `ml/data/drift_baseline.json` | Drift detection baseline |
 | `SENTINEL_DRIFT_CHECK_INTERVAL` | `50` | KS check every N requests |
@@ -290,16 +297,19 @@ Speed optimisations active: AMP/BF16, TF32 matmuls, persistent DataLoader worker
 
 ```bash
 poetry run python scripts/train.py \
-  --resume-from ml/checkpoints/multilabel_crossattn_best.pt
+  --resume-from ml/checkpoints/multilabel_crossattn_v2_best.pt
 # Validates: num_classes and architecture must match current TrainConfig
 ```
 
 ### Per-class threshold tuning
 
+Run after retraining completes. Sweeps thresholds 0.05–0.95 per class, picks the
+value that maximises per-class F1, and writes a companion JSON.
+
 ```bash
-poetry run python scripts/tune_threshold.py \
-  --checkpoint ml/checkpoints/multilabel_crossattn_best.pt
-# Writes: ml/checkpoints/multilabel_crossattn_best_thresholds.json
+TRANSFORMERS_OFFLINE=1 ml/.venv/bin/python scripts/tune_threshold.py \
+  --checkpoint ml/checkpoints/multilabel_crossattn_v2_best.pt
+# Writes: ml/checkpoints/multilabel_crossattn_v2_best_thresholds.json
 ```
 
 ---
@@ -311,17 +321,17 @@ mlflow ui --port 5000
 # → http://localhost:5000
 ```
 
-Experiment: `sentinel-multilabel` (current baseline). Next retrain: `sentinel-retrain-v2`.
+Experiments: `sentinel-multilabel` (baseline, epoch 34, F1 0.4679) and `sentinel-retrain-v2` (v2 retrain, in progress).
 Tracked per run: all `TrainConfig` fields, `val_f1_macro`, `val_f1_micro`, `val_hamming`, `val_f1_{class}` × 10.
 
 ### Promoting a checkpoint to the registry
 
 ```bash
 python ml/scripts/promote_model.py \
-    --checkpoint ml/checkpoints/multilabel_crossattn_best.pt \
+    --checkpoint ml/checkpoints/multilabel_crossattn_v2_best.pt \
     --stage Staging \
-    --val-f1-macro 0.4679 \
-    --note "Baseline before P0-B retrain"
+    --val-f1-macro <actual_f1> \
+    --note "v2 retrain: edge_attr embeddings (P0-B) active"
 
 # --dry-run to preview without writing to MLflow
 # --stage Production to promote (archives previous Production version)
@@ -337,12 +347,27 @@ Convert raw `.sol` files to `.pt` graph + token files:
 # Requires: Docker (for Slither isolation) or local solc + slither
 cd ml
 docker build -f docker/Dockerfile.slither -t sentinel-slither .
+
+# Step 1 — extract graphs (edge_attr shape [E] required)
 poetry run python data_extraction/ast_extractor.py \
-  --input-dir /path/to/contracts \
-  --output-dir data/graphs/
-poetry run python scripts/create_splits.py
+  --input ml/data/processed/_cache/contracts_metadata.parquet \
+  --output ml/data/graphs/
+
+# Step 2 — tokenise
+poetry run python data_extraction/tokenizer.py \
+  --input ml/data/processed/_cache/contracts_metadata.parquet \
+  --output ml/data/tokens/
+
+# Step 3 — build multi-label index (BCCC SHA256 → multi-hot labels)
 poetry run python scripts/build_multilabel_index.py
+
+# Step 4 — create stratified splits (reads multilabel_index.csv for binary labels)
+poetry run python scripts/create_splits.py
 ```
+
+**Note on label_index.csv:** `create_label_index.py` is obsolete — `ast_extractor.py`
+hardcodes `graph.y=0` for all contracts. Binary labels for stratification are derived
+from `multilabel_index.csv` by `create_splits.py` (`sum(class_cols) > 0`).
 
 ---
 
@@ -427,8 +452,10 @@ ml/scripts/
   compute_drift_baseline.py Build drift_baseline.json from warmup logs or training graphs
 
 ml/checkpoints/             Not in git — managed by DVC
-  multilabel_crossattn_best.pt
+  multilabel_crossattn_best.pt                        ← baseline (pre-P0-B, F1 0.4679)
   multilabel_crossattn_best_thresholds.json
+  multilabel_crossattn_v2_best.pt                     ← v2 retrain (edge_attr active)
+  multilabel_crossattn_v2_best_thresholds.json        ← written by tune_threshold.py post-retrain
 ```
 
 ---
@@ -454,4 +481,4 @@ ml/checkpoints/             Not in git — managed by DVC
 
 1. **Multi-contract files** — only the first non-dependency contract per `.sol` file is analysed. `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`); `"all"` policy is not yet implemented. See ROADMAP Move 9.
 2. **DoS / CallToUnknown** — data-limited classes; per-class thresholds are the recommended tuning lever. Do not retrain solely for these two classes.
-3. **Pre-P0-B checkpoint** — the current checkpoint was trained without edge relation type embeddings. The next retrain (post-validation) is expected to close the quality gap.
+3. **Retrain in progress** — the v2 retrain (`multilabel-v2-edge-attr`, 40 epochs) is running as of 2026-05-03 with edge_attr active (P0-B). The baseline checkpoint (F1 0.4679) remains active until the retrain completes and clears the success gate (val F1-macro > 0.4679).
