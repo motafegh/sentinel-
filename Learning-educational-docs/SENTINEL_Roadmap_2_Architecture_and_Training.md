@@ -90,14 +90,15 @@ This is the mechanism underlying the entire model. Draw it manually for a batch 
 ### Questions to answer
 
 **gnn_encoder.py:**
-- Pooling was removed from `forward()`. What information is preserved by NOT pooling? Give a concrete example using a `withdraw()` function.
-- Layer 3 uses `heads=1, concat=False`; layers 1–2 use `heads=8, concat=True`. Why does layer 3 collapse heads? What would the output shape be if layer 3 also used `concat=True`?
-- `edge_attr=None` triggers graceful degradation to zero vectors (no error). What would an operator observe in production metrics before realising edge embeddings weren't being used?
+- Pooling was removed from `forward()` (→ `gnn_encoder.py:121`). What information is preserved by NOT pooling? Give a concrete example using a `withdraw()` function.
+- The edge type embedding is at `gnn_encoder.py:91` (`nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)`). Layer 3 uses `heads=1, concat=False`; layers 1–2 use `heads=8, concat=True`. Why does layer 3 collapse heads? What would the output shape be if layer 3 also used `concat=True`?
+- `edge_attr=None` triggers graceful degradation to zero vectors (→ `gnn_encoder.py:134`). What would an operator observe in production metrics before realising edge embeddings weren't being used?
 
 **transformer_encoder.py:**
-- "Never wrap `self.bert()` in `torch.no_grad()`." Why would this silently kill LoRA training even though CodeBERT weights have `requires_grad=False`?
-- Returning `[B, 512, 768]` (all positions) not `[B, 768]` (CLS). What would reentrancy detection specifically lose if you reverted to CLS-only?
-- With `r=8` and `lora_alpha=16`: what is the scale factor applied to `BA`? Why does this decoupling of alpha and r matter?
+- `get_peft_model()` raises `RuntimeError` if the `peft` library is not installed (→ `transformer_encoder.py:66`). Is LoRA optional or required for training? What does this tell you about how SENTINEL treats LoRA?
+- "Never wrap `self.bert()` in `torch.no_grad()`" (→ `transformer_encoder.py:35`). Why would this silently kill LoRA training even though CodeBERT weights have `requires_grad=False`?
+- Returning `[B, 512, 768]` (all positions) not `[B, 768]` (CLS) (→ `transformer_encoder.py:168`). What would reentrancy detection specifically lose if you reverted to CLS-only?
+- With `r=8` and `lora_alpha=16` (→ `transformer_encoder.py:113`): what is the scale factor applied to `BA`? Why does this decoupling of alpha and r matter?
 
 **⚡ Interpretability note on the GNN encoder:**
 The node-level embeddings from `gnn_encoder.py` are never pooled before fusion — this is deliberate. A consequence is that you can inspect per-node attention weights after cross-attention to understand which graph nodes (which functions, state variables) contributed most to a vulnerability prediction. If asked "how would you explain a Reentrancy prediction to a developer?", the answer starts here: extract node attention weights from the cross-attention, map them back to AST nodes, and highlight the top-k nodes in the source code. SENTINEL does not implement this visualisation, but be able to describe it.
@@ -180,13 +181,14 @@ Ops inside the block are cast to BF16 automatically. The gradient graph is prese
 ### Questions to answer
 
 **fusion_layer.py:**
-- Fix #2 threads `token_padding_mask` into node→token cross-attention as `key_padding_mask`. Before this fix, what happened to a node's enriched representation? Error, wrong results, or both?
-- Fix #7 replaces a Python for-loop with `to_dense_batch()`. What was the loop doing and why is the Python version a GPU utilisation problem specifically?
-- Fix #8 zeros padded node positions after node→token attention, even though pooling already excludes them via `node_real_mask`. Under what future code change would omitting Fix #8 silently reintroduce the bug?
+- Fix #2 threads `token_padding_mask` into node→token cross-attention as `key_padding_mask` (→ `fusion_layer.py:186`). Before this fix, what happened to a node's enriched representation? Error, wrong results, or both?
+- Fix #7 replaces a Python for-loop with `to_dense_batch()` (→ `fusion_layer.py:181`). What was the loop doing and why is the Python version a GPU utilisation problem specifically?
+- Fix #8 zeros padded node positions after node→token attention (→ `fusion_layer.py:215`), even though pooling already excludes them via `node_real_mask` (→ `fusion_layer.py:237`). Under what future code change would omitting Fix #8 silently reintroduce the bug?
 
 **sentinel_model.py:**
-- Fix #3 changed `num_classes` default from 1 → 10. What would a developer observe loading a 10-class checkpoint into `SentinelModel()` with no args under the old default? Python error, shape error, or wrong predictions?
-- Trace `attention_mask` from `SentinelModel.forward()` through `CrossAttentionFusion`. List the 3 distinct places it is used and what breaks at each if it is missing.
+- Fix #3 changed `num_classes` default from 1 → 10 (→ `sentinel_model.py:85`). What would a developer observe loading a 10-class checkpoint into `SentinelModel()` with no args under the old default? Python error, shape error, or wrong predictions?
+- `SentinelModel.forward()` outputs raw **logits** — there is no `sigmoid()` call inside the model (→ `sentinel_model.py:126`). Why? What applies the sigmoid, and when?
+- Trace `attention_mask` from `SentinelModel.forward()` through `CrossAttentionFusion` (→ `sentinel_model.py:155`). List the 3 distinct places it is used and what breaks at each if it is missing.
 
 ### Code Directing Exercise
 
@@ -212,12 +214,8 @@ On a whiteboard: draw tensor shapes at each step of `CrossAttentionFusion.forwar
 **`OneCycleLR` — visualise the curve before reading the resume bug**
 `OneCycleLR` follows a specific LR schedule over `epochs` total steps: rises from `base_lr` to `max_lr` in the first 30% of steps, then anneals down to `min_lr` for the remaining 70%. Draw this curve on paper. Now imagine resuming at epoch 20 of a 40-epoch run. If you reinitialise the scheduler with `epochs=40` (the old bug), the curve resets to the beginning — the LR rises again when it should be annealing. If you reinitialise with `epochs=remaining_epochs=20` (the fix), the curve continues from where it was. This is Fix #8. You now understand it without reading a single line of `trainer.py`.
 
-**MLflow vs WandB — what each owns in this project**
-Both are used simultaneously. Their roles are distinct:
-- **MLflow**: experiment registry, model versioning, artifact storage, model promotion (`promote_model.py`). The source of truth for "what checkpoint is in production."
-- **WandB**: real-time training curves, gradient histograms, per-class metric plots during a run. The tool you look at *during* training to detect problems early.
-
-Open `trainer.py` and find where each is called. Confirm they log different things.
+**MLflow — the only experiment tracker in this project**
+`trainer.py` uses MLflow exclusively (→ `trainer.py:607`). WandB is in `pyproject.toml` as a declared dependency but is not called anywhere in Python source. Open `trainer.py` and find where MLflow is called. Note what is logged per epoch (metrics, artifacts, tags) — this is what you look at to diagnose training runs.
 
 **The FocalLoss BF16 underflow bug — before reading `focalloss.py`**
 Inside a `torch.autocast` BF16 region, small float values can underflow to exactly 0.0. Specifically: `sigmoid(-10.0)` in BF16 → `0.0`, then `log(0.0)` → `-inf`, then loss = `nan`, then training diverges silently. The fix is `logits.float()` before the sigmoid — manually overriding the autocast for that specific numerically sensitive operation. Open `focalloss.py` and find this line immediately. This one bug and fix tells you more about numerical stability in practice than any tutorial.
@@ -229,10 +227,10 @@ Inside a `torch.autocast` BF16 region, small float values can underflow to exact
 | File | Depth | What it teaches |
 |------|-------|----------------|
 | `ml/src/training/focalloss.py` | 🟡 Understand | FocalLoss mechanics; BF16 underflow bug and fix |
-| `ml/src/training/trainer.py` | 🔴 Master | TrainConfig; CLASS_NAMES; the 6 speed fixes; resume correctness; WandB + MLflow logging |
+| `ml/src/training/trainer.py` | 🔴 Master | `TrainConfig` (`:133`, all 34 fields); `CLASS_NAMES` (`:107`); `compute_pos_weight()` (`:222`); AMP autocast (`:349`); OneCycleLR resume fix (`:575`); `resume_model_only` flag; MLflow logging (`:607`) |
 | `ml/scripts/tune_threshold.py` | 🔴 Master | Per-class threshold tuning; why not on test split |
-| `ml/scripts/create_splits.py` | 🟡 Understand | Iterative stratification for multi-label; split ratio; determinism via seed |
-| `ml/scripts/build_multilabel_index.py` | 🟡 Understand | SHA256 → multi-hot; the two hash system bridge |
+| `ml/scripts/create_splits.py` | *(revisit from Phase 2)* | Focus on how `multilabel_index.csv` is now the stratification source — not `label_index.csv`. Confirm the `random_seed=42` contract for reproducibility. |
+| `ml/scripts/build_multilabel_index.py` | *(revisit from Phase 2)* | Focus only on pos_weight flow: computed at `build_multilabel_index.py:204`, consumed at `trainer.py:222`, passed to loss at `trainer.py:551`. |
 | `ml/scripts/run_overnight_experiments.py` | 🟡 Understand | Hyperparameter sweep orchestration; use as experiment management template |
 | `ml/scripts/train.py` | 🟢 Survey | CLI wrapper; know the flags |
 | `ml/tests/test_trainer.py` | 🟡 Understand | pos_weight; evaluate(); FocalLoss BF16 fix |
@@ -260,9 +258,10 @@ The `(1-p)^γ` term down-weights easy negatives. In SENTINEL: safe contracts vas
 
 **focalloss.py + trainer.py:**
 - What is `pos_weight` doing mathematically? Under what training metric pattern would you switch from `bce` to `focal`?
-- Audit Fix #8: `OneCycleLR(epochs=remaining_epochs)` not `config.epochs`. Draw the LR curve for resuming at epoch 20/40 with the old code. Why does this hurt convergence?
+- Audit Fix #8: `OneCycleLR(epochs=remaining_epochs)` not `config.epochs` (→ `trainer.py:575`). Draw the LR curve for resuming at epoch 20/40 with the old code. Why does this hurt convergence?
 - Audit Fix #7: filter `trainable_params` before `clip_grad_norm_`. What extra computation was happening, and why was it *wrong* not just slow?
-- MLflow vs WandB: both are used. What does each track that the other doesn't? When would you look at WandB vs MLflow during a training run?
+- `TrainConfig` has a `resume_model_only: bool = True` field (→ `trainer.py:133`). What is the difference between `True` and `False`? When would you want `False`?
+- MLflow is the only experiment tracker (→ `trainer.py:607`). What does it log per epoch? What would you add to `trainer.py` to debug a run where val F1-macro plateaus at epoch 5 and never improves?
 
 **tune_threshold.py:**
 - Thresholds are tuned on the validation split. Why the same split used during training, not the test split?
@@ -273,11 +272,11 @@ The tie-break rule "prefer recall" is correct for security tools but NOT univers
 
 ### Code Directing Exercise
 
-Write the prompt you would give an AI to generate the core training loop in `trainer.py`. Your prompt must specify: why `BCEWithLogitsLoss` not `CrossEntropyLoss`, what `pos_weight` does and where it comes from, why the FocalLoss path requires `logits.float()`, why `trainable_params` must be filtered before `clip_grad_norm_`, how `OneCycleLR` must be initialised on resume (remaining not total epochs), and what MLflow vs WandB each log. If you can write this prompt, you own the training loop design.
+Write the prompt you would give an AI to generate the core training loop in `trainer.py`. Your prompt must specify: why `BCEWithLogitsLoss` not `CrossEntropyLoss`, what `pos_weight` does and where it comes from (`trainer.py:222`), why the FocalLoss path requires `logits.float()` (`focalloss.py:55`), why `trainable_params` must be filtered before `clip_grad_norm_`, how `OneCycleLR` must be initialised on resume using remaining not total epochs (`trainer.py:575`), what `resume_model_only` controls, and what MLflow logs per epoch. If you can write this prompt, you own the training loop design.
 
 ### Teach-Back Exercise
 
-Explain the full training loop to a colleague who knows image classifiers but not multi-label. Cover: sigmoid not softmax; `BCEWithLogitsLoss` not `CrossEntropyLoss`; what `pos_weight` does; why training-time threshold (0.5) is replaced by per-class tuned values; what "early stopping on F1-macro" means in a 10-class multi-label setting; what AMP buys; and how MLflow and WandB work together.
+Explain the full training loop to a colleague who knows image classifiers but not multi-label. Cover: sigmoid not softmax; `BCEWithLogitsLoss` not `CrossEntropyLoss`; what `pos_weight` does; why training-time threshold (0.5) is replaced by per-class tuned values; what "early stopping on F1-macro" means in a 10-class multi-label setting; what AMP buys; and what MLflow logs for each training run.
 
 ---
 
@@ -285,7 +284,7 @@ Explain the full training loop to a colleague who knows image classifiers but no
 
 Own these without being prompted which phase they belong to.
 
-### 1. The Masked Mean Pooling Pattern (appears in 3 places)
+### 1. The Masked Mean Pooling Pattern (appears in 3 places — `fusion_layer.py:237`)
 
 Naive `.mean(dim=...)` includes PAD positions, diluting signal with zeros.
 
@@ -297,27 +296,43 @@ Naive `.mean(dim=...)` includes PAD positions, diluting signal with zeros.
 
 When reading any new pooling code: ask "what is the mask and is it applied?"
 
-### 2. The `weights_only` Split
+### 2. The `weights_only` Split (`torch.load` in `predictor.py`, `trainer.py`, `dual_path_dataset.py`)
 
 | Where | `weights_only` | Reason |
 |-------|---------------|--------|
 | Checkpoint loading (predictor, trainer, tune_threshold, promote_model) | `False` | LoRA peft classes cannot be loaded with `weights_only=True` |
 | Graph/token `.pt` files (dataset `__getitem__`) | `True` | Safe — PyG classes registered via `add_safe_globals()` at module import |
 
-### 3. The Three Locked Architecture Contracts
+### 3. The Three Locked Architecture Contracts (`graph_schema.py:56`, `transformer_encoder.py:168`, `sentinel_model.py:85`)
 
 Changing any of these requires a full retrain:
 - `in_channels=8` in `GNNEncoder` — locked by `NODE_FEATURE_DIM`
 - `token_dim=768` in `CrossAttentionFusion` — locked by CodeBERT hidden size
 - `num_classes=10` in `SentinelModel.classifier` — locked by `CLASS_NAMES`
 
-`_ARCH_TO_FUSION_DIM = {"cross_attention_lora": 128, "legacy": 64}` in `predictor.py` lets old and new checkpoints coexist — adding a new architecture = one dict entry.
+`_ARCH_TO_FUSION_DIM = {"cross_attention_lora": 128, "legacy": 64, "legacy_binary": 64}` (→ `predictor.py:65`) lets old and new checkpoints coexist — adding a new architecture = one dict entry. Note there are three entries, not two.
 
-### 4. CLASS_NAMES — the append-only registry
+### 4. No Sigmoid Inside `SentinelModel.forward()` (→ `sentinel_model.py:126`)
+
+`SentinelModel` outputs **raw logits** — there is no `sigmoid()` call in the model's forward pass. Sigmoid is applied:
+- **During training**: inside `BCEWithLogitsLoss` (numerically stable combined form)
+- **During inference**: explicitly in `predictor.py` after the forward pass, before threshold comparison
+
+This is a common source of confusion when reading the code. When you see `model(graph, tokens, attention_mask)`, the output is logits in `(-∞, +∞)`, not probabilities in `[0, 1]`.
+
+### 5. `resume_model_only` — What Gets Restored on Checkpoint Load (→ `trainer.py:133`)
+
+`TrainConfig.resume_model_only: bool = True` (default) controls what `resume_from` restores:
+- `True` (default): only model weights are loaded. Optimizer state, scheduler step count, and best_f1 are reinitialised fresh. Use when you want to continue training with a different learning rate or config.
+- `False`: full state restored — model weights + optimizer momentum + scheduler step position + best_f1. Use when you need to exactly resume an interrupted run.
+
+The default `True` is deliberate: most resume scenarios in SENTINEL involve parameter changes (new `lr`, `epochs`, `batch_size`), making optimizer state invalid anyway.
+
+### 7. CLASS_NAMES — the append-only registry (→ `trainer.py:107`)
 
 Never insert in the middle. Adding class 10 at the end is safe. Inserting at index 3 silently maps "GasException" predictions to "ExternalBug" in all existing checkpoints.
 
-### 5. Owning AI-Generated Code (the 2026 meta-skill)
+### 8. Owning AI-Generated Code (the 2026 meta-skill)
 
 Practice explaining each audit fix as:
 *"The original implementation did X, which would cause Y under Z conditions. I identified it and changed it to Z."*
@@ -342,7 +357,7 @@ Practice explaining each audit fix as:
 - Change fusion output dim → update `_ARCH_TO_FUSION_DIM`, create new architecture key, retrain
 - Add per-class precision/recall to API response → extend `PredictResponse`, thread thresholds through
 
-### 6. Evaluation Metrics Deep Study 🔴
+### 9. Evaluation Metrics Deep Study 🔴
 
 | Metric | How computed | When it misleads |
 |--------|-------------|-----------------|
@@ -353,7 +368,7 @@ Practice explaining each audit fix as:
 
 Early stopping on **F1-macro** prevents overfitting to the majority class and forces performance across rare vulnerability types.
 
-### 7. Model Interpretability — Beyond the Codebase
+### 10. Model Interpretability — Beyond the Codebase
 
 SENTINEL does not implement interpretability features, but you should be able to describe them if asked. For a security tool, interpretability is not optional in a real production context — a developer receiving a "Reentrancy detected" alert needs to understand *where* in the contract the vulnerability is.
 
