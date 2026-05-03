@@ -86,7 +86,7 @@ Last updated: 2026-05-03
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
 | ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it (see ROADMAP S5.5) |
 | Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. See ROADMAP Move 9. |
-| Retrain | ✅ Graph validation passed (68,523/68,523 PASS, 2026-05-03). **Ready to retrain.** Success gate: val F1-macro > 0.4679 on fixed `val_indices.npy` split. |
+| Retrain | 🔄 **IN PROGRESS** — `multilabel-v2-edge-attr`, 40 epochs, MLflow experiment `sentinel-retrain-v2` (2026-05-03). Success gate: val F1-macro > 0.4679. |
 
 ### Closed loops (completed 2026-05-02 / 2026-05-03)
 
@@ -101,20 +101,29 @@ Last updated: 2026-05-03
 | Audit #11 | `dual_path_dataset.py` RAM cache integrity check (type, hash, graph.x, tokens shape) |
 | Graph dataset edge_attr | `validate_graph_dataset.py` added — checks presence, shape `[E]`, values in `[0, 5)` |
 | Unit test plan | `test_cache.py`, `test_drift_detector.py`, `test_promote_model.py`, `test_gnn_encoder.py`, `test_fusion_layer.py` all added |
+| Training pipeline regeneration | All training inputs rebuilt fresh: graphs (68,523), tokens (68,568), multilabel_index.csv, splits (64.3% vuln stratified) |
+| `create_splits.py` stratification fix | Binary labels now derived from `multilabel_index.csv` (sum > 0); `graph.y` is hardcoded 0 by extractor so `label_index.csv` is obsolete |
 
 ---
 
 ## Active Checkpoint
 
 ```
-ml/checkpoints/multilabel_crossattn_best.pt
-  epoch:      34
+ml/checkpoints/multilabel_crossattn_best.pt   ← baseline (pre-edge_attr)
+  epoch:        34
   val F1-macro: 0.4679
-  architecture: cross_attention_lora (pre-edge_attr)
+  architecture: cross_attention_lora (pre-P0-B)
+
+ml/checkpoints/multilabel_crossattn_v2_best.pt   ← retrain in progress
+  run:          multilabel-v2-edge-attr
+  experiment:   sentinel-retrain-v2
+  started:      2026-05-03
+  epochs:       40 (running)
+  edge_attr:    True (P0-B active)
 ```
 
-**This checkpoint was trained WITHOUT edge_attr support (pre-P0-B).**
-The next retraining run will incorporate edge relation type embeddings.
+Retrain is running. Baseline checkpoint remains active until the new run
+completes and clears the val F1-macro > 0.4679 success gate.
 
 ---
 
@@ -154,7 +163,7 @@ Correct strategy:
 
 All ROADMAP Moves 0–8 and T3-A/T3-B complete. Remaining work in priority order:
 
-1. **Retrain** — ✅ graph validation passed. Dataset ready. Run retrain per protocol above (success gate: val F1-macro > 0.4679). See `docs/changes/2026-05-03-graph-reextraction.md` for exact command.
+1. **Retrain** — 🔄 IN PROGRESS (`multilabel-v2-edge-attr`, 40 epochs). Wait for completion; compare val F1-macro against 0.4679 baseline. See `docs/changes/2026-05-03-training-pipeline-fix.md` for post-training steps.
 2. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10). See ROADMAP S5.5.
 3. **M6 Integration API** — design auth/rate-limit before writing any routes. See ROADMAP M6 section.
 4. **Move 9 (post-M6)** — multi-contract parsing (`multi_contract_policy="all"` in `graph_extractor.py`). See ROADMAP Move 9.
