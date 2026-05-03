@@ -65,9 +65,9 @@ NUM_EDGE_TYPES: int = 5
 """
 Number of distinct edge-relation types (width of the EDGE_TYPES vocabulary).
 
-Stored in graph.edge_attr as integer IDs. GNNEncoder currently ignores
-edge_attr (type-agnostic GAT message passing); this constant is provided
-for drift-baseline scripts and future GATv2/RGAT work.
+Stored in graph.edge_attr as integer IDs in [0, NUM_EDGE_TYPES).
+GNNEncoder embeds these via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim)
+and adds the embedding to GATConv edge features (P0-B).
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -130,14 +130,15 @@ EDGE_TYPES: dict[str, int] = {
 """
 Maps each semantic edge relation to an integer ID stored in graph.edge_attr.
 
-Edges are directed and typed. GNNEncoder currently uses only edge_index
-(ignores edge_attr), so these IDs are preserved for future edge-conditioned
-architectures (GATv2, RGAT) without breaking the current inference path.
+Edges are directed and typed. GNNEncoder embeds these IDs via
+nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim) and feeds the result
+into every GATConv layer (P0-B — added 2026-05-02).
 
-Shape note: graph.edge_attr has shape [E] (1-D int64 tensor, PyG convention
-for scalar per-edge attributes). Pre-refactor .pt files on disk were produced
-by the old ast_extractor.py which stored shape [E, 1] — GNNEncoder ignores
-edge_attr in both cases, so the inconsistency is harmless for the current model.
+Shape: graph.edge_attr must be a 1-D int64 tensor of shape [E] (PyG
+convention). Pre-refactor .pt files produced by the old ast_extractor.py
+stored shape [E, 1] — nn.Embedding will crash on that shape. Always run
+validate_graph_dataset.py before training to confirm all files have [E] shape.
+Re-extract with: python ml/data_extraction/ast_extractor.py --force
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
