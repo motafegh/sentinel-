@@ -7,8 +7,8 @@ WHAT CHANGED FROM TRACK 3 ORIGINAL:
 
     2. Architecture is read from predictor.architecture (stored at load time).
 
-    3. Default checkpoint matches actual filename: multilabel_crossattn_best.pt
-       (no _v2_ suffix – this is correct).
+    3. Default checkpoint updated to multilabel_crossattn_v2_best.pt (retrain v2,
+       edge_attr active). Override via SENTINEL_CHECKPOINT env var.
 
 WHAT DID NOT CHANGE:
     - PredictRequest / PredictResponse / VulnerabilityResult schemas
@@ -62,7 +62,7 @@ _gauge_gpu_mem_bytes = Gauge("sentinel_gpu_memory_bytes",  "Current GPU memory a
 
 CHECKPOINT: str = os.getenv(
     "SENTINEL_CHECKPOINT",
-    "ml/checkpoints/multilabel_crossattn_best.pt",
+    "ml/checkpoints/multilabel_crossattn_v2_best.pt",
 )
 
 # Inference timeout in seconds — override via SENTINEL_PREDICT_TIMEOUT env var.
