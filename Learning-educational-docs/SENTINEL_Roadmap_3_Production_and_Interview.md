@@ -50,22 +50,26 @@ FastAPI is async. Model inference (`predictor.predict_source()`) is synchronous 
 | `ml/tests/test_api.py` | 🔴 Master | /health + /predict schema; determinism; error codes |
 | `ml/tests/test_cache.py` | 🟡 Understand | miss/hit/TTL/schema-version |
 
+> **Context:** `api.py` serves at port 8001. The planned M6 API Gateway (not yet built, port 8000) will sit in front of it handling auth and rate limiting — `api.py` has minimal auth by design, assuming a secure gateway upstream. The `zkml/` module (M2 — ZK proof generation) is also out of scope for this roadmap; its status is tracked in `docs/STATUS.md`.
+
 ### Questions to answer
 
 **predictor.py:**
-- `_warmup()` uses a 2-node 1-edge graph (Audit Fix #5). What would NOT be exercised by the 0-edge warmup? What bug type would only surface at the first real request?
-- If `{checkpoint.stem}_thresholds.json` is missing, all classes fall back to 0.5. What is the concrete production risk given DenialOfService pos_weight=68?
-- Sliding window uses `max` aggregation. With a 1200-token contract with `withdraw()` at token 800+: why is `max` correct and `mean` wrong?
+- `_warmup()` uses a 2-node 1-edge graph (→ `predictor.py:258`; Audit Fix #5). What would NOT be exercised by the 0-edge warmup? What bug type would only surface at the first real request?
+- `_ARCH_TO_FUSION_DIM` has **three** entries: `{"cross_attention_lora": 128, "legacy": 64, "legacy_binary": 64}` (→ `predictor.py:65`). What happens if a checkpoint with an unrecognised architecture string is loaded?
+- If `{checkpoint.stem}_thresholds.json` is missing, all classes fall back to 0.5 (→ `predictor.py:202`). What is the concrete production risk given DenialOfService pos_weight=68?
+- Sliding window uses `max` aggregation (→ `predictor.py:340`). With a 1200-token contract with `withdraw()` at token 800+: why is `max` correct and `mean` wrong?
 
 **cache.py:**
-- `tmp.rename(dest)` vs `torch.save(obj, dest)` directly. What failure mode does atomic rename prevent?
-- `get()` validates `graph.x.shape[1] == 8` on every hit. Under what sequence of events could the correct schema-versioned key still contain a graph with the wrong feature dimension?
-- What is the TTL and what production scenario does it protect against?
+- `tmp.rename(dest)` (→ `cache.py:154`) vs `torch.save(obj, dest)` directly. What failure mode does atomic rename prevent?
+- `get()` validates `graph.x.shape[1] == 8` on every hit (→ `cache.py:97`). Under what sequence of events could the correct schema-versioned key still contain a graph with the wrong feature dimension?
+- What is the TTL and what production scenario does it protect against? (→ `cache.py:85`)
 
 **api.py:**
-- `/predict` uses `asyncio.wait_for(asyncio.to_thread(...))`. Why must `to_thread()` be used? What happens to the event loop if inference runs synchronously?
-- The `must_look_like_solidity` validator checks for `pragma` or `contract`. Security gate or UX convenience? Where is the real security boundary?
-- Prometheus metrics: what gauges/counters are exposed, and what alert rule would you write for each?
+- `/predict` uses `asyncio.wait_for(asyncio.to_thread(...))` (→ `api.py:192`). Why must `to_thread()` be used? What happens to the event loop if inference runs synchronously?
+- The `must_look_like_solidity` validator checks for `pragma` or `contract` (→ `api.py:125`). Security gate or UX convenience? Where is the real security boundary?
+- The lifespan function (→ `api.py:80`) loads the Predictor and DriftDetector at startup. What happens if the checkpoint file is missing at startup vs missing during a request?
+- Prometheus metrics (→ `api.py:113`): what gauges/counters are exposed, and what alert rule would you write for each?
 
 ### Code Directing Exercise
 
@@ -121,7 +125,7 @@ Commands to own:
 | `ml/src/inference/drift_detector.py` | 🔴 Master | KS test; warm-up suppression; rolling buffer; Prometheus |
 | `ml/scripts/compute_drift_baseline.py` | 🟡 Understand | Warm-up vs training source; why 30-record minimum |
 | `ml/scripts/promote_model.py` | 🟡 Understand | MLflow registry; archive-on-Production; checkpoint validation |
-| `ml/scripts/validate_graph_dataset.py` | 🟡 Understand | Pre-retrain gate; edge_attr shape check |
+| `ml/scripts/validate_graph_dataset.py` | 🟢 Survey | Pre-retrain gate; edge_attr shape check |
 | `ml/tests/test_drift_detector.py` | 🟡 Understand | Warm-up suppression; KS fires on drift; rolling buffer eviction |
 | `ml/tests/test_promote_model.py` | 🟢 Survey | Dry-run; stage validation; MLflow tag stubs |
 
@@ -140,9 +144,10 @@ Git cannot version 68K `.pt` files (~3.4 GB total). DVC tracks large binary arti
 ### Questions to answer
 
 **drift_detector.py:**
-- Using BCCC-2024 training corpus as the KS baseline causes `sentinel_drift_alerts_total` to fire constantly on 2026 DeFi contracts. Explain precisely why, and what that makes the alerting.
+- The `ks_2samp` call is at `drift_detector.py:82`. Using BCCC-2024 training corpus as the KS baseline causes `sentinel_drift_alerts_total` to fire constantly on 2026 DeFi contracts. Explain precisely why, and what that makes the alerting.
 - KS test fires at `p < 0.05`. What does the p-value represent here, and why does a low p-value NOT tell you which direction the distribution shifted?
-- The rolling buffer has a fixed size. What is evicted and why is FIFO the right eviction policy?
+- The rolling buffer is at `drift_detector.py:86` (`deque(maxlen=...)`). What is evicted and why is FIFO the right eviction policy?
+- Warm-up suppression (→ `drift_detector.py:128`): no alerts fire during the first N requests. What is the risk if warm-up suppression is removed?
 
 **promote_model.py:**
 - `archive_existing_versions=(stage == "Production")` archives old Production but not Staging. What production incident does this prevent?
@@ -159,7 +164,7 @@ Write the prompt you would give an AI to generate `drift_detector.py`. Your prom
 ### Teach-Back Exercise
 
 Describe the complete MLOps cycle for a retrain:
-`validate_graph_dataset.py` → training with MLflow + WandB → `tune_threshold.py` → `promote_model.py --stage Staging` → warm-up period (500 real requests) → `compute_drift_baseline.py --source warmup` → `promote_model.py --stage Production`.
+`validate_graph_dataset.py` → training with MLflow logging (→ `trainer.py:607`) → `tune_threshold.py` → `promote_model.py --stage Staging` → warm-up period (500 real requests) → `compute_drift_baseline.py --source warmup` → `promote_model.py --stage Production`.
 Explain `--dry-run` and when you use it. Explain what `dvc push` does after the checkpoint is saved.
 
 ### Beyond the Codebase: CI/CD and Advanced Deployment Patterns 🟡
@@ -237,7 +242,7 @@ Coverage reports show which lines in source files have no test coverage — thos
 
 Practice answering out loud, timed under 2 minutes each. The answer lives in the anchored file(s) noted.
 
-### Part A — SENTINEL-Specific Questions (25)
+### Part A — SENTINEL-Specific Questions (26)
 
 | # | Question | Anchor |
 |---|----------|--------|
@@ -246,26 +251,27 @@ Practice answering out loud, timed under 2 minutes each. The answer lives in the
 | Q3 | Explain LoRA mathematically. Why r=8 and not r=64? What is the general principle for rank selection? | Phase 0 Topic C + `transformer_encoder.py` |
 | Q4 | Why BCEWithLogitsLoss and not CrossEntropyLoss? | Phase 0 Topic E + `trainer.py` |
 | Q5 | There's a production bug: inference scores are worse than val metrics. Same checkpoint. Where do you look first? | `graph_schema.py` CHANGE POLICY + `cache.py` + two hash systems |
-| Q6 | What is pos_weight and when would you switch to FocalLoss? | `trainer.py` compute_pos_weight() + `focalloss.py` |
-| Q7 | How does the inference cache work, and what prevents it serving stale data after a feature change? | `cache.py` + `preprocess.py` — content hash + schema version |
+| Q6 | What is pos_weight and when would you switch to FocalLoss? | `trainer.py:222` compute_pos_weight() + `focalloss.py:55` |
+| Q7 | How does the inference cache work, and what prevents it serving stale data after a feature change? | `cache.py:97` schema version check + `cache.py:154` atomic rename + `graph_schema.py:42` FEATURE_SCHEMA_VERSION |
 | Q8 | Your model has Dropout. How do you ensure inference is deterministic? | `predictor.py` `model.eval()` + `test_api.py` determinism test |
-| Q9 | A user submits a 3000-token contract. Walk me through exactly what happens. | `predictor.py` `predict_source()` + `preprocess.py` windowing |
-| Q10 | We want to add an 11th vulnerability class. Minimum change required, and what breaks? | `trainer.py` CLASS_NAMES + `predictor.py` Bug 5 fix |
-| Q11 | Why is the KS drift baseline built from warm-up requests rather than training data? | `drift_detector.py` + `compute_drift_baseline.py` |
-| Q12 | Explain the GAT edge attribute mechanism. What does SENTINEL's GATConv see that a GCN doesn't? | `gnn_encoder.py` + `graph_schema.py` EDGE_TYPES |
-| Q13 | An engineer re-extracts a subset of contracts but skips `validate_graph_dataset.py`. What happens at training time? | `validate_graph_dataset.py` + `gnn_encoder.py` graceful degradation |
-| Q14 | `OneCycleLR` was resuming incorrectly after a checkpoint. Describe the bug and fix. | `trainer.py` Audit Fix #8 |
-| Q15 | What does the startup warmup protect against, and why did the 0-edge warmup fail? | `predictor.py` `_warmup()` Audit Fix #5 |
+| Q9 | A user submits a 3000-token contract. Walk me through exactly what happens. | `predictor.py:258` _warmup context + `predictor.py:340` max aggregation + `preprocess.py` windowing |
+| Q10 | We want to add an 11th vulnerability class. Minimum change required, and what breaks? | `trainer.py:107` CLASS_NAMES + `predictor.py:65` _ARCH_TO_FUSION_DIM |
+| Q11 | Why is the KS drift baseline built from warm-up requests rather than training data? | `drift_detector.py:128` warm-up suppression + `compute_drift_baseline.py` |
+| Q12 | Explain the GAT edge attribute mechanism. What does SENTINEL's GATConv see that a GCN doesn't? | `gnn_encoder.py:91` edge embedding + `graph_schema.py:123` EDGE_TYPES |
+| Q13 | An engineer re-extracts a subset of contracts but skips `validate_graph_dataset.py`. What happens at training time? | `validate_graph_dataset.py` + `gnn_encoder.py:134` graceful degradation |
+| Q14 | `OneCycleLR` was resuming incorrectly after a checkpoint. Describe the bug and fix. | `trainer.py:575` OneCycleLR remaining_epochs |
+| Q15 | What does the startup warmup protect against, and why did the 0-edge warmup fail? | `predictor.py:258` _warmup() |
 | Q16 | How do you version 68K binary `.pt` files alongside your code? | DVC section in Phase 7 |
-| Q17 | Why did you choose BF16 over FP16 for mixed-precision training on this hardware? | Phase 5 AMP section + `trainer.py` |
-| Q18 | Explain `Batch.from_data_list()`. Why can't you just `torch.stack()` PyG graphs? | Phase 3 Concept Injection — PyG Batch mechanics |
-| Q19 | The original code had `SentinelModel(num_classes=1)` as the default. Walk me through the failure this caused. | `sentinel_model.py` Fix #3 |
-| Q20 | I see this codebase was AI-assisted. Walk me through the bugs you found and fixed in the fusion layer. | Cross-Cutting §5 audit fixes narration |
-| Q21 | Why is F1-macro the early stopping metric and not accuracy or F1-micro? | Cross-Cutting §6 Evaluation Metrics |
-| Q22 | Explain what `build_multilabel_index.py` does. Why GROUP BY SHA256 with max()? What does WeakAccessMod exclusion tell you? | Phase 2 + `build_multilabel_index.py` |
-| Q23 | Walk me through what happens to a Reentrancy contract from raw Solidity to the classifier's sigmoid output. Use concrete node/edge/token examples. | Phases 0 + 2 + 3 + 4 |
-| Q24 | The model is deployed. In 6 months, DeFi contracts look very different from your training set. How do you detect and respond? | `drift_detector.py` + `promote_model.py` + Phase 7 |
-| Q25 | Describe SENTINEL's per-class threshold tuning. Why 0.5 is wrong for every class, and how the tie-breaking rule reflects the purpose of the system. | `tune_threshold.py` + Phase 5 |
+| Q17 | Why did you choose BF16 over FP16 for mixed-precision training on this hardware? | Phase 5 AMP section + `trainer.py:349` autocast block |
+| Q18 | Explain `Batch.from_data_list()`. Why can't you just `torch.stack()` PyG graphs? | Phase 3 Concept Injection — PyG Batch mechanics + `fusion_layer.py:181` |
+| Q19 | The original code had `SentinelModel(num_classes=1)` as the default. Walk me through the failure this caused. | `sentinel_model.py:85` Fix #3 |
+| Q20 | `SentinelModel.forward()` returns logits. Where exactly is sigmoid applied and why isn't it inside the model? | Cross-Cutting §4 + `sentinel_model.py:126` classifier + `trainer.py` BCEWithLogitsLoss |
+| Q21 | I see this codebase was AI-assisted. Walk me through the bugs you found and fixed in the fusion layer. | Cross-Cutting §8 audit fixes narration |
+| Q22 | Why is F1-macro the early stopping metric and not accuracy or F1-micro? | Cross-Cutting §9 Evaluation Metrics |
+| Q23 | Explain what `build_multilabel_index.py` does. Why GROUP BY SHA256 with max()? What does WeakAccessMod exclusion tell you? | Phase 2 + `build_multilabel_index.py:204` |
+| Q24 | Walk me through what happens to a Reentrancy contract from raw Solidity to the classifier's sigmoid output. Use concrete node/edge/token examples. | Phases 0 + 2 + 3 + 4 |
+| Q25 | The model is deployed. In 6 months, DeFi contracts look very different from your training set. How do you detect and respond? | `drift_detector.py:82` ks_2samp + `promote_model.py` + Phase 7 |
+| Q26 | Describe SENTINEL's per-class threshold tuning. Why 0.5 is wrong for every class, and how the tie-breaking rule reflects the purpose of the system. | `tune_threshold.py` + Phase 5 |
 
 ---
 
@@ -275,13 +281,13 @@ These are the questions companies ask BEFORE going into your specific project. P
 
 | # | Question | What to cover |
 |---|----------|--------------|
-| Q26 | Explain backpropagation and the chain rule. What breaks in very deep networks without residual connections? | Gradient flow; vanishing gradient; how residuals provide identity shortcuts |
-| Q27 | What is the difference between batch normalisation and layer normalisation? When would you use each? | BatchNorm: normalises across batch dimension (bad for small batches, RNNs); LayerNorm: normalises across feature dimension (preferred in Transformers and GNNs where batch stats are noisy) |
-| Q28 | Walk me through the transformer self-attention mechanism mathematically. What is the role of the scaling factor 1/√dk? | QKV; softmax(QKᵀ/√dk)V; scaling prevents dot products from growing too large in high dimensions, which causes vanishing gradients through softmax |
-| Q29 | What is data leakage? Give three ways it can happen in an ML pipeline without the team noticing. | Feature computed on full dataset before split; target encoding using test set statistics; temporal data shuffled before split; evaluation metric computed on data used for hyperparameter tuning |
-| Q30 | How do you approach debugging a model that trains well but fails badly in production? | Distribution shift (train/prod mismatch); feature drift; preprocessing difference between training and inference; label quality; threshold calibration; check production input distribution first |
-| Q31 | Explain the bias-variance tradeoff. In a 10-class multi-label classification with extreme class imbalance, which is the more common failure mode and why? | High bias (underfitting) on rare classes — the model learns to predict the majority class (safe contract) almost always; this is not "high variance" but systematic suppression of minority classes; addressed by pos_weight / FocalLoss / oversampling |
-| Q32 | What is a feature store? Have you worked with one or something equivalent? | Centralised repository for ML features; provides consistent feature computation for training and serving; prevents train/serve skew; SENTINEL's `graph_schema.py` + offline `.pt` files + online `preprocess.py` is a lightweight equivalent — describe this connection |
+| Q27 | Explain backpropagation and the chain rule. What breaks in very deep networks without residual connections? | Gradient flow; vanishing gradient; how residuals provide identity shortcuts |
+| Q28 | What is the difference between batch normalisation and layer normalisation? When would you use each? | BatchNorm: normalises across batch dimension (bad for small batches, RNNs); LayerNorm: normalises across feature dimension (preferred in Transformers and GNNs where batch stats are noisy) |
+| Q29 | Walk me through the transformer self-attention mechanism mathematically. What is the role of the scaling factor 1/√dk? | QKV; softmax(QKᵀ/√dk)V; scaling prevents dot products from growing too large in high dimensions, which causes vanishing gradients through softmax |
+| Q30 | What is data leakage? Give three ways it can happen in an ML pipeline without the team noticing. | Feature computed on full dataset before split; target encoding using test set statistics; temporal data shuffled before split; evaluation metric computed on data used for hyperparameter tuning |
+| Q31 | How do you approach debugging a model that trains well but fails badly in production? | Distribution shift (train/prod mismatch); feature drift; preprocessing difference between training and inference; label quality; threshold calibration; check production input distribution first |
+| Q32 | Explain the bias-variance tradeoff. In a 10-class multi-label classification with extreme class imbalance, which is the more common failure mode and why? | High bias (underfitting) on rare classes — the model learns to predict the majority class (safe contract) almost always; this is not "high variance" but systematic suppression of minority classes; addressed by pos_weight / FocalLoss / oversampling |
+| Q33 | What is a feature store? Have you worked with one or something equivalent? | Centralised repository for ML features; provides consistent feature computation for training and serving; prevents train/serve skew; SENTINEL's `graph_schema.py` + offline `.pt` files + online `preprocess.py` is a lightweight equivalent — describe this connection |
 
 ---
 
@@ -296,7 +302,7 @@ These are the questions companies ask BEFORE going into your specific project. P
 | **Week 5** | Phase 4 | Fusion. Run `to_dense_batch` exercise in Python shell first. Read `test_fusion_layer.py` before `fusion_layer.py`. | Fusion whiteboard teach-back with all 8 fixes narrated |
 | **Week 6** | Phase 5 | Training. Draw OneCycleLR curve before reading trainer.py. | Training loop explanation + audit fix narration |
 | **Week 7** | Phase 6 + Phase 7 | Inference API + MLOps. Run the API locally. Call `/predict`. Run `dvc status`. | Live API demo + full MLOps cycle teach-back |
-| **Week 8** | Phase 8 + Review | Tests + full review. Run `pytest --cov`. Answer all 32 questions timed out loud. | All 32 questions under 2 minutes each without notes |
+| **Week 8** | Phase 8 + Review | Tests + full review. Run `pytest --cov`. Answer all 33 questions timed out loud. | All 33 questions under 2 minutes each without notes |
 
 ---
 
@@ -337,11 +343,11 @@ Before considering this study plan complete, verify each item:
 - [ ] Can write a Code Directing prompt for `drift_detector.py` and `api.py`
 
 **Interview Readiness:**
-- [ ] Passed all 25 SENTINEL-specific questions out loud, timed, without notes
-- [ ] Passed all 7 generic senior ML questions out loud, timed, without notes
+- [ ] Passed all 26 SENTINEL-specific questions (Q1–Q26) out loud, timed, without notes
+- [ ] Passed all 7 generic senior ML questions (Q27–Q33) out loud, timed, without notes
 - [ ] `pytest ml/tests/ -v` passes cleanly on your machine
 - [ ] `dvc status` shows clean (data in sync with git)
 
 ---
 
-*This is Roadmap 3 of 3 of the SENTINEL Master Learning Plan. Together the three roadmaps replace the original single document, split at natural phase boundaries: Foundations & Data (Weeks 1–3) → Architecture & Training (Weeks 4–6) → Production & Interview Prep (Weeks 7–8). Key enhancements over the original: principle-vs-project-specific framing throughout; GNN landscape context in Phase 0; generalizable LoRA rank selection principle; interpretability guidance in Cross-Cutting; CI/CD and shadow mode note in Phase 7; 7 generic senior ML interview questions (Q26–Q32); and an expanded Final Verification Checklist.*
+*This is Roadmap 3 of 3 of the SENTINEL Master Learning Plan. Together the three roadmaps replace the original single document, split at natural phase boundaries: Foundations & Data (Weeks 1–3) → Architecture & Training (Weeks 4–6) → Production & Interview Prep (Weeks 7–8). Key enhancements: principle-vs-project-specific framing; GNN landscape; LoRA rank selection principle; interpretability guidance; CI/CD and shadow mode; file:line anchors throughout pointing to the actual source code; no-sigmoid-in-forward and resume_model_only cross-cutting items; `_ARCH_TO_FUSION_DIM` corrected to 3 entries; WandB removed (not used in source); validate_graph_dataset.py corrected to Survey; 33 total interview questions (Q1–Q33).*
