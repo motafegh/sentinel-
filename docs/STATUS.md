@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-04
+Last updated: 2026-05-04 (evening)
 
 ---
 
@@ -39,12 +39,27 @@ Last updated: 2026-05-04
   but the CLI never exposed this field. Added `--no-resume-model-only` flag so full-resume
   can be triggered from the command line without editing source code.
 
-- **Retrain extended: 40 → 60 epochs, full-resume**: With both fixes applied, the
-  interrupted epoch-37 checkpoint was resumed correctly:
+- **Fix #10 — `trainer.py` OneCycleLR overflow on epoch extension**: When
+  `--no-resume-model-only` is used, `scheduler.load_state_dict()` does
+  `self.__dict__.update(state_dict)`, which restores not just `last_epoch` but also
+  `total_steps` from the checkpoint — silently overwriting the new scheduler's
+  `remaining_epochs` budget. On a 40→60 extension, the checkpoint's
+  `total_steps = 37 × 2998 = 110,926` was loaded; after 3 more resumed epochs
+  the counter hit 119,920 (the original 40-epoch ceiling) and the first batch
+  of epoch 41 crashed. Fix: before calling `load_state_dict`, compare
+  `ckpt["scheduler"]["total_steps"]` against `remaining_epochs × steps_per_epoch`.
+  If they differ (epoch extension detected), skip scheduler state but still restore
+  the optimizer — preserving Adam momentum without inheriting a stale step budget.
+
+- **Retrain extended: 40 → 60 epochs, resumed with optimizer state**: With all fixes
+  applied, the interrupted epoch-37 checkpoint was resumed correctly:
   - Optimizer Adam m/v accumulators restored (37 epochs of gradient history preserved)
-  - Scheduler LR curve continues from epoch-37 position (no spike back to `max_lr=3e-4`)
-  - Training confirmed running: epoch 38/60 started at ~3.78 batch/s
-  - **🔄 IN PROGRESS** — expected ~5 hours overnight
+  - Scheduler starts **fresh** for remaining epochs (Fix #10: stale `total_steps`
+    from checkpoint would have overflowed; scheduler state skipped on extension)
+  - Note: resumed run used `batch_size=32` (CLI default) vs original `batch_size=16`,
+    halving `steps_per_epoch` from 2998 → 1499; Adam moments are partially stale
+    relative to the new batch size
+  - Training confirmed running through epoch 42 as of 2026-05-04 19:40
 
 ---
 
@@ -119,7 +134,11 @@ Last updated: 2026-05-04
 | Item | Resolution |
 |------|-----------|
 | Fix #9 — `config.architecture` AttributeError | `ARCHITECTURE` constant extracted; resume check, checkpoint dict, MLflow params all use it |
+| Fix #10 — OneCycleLR overflow on epoch extension | `load_state_dict` guard: skip scheduler state when `total_steps` mismatches; optimizer state still restored |
 | Full-resume CLI gap | `--no-resume-model-only` flag added to `train.py`; `resume_model_only` wired to `TrainConfig` |
+| `validate_graph_dataset.py` duplicate constant | `NUM_EDGE_TYPES` now imported from `graph_schema.py` instead of hardcoded |
+| `tune_threshold.py` hardcoded arch→dim mapping | Now uses `_ARCH_TO_FUSION_DIM` from `predictor.py`; new architectures propagate automatically |
+| `api.py` duplicate `MAX_SOURCE_BYTES` | Now imported from `ContractPreprocessor.MAX_SOURCE_BYTES`; single definition in `preprocess.py` |
 | T2-A Prometheus | `prometheus-fastapi-instrumentator` added to `api.py`; custom gauges for model load + GPU memory |
 | T2-B Drift detection | `drift_detector.py` + `compute_drift_baseline.py` added; KS test + rolling buffer + warm-up mode |
 | T2-C MLflow registry | `promote_model.py` CLI added (Staging/Production, dry-run, git tags) |
@@ -150,7 +169,8 @@ ml/checkpoints/multilabel_crossattn_v2_best.pt   ← retrain IN PROGRESS (full-r
   resumed:      2026-05-04 00:35 (from epoch 37, best_f1=0.4629)
   target:       epoch 60
   edge_attr:    True (P0-B active)
-  resume_type:  FULL (optimizer + scheduler state restored)
+  resume_type:  optimizer state restored; scheduler fresh (Fix #10)
+  batch_size:   32 (CLI default — differs from original 16; Adam moments partially stale)
 ```
 
 Retrain is running. Baseline checkpoint remains active until the new run
