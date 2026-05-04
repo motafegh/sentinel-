@@ -46,6 +46,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from ml.src.inference.drift_detector import DriftDetector
 from ml.src.inference.predictor import Predictor
+from ml.src.inference.preprocess import ContractPreprocessor
 
 DRIFT_BASELINE_PATH: str = os.getenv(
     "SENTINEL_DRIFT_BASELINE",
@@ -68,9 +69,9 @@ CHECKPOINT: str = os.getenv(
 # Inference timeout in seconds — override via SENTINEL_PREDICT_TIMEOUT env var.
 PREDICT_TIMEOUT: float = float(os.getenv("SENTINEL_PREDICT_TIMEOUT", "60"))
 
-# Hard upper bound on source_code size.  Slither and the tokenizer are expensive;
-# reject oversized payloads before any preprocessing work begins.
-MAX_SOURCE_BYTES: int = 1 * 1024 * 1024  # 1 MB
+# Hard upper bound on source_code size — imported from ContractPreprocessor so both
+# the HTTP boundary and the preprocessing layer share one definition.
+MAX_SOURCE_BYTES: int = ContractPreprocessor.MAX_SOURCE_BYTES
 
 
 # ------------------------------------------------------------------
