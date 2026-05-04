@@ -26,7 +26,7 @@ from pathlib import Path
 
 import torch
 
-NUM_EDGE_TYPES = 5  # CALLS READS WRITES EMITS INHERITS — mirror of graph_schema.py
+from ml.src.preprocessing.graph_schema import NUM_EDGE_TYPES  # single source of truth
 
 
 def validate(graphs_dir: Path) -> int:
