@@ -92,9 +92,6 @@ os.environ["HF_HUB_OFFLINE"]       = "1"
 
 # ---------------------------------------------------------------------------
 # Optimisation #2: TF32 matmuls
-# Ampere+ GPUs (RTX 30xx/40xx/A-series) use TF32 units for cuBLAS and cuDNN.
-# ~1.5× speedup, no code changes needed elsewhere. Silently ignored on older
-# GPUs so it's always safe to enable.
 # ---------------------------------------------------------------------------
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32       = True
@@ -122,6 +119,13 @@ CLASS_NAMES = [
     "UnusedReturn",                # 9
 ]
 NUM_CLASSES = len(CLASS_NAMES)
+
+# ---------------------------------------------------------------------------
+# Architecture constant — single source of truth
+# TrainConfig has no 'architecture' field; this constant is used wherever
+# the architecture name needs to be recorded (checkpoint, MLflow, resume check).
+# ---------------------------------------------------------------------------
+ARCHITECTURE = "cross_attention_lora"
 
 # ---------------------------------------------------------------------------
 # Valid loss function names — Audit fix #4
@@ -160,17 +164,13 @@ class TrainConfig:
     fusion_dropout:    float = 0.3
 
     # --- GNN architecture (P0-C) ---
-    # Defaults match original hardcoded architecture; change before retraining
-    # to explore wider GNNs or different head counts.
     gnn_hidden_dim:   int   = 64
     gnn_heads:        int   = 8
     gnn_dropout:      float = 0.2
-    use_edge_attr:    bool  = True   # feed edge-type embeddings into GATConv (P0-B)
-    gnn_edge_emb_dim: int   = 16     # dimension of learned edge-type embedding
+    use_edge_attr:    bool  = True
+    gnn_edge_emb_dim: int   = 16
 
     # --- LoRA architecture (P0-A) ---
-    # Defaults match original hardcoded LORA_CONFIG; tune r/alpha before retraining.
-    # Higher r → more capacity and params; scale = lora_alpha/lora_r.
     lora_r:               int        = 8
     lora_alpha:           int        = 16
     lora_dropout:         float      = 0.1
@@ -181,36 +181,25 @@ class TrainConfig:
 
     # --- Training ---
     epochs:       int   = 40
-    batch_size:   int   = 16          # safe for 8 GB VRAM with AMP
+    batch_size:   int   = 16
     lr:           float = 3e-4
     weight_decay: float = 1e-2
     threshold:    float = 0.5
-    early_stop_patience: int = 7      # Early stopping patience (epochs)
+    early_stop_patience: int = 7
 
     # --- Stability ---
     grad_clip:  float = 1.0
     warmup_pct: float = 0.05
 
     # --- Speed: AMP ---
-    # Optimisation #1. Wraps forward pass in autocast(BF16) + GradScaler.
-    # BF16 preferred over FP16 on Ampere — same speed, no inf/nan risk.
-    # Set use_amp=False only if you see NaN losses or are on a pre-Volta GPU.
     use_amp: bool = True
 
     # --- Speed: DataLoader ---
-    # Optimisation #3. 2 workers pre-fetch and collate while GPU trains.
-    # Safe with RAM cache (workers get a read-only fork of the dict).
-    # Set to 0 only if you hit CUDA multiprocessing issues.
     num_workers:         int  = 2
-    persistent_workers:  bool = True   # avoids re-spawning workers each epoch
+    persistent_workers:  bool = True
 
     # --- Loss function ---
     # Valid values: "bce" | "focal"
-    # "bce"   (default): BCEWithLogitsLoss with class-balanced pos_weight.
-    # "focal": FocalLoss(gamma=2.0, alpha=0.25) — down-weights easy examples,
-    #          useful when class imbalance is severe and pos_weight is insufficient.
-    #          Applies sigmoid internally so it receives raw logits identically to bce.
-    # Audit fix #4: any other value raises ValueError immediately at train() entry.
     loss_fn: str = "bce"
 
     # --- Cache ---
@@ -291,11 +280,10 @@ def evaluate(
             attention_mask = tokens["attention_mask"].to(device)
             labels         = labels.to(device).float()
 
-            # AMP in eval too — same speedup, inference is pure forward pass
             with torch.amp.autocast("cuda", enabled=use_amp):
                 logits = model(graphs, input_ids, attention_mask)
 
-            probs = torch.sigmoid(logits.float())   # cast back to FP32 for sigmoid
+            probs = torch.sigmoid(logits.float())
             preds = (probs >= threshold).long()
 
             all_preds.append(preds.cpu().numpy())
@@ -304,10 +292,10 @@ def evaluate(
     y_true = np.concatenate(all_true)
     y_pred = np.concatenate(all_preds)
 
-    f1_macro    = f1_score(y_true, y_pred, average="macro",  zero_division=0)
-    f1_micro    = f1_score(y_true, y_pred, average="micro",  zero_division=0)
-    hamming     = hamming_loss(y_true, y_pred)
-    f1_per_class = f1_score(y_true, y_pred, average=None,    zero_division=0)
+    f1_macro     = f1_score(y_true, y_pred, average="macro",  zero_division=0)
+    f1_micro     = f1_score(y_true, y_pred, average="micro",  zero_division=0)
+    hamming      = hamming_loss(y_true, y_pred)
+    f1_per_class = f1_score(y_true, y_pred, average=None,     zero_division=0)
 
     metrics = {"f1_macro": f1_macro, "f1_micro": f1_micro, "hamming": hamming}
     for i, name in enumerate(CLASS_NAMES[:y_true.shape[1]]):
@@ -334,11 +322,6 @@ def train_one_epoch(
     model.train()
     total_loss = 0.0
 
-    # ── Audit fix #7: pre-compute trainable param list once per epoch ───────
-    # model.parameters() includes ~125 M frozen CodeBERT weights whose grads
-    # are None. clip_grad_norm_ was iterating over all of them unnecessarily.
-    # Filtering to requires_grad=True params is both correct (we're only
-    # clipping what we're training) and saves one full-model tensor scan per step.
     trainable_params = [p for p in model.parameters() if p.requires_grad]
 
     pbar = tqdm(loader, desc="Training", unit="batch", leave=False)
@@ -350,27 +333,15 @@ def train_one_epoch(
         attention_mask = tokens["attention_mask"].to(device)
         labels         = labels.to(device).float()
 
-        # Optimisation #5: set_to_none=True frees gradient tensors entirely
-        # instead of writing zeros — saves one full-model memory write per step.
         optimizer.zero_grad(set_to_none=True)
 
-        # Optimisation #1: AMP forward pass
-        # autocast selects BF16 for eligible ops (matmuls, attention, convs)
-        # and keeps FP32 for ops that need precision (norm, softmax, etc.).
-        # GradScaler multiplies loss by a large scale factor before backward
-        # to prevent FP16 underflow in gradients, then unscales before the
-        # optimizer step. With BF16 the scaler is essentially a no-op but
-        # keeping it here means the code works correctly with FP16 too.
         with torch.amp.autocast("cuda", enabled=use_amp):
             logits = model(graphs, input_ids, attention_mask)
             loss   = loss_fn(logits, labels)
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
-
-        # ── Audit fix #7: clip trainable params only (not frozen CodeBERT) ──
         torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=grad_clip)
-
         scaler.step(optimizer)
         scaler.update()
         scheduler.step()
@@ -394,10 +365,6 @@ def train(config: TrainConfig) -> None:
     device = config.device
     logger.info(f"Training on: {device} | classes: {config.num_classes}")
 
-    # ── Audit fix #4: validate loss_fn before any expensive setup ───────────
-    # Previously a typo (e.g. "Focal" instead of "focal") silently fell
-    # through to BCE. Now fails early with a clear message so the user
-    # never discovers the error after hours of training with the wrong loss.
     if config.loss_fn not in _VALID_LOSS_FNS:
         raise ValueError(
             f"Unknown loss_fn='{config.loss_fn}'. "
@@ -442,11 +409,8 @@ def train(config: TrainConfig) -> None:
         cache_path=cache_path,
     )
 
-    # Optimisation #3 + #4: workers + pin_memory consistent
-    # pin_memory only helps when workers exist to do the pinning asynchronously.
-    # persistent_workers keeps worker processes alive between epochs.
     _use_workers = config.num_workers > 0
-    _prefetch    = 2 if _use_workers else None  # pre-fetch 2 batches ahead
+    _prefetch    = 2 if _use_workers else None
 
     train_loader = DataLoader(
         train_dataset,
@@ -502,12 +466,11 @@ def train(config: TrainConfig) -> None:
     ).to(device)
 
     # ------------------------------------------------------------------
-    # Resume: load model weights BEFORE building the scheduler so we know
-    # start_epoch and can compute remaining_epochs correctly (fix #8).
+    # Resume
     # ------------------------------------------------------------------
     start_epoch      = 1
     best_f1          = 0.0
-    patience_counter = 0   # for early stopping
+    patience_counter = 0
 
     if config.resume_from:
         logger.info(f"Resuming from: {config.resume_from}")
@@ -521,9 +484,8 @@ def train(config: TrainConfig) -> None:
         best_f1     = ckpt.get("best_f1", 0.0)
         logger.info(f"Resumed from epoch {start_epoch-1} | best_f1={best_f1:.4f}")
 
-        # Cross-check checkpoint config against current training config to catch
-        # accidental resume from a checkpoint trained with different settings.
         ckpt_cfg = ckpt.get("config", {})
+
         ckpt_num_classes = ckpt_cfg.get("num_classes")
         if ckpt_num_classes is not None and ckpt_num_classes != config.num_classes:
             raise ValueError(
@@ -545,22 +507,12 @@ def train(config: TrainConfig) -> None:
     # ------------------------------------------------------------------
     # Loss, optimizer, scheduler
     # ------------------------------------------------------------------
-    # ── Audit fix #4: validated above; dispatch is now exhaustive ─────────
     if config.loss_fn == "focal":
-        # FocalLoss expects post-sigmoid probabilities.
-        # ── Audit fix #2: apply sigmoid on logits.float() not raw BF16 logits.
-        # Under autocast, logits are BF16. sigmoid(BF16) of a very negative
-        # logit produces exactly 0.0 in BF16 (underflow), causing log(0)=-inf
-        # inside FocalLoss. Casting to float32 first keeps the probability
-        # representable (e.g. 0.0009 instead of 0.0).
         _focal = FocalLoss(gamma=2.0, alpha=0.25)
 
         class _FocalFromLogits(nn.Module):
             """Thin wrapper so FocalLoss receives FP32 probabilities, not raw logits."""
             def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-                # Cast logits to FP32 BEFORE sigmoid to prevent BF16 underflow.
-                # FocalLoss.forward() also has its own .float() guard, but the
-                # sigmoid result is what matters — fixing it here at the source.
                 return _focal(torch.sigmoid(logits.float()), targets)
 
         loss_fn: nn.Module = _FocalFromLogits()
@@ -575,13 +527,7 @@ def train(config: TrainConfig) -> None:
         weight_decay=config.weight_decay,
     )
 
-    # ── Audit fix #8: OneCycleLR uses remaining_epochs on resume ──────────
-    # When resuming at epoch N of T total, the cosine LR curve should cover
-    # the remaining T-N epochs, not the full T epochs again. Using epochs=T
-    # restarted the LR from max_lr and kept it too high through the final
-    # epochs, harming convergence after resume.
-    # Fresh runs: start_epoch=1 → remaining_epochs=config.epochs (unchanged).
-    # Resumed runs: start_epoch=N → remaining_epochs=T-N+1 (correct tail).
+    # ── Fix #8: OneCycleLR uses remaining_epochs on resume ────────────────
     remaining_epochs = config.epochs - start_epoch + 1
     if remaining_epochs <= 0:
         logger.warning(
@@ -593,20 +539,16 @@ def train(config: TrainConfig) -> None:
     scheduler = OneCycleLR(
         optimizer,
         max_lr=config.lr,
-        epochs=remaining_epochs,          # ← fix #8: was config.epochs
+        epochs=remaining_epochs,
         steps_per_epoch=len(train_loader),
         pct_start=config.warmup_pct,
         anneal_strategy="cos",
     )
 
-    # Optimisation #1: GradScaler for AMP backward pass.
-    # enabled=False when AMP is off — scaler becomes a transparent pass-through,
-    # so the train_one_epoch code path is identical regardless of use_amp.
     scaler = torch.amp.GradScaler("cuda", enabled=config.use_amp)
 
     # ------------------------------------------------------------------
     # Restore optimizer + scheduler state if doing a full resume
-    # (must happen AFTER scheduler is constructed)
     # ------------------------------------------------------------------
     if config.resume_from and not config.resume_model_only:
         ckpt = torch.load(config.resume_from, map_location=device, weights_only=False)
@@ -664,13 +606,11 @@ def train(config: TrainConfig) -> None:
             "resume_from":          config.resume_from or "none",
             "resume_model_only":    config.resume_model_only,
             "early_stop_patience":  config.early_stop_patience,
-            # GNN architecture (P0-C)
             "gnn_hidden_dim":       config.gnn_hidden_dim,
             "gnn_heads":            config.gnn_heads,
             "gnn_dropout":          config.gnn_dropout,
             "use_edge_attr":        config.use_edge_attr,
             "gnn_edge_emb_dim":     config.gnn_edge_emb_dim,
-            # LoRA architecture (P0-A)
             "lora_r":               config.lora_r,
             "lora_alpha":           config.lora_alpha,
             "lora_dropout":         config.lora_dropout,
@@ -710,7 +650,6 @@ def train(config: TrainConfig) -> None:
                 use_amp=config.use_amp,
             )
 
-            # Log metrics
             mlflow.log_metric("train_loss",    train_loss,               step=epoch)
             mlflow.log_metric("val_f1_macro",  val_metrics["f1_macro"],  step=epoch)
             mlflow.log_metric("val_f1_micro",  val_metrics["f1_micro"],  step=epoch)
@@ -718,7 +657,6 @@ def train(config: TrainConfig) -> None:
             for name in CLASS_NAMES[:config.num_classes]:
                 mlflow.log_metric(f"val_f1_{name}", val_metrics[f"f1_{name}"], step=epoch)
 
-            # Console summary
             class_f1s = [
                 (n, val_metrics[f"f1_{n}"]) for n in CLASS_NAMES[:config.num_classes]
             ]
@@ -734,7 +672,6 @@ def train(config: TrainConfig) -> None:
                 f"  Bottom3: {bottom3}"
             )
 
-            # Check for improvement -> save checkpoint and reset patience
             if val_metrics["f1_macro"] > best_f1:
                 best_f1 = val_metrics["f1_macro"]
                 patience_counter = 0
@@ -765,7 +702,6 @@ def train(config: TrainConfig) -> None:
                     )
                     break
 
-        # Optimisation #6: log artifact once at end, not on every checkpoint save.
         if checkpoint_path.exists():
             mlflow.log_artifact(str(checkpoint_path))
 

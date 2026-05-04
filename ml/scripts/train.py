@@ -15,10 +15,16 @@ Usage:
         --lr 3e-4 \\
         --batch-size 32
 
-    # Resume from a checkpoint
+    # Resume from a checkpoint (model weights only, fresh optimizer/scheduler)
     poetry run python ml/scripts/train.py \\
         --resume ml/checkpoints/multilabel-v1_best.pt \\
         --run-name multilabel-v1-resumed
+
+    # Full resume (model + optimizer + scheduler state restored exactly)
+    poetry run python ml/scripts/train.py \\
+        --resume ml/checkpoints/multilabel-v1_best.pt \\
+        --run-name multilabel-v1-resumed \\
+        --no-resume-model-only
 
     # Binary legacy run (for comparison)
     poetry run python ml/scripts/train.py \\
