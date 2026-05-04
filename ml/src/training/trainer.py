@@ -121,27 +121,16 @@ CLASS_NAMES = [
 NUM_CLASSES = len(CLASS_NAMES)
 
 # ---------------------------------------------------------------------------
-# Architecture constant — single source of truth
-# TrainConfig has no 'architecture' field; this constant is used wherever
-# the architecture name needs to be recorded (checkpoint, MLflow, resume check).
-# ---------------------------------------------------------------------------
-ARCHITECTURE = "cross_attention_lora"
-
-# ---------------------------------------------------------------------------
-# Valid loss function names — Audit fix #4
-# ---------------------------------------------------------------------------
-# Centralised here so the ValueError message and the dispatch logic
-# always stay in sync. Add new loss names to this set before adding
-# the corresponding elif branch below.
-# ---------------------------------------------------------------------------
-# Architecture constant — single source of truth for Fix #9
+# Architecture constant — single source of truth (Fix #9)
 # TrainConfig has no 'architecture' field; using config.architecture caused
-# AttributeError on every resume. Compare against this constant instead.
+# AttributeError on every resume. This constant is used wherever the
+# architecture name needs to be recorded (checkpoint, MLflow, resume check).
 # ---------------------------------------------------------------------------
 ARCHITECTURE = "cross_attention_lora"
 
 # ---------------------------------------------------------------------------
 # Valid loss function names — Audit fix #4
+# Centralised here so the ValueError message and dispatch logic stay in sync.
 # ---------------------------------------------------------------------------
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal"})
 
