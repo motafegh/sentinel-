@@ -18,9 +18,16 @@ What this script does:
 6. Report overall macro/micro F1, hamming loss, and exact-match accuracy
 7. Save thresholds JSON next to the checkpoint
 
+FIXES (2026-05-04):
+    Fix #3 — load_model_from_checkpoint() now passes dropout (fusion_dropout),
+               gnn_dropout, and lora_target_modules from the saved checkpoint
+               config to SentinelModel(). Identical issue to predictor.py Fix #2.
+               Missing args caused load_state_dict() to crash when the checkpoint
+               was trained with non-default hyperparameters.
+
 Usage:
     python -m ml.scripts.tune_threshold
-    python -m ml.scripts.tune_threshold \
+    python -m ml.scripts.tune_threshold \\
         --checkpoint ml/checkpoints/multilabel_crossattn_v2_best.pt
 """
 
@@ -169,6 +176,10 @@ def load_model_from_checkpoint(
     Supports both:
     - new dict checkpoints with {"model": ..., "config": ...}
     - older plain state_dict checkpoints
+
+    Fix #3: passes dropout, gnn_dropout, and lora_target_modules from the
+    saved checkpoint config so load_state_dict() never crashes due to LoRA
+    key mismatches when non-default hyperparameters were used during training.
     """
     raw = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
@@ -187,6 +198,11 @@ def load_model_from_checkpoint(
         lora_r=ckpt_config.get("lora_r", 8),
         lora_alpha=ckpt_config.get("lora_alpha", 16),
         lora_dropout=ckpt_config.get("lora_dropout", 0.1),
+        dropout=ckpt_config.get("fusion_dropout", 0.3),
+        gnn_dropout=ckpt_config.get("gnn_dropout", 0.2),
+        lora_target_modules=ckpt_config.get(
+            "lora_target_modules", ["query", "value"]
+        ),
     ).to(device)
 
     state_dict = raw["model"] if isinstance(raw, dict) and "model" in raw else raw
@@ -275,7 +291,7 @@ def collect_probabilities(
                     f"Expected multi-label logits of shape [B, C], got {tuple(logits.shape)}."
                 )
 
-            probs = torch.sigmoid(logits)
+            probs = torch.sigmoid(logits.float())
 
             all_probs.append(probs.cpu().numpy().astype(np.float32))
             all_labels.append(labels.cpu().numpy().astype(np.int64))
