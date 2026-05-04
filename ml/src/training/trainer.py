@@ -158,6 +158,15 @@ Fix #25 — Scheduler state restore used ckpt["scheduler"].get("total_steps"),
            incorrectly attributed the skip to an epoch-extension mismatch.
            Now the key's existence is checked explicitly; if absent, a clear
            "missing total_steps" warning is emitted instead.
+
+AUDIT FIXES (2026-05-04, external review):
+────────────────────────────────────────────────────────────────────────────
+Fix #9 (MLflow) — focal_gamma and focal_alpha were set in TrainConfig (Fix #22)
+           but were never included in the MLflow params dict. Every Focal Loss
+           sweep run was indistinguishable in the UI: impossible to sort/filter
+           by gamma or alpha. Both params are now logged unconditionally.
+           When loss_fn='bce' they appear but are irrelevant; when loss_fn='focal'
+           they are the primary hyperparameters under sweep.
 """
 
 from __future__ import annotations
@@ -585,19 +594,9 @@ def train(config: TrainConfig) -> dict:
         start_epoch      = ckpt.get("epoch", 0) + 1
         best_f1          = ckpt.get("best_f1", 0.0)
         # ── Fix #11: restore patience counter ──────────────────────────────
-        # Previously always reset to 0 on resume, allowing a stagnating model
-        # to train far beyond `early_stop_patience` epochs across the full run.
-        # The checkpoint now stores patience_counter; ckpt.get() defaults to 0
-        # for backward compatibility with old checkpoints that lack the key.
         patience_counter = ckpt.get("patience_counter", 0)
 
         # ── Fix #23: override patience_counter from per-epoch state file ───
-        # The best checkpoint always stores patience_counter=0 (it is reset
-        # each time a new best is found). If training was interrupted after
-        # several non-improvement epochs, the checkpoint on disk still reflects
-        # the last best epoch — not the interrupted epoch — so patience is
-        # silently reset. A lightweight sidecar written after every epoch
-        # (see below) preserves the true counter.
         _resume_state_path = Path(config.resume_from).with_suffix(".state.json")
         if _resume_state_path.exists():
             _saved_state = json.loads(_resume_state_path.read_text())
@@ -642,12 +641,6 @@ def train(config: TrainConfig) -> dict:
             )
 
         # ── Fix #12: batch_size change guard ────────────────────────────────
-        # When batch_size changes between checkpoint and resume, the Adam
-        # first/second-moment vectors (m, v) are calibrated to gradient
-        # noise from the OLD batch size.  Loading that stale optimizer state
-        # causes loss spikes and declining F1 until Adam re-calibrates
-        # (typically 5-10 epochs depending on β1=0.9, β2=0.999 decay rates).
-        # This guard detects the mismatch and warns clearly.
         ckpt_batch_size = ckpt_cfg.get("batch_size")
         _batch_size_changed = (
             ckpt_batch_size is not None
@@ -710,12 +703,6 @@ def train(config: TrainConfig) -> dict:
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
         # ── Fix #13: pos_weight / optimizer state inconsistency warning ─────
-        # pos_weight is recomputed fresh from the training split on every run.
-        # When doing a full resume, the optimizer state (m/v moments) was
-        # accumulated under the checkpoint's loss scale — which used a
-        # potentially different pos_weight if the training split changed.
-        # This is typically benign (splits are fixed), but it is an implicit
-        # inconsistency that should be visible in the logs.
         if pos_weight is not None and config.resume_from and not config.resume_model_only:
             logger.warning(
                 "Fix #13: BCEWithLogitsLoss pos_weight has been recomputed "
@@ -764,10 +751,8 @@ def train(config: TrainConfig) -> dict:
     # Restore optimizer + scheduler state if doing a full resume
     # ------------------------------------------------------------------
     if _ckpt_state is not None and not config.resume_model_only:
-        ckpt = _ckpt_state  # reuse already-loaded checkpoint; no second disk read
+        ckpt = _ckpt_state
 
-        # ── Fix #12: skip optimizer restore if force_optimizer_reset or
-        #             batch_size changed with force_optimizer_reset flag ──
         _skip_optimizer = config.force_optimizer_reset
 
         if not _skip_optimizer and "optimizer" in ckpt:
@@ -786,7 +771,6 @@ def train(config: TrainConfig) -> dict:
             )
 
         if "scheduler" in ckpt and not _skip_optimizer:
-            # ── Fix #10: guard against total_steps mismatch on epoch extension ─
             new_total_steps = remaining_epochs * len(train_loader)
             if "total_steps" not in ckpt["scheduler"]:
                 logger.warning(
@@ -835,6 +819,11 @@ def train(config: TrainConfig) -> dict:
             "num_workers":           config.num_workers,
             "use_amp":               config.use_amp,
             "loss_fn":               config.loss_fn,
+            # Fix #9 (external review): log focal params so Focal Loss sweeps
+            # are distinguishable in the MLflow UI. Present for every run;
+            # irrelevant when loss_fn='bce' but harmless to log.
+            "focal_gamma":           config.focal_gamma,
+            "focal_alpha":           config.focal_alpha,
             "device":                device,
             "architecture":          ARCHITECTURE,
             "label_csv":             config.label_csv,
@@ -921,8 +910,6 @@ def train(config: TrainConfig) -> dict:
                         "scheduler":       scheduler.state_dict(),
                         "epoch":           epoch,
                         "best_f1":         best_f1,
-                        # Fix #11: persist patience_counter so resume can
-                        # restore the correct early-stopping state.
                         "patience_counter": patience_counter,
                         "config": {
                             **dataclasses.asdict(config),
@@ -948,10 +935,6 @@ def train(config: TrainConfig) -> dict:
                     break
 
             # ── Fix #23: write per-epoch state sidecar ──────────────────────
-            # The best checkpoint always stores patience_counter=0. Writing a
-            # tiny JSON beside it after every epoch lets a future resume
-            # recover the true counter even if training was interrupted during
-            # a non-improvement streak.
             _state_path = checkpoint_path.with_suffix(".state.json")
             _state_path.write_text(
                 json.dumps({"epoch": epoch, "patience_counter": patience_counter, "best_f1": best_f1})
