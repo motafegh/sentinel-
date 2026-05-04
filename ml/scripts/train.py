@@ -16,15 +16,26 @@ Usage:
         --batch-size 32
 
     # Resume from a checkpoint (model weights only, fresh optimizer/scheduler)
+    # Use this when batch_size or any training hyperparameter has changed.
     poetry run python ml/scripts/train.py \\
         --resume ml/checkpoints/multilabel-v1_best.pt \\
         --run-name multilabel-v1-resumed
 
     # Full resume (model + optimizer + scheduler state restored exactly)
+    # Only use this when batch_size is IDENTICAL to the checkpoint.
     poetry run python ml/scripts/train.py \\
         --resume ml/checkpoints/multilabel-v1_best.pt \\
         --run-name multilabel-v1-resumed \\
         --no-resume-model-only
+
+    # Full resume + force optimizer reset (model weights + patience_counter
+    # preserved, but stale Adam moments discarded). Use when batch_size changed
+    # but you still want the exact epoch counter from the checkpoint.
+    poetry run python ml/scripts/train.py \\
+        --resume ml/checkpoints/multilabel-v1_best.pt \\
+        --run-name multilabel-v1-resumed \\
+        --no-resume-model-only \\
+        --resume-reset-optimizer
 
     # Binary legacy run (for comparison)
     poetry run python ml/scripts/train.py \\
@@ -35,6 +46,23 @@ Usage:
 
 All commands must be run from the project root (~/projects/sentinel),
 not from ml/ — the ml.src.* import chain requires the project root on sys.path.
+
+RESUME GUIDE
+────────────
+Choose the right resume mode based on what has changed:
+
+  batch_size SAME, epochs extended:
+    → --no-resume-model-only                           (full resume, Fix #10 handles scheduler)
+
+  batch_size CHANGED (e.g. 16→32):
+    → (default, no flag)                               (model-only, cleanest option)
+    → --no-resume-model-only --resume-reset-optimizer  (force-reset, keeps epoch counter)
+
+  Any hyperparameter change:
+    → (default, no flag)                               (model-only is always safe)
+
+  Exact continuation of an interrupted run (same config):
+    → --no-resume-model-only                           (full resume)
 """
 
 from __future__ import annotations
@@ -139,8 +167,27 @@ def parse_args() -> argparse.Namespace:
         help=(
             "When set, restores optimizer state from checkpoint in addition to "
             "model weights (full resume). Scheduler state is only restored if "
-            "total_steps matches — on epoch extension it is skipped automatically. "
+            "total_steps matches — on epoch extension it is skipped automatically "
+            "(Fix #10). WARNING: Only use this when batch_size is IDENTICAL to "
+            "the checkpoint. If batch_size changed, use --resume-reset-optimizer "
+            "together with this flag, or omit this flag entirely (model-only resume). "
             "Default is model-weights-only resume (fresh optimizer/scheduler)."
+        ),
+    )
+    p.add_argument(
+        "--resume-reset-optimizer",
+        dest="force_optimizer_reset",
+        action="store_true",
+        default=False,
+        help=(
+            "When set alongside --no-resume-model-only, the optimizer and scheduler "
+            "state from the checkpoint are DISCARDED even though a full resume was "
+            "requested. Model weights and patience_counter are still restored from "
+            "the checkpoint. This is the correct flag to use when batch_size has "
+            "changed since the checkpoint was saved — it gives AdamW a clean start "
+            "calibrated to the new gradient noise level while keeping the exact "
+            "epoch counter and early-stopping state from the checkpoint. "
+            "Has no effect if --no-resume-model-only is not also set."
         ),
     )
 
@@ -154,22 +201,23 @@ def main() -> None:
     label_csv = args.label_csv if args.label_csv else None
 
     config = TrainConfig(
-        run_name          = args.run_name,
-        experiment_name   = args.experiment_name,
-        num_classes       = args.num_classes,
-        label_csv         = label_csv,
-        epochs            = args.epochs,
-        batch_size        = args.batch_size,
-        lr                = args.lr,
-        weight_decay      = args.weight_decay,
-        threshold         = args.threshold,
-        graphs_dir        = args.graphs_dir,
-        tokens_dir        = args.tokens_dir,
-        splits_dir        = args.splits_dir,
-        checkpoint_dir    = args.checkpoint_dir,
-        checkpoint_name   = args.checkpoint_name or f"{args.run_name}_best.pt",
-        resume_from       = args.resume,
-        resume_model_only = args.resume_model_only,
+        run_name              = args.run_name,
+        experiment_name       = args.experiment_name,
+        num_classes           = args.num_classes,
+        label_csv             = label_csv,
+        epochs                = args.epochs,
+        batch_size            = args.batch_size,
+        lr                    = args.lr,
+        weight_decay          = args.weight_decay,
+        threshold             = args.threshold,
+        graphs_dir            = args.graphs_dir,
+        tokens_dir            = args.tokens_dir,
+        splits_dir            = args.splits_dir,
+        checkpoint_dir        = args.checkpoint_dir,
+        checkpoint_name       = args.checkpoint_name or f"{args.run_name}_best.pt",
+        resume_from           = args.resume,
+        resume_model_only     = args.resume_model_only,
+        force_optimizer_reset = args.force_optimizer_reset,
     )
 
     train(config)
