@@ -292,6 +292,15 @@ class DualPathDataset(Dataset):
                 f"attention_mask shape {tokens['attention_mask'].shape} != [512]"
             )
 
+        # ── Fix #1: Guard against pre-refactor .pt files with edge_attr [E, 1] ──
+        # graph_schema.py warns that old files stored edge_attr as [E, 1].
+        # GNNEncoder passes edge_attr into nn.Embedding() which strictly requires
+        # a 1-D tensor of shape [E]. squeeze(-1) is a no-op on already-correct
+        # [E] tensors, so this is safe for both old and new .pt files.
+        if hasattr(graph, "edge_attr") and graph.edge_attr is not None:
+            if graph.edge_attr.ndim > 1:
+                graph.edge_attr = graph.edge_attr.squeeze(-1)
+
         return graph, tokens, label
 
 
