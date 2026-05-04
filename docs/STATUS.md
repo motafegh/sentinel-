@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-03
+Last updated: 2026-05-04
 
 ---
 
@@ -10,16 +10,41 @@ Last updated: 2026-05-03
 |--------|--------|-------|
 | M1 ML Core — models | ✅ Complete | GNNEncoder (edge_attr, configurable arch), TransformerEncoder (LoRA configurable), CrossAttentionFusion |
 | M1 ML Core — inference | ✅ Complete | api.py, predictor.py (windowed), preprocess.py (cached), cache.py |
-| M1 ML Core — training | ✅ Complete | TrainConfig with full arch fields, AMP, FocalLoss (FP32 cast fixed), early stopping |
+| M1 ML Core — training | ✅ Complete | TrainConfig with full arch fields, AMP, FocalLoss (FP32 cast fixed), early stopping, full-resume CLI |
 | M1 ML Core — data extraction | ✅ Complete | ast_extractor.py V4.3, tokenizer.py (schema version metadata) |
 | M1 ML Core — shared preprocessing | ✅ Complete | graph_schema.py, graph_extractor.py (typed exceptions) |
-| M1 ML Scripts | ✅ Complete | train.py, tune_threshold.py, analyse_truncation.py, build_multilabel_index.py |
+| M1 ML Scripts | ✅ Complete | train.py (full-resume flag), tune_threshold.py, analyse_truncation.py, build_multilabel_index.py |
 | M1 ML — known limitation | ⚠️ Tracked | **Single-contract scope**: only the first non-dependency contract per file is analysed. `GraphExtractionConfig.multi_contract_policy` scaffold exists; `"all"` policy not yet implemented. See Move 9 in ROADMAP. |
 | M2 ZKML | ✅ Source complete | Z1/Z2/Z3 bugs fixed; pipeline not yet run. **No resolution path in ROADMAP — needs explicit move or descope decision.** |
 | M3 MLOps | ✅ Complete | MLflow + DVC + Dagster wired; `promote_model.py` CLI added for Staging/Production promotion |
 | M4 Agents/RAG | ✅ Complete | Core complete; LLM synthesizer upgraded (T3-A, qwen3.5-9b-ud, rule-based fallback); cross-encoder reranking added (T3-B, off by default) |
 | M5 Contracts | ✅ Source complete | Foundry tests written; forge not yet run (not installed in env) |
 | M6 Integration API | ❌ Not built | api/ directory does not exist. Auth/rate-limit design required before building routes. |
+
+---
+
+## Recent Changes (2026-05-04)
+
+### Resume Fixes and Retrain Extended to 60 Epochs
+
+- **Fix #9 — `trainer.py` AttributeError on resume**: `config.architecture` does not exist
+  on `TrainConfig` (never declared as a field). The resume cross-check crashed with
+  `AttributeError` on every resume attempt. Fixed by extracting `ARCHITECTURE = "cross_attention_lora"`
+  as a module-level constant and replacing all three scattered usages (resume check,
+  checkpoint save dict, MLflow params). This bug was dormant since it lives inside
+  `if config.resume_from:` — never triggered during the original fresh training run.
+
+- **`--no-resume-model-only` CLI flag added to `train.py`**: `TrainConfig.resume_model_only`
+  existed and `trainer.py` already had full-resume logic (optimizer + scheduler state restore),
+  but the CLI never exposed this field. Added `--no-resume-model-only` flag so full-resume
+  can be triggered from the command line without editing source code.
+
+- **Retrain extended: 40 → 60 epochs, full-resume**: With both fixes applied, the
+  interrupted epoch-37 checkpoint was resumed correctly:
+  - Optimizer Adam m/v accumulators restored (37 epochs of gradient history preserved)
+  - Scheduler LR curve continues from epoch-37 position (no spike back to `max_lr=3e-4`)
+  - Training confirmed running: epoch 38/60 started at ~3.78 batch/s
+  - **🔄 IN PROGRESS** — expected ~5 hours overnight
 
 ---
 
@@ -86,12 +111,15 @@ Last updated: 2026-05-03
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
 | ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it (see ROADMAP S5.5) |
 | Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. See ROADMAP Move 9. |
-| Retrain | 🔄 **IN PROGRESS** — `multilabel-v2-edge-attr`, 40 epochs, MLflow experiment `sentinel-retrain-v2` (2026-05-03). Success gate: val F1-macro > 0.4679. |
+| Retrain | 🔄 **IN PROGRESS** — `multilabel-v2-edge-attr-60ep`, epochs 38–60, full-resume from epoch 37 (best_f1=0.4629). Started 2026-05-04 00:35. Success gate: tuned val F1-macro > 0.4884. |
+| Autoresearch | 📋 **PLANNED** — `auto_experiment.py` + `ml/autoresearch/program.md` not yet built. Unblocked after retrain completes. See `docs/changes/2026-05-04-resume-fixes-and-autoresearch.md`. |
 
-### Closed loops (completed 2026-05-02 / 2026-05-03)
+### Closed loops (completed 2026-05-02 / 2026-05-03 / 2026-05-04)
 
 | Item | Resolution |
 |------|-----------|
+| Fix #9 — `config.architecture` AttributeError | `ARCHITECTURE` constant extracted; resume check, checkpoint dict, MLflow params all use it |
+| Full-resume CLI gap | `--no-resume-model-only` flag added to `train.py`; `resume_model_only` wired to `TrainConfig` |
 | T2-A Prometheus | `prometheus-fastapi-instrumentator` added to `api.py`; custom gauges for model load + GPU memory |
 | T2-B Drift detection | `drift_detector.py` + `compute_drift_baseline.py` added; KS test + rolling buffer + warm-up mode |
 | T2-C MLflow registry | `promote_model.py` CLI added (Staging/Production, dry-run, git tags) |
@@ -116,31 +144,31 @@ ml/checkpoints/multilabel_crossattn_best.pt   ← baseline (pre-edge_attr)
   val F1-macro: 0.4679
   architecture: cross_attention_lora (pre-P0-B)
 
-ml/checkpoints/multilabel_crossattn_v2_best.pt   ← retrain in progress
-  run:          multilabel-v2-edge-attr
+ml/checkpoints/multilabel_crossattn_v2_best.pt   ← retrain IN PROGRESS (full-resume)
+  run:          multilabel-v2-edge-attr-60ep
   experiment:   sentinel-retrain-v2
-  started:      2026-05-03
-  epochs:       40 (running)
+  resumed:      2026-05-04 00:35 (from epoch 37, best_f1=0.4629)
+  target:       epoch 60
   edge_attr:    True (P0-B active)
+  resume_type:  FULL (optimizer + scheduler state restored)
 ```
 
 Retrain is running. Baseline checkpoint remains active until the new run
-completes and clears the val F1-macro > 0.4679 success gate.
+completes and clears the tuned val F1-macro > 0.4884 success gate.
 
 ---
 
 ## Retrain Evaluation Protocol
 
-This protocol must be confirmed before launching the retrain. Do not re-randomize the split.
-
 | Parameter | Value |
 |-----------|-------|
 | Baseline checkpoint | `multilabel_crossattn_best.pt` — epoch 34, val F1-macro **0.4679** |
+| Previous best (interrupted) | `multilabel_crossattn_v2_best.pt` — epoch 37, val F1-macro **0.4629** (raw), **0.4884** (tuned thresholds) |
+| Success threshold | tuned val F1-macro > **0.4884** on fixed `val_indices.npy` split |
 | Held-out split | Fixed — `ml/data/splits/val_indices.npy` (same seed, do NOT regenerate) |
-| Success threshold | val F1-macro > 0.4679 on the same held-out split |
-| MLflow experiment | `sentinel-retrain-v2` (compare against `sentinel-multilabel` baseline run) |
-| Rollback rule | If new checkpoint F1 < 0.4679 after 40 epochs: revert to current checkpoint; investigate P0-B `edge_emb_dim` (try 8 instead of 16) before re-running |
-| Per-class floor | No single class should drop > 0.05 F1 from its pre-retrain value — log per-class F1 in MLflow and compare |
+| MLflow experiment | `sentinel-retrain-v2` |
+| Rollback rule | If tuned F1 < 0.4884 after 60 epochs: revert to current checkpoint; investigate edge_attr signal or try `loss_fn=focal` before re-running |
+| Per-class floor | No single class should drop > 0.05 F1 from pre-retrain value — check per-class F1 in MLflow |
 
 ---
 
@@ -161,11 +189,24 @@ Correct strategy:
 
 ---
 
-## Next Action
+## Next Actions
 
-All ROADMAP Moves 0–8 and T3-A/T3-B complete. Remaining work in priority order:
+In priority order:
 
-1. **Retrain** — 🔄 IN PROGRESS (`multilabel-v2-edge-attr`, 40 epochs). Wait for completion; compare val F1-macro against 0.4679 baseline. See `docs/changes/2026-05-03-training-pipeline-fix.md` for post-training steps.
-2. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10). See ROADMAP S5.5.
-3. **M6 Integration API** — design auth/rate-limit before writing any routes. See ROADMAP M6 section.
-4. **Move 9 (post-M6)** — multi-contract parsing (`multi_contract_policy="all"` in `graph_extractor.py`). See ROADMAP Move 9.
+1. **Retrain** — 🔄 IN PROGRESS. Wait for completion overnight. Run `tune_threshold.py`
+   in the morning; compare tuned F1 against 0.4884. See post-training protocol in
+   `docs/changes/2026-05-04-resume-fixes-and-autoresearch.md`.
+
+2. **Autoresearch setup** — After retrain completes:
+   - Implement `ml/scripts/auto_experiment.py` (thin CLI wrapper printing `SENTINEL_SCORE`)
+   - Write `ml/autoresearch/program.md` (metric, constraints, allowed knobs)
+   - Use to drive hyperparameter search without manual overnight script editing
+
+3. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10).
+   See ROADMAP S5.5.
+
+4. **M6 Integration API** — design auth/rate-limit before writing any routes.
+   See ROADMAP M6 section.
+
+5. **Move 9 (post-M6)** — multi-contract parsing (`multi_contract_policy="all"`
+   in `graph_extractor.py`). See ROADMAP Move 9.
