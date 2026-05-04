@@ -146,6 +146,31 @@ def parse_args() -> argparse.Namespace:
         help="Checkpoint filename. Defaults to <run-name>_best.pt",
     )
 
+    # --- Loss and regularisation ---
+    p.add_argument(
+        "--loss-fn",
+        choices=["bce", "focal"],
+        default="bce",
+        help="Loss function: 'bce' (BCEWithLogitsLoss) or 'focal' (FocalLoss).",
+    )
+    p.add_argument("--early-stop-patience", type=int,   default=7,    help="Early stopping patience (epochs without improvement)")
+    p.add_argument("--grad-clip",           type=float, default=1.0,  help="Max gradient norm for clip_grad_norm_")
+    p.add_argument("--warmup-pct",          type=float, default=0.05, help="Fraction of steps used for OneCycleLR warm-up")
+    p.add_argument(
+        "--use-amp",
+        action="store_true",
+        default=True,
+        help="Enable Automatic Mixed Precision (default: enabled)",
+    )
+    p.add_argument(
+        "--no-amp",
+        dest="use_amp",
+        action="store_false",
+        help="Disable AMP (useful for debugging NaN losses)",
+    )
+    p.add_argument("--num-workers",  type=int, default=2,   help="DataLoader worker processes")
+    p.add_argument("--log-interval", type=int, default=100, help="Log loss every N batches")
+
     # --- Resume ---
     p.add_argument(
         "--resume",
@@ -210,6 +235,13 @@ def main() -> None:
         lr                    = args.lr,
         weight_decay          = args.weight_decay,
         threshold             = args.threshold,
+        loss_fn               = args.loss_fn,
+        early_stop_patience   = args.early_stop_patience,
+        grad_clip             = args.grad_clip,
+        warmup_pct            = args.warmup_pct,
+        use_amp               = args.use_amp,
+        num_workers           = args.num_workers,
+        log_interval          = args.log_interval,
         graphs_dir            = args.graphs_dir,
         tokens_dir            = args.tokens_dir,
         splits_dir            = args.splits_dir,
