@@ -60,7 +60,7 @@ Fix #10 — Full resume (--no-resume-model-only) skips scheduler state when tota
           from the checkpoint, silently overwriting the new remaining_epochs schedule
           and causing OneCycleLR overflow after the original run's remaining steps.
 
-AUDIT FIXES (2026-05-04):
+AUDIT FIXES (2026-05-04, batch 1):
 ────────────────────────────────────────────────────────────────────────────
 Fix #11 — patience_counter was never saved in the checkpoint dict and never
            restored on resume. Every resume silently reset early-stopping to
@@ -91,6 +91,49 @@ Fix #12 — No guard when batch_size differs between checkpoint and resume.
                (a) Using model-only resume (omit --no-resume-model-only)
                (b) Using --resume-reset-optimizer
                (c) Keeping batch_size identical to the checkpoint.
+
+Fix #13 — pos_weight recomputed fresh on every resume but optimizer state
+           warning is now guarded so it only fires in multi-label mode where
+           pos_weight is actually computed (binary mode sets pos_weight=None).
+
+AUDIT FIXES (2026-05-04, batch 2):
+────────────────────────────────────────────────────────────────────────────
+Fix #14 — Binary mode crash: str(None) → pd.read_csv("None") → FileNotFoundError.
+           compute_pos_weight is now skipped when label_csv=None; pos_weight=None
+           is passed to BCEWithLogitsLoss (unweighted binary training).
+           MLflow pos_weight param logging is guarded by `if pos_weight is not None`.
+
+Fix #15 — Double checkpoint load: torch.load() was called twice for full resume
+           (once for model weights, once for optimizer/scheduler). The loaded dict
+           is now cached in _ckpt_state and reused, eliminating redundant I/O.
+
+Fix #16 — Hardcoded magic number 47966 in batch-size mismatch warning replaced
+           with len(train_dataset) so the steps_per_epoch estimate stays correct
+           as the dataset grows.
+
+Fix #17 — TrainConfig.batch_size default was 16 while train.py --batch-size
+           defaulted to 32. Both now default to 32.
+
+Fix #18 — ZeroDivisionError in train_one_epoch when the DataLoader is empty
+           (e.g. drop_last=True with very small dataset). Now returns 0.0 with
+           a warning instead of crashing.
+
+Fix #19 — prefetch_factor=None passed to DataLoader when num_workers=0. PyTorch
+           accepts it today but documents it as only meaningful with workers.
+           DataLoader kwargs are now built conditionally: prefetch_factor, pin_memory,
+           and persistent_workers are only included when num_workers > 0.
+
+Fix #20 — Missing CLI arguments for grad_clip, warmup_pct, loss_fn, use_amp,
+           early_stop_patience, num_workers, and log_interval. All seven are now
+           exposed via train.py and wired into TrainConfig.
+
+Fix #21 — train() returned None, making programmatic use (testing, sweep scripts)
+           require MLflow inspection to retrieve results. Now returns a dict with
+           best_f1_macro, final_epoch, early_stopped, and checkpoint_path.
+
+Fix #22 — FocalLoss gamma/alpha were hardcoded to 2.0/0.25 with no way to change
+           them without editing source. Added focal_gamma and focal_alpha fields to
+           TrainConfig (defaults preserve existing behaviour).
 
 Fix #13 — pos_weight recomputed fresh on every resume but optimizer state
            (including m/v for the loss-scale) is restored from the old run.
@@ -208,7 +251,7 @@ class TrainConfig:
 
     # --- Training ---
     epochs:       int   = 40
-    batch_size:   int   = 16
+    batch_size:   int   = 32
     lr:           float = 3e-4
     weight_decay: float = 1e-2
     threshold:    float = 0.5
@@ -227,7 +270,9 @@ class TrainConfig:
 
     # --- Loss function ---
     # Valid values: "bce" | "focal"
-    loss_fn: str = "bce"
+    loss_fn:     str   = "bce"
+    focal_gamma: float = 2.0
+    focal_alpha: float = 0.25
 
     # --- Cache ---
     cache_path: str | None = "ml/data/cached_dataset.pkl"
@@ -386,13 +431,17 @@ def train_one_epoch(
                 f"  Batch {batch_idx+1}/{len(loader)} | loss={loss.item():.4f}"
             )
 
-    return total_loss / len(loader)
+    n_batches = len(loader)
+    if n_batches == 0:
+        logger.warning("Empty train loader — returning 0.0 loss")
+        return 0.0
+    return total_loss / n_batches
 
 
 # ---------------------------------------------------------------------------
 # Main training function
 # ---------------------------------------------------------------------------
-def train(config: TrainConfig) -> None:
+def train(config: TrainConfig) -> dict:
     os.makedirs(config.checkpoint_dir, exist_ok=True)
     device = config.device
     logger.info(f"Training on: {device} | classes: {config.num_classes}")
@@ -442,28 +491,21 @@ def train(config: TrainConfig) -> None:
     )
 
     _use_workers = config.num_workers > 0
-    _prefetch    = 2 if _use_workers else None
 
-    train_loader = DataLoader(
-        train_dataset,
+    _loader_kwargs: dict = dict(
         batch_size=config.batch_size,
-        shuffle=True,
         collate_fn=dual_path_collate_fn,
         num_workers=config.num_workers,
-        pin_memory=_use_workers,
-        persistent_workers=_use_workers and config.persistent_workers,
-        prefetch_factor=_prefetch,
     )
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=config.batch_size,
-        shuffle=False,
-        collate_fn=dual_path_collate_fn,
-        num_workers=config.num_workers,
-        pin_memory=_use_workers,
-        persistent_workers=_use_workers and config.persistent_workers,
-        prefetch_factor=_prefetch,
-    )
+    if _use_workers:
+        _loader_kwargs.update(
+            pin_memory=True,
+            persistent_workers=config.persistent_workers,
+            prefetch_factor=2,
+        )
+
+    train_loader = DataLoader(train_dataset, shuffle=True,  **_loader_kwargs)
+    val_loader   = DataLoader(val_dataset,   shuffle=False, **_loader_kwargs)
 
     logger.info(
         f"DataLoader — workers: {config.num_workers} | "
@@ -473,11 +515,18 @@ def train(config: TrainConfig) -> None:
     )
 
     # ------------------------------------------------------------------
-    # pos_weight
+    # pos_weight  (multi-label only; binary mode skips CSV entirely)
     # ------------------------------------------------------------------
-    pos_weight = compute_pos_weight(
-        str(label_csv_path), train_indices, config.num_classes, device
-    )
+    if label_csv_path is not None:
+        pos_weight = compute_pos_weight(
+            str(label_csv_path), train_indices, config.num_classes, device
+        )
+    else:
+        logger.info(
+            "Binary mode (label_csv=None) — pos_weight not computed; "
+            "BCEWithLogitsLoss will run unweighted."
+        )
+        pos_weight = None
 
     # ------------------------------------------------------------------
     # Model
@@ -503,10 +552,12 @@ def train(config: TrainConfig) -> None:
     start_epoch      = 1
     best_f1          = 0.0
     patience_counter = 0
+    _ckpt_state: dict | None = None  # populated once, reused for optimizer restore
 
     if config.resume_from:
         logger.info(f"Resuming from: {config.resume_from}")
         ckpt = torch.load(config.resume_from, map_location=device, weights_only=False)
+        _ckpt_state = ckpt
 
         if not isinstance(ckpt, dict) or "model" not in ckpt:
             raise RuntimeError(f"Invalid checkpoint format: {config.resume_from}")
@@ -575,8 +626,8 @@ def train(config: TrainConfig) -> None:
                     f"  Checkpoint batch_size : {ckpt_batch_size}\n"
                     f"  Current   batch_size : {config.batch_size}\n"
                     f"  steps_per_epoch changed: "
-                    f"~{round(47966/ckpt_batch_size)} → "
-                    f"~{round(47966/config.batch_size)}\n\n"
+                    f"~{round(len(train_dataset)/ckpt_batch_size)} → "
+                    f"~{round(len(train_dataset)/config.batch_size)}\n\n"
                     f"You are doing a FULL RESUME (--no-resume-model-only). "
                     f"The Adam m/v moments in the checkpoint were accumulated "
                     f"under batch_size={ckpt_batch_size}. Loading them into a "
@@ -600,7 +651,7 @@ def train(config: TrainConfig) -> None:
     # Loss, optimizer, scheduler
     # ------------------------------------------------------------------
     if config.loss_fn == "focal":
-        _focal = FocalLoss(gamma=2.0, alpha=0.25)
+        _focal = FocalLoss(gamma=config.focal_gamma, alpha=config.focal_alpha)
 
         class _FocalFromLogits(nn.Module):
             """Thin wrapper so FocalLoss receives FP32 probabilities, not raw logits."""
@@ -608,7 +659,7 @@ def train(config: TrainConfig) -> None:
                 return _focal(torch.sigmoid(logits.float()), targets)
 
         loss_fn: nn.Module = _FocalFromLogits()
-        logger.info("Loss: FocalLoss(gamma=2.0, alpha=0.25) with FP32 sigmoid guard")
+        logger.info(f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha}) with FP32 sigmoid guard")
     else:  # "bce"
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
@@ -619,7 +670,7 @@ def train(config: TrainConfig) -> None:
         # potentially different pos_weight if the training split changed.
         # This is typically benign (splits are fixed), but it is an implicit
         # inconsistency that should be visible in the logs.
-        if config.resume_from and not config.resume_model_only:
+        if pos_weight is not None and config.resume_from and not config.resume_model_only:
             logger.warning(
                 "Fix #13: BCEWithLogitsLoss pos_weight has been recomputed "
                 "from the current training split. The optimizer state being "
@@ -645,7 +696,12 @@ def train(config: TrainConfig) -> None:
             f"start_epoch={start_epoch} ≥ config.epochs={config.epochs}: "
             "nothing left to train. Increase config.epochs before resuming."
         )
-        return
+        return {
+            "best_f1_macro": best_f1,
+            "final_epoch": start_epoch - 1,
+            "early_stopped": False,
+            "checkpoint_path": str(Path(config.checkpoint_dir) / config.checkpoint_name),
+        }
 
     scheduler = OneCycleLR(
         optimizer,
@@ -661,8 +717,8 @@ def train(config: TrainConfig) -> None:
     # ------------------------------------------------------------------
     # Restore optimizer + scheduler state if doing a full resume
     # ------------------------------------------------------------------
-    if config.resume_from and not config.resume_model_only:
-        ckpt = torch.load(config.resume_from, map_location=device, weights_only=False)
+    if _ckpt_state is not None and not config.resume_model_only:
+        ckpt = _ckpt_state  # reuse already-loaded checkpoint; no second disk read
 
         # ── Fix #12: skip optimizer restore if force_optimizer_reset or
         #             batch_size changed with force_optimizer_reset flag ──
@@ -696,7 +752,7 @@ def train(config: TrainConfig) -> None:
                 "Scheduler state skipped — force_optimizer_reset=True. "
                 "Fresh OneCycleLR in use."
             )
-    elif config.resume_from:
+    elif _ckpt_state is not None:
         logger.info("Resumed model weights only (fresh optimizer/scheduler).")
 
     # ------------------------------------------------------------------
@@ -737,16 +793,19 @@ def train(config: TrainConfig) -> None:
             "lora_target_modules":   ",".join(config.lora_target_modules),
             "fusion_output_dim":     config.fusion_output_dim,
         }
-        for name, pw in zip(CLASS_NAMES[:config.num_classes], pos_weight.cpu().tolist()):
-            params[f"pos_weight_{name}"] = round(pw, 3)
+        if pos_weight is not None:
+            for name, pw in zip(CLASS_NAMES[:config.num_classes], pos_weight.cpu().tolist()):
+                params[f"pos_weight_{name}"] = round(pw, 3)
         mlflow.log_params(params)
 
         checkpoint_path = Path(config.checkpoint_dir) / config.checkpoint_name
+        final_epoch = start_epoch - 1
 
         # ------------------------------------------------------------------
         # Training loop
         # ------------------------------------------------------------------
         for epoch in range(start_epoch, config.epochs + 1):
+            final_epoch = epoch
             logger.info(f"\n{'='*60}\nEpoch {epoch}/{config.epochs}\n{'='*60}")
 
             train_loss = train_one_epoch(
@@ -832,6 +891,13 @@ def train(config: TrainConfig) -> None:
             mlflow.log_artifact(str(checkpoint_path))
 
         logger.info(f"\n✅ Training complete. Best val F1-macro: {best_f1:.4f}")
+
+    return {
+        "best_f1_macro":  best_f1,
+        "final_epoch":    final_epoch,
+        "early_stopped":  patience_counter >= config.early_stop_patience,
+        "checkpoint_path": str(checkpoint_path),
+    }
 
 
 if __name__ == "__main__":
