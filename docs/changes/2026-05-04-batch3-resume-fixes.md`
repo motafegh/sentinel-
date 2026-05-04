@@ -1,0 +1,108 @@
+# 2026-05-04 — Batch 3: Resume & Robustness Fixes (#23–#25)
+
+Date: 2026-05-04  
+Author: motafegh  
+Fixes: #23 (patience_counter JSON sidecar), #24 (missing optimizer key warning), #25 (scheduler total_steps explicit check)
+
+---
+
+## Summary
+
+Three additional fixes applied after the second training audit pass. These
+address edge cases in the resume logic and improve transparency when the
+checkpoint format does not match the user's expectations. No new features;
+all changes are to logging and state persistence.
+
+---
+
+## Fix #23 — `ml/src/training/trainer.py`: patience_counter JSON sidecar for full persistence
+
+**Problem:**  
+`patience_counter` was saved in the checkpoint dict (Fix #11), but only when a
+new best F1 was achieved — at which point the counter is *always* 0. If
+training was interrupted after several non-improvement epochs, the latest
+checkpoint on disk came from the last best epoch, and the restored
+`patience_counter` was 0. This allowed a stagnating model to train far beyond
+`early_stop_patience` across multiple resume cycles.
+
+**Fix:**  
+A lightweight JSON sidecar (`{checkpoint}.state.json`) is now written after
+**every** epoch, regardless of improvement. It contains:
+
+```json
+{"epoch": N, "patience_counter": K, "best_f1": 0.XXXX}
+```
+
+On resume, the trainer checks for this sidecar file alongside the checkpoint.
+If present and its epoch is ≥ the checkpoint's epoch, the sidecar's
+`patience_counter` overrides the checkpoint's value (which would be 0).
+
+If the sidecar is absent (old checkpoints), a clear warning is logged
+explaining that non-improvement epochs before the interruption are NOT counted,
+and that sidecars will be written from now on.
+
+---
+
+## Fix #24 — `ml/src/training/trainer.py`: warning when full-resume checkpoint lacks 'optimizer' key
+
+**Problem:**  
+When `--no-resume-model-only` (full resume) was used, the code checked whether
+the checkpoint contained an `"optimizer"` key. If the key was *present*,
+state was restored; if `force_optimizer_reset` was set, state was skipped with
+a log message. However, if the key was *absent* (e.g., user accidentally pointed
+at a model-only checkpoint), there was no warning at all — the code silently
+initialised a fresh optimizer, and the user never knew their full-resume
+intention was ignored.
+
+**Fix:**  
+Added an `else` branch that logs a prominent `WARNING`:
+
+```
+Full resume requested (--no-resume-model-only) but the checkpoint
+contains no 'optimizer' key. Fresh AdamW initialised.
+Ensure your checkpoint was saved with optimizer state included.
+```
+
+---
+
+## Fix #25 — `ml/src/training/trainer.py`: explicit `total_steps` existence check in scheduler restore
+
+**Problem:**  
+The scheduler state guard used `ckpt["scheduler"].get("total_steps")`, which
+returns `None` if the key is absent (e.g., checkpoints from older PyTorch
+versions). `None == new_total_steps` is always `False`, so the fallthrough
+warning incorrectly attributed the skip to an epoch-extension mismatch rather
+than missing metadata.
+
+**Fix:**  
+The code now checks for the key's existence explicitly:
+
+```python
+if "total_steps" not in ckpt["scheduler"]:
+    logger.warning(
+        "Scheduler state skipped — checkpoint scheduler dict does not "
+        "contain 'total_steps' (checkpoint may have been created with an "
+        "older PyTorch version). Fresh OneCycleLR in use; optimizer "
+        "momentum state was restored."
+    )
+else:
+    ckpt_total_steps = ckpt["scheduler"]["total_steps"]
+    if ckpt_total_steps == new_total_steps:
+        scheduler.load_state_dict(ckpt["scheduler"])
+        logger.info("Scheduler state restored.")
+    else:
+        logger.warning(...)  # genuine total_steps mismatch
+```
+
+This gives the user an accurate reason for the skip, rather than a misleading
+"epoch extension detected" message.
+
+---
+
+## Files Changed
+
+| File                         | Fixes Applied                                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| `ml/src/training/trainer.py` | Fix #23 (patience sidecar), Fix #24 (optimizer key warning), Fix #25 (scheduler total_steps check) |
+|                              |                                                                                                    |
+
