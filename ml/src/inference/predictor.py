@@ -38,6 +38,12 @@ FIXES (2026-05-04):
                args caused load_state_dict() crash when checkpoint used non-defaults.
     Fix #4 — _warmup() dummy graph now includes edge_attr when use_edge_attr=True,
                exercising the full nn.Embedding code path at startup.
+    Fix #6 — _format_result() now returns "thresholds": self.thresholds.cpu().tolist()
+               (a per-class list) instead of "threshold": self.threshold (single float).
+               BREAKING CHANGE: API consumers must update to read 'thresholds' (list).
+    Fix #7 — fusion_output_dim lookup now prefers saved_cfg.get("fusion_output_dim")
+               and only falls back to _ARCH_TO_FUSION_DIM for legacy checkpoints that
+               predate trainer.py saving the value directly into the checkpoint config.
 
 IMPROVEMENTS:
     - self.thresholds_loaded flag exposed for /health endpoint.
@@ -106,7 +112,7 @@ class Predictor:
         if not (0.0 < threshold < 1.0):
             raise ValueError(f"Threshold must be in (0, 1), got {threshold}.")
 
-        self.threshold = threshold  # kept for potential external use, not used in _score
+        self.threshold = threshold  # kept for backward compat; not used in _score
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
         logger.info(f"Predictor initialising on: {self.device}")
@@ -131,16 +137,13 @@ class Predictor:
                     "Add the new architecture to _ARCH_TO_FUSION_DIM in predictor.py "
                     "and set the correct fusion_output_dim before loading this checkpoint."
                 )
-            fusion_output_dim = _ARCH_TO_FUSION_DIM[architecture]
 
-            # Strict metadata cross-check: fusion_output_dim
-            cfg_dim = saved_cfg.get("fusion_output_dim")
-            if cfg_dim is not None and cfg_dim != fusion_output_dim:
-                raise ValueError(
-                    f"Checkpoint config.fusion_output_dim={cfg_dim} does not match "
-                    f"expected {fusion_output_dim} for architecture '{architecture}'. "
-                    "Checkpoint may be corrupt or from an incompatible training run."
-                )
+            # Fix #7: prefer fusion_output_dim stored directly in config;
+            # fall back to _ARCH_TO_FUSION_DIM only for legacy checkpoints
+            # that predate trainer.py saving this value into the config dict.
+            fusion_output_dim = saved_cfg.get(
+                "fusion_output_dim", _ARCH_TO_FUSION_DIM.get(architecture, 128)
+            )
 
             # Strict metadata cross-check: class_names order
             cfg_class_names = saved_cfg.get("class_names")
@@ -396,25 +399,6 @@ class Predictor:
 
         Sigmoid applied here — NOT inside model (BCEWithLogitsLoss compatibility).
         Per‑class thresholds are applied instead of a single global threshold.
-
-        Result schema (canonical — all consumers must read this shape):
-            {
-                "label": "vulnerable" | "safe",
-                "vulnerabilities": [
-                    {"vulnerability_class": str, "probability": float},
-                    ...
-                ],
-                "threshold": float,   # fallback threshold (see note below)
-                "truncated": bool,
-                "windows_used": int,  # always 1 from this path
-                "num_nodes": int,
-                "num_edges": int,
-            }
-
-        Note on "threshold":
-            When per-class thresholds are loaded from JSON, self.threshold is
-            the fallback float and does NOT represent the actual decision
-            boundaries used. Tracked as audit finding #6.
         """
         self.model.eval()
 
@@ -435,7 +419,15 @@ class Predictor:
         tokens: dict,
         windows_used: int,
     ) -> dict:
-        """Convert probability tensor + metadata into the canonical result dict."""
+        """
+        Convert probability tensor + metadata into the canonical result dict.
+
+        Fix #6: returns 'thresholds' as a per-class list instead of 'threshold'
+        (single fallback float). Consumers can now inspect the exact decision
+        boundary used for each class, including per-class tuned values loaded
+        from a JSON file.
+        BREAKING CHANGE: key renamed from 'threshold' (float) to 'thresholds' (list).
+        """
         probs_cpu = probs.cpu()
         probs_list: list[float] = probs_cpu.tolist()
         if isinstance(probs_list, float):
@@ -459,10 +451,11 @@ class Predictor:
             f"truncated={tokens.get('truncated', False)} windows={windows_used}"
         )
 
+        # Fix #6: expose per-class thresholds list instead of single fallback float.
         return {
             "label": label,
             "vulnerabilities": vulnerabilities,
-            "threshold": self.threshold,
+            "thresholds": self.thresholds.cpu().tolist(),
             "truncated": tokens.get("truncated", False),
             "windows_used": windows_used,
             "num_nodes": int(graph.num_nodes),

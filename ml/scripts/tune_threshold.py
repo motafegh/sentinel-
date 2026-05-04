@@ -24,6 +24,10 @@ FIXES (2026-05-04):
                config to SentinelModel(). Identical issue to predictor.py Fix #2.
                Missing args caused load_state_dict() to crash when the checkpoint
                was trained with non-default hyperparameters.
+    Fix #5 — build_val_loader() DataLoader kwargs are now built conditionally.
+               prefetch_factor, pin_memory, and persistent_workers are only added
+               when num_workers > 0, eliminating the PyTorch 2.x UserWarning
+               caused by passing prefetch_factor=None with num_workers=0.
 
 Usage:
     python -m ml.scripts.tune_threshold
@@ -224,7 +228,13 @@ def build_val_loader(
     batch_size: int,
     num_workers: int,
 ) -> DataLoader:
-    """Build the validation DataLoader using the same split as training."""
+    """Build the validation DataLoader using the same split as training.
+
+    Fix #5: DataLoader kwargs are built conditionally so that prefetch_factor,
+    pin_memory, and persistent_workers are only passed when num_workers > 0.
+    Passing prefetch_factor=None (or any value) with num_workers=0 triggers a
+    UserWarning in PyTorch 2.x because the option is meaningless without workers.
+    """
     val_indices = np.load(Path(config.splits_dir) / "val_indices.npy")
 
     dataset = DualPathDataset(
@@ -235,17 +245,19 @@ def build_val_loader(
         cache_path=getattr(config, "cache_path", None),
     )
 
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        collate_fn=dual_path_collate_fn,
-        num_workers=num_workers,
-        pin_memory=device_is_cuda(config.device),
-        persistent_workers=num_workers > 0,
-        prefetch_factor=2 if num_workers > 0 else None,
-    )
-    return loader
+    # Fix #5 — only include worker-specific kwargs when workers are actually used.
+    _loader_kwargs: dict = {
+        "batch_size": batch_size,
+        "shuffle": False,
+        "collate_fn": dual_path_collate_fn,
+        "num_workers": num_workers,
+    }
+    if num_workers > 0:
+        _loader_kwargs["prefetch_factor"] = 2
+        _loader_kwargs["pin_memory"] = device_is_cuda(config.device)
+        _loader_kwargs["persistent_workers"] = True
+
+    return DataLoader(dataset, **_loader_kwargs)
 
 
 def device_is_cuda(device: str) -> bool:
@@ -291,6 +303,7 @@ def collect_probabilities(
                     f"Expected multi-label logits of shape [B, C], got {tuple(logits.shape)}."
                 )
 
+            # Fix #8: .float() cast before sigmoid for BF16/FP16 safety
             probs = torch.sigmoid(logits.float())
 
             all_probs.append(probs.cpu().numpy().astype(np.float32))
