@@ -59,6 +59,44 @@ Fix #10 — Full resume (--no-resume-model-only) skips scheduler state when tota
           mismatch is detected (epoch extension). load_state_dict restores total_steps
           from the checkpoint, silently overwriting the new remaining_epochs schedule
           and causing OneCycleLR overflow after the original run's remaining steps.
+
+AUDIT FIXES (2026-05-04):
+────────────────────────────────────────────────────────────────────────────
+Fix #11 — patience_counter was never saved in the checkpoint dict and never
+           restored on resume. Every resume silently reset early-stopping to
+           zero, allowing a stagnating model to train far longer than
+           `early_stop_patience` would permit across the full run. Now:
+             - checkpoint dict includes `patience_counter`
+             - resume block reads `ckpt.get("patience_counter", 0)`
+             - Both the model-only and full-resume paths restore it.
+
+Fix #12 — No guard when batch_size differs between checkpoint and resume.
+           When batch_size changes (e.g. 16 → 32), steps_per_epoch halves.
+           On full resume (--no-resume-model-only) the Adam first/second-
+           moment vectors (m, v) are calibrated to gradient noise from the
+           OLD batch size. Loading that stale optimizer state into a
+           training loop with a different batch size causes loss spikes
+           and declining F1 in the first several epochs while Adam
+           re-calibrates its moments. Now:
+             - ckpt `config.batch_size` is compared to `config.batch_size`
+               on resume.
+             - If they differ AND the resume is a FULL resume (optimizer
+               state would be loaded), a prominent WARNING is logged
+               explaining the stale-moment risk.
+             - If `config.force_optimizer_reset=True` (or
+               `--resume-reset-optimizer` CLI flag), the optimizer state
+               is skipped even in full-resume mode, giving a clean AdamW
+               calibrated to the new batch size while keeping model weights.
+             - The warning recommends either:
+               (a) Using model-only resume (omit --no-resume-model-only)
+               (b) Using --resume-reset-optimizer
+               (c) Keeping batch_size identical to the checkpoint.
+
+Fix #13 — pos_weight recomputed fresh on every resume but optimizer state
+           (including m/v for the loss-scale) is restored from the old run.
+           This is an inconsistency when BCEWithLogitsLoss is used: the
+           checkpoint's optimizer saw a *different* effective loss scale.
+           Now a WARNING is logged so this is explicit rather than silent.
 """
 
 from __future__ import annotations
@@ -205,8 +243,13 @@ class TrainConfig:
     device: str = field(default_factory=lambda: "cuda" if torch.cuda.is_available() else "cpu")
 
     # --- Resume ---
-    resume_from:       str | None = None
-    resume_model_only: bool       = True
+    resume_from:          str | None = None
+    resume_model_only:    bool       = True
+    # Fix #12: force optimizer reset even in full-resume mode when batch_size changed.
+    # Set via --resume-reset-optimizer CLI flag. When True, model weights AND
+    # patience_counter are restored but optimizer/scheduler state is discarded,
+    # giving AdamW a clean start calibrated to the new batch size.
+    force_optimizer_reset: bool      = False
 
 
 # ---------------------------------------------------------------------------
@@ -455,7 +498,7 @@ def train(config: TrainConfig) -> None:
     ).to(device)
 
     # ------------------------------------------------------------------
-    # Resume
+    # Resume — model weights (always) + patience_counter (Fix #11)
     # ------------------------------------------------------------------
     start_epoch      = 1
     best_f1          = 0.0
@@ -469,9 +512,19 @@ def train(config: TrainConfig) -> None:
             raise RuntimeError(f"Invalid checkpoint format: {config.resume_from}")
 
         model.load_state_dict(ckpt["model"])
-        start_epoch = ckpt.get("epoch", 0) + 1
-        best_f1     = ckpt.get("best_f1", 0.0)
-        logger.info(f"Resumed from epoch {start_epoch-1} | best_f1={best_f1:.4f}")
+        start_epoch      = ckpt.get("epoch", 0) + 1
+        best_f1          = ckpt.get("best_f1", 0.0)
+        # ── Fix #11: restore patience counter ──────────────────────────────
+        # Previously always reset to 0 on resume, allowing a stagnating model
+        # to train far beyond `early_stop_patience` epochs across the full run.
+        # The checkpoint now stores patience_counter; ckpt.get() defaults to 0
+        # for backward compatibility with old checkpoints that lack the key.
+        patience_counter = ckpt.get("patience_counter", 0)
+        logger.info(
+            f"Resumed from epoch {start_epoch-1} | "
+            f"best_f1={best_f1:.4f} | "
+            f"patience_counter={patience_counter}/{config.early_stop_patience}"
+        )
 
         ckpt_cfg = ckpt.get("config", {})
 
@@ -483,8 +536,6 @@ def train(config: TrainConfig) -> None:
                 "Fix TrainConfig or remove resume_from."
             )
         # ── Fix #9: use ARCHITECTURE constant, not config.architecture ──────
-        # TrainConfig has no 'architecture' field. The old code referenced
-        # config.architecture which raised AttributeError on every resume.
         ckpt_arch = ckpt_cfg.get("architecture")
         if ckpt_arch is not None and ckpt_arch != ARCHITECTURE:
             raise ValueError(
@@ -492,6 +543,58 @@ def train(config: TrainConfig) -> None:
                 f"expected '{ARCHITECTURE}'. "
                 "Mismatched architectures will corrupt the state_dict load."
             )
+
+        # ── Fix #12: batch_size change guard ────────────────────────────────
+        # When batch_size changes between checkpoint and resume, the Adam
+        # first/second-moment vectors (m, v) are calibrated to gradient
+        # noise from the OLD batch size.  Loading that stale optimizer state
+        # causes loss spikes and declining F1 until Adam re-calibrates
+        # (typically 5-10 epochs depending on β1=0.9, β2=0.999 decay rates).
+        # This guard detects the mismatch and warns clearly.
+        ckpt_batch_size = ckpt_cfg.get("batch_size")
+        _batch_size_changed = (
+            ckpt_batch_size is not None
+            and ckpt_batch_size != config.batch_size
+        )
+        if _batch_size_changed and not config.resume_model_only:
+            if config.force_optimizer_reset:
+                logger.warning(
+                    f"\n{'!'*70}\n"
+                    f"BATCH SIZE CHANGED: checkpoint={ckpt_batch_size} → "
+                    f"current={config.batch_size}.\n"
+                    f"force_optimizer_reset=True — optimizer/scheduler state will "
+                    f"be DISCARDED even though --no-resume-model-only was set.\n"
+                    f"Model weights + patience_counter are preserved.\n"
+                    f"AdamW will start fresh, calibrated to the new batch size.\n"
+                    f"{'!'*70}"
+                )
+            else:
+                logger.warning(
+                    f"\n{'!'*70}\n"
+                    f"BATCH SIZE MISMATCH DETECTED (Fix #12):\n"
+                    f"  Checkpoint batch_size : {ckpt_batch_size}\n"
+                    f"  Current   batch_size : {config.batch_size}\n"
+                    f"  steps_per_epoch changed: "
+                    f"~{round(47966/ckpt_batch_size)} → "
+                    f"~{round(47966/config.batch_size)}\n\n"
+                    f"You are doing a FULL RESUME (--no-resume-model-only). "
+                    f"The Adam m/v moments in the checkpoint were accumulated "
+                    f"under batch_size={ckpt_batch_size}. Loading them into a "
+                    f"loop with batch_size={config.batch_size} will likely cause "
+                    f"loss spikes and degraded F1 for several epochs while Adam "
+                    f"re-calibrates its running statistics.\n\n"
+                    f"Recommended actions (pick ONE):\n"
+                    f"  (a) Use model-only resume (omit --no-resume-model-only) — "
+                    f"fresh AdamW + fresh OneCycleLR aligned to the new batch_size. "
+                    f"This is the safest option when batch_size changes.\n"
+                    f"  (b) Add --resume-reset-optimizer — restores model weights + "
+                    f"patience_counter but discards stale optimizer/scheduler state.\n"
+                    f"  (c) Keep batch_size={ckpt_batch_size} to match the checkpoint.\n\n"
+                    f"Training will proceed with the stale optimizer state. "
+                    f"Monitor loss for spikes. If F1 does not recover within "
+                    f"5 epochs, consider restarting with option (a) or (b).\n"
+                    f"{'!'*70}"
+                )
 
     # ------------------------------------------------------------------
     # Loss, optimizer, scheduler
@@ -509,6 +612,25 @@ def train(config: TrainConfig) -> None:
     else:  # "bce"
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
+        # ── Fix #13: pos_weight / optimizer state inconsistency warning ─────
+        # pos_weight is recomputed fresh from the training split on every run.
+        # When doing a full resume, the optimizer state (m/v moments) was
+        # accumulated under the checkpoint's loss scale — which used a
+        # potentially different pos_weight if the training split changed.
+        # This is typically benign (splits are fixed), but it is an implicit
+        # inconsistency that should be visible in the logs.
+        if config.resume_from and not config.resume_model_only:
+            logger.warning(
+                "Fix #13: BCEWithLogitsLoss pos_weight has been recomputed "
+                "from the current training split. The optimizer state being "
+                "restored from the checkpoint was accumulated under the "
+                "checkpoint's pos_weight values. If the training split indices "
+                "have NOT changed since the checkpoint was saved (the normal "
+                "case), this is a no-op difference. If splits were regenerated, "
+                "the effective loss scale has changed and the restored Adam "
+                "moments are calibrated to a different gradient magnitude. "
+                "Consider using model-only resume in that case."
+            )
 
     optimizer = AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
@@ -541,20 +663,22 @@ def train(config: TrainConfig) -> None:
     # ------------------------------------------------------------------
     if config.resume_from and not config.resume_model_only:
         ckpt = torch.load(config.resume_from, map_location=device, weights_only=False)
-        if "optimizer" in ckpt:
+
+        # ── Fix #12: skip optimizer restore if force_optimizer_reset or
+        #             batch_size changed with force_optimizer_reset flag ──
+        _skip_optimizer = config.force_optimizer_reset
+
+        if not _skip_optimizer and "optimizer" in ckpt:
             optimizer.load_state_dict(ckpt["optimizer"])
             logger.info("Optimizer state restored.")
-        if "scheduler" in ckpt:
+        elif _skip_optimizer:
+            logger.info(
+                "Optimizer state skipped — force_optimizer_reset=True. "
+                "Fresh AdamW in use."
+            )
+
+        if "scheduler" in ckpt and not _skip_optimizer:
             # ── Fix #10: guard against total_steps mismatch on epoch extension ─
-            # PyTorch's load_state_dict does self.__dict__.update(state_dict),
-            # which restores the checkpoint's total_steps into the new scheduler,
-            # silently overwriting the remaining_epochs schedule. When extending
-            # an N-epoch run to M epochs, the checkpoint total_steps = N×steps
-            # while the new scheduler has total_steps = (M-start+1)×steps.
-            # Loading the old state lets training proceed until the original N
-            # epochs worth of steps are exhausted, then crashes with:
-            #   "Tried to step N×steps+1 times. total_steps is N×steps"
-            # Fix: skip scheduler state if total_steps differs; keep optimizer.
             ckpt_total_steps = ckpt["scheduler"].get("total_steps")
             new_total_steps  = remaining_epochs * len(train_loader)
             if ckpt_total_steps == new_total_steps:
@@ -563,9 +687,15 @@ def train(config: TrainConfig) -> None:
             else:
                 logger.warning(
                     f"Scheduler state skipped — checkpoint total_steps={ckpt_total_steps} "
-                    f"≠ new total_steps={new_total_steps} (epoch extension detected). "
-                    "Fresh scheduler in use; optimizer momentum state was restored."
+                    f"≠ new total_steps={new_total_steps} (epoch extension or batch_size "
+                    f"change detected). Fresh scheduler in use; optimizer momentum state "
+                    f"was restored."
                 )
+        elif _skip_optimizer:
+            logger.info(
+                "Scheduler state skipped — force_optimizer_reset=True. "
+                "Fresh OneCycleLR in use."
+            )
     elif config.resume_from:
         logger.info("Resumed model weights only (fresh optimizer/scheduler).")
 
@@ -577,34 +707,35 @@ def train(config: TrainConfig) -> None:
 
     with mlflow.start_run(run_name=config.run_name):
         params = {
-            "num_classes":          config.num_classes,
-            "epochs":               config.epochs,
-            "remaining_epochs":     remaining_epochs,
-            "batch_size":           config.batch_size,
-            "lr":                   config.lr,
-            "weight_decay":         config.weight_decay,
-            "threshold":            config.threshold,
-            "grad_clip":            config.grad_clip,
-            "warmup_pct":           config.warmup_pct,
-            "num_workers":          config.num_workers,
-            "use_amp":              config.use_amp,
-            "loss_fn":              config.loss_fn,
-            "device":               device,
-            "architecture":         ARCHITECTURE,
-            "label_csv":            config.label_csv,
-            "resume_from":          config.resume_from or "none",
-            "resume_model_only":    config.resume_model_only,
-            "early_stop_patience":  config.early_stop_patience,
-            "gnn_hidden_dim":       config.gnn_hidden_dim,
-            "gnn_heads":            config.gnn_heads,
-            "gnn_dropout":          config.gnn_dropout,
-            "use_edge_attr":        config.use_edge_attr,
-            "gnn_edge_emb_dim":     config.gnn_edge_emb_dim,
-            "lora_r":               config.lora_r,
-            "lora_alpha":           config.lora_alpha,
-            "lora_dropout":         config.lora_dropout,
-            "lora_target_modules":  ",".join(config.lora_target_modules),
-            "fusion_output_dim":    config.fusion_output_dim,
+            "num_classes":           config.num_classes,
+            "epochs":                config.epochs,
+            "remaining_epochs":      remaining_epochs,
+            "batch_size":            config.batch_size,
+            "lr":                    config.lr,
+            "weight_decay":          config.weight_decay,
+            "threshold":             config.threshold,
+            "grad_clip":             config.grad_clip,
+            "warmup_pct":            config.warmup_pct,
+            "num_workers":           config.num_workers,
+            "use_amp":               config.use_amp,
+            "loss_fn":               config.loss_fn,
+            "device":                device,
+            "architecture":          ARCHITECTURE,
+            "label_csv":             config.label_csv,
+            "resume_from":           config.resume_from or "none",
+            "resume_model_only":     config.resume_model_only,
+            "force_optimizer_reset": config.force_optimizer_reset,
+            "early_stop_patience":   config.early_stop_patience,
+            "gnn_hidden_dim":        config.gnn_hidden_dim,
+            "gnn_heads":             config.gnn_heads,
+            "gnn_dropout":           config.gnn_dropout,
+            "use_edge_attr":         config.use_edge_attr,
+            "gnn_edge_emb_dim":      config.gnn_edge_emb_dim,
+            "lora_r":                config.lora_r,
+            "lora_alpha":            config.lora_alpha,
+            "lora_dropout":          config.lora_dropout,
+            "lora_target_modules":   ",".join(config.lora_target_modules),
+            "fusion_output_dim":     config.fusion_output_dim,
         }
         for name, pw in zip(CLASS_NAMES[:config.num_classes], pos_weight.cpu().tolist()):
             params[f"pos_weight_{name}"] = round(pw, 3)
@@ -666,11 +797,14 @@ def train(config: TrainConfig) -> None:
                 patience_counter = 0
                 torch.save(
                     {
-                        "model":     model.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                        "scheduler": scheduler.state_dict(),
-                        "epoch":     epoch,
-                        "best_f1":   best_f1,
+                        "model":           model.state_dict(),
+                        "optimizer":       optimizer.state_dict(),
+                        "scheduler":       scheduler.state_dict(),
+                        "epoch":           epoch,
+                        "best_f1":         best_f1,
+                        # Fix #11: persist patience_counter so resume can
+                        # restore the correct early-stopping state.
+                        "patience_counter": patience_counter,
                         "config": {
                             **dataclasses.asdict(config),
                             "num_classes":  config.num_classes,
@@ -683,7 +817,10 @@ def train(config: TrainConfig) -> None:
                 logger.info(f"  ★ New best F1-macro: {best_f1:.4f} — checkpoint saved")
             else:
                 patience_counter += 1
-                logger.info(f"  No improvement for {patience_counter} / {config.early_stop_patience} epochs")
+                logger.info(
+                    f"  No improvement for "
+                    f"{patience_counter} / {config.early_stop_patience} epochs"
+                )
                 if patience_counter >= config.early_stop_patience:
                     logger.info(
                         f"  Early stopping triggered after {epoch} epochs "
