@@ -133,17 +133,36 @@ Fix #21 — train() returned None, making programmatic use (testing, sweep scrip
 
 Fix #22 — FocalLoss gamma/alpha were hardcoded to 2.0/0.25 with no way to change
            them without editing source. Added focal_gamma and focal_alpha fields to
-           TrainConfig (defaults preserve existing behaviour).
+           TrainConfig (defaults preserve existing behaviour). Also added
+           --focal-gamma and --focal-alpha CLI flags to train.py.
 
-Fix #13 — pos_weight recomputed fresh on every resume but optimizer state
-           (including m/v for the loss-scale) is restored from the old run.
-           This is an inconsistency when BCEWithLogitsLoss is used: the
-           checkpoint's optimizer saw a *different* effective loss scale.
-           Now a WARNING is logged so this is explicit rather than silent.
+AUDIT FIXES (2026-05-04, batch 3):
+────────────────────────────────────────────────────────────────────────────
+Fix #23 — patience_counter always read as 0 when resuming from the best
+           checkpoint (it is saved as 0 whenever a new best is found). Any
+           non-improvement epochs before an interruption were lost, allowing
+           the model to train far beyond early_stop_patience across resumes.
+           Fix: write a tiny JSON sidecar ({checkpoint}.state.json) after
+           every epoch containing epoch, patience_counter, and best_f1. On
+           resume the sidecar overrides the checkpoint value; if the sidecar
+           is absent a warning is logged explaining the limitation.
+
+Fix #24 — No warning when --no-resume-model-only is used but the checkpoint
+           contains no 'optimizer' key. The code silently initialised a fresh
+           optimizer with no indication to the user. Added an else branch that
+           logs a WARNING in this case.
+
+Fix #25 — Scheduler state restore used ckpt["scheduler"].get("total_steps"),
+           which returns None if the key is absent (older PyTorch checkpoints).
+           None == new_total_steps is always False, so the fallthrough warning
+           incorrectly attributed the skip to an epoch-extension mismatch.
+           Now the key's existence is checked explicitly; if absent, a clear
+           "missing total_steps" warning is emitted instead.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import dataclasses
@@ -571,6 +590,33 @@ def train(config: TrainConfig) -> dict:
         # The checkpoint now stores patience_counter; ckpt.get() defaults to 0
         # for backward compatibility with old checkpoints that lack the key.
         patience_counter = ckpt.get("patience_counter", 0)
+
+        # ── Fix #23: override patience_counter from per-epoch state file ───
+        # The best checkpoint always stores patience_counter=0 (it is reset
+        # each time a new best is found). If training was interrupted after
+        # several non-improvement epochs, the checkpoint on disk still reflects
+        # the last best epoch — not the interrupted epoch — so patience is
+        # silently reset. A lightweight sidecar written after every epoch
+        # (see below) preserves the true counter.
+        _resume_state_path = Path(config.resume_from).with_suffix(".state.json")
+        if _resume_state_path.exists():
+            _saved_state = json.loads(_resume_state_path.read_text())
+            _state_epoch = _saved_state.get("epoch", 0)
+            if _state_epoch >= start_epoch - 1:
+                patience_counter = _saved_state.get("patience_counter", patience_counter)
+                logger.info(
+                    f"patience_counter overridden from state file "
+                    f"(epoch {_state_epoch}): "
+                    f"{patience_counter}/{config.early_stop_patience}"
+                )
+        else:
+            logger.warning(
+                "No .state.json sidecar found alongside the resume checkpoint — "
+                f"patience_counter initialised from checkpoint value ({patience_counter}). "
+                "Non-improvement epochs before the interruption are NOT counted. "
+                "State sidecars are written after every epoch starting with this run."
+            )
+
         logger.info(
             f"Resumed from epoch {start_epoch-1} | "
             f"best_f1={best_f1:.4f} | "
@@ -732,21 +778,35 @@ def train(config: TrainConfig) -> dict:
                 "Optimizer state skipped — force_optimizer_reset=True. "
                 "Fresh AdamW in use."
             )
+        else:
+            logger.warning(
+                "Full resume requested (--no-resume-model-only) but the checkpoint "
+                "contains no 'optimizer' key. Fresh AdamW initialised. "
+                "Ensure your checkpoint was saved with optimizer state included."
+            )
 
         if "scheduler" in ckpt and not _skip_optimizer:
             # ── Fix #10: guard against total_steps mismatch on epoch extension ─
-            ckpt_total_steps = ckpt["scheduler"].get("total_steps")
-            new_total_steps  = remaining_epochs * len(train_loader)
-            if ckpt_total_steps == new_total_steps:
-                scheduler.load_state_dict(ckpt["scheduler"])
-                logger.info("Scheduler state restored.")
-            else:
+            new_total_steps = remaining_epochs * len(train_loader)
+            if "total_steps" not in ckpt["scheduler"]:
                 logger.warning(
-                    f"Scheduler state skipped — checkpoint total_steps={ckpt_total_steps} "
-                    f"≠ new total_steps={new_total_steps} (epoch extension or batch_size "
-                    f"change detected). Fresh scheduler in use; optimizer momentum state "
-                    f"was restored."
+                    "Scheduler state skipped — checkpoint scheduler dict does not "
+                    "contain 'total_steps' (checkpoint may have been created with an "
+                    "older PyTorch version). Fresh OneCycleLR in use; optimizer "
+                    "momentum state was restored."
                 )
+            else:
+                ckpt_total_steps = ckpt["scheduler"]["total_steps"]
+                if ckpt_total_steps == new_total_steps:
+                    scheduler.load_state_dict(ckpt["scheduler"])
+                    logger.info("Scheduler state restored.")
+                else:
+                    logger.warning(
+                        f"Scheduler state skipped — checkpoint total_steps={ckpt_total_steps} "
+                        f"≠ new total_steps={new_total_steps} (epoch extension or batch_size "
+                        f"change detected). Fresh scheduler in use; optimizer momentum state "
+                        f"was restored."
+                    )
         elif _skip_optimizer:
             logger.info(
                 "Scheduler state skipped — force_optimizer_reset=True. "
@@ -886,6 +946,16 @@ def train(config: TrainConfig) -> dict:
                         f"(best F1-macro = {best_f1:.4f})"
                     )
                     break
+
+            # ── Fix #23: write per-epoch state sidecar ──────────────────────
+            # The best checkpoint always stores patience_counter=0. Writing a
+            # tiny JSON beside it after every epoch lets a future resume
+            # recover the true counter even if training was interrupted during
+            # a non-improvement streak.
+            _state_path = checkpoint_path.with_suffix(".state.json")
+            _state_path.write_text(
+                json.dumps({"epoch": epoch, "patience_counter": patience_counter, "best_f1": best_f1})
+            )
 
         if checkpoint_path.exists():
             mlflow.log_artifact(str(checkpoint_path))

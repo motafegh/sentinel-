@@ -170,6 +170,8 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--num-workers",  type=int, default=2,   help="DataLoader worker processes")
     p.add_argument("--log-interval", type=int, default=100, help="Log loss every N batches")
+    p.add_argument("--focal-gamma", type=float, default=2.0,  help="FocalLoss focusing exponent (used when --loss-fn focal)")
+    p.add_argument("--focal-alpha", type=float, default=0.25, help="FocalLoss class-balance weight (used when --loss-fn focal)")
 
     # --- Resume ---
     p.add_argument(
@@ -236,6 +238,8 @@ def main() -> None:
         weight_decay          = args.weight_decay,
         threshold             = args.threshold,
         loss_fn               = args.loss_fn,
+        focal_gamma           = args.focal_gamma,
+        focal_alpha           = args.focal_alpha,
         early_stop_patience   = args.early_stop_patience,
         grad_clip             = args.grad_clip,
         warmup_pct            = args.warmup_pct,
