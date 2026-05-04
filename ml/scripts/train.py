@@ -137,8 +137,10 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         default=True,
         help=(
-            "When set, restores optimizer AND scheduler state from checkpoint "
-            "(full resume). Default is model-weights-only resume (fresh optimizer/scheduler)."
+            "When set, restores optimizer state from checkpoint in addition to "
+            "model weights (full resume). Scheduler state is only restored if "
+            "total_steps matches — on epoch extension it is skipped automatically. "
+            "Default is model-weights-only resume (fresh optimizer/scheduler)."
         ),
     )
 

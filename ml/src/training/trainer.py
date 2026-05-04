@@ -54,7 +54,11 @@ Fix #4 — Unknown loss_fn now raises ValueError (was silent BCE fallthrough).
 Fix #7 — clip_grad_norm_ scans only trainable params (not frozen CodeBERT).
 Fix #8 — OneCycleLR uses remaining_epochs=config.epochs-start_epoch+1 on resume.
 Fix #2 — FocalLoss sigmoid called on logits.float() to prevent BF16 underflow.
-Fix #9 — Resume arch check uses hardcoded constant, not missing config.architecture.
+Fix #9 — Resume arch check uses ARCHITECTURE constant, not missing config.architecture.
+Fix #10 — Full resume (--no-resume-model-only) skips scheduler state when total_steps
+          mismatch is detected (epoch extension). load_state_dict restores total_steps
+          from the checkpoint, silently overwriting the new remaining_epochs schedule
+          and causing OneCycleLR overflow after the original run's remaining steps.
 """
 
 from __future__ import annotations
@@ -120,6 +124,19 @@ NUM_CLASSES = len(CLASS_NAMES)
 # Architecture constant — single source of truth
 # TrainConfig has no 'architecture' field; this constant is used wherever
 # the architecture name needs to be recorded (checkpoint, MLflow, resume check).
+# ---------------------------------------------------------------------------
+ARCHITECTURE = "cross_attention_lora"
+
+# ---------------------------------------------------------------------------
+# Valid loss function names — Audit fix #4
+# ---------------------------------------------------------------------------
+# Centralised here so the ValueError message and the dispatch logic
+# always stay in sync. Add new loss names to this set before adding
+# the corresponding elif branch below.
+# ---------------------------------------------------------------------------
+# Architecture constant — single source of truth for Fix #9
+# TrainConfig has no 'architecture' field; using config.architecture caused
+# AttributeError on every resume. Compare against this constant instead.
 # ---------------------------------------------------------------------------
 ARCHITECTURE = "cross_attention_lora"
 
@@ -476,11 +493,9 @@ def train(config: TrainConfig) -> None:
                 f"config.num_classes={config.num_classes}. "
                 "Fix TrainConfig or remove resume_from."
             )
-
         # ── Fix #9: use ARCHITECTURE constant, not config.architecture ──────
-        # TrainConfig has no 'architecture' field. The architecture is always
-        # ARCHITECTURE = "cross_attention_lora". Using config.architecture
-        # caused AttributeError on every resume. Compare against the constant.
+        # TrainConfig has no 'architecture' field. The old code referenced
+        # config.architecture which raised AttributeError on every resume.
         ckpt_arch = ckpt_cfg.get("architecture")
         if ckpt_arch is not None and ckpt_arch != ARCHITECTURE:
             raise ValueError(
@@ -541,8 +556,27 @@ def train(config: TrainConfig) -> None:
             optimizer.load_state_dict(ckpt["optimizer"])
             logger.info("Optimizer state restored.")
         if "scheduler" in ckpt:
-            scheduler.load_state_dict(ckpt["scheduler"])
-            logger.info("Scheduler state restored.")
+            # ── Fix #10: guard against total_steps mismatch on epoch extension ─
+            # PyTorch's load_state_dict does self.__dict__.update(state_dict),
+            # which restores the checkpoint's total_steps into the new scheduler,
+            # silently overwriting the remaining_epochs schedule. When extending
+            # an N-epoch run to M epochs, the checkpoint total_steps = N×steps
+            # while the new scheduler has total_steps = (M-start+1)×steps.
+            # Loading the old state lets training proceed until the original N
+            # epochs worth of steps are exhausted, then crashes with:
+            #   "Tried to step N×steps+1 times. total_steps is N×steps"
+            # Fix: skip scheduler state if total_steps differs; keep optimizer.
+            ckpt_total_steps = ckpt["scheduler"].get("total_steps")
+            new_total_steps  = remaining_epochs * len(train_loader)
+            if ckpt_total_steps == new_total_steps:
+                scheduler.load_state_dict(ckpt["scheduler"])
+                logger.info("Scheduler state restored.")
+            else:
+                logger.warning(
+                    f"Scheduler state skipped — checkpoint total_steps={ckpt_total_steps} "
+                    f"≠ new total_steps={new_total_steps} (epoch extension detected). "
+                    "Fresh scheduler in use; optimizer momentum state was restored."
+                )
     elif config.resume_from:
         logger.info("Resumed model weights only (fresh optimizer/scheduler).")
 
