@@ -170,7 +170,7 @@ class TrainConfig:
 
     # --- Training ---
     epochs:       int   = 40
-    batch_size:   int   = 16
+    batch_size:   int   = 32
     lr:           float = 3e-4
     weight_decay: float = 1e-2
     threshold:    float = 0.5
@@ -189,7 +189,9 @@ class TrainConfig:
 
     # --- Loss function ---
     # Valid values: "bce" | "focal"
-    loss_fn: str = "bce"
+    loss_fn:     str   = "bce"
+    focal_gamma: float = 2.0
+    focal_alpha: float = 0.25
 
     # --- Cache ---
     cache_path: str | None = "ml/data/cached_dataset.pkl"
@@ -343,13 +345,13 @@ def train_one_epoch(
                 f"  Batch {batch_idx+1}/{len(loader)} | loss={loss.item():.4f}"
             )
 
-    return total_loss / len(loader)
+    return total_loss / max(len(loader), 1)
 
 
 # ---------------------------------------------------------------------------
 # Main training function
 # ---------------------------------------------------------------------------
-def train(config: TrainConfig) -> None:
+def train(config: TrainConfig) -> float:
     os.makedirs(config.checkpoint_dir, exist_ok=True)
     device = config.device
     logger.info(f"Training on: {device} | classes: {config.num_classes}")
@@ -399,27 +401,30 @@ def train(config: TrainConfig) -> None:
     )
 
     _use_workers = config.num_workers > 0
-    _prefetch    = 2 if _use_workers else None
+    # prefetch_factor is only valid (and only useful) when num_workers > 0.
+    # Explicitly passing prefetch_factor=None with num_workers=0 triggers a
+    # UserWarning in PyTorch 2.x, so we omit the kwarg entirely in that case.
+    _worker_kwargs: dict = dict(
+        num_workers=config.num_workers,
+        pin_memory=_use_workers,
+        persistent_workers=_use_workers and config.persistent_workers,
+    )
+    if _use_workers:
+        _worker_kwargs["prefetch_factor"] = 2
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=config.batch_size,
         shuffle=True,
         collate_fn=dual_path_collate_fn,
-        num_workers=config.num_workers,
-        pin_memory=_use_workers,
-        persistent_workers=_use_workers and config.persistent_workers,
-        prefetch_factor=_prefetch,
+        **_worker_kwargs,
     )
     val_loader = DataLoader(
         val_dataset,
         batch_size=config.batch_size,
         shuffle=False,
         collate_fn=dual_path_collate_fn,
-        num_workers=config.num_workers,
-        pin_memory=_use_workers,
-        persistent_workers=_use_workers and config.persistent_workers,
-        prefetch_factor=_prefetch,
+        **_worker_kwargs,
     )
 
     logger.info(
@@ -497,7 +502,7 @@ def train(config: TrainConfig) -> None:
     # Loss, optimizer, scheduler
     # ------------------------------------------------------------------
     if config.loss_fn == "focal":
-        _focal = FocalLoss(gamma=2.0, alpha=0.25)
+        _focal = FocalLoss(gamma=config.focal_gamma, alpha=config.focal_alpha)
 
         class _FocalFromLogits(nn.Module):
             """Thin wrapper so FocalLoss receives FP32 probabilities, not raw logits."""
@@ -505,7 +510,10 @@ def train(config: TrainConfig) -> None:
                 return _focal(torch.sigmoid(logits.float()), targets)
 
         loss_fn: nn.Module = _FocalFromLogits()
-        logger.info("Loss: FocalLoss(gamma=2.0, alpha=0.25) with FP32 sigmoid guard")
+        logger.info(
+            f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha}) "
+            "with FP32 sigmoid guard"
+        )
     else:  # "bce"
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
@@ -523,7 +531,7 @@ def train(config: TrainConfig) -> None:
             f"start_epoch={start_epoch} ≥ config.epochs={config.epochs}: "
             "nothing left to train. Increase config.epochs before resuming."
         )
-        return
+        return best_f1
 
     scheduler = OneCycleLR(
         optimizer,
@@ -540,7 +548,8 @@ def train(config: TrainConfig) -> None:
     # Restore optimizer + scheduler state if doing a full resume
     # ------------------------------------------------------------------
     if config.resume_from and not config.resume_model_only:
-        ckpt = torch.load(config.resume_from, map_location=device, weights_only=False)
+        # ckpt is already in scope from the model-load block above (Finding #1 fix:
+        # the original code loaded the file a second time here unnecessarily).
         if "optimizer" in ckpt:
             optimizer.load_state_dict(ckpt["optimizer"])
             logger.info("Optimizer state restored.")
@@ -695,6 +704,8 @@ def train(config: TrainConfig) -> None:
             mlflow.log_artifact(str(checkpoint_path))
 
         logger.info(f"\n✅ Training complete. Best val F1-macro: {best_f1:.4f}")
+
+    return best_f1
 
 
 if __name__ == "__main__":

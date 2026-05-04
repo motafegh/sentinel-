@@ -106,6 +106,26 @@ def parse_args() -> argparse.Namespace:
             "optimal per-class or shared threshold."
         ),
     )
+    p.add_argument(
+        "--loss-fn",
+        default="bce",
+        choices=["bce", "focal"],
+        help="Loss function: 'bce' (BCEWithLogitsLoss + pos_weight) or 'focal' (FocalLoss).",
+    )
+    p.add_argument("--focal-gamma",         type=float, default=2.0,  help="FocalLoss gamma (used when --loss-fn focal)")
+    p.add_argument("--focal-alpha",         type=float, default=0.25, help="FocalLoss alpha (used when --loss-fn focal)")
+    p.add_argument("--early-stop-patience", type=int,   default=7,    help="Epochs without val F1 improvement before early stopping")
+    p.add_argument("--grad-clip",           type=float, default=1.0,  help="Max gradient norm for clip_grad_norm_")
+    p.add_argument("--warmup-pct",          type=float, default=0.05, help="Fraction of steps used for OneCycleLR warm-up")
+    p.add_argument("--num-workers",         type=int,   default=2,    help="DataLoader worker processes (0 = main process only)")
+    p.add_argument("--log-interval",        type=int,   default=100,  help="Log batch loss every N batches")
+    p.add_argument(
+        "--no-amp",
+        dest="use_amp",
+        action="store_false",
+        default=True,
+        help="Disable Automatic Mixed Precision (AMP). AMP is on by default on CUDA.",
+    )
 
     # --- Paths ---
     p.add_argument("--graphs-dir",      default="ml/data/graphs",  help="Graph .pt files directory")
@@ -154,22 +174,31 @@ def main() -> None:
     label_csv = args.label_csv if args.label_csv else None
 
     config = TrainConfig(
-        run_name          = args.run_name,
-        experiment_name   = args.experiment_name,
-        num_classes       = args.num_classes,
-        label_csv         = label_csv,
-        epochs            = args.epochs,
-        batch_size        = args.batch_size,
-        lr                = args.lr,
-        weight_decay      = args.weight_decay,
-        threshold         = args.threshold,
-        graphs_dir        = args.graphs_dir,
-        tokens_dir        = args.tokens_dir,
-        splits_dir        = args.splits_dir,
-        checkpoint_dir    = args.checkpoint_dir,
-        checkpoint_name   = args.checkpoint_name or f"{args.run_name}_best.pt",
-        resume_from       = args.resume,
-        resume_model_only = args.resume_model_only,
+        run_name             = args.run_name,
+        experiment_name      = args.experiment_name,
+        num_classes          = args.num_classes,
+        label_csv            = label_csv,
+        epochs               = args.epochs,
+        batch_size           = args.batch_size,
+        lr                   = args.lr,
+        weight_decay         = args.weight_decay,
+        threshold            = args.threshold,
+        loss_fn              = args.loss_fn,
+        focal_gamma          = args.focal_gamma,
+        focal_alpha          = args.focal_alpha,
+        early_stop_patience  = args.early_stop_patience,
+        grad_clip            = args.grad_clip,
+        warmup_pct           = args.warmup_pct,
+        num_workers          = args.num_workers,
+        log_interval         = args.log_interval,
+        use_amp              = args.use_amp,
+        graphs_dir           = args.graphs_dir,
+        tokens_dir           = args.tokens_dir,
+        splits_dir           = args.splits_dir,
+        checkpoint_dir       = args.checkpoint_dir,
+        checkpoint_name      = args.checkpoint_name or f"{args.run_name}_best.pt",
+        resume_from          = args.resume,
+        resume_model_only    = args.resume_model_only,
     )
 
     train(config)
