@@ -201,21 +201,27 @@ Last updated: 2026-05-04 (late evening, post Batch‑3 fixes)
 
 ## Active Checkpoint
 
-```
 ml/checkpoints/multilabel_crossattn_best.pt   ← baseline (pre-edge_attr)
   epoch:        34
   val F1-macro: 0.4679
   architecture: cross_attention_lora (pre-P0-B)
 
-ml/checkpoints/multilabel_crossattn_v2_best.pt   ← best v2 checkpoint (retrain paused)
+ml/checkpoints/multilabel_crossattn_v2_best.pt   ← previous v2 run (paused)
   run:          multilabel-v2-edge-attr-60ep
   experiment:   sentinel-retrain-v2
   last resumed: 2026-05-04 (stopped at epoch 43 batch 903 — batch-size mismatch)
   best_f1:      0.4629 (epoch 37)
   edge_attr:    True (P0-B active)
-  status:       ⚠️ Retrain paused. Must resume with correct batch-size strategy.
-                See docs/changes/2026-05-04-resume-batch-size-fix.md.
-```
+  status:       ❌ Paused (stale‑Adam issue). Superseded by fresh v3 run.
+
+ml/checkpoints/multilabel-v3-fresh-60ep_best.pt   ← **IN TRAINING (v3 fresh)**
+  run:          multilabel-v3-fresh-60ep
+  experiment:   sentinel-retrain-v3
+  started:      2026-05-05 00:01 UTC
+  batch_size:   32
+  epochs:       60 (early‑stop patience 10)
+  edge_attr:    True (P0-B active)
+  status:       🟢 Training — epoch 1/60 in progress
 
 ---
 
@@ -254,13 +260,7 @@ Correct strategy:
 
 In priority order:
 
-1. **Resume retrain correctly** — Choose the clean resume strategy from
-   `docs/changes/2026-05-04-resume-batch-size-fix.md`:
-   - **Recommended (cleanest):** model-only resume at `batch_size=32`, no `--no-resume-model-only`.
-     Fresh AdamW + fresh OneCycleLR calibrated to new batch size.
-   - **Alternative:** `--no-resume-model-only --resume-reset-optimizer` to preserve
-     epoch counter and patience_counter while discarding stale moments.
-   - Run `tune_threshold.py` on completion; compare tuned F1 against **0.4884**.
+1. **“Monitor fresh retrain (v3)” — check for loss / F1 progress, ensure no OOM or early‑stop trigger.,then do the post training ,tune **.
 
 2. **Fix #6 downstream update** — Update any API consumer that parsed `"threshold"` (single float)
    to use `"thresholds"` (list of floats). Check `api.py` response handling and any
