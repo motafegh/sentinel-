@@ -32,6 +32,13 @@ FIXES (2026-05-01):
                called during startup. A 0-edge graph skips message-passing entirely,
                hiding GAT shape bugs until the first real inference request.
 
+FIXES (2026-05-04):
+    Fix #2 — SentinelModel() now reads dropout (fusion_dropout), gnn_dropout, and
+               lora_target_modules from saved checkpoint config. Previously missing
+               args caused load_state_dict() crash when checkpoint used non-defaults.
+    Fix #4 — _warmup() dummy graph now includes edge_attr when use_edge_attr=True,
+               exercising the full nn.Embedding code path at startup.
+
 IMPROVEMENTS:
     - self.thresholds_loaded flag exposed for /health endpoint.
     - Warns per-class when threshold JSON is missing a class entry (uses fallback silently).
@@ -161,6 +168,7 @@ class Predictor:
             num_classes = 1
             fusion_output_dim = 64
             architecture = "legacy_binary"
+            saved_cfg = {}
             logger.warning(
                 "Old-format checkpoint — loading as binary (num_classes=1). "
                 "This checkpoint predates Track 3 multi-label mode. "
@@ -179,9 +187,12 @@ class Predictor:
         self.num_classes = num_classes
         self.architecture = architecture          # stored for health endpoint
         self._class_names = CLASS_NAMES[:num_classes] if num_classes > 1 else [_BINARY_CLASS_NAME]
+        self._saved_cfg = saved_cfg              # kept for _warmup()
 
         # ------------------------------------------------------------------
         # Build model with correct architecture
+        # Fix #2: pass dropout, gnn_dropout, lora_target_modules from checkpoint
+        # config so load_state_dict() never crashes due to LoRA key mismatches.
         # ------------------------------------------------------------------
         self.model = SentinelModel(
             num_classes=num_classes,
@@ -193,6 +204,11 @@ class Predictor:
             lora_r=saved_cfg.get("lora_r", 8),
             lora_alpha=saved_cfg.get("lora_alpha", 16),
             lora_dropout=saved_cfg.get("lora_dropout", 0.1),
+            dropout=saved_cfg.get("fusion_dropout", 0.3),
+            gnn_dropout=saved_cfg.get("gnn_dropout", 0.2),
+            lora_target_modules=saved_cfg.get(
+                "lora_target_modules", ["query", "value"]
+            ),
         ).to(self.device)
         self.model.load_state_dict(state_dict)
         self.model.eval()
@@ -270,17 +286,32 @@ class Predictor:
         are covered). This forces all three GATConv.propagate() calls to run
         and exercises the full message-passing code path at startup.
 
+        Fix #4 (2026-05-04) — dummy edge_attr included:
+        When use_edge_attr=True in the checkpoint config, the warmup now adds
+        a 1-D long tensor of zeros for edge_attr (shape [E]) so that the
+        nn.Embedding lookup in GNNEncoder is exercised and edge embedding shape
+        bugs are caught here rather than on the first real inference request.
+
         Node feature dim (8) matches GNNEncoder's expected input_dim.
         Token tensor: first token real, rest PAD — avoids empty masked-mean.
         """
         try:
-            # ── Audit fix #5: 2 nodes, 1 undirected edge (was 0 edges) ───────
-            # Edge 0→1 and 1→0 = undirected. dim=8 matches GNNEncoder input_dim.
+            # ── 2 nodes, 1 undirected edge (was 0 edges) ──────────────────────
             dummy_x = torch.zeros(2, 8, dtype=torch.float32, device=self.device)
             dummy_edge_index = torch.tensor(
                 [[0, 1], [1, 0]], dtype=torch.long, device=self.device
             )  # shape [2, 2] — two directed edges forming one undirected edge
-            dummy_graph = Data(x=dummy_x, edge_index=dummy_edge_index)
+
+            # Fix #4: include edge_attr when the checkpoint uses edge embeddings
+            # edge_attr must be 1-D long [E] — integer indices for nn.Embedding.
+            use_edge_attr = self._saved_cfg.get("use_edge_attr", True)
+            dummy_kwargs: dict = dict(x=dummy_x, edge_index=dummy_edge_index)
+            if use_edge_attr:
+                dummy_kwargs["edge_attr"] = torch.zeros(
+                    2, dtype=torch.long, device=self.device
+                )  # [E=2] long zeros — valid Embedding indices
+
+            dummy_graph = Data(**dummy_kwargs)
             dummy_batch = Batch.from_data_list([dummy_graph]).to(self.device)
 
             # attention_mask: first token real, rest PAD — avoids empty masked mean
