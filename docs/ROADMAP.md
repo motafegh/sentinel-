@@ -1,198 +1,81 @@
 # SENTINEL — Roadmap
 
-Last updated: 2026-05-02
+Last updated: 2026-05-04 (post Batch‑3 fixes)
 
 This file tracks upcoming work in priority order. Completed items move to
 `docs/changes/` as dated changelogs. See `docs/STATUS.md` for current module state.
 
 ---
 
-## Immediate Next (ordered)
+## Completed Pre‑Retrain Moves
 
-### Move 0 — Validate Graph Dataset for edge_attr (30 min) ⚠️ BLOCKS RETRAIN
+These moves were listed as “Immediate Next” on 2026-05-02. They have all been
+implemented, except for a single pending sub‑item noted below.
 
-**Why:** P0-B (`gnn_encoder.py`) degrades gracefully to zero-vectors when `edge_attr is None`
-in old `.pt` files — it does not crash. However, training on zero-vectors defeats the entire
-purpose of P0-B: the model learns nothing about edge relation types.
-We must confirm that `ml/data/graphs/*.pt` files actually contain `edge_attr` tensors with
-shape `[E]` and values in `[0, 4]` before the retrain captures any benefit from P0-B.
+| Move | Description | Status |
+|------|-------------|--------|
+| Move 0 — Validate Graph Dataset | `validate_graph_dataset.py` created, exits 0 on current data | ✅ Done |
+| Move 1 — Confirm Audit #13 Closed | FocalLoss FP32 cast already present; closed | ✅ Done |
+| Move 2 — T1-A Inference Cache | `cache.py` integrated; cache hit < 50ms | ✅ Done |
+| Move 3 — T2-A Prometheus Metrics | `prometheus-fastapi-instrumentator` added to `api.py` | ✅ Done |
+| Move 4 — T2-C MLflow Model Registry | `promote_model.py` CLI added | ✅ Done |
+| Move 5 — T3-A LLM Synthesizer Upgrade | qwen3.5-9b-ud + rule‑based fallback implemented | ✅ Done |
+| Move 6 — T3-B Cross‑Encoder Re‑ranking | `rerank` param added, ms‑marco‑MiniLM‑L‑6‑v2 wired | ✅ Done |
+| Move 7 — T2-B Drift Detection | `drift_detector.py` + `compute_drift_baseline.py` added | ✅ Done |
+| Move 8 — ML Audit Items #9, #11 | Item #11 (RAM cache integrity) fixed; Item #9 (preprocess temp file on SIGKILL) still pending | ⚠️ Partial |
 
-**New file:** `ml/scripts/validate_graph_dataset.py`
-- Walk all `.pt` files in `ml/data/graphs/`
-- Per file: check `hasattr(g, 'edge_attr')`, shape is `[E]` (1-D), values in `[0, NUM_EDGE_TYPES)`
-- Report: total files, files with valid `edge_attr`, files with missing/wrong-shape `edge_attr`
-- Exit non-zero if any file fails — CI-safe
-- Note: `graph_schema.py` comments that pre-refactor files may have shape `[E, 1]` (old
-  `ast_extractor.py`) — the script should detect and report this as a shape mismatch
-
-**Verification:** Script exits 0 on current dataset; prints per-file summary.
-
----
-
-### Move 1 — Confirm Audit #13 Closed (5 min)
-
-**Why:** The ROADMAP previously listed audit item #13 (FocalLoss scalar cast) as an open
-task. Source code inspection (2026-05-02) confirms it is **already fixed**:
-- `focalloss.py`: `predictions.float()` / `targets.float()` cast at top of `forward()` (Fix #6, 2026-05-01)
-- `trainer.py`: `_FocalFromLogits` applies `logits.float()` before sigmoid (Fix #2, 2026-05-01)
-
-**Action:** Close this item. No code change needed. Update open items in `docs/STATUS.md`.
+**Remaining from Move 8:**
+- **Audit item #9** in `ml/src/inference/preprocess.py`: temporary file not cleaned up on SIGKILL.  
+  This is a low‑priority hardening task that does not block retrain.
 
 ---
 
-### Move 2 — T1-A: Inference Cache (2h)
+## Immediate Next (Post‑Retrain)
 
-**Why:** Inference cache (`cache.py`) is listed as complete in STATUS but needs
-integration verification — confirm `process_source()` cache hit returns in < 50ms
-on second call with same contract content.
+With all pre‑retrain prerequisites complete, the highest‑priority tasks are:
 
-**Files:**
-- `ml/src/inference/cache.py` — already created
-- `ml/src/inference/preprocess.py` — optional cache in `ContractPreprocessor.__init__()`
+1. **Resume retrain correctly** — see `docs/changes/2026-05-04-resume-batch-size-fix.md` for the recommended strategy.  
+   - Use model‑only resume at `batch_size=32` (cleanest) or `--resume-reset-optimizer` to keep epoch counter.  
+   - After completion, run `tune_threshold.py` and verify tuned F1 > 0.4884.
 
-**Verification:** Second call to `process_source()` on same contract returns in < 50ms.
+2. **M6 Integration API** — build after the building blocks are solid:
+   - Design auth/rate‑limit (see Security Design below).
+   - Create `api/` directory and wire routes (`POST /v1/audit`, etc.).
+   - Docker‑compose the full stack.
 
----
-
-### Move 3 — T2-A: Prometheus Metrics (1h)
-
-**Why:** M6 will route production traffic to the ML service. Without metrics there is
-no way to detect GPU memory pressure, latency spikes, or rising error rates.
-T2-B drift detection also depends on Prometheus counters being available.
-
-**Files:**
-- `ml/pyproject.toml`: add `prometheus-fastapi-instrumentator>=0.9`
-- `ml/src/inference/api.py`: `Instrumentator().instrument(app).expose(app)`; custom
-  `Gauge("sentinel_gpu_memory_bytes")` and `Gauge("sentinel_model_loaded")`
+3. **Autoresearch setup** — after retrain completes:
+   - Implement `ml/scripts/auto_experiment.py`.
+   - Write `ml/autoresearch/program.md`.
 
 ---
 
-### Move 4 — T2-C: MLflow Model Registry Script (2h)
-
-**Why:** Current model promotion = manually copy `.pt` file. No audit trail, no staged
-rollout. MLflow is already running (`sqlite:///mlruns.db`).
-
-**Files:**
-- **New** `ml/scripts/promote_model.py`: CLI `--checkpoint --stage (Staging|Production) --note`;
-  `mlflow.register_model()` with `val_f1_macro`, `architecture`, `git_commit` tags
-
----
-
-### Move 5 — T3-A: LLM Synthesizer Upgrade (2h)
-
-**Why:** Current synthesizer picks from 3 static strings — no Solidity-specific guidance,
-no exploit analysis. `get_strong_llm()` in `agents/src/llm/client.py` is already wired.
-
-**Files:**
-- `agents/src/orchestration/nodes.py`: structured prompt → markdown with severity/exploit/fix;
-  fallback to rule-based when LLM unavailable
-- `agents/src/orchestration/state.py`: add `narrative: str | None = None`
-
----
-
-### Move 6 — T3-B: Cross-Encoder Re-Ranking in RAG (1h)
-
-**Why:** RRF gives good recall but imprecise ranking. A cross-encoder reads query + chunk
-bidirectionally — more accurate relevance. Off by default (`rerank=False`).
-
-**Files:**
-- `agents/src/rag/retriever.py`: `rerank: bool = False` param; after RRF top-20 →
-  `CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2").predict()`, re-sort
-- `agents/pyproject.toml`: add `sentence-transformers>=2.2`
-
----
-
-### Move 7 — T2-B: Drift Detection (3h)
-
-**Why:** Model trained on BCCC-SCsVul-2024. Production contracts from 2026+ may degrade
-silently. KS test is the standard tool; wire after T2-A so Prometheus counters are available.
-
-⚠️ **Baseline strategy — read before implementing:**
-Do NOT compute the baseline from `ml/data/graphs/` (training data).
-The BCCC-SCsVul-2024 corpus is a 2024 historical snapshot; using it as a baseline
-will cause the KS test to fire on virtually every modern 2026 contract, making alerts meaningless.
-
-**Correct approach:**
-- `compute_drift_baseline.py` must support `--source [warmup|training]`
-- Default and recommended: `--source warmup` — collect stats from first 500 real requests,
-  then write `drift_baseline.json`; alerts are suppressed during warm-up
-- `--source training` is available for testing but prints a prominent warning
-
-**Files:**
-- **New** `ml/src/inference/drift_detector.py`: `DriftDetector`; KS test per stat vs baseline;
-  rolling buffer 200 requests; `sentinel_drift_alerts_total` Prometheus counter on p < 0.05;
-  warm-up mode suppresses alerts until N >= 500
-- **New** `ml/scripts/compute_drift_baseline.py`: `--source warmup|training`;
-  walks request log or `ml/data/graphs/`; writes `drift_baseline.json`
-- `ml/src/inference/api.py`: `detector.update()` per request; `detector.check()` every 50
-
----
-
-### Move 8 — ML Audit Items #9, #11 (45 min)
-
-Note: Audit item #13 (FocalLoss scalar cast) is already fixed — see Move 1.
-
-| Item | File | Fix |
-|------|------|-----|
-| #9 | `preprocess.py` | Temp file not cleaned on SIGKILL |
-| #11 | `dual_path_dataset.py` | RAM cache loaded without integrity check |
-
----
-
-## Then: Retrain
-
-After Moves 0–8, retrain the model with the new architecture (P0-A/B/C):
-- Edge relation type embeddings (P0-B) — biggest expected quality gain
-- Configurable LoRA rank — experiment with r=16, r=32
-- All architecture params now in MLflow for comparison
-
-### Retrain Evaluation Protocol
+## Retrain Evaluation Protocol
 
 Before launching the retrain, confirm all of the following:
 
 1. `validate_graph_dataset.py` (Move 0) exits 0 — confirms `edge_attr` is present in `.pt` files
 2. Held-out split is fixed — use `ml/data/splits/val_indices.npy` with the **same seed**; do NOT regenerate
 3. MLflow experiment `sentinel-retrain-v2` created; baseline run ID from `sentinel-multilabel` recorded
-4. **Success gate:** val F1-macro > **0.4679** on the same held-out split
-5. **Per-class floor:** no class drops > 0.05 F1 from pre-retrain values (log per-class F1 in MLflow)
-6. **Rollback rule:** if new F1 < 0.4679 after 40 epochs, revert to `multilabel_crossattn_best.pt`
-   and investigate P0-B `edge_emb_dim` (try 8 instead of 16) before re-running
+4. **Success gate:** tuned val F1-macro > **0.4884** on the same held-out split
+5. **Per-class floor:** no class drops > 0.05 F1 from pre-retrain values
+6. **Rollback rule:** if tuned F1 < 0.4884 after completion, revert to `multilabel_crossattn_v2_best.pt`
+   and try `loss_fn=focal` before re-running
 
 ---
 
-## Then: M6 Integration API (Sprint)
+## M6 Integration API: Security Design (Complete Before Building Routes)
 
-Build after the building blocks are solid:
-- T1-A cache → repeated audits are fast from day one
-- T2-A Prometheus → M6 can instrument from day one
-- T3-A LLM synthesizer → first user-facing reports are meaningful
-- T2-B drift → production degradation visible immediately
-
-### Security Design (complete before building routes)
-
-This is a smart contract security tool — the API itself must be secure from day one.
-Design these before writing a single route:
-
-- **Auth:** `Authorization: Bearer <key>` header; validated in a FastAPI dependency (`Depends`)
-- **API key storage:** env var `SENTINEL_API_KEYS` (comma-separated); never hardcoded
+- **Auth:** `Authorization: Bearer <key>` header; validated via FastAPI dependency
+- **API key storage:** env var `SENTINEL_API_KEYS` (comma‑separated); never hardcoded
 - **Rate limiting:** `slowapi` or Redis token bucket; max 10 audits/min per key
 - **Contract confidentiality:** audit job payloads must not be logged at INFO level — use DEBUG only
-- **Input validation:** max contract size (e.g. 500KB); reject non-UTF-8 payloads before Slither
-
-### New directory: `api/`
-- `api/main.py` — FastAPI + lifespan + Prometheus
-- `api/routes/audit.py` — `POST /v1/audit` → `{job_id}`; `GET /v1/audit/{id}`
-- `api/routes/proof.py` — `GET /v1/proof/{id}`
-- `api/tasks/audit_task.py` — Celery task wrapping `build_graph().ainvoke()`
-- `api/tasks/proof_task.py` — Celery task wrapping EZKL `run_proof.py`
-- `docker-compose.yml` — full stack (api, ml-server, mcp servers, redis, postgres)
+- **Input validation:** max contract size (e.g. 500KB); reject non‑UTF‑8 payloads before Slither
 
 ---
 
 ## ZKML Pipeline Resolution (S5.5)
 
-M2 has been "source complete, not yet run" since 2026-04-29 with no scheduled move
-to resolve it. This is a decision point — one of the two options must be chosen:
+M2 has been "source complete, not yet run" since 2026-04-29. Choose one of:
 
 **Option A — Run it:**
   - Set up EZKL environment locally (GPU + local graph data required)
@@ -210,6 +93,32 @@ Add a `S5.5 ZKML Validation` sprint row to the later sprints table once the deci
 
 ---
 
+## Post-M6: Multi-Contract Parsing (Move 9)
+
+**Why:** Users submitting a file with multiple contracts currently only get the first
+non‑dependency contract analysed. The second is silently ignored.
+
+### What already exists
+`GraphExtractionConfig` in `ml/src/preprocessing/graph_extractor.py` has:
+```python
+multi_contract_policy: str = "first"   # also supports "by_name"
+target_contract_name:  str | None = None
+```
+
+The correct change is adding an `"all"` value to the existing `multi_contract_policy` field.
+
+### Implementation scope
+**Primary:** `graph_extractor.py` — `_select_contract()` and `extract_contract_graph()`
+   support `policy="all"` returning a list of `Data` objects.
+**Propagation:**
+- `preprocess.py` — new `process_source_all_contracts()` entry point.
+- `predictor.py` — new `predict_source_multi()` with max‑aggregation across contracts.
+- `api.py` — extend `PredictResponse` with optional `contracts_analysed` field.
+- `cache.py` — decide caching strategy (single key or per‑contract sub‑keys).
+**Documentation:** update `ml/README.md` Known Limitation #2.
+
+---
+
 ## Later Sprints
 
 | Sprint | Goal | Key Skills |
@@ -222,99 +131,14 @@ Add a `S5.5 ZKML Validation` sprint row to the later sprints table once the deci
 
 ---
 
-## Post-M6: Multi-Contract Parsing (Move 9)
-
-**Why this is tracked here and not in Immediate Next:**
-This is not a pre-retrain requirement and does not block any current Move. It is
-a production gap: users submitting a file that defines `OwnerContract` + `TokenContract`
-get only the first non-dependency contract analysed. The second contract is silently
-ignored with no warning in the API response.
-
-Documented as Known Limitation #2 in `ml/README.md`.
-
-### What already exists (do not re-implement)
-
-`GraphExtractionConfig` in `ml/src/preprocessing/graph_extractor.py` already has:
-
-```python
-multi_contract_policy: str = "first"   # also supports "by_name"
-target_contract_name:  str | None = None
-```
-
-The `"by_name"` policy is already implemented and falls back to `"first"` with a
-warning if the name is not found. **Do not add a new flag.** The correct change
-is adding a `"all"` value to the existing `multi_contract_policy` field.
-
-### Implementation scope
-
-**Primary implementation point:**
-- `ml/src/preprocessing/graph_extractor.py` — `_select_contract()` and
-  `extract_contract_graph()`: add `policy="all"` branch that iterates all
-  non-dependency candidates and returns a list of `Data` objects instead of one.
-  This is the only file that changes the core extraction logic.
-
-**Pipeline propagation (each caller must handle a list):**
-- `ml/src/inference/preprocess.py` — `_extract_graph()` currently calls
-  `extract_contract_graph()` and returns a single `Data`. Needs a new method
-  `_extract_graphs_all()` (or a `multi=True` param) that returns `list[Data]`.
-  `process_source()` and `process_source_windowed()` stay single-contract by
-  default; a new `process_source_all_contracts()` entry point handles multi.
-- `ml/src/inference/predictor.py` — `predict_source()` and `_score_windowed()`
-  operate on one graph. A new `predict_source_multi()` method calls
-  `process_source_all_contracts()`, scores each contract independently, then
-  aggregates per-class probabilities with `max` across contracts (same strategy
-  as the existing `_aggregate_window_predictions()` for windows).
-- `ml/src/inference/api.py` — `PredictResponse` currently returns one implicit
-  contract result. Multi-contract mode needs either:
-  - Option A: a new `contracts_analysed: list[str]` field listing contract names,
-    with aggregated vulnerabilities (max per class) — simpler, backward compatible.
-  - Option B: a `per_contract: list[ContractResult]` field with per-contract
-    breakdowns — richer, but a breaking schema change.
-  Decide before implementing. Option A is recommended for the first version.
-
-**Cache design consideration:**
-- `ml/src/inference/cache.py` — current cache key is
-  `"{content_md5}_{FEATURE_SCHEMA_VERSION}"` and maps to one `(graph, tokens)` pair.
-  A multi-contract result from the same file is multiple graphs. The cache must
-  either store `list[(graph, tokens)]` under the same key (with a `multi=True`
-  flag in the lookup) or use per-contract sub-keys
-  `"{content_md5}_{FEATURE_SCHEMA_VERSION}_{contract_name}"`. Decide and document
-  before touching cache.py.
-
-**Documentation:**
-- `ml/README.md` — Known Limitation #2 should be updated from "not yet supported"
-  to "supported via `multi_contract_policy='all'`" once implemented.
-
-### What does NOT change
-- `graph_schema.py` — no constants change; node features are per-contract, not per-file
-- Training data / retrain — not required; this is an inference-pipeline-only change
-- `ast_extractor.py` — offline batch pipeline processes one contract per file by design
-  (the BCCC-SCsVul-2024 dataset has one contract per `.sol` file)
-
-### Affected files summary
-
-| File | Change type |
-|------|-------------|
-| `ml/src/preprocessing/graph_extractor.py` | Core logic — add `"all"` policy to `_select_contract()` and `extract_contract_graph()` |
-| `ml/src/inference/preprocess.py` | New `process_source_all_contracts()` entry point |
-| `ml/src/inference/predictor.py` | New `predict_source_multi()` + max aggregation across contracts |
-| `ml/src/inference/api.py` | `PredictResponse` schema extension; new optional `contracts_analysed` field |
-| `ml/src/inference/cache.py` | Cache key strategy decision for multi-contract results |
-| `ml/README.md` | Known Limitation #2 update once implemented |
-
----
-
 ## Unit Test Plan for New Stateful Modules
 
-These modules are IO-heavy and stateful — bugs are silent and expensive without tests.
-Add these before or alongside each Move:
-
-| Module | Move | Key test cases |
-|--------|------|----------------|
-| `cache.py` | Move 2 | Cache miss writes files; cache hit returns same object; TTL expiry evicts entry; cache key includes schema version |
-| `drift_detector.py` | Move 7 | Warm-up mode suppresses alerts; KS fires on p < 0.05; buffer rolls after 200 requests |
-| `promote_model.py` | Move 4 | CLI rejects unknown stage names; MLflow tags are written; dry-run mode does not register |
-| Multi-contract pipeline | Move 9 | Two-contract file returns two graphs; max aggregation takes highest prob per class; cache stores and retrieves multi-result correctly; `contracts_analysed` list in response matches input file |
+| Module | Key test cases |
+|--------|----------------|
+| `cache.py` | Cache miss writes files; cache hit returns same object; TTL expiry evicts entry; cache key includes schema version |
+| `drift_detector.py` | Warm-up mode suppresses alerts; KS fires on p < 0.05; buffer rolls after 200 requests |
+| `promote_model.py` | CLI rejects unknown stage names; MLflow tags are written; dry-run mode does not register |
+| Multi-contract pipeline (Move 9) | Two-contract file returns two graphs; max aggregation takes highest prob per class; cache stores and retrieves multi-result correctly; `contracts_analysed` list in response matches input file |
 
 ---
 
