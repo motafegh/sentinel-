@@ -52,6 +52,7 @@ logger.remove()
 logger.add(sys.stderr, level="INFO")
 
 from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
+from ml.src.inference.predictor import _ARCH_TO_FUSION_DIM
 from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.trainer import CLASS_NAMES, NUM_CLASSES, TrainConfig
 
@@ -174,7 +175,7 @@ def load_model_from_checkpoint(
     ckpt_config: dict[str, Any] = raw.get("config", {}) if isinstance(raw, dict) else {}
     architecture = ckpt_config.get("architecture", "cross_attention_lora")
     num_classes = int(ckpt_config.get("num_classes", NUM_CLASSES))
-    fusion_output_dim = 128 if architecture == "cross_attention_lora" else 64
+    fusion_output_dim = _ARCH_TO_FUSION_DIM.get(architecture, 64)
 
     model = SentinelModel(
         num_classes=num_classes,
