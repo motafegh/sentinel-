@@ -190,7 +190,7 @@ def load_model_from_checkpoint(
     ckpt_config: dict[str, Any] = raw.get("config", {}) if isinstance(raw, dict) else {}
     architecture = ckpt_config.get("architecture", "cross_attention_lora")
     num_classes = int(ckpt_config.get("num_classes", NUM_CLASSES))
-    fusion_output_dim = _ARCH_TO_FUSION_DIM.get(architecture, 64)
+    fusion_output_dim = ckpt_config.get("fusion_output_dim", _ARCH_TO_FUSION_DIM.get(architecture, 128))
 
     model = SentinelModel(
         num_classes=num_classes,
