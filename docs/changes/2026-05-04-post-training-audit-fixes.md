@@ -2,7 +2,7 @@
 
 Date: 2026-05-04  
 Author: motafegh  
-Fixes: #1 (dataset), #2 (predictor), #3 (tune_threshold), #4 (predictor warmup), #5 (tune_threshold prefetch), #6 (predictor API schema), #7 (predictor arch mapping), #9 (MLflow focal params)
+Fixes: #1 (dual_path_dataset), #2 (predictor), #3 (tune_threshold), #4 (predictor warmup), #5 (tune_threshold prefetch), #6 (predictor API schema), #7 (predictor arch mapping), #9 (MLflow focal params)
 
 ---
 
@@ -15,7 +15,7 @@ correctness or robustness issues; no new features.
 
 ---
 
-## Fix #1 — `ml/data_extraction/dataset.py`: edge_attr shape guard for pre-refactor `.pt` files
+## Fix #1 — `ml/src/datasets/dual_path_dataset.py`: edge_attr shape guard for pre-refactor `.pt` files
 
 **Commit:** 7f52484a01cb2a7a88ea56aef30307297abb05cf
 
@@ -73,6 +73,12 @@ with a state_dict key mismatch during threshold tuning.
 **Fix:**  
 Same treatment as Fix #2 — all arch fields forwarded from the saved config.
 
+Additionally corrected `fusion_output_dim` lookup to prefer
+`saved_cfg.get("fusion_output_dim")` over the hardcoded `_ARCH_TO_FUSION_DIM`
+mapping, matching the behaviour of `predictor.py` (Fix #7). This prevents
+silent shape mismatches when a checkpoint was trained with a non-default
+fusion output dimension.
+
 ---
 
 ## Fix #4 — `ml/src/inference/predictor.py`: missing `edge_attr` in warmup dummy graph
@@ -116,15 +122,18 @@ DataLoader kwargs are now built conditionally — `prefetch_factor`, `pin_memory
 and `persistent_workers` are only included in the dict when `num_workers > 0`:
 
 ```python
-loader_kwargs: dict = {"batch_size": batch_size, "shuffle": False}
+_loader_kwargs: dict = {
+    "batch_size": batch_size,
+    "shuffle": False,
+    "collate_fn": dual_path_collate_fn,
+    "num_workers": num_workers,
+}
 if num_workers > 0:
-    loader_kwargs.update({
-        "num_workers": num_workers,
-        "prefetch_factor": 2,
-        "pin_memory": True,
-        "persistent_workers": True,
-    })
-return DataLoader(dataset, **loader_kwargs)
+    _loader_kwargs["prefetch_factor"] = 2
+    _loader_kwargs["pin_memory"] = device_is_cuda(config.device)
+    _loader_kwargs["persistent_workers"] = True
+
+return DataLoader(dataset, **_loader_kwargs)
 ```
 
 ---
@@ -167,7 +176,7 @@ saving this value:
 ```python
 fusion_output_dim = (
     saved_cfg.get("fusion_output_dim")
-    or _ARCH_TO_FUSION_DIM.get(architecture, 64)
+    or _ARCH_TO_FUSION_DIM.get(architecture, 128)
 )
 ```
 
@@ -200,7 +209,9 @@ when `loss_fn='focal'` they are the primary hyperparameters under sweep.
 
 | File | Fixes Applied |
 |---|---|
-| `ml/data_extraction/dataset.py` | Fix #1 (edge_attr squeeze guard) |
+| `ml/src/datasets/dual_path_dataset.py` | Fix #1 (edge_attr squeeze guard) |
 | `ml/src/inference/predictor.py` | Fix #2 (SentinelModel args), Fix #4 (warmup edge_attr), Fix #6 (thresholds API key), Fix #7 (fusion_output_dim preference) |
-| `ml/scripts/tune_threshold.py` | Fix #3 (SentinelModel args), Fix #5 (prefetch_factor guard) |
+| `ml/scripts/tune_threshold.py` | Fix #3 (SentinelModel args + fusion_output_dim lookup), Fix #5 (prefetch_factor guard) |
 | `ml/src/training/trainer.py` | Fix #9 (MLflow focal params) |
+
+
