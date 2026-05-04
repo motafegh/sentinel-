@@ -30,9 +30,10 @@ implemented, except for a single pending sub‑item noted below.
 
 ---
 
-## Immediate Next (Post‑Retrain)
+## In Progress
 
-With all pre‑retrain prerequisites complete, the highest‑priority tasks are:
+1. **Fresh retrain (v3)** — Training started 2026‑05‑05 00:01 UTC with `batch_size=32`, 60 epochs, early‑stop patience 10. No resume; fully fresh run. Experiment: `sentinel-retrain-v3`.  
+   After completion, run `tune_threshold.py` and compare tuned F1 against baseline (0.4884).
 
 1. **Resume retrain correctly** — see `docs/changes/2026-05-04-resume-batch-size-fix.md` for the recommended strategy.  
    - Use model‑only resume at `batch_size=32` (cleanest) or `--resume-reset-optimizer` to keep epoch counter.  
