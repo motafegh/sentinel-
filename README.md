@@ -1,6 +1,22 @@
 # SENTINEL
 
-A decentralised AI security oracle for smart contracts. SENTINEL combines a dual-path GNN + CodeBERT vulnerability detector, ZK proof generation, and on-chain audit registration so that any result can be independently verified without trusting the agent that produced it.
+A decentralised AI security oracle for smart contracts. SENTINEL combines a dual-path GNN + CodeBERT vulnerability detector, zero-knowledge proof generation, and on-chain audit registration so that any result can be independently verified without trusting the agent that produced it.
+
+---
+
+## Table of Contents
+
+- [How It Works](#how-it-works)
+- [Modules](#modules)
+- [Current Model Performance](#current-model-performance)
+- [Prerequisites](#prerequisites)
+- [Repository Structure](#repository-structure)
+- [Quick Start](#quick-start)
+- [Port Map](#port-map)
+- [Testing](#testing)
+- [Key Constraints](#key-constraints)
+- [Development Workflow](#development-workflow)
+- [Module Documentation](#module-documentation)
 
 ---
 
@@ -10,7 +26,7 @@ A decentralised AI security oracle for smart contracts. SENTINEL combines a dual
 User uploads .sol contract
          │
          ▼
-[M6  API Gateway]      POST /v1/audit → job_id   (FastAPI + Celery)
+[M6  API Gateway]      POST /v1/audit → job_id   (FastAPI + Celery)   ← planned
          │
          ▼
 [M4/M5  LangGraph Orchestration]
@@ -18,9 +34,9 @@ User uploads .sol contract
   │        │               GNN + CodeBERT + CrossAttention
   │        │               → vulnerabilities[] with per-class probabilities
   │        ▼
-  │   max(probability) ≥ 0.70?
+  │   max(probability) ≥ threshold?
   │        ├── YES (deep)  ──▶  rag_research  ──▶  audit_check  ──▶  synthesizer
-  │        └── NO  (fast)  ──────────────────────────────────────────▶  synthesizer
+  │        └── NO  (fast)  ────────────────────────────────────────▶  synthesizer
   │
   └── synthesizer  →  final_report {label, vulnerabilities[], rag_evidence[], audit_history[]}
          │
@@ -44,12 +60,49 @@ User uploads .sol contract
 
 | # | Path | What it does | Status |
 |---|------|-------------|--------|
-| M1 | `ml/` | Dual-path GNN (edge-type embeddings) + CodeBERT+LoRA + CrossAttention multi-label detector; windowed inference for long contracts; FastAPI server with Prometheus metrics and KS drift detection | Complete |
-| M2 | `zkml/` | Proxy model distillation, EZKL circuit setup, per-audit proof generation | Scripts ready |
-| M3 | `ml/` (mlops) | MLflow experiment tracking, DVC data versioning, Dagster RAG scheduling | Complete |
-| M4 | `agents/` | LangGraph orchestration, 3 MCP servers, RAG, ingestion, feedback loop | Complete |
-| M5 | `contracts/` | SentinelToken (ERC-20), AuditRegistry (UUPS), IZKMLVerifier interface | Written |
-| M6 | `api/` | FastAPI + Celery gateway, Docker Compose full-stack | Planned |
+| M1 | `ml/` | Dual-path GNN (edge-type embeddings) + CodeBERT+LoRA + CrossAttention multi-label detector; per-class threshold tuning; windowed inference; FastAPI with Prometheus metrics and KS drift detection | ✅ Complete |
+| M2 | `zkml/` | Proxy model distillation, EZKL circuit setup, per-audit Groth16 proof generation | ⚠️ Scripts ready — pipeline not yet run |
+| M3 | `ml/` (mlops) | MLflow experiment tracking, DVC data versioning, Dagster RAG scheduling, model registry promotion | ✅ Complete |
+| M4 | `agents/` | LangGraph orchestration, 3 MCP servers, RAG (hybrid BM25+dense+RRF), ingestion, feedback loop | ✅ Complete |
+| M5 | `contracts/` | SentinelToken (ERC-20), AuditRegistry (UUPS), IZKMLVerifier interface — Foundry test suite written | ⚠️ Source complete — forge not yet run |
+| M6 | `api/` | FastAPI + Celery gateway, Docker Compose full-stack | ❌ Planned |
+
+---
+
+## Current Model Performance
+
+Active checkpoint: `ml/checkpoints/multilabel-v3-fresh-60ep_best.pt`
+Thresholds: `ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json`
+
+Trained on BCCC-SCsVul-2024 (47,966 train / 10,278 val / 10,279 test).
+Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttention, LoRA r=8 α=16.
+
+### Overall metrics (per-class threshold tuning applied)
+
+| Metric | Value |
+|--------|-------|
+| F1-macro | **0.5069** |
+| F1-micro | 0.5608 |
+| Hamming loss | 0.2342 |
+| Exact-match accuracy | 0.2763 |
+
+### Per-class F1 (tuned thresholds)
+
+| Vulnerability | F1 | Threshold | Support |
+|---------------|----|-----------|---------|
+| IntegerUO | 0.821 | 0.50 | 5,343 |
+| GasException | 0.550 | 0.55 | 2,589 |
+| Reentrancy | 0.536 | 0.65 | 2,501 |
+| MishandledException | 0.492 | 0.60 | 2,207 |
+| UnusedReturn | 0.486 | 0.70 | 1,716 |
+| Timestamp | 0.479 | 0.75 | 1,077 |
+| TransactionOrderDependence | 0.477 | 0.60 | 1,800 |
+| ExternalBug | 0.435 | 0.65 | 1,622 |
+| DenialOfService | 0.400 | 0.95 | 137 |
+| CallToUnknown | 0.394 | 0.70 | 1,266 |
+
+> DenialOfService and CallToUnknown are the weakest classes due to limited training data.
+> The v4 run targets both with focal loss and weighted sampling.
 
 ---
 
@@ -62,7 +115,7 @@ User uploads .sol contract
 | Foundry (`forge`, `cast`) | latest | Solidity build and deploy |
 | solc-select | latest | Solc version management |
 | Docker + Compose | ≥ 24 | Full-stack local run |
-| CUDA GPU (RTX 3070+) | 8 GB VRAM | ML inference and training |
+| CUDA GPU (RTX 3070+) | ≥ 8 GB VRAM | ML inference and training |
 
 ---
 
@@ -70,18 +123,20 @@ User uploads .sol contract
 
 ```
 sentinel-/
-├── ml/                        # M1 — ML Core (GNN + CodeBERT model + inference API)
+├── ml/                        # M1 + M3 — ML Core and MLOps
 │   ├── src/
-│   │   ├── models/            # SentinelModel, GNNEncoder, TransformerEncoder, CrossAttentionFusion, FocalLoss
-│   │   ├── inference/         # api.py, predictor.py, cache.py, drift_detector.py, preprocess.py
-│   │   ├── preprocessing/     # graph_extractor.py, graph_schema.py (edge-type vocab)
-│   │   ├── training/          # trainer.py, CLASS_NAMES
+│   │   ├── models/            # SentinelModel, GNNEncoder, TransformerEncoder,
+│   │   │                      # CrossAttentionFusion, FocalLoss
+│   │   ├── inference/         # api.py, predictor.py, preprocess.py,
+│   │   │                      # cache.py, drift_detector.py
+│   │   ├── preprocessing/     # graph_extractor.py, graph_schema.py
+│   │   ├── training/          # trainer.py, TrainConfig, CLASS_NAMES
 │   │   └── datasets/          # dual_path_dataset.py, dual_path_collate_fn
-│   ├── data_extraction/       # Offline Slither AST extractor (batch)
-│   ├── scripts/               # train.py, create_splits.py, tune_threshold.py,
-│   │                          # validate_graph_dataset.py, compute_drift_baseline.py,
-│   │                          # promote_model.py
-│   ├── tests/                 # pytest unit tests (10 modules)
+│   ├── data_extraction/       # Offline Slither AST extractor + tokenizer (batch)
+│   ├── scripts/               # train.py, tune_threshold.py, create_splits.py,
+│   │                          # validate_graph_dataset.py, promote_model.py,
+│   │                          # compute_drift_baseline.py, analyse_truncation.py
+│   ├── tests/                 # 10 pytest modules (synthetic data only)
 │   └── docker/                # Dockerfile.slither for offline extraction
 │
 ├── zkml/                      # M2 — ZK-ML Proof Generation (EZKL)
@@ -92,7 +147,8 @@ sentinel-/
 ├── agents/                    # M4 — Orchestration, MCP Servers, RAG
 │   └── src/
 │       ├── orchestration/     # LangGraph graph.py, nodes.py, state.py
-│       ├── mcp/servers/       # inference_server.py (8010), rag_server.py (8011), audit_server.py (8012)
+│       ├── mcp/servers/       # inference_server.py (8010), rag_server.py (8011),
+│       │                      # audit_server.py (8012)
 │       ├── rag/               # HybridRetriever, chunker, embedder, build_index
 │       ├── ingestion/         # pipeline, deduplicator, feedback_loop, dagster scheduler
 │       └── llm/               # LM Studio client, model routing
@@ -103,9 +159,12 @@ sentinel-/
 │       ├── SentinelToken.sol  # ERC-20 + staking (MIN_STAKE = 1000 SNTL)
 │       └── IZKMLVerifier.sol  # Interface for EZKL-generated verifier
 │
+├── docs/
+│   ├── STATUS.md              # Current module completion and open loops
+│   ├── ROADMAP.md             # Upcoming work in priority order
+│   └── changes/               # Dated changelogs for every significant change
+├── SENTINEL-SPEC.md           # Timeless architecture spec (ADRs, data contracts)
 ├── test_contracts/            # Sample .sol files for smoke testing
-├── docs/changes/              # Changelog entries
-├── SENTINEL-SPEC.md           # Timeless architecture spec (ADRs, constraints, data contracts)
 └── pyproject.toml             # Root Poetry workspace config
 ```
 
@@ -130,18 +189,22 @@ cd agents && poetry install && cd ..
 
 ```bash
 TRANSFORMERS_OFFLINE=1 \
-SENTINEL_CHECKPOINT=ml/checkpoints/multilabel_crossattn_v2_best.pt \
+SENTINEL_CHECKPOINT=ml/checkpoints/multilabel-v3-fresh-60ep_best.pt \
+SENTINEL_THRESHOLDS=ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json \
 ml/.venv/bin/uvicorn ml.src.inference.api:app --port 8001
+```
 
-# Health check
+Health check:
+
+```bash
 curl http://localhost:8001/health
-# → {
-#      "status": "ok",
-#      "predictor_loaded": true,
-#      "checkpoint": "ml/checkpoints/multilabel_crossattn_v2_best.pt",
-#      "architecture": "cross_attention_lora",
-#      "thresholds_loaded": true
-#    }
+# {
+#   "status": "ok",
+#   "predictor_loaded": true,
+#   "checkpoint": "ml/checkpoints/multilabel-v3-fresh-60ep_best.pt",
+#   "architecture": "cross_attention_lora",
+#   "thresholds_loaded": true
+# }
 ```
 
 ### 3 — Start the MCP servers
@@ -161,8 +224,10 @@ from agents.src.orchestration.graph import build_graph
 
 graph = build_graph()
 result = asyncio.run(graph.ainvoke(
-    {"contract_code": open("test_contracts/simple_reentrancy.sol").read(),
-     "contract_address": "0x0000000000000000000000000000000000000001"},
+    {
+        "contract_code": open("test_contracts/simple_reentrancy.sol").read(),
+        "contract_address": "0x0000000000000000000000000000000000000001",
+    },
     config={"configurable": {"thread_id": "demo-001"}},
 ))
 print(result["final_report"])
@@ -176,6 +241,25 @@ curl -s -X POST http://localhost:8001/predict \
   -d '{"source_code": "pragma solidity ^0.8.0; contract Foo { function bar() external payable {} }"}' \
   | python3 -m json.tool
 ```
+
+Example response:
+
+```json
+{
+  "label": "vulnerable",
+  "vulnerabilities": [
+    { "vulnerability_class": "Reentrancy",  "probability": 0.8943 },
+    { "vulnerability_class": "IntegerUO",   "probability": 0.7102 }
+  ],
+  "thresholds": [0.70, 0.95, 0.65, 0.55, 0.50, 0.60, 0.65, 0.75, 0.60, 0.70],
+  "truncated": false,
+  "windows_used": 1,
+  "num_nodes": 12,
+  "num_edges": 18
+}
+```
+
+> `thresholds` is a list of 10 per-class values (index order matches `CLASS_NAMES`).
 
 ---
 
@@ -197,12 +281,11 @@ curl -s -X POST http://localhost:8001/predict \
 ## Testing
 
 ```bash
+# ML inference (10 test modules — synthetic data, no checkpoints required)
+cd ml && poetry run pytest tests/ -v
+
 # Agents (LangGraph, MCP servers, RAG, ingestion)
 cd agents && poetry run pytest tests/ -v
-# → 41 tests, all green
-
-# ML inference (10 test modules)
-cd ml && poetry run pytest tests/ -v
 
 # Contracts (requires forge)
 cd contracts && forge test -vvv
@@ -212,8 +295,8 @@ Smoke scripts:
 
 ```bash
 cd agents
-poetry run python scripts/smoke_langgraph.py         # mock mode (no services needed)
-poetry run python scripts/smoke_langgraph.py --live  # live mode (all services must be running)
+poetry run python scripts/smoke_langgraph.py          # mock mode — no services needed
+poetry run python scripts/smoke_langgraph.py --live   # live mode — all services must be running
 poetry run python scripts/smoke_inference_mcp.py
 poetry run python scripts/smoke_rag_mcp.py
 poetry run python scripts/smoke_audit_mcp.py
@@ -223,22 +306,22 @@ poetry run python scripts/smoke_audit_mcp.py
 
 ## Key Constraints
 
-Violating any of these without the matching rebuild/retrain produces silent failures.
+Violating any of these without the matching rebuild or retrain produces silent failures.
 
-| Constraint | Locked value |
-|-----------|-------------|
-| GNNEncoder `in_channels` | **8** — locked to 68 K graph `.pt` files |
-| CodeBERT model | `microsoft/codebert-base` |
-| `MAX_TOKEN_LENGTH` | **512** — matches training tokenisation |
-| `CrossAttentionFusion output_dim` | **128** — ZKML proxy `input_dim` depends on this |
-| `CLASS_NAMES` order | indices 0–9 must be stable; only append at end |
-| ONNX opset | **11** — EZKL requirement |
-| `solc` for ZKMLVerifier.sol | **≤ 0.8.17** — Halo2 assembly |
-| `solc` for all other contracts | **0.8.20** |
-| EZKL scale factor | **8192** (2¹³) |
-| `weights_only=False` on `torch.load` | LoRA state dict requires it |
-| `FEATURE_SCHEMA_VERSION` | **"v1"** — bump on any node/edge feature change; invalidates disk cache |
-| `NUM_EDGE_TYPES` | **5** (CALLS/READS/WRITES/EMITS/INHERITS) — changing requires dataset rebuild |
+| Constraint | Locked value | Break condition |
+|-----------|-------------|----------------|
+| `GNNEncoder in_channels` | **8** | Rebuild all 68K graph `.pt` files + retrain |
+| CodeBERT model | `microsoft/codebert-base` | Rebuild token files + retrain |
+| `MAX_TOKEN_LENGTH` | **512** | Rebuild token files + retrain |
+| `CrossAttentionFusion output_dim` | **128** | Rebuild ZKML circuit + redeploy verifier |
+| `CLASS_NAMES` order | indices **0–9 stable** | Silent wrong-class mapping |
+| `FEATURE_SCHEMA_VERSION` | **`"v1"`** | Bump only alongside graph rebuild; invalidates inference cache |
+| `NUM_EDGE_TYPES` | **5** (CALLS/READS/WRITES/EMITS/INHERITS) | Rebuild edge_emb layer + retrain |
+| ONNX opset | **11** | EZKL requirement |
+| `solc` for ZKMLVerifier.sol | **≤ 0.8.17** | Halo2 assembly constraint |
+| `solc` for all other contracts | **0.8.20** | |
+| `weights_only=False` on `torch.load` | required | LoRA state dict is not a plain dict |
+| `TRANSFORMERS_OFFLINE` | set at shell level | Cannot be set inside Python |
 
 ---
 
@@ -246,21 +329,22 @@ Violating any of these without the matching rebuild/retrain produces silent fail
 
 ```
 main ← stable, deployed
-  └── feature branches ← all development work
+  └── feature/* ← all development work
 
 After landing a change that affects ML data contracts or the ZKML circuit:
-  1. Update SENTINEL-SPEC.md (the timeless fact file)
-  2. Add a dated entry to docs/changes/
-  3. Re-run affected tests before merging
+  1. Update SENTINEL-SPEC.md (the timeless architecture fact file)
+  2. Add a dated entry under docs/changes/
+  3. Update docs/STATUS.md and docs/ROADMAP.md
+  4. Re-run affected tests before merging
 ```
 
-Spec file is NOT a status file — current status lives in session handovers. Do not treat spec sections as "done" without verifying against actual source files.
+`SENTINEL-SPEC.md` is not a status file — it records timeless architectural decisions (ADRs, data contracts, schema versions). Current status lives in `docs/STATUS.md`.
 
 ---
 
 ## Module Documentation
 
-- [ML Core](ml/README.md) — model architecture, training, inference
+- [ML Core](ml/README.md) — model architecture, training, inference, drift detection
 - [Agents / MCP / RAG](agents/README.md) — orchestration, servers, retrieval
 - [ZKML](zkml/README.md) — proxy model, EZKL pipeline, proof generation
 - [Contracts](contracts/README.md) — Foundry build, deploy, ZKMLVerifier handling
