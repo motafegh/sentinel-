@@ -1,6 +1,6 @@
 # SENTINEL — Roadmap
 
-Last updated: 2026-05-04 (post Batch‑3 fixes)
+Last updated: 2026-05-05 (v3 training complete)
 
 This file tracks upcoming work in priority order. Completed items move to
 `docs/changes/` as dated changelogs. See `docs/STATUS.md` for current module state.
@@ -30,37 +30,46 @@ implemented, except for a single pending sub‑item noted below.
 
 ---
 
+## Recently Completed
+
+- **Fresh retrain (v3) — DONE** — `multilabel-v3-fresh-60ep` trained 60 epochs on `sentinel-retrain-v3`.
+  Best raw F1-macro: **0.4715**. Tuned (per-class thresholds): **0.5069** ✅ — beats 0.4884 gate.
+  Threshold JSON: `ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json`.
+  See `docs/changes/2026-05-05-v3-training-complete.md`.
+
+---
+
 ## In Progress
 
-1. **Fresh retrain (v3)** — Training started 2026‑05‑05 00:01 UTC with `batch_size=32`, 60 epochs, early‑stop patience 10. No resume; fully fresh run. Experiment: `sentinel-retrain-v3`.  
-   After completion, run `tune_threshold.py` and compare tuned F1 against baseline (0.4884).
+1. **v4 retrain** — v3 plateaued at raw F1 0.4715 with no improvement from epoch ~54.
+   Recommended changes for v4:
+   - `--loss-fn focal --focal-gamma 2.0` — penalise easy negatives, lift weak classes
+   - `--lora-r 16 --lora-alpha 32` — double LoRA rank to break capacity ceiling
+   - Weighted sampler for DenialOfService (137 support — 39× underrepresented)
+   - Success gate: tuned F1-macro > **0.5069** on same `val_indices.npy`
+   - Full command in `docs/changes/2026-05-05-v3-training-complete.md`
 
-1. **Resume retrain correctly** — see `docs/changes/2026-05-04-resume-batch-size-fix.md` for the recommended strategy.  
-   - Use model‑only resume at `batch_size=32` (cleanest) or `--resume-reset-optimizer` to keep epoch counter.  
-   - After completion, run `tune_threshold.py` and verify tuned F1 > 0.4884.
+2. **Autoresearch setup** — now unblocked:
+   - Implement `ml/scripts/auto_experiment.py` (thin CLI wrapper printing `SENTINEL_SCORE`).
+   - Write `ml/autoresearch/program.md` (metric=tuned F1-macro, knobs: focal gamma, LoRA r, class weights).
 
-2. **M6 Integration API** — build after the building blocks are solid:
+3. **M6 Integration API** — build after the building blocks are solid:
    - Design auth/rate‑limit (see Security Design below).
    - Create `api/` directory and wire routes (`POST /v1/audit`, etc.).
    - Docker‑compose the full stack.
 
-3. **Autoresearch setup** — after retrain completes:
-   - Implement `ml/scripts/auto_experiment.py`.
-   - Write `ml/autoresearch/program.md`.
-
 ---
 
-## Retrain Evaluation Protocol
+## Retrain Evaluation Protocol (v4)
 
-Before launching the retrain, confirm all of the following:
+Before launching v4, confirm all of the following:
 
-1. `validate_graph_dataset.py` (Move 0) exits 0 — confirms `edge_attr` is present in `.pt` files
+1. `validate_graph_dataset.py` exits 0 — data unchanged from v3 run
 2. Held-out split is fixed — use `ml/data/splits/val_indices.npy` with the **same seed**; do NOT regenerate
-3. MLflow experiment `sentinel-retrain-v2` created; baseline run ID from `sentinel-multilabel` recorded
-4. **Success gate:** tuned val F1-macro > **0.4884** on the same held-out split
-5. **Per-class floor:** no class drops > 0.05 F1 from pre-retrain values
-6. **Rollback rule:** if tuned F1 < 0.4884 after completion, revert to `multilabel_crossattn_v2_best.pt`
-   and try `loss_fn=focal` before re-running
+3. MLflow experiment `sentinel-retrain-v4` created
+4. **Success gate:** tuned val F1-macro > **0.5069** on the same held-out split
+5. **Per-class floor:** no class drops > 0.05 F1 from v3 tuned values (see `docs/changes/2026-05-05-v3-training-complete.md`)
+6. **Rollback rule:** if tuned F1 < 0.5069 after completion, revert to v3 checkpoint and adjust hyperparameters
 
 ---
 
@@ -148,7 +157,7 @@ The correct change is adding an `"all"` value to the existing `multi_contract_po
 ### ML / Training
 - **Sliding-window NLP**: handling > 512 tokens without long-context models — T1-C (done)
 - **Content-addressed caching**: Redis/disk pattern for ML feature store — T1-A (done)
-- **LoRA rank tuning**: r=8 (default) → try r=16 or r=32 for more capacity
+- **LoRA rank tuning**: r=8 used in v3 → try r=16 for v4 (v3 plateaued at raw F1 0.4715, suggesting capacity ceiling)
 - **FocalLoss**: `TrainConfig(loss_fn="focal")` — down-weights easy negatives; FP32 cast fixed
 - **KS drift detection**: `scipy.stats.ks_2samp` — production ML monitoring standard
 - **MLflow Model Registry**: staged rollout (None → Staging → Production) with audit trail
