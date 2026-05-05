@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-04 (late evening, post Batch‑3 fixes)
+Last updated: 2026-05-05 (v3 training complete + threshold tuning)
 
 ---
 
@@ -157,12 +157,11 @@ Last updated: 2026-05-04 (late evening, post Batch‑3 fixes)
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
 | ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it (see ROADMAP S5.5) |
 | Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. See ROADMAP Move 9. |
-| Retrain | ⚠️ **STOPPED** — Run stopped at epoch 43 batch 903 after batch-size mismatch (32 vs original 16) caused stale-Adam loss spikes. Best checkpoint preserved (`multilabel_crossattn_v2_best.pt`, epoch 37, best_f1=0.4629). See Fix #12 and `docs/changes/2026-05-04-resume-batch-size-fix.md` for correct resume commands. |
-| Autoresearch | 📋 **PLANNED** — `auto_experiment.py` + `ml/autoresearch/program.md` not yet built. Unblocked after retrain completes successfully. |
+| Autoresearch | 📋 **UNBLOCKED** — `auto_experiment.py` + `ml/autoresearch/program.md` not yet built. v3 training complete; v4 baseline (0.5069 tuned) now established. Ready to implement. |
 | API breaking change (Fix #6) | Code complete — response key renamed to `"thresholds"`. Pending downstream consumer updates. |
 | Move 8 Audit Item #9 | Preprocess temp file not cleaned on SIGKILL — not yet implemented. |
 
-### Closed loops (completed 2026-05-02 / 2026-05-03 / 2026-05-04)
+### Closed loops (completed 2026-05-02 / 2026-05-03 / 2026-05-04 / 2026-05-05)
 
 | Item | Resolution |
 |------|-----------|
@@ -196,6 +195,7 @@ Last updated: 2026-05-04 (late evening, post Batch‑3 fixes)
 | Training pipeline regeneration | All training inputs rebuilt fresh: graphs (68,523), tokens (68,568), multilabel_index.csv, splits (47,966/10,278/10,279) |
 | Post-training arch alignment | `tune_threshold.py` + `predictor.py` now pass all GNN/LoRA params from checkpoint config |
 | Checkpoint name alignment | All references updated to `multilabel_crossattn_v2_best.pt` |
+| v3 retrain (60ep) | `multilabel-v3-fresh-60ep_best.pt` — best raw F1=0.4715, tuned F1=0.5069. Threshold JSON saved. ✅ |
 
 ---
 
@@ -212,16 +212,24 @@ ml/checkpoints/multilabel_crossattn_v2_best.pt   ← previous v2 run (paused)
   last resumed: 2026-05-04 (stopped at epoch 43 batch 903 — batch-size mismatch)
   best_f1:      0.4629 (epoch 37)
   edge_attr:    True (P0-B active)
-  status:       ❌ Paused (stale‑Adam issue). Superseded by fresh v3 run.
+  status:       ❌ Superseded by v3.
 
-ml/checkpoints/multilabel-v3-fresh-60ep_best.pt   ← **IN TRAINING (v3 fresh)**
+ml/checkpoints/multilabel-v3-fresh-60ep_best.pt   ← **ACTIVE (v3 complete)**
   run:          multilabel-v3-fresh-60ep
   experiment:   sentinel-retrain-v3
-  started:      2026-05-05 00:01 UTC
+  completed:    2026-05-05
   batch_size:   32
-  epochs:       60 (early‑stop patience 10)
+  epochs:       60/60 (no early stop; patience counter=6 at end)
+  best epoch:   ~52–53
+  best raw F1:  0.4715
   edge_attr:    True (P0-B active)
-  status:       🟢 Training — epoch 1/60 in progress
+  status:       ✅ Complete
+
+ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json   ← tuned thresholds
+  tuned F1-macro:  0.5069  ✅ (gate: > 0.4884)
+  tuned F1-micro:  0.5608
+  Hamming loss:    0.2342
+  Exact-match:     0.2763
 
 ---
 
@@ -230,12 +238,12 @@ ml/checkpoints/multilabel-v3-fresh-60ep_best.pt   ← **IN TRAINING (v3 fresh)**
 | Parameter | Value |
 |-----------|-------|
 | Baseline checkpoint | `multilabel_crossattn_best.pt` — epoch 34, val F1-macro **0.4679** |
-| Previous best (paused) | `multilabel_crossattn_v2_best.pt` — epoch 37, val F1-macro **0.4629** (raw), **0.4884** (tuned thresholds) |
-| Success threshold | tuned val F1-macro > **0.4884** on fixed `val_indices.npy` split |
+| Previous best (paused) | `multilabel_crossattn_v2_best.pt` — epoch 37, val F1-macro **0.4629** (raw), **0.4884** (tuned) |
+| **v3 result** | `multilabel-v3-fresh-60ep_best.pt` — raw **0.4715**, tuned **0.5069** ✅ |
 | Held-out split | Fixed — `ml/data/splits/val_indices.npy` (same seed, do NOT regenerate) |
-| MLflow experiment | `sentinel-retrain-v2` |
-| Rollback rule | If tuned F1 < 0.4884 after completion: revert to current checkpoint; try `loss_fn=focal` before re-running |
-| Per-class floor | No single class should drop > 0.05 F1 from pre-retrain value |
+| MLflow experiment | `sentinel-retrain-v3` |
+| **v4 success gate** | tuned val F1-macro > **0.5069** on same `val_indices.npy` split |
+| Per-class floor for v4 | No single class should drop > 0.05 F1 from v3 tuned values |
 
 ---
 
@@ -260,19 +268,23 @@ Correct strategy:
 
 In priority order:
 
-1. **“Monitor fresh retrain (v3)” — check for loss / F1 progress, ensure no OOM or early‑stop trigger.,then do the post training ,tune **.
+1. **v4 retrain** — v3 plateaued at F1-macro 0.4715 raw (0.5069 tuned). Recommended changes:
+   - `--loss-fn focal --focal-gamma 2.0` (target hard/rare classes)
+   - `--lora-r 16 --lora-alpha 32` (more CodeBERT adaptation capacity)
+   - Weighted sampler for DenialOfService (137 support vs 5,343 for IntegerUO)
+   - Success gate: tuned F1-macro > **0.5069** on same `val_indices.npy`
+   - See `docs/changes/2026-05-05-v3-training-complete.md` for full command skeleton
 
-2. **Fix #6 downstream update** — Update any API consumer that parsed `"threshold"` (single float)
-   to use `"thresholds"` (list of floats). Check `api.py` response handling and any
-   integration tests.
-
-3. **Autoresearch setup** — After retrain completes:
+2. **Autoresearch setup** (now unblocked):
    - Implement `ml/scripts/auto_experiment.py` (thin CLI wrapper printing `SENTINEL_SCORE`)
-   - Write `ml/autoresearch/program.md` (metric, constraints, allowed knobs)
+   - Write `ml/autoresearch/program.md` (metric, constraints, allowed knobs: focal gamma, LoRA r, class weights)
+
+3. **Fix #6 downstream update** — Update any API consumer that parsed `”threshold”` (single float)
+   to use `”thresholds”` (list of floats). Check `api.py` response handling and integration tests.
 
 4. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10).
    See ROADMAP S5.5.
 
 5. **M6 Integration API** — design auth/rate-limit before writing any routes.
 
-6. **Move 9 (post-M6)** — multi-contract parsing (`multi_contract_policy="all"`).
+6. **Move 9 (post-M6)** — multi-contract parsing (`multi_contract_policy=”all”`).
