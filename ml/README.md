@@ -7,6 +7,7 @@ Dual-path smart contract vulnerability detector. A **Graph Attention Network (GN
 ## Table of Contents
 
 - [System Overview](#system-overview)
+- [Shared Preprocessing Layer](#shared-preprocessing-layer)
 - [Data Preparation](#data-preparation)
   - [Step 1 — Graph Extraction](#step-1--graph-extraction)
   - [Step 2 — Tokenisation](#step-2--tokenisation)
@@ -54,20 +55,36 @@ The diagram below shows the full lifecycle — from raw Solidity contracts to a 
 ║                          SENTINEL ML LIFECYCLE                                  ║
 ╚══════════════════════════════════════════════════════════════════════════════════╝
 
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  SHARED PREPROCESSING LAYER  (used by BOTH pipelines below)                 │
+  │                                                                              │
+  │  graph_schema.py          NODE_TYPES, EDGE_TYPES, FEATURE_NAMES,            │
+  │  (single source of truth) FEATURE_SCHEMA_VERSION, NODE_FEATURE_DIM=8,       │
+  │                           NUM_EDGE_TYPES=5                                   │
+  │          ▲                                                                   │
+  │          │ imports                                                           │
+  │  graph_extractor.py       extract_contract_graph(sol_path, config) → Data   │
+  │  (canonical implementation)  Slither AST → x[N,8], edge_index[2,E],         │
+  │                              edge_attr[E], contract_name                     │
+  │                           GraphExtractionConfig, GraphExtractionError        │
+  │                           SolcCompilationError, SlitherParseError,           │
+  │                           EmptyGraphError                                    │
+  └──────────────────────────────────────────────────────────────────────────────┘
+         ▲                                          ▲
+         │ imports                                  │ imports
+         │                                          │
   ┌─────────────────────────────────────────────────────────────────────────────┐
   │  OFFLINE DATA PREPARATION                                                   │
   │                                                                             │
   │  BCCC-SCsVul-2024                                                           │
   │  (.sol files + labels)                                                      │
   │        │                                                                    │
-  │        ├──► ast_extractor.py ──► <md5>.pt graph files ──► ml/data/graphs/  │
-  │        │    (Slither + solc)      [N, 8] node features                      │
-  │        │                          [2, E] edge_index                         │
-  │        │                          [E]    edge_attr                           │
+  │        ├──► ast_extractor.py ──► extract_contract_graph() ──► <md5>.pt     │
+  │        │    (11 parallel workers,    ↑ graph_extractor.py      graphs/      │
+  │        │     solc version-pinned)    attaches: contract_path, y=0           │
   │        │                                                                    │
   │        ├──► tokenizer.py ─────► <md5>.pt token files ──► ml/data/tokens/   │
-  │        │    (CodeBERT tokenizer)  input_ids [512]                           │
-  │        │                          attention_mask [512]                       │
+  │        │    (CodeBERT tokenizer)  input_ids [512], attention_mask [512]     │
   │        │                                                                    │
   │        ├──► build_multilabel_index.py ──► multilabel_index.csv             │
   │        │    (BCCC label join)             68,523 rows × 10 classes          │
@@ -110,9 +127,11 @@ The diagram below shows the full lifecycle — from raw Solidity contracts to a 
   │        │         hit: skip Slither, return cached (graph.pt, tokens.pt)     │
   │        │        miss: run ContractPreprocessor → cache result               │
   │        │                                                                    │
-  │        ├── ContractPreprocessor                                             │
-  │        │     ├── Slither → PyG graph                                        │
-  │        │     └── CodeBERT tokenizer → input_ids / attention_mask            │
+  │        ├── ContractPreprocessor  (preprocess.py)                           │
+  │        │     ├── extract_contract_graph()  ← graph_extractor.py            │
+  │        │     │   → x[N,8], edge_index[2,E], edge_attr[E]                   │
+  │        │     │   (identical code path to offline batch — no feature drift)  │
+  │        │     └── CodeBERT tokenizer → input_ids [512], attn_mask [512]     │
   │        │                                                                    │
   │        ├── SentinelModel.forward() → logits [B, 10]                        │
   │        │     (sliding window for contracts > 512 tokens)                    │
@@ -126,6 +145,66 @@ The diagram below shows the full lifecycle — from raw Solidity contracts to a 
   │  GET /health   GET /metrics (Prometheus)                                   │
   └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Shared Preprocessing Layer
+
+**Files:** `ml/src/preprocessing/graph_schema.py` and `ml/src/preprocessing/graph_extractor.py`
+
+These two files form the most architecturally critical layer in the ML module. Before they existed, both the offline batch pipeline (`ast_extractor.py`) and the online inference pipeline (`preprocess.py`) contained identical, hand-duplicated node/edge feature logic. Any change to one required a manual update to the other — a missed sync caused silent inference accuracy regression with no error message (model receives features encoded differently from training).
+
+```
+graph_schema.py  ─── single source of truth for all schema constants
+│
+│   NODE_TYPES       = { CONTRACT:7, STATE_VAR:0, FUNCTION:1, ... }
+│   EDGE_TYPES       = { CALLS:0, READS:1, WRITES:2, EMITS:3, INHERITS:4 }
+│   VISIBILITY_MAP   = { public:0, external:0, internal:1, private:2 }
+│   FEATURE_NAMES    = (type_id, visibility, pure, view, payable,
+│                        reentrant, complexity, loc)
+│   NODE_FEATURE_DIM = 8     ← GNNEncoder in_channels is locked to this
+│   NUM_EDGE_TYPES   = 5     ← GNNEncoder Embedding table width
+│   FEATURE_SCHEMA_VERSION = "v1"  ← inference cache key suffix
+│
+└── imported by graph_extractor.py
+                │
+                ▼
+graph_extractor.py  ─── canonical Solidity → PyG graph implementation
+│
+│   GraphExtractionConfig  controls extraction behaviour:
+│     multi_contract_policy  "first" | "by_name"
+│     target_contract_name   used when policy="by_name"
+│     include_edge_attr      attach edge_attr [E] to Data (default True)
+│     solc_binary            override solc path (offline: version-pinned)
+│     solc_version           for --allow-paths compat check (≥ 0.5.0)
+│     allow_paths            --allow-paths for local import resolution
+│
+│   Exception hierarchy (typed so callers can translate to HTTP codes):
+│     GraphExtractionError          base
+│       SolcCompilationError        bad Solidity → HTTP 400 (user error)
+│       SlitherParseError           Slither/infra failure → HTTP 500
+│       EmptyGraphError             zero AST nodes found → HTTP 400
+│
+│   extract_contract_graph(sol_path, config) → Data
+│     Never returns None. Always raises on failure.
+│     Returns: x[N,8], edge_index[2,E], edge_attr[E], contract_name
+│     Does NOT set .contract_hash / .contract_path / .y — callers attach these.
+│
+└── imported by both:
+     ├── data_extraction/ast_extractor.py   (offline batch, 11 workers)
+     └── src/inference/preprocess.py        (online, one contract per request)
+```
+
+### What changes require a schema rebuild
+
+Any modification to `NODE_TYPES`, `VISIBILITY_MAP`, `EDGE_TYPES`, or `_build_node_features()` in `graph_extractor.py` requires **all four steps**:
+
+1. Rebuild ~68K graph `.pt` files: `python data_extraction/ast_extractor.py --force`
+2. Rebuild token `.pt` files: `python data_extraction/tokenizer.py --force`
+3. Retrain the model from scratch: `python scripts/train.py`
+4. Increment `FEATURE_SCHEMA_VERSION` in `graph_schema.py` to invalidate the inference cache
+
+Skipping any step causes silent accuracy regression.
 
 ---
 
@@ -146,20 +225,48 @@ Converts raw `.sol` files → PyG `.pt` graph files via Slither.
 contracts_metadata.parquet
         │
         ▼
-ast_extractor.py  (11 parallel workers, solc version-pinned)
+ast_extractor.py  ── orchestration only ── (11 parallel workers, solc version-pinned)
         │
-        ├── parse_solc_version()       resolve solc binary per version group
-        ├── GraphExtractionConfig      multi_contract_policy = "first"
-        ├── extract_contract_graph()   Slither AST → node features + edges
-        │     ├── _build_node_features()  8-dim vector per node
-        │     └── _build_edges()          typed edge_attr [E] int64
+        ├── parse_solc_version()     resolve solc binary per version group
+        ├── GraphExtractionConfig(   builds config per contract:
+        │     solc_binary=...,         version-pinned solc binary
+        │     solc_version=...,        for --allow-paths compat check
+        │     allow_paths=...,         project root for import resolution
+        │     multi_contract_policy="first"
+        │   )
         │
-        └── <md5_of_path>.pt ──► ml/data/graphs/
-              graph.x          [N, 8]   node features
-              graph.edge_index [2, E]   connectivity
-              graph.edge_attr  [E]      CALLS/READS/WRITES/EMITS/INHERITS IDs
-              graph.y          0        (binary label unused; multilabel_index.csv used)
-              graph.contract_path       → Path.stem = SHA256 (bridge to CSV)
+        ├── calls ──────────────────────────────────────────────────────────────
+        │                                                                       │
+        │   graph_extractor.extract_contract_graph(sol_path, config)            │
+        │   ┌────────────────────────────────────────────────────────────────┐  │
+        │   │  imports from graph_schema.py:                                 │  │
+        │   │    NODE_TYPES, EDGE_TYPES, VISIBILITY_MAP, NODE_FEATURE_DIM   │  │
+        │   │                                                                │  │
+        │   │  Slither(sol_path, solc=..., solc_args=...)                   │  │
+        │   │    ↓ raises SolcCompilationError or SlitherParseError on fail  │  │
+        │   │  _select_contract()  → first non-dependency contract           │  │
+        │   │    ↓ raises EmptyGraphError if all declarations are deps       │  │
+        │   │  _build_node_features(obj, type_id) per node                  │  │
+        │   │    CONTRACT, STATE_VARs, FUNCTIONs, MODIFIERs, EVENTs         │  │
+        │   │    → [type_id, visibility, pure, view, payable,               │  │
+        │   │        reentrant, complexity, loc]  8-dim float32             │  │
+        │   │  _build_edges()                                               │  │
+        │   │    CALLS, READS, WRITES, EMITS, INHERITS                      │  │
+        │   │    → edge_index [2, E], edge_attr [E] int64                   │  │
+        │   │                                                                │  │
+        │   │  returns Data(x, edge_index, edge_attr, contract_name)        │  │
+        │   └────────────────────────────────────────────────────────────────┘  │
+        │                                                                       │
+        ├── ast_extractor attaches caller-specific metadata:                    │
+        │     graph.contract_path  → md5-stem path (used to bridge to SHA256)  │
+        │     graph.y = 0          (multilabel_index.csv owns labels)           │
+        │                                                                       │
+        └── writes <md5_of_path>.pt ──► ml/data/graphs/ ──────────────────────┘
+              graph.x          [N, 8]   node feature matrix
+              graph.edge_index [2, E]   COO connectivity
+              graph.edge_attr  [E]      edge type IDs (0–4)
+              graph.y          0        (unused in training; CSV owns labels)
+              graph.contract_path       Path.stem = SHA256 (bridge to CSV)
 ```
 
 ```bash
