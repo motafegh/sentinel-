@@ -85,83 +85,143 @@ Key runtime dependencies: `torch ^2.5.0`, `peft >=0.13.0`, `torch-geometric ^2.6
 ## System Overview
 
 ```
-BCCC-SCsVul-2024  (.sol files + labels)
-        │
-        │   ┌──────────────────────────────────────────────────────────────┐
-        │   │  SHARED PREPROCESSING LAYER (both pipelines import from here)│
-        │   │                                                              │
-        │   │  graph_schema.py  ──imports──►  graph_extractor.py           │
-        │   │  NODE_TYPES, EDGE_TYPES,         extract_contract_graph()    │
-        │   │  FEATURE_SCHEMA_VERSION,         GraphExtractionConfig       │
-        │   │  NODE_FEATURE_DIM=8              typed exceptions            │
-        │   │                                                              │
-        │   └──────────────┬──────────────────────────┬────────────────────┘
-        │                  │ used by (offline)         │ used by (online)
-        │                  ▼                           ▼
-        ├──► ast_extractor.py                  preprocess.py
-        │    11 workers · solc version-pinned  ContractPreprocessor
-        │    → graphs/  ~68K .pt               → graph + tokens per request
-        │
-        ├──► tokenizer.py
-        │    CodeBERT tokenizer
-        │    → tokens/  ~68K .pt
-        │
-        ├──► build_multilabel_index.py
-        │    → multilabel_index.csv  (68,523 rows × 10 classes)
-        │
-        └──► create_splits.py
-             → train/val/test_indices.npy  (47,966 / 10,278 / 10,279)
-                          │
-                          ▼
-        ┌─────────────────────────────────────────────────────┐
-        │  TRAINING   scripts/train.py (CLI)                  │
-        │             → src/training/trainer.py + MLflow      │
-        │                                                     │
-        │  DualPathDataset                                    │
-        │    graphs/ + tokens/ paired by MD5 stem             │
-        │    binary mode:     label ← graph.y                 │
-        │    multi-label mode: label ← multilabel_index.csv   │
-        │             │                                       │
-        │             ▼                                       │
-        │  SentinelModel.forward(graphs, input_ids, attn_mask)│
-        │    GNNEncoder      → node_embs [N, 64]              │
-        │    TransformerEncoder → token_embs [B, 512, 768]    │
-        │    CrossAttentionFusion → fused [B, 128]            │
-        │    Classifier       → logits [B, 10]                │
-        │             │                                       │
-        │  BCEWithLogitsLoss  or  FocalLoss(gamma=2, α=0.25)  │
-        │                                                     │
-        │  → checkpoints/  best.pt + _thresholds.json         │
-        └─────────────────────────────────────────────────────┘
-                          │
-             ┌────────────┴─────────────┐
-             ▼                          ▼
-     tune_threshold.py         promote_model.py
-     0.05–0.95 per class       MLflow Staging → Production
-     → *_thresholds.json
-                          │
-                          ▼
-        ┌─────────────────────────────────────────────────────┐
-        │  INFERENCE API   src/inference/api.py   port 8001   │
-        │                                                     │
-        │  POST /predict  { "source_code": "..." }            │
-        │    │                                                │
-        │    ├── InferenceCache  (md5 + FEATURE_SCHEMA_VERSION│
-        │    │     hit → return cached (graph, tokens)        │
-        │    │     miss → run ContractPreprocessor → cache    │
-        │    │                                                │
-        │    ├── ContractPreprocessor (preprocess.py)         │
-        │    │     extract_contract_graph() ← graph_extractor │
-        │    │     CodeBERT tokenizer                         │
-        │    │                                                │
-        │    ├── SentinelModel.forward() → logits [B, 10]     │
-        │    │     sliding window if > 512 tokens             │
-        │    │                                                │
-        │    ├── sigmoid → probs, apply per-class thresholds  │
-        │    └── DriftDetector (KS test every 50 requests)    │
-        │                                                     │
-        │  GET /health    GET /metrics (Prometheus)           │
-        └─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│                              BCCC-SCsVul-2024 CORPUS                                          │
+│                                                                                              │
+│   SourceCodes/                                                                               │
+│   ├── CallToUnknown/   ├── IntegerUO/       ├── TransactionOrderDependence/                  │
+│   ├── DenialOfService/ ├── MishandledException/ ├── UnusedReturn/                           │
+│   ├── ExternalBug/     ├── NonVulnerable/   ├── WeakAccessMod/                               │
+│   ├── GasException/    ├── Reentrancy/                                                       │
+│   └── Timestamp/                                                                             │
+│                                                                                              │
+│   Each folder contains .sol files; the folder name is the vulnerability class.               │
+│   BCCC-SCsVul-2024.csv maps SHA256( file ) → class(es).                                      │
+│                                                                                              │
+│   Notes for label creation:                                                                  │
+│     - NonVulnerable → all‑zero label (not a vulnerability class)                             │
+│     - WeakAccessMod   → excluded from multi‑label index (no .pt files extracted)             │
+│     - The remaining 10 classes form the 10‑dim multi‑label output                            │
+└────────────────────────────────────┬─────────────────────────────────────────────────────────┘
+                                     │
+        ┌────────────────────────────┼────────────────────────────┐
+        │                            │                            │
+        │   ┌────────────────────────┴─────────────────────────┐  │
+        │   │  SHARED PREPROCESSING LAYER (used by both        │  │
+        │   │  offline & online pipelines)                     │  │
+        │   │                                                 │  │
+        │   │  graph_schema.py          hash_utils.py          │  │
+        │   │   NODE_TYPES, EDGE_TYPES   get_contract_hash()   │  │
+        │   │   NODE_FEATURE_DIM=8       get_contract_hash_    │  │
+        │   │   FEATURE_SCHEMA_VERSION    from_content()       │  │
+        │   │   (cache key suffix)                              │  │
+        │   │                                                 │  │
+        │   │  graph_extractor.py                              │  │
+        │   │   extract_contract_graph()                       │  │
+        │   │   GraphExtractionConfig                          │  │
+        │   │   typed exceptions (HTTP mapping)                │  │
+        │   └────────────┬───────────────────┬─────────────────┘  │
+        │                │                   │                    │
+        │   OFFLINE USE  │                   │  ONLINE USE        │
+        │                ▼                   ▼                    │
+        ├──► ast_extractor.py          preprocess.py               │
+        │    11 workers · solc-pinned   ContractPreprocessor      │
+        │    writes: graphs/<md5>.pt    uses extract_contract_graph│
+        │    (includes contract_path)   + CodeBERT tokenizer       │
+        │                │                   │                    │
+        ├──► tokenizer.py               (MD5 via hash_utils       │
+        │    CodeBERT tokenizer          for cache keys)           │
+        │    writes: tokens/<md5>.pt                               │
+        │                │                                        │
+        │                ├───────► build_multilabel_index.py       │
+        │                │          reads graphs/*.pt (for         │
+        │                │          contract_path → SHA256)        │
+        │                │          + BCCC labels CSV              │
+        │                │                                        │
+        │                ▼                                        │
+        │      multilabel_index.csv  (68,523 rows × 10 classes)   │
+        │                │                                        │
+        │                ▼                                        │
+        │      create_splits.py                                    │
+        │        writes: splits/train_indices.npy (47,966)         │
+        │                splits/val_indices.npy   (10,278)         │
+        │                splits/test_indices.npy  (10,279)         │
+        │                │                                        │
+        │   ◄── QUALITY GATE ──────────────────────────────────   │
+        │   │  validate_graph_dataset.py                          │
+        │   │    checks all graph .pt have edge_attr [E]          │
+        │   │    → pass/fail before training                      │
+        │   └────────────────────────────────────────────────────  │
+        │                                                          │
+        └─────────────┬────────────────────────────────────────────┘
+                      │
+                      ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            TRAINING  (GPU)                                   │
+│                                                                              │
+│  scripts/train.py (CLI)                                                      │
+│    creates TrainConfig                                                       │
+│    → src/training/trainer.py  +  MLflow                                     │
+│                                                                              │
+│  DualPathDataset                                                             │
+│    pairs graphs/ and tokens/ by MD5 stem                                     │
+│    label loading:                                                            │
+│      binary mode:      label ← graph.y (old checkpoints)                    │
+│      multi‑label mode: label ← multilabel_index.csv (via label_csv=…)       │
+│                                                                              │
+│  SentinelModel.forward(graphs, input_ids, attention_mask)                    │
+│    GNNEncoder          → node_embs [N, 64]   (un‑pooled)                    │
+│    TransformerEncoder  → token_embs [B, 512, 768] (LoRA‑adapted)            │
+│    CrossAttentionFusion → bidir cross‑attention + masked mean pool           │
+│                           fused [B, 128]                                     │
+│    Classifier          → logits [B, 10]   (no sigmoid)                       │
+│                                                                              │
+│  Loss: BCEWithLogitsLoss  or  FocalLoss(gamma=2.0, α=0.25)                  │
+│                                                                              │
+│  Output:                                                                     │
+│    checkpoints/<run>_best.pt   (model+optim+scheduler+patience counter)      │
+│    checkpoint sidecar: .state.json (patience counter across resumes)         │
+└──────────────────────────────────────┬───────────────────────────────────────┘
+                                       │
+                         ┌─────────────┴─────────────┐
+                         ▼                           ▼
+                 tune_threshold.py           promote_model.py
+                  sweeps per‑class            MLflow Registry:
+                  thresholds 0.05‑0.95        Staging → Production
+                  writes:
+                  <checkpoint>_thresholds.json
+                                       │
+                         ┌─────────────┘
+                         │  (per‑class thresholds file)
+                         │  consumed by Predictor at startup
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                     ONLINE INFERENCE   FastAPI (port 8001)                   │
+│                                                                              │
+│  POST /predict  { "source_code": "…" }                                       │
+│     │                                                                        │
+│     ├── DriftDetector (rolling KS‑test against drift_baseline.json)          │
+│     │    baseline built by compute_drift_baseline.py (from warm‑up reqs)     │
+│     │                                                                        │
+│     ├── InferenceCache  key = md5(source) + FEATURE_SCHEMA_VERSION           │
+│     │     hit → serve cached (graph, tokens)                                 │
+│     │     miss → run ContractPreprocessor → atomic write to cache             │
+│     │                                                                        │
+│     ├── ContractPreprocessor (preprocess.py)                                 │
+│     │     extract_contract_graph() ← graph_extractor (shared)                │
+│     │     CodeBERT tokenizer (single window or sliding window)               │
+│     │                                                                        │
+│     ├── SentinelModel.forward() → logits [1, 10]                             │
+│     │     sliding‑window when > 512 tokens: per‑window probs max‑pooled      │
+│     │                                                                        │
+│     ├── sigmoid → probs                                                      │
+│     ├── apply per‑class thresholds (from <checkpoint>_thresholds.json)       │
+│     └── format response                                                      │
+│                                                                              │
+│  GET /health    GET /metrics (Prometheus)                                    │
+│    reports: architecture, thresholds_loaded, GPU memory                      │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
