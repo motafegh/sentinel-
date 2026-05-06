@@ -25,6 +25,7 @@ Dual-path smart contract vulnerability detector. A **Graph Attention Network (GN
   - [RAM Cache](#ram-cache)
   - [Collate Function](#collate-function)
 - [Model Architecture](#model-architecture)
+  - [SentinelModel — Orchestration](#sentinelmodel--orchestration)
   - [GNN Encoder](#gnn-encoder)
   - [Transformer Encoder (CodeBERT + LoRA)](#transformer-encoder-codebert--lora)
   - [CrossAttention Fusion](#crossattention-fusion)
@@ -36,6 +37,7 @@ Dual-path smart contract vulnerability detector. A **Graph Attention Network (GN
 - [Dataset](#dataset)
 - [Training](#training)
   - [Run Training](#run-training)
+  - [trainer.py — Configuration and Internals](#trainerpy--configuration-and-internals)
   - [FocalLoss](#focalloss)
   - [Resume from Checkpoint](#resume-from-checkpoint)
   - [Per-Class Threshold Tuning](#per-class-threshold-tuning)
@@ -47,6 +49,8 @@ Dual-path smart contract vulnerability detector. A **Graph Attention Network (GN
 - [Inference API](#inference-api)
   - [Endpoints](#endpoints)
   - [HTTP Status Codes](#http-status-codes)
+- [Predictor](#predictor)
+- [ContractPreprocessor](#contractpreprocessor)
 - [Inference Cache](#inference-cache)
 - [Drift Detection](#drift-detection)
 - [MLflow and Model Registry](#mlflow-and-model-registry)
@@ -566,6 +570,30 @@ Solidity source string
              label = "vulnerable" if any else "safe"
 ```
 
+### SentinelModel — Orchestration
+
+**File:** `ml/src/models/sentinel_model.py`
+
+Top-level `nn.Module`. Instantiates `GNNEncoder`, `TransformerEncoder`, `CrossAttentionFusion`, and a `Linear` classifier head, then threads them together in `forward()`.
+
+```
+forward(graphs: Batch, input_ids: [B,512], attention_mask: [B,512])
+  edge_attr  = graphs.edge_attr  (if use_edge_attr, else None)
+  node_embs, batch = gnn(x, edge_index, batch, edge_attr)    [N,64], [N]
+  token_embs       = transformer(input_ids, attention_mask)  [B,512,768]
+  fused            = fusion(node_embs, batch, token_embs,
+                             attention_mask)                  [B,128]
+  logits           = classifier(fused)                        [B, num_classes]
+
+  Binary mode (num_classes=1): squeeze [B,1] → [B]
+```
+
+**No Sigmoid inside the model.** Applied externally:
+- Training: `BCEWithLogitsLoss(pos_weight=...)` / `_FocalFromLogits` in `trainer.py`
+- Inference: `Predictor._score()` applies `sigmoid(logits.float())`
+
+`parameter_summary()` logs trainable vs frozen counts per sub-module (called at `Predictor` startup): `GNNEncoder | TransformerEncoder | CrossAttentionFusion | Classifier | Total`
+
 ### GNN Encoder
 
 **File:** `ml/src/models/gnn_encoder.py`
@@ -777,6 +805,125 @@ Key `TrainConfig` fields:
 Speed optimisations: AMP/BF16, TF32 matmuls, `persistent_workers=True`, `zero_grad(set_to_none=True)`, MLflow artifact logged once at end (not per epoch).
 
 MLflow tracks per run: all `TrainConfig` fields, `val_f1_macro`, `val_f1_micro`, `val_hamming`, `val_exact_match`, `focal_gamma`, `focal_alpha`, and `val_f1_{class}` × 10.
+
+### trainer.py — Configuration and Internals
+
+**File:** `ml/src/training/trainer.py`
+
+`scripts/train.py` is a thin CLI wrapper. All training logic lives in `trainer.py`.
+
+**Module-level constants:**
+
+```
+CLASS_NAMES     list[str]  — output class names, indices 0–9; ORDER IS LOCKED
+NUM_CLASSES     int        — 10  (len(CLASS_NAMES))
+ARCHITECTURE    str        — "cross_attention_lora" — written into every checkpoint
+_VALID_LOSS_FNS frozenset  — {"bce", "focal"} — unknown value raises ValueError at startup
+```
+
+**Full `TrainConfig` dataclass (all fields):**
+
+```
+Paths         graphs_dir, tokens_dir, splits_dir, checkpoint_dir, checkpoint_name
+
+Model         num_classes=10, fusion_output_dim=128 (LOCKED), fusion_dropout=0.3
+GNN           gnn_hidden_dim=64, gnn_heads=8, gnn_dropout=0.2
+              use_edge_attr=True, gnn_edge_emb_dim=16
+LoRA          lora_r=8, lora_alpha=16, lora_dropout=0.1
+              lora_target_modules=["query", "value"]
+
+Labels        label_csv  path to multilabel_index.csv
+                         None → binary mode (graph.y labels, pos_weight skipped)
+
+Training      epochs=40, batch_size=32, lr=3e-4, weight_decay=1e-2
+              threshold=0.5, early_stop_patience=7
+
+Stability     grad_clip=1.0, warmup_pct=0.05, use_amp=True
+
+DataLoader    num_workers=2, persistent_workers=True
+
+Loss          loss_fn="bce", focal_gamma=2.0, focal_alpha=0.25
+
+Cache         cache_path="ml/data/cached_dataset.pkl"  (None disables RAM cache)
+
+MLflow        experiment_name="sentinel-multilabel", run_name="multilabel-crossattn-v1"
+
+Device        device — auto-detected ("cuda" if available, else "cpu")
+
+Resume        resume_from=None  (path to .pt checkpoint)
+              resume_model_only=True  (default: model weights only, fresh optimizer)
+              force_optimizer_reset=False  (discard optimizer even on full resume)
+```
+
+**`compute_pos_weight(label_csv, train_indices, num_classes, device) → Tensor[10]`**
+
+Reads `multilabel_index.csv`, counts positives and negatives per class on the **training split only** (val/test excluded), returns `neg_count / pos_count` as a float32 tensor. Classes with zero positives are capped at `100.0` with a WARNING. Passed to `BCEWithLogitsLoss(pos_weight=...)` so rare classes receive proportionally higher gradient signal. Skipped entirely in binary mode (`label_csv=None`).
+
+**`evaluate(model, loader, device, threshold, use_amp) → dict`**
+
+Runs in `model.eval()` + `torch.no_grad()`. Returns 12 keys: `f1_macro`, `f1_micro`, `hamming`, `f1_{class}` × 10.
+
+The `threshold` arg is the shared value from `TrainConfig.threshold` (0.5 default) used only for epoch-level F1 tracking during training. `tune_threshold.py` finds per-class thresholds after training that are stored in `_thresholds.json`.
+
+**`train_one_epoch(...) → float`**
+
+Per-epoch loop invariants:
+
+```
+zero_grad(set_to_none=True)               free gradient memory, not just zero
+autocast("cuda", enabled=use_amp)         AMP/BF16 for forward + loss
+scaler.scale(loss).backward()             scaled gradients
+clip_grad_norm_(trainable_params, ...)    ONLY trainable params — not 124M frozen CodeBERT
+scheduler.step()                          per batch (OneCycleLR requirement)
+```
+
+Returns `total_loss / n_batches`. Returns `0.0` with WARNING if loader is empty.
+
+**`train(config) → dict`**
+
+Returns:
+
+```python
+{
+    "best_f1_macro":  float,   # best val F1-macro across all epochs
+    "final_epoch":    int,     # < config.epochs if early-stopped
+    "early_stopped":  bool,
+    "checkpoint_path": str,    # absolute path to saved best checkpoint
+}
+```
+
+**Checkpoint dict format saved to `.pt`:**
+
+```python
+{
+    "model":            state_dict,
+    "optimizer":        optimizer.state_dict(),
+    "scheduler":        scheduler.state_dict(),
+    "epoch":            int,     # epoch when this best was achieved
+    "best_f1":          float,
+    "patience_counter": 0,       # always 0 at a new best; sidecar has the real value
+    "config": {
+        **dataclasses.asdict(config),
+        "num_classes":  int,
+        "class_names":  CLASS_NAMES[:num_classes],
+        "architecture": "cross_attention_lora",
+    }
+}
+```
+
+> **Patience sidecar (`{checkpoint}.state.json`):** written after **every epoch** with `{"epoch", "patience_counter", "best_f1"}`. On resume, overrides the checkpoint's `patience_counter` (which is always 0 at a new best). Without the sidecar, non-improvement epochs before a crash are invisible on resume and early stopping resets silently.
+
+**Speed optimisations:**
+
+| Technique | Effect |
+|-----------|--------|
+| `torch.amp.autocast("cuda")` AMP/BF16 | 2–3× on Ampere (RTX 30xx+) |
+| `allow_tf32=True` (cuBLAS + cuDNN) | ~1.5× free on Ampere; no-op on older GPUs |
+| `num_workers=2` + `persistent_workers=True` | hides CPU collation behind GPU compute |
+| `pin_memory=True` (when num_workers > 0) | async host→device memory transfer |
+| `zero_grad(set_to_none=True)` | frees gradient tensors instead of writing zeros |
+| `prefetch_factor=2` | pipelines 2 batches ahead |
+| MLflow `log_artifact` once at run end | avoids per-epoch file copy overhead |
 
 ### FocalLoss
 
@@ -1045,6 +1192,109 @@ Environment variables:
 
 ---
 
+## Predictor
+
+**File:** `ml/src/inference/predictor.py`
+
+`Predictor` loads a checkpoint and scores contracts. Instantiated once per process inside `api.py` during lifespan startup.
+
+```
+Predictor.__init__(checkpoint, threshold=0.50, device=None)
+    │
+    ├── torch.load(weights_only=False)  — LoRA state dict requires this
+    │
+    ├── read from checkpoint["config"]:
+    │     num_classes, architecture, fusion_output_dim
+    │     gnn_hidden_dim, gnn_heads, gnn_dropout, gnn_edge_emb_dim
+    │     lora_r, lora_alpha, lora_dropout, lora_target_modules
+    │     fusion_dropout, use_edge_attr
+    │
+    ├── validate:
+    │     architecture in _ARCH_TO_FUSION_DIM allowlist  (ValueError if unknown)
+    │     num_classes ≤ len(CLASS_NAMES)                 (prevents silent zip truncation)
+    │     class_names order matches CLASS_NAMES[:n]       (prevents wrong-class mapping)
+    │
+    ├── build SentinelModel with exact hyperparams from checkpoint config
+    │     prevents load_state_dict() crash when checkpoint used non-defaults
+    │
+    ├── load per-class thresholds from {stem}_thresholds.json
+    │     missing class entry → fallback to constructor threshold with WARNING
+    │     missing file        → uniform threshold for all classes with WARNING
+    │
+    ├── ContractPreprocessor()
+    │
+    └── _warmup() — 2-node 1-edge dummy forward pass at startup
+          catches CUDA / shape bugs before first real request
+          (0-edge graph skips GATConv.propagate() — fixed to use ≥ 1 edge)
+          (includes edge_attr when use_edge_attr=True)
+
+Architecture allowlist (_ARCH_TO_FUSION_DIM):
+    "cross_attention_lora" → fusion_output_dim=128  (current)
+    "legacy"               → fusion_output_dim=64   (pre-CrossAttention)
+    "legacy_binary"        → fusion_output_dim=64   (old binary checkpoint)
+
+Public methods:
+    predict(sol_path)           — .sol file on disk
+    predict_source(source_code) — raw Solidity string; sliding window if > 512 tokens
+```
+
+---
+
+## ContractPreprocessor
+
+**File:** `ml/src/inference/preprocess.py`
+
+Thin wrapper over `graph_extractor.extract_contract_graph()` and the CodeBERT tokenizer. Converts one Solidity contract into `(graph, tokens)`. Instantiated once; reused across all requests.
+
+```
+ContractPreprocessor(cache=None)
+    │
+    ├── process(sol_path)
+    │     hash = MD5 of file path  (hash_utils.get_contract_hash)
+    │     → (graph, tokens)
+    │
+    ├── process_source(source_code)
+    │     hash = MD5 of content    (hash_utils.get_contract_hash_from_content)
+    │     cache key = "{content_md5}_{FEATURE_SCHEMA_VERSION}"
+    │     check cache hit → return cached (graph, tokens)
+    │     cache miss → Slither temp file → extract → tokenize → cache.put()
+    │     → (graph, tokens)
+    │
+    └── process_source_windowed(source_code, stride=256, max_windows=8)
+          → (graph, list[tokens])  each dict has "window_index" key
+```
+
+**Why temp file:** `solc` requires a real filesystem path — it cannot read from stdin or a string argument. `process_source()` writes a `NamedTemporaryFile` with prefix `sentinel_prep_`, calls `extract_contract_graph()`, then deletes it in a `finally` block.
+
+**SIGKILL-safe cleanup:**
+
+```
+atexit handler — fires on normal exit + SIGTERM; unlinks _active_temp_files set
+Startup purge  — _purge_orphaned_sentinel_temps() scans /tmp for
+                 "sentinel_prep_*.sol" files left by a prior SIGKILL
+```
+
+**Sliding-window algorithm (`_tokenize_sliding_window`):**
+
+```
+1. Encode full source without truncation → full token ID list
+2. Slide 512-token window with stride=256 (50% overlap)
+3. Pad each window to 512; build attention_mask
+4. Cap at max_windows=8 to bound inference latency
+Short contracts (≤ 512 tokens) → returns list of one dict (no overhead)
+```
+
+**Shape contract (must match training data — do not change without retraining):**
+
+```
+graph.x              [N, 8]   float32
+graph.edge_index     [2, E]   int64
+tokens["input_ids"]  [1, 512] long
+tokens["attention_mask"] [1, 512] long
+```
+
+---
+
 ## Inference Cache
 
 **File:** `ml/src/inference/cache.py`
@@ -1189,7 +1439,8 @@ All 10 test modules use synthetic data — no real contracts or checkpoints requ
 ml/
 ├── src/
 │   ├── models/
-│   │   ├── sentinel_model.py        SentinelModel — top-level orchestrator
+│   │   ├── sentinel_model.py        SentinelModel — threads GNN + Transformer + Fusion + Classifier
+│   │   │                            No Sigmoid inside; parameter_summary() at predictor startup
 │   │   ├── gnn_encoder.py           GNNEncoder — 3-layer GAT + edge-type embeddings → [N,64]
 │   │   ├── transformer_encoder.py   TransformerEncoder — CodeBERT + LoRA (r=8 default)
 │   │   └── fusion_layer.py          CrossAttentionFusion — output_dim=128 (LOCKED)
@@ -1203,18 +1454,23 @@ ml/
 │   │
 │   ├── inference/
 │   │   ├── api.py                   FastAPI app — lifespan, /predict, /health, /metrics
-│   │   ├── predictor.py             Predictor — checkpoint load, sigmoid, per-class thresholds
+│   │   ├── predictor.py             Predictor — checkpoint load, architecture allowlist,
+│   │   │                            per-class thresholds, warmup forward pass
+│   │   │                            predict(sol_path), predict_source(source_code)
 │   │   ├── preprocess.py            ContractPreprocessor — thin wrapper over graph_extractor
 │   │   │                            process(), process_source(), process_source_windowed()
+│   │   │                            SIGKILL-safe temp file cleanup (atexit + startup purge)
 │   │   ├── cache.py                 InferenceCache — disk-backed content-addressed cache (T1-A)
 │   │   └── drift_detector.py        DriftDetector — KS-based feature drift monitoring (T2-B)
 │   │
 │   ├── training/
-│   │   ├── trainer.py               Trainer, TrainConfig, CLASS_NAMES, NUM_CLASSES
-│   │   │                            AMP, early stopping, full/model-only resume,
-│   │   │                            patience sidecar, MLflow logging
-│   │   └── focalloss.py             FocalLoss — gamma=2.0, alpha=0.25, FP32 cast
+│   │   ├── trainer.py               TrainConfig (full dataclass), CLASS_NAMES, ARCHITECTURE
+│   │   │                            compute_pos_weight(), evaluate(), train_one_epoch()
+│   │   │                            train() → {best_f1_macro, final_epoch, early_stopped, checkpoint_path}
+│   │   │                            AMP + TF32 + prefetch, patience sidecar, MLflow logging
+│   │   └── focalloss.py             FocalLoss — gamma=2.0, alpha=0.25, BF16 float() guard
 │   │                                opt-in via loss_fn="focal"; expects post-sigmoid probs
+│   │                                _FocalFromLogits wrapper in trainer.py applies sigmoid
 │   │
 │   ├── datasets/
 │   │   └── dual_path_dataset.py     DualPathDataset — binary + multi-label modes,
