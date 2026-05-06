@@ -114,7 +114,8 @@ BCCC-SCsVul-2024  (.sol files + labels)
                           │
                           ▼
         ┌─────────────────────────────────────────────────────┐
-        │  TRAINING   scripts/train.py + MLflow               │
+        │  TRAINING   scripts/train.py (CLI)                  │
+        │             → src/training/trainer.py + MLflow      │
         │                                                     │
         │  DualPathDataset                                    │
         │    graphs/ + tokens/ paired by MD5 stem             │
