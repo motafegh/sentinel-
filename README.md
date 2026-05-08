@@ -1,6 +1,6 @@
 # SENTINEL
 
-A decentralised AI security oracle for smart contracts. SENTINEL combines a dual-path GNN + CodeBERT vulnerability detector, zero-knowledge proof generation, and on-chain audit registration so that any result can be independently verified without trusting the agent that produced it.
+Smart contracts are immutable once deployed — a single vulnerability can result in irreversible loss of funds. Existing audit tools are either static analysers that miss context-dependent bugs, or expensive manual reviews that don't scale. SENTINEL is a **decentralised AI security oracle** that addresses this: it combines a dual-path GNN + CodeBERT vulnerability detector, zero-knowledge proof generation, and on-chain audit registration so that any result can be independently verified without trusting the agent that produced it.
 
 ---
 
@@ -9,7 +9,9 @@ A decentralised AI security oracle for smart contracts. SENTINEL combines a dual
 - [How It Works](#how-it-works)
 - [Modules](#modules)
 - [Current Model Performance](#current-model-performance)
+- [Output Classes](#output-classes)
 - [Prerequisites](#prerequisites)
+- [Environment Variables](#environment-variables)
 - [Repository Structure](#repository-structure)
 - [Quick Start](#quick-start)
 - [Port Map](#port-map)
@@ -23,7 +25,6 @@ A decentralised AI security oracle for smart contracts. SENTINEL combines a dual
 ## How It Works
 
 ```
-
 User uploads .sol contract
 │
 ▼
@@ -53,7 +54,6 @@ ZKMLVerifier.verify() on-chain  →  AuditSubmitted event
 ▼
 [M4  Feedback Loop]
 Polls AuditRegistry, ingests findings back into RAG index
-
 ```
 
 ---
@@ -91,7 +91,7 @@ Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttent
 ### Per-class F1 (tuned thresholds)
 
 | Vulnerability | F1 | Threshold | Support |
-|---------------|----|-----------|---------| 
+|---------------|----|-----------|---------|
 | IntegerUO | 0.821 | 0.50 | 5,343 |
 | GasException | 0.550 | 0.55 | 2,589 |
 | Reentrancy | 0.536 | 0.65 | 2,501 |
@@ -108,10 +108,31 @@ Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttent
 
 ---
 
+## Output Classes
+
+The model outputs a probability for each of the 10 vulnerability classes below. Index order is **locked** — inserting or reordering classes breaks all existing checkpoints and the ZKML circuit.
+
+| Index | Class |
+|-------|-------|
+| 0 | CallToUnknown |
+| 1 | DenialOfService |
+| 2 | ExternalBug |
+| 3 | GasException |
+| 4 | IntegerUO |
+| 5 | MishandledException |
+| 6 | Reentrancy |
+| 7 | Timestamp |
+| 8 | TransactionOrderDependence |
+| 9 | UnusedReturn |
+
+The `thresholds` array in every `/predict` response follows this same index order. Defined as `CLASS_NAMES` in `ml/src/training/trainer.py` — that file is the single source of truth.
+
+---
+
 ## Prerequisites
 
 | Tool | Version | Purpose |
-|------|---------|---------| 
+|------|---------|---------|
 | Python | 3.11 – 3.12 | All Python modules |
 | Poetry | ≥ 1.8 | Dependency management |
 | Foundry (`forge`, `cast`) | latest | Solidity build and deploy |
@@ -121,10 +142,42 @@ Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttent
 
 ---
 
+## Environment Variables
+
+All variables must be set at **shell level** before starting any service. Setting them inside Python is too late for some (e.g. `TRANSFORMERS_OFFLINE` is read at `transformers` import time).
+
+### ML Inference Server (M1 — port 8001)
+
+| Variable | Default | Required | Purpose |
+|----------|---------|----------|---------|
+| `TRANSFORMERS_OFFLINE` | — | **Yes** | Prevents HuggingFace from making network calls at import time. Must be `1`. |
+| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel-v3-fresh-60ep_best.pt` | **Yes** | Path to the `.pt` model checkpoint. |
+| `SENTINEL_THRESHOLDS` | auto-detected (`{checkpoint_stem}_thresholds.json`) | Recommended | Path to per-class threshold JSON. Falls back to uniform 0.5 with a warning if missing. |
+| `SENTINEL_PREDICT_TIMEOUT` | `60` | No | Max seconds for a single inference request before HTTP 504. |
+| `SENTINEL_DRIFT_BASELINE` | `ml/data/drift_baseline.json` | No | Drift detection baseline file. Drift detection is suppressed until this exists. |
+| `SENTINEL_DRIFT_CHECK_INTERVAL` | `50` | No | Run KS drift test every N requests. |
+
+### Agents / MCP Servers (M4)
+
+| Variable | Purpose |
+|----------|---------|
+| `LM_STUDIO_BASE_URL` | LM Studio HTTP endpoint (default: `http://localhost:1234/v1`) |
+| `LM_STUDIO_MODEL` | Model name to route LLM calls to |
+
+### Contracts / Blockchain (M5)
+
+| Variable | Purpose |
+|----------|---------|
+| `SEPOLIA_RPC_URL` | Sepolia testnet RPC endpoint (e.g. Alchemy or Infura URL) |
+| `DEPLOYER_PRIVATE_KEY` | Private key for contract deployment and `submitAudit` calls |
+| `AUDIT_REGISTRY_ADDRESS` | Deployed `AuditRegistry` contract address (set after first deploy) |
+| `ZKML_VERIFIER_ADDRESS` | Deployed `ZKMLVerifier` contract address |
+
+---
+
 ## Repository Structure
 
 ```
-
 sentinel-/
 ├── ml/                        # M1 + M3 — ML Core and MLOps
 │   ├── src/
@@ -169,7 +222,6 @@ sentinel-/
 │   └── project-spec/          # Split specification files (see below)
 ├── test_contracts/            # Sample .sol files for smoke testing
 └── pyproject.toml             # Root Poetry workspace config
-
 ```
 
 ---
@@ -192,9 +244,10 @@ cd agents && poetry install && cd ..
 ### 2 — Start the ML inference server
 
 ```bash
-TRANSFORMERS_OFFLINE=1 \
-SENTINEL_CHECKPOINT=ml/checkpoints/multilabel-v3-fresh-60ep_best.pt \
-SENTINEL_THRESHOLDS=ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json \
+export TRANSFORMERS_OFFLINE=1
+export SENTINEL_CHECKPOINT=ml/checkpoints/multilabel-v3-fresh-60ep_best.pt
+export SENTINEL_THRESHOLDS=ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json
+
 ml/.venv/bin/uvicorn ml.src.inference.api:app --port 8001
 ```
 
@@ -263,7 +316,7 @@ Example response:
 }
 ```
 
-> `thresholds` is a list of 10 per-class values (index order matches `CLASS_NAMES`).
+> `thresholds` is a list of 10 per-class values in `CLASS_NAMES` index order (see [Output Classes](#output-classes)).
 
 ---
 
@@ -327,7 +380,7 @@ Violating any of these without the matching rebuild or retrain produces silent f
 | `weights_only=False` on `torch.load` | required | LoRA state dict is not a plain dict |
 | `TRANSFORMERS_OFFLINE` | set at shell level | Cannot be set inside Python |
 
-Full details in `docs/project-spec/SENTINEL-CONSTRAINTS.md`.
+Full details in [`docs/project-spec/SENTINEL-CONSTRAINTS.md`](docs/project-spec/SENTINEL-CONSTRAINTS.md).
 
 ---
 
