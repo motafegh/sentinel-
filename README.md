@@ -91,7 +91,7 @@ Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttent
 ### Per-class F1 (tuned thresholds)
 
 | Vulnerability | F1 | Threshold | Support |
-|---------------|----|-----------|---------|
+|---------------|----|-----------|---------| 
 | IntegerUO | 0.821 | 0.50 | 5,343 |
 | GasException | 0.550 | 0.55 | 2,589 |
 | Reentrancy | 0.536 | 0.65 | 2,501 |
@@ -111,7 +111,7 @@ Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttent
 ## Prerequisites
 
 | Tool | Version | Purpose |
-|------|---------|---------|
+|------|---------|---------| 
 | Python | 3.11 – 3.12 | All Python modules |
 | Poetry | ≥ 1.8 | Dependency management |
 | Foundry (`forge`, `cast`) | latest | Solidity build and deploy |
@@ -189,7 +189,7 @@ cd ml && poetry install && cd ..
 cd agents && poetry install && cd ..
 ```
 
-2 — Start the ML inference server
+### 2 — Start the ML inference server
 
 ```bash
 TRANSFORMERS_OFFLINE=1 \
@@ -211,7 +211,7 @@ curl http://localhost:8001/health
 # }
 ```
 
-3 — Start the MCP servers
+### 3 — Start the MCP servers
 
 ```bash
 # In separate terminals:
@@ -220,7 +220,7 @@ cd agents && poetry run python -m src.mcp.servers.rag_server        # port 8011
 cd agents && poetry run python -m src.mcp.servers.audit_server      # port 8012
 ```
 
-4 — Run a full audit via LangGraph
+### 4 — Run a full audit via LangGraph
 
 ```python
 import asyncio
@@ -237,7 +237,7 @@ result = asyncio.run(graph.ainvoke(
 print(result["final_report"])
 ```
 
-5 — Predict directly via the ML API
+### 5 — Predict directly via the ML API
 
 ```bash
 curl -s -X POST http://localhost:8001/predict \
@@ -263,9 +263,11 @@ Example response:
 }
 ```
 
-thresholds is a list of 10 per-class values (index order matches CLASS_NAMES).
+> `thresholds` is a list of 10 per-class values (index order matches `CLASS_NAMES`).
 
 ---
+
+## Port Map
 
 | Port | Service |
 |------|---------|
@@ -280,7 +282,7 @@ thresholds is a list of 10 per-class values (index order matches CLASS_NAMES).
 
 ---
 
-Testing
+## Testing
 
 ```bash
 # ML inference (10 test modules — synthetic data, no checkpoints required)
@@ -325,11 +327,11 @@ Violating any of these without the matching rebuild or retrain produces silent f
 | `weights_only=False` on `torch.load` | required | LoRA state dict is not a plain dict |
 | `TRANSFORMERS_OFFLINE` | set at shell level | Cannot be set inside Python |
 
-Full details in `docs/project-spec/SENTINEL-CONSTRAINTS.md`. 
+Full details in `docs/project-spec/SENTINEL-CONSTRAINTS.md`.
 
 ---
 
-Development Workflow
+## Development Workflow
 
 ```
 main ← stable, deployed
@@ -341,7 +343,6 @@ After landing a change that affects architecture, data contracts, or locked cons
   3. Update docs/STATUS.md and docs/ROADMAP.md as needed
   4. Re-run affected tests before merging
 ```
-
 
 ---
 
@@ -369,6 +370,6 @@ Located in `docs/project-spec/`. Load only what you need using the index:
 - [Contracts](contracts/README.md) — Foundry build, deploy, ZKMLVerifier handling
 
 ### Tracking
-- [`docs/STATUS.md`](docs/STATUS.md) — what’s built, what’s broken, what’s next
+- [`docs/STATUS.md`](docs/STATUS.md) — what's built, what's broken, what's next
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — upcoming work in priority order
 - [`docs/changes/`](docs/changes/) — dated changelogs for every significant change
