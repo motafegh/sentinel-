@@ -16,42 +16,44 @@ A decentralised AI security oracle for smart contracts. SENTINEL combines a dual
 - [Testing](#testing)
 - [Key Constraints](#key-constraints)
 - [Development Workflow](#development-workflow)
-- [Module Documentation](#module-documentation)
+- [Module & Architecture Documentation](#module--architecture-documentation)
 
 ---
 
 ## How It Works
 
 ```
+
 User uploads .sol contract
-         │
-         ▼
+│
+▼
 [M6  API Gateway]      POST /v1/audit → job_id   (FastAPI + Celery)   ← planned
-         │
-         ▼
+│
+▼
 [M4/M5  LangGraph Orchestration]
-  ├── ml_assessment   ──▶  [M1  FastAPI :8001]
-  │        │               GNN + CodeBERT + CrossAttention
-  │        │               → vulnerabilities[] with per-class probabilities
-  │        ▼
-  │   max(probability) ≥ threshold?
-  │        ├── YES (deep)  ──▶  rag_research  ──▶  audit_check  ──▶  synthesizer
-  │        └── NO  (fast)  ────────────────────────────────────────▶  synthesizer
-  │
-  └── synthesizer  →  final_report {label, vulnerabilities[], rag_evidence[], audit_history[]}
-         │
-         ▼
+├── ml_assessment   ──▶  [M1  FastAPI :8001]
+│        │               GNN + CodeBERT + CrossAttention
+│        │               → vulnerabilities[] with per-class probabilities
+│        ▼
+│   max(probability) ≥ threshold?
+│        ├── YES (deep)  ──▶  rag_research  ──▶  audit_check  ──▶  synthesizer
+│        └── NO  (fast)  ────────────────────────────────────────▶  synthesizer
+│
+└── synthesizer  →  final_report {label, vulnerabilities[], rag_evidence[], audit_history[]}
+│
+▼
 [M2  ZKML Proof Generation]
-  proxy MLP(128→64→32→10) → EZKL/Groth16 → π + publicSignals[10 class scores]
-         │
-         ▼
+proxy MLP(128→64→32→10) → EZKL/Groth16 → π + publicSignals[10 class scores]
+│
+▼
 [M5  Blockchain — Sepolia]
-  AuditRegistry.submitAudit(proof, publicSignals)
-  ZKMLVerifier.verify() on-chain  →  AuditSubmitted event
-         │
-         ▼
+AuditRegistry.submitAudit(proof, publicSignals)
+ZKMLVerifier.verify() on-chain  →  AuditSubmitted event
+│
+▼
 [M4  Feedback Loop]
-  Polls AuditRegistry, ingests findings back into RAG index
+Polls AuditRegistry, ingests findings back into RAG index
+
 ```
 
 ---
@@ -61,7 +63,7 @@ User uploads .sol contract
 | # | Path | What it does | Status |
 |---|------|-------------|--------|
 | M1 | `ml/` | Dual-path GNN (edge-type embeddings) + CodeBERT+LoRA + CrossAttention multi-label detector; per-class threshold tuning; windowed inference; FastAPI with Prometheus metrics and KS drift detection | ✅ Complete |
-| M2 | `zkml/` | Proxy model distillation, EZKL circuit setup, per-audit Groth16 proof generation | ⚠️ Scripts ready — pipeline not yet run |
+| M2 | `zkml/` | Proxy model distillation, EZKL circuit setup, per-audit Groth16 proof generation | ⚠️ Source complete — pipeline not yet run |
 | M3 | `ml/` (mlops) | MLflow experiment tracking, DVC data versioning, Dagster RAG scheduling, model registry promotion | ✅ Complete |
 | M4 | `agents/` | LangGraph orchestration, 3 MCP servers, RAG (hybrid BM25+dense+RRF), ingestion, feedback loop | ✅ Complete |
 | M5 | `contracts/` | SentinelToken (ERC-20), AuditRegistry (UUPS), IZKMLVerifier interface — Foundry test suite written | ⚠️ Source complete — forge not yet run |
@@ -71,10 +73,10 @@ User uploads .sol contract
 
 ## Current Model Performance
 
-Active checkpoint: `ml/checkpoints/multilabel-v3-fresh-60ep_best.pt`
+Active checkpoint: `ml/checkpoints/multilabel-v3-fresh-60ep_best.pt`  
 Thresholds: `ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json`
 
-Trained on BCCC-SCsVul-2024 (47,966 train / 10,278 val / 10,279 test).
+Trained on BCCC-SCsVul-2024 (47,966 train / 10,278 val / 10,279 test).  
 Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttention, LoRA r=8 α=16.
 
 ### Overall metrics (per-class threshold tuning applied)
@@ -101,7 +103,7 @@ Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttent
 | DenialOfService | 0.400 | 0.95 | 137 |
 | CallToUnknown | 0.394 | 0.70 | 1,266 |
 
-> DenialOfService and CallToUnknown are the weakest classes due to limited training data.
+> DenialOfService and CallToUnknown are the weakest classes due to limited training data.  
 > The v4 run targets both with focal loss and weighted sampling.
 
 ---
@@ -122,6 +124,7 @@ Architecture: `cross_attention_lora` — GNN(edge_attr) + CodeBERT + CrossAttent
 ## Repository Structure
 
 ```
+
 sentinel-/
 ├── ml/                        # M1 + M3 — ML Core and MLOps
 │   ├── src/
@@ -162,10 +165,11 @@ sentinel-/
 ├── docs/
 │   ├── STATUS.md              # Current module completion and open loops
 │   ├── ROADMAP.md             # Upcoming work in priority order
-│   └── changes/               # Dated changelogs for every significant change
-├── SENTINEL-SPEC.md           # Timeless architecture spec (ADRs, data contracts)
+│   ├── changes/               # Dated changelogs for every significant change
+│   └── project-spec/          # Split specification files (see below)
 ├── test_contracts/            # Sample .sol files for smoke testing
 └── pyproject.toml             # Root Poetry workspace config
+
 ```
 
 ---
@@ -185,7 +189,7 @@ cd ml && poetry install && cd ..
 cd agents && poetry install && cd ..
 ```
 
-### 2 — Start the ML inference server
+2 — Start the ML inference server
 
 ```bash
 TRANSFORMERS_OFFLINE=1 \
@@ -207,7 +211,7 @@ curl http://localhost:8001/health
 # }
 ```
 
-### 3 — Start the MCP servers
+3 — Start the MCP servers
 
 ```bash
 # In separate terminals:
@@ -216,7 +220,7 @@ cd agents && poetry run python -m src.mcp.servers.rag_server        # port 8011
 cd agents && poetry run python -m src.mcp.servers.audit_server      # port 8012
 ```
 
-### 4 — Run a full audit via LangGraph
+4 — Run a full audit via LangGraph
 
 ```python
 import asyncio
@@ -233,7 +237,7 @@ result = asyncio.run(graph.ainvoke(
 print(result["final_report"])
 ```
 
-### 5 — Predict directly via the ML API
+5 — Predict directly via the ML API
 
 ```bash
 curl -s -X POST http://localhost:8001/predict \
@@ -259,26 +263,25 @@ Example response:
 }
 ```
 
-> `thresholds` is a list of 10 per-class values (index order matches `CLASS_NAMES`).
+thresholds is a list of 10 per-class values (index order matches CLASS_NAMES).
 
 ---
 
-## Port Map
+Port Map
 
-| Port | Service |
-|------|---------|
-| 8000 | M6 API Gateway (planned) |
-| 8001 | M1 FastAPI inference |
-| 8010 | sentinel-inference MCP |
-| 8011 | sentinel-rag MCP |
-| 8012 | sentinel-audit MCP |
-| 1234 | LM Studio (Windows host) |
-| 3000 | Dagster UI |
-| 5000 | MLflow UI |
+Port Service
+8000 M6 API Gateway (planned)
+8001 M1 FastAPI inference
+8010 sentinel-inference MCP
+8011 sentinel-rag MCP
+8012 sentinel-audit MCP
+1234 LM Studio (Windows host)
+3000 Dagster UI
+5000 MLflow UI
 
 ---
 
-## Testing
+Testing
 
 ```bash
 # ML inference (10 test modules — synthetic data, no checkpoints required)
@@ -308,43 +311,71 @@ poetry run python scripts/smoke_audit_mcp.py
 
 Violating any of these without the matching rebuild or retrain produces silent failures.
 
-| Constraint | Locked value | Break condition |
-|-----------|-------------|----------------|
-| `GNNEncoder in_channels` | **8** | Rebuild all 68K graph `.pt` files + retrain |
-| CodeBERT model | `microsoft/codebert-base` | Rebuild token files + retrain |
-| `MAX_TOKEN_LENGTH` | **512** | Rebuild token files + retrain |
-| `CrossAttentionFusion output_dim` | **128** | Rebuild ZKML circuit + redeploy verifier |
-| `CLASS_NAMES` order | indices **0–9 stable** | Silent wrong-class mapping |
-| `FEATURE_SCHEMA_VERSION` | **`"v1"`** | Bump only alongside graph rebuild; invalidates inference cache |
-| `NUM_EDGE_TYPES` | **5** (CALLS/READS/WRITES/EMITS/INHERITS) | Rebuild edge_emb layer + retrain |
-| ONNX opset | **11** | EZKL requirement |
-| `solc` for ZKMLVerifier.sol | **≤ 0.8.17** | Halo2 assembly constraint |
-| `solc` for all other contracts | **0.8.20** | |
-| `weights_only=False` on `torch.load` | required | LoRA state dict is not a plain dict |
-| `TRANSFORMERS_OFFLINE` | set at shell level | Cannot be set inside Python |
+Constraint Locked value Break condition
+GNNEncoder in_channels 8 Rebuild all 68K graph .pt files + retrain
+CodeBERT model microsoft/codebert-base Rebuild token files + retrain
+MAX_TOKEN_LENGTH 512 Rebuild token files + retrain
+CrossAttentionFusion output_dim 128 Rebuild ZKML circuit + redeploy verifier
+CLASS_NAMES order indices 0–9 stable Silent wrong-class mapping
+FEATURE_SCHEMA_VERSION "v1" Bump only alongside graph rebuild; invalidates inference cache
+NUM_EDGE_TYPES 5 (CALLS/READS/WRITES/EMITS/INHERITS) Rebuild edge_emb layer + retrain
+ONNX opset 11 EZKL requirement
+solc for ZKMLVerifier.sol ≤ 0.8.17 Halo2 assembly constraint
+solc for all other contracts 0.8.20 
+weights_only=False on torch.load required LoRA state dict is not a plain dict
+TRANSFORMERS_OFFLINE set at shell level Cannot be set inside Python
+
+Full details in docs/project-spec/SENTINEL-CONSTRAINTS.md.
 
 ---
 
-## Development Workflow
+Development Workflow
 
 ```
 main ← stable, deployed
   └── feature/* ← all development work
 
-After landing a change that affects ML data contracts or the ZKML circuit:
-  1. Update SENTINEL-SPEC.md (the timeless architecture fact file)
+After landing a change that affects architecture, data contracts, or locked constants:
+  1. Update the relevant file(s) in docs/project-spec/ (see SENTINEL-INDEX.md for which file)
   2. Add a dated entry under docs/changes/
-  3. Update docs/STATUS.md and docs/ROADMAP.md
+  3. Update docs/STATUS.md and docs/ROADMAP.md as needed
   4. Re-run affected tests before merging
 ```
 
-`SENTINEL-SPEC.md` is not a status file — it records timeless architectural decisions (ADRs, data contracts, schema versions). Current status lives in `docs/STATUS.md`.
+The old monolithic SENTINEL-SPEC.md is superseded by the split specifications in docs/project-spec/.
 
 ---
 
-## Module Documentation
+## Module & Architecture Documentation
 
-- [ML Core](ml/README.md) — model architecture, training, inference, drift detection
-- [Agents / MCP / RAG](agents/README.md) — orchestration, servers, retrieval
-- [ZKML](zkml/README.md) — proxy model, EZKL pipeline, proof generation
-- [Contracts](contracts/README.md) — Foundry build, deploy, ZKMLVerifier handling
+Split specification (immutable project facts)
+
+Located in docs/project-spec/. Load only what you need using the index:
+
+· SENTINEL-INDEX.md — task → file routing
+· SENTINEL-OVERVIEW.md — system design, data flow, ports
+· SENTINEL-CONSTRAINTS.md — locked constants (must read before any implementation)
+· SENTINEL-ADR.md — all Architecture Decision Records
+· SENTINEL-M1-ML.md — ML model architecture, training, inference
+· SENTINEL-M2-ZKML.md — ZK proof pipeline
+· SENTINEL-M3-MLOPS.md — MLflow, DVC, Dagster, drift detection
+· SENTINEL-M4-AGENTS.md — LangGraph, MCP servers, RAG
+· SENTINEL-M5-M6-PLATFORM.md — Solidity contracts + Integration API
+· SENTINEL-EVAL-BACKLOG.md — retrain protocol, audits, backlog
+· SENTINEL-COMMANDS.md — quick‑reference CLI commands
+
+## Per‑module READMEs
+
+· ML Core — model architecture, training, inference, drift detection
+· Agents / MCP / RAG — orchestration, servers, retrieval
+· ZKML — proxy model, EZKL pipeline, proof generation
+· Contracts — Foundry build, deploy, ZKMLVerifier handling
+
+## Tracking
+
+· docs/STATUS.md — what’s built, what’s broken, what’s next
+· docs/ROADMAP.md — upcoming work in priority order
+· docs/changes/ — dated changelogs for every significant change
+
+
+
