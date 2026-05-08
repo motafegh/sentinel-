@@ -1,0 +1,47 @@
+# SENTINEL — Architecture Decision Records
+
+Load when making architectural decisions or reviewing design rationale.
+Format: # | Decision | Chosen | Rejected | Reason | Revisit if
+
+---
+
+| # | Decision | Chosen | Rejected | Reason | Revisit if |
+|---|----------|--------|----------|--------|------------|
+| 001 | GNN architecture | 3-layer GAT | GCN, GraphSAGE | GAT learns per-edge attention weights; GCN averages all neighbours equally | Dataset grows to protocol-scale graphs (1000s of nodes) |
+| 002 | CodeBERT training | LoRA fine-tuning (r=8, peft) | Frozen feature extractor / full fine-tune | Frozen gave weak rare-class F1; full fine-tune risks catastrophic forgetting on 68K samples; LoRA trains ~500K params safely | Dataset > 500K samples; switch to full fine-tune |
+| 003 | Fusion method | CrossAttentionFusion (bidirectional, 128-dim) | Concat+MLP / GMU | Cross-attention: nodes and tokens enrich each other BEFORE pooling; withdraw() node attends to "call.value" directly. Concat+MLP pooled before fusing — node/token detail already gone. GMU requires equal-dim projections. | Val F1 plateau after retrain |
+| 004 | Classifier loss | BCEWithLogitsLoss + pos_weight | FocalLoss + external sigmoid | BCEWithLogitsLoss numerically stable; external sigmoid collapses to float32 zero at logit > ±38 | — |
+| 005 | Sigmoid location | Removed from model; applied in predictor._score() | nn.Sigmoid inside model | BCEWithLogitsLoss requires raw logits; inference side sigmoid keeps training/inference consistent | — |
+| 006 | Label source for retrain | External CSV (multilabel_index.csv) keyed by MD5 stem | Patch graph.y in 68K .pt files | CSV is auditable, updatable; patching 68K binary files is slow and irreversible | — |
+| 007 | Output classes | 10 (WeakAccessMod excluded) | 11 | Zero .pt graph files for WeakAccessMod (Slither failures); zero positives → pos_weight=inf → NaN | Re-extract WeakAccessMod contracts |
+| 008 | pos_weight scope | Training split only | Full dataset | Full dataset leaks val/test label distribution into loss hyperparameter | — |
+| 009 | Node features | 8-dim ordinal | 17-dim one-hot | Ordinal encodes security-relevant ordering; GNNEncoder in_channels=8 locked to 68K training graphs | Full retrain with richer features (B-06) |
+| 010 | Graph scope | First non-dependency contract only | All user contracts merged | Works for single-file contracts; simpler. GraphExtractionConfig.multi_contract_policy scaffold exists ("first", "by_name"); "all" policy not yet implemented — see ROADMAP Move 9 | Multi-contract protocol audits (Move 9) |
+| 011 | MCP transport | SSE (HTTP) | stdio (subprocess) | Production standard; survives Docker network hops; multi-client capable | Tools only run on same machine |
+| 012 | MCP schema validation | inputSchema + handler defensive cap | Handler-only | mcp 1.27.0 enforces inputSchema at protocol level | — |
+| 013 | HybridRetriever instantiation | Module-level at import time | Per-request | 400ms + 5MB per request if per-call; single RAM instance | Multiple retriever configs per session |
+| 014 | Batch inference loop | Sequential in _handle_batch_predict | asyncio.gather concurrent | GPU-bound — concurrent serialises on GPU anyway | M1 adds native batched CUDA forward pass |
+| 015 | ZKML proxy architecture | ~8K param MLP (128→64→32→10) | Full SentinelModel in ZK circuit | Full model ~125M params — far too large for EZKL; proxy via knowledge distillation; input_dim=128 matches CrossAttentionFusion output | EZKL supports larger circuits |
+| 016 | On-chain proof storage | keccak256(zkProof) hash only | Full proof bytes (~2KB) | Gas cost at scale; hash sufficient for verification reference | — |
+| 017 | Solidity proxy pattern | UUPS | Transparent proxy | Gas efficient; upgrade logic in implementation; OpenZeppelin v5 compatible | — |
+| 018 | Checkpoint format | Dict {model, optimizer, scheduler, epoch, best_f1, config{architecture}} | Plain state_dict | config.architecture field enables predictor to auto-detect fusion_output_dim without code change | — |
+| 019 | assert → RuntimeError in ZKML | RuntimeError with message | Python assert | python -O strips assert silently; EZKL cascade means silent failure corrupts circuit | — |
+| 020 | DualPathDataset CSV loading | Vectorised numpy | iterrows() per-row | iterrows() on 68K rows took 45s; vectorised takes <2s | — |
+| 021 | RAG chunk size | 1536 chars, overlap 128 | 512 chars (original) | 512 too small for Solidity exploit context; 1536 preserves full function bodies | Embedding model changes |
+| 022 | GNNEncoder pooling location | Deferred to CrossAttentionFusion | Pooled inside GNNEncoder | Early pooling destroys node-level detail before fusion; cross-attention needs per-node embeddings so withdraw() can query "call.value" tokens individually | — |
+| 023 | TransformerEncoder output | All token embeddings [B,512,768] | CLS only [B,768] | CLS is a blurry contract-level summary; cross-attention requires all 512 positions so each GNN node can identify its specific relevant tokens | — |
+| 024 | LoRA target modules | query + value projections only | All attention / FFN | Q+V control what CodeBERT attends to and extracts; 295K trainable params with maximum security-pattern adaptation | — |
+| 025 | CrossAttentionFusion output dim | 128 | 64 (old FusionLayer) | Both enriched modalities (256-dim each after pooling) concatenated → 512 → 128; wider justified because both paths contribute semantically enriched representations | Retrain shows diminishing returns; reduce if VRAM constrained |
+| 026 | batch_size for cross-attention | 16 (v1/v2) / 32 (v3) | 32 during v1/v2 | CrossAttentionFusion padding [B,max_nodes,256] + LoRA gradients increase VRAM vs old frozen concat+MLP; 16 safe on RTX 3070 8GB; v3 used 32 successfully | GPU with >8GB VRAM |
+| 027 | RAG ingestion scheduling | Dagster single asset `rag_index` | Multi-asset fake chain | Old 3-asset chain had no data flow, re-fetched source 3×; single asset encapsulates full pipeline with honest lineage | True multi-asset lineage with IO managers |
+| 028 | Deduplication strategy | JSON file of seen document hashes | SQLite | Simple, human-readable, git-trackable at current scale (~1K docs); upgradable to SQLite without API change | Document count >100K |
+| 029 | RAG index write safety | FileLock + atomic rename (.tmp → real) | In-place overwrites | Concurrent cron/Dagster/feedback cycles could corrupt index; lock serialises writes; atomic rename prevents partial reads on crash | — |
+| 030 | Feedback loop back-pressure | Exponential backoff on RPC error (capped 5 min) | Fixed 30s retry | Protects public RPC from hammering; respects provider rate limits | — |
+| 031 | LangGraph parallel deep path | list["rag_research","static_analysis"] return from conditional edge | Sequential rag→static→audit, Send objects | List return from conditional edge is the simplest parallel fan-out; LangGraph executes both in same superstep, audit_check fan-in waits automatically; no explicit sync needed | Needs ordered execution or state write conflicts between parallel branches |
+| 032 | Shared graph extraction core | ml/src/preprocessing/ package (graph_schema.py + graph_extractor.py) | Duplicate inline constants in ast_extractor.py and preprocess.py | Divergence between offline and online feature encoding causes silent accuracy regression with no error signal; single source of truth makes it structurally impossible for them to drift | Never — this is the correct architecture for any dual-pipeline ML system |
+| 033 | GNNEncoder edge-type embeddings | nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim=16) fed to all GATConv layers | Ignore edge_attr (discard computed values) | CALLS vs READS vs WRITES are structurally different patterns; reentrancy requires a CALLS edge back; ignoring edge_attr means attention scores are purely node-feature-based and cannot distinguish relation types | edge_emb_dim causes VRAM pressure; reduce to 8 |
+| 034 | DualPathDataset graph .pt loading | weights_only=True with add_safe_globals allowlist | weights_only=False (pickle-unsafe) | Supply-chain attack: a tampered .pt graph file can execute arbitrary code on every training batch load; allowlist (Data, DataEdgeAttr, DataTensorAttr) is precise; future new PyG classes → add to allowlist rather than reverting | — |
+| 035 | LLM synthesizer model | qwen3.5-9b-ud (MODEL_STRONG) with rule-based fallback | Always rule-based / always LLM | Rule-based fallback guarantees output when LM Studio is unavailable; strong model adds narrative and structured reasoning when available (T3-A, 2026-05-04) | — |
+| 036 | Cross-encoder reranking | rerank=False default (opt-in) | Always on | sentence-transformers is an optional dependency; off by default to keep RAG MCP lightweight; enable per-call with rerank=True (T3-B, 2026-05-04) | Default to True once sentence-transformers is declared in pyproject.toml |
+| 037 | API thresholds response key | "thresholds": list[float] per-class | "threshold": single float | Single float was the fallback threshold, not meaningful per-class info; list enables downstream consumers to understand per-class sensitivity (Fix #6, 2026-05-04, breaking) | — |
+| 038 | Patience sidecar | JSON sidecar written every epoch | Patience only in checkpoint | Checkpoint patience_counter was always 0 when best was found (saved on best); sidecar tracks real patience across all epochs; enables safe resume without resetting early-stop clock (Fix #23, 2026-05-04) | — |
