@@ -6,7 +6,35 @@ WHAT CHANGED FROM ORIGINAL:
     - Returns (node_embeddings [N, hidden_dim], batch [N]) instead of [B, hidden_dim]
     - Pooling is now deferred to CrossAttentionFusion so each node can
       query CodeBERT token embeddings BEFORE averaging destroys node-level detail
+      
+ARCHITECTURE DETAILS (current defaults)
+───────────────────────────────────────
+Layer 1 (GATConv):
+  Input:         x [N, 8], edge_index [2, E], edge_emb [E, 16] (if present)
+  Hidden:        heads=8, concat=True → each head outputs 64/8 = 8 dims
+  Output:        [N, 64] (8 heads × 8 dims)
+  After:         ReLU + Dropout(0.2)
 
+Layer 2 (GATConv):
+  Input:         [N, 64], same edge_index & edge_emb
+  Hidden:        8 heads, concat=True → each 8 dims
+  Output:        [N, 64]
+  After:         ReLU + Dropout(0.2)
+
+Layer 3 (GATConv):
+  Input:         [N, 64]
+  Hidden:        heads=1, concat=False → output is exactly hidden_dim=64
+  Output:        [N, 64]
+  After:         (no activation – direct to CrossAttentionFusion)
+
+Edge embeddings:
+  nn.Embedding(5, 16) → 80 trainable parameters
+  Embedding vector is added to attention logits during message passing,
+  making edge type influence attention weights.
+  When edge_attr=None (old .pt files), a zero tensor of shape [E, 16]
+  is used, degrading gracefully to type‑agnostic attention.
+
+Total trainable parameters in GNN (including edge embedding): ~21.5K
 P0-B/C CHANGES (2026-05-02):
     - edge_attr support added: GATConv now receives learned edge-type embeddings
       (CALLS, READS, WRITES, EMITS, INHERITS → 5-class → R^edge_emb_dim vector)
@@ -87,6 +115,7 @@ class GNNEncoder(nn.Module):
         # Edge type embedding: int ID [E] → dense vector [E, edge_emb_dim]
         # NUM_EDGE_TYPES=5 from graph_schema (CALLS, READS, WRITES, EMITS, INHERITS)
         _edge_dim = None
+        
         if use_edge_attr:
             self.edge_emb = nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)
             _edge_dim = edge_emb_dim
