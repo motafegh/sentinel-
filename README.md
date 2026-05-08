@@ -267,17 +267,16 @@ thresholds is a list of 10 per-class values (index order matches CLASS_NAMES).
 
 ---
 
-Port Map
-
-Port Service
-8000 M6 API Gateway (planned)
-8001 M1 FastAPI inference
-8010 sentinel-inference MCP
-8011 sentinel-rag MCP
-8012 sentinel-audit MCP
-1234 LM Studio (Windows host)
-3000 Dagster UI
-5000 MLflow UI
+| Port | Service |
+|------|---------|
+| 8000 | M6 API Gateway (planned) |
+| 8001 | M1 FastAPI inference |
+| 8010 | sentinel-inference MCP |
+| 8011 | sentinel-rag MCP |
+| 8012 | sentinel-audit MCP |
+| 1234 | LM Studio (Windows host) |
+| 3000 | Dagster UI |
+| 5000 | MLflow UI |
 
 ---
 
