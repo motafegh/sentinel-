@@ -311,21 +311,22 @@ poetry run python scripts/smoke_audit_mcp.py
 
 Violating any of these without the matching rebuild or retrain produces silent failures.
 
-Constraint Locked value Break condition
-GNNEncoder in_channels 8 Rebuild all 68K graph .pt files + retrain
-CodeBERT model microsoft/codebert-base Rebuild token files + retrain
-MAX_TOKEN_LENGTH 512 Rebuild token files + retrain
-CrossAttentionFusion output_dim 128 Rebuild ZKML circuit + redeploy verifier
-CLASS_NAMES order indices 0–9 stable Silent wrong-class mapping
-FEATURE_SCHEMA_VERSION "v1" Bump only alongside graph rebuild; invalidates inference cache
-NUM_EDGE_TYPES 5 (CALLS/READS/WRITES/EMITS/INHERITS) Rebuild edge_emb layer + retrain
-ONNX opset 11 EZKL requirement
-solc for ZKMLVerifier.sol ≤ 0.8.17 Halo2 assembly constraint
-solc for all other contracts 0.8.20 
-weights_only=False on torch.load required LoRA state dict is not a plain dict
-TRANSFORMERS_OFFLINE set at shell level Cannot be set inside Python
+| Constraint | Locked value | Break condition |
+|-----------|-------------|----------------|
+| `GNNEncoder in_channels` | **8** | Rebuild all 68K graph `.pt` files + retrain |
+| CodeBERT model | `microsoft/codebert-base` | Rebuild token files + retrain |
+| `MAX_TOKEN_LENGTH` | **512** | Rebuild token files + retrain |
+| `CrossAttentionFusion output_dim` | **128** | Rebuild ZKML circuit + redeploy verifier |
+| `CLASS_NAMES` order | indices **0–9 stable** | Silent wrong-class mapping |
+| `FEATURE_SCHEMA_VERSION` | **`"v1"`** | Bump only alongside graph rebuild; invalidates inference cache |
+| `NUM_EDGE_TYPES` | **5** (CALLS/READS/WRITES/EMITS/INHERITS) | Rebuild edge_emb layer + retrain |
+| ONNX opset | **11** | EZKL requirement |
+| `solc` for ZKMLVerifier.sol | **≤ 0.8.17** | Halo2 assembly constraint |
+| `solc` for all other contracts | **0.8.20** | |
+| `weights_only=False` on `torch.load` | required | LoRA state dict is not a plain dict |
+| `TRANSFORMERS_OFFLINE` | set at shell level | Cannot be set inside Python |
 
-Full details in docs/project-spec/SENTINEL-CONSTRAINTS.md.
+Full details in `docs/project-spec/SENTINEL-CONSTRAINTS.md`. 
 
 ---
 
@@ -342,40 +343,33 @@ After landing a change that affects architecture, data contracts, or locked cons
   4. Re-run affected tests before merging
 ```
 
-The old monolithic SENTINEL-SPEC.md is superseded by the split specifications in docs/project-spec/.
 
 ---
 
 ## Module & Architecture Documentation
 
-Split specification (immutable project facts)
+### Split specification (immutable project facts)
+Located in `docs/project-spec/`. Load only what you need using the index:
 
-Located in docs/project-spec/. Load only what you need using the index:
+- [`SENTINEL-INDEX.md`](docs/project-spec/SENTINEL-INDEX.md) — task → file routing
+- [`SENTINEL-OVERVIEW.md`](docs/project-spec/SENTINEL-OVERVIEW.md) — system design, data flow, ports
+- [`SENTINEL-CONSTRAINTS.md`](docs/project-spec/SENTINEL-CONSTRAINTS.md) — locked constants (must read before any implementation)
+- [`SENTINEL-ADR.md`](docs/project-spec/SENTINEL-ADR.md) — all Architecture Decision Records
+- [`SENTINEL-M1-ML.md`](docs/project-spec/SENTINEL-M1-ML.md) — ML model architecture, training, inference
+- [`SENTINEL-M2-ZKML.md`](docs/project-spec/SENTINEL-M2-ZKML.md) — ZK proof pipeline
+- [`SENTINEL-M3-MLOPS.md`](docs/project-spec/SENTINEL-M3-MLOPS.md) — MLflow, DVC, Dagster, drift detection
+- [`SENTINEL-M4-AGENTS.md`](docs/project-spec/SENTINEL-M4-AGENTS.md) — LangGraph, MCP servers, RAG
+- [`SENTINEL-M5-M6-PLATFORM.md`](docs/project-spec/SENTINEL-M5-M6-PLATFORM.md) — Solidity contracts + Integration API
+- [`SENTINEL-EVAL-BACKLOG.md`](docs/project-spec/SENTINEL-EVAL-BACKLOG.md) — retrain protocol, audits, backlog
+- [`SENTINEL-COMMANDS.md`](docs/project-spec/SENTINEL-COMMANDS.md) — quick‑reference CLI commands
 
-· SENTINEL-INDEX.md — task → file routing
-· SENTINEL-OVERVIEW.md — system design, data flow, ports
-· SENTINEL-CONSTRAINTS.md — locked constants (must read before any implementation)
-· SENTINEL-ADR.md — all Architecture Decision Records
-· SENTINEL-M1-ML.md — ML model architecture, training, inference
-· SENTINEL-M2-ZKML.md — ZK proof pipeline
-· SENTINEL-M3-MLOPS.md — MLflow, DVC, Dagster, drift detection
-· SENTINEL-M4-AGENTS.md — LangGraph, MCP servers, RAG
-· SENTINEL-M5-M6-PLATFORM.md — Solidity contracts + Integration API
-· SENTINEL-EVAL-BACKLOG.md — retrain protocol, audits, backlog
-· SENTINEL-COMMANDS.md — quick‑reference CLI commands
+### Per‑module READMEs
+- [ML Core](ml/README.md) — model architecture, training, inference, drift detection
+- [Agents / MCP / RAG](agents/README.md) — orchestration, servers, retrieval
+- [ZKML](zkml/README.md) — proxy model, EZKL pipeline, proof generation
+- [Contracts](contracts/README.md) — Foundry build, deploy, ZKMLVerifier handling
 
-## Per‑module READMEs
-
-· ML Core — model architecture, training, inference, drift detection
-· Agents / MCP / RAG — orchestration, servers, retrieval
-· ZKML — proxy model, EZKL pipeline, proof generation
-· Contracts — Foundry build, deploy, ZKMLVerifier handling
-
-## Tracking
-
-· docs/STATUS.md — what’s built, what’s broken, what’s next
-· docs/ROADMAP.md — upcoming work in priority order
-· docs/changes/ — dated changelogs for every significant change
-
-
-
+### Tracking
+- [`docs/STATUS.md`](docs/STATUS.md) — what’s built, what’s broken, what’s next
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — upcoming work in priority order
+- [`docs/changes/`](docs/changes/) — dated changelogs for every significant change
