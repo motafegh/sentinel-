@@ -57,6 +57,10 @@ training starts. A hash mismatch means you edited something forbidden.
 
 ## 4. Search space (knobs you may vary)
 
+All runs fine-tune from the v3 checkpoint (`ml/checkpoints/multilabel-v3-fresh-60ep_best.pt`)
+with model-only resume (fresh optimizer). This means 5 confirm epochs start from F1≈0.5069
+territory, making the gate achievable. Do NOT pass `--base-checkpoint ""` during v4 sprint.
+
 ```
 --loss-fn       ∈ {bce, focal}        (focal is EXPERIMENTAL — also test bce+pos_weight)
 --gamma         ∈ [1.0, 3.0]          (only relevant with loss_fn=focal)

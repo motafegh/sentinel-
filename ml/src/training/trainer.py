@@ -663,37 +663,63 @@ def train(config: TrainConfig) -> dict:
         if not isinstance(ckpt, dict) or "model" not in ckpt:
             raise RuntimeError(f"Invalid checkpoint format: {config.resume_from}")
 
-        model.load_state_dict(ckpt["model"])
-        start_epoch      = ckpt.get("epoch", 0) + 1
-        best_f1          = ckpt.get("best_f1", 0.0)
-        # ── Fix #11: restore patience counter ──────────────────────────────
-        patience_counter = ckpt.get("patience_counter", 0)
-
-        # ── Fix #23: override patience_counter from per-epoch state file ───
-        _resume_state_path = Path(config.resume_from).with_suffix(".state.json")
-        if _resume_state_path.exists():
-            _saved_state = json.loads(_resume_state_path.read_text())
-            _state_epoch = _saved_state.get("epoch", 0)
-            if _state_epoch >= start_epoch - 1:
-                patience_counter = _saved_state.get("patience_counter", patience_counter)
-                logger.info(
-                    f"patience_counter overridden from state file "
-                    f"(epoch {_state_epoch}): "
-                    f"{patience_counter}/{config.early_stop_patience}"
-                )
-        else:
+        missing, unexpected = model.load_state_dict(ckpt["model"], strict=False)
+        lora_skipped = [k for k in missing if "lora_" in k]
+        other_missing = [k for k in missing if "lora_" not in k]
+        if lora_skipped:
             logger.warning(
-                "No .state.json sidecar found alongside the resume checkpoint — "
-                f"patience_counter initialised from checkpoint value ({patience_counter}). "
-                "Non-improvement epochs before the interruption are NOT counted. "
-                "State sidecars are written after every epoch starting with this run."
+                f"Resume: {len(lora_skipped)} LoRA keys not loaded "
+                f"(lora_r mismatch — LoRA adapters re-initialised fresh). "
+                f"GNN/fusion/classifier weights loaded from checkpoint."
+            )
+        if other_missing:
+            raise RuntimeError(
+                f"Resume: {len(other_missing)} non-LoRA keys missing from checkpoint: "
+                f"{other_missing[:5]} ..."
             )
 
-        logger.info(
-            f"Resumed from epoch {start_epoch-1} | "
-            f"best_f1={best_f1:.4f} | "
-            f"patience_counter={patience_counter}/{config.early_stop_patience}"
-        )
+        if config.resume_model_only:
+            # ── Fine-tune mode: weights loaded, everything else starts fresh ──
+            # start_epoch / best_f1 / patience_counter stay at their defaults
+            # (1 / 0.0 / 0) so the epoch counter, early stopping, and checkpoint
+            # logic all behave as if this is a brand-new run.
+            logger.info(
+                f"Model-only resume (fine-tune) — weights from checkpoint epoch "
+                f"{ckpt.get('epoch', 0)} (raw F1={ckpt.get('best_f1', 0.0):.4f}). "
+                f"Epoch counter, patience, and best_f1 reset to fresh start."
+            )
+        else:
+            # ── Full resume: restore epoch counter and early-stopping state ──
+            start_epoch      = ckpt.get("epoch", 0) + 1
+            best_f1          = ckpt.get("best_f1", 0.0)
+            # Fix #11: restore patience counter
+            patience_counter = ckpt.get("patience_counter", 0)
+
+            # Fix #23: override patience_counter from per-epoch state file
+            _resume_state_path = Path(config.resume_from).with_suffix(".state.json")
+            if _resume_state_path.exists():
+                _saved_state = json.loads(_resume_state_path.read_text())
+                _state_epoch = _saved_state.get("epoch", 0)
+                if _state_epoch >= start_epoch - 1:
+                    patience_counter = _saved_state.get("patience_counter", patience_counter)
+                    logger.info(
+                        f"patience_counter overridden from state file "
+                        f"(epoch {_state_epoch}): "
+                        f"{patience_counter}/{config.early_stop_patience}"
+                    )
+            else:
+                logger.warning(
+                    "No .state.json sidecar found alongside the resume checkpoint — "
+                    f"patience_counter initialised from checkpoint value ({patience_counter}). "
+                    "Non-improvement epochs before the interruption are NOT counted. "
+                    "State sidecars are written after every epoch starting with this run."
+                )
+
+            logger.info(
+                f"Full resume from epoch {start_epoch-1} | "
+                f"best_f1={best_f1:.4f} | "
+                f"patience_counter={patience_counter}/{config.early_stop_patience}"
+            )
 
         ckpt_cfg = ckpt.get("config", {})
 
