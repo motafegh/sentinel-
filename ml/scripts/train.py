@@ -172,6 +172,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--log-interval", type=int, default=100, help="Log loss every N batches")
     p.add_argument("--focal-gamma", type=float, default=2.0,  help="FocalLoss focusing exponent (used when --loss-fn focal)")
     p.add_argument("--focal-alpha", type=float, default=0.25, help="FocalLoss class-balance weight (used when --loss-fn focal)")
+    p.add_argument(
+        "--weighted-sampler",
+        choices=["none", "DoS-only", "all-rare"],
+        default="none",
+        help=(
+            "Weighted random sampler strategy for rare-class upsampling. "
+            "DoS-only: upsample DenialOfService class 39× (137 vs 5343 IntegerUO samples). "
+            "all-rare: inverse class-count weighting (singletons get highest weight)."
+        ),
+    )
 
     # --- Resume ---
     p.add_argument(
@@ -254,6 +264,7 @@ def main() -> None:
         resume_from           = args.resume,
         resume_model_only     = args.resume_model_only,
         force_optimizer_reset = args.force_optimizer_reset,
+        use_weighted_sampler  = args.weighted_sampler,
     )
 
     train(config)
