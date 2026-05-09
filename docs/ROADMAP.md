@@ -1,6 +1,6 @@
 # SENTINEL — Roadmap
 
-Last updated: 2026-05-05 (v3 training complete)
+Last updated: 2026-05-10 (v4 experiment 1 running; autoresearch harness built; v3 analysis complete)
 
 This file tracks upcoming work in priority order. Completed items move to
 `docs/changes/` as dated changelogs. See `docs/STATUS.md` for current module state.
@@ -41,17 +41,27 @@ implemented, except for a single pending sub‑item noted below.
 
 ## In Progress
 
-1. **v4 retrain** — v3 plateaued at raw F1 0.4715 with no improvement from epoch ~54.
-   Recommended changes for v4:
-   - `--loss-fn focal --focal-gamma 2.0` — penalise easy negatives, lift weak classes
-   - `--lora-r 16 --lora-alpha 32` — double LoRA rank to break capacity ceiling
-   - Weighted sampler for DenialOfService (137 support — 39× underrepresented)
-   - Success gate: tuned F1-macro > **0.5069** on same `val_indices.npy`
-   - Full command in `docs/changes/2026-05-05-v3-training-complete.md`
+1. **v4 retrain — experiment 1 running overnight (2026-05-09→10)**
 
-2. **Autoresearch setup** — now unblocked:
-   - Implement `ml/scripts/auto_experiment.py` (thin CLI wrapper printing `SENTINEL_SCORE`).
-   - Write `ml/autoresearch/program.md` (metric=tuned F1-macro, knobs: focal gamma, LoRA r, class weights).
+   Deep analysis of v3 MLflow curves (see `docs/changes/2026-05-09-v3-analysis-and-v4-direction.md`) revealed the plateau was **LR schedule exhaustion**, not capacity ceiling — train loss was still decreasing at epoch 60. The fix is a fresh LR cycle from v3 weights, not architecture changes.
+
+   **Experiment 1 (running):** fine-tune from v3, lr=1e-4, 30 epochs, batch=16, lora_r=8 (same as v3).
+   - Success: raw F1 > 0.4715 → LR hypothesis confirmed → continue with tuned LR.
+   - Failure: F1 flat → capacity bottleneck → experiment 2 with lora_r=16.
+
+   **Experiment 2 (pending exp 1 results):**
+   - If exp 1 succeeded: try lora_r=16 fine-tune from v3 (more capacity for CTU, ExternalBug, Timestamp).
+   - If exp 1 failed: full 60-epoch run from scratch with lora_r=16.
+
+   **DoS (DenialOfService):** 137 training samples — data problem, not hyperparameter problem. Val F1 fluctuates 0.11–0.27 every epoch throughout all 60 epochs. Weighted sampler helps exposure but ceiling is ~0.40 tuned F1. Add DoS-only sampler as secondary experiment only after primary LR/capacity question is answered.
+
+   **Focal loss:** the `FocalLoss` implementation is multi-label compatible (element-wise), but α=0.25 is designed for binary detection (100k easy backgrounds). With DoS pos_weight=68 in BCE, switching to focal α=0.25 reduces DoS gradient signal by ~200×. Do not use focal without tuning α > 0.5 first. Not the first experiment.
+
+   Success gate: tuned val F1-macro > **0.5069** on `ml/data/splits/val_indices.npy`.
+
+2. **Autoresearch harness — built, loop redesign in progress**
+
+   `ml/scripts/auto_experiment.py`, `ml/autoresearch/program.md`, `ml/autoresearch/README.md` committed (commits 2edf382, fa541c0, 6f3b7d1). Analysis-first loop adopted: read per-class results → identify what moved and why → propose one targeted change → run → keep/revert. Not a grid search.
 
 3. **M6 Integration API** — build after the building blocks are solid:
    - Design auth/rate‑limit (see Security Design below).
@@ -157,8 +167,8 @@ The correct change is adding an `"all"` value to the existing `multi_contract_po
 ### ML / Training
 - **Sliding-window NLP**: handling > 512 tokens without long-context models — T1-C (done)
 - **Content-addressed caching**: Redis/disk pattern for ML feature store — T1-A (done)
-- **LoRA rank tuning**: r=8 used in v3 → try r=16 for v4 (v3 plateaued at raw F1 0.4715, suggesting capacity ceiling)
-- **FocalLoss**: `TrainConfig(loss_fn="focal")` — down-weights easy negatives; FP32 cast fixed
+- **LoRA rank tuning**: r=8 used in v3 → r=16 is experiment 2. NOTE: v3 plateau was LR exhaustion (train loss still falling at ep60), not capacity ceiling — verify with exp 1 (fresh LR cycle) before assuming lora_r is the bottleneck.
+- **FocalLoss**: `TrainConfig(loss_fn="focal")` — element-wise, multi-label compatible. FP32 cast fixed. CAUTION: α=0.25 (default) reduces DoS positive gradient by ~200× vs BCE pos_weight=68. Must tune α > 0.5 for rare-class multi-label. Do not use as drop-in replacement.
 - **KS drift detection**: `scipy.stats.ks_2samp` — production ML monitoring standard
 - **MLflow Model Registry**: staged rollout (None → Staging → Production) with audit trail
 
