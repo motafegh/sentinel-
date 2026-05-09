@@ -16,6 +16,38 @@ Hardware target: **Lenovo laptop, RTX 3070 mobile, 8 GB VRAM**, Windows.
 
 ---
 
+## 0. Framing — Sprint Tool, Not Permanent Cage
+
+This harness exists to drive the **v4 sprint** — a conservative,
+hyperparameter-only search against a fixed architecture, with the
+single goal of beating v3's tuned F1-macro 0.5069.
+
+The "must-not-touch" / "locked file" / "hash guard" language
+throughout this document is therefore **scoped to the v4 sprint**, not
+a permanent cage. Two consequences:
+
+- **Architecture lock = v4 sprint only.** The locked-files hash guard
+  in §7 is a v4-sprint discipline. After v4 closes, the same harness
+  grows a `--model-file` flag (§14) and the architectural search of
+  the Architecture Playground (M1 plan §6, deep-dive §12) becomes its
+  primary use.
+- **Downstream cost is already due.** `zkml/` and `contracts/` have
+  source bumped from binary to multi-label but have never been
+  executed in production. So the conventional "changing
+  fusion_output_dim cascades into a full ZKML rebuild" argument is
+  weaker than usual — that rebuild is owed regardless. Don't let it
+  scare you off Phase B exploration later.
+- **FocalLoss is experimental in our setting.** Multi-label focal in
+  `trainer.py` has never been validated end-to-end against BCE in our
+  10-class setup. The search space below puts `loss_fn ∈ {bce, focal}`
+  precisely so v4 produces a recorded answer either way — see §5.2.
+
+Read the rest of this document with that lens: it's a conservative
+sprint tool, deliberately built to also be the foundation for the
+open-ended Phase B that comes after v4.
+
+---
+
 ## 1. Reality Check Before Anything Else
 
 Two hard mismatches mean we **cannot use either upstream as-is**.
@@ -136,27 +168,32 @@ Knobs **not** exposed (require source change before agent can vary):
 
 ---
 
-## 3. Critical Architectural Constraints The Agent Must Not Touch
+## 3. Architectural Constraints For The v4 Sprint
 
-From `SENTINEL-INDEX.md` §"Critical Cross-Cutting Rules" — **any agent
-that changes these silently breaks downstream M2/M5**:
+These are held constant **only for the v4 sprint** so the agent's
+output is directly comparable to v3's 0.5069 baseline. They are not a
+permanent freeze — Phase B (M1 plan §6, deep-dive §12) is the explicit
+place where they get broken on purpose.
 
 ```
-fusion_output_dim = 128              ← LOCKED
-GNNEncoder in_channels = 8           ← LOCKED (tied to 68,523 graphs)
-NUM_CLASSES = 10                     ← LOCKED (append-only)
-edge_attr shape = [E] 1-D            ← LOCKED
-ARCHITECTURE = "cross_attention_lora" ← LOCKED for v4 to be comparable to v3
+fusion_output_dim = 128              ← v4 sprint only (cf. ADR-025)
+GNNEncoder in_channels = 8           ← v4 sprint only (tied to current graph extraction)
+NUM_CLASSES = 10                     ← permanent (append-only; safe to extend, never to remove)
+edge_attr shape = [E] 1-D            ← v4 sprint only (graph schema)
+ARCHITECTURE = "cross_attention_lora" ← v4 sprint only — exact reason this lock exists
 ```
 
-Plus:
+Permanent rules (apply in v4 *and* in the playground):
 
-- `val_indices.npy` is the gate — agent must never regenerate splits
+- `val_indices.npy` is the gate — never regenerated; it is the
+  permanent test harness, not part of the architecture
 - Active checkpoint name format is `multilabel-v<N>-<runname>_best.pt`
-- MLflow experiment for v4 is `sentinel-retrain-v4` (do not pollute v3's)
+- MLflow experiment for v4 is `sentinel-retrain-v4` (do not pollute v3's);
+  the playground will use a different experiment (`sentinel-playground-*`)
 
-The skill file (`program.md` in §5.2) **enumerates these and forbids
-their modification explicitly**.
+The skill file (`program.md` in §5.2) enumerates the v4-sprint locks
+and forbids modification **for the duration of the sprint**. Section
+14 below records how this is relaxed for Phase B.
 
 ---
 
@@ -259,35 +296,43 @@ Skill file for the agent. Mirrors karpathy's `program.md` structure but
 encodes SENTINEL constraints. Required sections:
 
 ```
-## 1. Goal
+## 1. Goal (v4 sprint)
    Maximise tuned val F1-macro on ml/data/splits/val_indices.npy.
    Gate: > 0.5069 (v3 baseline).
+   This is the v4 sprint — conservative hyperparameter search over a
+   fixed architecture. The Architecture Playground (post-v4) opens
+   only after this sprint closes.
 
-## 2. Allowed file edits
+## 2. Allowed file edits (v4 sprint mode)
    ONLY ml/src/training/trainer.py
    AND ml/scripts/auto_experiment.py CLI args.
-   READ-ONLY: everything else, especially:
-     - ml/src/preprocessing/  (graph schema is locked)
-     - ml/src/models/         (architecture is locked: ADR-007, fusion=128)
-     - ml/data/splits/        (val_indices.npy must not change)
-     - ml/data/graphs/, ml/data/tokens/   (data freeze)
-     - zkml/, contracts/      (downstream — not your concern)
+   READ-ONLY for the v4 sprint:
+     - ml/src/preprocessing/  (graph schema — relaxed in playground)
+     - ml/src/models/         (architecture — relaxed in playground)
+     - ml/data/splits/        (val_indices.npy — permanently locked)
+     - ml/data/graphs/, ml/data/tokens/   (data freeze for v4)
+     - zkml/, contracts/      (downstream — not your concern in either phase)
 
-## 3. Forbidden changes
+## 3. Forbidden changes (v4 sprint mode)
    - Anything that touches fusion_output_dim, NUM_CLASSES,
      GNNEncoder.in_channels, ARCHITECTURE, edge_attr shape
+     (these are v4-sprint locks; the Architecture Playground is the
+     place to break them, not here)
    - Adding dependencies (no `poetry add`)
    - Regenerating splits or graphs
    - Touching MLflow experiment naming convention
 
 ## 4. Search space (knobs you may vary)
-   focal_gamma     ∈ [1.0, 3.0]
-   focal_alpha     ∈ [0.20, 0.40]
+   focal_gamma     ∈ [1.0, 3.0]    (only relevant when loss_fn="focal")
+   focal_alpha     ∈ [0.20, 0.40]  (only relevant when loss_fn="focal")
    lora_r          ∈ {8, 16}     (32 forbidden on 8 GB)
    lora_alpha      ∈ {16, 32}
    batch_size      ∈ {8, 16}     (32 forbidden on 8 GB)
    lr              ∈ [1e-4, 5e-4]
-   loss_fn         ∈ {"bce", "focal"}
+   loss_fn         ∈ {"bce", "focal"}    (focal is EXPERIMENTAL in
+                                          multi-label — explicitly
+                                          test BCE+pos_weight too;
+                                          a BCE win is a valid finding)
    weighted_sampler∈ {None, "DoS-only", "all-rare"}
 
 ## 5. Loop
@@ -385,28 +430,42 @@ poetry run python ml/scripts/auto_experiment.py \
 
 ---
 
-## 7. Architecture-Freeze Guard (defence-in-depth)
+## 7. v4-Sprint Architecture-Freeze Guard (defence-in-depth)
 
 Even with `program.md` listing forbidden edits, the agent might attempt
 them. Add a runtime guard inside `auto_experiment.py` pre-flight:
 
 ```python
-# Hash-pin the locked files; refuse to run if any changed
-LOCKED = {
+# Hash-pin the v4-sprint-locked files; refuse to run if any changed.
+# Mode: "v4-sprint" (default) | "playground" (relaxed; see §14)
+LOCKED_V4_SPRINT = {
     "ml/src/models/sentinel_model.py": "<sha256>",
     "ml/src/models/gnn_encoder.py":    "<sha256>",
     "ml/src/preprocessing/graph_schema.py": "<sha256>",
     "ml/src/preprocessing/graph_extractor.py": "<sha256>",
     "ml/data/splits/val_indices.npy": "<sha256>",
 }
+
+PERMANENTLY_LOCKED = {
+    # The eval split is the test harness; locked in every mode.
+    "ml/data/splits/val_indices.npy": "<sha256>",
+}
 ```
 
-Hashes computed once at plan-acceptance time. If a run starts and any
-hash mismatches, exit `1` with a clear message. The agent's loop will
-then reset and try a different edit.
+Hashes computed once at plan-acceptance time. The guard runs in two
+modes (set via `--mode v4-sprint` (default) or `--mode playground`):
+
+- **v4-sprint mode (default):** all `LOCKED_V4_SPRINT` files must
+  match. Mismatch → exit 1.
+- **playground mode (post-v4):** only `PERMANENTLY_LOCKED` is
+  enforced. Architecture / graph schema files are intentionally free
+  to vary. The harness still refuses to run if `val_indices.npy`
+  changes — the test harness is permanent (see §3).
 
 This is not a security control (the agent could disable it) — it's a
-guardrail against accidental drift.
+guardrail against accidental drift. In v4-sprint mode it keeps numbers
+comparable to 0.5069. In playground mode it keeps the eval harness
+honest while allowing architectural exploration.
 
 ---
 
@@ -509,12 +568,80 @@ Each phase is an independent commit; do not bundle.
 
 ---
 
-## 13. Out of Scope (explicitly)
+## 13. Out of Scope **for the v4 sprint** (explicitly)
 
-- Forking either upstream autoresearch repo
-- Running autoresearch's `train.py` (TinyStories GPT) — irrelevant to SENTINEL
-- Multi-GPU search — single 3070 only
-- Distributed search across machines
-- AMD / MacOS / MLX variants of autoresearch
-- Any LLM-driven *architectural* search (ARCHITECTURE is frozen for v4)
-- Search over data preprocessing — graph and token data are frozen
+These are out of scope for the v4 sprint specifically. Items marked
+"→ §14" are explicitly *in* scope for Phase B (post-v4) using the same
+harness, with one CLI flag added.
+
+- Forking either upstream autoresearch repo (permanent — §1.3)
+- Running autoresearch's `train.py` (TinyStories GPT) — irrelevant to SENTINEL (permanent)
+- Multi-GPU search — single 3070 only (permanent — hardware)
+- Distributed search across machines (permanent — single laptop)
+- AMD / MacOS / MLX variants of autoresearch (permanent — hardware)
+- LLM-driven **architectural** search → §14 (in scope post-v4)
+- Search over data preprocessing — graph and token data are frozen for v4 → revisited if Phase B needs it
+- Varying `fusion_output_dim`, GNN backbone, encoder, fusion design → §14
+
+---
+
+## 14. Future Direction — Architectural Search (Phase B)
+
+After the v4 sprint closes, the same harness extends from
+"hyperparameter search over a fixed model" to "model-comparison
+search". The change is small enough to plan for from day one.
+
+### 14.1 The single new CLI flag
+
+```bash
+poetry run python ml/scripts/auto_experiment.py \
+    --regime smoke \
+    --mode playground \
+    --model-file ml/src/models/sentinel_model_gin.py \
+    --fusion-output-dim 96 \
+    --loss-fn bce \
+    ...other knobs...
+```
+
+Implementation note for §5.1: write `auto_experiment.py` so it accepts
+arbitrary keyword overrides and forwards them into the constructed
+`TrainConfig` (or a model-factory layer) rather than hard-coding each
+knob. That way the `--model-file` extension is one CLI flag and one
+import, not a refactor.
+
+### 14.2 What program.md gets in Phase B
+
+A second `program.md` (`ml/autoresearch/program-playground.md`)
+describing the architectural search space — one variant per GNN
+backbone, one per fusion design, one per encoder, etc. The skill file
+points the agent to copy `sentinel_model.py` to a variant filename
+before editing, so `sentinel_model.py` itself stays comparable to v4.
+
+### 14.3 What stays the same
+
+- The `SENTINEL_SCORE=` stdout contract
+- `results.tsv` format (model_file column added)
+- Smoke / confirm two-tier discipline
+- Per-class floor checks (now compared against v4 floors, not v3)
+- Permanent locks on `val_indices.npy` and the response key contract
+
+### 14.4 Where the playground lives in source
+
+```
+ml/playground/                            NEW — top-level for Phase B
+  notes/<branch>.md                       Per-experiment lab notebook
+  README.md                               Operator doc for Phase B
+ml/src/models/sentinel_model.py           Untouched (v4-frozen)
+ml/src/models/sentinel_model_<variant>.py Variant model files (one per experiment)
+ml/autoresearch/program-playground.md     NEW — Phase B skill file
+```
+
+This keeps the v4 model file pristine and easy to compare against, and
+keeps the playground's lab notebook close to the experiments
+themselves.
+
+### 14.5 Cross-references
+
+- M1 plan `2026-05-09-M1-ml-plan.md` §6 — full Architecture Playground plan
+- M1 deep-dive `2026-05-09-M1-ml-deep-dive.md` §12 — phase-level
+  reasoning, axes, ZKML interaction, Phase B acceptance

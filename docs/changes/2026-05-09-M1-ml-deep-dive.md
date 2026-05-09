@@ -14,6 +14,47 @@ constants from `docs/Project-Spec/SENTINEL-INDEX.md` /
 
 ---
 
+## 0. Framing — Learning Sandbox, Not Production Freeze
+
+SENTINEL is a learning project for hybrid ML + ZK + smart-contract
+engineering. This deep-dive is therefore split into two distinct phases
+and they should be read with different lenses:
+
+- **Phase A — v4 sprint (this document, §1–§10):** conservative, frozen
+  architecture, narrow goal (beat 0.5069). The "locked" language below
+  is locked **for this sprint only**, to keep numbers comparable to
+  v3's baseline. It is not a permanent freeze.
+- **Phase B — Architecture Playground (§12):** deliberately open-ended.
+  After v4 closes, the locked dimensions are explicitly available for
+  experimentation. The playground is where the learning happens — the
+  v4 sprint is just the disciplined version of "first beat the existing
+  number".
+
+A few clarifications that the rest of this document refers back to:
+
+- **The downstream ZKML / contracts cascade is already due.** `zkml/`
+  and `contracts/` source was bumped from binary to multi-label
+  (`CIRCUIT_VERSION="v2.0"`, 128→64→32→10) but never executed: no
+  `proving_key.pk`, no real `ZKMLVerifier.sol`, no Sepolia deploy. The
+  conventional "changing fusion_dim forces a downstream rebuild"
+  argument is therefore weaker than usual — that rebuild is owed
+  regardless. This actively *lowers* the cost of upstream architectural
+  exploration in Phase B.
+- **FocalLoss is experimental in our setting.** It was originally
+  written for the binary classifier and the multi-label wrapper (see
+  `ml/src/training/focalloss.py`, FP32 cast applied per Audit #13)
+  has never been validated end-to-end against BCE in 10-class. v4 is
+  the first real comparison. Anywhere this document treats focal loss
+  as a starting point, read it as a hypothesis being tested, not an
+  established improvement.
+- **The autoresearch harness will grow.** §3 (and the autoresearch
+  plan §13–§14) note that post-v4, `auto_experiment.py` should accept
+  a `--model-file` argument so the same loop can drive Phase B's
+  architectural search. Building the harness with that extension in
+  mind today is cheap.
+
+---
+
 ## 1. What's going to happen on M1 (in execution order)
 
 ```
@@ -92,9 +133,10 @@ Solidity source (≤500 KB, UTF-8)
                 └──────────────────────────────────┘
 ```
 
-**Locked dimensions** (any change cascades into M2 CIRCUIT_VERSION
-bump, ONNX re-export, full EZKL rebuild, `ZKMLVerifier.sol` redeploy
-on Sepolia, and `AuditRegistry.upgradeToAndCall` to swap verifier):
+**Locked-for-the-v4-sprint dimensions.** These are held constant only
+so v4's tuned F1-macro is directly comparable to v3's 0.5069 baseline.
+They are *not* a permanent freeze — the Architecture Playground (§12)
+is the place to break them deliberately.
 
 ```
 in_channels       = 8         (GNN node features)
@@ -103,6 +145,15 @@ NUM_CLASSES       = 10        (append-only; WeakAccessMod excluded)
 edge_attr shape   = [E] 1-D
 ARCHITECTURE      = "cross_attention_lora"
 ```
+
+Changing any of these *during* v4 invalidates the comparison and (if
+ever deployed) cascades into M2 (`CIRCUIT_VERSION` bump → ONNX re-export
+→ EZKL rebuild → `ZKMLVerifier.sol` regenerate → Sepolia redeploy →
+`AuditRegistry.upgradeToAndCall`). Note however that the M2/M5
+cascade is *already required* (the binary→multi-label transition was
+made in source but never run in production), so the downstream cost of
+breaking these locks **after** v4 is much lower than it sounds — see
+§12.2.
 
 ### 2.2 Process design
 
@@ -175,18 +226,24 @@ loop (until 12 confirms / 3 below-gate streak / Ctrl-C):
 
 ## 3. Decisions (taken or to be taken)
 
-### Already taken (locked)
+### Already taken (locked **for the v4 sprint**, revisited in §12)
 
-| Decision | Source |
-|---|---|
-| ARCHITECTURE = `cross_attention_lora` for v4 (comparable to v3) | M1 plan §1, §2.1 |
-| Use focal loss + LoRA r=16 + DoS weighted sampler as starting point | ROADMAP §"In Progress" §1, M1 plan §2.2 |
-| Same `val_indices.npy` as v3 (no regeneration) | EVAL-BACKLOG §"Active Baseline" |
-| Per-class threshold tuning (JSON sidecar) is mandatory | INDEX §"Critical Cross-Cutting Rules" |
-| API response key is `thresholds` (list), not `threshold` | Fix #6, M1 plan §1 (breaking change) |
-| No "confidence" field anywhere | Track 3 removal, INDEX §"Critical" |
-| Port autoresearch *pattern*, don't fork either upstream | autoresearch plan §1.3 |
-| Two-tier search (smoke / confirm) for 8 GB VRAM | autoresearch plan §4 |
+| Decision | Source | Sprint scope |
+|---|---|---|
+| ARCHITECTURE = `cross_attention_lora` for v4 (comparable to v3) | M1 plan §1, §2.1 | v4 only |
+| Try focal loss + LoRA r=16 + DoS weighted sampler as a starting point | ROADMAP §"In Progress" §1, M1 plan §2.2 | hypothesis to validate (focal loss is **experimental** in multi-label — see §0) |
+| Same `val_indices.npy` as v3 (no regeneration) | EVAL-BACKLOG §"Active Baseline" | permanent — needed as a stable test harness |
+| Per-class threshold tuning (JSON sidecar) is mandatory | INDEX §"Critical Cross-Cutting Rules" | permanent contract |
+| API response key is `thresholds` (list), not `threshold` | Fix #6, M1 plan §1 (breaking change) | permanent contract |
+| No "confidence" field anywhere | Track 3 removal, INDEX §"Critical" | permanent contract |
+| Port autoresearch *pattern*, don't fork either upstream | autoresearch plan §1.3 | permanent |
+| Two-tier search (smoke / confirm) for 8 GB VRAM | autoresearch plan §4 | permanent (laptop hardware constraint) |
+
+The architecture lock is the only sprint-only entry — the rest are
+either permanent API contracts or stable hardware constraints. After
+v4, only ARCHITECTURE / `fusion_output_dim` / `in_channels` /
+`edge_attr` shape become explorable; the eval split, response keys,
+and search harness contract stay.
 
 ### Open decisions (operator-owned)
 
@@ -545,9 +602,10 @@ DoS-affected users care about. The audit chain (M5 on-chain, M2 ZK)
 inherits whatever the model claims; promoting a class-regressing model
 makes that audit cryptographically guaranteed but factually weaker.
 
-### 11.4 What "M1 done" looks like
+### 11.4 What "the v4 sprint done" looks like
 
-- v3 superseded by v4 in `docs/STATUS.md`
+- v3 superseded by v4 in `docs/STATUS.md` (or v4 sprint formally
+  closed if no winner emerged after the autoresearch budget)
 - v4 thresholds JSON committed alongside checkpoint
 - All audit hardening items from §10.3 closed
 - `auto_experiment.py` and `program.md` documented and used at least
@@ -555,7 +613,136 @@ makes that audit cryptographically guaranteed but factually weaker.
 - `validate_graph_dataset.py` still exits 0
 - Predictor warm-up + threshold load tested in CI
 - Cross-doc updates from autoresearch plan §11 applied
+- The `bce` vs `focal` outcome is logged (FocalLoss-as-experiment has
+  a recorded result either way)
 
-After that, M1 is "done for this dataset" — further gains require
-either new data (Move 9 helps marginally; new corpus helps a lot) or a
-new architecture (which restarts the entire ZKML cascade).
+After that, the *v4 sprint* is done. M1 itself isn't done — the
+Architecture Playground (§12) is the next phase, and it's where most
+of the *learning* this project exists for actually happens.
+
+---
+
+## 12. Phase B — Architecture Playground (post-v4)
+
+This is the deliberate exploration phase. It opens once §11.4 is
+satisfied (winner promoted **or** v4 sprint formally closed). Reading
+this section requires shifting mental model from "ship v4" to "learn".
+
+### 12.1 Why the playground exists
+
+The point of SENTINEL is to become a hybrid engineer who understands
+*why* a particular GNN backbone, fusion design, encoder, or
+`fusion_output_dim` is the right choice — not to memorise the specific
+choices we made for v4. The only way to know that is to try
+alternatives and observe the trade-offs directly.
+
+The list of axes below is a starting menu. **Anything else that comes
+up during the phase is also fair game.** The phase is open-ended.
+
+### 12.2 Why the cost is lower than it sounds
+
+The conventional wisdom for SENTINEL has been "changing
+`fusion_output_dim` cascades into a full ZKML rebuild + Sepolia
+redeploy". That's true in steady-state, but it's misleading for
+*today's* state, because the cascade is already due:
+
+| Component | Built for | Current status |
+|---|---|---|
+| `zkml/src/distillation/proxy_model.py` | Multi-label (`CIRCUIT_VERSION="v2.0"`, 128→64→32→10) | Source-complete, **never run** |
+| EZKL `proving_key.pk` / `verification_key.vk` | n/a | Do not exist on disk |
+| `contracts/src/ZKMLVerifier.sol` | Auto-generated by EZKL | Will be created on first pipeline run |
+| `contracts/src/AuditRegistry.sol` (Sepolia) | Multi-label-aware | Source-complete, **never deployed** |
+
+So the marginal cost of bumping a locked dimension after v4 is
+essentially the same as running the ZKML pipeline for the first time —
+which we owe regardless. The playground makes this cost visible, not
+extra.
+
+### 12.3 Axes to explore (starting menu, not a constraint)
+
+| Axis | Concrete options to try | What you'll learn |
+|---|---|---|
+| **GNN backbone** | GAT (current), GCN, GIN, GraphSAGE, GAT-v2, EdgeConv | Inductive bias for control/data flow; expressiveness vs. trainability |
+| **Fusion design** | concat-MLP (the legacy `FusionLayer`), bilinear, cross-attention (current), gated, single-modality ablations | Which modality carries which class; whether fusion adds anything for cheap classes |
+| **Encoder** | CodeBERT (current), GraphCodeBERT, CodeT5-small, distilled CodeBERT, full fine-tune (if VRAM allows) | Tokeniser quality, AST-aware pretraining, parameter-efficiency trade-offs |
+| **`fusion_output_dim`** | 64, 96, 128 (current), 192 | Capacity vs. ZKML circuit size — direct measurement of proof-time vs. F1 |
+| **Classifier head** | linear (current), 2-layer MLP, multi-task with auxiliary class-correlation loss | When extra capacity at the head is cheaper than bigger trunk |
+| **Loss** | BCE (+pos_weight), focal (γ, α — scalar or per-class), asymmetric loss, multi-label margin | Settle the FocalLoss-vs-BCE question for our 10-class setting |
+| **Edge-attr handling** | embed (current), one-hot, learned per-type weights, no-edge-attr ablation | Whether 5-type edge information actually helps |
+| **Sampler** | uniform, weighted (DoS-only / all-rare), curriculum (easy→hard), MixUp on graph features | Class-imbalance treatment families |
+| **Multi-contract** | `"first"` (current), `"all"` with max-agg, `"all"` with mean-agg | Cross-cuts with Move 9 |
+| **Anything else** | any idea that surfaces during the phase | Open-ended is the point |
+
+### 12.4 Operating rules (light)
+
+The playground is exploratory but not chaotic.
+
+1. **One branch per experiment**: `playground/<topic>-<idx>` (e.g.
+   `playground/gin-fusion96-002`).
+2. **One model file per experiment**: copy `sentinel_model.py` to a
+   variant name (`sentinel_model_gin.py`) and edit there. Don't mutate
+   the v4-frozen file.
+3. **Subset training is the default**: 10–20 % stratified subsample,
+   1–3 epochs. Goal is direction, not gate-passing.
+4. **Same eval split**: keep `val_indices.npy` constant so numbers
+   compare across experiments. The split is a permanent test harness
+   (see §3 "permanent contracts").
+5. **Comparable metrics, always**: tuned F1-macro, per-class F1, peak
+   VRAM, wall-clock, parameter count. Logged to MLflow under a
+   dedicated experiment `sentinel-playground-<phase>`.
+6. **Lab notebook**: short markdown note in
+   `ml/playground/notes/<branch>.md` per experiment — what you tried,
+   what surprised you, what you'd test next. The phase's value is the
+   notebook as much as the numbers.
+7. **No production deploy from playground**: a winner can graduate
+   only via a fresh `sentinel-retrain-v5` on full data with all v4
+   floors honoured.
+
+### 12.5 ZKML interaction during the playground
+
+Playground knobs that change `fusion_output_dim`, parameter count, or
+the graph schema would require the EZKL pipeline to be re-run if ever
+deployed. **Do not run EZKL from the playground.** EZKL gets run once,
+against the chosen winner, in the M2 plan. The playground's job is to
+surface trade-offs (e.g. "GIN-128 is +0.01 F1 but +40 % proxy params →
++X % proof time") so the M2 decision is informed.
+
+### 12.6 Autoresearch harness extension (the hook)
+
+`auto_experiment.py` is built today for hyperparameter search. Phase B
+extends it to architectural search by accepting `--model-file`:
+
+```bash
+poetry run python ml/scripts/auto_experiment.py \
+    --regime smoke \
+    --model-file ml/src/models/sentinel_model_gin.py \
+    --fusion-output-dim 96 \
+    ... other knobs ...
+```
+
+This is why the M1 plan (§3.3) and the autoresearch plan (§13–§14)
+ask `auto_experiment.py` to be built with arbitrary keyword forwarding
+into `TrainConfig` from day one — so the extension is one CLI flag
+later, not a rewrite.
+
+### 12.7 Output of the phase
+
+- A short report `docs/changes/<date>-architecture-playground-summary.md`
+  with the comparison table, observations, and a recommendation
+  (stay on v4 / v5 / promote candidate X).
+- A list of "things I learned about hybrid ML+ZK+contract systems" —
+  the actual deliverable of this phase.
+
+### 12.8 Acceptance for Phase B (light, by design)
+
+Phase B is open-ended; success is "I learned what I came to learn", not
+a number. That said:
+
+- [ ] At least 3 experiments per axis tried for at least 4 of the 9
+      axes — variety, not completeness
+- [ ] Each experiment has a `ml/playground/notes/<branch>.md` lab note
+- [ ] Comparison summary written
+- [ ] Clear recommendation made (stay on v4 / launch v5 / promote
+      candidate X)
+- [ ] At least one ZKML trade-off measured concretely (e.g. param-count
+      delta vs. F1 delta for a `fusion_output_dim` change)
