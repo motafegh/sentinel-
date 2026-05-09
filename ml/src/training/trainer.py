@@ -324,6 +324,16 @@ class TrainConfig:
     # giving AdamW a clean start calibrated to the new batch size.
     force_optimizer_reset: bool      = False
 
+    # --- Autoresearch harness knobs ---
+    # Fraction of train_indices to use; 0.10 → ~10 % subsample for smoke runs.
+    # Values outside (0, 1] raise ValueError at train() entry.
+    smoke_subsample_fraction: float = 1.0
+    # "none" | "DoS-only" | "all-rare"
+    # DoS-only: upsample DenialOfService class (39× underrepresented vs IntegerUO).
+    # all-rare: weight by inverse class count (singletons get highest weight).
+    # Ignored when label_csv=None (binary mode) or use_weighted_sampler="none".
+    use_weighted_sampler: str = "none"
+
 
 # ---------------------------------------------------------------------------
 # pos_weight computation
@@ -467,6 +477,43 @@ def train_one_epoch(
 
 
 # ---------------------------------------------------------------------------
+# Weighted sampler (autoresearch harness — DoS upsampling / rare-class boost)
+# ---------------------------------------------------------------------------
+def _build_weighted_sampler(
+    dataset: DualPathDataset,
+    label_csv_path: Path,
+    mode: str,
+) -> "torch.utils.data.WeightedRandomSampler":
+    import pandas as pd
+    from torch.utils.data import WeightedRandomSampler
+
+    df = pd.read_csv(label_csv_path).set_index("md5_stem")
+    weights: list[float] = []
+    for md5 in dataset.paired_hashes:
+        if md5 not in df.index:
+            weights.append(1.0)
+            continue
+        row = df.loc[md5]
+        if mode == "DoS-only":
+            # DenialOfService (CLASS_NAMES[1]) has 137 support vs 5343 for IntegerUO.
+            # 39× boost compensates; value matched to pos_weight ratio in v3 runs.
+            w = 39.0 if float(row.get("DenialOfService", 0)) == 1.0 else 1.0
+        elif mode == "all-rare":
+            # Inverse class count: samples with fewer positive labels get higher weight.
+            n_pos = max(1, sum(float(row.get(cls, 0)) for cls in CLASS_NAMES))
+            w = 1.0 / n_pos
+        else:
+            w = 1.0
+        weights.append(w)
+
+    logger.info(
+        f"WeightedRandomSampler | mode={mode} | samples={len(weights)} | "
+        f"weight_range=[{min(weights):.1f}, {max(weights):.1f}]"
+    )
+    return WeightedRandomSampler(weights=weights, num_samples=len(weights), replacement=True)
+
+
+# ---------------------------------------------------------------------------
 # Main training function
 # ---------------------------------------------------------------------------
 def train(config: TrainConfig) -> dict:
@@ -488,8 +535,24 @@ def train(config: TrainConfig) -> dict:
     # ------------------------------------------------------------------
     # Data
     # ------------------------------------------------------------------
+    if not (0.0 < config.smoke_subsample_fraction <= 1.0):
+        raise ValueError(
+            f"smoke_subsample_fraction must be in (0, 1], "
+            f"got {config.smoke_subsample_fraction}"
+        )
+
     train_indices = np.load(Path(config.splits_dir) / "train_indices.npy")
     val_indices   = np.load(Path(config.splits_dir) / "val_indices.npy")
+
+    if config.smoke_subsample_fraction < 1.0:
+        original_n = len(train_indices)
+        keep_n = max(1, int(original_n * config.smoke_subsample_fraction))
+        rng = np.random.default_rng(42)
+        train_indices = np.sort(rng.choice(train_indices, size=keep_n, replace=False))
+        logger.info(
+            f"Smoke subsample: {keep_n}/{original_n} train samples "
+            f"({100 * config.smoke_subsample_fraction:.0f}%)"
+        )
 
     label_csv_path = Path(config.label_csv) if config.label_csv else None
     if label_csv_path is not None and not label_csv_path.exists():
@@ -532,8 +595,18 @@ def train(config: TrainConfig) -> dict:
             prefetch_factor=2,
         )
 
-    train_loader = DataLoader(train_dataset, shuffle=True,  **_loader_kwargs)
-    val_loader   = DataLoader(val_dataset,   shuffle=False, **_loader_kwargs)
+    _sampler = None
+    if config.use_weighted_sampler != "none" and label_csv_path is not None:
+        _sampler = _build_weighted_sampler(
+            train_dataset, label_csv_path, config.use_weighted_sampler
+        )
+
+    if _sampler is not None:
+        # WeightedRandomSampler is mutually exclusive with shuffle=True
+        train_loader = DataLoader(train_dataset, sampler=_sampler, shuffle=False, **_loader_kwargs)
+    else:
+        train_loader = DataLoader(train_dataset, shuffle=True, **_loader_kwargs)
+    val_loader = DataLoader(val_dataset, shuffle=False, **_loader_kwargs)
 
     logger.info(
         f"DataLoader — workers: {config.num_workers} | "
