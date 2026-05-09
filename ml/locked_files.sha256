@@ -1,0 +1,9 @@
+# v4-sprint locked-file hashes (see docs/changes/2026-05-09-M1-autoresearch-integration-plan.md §7).
+# Format: sha256sum-compatible. Verify with:
+#   sha256sum -c ml/locked_files.sha256
+# Regenerate with:
+#   poetry run python ml/scripts/compute_locked_hashes.py --write
+5a739bc9848a7ae8ef6f81c644c14f82d02906d7bf1f1e049653fa0c9968af46  ml/src/models/gnn_encoder.py
+e2ab5a100cf999a8b1b4605854a78f6d746f044a0b15353ace509d9599caf6c4  ml/src/models/sentinel_model.py
+bef21cd2af3b4b88106b5244e9cd37069477041fc1abcf29e48dcf5cc3be6e03  ml/src/preprocessing/graph_extractor.py
+e0e0d234bc57c91202334334b4d7465ebdf7418c19bae607d0baf014633e3d62  ml/src/preprocessing/graph_schema.py
