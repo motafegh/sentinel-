@@ -100,7 +100,7 @@ CONFIRM_EPOCHS  = 5
 SMOKE_PROMOTE_THRESHOLD = 0.42
 
 # Minimum GPU free memory required before starting a run.
-MIN_VRAM_GB = 7.0
+MIN_VRAM_GB = 5.5  # display always holds ~1.6 GB on RTX 3070 Laptop
 
 # Autoresearch experiment name — the only valid value in v4-sprint mode.
 AUTORESEARCH_EXPERIMENT = "sentinel-retrain-v4"
@@ -160,6 +160,17 @@ def _parse_args() -> tuple[argparse.Namespace, dict]:
         default="none",
         choices=["none", "DoS-only", "all-rare"],
         help="Weighted sampler strategy for rare-class upsampling.",
+    )
+
+    # Base checkpoint — all runs fine-tune from v3 weights (model-only, fresh optimizer)
+    p.add_argument(
+        "--base-checkpoint",
+        default="ml/checkpoints/multilabel-v3-fresh-60ep_best.pt",
+        help=(
+            "Checkpoint to resume model weights from before each run. "
+            "Always uses model-only resume (fresh optimizer/scheduler). "
+            "Set to empty string to train from scratch (not recommended for v4 search)."
+        ),
     )
 
     # Regime overrides
@@ -284,6 +295,14 @@ def _build_config(args: argparse.Namespace, extra: dict) -> TrainConfig:
 
     epochs = args.max_epochs or (SMOKE_EPOCHS if smoke else CONFIRM_EPOCHS)
 
+    # Base checkpoint: fine-tune from v3 weights (model-only, fresh optimizer).
+    base_ckpt = args.base_checkpoint.strip() if args.base_checkpoint else ""
+    resume_from = base_ckpt if base_ckpt else None
+    if resume_from:
+        logger.info(f"Base checkpoint: {resume_from} (model-only resume)")
+    else:
+        logger.warning("No base checkpoint — training from scratch (not recommended)")
+
     # Known-arg overrides (highest priority).
     overrides: dict = {
         "experiment_name":          args.experiment_name,
@@ -298,6 +317,9 @@ def _build_config(args: argparse.Namespace, extra: dict) -> TrainConfig:
         "use_weighted_sampler":     args.weighted_sampler,
         "epochs":                   epochs,
         "smoke_subsample_fraction": SMOKE_SUBSAMPLE if smoke else 1.0,
+        # Fine-tune from v3; always model-only so optimizer re-calibrates to new knobs.
+        "resume_from":              resume_from,
+        "resume_model_only":        True,
         # Smoke skips the RAM cache to avoid polluting a fresh cache with
         # subsample artifacts; confirm uses the cache normally.
         "cache_path":               None if smoke else "ml/data/cached_dataset.pkl",
