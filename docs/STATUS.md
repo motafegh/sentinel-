@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-05 (v3 training complete + threshold tuning)
+Last updated: 2026-05-10 (v4 experiment 1 launched; autoresearch harness complete; deep analysis of v3 curves)
 
 ---
 
@@ -10,7 +10,7 @@ Last updated: 2026-05-05 (v3 training complete + threshold tuning)
 |--------|--------|-------|
 | M1 ML Core — models | ✅ Complete | GNNEncoder (edge_attr, configurable arch), TransformerEncoder (LoRA configurable), CrossAttentionFusion |
 | M1 ML Core — inference | ✅ Complete | api.py, predictor.py (windowed, full arch args, thresholds list), preprocess.py (cached), cache.py |
-| M1 ML Core — training | ✅ Complete | TrainConfig with full arch fields, AMP, FocalLoss (FP32 cast fixed), early stopping, full-resume CLI, patience sidecar, focal_gamma/alpha logged to MLflow |
+| M1 ML Core — training | ✅ Complete | TrainConfig with full arch fields, AMP, FocalLoss (FP32 cast fixed), early stopping, full-resume CLI, patience sidecar, focal_gamma/alpha logged to MLflow. Fix #25 (2026-05-09): model-only resume now resets epoch counter + patience + best_f1 (fine-tune mode); strict=False for lora_r mismatch. Autoresearch harness (`auto_experiment.py`, `program.md`, `README.md`) built and committed. |
 | M1 ML Core — data extraction | ✅ Complete | ast_extractor.py V4.3, tokenizer.py (schema version metadata), dual_path_dataset.py (edge_attr shape guard) |
 | M1 ML Core — shared preprocessing | ✅ Complete | graph_schema.py, graph_extractor.py (typed exceptions) |
 | M1 ML Scripts | ✅ Complete | train.py (full-resume + reset-optimizer flags), tune_threshold.py (full arch args + fusion_dim lookup, prefetch guard), analyse_truncation.py, build_multilabel_index.py |
@@ -20,6 +20,17 @@ Last updated: 2026-05-05 (v3 training complete + threshold tuning)
 | M4 Agents/RAG | ✅ Complete | Core complete; LLM synthesizer upgraded (T3-A, qwen3.5-9b-ud, rule-based fallback); cross-encoder reranking added (T3-B, off by default) |
 | M5 Contracts | ✅ Source complete | Foundry tests written; forge not yet run (not installed in env) |
 | M6 Integration API | ❌ Not built | api/ directory does not exist. Auth/rate-limit design required before building routes. |
+
+---
+
+## Recent Changes (2026-05-09/10 — v3 Analysis, v4 Harness, Experiment 1 Launch)
+
+- **v3 deep analysis** — inspected actual MLflow curves (sqlite:///mlruns.db) and thresholds JSON. Key findings: (1) plateau was LR exhaustion, not capacity ceiling — train loss still decreasing at ep60; (2) DoS is a data problem (137 samples, noisy val F1 every epoch, no hyperparameter fix); (3) dominant failure mode is over-prediction (low precision) in 6/10 classes caused by aggressive BCE pos_weight. See `docs/changes/2026-05-09-v3-analysis-and-v4-direction.md`.
+- **Fix #25 — model-only resume resets epoch counter**: `trainer.py` resume block now distinguishes fine-tune (`resume_model_only=True` → reset start_epoch/patience/best_f1) from full continuation (`resume_model_only=False` → restore from checkpoint). Previously, fine-tuning from v3 would set start_epoch=55, making any run with epochs<55 return immediately without training.
+- **Fix — strict=False for lora_r mismatch**: `load_state_dict` now uses `strict=False`; LoRA key shape mismatches (from lora_r change) are warned; non-LoRA mismatches raise RuntimeError.
+- **Autoresearch harness built**: `ml/scripts/auto_experiment.py`, `ml/autoresearch/program.md`, `ml/autoresearch/README.md` committed. Loop redesigned from grid search to analysis-first (Karpathy-style: read results → propose one targeted change → run fixed budget → keep/revert).
+- **v4 experiment 1 launched**: Fine-tune from v3 weights, lr=1e-4, 30 epochs, batch=16, lora_r=8. Running overnight. Log: `ml/autoresearch/runs/v4-finetune-lr1e4.log`.
+- **MLflow tracking URI corrected**: Use `sqlite:///mlruns.db` — the `file:///mlruns` backend has corrupt experiment entries (1, 2, 3) and does not contain the v3 run.
 
 ---
 
@@ -157,7 +168,7 @@ Last updated: 2026-05-05 (v3 training complete + threshold tuning)
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
 | ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it (see ROADMAP S5.5) |
 | Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. See ROADMAP Move 9. |
-| Autoresearch | 📋 **UNBLOCKED** — `auto_experiment.py` + `ml/autoresearch/program.md` not yet built. v3 training complete; v4 baseline (0.5069 tuned) now established. Ready to implement. |
+| Autoresearch | ⚠️ **Harness built, loop redesign in progress** — `auto_experiment.py`, `ml/autoresearch/program.md`, `ml/autoresearch/README.md` committed (2026-05-09). Analysis-first loop (Karpathy-style) adopted over grid search. v4 experiment 1 running overnight (fine-tune from v3, lr=1e-4). |
 | API breaking change (Fix #6) | Code complete — response key renamed to `"thresholds"`. Pending downstream consumer updates. |
 | Move 8 Audit Item #9 | Preprocess temp file not cleaned on SIGKILL — not yet implemented. |
 
@@ -268,19 +279,23 @@ Correct strategy:
 
 In priority order:
 
-1. **v4 retrain** — v3 plateaued at F1-macro 0.4715 raw (0.5069 tuned). Recommended changes:
-   - `--loss-fn focal --focal-gamma 2.0` (target hard/rare classes)
-   - `--lora-r 16 --lora-alpha 32` (more CodeBERT adaptation capacity)
-   - Weighted sampler for DenialOfService (137 support vs 5,343 for IntegerUO)
-   - Success gate: tuned F1-macro > **0.5069** on same `val_indices.npy`
-   - See `docs/changes/2026-05-05-v3-training-complete.md` for full command skeleton
+1. **v4 experiment 1 — read results** (running overnight 2026-05-09→10):
+   - Run: `multilabel-v4-finetune-lr1e4` — fine-tune from v3 weights, lr=1e-4, 30 epochs, batch=16
+   - Hypothesis: v3 plateau was OneCycleLR exhaustion, not capacity ceiling. Fresh LR cycle should lift classes still improving at ep60 (CTU, ExternalBug, Timestamp, TOD).
+   - Log: `ml/autoresearch/runs/v4-finetune-lr1e4.log`
+   - After run: `tune_threshold.py` on best checkpoint, compare per-class F1 to v3.
+   - **Success:** raw F1 > 0.4715 → hypothesis confirmed, continue fine-tuning.
+   - **Failure:** raw F1 ≤ 0.4715 → capacity bottleneck, try lora_r=16 next.
+   - Full analysis: `docs/changes/2026-05-09-v3-analysis-and-v4-direction.md`
 
-2. **Autoresearch setup** (now unblocked):
-   - Implement `ml/scripts/auto_experiment.py` (thin CLI wrapper printing `SENTINEL_SCORE`)
-   - Write `ml/autoresearch/program.md` (metric, constraints, allowed knobs: focal gamma, LoRA r, class weights)
+2. **v4 experiment 2 (after reading exp 1 results)**:
+   - If exp 1 confirmed: fine-tune with lora_r=16 from v3 (more capacity for CTU, ExternalBug).
+   - If exp 1 failed: train from scratch with lora_r=16, lr=3e-4, 60 epochs.
+   - DoS weighted sampler: add after primary LR/capacity question is answered.
+   - Focal loss: requires α tuning; do NOT use α=0.25 (designed for binary, hurts rare multi-label classes).
 
 3. **Fix #6 downstream update** — Update any API consumer that parsed `”threshold”` (single float)
-   to use `”thresholds”` (list of floats). Check `api.py` response handling and integration tests.
+   to use `”thresholds”` (list of floats).
 
 4. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10).
    See ROADMAP S5.5.
