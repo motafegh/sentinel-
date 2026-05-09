@@ -3,6 +3,7 @@
 #   sha256sum -c ml/locked_files.sha256
 # Regenerate with:
 #   poetry run python ml/scripts/compute_locked_hashes.py --write
+421236fc6331394d07dc3f908c69cc3113b8913151dc650d1a5b7a7102ed2045  ml/data/splits/val_indices.npy
 5a739bc9848a7ae8ef6f81c644c14f82d02906d7bf1f1e049653fa0c9968af46  ml/src/models/gnn_encoder.py
 e2ab5a100cf999a8b1b4605854a78f6d746f044a0b15353ace509d9599caf6c4  ml/src/models/sentinel_model.py
 bef21cd2af3b4b88106b5244e9cd37069477041fc1abcf29e48dcf5cc3be6e03  ml/src/preprocessing/graph_extractor.py
