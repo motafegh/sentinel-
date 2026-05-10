@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-10 (v4 experiment 1 launched; autoresearch harness complete; deep analysis of v3 curves)
+Last updated: 2026-05-10 (v4 experiment 1 complete; tuned F1-macro 0.5422 — gate cleared; v4 is new active checkpoint)
 
 ---
 
@@ -23,13 +23,23 @@ Last updated: 2026-05-10 (v4 experiment 1 launched; autoresearch harness complet
 
 ---
 
+## Recent Changes (2026-05-10 — v4 Experiment 1 Complete)
+
+- **v4 experiment 1 — GATE CLEARED**: Fine-tune from v3 weights, lr=1e-4, 30 epochs, batch=16, lora_r=8. Best checkpoint at epoch 26.
+  - Raw F1-macro: **0.5064** (v3 raw: 0.4715, +0.0349)
+  - **Tuned F1-macro: 0.5422** (gate: >0.5069 ✅)
+  - All 10 classes improved; none dropped below floor.
+  - Patience=4/7 at epoch 30 — model was still learning (not early-stopped).
+  - Checkpoint: `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt`
+  - Thresholds: `ml/checkpoints/multilabel-v4-finetune-lr1e4_best_thresholds.json`
+  - Confirms LR exhaustion diagnosis: fresh LR cycle from v3 weights recovered all classes.
+
 ## Recent Changes (2026-05-09/10 — v3 Analysis, v4 Harness, Experiment 1 Launch)
 
 - **v3 deep analysis** — inspected actual MLflow curves (sqlite:///mlruns.db) and thresholds JSON. Key findings: (1) plateau was LR exhaustion, not capacity ceiling — train loss still decreasing at ep60; (2) DoS is a data problem (137 samples, noisy val F1 every epoch, no hyperparameter fix); (3) dominant failure mode is over-prediction (low precision) in 6/10 classes caused by aggressive BCE pos_weight. See `docs/changes/2026-05-09-v3-analysis-and-v4-direction.md`.
 - **Fix #25 — model-only resume resets epoch counter**: `trainer.py` resume block now distinguishes fine-tune (`resume_model_only=True` → reset start_epoch/patience/best_f1) from full continuation (`resume_model_only=False` → restore from checkpoint). Previously, fine-tuning from v3 would set start_epoch=55, making any run with epochs<55 return immediately without training.
 - **Fix — strict=False for lora_r mismatch**: `load_state_dict` now uses `strict=False`; LoRA key shape mismatches (from lora_r change) are warned; non-LoRA mismatches raise RuntimeError.
 - **Autoresearch harness built**: `ml/scripts/auto_experiment.py`, `ml/autoresearch/program.md`, `ml/autoresearch/README.md` committed. Loop redesigned from grid search to analysis-first (Karpathy-style: read results → propose one targeted change → run fixed budget → keep/revert).
-- **v4 experiment 1 launched**: Fine-tune from v3 weights, lr=1e-4, 30 epochs, batch=16, lora_r=8. Running overnight. Log: `ml/autoresearch/runs/v4-finetune-lr1e4.log`.
 - **MLflow tracking URI corrected**: Use `sqlite:///mlruns.db` — the `file:///mlruns` backend has corrupt experiment entries (1, 2, 3) and does not contain the v3 run.
 
 ---
