@@ -6,7 +6,7 @@ WHAT THIS MODULE DOES
 Provides the single, authoritative implementation of the AST-to-graph
 conversion used by both SENTINEL pipelines:
 
-  Offline (batch)  ml/data_extraction/ast_extractor.py
+  Offline (batch)  ml/src/data_extraction/ast_extractor.py
                      Processes ~68K training contracts in parallel.
                      Writes .pt files. Returns None on failure (skip and log).
 
@@ -212,7 +212,7 @@ def _build_node_features(obj: Any, type_id: int) -> list[float]:
     ⚠  REPLICATION CONSTRAINT — DO NOT CHANGE WITHOUT RETRAINING ⚠
     ─────────────────────────────────────────────────────────────────
     This function replicates node_features() from the pre-refactor
-    ml/data_extraction/ast_extractor.py (ASTExtractorV4) EXACTLY.
+    ml/src/data_extraction/ast_extractor.py (ASTExtractorV4) EXACTLY.
     That script built all ~68K training .pt files. The checkpoint has
     GNNEncoder(in_channels=8) trained on those precise float vectors.
 

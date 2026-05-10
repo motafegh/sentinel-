@@ -66,7 +66,7 @@ import torch
 from tqdm import tqdm
 
 # ── Path bootstrap ─────────────────────────────────────────────────────────
-# ast_extractor.py lives in ml/data_extraction/; add ml/ to sys.path so that
+# ast_extractor.py lives in ml/src/data_extraction/; add ml/ to sys.path so that
 # the src package (ml/src/) is importable without installing the project.
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
