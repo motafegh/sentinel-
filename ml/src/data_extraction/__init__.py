@@ -1,4 +1,4 @@
-# ml/data_extraction/__init__.py
+# ml/src/data_extraction/__init__.py
 #
 # Data-generation tools used to produce the 68,556 graph .pt files
 # and 68,570 token .pt files from raw Solidity source contracts.
