@@ -235,7 +235,7 @@ NUM_CLASSES = len(CLASS_NAMES)
 # AttributeError on every resume. This constant is used wherever the
 # architecture name needs to be recorded (checkpoint, MLflow, resume check).
 # ---------------------------------------------------------------------------
-ARCHITECTURE = "cross_attention_lora"
+ARCHITECTURE = "three_eye_v5"
 
 # ---------------------------------------------------------------------------
 # Valid loss function names — Audit fix #4
@@ -254,23 +254,24 @@ class TrainConfig:
     tokens_dir:      str = "ml/data/tokens"
     splits_dir:      str = "ml/data/splits"
     checkpoint_dir:  str = "ml/checkpoints"
-    checkpoint_name: str = "multilabel_crossattn_v2_best.pt"
+    checkpoint_name: str = "multilabel-v5-fresh_best.pt"
 
     # --- Model ---
     num_classes:       int   = NUM_CLASSES
     fusion_output_dim: int   = 128
     fusion_dropout:    float = 0.3
 
-    # --- GNN architecture (P0-C) ---
-    gnn_hidden_dim:   int   = 64
+    # --- GNN architecture (v5) ---
+    gnn_hidden_dim:   int   = 128
+    gnn_layers:       int   = 4    # validated in __post_init__; only 4 supported in v5.0
     gnn_heads:        int   = 8
     gnn_dropout:      float = 0.2
     use_edge_attr:    bool  = True
-    gnn_edge_emb_dim: int   = 16
+    gnn_edge_emb_dim: int   = 32
 
-    # --- LoRA architecture (P0-A) ---
-    lora_r:               int        = 8
-    lora_alpha:           int        = 16
+    # --- LoRA architecture (v5) ---
+    lora_r:               int        = 16
+    lora_alpha:           int        = 32
     lora_dropout:         float      = 0.1
     lora_target_modules:  list[str]  = field(default_factory=lambda: ["query", "value"])
 
@@ -278,16 +279,17 @@ class TrainConfig:
     label_csv: str = "ml/data/processed/multilabel_index.csv"
 
     # --- Training ---
-    epochs:       int   = 40
-    batch_size:   int   = 32
-    lr:           float = 3e-4
-    weight_decay: float = 1e-2
-    threshold:    float = 0.5
-    early_stop_patience: int = 7
+    epochs:              int   = 60
+    batch_size:          int   = 16
+    lr:                  float = 2e-4
+    weight_decay:        float = 1e-2
+    threshold:           float = 0.5
+    early_stop_patience: int   = 10
+    aux_loss_weight:     float = 0.1   # λ in: main + λ*(aux_gnn + aux_tf + aux_fused)
 
     # --- Stability ---
     grad_clip:  float = 1.0
-    warmup_pct: float = 0.05
+    warmup_pct: float = 0.10
 
     # --- Speed: AMP ---
     use_amp: bool = True
@@ -310,29 +312,29 @@ class TrainConfig:
 
     # --- MLflow ---
     experiment_name: str = "sentinel-multilabel"
-    run_name:        str = "multilabel-crossattn-v1"
+    run_name:        str = "multilabel-v5-fresh"
 
     # --- Device ---
     device: str = field(default_factory=lambda: "cuda" if torch.cuda.is_available() else "cpu")
 
     # --- Resume ---
-    resume_from:          str | None = None
-    resume_model_only:    bool       = True
-    # Fix #12: force optimizer reset even in full-resume mode when batch_size changed.
-    # Set via --resume-reset-optimizer CLI flag. When True, model weights AND
-    # patience_counter are restored but optimizer/scheduler state is discarded,
-    # giving AdamW a clean start calibrated to the new batch size.
-    force_optimizer_reset: bool      = False
+    resume_from:           str | None = None
+    resume_model_only:     bool       = True
+    force_optimizer_reset: bool       = False
 
     # --- Autoresearch harness knobs ---
-    # Fraction of train_indices to use; 0.10 → ~10 % subsample for smoke runs.
-    # Values outside (0, 1] raise ValueError at train() entry.
     smoke_subsample_fraction: float = 1.0
-    # "none" | "DoS-only" | "all-rare"
-    # DoS-only: upsample DenialOfService class (39× underrepresented vs IntegerUO).
-    # all-rare: weight by inverse class count (singletons get highest weight).
-    # Ignored when label_csv=None (binary mode) or use_weighted_sampler="none".
-    use_weighted_sampler: str = "none"
+    use_weighted_sampler:     str   = "none"
+
+    def __post_init__(self) -> None:
+        """Validate config at startup — fires before data loading or GPU allocation."""
+        if self.gnn_layers != 4:
+            raise ValueError(
+                f"gnn_layers={self.gnn_layers} is not supported in v5.0. "
+                "Only gnn_layers=4 is implemented (3-phase: 2 structural + CONTAINS, "
+                "1 CONTROL_FLOW directed, 1 reverse-CONTAINS). "
+                "v5.1 target: gnn_layers=5 for 2 CONTROL_FLOW hops."
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +346,22 @@ def compute_pos_weight(
     num_classes:   int,
     device:        str,
 ) -> torch.Tensor:
+    """
+    Compute per-class pos_weight for BCEWithLogitsLoss using sqrt scaling.
+
+    Formula: pos_weight[i] = sqrt((N - n_pos[i]) / n_pos[i])
+
+    Rationale for sqrt vs raw ratio:
+      Raw ratio for DoS (~437 samples in 68K): (68K-437)/437 ≈ 155.
+      Raw ratio for IntegerUO (~5343 samples): (68K-5343)/5343 ≈ 11.7.
+      A 13× ratio between classes causes training instability.
+
+      sqrt scaling: sqrt(155) ≈ 12.4 vs sqrt(11.7) ≈ 3.4 — a 3.6× ratio.
+      This preserves ordering (DoS gets proportionally more weight) without
+      extreme values that destabilise training. No arbitrary cap needed.
+
+    IMPORTANT: recompute after data augmentation — the distribution changes.
+    """
     import pandas as pd
 
     df = pd.read_csv(label_csv)
@@ -351,21 +369,22 @@ def compute_pos_weight(
     label_matrix = df[class_cols].values
     train_labels = label_matrix[train_indices]
 
+    N = len(train_labels)
     pos_counts = train_labels.sum(axis=0)
-    neg_counts = len(train_labels) - pos_counts
 
     pos_weight_vals = []
-    for c, (pos, neg) in enumerate(zip(pos_counts, neg_counts)):
+    for c, pos in enumerate(pos_counts):
         if pos == 0:
             logger.warning(
-                f"Class '{CLASS_NAMES[c]}' (index {c}) has zero positives — "
-                "pos_weight capped at 100.0"
+                f"Class '{CLASS_NAMES[c]}' (index {c}) has zero positives in training split. "
+                "sqrt pos_weight undefined (division by zero) — using sqrt((N-1)/1) ≈ sqrt(N)."
             )
-            pos_weight_vals.append(100.0)
-        else:
-            pos_weight_vals.append(float(neg) / float(pos))
+            pos = 1  # avoid division by zero; gives maximum weight
 
-    logger.info("pos_weight (training split only):")
+        raw_ratio = float(N - pos) / float(pos)
+        pos_weight_vals.append(float(raw_ratio ** 0.5))
+
+    logger.info("pos_weight sqrt-scaled (training split only):")
     for name, pw in zip(CLASS_NAMES[:num_classes], pos_weight_vals):
         logger.info(f"  {name:<32} {pw:.2f}")
 
@@ -423,16 +442,17 @@ def evaluate(
 # Training one epoch
 # ---------------------------------------------------------------------------
 def train_one_epoch(
-    model:        SentinelModel,
-    loader:       DataLoader,
-    optimizer:    AdamW,
-    loss_fn:      nn.Module,
-    scheduler:    OneCycleLR,
-    scaler:       torch.amp.GradScaler,
-    device:       str,
-    grad_clip:    float,
-    log_interval: int,
-    use_amp:      bool,
+    model:            SentinelModel,
+    loader:           DataLoader,
+    optimizer:        AdamW,
+    loss_fn:          nn.Module,
+    scheduler:        OneCycleLR,
+    scaler:           torch.amp.GradScaler,
+    device:           str,
+    grad_clip:        float,
+    log_interval:     int,
+    use_amp:          bool,
+    aux_loss_weight:  float = 0.1,
 ) -> float:
     model.train()
     total_loss = 0.0
@@ -451,8 +471,14 @@ def train_one_epoch(
         optimizer.zero_grad(set_to_none=True)
 
         with torch.amp.autocast("cuda", enabled=use_amp):
-            logits = model(graphs, input_ids, attention_mask)
-            loss   = loss_fn(logits, labels)
+            logits, aux = model(graphs, input_ids, attention_mask, return_aux=True)
+            main_loss   = loss_fn(logits, labels)
+            aux_loss    = (
+                loss_fn(aux["gnn"],         labels) +
+                loss_fn(aux["transformer"], labels) +
+                loss_fn(aux["fused"],       labels)
+            )
+            loss = main_loss + aux_loss_weight * aux_loss
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
@@ -465,8 +491,16 @@ def train_one_epoch(
         pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
         if (batch_idx + 1) % log_interval == 0:
+            # Per-eye gradient norm — unscale_ already called above.
+            gnn_norm = _grad_norm(model.gnn_eye_proj)
+            tf_norm  = _grad_norm(model.transformer_eye_proj)
+            fused_norm = _grad_norm(model.fusion)
             logger.info(
-                f"  Batch {batch_idx+1}/{len(loader)} | loss={loss.item():.4f}"
+                f"  Batch {batch_idx+1}/{len(loader)} | "
+                f"loss={loss.item():.4f} (main={main_loss.item():.4f} "
+                f"aux={aux_loss.item():.4f}) | "
+                f"grad_norm gnn_eye={gnn_norm:.3f} tf_eye={tf_norm:.3f} "
+                f"fused_eye={fused_norm:.3f}"
             )
 
     n_batches = len(loader)
@@ -474,6 +508,19 @@ def train_one_epoch(
         logger.warning("Empty train loader — returning 0.0 loss")
         return 0.0
     return total_loss / n_batches
+
+
+def _grad_norm(module: nn.Module) -> float:
+    """Return the L2 norm of gradients across all parameters of a module.
+
+    Returns 0.0 if all gradients are None (e.g. module not in backward path).
+    Called after scaler.unscale_() so the scale factor is already removed.
+    """
+    total_sq = 0.0
+    for p in module.parameters():
+        if p.grad is not None:
+            total_sq += p.grad.detach().float().norm(2).item() ** 2
+    return total_sq ** 0.5
 
 
 # ---------------------------------------------------------------------------
@@ -637,6 +684,7 @@ def train(config: TrainConfig) -> dict:
         fusion_output_dim=config.fusion_output_dim,
         dropout=config.fusion_dropout,
         gnn_hidden_dim=config.gnn_hidden_dim,
+        gnn_num_layers=config.gnn_layers,
         gnn_heads=config.gnn_heads,
         gnn_dropout=config.gnn_dropout,
         use_edge_attr=config.use_edge_attr,
@@ -948,10 +996,12 @@ def train(config: TrainConfig) -> dict:
             "force_optimizer_reset": config.force_optimizer_reset,
             "early_stop_patience":   config.early_stop_patience,
             "gnn_hidden_dim":        config.gnn_hidden_dim,
+            "gnn_layers":            config.gnn_layers,
             "gnn_heads":             config.gnn_heads,
             "gnn_dropout":           config.gnn_dropout,
             "use_edge_attr":         config.use_edge_attr,
             "gnn_edge_emb_dim":      config.gnn_edge_emb_dim,
+            "aux_loss_weight":       config.aux_loss_weight,
             "lora_r":                config.lora_r,
             "lora_alpha":            config.lora_alpha,
             "lora_dropout":          config.lora_dropout,
@@ -984,6 +1034,7 @@ def train(config: TrainConfig) -> dict:
                 grad_clip=config.grad_clip,
                 log_interval=config.log_interval,
                 use_amp=config.use_amp,
+                aux_loss_weight=config.aux_loss_weight,
             )
 
             val_metrics = evaluate(

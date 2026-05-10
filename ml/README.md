@@ -838,15 +838,16 @@ Defined in `ml/src/training/trainer.py` as `CLASS_NAMES` — **single source of 
 ### Run Training
 
 ```bash
-cd ml
-TRANSFORMERS_OFFLINE=1 poetry run python scripts/train.py \
-  --run-name   multilabel-v3-fresh-60ep \
-  --experiment sentinel-retrain-v3 \
-  --label-csv  data/processed/multilabel_index.csv \
-  --epochs     60 \
-  --batch-size 32 \
-  --patience   10
+TRANSFORMERS_OFFLINE=1 ml/.venv/bin/python ml/scripts/train.py \
+    --run-name multilabel-v3-fresh-60ep \
+    --experiment-name sentinel-retrain-v3 \
+    --epochs 60 \
+    --batch-size 32 \
+    --lr 3e-4 \
+    --early-stop-patience 10
 ```
+ 
+
 
 Key `TrainConfig` fields:
 

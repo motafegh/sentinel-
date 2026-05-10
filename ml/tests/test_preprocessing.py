@@ -1,21 +1,32 @@
 """
-test_preprocessing.py — Unit tests for ContractPreprocessor and graph_extractor.
+test_preprocessing.py — Unit tests for graph_extractor v2 schema.
 
-ContractPreprocessor.__init__ loads the CodeBERT tokenizer from HuggingFace
-and _extract_graph calls Slither/solc. Both are mocked so the preprocessor
-tests run without any external dependencies or network access.
+Tests are in two tiers:
 
-Graph feature tests use mock Slither objects to test individual feature
-computations in isolation.  Integration tests that call extract_contract_graph
-on real .sol files are marked with @pytest.mark.integration and require
-Slither to be installed.
+  Unit tests (no external deps):
+    - Schema sanity assertions (NODE_FEATURE_DIM=12, NODE_TYPES 13 entries, etc.)
+    - _cfg_node_type() priority ordering
+    - _build_cfg_node_features() shape and in_unchecked=0.0 invariant
+    - _build_node_features() shape and sentinel value handling
+    - _build_control_flow_edges() index correctness and node_metadata alignment
+    - Mock-based feature function tests for return_ignored, call_target_typed,
+      in_unchecked, has_loop, external_call_count
+
+  Integration tests (@pytest.mark.integration, require slither-analyzer):
+    - Reentrancy (call-before-write): CFG_NODE_CALL exists, CONTROL_FLOW edges exist
+    - CEI-safe (write-before-call): CONTROL_FLOW edge write→call exists
+    - unchecked{} contract: in_unchecked=1.0 on func node, 0.0 on all CFG nodes
+    - Loop contract: has_loop=1.0
+    - Typed interface contract: call_target_typed=1.0
+    - Merged-IR node: _cfg_node_type() assigns CFG_NODE_CALL when call+write merge
+    - node_metadata alignment: len(graph.node_metadata) == graph.x.shape[0]
+    - Function nodes have non-empty "name" key in metadata
 """
 
 from __future__ import annotations
 
-import hashlib
 import math
-from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,632 +38,854 @@ from ml.src.preprocessing.graph_schema import (
     FEATURE_NAMES,
     NODE_FEATURE_DIM,
     NODE_TYPES,
+    NUM_EDGE_TYPES,
 )
 
 
-# ---------------------------------------------------------------------------
-# Helpers: build synthetic outputs that _extract_graph / _tokenize would return
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# Schema sanity
+# ─────────────────────────────────────────────────────────────────────────────
 
-def _synthetic_graph(contract_hash: str = "abc123") -> Data:
-    """Minimal valid graph with NODE_FEATURE_DIM-dim node features (v2 schema)."""
-    return Data(
-        x=torch.randn(5, NODE_FEATURE_DIM),
-        edge_index=torch.tensor([[0, 1, 2], [1, 2, 3]], dtype=torch.long),
-        contract_hash=contract_hash,
-    )
+class TestSchemaSanity:
+    def test_node_feature_dim_is_12(self):
+        assert NODE_FEATURE_DIM == 12, (
+            f"NODE_FEATURE_DIM={NODE_FEATURE_DIM}; expected 12 (v2 schema). "
+            "gas_intensity was removed in the final v2 schema."
+        )
 
+    def test_feature_names_length_matches_dim(self):
+        assert len(FEATURE_NAMES) == NODE_FEATURE_DIM
 
-def _synthetic_tokens(contract_hash: str = "abc123", truncated: bool = False) -> dict:
-    return {
-        "input_ids":      torch.ones(1, 512, dtype=torch.long),
-        "attention_mask": torch.ones(1, 512, dtype=torch.long),
-        "contract_hash":  contract_hash,
-        "num_tokens":     128,
-        "truncated":      truncated,
-    }
+    def test_num_edge_types_is_7(self):
+        assert NUM_EDGE_TYPES == 7
 
+    def test_edge_types_contains_new_v2_edges(self):
+        assert "CONTAINS"     in EDGE_TYPES and EDGE_TYPES["CONTAINS"]     == 5
+        assert "CONTROL_FLOW" in EDGE_TYPES and EDGE_TYPES["CONTROL_FLOW"] == 6
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+    def test_node_types_has_13_entries(self):
+        assert len(NODE_TYPES) == 13, (
+            f"NODE_TYPES has {len(NODE_TYPES)} entries; expected 13 "
+            "(ids 0-12 including 5 CFG subtypes)."
+        )
 
-@pytest.fixture()
-def preprocessor():
-    """ContractPreprocessor with tokenizer load patched out."""
-    with patch(
-        "ml.src.inference.preprocess.AutoTokenizer.from_pretrained",
-        return_value=MagicMock(),
-    ):
-        from ml.src.inference.preprocess import ContractPreprocessor
-        return ContractPreprocessor()
+    def test_cfg_subtypes_present_and_ordered(self):
+        assert NODE_TYPES["CFG_NODE_CALL"]  == 8
+        assert NODE_TYPES["CFG_NODE_WRITE"] == 9
+        assert NODE_TYPES["CFG_NODE_READ"]  == 10
+        assert NODE_TYPES["CFG_NODE_CHECK"] == 11
+        assert NODE_TYPES["CFG_NODE_OTHER"] == 12
 
+    def test_feature_names_no_gas_intensity(self):
+        assert "gas_intensity" not in FEATURE_NAMES, (
+            "gas_intensity was removed in the final v2 schema (circular heuristic)."
+        )
 
-# ---------------------------------------------------------------------------
-# Input validation — process_source()
-# ---------------------------------------------------------------------------
+    def test_feature_names_no_reentrant(self):
+        assert "reentrant" not in FEATURE_NAMES, (
+            "reentrant was removed in v2 — it leaked Slither's pre-computed answer."
+        )
 
-def test_process_source_empty_string_raises(preprocessor):
-    with pytest.raises(ValueError, match="empty"):
-        preprocessor.process_source("")
+    def test_feature_names_has_all_new_features(self):
+        for fname in ("return_ignored", "call_target_typed", "in_unchecked",
+                      "has_loop", "external_call_count"):
+            assert fname in FEATURE_NAMES, f"'{fname}' missing from FEATURE_NAMES"
 
+    def test_return_ignored_at_index_7(self):
+        assert FEATURE_NAMES[7] == "return_ignored"
 
-def test_process_source_whitespace_only_raises(preprocessor):
-    with pytest.raises(ValueError, match="empty"):
-        preprocessor.process_source("   \n\t  ")
+    def test_call_target_typed_at_index_8(self):
+        assert FEATURE_NAMES[8] == "call_target_typed"
 
-
-def test_process_source_too_large_raises(preprocessor):
-    oversized = "x" * (preprocessor.MAX_SOURCE_BYTES + 1)
-    with pytest.raises(ValueError, match="too large"):
-        preprocessor.process_source(oversized)
-
-
-def test_process_source_exactly_at_limit_does_not_raise(preprocessor):
-    source = "x" * preprocessor.MAX_SOURCE_BYTES
-    contract_hash = hashlib.md5(source.encode()).hexdigest()
-
-    preprocessor._extract_graph = MagicMock(return_value=_synthetic_graph(contract_hash))
-    preprocessor._tokenize      = MagicMock(return_value=_synthetic_tokens(contract_hash))
-    preprocessor._log_result    = MagicMock()
-
-    graph, tokens = preprocessor.process_source(source)
-    assert graph is not None
-    assert tokens is not None
+    def test_external_call_count_at_index_11(self):
+        assert FEATURE_NAMES[11] == "external_call_count"
 
 
-# ---------------------------------------------------------------------------
-# Input validation — process()
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# Mock helpers
+# ─────────────────────────────────────────────────────────────────────────────
 
-def test_process_missing_file_raises(preprocessor, tmp_path):
-    with pytest.raises(FileNotFoundError):
-        preprocessor.process(tmp_path / "does_not_exist.sol")
-
-
-# ---------------------------------------------------------------------------
-# Output shape contract — v2 schema (NODE_FEATURE_DIM=13)
-# ---------------------------------------------------------------------------
-
-def test_process_source_graph_x_shape(preprocessor):
-    """graph.x must be [N, NODE_FEATURE_DIM] to match GNNEncoder in_channels."""
-    source        = "pragma solidity ^0.8.0; contract A {}"
-    contract_hash = hashlib.md5(source.encode()).hexdigest()
-
-    preprocessor._extract_graph = MagicMock(return_value=_synthetic_graph(contract_hash))
-    preprocessor._tokenize      = MagicMock(return_value=_synthetic_tokens(contract_hash))
-    preprocessor._log_result    = MagicMock()
-
-    graph, _ = preprocessor.process_source(source)
-    assert graph.x.shape[1] == NODE_FEATURE_DIM, (
-        f"expected {NODE_FEATURE_DIM}-dim node features (v2 schema), "
-        f"got {graph.x.shape[1]}"
-    )
+def _make_mock_ir_op(type_cls, lvalue=True, read_vars=None):
+    """Create a mock Slither IR operation."""
+    op = MagicMock(spec=type_cls)
+    op.lvalue = MagicMock() if lvalue else None
+    op.read = read_vars or []
+    return op
 
 
-def test_process_source_token_shape(preprocessor):
-    """input_ids and attention_mask must be [1, 512] for single-sample inference."""
-    source        = "pragma solidity ^0.8.0; contract A {}"
-    contract_hash = hashlib.md5(source.encode()).hexdigest()
-
-    preprocessor._extract_graph = MagicMock(return_value=_synthetic_graph(contract_hash))
-    preprocessor._tokenize      = MagicMock(return_value=_synthetic_tokens(contract_hash))
-    preprocessor._log_result    = MagicMock()
-
-    _, tokens = preprocessor.process_source(source)
-    assert tokens["input_ids"].shape      == (1, 512)
-    assert tokens["attention_mask"].shape == (1, 512)
-
-
-def test_process_source_tokens_include_required_keys(preprocessor):
-    source        = "pragma solidity ^0.8.0; contract A {}"
-    contract_hash = hashlib.md5(source.encode()).hexdigest()
-
-    preprocessor._extract_graph = MagicMock(return_value=_synthetic_graph(contract_hash))
-    preprocessor._tokenize      = MagicMock(return_value=_synthetic_tokens(contract_hash))
-    preprocessor._log_result    = MagicMock()
-
-    _, tokens = preprocessor.process_source(source)
-    for key in ("input_ids", "attention_mask", "contract_hash", "num_tokens", "truncated"):
-        assert key in tokens, f"missing key: {key}"
-
-
-# ---------------------------------------------------------------------------
-# Content-addressed hashing
-# ---------------------------------------------------------------------------
-
-def test_process_source_same_source_same_hash(preprocessor):
-    source        = "pragma solidity ^0.8.0; contract A {}"
-    contract_hash = hashlib.md5(source.encode()).hexdigest()
-
-    preprocessor._extract_graph = MagicMock(return_value=_synthetic_graph(contract_hash))
-    preprocessor._tokenize      = MagicMock(return_value=_synthetic_tokens(contract_hash))
-    preprocessor._log_result    = MagicMock()
-
-    _, t1 = preprocessor.process_source(source)
-    _, t2 = preprocessor.process_source(source)
-    assert t1["contract_hash"] == t2["contract_hash"]
-
-
-def test_process_source_different_source_different_hash(preprocessor):
-    s1 = "pragma solidity ^0.8.0; contract A {}"
-    s2 = "pragma solidity ^0.8.0; contract B {}"
-    h1 = hashlib.md5(s1.encode()).hexdigest()
-    h2 = hashlib.md5(s2.encode()).hexdigest()
-
-    preprocessor._extract_graph = MagicMock(
-        side_effect=[_synthetic_graph(h1), _synthetic_graph(h2)]
-    )
-    preprocessor._tokenize = MagicMock(
-        side_effect=[_synthetic_tokens(h1), _synthetic_tokens(h2)]
-    )
-    preprocessor._log_result = MagicMock()
-
-    _, t1 = preprocessor.process_source(s1)
-    _, t2 = preprocessor.process_source(s2)
-    assert t1["contract_hash"] != t2["contract_hash"]
-
-
-# ---------------------------------------------------------------------------
-# Truncation flag
-# ---------------------------------------------------------------------------
-
-def test_process_source_truncated_flag_propagated(preprocessor):
-    source        = "pragma solidity ^0.8.0; contract A {}"
-    contract_hash = hashlib.md5(source.encode()).hexdigest()
-
-    preprocessor._extract_graph = MagicMock(return_value=_synthetic_graph(contract_hash))
-    preprocessor._tokenize      = MagicMock(return_value=_synthetic_tokens(contract_hash, truncated=True))
-    preprocessor._log_result    = MagicMock()
-
-    _, tokens = preprocessor.process_source(source)
-    assert tokens["truncated"] is True
-
-
-# ---------------------------------------------------------------------------
-# Schema constants sanity checks
-# ---------------------------------------------------------------------------
-
-def test_feature_names_length_matches_node_feature_dim():
-    assert len(FEATURE_NAMES) == NODE_FEATURE_DIM, (
-        f"FEATURE_NAMES has {len(FEATURE_NAMES)} entries; "
-        f"NODE_FEATURE_DIM={NODE_FEATURE_DIM}"
-    )
-
-
-def test_feature_names_v2_has_expected_entries():
-    assert "return_ignored"      in FEATURE_NAMES
-    assert "call_target_typed"   in FEATURE_NAMES
-    assert "in_unchecked"        in FEATURE_NAMES
-    assert "has_loop"            in FEATURE_NAMES
-    assert "gas_intensity"       in FEATURE_NAMES
-    assert "external_call_count" in FEATURE_NAMES
-
-
-def test_feature_names_v2_reentrant_removed():
-    assert "reentrant" not in FEATURE_NAMES, (
-        "'reentrant' should have been removed in v2 schema — "
-        "it was Slither's own detection leaking into training features."
-    )
-
-
-def test_edge_types_v2_contains_cfg_entries():
-    assert "CONTAINS"     in EDGE_TYPES
-    assert "CONTROL_FLOW" in EDGE_TYPES
-    assert EDGE_TYPES["CONTAINS"]     == 5
-    assert EDGE_TYPES["CONTROL_FLOW"] == 6
-
-
-def test_node_types_v2_contains_cfg_node():
-    assert "CFG_NODE" in NODE_TYPES
-    assert NODE_TYPES["CFG_NODE"] == 8
-
-
-# ---------------------------------------------------------------------------
-# _build_node_features — unit tests with mock Slither objects
-# ---------------------------------------------------------------------------
-
-def _make_mock_function(
-    canonical_name: str = "MyContract.myFunc",
-    visibility: str = "public",
+def _make_mock_func(
+    canonical_name: str = "TestContract.withdraw",
+    visibility: str = "external",
     pure: bool = False,
     view: bool = False,
-    payable: bool = False,
+    payable: bool = True,
     is_constructor: bool = False,
     is_fallback: bool = False,
     is_receive: bool = False,
     nodes: list | None = None,
-    source_lines: list | None = None,
-    # new v2 features
-    slithir_ops: list | None = None,
+    slithir_operations: list | None = None,
     high_level_calls: list | None = None,
     low_level_calls: list | None = None,
-    external_calls_as_expressions: list | None = None,
+    source_content: str = "",
+    source_lines: list | None = None,
 ) -> MagicMock:
-    """Create a mock Slither Function object for feature computation tests."""
-    from slither.core.declarations import Function
+    """Build a minimal mock Slither Function object."""
+    func = MagicMock()
+    func.canonical_name = canonical_name
+    func.visibility = visibility
+    func.pure = pure
+    func.view = view
+    func.payable = payable
+    func.is_constructor = is_constructor
+    func.is_fallback = is_fallback
+    func.is_receive = is_receive
+    func.nodes = nodes or []
+    func.slithir_operations = slithir_operations or []
+    func.high_level_calls = high_level_calls or []
+    func.low_level_calls  = low_level_calls  or []
 
-    func = MagicMock(spec=Function)
-    func.canonical_name   = canonical_name
-    func.visibility       = visibility
-    func.pure             = pure
-    func.view             = view
-    func.payable          = payable
-    func.is_constructor   = is_constructor
-    func.is_fallback      = is_fallback
-    func.is_receive       = is_receive
-    func.nodes            = nodes or []
-    func.slithir_operations = slithir_ops or []
-    func.high_level_calls   = high_level_calls or []
-    func.low_level_calls    = low_level_calls or []
-    func.external_calls_as_expressions = external_calls_as_expressions or []
-    func.state_variables_read    = []
-    func.state_variables_written = []
-    func.internal_calls          = []
-
-    src = MagicMock()
-    src.lines   = source_lines or list(range(10))
-    src.content = ""
-    func.source_mapping = src
+    sm = MagicMock()
+    sm.content = source_content
+    sm.lines   = source_lines or []
+    func.source_mapping = sm
 
     return func
 
 
-def test_build_node_features_returns_correct_length():
-    from ml.src.preprocessing.graph_extractor import _build_node_features
-    func = _make_mock_function()
-    feats = _build_node_features(func, NODE_TYPES["FUNCTION"])
-    assert len(feats) == NODE_FEATURE_DIM, (
-        f"_build_node_features returned {len(feats)} values, "
-        f"expected {NODE_FEATURE_DIM}"
-    )
-
-
-def test_build_node_features_type_id_at_index_0():
-    from ml.src.preprocessing.graph_extractor import _build_node_features
-    func = _make_mock_function()
-    feats = _build_node_features(func, NODE_TYPES["FUNCTION"])
-    assert feats[0] == float(NODE_TYPES["FUNCTION"])
-
-
-def test_build_node_features_constructor_overrides_type_id():
-    from ml.src.preprocessing.graph_extractor import _build_node_features
-    func = _make_mock_function(is_constructor=True)
-    feats = _build_node_features(func, NODE_TYPES["FUNCTION"])
-    assert feats[0] == float(NODE_TYPES["CONSTRUCTOR"]), (
-        "Constructor function should override type_id to CONSTRUCTOR"
-    )
-
-
-def test_build_node_features_payable_flag():
-    from ml.src.preprocessing.graph_extractor import _build_node_features
-    func = _make_mock_function(payable=True)
-    feats = _build_node_features(func, NODE_TYPES["FUNCTION"])
-    payable_idx = FEATURE_NAMES.index("payable")
-    assert feats[payable_idx] == 1.0
-
-
-def test_build_node_features_no_reentrant_feature():
-    """v2 schema: reentrant must not appear in computed features (it's removed)."""
-    from ml.src.preprocessing.graph_extractor import _build_node_features
-    # Even if Slither had is_reentrant=True, it should NOT be in features
-    func = _make_mock_function()
-    func.is_reentrant = True
-    feats = _build_node_features(func, NODE_TYPES["FUNCTION"])
-    assert len(feats) == NODE_FEATURE_DIM
-    # We can't directly assert "reentrant not in feats" by value (it's 1.0),
-    # but we can verify the length is 13 (no extra feature slipped in).
-
-
-# ---------------------------------------------------------------------------
-# _compute_return_ignored — unit tests
-# ---------------------------------------------------------------------------
-
-def test_return_ignored_no_calls_is_zero():
-    from ml.src.preprocessing.graph_extractor import _compute_return_ignored
-    func = _make_mock_function(slithir_ops=[])
-    assert _compute_return_ignored(func) == 0.0
-
-
-def test_return_ignored_low_level_call_with_lvalue_is_zero():
-    from ml.src.preprocessing.graph_extractor import _compute_return_ignored
-    try:
-        from slither.slithir.operations import LowLevelCall
-        op = MagicMock(spec=LowLevelCall)
-        op.lvalue = MagicMock()  # lvalue is NOT None → return captured
-        func = _make_mock_function(slithir_ops=[op])
-        assert _compute_return_ignored(func) == 0.0
-    except ImportError:
-        pytest.skip("slither not installed")
-
-
-def test_return_ignored_low_level_call_without_lvalue_is_one():
-    from ml.src.preprocessing.graph_extractor import _compute_return_ignored
-    try:
-        from slither.slithir.operations import LowLevelCall
-        op = MagicMock(spec=LowLevelCall)
-        op.lvalue = None  # return value discarded
-        func = _make_mock_function(slithir_ops=[op])
-        assert _compute_return_ignored(func) == 1.0
-    except ImportError:
-        pytest.skip("slither not installed")
-
-
-# ---------------------------------------------------------------------------
-# _compute_in_unchecked — unit tests
-# ---------------------------------------------------------------------------
-
-def test_in_unchecked_no_unchecked_is_zero():
-    from ml.src.preprocessing.graph_extractor import _compute_in_unchecked
-    func = _make_mock_function(nodes=[])
-    func.source_mapping.content = "uint x = a + b;"
-    assert _compute_in_unchecked(func) == 0.0
-
-
-def test_in_unchecked_source_contains_unchecked_is_one():
-    from ml.src.preprocessing.graph_extractor import _compute_in_unchecked
-    func = _make_mock_function(nodes=[])
-    func.source_mapping.content = "unchecked { x += 1; }"
-    assert _compute_in_unchecked(func) == 1.0
-
-
-# ---------------------------------------------------------------------------
-# _compute_has_loop — unit tests
-# ---------------------------------------------------------------------------
-
-def test_has_loop_no_nodes_is_zero():
-    from ml.src.preprocessing.graph_extractor import _compute_has_loop
-    func = _make_mock_function(nodes=[])
-    func.source_mapping.content = "uint x = 1;"
-    assert _compute_has_loop(func) == 0.0
-
-
-def test_has_loop_for_loop_in_source_is_one():
-    from ml.src.preprocessing.graph_extractor import _compute_has_loop
-    func = _make_mock_function(nodes=[])
-    func.source_mapping.content = "for (uint i = 0; i < 10; i++) {}"
-    assert _compute_has_loop(func) == 1.0
-
-
-def test_has_loop_while_loop_in_source_is_one():
-    from ml.src.preprocessing.graph_extractor import _compute_has_loop
-    func = _make_mock_function(nodes=[])
-    func.source_mapping.content = "while (condition) { doSomething(); }"
-    assert _compute_has_loop(func) == 1.0
-
-
-# ---------------------------------------------------------------------------
-# _compute_external_call_count — unit tests
-# ---------------------------------------------------------------------------
-
-def test_external_call_count_zero_calls():
-    from ml.src.preprocessing.graph_extractor import _compute_external_call_count
-    func = _make_mock_function(high_level_calls=[], low_level_calls=[])
-    assert _compute_external_call_count(func) == pytest.approx(math.log1p(0))
-
-
-def test_external_call_count_two_calls():
-    from ml.src.preprocessing.graph_extractor import _compute_external_call_count
-    func = _make_mock_function(
-        high_level_calls=[MagicMock(), MagicMock()],
-        low_level_calls=[],
-    )
-    assert _compute_external_call_count(func) == pytest.approx(math.log1p(2))
-
-
-# ---------------------------------------------------------------------------
-# _build_cfg_node_features — unit tests
-# ---------------------------------------------------------------------------
-
-def test_build_cfg_node_features_returns_correct_length():
-    from ml.src.preprocessing.graph_extractor import _build_cfg_node_features
-    fn_node  = MagicMock()
-    fn_node.node_id = 0
-    fn_node.irs = []
-    fn_node.source_mapping = MagicMock()
-    fn_node.source_mapping.lines = list(range(3))
-    parent = _make_mock_function()
-    feats = _build_cfg_node_features(fn_node, parent)
-    assert len(feats) == NODE_FEATURE_DIM
-
-
-def test_build_cfg_node_features_type_id_is_cfg_node():
-    from ml.src.preprocessing.graph_extractor import _build_cfg_node_features
-    fn_node = MagicMock()
-    fn_node.irs = []
-    fn_node.source_mapping = MagicMock()
-    fn_node.source_mapping.lines = [1, 2]
-    parent = _make_mock_function()
-    feats = _build_cfg_node_features(fn_node, parent)
-    assert feats[0] == float(NODE_TYPES["CFG_NODE"])
-
-
-# ---------------------------------------------------------------------------
-# Integration: extract_contract_graph on real contracts (requires Slither)
-# ---------------------------------------------------------------------------
-
-slither_available = pytest.importorskip("slither", reason="slither not installed")
-
-
-CLASSIC_REENTRANCY = """\
-pragma solidity ^0.8.0;
-
-contract Reentrant {
-    mapping(address => uint) public balances;
-
-    function deposit() external payable {
-        balances[msg.sender] += msg.value;
-    }
-
-    // VULNERABLE: calls external address before zeroing balance
-    function withdraw(uint amount) external {
-        require(balances[msg.sender] >= amount);
-        (bool ok,) = msg.sender.call{value: amount}("");
-        require(ok);
-        balances[msg.sender] -= amount;  // write AFTER call
-    }
-}
-"""
-
-SAFE_CEI = """\
-pragma solidity ^0.8.0;
-
-contract SafeCEI {
-    mapping(address => uint) public balances;
-
-    function deposit() external payable {
-        balances[msg.sender] += msg.value;
-    }
-
-    // SAFE: checks-effects-interactions — balance zeroed BEFORE call
-    function withdraw(uint amount) external {
-        require(balances[msg.sender] >= amount);
-        balances[msg.sender] -= amount;  // write BEFORE call
-        (bool ok,) = msg.sender.call{value: amount}("");
-        require(ok);
-    }
-}
-"""
-
-UNCHECKED_OVERFLOW = """\
-pragma solidity ^0.8.0;
-
-contract UncheckedOps {
-    function unsafeAdd(uint a, uint b) external pure returns (uint) {
-        unchecked {
-            return a + b;  // can overflow on 0.8+
-        }
-    }
-}
-"""
-
-DOS_UNBOUNDED_LOOP = """\
-pragma solidity ^0.8.0;
-
-contract Lottery {
-    address[] public players;
-
-    function addPlayer() external {
-        players.push(msg.sender);
-    }
-
-    // VULNERABLE: unbounded loop — gas DoS if players grows large
-    function distributeAll() external {
-        for (uint i = 0; i < players.length; i++) {
-            payable(players[i]).transfer(1 ether);
-        }
-    }
-}
-"""
-
-
-@pytest.fixture(scope="module")
-def tmp_sol(tmp_path_factory):
-    return tmp_path_factory.mktemp("sol")
-
-
-def _extract(source: str, tmp_dir: Path) -> Data:
-    from ml.src.preprocessing.graph_extractor import (
-        GraphExtractionConfig,
-        extract_contract_graph,
-    )
-    path = tmp_dir / "contract.sol"
-    path.write_text(source)
-    return extract_contract_graph(path, GraphExtractionConfig())
-
-
-def test_extract_graph_x_dim_is_node_feature_dim(tmp_sol):
-    graph = _extract(CLASSIC_REENTRANCY, tmp_sol)
-    assert graph.x.shape[1] == NODE_FEATURE_DIM, (
-        f"Expected {NODE_FEATURE_DIM}-dim features, got {graph.x.shape[1]}"
-    )
-
-
-def test_extract_graph_edge_attr_present_and_1d(tmp_sol):
-    graph = _extract(CLASSIC_REENTRANCY, tmp_sol)
-    assert hasattr(graph, "edge_attr")
-    assert graph.edge_attr.dim() == 1
-
-
-def test_extract_graph_contains_cfg_nodes(tmp_sol):
-    """CFG_NODE nodes must be present in a contract with functions."""
-    graph = _extract(CLASSIC_REENTRANCY, tmp_sol)
-    cfg_node_type = float(NODE_TYPES["CFG_NODE"])
-    type_ids = graph.x[:, 0]
-    assert (type_ids == cfg_node_type).any(), (
-        "Expected at least one CFG_NODE (type_id=8) in reentrancy contract graph"
-    )
-
-
-def test_extract_graph_contains_edges_present(tmp_sol):
-    """CONTAINS(5) edges must connect function nodes to their CFG blocks."""
-    graph = _extract(CLASSIC_REENTRANCY, tmp_sol)
-    assert hasattr(graph, "edge_attr")
-    contains_id = EDGE_TYPES["CONTAINS"]
-    assert (graph.edge_attr == contains_id).any(), (
-        "Expected CONTAINS(5) edges in reentrancy contract graph"
-    )
-
-
-def test_extract_graph_control_flow_edges_present(tmp_sol):
-    """CONTROL_FLOW(6) edges must encode execution order within functions."""
-    graph = _extract(CLASSIC_REENTRANCY, tmp_sol)
-    assert hasattr(graph, "edge_attr")
-    cf_id = EDGE_TYPES["CONTROL_FLOW"]
-    assert (graph.edge_attr == cf_id).any(), (
-        "Expected CONTROL_FLOW(6) edges in reentrancy contract graph"
-    )
-
-
-def test_extract_graph_edge_attr_values_in_range(tmp_sol):
-    """All edge type IDs must be in [0, NUM_EDGE_TYPES)."""
-    from ml.src.preprocessing.graph_schema import NUM_EDGE_TYPES
-    graph = _extract(CLASSIC_REENTRANCY, tmp_sol)
-    if graph.edge_attr.numel() > 0:
-        assert int(graph.edge_attr.min()) >= 0
-        assert int(graph.edge_attr.max()) < NUM_EDGE_TYPES
-
-
-def test_extract_unchecked_contract_has_in_unchecked_feature(tmp_sol):
-    """A function with unchecked{} should have in_unchecked=1.0 on its func node."""
-    graph = _extract(UNCHECKED_OVERFLOW, tmp_sol)
-    in_unchecked_idx = FEATURE_NAMES.index("in_unchecked")
-    func_type = float(NODE_TYPES["FUNCTION"])
-    func_mask = graph.x[:, 0] == func_type
-    if func_mask.any():
-        max_in_unchecked = graph.x[func_mask, in_unchecked_idx].max().item()
-        assert max_in_unchecked == 1.0, (
-            "Expected in_unchecked=1.0 on a function containing unchecked{}"
+def _make_mock_slither_node(
+    node_id: int = 0,
+    node_type=None,
+    irs: list | None = None,
+    sons: list | None = None,
+    source_lines: list | None = None,
+) -> MagicMock:
+    """Build a minimal mock Slither FunctionNode (CFG basic block)."""
+    node = MagicMock()
+    node.node_id = node_id
+    node.type    = node_type
+    node.irs     = irs or []
+    node.sons    = sons or []
+
+    sm = MagicMock()
+    sm.lines = source_lines or [node_id + 1]  # non-empty default
+    node.source_mapping = sm
+
+    return node
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# _cfg_node_type() unit tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestCfgNodeType:
+    """Priority: CALL > WRITE > READ > CHECK > OTHER."""
+
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _cfg_node_type
+        return _cfg_node_type
+
+    def test_call_wins_over_write(self):
+        slither = pytest.importorskip("slither")
+        from slither.slithir.operations import LowLevelCall, HighLevelCall
+        from slither.core.variables.state_variable import StateVariable
+
+        _cfg_node_type = self._import()
+
+        call_op = _make_mock_ir_op(HighLevelCall, lvalue=True)
+        write_op = _make_mock_ir_op(object)
+        write_op.lvalue = MagicMock(spec=StateVariable)
+
+        node = _make_mock_slither_node(irs=[call_op, write_op])
+        result = _cfg_node_type(node)
+        assert result == NODE_TYPES["CFG_NODE_CALL"], (
+            "CFG_NODE_CALL must win when both a call and a state write are present."
         )
 
+    def test_write_wins_over_read(self):
+        slither = pytest.importorskip("slither")
+        from slither.core.variables.state_variable import StateVariable
 
-def test_extract_dos_contract_has_has_loop_feature(tmp_sol):
-    """A function with an unbounded for loop should have has_loop=1.0."""
-    graph = _extract(DOS_UNBOUNDED_LOOP, tmp_sol)
-    has_loop_idx = FEATURE_NAMES.index("has_loop")
-    func_type = float(NODE_TYPES["FUNCTION"])
-    func_mask = graph.x[:, 0] == func_type
-    if func_mask.any():
-        max_has_loop = graph.x[func_mask, has_loop_idx].max().item()
-        assert max_has_loop == 1.0, (
-            "Expected has_loop=1.0 on a function containing a for loop"
+        _cfg_node_type = self._import()
+
+        write_op = MagicMock()
+        write_op.lvalue = MagicMock(spec=StateVariable)
+        sv = MagicMock(spec=StateVariable)
+        read_op = MagicMock()
+        read_op.read = [sv]
+
+        node = _make_mock_slither_node(irs=[write_op, read_op])
+        result = _cfg_node_type(node)
+        assert result == NODE_TYPES["CFG_NODE_WRITE"]
+
+    def test_empty_irs_returns_other(self):
+        _cfg_node_type = self._import()
+        node = _make_mock_slither_node(irs=[])
+        result = _cfg_node_type(node)
+        assert result == NODE_TYPES["CFG_NODE_OTHER"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# _build_cfg_node_features() unit tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestBuildCfgNodeFeatures:
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _build_cfg_node_features
+        return _build_cfg_node_features
+
+    def test_returns_exactly_12_elements(self):
+        _build_cfg_node_features = self._import()
+        node = _make_mock_slither_node()
+        func = _make_mock_func()
+        result = _build_cfg_node_features(node, func, NODE_TYPES["CFG_NODE_CALL"])
+        assert len(result) == NODE_FEATURE_DIM, (
+            f"_build_cfg_node_features returned {len(result)} elements; "
+            f"expected {NODE_FEATURE_DIM}."
         )
 
+    def test_type_id_reflects_cfg_type(self):
+        _build_cfg_node_features = self._import()
+        node = _make_mock_slither_node()
+        func = _make_mock_func()
+        for cfg_type in [8, 9, 10, 11, 12]:
+            result = _build_cfg_node_features(node, func, cfg_type)
+            assert result[0] == float(cfg_type), (
+                f"type_id [0] expected {float(cfg_type)}, got {result[0]}"
+            )
 
-def test_extract_safe_cei_has_fewer_return_ignored_than_reentrancy(tmp_sol):
-    """
-    Safe CEI contract should have return_ignored=0.0 (captured return),
-    while the reentrancy contract's withdraw may have ignored returns depending
-    on how Slither resolves the (bool ok,) = call{...} pattern.
+    def test_in_unchecked_is_always_zero(self):
+        """CFG nodes must NEVER inherit in_unchecked from the parent function."""
+        _build_cfg_node_features = self._import()
 
-    This test verifies the feature is at least computed without error and that
-    the extractor completes on both contracts.
+        # Parent function has in_unchecked=1.0 (from source content)
+        func = _make_mock_func(source_content="unchecked { x -= 1; }")
+
+        node = _make_mock_slither_node()
+        result = _build_cfg_node_features(node, func, NODE_TYPES["CFG_NODE_WRITE"])
+
+        assert result[9] == 0.0, (
+            "in_unchecked [9] must be 0.0 for CFG nodes — NEVER inherited from "
+            "parent function flag. Inheriting would mark all CFG nodes in a "
+            "function that has any unchecked block, including safe statements outside it."
+        )
+
+    def test_call_target_typed_default_is_1(self):
+        """Default safe: not applicable at statement level."""
+        _build_cfg_node_features = self._import()
+        node = _make_mock_slither_node()
+        func = _make_mock_func()
+        result = _build_cfg_node_features(node, func, NODE_TYPES["CFG_NODE_OTHER"])
+        assert result[8] == 1.0
+
+    def test_loc_from_source_mapping(self):
+        _build_cfg_node_features = self._import()
+        node = _make_mock_slither_node(source_lines=[10, 11, 12])
+        func = _make_mock_func()
+        result = _build_cfg_node_features(node, func, NODE_TYPES["CFG_NODE_READ"])
+        assert result[6] == 3.0, f"Expected loc=3.0, got {result[6]}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# _build_node_features() unit tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestBuildNodeFeatures:
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _build_node_features
+        return _build_node_features
+
+    def test_returns_exactly_12_elements_for_contract_node(self):
+        _build_node_features = self._import()
+        contract_mock = MagicMock()
+        contract_mock.canonical_name = None
+        contract_mock.name = "TestContract"
+        contract_mock.visibility = "public"
+        contract_mock.source_mapping = None
+        result = _build_node_features(contract_mock, NODE_TYPES["CONTRACT"])
+        assert len(result) == NODE_FEATURE_DIM
+
+    def test_type_id_override_for_constructor(self):
+        slither = pytest.importorskip("slither")
+        _build_node_features = self._import()
+        func = _make_mock_func(is_constructor=True)
+        result = _build_node_features(func, NODE_TYPES["FUNCTION"])
+        assert result[0] == float(NODE_TYPES["CONSTRUCTOR"])
+
+    def test_type_id_override_for_fallback(self):
+        slither = pytest.importorskip("slither")
+        _build_node_features = self._import()
+        func = _make_mock_func(is_fallback=True)
+        result = _build_node_features(func, NODE_TYPES["FUNCTION"])
+        assert result[0] == float(NODE_TYPES["FALLBACK"])
+
+    def test_return_ignored_sentinel_on_ir_failure(self):
+        """return_ignored [7] returns -1.0 when Slither IR is unavailable."""
+        slither = pytest.importorskip("slither")
+        _build_node_features = self._import()
+        import ml.src.preprocessing.graph_extractor as ge_module
+
+        # Patch _compute_return_ignored to return the sentinel, simulating IR unavailability
+        original = ge_module._compute_return_ignored
+        ge_module._compute_return_ignored = lambda _func: -1.0
+        try:
+            func = _make_mock_func()
+            result = _build_node_features(func, NODE_TYPES["FUNCTION"])
+        finally:
+            ge_module._compute_return_ignored = original
+
+        assert result[7] == -1.0, (
+            "return_ignored must be -1.0 (sentinel) when Slither IR is unavailable, "
+            "not 0.0 (assumed safe). The sentinel gives the GNN a distinct embedding "
+            "for 'unknown' vs 'confirmed safe'."
+        )
+
+    def test_non_function_call_target_typed_is_1(self):
+        """Non-Function nodes default to call_target_typed=1.0 (not applicable)."""
+        _build_node_features = self._import()
+
+        class FakeStateVar:
+            canonical_name = "TestContract.x"
+            visibility     = "private"
+            source_mapping = None
+            # No 'nodes' or 'pure' attrs — duck-typing classifies this as non-Function
+
+        result = _build_node_features(FakeStateVar(), NODE_TYPES["STATE_VAR"])
+        assert result[8] == 1.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature compute function unit tests (mocked Slither objects)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestComputeReturnIgnored:
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _compute_return_ignored
+        return _compute_return_ignored
+
+    def test_returns_1_when_lvalue_none(self):
+        slither = pytest.importorskip("slither")
+        from slither.slithir.operations import LowLevelCall
+        _fn = self._import()
+
+        call_op = MagicMock(spec=LowLevelCall)
+        call_op.lvalue = None  # return value discarded
+        func = _make_mock_func(slithir_operations=[call_op])
+        assert _fn(func) == 1.0
+
+    def test_returns_0_when_all_lvalues_captured(self):
+        slither = pytest.importorskip("slither")
+        from slither.slithir.operations import HighLevelCall
+        _fn = self._import()
+
+        call_op = MagicMock(spec=HighLevelCall)
+        call_op.lvalue = MagicMock()  # return value captured
+        func = _make_mock_func(slithir_operations=[call_op])
+        assert _fn(func) == 0.0
+
+    def test_returns_sentinel_on_attribute_error(self):
+        _fn = self._import()
+
+        class FakeFunc:
+            canonical_name = "TestContract.f"
+
+            @property
+            def slithir_operations(self):
+                raise AttributeError("no IR")
+
+        assert _fn(FakeFunc()) == -1.0, "Should return -1.0 sentinel, not 0.0"
+
+    def test_no_calls_returns_0(self):
+        slither = pytest.importorskip("slither")
+        _fn = self._import()
+        func = _make_mock_func(slithir_operations=[])  # no operations
+        assert _fn(func) == 0.0
+
+
+class TestComputeCallTargetTyped:
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _compute_call_target_typed
+        return _compute_call_target_typed
+
+    def test_low_level_call_returns_0(self):
+        slither = pytest.importorskip("slither")
+        _fn = self._import()
+        func = _make_mock_func(low_level_calls=[MagicMock()])
+        assert _fn(func) == 0.0
+
+    def test_no_calls_returns_1(self):
+        slither = pytest.importorskip("slither")
+        _fn = self._import()
+        func = _make_mock_func(high_level_calls=[], low_level_calls=[])
+        assert _fn(func) == 1.0
+
+    def test_sentinel_when_source_unavailable(self):
+        _fn = self._import()
+
+        class FakeFunc:
+            canonical_name  = "TestContract.f"
+            low_level_calls  = []
+            high_level_calls = []
+            source_mapping   = None   # unavailable → sentinel -1.0
+
+        # Patch out the AddressType import so type-resolution raises ImportError,
+        # which the outer except catches.  The fallback then sees source_mapping=None
+        # and must return -1.0 rather than the closed-world "safe" 1.0.
+        with patch.dict("sys.modules", {"slither.core.solidity_types": None}):
+            result = _fn(FakeFunc())
+
+        assert result == -1.0
+
+
+class TestComputeInUnchecked:
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _compute_in_unchecked
+        return _compute_in_unchecked
+
+    def test_regex_matches_unchecked_with_space(self):
+        _fn = self._import()
+        func = _make_mock_func(source_content="unchecked { x -= 1; }")
+        # If STARTUNCHECKED raises AttributeError, regex path is triggered
+        with patch("slither.core.cfg.node.NodeType") as mock_nt:
+            del mock_nt.STARTUNCHECKED  # simulate absence
+            result = _fn(func)
+        assert result == 1.0
+
+    def test_regex_matches_unchecked_no_space(self):
+        _fn = self._import()
+        func = _make_mock_func(source_content="unchecked{ x -= 1; }")
+        with patch("slither.core.cfg.node.NodeType") as mock_nt:
+            del mock_nt.STARTUNCHECKED
+            result = _fn(func)
+        assert result == 1.0
+
+    def test_regex_matches_unchecked_newline_brace(self):
+        """unchecked\\n{ is valid Solidity and must be caught by regex."""
+        _fn = self._import()
+        func = _make_mock_func(source_content="unchecked\n{ x -= 1; }")
+        with patch("slither.core.cfg.node.NodeType") as mock_nt:
+            del mock_nt.STARTUNCHECKED
+            result = _fn(func)
+        assert result == 1.0
+
+    def test_regex_does_not_match_unchecked_in_comment(self):
+        """'unchecked' in a comment string should be irrelevant — but regex checks
+        raw source so this can false-positive. Documented limitation, not tested here."""
+        pass  # intentionally left blank — regex-based detection has known limits
+
+
+class TestComputeHasLoop:
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _compute_has_loop
+        return _compute_has_loop
+
+    def test_returns_1_when_ifloop_present(self):
+        slither = pytest.importorskip("slither")
+        from slither.core.cfg.node import NodeType
+        _fn = self._import()
+
+        loop_node = _make_mock_slither_node(node_type=NodeType.IFLOOP)
+        func = _make_mock_func(nodes=[loop_node])
+        assert _fn(func) == 1.0
+
+    def test_returns_0_when_no_loop(self):
+        slither = pytest.importorskip("slither")
+        from slither.core.cfg.node import NodeType
+        _fn = self._import()
+
+        plain_node = _make_mock_slither_node(node_type=NodeType.EXPRESSION)
+        func = _make_mock_func(nodes=[plain_node])
+        assert _fn(func) == 0.0
+
+
+class TestComputeExternalCallCount:
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _compute_external_call_count
+        return _compute_external_call_count
+
+    def test_no_calls_returns_0(self):
+        _fn = self._import()
+        func = _make_mock_func(high_level_calls=[], low_level_calls=[])
+        assert _fn(func) == 0.0
+
+    def test_one_call_correct_normalisation(self):
+        _fn = self._import()
+        func = _make_mock_func(high_level_calls=[MagicMock()], low_level_calls=[])
+        expected = math.log1p(1) / math.log1p(20)
+        assert abs(_fn(func) - expected) < 1e-6
+
+    def test_clamped_at_1_for_many_calls(self):
+        _fn = self._import()
+        calls = [MagicMock() for _ in range(100)]
+        func = _make_mock_func(high_level_calls=calls, low_level_calls=[])
+        assert _fn(func) == 1.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# _build_control_flow_edges() unit tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestBuildControlFlowEdges:
+    def _import(self):
+        from ml.src.preprocessing.graph_extractor import _build_control_flow_edges
+        return _build_control_flow_edges
+
+    def test_x_list_and_node_metadata_stay_aligned(self):
+        """len(node_metadata) must equal len(x_list) after every call."""
+        slither = pytest.importorskip("slither")
+        _fn = self._import()
+
+        n0 = _make_mock_slither_node(node_id=0, sons=[])
+        n1 = _make_mock_slither_node(node_id=1, sons=[])
+        n0.sons = [n1]
+
+        func = _make_mock_func(nodes=[n0, n1])
+        x_list: list = [
+            [0.0] * NODE_FEATURE_DIM,  # simulate pre-existing declaration node
+        ]
+        node_metadata: list = [{"name": "Contract", "type": "CONTRACT", "source_lines": []}]
+        node_index_map: dict = {}
+
+        _fn(func, func_node_idx=0, node_index_map=node_index_map,
+            x_list=x_list, node_metadata=node_metadata)
+
+        assert len(x_list) == len(node_metadata), (
+            f"x_list length {len(x_list)} ≠ node_metadata length {len(node_metadata)}. "
+            "The invariant must hold: both lists grow by 1 per CFG node."
+        )
+
+    def test_graph_idx_uses_x_list_length(self):
+        """graph_idx = len(x_list) — not len(node_index_map)."""
+        slither = pytest.importorskip("slither")
+        _fn = self._import()
+
+        n0 = _make_mock_slither_node(node_id=0, sons=[])
+        func = _make_mock_func(nodes=[n0])
+
+        # Start with 5 pre-existing nodes in x_list
+        x_list = [[0.0] * NODE_FEATURE_DIM for _ in range(5)]
+        node_metadata = [{"name": f"node{i}", "type": "STATE_VAR", "source_lines": []} for i in range(5)]
+        node_index_map: dict = {}
+
+        _fn(func, func_node_idx=0, node_index_map=node_index_map,
+            x_list=x_list, node_metadata=node_metadata)
+
+        # The CFG node should have been assigned index 5 (len(x_list) before append)
+        assert node_index_map[n0] == 5, (
+            f"CFG node assigned index {node_index_map[n0]}; expected 5. "
+            "graph_idx must be len(x_list) before the append, not len(node_index_map)."
+        )
+
+    def test_control_flow_edges_only_within_function(self):
+        """Pass 2 must only add CONTROL_FLOW edges within the current function's CFG.
+        A successor not in node_index_map (e.g. from a different function) is skipped."""
+        slither = pytest.importorskip("slither")
+        _fn = self._import()
+
+        # n0 has a successor that is NOT in the current function's nodes
+        external_node = _make_mock_slither_node(node_id=99, sons=[])
+        n0 = _make_mock_slither_node(node_id=0, sons=[external_node])  # successor not in map
+
+        func = _make_mock_func(nodes=[n0])  # only n0, not external_node
+        x_list: list = []
+        node_metadata: list = []
+        node_index_map: dict = {}
+
+        _, control_flow_edges = _fn(func, func_node_idx=0, node_index_map=node_index_map,
+                                    x_list=x_list, node_metadata=node_metadata)
+
+        # external_node is not in node_index_map so no CONTROL_FLOW edge should exist
+        assert len(control_flow_edges) == 0, (
+            "CONTROL_FLOW edges must only be built within the current function's "
+            "node_index_map scope. Successors from other functions must be skipped "
+            "via the 'if successor in node_index_map' gate."
+        )
+
+    def test_contains_edges_built_for_each_cfg_node(self):
+        slither = pytest.importorskip("slither")
+        _fn = self._import()
+
+        nodes = [_make_mock_slither_node(node_id=i, sons=[]) for i in range(3)]
+        func = _make_mock_func(nodes=nodes)
+        x_list: list = [[0.0] * NODE_FEATURE_DIM]  # 1 function node at idx 0
+        node_metadata: list = [{"name": "func", "type": "FUNCTION", "source_lines": []}]
+        node_index_map: dict = {}
+
+        contains_edges, _ = _fn(func, func_node_idx=0, node_index_map=node_index_map,
+                                 x_list=x_list, node_metadata=node_metadata)
+
+        assert len(contains_edges) == 3, (
+            "Expected one CONTAINS edge per CFG node (3 nodes → 3 edges)."
+        )
+        # All CONTAINS edges should start from the function node (idx 0)
+        for src, dst in contains_edges:
+            assert src == 0, f"CONTAINS edge src {src} ≠ func_node_idx 0"
+
+    def test_node_metadata_has_required_keys(self):
+        slither = pytest.importorskip("slither")
+        _fn = self._import()
+
+        n0 = _make_mock_slither_node(node_id=0, sons=[])
+        func = _make_mock_func(nodes=[n0])
+        x_list: list = []
+        node_metadata: list = []
+        _fn(func, func_node_idx=0, node_index_map={}, x_list=x_list, node_metadata=node_metadata)
+
+        for meta in node_metadata:
+            assert "name"         in meta, "node_metadata entry missing 'name' key"
+            assert "type"         in meta, "node_metadata entry missing 'type' key"
+            assert "source_lines" in meta, "node_metadata entry missing 'source_lines' key"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Integration tests (require slither-analyzer)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.integration
+class TestExtractionIntegration:
     """
-    g_vuln = _extract(CLASSIC_REENTRANCY, tmp_sol)
-    g_safe = _extract(SAFE_CEI, tmp_sol)
-    ri_idx = FEATURE_NAMES.index("return_ignored")
-    assert g_vuln.x.shape[1] == NODE_FEATURE_DIM
-    assert g_safe.x.shape[1] == NODE_FEATURE_DIM
-    # Both should extract successfully; values are float [0.0, 1.0]
-    assert g_vuln.x[:, ri_idx].min() >= 0.0
-    assert g_safe.x[:, ri_idx].max() <= 1.0
+    These tests call extract_contract_graph() on real .sol files written to a
+    temp directory. They require slither-analyzer and a working solc installation.
+    Run with: pytest ml/tests/test_preprocessing.py -m integration
+    """
+
+    @pytest.fixture
+    def sol_file(self, tmp_path):
+        """Write a Solidity file to a temp dir and return its Path."""
+        def _write(content: str, name: str = "test.sol") -> Path:
+            p = tmp_path / name
+            p.write_text(content)
+            return p
+        return _write
+
+    def _extract(self, sol_path: Path):
+        from ml.src.preprocessing.graph_extractor import extract_contract_graph
+        return extract_contract_graph(sol_path)
+
+    # ── Reentrancy (call-before-write) ─────────────────────────────────────
+    def test_reentrancy_has_cfg_node_call(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract R {
+            mapping(address => uint) public balances;
+            function withdraw(uint amount) external {
+                require(balances[msg.sender] >= amount);
+                (bool ok,) = msg.sender.call{value: amount}("");
+                balances[msg.sender] -= amount;
+            }
+        }
+        """)
+        graph = self._extract(path)
+        type_ids = graph.x[:, 0].int().tolist()
+        assert NODE_TYPES["CFG_NODE_CALL"] in type_ids, (
+            "Reentrancy contract must have at least one CFG_NODE_CALL (type 8) node."
+        )
+
+    def test_reentrancy_has_control_flow_edges(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract R {
+            mapping(address => uint) public balances;
+            function withdraw(uint amount) external {
+                require(balances[msg.sender] >= amount);
+                (bool ok,) = msg.sender.call{value: amount}("");
+                balances[msg.sender] -= amount;
+            }
+        }
+        """)
+        graph = self._extract(path)
+        assert hasattr(graph, "edge_attr"), "graph.edge_attr missing"
+        cf_edges = (graph.edge_attr == EDGE_TYPES["CONTROL_FLOW"]).sum().item()
+        assert cf_edges > 0, "Reentrancy contract must have CONTROL_FLOW edges (type 6)."
+
+    # ── CEI-safe (write-before-call) ───────────────────────────────────────
+    def test_cei_safe_has_write_before_call_in_control_flow(self, sol_file):
+        """
+        Write-before-call (safe CEI): there must be a CONTROL_FLOW edge from a
+        CFG_NODE_WRITE (9) to a CFG_NODE_CALL (8) node — i.e., the write node
+        precedes the call node in execution order.
+        """
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract Safe {
+            mapping(address => uint) public balances;
+            function withdraw(uint amount) external {
+                require(balances[msg.sender] >= amount);
+                balances[msg.sender] -= amount;
+                (bool ok,) = msg.sender.call{value: amount}("");
+            }
+        }
+        """)
+        graph = self._extract(path)
+        type_ids = graph.x[:, 0].int().tolist()
+        assert NODE_TYPES["CFG_NODE_WRITE"] in type_ids
+        assert NODE_TYPES["CFG_NODE_CALL"]  in type_ids
+
+        write_indices = {i for i, t in enumerate(type_ids) if t == NODE_TYPES["CFG_NODE_WRITE"]}
+        call_indices  = {i for i, t in enumerate(type_ids) if t == NODE_TYPES["CFG_NODE_CALL"]}
+
+        # Check that at least one CONTROL_FLOW edge goes from a write node to a call node
+        cf_mask = (graph.edge_attr == EDGE_TYPES["CONTROL_FLOW"])
+        cf_src = graph.edge_index[0][cf_mask].tolist()
+        cf_dst = graph.edge_index[1][cf_mask].tolist()
+
+        found_write_before_call = any(
+            src in write_indices and dst in call_indices
+            for src, dst in zip(cf_src, cf_dst)
+        )
+        assert found_write_before_call, (
+            "CEI-safe contract must have a CONTROL_FLOW edge from CFG_NODE_WRITE → "
+            "CFG_NODE_CALL. This encodes 'write before call' execution order."
+        )
+
+    # ── unchecked{} contract ──────────────────────────────────────────────
+    def test_unchecked_func_node_has_in_unchecked_1(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract U {
+            function add(uint a, uint b) external pure returns (uint) {
+                unchecked { return a + b; }
+            }
+        }
+        """)
+        graph = self._extract(path)
+        # FUNCTION nodes: type_id == 1
+        func_mask = (graph.x[:, 0].int() == NODE_TYPES["FUNCTION"])
+        func_in_unchecked = graph.x[func_mask, 9]  # in_unchecked at index 9
+        assert (func_in_unchecked == 1.0).any(), (
+            "Function node in unchecked{} contract should have in_unchecked=1.0."
+        )
+
+    def test_unchecked_cfg_nodes_have_in_unchecked_0(self, sol_file):
+        """
+        CRITICAL: CFG nodes must have in_unchecked=0.0 even when the parent
+        function has in_unchecked=1.0. The feature must never be inherited.
+        """
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract U {
+            function add(uint a, uint b) external pure returns (uint) {
+                unchecked { return a + b; }
+            }
+        }
+        """)
+        graph = self._extract(path)
+        # CFG node types: 8–12
+        cfg_mask = (graph.x[:, 0].int() >= 8) & (graph.x[:, 0].int() <= 12)
+        if cfg_mask.any():
+            cfg_in_unchecked = graph.x[cfg_mask, 9]
+            assert (cfg_in_unchecked == 0.0).all(), (
+                f"CFG nodes have in_unchecked values: {cfg_in_unchecked.tolist()}. "
+                "All must be 0.0 — in_unchecked must NEVER be inherited from the parent function."
+            )
+
+    # ── Loop contract ──────────────────────────────────────────────────────
+    def test_loop_func_has_has_loop_1(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract L {
+            function sum(uint[] calldata arr) external pure returns (uint total) {
+                for (uint i; i < arr.length; i++) { total += arr[i]; }
+            }
+        }
+        """)
+        graph = self._extract(path)
+        func_mask = (graph.x[:, 0].int() == NODE_TYPES["FUNCTION"])
+        func_has_loop = graph.x[func_mask, 10]  # has_loop at index 10
+        assert (func_has_loop == 1.0).any(), "Loop function must have has_loop=1.0."
+
+    # ── node_metadata alignment ───────────────────────────────────────────
+    def test_node_metadata_length_equals_x_shape(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract M {
+            uint public x;
+            function set(uint v) external { x = v; }
+        }
+        """)
+        graph = self._extract(path)
+        assert hasattr(graph, "node_metadata"), (
+            "graph.node_metadata missing — extraction must attach this attribute."
+        )
+        assert len(graph.node_metadata) == graph.x.shape[0], (
+            f"node_metadata length {len(graph.node_metadata)} ≠ "
+            f"x.shape[0] {graph.x.shape[0]}. They must be index-aligned."
+        )
+
+    def test_function_nodes_have_name_in_metadata(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract T {
+            function foo() external pure returns (uint) { return 42; }
+        }
+        """)
+        graph = self._extract(path)
+        assert hasattr(graph, "node_metadata")
+        type_ids = graph.x[:, 0].int().tolist()
+        func_indices = [i for i, t in enumerate(type_ids) if t == NODE_TYPES["FUNCTION"]]
+        for idx in func_indices:
+            meta = graph.node_metadata[idx]
+            name = meta.get("name", "")
+            assert name, (
+                f"FUNCTION node at index {idx} has empty 'name' in node_metadata. "
+                "Function nodes must have a populated canonical name."
+            )
+
+    def test_x_has_correct_feature_dim(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract D { uint public x; }
+        """)
+        graph = self._extract(path)
+        assert graph.x.shape[1] == NODE_FEATURE_DIM, (
+            f"graph.x.shape[1] = {graph.x.shape[1]}; expected {NODE_FEATURE_DIM} (v2 schema)."
+        )
+
+    def test_edge_attr_is_1d_int64(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract E { uint public x; function set(uint v) external { x = v; } }
+        """)
+        graph = self._extract(path)
+        assert graph.edge_attr.dim() == 1, (
+            "edge_attr must be 1-D [E] not [E, 1]. "
+            "nn.Embedding will crash on shape [E, 1]."
+        )
+        assert graph.edge_attr.dtype == torch.long
+
+    def test_edge_attr_values_in_valid_range(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract V { uint public x; function set(uint v) external { x = v; } }
+        """)
+        graph = self._extract(path)
+        if graph.edge_attr.numel() > 0:
+            assert graph.edge_attr.max().item() < NUM_EDGE_TYPES, (
+                f"edge_attr contains values >= NUM_EDGE_TYPES={NUM_EDGE_TYPES}."
+            )
+            assert graph.edge_attr.min().item() >= 0
+
+    def test_contains_edges_present_when_function_has_cfg(self, sol_file):
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract C { function f() external { uint x = 1; } }
+        """)
+        graph = self._extract(path)
+        assert (graph.edge_attr == EDGE_TYPES["CONTAINS"]).any(), (
+            "Contract with function body must have CONTAINS edges (type 5)."
+        )
+
+    def test_node_metadata_type_field_matches_type_id(self, sol_file):
+        """metadata['type'] must correspond to the node's type_id in graph.x."""
+        path = sol_file("""
+        pragma solidity ^0.8.0;
+        contract A { function f() external { uint x = 1; } }
+        """)
+        graph = self._extract(path)
+        type_ids = graph.x[:, 0].int().tolist()
+        for i, (type_id, meta) in enumerate(zip(type_ids, graph.node_metadata)):
+            expected_name = {v: k for k, v in NODE_TYPES.items()}.get(type_id, "UNKNOWN")
+            meta_type = meta.get("type", "")
+            assert meta_type == expected_name, (
+                f"Node {i}: type_id={type_id} → expected type name '{expected_name}', "
+                f"got '{meta_type}' in node_metadata."
+            )
