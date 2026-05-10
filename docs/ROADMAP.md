@@ -1,6 +1,6 @@
 # SENTINEL — Roadmap
 
-Last updated: 2026-05-10 (v4 experiment 1 running; autoresearch harness built; v3 analysis complete)
+Last updated: 2026-05-10 (v4 experiment 1 complete; tuned F1 0.5422 — gate cleared; exp 2 TBD)
 
 This file tracks upcoming work in priority order. Completed items move to
 `docs/changes/` as dated changelogs. See `docs/STATUS.md` for current module state.
@@ -37,27 +37,33 @@ implemented, except for a single pending sub‑item noted below.
   Threshold JSON: `ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json`.
   See `docs/changes/2026-05-05-v3-training-complete.md`.
 
+- **v4 experiment 1 — DONE** — `multilabel-v4-finetune-lr1e4` fine-tuned from v3 weights, lr=1e-4, 30 epochs, batch=16, lora_r=8.
+  Best raw F1-macro: **0.5064** (epoch 26). Tuned F1-macro: **0.5422** ✅ — beats 0.5069 gate by +0.0353.
+  All 10 classes improved; patience=4/7 at epoch 30 (model still learning).
+  Checkpoint: `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt`
+  Thresholds: `ml/checkpoints/multilabel-v4-finetune-lr1e4_best_thresholds.json`
+
 ---
 
 ## In Progress
 
-1. **v4 retrain — experiment 1 running overnight (2026-05-09→10)**
+1. **v4 experiment 2 — decision pending**
 
-   Deep analysis of v3 MLflow curves (see `docs/changes/2026-05-09-v3-analysis-and-v4-direction.md`) revealed the plateau was **LR schedule exhaustion**, not capacity ceiling — train loss was still decreasing at epoch 60. The fix is a fresh LR cycle from v3 weights, not architecture changes.
+   Experiment 1 succeeded decisively (tuned F1 0.5422 vs gate 0.5069). Model was still learning at epoch 30 (patience=4/7, best at epoch 26). Two options for experiment 2:
 
-   **Experiment 1 (running):** fine-tune from v3, lr=1e-4, 30 epochs, batch=16, lora_r=8 (same as v3).
-   - Success: raw F1 > 0.4715 → LR hypothesis confirmed → continue with tuned LR.
-   - Failure: F1 flat → capacity bottleneck → experiment 2 with lora_r=16.
+   **Option A — Continue fine-tuning from exp 1 best, more epochs (30→60):**
+   - Rationale: model still improving at epoch 30, same LR schedule may have more room
+   - Risk: OneCycleLR is reset at lr=1e-4 — at epoch 30 of a 30-epoch cycle, LR has decayed again. Same exhaustion pattern may recur. Use lr=5e-5 or restart from peak LR.
+   - Command: `--resume ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt --epochs 30 --lr 5e-5`
 
-   **Experiment 2 (pending exp 1 results):**
-   - If exp 1 succeeded: try lora_r=16 fine-tune from v3 (more capacity for CTU, ExternalBug, Timestamp).
-   - If exp 1 failed: full 60-epoch run from scratch with lora_r=16.
+   **Option B — lora_r=16 fine-tune from exp 1 best:**
+   - Rationale: CTU (0.4474), DoS (0.4343), ExternalBug (0.4838) still below 0.50 — may need more capacity
+   - strict=False loads compatible GNN/fusion/classifier weights; LoRA adapters re-init fresh
+   - Risk: LoRA re-init means losing all LoRA knowledge from v3+v4-exp1; only frozen BERT + non-LoRA layers carry over
 
-   **DoS (DenialOfService):** 137 training samples — data problem, not hyperparameter problem. Val F1 fluctuates 0.11–0.27 every epoch throughout all 60 epochs. Weighted sampler helps exposure but ceiling is ~0.40 tuned F1. Add DoS-only sampler as secondary experiment only after primary LR/capacity question is answered.
+   **DoS:** still the hardest class (0.4343 at threshold=0.95). Data problem (137 train samples). Weighted sampler is a separate experiment after architecture questions are settled.
 
-   **Focal loss:** the `FocalLoss` implementation is multi-label compatible (element-wise), but α=0.25 is designed for binary detection (100k easy backgrounds). With DoS pos_weight=68 in BCE, switching to focal α=0.25 reduces DoS gradient signal by ~200×. Do not use focal without tuning α > 0.5 first. Not the first experiment.
-
-   Success gate: tuned val F1-macro > **0.5069** on `ml/data/splits/val_indices.npy`.
+   New success gate: tuned val F1-macro > **0.5422** on `ml/data/splits/val_indices.npy`.
 
 2. **Autoresearch harness — built, loop redesign in progress**
 
