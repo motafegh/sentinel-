@@ -3,7 +3,7 @@ graph_schema.py — SENTINEL graph feature schema (single source of truth)
 
 WHY THIS FILE EXISTS
 ────────────────────
-ml/data_extraction/ast_extractor.py (offline batch pipeline, ~68K training
+ml/src/data_extraction/ast_extractor.py (offline batch pipeline, ~68K training
 contracts) and ml/src/inference/preprocess.py (online inference, one contract
 per API request) previously duplicated every constant below verbatim.
 
@@ -21,7 +21,7 @@ Any modification to NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES, or the feature
 ordering in FEATURE_NAMES requires ALL of the following steps:
 
   1. Rebuild all ~68K .pt graph files:
-       python ml/data_extraction/ast_extractor.py --force
+       python ml/src/data_extraction/ast_extractor.py --force
   2. Rebuild all token .pt files:
        python ml/scripts/tokenizer_v1_production.py --force
   3. Retrain the model from scratch:
@@ -138,7 +138,7 @@ Shape: graph.edge_attr must be a 1-D int64 tensor of shape [E] (PyG
 convention). Pre-refactor .pt files produced by the old ast_extractor.py
 stored shape [E, 1] — nn.Embedding will crash on that shape. Always run
 validate_graph_dataset.py before training to confirm all files have [E] shape.
-Re-extract with: python ml/data_extraction/ast_extractor.py --force
+Re-extract with: python ml/src/data_extraction/ast_extractor.py --force
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
