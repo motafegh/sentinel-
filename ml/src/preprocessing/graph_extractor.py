@@ -407,12 +407,10 @@ def extract_contract_graph(
     # ── Slither instantiation ──────────────────────────────────────────────
     solc_args = _build_solc_args(config)
     try:
-        sl = Slither(
-            str(sol_path),
-            solc=str(config.solc_binary) if config.solc_binary else None,
-            solc_args=solc_args,
-            detectors_to_run=[],  # AST traversal only — vulnerability detectors are slow
-        )
+        slither_kwargs: dict = {"solc_args": solc_args, "detectors_to_run": []}
+        if config.solc_binary:
+            slither_kwargs["solc"] = str(config.solc_binary)
+        sl = Slither(str(sol_path), **slither_kwargs)
     except Exception as exc:
         exc_lower = str(exc).lower()
         # Distinguish compilation failures (user error) from Slither internals (infra).
