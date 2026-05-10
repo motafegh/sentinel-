@@ -379,8 +379,12 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint-every", type=int, default=500)
     parser.add_argument("--test",      action="store_true", help="Process first 100 contracts only")
     parser.add_argument("--resume",    action="store_true", help="Skip already-processed contracts")
+    parser.add_argument("--force",     action="store_true", help="Delete checkpoint and reprocess all contracts (full re-extraction with new schema)")
     parser.add_argument("--verbose",   action="store_true")
     args = parser.parse_args()
+
+    if args.force and args.resume:
+        parser.error("--force and --resume are mutually exclusive")
 
     print("=" * 70)
     print("🚀 AST Extractor V4.3 — Offline Batch Pipeline (Thin Wrapper)")
@@ -390,6 +394,15 @@ if __name__ == "__main__":
     print(f"⚙️  Workers: {args.workers}")
     print("=" * 70)
     print()
+
+    if args.force:
+        checkpoint_file = Path(args.output) / "checkpoint.json"
+        if checkpoint_file.exists():
+            checkpoint_file.unlink()
+            print("🗑️  FORCE MODE: deleted checkpoint — all contracts will be reprocessed")
+        else:
+            print("🗑️  FORCE MODE: no checkpoint found — starting fresh")
+        print()
 
     df = pd.read_parquet(args.input)
     df = df[df["success"] == True].copy()

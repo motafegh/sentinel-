@@ -172,6 +172,18 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--log-interval", type=int, default=100, help="Log loss every N batches")
     p.add_argument("--focal-gamma", type=float, default=2.0,  help="FocalLoss focusing exponent (used when --loss-fn focal)")
     p.add_argument("--focal-alpha", type=float, default=0.25, help="FocalLoss class-balance weight (used when --loss-fn focal)")
+    p.add_argument("--lora-r",     type=int,   default=8,    help="LoRA rank (number of adapter dimensions)")
+    p.add_argument("--lora-alpha", type=int,   default=16,   help="LoRA alpha scale factor (keep alpha/r = 2.0)")
+    p.add_argument(
+        "--smoke-subsample-fraction",
+        type=float,
+        default=1.0,
+        help=(
+            "Fraction of training data to use (0.0, 1.0]. "
+            "Set to 0.10 for smoke runs to verify shapes before full training. "
+            "Does not affect val/test sets."
+        ),
+    )
     p.add_argument(
         "--weighted-sampler",
         choices=["none", "DoS-only", "all-rare"],
@@ -250,6 +262,9 @@ def main() -> None:
         loss_fn               = args.loss_fn,
         focal_gamma           = args.focal_gamma,
         focal_alpha           = args.focal_alpha,
+        lora_r                = args.lora_r,
+        lora_alpha            = args.lora_alpha,
+        smoke_subsample_fraction = args.smoke_subsample_fraction,
         early_stop_patience   = args.early_stop_patience,
         grad_clip             = args.grad_clip,
         warmup_pct            = args.warmup_pct,

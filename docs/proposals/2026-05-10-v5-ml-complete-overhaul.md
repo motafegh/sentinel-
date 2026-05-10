@@ -1055,6 +1055,22 @@ These are correctness bugs independent of the v5 schema change:
    - Replace any hardcoded `8` with `NODE_FEATURE_DIM` so validation automatically
      adapts to schema changes.
 
+5. **Add missing CLI flags to `ml/scripts/train.py`** *(implementation gap — Phase 5 commands fail without these)*
+   - `--lora-r` (type=int, default=8) → wires to `TrainConfig.lora_r`
+   - `--lora-alpha` (type=int, default=16) → wires to `TrainConfig.lora_alpha`
+   - `--smoke-subsample-fraction` (type=float, default=1.0) → wires to `TrainConfig.smoke_subsample_fraction`
+   - All three TrainConfig fields already exist; only the CLI argument declarations were missing.
+
+6. **Add `--force` flag to `ml/src/data_extraction/ast_extractor.py`** *(Phase 4 command fails without it)*
+   - When set, deletes `checkpoint.json` from the output directory before extraction begins.
+   - This forces reprocessing of all contracts — the correct behavior for a schema change.
+   - Mutually exclusive with `--resume`.
+
+7. **Add `--freeze-val-test` flag to `ml/scripts/create_splits.py`** *(Phase 4 command fails without it)*
+   - When set, keeps existing `val_indices.npy` and `test_indices.npy` unchanged.
+   - All indices not already in val/test (including any new augmented rows) go to train only.
+   - Prevents augmented contracts from contaminating the original v4 validation set.
+
 **Commit these fixes before Phase 1 begins.**
 
 ### Phase 1 — Schema & Extractor Overhaul (1–2 days)
@@ -1123,7 +1139,8 @@ This phase can run in parallel with Phase 1 and 2 since it does not depend on th
 ### Phase 4 — Full Re-Extraction (1 day + compute)
 
 ```bash
-# Rebuild all ~68K + new graphs with v2 schema
+# Rebuild all ~68K + new graphs with v2 schema.
+# --force deletes the existing checkpoint so all contracts are reprocessed.
 python ml/src/data_extraction/ast_extractor.py --force
 
 # Validate the rebuild
@@ -1138,29 +1155,38 @@ python ml/scripts/validate_graph_dataset.py \
 Expected output: every `.pt` graph file has `x.shape[1]=13` and
 `edge_attr.max() <= 6`. Any file that fails is logged and skipped.
 
-After extraction, regenerate splits:
+After extraction, update splits — **preserving the original v4 val/test sets**:
 ```bash
-python ml/scripts/create_splits.py --stratified --seed 42
-python ml/scripts/build_multilabel_index.py
+# --freeze-val-test keeps val_indices.npy and test_indices.npy unchanged.
+# Augmented contracts (new rows in multilabel_index.csv) go to train only.
+# This preserves F1-macro comparability with v4 experiments.
+python ml/scripts/create_splits.py \
+  --freeze-val-test \
+  --multilabel-csv ml/data/processed/multilabel_index.csv \
+  --splits-dir ml/data/splits
 ```
+
+**Do NOT run `create_splits.py` without `--freeze-val-test` after augmented data
+has been added to `multilabel_index.csv`. A full re-split would assign augmented
+contracts to val/test, violating the §3.3 guarantee.**
 
 ### Phase 5 — Smoke Run Then Full Training (3–5 days)
 
 ```bash
-# Phase A: smoke run
+# Phase A: smoke run (--smoke-subsample-fraction requires train.py ≥ Phase 0 fixes)
 python ml/scripts/train.py \
   --run-name v5-smoke \
   --smoke-subsample-fraction 0.10 \
   --epochs 2 \
   --batch-size 16
 
-# Phase B: 15-epoch check
+# Phase B: 15-epoch check (--lora-r / --lora-alpha require train.py ≥ Phase 0 fixes)
 python ml/scripts/train.py \
   --run-name v5-check-15ep \
   --epochs 15 \
   --batch-size 16 \
   --lr 2e-4 \
-  --use-weighted-sampler all-rare \
+  --weighted-sampler all-rare \
   --lora-r 16 \
   --lora-alpha 32
 
@@ -1170,7 +1196,7 @@ python ml/scripts/train.py \
   --epochs 60 \
   --batch-size 16 \
   --lr 2e-4 \
-  --use-weighted-sampler all-rare \
+  --weighted-sampler all-rare \
   --lora-r 16 \
   --lora-alpha 32 \
   --early-stop-patience 10
@@ -1423,10 +1449,14 @@ A v5 model is accepted for promotion only when ALL of the following hold:
 | `ml/src/training/focalloss.py` | Add `MultiLabelFocalLoss(alpha: List[float])` | 2 |
 | `ml/scripts/validate_graph_dataset.py` | Replace hardcoded dims with NODE_FEATURE_DIM | 0 |
 | `ml/src/inference/preprocess.py` | Verify it imports from graph_extractor (no stale copy) | 0 |
+| `ml/scripts/train.py` | Add `--lora-r`, `--lora-alpha`, `--smoke-subsample-fraction` CLI flags | 0 |
+| `ml/src/data_extraction/ast_extractor.py` | Add `--force` flag (delete checkpoint → full re-extraction) | 0 |
+| `ml/scripts/create_splits.py` | Add `--freeze-val-test` flag (preserve val/test when adding augmented data) | 0 |
+| `ml/scripts/generate_safe_variants.py` | NEW: mutation-based safe contract generator (CEI, typed-interface, bounded-loop variants) | 3 |
 | `ml/tests/test_preprocessing.py` | New unit tests for CFG edges and new features | 1 |
 | `ml/tests/test_model.py` | Update fixtures for 13-dim inputs | 2 |
 | `multilabel_index.csv` | Add augmented contracts | 3 |
-| `ml/data/splits/` | Regenerate after augmentation | 4 |
+| `ml/data/splits/` | Update with `--freeze-val-test` after augmentation | 4 |
 | `ml/data/graphs/*.pt` | Full re-extraction with v2 schema | 4 |
 | `ml/data/tokens/*.pt` | Re-pair with new graph files | 4 |
 
