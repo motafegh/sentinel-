@@ -1,48 +1,47 @@
 """
-train.py — SENTINEL Training Entry Point (Track 3, 2026-04-17)
+train.py — SENTINEL Training Entry Point (v5 three-eye architecture)
 
 Thin wrapper around ml.src.training.trainer that provides a clean
 command-line interface for starting and resuming training runs.
 
 Usage:
-    # Run with defaults (multi-label Track 3, 40 epochs)
+    # Run with v5 defaults (multi-label Track 3, 60 epochs)
     poetry run python ml/scripts/train.py
 
     # Override common hyperparameters
     poetry run python ml/scripts/train.py \\
-        --run-name multilabel-v2 \\
-        --epochs 40 \\
-        --lr 3e-4 \\
-        --batch-size 32
+        --run-name multilabel-v5-exp2 \\
+        --epochs 60 \\
+        --lr 2e-4 \\
+        --batch-size 16
+
+    # Smoke run (10% of data) to verify shapes before full training
+    poetry run python ml/scripts/train.py \\
+        --smoke-subsample-fraction 0.1 \\
+        --epochs 2 \\
+        --run-name v5-smoke
 
     # Resume from a checkpoint (model weights only, fresh optimizer/scheduler)
     # Use this when batch_size or any training hyperparameter has changed.
     poetry run python ml/scripts/train.py \\
-        --resume ml/checkpoints/multilabel-v1_best.pt \\
-        --run-name multilabel-v1-resumed
+        --resume ml/checkpoints/multilabel-v5-fresh_best.pt \\
+        --run-name multilabel-v5-exp2
 
     # Full resume (model + optimizer + scheduler state restored exactly)
     # Only use this when batch_size is IDENTICAL to the checkpoint.
     poetry run python ml/scripts/train.py \\
-        --resume ml/checkpoints/multilabel-v1_best.pt \\
-        --run-name multilabel-v1-resumed \\
+        --resume ml/checkpoints/multilabel-v5-fresh_best.pt \\
+        --run-name multilabel-v5-fresh-cont \\
         --no-resume-model-only
 
     # Full resume + force optimizer reset (model weights + patience_counter
     # preserved, but stale Adam moments discarded). Use when batch_size changed
     # but you still want the exact epoch counter from the checkpoint.
     poetry run python ml/scripts/train.py \\
-        --resume ml/checkpoints/multilabel-v1_best.pt \\
-        --run-name multilabel-v1-resumed \\
+        --resume ml/checkpoints/multilabel-v5-fresh_best.pt \\
+        --run-name multilabel-v5-fresh-cont \\
         --no-resume-model-only \\
         --resume-reset-optimizer
-
-    # Binary legacy run (for comparison)
-    poetry run python ml/scripts/train.py \\
-        --num-classes 1 \\
-        --label-csv "" \\
-        --experiment-name sentinel-training \\
-        --run-name binary-compare
 
 All commands must be run from the project root (~/projects/sentinel),
 not from ml/ — the ml.src.* import chain requires the project root on sys.path.
@@ -54,7 +53,7 @@ Choose the right resume mode based on what has changed:
   batch_size SAME, epochs extended:
     → --no-resume-model-only                           (full resume, Fix #10 handles scheduler)
 
-  batch_size CHANGED (e.g. 16→32):
+  batch_size CHANGED:
     → (default, no flag)                               (model-only, cleanest option)
     → --no-resume-model-only --resume-reset-optimizer  (force-reset, keeps epoch counter)
 
@@ -88,7 +87,7 @@ def parse_args() -> argparse.Namespace:
     # --- Run identity ---
     p.add_argument(
         "--run-name",
-        default="multilabel-crossattn-v1",
+        default="multilabel-v5-fresh",
         help="MLflow run name. Also used as checkpoint prefix: <run-name>_best.pt",
     )
     p.add_argument(
@@ -120,9 +119,9 @@ def parse_args() -> argparse.Namespace:
     )
 
     # --- Training hyperparameters ---
-    p.add_argument("--epochs",       type=int,   default=40,   help="Number of training epochs")
-    p.add_argument("--batch-size",   type=int,   default=32,   help="Batch size for train + val loaders")
-    p.add_argument("--lr",           type=float, default=3e-4, help="AdamW learning rate")
+    p.add_argument("--epochs",       type=int,   default=60,   help="Number of training epochs")
+    p.add_argument("--batch-size",   type=int,   default=16,   help="Batch size for train + val loaders")
+    p.add_argument("--lr",           type=float, default=2e-4, help="AdamW learning rate")
     p.add_argument("--weight-decay", type=float, default=1e-2, help="AdamW weight decay")
     p.add_argument(
         "--threshold",
@@ -153,9 +152,9 @@ def parse_args() -> argparse.Namespace:
         default="bce",
         help="Loss function: 'bce' (BCEWithLogitsLoss) or 'focal' (FocalLoss).",
     )
-    p.add_argument("--early-stop-patience", type=int,   default=7,    help="Early stopping patience (epochs without improvement)")
+    p.add_argument("--early-stop-patience", type=int,   default=10,   help="Early stopping patience (epochs without improvement)")
     p.add_argument("--grad-clip",           type=float, default=1.0,  help="Max gradient norm for clip_grad_norm_")
-    p.add_argument("--warmup-pct",          type=float, default=0.05, help="Fraction of steps used for OneCycleLR warm-up")
+    p.add_argument("--warmup-pct",          type=float, default=0.10, help="Fraction of steps used for OneCycleLR warm-up")
     p.add_argument(
         "--use-amp",
         action="store_true",
@@ -172,8 +171,34 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--log-interval", type=int, default=100, help="Log loss every N batches")
     p.add_argument("--focal-gamma", type=float, default=2.0,  help="FocalLoss focusing exponent (used when --loss-fn focal)")
     p.add_argument("--focal-alpha", type=float, default=0.25, help="FocalLoss class-balance weight (used when --loss-fn focal)")
-    p.add_argument("--lora-r",     type=int,   default=8,    help="LoRA rank (number of adapter dimensions)")
-    p.add_argument("--lora-alpha", type=int,   default=16,   help="LoRA alpha scale factor (keep alpha/r = 2.0)")
+
+    # --- GNN architecture (v5) ---
+    p.add_argument("--gnn-hidden-dim",   type=int,   default=128,  help="GNN node embedding width")
+    p.add_argument("--gnn-layers",       type=int,   default=4,    help="GNN layers (only 4 supported in v5.0)")
+    p.add_argument("--gnn-heads",        type=int,   default=8,    help="GAT attention heads (Phase 1)")
+    p.add_argument("--gnn-dropout",      type=float, default=0.2,  help="GNN attention + node dropout")
+    p.add_argument("--gnn-edge-emb-dim", type=int,   default=32,   help="Edge type embedding dimension")
+    p.add_argument(
+        "--no-edge-attr",
+        dest="use_edge_attr",
+        action="store_false",
+        default=True,
+        help="Disable learned edge-type embeddings (degrades CONTROL_FLOW phase)",
+    )
+
+    # --- Auxiliary loss (v5 three-eye) ---
+    p.add_argument(
+        "--aux-loss-weight",
+        type=float,
+        default=0.1,
+        help="λ for auxiliary eye losses: total = main + λ*(aux_gnn + aux_tf + aux_fused)",
+    )
+
+    # --- LoRA architecture (v5) ---
+    p.add_argument("--lora-r",       type=int,   default=16,  help="LoRA rank (adapter dimensions)")
+    p.add_argument("--lora-alpha",   type=int,   default=32,  help="LoRA alpha scale factor (keep alpha/r = 2.0)")
+    p.add_argument("--lora-dropout", type=float, default=0.1, help="LoRA path dropout")
+
     p.add_argument(
         "--smoke-subsample-fraction",
         type=float,
@@ -262,8 +287,19 @@ def main() -> None:
         loss_fn               = args.loss_fn,
         focal_gamma           = args.focal_gamma,
         focal_alpha           = args.focal_alpha,
+        # GNN architecture (v5)
+        gnn_hidden_dim        = args.gnn_hidden_dim,
+        gnn_layers            = args.gnn_layers,
+        gnn_heads             = args.gnn_heads,
+        gnn_dropout           = args.gnn_dropout,
+        gnn_edge_emb_dim      = args.gnn_edge_emb_dim,
+        use_edge_attr         = args.use_edge_attr,
+        # Auxiliary loss (v5)
+        aux_loss_weight       = args.aux_loss_weight,
+        # LoRA (v5)
         lora_r                = args.lora_r,
         lora_alpha            = args.lora_alpha,
+        lora_dropout          = args.lora_dropout,
         smoke_subsample_fraction = args.smoke_subsample_fraction,
         early_stop_patience   = args.early_stop_patience,
         grad_clip             = args.grad_clip,

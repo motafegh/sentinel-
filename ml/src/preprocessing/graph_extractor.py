@@ -33,10 +33,13 @@ PUBLIC SURFACE
 
 SHAPE CONTRACT  (v2 schema — must match training data)
 ──────────────────────────────────────────────────────────────────────────────
-  graph.x           [N, 13] float32  node feature matrix (NODE_FEATURE_DIM=13)
-  graph.edge_index  [2, E]  int64    edge connectivity in COO format
-  graph.edge_attr   [E]     int64    edge type IDs 0-6 — 1-D per PyG convention
-                                     (only attached when config.include_edge_attr)
+  graph.x             [N, 12]  float32  node feature matrix (NODE_FEATURE_DIM=12)
+  graph.edge_index    [2, E]   int64    edge connectivity in COO format
+  graph.edge_attr     [E]      int64    edge type IDs 0-6 (1-D per PyG convention)
+                                         (only attached when config.include_edge_attr)
+  graph.node_metadata list     of dicts, one per node, index-aligned with graph.x
+                                Required: {"name", "type", "source_lines"} keys.
+                                Used by _find_function_node() in the pre-flight test.
 
   graph.contract_name  str   — name of the analysed Slither Contract object
   graph.num_nodes      int   — N (same as x.shape[0])
@@ -45,20 +48,27 @@ SHAPE CONTRACT  (v2 schema — must match training data)
   Caller-specific metadata (.contract_hash, .contract_path, .y) is NOT set
   here; each caller attaches its own values after the call returns.
 
-V2 SCHEMA CHANGES (2026-05-10)
+V2 SCHEMA CHANGES (2026-05-11)
 ───────────────────────────────
-  Node features: 8 → 13 dims.
-    - `reentrant` (Slither.is_reentrant) removed: it gave the model Slither's
-      answer rather than making it learn from structure.
-    - 6 semantic features added: return_ignored, call_target_typed, in_unchecked,
-      has_loop, gas_intensity, external_call_count. See graph_schema.FEATURE_NAMES.
+  Node features: 8 → 12 dims.
+    - `reentrant` (Slither.is_reentrant) removed: Slither shortcut.
+    - `gas_intensity` removed: circular heuristic over features already in vector.
+    - 5 new features added: return_ignored (sentinel -1.0), call_target_typed
+      (sentinel -1.0), in_unchecked, has_loop, external_call_count.
 
   Edge types: 5 → 7.
     - CONTAINS(5):     function → its CFG_NODE children (new)
-    - CONTROL_FLOW(6): CFG_NODE → successor CFG_NODE (new)
+    - CONTROL_FLOW(6): CFG_NODE → successor CFG_NODE, directed (new)
 
-  Node types: 8 → 9.
-    - CFG_NODE(8): intra-function control-flow basic block (new)
+  Node types: 8 → 13.
+    - CFG_NODE_CALL(8):  statement containing an external call
+    - CFG_NODE_WRITE(9): statement writing a state variable
+    - CFG_NODE_READ(10): statement reading a state variable
+    - CFG_NODE_CHECK(11): require / assert / if condition
+    - CFG_NODE_OTHER(12): all other statement types (including synthetic nodes)
+
+  graph.node_metadata: new attribute — parallel list of metadata dicts,
+    one entry per node, required for pre-flight embedding-separation test.
 
   These changes require a full re-extraction of all ~68K graph .pt files.
   See graph_schema.py CHANGE POLICY.
@@ -141,19 +151,6 @@ class GraphExtractionConfig:
     Defaults are calibrated for online single-contract inference (system solc,
     no --allow-paths, first-contract policy). The offline batch pipeline
     overrides solc_binary, solc_version, and allow_paths for each version group.
-
-    Example — offline batch use:
-        config = GraphExtractionConfig(
-            solc_binary=get_solc_binary(version),
-            solc_version=version,
-            allow_paths=str(project_root),
-        )
-
-    Example — online inference (single contract, known name):
-        config = GraphExtractionConfig(
-            multi_contract_policy="by_name",
-            target_contract_name="MyToken",
-        )
     """
 
     multi_contract_policy: str = "first"
@@ -161,9 +158,6 @@ class GraphExtractionConfig:
     Which contract to analyse when the file defines multiple.
 
     "first"   — use contracts[0], the first non-dependency contract.
-                This matches the policy used during offline training and is
-                the safe default for API requests where the contract name is
-                not known in advance.
     "by_name" — use the contract whose .name == target_contract_name.
                 Falls back to "first" with a warning if the name is not found.
     """
@@ -172,148 +166,111 @@ class GraphExtractionConfig:
     """Used only when multi_contract_policy="by_name"."""
 
     include_edge_attr: bool = True
-    """
-    When True, graph.edge_attr [E] int64 is attached to the returned Data object.
-
-    GNNEncoder currently uses only edge_index (type-agnostic GAT message
-    passing). Edge attributes are retained for forward compatibility with
-    GATv2/RGAT architectures. Disable for memory-constrained environments where
-    the edge type information is not needed.
-    """
+    """When True, graph.edge_attr [E] int64 is attached to the returned Data object."""
 
     solc_binary: str | Path | None = None
-    """
-    Override the solc binary Slither uses. None → Slither resolves via PATH.
-
-    The offline batch pipeline uses solc-select or a pinned venv binary to
-    ensure each contract is compiled with a solc version matching its pragma.
-    Online inference uses the system solc and accepts the resulting minor
-    version mismatch (contracts are validated client-side before submission).
-    """
+    """Override the solc binary Slither uses. None → Slither resolves via PATH."""
 
     solc_version: str | None = None
-    """
-    Solidity version string, e.g. "0.8.19".
-
-    When provided alongside allow_paths, this field determines whether
-    --allow-paths is injected into the solc arguments: the flag requires
-    solc >= 0.5.0. None → version check skipped, allow_paths used as-is.
-    """
+    """Solidity version string, e.g. "0.8.19"."""
 
     allow_paths: str | None = None
-    """
-    Directory path(s) passed to solc as --allow-paths.
-
-    Required in offline mode where contracts import local OpenZeppelin or
-    other on-disk libraries that live outside the contract's own directory.
-    None → no --allow-paths argument is injected.
-
-    Example value: "/home/user/sentinel-" (project root containing node_modules).
-    The extractor prepends ".," so the full argument becomes "--allow-paths .,<value>".
-    """
+    """Directory path(s) passed to solc as --allow-paths."""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Internal helpers (module-private)
+# Feature computation helpers (module-private)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _compute_return_ignored(func: Any) -> float:
     """
-    1.0 if any low/high-level call in func discards its return value.
+    0.0 if all external calls capture their return value.
+    1.0 if any external call discards its return value.
+    -1.0 (SENTINEL) if Slither IR is unavailable — not assumed safe.
 
-    PRIMARY: iterate func.slithir_operations; check .lvalue on call operations.
-    FALLBACK: regex scan on source text (less precise, logged as WARNING).
+    No regex fallback: regex over multi-line source is unreliable for this
+    feature (multi-line assignments, self-calls). The -1.0 sentinel gives the
+    GNN a distinct embedding for "unknown" vs "safe" vs "discarded".
     """
-    # Primary path: Slither IR
     try:
         from slither.slithir.operations import LowLevelCall, HighLevelCall
-        ops = list(getattr(func, "slithir_operations", None) or [])
-        for op in ops:
+        for op in func.slithir_operations:
             if isinstance(op, (LowLevelCall, HighLevelCall)):
-                if getattr(op, "lvalue", None) is None:
+                if op.lvalue is None:
                     return 1.0
         return 0.0
-    except Exception:
-        pass
-
-    # Fallback: text-based — bare `.call{` or `.call(` not preceded by `=` or `,`
-    try:
-        src = getattr(getattr(func, "source_mapping", None), "content", "") or ""
-        # Matches bare `.call(` / `.call{value` not on the right-hand side of an assignment
-        if re.search(r"(?<![=,(])\s*\.call[\({]", src):
-            logger.warning(
-                "return_ignored fallback (regex) for %s — Slither IR unavailable.",
-                getattr(func, "canonical_name", "?"),
-            )
-            return 1.0
-    except Exception:
-        pass
-
-    return 0.0
+    except AttributeError:
+        logger.warning(
+            "return_ignored: Slither IR unavailable for %s — using sentinel -1.0",
+            getattr(func, "canonical_name", "?"),
+        )
+        return -1.0
 
 
 def _compute_call_target_typed(func: Any) -> float:
     """
-    1.0 if all external calls in func go through typed interfaces (not raw address).
+    1.0 if all external calls go through typed interfaces (ContractType receiver).
+    0.0 if any call goes to a raw address (AddressType receiver).
+    -1.0 (SENTINEL) if type resolution fails AND source is unavailable.
 
-    PRIMARY: inspect func.high_level_calls / func.low_level_calls receiver types.
-    FALLBACK: regex — raw `address(...).call` pattern implies untyped.
+    Closed-world assumption guard: returning 1.0 when source_mapping is
+    unavailable would be "no evidence of danger" = "confirmed safe", which is
+    wrong. The -1.0 sentinel preserves the uncertainty.
     """
-    # Primary path: Slither type analysis
     try:
-        from slither.core.solidity_types import AddressType
+        from slither.core.solidity_types import ElementaryType
 
-        low_lvl = list(getattr(func, "low_level_calls", None) or [])
-        if low_lvl:
-            # Any low-level call goes to a raw address by definition
-            return 0.0
-
+        low_lvl  = list(getattr(func, "low_level_calls",  None) or [])
         high_lvl = list(getattr(func, "high_level_calls", None) or [])
+
+        if low_lvl:
+            return 0.0  # low-level call always uses raw address
+
         for item in high_lvl:
-            # item is (contract_called, function_called) tuple
             recv = item[0] if isinstance(item, (tuple, list)) else item
             recv_type = getattr(recv, "type", None)
-            if recv_type is not None and isinstance(recv_type, AddressType):
+            if (recv_type is not None
+                    and isinstance(recv_type, ElementaryType)
+                    and getattr(recv_type, "name", "") == "address"):
                 return 0.0
-        return 1.0  # all calls typed (or no external calls)
-    except Exception:
-        pass
 
-    # Fallback: raw address call pattern in source
-    try:
-        src = getattr(getattr(func, "source_mapping", None), "content", "") or ""
-        if re.search(r"address\s*\([^)]+\)\s*\.\s*call|address\b.*\.call", src):
-            logger.warning(
-                "call_target_typed fallback (regex) for %s.",
-                getattr(func, "canonical_name", "?"),
-            )
-            return 0.0
-    except Exception:
-        pass
+        return 1.0  # all calls typed, or no external calls
 
-    return 1.0  # default safe: no evidence of raw-address calls
+    except Exception:
+        pass  # type resolution failed; fall through to source scan
+
+    # Fallback: scan source when type resolution is unavailable
+    sm = getattr(func, "source_mapping", None)
+    if sm is None or not getattr(sm, "content", None):
+        logger.warning(
+            "call_target_typed: source_mapping unavailable for %s — using sentinel -1.0",
+            getattr(func, "canonical_name", "?"),
+        )
+        return -1.0
+
+    # Exclude address(this) — self-calls are not external unknown-target calls
+    raw_addr_pattern = re.compile(r"address\s*\(\s*(?!this\b)[^)]+\)\s*\.call")
+    if raw_addr_pattern.search(sm.content):
+        return 0.0
+    return 1.0
 
 
 def _compute_in_unchecked(func: Any) -> float:
     """1.0 if func body contains an unchecked{} arithmetic block."""
-    # Primary path: Slither NodeType
     try:
         from slither.core.cfg.node import NodeType
-        nodes = list(getattr(func, "nodes", None) or [])
-        for node in nodes:
-            nt = getattr(node, "type", None)
-            # UNCHECKED_BEGIN was added in Slither ≥ 0.9.3;
-            # fall through to regex if the attribute doesn't exist on this version.
-            unchecked_begin = getattr(NodeType, "UNCHECKED_BEGIN", None)
-            if unchecked_begin is not None and nt == unchecked_begin:
+        for node in (getattr(func, "nodes", None) or []):
+            # STARTUNCHECKED available in Slither >=0.9.3 (enforced at import in graph_schema.py)
+            if getattr(node, "type", None) == NodeType.STARTUNCHECKED:
                 return 1.0
-    except Exception:
-        pass
+    except AttributeError:
+        pass  # NodeType.STARTUNCHECKED absent — fall through to regex
 
-    # Fallback: literal "unchecked" in source (reliable for Solidity 0.8+)
     try:
-        src = getattr(getattr(func, "source_mapping", None), "content", "") or ""
-        if "unchecked" in src:
+        sm = getattr(func, "source_mapping", None)
+        content = getattr(sm, "content", "") or ""
+        # Covers: "unchecked {", "unchecked{", "unchecked\n{" (all valid Solidity)
+        if re.search(r"\bunchecked\s*\{", content):
             return 1.0
     except Exception:
         pass
@@ -323,12 +280,10 @@ def _compute_in_unchecked(func: Any) -> float:
 
 def _compute_has_loop(func: Any) -> float:
     """1.0 if func contains at least one loop construct."""
-    # Primary: check func.nodes for loop-related NodeType values
     try:
         from slither.core.cfg.node import NodeType
         loop_types = {NodeType.IFLOOP, NodeType.STARTLOOP, NodeType.ENDLOOP}
-        nodes = list(getattr(func, "nodes", None) or [])
-        for node in nodes:
+        for node in (getattr(func, "nodes", None) or []):
             if getattr(node, "type", None) in loop_types:
                 return 1.0
     except Exception:
@@ -336,15 +291,7 @@ def _compute_has_loop(func: Any) -> float:
 
     # Fallback: Slither convenience attribute (exists in some versions)
     try:
-        if getattr(func, "is_loop_present", False):
-            return 1.0
-    except Exception:
-        pass
-
-    # Fallback: regex — for / while / do loops in source
-    try:
-        src = getattr(getattr(func, "source_mapping", None), "content", "") or ""
-        if re.search(r"\b(for|while|do)\b\s*[\({]", src):
+        if getattr(func, "is_loop_present", None) is True:
             return 1.0
     except Exception:
         pass
@@ -352,125 +299,259 @@ def _compute_has_loop(func: Any) -> float:
     return 0.0
 
 
-def _compute_gas_intensity(func: Any, has_loop: float) -> float:
-    """
-    Float [0, 1] heuristic for gas-expensive operations in func.
-
-    Components:
-      - complexity (CFG node count) / 50.0  clamped [0, 1]
-      - +0.3 if has_loop (loops are always expensive)
-      - +0.3 if any external call present
-    Clamped to [0, 1] before return.
-    """
-    try:
-        complexity = float(len(func.nodes)) if getattr(func, "nodes", None) else 0.0
-    except Exception:
-        complexity = 0.0
-
-    score = min(complexity / 50.0, 1.0)
-    if has_loop > 0.0:
-        score += 0.3
-    try:
-        ext_calls = (
-            list(getattr(func, "high_level_calls", None) or [])
-            + list(getattr(func, "low_level_calls", None) or [])
-        )
-        if ext_calls:
-            score += 0.3
-    except Exception:
-        pass
-
-    return min(score, 1.0)
-
-
 def _compute_external_call_count(func: Any) -> float:
-    """log1p(total external calls) so the model sees a smooth signal."""
+    """
+    log1p(count) / log1p(20), clamped [0, 1].
+    1 call → 0.23,  5 calls → 0.60,  20 calls → 1.0.
+    """
     try:
-        n = len(list(getattr(func, "high_level_calls", None) or []))
-        n += len(list(getattr(func, "low_level_calls", None) or []))
-        return math.log1p(n)
+        n  = len(list(getattr(func, "high_level_calls", None) or []))
+        n += len(list(getattr(func, "low_level_calls",  None) or []))
+        return min(math.log1p(n) / math.log1p(20), 1.0)
     except Exception:
         return 0.0
 
 
-def _build_node_features(obj: Any, type_id: int) -> list[float]:
-    """
-    Compute the 13-dimensional feature vector (v2 schema) for one AST node.
+# ─────────────────────────────────────────────────────────────────────────────
+# CFG node helpers
+# ─────────────────────────────────────────────────────────────────────────────
 
-    See graph_schema.FEATURE_NAMES for the full index-to-name mapping.
+def _cfg_node_type(slither_node: Any) -> int:
+    """
+    Map a Slither CFG node to a NODE_TYPES CFG subtype id.
+
+    PRIORITY ORDER (highest to lowest):
+      1. CFG_NODE_CALL  (8) — any node containing an external call
+      2. CFG_NODE_WRITE (9) — any node writing a state variable
+      3. CFG_NODE_READ  (10) — any node reading a state variable
+      4. CFG_NODE_CHECK (11) — require / assert / if condition
+      5. CFG_NODE_OTHER (12) — everything else (including synthetic nodes)
+
+    When Slither generates a merged IR node containing both an external call
+    AND another operation, the external call is the most vulnerability-relevant
+    operation and wins priority 1.
+    """
+    try:
+        from slither.core.cfg.node import NodeType as SNT
+        from slither.slithir.operations import LowLevelCall, HighLevelCall
+        from slither.core.variables.state_variable import StateVariable
+
+        check_types = {SNT.IF, SNT.IFLOOP, SNT.STARTLOOP, SNT.ENDLOOP, SNT.THROW}
+
+        irs = list(getattr(slither_node, "irs", None) or [])
+
+        # Priority 1: any IR op is an external call
+        if any(isinstance(op, (LowLevelCall, HighLevelCall)) for op in irs):
+            return NODE_TYPES["CFG_NODE_CALL"]
+
+        # Priority 2: any IR op writes a state variable
+        if any(
+            hasattr(op, "lvalue") and isinstance(op.lvalue, StateVariable)
+            for op in irs
+        ):
+            return NODE_TYPES["CFG_NODE_WRITE"]
+
+        # Priority 3: any IR op reads a state variable
+        if any(
+            isinstance(v, StateVariable)
+            for op in irs
+            for v in getattr(op, "read", [])
+        ):
+            return NODE_TYPES["CFG_NODE_READ"]
+
+        # Priority 4: control-flow check node type
+        if getattr(slither_node, "type", None) in check_types:
+            return NODE_TYPES["CFG_NODE_CHECK"]
+
+    except Exception:
+        pass
+
+    return NODE_TYPES["CFG_NODE_OTHER"]
+
+
+def _build_cfg_node_features(slither_node: Any, func: Any, cfg_type: int) -> list:
+    """
+    Build the 12-dim feature vector for a CFG (statement-level) node.
+
+    Returns list[float] of exactly NODE_FEATURE_DIM (12) elements.
+    torch.tensor(x_list) requires all sublists to be the same length;
+    returning a different length silently causes crashes at tensor assembly.
+
+    CRITICAL: in_unchecked [9] is ALWAYS 0.0 — never inherited from the parent
+    function's flag. If a function has any unchecked block, ALL its child CFG
+    nodes would get 1.0 including statements OUTSIDE the unchecked scope,
+    creating false positives for IntegerUO. The function-level node carries
+    this signal and the GNN propagates it via Phase 1 CONTAINS edges.
+
+    Slither synthetic nodes (ENTRY_POINT, EXPRESSION, BEGIN_LOOP, etc.) with
+    no source_mapping and empty IRS are handled correctly: _cfg_node_type()
+    returns CFG_NODE_OTHER (12) and loc defaults to 0.0. Do NOT filter them.
+    """
+    loc = 0.0
+    sm = getattr(slither_node, "source_mapping", None)
+    if sm is not None and getattr(sm, "lines", None):
+        loc = float(len(sm.lines))
+
+    return [
+        float(cfg_type),  # [0]  type_id (8–12 from _cfg_node_type)
+        0.0,              # [1]  visibility — not applicable
+        0.0,              # [2]  pure — not applicable
+        0.0,              # [3]  view — not applicable
+        0.0,              # [4]  payable — not applicable
+        0.0,              # [5]  complexity — function-level metric
+        loc,              # [6]  loc — lines of this statement's source span
+        0.0,              # [7]  return_ignored — not per-statement in v5.0
+        1.0,              # [8]  call_target_typed — default safe (not applicable)
+        0.0,              # [9]  in_unchecked — NEVER inherited from parent func
+        0.0,              # [10] has_loop — not applicable at statement level
+        0.0,              # [11] external_call_count — not applicable
+    ]
+
+
+def _build_control_flow_edges(
+    func: Any,
+    func_node_idx: int,
+    node_index_map: dict,
+    x_list: list,
+    node_metadata: list,
+) -> tuple:
+    """
+    For a given function, build CFG_NODE children and their edges.
+
+    Appends new node feature vectors to x_list and entries to node_metadata
+    in-place. Populates node_index_map with slither_node → graph_idx mappings.
+    x_list and node_metadata must have the same length at entry and at exit.
+
+    Args:
+        func:           Slither Function object.
+        func_node_idx:  Graph node index of the parent FUNCTION node (in x_list).
+        node_index_map: Maps slither_node objects → graph indices. Mutated.
+        x_list:         Shared list of all node feature vectors. Mutated.
+        node_metadata:  Shared list of node metadata dicts. Mutated.
+
+    Returns:
+        (contains_edges, control_flow_edges):
+            contains_edges:     list of (func_node_idx, cfg_graph_idx) — edge type 5
+            control_flow_edges: list of (cfg_src_idx, cfg_dst_idx)     — edge type 6
+
+    INDEX ASSIGNMENT — CRITICAL:
+      graph_idx = len(x_list)
+      This is the correct index because x_list is the single shared list across
+      ALL node types. Its length before appending is the next available index.
+      Do NOT use len(node_index_map) — it only tracks CFG objects for this
+      function, not the full set of declaration + CFG nodes.
+
+    CFG NODE ORDERING — DETERMINISTIC:
+      Always sort func.nodes by (source_line, node_id) so identical source
+      produces identical graphs across Slither versions and extraction runs.
+      Synthetic nodes (ENTRY_POINT etc.) with no source_mapping get line 0.
+    """
+    _type_name_map = {v: k for k, v in NODE_TYPES.items()}
+
+    cfg_nodes = sorted(
+        getattr(func, "nodes", None) or [],
+        key=lambda n: (
+            n.source_mapping.lines[0]
+            if n.source_mapping and n.source_mapping.lines else 0,
+            n.node_id,
+        ),
+    )
+
+    contains_edges:     list = []
+    control_flow_edges: list = []
+
+    # Pass 1: assign indices, build feature vectors, populate shared lists
+    for slither_node in cfg_nodes:
+        cfg_type  = _cfg_node_type(slither_node)
+        graph_idx = len(x_list)          # CORRECT: next available global index
+        node_index_map[slither_node] = graph_idx
+
+        x_list.append(_build_cfg_node_features(slither_node, func, cfg_type))
+
+        cfg_type_name = _type_name_map.get(cfg_type, "CFG_NODE_OTHER")
+        sm = getattr(slither_node, "source_mapping", None)
+        node_metadata.append({
+            "name":         str(slither_node),
+            "type":         cfg_type_name,
+            "source_lines": list(sm.lines) if sm and sm.lines else [],
+        })
+
+        contains_edges.append((func_node_idx, graph_idx))
+
+    # Pass 2: build CONTROL_FLOW edges (all CFG nodes indexed in pass 1)
+    for slither_node in cfg_nodes:
+        src_idx = node_index_map[slither_node]
+        for successor in (getattr(slither_node, "sons", None) or []):
+            if successor in node_index_map:
+                control_flow_edges.append((src_idx, node_index_map[successor]))
+
+    return contains_edges, control_flow_edges
+
+
+def _build_node_features(obj: Any, type_id: int) -> list:
+    """
+    Compute the 12-dimensional feature vector (v2 schema) for one AST node.
+
+    Returns list[float] of exactly NODE_FEATURE_DIM (12) elements.
 
     Feature layout:
       [0]  type_id             — float(NODE_TYPES[kind])
-      [1]  visibility          — VISIBILITY_MAP ordinal 0-2 (default 0)
+      [1]  visibility          — VISIBILITY_MAP ordinal 0-2
       [2]  pure                — 1.0 if Function.pure
       [3]  view                — 1.0 if Function.view
       [4]  payable             — 1.0 if Function.payable
       [5]  complexity          — float(len(func.nodes)) CFG block count
       [6]  loc                 — float(len(source_mapping.lines))
-      [7]  return_ignored      — 1.0 if any call return value discarded
-      [8]  call_target_typed   — 1.0 if all external calls go to typed interfaces
+      [7]  return_ignored      — 0.0/1.0/-1.0 sentinel
+      [8]  call_target_typed   — 0.0/1.0/-1.0 sentinel
       [9]  in_unchecked        — 1.0 if body contains unchecked{} block
       [10] has_loop            — 1.0 if function contains a loop
-      [11] gas_intensity       — float [0,1] gas expense heuristic
-      [12] external_call_count — log1p(count of external calls)
+      [11] external_call_count — log-normalized count of external calls
 
-    Non-Function nodes (STATE_VAR, EVENT, MODIFIER, CONTRACT) receive 0.0
-    for all function-specific features, except:
+    Non-Function nodes receive 0.0 for features [2:] except:
       - call_target_typed [8] defaults to 1.0 (safe: not applicable)
       - loc [6] is computed when source_mapping is available
-
-    Args:
-        obj:     A Slither AST declaration (Contract, Function, StateVariable, …).
-        type_id: Initial node type ID. Overridden internally for CONSTRUCTOR,
-                 FALLBACK, and RECEIVE function kinds.
-
-    Returns:
-        List of exactly NODE_FEATURE_DIM (13) floats.
     """
-    from slither.core.declarations import Function  # lazy: Slither is optional dep
+    _is_function = hasattr(obj, "nodes") and hasattr(obj, "pure")
 
-    visibility = float(VISIBILITY_MAP.get(str(getattr(obj, "visibility", "public")), 0))
+    visibility = float(VISIBILITY_MAP.get(
+        str(getattr(obj, "visibility", "public")), 0
+    ))
     loc = 0.0
+    sm = getattr(obj, "source_mapping", None)
+    if sm is not None and getattr(sm, "lines", None):
+        loc = float(len(sm.lines))
 
-    src = getattr(obj, "source_mapping", None)
-    if src is not None:
-        lines = getattr(src, "lines", None)
-        if lines:
-            loc = float(len(lines) if isinstance(lines, list) else lines)
-
-    # Default values for function-specific features (used for non-Function nodes)
+    # Defaults for non-Function nodes
     pure = view = payable = 0.0
     complexity = 0.0
-    return_ignored = 0.0
-    call_target_typed = 1.0  # safe default: "all calls typed" when not applicable
-    in_unchecked = 0.0
-    has_loop = 0.0
-    gas_intensity = 0.0
+    return_ignored     = 0.0
+    call_target_typed  = 1.0   # safe default: "not applicable"
+    in_unchecked       = 0.0
+    has_loop           = 0.0
     external_call_count = 0.0
 
-    if isinstance(obj, Function):
-        pure    = 1.0 if obj.pure    else 0.0
-        view    = 1.0 if obj.view    else 0.0
-        payable = 1.0 if obj.payable else 0.0
+    if _is_function:
+        pure    = 1.0 if getattr(obj, "pure",    False) else 0.0
+        view    = 1.0 if getattr(obj, "view",    False) else 0.0
+        payable = 1.0 if getattr(obj, "payable", False) else 0.0
         try:
             complexity = float(len(obj.nodes)) if obj.nodes else 0.0
         except Exception:
             complexity = 0.0
 
-        # New semantic features (v2)
         return_ignored      = _compute_return_ignored(obj)
         call_target_typed   = _compute_call_target_typed(obj)
         in_unchecked        = _compute_in_unchecked(obj)
         has_loop            = _compute_has_loop(obj)
-        gas_intensity       = _compute_gas_intensity(obj, has_loop)
         external_call_count = _compute_external_call_count(obj)
 
         # Override FUNCTION(1) type_id for special function kinds
-        if obj.is_constructor:
+        if getattr(obj, "is_constructor", False):
             type_id = NODE_TYPES["CONSTRUCTOR"]
-        elif obj.is_fallback:
+        elif getattr(obj, "is_fallback", False):
             type_id = NODE_TYPES["FALLBACK"]
-        elif obj.is_receive:
+        elif getattr(obj, "is_receive", False):
             type_id = NODE_TYPES["RECEIVE"]
 
     return [
@@ -485,146 +566,19 @@ def _build_node_features(obj: Any, type_id: int) -> list[float]:
         call_target_typed,
         in_unchecked,
         has_loop,
-        gas_intensity,
         external_call_count,
     ]
 
 
-def _build_cfg_node_features(fn_node: Any, parent_func: Any) -> list[float]:
-    """
-    Compute the 13-dimensional feature vector for a CFG_NODE (basic block).
-
-    CFG_NODE nodes represent individual Slither FunctionNode basic blocks
-    within a function. Their features are computed at the block level where
-    possible, falling back to parent-function values otherwise.
-
-    Feature layout mirrors _build_node_features (same 13-dim schema):
-      [0]  type_id = NODE_TYPES["CFG_NODE"]  (always 8)
-      [1]  visibility = parent function visibility
-      [2-4] pure/view/payable = 0.0 (not applicable at block level)
-      [5]  complexity = 0.0 (block-level; overall function complexity is on func node)
-      [6]  loc = lines in this basic block's source mapping
-      [7]  return_ignored = 1.0 if this block has an ignored-return call op
-      [8]  call_target_typed = 1.0 if all calls in this block go to typed interfaces
-      [9]  in_unchecked = 1.0 if this block is inside an unchecked{} scope
-      [10] has_loop = 1.0 if this block is a loop-related node type
-      [11] gas_intensity = 0.0 (heuristic computed at function level)
-      [12] external_call_count = log1p(external calls in this block)
-    """
-    from slither.core.declarations import Function  # noqa: F401 — ensures Slither is present
-
-    type_id    = NODE_TYPES["CFG_NODE"]
-    visibility = float(VISIBILITY_MAP.get(
-        str(getattr(parent_func, "visibility", "public")), 0
-    ))
-
-    # Block-level loc
-    loc = 0.0
-    try:
-        src = getattr(fn_node, "source_mapping", None)
-        if src is not None:
-            lines = getattr(src, "lines", None)
-            if lines:
-                loc = float(len(lines) if isinstance(lines, list) else lines)
-    except Exception:
-        pass
-
-    # return_ignored: any IR op in this block with no lvalue
-    return_ignored = 0.0
-    try:
-        from slither.slithir.operations import LowLevelCall, HighLevelCall
-        for op in (getattr(fn_node, "irs", None) or []):
-            if isinstance(op, (LowLevelCall, HighLevelCall)):
-                if getattr(op, "lvalue", None) is None:
-                    return_ignored = 1.0
-                    break
-    except Exception:
-        pass
-
-    # call_target_typed: any low-level call in this block → 0.0
-    call_target_typed = 1.0
-    try:
-        from slither.slithir.operations import LowLevelCall
-        for op in (getattr(fn_node, "irs", None) or []):
-            if isinstance(op, LowLevelCall):
-                call_target_typed = 0.0
-                break
-    except Exception:
-        pass
-
-    # in_unchecked: check if this node is inside an unchecked scope
-    in_unchecked = 0.0
-    try:
-        from slither.core.cfg.node import NodeType
-        unchecked_begin = getattr(NodeType, "UNCHECKED_BEGIN", None)
-        if unchecked_begin is not None and getattr(fn_node, "type", None) == unchecked_begin:
-            in_unchecked = 1.0
-        # Also check the node's source for the "unchecked" keyword as fallback
-        if in_unchecked == 0.0:
-            src_content = getattr(getattr(fn_node, "source_mapping", None), "content", "") or ""
-            if "unchecked" in src_content:
-                in_unchecked = 1.0
-    except Exception:
-        pass
-
-    # has_loop: node type is a loop-related type
-    has_loop = 0.0
-    try:
-        from slither.core.cfg.node import NodeType
-        loop_types = {NodeType.IFLOOP, NodeType.STARTLOOP, NodeType.ENDLOOP}
-        if getattr(fn_node, "type", None) in loop_types:
-            has_loop = 1.0
-    except Exception:
-        pass
-
-    # external_call_count at block level
-    external_call_count = 0.0
-    try:
-        from slither.slithir.operations import LowLevelCall, HighLevelCall
-        n = sum(
-            1 for op in (getattr(fn_node, "irs", None) or [])
-            if isinstance(op, (LowLevelCall, HighLevelCall))
-        )
-        external_call_count = math.log1p(n)
-    except Exception:
-        pass
-
-    return [
-        float(type_id),
-        visibility,
-        0.0,           # pure  — not applicable at block level
-        0.0,           # view  — not applicable at block level
-        0.0,           # payable — not applicable at block level
-        0.0,           # complexity — meaningful at function level, not block level
-        loc,
-        return_ignored,
-        call_target_typed,
-        in_unchecked,
-        has_loop,
-        0.0,           # gas_intensity — heuristic computed at function level
-        external_call_count,
-    ]
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Internal helpers (module-private)
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _select_contract(sl: Any, config: GraphExtractionConfig) -> Any:
     """
     Pick the target Slither Contract from the parsed contract list.
 
-    Filters out imported dependencies (OpenZeppelin, forge-std, etc.) so only
-    user-supplied code is analysed — the same policy applied during offline
-    training data construction.
-
-    Args:
-        sl:     A Slither instance whose .contracts list has been populated.
-        config: Extraction config controlling multi-contract policy.
-
-    Returns:
-        The selected Slither Contract object.
-
-    Raises:
-        EmptyGraphError: if no non-dependency contracts exist in the file,
-                         or if policy="by_name" and name is not found (after
-                         fallback to first is exhausted due to empty list).
+    Filters out imported dependencies so only user-supplied code is analysed.
     """
     candidates = [c for c in sl.contracts if not c.is_from_dependency()]
     if not candidates:
@@ -639,30 +593,19 @@ def _select_contract(sl: Any, config: GraphExtractionConfig) -> Any:
         if matching:
             return matching[0]
         logger.warning(
-            "Contract %r not found in file (available: %s); "
-            "falling back to first contract %r.",
+            "Contract %r not found in file (available: %s); falling back to first.",
             config.target_contract_name,
             [c.name for c in candidates],
-            candidates[0].name,
         )
 
     return candidates[0]
 
 
 def _build_solc_args(config: GraphExtractionConfig) -> str | None:
-    """
-    Compute the solc_args string to pass to Slither, if any.
-
-    --allow-paths is required in offline batch mode when contracts use local
-    import paths (e.g. node_modules/). It was introduced in solc 0.5.0, so we
-    skip it for older versions to avoid a solc startup error.
-
-    Returns None when no arguments should be passed (online inference default).
-    """
+    """Compute the solc_args string to pass to Slither, if any."""
     if not config.allow_paths:
         return None
 
-    # If we know the version, only inject --allow-paths for solc >= 0.5.0.
     if config.solc_version:
         parts = config.solc_version.split(".")
         try:
@@ -684,40 +627,36 @@ def extract_contract_graph(
     config: GraphExtractionConfig | None = None,
 ) -> Data:
     """
-    Parse a Solidity file and return a PyG Data graph object.
+    Parse a Solidity file and return a PyG Data graph object (v2 schema).
 
     This is the single canonical AST-to-graph conversion used by both the
-    offline training pipeline and the online inference API.  See module docstring
-    for the full rationale.
+    offline training pipeline and the online inference API.
 
-    Node insertion order (CONTRACT → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs)
-    is fixed and must match the original ast_extractor.py exactly.  Node indices
-    appear in edge_index; reordering them would invalidate all training data.
+    Node insertion order:
+      CONTRACT → STATE_VARs → FUNCTIONs (each followed by its CFG_NODE children,
+      sorted by source_line) → MODIFIERs → EVENTs
+    This order is fixed and must match across all extraction runs.
 
     Args:
         sol_path: Path to a .sol file that must already exist on disk.
-                  (For in-memory source strings, the caller writes a temp file
-                  first — see ContractPreprocessor.process_source().)
-        config:   Extraction settings. None → GraphExtractionConfig() defaults,
-                  which are calibrated for online single-contract inference.
+        config:   Extraction settings. None → defaults (online inference).
 
     Returns:
-        PyG Data with the following attributes (v2 schema):
-          .x              Tensor [N, 13] float32  node features
+        PyG Data with:
+          .x              Tensor [N, 12] float32  node features
           .edge_index     Tensor [2, E]  int64    COO edge connectivity
           .edge_attr      Tensor [E]     int64    edge type IDs 0-6
                                                   (only if config.include_edge_attr)
-          .contract_name  str            name of the analysed contract
-          .num_nodes      int            N (declaration nodes + CFG_NODE nodes)
-          .num_edges      int            E
-
-        Caller-specific attributes (.contract_hash, .contract_path, .y) are NOT
-        set here; attach them after the call returns.
+          .node_metadata  list[dict]               index-aligned with .x
+                                                  keys: name, type, source_lines
+          .contract_name  str
+          .num_nodes      int
+          .num_edges      int
 
     Raises:
         RuntimeError:         Slither library is not installed.
-        SolcCompilationError: Solidity failed to compile (user-input error).
-        SlitherParseError:    Slither failed internally (infrastructure error).
+        SolcCompilationError: Solidity failed to compile.
+        SlitherParseError:    Slither failed internally.
         EmptyGraphError:      Contract produced zero analyzable AST nodes.
     """
     if config is None:
@@ -741,8 +680,6 @@ def extract_contract_graph(
         sl = Slither(str(sol_path), **slither_kwargs)
     except Exception as exc:
         exc_lower = str(exc).lower()
-        # Distinguish compilation failures (user error) from Slither internals (infra).
-        # Keywords sourced from solc's actual stderr output patterns.
         if any(kw in exc_lower for kw in ("compil", "syntax", "invalid solidity", "parsing", "solc")):
             raise SolcCompilationError(
                 f"Solidity compilation failed for '{sol_path.name}': {exc}"
@@ -752,194 +689,153 @@ def extract_contract_graph(
         ) from exc
 
     # ── Contract selection ─────────────────────────────────────────────────
-    # Raises EmptyGraphError if no non-dependency contracts are found.
     contract = _select_contract(sl, config)
 
-    # ── Node feature extraction ────────────────────────────────────────────
-    # node_map: canonical_name → index in node_features_list.
-    # Duplicate declarations are silently skipped (same canonical_name).
-    node_features_list: list[list[float]] = []
+    # ── Shared node lists (x_list and node_metadata are index-aligned) ─────
+    # x_list:        grows as declaration nodes and CFG nodes are added.
+    # node_metadata: parallel list of dicts; same length as x_list at all times.
+    x_list:        list = []
+    node_metadata: list = []
+
+    # node_map: canonical_name → index in x_list (declaration nodes only)
     node_map: dict[str, int] = {}
 
-    def _add_node(obj: Any, initial_type_id: int) -> None:
-        # Contract objects expose only .name; all other declarations have .canonical_name.
-        key: str = getattr(obj, "canonical_name", None) or obj.name
-        if key not in node_map:
-            node_map[key] = len(node_features_list)
-            node_features_list.append(_build_node_features(obj, initial_type_id))
+    _type_name_map = {v: k for k, v in NODE_TYPES.items()}
 
-    # ⚠  Insertion order must match original ast_extractor.py exactly.
-    # Node indices flow into edge_index; changing order shifts indices and
-    # corrupts all edges, requiring a full dataset rebuild.
+    def _add_node(obj: Any, initial_type_id: int) -> int | None:
+        """Add one declaration node. Returns the assigned index, or None if duplicate."""
+        key: str = getattr(obj, "canonical_name", None) or obj.name
+        if key in node_map:
+            return None
+        idx = len(x_list)
+        node_map[key] = idx
+        x_list.append(_build_node_features(obj, initial_type_id))
+
+        # Determine the actual type_id after _build_node_features may override it
+        actual_type_id = int(x_list[-1][0])
+        actual_type_name = _type_name_map.get(actual_type_id, "FUNCTION")
+        sm = getattr(obj, "source_mapping", None)
+        node_metadata.append({
+            "name":         getattr(obj, "canonical_name", None) or getattr(obj, "name", str(obj)),
+            "type":         actual_type_name,
+            "source_lines": list(sm.lines) if sm and getattr(sm, "lines", None) else [],
+        })
+        return idx
+
+    # ── Add declaration nodes (fixed insertion order) ──────────────────────
+    # ⚠  This order must remain stable — node indices flow into edge_index.
     _add_node(contract, NODE_TYPES["CONTRACT"])
     for var   in contract.state_variables: _add_node(var,   NODE_TYPES["STATE_VAR"])
-    for func  in contract.functions:       _add_node(func,  NODE_TYPES["FUNCTION"])
-    for mod   in contract.modifiers:       _add_node(mod,   NODE_TYPES["MODIFIER"])
-    for event in contract.events:          _add_node(event, NODE_TYPES["EVENT"])
 
-    if not node_features_list:
+    # For functions: add function node first, then immediately add its CFG children
+    # so CFG nodes follow their parent function in x_list (cleaner indexing).
+    edges:      list = []
+    edge_types: list = []
+
+    for func in contract.functions:
+        fn_idx = _add_node(func, NODE_TYPES["FUNCTION"])
+        if fn_idx is None:
+            # Duplicate function name — still need to find its index for CFG edges
+            fn_key = getattr(func, "canonical_name", None) or func.name
+            fn_idx = node_map.get(fn_key)
+            if fn_idx is None:
+                continue
+
+        # CFG nodes for this function, appended immediately after it
+        try:
+            cfg_node_map: dict = {}  # slither_node → graph_idx, scoped per function
+            contains_edges, control_flow_edges = _build_control_flow_edges(
+                func, fn_idx, cfg_node_map, x_list, node_metadata
+            )
+            for src, dst in contains_edges:
+                edges.append([src, dst])
+                edge_types.append(EDGE_TYPES["CONTAINS"])
+            for src, dst in control_flow_edges:
+                edges.append([src, dst])
+                edge_types.append(EDGE_TYPES["CONTROL_FLOW"])
+        except Exception as exc:
+            logger.warning(
+                "CFG extraction failed for function '%s' in '%s': %s — "
+                "CONTAINS/CONTROL_FLOW edges for this function omitted.",
+                getattr(func, "canonical_name", "?"),
+                contract.name,
+                exc,
+            )
+
+    for mod   in contract.modifiers: _add_node(mod,   NODE_TYPES["MODIFIER"])
+    for event in contract.events:    _add_node(event, NODE_TYPES["EVENT"])
+
+    if not x_list:
         raise EmptyGraphError(
             f"Contract '{contract.name}' produced zero graph nodes after filtering. "
             "Slither parsed the file but found no analyzable declarations."
         )
 
     # ── Feature tensor + dimension guard ──────────────────────────────────
-    x = torch.tensor(node_features_list, dtype=torch.float)  # [N, 13]
-
-    # Validate here — a dim mismatch surfaces at a meaningful boundary rather
-    # than crashing deep inside GATConv with a cryptic matrix multiplication error.
+    x = torch.tensor(x_list, dtype=torch.float)   # [N, 12]
     if x.shape[1] != NODE_FEATURE_DIM:
         raise SlitherParseError(
             f"Node feature dimension mismatch for '{contract.name}': "
             f"expected {NODE_FEATURE_DIM}, got {x.shape[1]}. "
-            "This is a bug in _build_node_features() — each call must return "
-            f"exactly {NODE_FEATURE_DIM} values."
+            "Bug in _build_node_features() or _build_cfg_node_features() — "
+            f"each must return exactly {NODE_FEATURE_DIM} floats."
         )
 
-    # ── Declaration-level edge extraction ─────────────────────────────────
-    edges:      list[list[int]] = []
-    edge_types: list[int]       = []
+    # node_metadata must stay index-aligned with x_list
+    assert len(node_metadata) == x.shape[0], (
+        f"node_metadata length {len(node_metadata)} ≠ x.shape[0] {x.shape[0]} "
+        f"for '{contract.name}'. This is a bug — _add_node() and "
+        "_build_control_flow_edges() must always append to both lists together."
+    )
 
-    def _add_edge(src: str, dst: str, etype: int) -> None:
-        """Add a directed edge if both endpoints exist in node_map."""
-        si, di = node_map.get(src), node_map.get(dst)
+    # ── Declaration-level edges ────────────────────────────────────────────
+    def _add_edge(src_key: str, dst_key: str, etype: int) -> None:
+        si = node_map.get(src_key)
+        di = node_map.get(dst_key)
         if si is not None and di is not None:
             edges.append([si, di])
             edge_types.append(etype)
 
     for func in contract.functions:
-        fn = func.canonical_name
+        fn = getattr(func, "canonical_name", None) or func.name
 
-        # CALLS: func → each function it calls internally
-        for call in func.internal_calls:
+        for call in (getattr(func, "internal_calls", None) or []):
             if hasattr(call, "canonical_name"):
                 _add_edge(fn, call.canonical_name, EDGE_TYPES["CALLS"])
 
-        # READS / WRITES: func → state variables it accesses
-        for var in func.state_variables_read:
+        for var in (getattr(func, "state_variables_read", None) or []):
             _add_edge(fn, var.canonical_name, EDGE_TYPES["READS"])
-        for var in func.state_variables_written:
+        for var in (getattr(func, "state_variables_written", None) or []):
             _add_edge(fn, var.canonical_name, EDGE_TYPES["WRITES"])
 
-        # EMITS: func → events it fires.
-        # events_emitted is absent in older Slither releases — guard defensively.
         if hasattr(func, "events_emitted"):
             try:
                 for evt in func.events_emitted:
                     _add_edge(fn, evt.canonical_name, EDGE_TYPES["EMITS"])
             except Exception:
-                pass  # skip silently — missing event edges are non-critical
+                pass
 
-    # INHERITS: contract → each parent in the linearised MRO
     try:
-        for parent in contract.inheritance:
+        for parent in (getattr(contract, "inheritance", None) or []):
             _add_edge(contract.name, parent.name, EDGE_TYPES["INHERITS"])
     except Exception:
-        pass  # skip silently — older Slither versions may not expose .inheritance
-
-    # ── CFG node extraction + CONTAINS / CONTROL_FLOW edges ───────────────
-    # Each Slither FunctionNode (basic block) within each function becomes a
-    # separate CFG_NODE graph node.  Two edge types connect CFG nodes:
-    #
-    #   CONTAINS(5):     function_node → cfg_node  (ownership)
-    #   CONTROL_FLOW(6): cfg_node_a   → cfg_node_b (execution successor)
-    #
-    # Without CONTAINS, the CFG subgraph is disconnected from the rest of the
-    # contract graph and GNN message passing cannot propagate function-level
-    # properties (payable, visibility, external_call_count) into statement nodes.
-    # Without CONTROL_FLOW, the model cannot distinguish "call before write" from
-    # "write before call" — both produce identical graphs without ordered edges.
-    cfg_features: list[list[float]] = []
-    cfg_offset = len(node_features_list)  # CFG_NODE indices start here
-
-    # cfg_key_to_local: maps cfg_key → index within cfg_features list
-    cfg_key_to_local: dict[str, int] = {}
-
-    try:
-        for func in contract.functions:
-            fn_key = func.canonical_name
-            fn_idx = node_map.get(fn_key)
-            if fn_idx is None:
-                continue  # function not in node_map (e.g. inherited from dep)
-
-            fn_nodes = list(getattr(func, "nodes", None) or [])
-            if not fn_nodes:
-                continue
-
-            for fn_node in fn_nodes:
-                node_id = getattr(fn_node, "node_id", None)
-                if node_id is None:
-                    continue
-
-                cfg_key = f"{fn_key}::cfg::{node_id}"
-                if cfg_key in cfg_key_to_local:
-                    continue  # dedup (shouldn't happen but guard anyway)
-
-                local_idx = len(cfg_features)
-                cfg_key_to_local[cfg_key] = local_idx
-                cfg_features.append(_build_cfg_node_features(fn_node, func))
-
-                # CONTAINS: function_node → this cfg_node
-                global_cfg_idx = cfg_offset + local_idx
-                edges.append([fn_idx, global_cfg_idx])
-                edge_types.append(EDGE_TYPES["CONTAINS"])
-
-            # CONTROL_FLOW: cfg_node → successor cfg_node (execution order)
-            for fn_node in fn_nodes:
-                node_id = getattr(fn_node, "node_id", None)
-                if node_id is None:
-                    continue
-                src_key = f"{fn_key}::cfg::{node_id}"
-                src_local = cfg_key_to_local.get(src_key)
-                if src_local is None:
-                    continue
-
-                sons = list(getattr(fn_node, "sons", None) or [])
-                for son in sons:
-                    son_id = getattr(son, "node_id", None)
-                    if son_id is None:
-                        continue
-                    dst_key = f"{fn_key}::cfg::{son_id}"
-                    dst_local = cfg_key_to_local.get(dst_key)
-                    if dst_local is None:
-                        continue
-                    edges.append([
-                        cfg_offset + src_local,
-                        cfg_offset + dst_local,
-                    ])
-                    edge_types.append(EDGE_TYPES["CONTROL_FLOW"])
-
-    except Exception as exc:
-        # CFG extraction is best-effort; a failure here should not crash the
-        # overall extraction. Log and continue with whatever nodes were built.
-        logger.warning(
-            "CFG extraction partially failed for '%s': %s — "
-            "some CONTROL_FLOW edges may be missing.",
-            contract.name,
-            exc,
-        )
-
-    # ── Merge declaration nodes and CFG nodes ──────────────────────────────
-    if cfg_features:
-        cfg_tensor = torch.tensor(cfg_features, dtype=torch.float)
-        x = torch.cat([x, cfg_tensor], dim=0)  # [N + C, 13]
-
-    total_nodes = int(x.shape[0])
+        pass
 
     # ── Assemble PyG Data object ───────────────────────────────────────────
     if edges:
-        edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()  # [2, E]
-        edge_attr  = torch.tensor(edge_types, dtype=torch.long)              # [E]
+        edge_index = torch.tensor(edges,      dtype=torch.long).t().contiguous()
+        edge_attr  = torch.tensor(edge_types, dtype=torch.long)
     else:
         edge_index = torch.zeros((2, 0), dtype=torch.long)
-        edge_attr  = torch.zeros(0, dtype=torch.long)
+        edge_attr  = torch.zeros(0,      dtype=torch.long)
 
     graph = Data(x=x, edge_index=edge_index)
     if config.include_edge_attr:
         graph.edge_attr = edge_attr
 
-    graph.contract_name = contract.name
-    graph.num_nodes     = total_nodes
-    graph.num_edges     = len(edges)
+    graph.node_metadata  = node_metadata
+    graph.contract_name  = contract.name
+    graph.num_nodes      = int(x.shape[0])
+    graph.num_edges      = len(edges)
 
     return graph

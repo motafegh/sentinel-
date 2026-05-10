@@ -76,9 +76,19 @@ _BINARY_CLASS_NAME = "BinaryScore"
 # Registry pattern: adding a new architecture = one dict entry, not an elif hunt.
 # Keys must match exactly what trainer.py writes into checkpoint["config"]["architecture"].
 _ARCH_TO_FUSION_DIM: dict[str, int] = {
-    "cross_attention_lora": 128,
+    "three_eye_v5":         128,   # v5 three-eye classifier (current)
+    "cross_attention_lora": 128,   # v4 (previous)
     "legacy":               64,
     "legacy_binary":        64,
+}
+
+# Node feature dimension per architecture — used for warmup dummy graph.
+# Do NOT hardcode 8 or 12 here; always derive from this map.
+_ARCH_TO_NODE_DIM: dict[str, int] = {
+    "three_eye_v5":         12,    # v5: NODE_FEATURE_DIM=12 (graph_schema.py v2)
+    "cross_attention_lora": 8,     # v4: NODE_FEATURE_DIM=8  (graph_schema.py v1)
+    "legacy":               8,
+    "legacy_binary":        8,
 }
 
 
@@ -197,15 +207,18 @@ class Predictor:
         # Fix #2: pass dropout, gnn_dropout, lora_target_modules from checkpoint
         # config so load_state_dict() never crashes due to LoRA key mismatches.
         # ------------------------------------------------------------------
+        # Architecture-aware defaults: v5 uses wider GNN + higher LoRA rank.
+        _is_v5 = (architecture == "three_eye_v5")
         self.model = SentinelModel(
             num_classes=num_classes,
             fusion_output_dim=fusion_output_dim,
-            gnn_hidden_dim=saved_cfg.get("gnn_hidden_dim", 64),
+            gnn_hidden_dim=saved_cfg.get("gnn_hidden_dim", 128 if _is_v5 else 64),
+            gnn_num_layers=saved_cfg.get("gnn_layers", 4),
             gnn_heads=saved_cfg.get("gnn_heads", 8),
             use_edge_attr=saved_cfg.get("use_edge_attr", True),
-            gnn_edge_emb_dim=saved_cfg.get("gnn_edge_emb_dim", 16),
-            lora_r=saved_cfg.get("lora_r", 8),
-            lora_alpha=saved_cfg.get("lora_alpha", 16),
+            gnn_edge_emb_dim=saved_cfg.get("gnn_edge_emb_dim", 32 if _is_v5 else 16),
+            lora_r=saved_cfg.get("lora_r", 16 if _is_v5 else 8),
+            lora_alpha=saved_cfg.get("lora_alpha", 32 if _is_v5 else 16),
             lora_dropout=saved_cfg.get("lora_dropout", 0.1),
             dropout=saved_cfg.get("fusion_dropout", 0.3),
             gnn_dropout=saved_cfg.get("gnn_dropout", 0.2),
@@ -295,12 +308,14 @@ class Predictor:
         nn.Embedding lookup in GNNEncoder is exercised and edge embedding shape
         bugs are caught here rather than on the first real inference request.
 
-        Node feature dim (8) matches GNNEncoder's expected input_dim.
+        Node feature dim is read from _ARCH_TO_NODE_DIM: 12 for v5, 8 for v4/legacy.
         Token tensor: first token real, rest PAD — avoids empty masked-mean.
         """
         try:
             # ── 2 nodes, 1 undirected edge (was 0 edges) ──────────────────────
-            dummy_x = torch.zeros(2, 8, dtype=torch.float32, device=self.device)
+            # Node feature dim is architecture-specific: 12 for v5, 8 for v4/legacy.
+            _node_dim = _ARCH_TO_NODE_DIM.get(self.architecture, 12)
+            dummy_x = torch.zeros(2, _node_dim, dtype=torch.float32, device=self.device)
             dummy_edge_index = torch.tensor(
                 [[0, 1], [1, 0]], dtype=torch.long, device=self.device
             )  # shape [2, 2] — two directed edges forming one undirected edge

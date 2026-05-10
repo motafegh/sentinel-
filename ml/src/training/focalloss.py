@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -69,4 +71,61 @@ class FocalLoss(nn.Module):
         # Focal weight: (1-pt)^gamma down-weights easy examples (high pt)
         focal_loss = alpha_t * (1 - pt) ** self.gamma * bce
 
+        return focal_loss.mean()
+
+
+class MultiLabelFocalLoss(nn.Module):
+    """
+    Per-class Focal Loss for multi-label classification on raw logits.
+
+    Differences from FocalLoss:
+      - Accepts RAW LOGITS (applies sigmoid internally). No external wrapper needed.
+      - alpha is a per-class List[float] (not a scalar). Enables per-class
+        imbalance correction, e.g. alpha[c] = 1 - n_pos[c] / N so rare classes
+        receive a higher weight than common ones.
+      - Designed for [B, C] multi-label output only.
+
+    Formula (element-wise, averaged over B×C elements):
+        p    = sigmoid(logit)
+        pt   = p  if target == 1 else (1 - p)
+        loss = -alpha_c * (1 - pt)^gamma * log(pt + ε)
+
+    Args:
+        alpha:  List of C per-class balance weights in [0, 1].
+                Typically set to (1 - class_freq_c) so rare classes get
+                alpha closer to 1.0 and common classes closer to 0.0.
+        gamma:  Focusing exponent (default 2.0). Higher values down-weight
+                easy examples more aggressively.
+    """
+
+    def __init__(self, alpha: List[float], gamma: float = 2.0) -> None:
+        super().__init__()
+        self.gamma = gamma
+        # Register as a buffer so it moves to the correct device with .to(device)
+        # and is included in state_dict (for checkpoint reproducibility).
+        self.register_buffer("alpha", torch.tensor(alpha, dtype=torch.float32))
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            logits:  Raw model logits [B, C]. NOT sigmoid-applied.
+            targets: Ground truth labels [B, C]. Values 0 or 1, any dtype.
+
+        Returns:
+            Scalar loss averaged over all B×C elements.
+        """
+        # BF16 guard: sigmoid and log are numerically sensitive under autocast.
+        logits  = logits.float()
+        targets = targets.float()
+
+        p   = torch.sigmoid(logits)             # [B, C]
+        pt  = torch.where(targets == 1, p, 1 - p)   # confidence on correct class
+
+        # alpha: [C] → broadcast to [1, C] → [B, C]
+        alpha_t = self.alpha.unsqueeze(0)       # [1, C]
+
+        # Numerically stable BCE from logits avoids log(0) issues.
+        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+
+        focal_loss = alpha_t * (1 - pt) ** self.gamma * bce
         return focal_loss.mean()

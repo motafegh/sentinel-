@@ -45,6 +45,7 @@ def validate(
     expected_edge_types:  int  = NUM_EDGE_TYPES,
     check_contains_edges: bool = False,
     check_control_flow:   bool = False,
+    check_cfg_subtypes:   bool = False,
 ) -> int:
     pt_files = sorted(graphs_dir.glob("*.pt"))
     if not pt_files:
@@ -60,8 +61,9 @@ def validate(
     shape_errors:    list[tuple[Path, str]] = []
     value_errors:    list[tuple[Path, str]] = []
     dim_errors:      list[tuple[Path, str]] = []
-    missing_contains: list[Path]            = []
-    missing_cf:       list[Path]            = []
+    missing_contains:  list[Path]            = []
+    missing_cf:        list[Path]            = []
+    missing_cfg_sub:   list[Path]            = []
 
     for path in pt_files:
         try:
@@ -124,13 +126,25 @@ def validate(
                 missing_cf.append(path)
                 failed_this = True
 
+        # ── CFG subtype nodes (type_ids 8–12) ─────────────────────────────
+        # Verifies that _build_control_flow_edges() created CFG nodes.
+        # A graph with CONTAINS edges but no CFG subtypes in x[:,0] means
+        # the CFG node extraction was skipped or fell back to CFG_NODE_OTHER
+        # for every node — likely a Slither version mismatch.
+        if check_cfg_subtypes and hasattr(data, "x") and data.x is not None:
+            type_ids = data.x[:, 0]
+            has_cfg = bool(((type_ids >= 8) & (type_ids <= 12)).any().item())
+            if not has_cfg:
+                missing_cfg_sub.append(path)
+                failed_this = True
+
         if not failed_this:
             passed.append(path)
 
     failed_count = (
         len(missing_attr) + len(shape_errors) + len(value_errors)
         + len(load_errors) + len(dim_errors)
-        + len(missing_contains) + len(missing_cf)
+        + len(missing_contains) + len(missing_cf) + len(missing_cfg_sub)
     )
 
     print(f"\nGraph dataset validation — {graphs_dir}")
@@ -144,6 +158,8 @@ def validate(
         print(f"  Missing CONTAINS(5) : {len(missing_contains)}")
     if check_control_flow:
         print(f"  Missing CTRL_FLOW(6): {len(missing_cf)}")
+    if check_cfg_subtypes:
+        print(f"  Missing CFG subtypes: {len(missing_cfg_sub)}  (type_ids 8–12 absent)")
     print(f"  Load errors         : {len(load_errors)}")
 
     def _print_samples(items: list, label: str) -> None:
@@ -167,6 +183,7 @@ def validate(
     _print_samples(value_errors,     "Edge value errors")
     _print_samples(missing_contains, "Files missing CONTAINS edges")  # type: ignore[arg-type]
     _print_samples(missing_cf,       "Files missing CONTROL_FLOW edges")  # type: ignore[arg-type]
+    _print_samples(missing_cfg_sub,  "Files missing CFG subtype nodes (type_ids 8-12)")  # type: ignore[arg-type]
 
     if missing_attr or shape_errors or dim_errors:
         print(
@@ -202,7 +219,7 @@ def main() -> None:
         help=(
             f"Expected node feature dimension x.shape[1] "
             f"(default: {NODE_FEATURE_DIM} from graph_schema.NODE_FEATURE_DIM). "
-            "Pass 13 after v5 re-extraction."
+            "Pass 12 for v5 schema (was 8 in v4)."
         ),
     )
     parser.add_argument(
@@ -232,6 +249,15 @@ def main() -> None:
             "cfg_node→cfg_node). Requires v5 graph schema."
         ),
     )
+    parser.add_argument(
+        "--check-cfg-subtypes",
+        action="store_true",
+        help=(
+            "Verify every file has at least one CFG node (type_id in 8–12). "
+            "Catches cases where _build_control_flow_edges() was skipped "
+            "or produced no CFG nodes despite CONTAINS edges being present."
+        ),
+    )
     args = parser.parse_args()
 
     graphs_dir = Path(args.graphs_dir)
@@ -245,6 +271,7 @@ def main() -> None:
         expected_edge_types=args.check_edge_types,
         check_contains_edges=args.check_contains_edges,
         check_control_flow=args.check_control_flow,
+        check_cfg_subtypes=args.check_cfg_subtypes,
     ))
 
 

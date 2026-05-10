@@ -6,6 +6,9 @@ V5 CHANGES FROM V4
 Three-eye classifier architecture: instead of routing everything through a
 single 128-dim fused bottleneck, the classifier receives three independent
 128-dim vectors — one from each modality — concatenated to [B, 384].
+GNN is now a three-phase, four-layer GAT (see gnn_encoder.py) that encodes
+execution order via CFG CONTROL_FLOW edges and propagates it back up to
+function nodes via reversed CONTAINS edges (Phase 3).
 
   GNN eye         (structural opinion):
     global_max_pool(node_embs, batch)  → [B, 128]
@@ -72,7 +75,8 @@ class SentinelModel(nn.Module):
 
         --- GNN hyperparameters ---
         gnn_hidden_dim:       GNN node embedding width (default: 128).
-        gnn_heads:            GAT attention heads (default: 8).
+        gnn_num_layers:       Number of GAT layers (default: 4; validated in TrainConfig).
+        gnn_heads:            GAT attention heads for Phase 1 (default: 8).
         gnn_dropout:          GNN attention + node dropout (default: 0.2).
         use_edge_attr:        Feed edge type embeddings into GATConv (default: True).
         gnn_edge_emb_dim:     Dimension of learned edge-type embedding (default: 32).
@@ -91,6 +95,7 @@ class SentinelModel(nn.Module):
         num_classes:          int                 = 10,
         # GNN architecture
         gnn_hidden_dim:       int                 = 128,
+        gnn_num_layers:       int                 = 4,
         gnn_heads:            int                 = 8,
         gnn_dropout:          float               = 0.2,
         use_edge_attr:        bool                = True,
@@ -114,6 +119,7 @@ class SentinelModel(nn.Module):
             dropout=gnn_dropout,
             use_edge_attr=use_edge_attr,
             edge_emb_dim=gnn_edge_emb_dim,
+            num_layers=gnn_num_layers,
         )
         self.transformer = TransformerEncoder(
             lora_r=lora_r,
@@ -162,7 +168,7 @@ class SentinelModel(nn.Module):
             f"SentinelModel v5 (three-eye) initialised | "
             f"num_classes={num_classes} | eye_dim={eye_dim} | "
             f"classifier_in={3 * eye_dim} | "
-            f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} | "
+            f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} layers={gnn_num_layers} | "
             f"lora_r={lora_r} lora_alpha={lora_alpha}"
         )
 
