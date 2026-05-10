@@ -4,7 +4,7 @@
 | Field        | Value                                   |
 |--------------|-----------------------------------------|
 | Date         | 2026-05-10                              |
-| Revision     | 1.1 — external review incorporated      |
+| Revision     | 1.2 — three-eye classifier architecture frozen |
 | Status       | ACTIVE — Implementation Guide           |
 | Supersedes   | v4 exp1 (`multilabel-v4-finetune-lr1e4_best.pt`) |
 | Author       | Post-audit synthesis (code + results)   |
@@ -23,6 +23,19 @@ Seven issues raised by external review; all assessed, six applied:
 | 5 | Inline threshold sweep every epoch doubles training time | **Applied** — replaced with lightweight calibration log; full sweep post-training only |
 | 6d | Validation split strategy ambiguous re: augmented data | **Applied** — clarified in §3.3 and §5.3: original v4 split for metric tracking; augmented data training-only |
 | 7 | Per-class F1 floor too tight at 0.05 given `reentrant` removal | **Applied** — relaxed from 0.05 to 0.10 in §8.1 |
+
+### Revision 1.2 Changes (three-eye classifier architecture)
+
+The principal author proposed adding independent per-modality classifier inputs alongside
+the existing fused representation. After technical review, this is adopted as a core v5
+architectural decision, not a future experiment. See §4.6 and §7.5 for full rationale.
+
+| Component | Change |
+|---|---|
+| `sentinel_model.py` | Add `gnn_eye_proj Linear(256,128)`, `transformer_eye_proj Linear(768,128)`; classifier becomes `Linear(384, 10)` |
+| Forward pass | GNN eye (max+mean pool → proj), Transformer eye (CLS token → proj), Fused eye (CrossAttentionFusion) → concatenate → classify |
+| `trainer.py` | Add per-eye gradient norm logging to catch eye dominance early |
+| §4.6 | New decision record: three-eye architecture rationale |
 
 ---
 
@@ -390,12 +403,63 @@ but not blocking.
 ### 2.5 `ml/src/models/sentinel_model.py`
 
 **Changes:**
-- Update `gnn_hidden_dim` default from 64 to 128.
-- Pass `gnn_hidden_dim=128` to `CrossAttentionFusion(node_dim=128, ...)`.
-- Update docstring to reflect new architecture.
 
-No structural changes to the forward pass — it already unpacks `(node_embs, batch)`
-from GNN and passes everything correctly to fusion.
+**A. Add two new projection layers (the "eyes"):**
+```python
+from torch_geometric.nn import global_max_pool, global_mean_pool
+
+# GNN eye: max+mean pool over node embeddings → project to output_dim
+self.gnn_eye_proj = nn.Sequential(
+    nn.Linear(gnn_hidden_dim * 2, fusion_output_dim),  # 256 → 128
+    nn.ReLU(),
+    nn.Dropout(dropout),
+)
+
+# Transformer eye: CLS token (position 0) → project to output_dim
+self.transformer_eye_proj = nn.Sequential(
+    nn.Linear(768, fusion_output_dim),  # 768 → 128
+    nn.ReLU(),
+    nn.Dropout(dropout),
+)
+```
+
+**B. Update classifier input dimension from `fusion_output_dim` to `fusion_output_dim * 3`:**
+```python
+# Three eyes concatenated: gnn_eye [B,128] + transformer_eye [B,128] + fused_eye [B,128]
+self.classifier = nn.Linear(fusion_output_dim * 3, num_classes)  # 384 → 10
+```
+
+**C. Updated forward pass:**
+```python
+# ── GNN path ──────────────────────────────────────────────────────────────
+node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
+# node_embs: [N, 128]
+
+# GNN eye: max+mean pool — "is any node dangerous?" + "what's the typical node?"
+gnn_max  = global_max_pool(node_embs, batch)                  # [B, 128]
+gnn_mean = global_mean_pool(node_embs, batch)                 # [B, 128]
+gnn_eye  = self.gnn_eye_proj(torch.cat([gnn_max, gnn_mean], dim=1))  # [B, 128]
+
+# ── Transformer path ───────────────────────────────────────────────────────
+token_embs = self.transformer(input_ids, attention_mask)
+# token_embs: [B, 512, 768]
+
+# Transformer eye: CLS token — CodeBERT's hierarchical sequence summary
+# Position 0 is the CLS token: 12 layers of self-attention over all 512 positions.
+# Distinct from the masked-mean pool used inside CrossAttentionFusion.
+transformer_eye = self.transformer_eye_proj(token_embs[:, 0, :])  # [B, 128]
+
+# ── Fused eye: bidirectional cross-attention ───────────────────────────────
+fused_eye = self.fusion(node_embs, batch, token_embs, attention_mask)  # [B, 128]
+
+# ── Classifier: each eye votes independently ───────────────────────────────
+combined = torch.cat([gnn_eye, transformer_eye, fused_eye], dim=1)  # [B, 384]
+logits   = self.classifier(combined)                                  # [B, 10]
+```
+
+**D. Update `gnn_hidden_dim` default from 64 to 128 and pass to CrossAttentionFusion.**
+
+**E. Update docstring** to describe the three-eye architecture and the rationale (see §4.6).
 
 ### 2.6 `ml/src/training/trainer.py`
 
@@ -410,7 +474,26 @@ epochs:           int   = 60      # longer run for fresh-from-scratch training
 lr:               float = 2e-4    # slightly lower than default 3e-4 for stability
 ```
 
-**B. Add per-class calibration logging (not a full threshold sweep):**
+**B. Add per-eye gradient norm logging to detect eye dominance:**
+```python
+# Log after scaler.unscale_(optimizer), before clip_grad_norm_
+# Run every log_interval batches (not every step — too noisy)
+if (batch_idx + 1) % log_interval == 0:
+    for eye_name, module in [
+        ("gnn_eye",         model.gnn_eye_proj),
+        ("transformer_eye", model.transformer_eye_proj),
+        ("fused",           model.fusion),
+    ]:
+        gnorm = sum(p.grad.norm().item() ** 2
+                    for p in module.parameters() if p.grad is not None) ** 0.5
+        mlflow.log_metric(f"grad_norm_{eye_name}", gnorm, step=global_step)
+```
+If any eye's gradient norm collapses to near-zero while others remain healthy, that eye
+is being suppressed — the classifier has stopped using it. Catch this early, not after
+60 epochs. Acceptable range: all three eyes should have grad norms within an order of
+magnitude of each other throughout training.
+
+**C. Add per-class calibration logging (not a full threshold sweep):**
 Running a full per-class threshold sweep (13 thresholds × 10 classes = 130 forward
 passes of the val set) on every improving epoch would approximately double epoch time.
 Instead, log a lightweight calibration signal every epoch:
@@ -672,7 +755,69 @@ the attention score to depend jointly on both nodes in a more expressive way.
 For v5.0: keep GAT (GATConv) for stability and to isolate the impact of the new features
 and CFG edges. GATv2 is a v5.1 consideration if v5.0 results are limited.
 
-### 4.5 Frozen vs Trained GNN/Fusion/Classifier
+### 4.5 Three-Eye Classifier Architecture
+
+**Decision:** Add two independent classifier inputs alongside the existing fused
+representation — a GNN-only "structural eye" and a Transformer-only "semantic eye" —
+so the classifier receives direct, unmediated signals from each modality.
+
+**The problem with a single fused bottleneck:**
+The current v4 architecture (and the initial v5 plan before this revision) routes all
+information through a single 128-dim fused vector before the classifier. This creates
+two failure modes:
+
+1. If cross-attention learns a poor mapping early in training, gradients cannot drive
+   GNN or Transformer improvements independently — both are blamed equally for the
+   fusion's error, even if one modality is already producing useful embeddings.
+2. Different vulnerability classes benefit from different signal types. DoS is best
+   detected from graph structure (`has_loop`, node counts). MishandledException is best
+   detected from token sequence (`(bool ok,) = call(...)`). Forcing both through the
+   same 128-dim compression discards the natural specialization.
+
+**Why three eyes, not two:**
+The fused eye is kept because the bidirectional cross-attention genuinely produces
+information that neither modality holds alone — it encodes "which structural patterns
+co-occur with which token sequences." The individual eyes are additive, not replacements.
+Each eye answers a different question:
+
+| Eye | What it answers | Inductive bias |
+|---|---|---|
+| GNN eye | "What structural patterns exist in the graph?" | Max+mean pool: captures both presence (is any node dangerous?) and distribution (what's typical?) |
+| Transformer eye | "What does the raw source code say?" | CLS token: CodeBERT's 12-layer hierarchical summary, fully order-aware |
+| Fused eye | "How do structural patterns and tokens co-locate?" | Cross-attention: encodes joint evidence that neither modality holds alone |
+
+**Why max+mean pool for the GNN eye (not plain mean):**
+Vulnerability detection is an existential claim: a contract with ONE reentrancy-vulnerable
+function is vulnerable, regardless of how many safe functions it also contains. Global
+max pool captures "is there at least one node exhibiting feature X?" — the right inductive
+bias. Global mean pool captures the "average node" — also useful for overall contract
+character. Concatenating both (256-dim) and projecting to 128-dim lets the model choose
+its own weighting between the two pooling strategies.
+
+**Why the existing CLS token for the Transformer eye (not a new learnable one):**
+CodeBERT's CLS token at position 0 of `last_hidden_state` is already a hierarchical
+sequence summary produced by 12 layers of bidirectional self-attention over all 512
+positions. It is order-aware by construction and distinct from the masked-mean pool
+used inside CrossAttentionFusion. Adding a *new* learnable CLS token would require
+prepending it before CodeBERT runs, shifting all positional embeddings — a structural
+change to the Transformer that is not warranted when an equivalent representation already
+exists at zero cost.
+
+**Why this is v5, not v5.1:**
+Deferring this to v5.1 would mean running a full 60-epoch training run, then changing
+the classifier head, then running another full run. The parameter addition is ~130K
+(negligible), the code change is ~20 lines in sentinel_model.py, and the architectural
+benefit is highest at the start of training when gradients are most uncertain. Integrating
+it now costs nothing in compute and removes a known architectural weakness from the start.
+
+**Risk: eye dominance:**
+If one eye quickly learns a shortcut, the classifier may weight it heavily and suppress
+the others. Mitigation: per-eye gradient norm logging every `log_interval` batches (see
+§2.6B). If any eye's norm collapses relative to the others, it indicates suppression.
+Acceptable criterion: all three eyes maintain gradient norms within one order of magnitude
+of each other throughout training.
+
+### 4.6 Frozen vs Trained GNN/Fusion/Classifier
 
 The v4 exp1 doc (`2026-05-10-v4-exp1-complete.md`) describes model-only resume from v3.
 **Importantly, the GNN, fusion, and classifier were NOT frozen in v4** — the AdamW
@@ -1003,33 +1148,82 @@ Edge embedding: nn.Embedding(7, 32) → 224 trainable parameters
   Number of layers is a constructor argument; 4 is the default, adjustable via TrainConfig.
 
 Output: node_embeddings [N, 128], batch [N]
+  — pooling for the GNN eye happens in SentinelModel, NOT here:
+    global_max_pool  → [B, 128]
+    global_mean_pool → [B, 128]
+    cat → [B, 256] → gnn_eye_proj → gnn_eye [B, 128]
 ```
 
-### 7.5 Full Model Architecture (v5)
+### 7.5 Full Model Architecture (v5) — Three-Eye Classifier
 
 ```
 Input: (PyG graph batch, input_ids [B, 512], attention_mask [B, 512])
 
-GNN path:
-  GNNEncoder(in=13, hidden=128, layers=4, heads=8) → [N, 128]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GNN PATH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GNNEncoder(in=13, hidden=128, layers=4, heads=8, edge_types=7)
+  → node_embs [N, 128]
 
-Transformer path:
-  CodeBERT(frozen, 125M) + LoRA(r=16, alpha=32, q+v) → [B, 512, 768]
+  ┌─────────────────────────────────────────────────────┐
+  │  GNN Eye (structural opinion)                       │
+  │  global_max_pool(node_embs, batch)  → [B, 128]      │
+  │  global_mean_pool(node_embs, batch) → [B, 128]      │
+  │  cat → [B, 256]                                     │
+  │  gnn_eye_proj: Linear(256,128) + ReLU + Dropout     │
+  │  → gnn_eye [B, 128]                                 │
+  └─────────────────────────────────────────────────────┘
 
-Fusion:
-  CrossAttentionFusion(node_dim=128, token_dim=768, attn_dim=256,
-                       num_heads=8, output_dim=128) → [B, 128]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TRANSFORMER PATH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CodeBERT(frozen, 125M) + LoRA(r=16, alpha=32, q+v)
+  → token_embs [B, 512, 768]   (all positions)
 
-Classifier:
-  Linear(128, 10) → [B, 10] logits (no sigmoid)
+  ┌─────────────────────────────────────────────────────┐
+  │  Transformer Eye (semantic opinion)                 │
+  │  token_embs[:, 0, :]  → CLS token [B, 768]         │
+  │  (12-layer BERT hierarchical sequence summary;      │
+  │   order-aware, distinct from masked-mean pool)      │
+  │  transformer_eye_proj: Linear(768,128)+ReLU+Dropout │
+  │  → transformer_eye [B, 128]                         │
+  └─────────────────────────────────────────────────────┘
 
-Trainable parameters (estimated):
-  GNNEncoder:           ~85K   (4 layers + edge embedding, 13→128)
-  LoRA adapters:        ~590K  (r=16, 12 layers × Q+V)
-  CrossAttentionFusion: ~600K  (projections + attention + output)
-  Classifier:           ~1.3K
-  Total trainable:      ~1.28M
-  Frozen (CodeBERT):    ~125M
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CROSS-ATTENTION FUSION (uses both paths)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CrossAttentionFusion(node_dim=128, token_dim=768,
+                     attn_dim=256, num_heads=8, output_dim=128)
+  node_embs attend to token_embs (→ structurally-enriched nodes)
+  token_embs attend to node_embs (→ semantically-enriched tokens)
+  masked mean pool both → concat → project
+
+  ┌─────────────────────────────────────────────────────┐
+  │  Fused Eye (joint structural+semantic opinion)      │
+  │  → fused_eye [B, 128]                               │
+  └─────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THREE-EYE CLASSIFIER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+cat([gnn_eye, transformer_eye, fused_eye]) → [B, 384]
+Linear(384, 10) → [B, 10] logits   (no sigmoid — applied externally)
+
+Each class learns its own weighting across the three eyes.
+No information is discarded before the final decision.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TRAINABLE PARAMETER ESTIMATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GNNEncoder (4 layers, edge emb 7×32):   ~88K
+LoRA adapters (r=16, 12L × Q+V):        ~590K
+CrossAttentionFusion:                   ~600K
+gnn_eye_proj (Linear 256→128 + act):    ~33K
+transformer_eye_proj (Linear 768→128):  ~98K
+Classifier (Linear 384→10):             ~3.9K
+─────────────────────────────────────────────
+Total trainable:                        ~1.41M
+Frozen (CodeBERT backbone):             ~125M
 ```
 
 ---
@@ -1086,8 +1280,8 @@ A v5 model is accepted for promotion only when ALL of the following hold:
 | `ml/src/preprocessing/graph_schema.py` | Schema update (dim, types, version) | 1 |
 | `ml/src/preprocessing/graph_extractor.py` | Feature removal, 6 new features, CFG edges, CFG nodes | 1 |
 | `ml/src/models/gnn_encoder.py` | Import fix, 4th layer, residuals, hidden_dim=128 | 2 |
-| `ml/src/models/sentinel_model.py` | gnn_hidden_dim=128, updated defaults | 2 |
-| `ml/src/training/trainer.py` | New defaults, per-class calibration log (pred/true ratio), per-class FocalLoss option | 2 |
+| `ml/src/models/sentinel_model.py` | Three-eye architecture: `gnn_eye_proj`, `transformer_eye_proj`, classifier `Linear(384,10)`, max+mean GNN pool, CLS transformer eye | 2 |
+| `ml/src/training/trainer.py` | New defaults, per-eye gradient norm logging, per-class calibration log (pred/true ratio), per-class FocalLoss option | 2 |
 | `ml/src/training/focalloss.py` | Add `MultiLabelFocalLoss(alpha: List[float])` | 2 |
 | `ml/scripts/validate_graph_dataset.py` | Replace hardcoded dims with NODE_FEATURE_DIM | 0 |
 | `ml/src/inference/preprocess.py` | Verify it imports from graph_extractor (no stale copy) | 0 |
