@@ -4,10 +4,25 @@
 | Field        | Value                                   |
 |--------------|-----------------------------------------|
 | Date         | 2026-05-10                              |
+| Revision     | 1.1 — external review incorporated      |
 | Status       | ACTIVE — Implementation Guide           |
 | Supersedes   | v4 exp1 (`multilabel-v4-finetune-lr1e4_best.pt`) |
 | Author       | Post-audit synthesis (code + results)   |
 | Priority     | Critical — production model is broken   |
+
+### Revision 1.1 Changes (external review)
+
+Seven issues raised by external review; all assessed, six applied:
+
+| # | Issue | Decision |
+|---|---|---|
+| 1 | Missing `CONTAINS` edge — function → CFG_NODE link absent from final schema | **Applied** — added `CONTAINS:5`, shifted `CONTROL_FLOW` to `6`, `NUM_EDGE_TYPES=7` |
+| 2 | No fallbacks for `return_ignored` / `call_target_typed` | **Applied** — text-based fallbacks added to §2.2B; Slither version pin added to §9 |
+| 3 | Augmentation sources underspecified; no automated generation strategy | **Applied** — mutation-based generation strategy added to §3.2 |
+| 4 | GNN depth of 4 potentially insufficient for diameter-6 CFGs | **Accepted as-is** — 4 is correct starting point; layer count is a constructor arg and trivial to change if needed |
+| 5 | Inline threshold sweep every epoch doubles training time | **Applied** — replaced with lightweight calibration log; full sweep post-training only |
+| 6d | Validation split strategy ambiguous re: augmented data | **Applied** — clarified in §3.3 and §5.3: original v4 split for metric tracking; augmented data training-only |
+| 7 | Per-class F1 floor too tight at 0.05 given `reentrant` removal | **Applied** — relaxed from 0.05 to 0.10 in §8.1 |
 
 ---
 
@@ -191,10 +206,19 @@ EDGE_TYPES = {
     "WRITES":       2,   # function → state variable written
     "EMITS":        3,   # function → event fired
     "INHERITS":     4,   # contract → parent contract
-    "CONTROL_FLOW": 5,   # CFG node → successor CFG node (execution order)
+    "CONTAINS":     5,   # function → its CFG_NODE children (NEW)
+    "CONTROL_FLOW": 6,   # CFG node → successor CFG node (execution order, NEW)
 }
-NUM_EDGE_TYPES = 6
+NUM_EDGE_TYPES = 7
 ```
+
+**Why `CONTAINS` is required (reviewer gap #1):**
+Without a `CONTAINS` edge from each function node to its child CFG_NODE blocks, the
+statement-level subgraph is a disconnected island. The GNN cannot propagate function-level
+properties (payable, visibility, external_call_count) down to statement nodes, and
+statement-level patterns (call-before-write) cannot flow back up to the function node.
+Reusing `CALLS` for this purpose is ambiguous and confusing — `CALLS` already means
+"this function invokes another function." A separate `CONTAINS` type is the clean fix.
 
 ### 2.2 `ml/src/preprocessing/graph_extractor.py`
 
@@ -209,26 +233,35 @@ Computation logic for each:
 
 ```
 return_ignored:
-    For Function nodes: iterate func.slithir_operations (Slither IR).
-    Check for any LowLevelCall or HighLevelCall whose return value is
-    not subsequently assigned. Slither's IR Call objects have a .lvalue
-    attribute — if None, the return is discarded.
+    PRIMARY (Slither IR): iterate func.slithir_operations.
+    For any LowLevelCall or HighLevelCall, check the .lvalue attribute.
+    If lvalue is None, the return value is discarded → set 1.0.
+    FALLBACK (text-based, used if Slither IR raises AttributeError or
+    returns no operations): scan func.source_mapping.content for patterns
+    matching bare `.call{` or `.call(` not preceded by `=` or `,` on the
+    same line. Regex: r'(?<![=,(])\s*\.call[\({]' — imperfect but catches
+    the most common pattern. Log a WARNING when fallback is used.
     For non-Function nodes: 0.0
 
 call_target_typed:
-    For Function nodes: iterate func.high_level_calls and func.low_level_calls.
-    For each, check the receiver type. Slither's Variable.type gives
-    ContractType or AddressType. If any call is to AddressType (raw address),
-    set to 0.0 (not fully typed). If all are ContractType or there are
-    no external calls, set to 1.0.
+    PRIMARY (Slither type analysis): iterate func.high_level_calls and
+    func.low_level_calls. For each, check receiver type via
+    call.destination.type (or call.called.type). If ContractType → typed.
+    If AddressType → raw address → set 0.0. If all are ContractType or
+    there are no external calls → set 1.0.
+    FALLBACK (text-based, used if type resolution raises or returns None):
+    scan func.source_mapping.content. If any pattern matching
+    r'address\([^)]+\)\.call' or r'\baddress\b.*\.call' is found → 0.0.
+    If only interface-style calls are found (e.g., IToken(addr).transfer) → 1.0.
+    Log a WARNING when fallback is used.
     For non-Function nodes: 1.0 (not applicable, default safe)
 
 in_unchecked:
-    For Function nodes: check func.contains_assembly or iterate
-    func.nodes for node_type == NodeType.TRY. For Slither ≥0.9.3,
-    use func.nodes and check for UNCHECKED_BEGIN type.
-    Simpler fallback: regex on func.source_mapping.content for
-    the literal string "unchecked" — reliable for Solidity 0.8+.
+    PRIMARY (Slither node types): iterate func.nodes and check for
+    nodes with type == NodeType.ASSEMBLY or containing UNCHECKED_BEGIN
+    (Slither ≥0.9.3).
+    FALLBACK (regex): scan func.source_mapping.content for the literal
+    string "unchecked" — reliable for Solidity 0.8+.
     For non-Function nodes: 0.0
 
 has_loop:
@@ -267,7 +300,7 @@ function. These statement-level nodes are connected by CONTROL_FLOW edges.
 
 This is a significant but necessary change. The function-level node remains as before,
 but we also insert child nodes for each CFG block, connected to the function node via
-a new `CONTAINS` edge (or simply reuse CALLS) and to each other via CONTROL_FLOW.
+a `CONTAINS` edge (type 5) and to each other via CONTROL_FLOW edges (type 6).
 
 **Statement-node feature vector** (same 13-dim format, mostly zeroed):
 ```
@@ -377,12 +410,23 @@ epochs:           int   = 60      # longer run for fresh-from-scratch training
 lr:               float = 2e-4    # slightly lower than default 3e-4 for stability
 ```
 
-**B. Add per-class threshold persistence to evaluation:**
-After each epoch, if we improved, also save the optimal per-class thresholds by running
-a quick sweep over [0.3, 0.35, 0.40, ... 0.95] per class on the validation set.
-Currently this only happens in the separate `tune_threshold.py` script.
-Inline it into the training loop so the best checkpoint always ships with calibrated
-thresholds.
+**B. Add per-class calibration logging (not a full threshold sweep):**
+Running a full per-class threshold sweep (13 thresholds × 10 classes = 130 forward
+passes of the val set) on every improving epoch would approximately double epoch time.
+Instead, log a lightweight calibration signal every epoch:
+```python
+# After evaluate(), log per-class predicted-positive counts alongside true counts.
+# This catches over-prediction early without a full sweep.
+for i, name in enumerate(CLASS_NAMES):
+    pred_pos  = int(y_pred[:, i].sum())
+    true_pos  = int(y_true[:, i].sum())
+    mlflow.log_metric(f"pred_pos_{name}", pred_pos, step=epoch)
+    mlflow.log_metric(f"true_pos_{name}", true_pos, step=epoch)
+    mlflow.log_metric(f"pred_true_ratio_{name}", pred_pos / max(1, true_pos), step=epoch)
+```
+A `pred_true_ratio` >> 1 flags persistent over-prediction at a glance.
+The full threshold sweep remains in the separate `tune_threshold.py` script and
+is run once on the final best checkpoint (Phase 6), not during training.
 
 **C. Loss function for v5:**
 Start with `BCEWithLogitsLoss(pos_weight=...)` as before. After the first evaluation
@@ -408,10 +452,12 @@ updated to load a checkpoint with `num_classes=10` and the new architecture dime
 Update validation assertions:
 ```python
 assert graph.x.shape[1] == NODE_FEATURE_DIM   # will now check for 13
-assert graph.edge_attr.max() < NUM_EDGE_TYPES  # will now check for 6
+assert graph.edge_attr.max() < NUM_EDGE_TYPES  # will now check for 7
 ```
-Also add an assertion that at least some graphs contain `CONTROL_FLOW` edges (type 5),
-to catch silent extraction failures.
+Also add assertions that:
+- At least some graphs contain `CONTAINS` edges (type 5) — function → CFG_NODE links exist.
+- At least some graphs contain `CONTROL_FLOW` edges (type 6) — CFG ordering was extracted.
+Both checks catch silent extraction failures where new edge logic ran but produced no output.
 
 ---
 
@@ -455,7 +501,37 @@ Target: **500+ safe contracts** including:
 - Contracts with `unchecked {}` used for gas optimization (not overflow risk)
 - Contracts with bounded loops (gas-safe)
 
-Sources: OpenZeppelin library contracts, Solmate, forge-std examples, manually written.
+**Generation strategy (automated, highest yield):**
+Rather than sourcing safe contracts from external libraries (which may already overlap
+with the training corpus), generate them by *mutating existing vulnerable contracts* into
+their safe equivalents. This directly teaches the model the structural distinctions:
+
+```
+Reentrancy → CEI-safe version:
+  Take every reentrancy training contract. Swap the order of the external call and
+  the state-write (balance[msg.sender] = 0 before call, not after). Label as safe.
+  Result: model sees structurally near-identical graphs where only CFG edge order differs.
+
+MishandledException / UnusedReturn → safe version:
+  Take every bare `call()` and wrap it: `(bool ok,) = addr.call(...); require(ok);`
+  Label as safe (return value now captured and checked).
+
+CallToUnknown → typed-interface version:
+  Take every raw-address `call()` and replace with a typed interface call
+  `ITarget(addr).method()`. Label as safe (target is typed).
+
+unchecked DoS-safe → bounded loop:
+  Take every unbounded-loop DoS contract and add a max-iteration guard
+  (`require(arr.length <= 100)`). Label as safe (loop is bounded).
+```
+
+This mutation approach ensures maximum structural overlap between vulnerable and safe
+examples, which forces the model to learn the *discriminating structural feature*
+rather than any incidental syntactic difference. Write as a script
+`ml/scripts/generate_safe_variants.py` that processes the existing corpus.
+
+External sources (supplement, not primary): OpenZeppelin library contracts, Solmate,
+forge-std examples. These provide style diversity but may already be in the corpus.
 
 **Priority 2 — DenialOfService (critical data starvation)**
 
@@ -497,12 +573,19 @@ Target: **100+ each** of additional examples to improve precision.
    - Vulnerable contracts: use Slither detectors + manual review per label.
 6. **Re-extract ALL existing ~68K contracts** with new v2 schema
    (`python ml/src/data_extraction/ast_extractor.py --force`).
-7. **Regenerate stratified splits** ensuring:
-   - Validation split preserved from v4 (for comparability) OR
-   - New stratified split if the augmented data changes distribution enough
-     to require it. Given the scale of augmentation, regenerate from scratch
-     with stratified k-fold ensuring all classes appear in val and test.
-8. **Validate** with updated `validate_graph_dataset.py` (checks dim=13, edge types 0-5).
+7. **Regenerate splits with explicit separation of augmented data:**
+   - **Original v4 validation set** (the BCCC-derived hold-out): kept intact, used
+     exclusively for F1-macro metric tracking and comparability to v4 results.
+     Augmented contracts are **never added to this set**.
+   - **Augmented contracts**: added to the training set only. A small held-out slice
+     (10%) of augmented contracts forms a secondary "behavioral val" set used to
+     monitor whether safe-contract specificity and feature-specific recall are
+     improving, but this is **not** used for the F1-macro gate.
+   - The original test set is also kept clean (no augmented data).
+   This design means: validation F1-macro is directly comparable to v4, and behavioral
+   generalization is measured through the manual-test suite (§8.2), not through an
+   in-distribution eval on augmented data.
+8. **Validate** with updated `validate_graph_dataset.py` (checks dim=13, edge types 0-6).
 
 ### 3.4 Labeling Protocol for Augmented Contracts
 
@@ -638,10 +721,13 @@ in `trainer.py` is already functional for this mode.
 
 **Phase A — Smoke run (1-2 epochs, 10% data subsample)**
 Use `smoke_subsample_fraction=0.10`. Verify:
-- Graph loading succeeds (new schema, 13-dim features, 6 edge types)
+- Graph loading succeeds (new schema, 13-dim features, 7 edge types)
 - Forward pass completes without shape errors
 - Loss decreases in the first few batches
 - No CUDA OOM at batch_size=16 with larger graphs
+- If OOM at batch_size=16: try batch_size=8 first. If still OOM: add gradient
+  accumulation (`accumulation_steps=4` with batch_size=4 → effective batch=16).
+  Gradient accumulation is already compatible with GradScaler/AMP.
 
 **Phase B — Short run (15 epochs, full data)**
 Evaluate per-class metrics at epoch 15 to check:
@@ -712,8 +798,9 @@ These are correctness bugs independent of the v5 schema change:
    - New `NODE_FEATURE_DIM = 13`
    - New `FEATURE_NAMES` (13 entries, removing `reentrant`, adding 6 new)
    - New `NODE_TYPES["CFG_NODE"] = 8`
-   - New `EDGE_TYPES["CONTROL_FLOW"] = 5`
-   - New `NUM_EDGE_TYPES = 6`
+   - New `EDGE_TYPES["CONTAINS"] = 5`    (function → CFG_NODE child)
+   - New `EDGE_TYPES["CONTROL_FLOW"] = 6` (CFG_NODE → successor)
+   - New `NUM_EDGE_TYPES = 7`
    - Update invariant assertion at bottom of file
 
 2. Update `graph_extractor.py`:
@@ -777,12 +864,13 @@ python ml/src/data_extraction/ast_extractor.py --force
 python ml/scripts/validate_graph_dataset.py \
   --graphs-dir ml/data/graphs \
   --check-dim 13 \
-  --check-edge-types 6 \
+  --check-edge-types 7 \
+  --check-contains-edges \
   --check-control-flow
 ```
 
 Expected output: every `.pt` graph file has `x.shape[1]=13` and
-`edge_attr.max() <= 5`. Any file that fails is logged and skipped.
+`edge_attr.max() <= 6`. Any file that fails is logged and skipped.
 
 After extraction, regenerate splits:
 ```bash
@@ -855,7 +943,7 @@ Index  Name                Type     For Function Nodes        For Non-Function N
 12     external_call_count float    see §2.2B                 0.0
 ```
 
-### 7.2 New Edge Type Vocabulary (6 types)
+### 7.2 New Edge Type Vocabulary (7 types)
 
 ```
 ID  Name           Direction              Semantics
@@ -865,8 +953,14 @@ ID  Name           Direction              Semantics
 2   WRITES         function → state_var   state variable write
 3   EMITS          function → event       event emission
 4   INHERITS       contract → contract    inheritance (MRO order)
-5   CONTROL_FLOW   cfg_node → cfg_node    sequential execution order
+5   CONTAINS       function → cfg_node    function owns this basic block (NEW)
+6   CONTROL_FLOW   cfg_node → cfg_node    sequential execution order (NEW)
 ```
+
+`CONTAINS` links each function node to every one of its CFG_NODE children. This is
+what makes the CFG subgraph connected to the rest of the contract graph. Without it,
+the GNN cannot pass function-level properties (payable, visibility) down to statement
+nodes, nor aggregate statement-level patterns back up to the function node.
 
 ### 7.3 New Node Type Vocabulary (9 types)
 
@@ -887,7 +981,7 @@ ID  Name          What it represents
 ### 7.4 GNN Architecture (v5)
 
 ```
-Input:    x [N, 13], edge_index [2, E], edge_attr [E] (int64, 0-5)
+Input:    x [N, 13], edge_index [2, E], edge_attr [E] (int64, 0-6)
           batch [N] (node-to-graph mapping)
 
 Layer 1 (GATConv): in=13, out=128 (8 heads × 16), concat=True, edge_dim=32
@@ -904,7 +998,9 @@ Layer 3 (GATConv): in=128, out=128 (8 heads × 16), concat=True, edge_dim=32
 Layer 4 (GATConv): in=128, out=128, heads=1, concat=False, edge_dim=32
   (no activation — passed directly to CrossAttentionFusion)
 
-Edge embedding: nn.Embedding(6, 32) → 192 trainable parameters
+Edge embedding: nn.Embedding(7, 32) → 224 trainable parameters
+  (covers CALLS, READS, WRITES, EMITS, INHERITS, CONTAINS, CONTROL_FLOW)
+  Number of layers is a constructor argument; 4 is the default, adjustable via TrainConfig.
 
 Output: node_embeddings [N, 128], batch [N]
 ```
@@ -944,7 +1040,11 @@ A v5 model is accepted for promotion only when ALL of the following hold:
 
 ### 8.1 Validation Set Metrics
 - F1-macro (tuned thresholds) > **0.5622** (v4 + 2 points)
-- No per-class F1 more than 0.05 below its v4 value (floor rule)
+- No per-class F1 more than **0.10** below its v4 value (floor rule)
+  (Relaxed from 0.05 — removing the `reentrant` Slither shortcut may cause a temporary
+  Reentrancy F1 drop; classes already near 0.40 in v4 should not fail on a 0.05 move.
+  0.10 is realistic for a from-scratch retrain that fundamentally changes the feature
+  space. Tighten back to 0.05 in v5.1 once the architecture is settled.)
 - DenialOfService tuned F1 > **0.40** (same as v4, but with more data, this should be easy)
 
 ### 8.2 Behavioral Test Suite (20 manual contracts)
@@ -968,9 +1068,9 @@ A v5 model is accepted for promotion only when ALL of the following hold:
 
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
-| Slither `func.nodes` API differs across Slither versions | Medium | High | Pin Slither version in `ml/pyproject.toml`. Test on a sample of contracts before full extraction. Add try/except with fallback to no-CFG extraction (emit warning). |
-| `in_unchecked` detection via `func.nodes` node types unreliable | Medium | Medium | Fall back to regex on `func.source_mapping.content` for `"unchecked"`. Both approaches implemented; use API first, regex as backup. |
-| Larger graphs (CFG nodes) cause CUDA OOM at batch_size=16 | Medium | High | Reduce to batch_size=8 if needed. Profile peak GPU memory during smoke run Phase A. |
+| Slither `func.nodes` API or IR differs across Slither versions | Medium | High | **Pin Slither version** in `ml/pyproject.toml` (e.g., `slither-analyzer==0.10.x`). Document required version in README. Test on a sample of 100 contracts before full extraction. Add try/except with fallback for `return_ignored`, `call_target_typed`, and `in_unchecked` (see §2.2B). |
+| `return_ignored` / `call_target_typed` IR fallback is imprecise | Low | Medium | Text-based fallbacks are conservative (may under-count). Log all fallback uses to a separate log file during extraction. After extraction, audit contracts where fallback was triggered to estimate false-negative rate. |
+| Larger graphs (CFG nodes) cause CUDA OOM at batch_size=16 | Medium | High | Reduce to batch_size=8 as first step. If still OOM, add gradient accumulation: `accumulation_steps=4, batch_size=4` → effective batch=16. GradScaler already compatible. Profile during smoke run Phase A before committing to a batch size. |
 | New features computed incorrectly (bugs in Slither IR iteration) | High | High | Unit test with hand-crafted contracts where expected feature values are known exactly. Do not proceed to full extraction until unit tests pass. |
 | Augmented data introduces label noise | Medium | Medium | Manual review of 10% random sample of new contracts before adding to dataset. Any contract with uncertain labeling goes to a separate review set. |
 | v5 over-fits to augmented data, regresses on original validation set | Low | High | Keep original v4 validation split intact as a secondary evaluation. Do not include original val set in training even after augmentation. |
@@ -987,7 +1087,7 @@ A v5 model is accepted for promotion only when ALL of the following hold:
 | `ml/src/preprocessing/graph_extractor.py` | Feature removal, 6 new features, CFG edges, CFG nodes | 1 |
 | `ml/src/models/gnn_encoder.py` | Import fix, 4th layer, residuals, hidden_dim=128 | 2 |
 | `ml/src/models/sentinel_model.py` | gnn_hidden_dim=128, updated defaults | 2 |
-| `ml/src/training/trainer.py` | New defaults, inline threshold tuning, per-class FocalLoss option | 2 |
+| `ml/src/training/trainer.py` | New defaults, per-class calibration log (pred/true ratio), per-class FocalLoss option | 2 |
 | `ml/src/training/focalloss.py` | Add `MultiLabelFocalLoss(alpha: List[float])` | 2 |
 | `ml/scripts/validate_graph_dataset.py` | Replace hardcoded dims with NODE_FEATURE_DIM | 0 |
 | `ml/src/inference/preprocess.py` | Verify it imports from graph_extractor (no stale copy) | 0 |
