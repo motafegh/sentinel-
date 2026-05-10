@@ -36,12 +36,12 @@ graph_builder.py uses one-hot encoding for node features:
   type_onehot(4) + visibility_onehot(4) + mutability_onehot(6) + flags(3) = 17 dims
 
 The training data (68K .pt files) was built by ast_extractor.py, which uses
-8 raw floats per node. GNNEncoder has in_channels=8 hardcoded in the checkpoint.
-Passing 17-dim features causes:
-  "mat1 and mat2 shapes cannot be multiplied (N×17 and 8×64)"
+NODE_FEATURE_DIM raw floats per node (currently 13 in v5, was 8 in v1/v4).
+GNNEncoder.conv1 reads in_channels=NODE_FEATURE_DIM from graph_schema —
+passing a different-dim feature vector causes a mat-mul shape error at runtime.
 
-graph_builder.py is kept for potential future use (richer-feature retrain)
-but must NOT be called from this file.
+graph_builder.py is kept for potential future use but must NOT be called
+from this file.
 
 WHY SLITHER REQUIRES A TEMP FILE FOR process_source()
 ──────────────────────────────────────────────────────
@@ -52,8 +52,8 @@ The tokenizer is called directly on the string — no redundant file read.
 
 SHAPE CONTRACT  (must match training data — do not change without retraining)
 ──────────────────────────────────────────────────────────────────────────────
-  graph.x                  [N, 8]     float32
-  graph.edge_index         [2, E]     int64
+  graph.x                  [N, NODE_FEATURE_DIM]  float32  (13 in v5; was 8 in v4)
+  graph.edge_index         [2, E]                 int64
   tokens["input_ids"]      [1, 512]   long    (single window)
   tokens["attention_mask"] [1, 512]   long
 
@@ -220,8 +220,8 @@ class ContractPreprocessor:
 
         Returns:
             graph: PyG Data object.
-                graph.x              [N, 8]   float32
-                graph.edge_index     [2, E]   int64
+                graph.x              [N, NODE_FEATURE_DIM]  float32
+                graph.edge_index     [2, E]                 int64
                 graph.contract_hash  str
             tokens: dict
                 "input_ids"          [1, 512] long
