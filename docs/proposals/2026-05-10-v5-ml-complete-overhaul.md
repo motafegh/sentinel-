@@ -4,7 +4,7 @@
 | Field        | Value                                   |
 |--------------|-----------------------------------------|
 | Date         | 2026-05-10                              |
-| Revision     | 1.2 — three-eye classifier architecture frozen |
+| Revision     | 1.3 — auxiliary loss + num_layers wiring + edge-type numbering fixes |
 | Status       | ACTIVE — Implementation Guide           |
 | Supersedes   | v4 exp1 (`multilabel-v4-finetune-lr1e4_best.pt`) |
 | Author       | Post-audit synthesis (code + results)   |
@@ -28,14 +28,24 @@ Seven issues raised by external review; all assessed, six applied:
 
 The principal author proposed adding independent per-modality classifier inputs alongside
 the existing fused representation. After technical review, this is adopted as a core v5
-architectural decision, not a future experiment. See §4.6 and §7.5 for full rationale.
+architectural decision, not a future experiment. See §4.5 and §7.5 for full rationale.
 
 | Component | Change |
 |---|---|
 | `sentinel_model.py` | Add `gnn_eye_proj Linear(256,128)`, `transformer_eye_proj Linear(768,128)`; classifier becomes `Linear(384, 10)` |
 | Forward pass | GNN eye (max+mean pool → proj), Transformer eye (CLS token → proj), Fused eye (CrossAttentionFusion) → concatenate → classify |
 | `trainer.py` | Add per-eye gradient norm logging to catch eye dominance early |
-| §4.6 | New decision record: three-eye architecture rationale |
+| §4.5 | New decision record: three-eye architecture rationale |
+
+### Revision 1.3 Changes (auxiliary loss, num_layers wiring, edge-type numbering)
+
+Three corrections applied after final author review:
+
+| # | Correction |
+|---|---|
+| 1 | **Stale edge-type bullets in §2.1 / §2.3** — earlier bullets incorrectly listed `CONTROL_FLOW:5` and `NUM_EDGE_TYPES 5→6`. Fixed to `CONTAINS:5`, `CONTROL_FLOW:6`, `NUM_EDGE_TYPES 5→7` throughout. |
+| 2 | **`gnn_layers` was a dead config field** — `TrainConfig.gnn_layers` was added in Rev 1.2 but GNNEncoder had no matching `num_layers` constructor argument, so the value was silently ignored. Added `num_layers: int = 4` to GNNEncoder with a `NotImplementedError` guard for values other than 4 (see §2.3D). |
+| 3 | **Auxiliary loss for eye-independence enforcement** — added three per-eye auxiliary classifier heads (`aux_gnn`, `aux_transformer`, `aux_fused`, each `Linear(128,10)`) to `sentinel_model.py`; `forward()` gains `return_aux: bool = False`; trainer loss becomes `main + λ*(loss_gnn + loss_tf + loss_fused)` with `λ=0.1` (see §2.5D–E, §2.6B, §4.5). |
 
 ---
 
@@ -188,8 +198,8 @@ planned anyway.
 2. `NODE_FEATURE_DIM`: `8` → `13`
    (removing `reentrant`, adding 6 new features — net +5)
 3. `FEATURE_NAMES`: remove `reentrant`, add 6 new entries
-4. `EDGE_TYPES`: add `"CONTROL_FLOW": 5`
-5. `NUM_EDGE_TYPES`: `5` → `6`
+4. `EDGE_TYPES`: add `"CONTAINS": 5` (function → CFG_NODE), add `"CONTROL_FLOW": 6` (CFG_NODE → successor)
+5. `NUM_EDGE_TYPES`: `5` → `7`
 
 **New `FEATURE_NAMES` (13 dims):**
 ```python
@@ -372,11 +382,41 @@ x2 = self.relu(x2)
 x2 = self.dropout(x2 + x)  # residual: x from layer 1 output
 ```
 
-**C. Update `NUM_EDGE_TYPES` import (automatically picks up 6 from schema).**
+**C. Update `NUM_EDGE_TYPES` import (automatically picks up 7 from schema).**
 The `nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)` line already imports the constant —
-no change needed in that line, but the value will automatically be 6.
+no change needed in that line, but the value will automatically be 7.
 
-**D. Update default `hidden_dim` from 64 to 128:**
+**D. Add `num_layers: int = 4` constructor parameter:**
+`TrainConfig` gains a `gnn_layers` field (see §2.6A) that must map to an actual GNNEncoder
+constructor argument, otherwise the config value is silently ignored.
+
+```python
+def __init__(
+    self,
+    hidden_dim:    int   = 128,
+    heads:         int   = 8,
+    dropout:       float = 0.2,
+    use_edge_attr: bool  = True,
+    edge_emb_dim:  int   = 32,
+    num_layers:    int   = 4,    # NEW — must be ≥3; only 4 is fully tested in v5
+) -> None:
+```
+
+For v5.0, the implementation keeps the explicit 4-layer structure (conv1/conv2/conv3/conv4)
+and validates that `num_layers == 4` at init time with a clear error message:
+```python
+if num_layers != 4:
+    raise NotImplementedError(
+        f"GNNEncoder num_layers={num_layers} is not supported in v5.0. "
+        "Only num_layers=4 is implemented. Generalised layer-count support "
+        "is planned for v5.1."
+    )
+```
+This way the field is wired end-to-end (TrainConfig → GNNEncoder) and won't silently
+break if someone sets `gnn_layers=5` in an experiment. The NotImplementedError is a
+clear signal, not a silent no-op.
+
+**E. Update default `hidden_dim` from 64 to 128:**
 With 13 input features, more CFG structure, and deeper architecture, the GNN needs
 more capacity. 128-dim nodes with 8 heads (16 dims/head) is a reasonable expansion.
 ```python
@@ -457,9 +497,48 @@ combined = torch.cat([gnn_eye, transformer_eye, fused_eye], dim=1)  # [B, 384]
 logits   = self.classifier(combined)                                  # [B, 10]
 ```
 
-**D. Update `gnn_hidden_dim` default from 64 to 128 and pass to CrossAttentionFusion.**
+**D. Add three auxiliary classifier heads (one per eye):**
+```python
+# Auxiliary heads — used only during training to enforce per-eye signal.
+# Each independently predicts all 10 labels from one eye alone.
+# Discarded at inference (return_aux=False in forward()).
+self.aux_gnn         = nn.Linear(fusion_output_dim, num_classes)  # 128 → 10
+self.aux_transformer = nn.Linear(fusion_output_dim, num_classes)  # 128 → 10
+self.aux_fused       = nn.Linear(fusion_output_dim, num_classes)  # 128 → 10
+```
+Total auxiliary parameters: 3 × (128×10 + 10) = ~3.9K. Negligible.
 
-**E. Update docstring** to describe the three-eye architecture and the rationale (see §4.6).
+**E. Add `return_aux: bool = False` to `forward()` signature:**
+```python
+def forward(
+    self,
+    graphs:         Batch,
+    input_ids:      torch.Tensor,
+    attention_mask: torch.Tensor,
+    return_aux:     bool = False,   # NEW: True during training, False at inference
+) -> torch.Tensor | tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    ...
+    # (compute gnn_eye, transformer_eye, fused_eye as in §2.5C above)
+    combined = torch.cat([gnn_eye, transformer_eye, fused_eye], dim=1)
+    logits   = self.classifier(combined)
+
+    if return_aux:
+        aux = {
+            "gnn":         self.aux_gnn(gnn_eye),          # [B, 10] logits
+            "transformer": self.aux_transformer(transformer_eye),  # [B, 10]
+            "fused":       self.aux_fused(fused_eye),       # [B, 10]
+        }
+        return logits, aux   # trainer unpacks this tuple
+
+    return logits  # inference path: plain tensor, unchanged interface
+```
+
+The `return_aux=False` default means `predictor.py` and all inference callers need
+zero changes — they never see the auxiliary outputs.
+
+**F. Update `gnn_hidden_dim` default from 64 to 128 and pass to CrossAttentionFusion.**
+
+**G. Update docstring** to describe the three-eye architecture and the rationale (see §4.5).
 
 ### 2.6 `ml/src/training/trainer.py`
 
@@ -468,13 +547,34 @@ logits   = self.classifier(combined)                                  # [B, 10]
 **A. Update `TrainConfig` defaults for v5:**
 ```python
 gnn_hidden_dim:   int   = 128     # was 64
-gnn_layers:       int   = 4       # new field (requires GNNEncoder change)
+gnn_layers:       int   = 4       # new — wired to GNNEncoder(num_layers=4)
 checkpoint_name:  str   = "multilabel-v5-fresh_best.pt"
 epochs:           int   = 60      # longer run for fresh-from-scratch training
 lr:               float = 2e-4    # slightly lower than default 3e-4 for stability
+aux_loss_weight:  float = 0.1     # new — λ for auxiliary eye losses (0 = disabled)
 ```
 
-**B. Add per-eye gradient norm logging to detect eye dominance:**
+**B. Update training loop for auxiliary loss:**
+```python
+# In train_one_epoch — replace the simple forward call:
+if config.aux_loss_weight > 0:
+    logits, aux_logits = model(graphs, input_ids, attention_mask, return_aux=True)
+    main_loss = loss_fn(logits, labels)
+    aux_loss  = sum(loss_fn(v, labels) for v in aux_logits.values())
+    loss      = main_loss + config.aux_loss_weight * aux_loss
+    # Log individual loss components for diagnostics
+    mlflow.log_metric("loss_main", main_loss.item(), step=global_step)
+    mlflow.log_metric("loss_aux",  aux_loss.item(),  step=global_step)
+else:
+    logits = model(graphs, input_ids, attention_mask)
+    loss   = loss_fn(logits, labels)
+```
+
+The `loss_main` vs `loss_aux` ratio in MLflow immediately shows whether any auxiliary
+eye is failing independently (aux_loss >> main_loss → one eye is confused without help
+from the others; this is expected early but should close by epoch 20).
+
+**C. Add per-eye gradient norm logging to detect eye dominance:**
 ```python
 # Log after scaler.unscale_(optimizer), before clip_grad_norm_
 # Run every log_interval batches (not every step — too noisy)
@@ -493,7 +593,7 @@ is being suppressed — the classifier has stopped using it. Catch this early, n
 60 epochs. Acceptable range: all three eyes should have grad norms within an order of
 magnitude of each other throughout training.
 
-**C. Add per-class calibration logging (not a full threshold sweep):**
+**D. Add per-class calibration logging (not a full threshold sweep):**
 Running a full per-class threshold sweep (13 thresholds × 10 classes = 130 forward
 passes of the val set) on every improving epoch would approximately double epoch time.
 Instead, log a lightweight calibration signal every epoch:
@@ -511,7 +611,7 @@ A `pred_true_ratio` >> 1 flags persistent over-prediction at a glance.
 The full threshold sweep remains in the separate `tune_threshold.py` script and
 is run once on the final best checkpoint (Phase 6), not during training.
 
-**C. Loss function for v5:**
+**E. Loss function for v5:**
 Start with `BCEWithLogitsLoss(pos_weight=...)` as before. After the first evaluation
 checkpoint (epoch ~10), assess the precision/recall profile per class. If over-prediction
 persists despite better graph features, switch to FocalLoss with per-class alpha tuned
@@ -812,10 +912,31 @@ it now costs nothing in compute and removes a known architectural weakness from 
 
 **Risk: eye dominance:**
 If one eye quickly learns a shortcut, the classifier may weight it heavily and suppress
-the others. Mitigation: per-eye gradient norm logging every `log_interval` batches (see
-§2.6B). If any eye's norm collapses relative to the others, it indicates suppression.
-Acceptable criterion: all three eyes maintain gradient norms within one order of magnitude
-of each other throughout training.
+the others.
+
+Primary mitigation — **auxiliary loss (§2.6B, §2.5D–E):** Three per-eye auxiliary
+classifier heads (`aux_gnn`, `aux_transformer`, `aux_fused`, each `Linear(128,10)`)
+are added to `sentinel_model.py`. During training, the total loss is:
+
+```
+loss = main_loss + λ * (loss_gnn_eye + loss_transformer_eye + loss_fused_eye)
+```
+
+where λ=0.1 (`aux_loss_weight` in TrainConfig). This forces each eye to produce
+independently useful logits, regardless of how the main classifier weights the
+concatenated output. The auxiliary heads are discarded at inference (`return_aux=False`
+is the default in `forward()`). They add ~3.9K parameters — negligible.
+
+This is **structural prevention**: even if the classifier learns to ignore one eye's
+contribution to the concatenated vector, the auxiliary loss keeps that eye's parameters
+receiving gradient signal from the training labels. Eye dominance suppression cannot
+happen silently.
+
+Diagnostic mitigation — **per-eye gradient norm logging (§2.6C):** Gradient norms
+are logged every `log_interval` batches to detect if suppression somehow persists despite
+the auxiliary loss. Acceptable criterion: all three eyes maintain gradient norms within
+one order of magnitude of each other. If any eye's norm collapses, it is a signal to
+increase λ or investigate the auxiliary loss computation.
 
 ### 4.6 Frozen vs Trained GNN/Fusion/Classifier
 
@@ -1207,23 +1328,40 @@ CrossAttentionFusion(node_dim=128, token_dim=768,
 THREE-EYE CLASSIFIER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 cat([gnn_eye, transformer_eye, fused_eye]) → [B, 384]
-Linear(384, 10) → [B, 10] logits   (no sigmoid — applied externally)
+Linear(384, 10) → logits [B, 10]   (no sigmoid — applied externally)
 
 Each class learns its own weighting across the three eyes.
 No information is discarded before the final decision.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUXILIARY HEADS (training only — discarded at inference)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+forward(..., return_aux=True)  ← called by trainer only
+
+  aux_gnn         = Linear(128, 10)(gnn_eye)          → [B, 10]
+  aux_transformer = Linear(128, 10)(transformer_eye)   → [B, 10]
+  aux_fused       = Linear(128, 10)(fused_eye)         → [B, 10]
+
+  returns (logits, {"gnn": aux_gnn, "transformer": aux_transformer, "fused": aux_fused})
+
+  Training loss = main_loss + 0.1 × (loss_aux_gnn + loss_aux_tf + loss_aux_fused)
+
+forward(..., return_aux=False)  ← inference default
+  returns logits [B, 10]  — unchanged interface; callers need zero changes.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TRAINABLE PARAMETER ESTIMATE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GNNEncoder (4 layers, edge emb 7×32):   ~88K
-LoRA adapters (r=16, 12L × Q+V):        ~590K
-CrossAttentionFusion:                   ~600K
-gnn_eye_proj (Linear 256→128 + act):    ~33K
-transformer_eye_proj (Linear 768→128):  ~98K
-Classifier (Linear 384→10):             ~3.9K
-─────────────────────────────────────────────
-Total trainable:                        ~1.41M
-Frozen (CodeBERT backbone):             ~125M
+GNNEncoder (4 layers, edge emb 7×32):         ~88K
+LoRA adapters (r=16, 12L × Q+V):              ~590K
+CrossAttentionFusion:                         ~600K
+gnn_eye_proj (Linear 256→128 + act):          ~33K
+transformer_eye_proj (Linear 768→128):        ~98K
+Classifier (Linear 384→10):                   ~3.9K
+Auxiliary heads (3 × Linear 128→10):          ~3.9K
+─────────────────────────────────────────────────────
+Total trainable:                              ~1.42M
+Frozen (CodeBERT backbone):                   ~125M
 ```
 
 ---
@@ -1280,8 +1418,8 @@ A v5 model is accepted for promotion only when ALL of the following hold:
 | `ml/src/preprocessing/graph_schema.py` | Schema update (dim, types, version) | 1 |
 | `ml/src/preprocessing/graph_extractor.py` | Feature removal, 6 new features, CFG edges, CFG nodes | 1 |
 | `ml/src/models/gnn_encoder.py` | Import fix, 4th layer, residuals, hidden_dim=128 | 2 |
-| `ml/src/models/sentinel_model.py` | Three-eye architecture: `gnn_eye_proj`, `transformer_eye_proj`, classifier `Linear(384,10)`, max+mean GNN pool, CLS transformer eye | 2 |
-| `ml/src/training/trainer.py` | New defaults, per-eye gradient norm logging, per-class calibration log (pred/true ratio), per-class FocalLoss option | 2 |
+| `ml/src/models/sentinel_model.py` | Three-eye architecture: `gnn_eye_proj`, `transformer_eye_proj`, classifier `Linear(384,10)`, max+mean GNN pool, CLS transformer eye; auxiliary heads `aux_gnn/aux_transformer/aux_fused`; `return_aux` interface | 2 |
+| `ml/src/training/trainer.py` | New defaults, auxiliary loss training loop (`return_aux=True`, λ=0.1), per-eye gradient norm logging, per-class calibration log (pred/true ratio), per-class FocalLoss option | 2 |
 | `ml/src/training/focalloss.py` | Add `MultiLabelFocalLoss(alpha: List[float])` | 2 |
 | `ml/scripts/validate_graph_dataset.py` | Replace hardcoded dims with NODE_FEATURE_DIM | 0 |
 | `ml/src/inference/preprocess.py` | Verify it imports from graph_extractor (no stale copy) | 0 |
