@@ -815,6 +815,23 @@ def train(config: TrainConfig) -> dict:
                 "Consider using model-only resume in that case."
             )
 
+    # ------------------------------------------------------------------
+    # Trainable parameter set
+    # ------------------------------------------------------------------
+    # GNN, CrossAttentionFusion, and Classifier are ALL trained — they are
+    # NOT frozen.  Only the CodeBERT backbone (125M params) is frozen; LoRA
+    # adapters injected into CodeBERT's Q+V matrices by peft carry the
+    # trainable transformer signal (~295K params at r=8, ~590K at r=16).
+    #
+    # filter(requires_grad) therefore includes:
+    #   • GNNEncoder weights (conv1/2/3, edge_emb)
+    #   • CrossAttentionFusion weights (node_proj, token_proj, MHA, out_proj)
+    #   • Classifier Linear(fusion_output_dim → num_classes)
+    #   • LoRA adapter matrices (injected by peft into CodeBERT Q+V)
+    #
+    # It excludes:
+    #   • CodeBERT base weights (bert.embeddings.*, bert.encoder.layer.*.weight, …)
+    #     — frozen by peft when LoRA is applied
     optimizer = AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=config.lr,

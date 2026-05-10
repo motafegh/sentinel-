@@ -1,62 +1,60 @@
 """
-gnn_encoder.py — GNN Encoder for SENTINEL (Cross-Attention Upgrade)
+gnn_encoder.py — GNN Encoder for SENTINEL (v5 architecture)
 
-WHAT CHANGED FROM ORIGINAL:
-    - global_mean_pool REMOVED from forward()
-    - Returns (node_embeddings [N, hidden_dim], batch [N]) instead of [B, hidden_dim]
-    - Pooling is now deferred to CrossAttentionFusion so each node can
-      query CodeBERT token embeddings BEFORE averaging destroys node-level detail
-      
-ARCHITECTURE DETAILS (current defaults)
-───────────────────────────────────────
+V5 CHANGES FROM V4
+───────────────────
+- in_channels = NODE_FEATURE_DIM (imported — never hardcoded here)
+- hidden_dim  = 128 default (was 64)
+- 4-layer GAT (was 3)
+- Residual connections on layers 2, 3, and 4 (prevent vanishing gradients)
+- num_layers constructor argument (default 4; wired from TrainConfig.gnn_layers)
+- Edge embedding: nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim) covers 7 types (was 5)
+
+ARCHITECTURE DETAILS (v5 defaults)
+───────────────────────────────────
 Layer 1 (GATConv):
-  Input:         x [N, 8], edge_index [2, E], edge_emb [E, 16] (if present)
-  Hidden:        heads=8, concat=True → each head outputs 64/8 = 8 dims
-  Output:        [N, 64] (8 heads × 8 dims)
-  After:         ReLU + Dropout(0.2)
+  Input:  x [N, NODE_FEATURE_DIM], edge_index [2, E], edge_emb [E, edge_emb_dim]
+  Config: heads=8, concat=True → each head outputs hidden_dim/heads = 16 dims
+  Output: [N, hidden_dim=128]
+  After:  ReLU + Dropout(0.2)
 
 Layer 2 (GATConv):
-  Input:         [N, 64], same edge_index & edge_emb
-  Hidden:        8 heads, concat=True → each 8 dims
-  Output:        [N, 64]
-  After:         ReLU + Dropout(0.2)
+  Input:  [N, 128]
+  Output: [N, 128]
+  After:  ReLU + Dropout(0.2) + residual from Layer 1
 
 Layer 3 (GATConv):
-  Input:         [N, 64]
-  Hidden:        heads=1, concat=False → output is exactly hidden_dim=64
-  Output:        [N, 64]
-  After:         (no activation – direct to CrossAttentionFusion)
+  Input:  [N, 128]
+  Output: [N, 128]
+  After:  ReLU + Dropout(0.2) + residual from Layer 2
+
+Layer 4 (GATConv):
+  Input:  [N, 128]
+  Config: heads=1, concat=False → output = hidden_dim exactly
+  Output: [N, 128]
+  After:  no activation — passed directly to SentinelModel for pooling
 
 Edge embeddings:
-  nn.Embedding(5, 16) → 80 trainable parameters
-  Embedding vector is added to attention logits during message passing,
-  making edge type influence attention weights.
-  When edge_attr=None (old .pt files), a zero tensor of shape [E, 16]
-  is used, degrading gracefully to type‑agnostic attention.
+  nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim) — covers all 7 v2 edge types.
+  When edge_attr=None (old .pt files), a zero tensor of shape [E, edge_emb_dim]
+  is used — degrades gracefully to type-agnostic attention.
 
-Total trainable parameters in GNN (including edge embedding): ~21.5K
-P0-B/C CHANGES (2026-05-02):
-    - edge_attr support added: GATConv now receives learned edge-type embeddings
-      (CALLS, READS, WRITES, EMITS, INHERITS → 5-class → R^edge_emb_dim vector)
-      so relation type is visible to attention — previously this information was
-      fully discarded even though graph_extractor.py computed it.
-    - Architecture is now configurable: hidden_dim, heads, dropout, edge_emb_dim
-      are constructor params so TrainConfig can drive hyperparameter search.
-    - Defaults are backward-compatible with the original hardcoded architecture
-      (hidden_dim=64, heads=8, dropout=0.2, use_edge_attr=True, edge_emb_dim=16).
+WHY RESIDUALS
+─────────────
+Without residuals, a 4-layer GAT can suffer vanishing gradients because each
+GATConv applies dropout and a learned projection. Adding `x2 = f(x1) + x1`
+between layers keeps gradient magnitude stable and allows the model to learn
+"what to add" rather than "what to represent from scratch" at each hop.
+Shapes always match (all intermediate dims = hidden_dim) so no projection is
+needed for the skip connection.
 
-WHY edge_attr matters:
-    A function node CALLS another vs READS a state variable are very different
-    structural patterns. Reentrancy requires a CALLS edge back to the caller.
-    Without edge_attr, the GATConv attention score is purely based on node
-    features — it cannot distinguish "this node calls something" from
-    "this node reads something".
+WHY NOT global_mean_pool INSIDE THIS MODULE
+────────────────────────────────────────────
+Pooling is deferred to SentinelModel so CrossAttentionFusion can enrich each
+node with relevant CodeBERT token context before pooling.  SentinelModel also
+computes the GNN eye via global_max_pool + global_mean_pool → cat → project.
 
-WHAT DID NOT CHANGE:
-    - 3-layer GAT architecture (conv1 → conv2 → conv3)
-    - Node feature input dimension: in_channels=8 (locked by graph_schema.py)
-    - ReLU + Dropout pattern between layers
-    - Output: node-level embeddings (NOT pooled)
+Total trainable parameters (v5 defaults, 4 layers, edge_emb_dim=32): ~88K
 """
 
 from __future__ import annotations
@@ -67,78 +65,92 @@ import torch
 import torch.nn as nn
 from torch_geometric.nn import GATConv
 
-from ml.src.preprocessing.graph_schema import NUM_EDGE_TYPES
+from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES
 
 
 class GNNEncoder(nn.Module):
     """
-    3-layer GAT encoder for smart contract graphs with optional edge-type embeddings.
+    4-layer GAT encoder for smart contract graphs with edge-type embeddings.
 
-    Returns node-level embeddings (NOT pooled) so CrossAttentionFusion
-    can enrich each node with relevant CodeBERT token context before pooling.
+    Returns node-level embeddings (NOT pooled) so SentinelModel can pool them
+    separately for the GNN eye and feed them to CrossAttentionFusion.
 
     Input:
-        x:          node features      [N, 8]   — N total nodes across batch
+        x:          node features      [N, NODE_FEATURE_DIM]  — N nodes across batch
         edge_index: graph connectivity [2, E]
         batch:      node→graph mapping [N]
-        edge_attr:  edge type IDs      [E]      — int64, values in [0, NUM_EDGE_TYPES)
-                    Optional. If None and use_edge_attr=True, edge information
-                    is replaced with zeros (graceful degradation for old .pt files).
+        edge_attr:  edge type IDs      [E]  — int64 in [0, NUM_EDGE_TYPES)
+                    Optional. None → zeros used (graceful degradation).
 
     Output:
-        node_embeddings: [N, hidden_dim]  — one vector per node (NOT pooled)
-        batch:           [N]              — passed through to CrossAttentionFusion
+        node_embeddings: [N, hidden_dim]  — one vector per node, NOT pooled
+        batch:           [N]              — passed through unchanged
     """
 
     def __init__(
         self,
-        hidden_dim:    int   = 64,
+        hidden_dim:    int   = 128,
         heads:         int   = 8,
         dropout:       float = 0.2,
         use_edge_attr: bool  = True,
-        edge_emb_dim:  int   = 16,
+        edge_emb_dim:  int   = 32,
+        num_layers:    int   = 4,
     ) -> None:
         super().__init__()
+
+        if num_layers != 4:
+            # Guard against unsupported configs until the loop-based generalisation
+            # is implemented. Changing num_layers without updating the forward pass
+            # would silently produce wrong shapes.
+            raise NotImplementedError(
+                f"GNNEncoder currently only supports num_layers=4 (got {num_layers}). "
+                "Update the forward() method before using a different depth."
+            )
 
         self.hidden_dim    = hidden_dim
         self.use_edge_attr = use_edge_attr
         self.edge_emb_dim  = edge_emb_dim
+        self.num_layers    = num_layers
 
-        # Each head gets hidden_dim // heads dimensions; concat=True multiplies back.
         head_dim = hidden_dim // heads
         if head_dim * heads != hidden_dim:
             raise ValueError(
                 f"hidden_dim ({hidden_dim}) must be divisible by heads ({heads}). "
-                f"Each head needs hidden_dim/heads = {hidden_dim/heads} dims."
+                f"Each head needs hidden_dim/heads = {hidden_dim/heads:.1f} dims."
             )
 
-        # Edge type embedding: int ID [E] → dense vector [E, edge_emb_dim]
-        # NUM_EDGE_TYPES=5 from graph_schema (CALLS, READS, WRITES, EMITS, INHERITS)
-        _edge_dim = None
-        
+        # Edge type embedding: int ID [E] → dense vector [E, edge_emb_dim].
+        # NUM_EDGE_TYPES from graph_schema — covers all EDGE_TYPES entries.
+        _edge_dim: int | None = None
         if use_edge_attr:
             self.edge_emb = nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)
             _edge_dim = edge_emb_dim
         else:
             self.edge_emb = None
 
-        # Layer 1: 8-dim input → heads × head_dim = hidden_dim (concat=True)
+        # Layer 1: NODE_FEATURE_DIM input → hidden_dim (concat=True, 8 heads)
+        # Uses NODE_FEATURE_DIM from graph_schema — never hardcode 8 here.
         self.conv1 = GATConv(
-            in_channels=8, out_channels=head_dim,
+            in_channels=NODE_FEATURE_DIM, out_channels=head_dim,
             heads=heads, concat=True, dropout=dropout,
             edge_dim=_edge_dim,
         )
 
-        # Layer 2: hidden_dim → hidden_dim, node now has 2-hop context
+        # Layers 2–3: hidden_dim → hidden_dim (same shape; enables residuals)
         self.conv2 = GATConv(
             in_channels=hidden_dim, out_channels=head_dim,
             heads=heads, concat=True, dropout=dropout,
             edge_dim=_edge_dim,
         )
-
-        # Layer 3: collapse to clean hidden_dim node embedding
-        # concat=False, heads=1 → output stays hidden_dim (not heads×hidden_dim)
         self.conv3 = GATConv(
+            in_channels=hidden_dim, out_channels=head_dim,
+            heads=heads, concat=True, dropout=dropout,
+            edge_dim=_edge_dim,
+        )
+
+        # Layer 4: final aggregation — heads=1, concat=False → output = hidden_dim.
+        # No activation after this layer; SentinelModel applies pooling + projection.
+        self.conv4 = GATConv(
             in_channels=hidden_dim, out_channels=hidden_dim,
             heads=1, concat=False, dropout=dropout,
             edge_dim=_edge_dim,
@@ -149,24 +161,22 @@ class GNNEncoder(nn.Module):
 
     def forward(
         self,
-        x:          torch.Tensor,           # [N, 8]  node features
-        edge_index: torch.Tensor,           # [2, E]  edges
-        batch:      torch.Tensor,           # [N]     node→graph mapping
-        edge_attr:  Optional[torch.Tensor] = None,  # [E]  edge type IDs (int64)
+        x:          torch.Tensor,                    # [N, NODE_FEATURE_DIM]
+        edge_index: torch.Tensor,                    # [2, E]
+        batch:      torch.Tensor,                    # [N]
+        edge_attr:  Optional[torch.Tensor] = None,   # [E] int64
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Returns:
             node_embeddings: [N, hidden_dim] — raw node embeddings, NOT pooled
-            batch:           [N]             — unchanged, passed to CrossAttentionFusion
+            batch:           [N]             — unchanged, passed to SentinelModel
         """
-        # Build edge embeddings if edge_attr is available
+        # Build edge embeddings
         if self.edge_emb is not None:
             if edge_attr is not None:
                 e = self.edge_emb(edge_attr)   # [E] → [E, edge_emb_dim]
             else:
                 # Graceful degradation: old .pt files may lack edge_attr.
-                # Use zeros so the model still runs; attention will treat all
-                # edge types as equivalent (same as pre-P0-B behaviour).
                 e = torch.zeros(
                     edge_index.shape[1], self.edge_emb_dim,
                     dtype=torch.float32, device=x.device,
@@ -175,17 +185,25 @@ class GNNEncoder(nn.Module):
             e = None
 
         # Layer 1: 1-hop structural context per node
-        x = self.conv1(x, edge_index, edge_attr=e)   # [N, 8] → [N, hidden_dim]
-        x = self.relu(x)
-        x = self.dropout(x)
+        x1 = self.conv1(x, edge_index, edge_attr=e)   # [N, hidden_dim]
+        x1 = self.relu(x1)
+        x1 = self.dropout(x1)
 
-        # Layer 2: 2-hop context — each node now sees neighbours' neighbours
-        x = self.conv2(x, edge_index, edge_attr=e)   # [N, hidden_dim] → [N, hidden_dim]
-        x = self.relu(x)
-        x = self.dropout(x)
+        # Layer 2: 2-hop context + residual from layer 1
+        x2 = self.conv2(x1, edge_index, edge_attr=e)  # [N, hidden_dim]
+        x2 = self.relu(x2)
+        x2 = self.dropout(x2)
+        x2 = x2 + x1  # residual: preserves layer-1 signal in deeper layers
 
-        # Layer 3: 3-hop context, final node embeddings
-        # No relu/dropout here — CrossAttentionFusion applies its own projections
-        x = self.conv3(x, edge_index, edge_attr=e)   # [N, hidden_dim] → [N, hidden_dim]
+        # Layer 3: 3-hop context + residual from layer 2
+        x3 = self.conv3(x2, edge_index, edge_attr=e)  # [N, hidden_dim]
+        x3 = self.relu(x3)
+        x3 = self.dropout(x3)
+        x3 = x3 + x2  # residual
 
-        return x, batch
+        # Layer 4: 4-hop context, final node embeddings
+        # No activation — SentinelModel applies pooling and its own projections
+        x4 = self.conv4(x3, edge_index, edge_attr=e)  # [N, hidden_dim]
+        x4 = x4 + x3  # residual into final layer keeps gradients healthy
+
+        return x4, batch

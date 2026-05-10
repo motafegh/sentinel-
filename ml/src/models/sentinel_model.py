@@ -1,105 +1,113 @@
 """
-sentinel_model.py — SENTINEL Dual-Path Model (Cross-Attention Upgrade)
+sentinel_model.py — SENTINEL Three-Eye Model (v5 architecture)
 
-WHAT CHANGED FROM ORIGINAL:
-    1. GNNEncoder forward() returns (node_embs [N,64], batch [N]) — unpacked here
-    2. TransformerEncoder forward() returns [B, 512, 768] — all tokens
-    3. CrossAttentionFusion replaces FusionLayer — receives node_embs, batch,
-       token_embs, AND attention_mask (now required so fusion can mask PAD tokens)
-    4. Fusion output: [B, 128] instead of [B, 64]
-    5. Classifier: Linear(128, num_classes)
-    6. fusion_output_dim default: 128
+V5 CHANGES FROM V4
+───────────────────
+Three-eye classifier architecture: instead of routing everything through a
+single 128-dim fused bottleneck, the classifier receives three independent
+128-dim vectors — one from each modality — concatenated to [B, 384].
 
-REVIEW FIXES APPLIED:
-    #3  num_classes default changed from 1 → 10.
-        The model is a Track 3 multi-label detector; defaulting to 1 silently
-        built a binary head when num_classes was forgotten. Callers that need
-        binary mode must now pass num_classes=1 explicitly.
+  GNN eye         (structural opinion):
+    global_max_pool(node_embs, batch)  → [B, 128]
+    global_mean_pool(node_embs, batch) → [B, 128]
+    cat                                → [B, 256]
+    gnn_eye_proj  Linear(256,128)+ReLU+Dropout → [B, 128]
 
-WHAT DID NOT CHANGE:
-    - NO Sigmoid inside model — applied externally (predictor.py for inference;
-      BCEWithLogitsLoss applies it internally during training)
-    - Binary mode: squeeze(1) on [B,1] → [B]
-    - Multi-label mode: [B, num_classes] kept as-is
-    - parameter_summary() helper
-    - Checkpoint format: {"model", "optimizer", "epoch", "best_f1", "config"}
+  Transformer eye (semantic opinion):
+    token_embs[:, 0, :]   → CLS token   [B, 768]
+    transformer_eye_proj  Linear(768,128)+ReLU+Dropout → [B, 128]
+
+  Fused eye       (joint structural+semantic opinion):
+    CrossAttentionFusion(node_embs, token_embs) → [B, 128]
+
+  Classifier:
+    cat([gnn_eye, transformer_eye, fused_eye])  → [B, 384]
+    Linear(384, num_classes)                    → raw logits [B, num_classes]
+
+Auxiliary heads (training only — prevents eye dominance):
+  aux_gnn         = Linear(128, num_classes)(gnn_eye)         → [B, num_classes]
+  aux_transformer = Linear(128, num_classes)(transformer_eye) → [B, num_classes]
+  aux_fused       = Linear(128, num_classes)(fused_eye)       → [B, num_classes]
+
+  forward(..., return_aux=True)  returns (logits, {"gnn": ..., "transformer": ..., "fused": ...})
+  forward(..., return_aux=False) returns logits only [DEFAULT — zero inference overhead]
+
+  Trainer loss: main_loss + λ * (loss_gnn + loss_transformer + loss_fused)
+  λ=0.1 keeps each eye's gradient signal alive even if the main classifier
+  learns to weight one eye heavily.  Auxiliary heads add ~3.9K parameters.
+
+WHAT DID NOT CHANGE
+───────────────────
+- CrossAttentionFusion implementation (only its output is now one of three eyes)
+- TransformerEncoder (CodeBERT frozen, LoRA adapters on Q+V)
+- No Sigmoid inside model — applied externally in predictor and BCEWithLogitsLoss
+- Checkpoint format: {"model", "optimizer", "epoch", "best_f1", "config"}
 """
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 from loguru import logger
 from torch_geometric.data import Batch
+from torch_geometric.nn import global_max_pool, global_mean_pool
 
+from ml.src.models.fusion_layer import CrossAttentionFusion
 from ml.src.models.gnn_encoder import GNNEncoder
 from ml.src.models.transformer_encoder import TransformerEncoder
-from ml.src.models.fusion_layer import CrossAttentionFusion
 
 
 class SentinelModel(nn.Module):
     """
-    Dual-path smart contract vulnerability detection model.
+    Three-eye smart contract vulnerability detection model (v5).
 
-    Two parallel paths:
-        GNN path:         contract graph  → node embeddings [N, gnn_hidden_dim]
-        Transformer path: token sequence  → all token embeddings [B, 512, 768]
-
-    CrossAttentionFusion:
-        Nodes attend to real tokens (PAD positions masked).
-        Tokens attend to real nodes (padding positions masked).
-        Both pools use masked mean. Pool AFTER enrichment.
-        Output: [B, fusion_output_dim]
-
-    Classifier:
-        Linear(fusion_output_dim, num_classes) → raw logits (no Sigmoid).
-        Sigmoid applied externally.
+    See module docstring for the full architecture description.
 
     Args:
         num_classes:          10 for Track 3 multi-label (default).
-                              Pass num_classes=1 explicitly for binary mode.
-        fusion_output_dim:    Width of the fused representation (default: 128).
-        dropout:              Shared dropout for fusion + classifier (default: 0.3).
+        fusion_output_dim:    Width of each eye output = fused output_dim (default: 128).
+        dropout:              Dropout for eye projections and classifier (default: 0.3).
 
         --- GNN hyperparameters ---
-        gnn_hidden_dim:       GNN node embedding width (default: 64).
+        gnn_hidden_dim:       GNN node embedding width (default: 128).
         gnn_heads:            GAT attention heads (default: 8).
         gnn_dropout:          GNN attention + node dropout (default: 0.2).
         use_edge_attr:        Feed edge type embeddings into GATConv (default: True).
-        gnn_edge_emb_dim:     Dimension of learned edge-type embedding (default: 16).
+        gnn_edge_emb_dim:     Dimension of learned edge-type embedding (default: 32).
 
-        --- LoRA hyperparameters (forwarded to TransformerEncoder) ---
-        lora_r:               LoRA rank (default: 8).
-        lora_alpha:           LoRA scale alpha (default: 16; effective scale = alpha/r).
+        --- LoRA hyperparameters ---
+        lora_r:               LoRA rank (default: 16 in v5; was 8 in v4).
+        lora_alpha:           LoRA scale (default: 32; effective scale = alpha/r = 2.0).
         lora_dropout:         LoRA path dropout (default: 0.1).
-        lora_target_modules:  Which attention projections to adapt (default: ["query","value"]).
+        lora_target_modules:  Attention projections to adapt (default: ["query","value"]).
     """
 
     def __init__(
         self,
-        fusion_output_dim:    int            = 128,
-        dropout:              float          = 0.3,
-        # Fix #3: default changed from 1 → 10.
-        num_classes:          int            = 10,
+        fusion_output_dim:    int                 = 128,
+        dropout:              float               = 0.3,
+        num_classes:          int                 = 10,
         # GNN architecture
-        gnn_hidden_dim:       int            = 64,
-        gnn_heads:            int            = 8,
-        gnn_dropout:          float          = 0.2,
-        use_edge_attr:        bool           = True,
-        gnn_edge_emb_dim:     int            = 16,
+        gnn_hidden_dim:       int                 = 128,
+        gnn_heads:            int                 = 8,
+        gnn_dropout:          float               = 0.2,
+        use_edge_attr:        bool                = True,
+        gnn_edge_emb_dim:     int                 = 32,
         # LoRA architecture
-        lora_r:               int            = 8,
-        lora_alpha:           int            = 16,
-        lora_dropout:         float          = 0.1,
+        lora_r:               int                 = 16,
+        lora_alpha:           int                 = 32,
+        lora_dropout:         float               = 0.1,
         lora_target_modules:  Optional[List[str]] = None,
     ) -> None:
         super().__init__()
 
-        self.num_classes  = num_classes
+        self.num_classes   = num_classes
         self.use_edge_attr = use_edge_attr
+        eye_dim = fusion_output_dim  # all three eyes output this width
 
+        # ── Sub-modules ────────────────────────────────────────────────────
         self.gnn = GNNEncoder(
             hidden_dim=gnn_hidden_dim,
             heads=gnn_heads,
@@ -114,7 +122,7 @@ class SentinelModel(nn.Module):
             lora_target_modules=lora_target_modules,
         )
         self.fusion = CrossAttentionFusion(
-            node_dim=gnn_hidden_dim,   # must match GNNEncoder output width
+            node_dim=gnn_hidden_dim,   # must match GNNEncoder.hidden_dim
             token_dim=768,
             attn_dim=256,
             num_heads=8,
@@ -122,75 +130,139 @@ class SentinelModel(nn.Module):
             dropout=dropout,
         )
 
-        # Classifier head — raw logits only, NO Sigmoid.
-        self.classifier = nn.Linear(fusion_output_dim, num_classes)
+        # ── Eye projections ────────────────────────────────────────────────
+        # GNN eye: max+mean pool → [B, 2*gnn_hidden_dim] → [B, eye_dim]
+        self.gnn_eye_proj = nn.Sequential(
+            nn.Linear(2 * gnn_hidden_dim, eye_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+        )
+
+        # Transformer eye: CLS token → [B, 768] → [B, eye_dim]
+        self.transformer_eye_proj = nn.Sequential(
+            nn.Linear(768, eye_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+        )
+
+        # ── Main classifier ────────────────────────────────────────────────
+        # All three eyes concatenated: [B, 3*eye_dim] → [B, num_classes]
+        # No Sigmoid — applied externally.
+        self.classifier = nn.Linear(3 * eye_dim, num_classes)
+
+        # ── Auxiliary heads (training only — eye-independence enforcement) ──
+        # Each head produces independent logits for its eye so the loss keeps
+        # that eye's gradient alive even if the main classifier learns to
+        # downweight it.  Discarded at inference via return_aux=False.
+        self.aux_gnn         = nn.Linear(eye_dim, num_classes)
+        self.aux_transformer = nn.Linear(eye_dim, num_classes)
+        self.aux_fused       = nn.Linear(eye_dim, num_classes)
 
         logger.info(
-            f"SentinelModel initialised — cross-attention architecture | "
-            f"num_classes={num_classes} | fusion_output={fusion_output_dim} | "
-            f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} edge_attr={use_edge_attr} | "
+            f"SentinelModel v5 (three-eye) initialised | "
+            f"num_classes={num_classes} | eye_dim={eye_dim} | "
+            f"classifier_in={3 * eye_dim} | "
+            f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} | "
             f"lora_r={lora_r} lora_alpha={lora_alpha}"
         )
 
     def forward(
         self,
-        graphs:         Batch,          # PyG Batch — batched contract graphs
-        input_ids:      torch.Tensor,   # [B, 512] — CodeBERT token IDs
-        attention_mask: torch.Tensor,   # [B, 512] — 1=real token, 0=PAD
-    ) -> torch.Tensor:
+        graphs:         Batch,                   # PyG Batch — batched contract graphs
+        input_ids:      torch.Tensor,            # [B, 512]
+        attention_mask: torch.Tensor,            # [B, 512] — 1=real token, 0=PAD
+        return_aux:     bool = False,            # True during training only
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, Dict[str, torch.Tensor]]]:
         """
-        Full forward pass: contract graph + tokens → vulnerability logits.
+        Three-eye forward pass.
 
-        attention_mask is forwarded all the way into CrossAttentionFusion so
-        the PAD token positions are masked out of both cross-attention directions
-        and the token masked-mean pool (review fixes #2 and #6).
+        Args:
+            graphs:         Batched PyG graph (from DataLoader via Batch.from_data_list).
+            input_ids:      CodeBERT token IDs     [B, 512].
+            attention_mask: CodeBERT attention mask [B, 512].
+            return_aux:     When True, also return per-eye auxiliary logits for
+                            the auxiliary loss computation in trainer.py.
+                            Always False at inference — zero overhead.
 
         Returns:
-            Binary mode   (num_classes=1):  [B]     raw logits
-            Multi-label   (num_classes>1):  [B, 10] raw logits
+            return_aux=False (default / inference):
+                logits  [B, num_classes]  — raw logits, NO Sigmoid
+
+            return_aux=True (training):
+                (logits [B, num_classes],
+                 {"gnn": [B, C], "transformer": [B, C], "fused": [B, C]})
         """
-        # ── GNN path ──────────────────────────────────────────────────────
-        # Returns un-pooled node embeddings so each node can query tokens
-        # BEFORE pooling loses node-level resolution.
+        # ── GNN path: node embeddings ─────────────────────────────────────
         edge_attr = getattr(graphs, "edge_attr", None) if self.use_edge_attr else None
         node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
-        # node_embs: [N, gnn_hidden_dim]  — N = total nodes across B contracts
-        # batch:     [N]                  — maps each node to its contract index 0…B-1
+        # node_embs: [N, gnn_hidden_dim]  batch: [N]
 
-        # ── Transformer path ───────────────────────────────────────────────
-        # Returns all 512 token positions, not just the CLS summary.
+        # ── GNN eye: max+mean pool → project ─────────────────────────────
+        # Max pool captures "is there at least one node with feature X?"
+        # (existential bias — a contract is vulnerable if ANY function is).
+        # Mean pool captures the "typical node" character of the contract.
+        # Concatenating both lets the classifier choose its own weighting.
+        gnn_max  = global_max_pool(node_embs, batch)   # [B, gnn_hidden_dim]
+        gnn_mean = global_mean_pool(node_embs, batch)  # [B, gnn_hidden_dim]
+        gnn_eye  = self.gnn_eye_proj(
+            torch.cat([gnn_max, gnn_mean], dim=1)      # [B, 2*gnn_hidden_dim]
+        )                                               # [B, eye_dim]
+
+        # ── Transformer path ──────────────────────────────────────────────
         token_embs = self.transformer(input_ids, attention_mask)
         # token_embs: [B, 512, 768]
 
-        # ── Cross-attention fusion ─────────────────────────────────────────
-        # attention_mask is threaded in so fusion can mask PAD token keys
-        # (fix #2) and compute masked token pooling (fix #6).
-        # Pooling happens INSIDE fusion, AFTER cross-attention enrichment.
-        fused = self.fusion(node_embs, batch, token_embs, attention_mask)
-        # fused: [B, 128]
+        # ── Transformer eye: CLS token → project ─────────────────────────
+        # CLS token at position 0 is CodeBERT's hierarchical sequence summary
+        # (12-layer bidirectional self-attention over all 512 positions).
+        # It is order-aware and distinct from the masked-mean pool inside fusion.
+        transformer_eye = self.transformer_eye_proj(
+            token_embs[:, 0, :]   # [B, 768]
+        )                          # [B, eye_dim]
 
-        # ── Classifier ────────────────────────────────────────────────────
-        logits = self.classifier(fused)  # [B, num_classes]
+        # ── Fused eye: cross-attention fusion ────────────────────────────
+        # Encodes joint evidence that neither modality holds alone:
+        # "which structural patterns co-occur with which token sequences?"
+        fused_eye = self.fusion(node_embs, batch, token_embs, attention_mask)
+        # fused_eye: [B, eye_dim]
 
-        # Binary mode: squeeze [B, 1] → [B] for BCEWithLogitsLoss compatibility
+        # ── Main classifier ───────────────────────────────────────────────
+        combined = torch.cat([gnn_eye, transformer_eye, fused_eye], dim=1)  # [B, 3*eye_dim]
+        logits   = self.classifier(combined)  # [B, num_classes]
+
         if self.num_classes == 1:
-            logits = logits.squeeze(1)
+            logits = logits.squeeze(1)  # [B,1] → [B] for binary BCEWithLogitsLoss
 
         logger.debug(
-            f"SentinelModel forward — "
-            f"nodes: {node_embs.shape} | tokens: {token_embs.shape} | "
-            f"fused: {fused.shape} | logits: {logits.shape}"
+            f"SentinelModel forward — nodes: {node_embs.shape} | "
+            f"tokens: {token_embs.shape} | "
+            f"gnn_eye: {gnn_eye.shape} | tf_eye: {transformer_eye.shape} | "
+            f"fused_eye: {fused_eye.shape} | logits: {logits.shape}"
         )
 
-        return logits
+        if not return_aux:
+            return logits
+
+        # ── Auxiliary heads (training only) ───────────────────────────────
+        aux = {
+            "gnn":         self.aux_gnn(gnn_eye),          # [B, num_classes]
+            "transformer": self.aux_transformer(transformer_eye),
+            "fused":       self.aux_fused(fused_eye),
+        }
+        return logits, aux
 
     def parameter_summary(self) -> None:
         """Log trainable vs frozen parameter counts per sub-module."""
         components = {
-            "GNNEncoder":           self.gnn,
-            "TransformerEncoder":   self.transformer,
-            "CrossAttentionFusion": self.fusion,
-            "Classifier":           self.classifier,
+            "GNNEncoder":            self.gnn,
+            "TransformerEncoder":    self.transformer,
+            "CrossAttentionFusion":  self.fusion,
+            "gnn_eye_proj":          self.gnn_eye_proj,
+            "transformer_eye_proj":  self.transformer_eye_proj,
+            "Classifier (3×eye→C)":  self.classifier,
+            "aux_gnn":               self.aux_gnn,
+            "aux_transformer":       self.aux_transformer,
+            "aux_fused":             self.aux_fused,
         }
         total_trainable = total_frozen = 0
 
@@ -199,7 +271,7 @@ class SentinelModel(nn.Module):
             frozen    = sum(p.numel() for p in module.parameters() if not p.requires_grad)
             total_trainable += trainable
             total_frozen    += frozen
-            logger.info(f"{name}: {trainable:,} trainable | {frozen:,} frozen")
+            logger.info(f"  {name}: {trainable:,} trainable | {frozen:,} frozen")
 
         logger.info(
             f"Total: {total_trainable:,} trainable | "
