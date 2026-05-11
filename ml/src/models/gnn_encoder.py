@@ -227,6 +227,24 @@ class GNNEncoder(nn.Module):
             node_embeddings [N, hidden_dim], batch [N],
             {"after_phase1": ..., "after_phase2": ..., "after_phase3": ...}
         """
+        # ── Guards ───────────────────────────────────────────────────────────
+        # Bug #1: use_edge_attr=True with edge_attr=None silently disables
+        # Phase 2 CONTROL_FLOW masking (cfg_mask becomes all-zeros). Raise
+        # early so the caller knows the graph is missing edge_attr.
+        if self.use_edge_attr and edge_attr is None:
+            raise ValueError(
+                "GNNEncoder was built with use_edge_attr=True but edge_attr=None "
+                "was passed. All v5 graphs must have graph.edge_attr. "
+                "Check GraphExtractionConfig.include_edge_attr=True."
+            )
+        # Bug #3: out-of-bounds node indices in edge_index produce silent wrong
+        # GATConv attention or CUDA illegal-memory-access with no useful traceback.
+        if edge_index.numel() > 0 and edge_index.max() >= x.shape[0]:
+            raise ValueError(
+                f"edge_index contains node index {edge_index.max().item()} "
+                f"but x has only {x.shape[0]} nodes. Graph .pt file is corrupted."
+            )
+
         # ── Edge embeddings ──────────────────────────────────────────────────
         e = None
         if self.edge_embedding is not None and edge_attr is not None:
