@@ -1,6 +1,8 @@
 # M1 — ML Core
 
-Dual-path smart contract vulnerability detector. A **Graph Attention Network (GNN)** encodes the contract's AST structure with typed edge relations; a **LoRA-fine-tuned CodeBERT** encodes its source text. A **bidirectional CrossAttentionFusion** merges both representations before a 10-class multi-label sigmoid classifier produces per-vulnerability probabilities.
+Dual-path smart contract vulnerability detector. A three-phase **Graph Attention Network (GNN)** encodes the contract's CFG + AST structure with typed edge relations; a **LoRA-fine-tuned CodeBERT** encodes its source text. A **three-eye CrossAttentionFusion** (GNN eye, Transformer eye, Fused eye) produces per-vulnerability probabilities across 10 classes.
+
+> **v5 architecture as of 2026-05-11** — see [`docs/changes/2026-05-11-v5-implementation-record.md`](../docs/changes/2026-05-11-v5-implementation-record.md) for the complete implementation record.
 
 > Visual Mermaid diagrams (system lifecycle, model architecture, dataset loading flow) → [`ml/DIAGRAMS.md`](DIAGRAMS.md)
 
@@ -233,18 +235,24 @@ Key runtime dependencies: `torch ^2.5.0`, `peft >=0.13.0`, `torch-geometric ^2.6
 These two files are the most architecturally critical layer in the module. Before they existed, `ast_extractor.py` (offline) and `preprocess.py` (online inference) each contained identical, hand-duplicated node/edge feature logic. A missed sync caused silent inference accuracy regression — model receives features encoded differently from training, with no error message.
 
 ```
-graph_schema.py  ── single source of truth for all schema constants
+graph_schema.py  ── single source of truth for all schema constants (v2 — updated 2026-05-11)
 │
-│   NODE_TYPES       = { CONTRACT:7, STATE_VAR:0, FUNCTION:1,
-│                         MODIFIER:2, EVENT:3, FALLBACK:4,
-│                         RECEIVE:5,  CONSTRUCTOR:6 }
-│   EDGE_TYPES       = { CALLS:0, READS:1, WRITES:2, EMITS:3, INHERITS:4 }
+│   NODE_TYPES       = { CONTRACT:7, STATE_VAR:0, FUNCTION:1, MODIFIER:2,
+│                         EVENT:3, FALLBACK:4, RECEIVE:5, CONSTRUCTOR:6,
+│                         CFG_NODE_CALL:8, CFG_NODE_WRITE:9,
+│                         CFG_NODE_READ:10, CFG_NODE_CHECK:11,
+│                         CFG_NODE_OTHER:12 }                 ← 13 types total
+│   EDGE_TYPES       = { CALLS:0, READS:1, WRITES:2, EMITS:3, INHERITS:4,
+│                         CONTAINS:5, CONTROL_FLOW:6 }        ← 7 types (was 5)
 │   VISIBILITY_MAP   = { public:0, external:0, internal:1, private:2 }
 │   FEATURE_NAMES    = (type_id, visibility, pure, view, payable,
-│                        reentrant, complexity, loc)
-│   NODE_FEATURE_DIM = 8       ← GNNEncoder in_channels (locked in checkpoint)
-│   NUM_EDGE_TYPES   = 5       ← GNNEncoder Embedding table width
-│   FEATURE_SCHEMA_VERSION = "v1"  ← inference cache key suffix
+│                        complexity, loc, return_ignored,
+│                        call_target_typed, in_unchecked,
+│                        has_loop, external_call_count)        ← 12 dims (was 8)
+│   NODE_FEATURE_DIM = 12      ← GNNEncoder in_channels (v2 schema, LOCKED)
+│   NUM_EDGE_TYPES   = 7       ← GNNEncoder Embedding table width (v2 schema)
+│   NUM_NODE_TYPES   = 13      ← total node type vocabulary size
+│   FEATURE_SCHEMA_VERSION = "v2"  ← inference cache key suffix (was "v1")
 │   assert len(FEATURE_NAMES) == NODE_FEATURE_DIM  ← compile-time guard
 │
 └── imported by ──► graph_extractor.py
@@ -655,36 +663,46 @@ forward(graphs: Batch, input_ids: [B,512], attention_mask: [B,512])
 
 `parameter_summary()` logs trainable vs frozen counts per sub-module (called at `Predictor` startup): `GNNEncoder | TransformerEncoder | CrossAttentionFusion | Classifier | Total`
 
-### GNN Encoder
+### GNN Encoder (v5 — three-phase, four-layer)
 
 **File:** `ml/src/models/gnn_encoder.py`
 
+> **v5 architecture (2026-05-11):** Rebuilt as a three-phase design to propagate CFG execution-order signal into function nodes. v4's two-phase design could not distinguish "call before write" (vulnerable) from "write before call" (CEI-safe).
+
 ```
-Input: x [N,8],  edge_index [2,E],  batch [N],  edge_attr [E] (int64)
-           │                                              │
-           │           edge_emb  Embedding(5,16)          │
-           │           [E] → [E, 16]                      │
-           │                    │                         │
-           ▼                    ▼                         │
-     GATConv conv1  (in=8, out=8, heads=8, edge_dim=16)
-          → [N, 64]   (8 heads × 8 dims, concat=True)
-          → ReLU → Dropout(0.2)
+Input: x [N,12],  edge_index [2,E],  batch [N],  edge_attr [E] (int64)
+           │
+           │   edge_emb  Embedding(7, 32)   [E] → [E, 32]
+           │
+── Phase 1: Structural + CONTAINS forward (edges 0–5) ──────────────
+     conv1  GATConv(in=12, out=16, heads=8, concat=True, add_self_loops=True)
+          → [N, 128]  (8 heads × 16 dims)  + ReLU + Dropout(0.2)
+     conv2  GATConv(in=128, out=16, heads=8, concat=True, add_self_loops=True)
+          → [N, 128]  residual: x = x + dropout(conv2(x))
+          Purpose: function context flows DOWN into CFG child nodes
 
-     GATConv conv2  (in=64, out=8, heads=8, edge_dim=16)
-          → [N, 64]   2-hop structural context
-          → ReLU → Dropout(0.2)
+── Phase 2: CONTROL_FLOW directed (edge 6 only) ─────────────────────
+     conv3  GATConv(in=128, out=128, heads=1, concat=False,
+                    add_self_loops=False)   ← CRITICAL: no self-loops
+          → [N, 128]  residual: x = x + dropout(conv3(x))
+          Purpose: execution order encoded in CFG node embeddings
+          Non-CFG nodes have no CONTROL_FLOW edges → unchanged (zero messages)
 
-     GATConv conv3  (in=64, out=64, heads=1, edge_dim=16)
-          → [N, 64]   3-hop context, final node embeddings
-          (no activation — CrossAttentionFusion projects next)
+── Phase 3: Reverse-CONTAINS (edge 5, flipped) ──────────────────────
+     rev_contains_ei = edge_index[:, contains_mask].flip(0)
+     conv4  GATConv(in=128, out=128, heads=1, concat=False,
+                    add_self_loops=False)   ← CRITICAL: no self-loops
+          → [N, 128]  residual: x = x + dropout(conv4(x))
+          Purpose: Phase-2-enriched CFG embeddings flow UP to FUNCTION nodes
 
-Output: node_embs [N, 64],  batch [N]
-        NOT pooled — pooling deferred to CrossAttentionFusion
+Output: node_embs [N, 128],  batch [N]     ← NOT pooled
+        (or with return_intermediates=True: also returns
+         {"after_phase1", "after_phase2", "after_phase3"} each [N,128])
 ```
 
-> **Why edge_attr matters:** A `CALLS` edge and a `READS` edge are fundamentally different structural patterns. Reentrancy requires a `CALLS` edge back to the caller. Without typed edges, GATConv attention is purely node-feature-based and cannot distinguish these.
+> **Why three phases:** Without Phase 3 (reverse-CONTAINS), the function node NEVER sees the order signal from Phase 2 — execution order information is trapped in the CFG subgraph. This was the core architectural flaw in v4.
 >
-> **Graceful degradation:** `edge_attr=None` (legacy `.pt` files) → edge embeddings fall back to zero vectors. Old checkpoints still run.
+> **type_id normalisation:** `x[:,0]` stores `type_id / 12.0` (normalised to [0,1]). Raw type_id 0–12 would dominate the dot product, making CFG_NODE_CALL (8/12=0.667) and CFG_NODE_WRITE (9/12=0.750) indistinguishable before any message passing.
 
 ### Transformer Encoder (CodeBERT + LoRA)
 
@@ -771,31 +789,43 @@ Aggregate:
 API response includes: "windows_used": N,  "truncated": false
 ```
 
-### Node Feature Vector
+### Node Feature Vector (v2 — 12 dims, LOCKED)
+
+> **v5 schema (2026-05-11):** `reentrant` removed (was Slither shortcut). Five new semantic features added. `type_id` normalised to [0,1] by dividing by 12.0.
 
 | Index | Feature | Encoding |
 |-------|---------|----------|
-| 0 | `type_id` | CONTRACT=7, STATE_VAR=0, FUNCTION=1, MODIFIER=2, EVENT=3, FALLBACK=4, RECEIVE=5, CONSTRUCTOR=6 |
+| 0 | `type_id` | `NODE_TYPES[kind] / 12.0` — normalised to [0,1] (raw 0–12) |
 | 1 | `visibility` | public/external=0, internal=1, private=2 |
 | 2 | `pure` | 0/1 |
 | 3 | `view` | 0/1 |
 | 4 | `payable` | 0/1 |
-| 5 | `reentrant` | 0/1 (Slither `is_reentrant` flag) |
-| 6 | `complexity` | float — CFG node count |
-| 7 | `loc` | float — lines of source |
+| 5 | `complexity` | float — CFG block count (`len(func.nodes)`) |
+| 6 | `loc` | float — lines of source |
+| 7 | `return_ignored` | 0.0=captured / 1.0=discarded / **-1.0**=IR unavailable |
+| 8 | `call_target_typed` | 0.0=raw addr / 1.0=typed iface / **-1.0**=unavailable |
+| 9 | `in_unchecked` | 1.0 if inside `unchecked{}` block (always 0.0 for CFG nodes) |
+| 10 | `has_loop` | 1.0 if function contains a loop |
+| 11 | `external_call_count` | `log1p(count)/log1p(20)` normalised to [0,1] |
 
-Insertion order: `CONTRACT → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs`
-Non-function nodes receive `0.0` for features 2–5.
+**CFG node subtypes** (type_id 8–12) are full graph nodes connected via `CONTAINS` and `CONTROL_FLOW` edges.  
+Non-function nodes receive 0.0 for features 2–11 (except `call_target_typed[8]` = 1.0 as "N/A safe default").
 
-### Edge Types
+Node type IDs: `STATE_VAR=0 FUNCTION=1 MODIFIER=2 EVENT=3 FALLBACK=4 RECEIVE=5 CONSTRUCTOR=6 CONTRACT=7 CFG_NODE_CALL=8 CFG_NODE_WRITE=9 CFG_NODE_READ=10 CFG_NODE_CHECK=11 CFG_NODE_OTHER=12`
 
-| ID | Type | Meaning |
-|----|------|---------|
-| 0 | `CALLS` | function → internally-called function |
-| 1 | `READS` | function → state variable it reads |
-| 2 | `WRITES` | function → state variable it writes |
-| 3 | `EMITS` | function → event it emits |
-| 4 | `INHERITS` | contract → parent contract (linearised MRO) |
+### Edge Types (v2 — 7 types)
+
+> **v5 schema (2026-05-11):** Added `CONTAINS` and `CONTROL_FLOW` for CFG subgraph.
+
+| ID | Type | Direction | Meaning |
+|----|------|-----------|---------|
+| 0 | `CALLS` | function → function | internal function call |
+| 1 | `READS` | function → state_var | state variable read |
+| 2 | `WRITES` | function → state_var | state variable write |
+| 3 | `EMITS` | function → event | event emission |
+| 4 | `INHERITS` | contract → contract | inheritance (MRO order) |
+| 5 | `CONTAINS` | function → cfg_node | function owns this CFG statement node |
+| 6 | `CONTROL_FLOW` | cfg_node → cfg_node | directed execution order (enables Phase 2 reentrancy detection) |
 
 ---
 
@@ -1125,25 +1155,26 @@ TRANSFORMERS_OFFLINE=1 poetry run python scripts/train.py \
 ## Active Checkpoint
 
 ```
-── v3 (current best) ────────────────────────────────────────────────────────
+── v5 (in progress — 2026-05-11) ────────────────────────────────────────────
+Architecture:   three_eye_v5  (three-phase GNN + three-eye classifier)
+Schema:         v2 (NODE_FEATURE_DIM=12, NUM_EDGE_TYPES=7, CFG subgraph)
+Status:         Phase 4 re-extraction running (ast_extractor.py --force --workers 11)
+Next step:      Validate extraction → training → Phase 6 gate (F1-macro > 0.58)
+Gate targets:   F1-macro > 0.58, behavioral detection > 70%, specificity > 66%
+
+── v4 exp1 (previous best — fallback if v5 fails) ───────────────────────────
+File:        ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt
+Thresholds:  ml/checkpoints/multilabel-v4-finetune-lr1e4_best_thresholds.json
+Run:         multilabel-v4-finetune-lr1e4  (sentinel-retrain-v4)
+Completed:   2026-05-10  |  26/30 epochs  |  batch_size=16
+Tuned F1-macro: 0.5422  ✅
+Architecture:   cross_attention_lora  (LoRA r=8 α=16, NODE_FEATURE_DIM=8, NUM_EDGE_TYPES=5)
+KNOWN FLAW:     Cannot distinguish call-before-write from write-before-call;
+                behavioral detection rate 15%, specificity 33% on 20 hand-crafted contracts
+
+── v3 (superseded by v4) ────────────────────────────────────────────────────
 File:        ml/checkpoints/multilabel-v3-fresh-60ep_best.pt
-Thresholds:  ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json
-Run:         multilabel-v3-fresh-60ep  (sentinel-retrain-v3)
-Completed:   2026-05-05  |  60 epochs  |  batch_size=32
-Best epoch:  ~52–53  |  plateau from ~ep 54
-Raw F1-macro:   0.4715
-Tuned F1-macro: 0.5069  ✅ (gate was > 0.4884)
-Architecture:   cross_attention_lora  (LoRA r=8 α=16, edge_attr active)
-
-── v2 (paused — superseded) ─────────────────────────────────────────────────
-File:        ml/checkpoints/multilabel_crossattn_v2_best.pt
-Status:      Stopped at epoch 43, batch-size mismatch. Superseded by v3.
-Best raw F1: 0.4629 (epoch 37)
-
-── baseline (pre-edge_attr) ─────────────────────────────────────────────────
-File:        ml/checkpoints/multilabel_crossattn_best.pt
-Val F1-macro: 0.4679  (epoch 34)
-Architecture: cross_attention_lora  (trained WITHOUT edge_attr)
+Tuned F1-macro: 0.5069  (v4 exp1 cleared this gate with 0.5422)
 ```
 
 ### Per-Class Thresholds and F1 (v3)
@@ -1597,16 +1628,19 @@ ml/
 
 ## Critical Constraints
 
-| Constraint | Locked Value | Consequence of change |
+| Constraint | v5 Value | Consequence of change |
 |-----------|-------------|----------------------|
-| `GNNEncoder in_channels` | **8** | Rebuild all 68K graph files + retrain |
+| `GNNEncoder in_channels` | **12** (was 8 in v4) | Rebuild all 68K graph files + retrain |
+| `NODE_FEATURE_DIM` | **12** | Must match `in_channels`; compile-time assert |
+| `type_id` normalisation | `float(type_id) / 12.0` in extractor | Raw 0–12 dominates dot product; GNN can't distinguish CFG subtypes |
 | CodeBERT model | `microsoft/codebert-base` | Rebuild token files + retrain |
 | `MAX_TOKEN_LENGTH` | **512** | Rebuild token files + retrain |
-| Node feature order | fixed 8-dim (see table) | Rebuild graph files + retrain |
 | `CrossAttentionFusion output_dim` | **128** | Rebuild ZKML circuit + redeploy verifier |
-| `FEATURE_SCHEMA_VERSION` | **`"v1"`** | Bump alongside graph rebuild — invalidates inference cache |
+| `FEATURE_SCHEMA_VERSION` | **`"v2"`** (was "v1") | Bump alongside graph rebuild — invalidates inference cache |
 | `CLASS_NAMES` order | indices **0–9 stable** | Silent wrong-class mapping across all consumers |
-| `NUM_EDGE_TYPES` | **5** | Rebuild edge_emb layer + retrain |
+| `NUM_EDGE_TYPES` | **7** (was 5) | Rebuild edge_emb layer + retrain |
+| `NUM_NODE_TYPES` | **13** | Node vocabulary size (ids 0–12) |
+| `gnn_layers` | **4** (enforced in TrainConfig) | Only 4 supported in v5.0; raises `NotImplementedError` otherwise |
 | `weights_only=False` on checkpoint load | required | LoRA state dict contains peft-specific objects |
 | `TRANSFORMERS_OFFLINE` | must be set at **shell level** | Cannot be set inside Python after `transformers` is imported |
 | `edge_attr` shape | **`[E]` 1-D int64** | `[E,1]` crashes `nn.Embedding`; validate before training |

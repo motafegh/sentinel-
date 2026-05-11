@@ -122,6 +122,9 @@ a circular heuristic over features already present at indices 5, 10, 11.
 The GNN learns the combination itself and learns it better.
 """
 
+NUM_NODE_TYPES: int = 13
+"""Number of distinct node types (ids 0–12). Used by GNNEncoder for the node type embedding."""
+
 NUM_EDGE_TYPES: int = 7
 """
 Number of distinct edge-relation types (width of the EDGE_TYPES vocabulary).
