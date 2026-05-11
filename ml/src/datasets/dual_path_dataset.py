@@ -56,6 +56,7 @@ import torch.serialization
 from torch.utils.data import Dataset
 from torch_geometric.data import Batch, Data
 from torch_geometric.data.data import DataEdgeAttr, DataTensorAttr
+from torch_geometric.data.storage import GlobalStorage
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,7 @@ torch.serialization.add_safe_globals([
     Data,
     DataEdgeAttr,
     DataTensorAttr,
+    GlobalStorage,
 ])
 
 
