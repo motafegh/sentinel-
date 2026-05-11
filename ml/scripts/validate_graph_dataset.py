@@ -132,8 +132,8 @@ def validate(
         # the CFG node extraction was skipped or fell back to CFG_NODE_OTHER
         # for every node — likely a Slither version mismatch.
         if check_cfg_subtypes and hasattr(data, "x") and data.x is not None:
-            type_ids = data.x[:, 0]
-            has_cfg = bool(((type_ids >= 8) & (type_ids <= 12)).any().item())
+            type_ids_raw = (data.x[:, 0] * 12).round().int()
+            has_cfg = bool(((type_ids_raw >= 8) & (type_ids_raw <= 12)).any().item())
             if not has_cfg:
                 missing_cfg_sub.append(path)
                 failed_this = True

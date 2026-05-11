@@ -344,15 +344,20 @@ def _cfg_node_type(slither_node: Any) -> int:
         if any(isinstance(op, (LowLevelCall, HighLevelCall)) for op in irs):
             return NODE_TYPES["CFG_NODE_CALL"]
 
-        # Priority 2: any IR op writes a state variable
-        if any(
+        # Priority 2: node writes a state variable.
+        # Use Slither's own state_variables_written (handles mapping/reference
+        # lvalues that resolve through ReferenceVariable, not direct StateVariable).
+        # Fall back to IR lvalue check for older Slither versions.
+        sv_written = list(getattr(slither_node, "state_variables_written", None) or [])
+        if sv_written or any(
             hasattr(op, "lvalue") and isinstance(op.lvalue, StateVariable)
             for op in irs
         ):
             return NODE_TYPES["CFG_NODE_WRITE"]
 
-        # Priority 3: any IR op reads a state variable
-        if any(
+        # Priority 3: node reads a state variable.
+        sv_read = list(getattr(slither_node, "state_variables_read", None) or [])
+        if sv_read or any(
             isinstance(v, StateVariable)
             for op in irs
             for v in getattr(op, "read", [])
@@ -393,7 +398,7 @@ def _build_cfg_node_features(slither_node: Any, func: Any, cfg_type: int) -> lis
         loc = float(len(sm.lines))
 
     return [
-        float(cfg_type),  # [0]  type_id (8–12 from _cfg_node_type)
+        float(cfg_type) / 12.0,  # [0]  type_id normalised to [0,1] (raw 8–12 / 12)
         0.0,              # [1]  visibility — not applicable
         0.0,              # [2]  pure — not applicable
         0.0,              # [3]  view — not applicable
@@ -555,7 +560,7 @@ def _build_node_features(obj: Any, type_id: int) -> list:
             type_id = NODE_TYPES["RECEIVE"]
 
     return [
-        float(type_id),
+        float(type_id) / 12.0,  # normalised to [0,1] (raw 0–12 / 12)
         visibility,
         pure,
         view,

@@ -55,6 +55,13 @@ Stored as an attribute for serialisation only. Validation is in
 TrainConfig.__post_init__() — fires at startup before data loading or
 GPU allocation, not deep inside model construction.
 
+NODE FEATURE SCALING NOTE
+─────────────────────────
+x[:, 0] = type_id is normalised to [0, 1] in graph_extractor.py (/ 12.0).
+This is required: raw type_id 0–12 dominates the dot product and makes
+adjacent CFG subtypes (CALL=8/12, WRITE=9/12) indistinguishable.
+All other features are already in [0, 1] or small normalised ranges.
+
 PARAMETERS (v5 defaults)
 ─────────────────────────
   in_channels  = NODE_FEATURE_DIM (12) — never hardcode 8 or 13 here
