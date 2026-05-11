@@ -27,184 +27,140 @@ Always load alongside: **SENTINEL-CONSTRAINTS.md**
 
 ---
 
-## Model Architecture
+## Model Architecture (v5 — CURRENT)
 
 ```
 
 Input: Solidity source string
 │
 ├── ContractPreprocessor
-│     ├── Slither AST extraction  (InferenceCache check first — T1-A)
-│     │     Node features [N, 8]:
-│     │       [0] type_id      STATE_VAR=0 FUNCTION=1 MODIFIER=2
-│     │                        EVENT=3 FALLBACK=4 RECEIVE=5
-│     │                        CONSTRUCTOR=6 CONTRACT=7
-│     │       [1] visibility   public/external=0 internal=1 private=2
-│     │       [2] pure         0/1
-│     │       [3] view         0/1
-│     │       [4] payable      0/1
-│     │       [5] reentrant    0/1
-│     │       [6] complexity   float (CFG nodes)
-│     │       [7] loc          float (lines of source)
-│     │     Edge attributes: graph.edge_attr [E] int64 (1-D)
-│     │       CALLS=0, READS=1, WRITES=2, EMITS=3, INHERITS=4
-│     │     Node insertion order: CONTRACT → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs
-│     │     Output: PyG Data — graph.x [N, 8], graph.edge_index [2, E], graph.edge_attr [E]
+│     ├── Slither AST + CFG extraction  (InferenceCache check first — T1-A)
+│     │     Node features [N, 12]:  ← NODE_FEATURE_DIM=12, LOCKED
+│     │       [0]  type_id      float(raw_id)/12.0  NORMALISED
+│     │                         CONTRACT=0 FUNCTION=1 MODIFIER=2 EVENT=3
+│     │                         FALLBACK=4 RECEIVE=5 CONSTRUCTOR=6 STATE_VAR=7
+│     │                         CFG_NODE_ENTRY=8 CFG_NODE_CALL=9 CFG_NODE_WRITE=10
+│     │                         CFG_NODE_COND=11 CFG_NODE_RETURN=12
+│     │       [1]  is_function   0/1
+│     │       [2]  is_modifier   0/1
+│     │       [3]  visibility    public/external=0 internal=1 private=2
+│     │       [4]  pure          0/1
+│     │       [5]  view          0/1
+│     │       [6]  payable       0/1
+│     │       [7]  reentrant     0/1
+│     │       [8]  complexity    float (CFG node count)
+│     │       [9]  loc           float (lines of source)
+│     │       [10] is_cfg_node   0/1
+│     │       [11] cfg_depth     float
+│     │     Edge attributes: graph.edge_attr [E] int64 (1-D), NUM_EDGE_TYPES=7
+│     │       CALLS=0 READS=1 WRITES=2 EMITS=3 INHERITS=4 CONTAINS=5 CONTROL_FLOW=6
+│     │     Output: PyG Data — graph.x [N,12], graph.edge_index [2,E], graph.edge_attr [E]
 │     │
 │     └── CodeBERT tokenizer
-│           model: microsoft/codebert-base
-│           Short contracts (≤512 tokens): single window
-│           Long contracts (>512 tokens): sliding-window T1-C
-│             stride=256, max_windows=8; returns list[dict]
-│           Output: input_ids [1, 512], attention_mask [1, 512]
+│           Output: input_ids [1,512], attention_mask [1,512]
+│           Long contracts: sliding-window, stride=256, max_windows=8
 │
 ▼
 SentinelModel.forward(graphs, input_ids, attention_mask)
 │
-├── GNNEncoder                              (P0-B: edge-type embeddings, active in v3 checkpoint)
-│     edge_emb: nn.Embedding(5, 16)        ← CALLS/READS/WRITES/EMITS/INHERITS
-│     Graceful degradation: edge_attr=None → zero-vectors (old .pt files run; lose edge signal)
-│     3-layer GATConv:
-│       conv1: in=8,  out=8,  heads=8, edge_dim=16, concat=True  → [N, 64]
-│       conv2: in=64, out=8,  heads=8, edge_dim=16, concat=True  → [N, 64]
-│       conv3: in=64, out=64, heads=1, edge_dim=16, concat=False → [N, 64]
-│     Dropout p=0.2 on attention coefficients AND on node activations
-│     NO global_mean_pool — pooling DEFERRED to CrossAttentionFusion
-│     Returns: (node_embeddings [N, 64], batch [N])
-│     N = total nodes across all B contracts in the batch
+├── GNNEncoder (three-phase, four-layer GAT)
+│     edge_emb: nn.Embedding(7, 32)   ← all 7 edge types
+│     Phase 1 — structural + CONTAINS (layers 1+2):
+│       Edges: types 0–5; add_self_loops=True; heads=8
+│       conv1: [N,12]→[N,128] (concat 8 heads × 16 per head)
+│       conv2: [N,128]→[N,128] + residual
+│     Phase 2 — CONTROL_FLOW directed (layer 3):
+│       Edges: type 6 ONLY; add_self_loops=False ← CRITICAL
+│       conv3: [N,128]→[N,128] + residual
+│     Phase 3 — reverse-CONTAINS (layer 4):
+│       CONTAINS edges (type 5) with src↔dst flipped: CFG→FUNCTION
+│       add_self_loops=False; conv4: [N,128]→[N,128] + residual
+│     Returns: (node_embeddings [N,128], batch [N])
 │
 ├── TransformerEncoder
-│     CodeBERT with LoRA: r=8, lora_alpha=16, lora_dropout=0.1  (configurable via TrainConfig)
-│     LoRA injected into query+value of all 12 layers (~295K trainable)
-│     Backbone frozen: 124,705,536 params
-│     Returns ALL token embeddings: last_hidden_state → [B, 512, 768]
-│     NOT just CLS — cross-attention needs all 512 positions
+│     CodeBERT + LoRA r=16, alpha=32, modules=['query','value'], all 12 layers
+│     ~590K trainable; backbone frozen 124,645,632 params
+│     Returns last_hidden_state [B,512,768]
 │
 ├── CrossAttentionFusion (bidirectional)
-│     Step 1: Project to common attention space
-│       node_proj:  [N, 64]       → [N, 256]
-│       token_proj: [B, 512, 768] → [B, 512, 256]
-│     Step 2: Pad nodes → [B, max_nodes, 256]
-│       node_padding_mask [B, max_nodes]: True = padding position
-│     Step 3: Node → Token cross-attention
-│       Q=nodes [B,max_n,256], K=V=tokens [B,512,256]
-│       Output: enriched_nodes [B, max_nodes, 256]
-│     Step 4: Token → Node cross-attention
-│       Q=tokens [B,512,256], K=V=nodes [B,max_n,256]
-│       key_padding_mask=node_padding_mask (ignores padded positions)
-│       Output: enriched_tokens [B, 512, 256]
-│     Step 5: Pool AFTER enrichment (not before)
-│       pooled_nodes:  masked mean of enriched_nodes → [B, 256]
-│       pooled_tokens: mean of enriched_tokens       → [B, 256]
-│     Step 6: Concat + project
-│       cat([B,256], [B,256]) → [B,512] → Linear → ReLU → Dropout → [B,128]
-│     Output: [B, 128]  — output_dim=128 LOCKED (ZKML proxy depends on this)
+│     Bidirectional cross-attention, attn_dim=256, heads=8
+│     Output: [B,128]  — output_dim=128 LOCKED
 │
-└── Classifier
-nn.Linear(128, 10)  — NO Sigmoid — raw logits
-Output: [B, 10]
+└── Three-Eye Classifier
+      GNN eye:    global_max_pool+global_mean_pool → [B,256] → Linear(256,128) → [B,128]
+      TF eye:     CLS token [B,768] → Linear(768,128) → [B,128]
+      Fused eye:  CrossAttentionFusion output [B,128]
+      Main head:  concat([B,384]) → Linear(384,10) — NO Sigmoid — raw logits
+      Aux heads:  Linear(128,10) per eye (training only, weight λ=0.1 in loss)
+      Output: [B,10]
 
-Parameter counts:
-GNNEncoder:            ~100K trainable (including edge_emb Embedding(5,16))
-TransformerEncoder:    ~295K trainable (LoRA only) + 124,705,536 frozen
-CrossAttentionFusion:  ~530K trainable (projections + 2× MHA + output MLP)
-Classifier:            128×10 + 10 = 1,290 trainable
-Total trainable:       ~925K
-Total frozen:          124,705,536
+Parameter counts (v5):
+GNNEncoder:            ~90K trainable
+TransformerEncoder:    ~590K trainable (LoRA) + 124,645,632 frozen
+CrossAttentionFusion:  ~530K trainable
+Three-Eye Classifier:  ~200K trainable
+Total trainable:       ~1.4M
+Total frozen:          124,645,632
 
 Predictor._score():
-logits = model.forward()           → [1, 10]
-probs  = torch.sigmoid(logits.float())  → [1, 10]  (FP32 cast before sigmoid — BF16 guard)
-Per-class thresholds from multilabel-v3-fresh-60ep_best_thresholds.json
-vulnerabilities = [{vulnerability_class, probability} for prob >= threshold[class]]
-label = "vulnerable" if vulnerabilities else "safe"
-
-Long-contract path (T1-C — sliding window):
-Contracts exceeding 512 CodeBERT tokens are split into overlapping 512-token windows
-(stride=256, max_windows=8). GNN graph is built once from the full AST.
-predictor.predict_source() automatically routes to the windowed path and aggregates
-per-class probabilities via max() across windows. Response includes windows_used: int.
-
-Predictor backward compatibility:
-architecture = ckpt["config"].get("architecture", "legacy")
-"cross_attention_lora" → fusion_output_dim prefers saved_cfg.get("fusion_output_dim") first,
-falls back to _ARCH_TO_FUSION_DIM (128) for legacy checkpoints
-"legacy"               → fusion_output_dim = 64  (old binary concat+MLP checkpoints)
-Prevents silent Linear(64→10) vs Linear(128→10) shape mismatch.
-weights_only=False required for checkpoint load — LoRA state dict contains peft-specific classes.
-
-Predictor startup warmup (_warmup()):
-2-node 1-undirected-edge synthetic graph (so GATConv.propagate() actually runs)
-dummy_x [2,8], dummy_edge_index [[0,1],[1,0]]
-When use_edge_attr=True: dummy_edge_attr = torch.zeros(2, dtype=torch.long)  ← Fix #4
-(1-node 0-edge graph would skip GATConv.propagate() entirely — shape bugs invisible)
+logits = model.forward()
+probs  = torch.sigmoid(logits.float())  → [1,10]  (FP32 cast — BF16 guard)
+Per-class thresholds from checkpoint thresholds JSON
+label = "vulnerable" if any prob >= threshold[class]
 
 ```
 
 ---
 
-## Active Checkpoint
+## Active Checkpoint (v5 — training in progress)
 
 ```
 
-File:       ml/checkpoints/multilabel-v3-fresh-60ep_best.pt
-Thresholds: ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json
-Run:        multilabel-v3-fresh-60ep
-Experiment: sentinel-retrain-v3
-Completed:  2026-05-05
-Batch size: 32
-Epochs:     60/60 (no early stop; patience counter=6 at end)
-Best epoch: ~52–53
-Best raw F1-macro: 0.4715
-Tuned F1-macro:    0.5069 ✅ (gate: > 0.4884)
-Architecture key: "cross_attention_lora"
-edge_attr:  True (P0-B active — this checkpoint WAS trained with edge_attr)
+v5 in progress:
+  ml/checkpoints/v5-check-15ep_best.pt       seed for full 60-ep run (epoch 10, raw F1=0.3856)
+  ml/logs/train_v5_full60ep.log              full run log (PID 244442, RUNNING)
+  Architecture: "v5_three_eye"
+  NODE_FEATURE_DIM=12  NUM_EDGE_TYPES=7  LoRA r=16
 
-Per-class tuned thresholds (saved in thresholds JSON):
-CallToUnknown:              0.70  F1=0.3936
-DenialOfService:            0.95  F1=0.4000
-ExternalBug:                0.65  F1=0.4345
-GasException:               0.55  F1=0.5501
-IntegerUO:                  0.50  F1=0.8214
-MishandledException:        0.60  F1=0.4916
-Reentrancy:                 0.65  F1=0.5362
-Timestamp:                  0.75  F1=0.4789
-TransactionOrderDependence: 0.60  F1=0.4770
-UnusedReturn:               0.70  F1=0.4860
+v4 fallback (gate cleared, use if v5 fails):
+  ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt  (epoch 26, tuned F1=0.5422)
+  ml/checkpoints/multilabel-v4-finetune-lr1e4_best_thresholds.json
+  Architecture: "cross_attention_lora"  (v4 — 8-dim nodes, 3-layer GNN, lora_r=8)
 
-Load pattern:
-raw = torch.load(path, weights_only=False)   # weights_only=True breaks LoRA
-state_dict = raw["model"] if "model" in raw else raw
+  v4 per-class tuned thresholds (floors for v5 = these − 0.05):
+  CallToUnknown 0.70 F1=0.4474 · DoS 0.95 F1=0.4343 · ExternalBug 0.70 F1=0.4838
+  GasException 0.55 F1=0.5568 · IntegerUO 0.50 F1=0.8259 · MishandledException 0.55 F1=0.5094
+  Reentrancy 0.65 F1=0.5687 · Timestamp 0.80 F1=0.5283 · TOD 0.65 F1=0.5220 · UnusedReturn 0.70 F1=0.5452
 
-Historical checkpoints (superseded):
-ml/checkpoints/multilabel_crossattn_best.pt        pre-edge_attr baseline (epoch 34, F1=0.4679)
-ml/checkpoints/multilabel_crossattn_best_thresholds.json  Threshold companion for legacy baseline
-ml/checkpoints/multilabel_crossattn_v2_best.pt     v2 paused (epoch 37, F1=0.4629, batch mismatch)
+Load pattern (all checkpoints):
+raw = torch.load(path, weights_only=False)   # weights_only=True breaks LoRA state dict
 
 ```
 
 ---
 
-## TrainConfig Key Fields
+## TrainConfig Key Fields (v5)
 
 ```
 
 num_classes:          10
-architecture:         "cross_attention_lora"   # written into checkpoint config
-# module constant ARCHITECTURE = "cross_attention_lora"
-batch_size:           32                       # v3 safe on RTX 3070 8GB (was 16 in v1/v2)
+architecture:         "v5_three_eye"
+batch_size:           16                       # RTX 3070 8GB limit with v5 12-dim nodes
 grad_clip:            1.0                       # clips trainable params only (not frozen)
-lora_r:               8                         # v3 — try 16 for v4 (capacity ceiling suspected)
-lora_alpha:           16
+lora_r:               16                        # v5 — doubled from v4 for capacity
+lora_alpha:           32
 lora_dropout:         0.1
-lora_target_modules:  ["query", "value"]        # LoRA injection points
-use_edge_attr:        True                      # P0-B edge relation embeddings (active in v3)
-gnn_edge_emb_dim:     16                        # Embedding(5, 16)
-gnn_hidden_dim:       64                        # configurable (P0-C)
+lora_target_modules:  ["query", "value"]
+use_edge_attr:        True
+gnn_edge_emb_dim:     32                        # Embedding(7, 32) — 7 edge types
+gnn_hidden_dim:       128                       # LOCKED
 gnn_heads:            8
 gnn_dropout:          0.2
+gnn_layers:           4                         # three-phase requires exactly 4
 fusion_output_dim:    128                       # LOCKED — ZKML proxy depends on this
-loss_fn:              "bce"                     # v3 used BCE; v4 will use "focal"
+loss_fn:              "bce"                     # BCE with sqrt-scaled pos_weight
+warmup_pct:           0.06                      # 6% of total steps = ~3.6 epochs
+early_stop_patience:  10
 
 loss_fn validation: must be one of {"bce", "focal"} — unknown value raises ValueError immediately
 --focal-gamma / --focal-alpha: CLI args wired end-to-end to TrainConfig (2026-05-04)
@@ -318,9 +274,10 @@ Dataset Facts
 
 ```
 Source:           BCCC-SCsVul-2024
-Graph .pt files:  68,523  (ml/data/graphs/, MD5 stem, re-extracted 2026-05-03 with edge_attr=[E])
-Token .pt files:  68,568  (ml/data/tokens/, MD5 stem, regenerated 2026-05-03)
-Splits:           train/val/test_indices.npy (47,966/10,278/10,279)
+Graph .pt files:  68,523  (ml/data/graphs/, MD5 stem, v5 re-extracted 2026-05-11 — 12-dim, 7 edge types)
+Token .pt files:  68,568  (ml/data/tokens/, MD5 stem)
+RAM cache:        ml/data/cached_dataset.pkl (1.02 GB, 68,523 pairs, built 2026-05-11)
+Splits:           train/val/test_indices.npy (47,966/10,278/10,279) — val/test FROZEN
 Label CSV:        ml/data/processed/multilabel_index.csv
 
 Contracts metadata: ml/data/processed/_cache/contracts_metadata.parquet
@@ -351,16 +308,15 @@ File Inventory
 
 ```
 ml/src/models/
-  sentinel_model.py          SentinelModel — orchestrates all sub-modules; accepts arch config params (P0-C)
-  gnn_encoder.py             GNNEncoder — 3-layer GAT + edge-type embeddings (P0-B); configurable hidden_dim/heads (P0-C)
-  transformer_encoder.py     TransformerEncoder — CodeBERT + LoRA; configurable r/alpha/dropout (P0-A)
-  fusion_layer.py            CrossAttentionFusion — output_dim=128
+  sentinel_model.py          SentinelModel v5 (three-eye) — GNN+TF+Fused eyes, aux heads, 384-dim classifier
+  gnn_encoder.py             GNNEncoder — three-phase 4-layer GAT; 12-dim in, 128-dim out; return_intermediates
+  transformer_encoder.py     TransformerEncoder — CodeBERT + LoRA r=16 α=32
+  fusion_layer.py            CrossAttentionFusion — bidirectional, output_dim=128 LOCKED
 
 ml/src/preprocessing/                 ← single source of truth for graph feature engineering
   __init__.py                re-exports all public symbols
-  graph_schema.py            NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES, FEATURE_NAMES,
-                             FEATURE_SCHEMA_VERSION="v1", NODE_FEATURE_DIM=8, NUM_EDGE_TYPES=5
-                             compile-time assert: len(FEATURE_NAMES) == NODE_FEATURE_DIM
+  graph_schema.py            NODE_TYPES, EDGE_TYPES, NODE_FEATURE_DIM=12, NUM_EDGE_TYPES=7,
+                             NUM_NODE_TYPES=13, FEATURE_SCHEMA_VERSION="v2"
   graph_extractor.py         extract_contract_graph(sol_path, config) → Data
                              GraphExtractionConfig dataclass:
                                multi_contract_policy: "first"|"by_name" (scaffold; "all" not implemented — Move 9)
@@ -443,11 +399,10 @@ ml/tests/                    10 test modules (all synthetic data; no real contra
   test_promote_model.py      promote_model.py: stage validation, dry-run, MLflow tags
 
 ml/checkpoints/              .pt files — not in git; managed by DVC
-  multilabel-v3-fresh-60ep_best.pt               ACTIVE checkpoint (60 epochs, P0-B, batch=32)
-  multilabel-v3-fresh-60ep_best_thresholds.json  Per-class tuned thresholds (v4 gate = 0.5069)
-  multilabel_crossattn_best.pt                   Legacy baseline checkpoint (epoch 34, F1=0.4679, pre-P0-B)
-  multilabel_crossattn_best_thresholds.json      Threshold companion for legacy baseline
-  multilabel_crossattn_v2_best.pt                Paused v2 run (epoch 37, F1=0.4629, superseded)
+  v5-check-15ep_best.pt                          v5 10-epoch check run (F1=0.3856) — seed for full run
+  v5-full-60ep_best.pt                           v5 full run (IN PROGRESS — will appear when first best saved)
+  multilabel-v4-finetune-lr1e4_best.pt           v4 fallback (tuned F1=0.5422)
+  multilabel-v4-finetune-lr1e4_best_thresholds.json  v4 per-class thresholds
 
 ml/data_extraction/
   ast_extractor.py           ASTExtractorV4.3 — thin offline wrapper; parquet loading,
