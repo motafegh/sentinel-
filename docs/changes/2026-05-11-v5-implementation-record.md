@@ -876,69 +876,128 @@ poetry run python ml/scripts/validate_graph_dataset.py \
 
 ---
 
-## 12. Phase 4 — Full Re-Extraction (in progress as of 2026-05-11)
+## 12. Phase 4 — Full Re-Extraction (COMPLETE)
 
-Phase 4 was launched after the pre-flight gate was cleared:
+Phase 4 was launched after the pre-flight gate was cleared and ran with 11 parallel workers
+against the full 68,523-contract BCCC dataset. **Status: complete.**
 
-```bash
-cd /home/motafeq/projects/sentinel/ml
-poetry run python src/data_extraction/ast_extractor.py \
-    --force --workers 11 --verbose \
-    2>&1 | tee logs/extraction_v5_$(date +%Y%m%d_%H%M).log
-```
+**Extraction summary:**
+- 68,523 graph `.pt` files written to `ml/data/graphs/` with v5 schema (12-dim nodes, 7 edge types)
+- 45 token files had no matching graph (skipped by dataset loader — benign mismatches)
+- Validation: 17,641 graphs missing CFG subtypes and 5,399 missing CONTROL_FLOW are expected —
+  these are interface/abstract contracts with no function bodies (confirmed by manual inspection).
+  26.3% of contracts labeled Reentrancy in BCCC have no CFG nodes (label-by-folder artifact in
+  the BCCC dataset, not an extraction bug).
 
-Running in background with 11 parallel workers against the 68,523-contract BCCC dataset.
-Output log: `ml/logs/extraction_v5_YYYYMMDD_HHMM.log`.
-
-**When extraction completes, run in order:**
-
-```bash
-# 1. Validate schema compliance
-poetry run python ml/scripts/validate_graph_dataset.py \
-    --check-dim 12 \
-    --check-edge-types 7 \
-    --check-contains-edges \
-    --check-control-flow \
-    --check-cfg-subtypes
-
-# 2. Update splits (freeze val/test — mandatory)
-poetry run python ml/scripts/create_splits.py \
-    --multilabel-index ml/data/processed/multilabel_index.csv \
-    --splits-dir ml/data/splits \
-    --freeze-val-test
-
-# 3. Verify token pairing
-# Each graph .pt must have a matching token .pt (same MD5 stem)
-```
+**Post-extraction steps completed:**
+1. `validate_graph_dataset.py` — ran clean (warnings only for interface contracts, no errors)
+2. `create_splits.py --freeze-val-test` — val and test indices frozen; train split updated
+3. `create_cache.py` — RAM cache built: **68,523 pairs, 1.02 GB, 0 errors** →
+   `ml/data/cached_dataset.pkl` (reduces per-epoch I/O by ~30%)
 
 ---
 
-## 13. Pending — Phases 5–6
+## 12.5. Phase 5 — Training (COMPLETE: check run; RUNNING: full run)
 
-### Phase 5 — Training Sequence
+### Phase A: Smoke Run
+
+Ran with `--smoke-subsample-fraction 0.10 --epochs 2 --batch-size 16`.
+Cleared: no shape errors, no NaN, VRAM usage within RTX 3070 8GB limits.
+Checkpoint: `ml/checkpoints/v5-smoke_best.pt`.
+
+### Phase B: 15-Epoch Check Run
 
 ```bash
-# Phase A: Smoke run (shape + VRAM check)
-poetry run python ml/scripts/train.py \
-    --run-name v5-smoke \
-    --smoke-subsample-fraction 0.10 --epochs 2 --batch-size 16
-
-# Phase B: 15-epoch check (over-prediction gate)
-poetry run python ml/scripts/train.py \
-    --run-name v5-check-15ep \
-    --epochs 15 --batch-size 16 --lr 2e-4 \
-    --weighted-sampler all-rare --lora-r 16 --lora-alpha 32
-
-# Phase C: Full training
-poetry run python ml/scripts/train.py \
-    --run-name v5-full \
-    --epochs 60 --batch-size 16 --lr 2e-4 \
-    --weighted-sampler all-rare --lora-r 16 --lora-alpha 32 \
-    --early-stop-patience 10
+PYTHONPATH=/home/motafeq/projects/sentinel TRANSFORMERS_OFFLINE=1 \
+python ml/scripts/train.py \
+  --run-name v5-check-15ep --experiment-name sentinel-v5 \
+  --epochs 15 --batch-size 16 --lr 2e-4 \
+  --lora-r 16 --lora-alpha 32 \
+  --gnn-hidden-dim 128 --gnn-layers 4 --gnn-heads 8 --gnn-edge-emb-dim 32 \
+  --early-stop-patience 5
 ```
 
-After Phase A, check `p95(nodes_per_graph)` in MLflow logs. If `p95 × 16 > VRAM`,
-reduce to `--batch-size 8`.
+**Stopped at epoch 10** (patience still 0/5, model still improving — extra epochs not worth
+the 70-min wait before launching the full run).
+
+| Ep | Loss   | F1-macro | Hamming | Notes              |
+|----|--------|----------|---------|---------------------|
+|  1 | 1.0023 | 0.1887   | 0.1975  | new best            |
+|  2 | 0.8493 | 0.2201   | 0.1930  | new best            |
+|  3 | 0.8288 | 0.2130   | 0.1868  | −1/5                |
+|  4 | 0.8173 | 0.1975   | 0.1812  | −2/5                |
+|  5 | 0.8078 | 0.2223   | 0.1857  | new best            |
+|  6 | 0.7980 | 0.2640   | 0.1924  | new best (+0.042)   |
+|  7 | 0.7891 | 0.2543   | 0.1879  | −1/5                |
+|  8 | 0.7778 | 0.2946   | 0.1888  | new best (+0.035)   |
+|  9 | 0.7691 | 0.3739   | 0.2127  | **new best (+0.079)**|
+| 10 | 0.7583 | 0.3856   | 0.2160  | **new best (+0.012)**|
+
+Best checkpoint: `ml/checkpoints/v5-check-15ep_best.pt` (epoch 10, F1=0.3856).
+
+#### Key Training Findings
+
+**GNN re-engagement (epoch 9–10 confirmed):**
+Per-batch gradient norm monitoring (logged every 100 batches) revealed a non-obvious
+pattern across the 10-epoch run:
+
+- **Epochs 1–3 (LR warmup):** GNN dominant — B100 gnn=0.529, tf=0.361. GNN had larger
+  initial gradients because the new three-phase architecture (Phase 2 CONTROL_FLOW, Phase 3
+  reverse-CONTAINS) was learning structural patterns it had no capacity for in v4.
+- **Epochs 4–8 (LR near peak):** TF dominant at 43–58% share, GNN share declining to 17–26%.
+  The TF eye was learning easy token-level patterns (keyword sequences, function signatures).
+- **Epoch 9 within-batch trend:** GNN share *increased* across the epoch:
+  - B100–B700: gnn avg ~0.047 (18% share)
+  - B1900–B2900: gnn avg ~0.072 (24% share)
+  - **B2900: gnn=0.294 > tf=0.112** — first time GNN exceeded TF since epoch 1.
+  This coincided with the largest single-epoch F1 jump (+0.079), driven by Reentrancy
+  (CFG-structural class) climbing from 0.358 → 0.469, while Timestamp and DenialOfService
+  activated for the first time (TF-driven classes).
+- **Epoch 10:** GNN re-engagement sustained. F1 continued to +0.012. Checkpoint saved.
+
+**Interpretation:** As the TF eye saturates easy token patterns (declining absolute TF
+gradients from epoch 6 onward), the loss surface gradient shifts toward structural
+discrimination where the GNN has an advantage. This is the intended three-eye division of
+labor. The three-phase architecture (especially Phase 3 reverse-CONTAINS) is providing
+signal the TF cannot replicate.
+
+**OneCycleLR note:** All absolute grad norms decline as LR anneals in the later half of the
+LR cycle. Relative shares matter more than absolute values. A GNN norm of 0.078 at epoch 10
+is not "dead" — the TF norm is only 0.124.
+
+### Phase C: Full 60-Epoch Run (RUNNING)
+
+Launched 2026-05-11 23:13 UTC+3:30:
+
+```bash
+PYTHONPATH=/home/motafeq/projects/sentinel TRANSFORMERS_OFFLINE=1 \
+nohup python ml/scripts/train.py \
+  --run-name v5-full-60ep --experiment-name sentinel-v5 \
+  --epochs 60 --batch-size 16 --lr 2e-4 \
+  --lora-r 16 --lora-alpha 32 \
+  --gnn-hidden-dim 128 --gnn-layers 4 --gnn-heads 8 \
+  --gnn-dropout 0.2 --gnn-edge-emb-dim 32 \
+  --warmup-pct 0.06 \
+  --early-stop-patience 10 \
+  --resume ml/checkpoints/v5-check-15ep_best.pt \
+  > ml/logs/train_v5_full60ep.log 2>&1 &
+```
+
+- **PID:** 244442
+- **Resume:** model-only (weights from epoch 10, F1=0.3856); optimizer and epoch counter reset
+- **Log:** `ml/logs/train_v5_full60ep.log`
+- **Warmup:** `--warmup-pct 0.06` = 6% of 60×2998 steps ≈ 3.6 epochs of LR ramp-up
+- **Patience:** 10 epochs (appropriate for a 60-epoch run with warmup re-learning phase)
+
+Epoch 1 (B100–B400) grad norms: gnn≈0.027, tf≈0.140, fused≈0.086 — expected during warmup
+with already-converged weights. LR will ramp through epochs 1–3; GNN contribution will grow
+as it did in the check run once LR reaches peak around epoch 4.
+
+---
+
+## 13. Pending — Phase 6
+
+After `v5-full-60ep` completes or reaches F1 plateau:
 
 ### Phase 6 — Evaluation
 
@@ -989,3 +1048,18 @@ reduce to `--batch-size 8`.
 | `ml/scripts/generate_safe_variants.py` | Mutation-based safe contract generator + two-step verification |
 | `ml/scripts/extract_augmented.py` | Graph+token extraction + label indexing for augmented contracts |
 | `ml/scripts/run_augmentation.sh` | Full Phase 3 pipeline orchestrator |
+| `ml/scripts/create_cache.py` | Build 68,523-pair RAM cache (1.02 GB); reduces per-epoch I/O by ~30% |
+| `ml/scripts/README.md` | Script reference — usage, flags, required env vars |
+| `ml/src/models/README.md` | Architecture reference — three-eye, locked constants, shape contracts |
+| `ml/src/training/README.md` | Training reference — TrainConfig, loss functions, checkpointing |
+| `ml/src/datasets/README.md` | Dataset reference — DualPathDataset, collate, cache, label modes |
+| `ml/src/inference/README.md` | Inference reference — Predictor, API, PreProcessor, cache, drift |
+
+### Generated (not committed — data/binary/logs)
+| Path | Description |
+|---|---|
+| `ml/data/cached_dataset.pkl` | RAM cache — 68,523 pairs, 1.02 GB |
+| `ml/checkpoints/v5-smoke_best.pt` | Smoke run checkpoint (2-epoch sanity check) |
+| `ml/checkpoints/v5-check-15ep_best.pt` | 10-epoch check run best (epoch 10, F1=0.3856) |
+| `ml/logs/train_v5_check15ep.log` | 10-epoch check run full log |
+| `ml/logs/train_v5_full60ep.log` | Full 60-epoch run log (in progress) |

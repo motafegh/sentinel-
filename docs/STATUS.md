@@ -1,6 +1,29 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-10 (v4 experiment 1 complete; tuned F1-macro 0.5422 — gate cleared; v4 is new active checkpoint)
+Last updated: 2026-05-11 (v5 complete rebuild — Phases 0–4 done; Phase 5C full 60-ep run RUNNING)
+
+---
+
+## v5 Rebuild Status (2026-05-11) ← CURRENT
+
+| Phase | Status | Key Output |
+|-------|--------|-----------|
+| Phase 0 — Schema + GNN rebuild | ✅ Complete | NODE_FEATURE_DIM=12, NUM_EDGE_TYPES=7, three-phase 4-layer GAT |
+| Phase 1 — Three-eye classifier | ✅ Complete | GNN+TF+Fused eyes, aux heads λ=0.1, 384-dim classifier input |
+| Phase 2 — Trainer + augmentation | ✅ Complete | sqrt pos_weight, per-eye grad norm logging, aux loss loop |
+| Phase 3 — Inference + tests | ✅ Complete | v5 arch registry, pre-flight test (2 passed) |
+| Phase 4 — Full re-extraction | ✅ Complete | 68,523 v5 graphs, splits frozen, cache 1.02 GB built |
+| Phase 5A — Smoke run | ✅ Complete | No errors, VRAM OK |
+| Phase 5B — 10-ep check run | ✅ Complete | F1=0.3856 at ep10, GNN re-engagement confirmed ep9–10 |
+| Phase 5C — Full 60-ep run | 🔄 RUNNING | PID 244442; log `ml/logs/train_v5_full60ep.log` |
+| Phase 6 — Evaluation | ⏳ Pending | tune_threshold → behavioral tests → promote_model |
+
+**Active checkpoint (in progress):** `ml/checkpoints/v5-check-15ep_best.pt` (epoch 10, raw F1=0.3856)
+**Target:** tuned F1-macro > 0.58, DoS tuned F1 > 0.55, behavioral 70%/66%
+**v4 fallback (if v5 fails gate):** `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt` (tuned F1=0.5422)
+
+See [docs/changes/2026-05-11-v5-implementation-record.md](changes/2026-05-11-v5-implementation-record.md)
+for the full v5 rebuild record including architecture, 4 pre-flight bugs fixed, and training analysis.
 
 ---
 
@@ -8,7 +31,7 @@ Last updated: 2026-05-10 (v4 experiment 1 complete; tuned F1-macro 0.5422 — ga
 
 | Module | Status | Notes |
 |--------|--------|-------|
-| M1 ML Core — models | ✅ Complete | GNNEncoder (edge_attr, configurable arch), TransformerEncoder (LoRA configurable), CrossAttentionFusion |
+| M1 ML Core — models | ✅ Complete | **v5**: three-phase GNNEncoder (12-dim, 7 edge types), TransformerEncoder (LoRA r=16), CrossAttentionFusion, three-eye SentinelModel |
 | M1 ML Core — inference | ✅ Complete | api.py, predictor.py (windowed, full arch args, thresholds list), preprocess.py (cached), cache.py |
 | M1 ML Core — training | ✅ Complete | TrainConfig with full arch fields, AMP, FocalLoss (FP32 cast fixed), early stopping, full-resume CLI, patience sidecar, focal_gamma/alpha logged to MLflow. Fix #25 (2026-05-09): model-only resume now resets epoch counter + patience + best_f1 (fine-tune mode); strict=False for lora_r mismatch. Autoresearch harness (`auto_experiment.py`, `program.md`, `README.md`) built and committed. |
 | M1 ML Core — data extraction | ✅ Complete | ast_extractor.py V4.3, tokenizer.py (schema version metadata), dual_path_dataset.py (edge_attr shape guard) |
@@ -220,7 +243,30 @@ Last updated: 2026-05-10 (v4 experiment 1 complete; tuned F1-macro 0.5422 — ga
 
 ---
 
+## Recent Changes (2026-05-11 — v5 Complete Rebuild)
+
+- **v5 architecture**: three-phase 4-layer GAT (Phase 1 structural, Phase 2 CONTROL_FLOW directed, Phase 3 reverse-CONTAINS); three-eye classifier (GNN+TF+Fused + aux heads); 12-dim node features; 7 edge types
+- **4 pre-flight bugs fixed**: CFG_NODE_WRITE mapping detection, type_id normalisation (/12.0), function name matching, cosine threshold miscalibration
+- **Phase 4 re-extraction complete**: 68,523 v5 graphs; RAM cache 1.02 GB
+- **10-epoch check run**: F1 0.19→0.38, GNN re-engagement confirmed at epoch 9–10 (gnn grad norm rising within epoch, B2900 gnn=0.294 > tf=0.112)
+- **Full 60-epoch run launched**: PID 244442, model-only resume from epoch-10 weights, warmup-pct=0.06, patience=10
+
+---
+
 ## Active Checkpoint
+
+ml/checkpoints/v5-check-15ep_best.pt   ← current best (v5 training in progress)
+  epoch:      10
+  raw F1:     0.3856
+  status:     ✅ In use as seed for full 60-ep run
+
+ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt   ← fallback (v4 complete)
+  tuned F1:   0.5422
+  status:     ✅ Active fallback; superseded once v5 clears gate
+
+---
+
+## Legacy Checkpoints
 
 ml/checkpoints/multilabel_crossattn_best.pt   ← baseline (pre-edge_attr)
   epoch:        34
