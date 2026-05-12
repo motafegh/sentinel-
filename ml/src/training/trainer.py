@@ -6,66 +6,32 @@ and EARLY STOPPING.
 SPEED OPTIMISATIONS APPLIED (vs original):
 ────────────────────────────────────────────────────────────────────────────
 1. AMP (Automatic Mixed Precision)
-     torch.amp.autocast("cuda") wraps every forward pass.
-     GradScaler handles the scaled backward pass and optimizer step.
-     On Ampere GPUs (RTX 30xx/40xx/A-series) this alone is 2–3× faster
-     because FP16/BF16 tensor-core matmuls replace FP32 everywhere
-     except where precision matters (loss, normalisations — PyTorch handles
-     this automatically). BF16 preferred over FP16 on Ampere; no inf/nan risk.
-
 2. TF32 matmuls enabled
-     Two flags tell cuBLAS and cuDNN to use TF32 units on Ampere+.
-     Free ~1.5× speedup with negligible precision loss (10 mantissa bits
-     vs 23 for FP32, but more than enough for gradients).
-     Has zero effect on pre-Ampere GPUs (silently ignored).
-
-3. num_workers raised to 2 (was 0)
-     With num_workers=0 the GPU stalls after every batch while the main
-     thread collates the next one. PyG's Batch.from_data_list() is real
-     CPU work — it needs a background thread.
-     With num_workers=2 + persistent_workers=True, two worker processes
-     pre-fetch and collate while the GPU trains, hiding almost all CPU
-     overhead. The RAM cache is safe to use with workers because each
-     worker gets a read-only fork of the dict (no file I/O race).
-     persistent_workers=True avoids re-spawning workers every epoch.
-
-4. pin_memory now consistent with num_workers
-     pin_memory=True is only meaningful when workers exist (they do the
-     pinning asynchronously). With num_workers=0 it was a no-op/overhead.
-     Now tied to num_workers > 0 automatically.
-
+3. num_workers raised to 2
+4. pin_memory consistent with num_workers
 5. zero_grad(set_to_none=True)
-     Frees gradient tensors entirely instead of writing zeros.
-     Saves a full-model memory write per step — small but free.
-
-6. MLflow log_artifact moved outside the epoch loop
-     Previously called on every best checkpoint, which copies the file
-     synchronously. Now logged once at the end of training (the last-saved
-     best checkpoint). If you want per-epoch artifact logging re-enable it.
-
+6. MLflow log_artifact moved outside epoch loop
 7. EARLY STOPPING
-     Monitors validation F1‑macro, stops training when no improvement
-     for `early_stop_patience` consecutive epochs. Restores best model
-     automatically (implicitly because the best checkpoint is saved).
-
 8. GRADIENT ACCUMULATION (2026-05-12)
      gradient_accumulation_steps=N accumulates gradients over N micro-batches
      before calling optimizer.step(). Effective batch = batch_size × N.
-     On RTX 3070 8 GB with v5 three-eye architecture, batch_size=16 fills
-     ~97% VRAM. Using accumulation_steps=4 keeps each micro-batch at 16
-     while delivering effective batch=64, and crucially:
-       - optimizer.zero_grad() is called only every N batches so gradients
-         are not wiped between accumulation steps.
-       - scaler.step() + scheduler.step() only fire every N batches.
-       - Loss is divided by N so the scale matches single-step training.
-     This eliminates the epoch-2+ VRAM fragmentation slowdown without
-     changing effective batch semantics or learning dynamics.
 
-AUDIT FIXES (2026-05-01 through 2026-05-04): see inline comments.
+AUDIT FIXES (2026-05-01 through 2026-05-12): see inline comments.
+
+Fix #26 — need_weights=False on MHA in fusion_layer.py (see that file)
+Fix #27 — gc.collect() + torch.cuda.empty_cache() between epochs
+         The CUDA caching allocator holds freed blocks from evaluate()
+         across epoch boundaries, contributing to allocator fragmentation
+         in long runs. Explicit cache release after each epoch gives the
+         allocator a clean slate for epoch N+1's training loop.
+         NOTE: This does NOT free tensors still in scope — Python's GC
+         already handles those at function return. empty_cache() only
+         releases the allocator's internal free-block pool back to CUDA.
 """
 
 from __future__ import annotations
 
+import gc
 import json
 import os
 import sys
@@ -124,14 +90,8 @@ CLASS_NAMES = [
 ]
 NUM_CLASSES = len(CLASS_NAMES)
 
-# ---------------------------------------------------------------------------
-# Architecture constant — single source of truth (Fix #9)
-# ---------------------------------------------------------------------------
 ARCHITECTURE = "three_eye_v5"
 
-# ---------------------------------------------------------------------------
-# Valid loss function names — Audit fix #4
-# ---------------------------------------------------------------------------
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal"})
 
 
@@ -179,11 +139,6 @@ class TrainConfig:
     aux_loss_weight:     float = 0.3
 
     # --- Gradient accumulation (2026-05-12) ---
-    # Accumulate gradients over this many micro-batches before stepping.
-    # Effective batch size = batch_size × gradient_accumulation_steps.
-    # Use 4 on RTX 3070 8 GB to avoid VRAM fragmentation slowdown in epoch 2+
-    # while keeping each micro-batch at batch_size=16 (fits in 7.5 GB).
-    # Set to 1 to disable (default — matches previous behaviour exactly).
     gradient_accumulation_steps: int = 1
 
     # --- Stability ---
@@ -228,14 +183,11 @@ class TrainConfig:
         if self.gnn_layers != 4:
             raise ValueError(
                 f"gnn_layers={self.gnn_layers} is not supported in v5.0. "
-                "Only gnn_layers=4 is implemented (3-phase: 2 structural + CONTAINS, "
-                "1 CONTROL_FLOW directed, 1 reverse-CONTAINS). "
-                "v5.1 target: gnn_layers=5 for 2 CONTROL_FLOW hops."
+                "Only gnn_layers=4 is implemented."
             )
         if self.gradient_accumulation_steps < 1:
             raise ValueError(
-                f"gradient_accumulation_steps={self.gradient_accumulation_steps} is invalid. "
-                "Must be >= 1."
+                f"gradient_accumulation_steps={self.gradient_accumulation_steps} must be >= 1."
             )
 
 
@@ -263,10 +215,9 @@ def compute_pos_weight(
         if pos == 0:
             logger.warning(
                 f"Class '{CLASS_NAMES[c]}' (index {c}) has zero positives in training split. "
-                "sqrt pos_weight undefined (division by zero) — using sqrt((N-1)/1) ≈ sqrt(N)."
+                "Using pos=1 to avoid division by zero."
             )
             pos = 1
-
         raw_ratio = float(N - pos) / float(pos)
         pos_weight_vals.append(float(raw_ratio ** 0.5))
 
@@ -364,14 +315,12 @@ def train_one_epoch(
                 loss_fn(aux["transformer"], labels) +
                 loss_fn(aux["fused"],       labels)
             )
-            # Divide by accum_steps so gradient magnitude matches single-step
             loss = (main_loss + aux_loss_weight * aux_loss) / accum_steps
 
         scaler.scale(loss).backward()
 
-        # Only step optimizer every accum_steps batches (or on last batch)
-        is_last_batch    = (batch_idx + 1 == len(loader))
-        is_accum_step    = ((batch_idx + 1) % accum_steps == 0) or is_last_batch
+        is_last_batch = (batch_idx + 1 == len(loader))
+        is_accum_step = ((batch_idx + 1) % accum_steps == 0) or is_last_batch
 
         if is_accum_step:
             scaler.unscale_(optimizer)
@@ -381,7 +330,6 @@ def train_one_epoch(
             scheduler.step()
             optimizer.zero_grad(set_to_none=True)
 
-        # Use the unscaled loss for logging (multiply back by accum_steps)
         loss_for_log = loss.item() * accum_steps
         total_loss  += loss_for_log
         pbar.set_postfix({"loss": f"{loss_for_log:.4f}"})
@@ -463,9 +411,7 @@ def train(config: TrainConfig) -> dict:
 
     if config.loss_fn not in _VALID_LOSS_FNS:
         raise ValueError(
-            f"Unknown loss_fn='{config.loss_fn}'. "
-            f"Valid options: {sorted(_VALID_LOSS_FNS)}. "
-            "Check your TrainConfig or the --loss_fn argument."
+            f"Unknown loss_fn='{config.loss_fn}'. Valid options: {sorted(_VALID_LOSS_FNS)}."
         )
 
     if config.use_amp and device == "cpu":
@@ -473,10 +419,7 @@ def train(config: TrainConfig) -> dict:
         config.use_amp = False
 
     if not (0.0 < config.smoke_subsample_fraction <= 1.0):
-        raise ValueError(
-            f"smoke_subsample_fraction must be in (0, 1], "
-            f"got {config.smoke_subsample_fraction}"
-        )
+        raise ValueError(f"smoke_subsample_fraction must be in (0, 1], got {config.smoke_subsample_fraction}")
 
     train_indices = np.load(Path(config.splits_dir) / "train_indices.npy")
     val_indices   = np.load(Path(config.splits_dir) / "val_indices.npy")
@@ -486,17 +429,11 @@ def train(config: TrainConfig) -> dict:
         keep_n = max(1, int(original_n * config.smoke_subsample_fraction))
         rng = np.random.default_rng(42)
         train_indices = np.sort(rng.choice(train_indices, size=keep_n, replace=False))
-        logger.info(
-            f"Smoke subsample: {keep_n}/{original_n} train samples "
-            f"({100 * config.smoke_subsample_fraction:.0f}%)"
-        )
+        logger.info(f"Smoke subsample: {keep_n}/{original_n} train samples ({100*config.smoke_subsample_fraction:.0f}%)")
 
     label_csv_path = Path(config.label_csv) if config.label_csv else None
     if label_csv_path is not None and not label_csv_path.exists():
-        raise FileNotFoundError(
-            f"label_csv not found: {label_csv_path}. "
-            "Check TrainConfig.label_csv or run build_multilabel_index.py first."
-        )
+        raise FileNotFoundError(f"label_csv not found: {label_csv_path}.")
     cache_path = Path(config.cache_path) if config.cache_path else None
 
     logger.info("Creating training dataset...")
@@ -519,7 +456,6 @@ def train(config: TrainConfig) -> dict:
     )
 
     _use_workers = config.num_workers > 0
-
     _loader_kwargs: dict = dict(
         batch_size=config.batch_size,
         collate_fn=dual_path_collate_fn,
@@ -534,9 +470,7 @@ def train(config: TrainConfig) -> dict:
 
     _sampler = None
     if config.use_weighted_sampler != "none" and label_csv_path is not None:
-        _sampler = _build_weighted_sampler(
-            train_dataset, label_csv_path, config.use_weighted_sampler
-        )
+        _sampler = _build_weighted_sampler(train_dataset, label_csv_path, config.use_weighted_sampler)
 
     if _sampler is not None:
         train_loader = DataLoader(train_dataset, sampler=_sampler, shuffle=False, **_loader_kwargs)
@@ -544,8 +478,8 @@ def train(config: TrainConfig) -> dict:
         train_loader = DataLoader(train_dataset, shuffle=True, **_loader_kwargs)
     val_loader = DataLoader(val_dataset, shuffle=False, **_loader_kwargs)
 
-    accum_steps    = config.gradient_accumulation_steps
-    effective_bs   = config.batch_size * accum_steps
+    accum_steps  = config.gradient_accumulation_steps
+    effective_bs = config.batch_size * accum_steps
     logger.info(
         f"DataLoader — workers: {config.num_workers} | pin_memory: {_use_workers} | "
         f"AMP: {config.use_amp} | TF32: {torch.backends.cuda.matmul.allow_tf32} | "
@@ -553,14 +487,9 @@ def train(config: TrainConfig) -> dict:
     )
 
     if label_csv_path is not None:
-        pos_weight = compute_pos_weight(
-            str(label_csv_path), train_indices, config.num_classes, device
-        )
+        pos_weight = compute_pos_weight(str(label_csv_path), train_indices, config.num_classes, device)
     else:
-        logger.info(
-            "Binary mode (label_csv=None) — pos_weight not computed; "
-            "BCEWithLogitsLoss will run unweighted."
-        )
+        logger.info("Binary mode (label_csv=None) — pos_weight not computed.")
         pos_weight = None
 
     model = SentinelModel(
@@ -596,22 +525,14 @@ def train(config: TrainConfig) -> dict:
         lora_skipped  = [k for k in missing if "lora_" in k]
         other_missing = [k for k in missing if "lora_" not in k]
         if lora_skipped:
-            logger.warning(
-                f"Resume: {len(lora_skipped)} LoRA keys not loaded "
-                f"(lora_r mismatch — LoRA adapters re-initialised fresh). "
-                f"GNN/fusion/classifier weights loaded from checkpoint."
-            )
+            logger.warning(f"Resume: {len(lora_skipped)} LoRA keys not loaded (lora_r mismatch).")
         if other_missing:
-            raise RuntimeError(
-                f"Resume: {len(other_missing)} non-LoRA keys missing from checkpoint: "
-                f"{other_missing[:5]} ..."
-            )
+            raise RuntimeError(f"Resume: {len(other_missing)} non-LoRA keys missing: {other_missing[:5]}")
 
         if config.resume_model_only:
             logger.info(
-                f"Model-only resume (fine-tune) — weights from checkpoint epoch "
-                f"{ckpt.get('epoch', 0)} (raw F1={ckpt.get('best_f1', 0.0):.4f}). "
-                f"Epoch counter, patience, and best_f1 reset to fresh start."
+                f"Model-only resume — weights from epoch {ckpt.get('epoch', 0)} "
+                f"(F1={ckpt.get('best_f1', 0.0):.4f}). Counter reset to fresh start."
             )
         else:
             start_epoch      = ckpt.get("epoch", 0) + 1
@@ -624,74 +545,42 @@ def train(config: TrainConfig) -> dict:
                 _state_epoch = _saved_state.get("epoch", 0)
                 if _state_epoch >= start_epoch - 1:
                     patience_counter = _saved_state.get("patience_counter", patience_counter)
-                    logger.info(
-                        f"patience_counter overridden from state file "
-                        f"(epoch {_state_epoch}): "
-                        f"{patience_counter}/{config.early_stop_patience}"
-                    )
+                    logger.info(f"patience_counter from state file: {patience_counter}/{config.early_stop_patience}")
             else:
-                logger.warning(
-                    "No .state.json sidecar found alongside the resume checkpoint — "
-                    f"patience_counter initialised from checkpoint value ({patience_counter}). "
-                    "Non-improvement epochs before the interruption are NOT counted. "
-                    "State sidecars are written after every epoch starting with this run."
-                )
+                logger.warning("No .state.json sidecar — patience_counter from checkpoint value.")
 
             logger.info(
                 f"Full resume from epoch {start_epoch-1} | "
-                f"best_f1={best_f1:.4f} | "
-                f"patience_counter={patience_counter}/{config.early_stop_patience}"
+                f"best_f1={best_f1:.4f} | patience={patience_counter}/{config.early_stop_patience}"
             )
 
         ckpt_cfg = ckpt.get("config", {})
-
         ckpt_num_classes = ckpt_cfg.get("num_classes")
         if ckpt_num_classes is not None and ckpt_num_classes != config.num_classes:
-            raise ValueError(
-                f"Checkpoint num_classes={ckpt_num_classes} does not match "
-                f"config.num_classes={config.num_classes}."
-            )
+            raise ValueError(f"Checkpoint num_classes={ckpt_num_classes} ≠ config {config.num_classes}.")
         ckpt_arch = ckpt_cfg.get("architecture")
         if ckpt_arch is not None and ckpt_arch != ARCHITECTURE:
-            raise ValueError(
-                f"Checkpoint architecture='{ckpt_arch}' does not match "
-                f"expected '{ARCHITECTURE}'."
-            )
+            raise ValueError(f"Checkpoint architecture='{ckpt_arch}' ≠ expected '{ARCHITECTURE}'.")
 
-        ckpt_batch_size    = ckpt_cfg.get("batch_size")
-        _batch_size_changed = (
-            ckpt_batch_size is not None
-            and ckpt_batch_size != config.batch_size
-        )
-        if _batch_size_changed and not config.resume_model_only:
+        ckpt_batch_size = ckpt_cfg.get("batch_size")
+        if ckpt_batch_size is not None and ckpt_batch_size != config.batch_size and not config.resume_model_only:
             if config.force_optimizer_reset:
-                logger.warning(
-                    f"BATCH SIZE CHANGED: checkpoint={ckpt_batch_size} → "
-                    f"current={config.batch_size}. "
-                    f"force_optimizer_reset=True — optimizer/scheduler state discarded."
-                )
+                logger.warning(f"Batch size changed {ckpt_batch_size}→{config.batch_size}. Optimizer will be reset.")
             else:
-                logger.warning(
-                    f"BATCH SIZE MISMATCH (Fix #12): checkpoint={ckpt_batch_size} "
-                    f"current={config.batch_size}. Full resume with stale Adam moments."
-                )
+                logger.warning(f"BATCH SIZE MISMATCH (Fix #12): ckpt={ckpt_batch_size} current={config.batch_size}.")
 
     if config.loss_fn == "focal":
         _focal = FocalLoss(gamma=config.focal_gamma, alpha=config.focal_alpha)
-
         class _FocalFromLogits(nn.Module):
             def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
                 return _focal(torch.sigmoid(logits.float()), targets)
-
         loss_fn: nn.Module = _FocalFromLogits()
         logger.info(f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha})")
     else:
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
         if pos_weight is not None and config.resume_from and not config.resume_model_only:
-            logger.warning(
-                "Fix #13: BCEWithLogitsLoss pos_weight recomputed from current training split."
-            )
+            logger.warning("Fix #13: pos_weight recomputed from current training split.")
 
     optimizer = AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
@@ -701,9 +590,7 @@ def train(config: TrainConfig) -> dict:
 
     remaining_epochs = config.epochs - start_epoch + 1
     if remaining_epochs <= 0:
-        logger.warning(
-            f"start_epoch={start_epoch} >= config.epochs={config.epochs}: nothing to train."
-        )
+        logger.warning(f"start_epoch={start_epoch} >= config.epochs={config.epochs}: nothing to train.")
         return {
             "best_f1_macro": best_f1,
             "final_epoch": start_epoch - 1,
@@ -711,8 +598,6 @@ def train(config: TrainConfig) -> dict:
             "checkpoint_path": str(Path(config.checkpoint_dir) / config.checkpoint_name),
         }
 
-    # OneCycleLR steps once per optimizer step, not per micro-batch.
-    # With accumulation, optimizer steps = ceil(batches / accum_steps) per epoch.
     steps_per_epoch = (len(train_loader) + accum_steps - 1) // accum_steps
     scheduler = OneCycleLR(
         optimizer,
@@ -728,17 +613,13 @@ def train(config: TrainConfig) -> dict:
     if _ckpt_state is not None and not config.resume_model_only:
         ckpt = _ckpt_state
         _skip_optimizer = config.force_optimizer_reset
-
         if not _skip_optimizer and "optimizer" in ckpt:
             optimizer.load_state_dict(ckpt["optimizer"])
             logger.info("Optimizer state restored.")
         elif _skip_optimizer:
             logger.info("Optimizer state skipped — force_optimizer_reset=True.")
         else:
-            logger.warning(
-                "Full resume requested but checkpoint has no 'optimizer' key. "
-                "Fresh AdamW initialised."
-            )
+            logger.warning("Full resume requested but no 'optimizer' key in checkpoint. Fresh AdamW.")
 
         if "scheduler" in ckpt and not _skip_optimizer:
             new_total_steps = remaining_epochs * steps_per_epoch
@@ -750,10 +631,7 @@ def train(config: TrainConfig) -> dict:
                     scheduler.load_state_dict(ckpt["scheduler"])
                     logger.info("Scheduler state restored.")
                 else:
-                    logger.warning(
-                        f"Scheduler state skipped — total_steps mismatch "
-                        f"({ckpt_total_steps} vs {new_total_steps})."
-                    )
+                    logger.warning(f"Scheduler skipped — total_steps mismatch ({ckpt_total_steps} vs {new_total_steps}).")
         elif _skip_optimizer:
             logger.info("Scheduler state skipped — force_optimizer_reset=True.")
     elif _ckpt_state is not None:
@@ -764,41 +642,41 @@ def train(config: TrainConfig) -> dict:
 
     with mlflow.start_run(run_name=config.run_name):
         params = {
-            "num_classes":                config.num_classes,
-            "epochs":                     config.epochs,
-            "remaining_epochs":           remaining_epochs,
-            "batch_size":                 config.batch_size,
+            "num_classes":                 config.num_classes,
+            "epochs":                      config.epochs,
+            "remaining_epochs":            remaining_epochs,
+            "batch_size":                  config.batch_size,
             "gradient_accumulation_steps": accum_steps,
-            "effective_batch_size":       effective_bs,
-            "lr":                         config.lr,
-            "weight_decay":               config.weight_decay,
-            "threshold":                  config.threshold,
-            "grad_clip":                  config.grad_clip,
-            "warmup_pct":                 config.warmup_pct,
-            "num_workers":                config.num_workers,
-            "use_amp":                    config.use_amp,
-            "loss_fn":                    config.loss_fn,
-            "focal_gamma":                config.focal_gamma,
-            "focal_alpha":                config.focal_alpha,
-            "device":                     device,
-            "architecture":               ARCHITECTURE,
-            "label_csv":                  config.label_csv,
-            "resume_from":                config.resume_from or "none",
-            "resume_model_only":          config.resume_model_only,
-            "force_optimizer_reset":      config.force_optimizer_reset,
-            "early_stop_patience":        config.early_stop_patience,
-            "gnn_hidden_dim":             config.gnn_hidden_dim,
-            "gnn_layers":                 config.gnn_layers,
-            "gnn_heads":                  config.gnn_heads,
-            "gnn_dropout":                config.gnn_dropout,
-            "use_edge_attr":              config.use_edge_attr,
-            "gnn_edge_emb_dim":           config.gnn_edge_emb_dim,
-            "aux_loss_weight":            config.aux_loss_weight,
-            "lora_r":                     config.lora_r,
-            "lora_alpha":                 config.lora_alpha,
-            "lora_dropout":               config.lora_dropout,
-            "lora_target_modules":        ",".join(config.lora_target_modules),
-            "fusion_output_dim":          config.fusion_output_dim,
+            "effective_batch_size":        effective_bs,
+            "lr":                          config.lr,
+            "weight_decay":                config.weight_decay,
+            "threshold":                   config.threshold,
+            "grad_clip":                   config.grad_clip,
+            "warmup_pct":                  config.warmup_pct,
+            "num_workers":                 config.num_workers,
+            "use_amp":                     config.use_amp,
+            "loss_fn":                     config.loss_fn,
+            "focal_gamma":                 config.focal_gamma,
+            "focal_alpha":                 config.focal_alpha,
+            "device":                      device,
+            "architecture":                ARCHITECTURE,
+            "label_csv":                   config.label_csv,
+            "resume_from":                 config.resume_from or "none",
+            "resume_model_only":           config.resume_model_only,
+            "force_optimizer_reset":       config.force_optimizer_reset,
+            "early_stop_patience":         config.early_stop_patience,
+            "gnn_hidden_dim":              config.gnn_hidden_dim,
+            "gnn_layers":                  config.gnn_layers,
+            "gnn_heads":                   config.gnn_heads,
+            "gnn_dropout":                 config.gnn_dropout,
+            "use_edge_attr":               config.use_edge_attr,
+            "gnn_edge_emb_dim":            config.gnn_edge_emb_dim,
+            "aux_loss_weight":             config.aux_loss_weight,
+            "lora_r":                      config.lora_r,
+            "lora_alpha":                  config.lora_alpha,
+            "lora_dropout":                config.lora_dropout,
+            "lora_target_modules":         ",".join(config.lora_target_modules),
+            "fusion_output_dim":           config.fusion_output_dim,
         }
         if pos_weight is not None:
             for name, pw in zip(CLASS_NAMES[:config.num_classes], pos_weight.cpu().tolist()):
@@ -835,6 +713,14 @@ def train(config: TrainConfig) -> dict:
                 use_amp=config.use_amp,
             )
 
+            # Fix #27: release CUDA caching allocator free-blocks between epochs.
+            # evaluate() returns with all its tensors out of scope; gc.collect()
+            # ensures CPython finalises any lingering reference cycles before
+            # empty_cache() returns pages to CUDA. Reduces allocator fragmentation
+            # entering the next epoch's training loop.
+            gc.collect()
+            torch.cuda.empty_cache()
+
             mlflow.log_metric("train_loss",    train_loss,               step=epoch)
             mlflow.log_metric("val_f1_macro",  val_metrics["f1_macro"],  step=epoch)
             mlflow.log_metric("val_f1_micro",  val_metrics["f1_micro"],  step=epoch)
@@ -842,9 +728,7 @@ def train(config: TrainConfig) -> dict:
             for name in CLASS_NAMES[:config.num_classes]:
                 mlflow.log_metric(f"val_f1_{name}", val_metrics[f"f1_{name}"], step=epoch)
 
-            class_f1s = [
-                (n, val_metrics[f"f1_{n}"]) for n in CLASS_NAMES[:config.num_classes]
-            ]
+            class_f1s = [(n, val_metrics[f"f1_{n}"]) for n in CLASS_NAMES[:config.num_classes]]
             class_f1s.sort(key=lambda x: x[1], reverse=True)
             top3    = " | ".join(f"{n}={v:.3f}" for n, v in class_f1s[:3])
             bottom3 = " | ".join(f"{n}={v:.3f}" for n, v in class_f1s[-3:])
@@ -880,15 +764,9 @@ def train(config: TrainConfig) -> dict:
                 logger.info(f"  ★ New best F1-macro: {best_f1:.4f} — checkpoint saved")
             else:
                 patience_counter += 1
-                logger.info(
-                    f"  No improvement for "
-                    f"{patience_counter} / {config.early_stop_patience} epochs"
-                )
+                logger.info(f"  No improvement for {patience_counter}/{config.early_stop_patience} epochs")
                 if patience_counter >= config.early_stop_patience:
-                    logger.info(
-                        f"  Early stopping triggered after {epoch} epochs "
-                        f"(best F1-macro = {best_f1:.4f})"
-                    )
+                    logger.info(f"  Early stopping after {epoch} epochs (best F1={best_f1:.4f})")
                     break
 
             _state_path = checkpoint_path.with_suffix(".state.json")
