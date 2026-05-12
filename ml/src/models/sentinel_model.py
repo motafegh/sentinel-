@@ -11,9 +11,14 @@ execution order via CFG CONTROL_FLOW edges and propagates it back up to
 function nodes via reversed CONTAINS edges (Phase 3).
 
   GNN eye         (structural opinion):
-    global_max_pool(node_embs, batch)  → [B, 128]
-    global_mean_pool(node_embs, batch) → [B, 128]
-    cat                                → [B, 256]
+    Pool over FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes only.
+    After Phase 3 (reverse-CONTAINS), these nodes carry aggregated CFG signal.
+    Pooling over all nodes was dominated by CFG_RETURN (77% of CFG node mass),
+    drowning the CFG_CALL/WRITE/COND signal that encodes execution order.
+    Falls back to all-node pool if no function-level nodes exist (ghost graphs).
+    global_max_pool(func_embs, func_batch)  → [B, 128]
+    global_mean_pool(func_embs, func_batch) → [B, 128]
+    cat                                     → [B, 256]
     gnn_eye_proj  Linear(256,128)+ReLU+Dropout → [B, 128]
 
   Transformer eye (semantic opinion):
@@ -203,16 +208,36 @@ class SentinelModel(nn.Module):
         node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
         # node_embs: [N, gnn_hidden_dim]  batch: [N]
 
-        # ── GNN eye: max+mean pool → project ─────────────────────────────
-        # Max pool captures "is there at least one node with feature X?"
-        # (existential bias — a contract is vulnerable if ANY function is).
-        # Mean pool captures the "typical node" character of the contract.
-        # Concatenating both lets the classifier choose its own weighting.
-        gnn_max  = global_max_pool(node_embs, batch)   # [B, gnn_hidden_dim]
-        gnn_mean = global_mean_pool(node_embs, batch)  # [B, gnn_hidden_dim]
+        # ── GNN eye: function-level pool → project ───────────────────────
+        # Pool only over function-level nodes (FUNCTION/MODIFIER/FALLBACK/
+        # RECEIVE/CONSTRUCTOR).  After Phase 3 reverse-CONTAINS aggregation,
+        # these nodes carry CFG ordering signal.  Pooling over all nodes was
+        # dominated by CFG_RETURN (77% of CFG node mass, median 93%), which
+        # caused the GNN eye gradient share to collapse to ~7% by epoch 43.
+        #
+        # Node type_id is stored normalised as x[:,0]/12.0 — denormalise to
+        # recover the integer id before masking.
+        _FUNC_TYPE_IDS = {1, 2, 4, 5, 6}   # FUNCTION MODIFIER FALLBACK RECEIVE CONSTRUCTOR
+        node_type_ids = (graphs.x[:, 0] * 12.0).round().long()
+        pool_mask = torch.zeros(node_embs.size(0), dtype=torch.bool,
+                                device=node_embs.device)
+        for tid in _FUNC_TYPE_IDS:
+            pool_mask |= (node_type_ids == tid)
+
+        if pool_mask.any():
+            pool_embs  = node_embs[pool_mask]
+            pool_batch = batch[pool_mask]
+        else:
+            # Ghost graph (interface-only extraction) — fall back to all nodes
+            # so the model still produces a valid output rather than crashing.
+            pool_embs  = node_embs
+            pool_batch = batch
+
+        gnn_max  = global_max_pool(pool_embs, pool_batch)   # [B, gnn_hidden_dim]
+        gnn_mean = global_mean_pool(pool_embs, pool_batch)  # [B, gnn_hidden_dim]
         gnn_eye  = self.gnn_eye_proj(
-            torch.cat([gnn_max, gnn_mean], dim=1)      # [B, 2*gnn_hidden_dim]
-        )                                               # [B, eye_dim]
+            torch.cat([gnn_max, gnn_mean], dim=1)           # [B, 2*gnn_hidden_dim]
+        )                                                    # [B, eye_dim]
 
         # ── Transformer path ──────────────────────────────────────────────
         token_embs = self.transformer(input_ids, attention_mask)
