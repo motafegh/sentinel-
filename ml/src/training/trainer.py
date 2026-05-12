@@ -112,7 +112,7 @@ Fix #16 — Hardcoded magic number 47966 in batch-size mismatch warning replaced
            as the dataset grows.
 
 Fix #17 — TrainConfig.batch_size default was 16 while train.py --batch-size
-           defaulted to 32. Both now default to 32.
+           defaulted to 32. Both now default to 16 (correct for RTX 3070 8GB VRAM).
 
 Fix #18 — ZeroDivisionError in train_one_epoch when the DataLoader is empty
            (e.g. drop_last=True with very small dataset). Now returns 0.0 with
@@ -712,7 +712,9 @@ def train(config: TrainConfig) -> dict:
 
     if config.resume_from:
         logger.info(f"Resuming from: {config.resume_from}")
-        ckpt = torch.load(config.resume_from, map_location=device, weights_only=False)
+        # weights_only=True: checkpoint format is confirmed safe (plain dicts +
+        # tensors from state_dict() — no custom pickled objects).
+        ckpt = torch.load(config.resume_from, map_location=device, weights_only=True)
         _ckpt_state = ckpt
 
         if not isinstance(ckpt, dict) or "model" not in ckpt:

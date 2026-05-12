@@ -48,6 +48,8 @@ from loguru import logger
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 PROJECT_ROOT   = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+from ml.src.utils.hash_utils import get_contract_hash  # noqa: E402
 DEFAULT_CSV    = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index.csv"
 DEFAULT_OUT    = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index_deduped.csv"
 DEFAULT_SPLITS = PROJECT_ROOT / "ml" / "data" / "splits" / "deduped"
@@ -84,7 +86,7 @@ def build_content_map(all_path_md5s: set[str]) -> dict[str, str]:
             continue
         for sol in src_dir.rglob("*.sol"):
             rel = sol.relative_to(PROJECT_ROOT)
-            pm = hashlib.md5(str(rel).encode("utf-8")).hexdigest()
+            pm = get_contract_hash(rel)
             if pm not in all_path_md5s:
                 continue
             if pm in path_md5_to_content:
