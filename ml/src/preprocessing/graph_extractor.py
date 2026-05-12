@@ -584,6 +584,15 @@ def _select_contract(sl: Any, config: GraphExtractionConfig) -> Any:
     Pick the target Slither Contract from the parsed contract list.
 
     Filters out imported dependencies so only user-supplied code is analysed.
+    When a file defines interfaces before the main contract (common in protocol
+    contracts), interfaces are skipped and the concrete contract with the most
+    functions is preferred.  This avoids extracting a ghost graph (2 nodes,
+    0 edges) from an interface whose function bodies are empty.
+
+    NOTE (Slither 0.10.x): `is_interface` is a reliable property.
+    `is_abstract` does not exist — abstract contracts share contract_kind='contract'
+    with concrete ones.  The len(functions) sort handles abstract vs concrete
+    implicitly since abstract functions have no body and produce fewer nodes.
     """
     candidates = [c for c in sl.contracts if not c.is_from_dependency()]
     if not candidates:
@@ -603,6 +612,20 @@ def _select_contract(sl: Any, config: GraphExtractionConfig) -> Any:
             [c.name for c in candidates],
         )
 
+    # Prefer non-interface contracts.  If multiple remain, pick the one with the
+    # most functions — this naturally selects concrete over abstract and the
+    # richest contract when multiple implementations are defined in one file.
+    non_iface = [c for c in candidates if not c.is_interface]
+    if non_iface:
+        return max(non_iface, key=lambda c: len(c.functions))
+
+    # All candidates are interfaces (e.g. a pure-interface file) — fall back to
+    # the first one so extraction still proceeds rather than silently failing.
+    logger.warning(
+        "All %d non-dependency contracts in this file are interfaces; "
+        "extracting the first one. Graph will likely be minimal.",
+        len(candidates),
+    )
     return candidates[0]
 
 
@@ -666,6 +689,7 @@ def extract_contract_graph(
     """
     if config is None:
         config = GraphExtractionConfig()
+    sol_path = Path(sol_path)
 
     # ── Slither availability ───────────────────────────────────────────────
     try:
@@ -737,6 +761,9 @@ def extract_contract_graph(
     edges:      list = []
     edge_types: list = []
 
+    _cfg_failure_count = 0
+    _func_total = len(contract.functions)
+
     for func in contract.functions:
         fn_idx = _add_node(func, NODE_TYPES["FUNCTION"])
         if fn_idx is None:
@@ -759,6 +786,7 @@ def extract_contract_graph(
                 edges.append([src, dst])
                 edge_types.append(EDGE_TYPES["CONTROL_FLOW"])
         except Exception as exc:
+            _cfg_failure_count += 1
             logger.warning(
                 "CFG extraction failed for function '%s' in '%s': %s — "
                 "CONTAINS/CONTROL_FLOW edges for this function omitted.",
@@ -766,6 +794,21 @@ def extract_contract_graph(
                 contract.name,
                 exc,
             )
+
+    # Warn if CFG extraction failures exceeded 5% of functions in this contract.
+    # Single-statement or synthetic functions raising here is benign; a high rate
+    # signals a Slither version mismatch or corrupt source.
+    if _cfg_failure_count > 0 and _func_total > 0:
+        failure_rate = _cfg_failure_count / _func_total
+        log_fn = logger.error if failure_rate > 0.05 else logger.debug
+        log_fn(
+            "CFG extraction: %d/%d functions failed in '%s' (%.0f%%)%s",
+            _cfg_failure_count,
+            _func_total,
+            contract.name,
+            failure_rate * 100,
+            " — exceeds 5% threshold, investigate Slither version or source" if failure_rate > 0.05 else "",
+        )
 
     for mod   in contract.modifiers: _add_node(mod,   NODE_TYPES["MODIFIER"])
     for event in contract.events:    _add_node(event, NODE_TYPES["EVENT"])

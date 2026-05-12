@@ -190,7 +190,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--aux-loss-weight",
         type=float,
-        default=0.1,
+        default=0.3,
         help="λ for auxiliary eye losses: total = main + λ*(aux_gnn + aux_tf + aux_fused)",
     )
 
