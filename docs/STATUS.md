@@ -1,29 +1,50 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-11 (v5 complete rebuild — Phases 0–4 done; Phase 5C full 60-ep run RUNNING)
+Last updated: 2026-05-12 (v5.0 evaluation complete — behavioral gate failed; v5.1 plan active)
 
 ---
 
-## v5 Rebuild Status (2026-05-11) ← CURRENT
+## v5.1 Plan Status (2026-05-12) ← CURRENT
+
+v5.0 behavioral gate failed (15% detection, 0/3 safe specificity — identical to v4).
+Three confirmed root causes fixed in v5.1. See
+[docs/proposals/2026-05-12-v5.1-analysis-and-plan.md](proposals/2026-05-12-v5.1-analysis-and-plan.md).
 
 | Phase | Status | Key Output |
 |-------|--------|-----------|
-| Phase 0 — Schema + GNN rebuild | ✅ Complete | NODE_FEATURE_DIM=12, NUM_EDGE_TYPES=7, three-phase 4-layer GAT |
-| Phase 1 — Three-eye classifier | ✅ Complete | GNN+TF+Fused eyes, aux heads λ=0.1, 384-dim classifier input |
-| Phase 2 — Trainer + augmentation | ✅ Complete | sqrt pos_weight, per-eye grad norm logging, aux loss loop |
-| Phase 3 — Inference + tests | ✅ Complete | v5 arch registry, pre-flight test (2 passed) |
-| Phase 4 — Full re-extraction | ✅ Complete | 68,523 v5 graphs, splits frozen, cache 1.02 GB built |
-| Phase 5A — Smoke run | ✅ Complete | No errors, VRAM OK |
-| Phase 5B — 10-ep check run | ✅ Complete | F1=0.3856 at ep10, GNN re-engagement confirmed ep9–10 |
-| Phase 5C — Full 60-ep run | 🔄 RUNNING | PID 244442; log `ml/logs/train_v5_full60ep.log` |
-| Phase 6 — Evaluation | ⏳ Pending | tune_threshold → behavioral tests → promote_model |
+| Phase 0a — Fix `_select_contract` interface filter | ⏳ Pending | Eliminates ~10% ghost training graphs |
+| Phase 0b — Function-level GNN pooling | ⏳ Pending | Removes 77% CFG_RETURN noise from GNN eye |
+| Phase 0c — aux_loss_weight 0.1 → 0.3 | ⏳ Pending | Sustains GNN eye gradient share ≥ 15% |
+| Phase 1 — Re-extract 68K | ⏳ Pending | Ghost count <1%; validate_graph_dataset gate ≥95% |
+| Phase 2a — CEI contrastive pairs (~50) | ⏳ Pending | Teach call-before-write vs write-before-call distinction |
+| Phase 2b — DoS augmentation (+300) | ⏳ Pending | DoS: 695 → ~995 training samples |
+| Phase 3 — Retrain v5.1 (60 ep, fresh) | ⏳ Pending | Target: tuned F1 > 0.60, behavioral 70%/66% |
+| Phase 4 — Validate + promote | ⏳ Pending | All gates → promote_model.py |
 
-**Active checkpoint (in progress):** `ml/checkpoints/v5-check-15ep_best.pt` (epoch 10, raw F1=0.3856)
-**Target:** tuned F1-macro > 0.58, DoS tuned F1 > 0.55, behavioral 70%/66%
-**v4 fallback (if v5 fails gate):** `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt` (tuned F1=0.5422)
+**v5.0 final checkpoint (NOT promoted):** `ml/checkpoints/v5-full-60ep_best.pt`
+(epoch 43, raw F1=0.5736, tuned F1=0.5828 — validation gates cleared, behavioral gates failed)
+
+**Active fallback:** `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt` (tuned F1=0.5422)
+
+---
+
+## v5.0 Final Results (2026-05-12)
+
+| Phase | Status | Key Output |
+|-------|--------|-----------|
+| Phase 0–4 — Full rebuild | ✅ Complete | NODE_FEATURE_DIM=12, 68K graphs, three-phase GNN |
+| Phase 5A — Smoke | ✅ Complete | No errors |
+| Phase 5B — 10-ep check | ✅ Complete | F1=0.3856, GNN re-engagement ep9–10 |
+| Phase 5C — Full 60-ep run | ✅ Complete (ep 44) | Best F1=0.5736 (ep 43) |
+| Phase 6a — tune_threshold | ✅ Complete | Tuned F1-macro=0.5828; DoS=0.449 |
+| Phase 6b — Behavioral test | ✅ Complete | **FAILED: 15% detection, 0/3 safe** |
+| Phase 6c — Promote | ❌ Blocked | Behavioral gate failed; v5.1 required |
+
+See [docs/changes/2026-05-12-v5-evaluation-and-v5.1-analysis.md](changes/2026-05-12-v5-evaluation-and-v5.1-analysis.md)
+for full evaluation record and root cause analysis.
 
 See [docs/changes/2026-05-11-v5-implementation-record.md](changes/2026-05-11-v5-implementation-record.md)
-for the full v5 rebuild record including architecture, 4 pre-flight bugs fixed, and training analysis.
+for the v5.0 architecture build record.
 
 ---
 
