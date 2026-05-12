@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-12 (v5.1 Phase 0 complete; dataset dedup applied; Phase 1 extraction running)
+Last updated: 2026-05-12 (v5.1 Phase 3 retrain running — fix #26/#27/#28 applied)
 
 ---
 
@@ -20,13 +20,28 @@ Three confirmed root causes fixed in v5.1. See
 | Phase 1 — Re-extract graphs | ✅ Complete (65617e1) | 44,140/44,420 fresh (99.4%); 44,420/44,420 validate PASS |
 | Phase 2a — CEI contrastive pairs (~50) | ⏳ Pending | Teach call-before-write vs write-before-call distinction |
 | Phase 2b — DoS augmentation (+300) | ⏳ Pending | DoS: 257 train → ~557; augment SmartBugs SWC-128 |
-| Phase 3 — Retrain v5.1 (60 ep, fresh) | ⏳ Pending | Target: tuned F1 > 0.55, behavioral 70%/66% |
+| Phase 3 — Retrain v5.1 (60 ep, fresh) | 🔄 **In Progress** | Run: `v5.1-fix28` — epoch 1 running, gnn_eye=0.601 ✅ healthy |
 | Phase 4 — Validate + promote | ⏳ Pending | All gates → promote_model.py |
 
 **v5.0 final checkpoint (NOT promoted):** `ml/checkpoints/v5-full-60ep_best.pt`
 (epoch 43, raw F1=0.5736, tuned F1=0.5828 — validation gates cleared, behavioral gates failed)
 
 **Active fallback:** `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt` (tuned F1=0.5422)
+
+---
+
+## v5.1 Training Run — Live (2026-05-12)
+
+| Item | Value |
+|------|-------|
+| Run name | `v5.1-fix28` |
+| Launched | 2026-05-12 23:46 UTC+3:30 |
+| Epochs | 60 (fresh, no resume) |
+| Effective batch | 64 (batch=16 × accum=4) |
+| AMP / TF32 | ✅ / ✅ |
+| LoRA | r=16, alpha=32, modules=[query, value] — 589,824 trainable / 124M frozen |
+| Grad norm @ step 100 | gnn_eye=**0.601** tf_eye=0.170 fused_eye=0.191 — all eyes live ✅ |
+| Log | `ml/logs/train_v5.1_fix28.log` |
 
 ---
 
@@ -56,7 +71,7 @@ for the v5.0 architecture build record.
 |--------|--------|-------|
 | M1 ML Core — models | ✅ Complete | **v5**: three-phase GNNEncoder (12-dim, 7 edge types), TransformerEncoder (LoRA r=16), CrossAttentionFusion, three-eye SentinelModel |
 | M1 ML Core — inference | ✅ Complete | api.py, predictor.py (windowed, full arch args, thresholds list), preprocess.py (cached), cache.py |
-| M1 ML Core — training | ✅ Complete | TrainConfig with full arch fields, AMP, FocalLoss (FP32 cast fixed), early stopping, full-resume CLI, patience sidecar, focal_gamma/alpha logged to MLflow. Fix #25 (2026-05-09): model-only resume now resets epoch counter + patience + best_f1 (fine-tune mode); strict=False for lora_r mismatch. Autoresearch harness (`auto_experiment.py`, `program.md`, `README.md`) built and committed. |
+| M1 ML Core — training | ✅ Complete | TrainConfig with full arch fields, AMP, FocalLoss (FP32 cast fixed), early stopping, full-resume CLI, patience sidecar, focal_gamma/alpha logged to MLflow. Fix #25 (2026-05-09): model-only resume now resets epoch counter + patience + best_f1 (fine-tune mode); strict=False for lora_r mismatch. Autoresearch harness (`auto_experiment.py`, `program.md`, `README.md`) built and committed. Fix #26/#27/#28 applied 2026-05-12. |
 | M1 ML Core — data extraction | ✅ Complete | ast_extractor.py V4.3, tokenizer.py (schema version metadata), dual_path_dataset.py (edge_attr shape guard) |
 | M1 ML Core — shared preprocessing | ✅ Complete | graph_schema.py, graph_extractor.py (typed exceptions) |
 | M1 ML Scripts | ✅ Complete | train.py (full-resume + reset-optimizer flags), tune_threshold.py (full arch args + fusion_dim lookup, prefetch guard), analyse_truncation.py, build_multilabel_index.py |
@@ -69,7 +84,30 @@ for the v5.0 architecture build record.
 
 ---
 
-## Recent Changes (2026-05-10 — v4 Experiment 1 Complete)
+## Recent Changes (2026-05-12 — v5.1 Training Fixes #26/#27/#28)
+
+- **Fix #26 — `need_weights=False` on MHA in `fusion_layer.py`** (commit df75466):
+  Both `node_to_token` and `token_to_node` MHA calls now pass `need_weights=False`.
+  Unlocks PyTorch's fused efficient-attention kernel; saves ~12.6 MB VRAM per forward
+  pass. Zero behaviour change — the returned weight tensors were never used.
+
+- **Fix #27 — `gc.collect()` + `torch.cuda.empty_cache()` between epochs** (commit df75466):
+  Called after each `evaluate()` return inside the epoch loop in `trainer.py`.
+  Releases the CUDA caching allocator's free-block pool back to CUDA before the next
+  epoch's training starts. `import gc` added at module level.
+
+- **Fix #28 — Grad norm logging moved before `zero_grad()`** (commit db2277f):
+  `_grad_norm()` was called after `zero_grad(set_to_none=True)`, so `.grad` was always
+  `None` → always logged `0.000` for all three eyes.
+  Fix: grad norms are now captured inside the `is_accum_step` block, after
+  `scaler.unscale_()` (fp32, post-clip) but **before** `zero_grad()` wipes them.
+  A new `optimizer_step` counter makes `log_interval` count optimizer steps (not
+  micro-batches), which is the correct granularity with gradient accumulation.
+  **Confirmed working at step 100:** gnn_eye=0.601, tf_eye=0.170, fused_eye=0.191.
+
+---
+
+## Recent Changes (2026-05-12 — v5.1 Phase 0 complete; dataset dedup applied)
 
 - **v4 experiment 1 — GATE CLEARED**: Fine-tune from v3 weights, lr=1e-4, 30 epochs, batch=16, lora_r=8. Best checkpoint at epoch 26.
   - Raw F1-macro: **0.5064** (v3 raw: 0.4715, +0.0349)
@@ -79,14 +117,6 @@ for the v5.0 architecture build record.
   - Checkpoint: `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt`
   - Thresholds: `ml/checkpoints/multilabel-v4-finetune-lr1e4_best_thresholds.json`
   - Confirms LR exhaustion diagnosis: fresh LR cycle from v3 weights recovered all classes.
-
-## Recent Changes (2026-05-09/10 — v3 Analysis, v4 Harness, Experiment 1 Launch)
-
-- **v3 deep analysis** — inspected actual MLflow curves (sqlite:///mlruns.db) and thresholds JSON. Key findings: (1) plateau was LR exhaustion, not capacity ceiling — train loss still decreasing at ep60; (2) DoS is a data problem (137 samples, noisy val F1 every epoch, no hyperparameter fix); (3) dominant failure mode is over-prediction (low precision) in 6/10 classes caused by aggressive BCE pos_weight. See `docs/changes/2026-05-09-v3-analysis-and-v4-direction.md`.
-- **Fix #25 — model-only resume resets epoch counter**: `trainer.py` resume block now distinguishes fine-tune (`resume_model_only=True` → reset start_epoch/patience/best_f1) from full continuation (`resume_model_only=False` → restore from checkpoint). Previously, fine-tuning from v3 would set start_epoch=55, making any run with epochs<55 return immediately without training.
-- **Fix — strict=False for lora_r mismatch**: `load_state_dict` now uses `strict=False`; LoRA key shape mismatches (from lora_r change) are warned; non-LoRA mismatches raise RuntimeError.
-- **Autoresearch harness built**: `ml/scripts/auto_experiment.py`, `ml/autoresearch/program.md`, `ml/autoresearch/README.md` committed. Loop redesigned from grid search to analysis-first (Karpathy-style: read results → propose one targeted change → run fixed budget → keep/revert).
-- **MLflow tracking URI corrected**: Use `sqlite:///mlruns.db` — the `file:///mlruns` backend has corrupt experiment entries (1, 2, 3) and does not contain the v3 run.
 
 ---
 
@@ -135,7 +165,7 @@ for the v5.0 architecture build record.
 
 - **Fix #23 — Patience sidecar for full persistence**: A `{checkpoint}.state.json`
   sidecar is written after **every** epoch with the real `patience_counter`. On resume,
-  this sidecar overrides the checkpoint’s saved counter (which is always 0 when a
+  this sidecar overrides the checkpoint's saved counter (which is always 0 when a
   new best was found). If the sidecar is absent, a clear warning is logged.
 
 - **Fix #24 — Warning on missing optimizer key during full resume**: When
@@ -148,75 +178,6 @@ for the v5.0 architecture build record.
 
 ---
 
-## Recent Changes (2026-05-04 — Training Audit, First Pass)
-
-### Resume Fixes: patience_counter, batch-size guard, pos_weight warning
-
-- **Fix #11 — `patience_counter` not saved/restored on resume**: Counter was reset to 0
-  on every resume. Now saved in checkpoint dict and restored. Backward compatible with
-  old checkpoints.
-
-- **Fix #12 — batch-size change on full resume (stale Adam moments)**: A warning is now
-  emitted when batch size mismatches on full resume. New `--resume-reset-optimizer`
-  flag discards optimizer/scheduler while preserving model weights and patience.
-
-- **Fix #13 — `pos_weight` consistency warning on full resume**: A `logger.warning()`
-  now explains when restored Adam moments may be calibrated to a different loss scale.
-
-### Training Second Audit Pass (#14–#18)
-
-- **`--focal-gamma` / `--focal-alpha` CLI args**: Wired end-to-end to `TrainConfig`.
-- **`patience_counter` JSON sidecar** – already covered by Fix #23 above.
-- **Duplicate `ARCHITECTURE` constant removed**: Merge artefact fixed.
-- **`validate_graph_dataset.py` duplicate constant eliminated**: `NUM_EDGE_TYPES` now
-  imported from `graph_schema.py`.
-- **`tune_threshold.py` hardcoded arch→dim mapping removed**: Now uses
-  `_ARCH_TO_FUSION_DIM` from `predictor.py` (superseded by Fix #3 fusion_dim lookup).
-- **`api.py` duplicate `MAX_SOURCE_BYTES` removed**: Now imported from
-  `ContractPreprocessor.MAX_SOURCE_BYTES`.
-
-### Resume Fixes and Retrain Extended to 60 Epochs
-
-- **Fix #9 — `trainer.py` AttributeError on resume**: `config.architecture` does not
-  exist. Fixed by extracting `ARCHITECTURE = "cross_attention_lora"` as a module-level
-  constant.
-- **Fix #10 — `trainer.py` OneCycleLR overflow on epoch extension**: Guard added:
-  compare checkpoint `total_steps` vs new schedule; skip scheduler state on mismatch.
-- **`--no-resume-model-only` CLI flag added**: Exposes full-resume from the command line.
-- **Retrain extended: 40 → 60 epochs**: Resumed from epoch-37 checkpoint
-  (`best_f1=0.4629`). Epoch 43 was stopped after batch-size mismatch (batch=32 vs
-  original 16) caused loss spikes. Retrain is currently paused pending clean resume
-  decision.
-
----
-
-## Recent Changes (2026-05-03)
-
-### Graph Dataset Re-Extraction
-- **Full re-extraction completed**: All 68,523 graph `.pt` files regenerated using the
-  unified `graph_extractor.py` pipeline. New files have `edge_attr` shape `[E]` (1-D),
-  required by `GNNEncoder.edge_emb` (P0-B).
-- **32 orphaned files removed**: Files not present in `contracts_metadata.parquet`.
-- **`validate_graph_dataset.py` exit 0**: 68,523/68,523 PASS, 0 shape errors.
-- **`ml/pyproject.toml` completed**: Added `fastapi`, `uvicorn[standard]`, `loguru`,
-  `httpx`, `scipy` — were installed manually but undeclared.
-
----
-
-## Recent Changes (2026-05-02)
-
-### Pre-Retrain Architecture Improvements
-- **P0-A LoRA externalized**: `lora_r`, `lora_alpha`, `lora_dropout`, `lora_target_modules`
-  in `TrainConfig`.
-- **P0-B edge_attr added**: `GNNEncoder` now embeds edge relation types via `nn.Embedding(5, 16)`.
-- **P0-C architecture fields**: `gnn_hidden_dim`, `gnn_heads`, `gnn_dropout`, `use_edge_attr`,
-  `gnn_edge_emb_dim`, `fusion_output_dim` in `SentinelModel` and `TrainConfig`.
-- **P0-D tokenizer metadata**: `feature_schema_version` stored in output `.pt` files.
-- **T1-C complete**: windowed inference for contracts > 512 tokens; `windows_used` in response.
-- **T1-A inference cache**: `cache.py` (`InferenceCache`) added; TTL via file mtime.
-
----
-
 ## Open Half-Open Loops
 
 | Item | Missing piece |
@@ -224,9 +185,17 @@ for the v5.0 architecture build record.
 | M6 auth design | Bearer token + rate-limit design must be written before building `api/` routes |
 | ZKML resolution | M2 has no scheduled move to run the pipeline or formally descope it (see ROADMAP S5.5) |
 | Multi-contract parsing | `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`). `"all"` policy not implemented. Single-contract limit documented in `ml/README.md` Known Limitation #2. See ROADMAP Move 9. |
-| Autoresearch | ⚠️ **Harness built, loop redesign in progress** — `auto_experiment.py`, `ml/autoresearch/program.md`, `ml/autoresearch/README.md` committed (2026-05-09). Analysis-first loop (Karpathy-style) adopted over grid search. v4 experiment 1 running overnight (fine-tune from v3, lr=1e-4). |
 | API breaking change (Fix #6) | Code complete — response key renamed to `"thresholds"`. Pending downstream consumer updates. |
 | Move 8 Audit Item #9 | Preprocess temp file not cleaned on SIGKILL — not yet implemented. |
+| v5.1 Phase 2a/2b | CEI contrastive pairs + DoS augmentation — deferred until Phase 3 first epoch results confirm model is healthy. |
+
+### Closed loops (completed 2026-05-12)
+
+| Item | Resolution |
+|------|-----------|
+| Fix #26 — MHA need_weights=False | `need_weights=False` on both MHA calls in `fusion_layer.py`; ~12.6 MB VRAM saved per forward pass |
+| Fix #27 — CUDA cache between epochs | `gc.collect()` + `torch.cuda.empty_cache()` after `evaluate()` in `trainer.py` |
+| Fix #28 — Grad norm always 0.000 | Moved `_grad_norm()` before `zero_grad()`; `optimizer_step` counter for correct interval tracking |
 
 ### Closed loops (completed 2026-05-02 / 2026-05-03 / 2026-05-04 / 2026-05-05)
 
@@ -266,60 +235,46 @@ for the v5.0 architecture build record.
 
 ---
 
-## Recent Changes (2026-05-11 — v5 Complete Rebuild)
-
-- **v5 architecture**: three-phase 4-layer GAT (Phase 1 structural, Phase 2 CONTROL_FLOW directed, Phase 3 reverse-CONTAINS); three-eye classifier (GNN+TF+Fused + aux heads); 12-dim node features; 7 edge types
-- **4 pre-flight bugs fixed**: CFG_NODE_WRITE mapping detection, type_id normalisation (/12.0), function name matching, cosine threshold miscalibration
-- **Phase 4 re-extraction complete**: 68,523 v5 graphs; RAM cache 1.02 GB
-- **10-epoch check run**: F1 0.19→0.38, GNN re-engagement confirmed at epoch 9–10 (gnn grad norm rising within epoch, B2900 gnn=0.294 > tf=0.112)
-- **Full 60-epoch run launched**: PID 244442, model-only resume from epoch-10 weights, warmup-pct=0.06, patience=10
-
----
-
 ## Active Checkpoint
 
-ml/checkpoints/v5-check-15ep_best.pt   ← current best (v5 training in progress)
-  epoch:      10
-  raw F1:     0.3856
-  status:     ✅ In use as seed for full 60-ep run
+ml/checkpoints/v5-full-60ep_best.pt   ← v5.0 best (NOT promoted — behavioral gate failed)
+  epoch:      43
+  raw F1:     0.5736
+  tuned F1:   0.5828
+  status:     ❌ Behavioral gate failed (15% detection, 0/3 safe)
 
-ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt   ← fallback (v4 complete)
+ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt   ← ACTIVE FALLBACK
   tuned F1:   0.5422
-  status:     ✅ Active fallback; superseded once v5 clears gate
+  status:     ✅ Active fallback; superseded once v5.1 clears gate
 
 ---
 
-## Legacy Checkpoints
+## Next Actions
 
-ml/checkpoints/multilabel_crossattn_best.pt   ← baseline (pre-edge_attr)
-  epoch:        34
-  val F1-macro: 0.4679
-  architecture: cross_attention_lora (pre-P0-B)
+In priority order:
 
-ml/checkpoints/multilabel_crossattn_v2_best.pt   ← previous v2 run (paused)
-  run:          multilabel-v2-edge-attr-60ep
-  experiment:   sentinel-retrain-v2
-  last resumed: 2026-05-04 (stopped at epoch 43 batch 903 — batch-size mismatch)
-  best_f1:      0.4629 (epoch 37)
-  edge_attr:    True (P0-B active)
-  status:       ❌ Superseded by v3.
+1. **v5.1 Phase 3 — watch epoch 1 complete** (run `v5.1-fix28` in progress):
+   - Confirm F1-macro > 0.15 at epoch 1 (model learning, not stuck)
+   - Confirm grad norms stay balanced (gnn_eye / tf_eye > 0.05) throughout
+   - If healthy → let 60-epoch run complete uninterrupted
 
-ml/checkpoints/multilabel-v3-fresh-60ep_best.pt   ← **ACTIVE (v3 complete)**
-  run:          multilabel-v3-fresh-60ep
-  experiment:   sentinel-retrain-v3
-  completed:    2026-05-05
-  batch_size:   32
-  epochs:       60/60 (no early stop; patience counter=6 at end)
-  best epoch:   ~52–53
-  best raw F1:  0.4715
-  edge_attr:    True (P0-B active)
-  status:       ✅ Complete
+2. **v5.1 Phase 3 — after full run**:
+   - Run `tune_threshold.py` on best checkpoint
+   - Target: tuned F1-macro > 0.55, behavioral 70%/66%
+   - If gate cleared → `promote_model.py`
 
-ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json   ← tuned thresholds
-  tuned F1-macro:  0.5069  ✅ (gate: > 0.4884)
-  tuned F1-micro:  0.5608
-  Hamming loss:    0.2342
-  Exact-match:     0.2763
+3. **v5.1 Phase 2a/2b (optional pre-Phase 3 boost)**:
+   - CEI contrastive pairs (~50 contracts) — call-before-write vs write-before-call
+   - DoS augmentation (+300 from SmartBugs SWC-128)
+   - Only worthwhile if Phase 3 epoch 1 shows DoS F1 near zero
+
+4. **Fix #6 downstream update** — Update any API consumer that parsed `"threshold"` (single float)
+   to use `"thresholds"` (list of floats).
+
+5. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10).
+   See ROADMAP S5.5.
+
+6. **M6 Integration API** — design auth/rate-limit before writing any routes.
 
 ---
 
@@ -330,10 +285,10 @@ ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json   ← tuned thresho
 | Baseline checkpoint | `multilabel_crossattn_best.pt` — epoch 34, val F1-macro **0.4679** |
 | Previous best (paused) | `multilabel_crossattn_v2_best.pt` — epoch 37, val F1-macro **0.4629** (raw), **0.4884** (tuned) |
 | **v3 result** | `multilabel-v3-fresh-60ep_best.pt` — raw **0.4715**, tuned **0.5069** ✅ |
+| **v4 result** | `multilabel-v4-finetune-lr1e4_best.pt` — tuned **0.5422** ✅ |
+| **v5.0 result** | `v5-full-60ep_best.pt` — raw **0.5736**, tuned **0.5828** ✅ val / ❌ behavioral |
 | Held-out split | Fixed — `ml/data/splits/val_indices.npy` (same seed, do NOT regenerate) |
-| MLflow experiment | `sentinel-retrain-v3` |
-| **v4 success gate** | tuned val F1-macro > **0.5069** on same `val_indices.npy` split |
-| Per-class floor for v4 | No single class should drop > 0.05 F1 from v3 tuned values |
+| **v5.1 success gate** | tuned val F1-macro > **0.55** AND behavioral: 70% detection, 66% safe specificity |
 
 ---
 
@@ -351,34 +306,3 @@ Correct strategy:
 - **Phase 2 (active):** write `drift_baseline.json` from warm-up data; enable KS alerts.
 - `compute_drift_baseline.py` must accept `--source [warmup|training]` with a
   prominent warning when `--source training` is used.
-
----
-
-## Next Actions
-
-In priority order:
-
-1. **v4 experiment 1 — read results** (running overnight 2026-05-09→10):
-   - Run: `multilabel-v4-finetune-lr1e4` — fine-tune from v3 weights, lr=1e-4, 30 epochs, batch=16
-   - Hypothesis: v3 plateau was OneCycleLR exhaustion, not capacity ceiling. Fresh LR cycle should lift classes still improving at ep60 (CTU, ExternalBug, Timestamp, TOD).
-   - Log: `ml/autoresearch/runs/v4-finetune-lr1e4.log`
-   - After run: `tune_threshold.py` on best checkpoint, compare per-class F1 to v3.
-   - **Success:** raw F1 > 0.4715 → hypothesis confirmed, continue fine-tuning.
-   - **Failure:** raw F1 ≤ 0.4715 → capacity bottleneck, try lora_r=16 next.
-   - Full analysis: `docs/changes/2026-05-09-v3-analysis-and-v4-direction.md`
-
-2. **v4 experiment 2 (after reading exp 1 results)**:
-   - If exp 1 confirmed: fine-tune with lora_r=16 from v3 (more capacity for CTU, ExternalBug).
-   - If exp 1 failed: train from scratch with lora_r=16, lr=3e-4, 60 epochs.
-   - DoS weighted sampler: add after primary LR/capacity question is answered.
-   - Focal loss: requires α tuning; do NOT use α=0.25 (designed for binary, hurts rare multi-label classes).
-
-3. **Fix #6 downstream update** — Update any API consumer that parsed `”threshold”` (single float)
-   to use `”thresholds”` (list of floats).
-
-4. **ZKML resolution** — decide Option A (run EZKL pipeline) or Option B (descope to S10).
-   See ROADMAP S5.5.
-
-5. **M6 Integration API** — design auth/rate-limit before writing any routes.
-
-6. **Move 9 (post-M6)** — multi-contract parsing (`multi_contract_policy=”all”`).
