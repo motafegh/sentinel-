@@ -326,7 +326,13 @@ def dual_path_collate_fn(
     tokens = [item[1] for item in batch]
     labels = [item[2] for item in batch]
 
-    batched_graphs: Batch = Batch.from_data_list(graphs)
+    # Exclude non-tensor metadata attributes so Batch.from_data_list() doesn't
+    # fail when stale graphs (280 v5.0-era .pt files) have extra fields like
+    # contract_hash/contract_path/y that freshly-extracted graphs lack.
+    # The model only needs x, edge_index, edge_attr — batch is set automatically.
+    _EXCLUDE = ["contract_hash", "contract_path", "contract_name",
+                "node_metadata", "num_edges", "num_nodes", "y"]
+    batched_graphs: Batch = Batch.from_data_list(graphs, exclude_keys=_EXCLUDE)
 
     batched_tokens: Dict[str, torch.Tensor] = {
         "input_ids":      torch.stack([t["input_ids"]      for t in tokens]),
