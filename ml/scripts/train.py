@@ -1,67 +1,25 @@
 """
 train.py — SENTINEL Training Entry Point (v5 three-eye architecture)
 
-Thin wrapper around ml.src.training.trainer that provides a clean
-command-line interface for starting and resuming training runs.
+Usage examples:
 
-Usage:
-    # Run with v5 defaults (multi-label Track 3, 60 epochs)
-    poetry run python ml/scripts/train.py
-
-    # Override common hyperparameters
+    # Full 60-epoch run (RTX 3070 8 GB — use grad_accum=4 to avoid VRAM fragmentation)
     poetry run python ml/scripts/train.py \\
-        --run-name multilabel-v5-exp2 \\
+        --run-name v5.1-full \\
         --epochs 60 \\
-        --lr 2e-4 \\
-        --batch-size 16
+        --gradient-accumulation-steps 4
 
-    # Smoke run (10% of data) to verify shapes before full training
+    # Smoke run (2 epochs, no accumulation needed — short enough)
     poetry run python ml/scripts/train.py \\
-        --smoke-subsample-fraction 0.1 \\
+        --run-name v5.1-smoke \\
         --epochs 2 \\
-        --run-name v5-smoke
+        --smoke-subsample-fraction 0.1
 
-    # Resume from a checkpoint (model weights only, fresh optimizer/scheduler)
-    # Use this when batch_size or any training hyperparameter has changed.
+    # Resume from checkpoint
     poetry run python ml/scripts/train.py \\
-        --resume ml/checkpoints/multilabel-v5-fresh_best.pt \\
-        --run-name multilabel-v5-exp2
-
-    # Full resume (model + optimizer + scheduler state restored exactly)
-    # Only use this when batch_size is IDENTICAL to the checkpoint.
-    poetry run python ml/scripts/train.py \\
-        --resume ml/checkpoints/multilabel-v5-fresh_best.pt \\
-        --run-name multilabel-v5-fresh-cont \\
-        --no-resume-model-only
-
-    # Full resume + force optimizer reset (model weights + patience_counter
-    # preserved, but stale Adam moments discarded). Use when batch_size changed
-    # but you still want the exact epoch counter from the checkpoint.
-    poetry run python ml/scripts/train.py \\
-        --resume ml/checkpoints/multilabel-v5-fresh_best.pt \\
-        --run-name multilabel-v5-fresh-cont \\
-        --no-resume-model-only \\
-        --resume-reset-optimizer
-
-All commands must be run from the project root (~/projects/sentinel),
-not from ml/ — the ml.src.* import chain requires the project root on sys.path.
-
-RESUME GUIDE
-────────────
-Choose the right resume mode based on what has changed:
-
-  batch_size SAME, epochs extended:
-    → --no-resume-model-only                           (full resume, Fix #10 handles scheduler)
-
-  batch_size CHANGED:
-    → (default, no flag)                               (model-only, cleanest option)
-    → --no-resume-model-only --resume-reset-optimizer  (force-reset, keeps epoch counter)
-
-  Any hyperparameter change:
-    → (default, no flag)                               (model-only is always safe)
-
-  Exact continuation of an interrupted run (same config):
-    → --no-resume-model-only                           (full resume)
+        --resume ml/checkpoints/v5.1-full_best.pt \\
+        --run-name v5.1-full-cont \\
+        --gradient-accumulation-steps 4
 """
 
 from __future__ import annotations
@@ -71,8 +29,6 @@ import sys
 from pathlib import Path
 import torch.multiprocessing as mp
 mp.set_start_method('spawn', force=True)
-# Make ml/ importable when running as a script from the repo root.
-# parents[2] resolves from ml/scripts/ → ml/ → project root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ml.src.training.trainer import TrainConfig, train
@@ -85,184 +41,91 @@ def parse_args() -> argparse.Namespace:
     )
 
     # --- Run identity ---
-    p.add_argument(
-        "--run-name",
-        default="multilabel-v5-fresh",
-        help="MLflow run name. Also used as checkpoint prefix: <run-name>_best.pt",
-    )
-    p.add_argument(
-        "--experiment-name",
-        default="sentinel-multilabel",
-        help="MLflow experiment name. Use 'sentinel-training' for binary comparison runs.",
-    )
+    p.add_argument("--run-name",        default="multilabel-v5-fresh")
+    p.add_argument("--experiment-name", default="sentinel-multilabel")
 
     # --- Model ---
-    p.add_argument(
-        "--num-classes",
-        type=int,
-        default=10,
-        help=(
-            "Number of output classes. "
-            "10 = multi-label Track 3 (default). "
-            "1 = binary legacy mode (set label-csv to empty string)."
-        ),
-    )
+    p.add_argument("--num-classes", type=int, default=10)
 
     # --- Label source ---
-    p.add_argument(
-        "--label-csv",
-        default="ml/data/processed/multilabel_index_deduped.csv",
-        help=(
-            "Path to multilabel_index.csv for multi-label label loading. "
-            "Set to empty string for binary mode (uses graph.y labels)."
-        ),
-    )
+    p.add_argument("--label-csv", default="ml/data/processed/multilabel_index_deduped.csv")
 
     # --- Training hyperparameters ---
-    p.add_argument("--epochs",       type=int,   default=60,   help="Number of training epochs")
-    p.add_argument("--batch-size",   type=int,   default=16,   help="Batch size for train + val loaders")
-    p.add_argument("--lr",           type=float, default=2e-4, help="AdamW learning rate")
-    p.add_argument("--weight-decay", type=float, default=1e-2, help="AdamW weight decay")
+    p.add_argument("--epochs",       type=int,   default=60)
+    p.add_argument("--batch-size",   type=int,   default=16)
+    p.add_argument("--lr",           type=float, default=2e-4)
+    p.add_argument("--weight-decay", type=float, default=1e-2)
+    p.add_argument("--threshold",    type=float, default=0.5)
+
+    # --- Gradient accumulation ---
     p.add_argument(
-        "--threshold",
-        type=float,
-        default=0.5,
+        "--gradient-accumulation-steps",
+        type=int,
+        default=1,
+        metavar="N",
         help=(
-            "Decision threshold applied to sigmoid(logits) during evaluate(). "
-            "Used for F1 computation. Run tune_threshold.py after retrain to find "
-            "optimal per-class or shared threshold."
+            "Accumulate gradients over N micro-batches before stepping the optimizer. "
+            "Effective batch size = batch_size × N. "
+            "Use 4 on RTX 3070 8 GB (effective batch=64) to avoid VRAM fragmentation "
+            "slowdown that appears from epoch 2 onward. Default: 1 (disabled)."
         ),
     )
 
     # --- Paths ---
-    p.add_argument("--graphs-dir",      default="ml/data/graphs",  help="Graph .pt files directory")
-    p.add_argument("--tokens-dir",      default="ml/data/tokens",  help="Token .pt files directory")
-    p.add_argument("--splits-dir",      default="ml/data/splits/deduped",  help="Split index .npy files directory")
-    p.add_argument("--checkpoint-dir",  default="ml/checkpoints",  help="Directory to save checkpoints")
-    p.add_argument(
-        "--checkpoint-name",
-        default=None,
-        help="Checkpoint filename. Defaults to <run-name>_best.pt",
-    )
+    p.add_argument("--graphs-dir",      default="ml/data/graphs")
+    p.add_argument("--tokens-dir",      default="ml/data/tokens")
+    p.add_argument("--splits-dir",      default="ml/data/splits/deduped")
+    p.add_argument("--checkpoint-dir",  default="ml/checkpoints")
+    p.add_argument("--checkpoint-name", default=None)
 
     # --- Loss and regularisation ---
-    p.add_argument(
-        "--loss-fn",
-        choices=["bce", "focal"],
-        default="bce",
-        help="Loss function: 'bce' (BCEWithLogitsLoss) or 'focal' (FocalLoss).",
-    )
-    p.add_argument("--early-stop-patience", type=int,   default=10,   help="Early stopping patience (epochs without improvement)")
-    p.add_argument("--grad-clip",           type=float, default=1.0,  help="Max gradient norm for clip_grad_norm_")
-    p.add_argument("--warmup-pct",          type=float, default=0.10, help="Fraction of steps used for OneCycleLR warm-up")
-    p.add_argument(
-        "--use-amp",
-        action="store_true",
-        default=True,
-        help="Enable Automatic Mixed Precision (default: enabled)",
-    )
-    p.add_argument(
-        "--no-amp",
-        dest="use_amp",
-        action="store_false",
-        help="Disable AMP (useful for debugging NaN losses)",
-    )
-    p.add_argument("--num-workers",  type=int, default=2,   help="DataLoader worker processes")
-    p.add_argument("--log-interval", type=int, default=100, help="Log loss every N batches")
-    p.add_argument("--focal-gamma", type=float, default=2.0,  help="FocalLoss focusing exponent (used when --loss-fn focal)")
-    p.add_argument("--focal-alpha", type=float, default=0.25, help="FocalLoss class-balance weight (used when --loss-fn focal)")
+    p.add_argument("--loss-fn",              choices=["bce", "focal"], default="bce")
+    p.add_argument("--early-stop-patience",  type=int,   default=10)
+    p.add_argument("--grad-clip",            type=float, default=1.0)
+    p.add_argument("--warmup-pct",           type=float, default=0.10)
+    p.add_argument("--use-amp",              action="store_true", default=True)
+    p.add_argument("--no-amp",               dest="use_amp", action="store_false")
+    p.add_argument("--num-workers",          type=int, default=2)
+    p.add_argument("--log-interval",         type=int, default=100)
+    p.add_argument("--focal-gamma",          type=float, default=2.0)
+    p.add_argument("--focal-alpha",          type=float, default=0.25)
 
     # --- GNN architecture (v5) ---
-    p.add_argument("--gnn-hidden-dim",   type=int,   default=128,  help="GNN node embedding width")
-    p.add_argument("--gnn-layers",       type=int,   default=4,    help="GNN layers (only 4 supported in v5.0)")
-    p.add_argument("--gnn-heads",        type=int,   default=8,    help="GAT attention heads (Phase 1)")
-    p.add_argument("--gnn-dropout",      type=float, default=0.2,  help="GNN attention + node dropout")
-    p.add_argument("--gnn-edge-emb-dim", type=int,   default=32,   help="Edge type embedding dimension")
-    p.add_argument(
-        "--no-edge-attr",
-        dest="use_edge_attr",
-        action="store_false",
-        default=True,
-        help="Disable learned edge-type embeddings (degrades CONTROL_FLOW phase)",
-    )
+    p.add_argument("--gnn-hidden-dim",   type=int,   default=128)
+    p.add_argument("--gnn-layers",       type=int,   default=4)
+    p.add_argument("--gnn-heads",        type=int,   default=8)
+    p.add_argument("--gnn-dropout",      type=float, default=0.2)
+    p.add_argument("--gnn-edge-emb-dim", type=int,   default=32)
+    p.add_argument("--no-edge-attr",     dest="use_edge_attr", action="store_false", default=True)
 
     # --- Auxiliary loss (v5 three-eye) ---
-    p.add_argument(
-        "--aux-loss-weight",
-        type=float,
-        default=0.3,
-        help="λ for auxiliary eye losses: total = main + λ*(aux_gnn + aux_tf + aux_fused)",
-    )
+    p.add_argument("--aux-loss-weight", type=float, default=0.3)
 
     # --- LoRA architecture (v5) ---
-    p.add_argument("--lora-r",       type=int,   default=16,  help="LoRA rank (adapter dimensions)")
-    p.add_argument("--lora-alpha",   type=int,   default=32,  help="LoRA alpha scale factor (keep alpha/r = 2.0)")
-    p.add_argument("--lora-dropout", type=float, default=0.1, help="LoRA path dropout")
+    p.add_argument("--lora-r",       type=int,   default=16)
+    p.add_argument("--lora-alpha",   type=int,   default=32)
+    p.add_argument("--lora-dropout", type=float, default=0.1)
 
-    p.add_argument(
-        "--smoke-subsample-fraction",
-        type=float,
-        default=1.0,
-        help=(
-            "Fraction of training data to use (0.0, 1.0]. "
-            "Set to 0.10 for smoke runs to verify shapes before full training. "
-            "Does not affect val/test sets."
-        ),
-    )
+    p.add_argument("--smoke-subsample-fraction", type=float, default=1.0)
     p.add_argument(
         "--weighted-sampler",
         choices=["none", "DoS-only", "all-rare"],
         default="none",
-        help=(
-            "Weighted random sampler strategy for rare-class upsampling. "
-            "DoS-only: upsample DenialOfService class 39× (137 vs 5343 IntegerUO samples). "
-            "all-rare: inverse class-count weighting (singletons get highest weight)."
-        ),
     )
 
     # --- Resume ---
-    p.add_argument(
-        "--resume",
-        default=None,
-        metavar="CHECKPOINT",
-        help=(
-            "Path to a checkpoint saved by a previous run. "
-            "Loads model weights, optimizer state, and epoch counter. "
-            "Checkpoint must be in new dict format with 'model', 'optimizer', "
-            "'epoch', 'best_f1', 'config' keys. "
-            "Old plain state_dict checkpoints are NOT resumable."
-        ),
-    )
+    p.add_argument("--resume", default=None, metavar="CHECKPOINT")
     p.add_argument(
         "--no-resume-model-only",
         dest="resume_model_only",
         action="store_false",
         default=True,
-        help=(
-            "When set, restores optimizer state from checkpoint in addition to "
-            "model weights (full resume). Scheduler state is only restored if "
-            "total_steps matches — on epoch extension it is skipped automatically "
-            "(Fix #10). WARNING: Only use this when batch_size is IDENTICAL to "
-            "the checkpoint. If batch_size changed, use --resume-reset-optimizer "
-            "together with this flag, or omit this flag entirely (model-only resume). "
-            "Default is model-weights-only resume (fresh optimizer/scheduler)."
-        ),
     )
     p.add_argument(
         "--resume-reset-optimizer",
         dest="force_optimizer_reset",
         action="store_true",
         default=False,
-        help=(
-            "When set alongside --no-resume-model-only, the optimizer and scheduler "
-            "state from the checkpoint are DISCARDED even though a full resume was "
-            "requested. Model weights and patience_counter are still restored from "
-            "the checkpoint. This is the correct flag to use when batch_size has "
-            "changed since the checkpoint was saved — it gives AdamW a clean start "
-            "calibrated to the new gradient noise level while keeping the exact "
-            "epoch counter and early-stopping state from the checkpoint. "
-            "Has no effect if --no-resume-model-only is not also set."
-        ),
     )
 
     return p.parse_args()
@@ -270,8 +133,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-
-    # Empty string from CLI → None for label_csv (triggers binary mode in TrainConfig)
     label_csv = args.label_csv if args.label_csv else None
 
     config = TrainConfig(
@@ -287,20 +148,18 @@ def main() -> None:
         loss_fn               = args.loss_fn,
         focal_gamma           = args.focal_gamma,
         focal_alpha           = args.focal_alpha,
-        # GNN architecture (v5)
         gnn_hidden_dim        = args.gnn_hidden_dim,
         gnn_layers            = args.gnn_layers,
         gnn_heads             = args.gnn_heads,
         gnn_dropout           = args.gnn_dropout,
         gnn_edge_emb_dim      = args.gnn_edge_emb_dim,
         use_edge_attr         = args.use_edge_attr,
-        # Auxiliary loss (v5)
         aux_loss_weight       = args.aux_loss_weight,
-        # LoRA (v5)
         lora_r                = args.lora_r,
         lora_alpha            = args.lora_alpha,
         lora_dropout          = args.lora_dropout,
-        smoke_subsample_fraction = args.smoke_subsample_fraction,
+        smoke_subsample_fraction      = args.smoke_subsample_fraction,
+        gradient_accumulation_steps   = args.gradient_accumulation_steps,
         early_stop_patience   = args.early_stop_patience,
         grad_clip             = args.grad_clip,
         warmup_pct            = args.warmup_pct,
