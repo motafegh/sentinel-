@@ -220,19 +220,24 @@ class SentinelModel(nn.Module):
         _FUNC_TYPE_IDS = {1, 2, 4, 5, 6}   # FUNCTION MODIFIER FALLBACK RECEIVE CONSTRUCTOR
         # Use .float() before * to guard against AMP/BF16 round-trip precision loss
         node_type_ids = (graphs.x[:, 0].float() * 12.0).round().long()
-        pool_mask = torch.zeros(node_embs.size(0), dtype=torch.bool,
+        func_mask = torch.zeros(node_embs.size(0), dtype=torch.bool,
                                 device=node_embs.device)
         for tid in _FUNC_TYPE_IDS:
-            pool_mask |= (node_type_ids == tid)
+            func_mask |= (node_type_ids == tid)
 
-        if pool_mask.any():
-            pool_embs  = node_embs[pool_mask]
-            pool_batch = batch[pool_mask]
-        else:
-            # Ghost graph (interface-only extraction) — fall back to all nodes
-            # so the model still produces a valid output rather than crashing.
-            pool_embs  = node_embs
-            pool_batch = batch
+        # Per-graph fallback: a graph with NO function-level nodes (ghost graph
+        # or interface-only contract) would produce zero rows for its batch index,
+        # causing global_max/mean_pool to silently drop it and return B-k outputs
+        # instead of B. Fix: for such graphs, include ALL their nodes in the pool.
+        num_graphs = int(batch.max().item()) + 1
+        graph_has_func = torch.zeros(num_graphs, dtype=torch.bool, device=node_embs.device)
+        if func_mask.any():
+            graph_has_func[batch[func_mask]] = True
+        # Nodes belonging to graphs that have no function nodes → use as fallback
+        fallback_mask = ~graph_has_func[batch]
+        pool_mask  = func_mask | fallback_mask
+        pool_embs  = node_embs[pool_mask]
+        pool_batch = batch[pool_mask]
 
         gnn_max  = global_max_pool(pool_embs, pool_batch)   # [B, gnn_hidden_dim]
         gnn_mean = global_mean_pool(pool_embs, pool_batch)  # [B, gnn_hidden_dim]
