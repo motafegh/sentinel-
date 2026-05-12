@@ -81,7 +81,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.nn import GATConv
 
-from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES
+from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES, EDGE_TYPES
 
 
 class GNNEncoder(nn.Module):
@@ -251,13 +251,15 @@ class GNNEncoder(nn.Module):
             e = self.edge_embedding(edge_attr)   # [E, edge_emb_dim]
 
         # ── Edge masks — one per phase ───────────────────────────────────────
-        # struct_mask:   types 0–5 (all structural + CONTAINS forward)
-        # cfg_mask:      type 6 (CONTROL_FLOW only)
-        # contains_mask: type 5 (CONTAINS only; used for Phase 3 reversal)
+        # struct_mask:   types 0–CONTAINS (all structural + CONTAINS forward)
+        # cfg_mask:      CONTROL_FLOW only
+        # contains_mask: CONTAINS only; used for Phase 3 reversal
+        _CONTAINS     = EDGE_TYPES["CONTAINS"]       # 5
+        _CONTROL_FLOW = EDGE_TYPES["CONTROL_FLOW"]   # 6
         if edge_attr is not None:
-            struct_mask   = edge_attr <= 5
-            cfg_mask      = edge_attr == 6
-            contains_mask = edge_attr == 5
+            struct_mask   = edge_attr <= _CONTAINS
+            cfg_mask      = edge_attr == _CONTROL_FLOW
+            contains_mask = edge_attr == _CONTAINS
         else:
             # Without edge_attr: all edges participate in all phases (degraded mode)
             n_edges = edge_index.shape[1]

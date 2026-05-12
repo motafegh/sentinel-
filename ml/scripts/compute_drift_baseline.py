@@ -46,14 +46,18 @@ from collections import defaultdict
 from pathlib import Path
 
 import torch
+from torch_geometric.data import Data
+from torch_geometric.data.data import DataEdgeAttr, DataTensorAttr
+from torch_geometric.data.storage import GlobalStorage
 
+torch.serialization.add_safe_globals([Data, DataEdgeAttr, DataTensorAttr, GlobalStorage])
 
 STAT_NAMES = ["num_nodes", "num_edges"]
 
 
 def _extract_stats_from_graph(path: Path) -> dict[str, float] | None:
     try:
-        data = torch.load(path, map_location="cpu", weights_only=False)
+        data = torch.load(path, map_location="cpu", weights_only=True)
     except Exception as exc:
         print(f"  SKIP {path.name}: {exc}", file=sys.stderr)
         return None

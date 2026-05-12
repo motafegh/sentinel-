@@ -105,8 +105,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--label-csv",
         type=str,
-        default="ml/data/processed/multilabel_index.csv",
+        default="ml/data/processed/multilabel_index_deduped.csv",
         help="Path to the multi-label CSV index.",
+    )
+    parser.add_argument(
+        "--splits-dir",
+        type=str,
+        default="ml/data/splits/deduped",
+        help="Directory containing train/val/test_indices.npy files.",
     )
     parser.add_argument(
         "--output",
@@ -506,7 +512,7 @@ def main() -> None:
     if not label_csv.exists():
         raise FileNotFoundError(f"Label CSV not found: {label_csv}")
 
-    config = TrainConfig()
+    config = TrainConfig(splits_dir=args.splits_dir, label_csv=args.label_csv)
     device = config.device
     batch_size = args.batch_size if args.batch_size is not None else config.batch_size
     num_workers = args.num_workers if args.num_workers is not None else getattr(config, "num_workers", 0)

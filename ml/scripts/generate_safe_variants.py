@@ -461,10 +461,16 @@ def generate_cei_safe(
         check_detectors = REENTRANCY_DETECTORS
     elif strategy == "mishandled-exception":
         mutated = _wrap_bare_call(source)
-        check_detectors = ["suicidal", "controlled-delegatecall"]  # lighter check
+        check_detectors = ["unchecked-lowlevel", "unchecked-send"]  # check for unhandled return values
     elif strategy == "call-to-unknown":
-        mutated = _annotate_typed_interface(source)
-        check_detectors = ["calls-loop"]  # annotation only — can't fully fix CallToUnknown
+        # Annotation-only — cannot produce genuinely safe variants.
+        # Accepting annotated-but-still-vulnerable contracts would poison training data.
+        logger.warning(
+            "%s: 'call-to-unknown' strategy cannot produce verified safe variants "
+            "(adds comment only, no real fix). Skipping.",
+            vulnerable_path.name,
+        )
+        return None
     elif strategy == "dos-bounded":
         mutated = _add_dos_loop_guard(source)
         check_detectors = ["calls-loop", "controlled-array-length"]
@@ -521,9 +527,10 @@ def generate_cei_safe(
     if strategy == "reentrancy-cei":
         bad_findings = [f for f in findings if "reentrancy" in f.get("check", "").lower()]
     elif strategy == "mishandled-exception":
-        bad_findings = []  # annotation/wrap is structural; trust compilation
-    elif strategy == "call-to-unknown":
-        bad_findings = []  # annotation only — we accept all that compile
+        bad_findings = [
+            f for f in findings
+            if any(d in f.get("check", "").lower() for d in ("unchecked", "lowlevel", "send"))
+        ]
     elif strategy == "dos-bounded":
         bad_findings = [
             f for f in findings

@@ -41,7 +41,7 @@ Auxiliary heads (training only — prevents eye dominance):
   forward(..., return_aux=False) returns logits only [DEFAULT — zero inference overhead]
 
   Trainer loss: main_loss + λ * (loss_gnn + loss_transformer + loss_fused)
-  λ=0.1 keeps each eye's gradient signal alive even if the main classifier
+  λ=0.3 keeps each eye's gradient signal alive even if the main classifier
   learns to weight one eye heavily.  Auxiliary heads add ~3.9K parameters.
 
 WHAT DID NOT CHANGE
@@ -218,7 +218,8 @@ class SentinelModel(nn.Module):
         # Node type_id is stored normalised as x[:,0]/12.0 — denormalise to
         # recover the integer id before masking.
         _FUNC_TYPE_IDS = {1, 2, 4, 5, 6}   # FUNCTION MODIFIER FALLBACK RECEIVE CONSTRUCTOR
-        node_type_ids = (graphs.x[:, 0] * 12.0).round().long()
+        # Use .float() before * to guard against AMP/BF16 round-trip precision loss
+        node_type_ids = (graphs.x[:, 0].float() * 12.0).round().long()
         pool_mask = torch.zeros(node_embs.size(0), dtype=torch.bool,
                                 device=node_embs.device)
         for tid in _FUNC_TYPE_IDS:

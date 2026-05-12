@@ -77,7 +77,7 @@ except importlib.metadata.PackageNotFoundError:
 # Schema version
 # ─────────────────────────────────────────────────────────────────────────────
 
-FEATURE_SCHEMA_VERSION: str = "v2"
+FEATURE_SCHEMA_VERSION: str = "v3"
 """
 Suffix appended to inference cache keys: "{content_md5}_{FEATURE_SCHEMA_VERSION}".
 

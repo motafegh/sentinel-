@@ -42,6 +42,13 @@ from typing import Optional
 import torch
 from loguru import logger
 from torch_geometric.data import Data
+from torch_geometric.data.data import DataEdgeAttr, DataTensorAttr
+from torch_geometric.data.storage import GlobalStorage
+
+from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM
+
+# Register PyG classes so weights_only=True works for cached graph files
+torch.serialization.add_safe_globals([Data, DataEdgeAttr, DataTensorAttr, GlobalStorage])
 
 
 class InferenceCache:
@@ -90,14 +97,14 @@ class InferenceCache:
                 return None
 
         try:
-            graph  = torch.load(graph_path,  map_location="cpu", weights_only=False)
-            tokens = torch.load(tokens_path, map_location="cpu", weights_only=False)
+            graph  = torch.load(graph_path,  map_location="cpu", weights_only=True)
+            tokens = torch.load(tokens_path, map_location="cpu", weights_only=True)
 
             # Validate schema: catch stale cached files that predate a schema change.
-            if not hasattr(graph, "x") or graph.x.shape[1] != 8:
+            if not hasattr(graph, "x") or graph.x.shape[1] != NODE_FEATURE_DIM:
                 raise ValueError(
                     f"Cached graph has x.shape={tuple(graph.x.shape) if hasattr(graph, 'x') else '?'}, "
-                    "expected [N, 8]. Schema may have changed — evicting."
+                    f"expected [N, {NODE_FEATURE_DIM}]. Schema may have changed — evicting."
                 )
             expected_tok = torch.Size([1, 512])
             if tokens.get("input_ids", torch.empty(0)).shape != expected_tok:

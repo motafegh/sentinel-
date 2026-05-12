@@ -66,9 +66,19 @@ from torch_geometric.data import Batch, Data
 
 from ml.src.inference.preprocess import ContractPreprocessor
 from ml.src.models.sentinel_model import SentinelModel
+from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM
 from ml.src.training.trainer import CLASS_NAMES
 
 _BINARY_CLASS_NAME = "BinaryScore"
+
+
+def _ensure_list(v: object) -> list:
+    """Guard: MLflow may serialise list[str] as a comma-joined string."""
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str):
+        return [s.strip() for s in v.split(",")]
+    return list(v)
 
 # ---------------------------------------------------------------------------
 # Bug 4 fix — explicit architecture allowlist (replaces silent else-64 branch)
@@ -83,10 +93,10 @@ _ARCH_TO_FUSION_DIM: dict[str, int] = {
 }
 
 # Node feature dimension per architecture — used for warmup dummy graph.
-# Do NOT hardcode 8 or 12 here; always derive from this map.
+# Current architecture imports directly from graph_schema; legacy values are hardcoded.
 _ARCH_TO_NODE_DIM: dict[str, int] = {
-    "three_eye_v5":         12,    # v5: NODE_FEATURE_DIM=12 (graph_schema.py v2)
-    "cross_attention_lora": 8,     # v4: NODE_FEATURE_DIM=8  (graph_schema.py v1)
+    "three_eye_v5":         NODE_FEATURE_DIM,  # always in sync with schema
+    "cross_attention_lora": 8,     # v4 legacy
     "legacy":               8,
     "legacy_binary":        8,
 }
@@ -222,8 +232,8 @@ class Predictor:
             lora_dropout=saved_cfg.get("lora_dropout", 0.1),
             dropout=saved_cfg.get("fusion_dropout", 0.3),
             gnn_dropout=saved_cfg.get("gnn_dropout", 0.2),
-            lora_target_modules=saved_cfg.get(
-                "lora_target_modules", ["query", "value"]
+            lora_target_modules=_ensure_list(
+                saved_cfg.get("lora_target_modules", ["query", "value"])
             ),
         ).to(self.device)
         self.model.load_state_dict(state_dict)
