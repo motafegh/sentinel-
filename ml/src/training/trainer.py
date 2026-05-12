@@ -20,13 +20,13 @@ AUDIT FIXES (2026-05-01 through 2026-05-12): see inline comments.
 
 Fix #26 — need_weights=False on MHA in fusion_layer.py (see that file)
 Fix #27 — gc.collect() + torch.cuda.empty_cache() between epochs
-         The CUDA caching allocator holds freed blocks from evaluate()
-         across epoch boundaries, contributing to allocator fragmentation
-         in long runs. Explicit cache release after each epoch gives the
-         allocator a clean slate for epoch N+1's training loop.
-         NOTE: This does NOT free tensors still in scope — Python's GC
-         already handles those at function return. empty_cache() only
-         releases the allocator's internal free-block pool back to CUDA.
+Fix #28 — grad norm logging moved inside is_accum_step block, before
+         zero_grad(). Previously _grad_norm() fired AFTER zero_grad
+         (set_to_none=True), so .grad was always None → always 0.000.
+         Now grads are read after scaler.unscale_() but before zero_grad,
+         i.e. in fp32 and post-clip — the correct moment to measure them.
+         Logging fires on optimizer steps that cross log_interval, not on
+         every micro-batch.
 """
 
 from __future__ import annotations
@@ -298,6 +298,10 @@ def train_one_epoch(
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     accum_steps = max(1, gradient_accumulation_steps)
 
+    # Track optimizer step count for log_interval (counts optimizer steps,
+    # not micro-batches, so log_interval=100 means every 100 optimizer steps).
+    optimizer_step = 0
+
     pbar = tqdm(loader, desc="Training", unit="batch", leave=False)
     for batch_idx, batch in enumerate(pbar):
         graphs, tokens, labels = batch
@@ -325,6 +329,30 @@ def train_one_epoch(
         if is_accum_step:
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=grad_clip)
+
+            # Fix #28: read grad norms HERE — after unscale_() (fp32, post-clip)
+            # but BEFORE zero_grad() wipes them to None.
+            # Also count optimizer steps so log_interval tracks steps, not batches.
+            optimizer_step += 1
+            should_log = (optimizer_step % log_interval == 0)
+            if should_log:
+                gnn_norm   = _grad_norm(model.gnn_eye_proj)
+                tf_norm    = _grad_norm(model.transformer_eye_proj)
+                fused_norm = _grad_norm(model.fusion)
+                logger.info(
+                    f"  Optimizer step {optimizer_step} (batch {batch_idx+1}/{len(loader)}) | "
+                    f"loss={loss.item() * accum_steps:.4f} "
+                    f"(main={main_loss.item():.4f} aux={aux_loss.item():.4f}) | "
+                    f"grad_norm gnn_eye={gnn_norm:.3f} tf_eye={tf_norm:.3f} "
+                    f"fused_eye={fused_norm:.3f}"
+                )
+                if tf_norm > 1e-8 and gnn_norm / tf_norm < 0.05:
+                    logger.warning(
+                        f"  ⚠ GNN eye gradient collapse: gnn={gnn_norm:.6f} "
+                        f"tf={tf_norm:.6f} ratio={gnn_norm/tf_norm:.3f} "
+                        "— consider increasing aux_loss_weight"
+                    )
+
             scaler.step(optimizer)
             scaler.update()
             scheduler.step()
@@ -333,24 +361,6 @@ def train_one_epoch(
         loss_for_log = loss.item() * accum_steps
         total_loss  += loss_for_log
         pbar.set_postfix({"loss": f"{loss_for_log:.4f}"})
-
-        if (batch_idx + 1) % log_interval == 0:
-            gnn_norm   = _grad_norm(model.gnn_eye_proj)
-            tf_norm    = _grad_norm(model.transformer_eye_proj)
-            fused_norm = _grad_norm(model.fusion)
-            logger.info(
-                f"  Batch {batch_idx+1}/{len(loader)} | "
-                f"loss={loss_for_log:.4f} (main={main_loss.item():.4f} "
-                f"aux={aux_loss.item():.4f}) | "
-                f"grad_norm gnn_eye={gnn_norm:.3f} tf_eye={tf_norm:.3f} "
-                f"fused_eye={fused_norm:.3f}"
-            )
-            if tf_norm > 1e-8 and gnn_norm / tf_norm < 0.05:
-                logger.warning(
-                    f"  ⚠ GNN eye gradient collapse: gnn={gnn_norm:.6f} "
-                    f"tf={tf_norm:.6f} ratio={gnn_norm/tf_norm:.3f} "
-                    "— consider increasing aux_loss_weight"
-                )
 
     n_batches = len(loader)
     if n_batches == 0:
@@ -714,10 +724,6 @@ def train(config: TrainConfig) -> dict:
             )
 
             # Fix #27: release CUDA caching allocator free-blocks between epochs.
-            # evaluate() returns with all its tensors out of scope; gc.collect()
-            # ensures CPython finalises any lingering reference cycles before
-            # empty_cache() returns pages to CUDA. Reduces allocator fragmentation
-            # entering the next epoch's training loop.
             gc.collect()
             torch.cuda.empty_cache()
 
