@@ -256,9 +256,10 @@ class DualPathDataset(Dataset):
         hash_id = self.paired_hashes[idx]
 
         # ── Load graph and tokens ───────────────────────────────────────────────
-        if self.cached_data is not None:
+        if self.cached_data is not None and hash_id in self.cached_data:
             graph, tokens = self.cached_data[hash_id]
         else:
+            # Cache miss (hash injected after cache was built) → load from disk
             graph_path = self.graphs_dir / f"{hash_id}.pt"
             token_path = self.tokens_dir / f"{hash_id}.pt"
             # ── Audit fix #3 (2026-05-01): weights_only=True ──────────────────────
