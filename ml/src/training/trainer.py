@@ -186,7 +186,7 @@ from loguru import logger
 from sklearn.metrics import f1_score, hamming_loss
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import OneCycleLR
-from torch_geometric.loader import DataLoader
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
