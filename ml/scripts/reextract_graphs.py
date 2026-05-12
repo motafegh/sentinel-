@@ -72,6 +72,18 @@ CHECKPOINT_EVERY   = 1000   # flush checkpoint to disk every N completions
 
 _PRAGMA_RE = re.compile(r'pragma\s+solidity\s+[\^~>=<\s]*(\d+\.\d+\.\d+)')
 
+# Use the latest available patch per minor series.
+# Contracts often declare an older minimum (e.g. ^0.4.18) but use syntax
+# introduced in later patches (emit, constructor(), etc.). Using the latest
+# patch of the same minor compiles those while staying in the declared range.
+_LATEST_PATCH = {
+    "0.4": "0.4.26",
+    "0.5": "0.5.17",
+    "0.6": "0.6.12",
+    "0.7": "0.7.6",
+    "0.8": "0.8.31",
+}
+
 
 # ── Helpers (used in both main and worker processes) ──────────────────────────
 
@@ -81,15 +93,20 @@ def _md5_path(path: Path) -> str:
 
 
 def _detect_solc_version(sol_path: Path) -> str:
-    """Detect full semver from pragma (e.g. 0.4.24). Defaults to 0.8.20."""
+    """
+    Detect solc version from pragma. Returns the LATEST PATCH of the declared
+    minor series so that forward syntax (emit, constructor(), etc.) compiles.
+    E.g. '^0.4.18' → '0.4.26', '^0.5.0' → '0.5.17'. Defaults to 0.8.31.
+    """
     try:
         txt = sol_path.read_text(encoding="utf-8", errors="replace")
         m = _PRAGMA_RE.search(txt)
         if m:
-            return m.group(1)
+            minor = ".".join(m.group(1).split(".")[:2])
+            return _LATEST_PATCH.get(minor, m.group(1))
     except OSError:
         pass
-    return "0.8.20"
+    return "0.8.31"
 
 
 def _solc_binary(version: str) -> Optional[Path]:
