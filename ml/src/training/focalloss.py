@@ -88,7 +88,8 @@ class MultiLabelFocalLoss(nn.Module):
     Formula (element-wise, averaged over B×C elements):
         p    = sigmoid(logit)
         pt   = p  if target == 1 else (1 - p)
-        loss = -alpha_c * (1 - pt)^gamma * log(pt + ε)
+        alpha_t = alpha_c  if target == 1 else (1 - alpha_c)   ← class-balancing
+        loss = -alpha_t * (1 - pt)^gamma * log(pt + ε)
 
     Args:
         alpha:  List of C per-class balance weights in [0, 1].
@@ -96,6 +97,15 @@ class MultiLabelFocalLoss(nn.Module):
                 alpha closer to 1.0 and common classes closer to 0.0.
         gamma:  Focusing exponent (default 2.0). Higher values down-weight
                 easy examples more aggressively.
+
+    Audit fix (2026-05-12):
+        alpha_t was previously self.alpha.unsqueeze(0) — the same weight
+        applied to both positive AND negative examples per class. This
+        inverts class-balancing for rare classes: the loss on negatives
+        (which dominate) is inflated by alpha instead of (1-alpha), causing
+        the model to over-penalise correct negatives and under-penalise
+        missed positives. Fixed by conditioning on targets == 1 to match
+        the original focal loss formula.
     """
 
     def __init__(self, alpha: List[float], gamma: float = 2.0) -> None:
@@ -118,11 +128,13 @@ class MultiLabelFocalLoss(nn.Module):
         logits  = logits.float()
         targets = targets.float()
 
-        p   = torch.sigmoid(logits)             # [B, C]
-        pt  = torch.where(targets == 1, p, 1 - p)   # confidence on correct class
+        p   = torch.sigmoid(logits)              # [B, C]
+        pt  = torch.where(targets == 1, p, 1 - p)  # confidence on correct class
 
-        # alpha: [C] → broadcast to [1, C] → [B, C]
-        alpha_t = self.alpha.unsqueeze(0)       # [1, C]
+        # alpha_t: α for positives, (1-α) for negatives — per original focal loss.
+        # alpha: [C] → broadcast to [1, C] → [B, C] via where
+        alpha = self.alpha.unsqueeze(0)          # [1, C] → broadcasts to [B, C]
+        alpha_t = torch.where(targets == 1, alpha, 1.0 - alpha)  # [B, C]
 
         # Numerically stable BCE from logits avoids log(0) issues.
         bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
