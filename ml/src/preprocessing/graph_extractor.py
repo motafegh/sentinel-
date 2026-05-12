@@ -740,8 +740,9 @@ def extract_contract_graph(
         node_map[key] = idx
         x_list.append(_build_node_features(obj, initial_type_id))
 
-        # Determine the actual type_id after _build_node_features may override it
-        actual_type_id = int(x_list[-1][0])
+        # Determine the actual type_id after _build_node_features may override it.
+        # x_list[-1][0] is normalised (float(type_id)/12.0), so reverse-normalise.
+        actual_type_id = int(round(x_list[-1][0] * 12))
         actual_type_name = _type_name_map.get(actual_type_id, "FUNCTION")
         sm = getattr(obj, "source_mapping", None)
         node_metadata.append({

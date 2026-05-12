@@ -46,8 +46,9 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 logger.remove()
 logger.add(sys.stderr, level="INFO")
 
-# Allow PyG classes in weights_only=False loads — same allowlist as dataset.py
-torch.serialization.add_safe_globals([Data, DataEdgeAttr, DataTensorAttr])
+# Allow PyG classes for weights_only=True loads — same allowlist as dataset.py
+from torch_geometric.data.storage import GlobalStorage
+torch.serialization.add_safe_globals([Data, DataEdgeAttr, DataTensorAttr, GlobalStorage])
 
 # ── Class name constants (alphabetical, two classes excluded) ─────────────────
 # This order MUST match the training vector index 0-9.
@@ -159,7 +160,7 @@ def build_index() -> None:
         md5_stem = pt_file.stem
 
         try:
-            graph = torch.load(pt_file, weights_only=False)
+            graph = torch.load(pt_file, weights_only=True)
         except Exception as exc:
             logger.error("Failed to load {} — skipping: {}", pt_file.name, exc)
             load_errors += 1

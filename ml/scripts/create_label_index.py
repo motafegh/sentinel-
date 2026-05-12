@@ -10,6 +10,11 @@ from pathlib import Path
 import torch
 import pandas as pd
 from tqdm import tqdm
+from torch_geometric.data import Data
+from torch_geometric.data.data import DataEdgeAttr, DataTensorAttr
+from torch_geometric.data.storage import GlobalStorage
+
+torch.serialization.add_safe_globals([Data, DataEdgeAttr, DataTensorAttr, GlobalStorage])
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
@@ -27,7 +32,7 @@ def create_label_index(graphs_dir: str, output_path: str) -> None:
     for graph_path in tqdm(graph_files, desc="Scanning graphs"):
         try:
             # Load graph - we need the label inside
-            graph_data = torch.load(graph_path, weights_only=False)
+            graph_data = torch.load(graph_path, weights_only=True)
 
             # Extract hash (filename stem)
             hash_id = graph_path.stem

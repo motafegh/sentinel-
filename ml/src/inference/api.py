@@ -140,7 +140,7 @@ class VulnerabilityResult(BaseModel):
 class PredictResponse(BaseModel):
     label: str = Field(..., description="'vulnerable' or 'safe'")
     vulnerabilities: list[VulnerabilityResult]
-    threshold: float
+    thresholds: list[float]
     truncated: bool
     windows_used: int = Field(default=1, ge=1, description="Number of token windows scored (>1 for long contracts)")
     num_nodes: int
@@ -246,7 +246,7 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
             )
             for v in result["vulnerabilities"]
         ],
-        threshold=result["threshold"],
+        thresholds=result["thresholds"],
         truncated=result["truncated"],
         windows_used=result.get("windows_used", 1),
         num_nodes=result["num_nodes"],

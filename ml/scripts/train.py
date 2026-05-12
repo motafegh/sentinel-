@@ -111,7 +111,7 @@ def parse_args() -> argparse.Namespace:
     # --- Label source ---
     p.add_argument(
         "--label-csv",
-        default="ml/data/processed/multilabel_index.csv",
+        default="ml/data/processed/multilabel_index_deduped.csv",
         help=(
             "Path to multilabel_index.csv for multi-label label loading. "
             "Set to empty string for binary mode (uses graph.y labels)."
@@ -137,7 +137,7 @@ def parse_args() -> argparse.Namespace:
     # --- Paths ---
     p.add_argument("--graphs-dir",      default="ml/data/graphs",  help="Graph .pt files directory")
     p.add_argument("--tokens-dir",      default="ml/data/tokens",  help="Token .pt files directory")
-    p.add_argument("--splits-dir",      default="ml/data/splits",  help="Split index .npy files directory")
+    p.add_argument("--splits-dir",      default="ml/data/splits/deduped",  help="Split index .npy files directory")
     p.add_argument("--checkpoint-dir",  default="ml/checkpoints",  help="Directory to save checkpoints")
     p.add_argument(
         "--checkpoint-name",

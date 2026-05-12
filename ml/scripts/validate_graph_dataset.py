@@ -35,8 +35,13 @@ import sys
 from pathlib import Path
 
 import torch
+from torch_geometric.data import Data
+from torch_geometric.data.data import DataEdgeAttr, DataTensorAttr
+from torch_geometric.data.storage import GlobalStorage
 
 from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES
+
+torch.serialization.add_safe_globals([Data, DataEdgeAttr, DataTensorAttr, GlobalStorage])
 
 
 def validate(
@@ -67,7 +72,7 @@ def validate(
 
     for path in pt_files:
         try:
-            data = torch.load(path, map_location="cpu", weights_only=False)
+            data = torch.load(path, map_location="cpu", weights_only=True)
         except Exception as exc:
             load_errors.append((path, str(exc)))
             continue

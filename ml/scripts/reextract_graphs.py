@@ -180,13 +180,17 @@ def _worker(args: Tuple[str, str, str]) -> Tuple[str, str, str]:
     except Exception as exc:
         return md5, "fail", str(exc)[:80]
 
-    status = "ghost" if g.num_nodes <= 3 else "ok"
+    if g.num_nodes <= 3:
+        # Ghost graph — interface-only contract produces near-empty graphs that
+        # cause GNN eye collapse during training. Skip writing to disk so the
+        # training dataset doesn't include them.
+        return md5, "ghost", f"nodes={g.num_nodes}"
 
     tmp = out_path.with_suffix(".tmp")
     torch.save(g, tmp)
     tmp.rename(out_path)   # atomic on same filesystem
 
-    return md5, status, f"nodes={g.num_nodes}"
+    return md5, "ok", f"nodes={g.num_nodes}"
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────

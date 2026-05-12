@@ -252,7 +252,7 @@ class TrainConfig:
     # --- Paths ---
     graphs_dir:      str = "ml/data/graphs"
     tokens_dir:      str = "ml/data/tokens"
-    splits_dir:      str = "ml/data/splits"
+    splits_dir:      str = "ml/data/splits/deduped"
     checkpoint_dir:  str = "ml/checkpoints"
     checkpoint_name: str = "multilabel-v5-fresh_best.pt"
 
@@ -276,7 +276,7 @@ class TrainConfig:
     lora_target_modules:  list[str]  = field(default_factory=lambda: ["query", "value"])
 
     # --- Label source ---
-    label_csv: str = "ml/data/processed/multilabel_index.csv"
+    label_csv: str = "ml/data/processed/multilabel_index_deduped.csv"
 
     # --- Training ---
     epochs:              int   = 60
@@ -285,7 +285,7 @@ class TrainConfig:
     weight_decay:        float = 1e-2
     threshold:           float = 0.5
     early_stop_patience: int   = 10
-    aux_loss_weight:     float = 0.1   # λ in: main + λ*(aux_gnn + aux_tf + aux_fused)
+    aux_loss_weight:     float = 0.3   # λ in: main + λ*(aux_gnn + aux_tf + aux_fused)
 
     # --- Stability ---
     grad_clip:  float = 1.0
@@ -452,7 +452,7 @@ def train_one_epoch(
     grad_clip:        float,
     log_interval:     int,
     use_amp:          bool,
-    aux_loss_weight:  float = 0.1,
+    aux_loss_weight:  float = 0.3,
 ) -> float:
     model.train()
     total_loss = 0.0
@@ -502,6 +502,13 @@ def train_one_epoch(
                 f"grad_norm gnn_eye={gnn_norm:.3f} tf_eye={tf_norm:.3f} "
                 f"fused_eye={fused_norm:.3f}"
             )
+            # Gradient collapse detection: GNN eye gradient < 5% of transformer
+            if tf_norm > 1e-8 and gnn_norm / tf_norm < 0.05:
+                logger.warning(
+                    f"  ⚠ GNN eye gradient collapse: gnn={gnn_norm:.6f} "
+                    f"tf={tf_norm:.6f} ratio={gnn_norm/tf_norm:.3f} "
+                    "— consider increasing aux_loss_weight"
+                )
 
     n_batches = len(loader)
     if n_batches == 0:

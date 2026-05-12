@@ -100,8 +100,8 @@ class TransformerEncoder(nn.Module):
 
     def __init__(
         self,
-        lora_r:              int       = 8,
-        lora_alpha:          int       = 16,
+        lora_r:              int       = 16,
+        lora_alpha:          int       = 32,
         lora_dropout:        float     = 0.1,
         lora_target_modules: List[str] = None,
     ) -> None:
@@ -109,6 +109,9 @@ class TransformerEncoder(nn.Module):
 
         if lora_target_modules is None:
             lora_target_modules = ["query", "value"]
+        elif isinstance(lora_target_modules, str):
+            # Guard: MLflow may deserialise list as comma-joined string
+            lora_target_modules = [s.strip() for s in lora_target_modules.split(",")]
 
         lora_config = LoraConfig(
             r=lora_r,
