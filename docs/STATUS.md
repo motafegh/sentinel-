@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-12 (v5.0 evaluation complete — behavioral gate failed; v5.1 plan active)
+Last updated: 2026-05-12 (v5.1 Phase 0 complete; dataset dedup applied; Phase 1 extraction running)
 
 ---
 
@@ -12,13 +12,15 @@ Three confirmed root causes fixed in v5.1. See
 
 | Phase | Status | Key Output |
 |-------|--------|-----------|
-| Phase 0a — Fix `_select_contract` interface filter | ⏳ Pending | Eliminates ~10% ghost training graphs |
-| Phase 0b — Function-level GNN pooling | ⏳ Pending | Removes 77% CFG_RETURN noise from GNN eye |
-| Phase 0c — aux_loss_weight 0.1 → 0.3 | ⏳ Pending | Sustains GNN eye gradient share ≥ 15% |
-| Phase 1 — Re-extract 68K | ⏳ Pending | Ghost count <1%; validate_graph_dataset gate ≥95% |
+| Phase 0a — Fix `_select_contract` interface filter | ✅ Complete (bf57069) | Ghost ~10% → <1% after re-extraction |
+| Phase 0b — Function-level GNN pooling | ✅ Complete (bf57069) | Pools FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR only |
+| Phase 0c — aux_loss_weight 0.1 → 0.3 | ✅ Complete (bf57069) | Prevents GNN eye gradient collapse from epoch 23 |
+| Phase 0e — CFG failure counter | ✅ Complete (bf57069) | Non-silent: logger.error if failure rate >5% |
+| Phase 0f — Dataset deduplication | ✅ Complete (472e042) | 68,523 → 44,420 rows; 34.9% cross-split leakage eliminated |
+| Phase 1 — Re-extract 44K graphs | 🔄 Running (PID 435806) | ~22 c/s; ETA ~51 min; gate: ghost <1% |
 | Phase 2a — CEI contrastive pairs (~50) | ⏳ Pending | Teach call-before-write vs write-before-call distinction |
-| Phase 2b — DoS augmentation (+300) | ⏳ Pending | DoS: 695 → ~995 training samples |
-| Phase 3 — Retrain v5.1 (60 ep, fresh) | ⏳ Pending | Target: tuned F1 > 0.60, behavioral 70%/66% |
+| Phase 2b — DoS augmentation (+300) | ⏳ Pending | DoS: 257 train → ~557; augment SmartBugs SWC-128 |
+| Phase 3 — Retrain v5.1 (60 ep, fresh) | ⏳ Pending | Target: tuned F1 > 0.55, behavioral 70%/66% |
 | Phase 4 — Validate + promote | ⏳ Pending | All gates → promote_model.py |
 
 **v5.0 final checkpoint (NOT promoted):** `ml/checkpoints/v5-full-60ep_best.pt`
