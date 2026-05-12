@@ -188,7 +188,7 @@ class ContractPreprocessor:
 
         logger.info(f"Preprocessing file: {sol_path.name}")
 
-        contract_hash = get_contract_hash(sol_path)
+        contract_hash = f"{get_contract_hash(sol_path)}_{FEATURE_SCHEMA_VERSION}"
         graph  = self._extract_graph(sol_path, contract_hash)
         tokens = self._tokenize(
             sol_path.read_text(encoding="utf-8", errors="ignore"),

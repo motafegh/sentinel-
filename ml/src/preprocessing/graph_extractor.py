@@ -90,6 +90,10 @@ from .graph_schema import EDGE_TYPES, NODE_FEATURE_DIM, NODE_TYPES, VISIBILITY_M
 
 logger = logging.getLogger(__name__)
 
+# Normalisation divisor for type_id → [0, 1].
+# Derived from the schema so it tracks any future addition of new node types.
+_MAX_TYPE_ID = float(max(NODE_TYPES.values()))
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Typed exception hierarchy
@@ -397,8 +401,13 @@ def _build_cfg_node_features(slither_node: Any, func: Any, cfg_type: int) -> lis
     if sm is not None and getattr(sm, "lines", None):
         loc = float(len(sm.lines))
 
+    # CFG nodes must never inherit the parent function's unchecked scope —
+    # in_unchecked [9] is always 0.0 at statement level.
+    _cfg_in_unchecked = 0.0
+    assert _cfg_in_unchecked == 0.0, "CFG node in_unchecked invariant violated"
+
     return [
-        float(cfg_type) / 12.0,  # [0]  type_id normalised to [0,1] (raw 8–12 / 12)
+        float(cfg_type) / _MAX_TYPE_ID,  # [0]  type_id normalised to [0,1]
         0.0,              # [1]  visibility — not applicable
         0.0,              # [2]  pure — not applicable
         0.0,              # [3]  view — not applicable
@@ -407,7 +416,7 @@ def _build_cfg_node_features(slither_node: Any, func: Any, cfg_type: int) -> lis
         loc,              # [6]  loc — lines of this statement's source span
         0.0,              # [7]  return_ignored — not per-statement in v5.0
         1.0,              # [8]  call_target_typed — default safe (not applicable)
-        0.0,              # [9]  in_unchecked — NEVER inherited from parent func
+        _cfg_in_unchecked, # [9]  in_unchecked — NEVER inherited from parent func
         0.0,              # [10] has_loop — not applicable at statement level
         0.0,              # [11] external_call_count — not applicable
     ]
@@ -559,8 +568,11 @@ def _build_node_features(obj: Any, type_id: int) -> list:
         elif getattr(obj, "is_receive", False):
             type_id = NODE_TYPES["RECEIVE"]
 
+    assert return_ignored in (-1.0, 0.0, 1.0), f"return_ignored out of range: {return_ignored}"
+    assert call_target_typed in (-1.0, 0.0, 1.0), f"call_target_typed out of range: {call_target_typed}"
+
     return [
-        float(type_id) / 12.0,  # normalised to [0,1] (raw 0–12 / 12)
+        float(type_id) / _MAX_TYPE_ID,  # normalised to [0,1]
         visibility,
         pure,
         view,

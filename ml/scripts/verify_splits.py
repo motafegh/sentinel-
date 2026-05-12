@@ -28,7 +28,6 @@ USAGE
 from __future__ import annotations
 
 import argparse
-import hashlib
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -40,6 +39,8 @@ from loguru import logger
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+from ml.src.utils.hash_utils import get_contract_hash, get_contract_hash_from_content  # noqa: E402
 
 DEFAULT_CSV        = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index.csv"
 DEFAULT_SPLITS_DIR = PROJECT_ROOT / "ml" / "data" / "splits"
@@ -176,7 +177,7 @@ def check_class_balance(df: pd.DataFrame, tr_idx, va_idx, te_idx) -> bool:
 # ── Check 1 — Content-hash leakage ───────────────────────────────────────────
 
 def _content_hash(path: Path) -> str:
-    return hashlib.md5(path.read_bytes()).hexdigest()
+    return get_contract_hash_from_content(path.read_text(encoding="utf-8", errors="ignore"))
 
 
 def _build_path_md5_to_path(target_path_md5s: set[str]) -> dict[str, Path]:
@@ -187,7 +188,7 @@ def _build_path_md5_to_path(target_path_md5s: set[str]) -> dict[str, Path]:
             continue
         for sol in src_dir.rglob("*.sol"):
             rel = sol.relative_to(PROJECT_ROOT)
-            path_md5 = hashlib.md5(str(rel).encode()).hexdigest()
+            path_md5 = get_contract_hash(rel)
             if path_md5 in target_path_md5s:
                 mapping[path_md5] = sol
     return mapping

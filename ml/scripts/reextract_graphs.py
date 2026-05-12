@@ -38,7 +38,6 @@ AFTER THIS SCRIPT
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import multiprocessing as mp
 import re
@@ -50,6 +49,9 @@ from typing import Optional, Tuple
 import torch
 from loguru import logger
 from tqdm import tqdm
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from ml.src.utils.hash_utils import get_contract_hash  # noqa: E402
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -89,7 +91,7 @@ _LATEST_PATCH = {
 
 def _md5_path(path: Path) -> str:
     rel = path.relative_to(PROJECT_ROOT)
-    return hashlib.md5(str(rel).encode("utf-8")).hexdigest()
+    return get_contract_hash(rel)
 
 
 def _detect_solc_version(sol_path: Path) -> str:
