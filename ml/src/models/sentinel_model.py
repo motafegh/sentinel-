@@ -65,6 +65,24 @@ from torch_geometric.nn import global_max_pool, global_mean_pool
 from ml.src.models.fusion_layer import CrossAttentionFusion
 from ml.src.models.gnn_encoder import GNNEncoder
 from ml.src.models.transformer_encoder import TransformerEncoder
+from ml.src.preprocessing.graph_schema import NODE_TYPES
+
+# ── Schema-derived constant (single source of truth) ──────────────────────────
+# Derived from graph_schema.NODE_TYPES so that adding a new node type here
+# automatically propagates to the model's denormalisation without manual edits.
+# node feature[0] is stored as float(type_id) / _MAX_TYPE_ID in the extractor;
+# multiply back by _MAX_TYPE_ID and round to recover the integer type_id.
+_MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 12.0 for v2 schema (ids 0–12)
+
+# Pooling target: function-declaration node types only.
+# After Phase 3 reverse-CONTAINS, these nodes carry aggregated CFG signal.
+_FUNC_TYPE_IDS: frozenset[int] = frozenset({  # FUNCTION MODIFIER FALLBACK RECEIVE CONSTRUCTOR
+    NODE_TYPES["FUNCTION"],
+    NODE_TYPES["MODIFIER"],
+    NODE_TYPES["FALLBACK"],
+    NODE_TYPES["RECEIVE"],
+    NODE_TYPES["CONSTRUCTOR"],
+})
 
 
 class SentinelModel(nn.Module):
@@ -215,11 +233,12 @@ class SentinelModel(nn.Module):
         # dominated by CFG_RETURN (77% of CFG node mass, median 93%), which
         # caused the GNN eye gradient share to collapse to ~7% by epoch 43.
         #
-        # Node type_id is stored normalised as x[:,0]/12.0 — denormalise to
-        # recover the integer id before masking.
-        _FUNC_TYPE_IDS = {1, 2, 4, 5, 6}   # FUNCTION MODIFIER FALLBACK RECEIVE CONSTRUCTOR
-        # Use .float() before * to guard against AMP/BF16 round-trip precision loss
-        node_type_ids = (graphs.x[:, 0].float() * 12.0).round().long()
+        # node feature[0] is stored normalised as type_id / _MAX_TYPE_ID;
+        # multiply back by _MAX_TYPE_ID (from graph_schema) and round to
+        # recover the integer type_id.  _MAX_TYPE_ID is the module-level
+        # constant derived from NODE_TYPES so it tracks schema changes.
+        # Use .float() before * to guard against AMP/BF16 round-trip precision loss.
+        node_type_ids = (graphs.x[:, 0].float() * _MAX_TYPE_ID).round().long()
         func_mask = torch.zeros(node_embs.size(0), dtype=torch.bool,
                                 device=node_embs.device)
         for tid in _FUNC_TYPE_IDS:
