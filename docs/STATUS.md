@@ -17,7 +17,7 @@ Three confirmed root causes fixed in v5.1. See
 | Phase 0c — aux_loss_weight 0.1 → 0.3 | ✅ Complete (bf57069) | Prevents GNN eye gradient collapse from epoch 23 |
 | Phase 0e — CFG failure counter | ✅ Complete (bf57069) | Non-silent: logger.error if failure rate >5% |
 | Phase 0f — Dataset deduplication | ✅ Complete (472e042) | 68,523 → 44,420 rows; 34.9% cross-split leakage eliminated |
-| Phase 1 — Re-extract 44K graphs | 🔄 Running (PID 435806) | ~22 c/s; ETA ~51 min; gate: ghost <1% |
+| Phase 1 — Re-extract graphs | ✅ Complete (65617e1) | 44,140/44,420 fresh (99.4%); 44,420/44,420 validate PASS |
 | Phase 2a — CEI contrastive pairs (~50) | ⏳ Pending | Teach call-before-write vs write-before-call distinction |
 | Phase 2b — DoS augmentation (+300) | ⏳ Pending | DoS: 257 train → ~557; augment SmartBugs SWC-128 |
 | Phase 3 — Retrain v5.1 (60 ep, fresh) | ⏳ Pending | Target: tuned F1 > 0.55, behavioral 70%/66% |
