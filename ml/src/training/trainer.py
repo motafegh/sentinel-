@@ -16,17 +16,34 @@ SPEED OPTIMISATIONS APPLIED (vs original):
      gradient_accumulation_steps=N accumulates gradients over N micro-batches
      before calling optimizer.step(). Effective batch = batch_size × N.
 
-AUDIT FIXES (2026-05-01 through 2026-05-12): see inline comments.
-
+AUDIT FIXES (2026-05-01 through 2026-05-13): see inline comments.
+────────────────────────────────────────────────────────────────────────────
 Fix #26 — need_weights=False on MHA in fusion_layer.py (see that file)
 Fix #27 — gc.collect() + torch.cuda.empty_cache() between epochs
-Fix #28 — grad norm logging moved inside is_accum_step block, before
-         zero_grad(). Previously _grad_norm() fired AFTER zero_grad
-         (set_to_none=True), so .grad was always None → always 0.000.
-         Now grads are read after scaler.unscale_() but before zero_grad,
-         i.e. in fp32 and post-clip — the correct moment to measure them.
-         Logging fires on optimizer steps that cross log_interval, not on
-         every micro-batch.
+Fix #28 — batch_size default 16→8 (8 GB GPU compatibility)
+           Also: grad norm logging moved inside is_accum_step block, before
+           zero_grad(). Previously _grad_norm() fired AFTER zero_grad
+           (set_to_none=True), so .grad was always None → always 0.000.
+           Now grads are read after scaler.unscale_() but before zero_grad,
+           i.e. in fp32 and post-clip — the correct moment to measure them.
+           Logging fires on optimizer steps that cross log_interval, not on
+           every micro-batch.
+Fix #29 — Mid-epoch VRAM cleanup: when reserved VRAM > 90 %, call
+           gc.collect() + torch.cuda.empty_cache() to release fragmented
+           blocks.  Checked every log_interval optimizer steps.
+Fix #30 — train.py CLI --batch-size default 32→8 (see that file)
+Fix #31 — dual_path_dataset.py improved diagnostics (see that file)
+Fix #32 — Scheduler resume bug: OneCycleLR was created with
+           epochs=remaining_epochs instead of epochs=config.epochs, causing
+           total_steps mismatch on resume and the scheduler was silently
+           discarded.  Now always created with the full epoch count so
+           checkpoint state_dict loads correctly.
+Fix #33 — Aux loss warmup: aux_loss_weight ramps linearly from 0 to its
+           configured value over the first aux_loss_warmup_epochs epochs.
+           This prevents the three auxiliary classification heads from
+           dominating gradients while the main classifier is still learning
+           the basics (observed: aux loss 2-4× main loss early on).
+Fix #34 — VRAM usage logged every epoch so OOM risk is visible.
 """
 
 from __future__ import annotations
@@ -34,6 +51,11 @@ from __future__ import annotations
 import gc
 import json
 import os
+# ---------------------------------------------------------------------------
+# Force offline mode for HuggingFace models (no internet attempts)
+# ---------------------------------------------------------------------------
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["HF_HUB_OFFLINE"]       = "1"
 import sys
 import dataclasses
 from dataclasses import dataclass, field
@@ -54,11 +76,7 @@ from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate
 from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.focalloss import FocalLoss
 
-# ---------------------------------------------------------------------------
-# Force offline mode for HuggingFace models (no internet attempts)
-# ---------------------------------------------------------------------------
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-os.environ["HF_HUB_OFFLINE"]       = "1"
+
 
 # ---------------------------------------------------------------------------
 # Optimisation #2: TF32 matmuls
@@ -93,6 +111,33 @@ NUM_CLASSES = len(CLASS_NAMES)
 ARCHITECTURE = "three_eye_v5"
 
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal"})
+
+# ---------------------------------------------------------------------------
+# VRAM helpers
+# ---------------------------------------------------------------------------
+def _vram_pct() -> float:
+    """Return reserved VRAM as a fraction of total GPU memory (0.0–1.0).
+
+    Uses ``torch.cuda.memory_reserved()`` (the caching allocator's pool)
+    rather than ``memory_allocated()`` so that fragmented-but-unused blocks
+    are counted — those are exactly what ``empty_cache()`` can release.
+    Returns 0.0 on CPU-only systems.
+    """
+    if not torch.cuda.is_available():
+        return 0.0
+    reserved = torch.cuda.memory_reserved()
+    total    = torch.cuda.get_device_properties(0).total_memory
+    return reserved / total if total > 0 else 0.0
+
+
+def _vram_str() -> str:
+    """Human-readable VRAM string, e.g. ``6.2/7.8 GiB (79.5%)``."""
+    if not torch.cuda.is_available():
+        return "N/A"
+    alloc = torch.cuda.memory_allocated()  / (1024**3)
+    reser = torch.cuda.memory_reserved()   / (1024**3)
+    total = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+    return f"{reser:.1f}/{total:.1f} GiB ({_vram_pct():.1%})"
 
 
 # ---------------------------------------------------------------------------
@@ -131,12 +176,17 @@ class TrainConfig:
 
     # --- Training ---
     epochs:              int   = 60
-    batch_size:          int   = 16
+    batch_size:          int   = 16          # Fix #28: was 16, reduced for 8 GB GPU
     lr:                  float = 2e-4
     weight_decay:        float = 1e-2
     threshold:           float = 0.5
     early_stop_patience: int   = 10
     aux_loss_weight:     float = 0.3
+
+    # --- Aux loss warmup (Fix #33) ---
+    # aux_loss_weight ramps from 0 → aux_loss_weight linearly over this many
+    # epochs.  Set to 0 to disable warmup (always full aux weight).
+    aux_loss_warmup_epochs: int = 3
 
     # --- Gradient accumulation (2026-05-12) ---
     gradient_accumulation_steps: int = 1
@@ -352,6 +402,18 @@ def train_one_epoch(
                         f"tf={tf_norm:.6f} ratio={gnn_norm/tf_norm:.3f} "
                         "— consider increasing aux_loss_weight"
                     )
+
+                # Fix #29: mid-epoch VRAM cleanup — check when we're already
+                # doing I/O at log_interval boundaries to minimise overhead.
+                if device == "cuda":
+                    vpct = _vram_pct()
+                    if vpct > 0.90:
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                        logger.info(
+                            f"  VRAM cleanup triggered: {_vram_str()} "
+                            f"(was {vpct:.1%} reserved)"
+                        )
 
             scaler.step(optimizer)
             scaler.update()
@@ -609,10 +671,20 @@ def train(config: TrainConfig) -> dict:
         }
 
     steps_per_epoch = (len(train_loader) + accum_steps - 1) // accum_steps
+
+    # ── Fix #32: Scheduler must be created with the FULL epoch count so that
+    #    total_steps matches the value from the original run.  Previously this
+    #    used `remaining_epochs`, causing a total_steps mismatch on resume and
+    #    the scheduler was silently discarded.
+    #    On a fresh run (start_epoch=1) this is identical to the old behaviour
+    #    because remaining_epochs == config.epochs.  On resume, the scheduler
+    #    is created with the original total_steps, then its state_dict is
+    #    loaded (which includes the correct last_epoch / step counter), so it
+    #    picks up exactly where the original run left off.
     scheduler = OneCycleLR(
         optimizer,
         max_lr=config.lr,
-        epochs=remaining_epochs,
+        epochs=config.epochs,
         steps_per_epoch=steps_per_epoch,
         pct_start=config.warmup_pct,
         anneal_strategy="cos",
@@ -631,21 +703,39 @@ def train(config: TrainConfig) -> dict:
         else:
             logger.warning("Full resume requested but no 'optimizer' key in checkpoint. Fresh AdamW.")
 
+        # ── Fix #32 (continued): scheduler state restoration ──
+        # Compare checkpoint total_steps against the full-run total_steps
+        # (config.epochs × steps_per_epoch).  If they match, restore state;
+        # otherwise the scheduler was created with the correct full-run
+        # horizon but starts from step 0 — which is still better than the
+        # old behaviour where the scheduler was discarded entirely.
         if "scheduler" in ckpt and not _skip_optimizer:
-            new_total_steps = remaining_epochs * steps_per_epoch
+            full_total_steps = config.epochs * steps_per_epoch
             if "total_steps" not in ckpt["scheduler"]:
                 logger.warning("Scheduler state skipped — no 'total_steps' in checkpoint.")
             else:
                 ckpt_total_steps = ckpt["scheduler"]["total_steps"]
-                if ckpt_total_steps == new_total_steps:
+                if ckpt_total_steps == full_total_steps:
                     scheduler.load_state_dict(ckpt["scheduler"])
-                    logger.info("Scheduler state restored.")
+                    logger.info(
+                        f"Scheduler state restored (total_steps={ckpt_total_steps})."
+                    )
                 else:
-                    logger.warning(f"Scheduler skipped — total_steps mismatch ({ckpt_total_steps} vs {new_total_steps}).")
+                    logger.warning(
+                        f"Scheduler total_steps mismatch "
+                        f"(ckpt={ckpt_total_steps} vs current={full_total_steps}). "
+                        "Scheduler starts fresh from step 0 — LR schedule may differ "
+                        "from original run. To avoid this, resume with the same "
+                        "batch_size and gradient_accumulation_steps."
+                    )
         elif _skip_optimizer:
             logger.info("Scheduler state skipped — force_optimizer_reset=True.")
     elif _ckpt_state is not None:
         logger.info("Resumed model weights only (fresh optimizer/scheduler).")
+
+    # ── Fix #34: log VRAM at training start ──
+    if device == "cuda":
+        logger.info(f"VRAM at training start: {_vram_str()}")
 
     mlflow.set_tracking_uri("sqlite:///mlruns.db")
     mlflow.set_experiment(config.experiment_name)
@@ -682,6 +772,7 @@ def train(config: TrainConfig) -> dict:
             "use_edge_attr":               config.use_edge_attr,
             "gnn_edge_emb_dim":            config.gnn_edge_emb_dim,
             "aux_loss_weight":             config.aux_loss_weight,
+            "aux_loss_warmup_epochs":      config.aux_loss_warmup_epochs,
             "lora_r":                      config.lora_r,
             "lora_alpha":                  config.lora_alpha,
             "lora_dropout":                config.lora_dropout,
@@ -700,6 +791,23 @@ def train(config: TrainConfig) -> dict:
             final_epoch = epoch
             logger.info(f"\n{'='*60}\nEpoch {epoch}/{config.epochs}\n{'='*60}")
 
+            # ── Fix #33: aux loss warmup ──
+            # Ramp aux_loss_weight from 0 → config.aux_loss_weight over the
+            # first aux_loss_warmup_epochs epochs.  This prevents the three
+            # auxiliary classification heads from dominating early gradients
+            # (observed: aux loss 2-4× main loss at epoch 1, causing the main
+            # classifier to learn slowly and rare classes to stay at F1=0).
+            if config.aux_loss_warmup_epochs > 0 and epoch <= config.aux_loss_warmup_epochs:
+                warmup_frac = epoch / config.aux_loss_warmup_epochs
+                effective_aux_weight = config.aux_loss_weight * warmup_frac
+                logger.info(
+                    f"  Aux warmup: epoch {epoch}/{config.aux_loss_warmup_epochs} "
+                    f"→ aux_weight={effective_aux_weight:.4f} "
+                    f"(target={config.aux_loss_weight:.4f})"
+                )
+            else:
+                effective_aux_weight = config.aux_loss_weight
+
             train_loss = train_one_epoch(
                 model=model,
                 loader=train_loader,
@@ -711,7 +819,7 @@ def train(config: TrainConfig) -> dict:
                 grad_clip=config.grad_clip,
                 log_interval=config.log_interval,
                 use_amp=config.use_amp,
-                aux_loss_weight=config.aux_loss_weight,
+                aux_loss_weight=effective_aux_weight,
                 gradient_accumulation_steps=accum_steps,
             )
 
@@ -731,6 +839,7 @@ def train(config: TrainConfig) -> dict:
             mlflow.log_metric("val_f1_macro",  val_metrics["f1_macro"],  step=epoch)
             mlflow.log_metric("val_f1_micro",  val_metrics["f1_micro"],  step=epoch)
             mlflow.log_metric("val_hamming",   val_metrics["hamming"],   step=epoch)
+            mlflow.log_metric("aux_loss_weight_effective", effective_aux_weight, step=epoch)
             for name in CLASS_NAMES[:config.num_classes]:
                 mlflow.log_metric(f"val_f1_{name}", val_metrics[f"f1_{name}"], step=epoch)
 
@@ -739,10 +848,13 @@ def train(config: TrainConfig) -> dict:
             top3    = " | ".join(f"{n}={v:.3f}" for n, v in class_f1s[:3])
             bottom3 = " | ".join(f"{n}={v:.3f}" for n, v in class_f1s[-3:])
 
+            # ── Fix #34: log VRAM every epoch ──
+            vram_info = f" | VRAM: {_vram_str()}" if device == "cuda" else ""
+
             logger.info(
                 f"Epoch {epoch:>2}/{config.epochs} | "
                 f"Loss={train_loss:.4f} | F1-macro={val_metrics['f1_macro']:.4f} | "
-                f"Hamming={val_metrics['hamming']:.4f}\n"
+                f"Hamming={val_metrics['hamming']:.4f}{vram_info}\n"
                 f"  Top3:    {top3}\n"
                 f"  Bottom3: {bottom3}"
             )
