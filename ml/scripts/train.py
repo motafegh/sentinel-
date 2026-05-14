@@ -1,28 +1,52 @@
 """
 train.py — SENTINEL Training Entry Point (v5.2 three-eye + JK architecture)
 
-Usage examples:
+NAMING CONVENTION
+-----------------
+Always include the date in --run-name so checkpoints, log files, and MLflow
+runs are uniquely named and never overwrite each other:
 
-    # v5.2 smoke run (2 epochs, 10% data — run this first to clear all Phase 4 gates)
-    source ml/.venv/bin/activate
-    TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
-        --run-name v5.2-smoke \\
-        --experiment-name sentinel-v5.2 \\
-        --epochs 2 \\
-        --smoke-subsample-fraction 0.1 \\
-        --gradient-accumulation-steps 4
-    # Phase 4 gates: GNN share ≥ 15% at step 100; JK all phases > 5%; no NaN after step 50
+    --run-name v5.2-smoke-20260514
+    --run-name v5.2-jk-20260514
 
-    # v5.2 full 60-epoch run (after smoke gates pass)
+Each run produces:
+    ml/checkpoints/<run-name>_best.pt          ← checkpoint
+    ml/checkpoints/<run-name>_best.state.json  ← patience/epoch sidecar
+    ml/logs/<run-name>.log                     ← append-mode per-run log
+
+RESUMING
+--------
+The resume command is printed at training startup. General form:
+
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
-        --run-name v5.2-jk \\
+        --resume ml/checkpoints/<run-name>_best.pt \\
+        --run-name <run-name>-resumed \\
         --experiment-name sentinel-v5.2 \\
         --epochs 60 \\
         --gradient-accumulation-steps 4
 
-    # Disable JK (ablation / backward-compat loading)
+Usage examples:
+
+    # v5.2 smoke run (2 epochs, 10% data — run this first to clear Phase 4 gates)
+    # Note: log_interval auto-adjusts to ~12 steps for 10% smoke data + accum=4
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
-        --run-name v5.2-no-jk \\
+        --run-name v5.2-smoke-20260514 \\
+        --experiment-name sentinel-v5.2 \\
+        --epochs 2 \\
+        --smoke-subsample-fraction 0.1 \\
+        --gradient-accumulation-steps 4
+    # Phase 4 gates: GNN share ≥ 15%; JK all phases > 5%; no NaN after step 50
+
+    # v5.2 full 60-epoch run (after smoke gates pass)
+    TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
+        --run-name v5.2-jk-20260514 \\
+        --experiment-name sentinel-v5.2 \\
+        --epochs 60 \\
+        --gradient-accumulation-steps 4
+
+    # Disable JK (ablation)
+    TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
+        --run-name v5.2-no-jk-20260514 \\
         --no-jk \\
         --epochs 60 \\
         --gradient-accumulation-steps 4
