@@ -12,7 +12,7 @@ Dual-path smart contract vulnerability detector. A three-phase **Graph Attention
 - [System Overview](#system-overview)
 - [Shared Preprocessing Layer](#shared-preprocessing-layer)
 - [Data Preparation](#data-preparation)
-- [Dataset — DualPathDataset](#dataset--dualpathddataset)
+- [Dataset — DualPathDataset](#dataset--dualpathdataset)
 - [Model Architecture](#model-architecture)
   - [SentinelModel — Orchestration (v5)](#sentinelmodel--orchestration-v5)
   - [GNN Encoder (three-phase GAT)](#gnn-encoder-three-phase-gat)
@@ -127,7 +127,7 @@ ml/src/preprocessing/
 
 Any modification to `NODE_TYPES`, `VISIBILITY_MAP`, `EDGE_TYPES`, or `FEATURE_NAMES` (or the logic in `_build_node_features()`) requires **all four** of the following steps:
 
-1. Rebuild all ~68K `.pt` graph files — `python ml/scripts/reextract_graphs.py`
+1. Rebuild all ~44K `.pt` graph files — `python ml/scripts/reextract_graphs.py`
 2. Rebuild all token `.pt` files (only if tokenizer logic changed)
 3. Retrain the model from scratch — `python ml/scripts/train.py`
 4. Increment `FEATURE_SCHEMA_VERSION` in `graph_schema.py` to invalidate all inference caches
@@ -163,7 +163,7 @@ Output: `ml/data/graphs/<md5_hash>.pt` — one file per contract, containing:
 PYTHONPATH=. poetry run python ml/scripts/build_multilabel_index.py
 ```
 
-Bridges the BCCC SHA256 hash (filename in SourceCodes/) and the internal MD5 hash (`.pt` stem) via `graph.contract_path`. Groups by SHA256, applies `max()` over Class columns (OR semantics). Output: `ml/data/processed/multilabel_index.csv` (~68K rows).
+Bridges the BCCC SHA256 hash (filename in SourceCodes/) and the internal MD5 hash (`.pt` stem) via `graph.contract_path`. Groups by SHA256, applies `max()` over Class columns (OR semantics). Output: `ml/data/processed/multilabel_index.csv` (~68K rows, pre-dedup — see Step 3).
 
 ### Step 3 — Deduplicate
 
@@ -286,7 +286,7 @@ No Sigmoid inside the model — applied externally in `Predictor` and by `BCEWit
 
 **Ghost-graph fallback**: a contract with no function-level nodes (interface-only) would cause batch-size mismatch. For such graphs all nodes are included in the pool.
 
-**Checkpoint format**: `{"model", "optimizer", "epoch", "best_f1", "config"}`
+**Checkpoint format**: `{"model", "optimizer", "epoch", "best_f1", "config", "model_version"}`
 
 ### GNN Encoder (three-phase GAT)
 
@@ -759,11 +759,10 @@ Data files too large for Git are tracked with DVC:
 
 | DVC pointer | Tracks |
 |---|---|
-| `ml/data/graphs.dvc` | `ml/data/graphs/` (~68K `.pt` graph files) |
-| `ml/data/tokens.dvc` | `ml/data/tokens/` (~68K `.pt` token files) |
+| `ml/data/graphs.dvc` | `ml/data/graphs/` (44,470 `.pt` graph files) |
+| `ml/data/tokens.dvc` | `ml/data/tokens/` (44,470 `.pt` token files) |
 | `ml/data/splits.dvc` | `ml/data/splits/` (train/val/test `.npy` index arrays) |
 | `ml/checkpoints.dvc` | `ml/checkpoints/` (trained model checkpoints) |
-| `ml/data/tokens.dvc` | `ml/data/tokens/` |
 
 Remote configured in `.dvc/config`. Pull data: `dvc pull`.
 
@@ -886,10 +885,11 @@ ml/
 │   └── Dockerfile.slither      — Ubuntu 20.04 + slither==0.10.0 + solc binaries
 │
 ├── data/
-│   ├── graphs.dvc              — ~68K .pt graph files (tracked by DVC)
-│   ├── tokens.dvc              — ~68K .pt token files (tracked by DVC)
+│   ├── graphs.dvc              — 44,470 .pt graph files (tracked by DVC)
+│   ├── tokens.dvc              — 44,470 .pt token files (tracked by DVC)
 │   ├── splits.dvc              — train/val/test .npy arrays (tracked by DVC)
 │   ├── augmented/              — 50 synthetic CEI contract pairs (.sol)
+│   ├── tokens_orphaned/        — 24,148 legacy token files (no graph counterpart; not used in training)
 │   └── processed/
 │       └── multilabel_index_deduped.csv  — label source for DualPathDataset
 │

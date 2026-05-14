@@ -1,4 +1,3 @@
-```
 # Python
 __pycache__/
 *.pyc
@@ -35,6 +34,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+*Zone.Identifier
 
 # MyPy
 .mypy_cache/
@@ -42,9 +42,6 @@ Thumbs.db
 # PyTest
 .pytest_cache/
 
-# Audit docs - preserve the audit files that were added
-!ml/audit_docs/
-```
 # Build artifacts & caches
 .cache/
 .local-bin/
@@ -56,7 +53,12 @@ mlruns/
 *.db
 nohup.out
 slither_output.json
-zkml/
 
 # Backup files
 *.backup
+
+# Raw datasets (too large for git — use DVC)
+BCCC-SCsVul-2024/
+
+# Agent data (RAG index, FAISS files, embeddings)
+agents/data/
