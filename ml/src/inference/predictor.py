@@ -227,6 +227,7 @@ class Predictor:
             gnn_heads=saved_cfg.get("gnn_heads", 8),
             use_edge_attr=saved_cfg.get("use_edge_attr", True),
             gnn_edge_emb_dim=saved_cfg.get("gnn_edge_emb_dim", 32 if _is_v5 else 16),
+            gnn_use_jk=saved_cfg.get("gnn_use_jk", _is_v5),
             lora_r=saved_cfg.get("lora_r", 16 if _is_v5 else 8),
             lora_alpha=saved_cfg.get("lora_alpha", 32 if _is_v5 else 16),
             lora_dropout=saved_cfg.get("lora_dropout", 0.1),

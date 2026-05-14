@@ -47,7 +47,6 @@ Fix #34 — VRAM usage logged every epoch so OOM risk is visible.
 """
 
 from __future__ import annotations
-import logging
 import gc
 import json
 import os
@@ -560,18 +559,20 @@ def train(config: TrainConfig) -> dict:
     device = config.device
 
     # ── Per-run file log (append mode — never overwrites previous runs) ──────
-    # Each run gets its own log file named after run_name (which should include
-    # a date suffix, e.g. v5.2-jk-20260514). Append mode is safe for resume.
+    # trainer.py uses loguru, not stdlib logging — use logger.add() not
+    # logging.FileHandler(). Append mode (mode="a") is safe for resume.
+    # Each run gets its own file named after run_name (which must include a
+    # date suffix so repeated runs never collide, e.g. v5.2-jk-20260514).
     _log_dir = Path("ml/logs")
     _log_dir.mkdir(parents=True, exist_ok=True)
     _run_log_path = _log_dir / f"{config.run_name}.log"
-    _fh = logging.FileHandler(_run_log_path, mode="a", encoding="utf-8")
-    _fh.setLevel(logging.DEBUG)
-    _fh.setFormatter(logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    ))
-    logging.getLogger().addHandler(_fh)
+    logger.add(
+        str(_run_log_path),
+        level="DEBUG",
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {name} | {message}",
+        mode="a",
+        encoding="utf-8",
+    )
     logger.info(f"Run log: {_run_log_path}  (append mode — safe to resume)")
 
     logger.info(f"Training on: {device} | classes: {config.num_classes}")
