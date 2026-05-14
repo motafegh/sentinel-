@@ -161,8 +161,14 @@ class DualPathDataset(Dataset):
                 f"{unpaired_graphs} graph files have no matching token file — skipped"
             )
         if unpaired_tokens > 0:
-            logger.warning(
-                f"{unpaired_tokens} token files have no matching graph file — skipped"
+            # Phase 2-B4 (2026-05-14): downgraded WARNING → DEBUG.
+            # The ~24K extra tokens from the original 68K dataset were moved to
+            # ml/data/tokens_orphaned/ — they no longer appear here under normal
+            # operation. This log fires only if someone manually adds token files
+            # without corresponding graphs.
+            logger.debug(
+                f"{unpaired_tokens} token files have no matching graph file — skipped. "
+                f"(Orphaned tokens should live in ml/data/tokens_orphaned/, not ml/data/tokens/)"
             )
 
         # Sort for deterministic indexing across runs
