@@ -110,6 +110,12 @@ NUM_CLASSES = len(CLASS_NAMES)
 
 ARCHITECTURE = "three_eye_v5"
 
+# Phase 1-A6 (2026-05-14): version string written to every saved checkpoint.
+# Allows the resume path to detect and warn about architecture mismatches when
+# loading a pre-v5.2 checkpoint (which lacks JK/REVERSE_CONTAINS) into a v5.2
+# model.  Use _parse_version() for tuple comparison (not string sort).
+MODEL_VERSION = "v5.2"
+
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal"})
 
 # ---------------------------------------------------------------------------
@@ -140,6 +146,22 @@ def _vram_str() -> str:
     return f"{reser:.1f}/{total:.1f} GiB ({_vram_pct():.1%})"
 
 
+def _parse_version(v: str) -> tuple[int, ...]:
+    """
+    Parse a version string like 'v5.2' or '5.1.3' into a comparable tuple.
+
+    Phase 1-A6 (2026-05-14): used to detect when a checkpoint was saved by an
+    older model version (e.g. pre-v5.2, no JK/REVERSE_CONTAINS) and log a
+    warning so operators know why strict=False may silently discard keys.
+
+    Examples:
+        _parse_version("v5.2")   → (5, 2)
+        _parse_version("5.1.3")  → (5, 1, 3)
+        _parse_version("v4")     → (4,)
+    """
+    return tuple(int(x) for x in v.lstrip("v").split(".") if x.isdigit())
+
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -164,6 +186,9 @@ class TrainConfig:
     gnn_dropout:      float = 0.2
     use_edge_attr:    bool  = True
     gnn_edge_emb_dim: int   = 32
+    # JK connections (Phase 1-A1, 2026-05-14)
+    gnn_use_jk:       bool  = True
+    gnn_jk_mode:      str   = 'attention'
 
     # --- LoRA architecture (v5) ---
     lora_r:               int        = 16
@@ -179,6 +204,13 @@ class TrainConfig:
     batch_size:          int   = 16          # Fix #28: was 16, reduced for 8 GB GPU
     lr:                  float = 2e-4
     weight_decay:        float = 1e-2
+    # Phase 2-B1 (2026-05-14): per-group LR multipliers.
+    # GNN collapsed to ~10% gradient share by epoch 8 in v5.1-fix28 — boosting
+    # its LR relative to LoRA counteracts the imbalance without changing the
+    # global schedule.  LoRA at 0.5× prevents catastrophic forgetting of
+    # CodeBERT features that took many epochs to adapt.
+    gnn_lr_multiplier:   float = 2.5        # effective GNN LR = lr * 2.5
+    lora_lr_multiplier:  float = 0.5        # effective LoRA LR = lr * 0.5
     threshold:           float = 0.5
     early_stop_patience: int   = 10
     aux_loss_weight:     float = 0.3
@@ -208,7 +240,7 @@ class TrainConfig:
     focal_alpha: float = 0.25
 
     # --- Cache ---
-    cache_path: str | None = "ml/data/cached_dataset.pkl"
+    cache_path: str | None = "ml/data/cached_dataset_deduped.pkl"
 
     # --- Logging ---
     log_interval: int = 100
@@ -230,10 +262,21 @@ class TrainConfig:
     use_weighted_sampler:     str   = "none"
 
     def __post_init__(self) -> None:
-        if self.gnn_layers != 4:
+        # Phase 0-A4 (2026-05-14): Relaxed hard raise to conditional guard.
+        # gnn_layers < 4 is a hard error — three-phase architecture needs at least 4 layers.
+        # gnn_layers > 4 is experimental (second CONTROL_FLOW hop, v5.3+); warn but allow,
+        # so smoke runs with gnn_layers=5 can be launched without config changes.
+        if self.gnn_layers < 4:
             raise ValueError(
-                f"gnn_layers={self.gnn_layers} is not supported in v5.0. "
-                "Only gnn_layers=4 is implemented."
+                f"gnn_layers={self.gnn_layers} is not supported — minimum is 4 "
+                "(three-phase architecture requires layers 1+2 for Phase 1, "
+                "layer 3 for Phase 2 CONTROL_FLOW, layer 4 for Phase 3 CONTAINS)."
+            )
+        if self.gnn_layers > 4:
+            logger.warning(
+                f"gnn_layers={self.gnn_layers} is experimental. "
+                "Only gnn_layers=4 is validated for v5.x. "
+                "Extra layers beyond 4 receive Phase 1 (structural) edge masking by default."
             )
         if self.gradient_accumulation_steps < 1:
             raise ValueError(
@@ -352,6 +395,20 @@ def train_one_epoch(
     # not micro-batches, so log_interval=100 means every 100 optimizer steps).
     optimizer_step = 0
 
+    # Phase 2-C2 (2026-05-14): GNN collapse early warning.
+    # Three consecutive log_intervals with GNN share < 10% triggers a WARNING
+    # so the operator can abort before the collapse becomes irreversible.
+    # (A single interval below threshold can be transient; three consecutive is
+    # structural collapse matching the epoch-8 pattern from v5.1-fix28.)
+    _gnn_collapse_streak = 0
+
+    # Phase 2-B3 (2026-05-14): explicit NaN loss counter.
+    # GradScaler silently skips optimizer steps when loss is NaN/Inf.
+    # Previously we had no visibility into how often this happened.
+    # Accumulate per-epoch and log at epoch end so the operator can
+    # detect a pathological run early without scanning per-batch logs.
+    nan_loss_count = 0
+
     pbar = tqdm(loader, desc="Training", unit="batch", leave=False)
     for batch_idx, batch in enumerate(pbar):
         graphs, tokens, labels = batch
@@ -396,12 +453,28 @@ def train_one_epoch(
                     f"grad_norm gnn_eye={gnn_norm:.3f} tf_eye={tf_norm:.3f} "
                     f"fused_eye={fused_norm:.3f}"
                 )
-                if tf_norm > 1e-8 and gnn_norm / tf_norm < 0.05:
-                    logger.warning(
-                        f"  ⚠ GNN eye gradient collapse: gnn={gnn_norm:.6f} "
-                        f"tf={tf_norm:.6f} ratio={gnn_norm/tf_norm:.3f} "
-                        "— consider increasing aux_loss_weight"
-                    )
+                # Phase 2-C2: GNN collapse detection via total share (not ratio).
+                # GNN share = gnn_norm / (gnn_norm + tf_norm + fused_norm).
+                # Threshold 10% matches the collapse pattern from v5.1-fix28
+                # where GNN share dropped to ~10% by epoch 8.
+                _total_norm = gnn_norm + tf_norm + fused_norm
+                _gnn_share  = gnn_norm / _total_norm if _total_norm > 1e-8 else 0.0
+                if _gnn_share < 0.10:
+                    _gnn_collapse_streak += 1
+                    if _gnn_collapse_streak >= 3:
+                        logger.warning(
+                            f"  ⚠ GNN collapse detected: share={_gnn_share:.1%} "
+                            f"(gnn={gnn_norm:.4f} tf={tf_norm:.4f} fused={fused_norm:.4f}) "
+                            f"for {_gnn_collapse_streak} consecutive log intervals. "
+                            "Consider aborting and increasing gnn_lr_multiplier or aux_loss_weight."
+                        )
+                    else:
+                        logger.info(
+                            f"  GNN share below 10%: {_gnn_share:.1%} "
+                            f"[streak {_gnn_collapse_streak}/3]"
+                        )
+                else:
+                    _gnn_collapse_streak = 0
 
                 # Fix #29: mid-epoch VRAM cleanup — check when we're already
                 # doing I/O at log_interval boundaries to minimise overhead.
@@ -420,15 +493,28 @@ def train_one_epoch(
             scheduler.step()
             optimizer.zero_grad(set_to_none=True)
 
+        # Phase 2-B3: track NaN/Inf loss (GradScaler handles these silently).
         loss_for_log = loss.item() * accum_steps
-        total_loss  += loss_for_log
-        pbar.set_postfix({"loss": f"{loss_for_log:.4f}"})
+        if not torch.isfinite(loss).item():
+            nan_loss_count += 1
+        else:
+            total_loss += loss_for_log
+        pbar.set_postfix({"loss": f"{loss_for_log:.4f}", "nan": nan_loss_count})
 
     n_batches = len(loader)
     if n_batches == 0:
         logger.warning("Empty train loader — returning 0.0 loss")
-        return 0.0
-    return total_loss / n_batches
+        return 0.0, 0
+
+    # Phase 2-B3: report NaN count at epoch end.
+    if nan_loss_count > 0:
+        logger.warning(
+            f"NaN/Inf loss detected in {nan_loss_count}/{n_batches} batches this epoch. "
+            f"GradScaler silently skipped those optimizer steps. "
+            f"If count exceeds 5% of batches, consider reducing lr or inspecting inputs."
+        )
+
+    return total_loss / max(1, n_batches - nan_loss_count), nan_loss_count
 
 
 def _grad_norm(module: nn.Module) -> float:
@@ -574,6 +660,8 @@ def train(config: TrainConfig) -> dict:
         gnn_dropout=config.gnn_dropout,
         use_edge_attr=config.use_edge_attr,
         gnn_edge_emb_dim=config.gnn_edge_emb_dim,
+        gnn_use_jk=config.gnn_use_jk,         # Phase 1-A5
+        gnn_jk_mode=config.gnn_jk_mode,       # Phase 1-A5
         lora_r=config.lora_r,
         lora_alpha=config.lora_alpha,
         lora_dropout=config.lora_dropout,
@@ -626,6 +714,23 @@ def train(config: TrainConfig) -> dict:
                 f"best_f1={best_f1:.4f} | patience={patience_counter}/{config.early_stop_patience}"
             )
 
+        # Phase 1-A6: version gate — warn when resuming a pre-v5.2 checkpoint.
+        # Pre-v5.2 checkpoints lack JK parameters (gnn.jk.*) and the new
+        # REVERSE_CONTAINS embedding row — strict=False above silently ignores
+        # these missing keys (JK starts from random init, which is fine for a
+        # fresh training run but NOT for a true resume of an identical model).
+        ckpt_version_str = ckpt.get("model_version", "v0.0")
+        ckpt_ver  = _parse_version(ckpt_version_str)
+        model_ver = _parse_version(MODEL_VERSION)
+        if ckpt_ver < model_ver:
+            logger.warning(
+                f"Checkpoint model_version='{ckpt_version_str}' is older than "
+                f"current MODEL_VERSION='{MODEL_VERSION}'. "
+                f"New parameters (JK attention, REVERSE_CONTAINS embedding row) "
+                f"will be randomly initialised — this is expected for a fresh "
+                f"v5.2 training run, but NOT for a true resume of the same model."
+            )
+
         ckpt_cfg = ckpt.get("config", {})
         ckpt_num_classes = ckpt_cfg.get("num_classes")
         if ckpt_num_classes is not None and ckpt_num_classes != config.num_classes:
@@ -654,11 +759,59 @@ def train(config: TrainConfig) -> dict:
         if pos_weight is not None and config.resume_from and not config.resume_model_only:
             logger.warning("Fix #13: pos_weight recomputed from current training split.")
 
-    optimizer = AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=config.lr,
-        weight_decay=config.weight_decay,
+    # Phase 2-B1 (2026-05-14): separate LR groups to counteract GNN gradient collapse.
+    # GNN share dropped to ~10% by epoch 8 in v5.1-fix28; boosting its LR × 2.5
+    # gives it a larger update relative to the LoRA adapter without changing the
+    # global schedule.  LoRA at × 0.5 prevents CodeBERT forgetting.
+    #
+    # Groups (in order — OneCycleLR max_lr list must match this order):
+    #   [0] GNN        (model.gnn.*)      lr * gnn_lr_multiplier
+    #   [1] LoRA       (any "lora_" key)  lr * lora_lr_multiplier
+    #   [2] Other      (everything else)  lr
+    #
+    # Parameters are assigned to exactly one group; iteration order is stable
+    # (dict preserves insertion order in Python 3.7+, same here). seen_ids
+    # prevents double-counting if a parameter is reachable via multiple paths.
+    _gnn_params:   list = []
+    _lora_params:  list = []
+    _other_params: list = []
+    _seen_param_ids: set = set()
+    for _pname, _p in model.named_parameters():
+        if not _p.requires_grad or id(_p) in _seen_param_ids:
+            continue
+        _seen_param_ids.add(id(_p))
+        if _pname.startswith("gnn."):
+            _gnn_params.append(_p)
+        elif "lora_" in _pname:
+            _lora_params.append(_p)
+        else:
+            _other_params.append(_p)
+
+    _gnn_lr   = config.lr * config.gnn_lr_multiplier
+    _lora_lr  = config.lr * config.lora_lr_multiplier
+    _other_lr = config.lr
+
+    # Only include non-empty groups — empty param groups cause OneCycleLR to
+    # misalign its max_lr list.
+    _param_groups = []
+    _max_lrs      = []
+    if _gnn_params:
+        _param_groups.append({"params": _gnn_params,   "lr": _gnn_lr})
+        _max_lrs.append(_gnn_lr)
+    if _lora_params:
+        _param_groups.append({"params": _lora_params,  "lr": _lora_lr})
+        _max_lrs.append(_lora_lr)
+    if _other_params:
+        _param_groups.append({"params": _other_params, "lr": _other_lr})
+        _max_lrs.append(_other_lr)
+
+    logger.info(
+        f"Optimizer param groups: "
+        f"GNN={len(_gnn_params)} params (lr×{config.gnn_lr_multiplier}) | "
+        f"LoRA={len(_lora_params)} params (lr×{config.lora_lr_multiplier}) | "
+        f"Other={len(_other_params)} params (lr×1.0)"
     )
+    optimizer = AdamW(_param_groups, weight_decay=config.weight_decay)
 
     remaining_epochs = config.epochs - start_epoch + 1
     if remaining_epochs <= 0:
@@ -683,7 +836,7 @@ def train(config: TrainConfig) -> dict:
     #    picks up exactly where the original run left off.
     scheduler = OneCycleLR(
         optimizer,
-        max_lr=config.lr,
+        max_lr=_max_lrs,          # per-group max LR (list matches param_groups order)
         epochs=config.epochs,
         steps_per_epoch=steps_per_epoch,
         pct_start=config.warmup_pct,
@@ -696,8 +849,20 @@ def train(config: TrainConfig) -> dict:
         ckpt = _ckpt_state
         _skip_optimizer = config.force_optimizer_reset
         if not _skip_optimizer and "optimizer" in ckpt:
-            optimizer.load_state_dict(ckpt["optimizer"])
-            logger.info("Optimizer state restored.")
+            # Phase 2-B1: guard against param-group count mismatch.
+            # Pre-v5.2 checkpoints have 1 group; v5.2 has up to 3 (GNN/LoRA/other).
+            # Loading mismatched optimizer state silently corrupts momentum buffers.
+            ckpt_n_groups   = len(ckpt["optimizer"].get("param_groups", []))
+            current_n_groups = len(optimizer.param_groups)
+            if ckpt_n_groups != current_n_groups:
+                logger.warning(
+                    f"Optimizer param_groups count mismatch: "
+                    f"checkpoint has {ckpt_n_groups}, current optimizer has {current_n_groups}. "
+                    f"Skipping optimizer restore — optimizer starts fresh (Phase 2-B1 change)."
+                )
+            else:
+                optimizer.load_state_dict(ckpt["optimizer"])
+                logger.info("Optimizer state restored.")
         elif _skip_optimizer:
             logger.info("Optimizer state skipped — force_optimizer_reset=True.")
         else:
@@ -808,7 +973,7 @@ def train(config: TrainConfig) -> dict:
             else:
                 effective_aux_weight = config.aux_loss_weight
 
-            train_loss = train_one_epoch(
+            train_loss, nan_batch_count = train_one_epoch(
                 model=model,
                 loader=train_loader,
                 optimizer=optimizer,
@@ -835,7 +1000,33 @@ def train(config: TrainConfig) -> dict:
             gc.collect()
             torch.cuda.empty_cache()
 
-            mlflow.log_metric("train_loss",    train_loss,               step=epoch)
+            mlflow.log_metric("train_loss",       train_loss,       step=epoch)
+            mlflow.log_metric("nan_batch_count",  nan_batch_count,  step=epoch)  # Phase 2-B3
+
+            # Phase 2-C1 (2026-05-14): JK attention weight logging.
+            # Reads cached per-phase mean weights from the last training batch.
+            # Metric names: jk_phase1_weight, jk_phase2_weight, jk_phase3_weight.
+            # Gate: all three should be > 5% after smoke run (v5.2 success criterion).
+            if config.gnn_use_jk and hasattr(model.gnn, "jk") and model.gnn.jk is not None:
+                _jk_cache = getattr(model.gnn.jk, "last_weights", None)
+                if _jk_cache is not None:
+                    _jk_w = _jk_cache.cpu().tolist()   # [3] mean weights
+                    for _pi, _w in enumerate(_jk_w, start=1):
+                        mlflow.log_metric(f"jk_phase{_pi}_weight", _w, step=epoch)
+                    logger.info(
+                        f"  JK attention weights — "
+                        f"Phase1={_jk_w[0]:.3f} Phase2={_jk_w[1]:.3f} Phase3={_jk_w[2]:.3f}"
+                    )
+                    # Phase 2-C3: phase dominance alert (> 80% = JK learned to ignore phases).
+                    _max_w = max(_jk_w)
+                    if _max_w > 0.80:
+                        _dominant = _jk_w.index(_max_w) + 1
+                        logger.warning(
+                            f"  ⚠ JK phase dominance: Phase {_dominant} has "
+                            f"{_max_w:.1%} attention weight. "
+                            "Other phases are underutilised — consider checking LayerNorm or LR."
+                        )
+
             mlflow.log_metric("val_f1_macro",  val_metrics["f1_macro"],  step=epoch)
             mlflow.log_metric("val_f1_micro",  val_metrics["f1_micro"],  step=epoch)
             mlflow.log_metric("val_hamming",   val_metrics["hamming"],   step=epoch)
@@ -870,6 +1061,9 @@ def train(config: TrainConfig) -> dict:
                         "epoch":            epoch,
                         "best_f1":          best_f1,
                         "patience_counter": patience_counter,
+                        # Phase 1-A6: model_version enables version-aware resume.
+                        # _parse_version() converts this to a comparable tuple.
+                        "model_version":    MODEL_VERSION,
                         "config": {
                             **dataclasses.asdict(config),
                             "num_classes":  config.num_classes,

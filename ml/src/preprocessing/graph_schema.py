@@ -48,6 +48,13 @@ v2  — 12 features: reentrant REMOVED; gas_intensity REMOVED; 5 new semantic
       structural vulnerability patterns from first principles.
       gas_intensity removed: it was f(complexity, has_loop, external_call_count) —
       a circular heuristic over features already in the vector at indices 5, 10, 11.
+
+v3  — 8 edge types: + REVERSE_CONTAINS(7) — runtime-only reverse of CONTAINS(5).
+      Generated inside GNNEncoder Phase 3; never written to graph .pt files.
+      NODE_FEATURE_DIM, node types, and all graph files are unchanged.
+      Only the GNNEncoder embedding table gains one row (7→8).
+      Rationale: Phase 1-A3 (2026-05-14). Fixes v5.0 limitation L2 (shared
+      CONTAINS embedding for both directions prevented directional learning).
 """
 
 from __future__ import annotations
@@ -125,13 +132,18 @@ The GNN learns the combination itself and learns it better.
 NUM_NODE_TYPES: int = 13
 """Number of distinct node types (ids 0–12). Used by GNNEncoder for the node type embedding."""
 
-NUM_EDGE_TYPES: int = 7
+NUM_EDGE_TYPES: int = 8
 """
 Number of distinct edge-relation types (width of the EDGE_TYPES vocabulary).
 
-Stored in graph.edge_attr as integer IDs in [0, NUM_EDGE_TYPES).
-GNNEncoder embeds these via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim)
-and adds the embedding to GATConv edge features.
+IDs 0–6 are stored in graph.edge_attr as integer IDs in [0, 7).
+ID 7 (REVERSE_CONTAINS) is RUNTIME-ONLY — it is generated inside GNNEncoder's
+Phase 3 forward pass by reversing the CONTAINS(5) edges; it is NEVER written to
+graph .pt files on disk.
+
+GNNEncoder embeds all 8 IDs via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim).
+Bumping this from 7 → 8 adds one row to the embedding table but does NOT require
+graph re-extraction — existing .pt files contain only ids 0–6.
 
 v2 additions (ids 5 and 6):
   CONTAINS     — function node → its CFG_NODE children; makes the CFG subgraph
@@ -142,6 +154,13 @@ v2 additions (ids 5 and 6):
                  execution order, enabling the model to distinguish
                  "call before write" (reentrancy) from "write before call" (CEI)
                  via Phase 2 directed message passing.
+
+Phase 1-A3 addition (id 7):
+  REVERSE_CONTAINS — CFG_NODE → parent function (opposite of CONTAINS); runtime
+                     only. Allows Phase 3 to propagate CFG information back into
+                     function nodes with a DISTINCT learned embedding rather than
+                     reusing the forward CONTAINS embedding (v5.0 limitation L2).
+                     No graph re-extraction needed — generated at forward-pass time.
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -220,8 +239,13 @@ EDGE_TYPES: dict[str, int] = {
     "EMITS":        3,   # function → event it emits
     "INHERITS":     4,   # contract → parent contract (linearised MRO)
     # v2 additions — control-flow structure
-    "CONTAINS":     5,   # function node → its CFG_NODE children (NEW in v2)
-    "CONTROL_FLOW": 6,   # CFG_NODE → successor CFG_NODE, directed (NEW in v2)
+    "CONTAINS":          5,   # function node → its CFG_NODE children (NEW in v2)
+    "CONTROL_FLOW":      6,   # CFG_NODE → successor CFG_NODE, directed (NEW in v2)
+    # Phase 1-A3 addition — runtime-only reverse edge (2026-05-14)
+    # NOT stored in graph .pt files. Generated in GNNEncoder Phase 3 forward pass
+    # by reversing CONTAINS(5) edges so CFG_NODEs propagate back into function nodes
+    # with a distinct learned embedding. Fixes v5.0 limitation L2.
+    "REVERSE_CONTAINS":  7,   # CFG_NODE → parent function (runtime only, NEVER on disk)
 }
 """
 Maps each semantic edge relation to an integer ID stored in graph.edge_attr.
@@ -233,8 +257,8 @@ into each GATConv layer.
 GNNEncoder uses three phases, each seeing a different subset of edge types:
   Phase 1 (Layers 1+2): types 0–5 (structural + CONTAINS forward)
   Phase 2 (Layer 3):    type  6  (CONTROL_FLOW only, directed)
-  Phase 3 (Layer 4):    type  5  REVERSED (CFG_NODE → function; same embedding
-                                  as forward CONTAINS — v5.0 known limitation)
+  Phase 3 (Layer 4):    type  7  REVERSE_CONTAINS (CFG_NODE → function; distinct
+                                  embedding from forward CONTAINS — fixes L2)
 
 Shape: graph.edge_attr must be a 1-D int64 tensor of shape [E] (PyG
 convention). Pre-refactor .pt files produced by the old ast_extractor.py

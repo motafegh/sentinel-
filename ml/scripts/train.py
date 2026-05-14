@@ -1,24 +1,30 @@
 """
-train.py — SENTINEL Training Entry Point (v5 three-eye architecture)
+train.py — SENTINEL Training Entry Point (v5.2 three-eye + JK architecture)
 
 Usage examples:
 
-    # Full 60-epoch run (RTX 3070 8 GB — use grad_accum=4 to avoid VRAM fragmentation)
-    poetry run python ml/scripts/train.py \\
-        --run-name v5.1-full \\
+    # v5.2 smoke run (2 epochs, 10% data — run this first to clear all Phase 4 gates)
+    source ml/.venv/bin/activate
+    TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
+        --run-name v5.2-smoke \\
+        --experiment-name sentinel-v5.2 \\
+        --epochs 2 \\
+        --smoke-subsample-fraction 0.1 \\
+        --gradient-accumulation-steps 4
+    # Phase 4 gates: GNN share ≥ 15% at step 100; JK all phases > 5%; no NaN after step 50
+
+    # v5.2 full 60-epoch run (after smoke gates pass)
+    TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
+        --run-name v5.2-jk \\
+        --experiment-name sentinel-v5.2 \\
         --epochs 60 \\
         --gradient-accumulation-steps 4
 
-    # Smoke run (2 epochs, no accumulation needed — short enough)
-    poetry run python ml/scripts/train.py \\
-        --run-name v5.1-smoke \\
-        --epochs 2 \\
-        --smoke-subsample-fraction 0.1
-
-    # Resume from checkpoint
-    poetry run python ml/scripts/train.py \\
-        --resume ml/checkpoints/v5.1-full_best.pt \\
-        --run-name v5.1-full-cont \\
+    # Disable JK (ablation / backward-compat loading)
+    TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
+        --run-name v5.2-no-jk \\
+        --no-jk \\
+        --epochs 60 \\
         --gradient-accumulation-steps 4
 """
 
@@ -90,13 +96,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--focal-gamma",          type=float, default=2.0)
     p.add_argument("--focal-alpha",          type=float, default=0.25)
 
-    # --- GNN architecture (v5) ---
+    # --- GNN architecture (v5.2) ---
     p.add_argument("--gnn-hidden-dim",   type=int,   default=128)
     p.add_argument("--gnn-layers",       type=int,   default=4)
     p.add_argument("--gnn-heads",        type=int,   default=8)
     p.add_argument("--gnn-dropout",      type=float, default=0.2)
     p.add_argument("--gnn-edge-emb-dim", type=int,   default=32)
     p.add_argument("--no-edge-attr",     dest="use_edge_attr", action="store_false", default=True)
+    p.add_argument("--no-jk",            dest="gnn_use_jk",   action="store_false", default=True,
+                   help="Disable JK attention aggregation (v5.2 default: enabled)")
+    p.add_argument("--gnn-lr-multiplier",  type=float, default=2.5,
+                   help="GNN LR = lr × this (default 2.5 — counteracts GNN gradient collapse)")
+    p.add_argument("--lora-lr-multiplier", type=float, default=0.5,
+                   help="LoRA LR = lr × this (default 0.5 — prevents CodeBERT forgetting)")
 
     # --- Auxiliary loss (v5 three-eye) ---
     p.add_argument("--aux-loss-weight", type=float, default=0.3)
@@ -154,6 +166,9 @@ def main() -> None:
         gnn_dropout           = args.gnn_dropout,
         gnn_edge_emb_dim      = args.gnn_edge_emb_dim,
         use_edge_attr         = args.use_edge_attr,
+        gnn_use_jk            = args.gnn_use_jk,
+        gnn_lr_multiplier     = args.gnn_lr_multiplier,
+        lora_lr_multiplier    = args.lora_lr_multiplier,
         aux_loss_weight       = args.aux_loss_weight,
         lora_r                = args.lora_r,
         lora_alpha            = args.lora_alpha,

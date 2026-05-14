@@ -45,3 +45,18 @@ Thumbs.db
 # Audit docs - preserve the audit files that were added
 !ml/audit_docs/
 ```
+# Build artifacts & caches
+.cache/
+.local-bin/
+logs/
+ml/data/
+ml/logs/
+mlruns/
+*.pid
+*.db
+nohup.out
+slither_output.json
+zkml/
+
+# Backup files
+*.backup

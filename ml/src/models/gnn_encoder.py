@@ -21,7 +21,7 @@ Phase 2 (Layer 3): CFG-directed aggregation
   v5.1 target: gnn_layers=5 for 2 CONTROL_FLOW hops.
 
 Phase 3 (Layer 4): Reverse-CONTAINS aggregation
-  Edges: type 5 CONTAINS, REVERSED (CFG_NODE → FUNCTION direction)
+  Edges: type 7 REVERSE_CONTAINS (runtime-only, CFG_NODE → FUNCTION direction)
   add_self_loops=False
   heads=1, concat=False → output stays hidden_dim (128)
   Purpose: aggregate Phase-2-enriched CFG embeddings UP into FUNCTION nodes.
@@ -29,10 +29,11 @@ Phase 3 (Layer 4): Reverse-CONTAINS aggregation
   nodes that the classifier operates on. Without Phase 3, function-node
   embeddings are order-blind regardless of CFG machinery below them.
 
-  Known limitation (v5.0): reversed CONTAINS edges use the same type-5
-  embedding as forward CONTAINS edges — the GNN cannot encode directional
-  asymmetry from the edge attribute alone. GATConv positional asymmetry
-  provides partial compensation. v5.1 target: REVERSE_CONTAINS = 7.
+  Phase 1-A3 (2026-05-14): Phase 3 now uses REVERSE_CONTAINS (type 7) instead
+  of reusing the forward CONTAINS (type 5) embedding. This gives the GNN a
+  distinct learned representation for the reverse direction, fixing v5.0
+  limitation L2. Type-7 edges are generated at runtime by flipping CONTAINS(5)
+  edges in the forward pass — no graph re-extraction needed.
 
   Zero-message behaviour (correct — do not "fix"):
   FUNCTION nodes with no CFG children receive no Phase 3 messages.
@@ -40,6 +41,34 @@ Phase 3 (Layer 4): Reverse-CONTAINS aggregation
   They retain their Phase 2 embedding. Adding add_self_loops=True to
   "fix" this would dilute the Phase 2 order signal for functions that DO
   have CFG children.
+
+JK Connections (Phase 1-A1, 2026-05-14)
+─────────────────────────────────────────
+When use_jk=True, a learned attention over all three phase outputs is used
+instead of returning only the final Phase 3 embedding. This prevents Phase 1
+structural signal from being over-smoothed by phases 2 and 3, fixing the
+gradient collapse observed in v5.1-fix28 where the GNN share dropped to ~10%
+by epoch 8.
+
+Implementation: custom _JKAttention module (NOT PyG's built-in JumpingKnowledge
+with mode='lstm'). Reasons: (1) simpler gradient flow analysis, (2) output
+dimension is exactly hidden_dim with no LSTM overhead, (3) easier to inspect
+per-phase attention weights for monitoring.
+
+CRITICAL — live intermediates:
+JK aggregation consumes tensors from _live = [] which are collected WITHOUT
+.detach(). If .detach() were used (as in the existing _intermediates diagnostic
+dict), JK attention weights would receive zero gradients for the entire training
+run. The _intermediates diagnostic dict still uses .detach().clone() for
+backwards compatibility with test_cfg_embedding_separation.py.
+
+Per-Phase LayerNorm (Phase 1-A2, 2026-05-14)
+──────────────────────────────────────────────
+self.phase_norm = ModuleList([LayerNorm(hidden_dim) for _ in range(3)])
+Applied after each phase's residual connection, before collecting for JK.
+Prevents Phase 1 magnitude from dominating the JK attention softmax — without
+LayerNorm, Phase 1 (two conv layers + residual) tends to produce higher norms
+than Phase 2 and 3 (one layer each), causing JK to ignore later phases.
 
 return_intermediates
 ────────────────────
@@ -64,15 +93,17 @@ All other features are already in [0, 1] or small normalised ranges.
 
 PARAMETERS (v5 defaults)
 ─────────────────────────
-  in_channels  = NODE_FEATURE_DIM (12) — never hardcode 8 or 13 here
-  hidden_dim   = 128
-  heads        = 8 (Phase 1 only; Phases 2+3 use heads=1)
-  dropout      = 0.2
+  in_channels   = NODE_FEATURE_DIM (12) — never hardcode 8 or 13 here
+  hidden_dim    = 128
+  heads         = 8 (Phase 1 only; Phases 2+3 use heads=1)
+  dropout       = 0.2
   use_edge_attr = True
-  edge_emb_dim  = 32  (nn.Embedding(NUM_EDGE_TYPES=7, 32))
+  edge_emb_dim  = 32  (nn.Embedding(NUM_EDGE_TYPES=8, 32))
   num_layers    = 4
+  use_jk        = True   (Phase 1-A1; attention over 3 phase outputs)
+  jk_mode       = 'attention'
 
-Total trainable parameters (v5 defaults): ~90K
+Total trainable parameters (v5 defaults): ~91K (JK adds ~128 params)
 """
 
 from __future__ import annotations
@@ -83,6 +114,53 @@ from torch_geometric.nn import GATConv
 
 from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES, EDGE_TYPES
 
+
+# ---------------------------------------------------------------------------
+# JK attention aggregator
+# ---------------------------------------------------------------------------
+
+class _JKAttention(nn.Module):
+    """
+    Learned attention aggregation over a list of same-shape embeddings.
+
+    For each node, computes a scalar score per embedding, softmax-normalises,
+    and returns the weighted sum.  Output shape equals input shape.
+
+    This is the "attention" JK mode used by GNNEncoder.  We implement it
+    here rather than using PyG's JumpingKnowledge(mode='lstm') for two reasons:
+      1. Explicit gradient flow — easy to verify all parameters are trained.
+      2. No LSTM state overhead — just a single Linear(channels, 1).
+
+    Phase 1-A1 (2026-05-14): non-negotiable gate test_jk_gradient_flow checks
+    that self.attn receives non-zero gradients after a backward pass.
+    """
+
+    def __init__(self, channels: int) -> None:
+        super().__init__()
+        self.attn = nn.Linear(channels, 1, bias=False)
+
+    def forward(self, xs: list[torch.Tensor]) -> torch.Tensor:
+        """
+        Args:
+            xs: list of K tensors each [N, channels]
+        Returns:
+            [N, channels]  — weighted sum, same shape as each input
+
+        Side effect: stores mean per-phase attention weights in self.last_weights
+        as a detached [K] tensor so the trainer can log them without an extra
+        forward pass. Phase 2-C1 (2026-05-14).
+        """
+        stacked = torch.stack(xs, dim=1)        # [N, K, channels]
+        scores  = self.attn(stacked)             # [N, K, 1]
+        weights = torch.softmax(scores, dim=1)   # [N, K, 1]  (sum-to-1 over K)
+        # Cache mean weights for per-epoch monitoring (C1/C3).
+        self.last_weights = weights.squeeze(-1).mean(0).detach()  # [K]
+        return (weights * stacked).sum(dim=1)    # [N, channels]
+
+
+# ---------------------------------------------------------------------------
+# GNNEncoder
+# ---------------------------------------------------------------------------
 
 class GNNEncoder(nn.Module):
     """
@@ -118,7 +196,23 @@ class GNNEncoder(nn.Module):
         use_edge_attr: bool  = True,
         edge_emb_dim:  int   = 32,
         num_layers:    int   = 4,
+        use_jk:        bool  = True,
+        jk_mode:       str   = 'attention',
     ) -> None:
+        """
+        Args:
+            hidden_dim:    Node embedding dimension throughout all phases.
+            heads:         Multi-head count for Phase 1 (Phases 2+3 always use 1).
+            dropout:       Dropout probability applied after each conv layer.
+            use_edge_attr: If True, embed edge types and feed to GATConv.
+            edge_emb_dim:  Edge type embedding dimension.
+            num_layers:    Stored for serialisation; validation in TrainConfig.
+            use_jk:        If True, use JK attention aggregation over all three
+                           phase outputs instead of returning only Phase 3.
+                           Phase 1-A1 (2026-05-14).
+            jk_mode:       JK aggregation mode. 'attention' is the only supported
+                           mode (preserved-dim attention over phase outputs).
+        """
         super().__init__()
 
         # Stored for serialisation; validation fires in TrainConfig.__post_init__().
@@ -126,6 +220,8 @@ class GNNEncoder(nn.Module):
         self.hidden_dim    = hidden_dim
         self.use_edge_attr = use_edge_attr
         self.dropout_p     = dropout
+        self.use_jk        = use_jk
+        self.jk_mode       = jk_mode
 
         _head_dim = hidden_dim // heads  # 16 per head when hidden=128, heads=8
         if _head_dim * heads != hidden_dim:
@@ -135,7 +231,10 @@ class GNNEncoder(nn.Module):
             )
 
         # Edge type embedding: [E] int64 → [E, edge_emb_dim]
-        # Covers all NUM_EDGE_TYPES (7) edge relation types.
+        # Now covers all NUM_EDGE_TYPES (8) including REVERSE_CONTAINS(7).
+        # Type 7 is runtime-only (generated in forward pass from flipped CONTAINS
+        # edges), so graph files on disk never contain id=7 — but the embedding
+        # table must have 8 rows so index-7 lookups don't crash.
         _edge_dim: int | None = None
         if use_edge_attr:
             self.edge_embedding = nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)
@@ -187,7 +286,8 @@ class GNNEncoder(nn.Module):
 
         # ── Phase 3 — reverse-CONTAINS ───────────────────────────────────────
         # CFG_NODE nodes (enriched by Phase 2) send messages TO FUNCTION nodes.
-        # Uses CONTAINS edges with src↔dst flipped.
+        # Uses REVERSE_CONTAINS (type 7) edges — CONTAINS edges with src↔dst flipped
+        # AND a distinct type-7 embedding (Phase 1-A3 fix: was reusing type-5).
         # add_self_loops=False — we only want CFG → function aggregation.
         # See module docstring for zero-message behaviour explanation.
         self.conv4 = GATConv(
@@ -198,6 +298,31 @@ class GNNEncoder(nn.Module):
             add_self_loops=False,
             edge_dim=_edge_dim,
         )
+
+        # ── Per-phase LayerNorm (Phase 1-A2) ────────────────────────────────
+        # Applied after each phase's residual connection, before collecting
+        # intermediates for JK.  Prevents Phase 1's higher norm (two conv layers)
+        # from dominating the JK attention softmax.
+        # Always present (regardless of use_jk) for training stability.
+        self.phase_norm = nn.ModuleList([
+            nn.LayerNorm(hidden_dim),  # after Phase 1
+            nn.LayerNorm(hidden_dim),  # after Phase 2
+            nn.LayerNorm(hidden_dim),  # after Phase 3
+        ])
+
+        # ── JK attention aggregator (Phase 1-A1) ────────────────────────────
+        # Collects all three (LayerNorm-ed) phase outputs and produces a
+        # learned weighted sum.  Output dimension == hidden_dim (preserved).
+        # Only instantiated when use_jk=True to keep non-JK checkpoints smaller.
+        if use_jk:
+            if jk_mode != 'attention':
+                raise ValueError(
+                    f"jk_mode='{jk_mode}' is not supported. "
+                    "Only jk_mode='attention' is implemented."
+                )
+            self.jk = _JKAttention(hidden_dim)
+        else:
+            self.jk = None
 
         self.relu    = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
@@ -217,8 +342,8 @@ class GNNEncoder(nn.Module):
             x:                    [N, NODE_FEATURE_DIM]
             edge_index:           [2, E]
             batch:                [N]
-            edge_attr:            [E] int64 edge type IDs — required for phase masks.
-                                  None → all phases use no edge features.
+            edge_attr:            [E] int64 edge type IDs in [0, NUM_EDGE_TYPES).
+                                  Required when use_edge_attr=True.
             return_intermediates: When True, also return per-phase embeddings dict.
 
         Returns (return_intermediates=False):
@@ -226,6 +351,7 @@ class GNNEncoder(nn.Module):
         Returns (return_intermediates=True):
             node_embeddings [N, hidden_dim], batch [N],
             {"after_phase1": ..., "after_phase2": ..., "after_phase3": ...}
+            (diagnostic only — detached tensors, not used for gradients)
         """
         # ── Guards ───────────────────────────────────────────────────────────
         # Bug #1: use_edge_attr=True with edge_attr=None silently disables
@@ -253,9 +379,10 @@ class GNNEncoder(nn.Module):
         # ── Edge masks — one per phase ───────────────────────────────────────
         # struct_mask:   types 0–CONTAINS (all structural + CONTAINS forward)
         # cfg_mask:      CONTROL_FLOW only
-        # contains_mask: CONTAINS only; used for Phase 3 reversal
-        _CONTAINS     = EDGE_TYPES["CONTAINS"]       # 5
-        _CONTROL_FLOW = EDGE_TYPES["CONTROL_FLOW"]   # 6
+        # contains_mask: CONTAINS only; used to build Phase 3 reverse edges
+        _CONTAINS         = EDGE_TYPES["CONTAINS"]          # 5
+        _CONTROL_FLOW     = EDGE_TYPES["CONTROL_FLOW"]       # 6
+        _REVERSE_CONTAINS = EDGE_TYPES["REVERSE_CONTAINS"]   # 7 (runtime-only)
         if edge_attr is not None:
             struct_mask   = edge_attr <= _CONTAINS
             cfg_mask      = edge_attr == _CONTROL_FLOW
@@ -273,13 +400,30 @@ class GNNEncoder(nn.Module):
         cfg_ei    = edge_index[:, cfg_mask]
         cfg_ea    = e[cfg_mask]      if e is not None else None
 
-        # Phase 3: flip CONTAINS edges so CFG_NODE → FUNCTION (child → parent).
-        # Both forward and reversed CONTAINS use the same type-5 embedding — this
-        # is the v5.0 known limitation (see module docstring).
+        # Phase 3: flip CONTAINS edges → CFG_NODE sends to FUNCTION (child → parent).
+        # Phase 1-A3 (2026-05-14): assign type-7 (REVERSE_CONTAINS) embeddings instead
+        # of reusing the type-5 (CONTAINS) embeddings. The GNN can now learn directional
+        # asymmetry — "function-to-CFG" vs "CFG-to-function" are distinct relations.
         rev_contains_ei = edge_index[:, contains_mask].flip(0)   # [2, E_contains]
-        rev_contains_ea = e[contains_mask] if e is not None else None
+        if self.edge_embedding is not None:
+            n_rev = rev_contains_ei.shape[1]
+            if n_rev > 0:
+                rev_type_ids = torch.full(
+                    (n_rev,), _REVERSE_CONTAINS,
+                    dtype=torch.long, device=edge_index.device,
+                )
+                rev_contains_ea = self.edge_embedding(rev_type_ids)  # [E_contains, edge_emb_dim]
+            else:
+                rev_contains_ea = None
+        else:
+            rev_contains_ea = None
 
-        _intermediates: dict = {}
+        # _live collects LIVE (non-detached) phase outputs for JK aggregation.
+        # CRITICAL: do NOT use .detach() here — JK attention parameters must
+        # receive gradients through these tensors during backward.
+        # The _intermediates dict keeps .detach().clone() for diagnostics only.
+        _live: list[torch.Tensor] = []
+        _intermediates: dict      = {}
 
         # ── Phase 1: structural aggregation (Layers 1+2) ────────────────────
         # Layer 1: NODE_FEATURE_DIM→hidden_dim. No residual — dims differ (12≠128).
@@ -290,7 +434,10 @@ class GNNEncoder(nn.Module):
         x2 = self.conv2(x, struct_ei, struct_ea)    # [N, 128] → [N, 128]
         x2 = self.relu(x2)
         x  = self.dropout(x2 + x)                   # residual ✓ (same dim)
+        # Phase 1-A2: LayerNorm before collecting for JK.
+        x  = self.phase_norm[0](x)
 
+        _live.append(x)
         _intermediates["after_phase1"] = x.detach().clone()
 
         # ── Phase 2: CONTROL_FLOW directed (Layer 3) ────────────────────────
@@ -299,7 +446,10 @@ class GNNEncoder(nn.Module):
         x2 = self.conv3(x, cfg_ei, cfg_ea)          # [N, 128] → [N, 128]
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)                   # residual
+        # Phase 1-A2: LayerNorm before collecting for JK.
+        x  = self.phase_norm[1](x)
 
+        _live.append(x)
         _intermediates["after_phase2"] = x.detach().clone()
 
         # ── Phase 3: reverse-CONTAINS (Layer 4) ─────────────────────────────
@@ -309,8 +459,19 @@ class GNNEncoder(nn.Module):
         x2 = self.conv4(x, rev_contains_ei, rev_contains_ea)  # [N, 128]
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)                   # residual
+        # Phase 1-A2: LayerNorm before collecting for JK.
+        x  = self.phase_norm[2](x)
 
+        _live.append(x)
         _intermediates["after_phase3"] = x.detach().clone()
+
+        # ── JK aggregation (Phase 1-A1) ──────────────────────────────────────
+        # Weighted sum over all three phase outputs using learned per-node
+        # attention scores.  When use_jk=False, only Phase 3 output is returned
+        # (same behaviour as v5.0, preserved for checkpoint compatibility).
+        if self.use_jk and self.jk is not None:
+            x = self.jk(_live)   # [N, hidden_dim]
+        # else: x is already the Phase 3 output
 
         if return_intermediates:
             return x, batch, _intermediates
