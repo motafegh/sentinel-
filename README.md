@@ -80,27 +80,29 @@ Polls AuditRegistry, ingests findings back into RAG index
 
 Three-eye classifier: GNN eye (three-phase GAT with JK connections and per-phase LayerNorm) + Transformer eye (CodeBERT CLS token + LoRA r=16) + Fused eye (CrossAttentionFusion) → `cat [B, 384]` → `Linear(384, 10)`.
 
-**Active baseline checkpoint:** `ml/checkpoints/multilabel-v3-fresh-60ep_best.pt`
-Trained on BCCC-SCsVul-2024 · 47,966 train / 10,278 val / 10,279 test · per-class threshold tuning applied.
+**Active fallback checkpoint:** `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt`  
+Trained on deduplicated BCCC-SCsVul-2024 · 31,142 train / 6,661 val / 6,667 test · tuned F1-macro 0.5422 · per-class threshold tuning applied.
 
-> The v5.2 architecture (three-phase GNN + JK connections + 12-dim node features) is the current source of truth. The active checkpoint was trained on the earlier v3 schema. A full v5.2 training run is the next milestone — see retrain gate in `docs/Project-Spec/SENTINEL-EVAL-BACKLOG.md`.
+> v5.2 architecture code is complete (three-phase GNN + JK connections + per-phase LayerNorm + separate LR groups). The v5.2 full 60-epoch training run is the next milestone. Pre-dedup metrics (v3, early v4 runs) are not valid baselines — 34.9% cross-split content leakage inflated those numbers.
 
-### Baseline per-class F1 (v3 checkpoint, tuned thresholds)
+### Per-class F1 (v4 checkpoint, deduplicated dataset — minimum floor for v5.2)
 
-| Vulnerability | F1 | Threshold | Support |
-|---------------|----|-----------|---------|
-| IntegerUO | 0.821 | 0.50 | 5,343 |
-| GasException | 0.550 | 0.55 | 2,589 |
-| Reentrancy | 0.536 | 0.65 | 2,501 |
-| MishandledException | 0.492 | 0.60 | 2,207 |
-| UnusedReturn | 0.486 | 0.70 | 1,716 |
-| Timestamp | 0.479 | 0.75 | 1,077 |
-| TransactionOrderDependence | 0.477 | 0.60 | 1,800 |
-| ExternalBug | 0.435 | 0.65 | 1,622 |
-| DenialOfService | 0.400 | 0.95 | 137 |
-| CallToUnknown | 0.394 | 0.70 | 1,266 |
+> These are the honest baseline numbers on the deduplicated 44K dataset. v3/early-v4 numbers are higher but invalid (34.9% data leakage). v5.2 must exceed each class's floor (F1 − 0.05) to be considered an improvement.
 
-**Overall:** F1-macro 0.5069 · F1-micro 0.5608 · Hamming 0.2342 · Exact-match 0.2763
+| Vulnerability | F1 (v4 tuned) |
+|---------------|---------------|
+| IntegerUO | 0.776 |
+| Reentrancy | 0.519 |
+| GasException | 0.507 |
+| MishandledException | 0.459 |
+| UnusedReturn | 0.495 |
+| Timestamp | 0.478 |
+| TransactionOrderDependence | 0.472 |
+| ExternalBug | 0.434 |
+| DenialOfService | 0.384 |
+| CallToUnknown | 0.397 |
+
+**Overall:** F1-macro 0.5422 (tuned thresholds)
 
 ---
 
@@ -205,8 +207,8 @@ sentinel/
 │   ├── tests/                   # 12 pytest modules (~3,100 lines)
 │   ├── docker/                  # Dockerfile.slither (Ubuntu 20.04 + slither 0.10.0)
 │   └── data/
-│       ├── graphs.dvc           # ~68K .pt graph files (DVC-tracked)
-│       ├── tokens.dvc           # ~68K .pt token files (DVC-tracked)
+│       ├── graphs.dvc           # 44,470 .pt graph files (DVC-tracked)
+│       ├── tokens.dvc           # 44,470 .pt token files (DVC-tracked)
 │       ├── splits.dvc           # train/val/test .npy arrays (DVC-tracked)
 │       └── processed/           # multilabel_index_deduped.csv
 │
@@ -382,7 +384,7 @@ Violating any of these without the corresponding rebuild or retrain produces sil
 
 | Constraint | Locked value | Break condition |
 |-----------|-------------|----------------|
-| `NODE_FEATURE_DIM` (GNNEncoder `in_channels`) | **12** (v2 schema) | Rebuild all ~68K graph `.pt` files + retrain |
+| `NODE_FEATURE_DIM` (GNNEncoder `in_channels`) | **12** (v2 schema) | Rebuild all ~44K graph `.pt` files + retrain |
 | `FEATURE_SCHEMA_VERSION` | **`"v3"`** | Bump on any feature change; invalidates inference cache; requires graph rebuild + retrain |
 | `NUM_EDGE_TYPES` | **8** (includes runtime-only `REVERSE_CONTAINS=7`) | GNNEncoder embedding table + retrain |
 | `type_id` normalisation | `float(id) / 12.0` stored in `graph.x[:,0]` | Recover with `(x[:,0] * 12.0).round().long()` |
