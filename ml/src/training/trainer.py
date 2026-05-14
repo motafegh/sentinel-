@@ -47,7 +47,7 @@ Fix #34 — VRAM usage logged every epoch so OOM risk is visible.
 """
 
 from __future__ import annotations
-
+import logging
 import gc
 import json
 import os
@@ -384,30 +384,25 @@ def train_one_epoch(
     use_amp:                     bool,
     aux_loss_weight:             float = 0.3,
     gradient_accumulation_steps: int   = 1,
-) -> float:
+) -> tuple[float, int, float]:
+    """Returns (avg_loss, nan_batch_count, last_gnn_share)."""
     model.train()
     total_loss = 0.0
 
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     accum_steps = max(1, gradient_accumulation_steps)
 
-    # Track optimizer step count for log_interval (counts optimizer steps,
-    # not micro-batches, so log_interval=100 means every 100 optimizer steps).
     optimizer_step = 0
-
-    # Phase 2-C2 (2026-05-14): GNN collapse early warning.
-    # Three consecutive log_intervals with GNN share < 10% triggers a WARNING
-    # so the operator can abort before the collapse becomes irreversible.
-    # (A single interval below threshold can be transient; three consecutive is
-    # structural collapse matching the epoch-8 pattern from v5.1-fix28.)
     _gnn_collapse_streak = 0
-
-    # Phase 2-B3 (2026-05-14): explicit NaN loss counter.
-    # GradScaler silently skips optimizer steps when loss is NaN/Inf.
-    # Previously we had no visibility into how often this happened.
-    # Accumulate per-epoch and log at epoch end so the operator can
-    # detect a pathological run early without scanning per-batch logs.
     nan_loss_count = 0
+    last_gnn_share = 0.0
+
+    # Running sums for per-interval averaged loss logging (reset every log_interval).
+    _run_main  = 0.0
+    _run_gnn_a = 0.0
+    _run_tf_a  = 0.0
+    _run_fus_a = 0.0
+    _run_n     = 0
 
     pbar = tqdm(loader, desc="Training", unit="batch", leave=False)
     for batch_idx, batch in enumerate(pbar):
@@ -421,12 +416,18 @@ def train_one_epoch(
         with torch.amp.autocast("cuda", enabled=use_amp):
             logits, aux = model(graphs, input_ids, attention_mask, return_aux=True)
             main_loss   = loss_fn(logits, labels)
-            aux_loss    = (
-                loss_fn(aux["gnn"],         labels) +
-                loss_fn(aux["transformer"], labels) +
-                loss_fn(aux["fused"],       labels)
-            )
+            loss_gnn_a  = loss_fn(aux["gnn"],         labels)
+            loss_tf_a   = loss_fn(aux["transformer"], labels)
+            loss_fus_a  = loss_fn(aux["fused"],       labels)
+            aux_loss    = loss_gnn_a + loss_tf_a + loss_fus_a
             loss = (main_loss + aux_loss_weight * aux_loss) / accum_steps
+
+        # Accumulate per-eye loss for the upcoming log line.
+        _run_main  += main_loss.item()
+        _run_gnn_a += loss_gnn_a.item()
+        _run_tf_a  += loss_tf_a.item()
+        _run_fus_a += loss_fus_a.item()
+        _run_n     += 1
 
         scaler.scale(loss).backward()
 
@@ -437,63 +438,56 @@ def train_one_epoch(
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=grad_clip)
 
-            # Fix #28: read grad norms HERE — after unscale_() (fp32, post-clip)
-            # but BEFORE zero_grad() wipes them to None.
-            # Also count optimizer steps so log_interval tracks steps, not batches.
+            # Fix #28: read grad norms after unscale_(), before zero_grad().
             optimizer_step += 1
             should_log = (optimizer_step % log_interval == 0)
             if should_log:
                 gnn_norm   = _grad_norm(model.gnn_eye_proj)
                 tf_norm    = _grad_norm(model.transformer_eye_proj)
                 fused_norm = _grad_norm(model.fusion)
-                logger.info(
-                    f"  Optimizer step {optimizer_step} (batch {batch_idx+1}/{len(loader)}) | "
-                    f"loss={loss.item() * accum_steps:.4f} "
-                    f"(main={main_loss.item():.4f} aux={aux_loss.item():.4f}) | "
-                    f"grad_norm gnn_eye={gnn_norm:.3f} tf_eye={tf_norm:.3f} "
-                    f"fused_eye={fused_norm:.3f}"
-                )
-                # Phase 2-C2: GNN collapse detection via total share (not ratio).
-                # GNN share = gnn_norm / (gnn_norm + tf_norm + fused_norm).
-                # Threshold 10% matches the collapse pattern from v5.1-fix28
-                # where GNN share dropped to ~10% by epoch 8.
                 _total_norm = gnn_norm + tf_norm + fused_norm
                 _gnn_share  = gnn_norm / _total_norm if _total_norm > 1e-8 else 0.0
+                last_gnn_share = _gnn_share
+
+                n = max(1, _run_n)
+                logger.info(
+                    f"  Step {optimizer_step}/{(len(loader) + accum_steps - 1) // accum_steps} "
+                    f"(batch {batch_idx+1}/{len(loader)}) | "
+                    f"loss={_run_main/n:.4f} "
+                    f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}] | "
+                    f"grad: gnn={gnn_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
+                    f"GNN share={_gnn_share:.1%}"
+                )
+                # Reset running sums for next interval.
+                _run_main = _run_gnn_a = _run_tf_a = _run_fus_a = 0.0
+                _run_n = 0
+
+                # Phase 2-C2: GNN collapse detection.
                 if _gnn_share < 0.10:
                     _gnn_collapse_streak += 1
                     if _gnn_collapse_streak >= 3:
                         logger.warning(
-                            f"  ⚠ GNN collapse detected: share={_gnn_share:.1%} "
-                            f"(gnn={gnn_norm:.4f} tf={tf_norm:.4f} fused={fused_norm:.4f}) "
-                            f"for {_gnn_collapse_streak} consecutive log intervals. "
-                            "Consider aborting and increasing gnn_lr_multiplier or aux_loss_weight."
+                            f"  ⚠ GNN collapse: share={_gnn_share:.1%} for "
+                            f"{_gnn_collapse_streak} consecutive intervals. "
+                            "Consider aborting and increasing gnn_lr_multiplier."
                         )
                     else:
-                        logger.info(
-                            f"  GNN share below 10%: {_gnn_share:.1%} "
-                            f"[streak {_gnn_collapse_streak}/3]"
-                        )
+                        logger.info(f"  GNN share below 10%: {_gnn_share:.1%} [streak {_gnn_collapse_streak}/3]")
                 else:
                     _gnn_collapse_streak = 0
 
-                # Fix #29: mid-epoch VRAM cleanup — check when we're already
-                # doing I/O at log_interval boundaries to minimise overhead.
                 if device == "cuda":
                     vpct = _vram_pct()
                     if vpct > 0.90:
                         gc.collect()
                         torch.cuda.empty_cache()
-                        logger.info(
-                            f"  VRAM cleanup triggered: {_vram_str()} "
-                            f"(was {vpct:.1%} reserved)"
-                        )
+                        logger.info(f"  VRAM cleanup triggered: {_vram_str()} (was {vpct:.1%} reserved)")
 
             scaler.step(optimizer)
             scaler.update()
             scheduler.step()
             optimizer.zero_grad(set_to_none=True)
 
-        # Phase 2-B3: track NaN/Inf loss (GradScaler handles these silently).
         loss_for_log = loss.item() * accum_steps
         if not torch.isfinite(loss).item():
             nan_loss_count += 1
@@ -504,17 +498,16 @@ def train_one_epoch(
     n_batches = len(loader)
     if n_batches == 0:
         logger.warning("Empty train loader — returning 0.0 loss")
-        return 0.0, 0
+        return 0.0, 0, 0.0
 
-    # Phase 2-B3: report NaN count at epoch end.
     if nan_loss_count > 0:
         logger.warning(
-            f"NaN/Inf loss detected in {nan_loss_count}/{n_batches} batches this epoch. "
-            f"GradScaler silently skipped those optimizer steps. "
-            f"If count exceeds 5% of batches, consider reducing lr or inspecting inputs."
+            f"NaN/Inf loss in {nan_loss_count}/{n_batches} batches this epoch. "
+            f"GradScaler skipped those steps silently. "
+            f"If > 5% of batches, reduce lr or inspect inputs."
         )
 
-    return total_loss / max(1, n_batches - nan_loss_count), nan_loss_count
+    return total_loss / max(1, n_batches - nan_loss_count), nan_loss_count, last_gnn_share
 
 
 def _grad_norm(module: nn.Module) -> float:
@@ -565,6 +558,22 @@ def _build_weighted_sampler(
 def train(config: TrainConfig) -> dict:
     os.makedirs(config.checkpoint_dir, exist_ok=True)
     device = config.device
+
+    # ── Per-run file log (append mode — never overwrites previous runs) ──────
+    # Each run gets its own log file named after run_name (which should include
+    # a date suffix, e.g. v5.2-jk-20260514). Append mode is safe for resume.
+    _log_dir = Path("ml/logs")
+    _log_dir.mkdir(parents=True, exist_ok=True)
+    _run_log_path = _log_dir / f"{config.run_name}.log"
+    _fh = logging.FileHandler(_run_log_path, mode="a", encoding="utf-8")
+    _fh.setLevel(logging.DEBUG)
+    _fh.setFormatter(logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    logging.getLogger().addHandler(_fh)
+    logger.info(f"Run log: {_run_log_path}  (append mode — safe to resume)")
+
     logger.info(f"Training on: {device} | classes: {config.num_classes}")
 
     if config.loss_fn not in _VALID_LOSS_FNS:
@@ -825,6 +834,35 @@ def train(config: TrainConfig) -> dict:
 
     steps_per_epoch = (len(train_loader) + accum_steps - 1) // accum_steps
 
+    # ── Smoke-run auto log_interval ───────────────────────────────────────────
+    # Default log_interval=100 assumes ~1,950 optimizer steps/epoch (full 60ep).
+    # With 10% smoke data + accum=4, there are only ~49 steps/epoch → step 100
+    # is never reached and the GNN-share gate cannot be observed.
+    # Auto-lower to steps_per_epoch // 4 (capped at config.log_interval) so at
+    # least 4 log points appear per epoch in any smoke configuration.
+    _auto_log_interval = config.log_interval
+    if steps_per_epoch < config.log_interval:
+        _auto_log_interval = max(5, steps_per_epoch // 4)
+        logger.info(
+            f"Auto log_interval: {config.log_interval}→{_auto_log_interval} "
+            f"(steps_per_epoch={steps_per_epoch} < log_interval={config.log_interval})"
+        )
+
+    # ── Resume command ────────────────────────────────────────────────────────
+    # Logged at startup so the operator can copy-paste it without digging
+    # through config files. The run-name gets a -resumed suffix to keep
+    # MLflow runs separate; checkpoint_name is derived from that new name.
+    _checkpoint_path = Path(config.checkpoint_dir) / config.checkpoint_name
+    _resume_cmd = (
+        f"TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\\n"
+        f"    --resume {_checkpoint_path} \\\n"
+        f"    --run-name {config.run_name}-resumed \\\n"
+        f"    --experiment-name {config.experiment_name} \\\n"
+        f"    --epochs {config.epochs} \\\n"
+        f"    --gradient-accumulation-steps {accum_steps}"
+    )
+    logger.info(f"Resume command (if needed):\n  {_resume_cmd}")
+
     # ── Fix #32: Scheduler must be created with the FULL epoch count so that
     #    total_steps matches the value from the original run.  Previously this
     #    used `remaining_epochs`, causing a total_steps mismatch on resume and
@@ -949,7 +987,7 @@ def train(config: TrainConfig) -> dict:
                 params[f"pos_weight_{name}"] = round(pw, 3)
         mlflow.log_params(params)
 
-        checkpoint_path = Path(config.checkpoint_dir) / config.checkpoint_name
+        checkpoint_path = _checkpoint_path   # already computed above
         final_epoch = start_epoch - 1
 
         for epoch in range(start_epoch, config.epochs + 1):
@@ -973,7 +1011,7 @@ def train(config: TrainConfig) -> dict:
             else:
                 effective_aux_weight = config.aux_loss_weight
 
-            train_loss, nan_batch_count = train_one_epoch(
+            train_loss, nan_batch_count, last_gnn_share = train_one_epoch(
                 model=model,
                 loader=train_loader,
                 optimizer=optimizer,
@@ -982,7 +1020,7 @@ def train(config: TrainConfig) -> dict:
                 scaler=scaler,
                 device=device,
                 grad_clip=config.grad_clip,
-                log_interval=config.log_interval,
+                log_interval=_auto_log_interval,
                 use_amp=config.use_amp,
                 aux_loss_weight=effective_aux_weight,
                 gradient_accumulation_steps=accum_steps,
@@ -1002,6 +1040,7 @@ def train(config: TrainConfig) -> dict:
 
             mlflow.log_metric("train_loss",       train_loss,       step=epoch)
             mlflow.log_metric("nan_batch_count",  nan_batch_count,  step=epoch)  # Phase 2-B3
+            mlflow.log_metric("gnn_grad_share",   last_gnn_share,   step=epoch)
 
             # Phase 2-C1 (2026-05-14): JK attention weight logging.
             # Reads cached per-phase mean weights from the last training batch.
