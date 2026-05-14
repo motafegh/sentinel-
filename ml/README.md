@@ -1,10 +1,8 @@
-# M1 — ML Core
+# ml — SENTINEL Machine Learning Core
 
-Dual-path smart contract vulnerability detector. A three-phase **Graph Attention Network (GNN)** encodes the contract's CFG + AST structure with typed edge relations; a **LoRA-fine-tuned CodeBERT** encodes its source text. A **three-eye CrossAttentionFusion** (GNN eye, Transformer eye, Fused eye) produces per-vulnerability probabilities across 10 classes.
+Dual-path smart contract vulnerability detector. A three-phase **Graph Attention Network** encodes AST/CFG structure with typed edge relations; a **LoRA-adapted CodeBERT** encodes source text. A **three-eye CrossAttentionFusion** (GNN eye, Transformer eye, Fused eye) produces per-class probabilities across **10 vulnerability classes**.
 
-> **v5 architecture as of 2026-05-11** — see [`docs/changes/2026-05-11-v5-implementation-record.md`](../docs/changes/2026-05-11-v5-implementation-record.md) for the complete implementation record.
-
-> Visual Mermaid diagrams (system lifecycle, model architecture, dataset loading flow) → [`ml/DIAGRAMS.md`](DIAGRAMS.md)
+**Current architecture: v5.2** (`MODEL_VERSION = "v5.2"`, `FEATURE_SCHEMA_VERSION = "v3"`)
 
 ---
 
@@ -13,41 +11,23 @@ Dual-path smart contract vulnerability detector. A three-phase **Graph Attention
 - [Setup](#setup)
 - [System Overview](#system-overview)
 - [Shared Preprocessing Layer](#shared-preprocessing-layer)
-  - [What Changes Require a Schema Rebuild](#what-changes-require-a-schema-rebuild)
 - [Data Preparation](#data-preparation)
-  - [Step 1 — Graph Extraction](#step-1--graph-extraction)
-  - [Step 2 — Tokenisation](#step-2--tokenisation)
-  - [Step 3 — Build Multi-Label Index](#step-3--build-multi-label-index)
-  - [Step 4 — Create Stratified Splits](#step-4--create-stratified-splits)
-  - [Step 5 — Validate Graph Dataset](#step-5--validate-graph-dataset)
-  - [Docker — Slither Environment](#docker--slither-environment)
 - [Dataset — DualPathDataset](#dataset--dualpathddataset)
-  - [Label Modes](#label-modes)
-  - [Paired Hash Discovery](#paired-hash-discovery)
-  - [RAM Cache](#ram-cache)
-  - [Collate Function](#collate-function)
 - [Model Architecture](#model-architecture)
-  - [SentinelModel — Orchestration](#sentinelmodel--orchestration)
-  - [GNN Encoder](#gnn-encoder)
+  - [SentinelModel — Orchestration (v5)](#sentinelmodel--orchestration-v5)
+  - [GNN Encoder (three-phase GAT)](#gnn-encoder-three-phase-gat)
   - [Transformer Encoder (CodeBERT + LoRA)](#transformer-encoder-codebert--lora)
-  - [CrossAttention Fusion](#crossattention-fusion)
-  - [Classifier](#classifier)
-  - [Long-Contract Path — Sliding Window](#long-contract-path--sliding-window)
-  - [Node Feature Vector](#node-feature-vector)
-  - [Edge Types](#edge-types)
+  - [CrossAttention Fusion](#crossattentionFusion)
+  - [Classifier and Auxiliary Heads](#classifier-and-auxiliary-heads)
+  - [Node Feature Vector (v2 Schema)](#node-feature-vector-v2-schema)
+  - [Edge Types (v3 Schema)](#edge-types-v3-schema)
 - [Output Classes](#output-classes)
-- [Dataset](#dataset)
 - [Training](#training)
   - [Run Training](#run-training)
-  - [trainer.py — Configuration and Internals](#trainerpy--configuration-and-internals)
-  - [FocalLoss](#focalloss)
-  - [Resume from Checkpoint](#resume-from-checkpoint)
+  - [TrainConfig Reference](#trainconfig-reference)
+  - [Loss Functions](#loss-functions)
   - [Per-Class Threshold Tuning](#per-class-threshold-tuning)
-  - [Hyperparameter Search — Overnight Experiments](#hyperparameter-search--overnight-experiments)
-  - [Recommended v4 Configuration](#recommended-v4-configuration)
-- [Active Checkpoint](#active-checkpoint)
-  - [Per-Class Thresholds and F1 (v3)](#per-class-thresholds-and-f1-v3)
-  - [Retrain Evaluation Protocol](#retrain-evaluation-protocol)
+  - [Model Promotion](#model-promotion)
 - [Inference API](#inference-api)
   - [Endpoints](#endpoints)
   - [HTTP Status Codes](#http-status-codes)
@@ -57,809 +37,393 @@ Dual-path smart contract vulnerability detector. A three-phase **Graph Attention
 - [Drift Detection](#drift-detection)
 - [MLflow and Model Registry](#mlflow-and-model-registry)
 - [DVC](#dvc)
+- [Docker — Slither Environment](#docker--slither-environment)
 - [Testing](#testing)
+- [Scripts Reference](#scripts-reference)
 - [File Reference](#file-reference)
 - [Critical Constraints](#critical-constraints)
-- [Known Limitations](#known-limitations)
 
 ---
 
 ## Setup
 
 ```bash
-# Python 3.12.1 required (strict — pyproject.toml pin)
+# Python 3.12.1 required — strict pin in pyproject.toml
 cd ml
 poetry install
 
-# TRANSFORMERS_OFFLINE must be set at shell level before any Python import
-# HuggingFace checks this at import time — setting it inside Python is too late
+# TRANSFORMERS_OFFLINE must be exported at shell level before any Python import.
+# HuggingFace checks it at import time — os.environ inside Python is too late.
 export TRANSFORMERS_OFFLINE=1
-
-# GPU: tested on RTX 3070 8 GB with AMP (BF16). CPU inference is supported
-# but Slither graph extraction still requires solc installed locally or via Docker.
+export HF_HUB_OFFLINE=1
 ```
 
-Key runtime dependencies: `torch ^2.5.0`, `peft >=0.13.0`, `torch-geometric ^2.6.0`,
-`transformers ^4.45.0`, `fastapi ^0.115.0`, `scipy ^1.13.0`, `mlflow ^2.17.0`.
+Key runtime dependencies (from `pyproject.toml`):
+
+| Package | Version | Role |
+|---|---|---|
+| `torch` | `^2.5.0` | Core deep learning |
+| `torch-geometric` | `^2.6.0` | GNN layers, `Data`, `Batch` |
+| `transformers` | `^4.45.0` | CodeBERT backbone |
+| `peft` | `>=0.13.0,<0.16.0` | LoRA adapters (**hard requirement** — missing raises `RuntimeError` at import) |
+| `fastapi` | `^0.115.0` | Inference HTTP API |
+| `mlflow` | `^2.17.0` | Experiment tracking and model registry |
+| `scipy` | `^1.13.0` | KS test for drift detection |
+| `slither-analyzer` | `>=0.9.3` | Graph extraction (enforced at `graph_schema.py` import) |
+
+Hardware: tested on RTX 3070 8 GB with AMP (BF16/TF32). CPU inference is supported; Slither graph extraction requires `solc` installed locally or via Docker.
 
 ---
 
 ## System Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│                              BCCC-SCsVul-2024 CORPUS                                          │
-│                                                                                              │
-│   SourceCodes/                                                                               │
-│   ├── CallToUnknown/   ├── IntegerUO/       ├── TransactionOrderDependence/                  │
-│   ├── DenialOfService/ ├── MishandledException/ ├── UnusedReturn/                           │
-│   ├── ExternalBug/     ├── NonVulnerable/   ├── WeakAccessMod/                               │
-│   ├── GasException/    ├── Reentrancy/                                                       │
-│   └── Timestamp/                                                                             │
-│                                                                                              │
-│   Each folder contains .sol files; the folder name is the vulnerability class.               │
-│   BCCC-SCsVul-2024.csv maps SHA256( file ) → class(es).                                      │
-│                                                                                              │
-│   Notes for label creation:                                                                  │
-│     - NonVulnerable → all‑zero label (not a vulnerability class)                             │
-│     - WeakAccessMod   → excluded from multi‑label index (no .pt files extracted)             │
-│     - The remaining 10 classes form the 10‑dim multi‑label output                            │
-└────────────────────────────────────┬─────────────────────────────────────────────────────────┘
-                                     │
-        ┌────────────────────────────┼────────────────────────────┐
-        │                            │                            │
-        │   ┌────────────────────────┴─────────────────────────┐  │
-        │   │  SHARED PREPROCESSING LAYER (used by both        │  │
-        │   │  offline & online pipelines)                     │  │
-        │   │                                                 │  │
-        │   │  graph_schema.py          hash_utils.py          │  │
-        │   │   NODE_TYPES, EDGE_TYPES   get_contract_hash()   │  │
-        │   │   NODE_FEATURE_DIM=8       get_contract_hash_    │  │
-        │   │   FEATURE_SCHEMA_VERSION    from_content()       │  │
-        │   │   (cache key suffix)                              │  │
-        │   │                                                 │  │
-        │   │  graph_extractor.py                              │  │
-        │   │   extract_contract_graph()                       │  │
-        │   │   GraphExtractionConfig                          │  │
-        │   │   typed exceptions (HTTP mapping)                │  │
-        │   └────────────┬───────────────────┬─────────────────┘  │
-        │                │                   │                    │
-        │   OFFLINE USE  │                   │  ONLINE USE        │
-        │                ▼                   ▼                    │
-        ├──► ast_extractor.py          preprocess.py               │
-        │    11 workers · solc-pinned   ContractPreprocessor      │
-        │    writes: graphs/<md5>.pt    uses extract_contract_graph│
-        │    (includes contract_path)   + CodeBERT tokenizer       │
-        │                │                   │                    │
-        ├──► tokenizer.py               (MD5 via hash_utils       │
-        │    CodeBERT tokenizer          for cache keys)           │
-        │    writes: tokens/<md5>.pt                               │
-        │                │                                        │
-        │                ├───────► build_multilabel_index.py       │
-        │                │          reads graphs/*.pt (for         │
-        │                │          contract_path → SHA256)        │
-        │                │          + BCCC labels CSV              │
-        │                │                                        │
-        │                ▼                                        │
-        │      multilabel_index.csv  (68,523 rows × 10 classes)   │
-        │                │                                        │
-        │                ▼                                        │
-        │      create_splits.py                                    │
-        │        writes: splits/train_indices.npy (47,966)         │
-        │                splits/val_indices.npy   (10,278)         │
-        │                splits/test_indices.npy  (10,279)         │
-        │                │                                        │
-        │   ◄── QUALITY GATE ──────────────────────────────────   │
-        │   │  validate_graph_dataset.py                          │
-        │   │    checks all graph .pt have edge_attr [E]          │
-        │   │    → pass/fail before training                      │
-        │   └────────────────────────────────────────────────────  │
-        │                                                          │
-        └─────────────┬────────────────────────────────────────────┘
-                      │
-                      ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                            TRAINING  (GPU)                                   │
-│                                                                              │
-│  scripts/train.py (CLI)                                                      │
-│    creates TrainConfig                                                       │
-│    → src/training/trainer.py  +  MLflow                                     │
-│                                                                              │
-│  DualPathDataset                                                             │
-│    pairs graphs/ and tokens/ by MD5 stem                                     │
-│    label loading:                                                            │
-│      binary mode:      label ← graph.y (old checkpoints)                    │
-│      multi‑label mode: label ← multilabel_index.csv (via label_csv=…)       │
-│                                                                              │
-│  SentinelModel.forward(graphs, input_ids, attention_mask)                    │
-│    GNNEncoder          → node_embs [N, 64]   (un‑pooled)                    │
-│    TransformerEncoder  → token_embs [B, 512, 768] (LoRA‑adapted)            │
-│    CrossAttentionFusion → bidir cross‑attention + masked mean pool           │
-│                           fused [B, 128]                                     │
-│    Classifier          → logits [B, 10]   (no sigmoid)                       │
-│                                                                              │
-│  Loss: BCEWithLogitsLoss  or  FocalLoss(gamma=2.0, α=0.25)                  │
-│                                                                              │
-│  Output:                                                                     │
-│    checkpoints/<run>_best.pt   (model+optim+scheduler+patience counter)      │
-│    checkpoint sidecar: .state.json (patience counter across resumes)         │
-└──────────────────────────────────────┬───────────────────────────────────────┘
-                                       │
-                         ┌─────────────┴─────────────┐
-                         ▼                           ▼
-                 tune_threshold.py           promote_model.py
-                  sweeps per‑class            MLflow Registry:
-                  thresholds 0.05‑0.95        Staging → Production
-                  writes:
-                  <checkpoint>_thresholds.json
-                                       │
-                         ┌─────────────┘
-                         │  (per‑class thresholds file)
-                         │  consumed by Predictor at startup
-                         │
-                         ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                     ONLINE INFERENCE   FastAPI (port 8001)                   │
-│                                                                              │
-│  POST /predict  { "source_code": "…" }                                       │
-│     │                                                                        │
-│     ├── DriftDetector (rolling KS‑test against drift_baseline.json)          │
-│     │    baseline built by compute_drift_baseline.py (from warm‑up reqs)     │
-│     │                                                                        │
-│     ├── InferenceCache  key = md5(source) + FEATURE_SCHEMA_VERSION           │
-│     │     hit → serve cached (graph, tokens)                                 │
-│     │     miss → run ContractPreprocessor → atomic write to cache             │
-│     │                                                                        │
-│     ├── ContractPreprocessor (preprocess.py)                                 │
-│     │     extract_contract_graph() ← graph_extractor (shared)                │
-│     │     CodeBERT tokenizer (single window or sliding window)               │
-│     │                                                                        │
-│     ├── SentinelModel.forward() → logits [1, 10]                             │
-│     │     sliding‑window when > 512 tokens: per‑window probs max‑pooled      │
-│     │                                                                        │
-│     ├── sigmoid → probs                                                      │
-│     ├── apply per‑class thresholds (from <checkpoint>_thresholds.json)       │
-│     └── format response                                                      │
-│                                                                              │
-│  GET /health    GET /metrics (Prometheus)                                    │
-│    reports: architecture, thresholds_loaded, GPU memory                      │
-└──────────────────────────────────────────────────────────────────────────────┘
+BCCC-SCsVul-2024 corpus (~111K rows, 10 vulnerability folders + NonVulnerable)
+         │
+         ▼
+  ast_extractor.py (offline, 11 workers)           tokenizer (CodeBERT)
+  ─────────────────────────────────────            ────────────────────
+  .sol → Slither AST/CFG → PyG Data                .sol → input_ids [512]
+  graph.x [N, 12]  (v2 node features)              attention_mask [512]
+  graph.edge_index [2, E]
+  graph.edge_attr  [E]  (type ids 0-6)
+         │                                               │
+         ▼                                               ▼
+  ml/data/graphs/<md5>.pt                  ml/data/tokens/<md5>.pt
+         │                                               │
+         └──────────────┬────────────────────────────────┘
+                        ▼
+               DualPathDataset + dual_path_collate_fn
+                        │
+                        ▼
+                  SentinelModel v5.2
+              ┌─────────┬──────────┐
+              │ GNN eye │ TF eye   │ Fused eye
+              │ [B,128] │ [B,128]  │ [B,128]
+              └────────────────────┘
+                   cat → [B, 384]
+                   Linear(384, 10)
+                        │
+                   logits [B, 10]
+                   Sigmoid → probs
+                   per-class thresholds
+                        │
+                   vulnerability report
 ```
 
 ---
 
 ## Shared Preprocessing Layer
 
-**Files:** `ml/src/preprocessing/graph_schema.py` and `ml/src/preprocessing/graph_extractor.py`
-
-These two files are the most architecturally critical layer in the module. Before they existed, `ast_extractor.py` (offline) and `preprocess.py` (online inference) each contained identical, hand-duplicated node/edge feature logic. A missed sync caused silent inference accuracy regression — model receives features encoded differently from training, with no error message.
+Graph construction logic is centralised in `ml/src/preprocessing/` — the **single source of truth** for both the offline batch extractor and online inference preprocessor. Any divergence between them would silently corrupt inference (wrong features, no error signal).
 
 ```
-graph_schema.py  ── single source of truth for all schema constants (v2 — updated 2026-05-11)
-│
-│   NODE_TYPES       = { CONTRACT:7, STATE_VAR:0, FUNCTION:1, MODIFIER:2,
-│                         EVENT:3, FALLBACK:4, RECEIVE:5, CONSTRUCTOR:6,
-│                         CFG_NODE_CALL:8, CFG_NODE_WRITE:9,
-│                         CFG_NODE_READ:10, CFG_NODE_CHECK:11,
-│                         CFG_NODE_OTHER:12 }                 ← 13 types total
-│   EDGE_TYPES       = { CALLS:0, READS:1, WRITES:2, EMITS:3, INHERITS:4,
-│                         CONTAINS:5, CONTROL_FLOW:6 }        ← 7 types (was 5)
-│   VISIBILITY_MAP   = { public:0, external:0, internal:1, private:2 }
-│   FEATURE_NAMES    = (type_id, visibility, pure, view, payable,
-│                        complexity, loc, return_ignored,
-│                        call_target_typed, in_unchecked,
-│                        has_loop, external_call_count)        ← 12 dims (was 8)
-│   NODE_FEATURE_DIM = 12      ← GNNEncoder in_channels (v2 schema, LOCKED)
-│   NUM_EDGE_TYPES   = 7       ← GNNEncoder Embedding table width (v2 schema)
-│   NUM_NODE_TYPES   = 13      ← total node type vocabulary size
-│   FEATURE_SCHEMA_VERSION = "v2"  ← inference cache key suffix (was "v1")
-│   assert len(FEATURE_NAMES) == NODE_FEATURE_DIM  ← compile-time guard
-│
-└── imported by ──► graph_extractor.py
-                          │
-                          ▼
-graph_extractor.py  ── canonical Solidity → PyG graph implementation
-│
-│   GraphExtractionConfig  (dataclass)
-│     multi_contract_policy   "first" | "by_name"
-│     target_contract_name    used when policy="by_name"
-│     include_edge_attr        attach edge_attr [E] to Data (default True)
-│     solc_binary              override solc path (offline: version-pinned)
-│     solc_version             for --allow-paths compat check (≥ 0.5.0)
-│     allow_paths              --allow-paths for local import resolution
-│
-│   Exception hierarchy (typed for HTTP translation):
-│     GraphExtractionError         base
-│       SolcCompilationError       bad Solidity       → HTTP 400 (user error)
-│       SlitherParseError          Slither/infra fail  → HTTP 500
-│       EmptyGraphError            zero AST nodes      → HTTP 400
-│
-│   extract_contract_graph(sol_path, config) → Data
-│     Never returns None. Always raises on failure.
-│     Returns: x[N,8] · edge_index[2,E] · edge_attr[E] · contract_name
-│     Does NOT set .contract_hash / .contract_path / .y — callers attach.
-│
-└── called by:
-     ├── data_extraction/ast_extractor.py   offline batch, 11 workers
-     └── src/inference/preprocess.py        online, one contract per request
+ml/src/preprocessing/
+├── graph_schema.py      — NODE_TYPES, EDGE_TYPES, FEATURE_NAMES, FEATURE_SCHEMA_VERSION
+└── graph_extractor.py   — extract_contract_graph(), typed exceptions, GraphExtractionConfig
 ```
 
-### What Changes Require a Schema Rebuild
+### Schema Change Protocol
 
-Any modification to `NODE_TYPES`, `VISIBILITY_MAP`, `EDGE_TYPES`, or `_build_node_features()` in `graph_extractor.py` requires **all four steps** — skipping any causes silent accuracy regression:
+Any modification to `NODE_TYPES`, `VISIBILITY_MAP`, `EDGE_TYPES`, or `FEATURE_NAMES` (or the logic in `_build_node_features()`) requires **all four** of the following steps:
 
-1. Rebuild ~68K graph `.pt` files: `python data_extraction/ast_extractor.py --force`
-2. Rebuild token `.pt` files: `python data_extraction/tokenizer.py --force`
-3. Retrain from scratch: `python scripts/train.py`
-4. Increment `FEATURE_SCHEMA_VERSION` in `graph_schema.py` (invalidates inference cache)
+1. Rebuild all ~68K `.pt` graph files — `python ml/scripts/reextract_graphs.py`
+2. Rebuild all token `.pt` files (only if tokenizer logic changed)
+3. Retrain the model from scratch — `python ml/scripts/train.py`
+4. Increment `FEATURE_SCHEMA_VERSION` in `graph_schema.py` to invalidate all inference caches
+
+Skipping any step causes silent accuracy regression.
 
 ---
 
 ## Data Preparation
 
-> Only needed when the dataset changes or `FEATURE_SCHEMA_VERSION` is bumped.
-> **Never regenerate splits** — all checkpoints share the same `val_indices.npy`.
-
-```bash
-cd ml
-```
+All commands from project root (`~/projects/sentinel`).
 
 ### Step 1 — Graph Extraction
 
+```bash
+# Offline batch pipeline — 11 workers, checkpoint/resume system
+# Reads BCCC parquet, resolves solc version per group, writes <md5>.pt to ml/data/graphs/
+PYTHONPATH=. poetry run python ml/src/data_extraction/ast_extractor.py
+
+# Or re-extract an existing dataset with v2 schema
+PYTHONPATH=. poetry run python ml/scripts/reextract_graphs.py
 ```
-contracts_metadata.parquet
-        │
-        ▼
-ast_extractor.py  ── orchestration only ── (11 parallel workers)
-        │
-        ├── parse_solc_version()      resolve solc binary per version group
-        ├── GraphExtractionConfig(    builds config per contract:
-        │     solc_binary=...,          version-pinned binary
-        │     solc_version=...,         for --allow-paths compat
-        │     allow_paths=...,          project root for imports
-        │     multi_contract_policy="first"
-        │   )
-        │
-        ├── calls graph_extractor.extract_contract_graph(sol_path, config)
-        │   ┌──────────────────────────────────────────────────────────┐
-        │   │  imports from graph_schema.py:                           │
-        │   │    NODE_TYPES, EDGE_TYPES, VISIBILITY_MAP                │
-        │   │                                                          │
-        │   │  Slither(sol_path, solc=..., solc_args=...)              │
-        │   │    ↓ SolcCompilationError or SlitherParseError on fail   │
-        │   │  _select_contract()  → first non-dependency contract     │
-        │   │    ↓ EmptyGraphError if all declarations are deps        │
-        │   │  _build_node_features(obj, type_id)  8-dim float32       │
-        │   │    [type_id, visibility, pure, view, payable,            │
-        │   │     reentrant, complexity, loc]                          │
-        │   │  _build_edges()                                          │
-        │   │    CALLS, READS, WRITES, EMITS, INHERITS                 │
-        │   │    → edge_index [2,E] int64, edge_attr [E] int64         │
-        │   │  returns Data(x, edge_index, edge_attr, contract_name)   │
-        │   └──────────────────────────────────────────────────────────┘
-        │
-        ├── attaches caller-specific metadata:
-        │     graph.contract_path  → path whose md5 stem = SHA256
-        │     graph.y = 0          (multilabel_index.csv owns labels)
-        │
-        └── writes <md5_of_path>.pt ──► ml/data/graphs/
-              graph.x           [N, 8]   node feature matrix
-              graph.edge_index  [2, E]   COO connectivity
-              graph.edge_attr   [E]      edge type IDs  (0–4)
-              graph.contract_path        Path.stem = SHA256 (CSV bridge)
-```
+
+Output: `ml/data/graphs/<md5_hash>.pt` — one file per contract, containing:
+- `graph.x` — `[N, 12]` float32 node feature matrix
+- `graph.edge_index` — `[2, E]` int64
+- `graph.edge_attr` — `[E]` int64 edge type ids (0–6)
+- `graph.contract_path`, `graph.contract_hash`, `graph.y`
+
+### Step 2 — Build Multi-Label Index
 
 ```bash
-# Build with Docker (no local solc required — see Docker section below)
-docker build -f docker/Dockerfile.slither -t sentinel-slither .
-
-poetry run python data_extraction/ast_extractor.py \
-  --input ml/data/processed/_cache/contracts_metadata.parquet \
-  --output ml/data/graphs/
+PYTHONPATH=. poetry run python ml/scripts/build_multilabel_index.py
 ```
 
-> **Two hash systems — never mix:**
-> - **SHA256** = MD5 of `.sol` file *content* → BCCC filename, CSV column 2
-> - **MD5** = MD5 of `.sol` file *path* → `.pt` filename (`hash_utils.get_contract_hash()`)
->
-> Bridge: `graph.contract_path` inside each `.pt` → `Path(...).stem` = SHA256.
+Bridges the BCCC SHA256 hash (filename in SourceCodes/) and the internal MD5 hash (`.pt` stem) via `graph.contract_path`. Groups by SHA256, applies `max()` over Class columns (OR semantics). Output: `ml/data/processed/multilabel_index.csv` (~68K rows).
 
-### Step 2 — Tokenisation
-
-```
-contracts_metadata.parquet
-        │
-        ▼
-tokenizer.py  (microsoft/codebert-base tokenizer)
-        │
-        ├── reads source code string from parquet
-        ├── md5 hash via hash_utils.get_contract_hash(path)
-        ├── AutoTokenizer(max_length=512, padding, truncation)
-        └── <md5_of_path>.pt ──► ml/data/tokens/
-              tokens["input_ids"]       [512]  int64
-              tokens["attention_mask"]  [512]  int64  (1=real, 0=PAD)
-              tokens["schema_version"]         FEATURE_SCHEMA_VERSION string
-```
+### Step 3 — Deduplicate
 
 ```bash
-poetry run python data_extraction/tokenizer.py \
-  --input ml/data/processed/_cache/contracts_metadata.parquet \
-  --output ml/data/tokens/
+PYTHONPATH=. poetry run python ml/scripts/dedup_multilabel_index.py
 ```
 
-### Step 3 — Build Multi-Label Index
-
-```bash
-poetry run python scripts/build_multilabel_index.py
-# Output: ml/data/processed/multilabel_index.csv
-#         68,523 rows × columns: md5_stem + 10 class columns (0/1)
-#         md5_stem is the pairing key for DualPathDataset._label_map
-```
-
-> `create_label_index.py` is **OBSOLETE** — it reads binary `graph.y` labels into a simple
-> `hash → 0/1` CSV. It was superseded by `build_multilabel_index.py` which produces the
-> full 10-column multi-label index from BCCC vulnerability annotations. Do not use.
+Output: `ml/data/processed/multilabel_index_deduped.csv` — used by `DualPathDataset` as default label source.
 
 ### Step 4 — Create Stratified Splits
 
 ```bash
-poetry run python scripts/create_splits.py
-# Output: ml/data/splits/
-#   train_indices.npy   47,966 samples
-#   val_indices.npy     10,278 samples
-#   test_indices.npy    10,279 samples
-# Stratified on any_vulnerable = sum(class_cols) > 0
+PYTHONPATH=. poetry run python ml/scripts/create_splits.py
 ```
 
-> **Do NOT regenerate.** All checkpoints (v1, v2, v3) were evaluated on the same
-> `val_indices.npy`. Regenerating breaks experiment comparability.
+Stratified 70/15/15 split (seed=42). Preserves class ratio. Output in `ml/data/splits/deduped/`:
+- `train_indices.npy`
+- `val_indices.npy`
+- `test_indices.npy`
 
 ### Step 5 — Validate Graph Dataset
 
 ```bash
-poetry run python scripts/validate_graph_dataset.py [--graphs-dir ml/data/graphs]
-# Checks per .pt file:
-#   edge_attr is present
-#   shape is [E]  (1-D int64, NOT the old [E, 1] shape)
-#   all values in [0, NUM_EDGE_TYPES) = [0, 5)
-#
-# Exit 0 → safe to train
-# Exit 1 → re-extract: python data_extraction/ast_extractor.py --force
+PYTHONPATH=. poetry run python ml/scripts/validate_graph_dataset.py
 ```
+
+Full integrity check: node feature shape `[N, 12]`, valid `edge_index`, label coverage against label CSV, paired hash alignment.
+
+### Step 6 — Pre-flight GNN Gate (non-negotiable)
+
+```bash
+PYTHONPATH=. poetry run pytest ml/tests/test_cfg_embedding_separation.py -v
+```
+
+This test must pass before any training run. It verifies the three-phase GNN produces meaningfully different embeddings for call-before-write (reentrancy-vulnerable) vs write-before-call (CEI-safe) contracts on the `withdraw` function node. If it fails, fix the extractor or GNN before proceeding.
+
+### CEI Augmentation (optional)
+
+```bash
+bash ml/scripts/run_augmentation.sh
+```
+
+Generates 50 synthetic CEI contract pairs (25 safe + 25 vulnerable) via `generate_cei_pairs.py` and `generate_safe_variants.py`, writes to `ml/data/augmented/`, then injects them into the training split via `inject_augmented.py`.
 
 ### Docker — Slither Environment
 
-`docker/Dockerfile.slither` builds a self-contained Ubuntu 20.04 image with:
-
-- `slither-analyzer==0.10.0`
-- **26 pre-bundled solc binaries** baked at image build time — no runtime GitHub API calls
-
-| Version range | Binaries included |
-|---------------|------------------|
-| 0.8.x | 0.8.0, 0.8.20 |
-| 0.7.x | 0.7.6 |
-| 0.6.x | 0.6.12 |
-| 0.5.x | 0.5.0, 0.5.1, 0.5.2, 0.5.4, 0.5.7, 0.5.8, 0.5.17 |
-| 0.4.x | 0.4.2, 0.4.4, 0.4.8, 0.4.11, 0.4.12, 0.4.15, 0.4.16, 0.4.17, 0.4.18, 0.4.19, 0.4.20, 0.4.21, 0.4.23, 0.4.24, 0.4.25, 0.4.26 |
-
-Default version: `0.8.20`. `solc-select` is included for runtime switching.
+For environments without local Slither/solc:
 
 ```bash
-docker build -f docker/Dockerfile.slither -t sentinel-slither .
-docker run --rm -v $(pwd):/workspace sentinel-slither \
-  python data_extraction/ast_extractor.py --input ... --output ...
+docker build -f ml/docker/Dockerfile.slither -t sentinel-slither .
+docker run -v $(pwd):/workspace sentinel-slither \
+    python ml/src/data_extraction/ast_extractor.py
 ```
+
+The image (`ubuntu:20.04`) pre-installs `slither-analyzer==0.10.0` and pre-compiled solc binaries for all versions from `0.4.2` to `0.8.20`.
 
 ---
 
 ## Dataset — DualPathDataset
 
-**File:** `ml/src/datasets/dual_path_dataset.py`
+`ml/src/datasets/dual_path_dataset.py`
 
-`DualPathDataset` loads paired graph and token `.pt` files for training. Each sample is one smart contract represented two ways — as a PyG graph (→ GNNEncoder) and as CodeBERT token tensors (→ TransformerEncoder).
+Loads paired graph and token files for training and evaluation. The MD5 hash is the pairing key — `graphs/<md5>.pt` and `tokens/<md5>.pt` with the same stem belong to the same contract.
 
 ### Label Modes
 
-```
-DualPathDataset(label_csv=None)         ← binary mode (default)
-  label = graph.y                         scalar 0/1 long
-  collate produces: labels [B] long
+| Mode | `label_csv` arg | Label source | Output shape |
+|---|---|---|---|
+| Binary | `None` | `graph.y` (scalar 0/1) | `[B]` long |
+| Multi-label | `Path("ml/data/processed/multilabel_index_deduped.csv")` | 10-dim multi-hot float32 | `[B, 10]` float32 |
 
-DualPathDataset(label_csv=Path(...))    ← multi-label mode (Track 3)
-  label = multilabel_index.csv row         float32 [10]
-  collate produces: labels [B, 10] float32
-
-  _label_map: dict  md5_stem → float32[10]
-    built once at __init__ from multilabel_index.csv
-    columns: md5_stem + CallToUnknown ... UnusedReturn (10 classes)
-```
-
-### Paired Hash Discovery
-
-```
-__init__():
-  graph_hashes  = {f.stem for f in graphs_dir/*.pt}
-  token_hashes  = {f.stem for f in tokens_dir/*.pt}
-  paired_hashes = graph_hashes ∩ token_hashes   (sorted — deterministic)
-
-  unmatched graph files → WARNING (skipped silently)
-  unmatched token files → WARNING (skipped silently)
-
-  if indices provided:
-    self.paired_hashes = [paired_hashes[i] for i in indices]
-    → enforces train / val / test splits from .npy index files
-
-  if validate=True:
-    load self[0] eagerly → catches .pt format errors before training starts
-```
-
-**PyTorch 2.6+ safe-globals:** `Data`, `DataEdgeAttr`, `DataTensorAttr` are registered at module level so `weights_only=True` works on graph `.pt` files without disabling pickle security.
-
-**Edge_attr shape guard** in `__getitem__`: old `.pt` files stored `edge_attr` as `[E, 1]`; `GNNEncoder` requires `[E]`. A `squeeze(-1)` guard normalises legacy files transparently — no re-extraction needed.
+Multi-label class order: `[CallToUnknown, DenialOfService, ExternalBug, GasException, IntegerUO, MishandledException, Reentrancy, Timestamp, TransactionOrderDependence, UnusedReturn]`
 
 ### RAM Cache
 
-```
-DualPathDataset(cache_path=Path("ml/data/cached_dataset.pkl"))
-
-  if cache file exists:
-    load pickle → self.cached_data: dict  md5_stem → (graph, tokens)
-    integrity check:
-      isinstance(cached_data, dict)
-      paired_hashes[0] is present
-      entry has graph.x and tokens["input_ids"]
-
-  __getitem__: reads from dict instead of individual .pt files
-  → reduces per-epoch I/O from hours to minutes on large datasets
-
-  if cache file missing: WARNING + fallback to per-file reads
-```
-
-Build the cache once with `create_cache.py` (not in the repository yet; scaffold noted in the docstring).
-
-> **Note:** `cache_path` is an explicit constructor argument (default `None`). The original code had a hardcoded absolute path that silently missed the cache on every machine except the author's. Callers must opt in deliberately.
+Pass `cache_path=Path("ml/data/cached_dataset_deduped.pkl")` to `__init__` to use a pre-built pickle mapping each hash to its `(graph, token)` pair. Reduces per-epoch I/O from hours to minutes. Build the cache once with `ml/scripts/create_cache.py`.
 
 ### Collate Function
 
-`dual_path_collate_fn` must be at module level (not a method) for DataLoader multiprocessing compatibility.
-
-```
-batch: List[(graph, tokens, label)]
-          │
-          ├── graphs → Batch.from_data_list()       → PyG Batch
-          │     (variable-size graphs merged into one disconnected graph
-          │      with a `batch` index tensor [N] mapping nodes to samples)
-          │
-          ├── tokens["input_ids"]      → torch.stack → [B, 512]
-          │   tokens["attention_mask"] → torch.stack → [B, 512]
-          │
-          └── labels
-                multi-label: stack [B, 10] float32  (kept as-is)
-                binary:      stack [B, 1]  long → squeeze(1) → [B]
-
-returns: (Batch, {input_ids, attention_mask}, labels)
-```
-
-**Usage in training:**
+`dual_path_collate_fn` — PyG `Batch.from_data_list()` for graphs, stacks token tensors. Import alongside the dataset:
 
 ```python
 from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
-from torch.utils.data import DataLoader
-import numpy as np
-
-train_idx = np.load("ml/data/splits/train_indices.npy")
-dataset = DualPathDataset(
-    graphs_dir  = "ml/data/graphs",
-    tokens_dir  = "ml/data/tokens",
-    indices     = train_idx.tolist(),
-    label_csv   = Path("ml/data/processed/multilabel_index.csv"),
-)
-loader = DataLoader(
-    dataset,
-    batch_size      = 32,
-    collate_fn      = dual_path_collate_fn,
-    num_workers     = 2,
-    persistent_workers = True,
-    pin_memory      = True,
-)
 ```
 
 ---
 
 ## Model Architecture
 
-```
-Solidity source string
-        │
-        ├────────────────────────────────────┐
-        │                                    │
-        ▼                                    ▼
-┌───────────────────────┐      ┌─────────────────────────────────┐
-│  GNN PATH             │      │  TRANSFORMER PATH               │
-│                       │      │                                 │
-│  graph_extractor.py   │      │  CodeBERT tokenizer             │
-│   → x  [N, 8]         │      │   → input_ids    [B, 512]       │
-│   → edge_index [2, E] │      │   → attn_mask    [B, 512]       │
-│   → edge_attr  [E]    │      │                                 │
-│                       │      │  TransformerEncoder             │
-│  GNNEncoder           │      │   CodeBERT (124M frozen)        │
-│   edge_emb [E, 16]    │      │   + LoRA r=8 α=16 (~295K train) │
-│   conv1 [N,8]→[N,64]  │      │   Q+V, all 12 layers            │
-│   conv2 [N,64]→[N,64] │      │                                 │
-│   conv3 [N,64]→[N,64] │      │  Output: [B, 512, 768]          │
-│                       │      │  (all token positions, not CLS) │
-│  Output: [N, 64]      │      └───────────────┬─────────────────┘
-│          [N] batch    │                      │
-└──────────┬────────────┘                      │
-           └─────────────────┬─────────────────┘
-                             │
-                             ▼
-           ┌─────────────────────────────────────┐
-           │  CrossAttentionFusion               │
-           │                                     │
-           │  node_proj  [N,64]  → [N,256]       │
-           │  token_proj [B,512,768] → [B,512,256]│
-           │  to_dense_batch → [B, max_n, 256]   │
-           │                                     │
-           │  Node→Token MHA                     │
-           │    Q=nodes  [B,n,256]               │
-           │    K=V=tokens [B,512,256]            │
-           │    key_mask=PAD token positions      │
-           │    → enriched_nodes [B,n,256]        │
-           │    (pad positions zeroed after attn) │
-           │                                     │
-           │  Token→Node MHA                     │
-           │    Q=tokens [B,512,256]              │
-           │    K=V=nodes [B,n,256]               │
-           │    key_mask=padded node positions    │
-           │    → enriched_tokens [B,512,256]     │
-           │                                     │
-           │  Masked mean pool:                  │
-           │    pooled_nodes  → [B, 256]          │
-           │    pooled_tokens → [B, 256]          │
-           │  concat [B,512] → Linear→ReLU→Drop  │
-           │  → [B, 128]   ← LOCKED DIM          │
-           └─────────────────┬───────────────────┘
-                             │
-                             ▼
-           ┌─────────────────────────────────────┐
-           │  Classifier                         │
-           │  Linear(128, 10) → logits [B, 10]   │
-           │  NO Sigmoid inside model            │
-           └─────────────────┬───────────────────┘
-                             │
-                             ▼
-           Predictor._score():
-             probs = sigmoid(logits)        [B, 10]
-             apply per-class threshold JSON
-             vulnerabilities = [
-               {vulnerability_class, probability}
-               for prob ≥ threshold[class]
-             ]
-             label = "vulnerable" if any else "safe"
-```
+### SentinelModel — Orchestration (v5)
 
-### SentinelModel — Orchestration
+`ml/src/models/sentinel_model.py`
 
-**File:** `ml/src/models/sentinel_model.py`
-
-Top-level `nn.Module`. Instantiates `GNNEncoder`, `TransformerEncoder`, `CrossAttentionFusion`, and a `Linear` classifier head, then threads them together in `forward()`.
+Three independent 128-dim "eyes" are concatenated and classified jointly:
 
 ```
-forward(graphs: Batch, input_ids: [B,512], attention_mask: [B,512])
-  edge_attr  = graphs.edge_attr  (if use_edge_attr, else None)
-  node_embs, batch = gnn(x, edge_index, batch, edge_attr)    [N,64], [N]
-  token_embs       = transformer(input_ids, attention_mask)  [B,512,768]
-  fused            = fusion(node_embs, batch, token_embs,
-                             attention_mask)                  [B,128]
-  logits           = classifier(fused)                        [B, num_classes]
+graphs [B]             input_ids [B, 512]
+    │                      │
+GNNEncoder             TransformerEncoder (CodeBERT + LoRA)
+node_embs [N, 128]     token_embs [B, 512, 768]
+    │         └─────────────┤
+    │              CrossAttentionFusion
+    │                  fused_eye [B, 128]
+    │
+    ├─ func-level pool → gnn_eye_proj    → gnn_eye [B, 128]
+    │
+    └─────────────── CLS token → transformer_eye_proj → transformer_eye [B, 128]
 
-  Binary mode (num_classes=1): squeeze [B,1] → [B]
+cat([gnn_eye, transformer_eye, fused_eye]) → [B, 384]
+Linear(384, num_classes=10)               → logits [B, 10]
 ```
 
-**No Sigmoid inside the model.** Applied externally:
-- Training: `BCEWithLogitsLoss(pos_weight=...)` / `_FocalFromLogits` in `trainer.py`
-- Inference: `Predictor._score()` applies `sigmoid(logits.float())`
+No Sigmoid inside the model — applied externally in `Predictor` and by `BCEWithLogitsLoss`.
 
-`parameter_summary()` logs trainable vs frozen counts per sub-module (called at `Predictor` startup): `GNNEncoder | TransformerEncoder | CrossAttentionFusion | Classifier | Total`
+**GNN eye** — function-level pool (FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes only). After Phase 3 reverse-CONTAINS aggregation these nodes carry CFG ordering signal. `global_max_pool` + `global_mean_pool` → cat → `Linear(256, 128) + ReLU + Dropout`.
 
-### GNN Encoder (v5 — three-phase, four-layer)
+**Transformer eye** — CLS token at position 0 (12-layer bidirectional summary) → `Linear(768, 128) + ReLU + Dropout`.
 
-**File:** `ml/src/models/gnn_encoder.py`
+**Fused eye** — bidirectional cross-attention between node embeddings and all 512 token embeddings → `[B, 128]`.
 
-> **v5 architecture (2026-05-11):** Rebuilt as a three-phase design to propagate CFG execution-order signal into function nodes. v4's two-phase design could not distinguish "call before write" (vulnerable) from "write before call" (CEI-safe).
+**Ghost-graph fallback**: a contract with no function-level nodes (interface-only) would cause batch-size mismatch. For such graphs all nodes are included in the pool.
 
-```
-Input: x [N,12],  edge_index [2,E],  batch [N],  edge_attr [E] (int64)
-           │
-           │   edge_emb  Embedding(7, 32)   [E] → [E, 32]
-           │
-── Phase 1: Structural + CONTAINS forward (edges 0–5) ──────────────
-     conv1  GATConv(in=12, out=16, heads=8, concat=True, add_self_loops=True)
-          → [N, 128]  (8 heads × 16 dims)  + ReLU + Dropout(0.2)
-     conv2  GATConv(in=128, out=16, heads=8, concat=True, add_self_loops=True)
-          → [N, 128]  residual: x = x + dropout(conv2(x))
-          Purpose: function context flows DOWN into CFG child nodes
+**Checkpoint format**: `{"model", "optimizer", "epoch", "best_f1", "config"}`
 
-── Phase 2: CONTROL_FLOW directed (edge 6 only) ─────────────────────
-     conv3  GATConv(in=128, out=128, heads=1, concat=False,
-                    add_self_loops=False)   ← CRITICAL: no self-loops
-          → [N, 128]  residual: x = x + dropout(conv3(x))
-          Purpose: execution order encoded in CFG node embeddings
-          Non-CFG nodes have no CONTROL_FLOW edges → unchanged (zero messages)
+### GNN Encoder (three-phase GAT)
 
-── Phase 3: Reverse-CONTAINS (edge 5, flipped) ──────────────────────
-     rev_contains_ei = edge_index[:, contains_mask].flip(0)
-     conv4  GATConv(in=128, out=128, heads=1, concat=False,
-                    add_self_loops=False)   ← CRITICAL: no self-loops
-          → [N, 128]  residual: x = x + dropout(conv4(x))
-          Purpose: Phase-2-enriched CFG embeddings flow UP to FUNCTION nodes
+`ml/src/models/gnn_encoder.py`
 
-Output: node_embs [N, 128],  batch [N]     ← NOT pooled
-        (or with return_intermediates=True: also returns
-         {"after_phase1", "after_phase2", "after_phase3"} each [N,128])
-```
+Four GAT layers arranged in three phases, with Jumping Knowledge connections (v5.2):
 
-> **Why three phases:** Without Phase 3 (reverse-CONTAINS), the function node NEVER sees the order signal from Phase 2 — execution order information is trapped in the CFG subgraph. This was the core architectural flaw in v4.
->
-> **type_id normalisation:** `x[:,0]` stores `type_id / 12.0` (normalised to [0,1]). Raw type_id 0–12 would dominate the dot product, making CFG_NODE_CALL (8/12=0.667) and CFG_NODE_WRITE (9/12=0.750) indistinguishable before any message passing.
+| Phase | Layers | Edge filter | `add_self_loops` | `heads` | Purpose |
+|---|---|---|---|---|---|
+| Phase 1 | 1 + 2 | types 0–5 (structural) | `True` | 8 (concat) | Propagate function properties; inter-function context |
+| Phase 2 | 3 | type 6 (CONTROL_FLOW only) | **`False`** — critical | 1 (mean) | Enrich CFG nodes with execution-order signal |
+| Phase 3 | 4 | type 7 (REVERSE_CONTAINS) | `False` | 1 (mean) | Aggregate CFG signal UP into function nodes |
+
+**Phase 1-A1 — JK Connections** (`use_jk=True`, `jk_mode='attention'`): learned attention over all three phase outputs prevents Phase 1 structural signal from being over-smoothed by phases 2 and 3. Custom `_JKAttention(Linear(channels, 1))` — not PyG's LSTM-based JumpingKnowledge. JK tensors are consumed from `_live = []` **without** `.detach()` — do not change this.
+
+**Phase 1-A2 — Per-Phase LayerNorm**: `ModuleList([LayerNorm(hidden_dim) for _ in range(3)])` applied after each phase's residual, before JK collection. Prevents Phase 1 magnitude (two layers + residual) from dominating JK attention softmax.
+
+**Phase 1-A3 — REVERSE_CONTAINS edges**: type 7, runtime-only. Generated inside `GNNEncoder.forward()` by flipping CONTAINS(5) edges. Never written to graph `.pt` files. Gives Phase 3 a distinct learned direction embedding (fixes v5.0 limitation L2 where both directions shared the same CONTAINS(5) embedding).
+
+**Default parameters**: `hidden_dim=128`, `heads=8`, `dropout=0.2`, `use_edge_attr=True`, `edge_emb_dim=32`, `num_layers=4`, `use_jk=True`, `jk_mode='attention'`. Total trainable parameters: ~91K.
+
+`forward(return_intermediates=True)` returns `(x, batch, {"after_phase1", "after_phase2", "after_phase3"})` with detached tensors — used by `test_cfg_embedding_separation.py`.
 
 ### Transformer Encoder (CodeBERT + LoRA)
 
-**File:** `ml/src/models/transformer_encoder.py`
+`ml/src/models/transformer_encoder.py`
+
+| Component | Params | Status |
+|---|---|---|
+| CodeBERT backbone (`microsoft/codebert-base`) | 124,705,536 | **Frozen** |
+| LoRA matrices (r=16, α=32, Q+V of all 12 layers) | ~295,296 | **Trainable** |
+
+Returns all token embeddings `[B, 512, 768]` (not just CLS). CrossAttentionFusion needs all 512 tokens so each GNN node can query which tokens are relevant to it.
+
+LoRA scale factor: `alpha/r = 32/16 = 2.0`. The `peft` library handles `requires_grad=False` on all backbone weights — do not wrap `self.bert()` in `torch.no_grad()` as it would also cut gradients to LoRA A/B matrices.
+
+v5 default: `lora_r=16`, `lora_alpha=32`. (v4 used `r=8, alpha=16`.)
+
+### CrossAttentionFusion
+
+`ml/src/models/fusion_layer.py`
+
+Bidirectional cross-attention enriches both modalities before pooling:
 
 ```
-Input: input_ids [B,512],  attention_mask [B,512]
-           │
-           ▼
-  CodeBERT  microsoft/codebert-base
-  ├── 12 attention layers, hidden_dim=768
-  ├── 124,705,536 parameters — ALL FROZEN (requires_grad=False)
-  └── LoRA matrices injected into query + value of every layer
-        A [768, r=8]  and  B [r=8, 768]  per projection
-        Forward: W_frozen @ x + (B @ A) @ x × (alpha/r = 2.0)
-        Trainable: ~295,296 parameters across 12 layers × Q+V
-
-Output: last_hidden_state [B, 512, 768]
-        ALL 512 positions — CrossAttentionFusion attends to each one
+1. Project GNN nodes  [N, 128] → [N, 256]
+2. Project tokens     [B, 512, 768] → [B, 512, 256]
+3. Pad nodes          [N, 256] → [B, max_nodes, 256]   (to_dense_batch)
+4. Node→Token cross-attention  (key_padding_mask = token PAD positions)
+   → enriched_nodes  [B, max_nodes, 256]
+   Zero-out padded node positions after attention
+5. Token→Node cross-attention  (key_padding_mask = padded node positions)
+   → enriched_tokens [B, 512, 256]
+6. Masked mean pool enriched nodes  → [B, 256]
+7. Masked mean pool enriched tokens → [B, 256]
+8. cat → [B, 512] → Linear(512, 128) → fused_eye [B, 128]
 ```
 
-> **Why LoRA:** Full fine-tune → OOM on 8 GB VRAM + catastrophic forgetting. Frozen → never adapts to vulnerability semantics. LoRA → ~295K trainable params steer attention toward security patterns without touching the frozen backbone.
->
-> **Why no `torch.no_grad()` wrapper:** peft's `get_peft_model()` marks every original CodeBERT weight with `requires_grad=False`. Wrapping the whole `self.bert()` call in `no_grad()` would cut gradient flow to the LoRA A/B matrices inside the same pass — silently killing LoRA training.
+`need_weights=False` on both `MultiheadAttention` calls — avoids materialising `[B, max_nodes, 512]` attention weight matrices (~12.6 MB per forward) and enables the fused CUDA efficient-attention kernel.
 
-### CrossAttention Fusion
+### Classifier and Auxiliary Heads
 
-**File:** `ml/src/models/fusion_layer.py`
+```python
+# Main classifier
+self.classifier = nn.Linear(3 * eye_dim, num_classes)   # 384 → 10
 
-```
-node_embs [N,64]  +  token_embs [B,512,768]  +  attention_mask [B,512]
-      │                       │
-      ▼                       ▼
-node_proj Linear(64→256)   token_proj Linear(768→256)
-      │                       │
-      ▼                       │
-to_dense_batch()              │
-  padded_nodes [B, n, 256]    │
-  node_real_mask [B, n]       │
-  node_padding_mask = ~mask   │
-                              │
-  token_padding_mask = (attention_mask == 0)
-      │
-      ├── Node→Token MHA   Q=nodes  K=V=tokens  key_mask=token_PAD
-      │         → enriched_nodes [B, n, 256]
-      │         zero-out padding node positions after attention
-      │
-      └── Token→Node MHA   Q=tokens  K=V=nodes  key_mask=node_padding
-                → enriched_tokens [B, 512, 256]
-
-Masked mean pool enriched_nodes  → pooled_nodes  [B, 256]
-Masked mean pool enriched_tokens → pooled_tokens [B, 256]
-
-cat([pooled_nodes, pooled_tokens]) → [B, 512]
-Linear(512→128) → ReLU → Dropout → [B, 128]  ← LOCKED (ZKML depends on this)
+# Auxiliary heads — training only
+self.aux_gnn         = nn.Linear(eye_dim, num_classes)  # 128 → 10
+self.aux_transformer = nn.Linear(eye_dim, num_classes)
+self.aux_fused       = nn.Linear(eye_dim, num_classes)
 ```
 
-### Classifier
+`forward(return_aux=True)` returns `(logits, {"gnn": ..., "transformer": ..., "fused": ...})`. Always `False` at inference — zero overhead.
 
-```
-[B, 128]  →  nn.Linear(128, 10)  →  raw logits [B, 10]
+Auxiliary loss (λ=0.3) keeps each eye's gradient alive even if the main classifier learns to weight one eye heavily. `aux_loss_weight` ramps linearly from 0 to λ over the first `aux_loss_warmup_epochs=3` epochs (Fix #33) to prevent aux heads from dominating early gradients.
 
-No Sigmoid inside the model.
-  Training:  BCEWithLogitsLoss / FocalLoss handle sigmoid internally.
-  Inference: Predictor._score() applies sigmoid(logits) externally.
-```
+### Node Feature Vector (v2 Schema)
 
-### Long-Contract Path — Sliding Window
+`NODE_FEATURE_DIM = 12`, `FEATURE_SCHEMA_VERSION = "v3"`, `NUM_NODE_TYPES = 13`
 
-```
-Source > 512 tokens?
-        │
-        ▼ YES
-window_size = 512,  stride = 256,  max_windows = 8
-
-GNN graph built ONCE from the full AST (no windowing on graph side)
-
-For each window:
-  SentinelModel.forward(graph, window_input_ids, window_mask) → probs [1,10]
-
-Aggregate:
-  final_probs[class] = max(window_probs[class])   per class
-
-API response includes: "windows_used": N,  "truncated": false
-```
-
-### Node Feature Vector (v2 — 12 dims, LOCKED)
-
-> **v5 schema (2026-05-11):** `reentrant` removed (was Slither shortcut). Five new semantic features added. `type_id` normalised to [0,1] by dividing by 12.0.
-
-| Index | Feature | Encoding |
-|-------|---------|----------|
-| 0 | `type_id` | `NODE_TYPES[kind] / 12.0` — normalised to [0,1] (raw 0–12) |
-| 1 | `visibility` | public/external=0, internal=1, private=2 |
-| 2 | `pure` | 0/1 |
-| 3 | `view` | 0/1 |
-| 4 | `payable` | 0/1 |
-| 5 | `complexity` | float — CFG block count (`len(func.nodes)`) |
-| 6 | `loc` | float — lines of source |
-| 7 | `return_ignored` | 0.0=captured / 1.0=discarded / **-1.0**=IR unavailable |
-| 8 | `call_target_typed` | 0.0=raw addr / 1.0=typed iface / **-1.0**=unavailable |
-| 9 | `in_unchecked` | 1.0 if inside `unchecked{}` block (always 0.0 for CFG nodes) |
+| Index | Name | Description |
+|---|---|---|
+| 0 | `type_id` | `float(NODE_TYPES[kind]) / 12.0` — normalised to [0, 1] |
+| 1 | `visibility` | `VISIBILITY_MAP` ordinal (0=private, 1=internal, 2=public/external) |
+| 2 | `pure` | 1.0 if `Function.pure` |
+| 3 | `view` | 1.0 if `Function.view` |
+| 4 | `payable` | 1.0 if `Function.payable` |
+| 5 | `complexity` | `float(len(func.nodes))` — CFG block count |
+| 6 | `loc` | `float(len(source_mapping.lines))` |
+| 7 | `return_ignored` | 0.0=captured / 1.0=discarded / -1.0=IR unavailable |
+| 8 | `call_target_typed` | 0.0=raw address / 1.0=typed interface / -1.0=unavailable |
+| 9 | `in_unchecked` | 1.0 if function contains an `unchecked{}` block |
 | 10 | `has_loop` | 1.0 if function contains a loop |
-| 11 | `external_call_count` | `log1p(count)/log1p(20)` normalised to [0,1] |
+| 11 | `external_call_count` | `log1p(n) / log1p(20)`, clamped [0, 1] |
 
-**CFG node subtypes** (type_id 8–12) are full graph nodes connected via `CONTAINS` and `CONTROL_FLOW` edges.  
-Non-function nodes receive 0.0 for features 2–11 (except `call_target_typed[8]` = 1.0 as "N/A safe default").
+**Node types** (id 0–12):
 
-Node type IDs: `STATE_VAR=0 FUNCTION=1 MODIFIER=2 EVENT=3 FALLBACK=4 RECEIVE=5 CONSTRUCTOR=6 CONTRACT=7 CFG_NODE_CALL=8 CFG_NODE_WRITE=9 CFG_NODE_READ=10 CFG_NODE_CHECK=11 CFG_NODE_OTHER=12`
+| Category | Types |
+|---|---|
+| Declaration-level (v1, stable) | `STATE_VAR=0`, `FUNCTION=1`, `MODIFIER=2`, `EVENT=3`, `FALLBACK=4`, `RECEIVE=5`, `CONSTRUCTOR=6`, `CONTRACT=7` |
+| CFG subtypes (v2) | `CFG_NODE_CALL=8`, `CFG_NODE_WRITE=9`, `CFG_NODE_READ=10`, `CFG_NODE_CHECK=11`, `CFG_NODE_OTHER=12` |
 
-### Edge Types (v2 — 7 types)
+`type_id` is normalised as `float(id) / 12.0` in the extractor. Recover with `(x[:, 0] * 12.0).round().long()`.
 
-> **v5 schema (2026-05-11):** Added `CONTAINS` and `CONTROL_FLOW` for CFG subgraph.
+### Edge Types (v3 Schema)
 
-| ID | Type | Direction | Meaning |
-|----|------|-----------|---------|
-| 0 | `CALLS` | function → function | internal function call |
-| 1 | `READS` | function → state_var | state variable read |
-| 2 | `WRITES` | function → state_var | state variable write |
-| 3 | `EMITS` | function → event | event emission |
-| 4 | `INHERITS` | contract → contract | inheritance (MRO order) |
-| 5 | `CONTAINS` | function → cfg_node | function owns this CFG statement node |
-| 6 | `CONTROL_FLOW` | cfg_node → cfg_node | directed execution order (enables Phase 2 reentrancy detection) |
+`NUM_EDGE_TYPES = 8` (embedding table size in GNNEncoder)
+
+| Id | Name | Written to disk | Description |
+|---|---|---|---|
+| 0 | `CALLS` | ✓ | function → internally-called function |
+| 1 | `READS` | ✓ | function → state variable it reads |
+| 2 | `WRITES` | ✓ | function → state variable it writes |
+| 3 | `EMITS` | ✓ | function → event it emits |
+| 4 | `INHERITS` | ✓ | contract → parent contract (linearised MRO) |
+| 5 | `CONTAINS` | ✓ | function node → its CFG_NODE children |
+| 6 | `CONTROL_FLOW` | ✓ | CFG_NODE → successor CFG_NODE (directed) |
+| 7 | `REVERSE_CONTAINS` | **✗ runtime only** | CFG_NODE → parent function — generated in Phase 3 by flipping CONTAINS(5) |
 
 ---
 
 ## Output Classes
 
-Defined in `ml/src/training/trainer.py` as `CLASS_NAMES` — **single source of truth** for index order. Never insert in the middle; append new classes at index 10+.
+10-class multi-label output. Class index is stable across the codebase — defined as `CLASS_NAMES` in `trainer.py`.
 
 | Index | Class |
-|-------|-------|
-| 0 | CallToUnknown |
-| 1 | DenialOfService |
-| 2 | ExternalBug |
-| 3 | GasException |
-| 4 | IntegerUO |
-| 5 | MishandledException |
-| 6 | Reentrancy |
-| 7 | Timestamp |
-| 8 | TransactionOrderDependence |
-| 9 | UnusedReturn |
-
----
-
-## Dataset
-
-| Item | Value |
-|------|-------|
-| Source | BCCC-SCsVul-2024 |
-| Graph `.pt` files | 68,523 (MD5 stem, `ml/data/graphs/`) — re-extracted 2026-05-03 |
-| Token `.pt` files | 68,568 (MD5 stem, `ml/data/tokens/`) |
-| Split — train | 47,966 samples |
-| Split — val | 10,278 samples |
-| Split — test | 10,279 samples |
-| Vulnerable rate | 64.3% (64,099 vulnerable / 24,456 safe — stratified) |
-| Label CSV | `ml/data/processed/multilabel_index.csv` — 68,523 rows × 10 classes |
+|---|---|
+| 0 | `CallToUnknown` |
+| 1 | `DenialOfService` |
+| 2 | `ExternalBug` |
+| 3 | `GasException` |
+| 4 | `IntegerUO` |
+| 5 | `MishandledException` |
+| 6 | `Reentrancy` |
+| 7 | `Timestamp` |
+| 8 | `TransactionOrderDependence` |
+| 9 | `UnusedReturn` |
 
 ---
 
@@ -868,363 +432,164 @@ Defined in `ml/src/training/trainer.py` as `CLASS_NAMES` — **single source of 
 ### Run Training
 
 ```bash
-TRANSFORMERS_OFFLINE=1 ml/.venv/bin/python ml/scripts/train.py \
-    --run-name multilabel-v3-fresh-60ep \
-    --experiment-name sentinel-retrain-v3 \
+# Smoke run — 2 epochs, 10% data (run first to clear all Phase 4 gates)
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
+    --run-name v5.2-smoke \
+    --experiment-name sentinel-v5.2 \
+    --epochs 2 \
+    --smoke-subsample-fraction 0.1 \
+    --gradient-accumulation-steps 4
+
+# Full 60-epoch run (after smoke gates pass)
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
+    --run-name v5.2-full \
+    --experiment-name sentinel-v5.2 \
     --epochs 60 \
-    --batch-size 32 \
-    --lr 3e-4 \
-    --early-stop-patience 10
-```
- 
+    --gradient-accumulation-steps 4
 
+# Ablation — disable JK connections
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
+    --run-name v5.2-no-jk \
+    --no-jk \
+    --epochs 60 \
+    --gradient-accumulation-steps 4
 
-Key `TrainConfig` fields:
-
-| Field | v3 value | Notes |
-|-------|----------|-------|
-| `architecture` | `"cross_attention_lora"` | Written into checkpoint config |
-| `batch_size` | 32 | Safe on RTX 3070 8 GB with AMP |
-| `lora_r` | 8 | LoRA rank (~295K trainable params) |
-| `lora_alpha` | 16 | Effective scale = alpha/r = 2.0 |
-| `loss_fn` | `"bce"` | v4 plan: switch to `"focal"` |
-| `use_edge_attr` | True | Typed edge-relation embeddings |
-| `gnn_edge_emb_dim` | 16 | Edge embedding dimension |
-| `fusion_output_dim` | 128 | Fused representation size (**LOCKED**) |
-| `grad_clip` | 1.0 | Prevents LoRA gradient spikes |
-| `patience` | 10 | Early-stop on val F1-macro |
-
-Speed optimisations: AMP/BF16, TF32 matmuls, `persistent_workers=True`, `zero_grad(set_to_none=True)`, MLflow artifact logged once at end (not per epoch).
-
-MLflow tracks per run: all `TrainConfig` fields, `val_f1_macro`, `val_f1_micro`, `val_hamming`, `val_exact_match`, `focal_gamma`, `focal_alpha`, and `val_f1_{class}` × 10.
-
-### trainer.py — Configuration and Internals
-
-**File:** `ml/src/training/trainer.py`
-
-`scripts/train.py` is a thin CLI wrapper. All training logic lives in `trainer.py`.
-
-**Module-level constants:**
-
-```
-CLASS_NAMES     list[str]  — output class names, indices 0–9; ORDER IS LOCKED
-NUM_CLASSES     int        — 10  (len(CLASS_NAMES))
-ARCHITECTURE    str        — "cross_attention_lora" — written into every checkpoint
-_VALID_LOSS_FNS frozenset  — {"bce", "focal"} — unknown value raises ValueError at startup
+# Resume from checkpoint
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
+    --resume ml/checkpoints/v5.2-full_best.pt \
+    --epochs 60
 ```
 
-**Full `TrainConfig` dataclass (all fields):**
+**Phase 4 gates (smoke run)**: GNN gradient share ≥ 15% at step 100; JK all-phase attention weights > 5%; no NaN loss after step 50.
 
-```
-Paths         graphs_dir, tokens_dir, splits_dir, checkpoint_dir, checkpoint_name
+### TrainConfig Reference
 
-Model         num_classes=10, fusion_output_dim=128 (LOCKED), fusion_dropout=0.3
-GNN           gnn_hidden_dim=64, gnn_heads=8, gnn_dropout=0.2
-              use_edge_attr=True, gnn_edge_emb_dim=16
-LoRA          lora_r=8, lora_alpha=16, lora_dropout=0.1
-              lora_target_modules=["query", "value"]
+All fields are in `ml/src/training/trainer.py::TrainConfig`. Key defaults:
 
-Labels        label_csv  path to multilabel_index.csv
-                         None → binary mode (graph.y labels, pos_weight skipped)
+| Field | Default | Notes |
+|---|---|---|
+| `num_classes` | `10` | Track 3 multi-label |
+| `fusion_output_dim` | `128` | Width of each eye output |
+| `gnn_hidden_dim` | `128` | GNN node embedding width |
+| `gnn_layers` | `4` | Number of GAT layers (validated in `__post_init__`) |
+| `gnn_heads` | `8` | Phase 1 attention heads |
+| `gnn_dropout` | `0.2` | |
+| `use_edge_attr` | `True` | Feed edge-type embeddings into GATConv |
+| `gnn_edge_emb_dim` | `32` | `nn.Embedding(8, 32)` |
+| `gnn_use_jk` | `True` | Phase 1-A1 JK connections |
+| `gnn_jk_mode` | `'attention'` | Learned per-phase attention aggregation |
+| `lora_r` | `16` | LoRA rank (v5; was 8 in v4) |
+| `lora_alpha` | `32` | Effective scale = alpha/r = 2.0 |
+| `lora_dropout` | `0.1` | |
+| `lora_target_modules` | `["query", "value"]` | All 12 CodeBERT layers |
+| `epochs` | `60` | |
+| `batch_size` | `16` | Fix #28 — reduced for 8 GB GPU |
+| `lr` | `2e-4` | Base LR for AdamW |
+| `weight_decay` | `1e-2` | |
+| `gnn_lr_multiplier` | `2.5` | GNN effective LR = lr × 2.5 |
+| `lora_lr_multiplier` | `0.5` | LoRA effective LR = lr × 0.5 |
+| `gradient_accumulation_steps` | `1` | Use 4 on 8 GB GPU (effective batch = 64) |
+| `loss_fn` | `"bce"` | `"bce"` or `"focal"` |
+| `focal_gamma` | `2.0` | |
+| `focal_alpha` | `0.25` | |
+| `aux_loss_weight` | `0.3` | λ for per-eye auxiliary loss |
+| `aux_loss_warmup_epochs` | `3` | Ramp aux weight from 0 → λ linearly |
+| `early_stop_patience` | `10` | Epochs without val F1 improvement |
+| `grad_clip` | `1.0` | Max gradient norm |
+| `warmup_pct` | `0.10` | OneCycleLR warmup fraction |
+| `use_amp` | `True` | AMP (BF16) + TF32 matmuls |
+| `num_workers` | `2` | DataLoader workers |
+| `cache_path` | `"ml/data/cached_dataset_deduped.pkl"` | Pre-built RAM cache |
+| `checkpoint_dir` | `"ml/checkpoints"` | |
 
-Training      epochs=40, batch_size=32, lr=3e-4, weight_decay=1e-2
-              threshold=0.5, early_stop_patience=7
+**Optimizer**: `AdamW` with per-parameter-group LRs (GNN 2.5×, LoRA 0.5×, default for the rest).  
+**Scheduler**: `OneCycleLR` with full epoch count — always created with `epochs=config.epochs` so checkpoint `state_dict` resumes correctly (Fix #32).  
+**Pos-weight**: computed from training split only, sqrt-scaled (`raw_ratio ** 0.5`), applied to BCEWithLogitsLoss.
 
-Stability     grad_clip=1.0, warmup_pct=0.05, use_amp=True
+### Loss Functions
 
-DataLoader    num_workers=2, persistent_workers=True
+**BCEWithLogitsLoss** (default `loss_fn="bce"`): class-balanced `pos_weight` applied.
 
-Loss          loss_fn="bce", focal_gamma=2.0, focal_alpha=0.25
+**FocalLoss** (`loss_fn="focal"`): `FocalLoss(gamma=2.0, alpha=0.25)`. Expects post-sigmoid probabilities — `_FocalFromLogits` wrapper in `trainer.py` applies sigmoid before calling `FocalLoss.forward()`. Explicit `.float()` cast guards against BF16 underflow (Fix #6).
 
-Cache         cache_path="ml/data/cached_dataset.pkl"  (None disables RAM cache)
-
-MLflow        experiment_name="sentinel-multilabel", run_name="multilabel-crossattn-v1"
-
-Device        device — auto-detected ("cuda" if available, else "cpu")
-
-Resume        resume_from=None  (path to .pt checkpoint)
-              resume_model_only=True  (default: model weights only, fresh optimizer)
-              force_optimizer_reset=False  (discard optimizer even on full resume)
-```
-
-**`compute_pos_weight(label_csv, train_indices, num_classes, device) → Tensor[10]`**
-
-Reads `multilabel_index.csv`, counts positives and negatives per class on the **training split only** (val/test excluded), returns `neg_count / pos_count` as a float32 tensor. Classes with zero positives are capped at `100.0` with a WARNING. Passed to `BCEWithLogitsLoss(pos_weight=...)` so rare classes receive proportionally higher gradient signal. Skipped entirely in binary mode (`label_csv=None`).
-
-**`evaluate(model, loader, device, threshold, use_amp) → dict`**
-
-Runs in `model.eval()` + `torch.no_grad()`. Returns 12 keys: `f1_macro`, `f1_micro`, `hamming`, `f1_{class}` × 10.
-
-The `threshold` arg is the shared value from `TrainConfig.threshold` (0.5 default) used only for epoch-level F1 tracking during training. `tune_threshold.py` finds per-class thresholds after training that are stored in `_thresholds.json`.
-
-**`train_one_epoch(...) → float`**
-
-Per-epoch loop invariants:
-
-```
-zero_grad(set_to_none=True)               free gradient memory, not just zero
-autocast("cuda", enabled=use_amp)         AMP/BF16 for forward + loss
-scaler.scale(loss).backward()             scaled gradients
-clip_grad_norm_(trainable_params, ...)    ONLY trainable params — not 124M frozen CodeBERT
-scheduler.step()                          per batch (OneCycleLR requirement)
-```
-
-Returns `total_loss / n_batches`. Returns `0.0` with WARNING if loader is empty.
-
-**`train(config) → dict`**
-
-Returns:
-
-```python
-{
-    "best_f1_macro":  float,   # best val F1-macro across all epochs
-    "final_epoch":    int,     # < config.epochs if early-stopped
-    "early_stopped":  bool,
-    "checkpoint_path": str,    # absolute path to saved best checkpoint
-}
-```
-
-**Checkpoint dict format saved to `.pt`:**
-
-```python
-{
-    "model":            state_dict,
-    "optimizer":        optimizer.state_dict(),
-    "scheduler":        scheduler.state_dict(),
-    "epoch":            int,     # epoch when this best was achieved
-    "best_f1":          float,
-    "patience_counter": 0,       # always 0 at a new best; sidecar has the real value
-    "config": {
-        **dataclasses.asdict(config),
-        "num_classes":  int,
-        "class_names":  CLASS_NAMES[:num_classes],
-        "architecture": "cross_attention_lora",
-    }
-}
-```
-
-> **Patience sidecar (`{checkpoint}.state.json`):** written after **every epoch** with `{"epoch", "patience_counter", "best_f1"}`. On resume, overrides the checkpoint's `patience_counter` (which is always 0 at a new best). Without the sidecar, non-improvement epochs before a crash are invisible on resume and early stopping resets silently.
-
-**Speed optimisations:**
-
-| Technique | Effect |
-|-----------|--------|
-| `torch.amp.autocast("cuda")` AMP/BF16 | 2–3× on Ampere (RTX 30xx+) |
-| `allow_tf32=True` (cuBLAS + cuDNN) | ~1.5× free on Ampere; no-op on older GPUs |
-| `num_workers=2` + `persistent_workers=True` | hides CPU collation behind GPU compute |
-| `pin_memory=True` (when num_workers > 0) | async host→device memory transfer |
-| `zero_grad(set_to_none=True)` | frees gradient tensors instead of writing zeros |
-| `prefetch_factor=2` | pipelines 2 batches ahead |
-| MLflow `log_artifact` once at run end | avoids per-epoch file copy overhead |
-
-### FocalLoss
-
-**File:** `ml/src/training/focalloss.py`
-
-Use `--loss-fn focal` when class imbalance is the bottleneck (e.g. DenialOfService at 137 samples).
-
-```
-FocalLoss(gamma=2.0, alpha=0.25)
-
-  BCE × alpha_t × (1 - pt)^gamma
-
-  pt = model confidence on the correct class
-       target=1 → pt = p      (confident positive prediction → small loss)
-       target=0 → pt = 1 - p  (confident negative prediction → small loss)
-
-  alpha_t = 0.25 for positive class  (vulnerable=64% majority → down-weighted)
-          = 0.75 for negative class  (safe=36% minority      → up-weighted)
-
-  gamma=2.0 — hard-example focus multiplier
-    pt=0.9 (easy):   (1-0.9)^2 = 0.01 → 99% loss reduction
-    pt=0.5 (hard):   (1-0.5)^2 = 0.25 → 75% loss reduction
-    pt=0.1 (very hard): (1-0.1)^2 = 0.81 → 19% loss reduction
-```
-
-> **Important:** `FocalLoss` expects **post-sigmoid probabilities**, not raw logits. The `_FocalFromLogits` wrapper in `trainer.py` applies `sigmoid()` before forwarding to `FocalLoss.forward()`. Do not pass logits directly.
->
-> **BF16 guard:** `predictions.float()` and `targets.float()` are cast at the top of `forward()`. Under AMP autocast, BF16 probabilities near 0 silently become exactly `0.0`, making `log(p) = -inf` and `loss = nan`. The explicit cast prevents this.
->
-> **`alpha=0.25` rationale:** The class ratio is 1.8× (64% vs 36%), not 3× as the default weight ratio (0.25 vs 0.75) might suggest. See `run_overnight_experiments.py` experiment 1 which tests `alpha=0.35` to soften the penalty gap.
+**Auxiliary loss**: `total_loss = main_loss + λ_eff × (loss_gnn + loss_transformer + loss_fused)` where `λ_eff` ramps from 0 to `aux_loss_weight=0.3` over `aux_loss_warmup_epochs=3` epochs.
 
 ### Resume from Checkpoint
 
 ```bash
-# Model-only resume (recommended when batch_size or any hyperparameter changed)
-poetry run python scripts/train.py \
-  --resume-from ml/checkpoints/multilabel-v3-fresh-60ep_best.pt
-
-# Full resume (model + optimizer + scheduler + patience counter)
-# Only use when batch_size is IDENTICAL to the checkpoint
-poetry run python scripts/train.py \
-  --resume-from ml/checkpoints/multilabel-v3-fresh-60ep_best.pt \
-  --no-resume-model-only
-
-# Full resume + reset optimizer (keeps model weights + epoch counter,
-# discards stale Adam moments — use when batch_size changed)
-poetry run python scripts/train.py \
-  --resume-from ml/checkpoints/multilabel-v3-fresh-60ep_best.pt \
-  --no-resume-model-only \
-  --resume-reset-optimizer
+python ml/scripts/train.py --resume ml/checkpoints/<name>_best.pt
 ```
 
-Validates on resume: `num_classes` and `architecture` must match current `TrainConfig`.
-
-A `{checkpoint}.state.json` **patience sidecar** is written after every epoch with the real `patience_counter`. On resume, the sidecar overrides the checkpoint's saved counter (which is always 0 at a new best). If absent, a warning is logged.
-
-Checkpoint load pattern (`weights_only=False` required — LoRA state dict contains peft objects):
-
-```python
-raw = torch.load(path, weights_only=False)
-state_dict = raw["model"] if "model" in raw else raw
-```
+Architecture mismatch detection: if the checkpoint's `model_version` pre-dates v5.2, a warning is logged. `_parse_version()` handles tuple comparison.
 
 ### Per-Class Threshold Tuning
 
 ```bash
-TRANSFORMERS_OFFLINE=1 ml/.venv/bin/python scripts/tune_threshold.py \
-  --checkpoint ml/checkpoints/multilabel-v3-fresh-60ep_best.pt
-# Grid: 0.05, 0.10, ..., 0.95 (19 values) per class on val split
-# Writes: ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json
+PYTHONPATH=. python ml/scripts/tune_threshold.py \
+    --checkpoint ml/checkpoints/v5.2-full_best.pt
 ```
 
-The thresholds JSON **must travel with** its checkpoint. Never deploy a checkpoint without its companion JSON.
+Runs one forward pass over the val set, sweeps thresholds per class (default 0.05–0.95 in steps of 0.01), picks the threshold that maximises per-class F1, saves to `<checkpoint_stem>_thresholds.json`. The `Predictor` loads this file automatically.
 
-### Hyperparameter Search — Overnight Experiments
-
-**File:** `ml/scripts/run_overnight_experiments.py`
-
-Sequential launcher for 4 overnight MLflow experiments. GPU trains one model at a time; experiments run in order with error isolation (a crash in one does not abort the rest).
+### Hyperparameter Search
 
 ```bash
-# Start all 4 experiments
-nohup TRANSFORMERS_OFFLINE=1 poetry run python scripts/run_overnight_experiments.py \
+# Single-run wrapper (smoke or confirm regime)
+PYTHONPATH=. python ml/scripts/auto_experiment.py \
+    --regime smoke \
+    --run-name auto-001 \
+    --experiment-name sentinel-v5.2 \
+    --loss-fn focal --gamma 2.0 --alpha 0.25
+
+# Overnight sequential launcher (4 experiments)
+nohup python ml/scripts/run_overnight_experiments.py \
     > ml/logs/overnight.log 2>&1 &
-echo "PID $!"
-
-# Resume from experiment N after a crash (0-indexed from 1)
-nohup poetry run python scripts/run_overnight_experiments.py \
-    --start-from 3 > ml/logs/overnight_resume.log 2>&1 &
-
-# Check progress in the morning
-tail -50 ml/logs/overnight.log
-mlflow ui --port 5000
 ```
 
-Experiment matrix (each overrides only changed fields from `TrainConfig` defaults):
+`auto_experiment.py` emits machine-readable score lines (`SENTINEL_SCORE=...`) and exits with code 0/1/2/3.
 
-| # | Run name | Change | Hypothesis |
-|---|----------|--------|------------|
-| 1 | `run-alpha-tune` | `focal_alpha=0.35` | Soften 3× penalty gap closer to 1.8× actual class ratio |
-| 2 | `run-more-epochs` | `epochs=40` | Baseline still improving at epoch 16 — extend to find plateau |
-| 3 | `run-lr-lower` | `lr=3e-5, epochs=30` | Reduce F1 oscillation (~0.15 range between epochs) |
-| 4 | `run-combined` | `focal_alpha=0.35, lr=3e-5, epochs=30` | Combine best changes from 1 and 3 |
-
-**Reading order after overnight run:**
-1. `run-lr-lower` → did the F1 curve smooth out?
-2. `run-more-epochs` → what epoch did it peak?
-3. `run-alpha-tune` → did F1-safe improve vs baseline?
-4. `run-combined` → did combining both beat all singles?
-5. For each: `val_recall_vulnerable` is the primary signal
-
-### Recommended v4 Configuration
-
-v3 plateaued at raw F1-macro 0.4715 from epoch ~54 — capacity ceiling under BCE with LoRA r=8.
+### Model Promotion
 
 ```bash
-TRANSFORMERS_OFFLINE=1 poetry run python scripts/train.py \
-  --run-name    multilabel-v4-focal-lora16 \
-  --experiment  sentinel-retrain-v4 \
-  --epochs      60 \
-  --batch-size  32 \
-  --patience    10 \
-  --loss-fn     focal \
-  --focal-gamma 2.0 \
-  --lora-r      16 \
-  --lora-alpha  32
+# Promote to Staging
+PYTHONPATH=. python ml/scripts/promote_model.py \
+    --checkpoint ml/checkpoints/v5.2-full_best.pt \
+    --stage Staging \
+    --val-f1-macro 0.52 \
+    --note "v5.2 full run; JK active"
+
+# Promote to Production
+PYTHONPATH=. python ml/scripts/promote_model.py \
+    --checkpoint ml/checkpoints/v5.2-full_best.pt \
+    --stage Production \
+    --val-f1-macro 0.52
+
+# Dry run
+python ml/scripts/promote_model.py --dry-run ...
 ```
 
-| Change | Rationale |
-|--------|-----------|
-| `--loss-fn focal --focal-gamma 2.0` | Down-weights easy negatives; forces attention on DenialOfService (137 support) |
-| `--lora-r 16` | Doubles trainable params (~589K vs 295K) — addresses plateau |
-| Weighted sampler for DenialOfService | 39× underrepresented vs IntegerUO |
-
----
-
-## Active Checkpoint
-
-```
-── v5 (in progress — 2026-05-11) ────────────────────────────────────────────
-Architecture:   three_eye_v5  (three-phase GNN + three-eye classifier)
-Schema:         v2 (NODE_FEATURE_DIM=12, NUM_EDGE_TYPES=7, CFG subgraph)
-Status:         Phase 4 re-extraction running (ast_extractor.py --force --workers 11)
-Next step:      Validate extraction → training → Phase 6 gate (F1-macro > 0.58)
-Gate targets:   F1-macro > 0.58, behavioral detection > 70%, specificity > 66%
-
-── v4 exp1 (previous best — fallback if v5 fails) ───────────────────────────
-File:        ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt
-Thresholds:  ml/checkpoints/multilabel-v4-finetune-lr1e4_best_thresholds.json
-Run:         multilabel-v4-finetune-lr1e4  (sentinel-retrain-v4)
-Completed:   2026-05-10  |  26/30 epochs  |  batch_size=16
-Tuned F1-macro: 0.5422  ✅
-Architecture:   cross_attention_lora  (LoRA r=8 α=16, NODE_FEATURE_DIM=8, NUM_EDGE_TYPES=5)
-KNOWN FLAW:     Cannot distinguish call-before-write from write-before-call;
-                behavioral detection rate 15%, specificity 33% on 20 hand-crafted contracts
-
-── v3 (superseded by v4) ────────────────────────────────────────────────────
-File:        ml/checkpoints/multilabel-v3-fresh-60ep_best.pt
-Tuned F1-macro: 0.5069  (v4 exp1 cleared this gate with 0.5422)
-```
-
-### Per-Class Thresholds and F1 (v3)
-
-| Class | Threshold | F1 | Precision | Recall | Support |
-|-------|-----------|----|-----------|--------|---------|
-| CallToUnknown | 0.70 | 0.394 | 0.322 | 0.507 | 1,266 |
-| DenialOfService | 0.95 | 0.400 | 0.318 | 0.540 | 137 |
-| ExternalBug | 0.65 | 0.435 | 0.312 | 0.715 | 1,622 |
-| GasException | 0.55 | 0.550 | 0.403 | 0.867 | 2,589 |
-| IntegerUO | 0.50 | 0.821 | 0.759 | 0.896 | 5,343 |
-| MishandledException | 0.60 | 0.492 | 0.365 | 0.754 | 2,207 |
-| Reentrancy | 0.65 | 0.536 | 0.449 | 0.665 | 2,501 |
-| Timestamp | 0.75 | 0.479 | 0.403 | 0.591 | 1,077 |
-| TransactionOrderDependence | 0.60 | 0.477 | 0.342 | 0.787 | 1,800 |
-| UnusedReturn | 0.70 | 0.486 | 0.395 | 0.631 | 1,716 |
-
-### Retrain Evaluation Protocol
-
-| Gate | Requirement |
-|------|-------------|
-| Graph dataset | `validate_graph_dataset.py` exits 0 |
-| Held-out split | Use `ml/data/splits/val_indices.npy` — do NOT regenerate |
-| **v4 success gate** | Tuned val F1-macro > **0.5069** on the same held-out split |
-| Per-class floor | No class drops > 0.05 F1 from v3 tuned values above |
-| Rollback rule | Tuned F1 < 0.5069 → revert to v3, adjust hyperparameters |
-| MLflow experiment | `sentinel-retrain-v4` |
+Logs checkpoint as MLflow artifact, registers as `sentinel-vulnerability-detector` in the Model Registry, transitions to `Staging` or `Production`. Valid stages: `{"Staging", "Production"}`. Exit codes: 0 (success), 1 (not found / MLflow error).
 
 ---
 
 ## Inference API
 
-Start the server:
+`ml/src/inference/api.py` — FastAPI application. Predictor loads once at startup via the lifespan context manager.
 
 ```bash
+SENTINEL_CHECKPOINT=ml/checkpoints/v5.2-full_best.pt \
 TRANSFORMERS_OFFLINE=1 \
-SENTINEL_CHECKPOINT=ml/checkpoints/multilabel-v3-fresh-60ep_best.pt \
-SENTINEL_THRESHOLDS=ml/checkpoints/multilabel-v3-fresh-60ep_best_thresholds.json \
-ml/.venv/bin/uvicorn ml.src.inference.api:app --port 8001
+uvicorn ml.src.inference.api:app --host 0.0.0.0 --port 8000
 ```
 
 Environment variables:
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel-v3-fresh-60ep_best.pt` | Checkpoint path |
-| `SENTINEL_THRESHOLDS` | auto-detected (`{stem}_thresholds.json`) | Per-class threshold JSON |
-| `SENTINEL_PREDICT_TIMEOUT` | `60` | Inference timeout (seconds) |
-| `SENTINEL_DRIFT_BASELINE` | `ml/data/drift_baseline.json` | Drift detection baseline |
-| `SENTINEL_DRIFT_CHECK_INTERVAL` | `50` | KS test every N requests |
+| Variable | Default | Description |
+|---|---|---|
+| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel_crossattn_v2_best.pt` | Checkpoint path |
+| `SENTINEL_PREDICT_TIMEOUT` | `60` | Inference timeout in seconds |
+| `SENTINEL_DRIFT_BASELINE` | `ml/data/drift_baseline.json` | Drift baseline path |
+| `SENTINEL_DRIFT_CHECK_INTERVAL` | `50` | Run KS test every N requests |
 
 ### Endpoints
 
@@ -1232,297 +597,277 @@ Environment variables:
 
 ```json
 // Request
-{ "source_code": "<solidity source string>" }
+{
+  "source_code": "pragma solidity ^0.8.0; contract Foo { ... }"
+}
 
 // Response
 {
-  "label": "vulnerable",
   "vulnerabilities": [
-    { "vulnerability_class": "Reentrancy", "probability": 0.8943 },
-    { "vulnerability_class": "IntegerUO",  "probability": 0.7102 }
+    {
+      "vulnerability_class": "Reentrancy",
+      "probability": 0.87,
+      "detected": true
+    },
+    ...
   ],
-  "thresholds":   [0.70, 0.95, 0.65, 0.55, 0.50, 0.60, 0.65, 0.75, 0.60, 0.70],
-  "truncated":    false,
-  "windows_used": 1,
-  "num_nodes":    12,
-  "num_edges":    18
+  "thresholds": [0.45, 0.50, ...],
+  "num_nodes": 14,
+  "num_edges": 22,
+  "architecture": "three_eye_v5"
 }
 ```
 
-- `thresholds` — 10 per-class values in `CLASS_NAMES` index order
-- `truncated: true` — single window was cut at 512 tokens
-- `windows_used > 1` — sliding-window path was taken
+Source size enforced before preprocessing: `MAX_SOURCE_BYTES = 1 MB`.
 
 **`GET /health`**
 
 ```json
 {
   "status": "ok",
-  "predictor_loaded": true,
-  "checkpoint": "ml/checkpoints/multilabel-v3-fresh-60ep_best.pt",
-  "architecture": "cross_attention_lora",
+  "model_loaded": true,
+  "architecture": "three_eye_v5",
   "thresholds_loaded": true
 }
 ```
 
-**`GET /metrics`** — Prometheus endpoint.
-
-| Metric | Type | Description |
-|--------|------|-------------|
-| `sentinel_model_loaded` | Gauge | 1 when predictor is loaded |
-| `sentinel_gpu_memory_bytes` | Gauge | GPU memory allocated (bytes) |
-| `sentinel_drift_alerts_total{stat}` | Counter | KS drift alerts by stat name |
+Prometheus metrics exposed at `/metrics`: `sentinel_model_loaded`, `sentinel_gpu_memory_bytes`, `sentinel_drift_alerts_total{stat=...}`.
 
 ### HTTP Status Codes
 
-| Code | Meaning |
-|------|---------|
-| 200 | Success |
-| 400 | Invalid or empty Solidity input |
-| 413 | Source > 1 MB or GPU OOM |
-| 503 | Predictor not yet loaded |
+| Code | Trigger |
+|---|---|
+| 200 | Successful prediction |
+| 400 | Missing `pragma solidity` / empty input |
+| 413 | Source exceeds 1 MB or CUDA OOM |
+| 500 | Preprocessing / runtime error |
+| 503 | Predictor not loaded |
 | 504 | Inference timeout |
 
 ---
 
 ## Predictor
 
-**File:** `ml/src/inference/predictor.py`
+`ml/src/inference/predictor.py`
 
-`Predictor` loads a checkpoint and scores contracts. Instantiated once per process inside `api.py` during lifespan startup.
+Handles checkpoint loading, per-class threshold loading, and inference. Loaded once at API startup.
 
-```
-Predictor.__init__(checkpoint, threshold=0.50, device=None)
-    │
-    ├── torch.load(weights_only=False)  — LoRA state dict requires this
-    │
-    ├── read from checkpoint["config"]:
-    │     num_classes, architecture, fusion_output_dim
-    │     gnn_hidden_dim, gnn_heads, gnn_dropout, gnn_edge_emb_dim
-    │     lora_r, lora_alpha, lora_dropout, lora_target_modules
-    │     fusion_dropout, use_edge_attr
-    │
-    ├── validate:
-    │     architecture in _ARCH_TO_FUSION_DIM allowlist  (ValueError if unknown)
-    │     num_classes ≤ len(CLASS_NAMES)                 (prevents silent zip truncation)
-    │     class_names order matches CLASS_NAMES[:n]       (prevents wrong-class mapping)
-    │
-    ├── build SentinelModel with exact hyperparams from checkpoint config
-    │     prevents load_state_dict() crash when checkpoint used non-defaults
-    │
-    ├── load per-class thresholds from {stem}_thresholds.json
-    │     missing class entry → fallback to constructor threshold with WARNING
-    │     missing file        → uniform threshold for all classes with WARNING
-    │
-    ├── ContractPreprocessor()
-    │
-    └── _warmup() — 2-node 1-edge dummy forward pass at startup
-          catches CUDA / shape bugs before first real request
-          (0-edge graph skips GATConv.propagate() — fixed to use ≥ 1 edge)
-          (includes edge_attr when use_edge_attr=True)
-
-Architecture allowlist (_ARCH_TO_FUSION_DIM):
-    "cross_attention_lora" → fusion_output_dim=128  (current)
-    "legacy"               → fusion_output_dim=64   (pre-CrossAttention)
-    "legacy_binary"        → fusion_output_dim=64   (old binary checkpoint)
-
-Public methods:
-    predict(sol_path)           — .sol file on disk
-    predict_source(source_code) — raw Solidity string; sliding window if > 512 tokens
-```
+- Architecture is read from `checkpoint["config"]["architecture"]` — `_ARCH_TO_FUSION_DIM` allowlist; unknown architecture raises `ValueError` (Bug 4 fix).
+- `fusion_output_dim`, `gnn_dropout`, `lora_target_modules` are read from checkpoint config (Fix #2).
+- Per-class thresholds loaded from `<checkpoint_stem>_thresholds.json`. Falls back to user-supplied threshold (default 0.5) with per-class warning if file is missing.
+- Warmup forward pass at startup uses a real 2-node 1-edge graph so GATConv message-passing is exercised (Fix #5 / Audit #5).
+- `self.thresholds_loaded` exposed for `/health`.
+- `_score()` emits `"vulnerability_class"` key (canonical schema — Bug 3 fix).
 
 ---
 
 ## ContractPreprocessor
 
-**File:** `ml/src/inference/preprocess.py`
+`ml/src/inference/preprocess.py`
 
-Thin wrapper over `graph_extractor.extract_contract_graph()` and the CodeBERT tokenizer. Converts one Solidity contract into `(graph, tokens)`. Instantiated once; reused across all requests.
+Converts one Solidity contract into `(graph, tokens)` for the model.
 
-```
-ContractPreprocessor(cache=None)
-    │
-    ├── process(sol_path)
-    │     hash = MD5 of file path  (hash_utils.get_contract_hash)
-    │     → (graph, tokens)
-    │
-    ├── process_source(source_code)
-    │     hash = MD5 of content    (hash_utils.get_contract_hash_from_content)
-    │     cache key = "{content_md5}_{FEATURE_SCHEMA_VERSION}"
-    │     check cache hit → return cached (graph, tokens)
-    │     cache miss → Slither temp file → extract → tokenize → cache.put()
-    │     → (graph, tokens)
-    │
-    └── process_source_windowed(source_code, stride=256, max_windows=8)
-          → (graph, list[tokens])  each dict has "window_index" key
+```python
+from ml.src.inference.preprocess import ContractPreprocessor
+
+preprocessor = ContractPreprocessor()
+
+# From file path
+graph, tokens = preprocessor.process(Path("contract.sol"))
+
+# From raw source string (writes NamedTemporaryFile — solc requires a real path)
+graph, tokens = preprocessor.process_source(source_code: str)
+
+# Sliding-window for long contracts
+windows: list[dict] = preprocessor.process_source_windowed(source_code: str)
 ```
 
-**Why temp file:** `solc` requires a real filesystem path — it cannot read from stdin or a string argument. `process_source()` writes a `NamedTemporaryFile` with prefix `sentinel_prep_`, calls `extract_contract_graph()`, then deletes it in a `finally` block.
+Shape contract (must match training data — do not change without retraining):
 
-**SIGKILL-safe cleanup:**
+| Tensor | Shape | dtype |
+|---|---|---|
+| `graph.x` | `[N, 12]` | float32 |
+| `graph.edge_index` | `[2, E]` | int64 |
+| `tokens["input_ids"]` | `[1, 512]` | long |
+| `tokens["attention_mask"]` | `[1, 512]` | long |
 
-```
-atexit handler — fires on normal exit + SIGTERM; unlinks _active_temp_files set
-Startup purge  — _purge_orphaned_sentinel_temps() scans /tmp for
-                 "sentinel_prep_*.sol" files left by a prior SIGKILL
-```
-
-**Sliding-window algorithm (`_tokenize_sliding_window`):**
-
-```
-1. Encode full source without truncation → full token ID list
-2. Slide 512-token window with stride=256 (50% overlap)
-3. Pad each window to 512; build attention_mask
-4. Cap at max_windows=8 to bound inference latency
-Short contracts (≤ 512 tokens) → returns list of one dict (no overhead)
-```
-
-**Shape contract (must match training data — do not change without retraining):**
-
-```
-graph.x              [N, 8]   float32
-graph.edge_index     [2, E]   int64
-tokens["input_ids"]  [1, 512] long
-tokens["attention_mask"] [1, 512] long
-```
+`MAX_SOURCE_BYTES = 1 MB` — checked before Slither is invoked.
 
 ---
 
 ## Inference Cache
 
-**File:** `ml/src/inference/cache.py`
+`ml/src/inference/cache.py`
 
-```
-Cache key: "{content_md5}_{FEATURE_SCHEMA_VERSION}"
-               │                    │
-               │                    └── bumping version auto-invalidates
-               │                        all stale entries without manual cleanup
-               └── hash_utils.get_contract_hash_from_content(source)
-                   (content-addressed: same code uploaded twice → cache hit)
-
-Cache hit  → return (graph.pt, tokens.pt) directly, skip Slither (3–5 s saved)
-Cache miss → run ContractPreprocessor, write result to disk
-TTL        → configurable, default 86400 s (24 hours)
-```
+Disk-backed content-addressed cache for `(graph, tokens)` pairs. Slither + tokenization takes 3–5 s; cached hits return in < 50 ms.
 
 ```python
 from ml.src.inference.cache import InferenceCache
-from ml.src.inference.preprocess import ContractPreprocessor
 
 cache = InferenceCache(
-    cache_dir="~/.cache/sentinel/preprocess",
-    ttl_seconds=86400,
+    cache_dir=Path("ml/data/inference_cache"),
+    ttl_seconds=86400,   # 24h default
 )
-preprocessor = ContractPreprocessor(cache=cache)
 ```
+
+Key format: `"{content_md5}_{FEATURE_SCHEMA_VERSION}"`. Bumping `FEATURE_SCHEMA_VERSION` in `graph_schema.py` automatically invalidates all cached entries. Atomic writes via tmp-file + rename — concurrent writers are safe (last-write-wins, both identical).
 
 ---
 
 ## Drift Detection
 
-**File:** `ml/src/inference/drift_detector.py`
+`ml/src/inference/drift_detector.py`
 
-```
-Request stream
-      │
-      ▼
-DriftDetector.update_stats({"num_nodes": N, "num_edges": E, ...})
-      │
-      ├── requests < N_WARMUP (500)?
-      │     → suppress all alerts (warm-up mode)
-      │
-      └── requests ≥ 500  AND  request_count % DRIFT_CHECK_INTERVAL == 0?
-            → KS test per feature stat against drift_baseline.json
-                p < 0.05 → increment sentinel_drift_alerts_total{stat}
+Kolmogorov–Smirnov test compares a rolling window of request stats against a pre-computed baseline. Fires a Prometheus counter (`sentinel_drift_alerts_total{stat=...}`) when `p < 0.05`.
+
+```python
+detector = DriftDetector(baseline_path="ml/data/drift_baseline.json")
+
+# Per request
+detector.update_stats({"num_nodes": 14, "num_edges": 22})
+
+# Every SENTINEL_DRIFT_CHECK_INTERVAL requests (default 50)
+detector.check()
 ```
 
-Build the baseline **after warm-up** (not from training data):
+**Baseline source**: do not use `ml/data/graphs/` (BCCC-2024 historical snapshot — will fire on every modern 2026 contract). Build from warm-up request data after ≥ 500 real requests:
 
 ```bash
-# After collecting ≥ 500 real audit requests:
 python ml/scripts/compute_drift_baseline.py \
-    --source      warmup \
-    --warmup-log  ml/data/warmup_stats.jsonl \
-    --output      ml/data/drift_baseline.json
+    --source warmup \
+    --warmup-log ml/data/warmup_stats.jsonl \
+    --output ml/data/drift_baseline.json
 ```
 
-> **Do not use `ml/data/graphs/` as the baseline.** The BCCC-2024 corpus is a historical
-> snapshot — using it causes the KS test to fire on almost every modern 2026 contract.
-> The baseline must come from real production traffic collected during warm-up.
+Minimum samples required before KS runs: `MIN_SAMPLES_FOR_KS = 30`.
 
 ---
 
 ## MLflow and Model Registry
 
-```bash
-mlflow ui --port 5000
-# → http://localhost:5000
-```
+Tracking URI defaults to project-local SQLite: `sqlite:///mlruns.db`. Override via `MLFLOW_TRACKING_URI`.
 
-| Experiment | Status | Best Tuned F1 |
-|------------|--------|---------------|
-| `sentinel-multilabel` | complete | 0.4679 (epoch 34) |
-| `sentinel-retrain-v2` | paused at epoch 43 (batch-size mismatch) | 0.4629 |
-| `sentinel-retrain-v3` | complete | **0.5069** |
+Each training run logs: all `TrainConfig` fields, per-epoch val metrics (macro F1, per-class F1, hamming loss), gradient norm, VRAM usage, JK attention weights per phase. Best checkpoint is logged as an artifact outside the epoch loop (optimisation #6).
 
-**Promote a checkpoint:**
-
-```bash
-python ml/scripts/promote_model.py \
-    --checkpoint   ml/checkpoints/multilabel-v3-fresh-60ep_best.pt \
-    --stage        Staging \
-    --val-f1-macro 0.5069 \
-    --note         "v3: edge_attr active; tuned F1-macro 0.5069"
-
-# --dry-run           preview without writing to MLflow
-# --stage Production  archives the previous Production version
-```
+Model Registry name: `sentinel-vulnerability-detector`. Use `promote_model.py` for all stage transitions — manual `.pt` copying leaves no audit trail.
 
 ---
 
 ## DVC
 
-Large artifacts (graphs, tokens, splits, checkpoints) are DVC-tracked, not stored in git.
+Data files too large for Git are tracked with DVC:
+
+| DVC pointer | Tracks |
+|---|---|
+| `ml/data/graphs.dvc` | `ml/data/graphs/` (~68K `.pt` graph files) |
+| `ml/data/tokens.dvc` | `ml/data/tokens/` (~68K `.pt` token files) |
+| `ml/data/splits.dvc` | `ml/data/splits/` (train/val/test `.npy` index arrays) |
+| `ml/checkpoints.dvc` | `ml/checkpoints/` (trained model checkpoints) |
+| `ml/data/tokens.dvc` | `ml/data/tokens/` |
+
+Remote configured in `.dvc/config`. Pull data: `dvc pull`.
+
+---
+
+## Docker — Slither Environment
+
+`ml/docker/Dockerfile.slither` — Ubuntu 20.04, `slither-analyzer==0.10.0`. Pre-installs solc binaries for versions `0.4.2` through `0.8.20` at build time (avoids GitHub API rate limits at runtime).
 
 ```bash
-dvc pull   # download current data version
-dvc push   # push new artifacts after retraining
+docker build -f ml/docker/Dockerfile.slither -t sentinel-slither .
+docker run -v $(pwd):/workspace sentinel-slither \
+    python ml/src/data_extraction/ast_extractor.py
 ```
-
-| DVC pointer | Content |
-|-------------|---------|
-| `ml/data/graphs.dvc` | ~68K graph `.pt` files |
-| `ml/data/tokens.dvc` | ~68K token `.pt` files |
-| `ml/data/splits.dvc` | `train/val/test_indices.npy` |
-| `ml/checkpoints.dvc` | All checkpoint `.pt` + threshold `.json` files |
 
 ---
 
 ## Testing
 
+12 test modules, ~3,100 lines. All tests live in `ml/tests/`.
+
 ```bash
-cd ml
-poetry run pytest tests/ -v
+# Full suite
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. pytest ml/tests/ -v
+
+# Non-integration only (no Slither required)
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. pytest ml/tests/ -v -m "not integration"
+
+# Pre-flight GNN gate (non-negotiable before training)
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. pytest ml/tests/test_cfg_embedding_separation.py -v
 ```
 
-`tests/conftest.py` sets `TRANSFORMERS_OFFLINE=1` before any import (HuggingFace checks this
-at import time) and creates a **session-scoped** `TestClient` so the ~500 MB model loads once
-for all API tests rather than once per test function.
+| Test file | Lines | What is tested |
+|---|---|---|
+| `test_model.py` | 379 | `SentinelModel` forward pass, `return_aux`, three-eye shapes, auxiliary heads |
+| `test_gnn_encoder.py` | 304 | Per-phase output shapes, JK gradient flow, `return_intermediates`, edge-type filtering |
+| `test_preprocessing.py` | 891 | Schema sanity (`NODE_FEATURE_DIM=12`, 13 node types), `_build_node_features()`, `_build_control_flow_edges()`, integration tests with Slither |
+| `test_cfg_embedding_separation.py` | 282 | **Pre-flight gate**: call-before-write vs write-before-call produce different function embeddings |
+| `test_fusion_layer.py` | 162 | `CrossAttentionFusion` output shapes, mask handling, gradient flow |
+| `test_trainer.py` | 275 | `TrainConfig` validation, `compute_pos_weight()`, aux loss warmup, scheduler resume |
+| `test_dataset.py` | 226 | `DualPathDataset` label modes, paired hash discovery, collate function |
+| `test_api.py` | 210 | `/predict` and `/health` endpoints, error codes (400/413/500/503/504) |
+| `test_preprocessing_api.py` → `test_api.py` | — | FastAPI integration via `TestClient(app)`, session-scoped fixture |
+| `test_predictor.py` → `test_model.py` | — | Architecture detection, threshold loading |
+| `test_drift_detector.py` | 123 | KS alert firing, `MIN_SAMPLES_FOR_KS` guard, Prometheus counter |
+| `test_cache.py` | 95 | Cache key format, TTL expiry, atomic write, schema-version invalidation |
+| `test_promote_model.py` | 134 | Stage validation, dry-run mode, MLflow registration |
 
-All 10 test modules use synthetic data — no real contracts or checkpoints required.
+`conftest.py` sets `TRANSFORMERS_OFFLINE=1` before any import and provides a session-scoped `TestClient` fixture (model loads once for all API tests).
 
-| Test file | What it covers |
-|-----------|----------------|
-| `test_model.py` | `SentinelModel` forward pass, output shape, class count |
-| `test_gnn_encoder.py` | `GNNEncoder`: edge_attr embedding, graceful degradation on None, head divisibility |
-| `test_fusion_layer.py` | `CrossAttentionFusion`: output shape, masked pooling, device parity |
-| `test_preprocessing.py` | `ContractPreprocessor`, `graph_extractor` typed exceptions |
-| `test_dataset.py` | `DualPathDataset`: pairing logic, binary/multi-label modes, split loading, edge_attr guard, cache integrity, collation |
-| `test_trainer.py` | `FocalLoss` forward (BF16 guard, alpha weighting), trainer utilities |
-| `test_api.py` | `/predict` and `/health` endpoint contracts, error codes |
-| `test_cache.py` | `InferenceCache`: miss writes, hit returns same object, TTL expiry, schema version invalidation |
-| `test_drift_detector.py` | `DriftDetector`: warm-up suppression, KS fires on p < 0.05, buffer rolling |
-| `test_promote_model.py` | `promote_model.py`: stage validation, dry-run no-op, MLflow tag writes |
+Slither integration tests are marked `@pytest.mark.integration` and require `slither-analyzer>=0.9.3` and `solc` to be installed.
+
+---
+
+## Scripts Reference
+
+All commands from project root. Run with `PYTHONPATH=. poetry run python ml/scripts/<script>.py`.
+
+### Data Pipeline
+
+| Script | Purpose |
+|---|---|
+| `build_multilabel_index.py` | BCCC CSV → `multilabel_index.csv` (SHA256↔MD5 bridge, max-OR labels) |
+| `dedup_multilabel_index.py` | Deduplicate index → `multilabel_index_deduped.csv` |
+| `create_label_index.py` | Scan graph `.pt` files → `label_index.csv` (binary mode) |
+| `create_splits.py` | Stratified 70/15/15 split → `splits/deduped/*.npy` |
+| `verify_splits.py` | Assert split integrity and class ratio preservation |
+| `validate_graph_dataset.py` | Full integrity check: shape, edge validity, label coverage |
+| `reextract_graphs.py` | Re-run graph extraction with current v2 schema on existing dataset |
+
+### Augmentation
+
+| Script | Purpose |
+|---|---|
+| `generate_cei_pairs.py` | Generate synthetic CEI-vulnerable Solidity pairs |
+| `generate_safe_variants.py` | Generate safe (CEI-pattern) variants |
+| `extract_augmented.py` | Extract graphs/tokens from `ml/data/augmented/*.sol` |
+| `inject_augmented.py` | Inject augmented samples into the training split |
+| `run_augmentation.sh` | Shell wrapper: generate → extract → inject in one step |
+
+### Training
+
+| Script | Purpose |
+|---|---|
+| `train.py` | Main training entry point (see [Run Training](#run-training)) |
+| `auto_experiment.py` | Single-run wrapper: train → tune → emit machine-readable score |
+| `run_overnight_experiments.py` | Sequential launcher for 4 hyperparameter experiments |
+
+### Post-Training
+
+| Script | Purpose |
+|---|---|
+| `tune_threshold.py` | Per-class threshold sweep on val set → `<name>_thresholds.json` |
+| `promote_model.py` | Log checkpoint to MLflow, register, transition stage |
+| `manual_test.py` | Interactive CLI for single-contract inference smoke test |
+
+### Analysis and Utilities
+
+| Script | Purpose |
+|---|---|
+| `analyse_truncation.py` | Token length distribution; count truncated contracts |
+| `compute_drift_baseline.py` | Build `drift_baseline.json` from warm-up request logs |
+| `compute_locked_hashes.py` | SHA256 manifest of locked architecture files |
+| `create_cache.py` | Pre-build `cached_dataset_deduped.pkl` for RAM cache |
 
 ---
 
@@ -1530,137 +875,115 @@ All 10 test modules use synthetic data — no real contracts or checkpoints requ
 
 ```
 ml/
-├── src/
-│   ├── models/
-│   │   ├── sentinel_model.py        SentinelModel — threads GNN + Transformer + Fusion + Classifier
-│   │   │                            No Sigmoid inside; parameter_summary() at predictor startup
-│   │   ├── gnn_encoder.py           GNNEncoder — 3-layer GAT + edge-type embeddings → [N,64]
-│   │   ├── transformer_encoder.py   TransformerEncoder — CodeBERT + LoRA (r=8 default)
-│   │   └── fusion_layer.py          CrossAttentionFusion — output_dim=128 (LOCKED)
-│   │
-│   ├── preprocessing/
-│   │   ├── graph_schema.py          NODE_TYPES, EDGE_TYPES, FEATURE_NAMES,
-│   │   │                            FEATURE_SCHEMA_VERSION, NODE_FEATURE_DIM=8,
-│   │   │                            NUM_EDGE_TYPES=5
-│   │   └── graph_extractor.py       extract_contract_graph() — Slither → PyG Data
-│   │                                GraphExtractionConfig, typed exceptions
-│   │
-│   ├── inference/
-│   │   ├── api.py                   FastAPI app — lifespan, /predict, /health, /metrics
-│   │   ├── predictor.py             Predictor — checkpoint load, architecture allowlist,
-│   │   │                            per-class thresholds, warmup forward pass
-│   │   │                            predict(sol_path), predict_source(source_code)
-│   │   ├── preprocess.py            ContractPreprocessor — thin wrapper over graph_extractor
-│   │   │                            process(), process_source(), process_source_windowed()
-│   │   │                            SIGKILL-safe temp file cleanup (atexit + startup purge)
-│   │   ├── cache.py                 InferenceCache — disk-backed content-addressed cache (T1-A)
-│   │   └── drift_detector.py        DriftDetector — KS-based feature drift monitoring (T2-B)
-│   │
-│   ├── training/
-│   │   ├── trainer.py               TrainConfig (full dataclass), CLASS_NAMES, ARCHITECTURE
-│   │   │                            compute_pos_weight(), evaluate(), train_one_epoch()
-│   │   │                            train() → {best_f1_macro, final_epoch, early_stopped, checkpoint_path}
-│   │   │                            AMP + TF32 + prefetch, patience sidecar, MLflow logging
-│   │   └── focalloss.py             FocalLoss — gamma=2.0, alpha=0.25, BF16 float() guard
-│   │                                opt-in via loss_fn="focal"; expects post-sigmoid probs
-│   │                                _FocalFromLogits wrapper in trainer.py applies sigmoid
-│   │
-│   ├── datasets/
-│   │   └── dual_path_dataset.py     DualPathDataset — binary + multi-label modes,
-│   │                                paired-hash discovery, RAM cache, edge_attr guard
-│   │                                dual_path_collate_fn — module-level for multiprocessing
-│   │
-│   └── utils/
-│       └── hash_utils.py            get_contract_hash(path)         MD5 of path string
-│                                    get_contract_hash_from_content() MD5 of source text
-│                                    validate_hash(), get_filename_from_hash()
-│                                    get_filename_from_path(), extract_hash_from_filename()
-│
-├── data_extraction/
-│   ├── ast_extractor.py             Offline batch Slither → PyG .pt (V4.3)
-│   │                                orchestration only — graph logic in graph_extractor.py
-│   └── tokenizer.py                 Offline CodeBERT tokenisation + schema version metadata
-│
-├── scripts/
-│   ├── train.py                     Main training entry point (full/model-only/reset-optimizer)
-│   ├── tune_threshold.py            Per-class threshold sweep (0.05–0.95 grid)
-│   ├── run_overnight_experiments.py 4-experiment hyperparameter launcher
-│   │                                --start-from N crash-resume; sequential GPU runs
-│   ├── create_splits.py             Fixed stratified train/val/test split indices
-│   ├── build_multilabel_index.py    Build multilabel_index.csv from BCCC labels
-│   ├── validate_graph_dataset.py    Validate edge_attr shape [E] + value range in .pt files
-│   ├── analyse_truncation.py        Measure token truncation stats across dataset
-│   ├── promote_model.py             MLflow registry CLI — Staging / Production promotion
-│   ├── compute_drift_baseline.py    Build drift_baseline.json from warmup logs
-│   └── create_label_index.py        OBSOLETE — binary label_index.csv from graph.y
-│                                    superseded by build_multilabel_index.py
+├── pyproject.toml              — Python 3.12.1, all dependencies
+├── poetry.lock
+├── __init__.py
+├── DIAGRAMS.md                 — Mermaid diagrams (system lifecycle, architecture, data flow)
+├── locked_files.sha256         — SHA256 manifest for architecture lock
+├── checkpoints.dvc             — DVC pointer to ml/checkpoints/
 │
 ├── docker/
-│   └── Dockerfile.slither           Ubuntu 20.04 + slither-analyzer==0.10.0
-│                                    26 pre-bundled solc binaries (0.4.2 – 0.8.20)
-│                                    solc-select included for version switching
+│   └── Dockerfile.slither      — Ubuntu 20.04 + slither==0.10.0 + solc binaries
 │
-├── tests/
-│   ├── conftest.py                  Sets TRANSFORMERS_OFFLINE=1 before imports
-│   │                                Session-scoped TestClient (model loads once)
-│   └── test_*.py                    10 test modules — all synthetic data
-│
-├── data/                            DVC-tracked (not in git)
-│   ├── graphs/                      ~68K <md5>.pt PyG graph files
-│   ├── tokens/                      ~68K <md5>.pt token tensor files
-│   ├── splits/                      train/val/test_indices.npy
+├── data/
+│   ├── graphs.dvc              — ~68K .pt graph files (tracked by DVC)
+│   ├── tokens.dvc              — ~68K .pt token files (tracked by DVC)
+│   ├── splits.dvc              — train/val/test .npy arrays (tracked by DVC)
+│   ├── augmented/              — 50 synthetic CEI contract pairs (.sol)
 │   └── processed/
-│       └── multilabel_index.csv     68,523 rows × md5_stem + 10 class columns
+│       └── multilabel_index_deduped.csv  — label source for DualPathDataset
 │
-├── checkpoints/                     DVC-tracked (not in git)
-│   ├── multilabel-v3-fresh-60ep_best.pt            ← active (v3, tuned F1 0.5069)
-│   ├── multilabel-v3-fresh-60ep_best_thresholds.json
-│   ├── multilabel_crossattn_v2_best.pt             ← paused v2 (superseded)
-│   ├── multilabel_crossattn_best.pt                ← original baseline (pre-edge_attr)
-│   └── multilabel_crossattn_best_thresholds.json
+├── src/
+│   ├── preprocessing/
+│   │   ├── graph_schema.py     — NODE_TYPES, EDGE_TYPES, FEATURE_NAMES (single source of truth)
+│   │   └── graph_extractor.py  — extract_contract_graph(), GraphExtractionConfig
+│   ├── data_extraction/
+│   │   ├── ast_extractor.py    — offline batch orchestration (11 workers, checkpoint/resume)
+│   │   └── tokenizer.py        — CodeBERT tokenization pipeline
+│   ├── datasets/
+│   │   └── dual_path_dataset.py  — DualPathDataset, dual_path_collate_fn
+│   ├── models/
+│   │   ├── sentinel_model.py   — SentinelModel v5.2 (three-eye orchestration)
+│   │   ├── gnn_encoder.py      — GNNEncoder (three-phase GAT + JK + LayerNorm)
+│   │   ├── transformer_encoder.py  — CodeBERT + LoRA
+│   │   └── fusion_layer.py     — CrossAttentionFusion (bidirectional cross-attention)
+│   ├── training/
+│   │   ├── trainer.py          — TrainConfig, train(), CLASS_NAMES, MODEL_VERSION
+│   │   └── focalloss.py        — FocalLoss (post-sigmoid, BF16 guard)
+│   ├── inference/
+│   │   ├── api.py              — FastAPI app (/predict, /health, Prometheus)
+│   │   ├── predictor.py        — Predictor (checkpoint load, threshold load, warmup)
+│   │   ├── preprocess.py       — ContractPreprocessor (graph + tokens for one contract)
+│   │   ├── cache.py            — InferenceCache (disk-backed, content-addressed, TTL)
+│   │   └── drift_detector.py   — DriftDetector (KS test, rolling window, Prometheus)
+│   └── utils/
+│       └── hash_utils.py       — MD5/SHA256 hashing utilities
 │
-├── DIAGRAMS.md                      Mermaid visual diagrams (GitHub-rendered)
-├── pyproject.toml                   Python 3.12.1, torch ^2.5.0, peft >=0.13.0
-└── README.md                        This file
+├── scripts/
+│   ├── train.py                — Training entry point (argparse → TrainConfig → train())
+│   ├── tune_threshold.py       — Per-class threshold optimiser
+│   ├── promote_model.py        — MLflow model registry promotion
+│   ├── auto_experiment.py      — Single-run hyperparameter search wrapper
+│   ├── run_overnight_experiments.py  — Sequential 4-experiment launcher
+│   ├── build_multilabel_index.py
+│   ├── dedup_multilabel_index.py
+│   ├── create_splits.py
+│   ├── verify_splits.py
+│   ├── validate_graph_dataset.py
+│   ├── reextract_graphs.py
+│   ├── generate_cei_pairs.py
+│   ├── generate_safe_variants.py
+│   ├── extract_augmented.py
+│   ├── inject_augmented.py
+│   ├── run_augmentation.sh
+│   ├── analyse_truncation.py
+│   ├── compute_drift_baseline.py
+│   ├── compute_locked_hashes.py
+│   ├── create_cache.py
+│   ├── manual_test.py
+│   └── test_contracts/         — 20 hand-crafted .sol files for manual smoke tests
+│
+└── tests/
+    ├── conftest.py             — TRANSFORMERS_OFFLINE, session-scoped TestClient
+    ├── test_model.py           — SentinelModel + GNNEncoder unit tests
+    ├── test_gnn_encoder.py     — Per-phase shapes, JK, intermediates
+    ├── test_preprocessing.py   — Schema sanity + integration (requires Slither)
+    ├── test_cfg_embedding_separation.py  — Pre-flight GNN gate (non-negotiable)
+    ├── test_fusion_layer.py
+    ├── test_trainer.py
+    ├── test_dataset.py
+    ├── test_api.py
+    ├── test_drift_detector.py
+    ├── test_cache.py
+    └── test_promote_model.py
 ```
 
 ---
 
 ## Critical Constraints
 
-| Constraint | v5 Value | Consequence of change |
-|-----------|-------------|----------------------|
-| `GNNEncoder in_channels` | **12** (was 8 in v4) | Rebuild all 68K graph files + retrain |
-| `NODE_FEATURE_DIM` | **12** | Must match `in_channels`; compile-time assert |
-| `type_id` normalisation | `float(type_id) / 12.0` in extractor | Raw 0–12 dominates dot product; GNN can't distinguish CFG subtypes |
-| CodeBERT model | `microsoft/codebert-base` | Rebuild token files + retrain |
-| `MAX_TOKEN_LENGTH` | **512** | Rebuild token files + retrain |
-| `CrossAttentionFusion output_dim` | **128** | Rebuild ZKML circuit + redeploy verifier |
-| `FEATURE_SCHEMA_VERSION` | **`"v2"`** (was "v1") | Bump alongside graph rebuild — invalidates inference cache |
-| `CLASS_NAMES` order | indices **0–9 stable** | Silent wrong-class mapping across all consumers |
-| `NUM_EDGE_TYPES` | **7** (was 5) | Rebuild edge_emb layer + retrain |
-| `NUM_NODE_TYPES` | **13** | Node vocabulary size (ids 0–12) |
-| `gnn_layers` | **4** (enforced in TrainConfig) | Only 4 supported in v5.0; raises `NotImplementedError` otherwise |
-| `weights_only=False` on checkpoint load | required | LoRA state dict contains peft-specific objects |
-| `TRANSFORMERS_OFFLINE` | must be set at **shell level** | Cannot be set inside Python after `transformers` is imported |
-| `edge_attr` shape | **`[E]` 1-D int64** | `[E,1]` crashes `nn.Embedding`; validate before training |
-| `dual_path_collate_fn` | must be **module-level** | Lambda/method collate functions crash DataLoader multiprocessing |
+These are structural invariants enforced by the codebase. Violating any causes silent accuracy regression or runtime errors.
 
----
+**`FEATURE_SCHEMA_VERSION`** — must be bumped whenever `NODE_TYPES`, `EDGE_TYPES`, `FEATURE_NAMES`, or `_build_node_features()` logic changes. Invalidates all inference caches and requires a full dataset rebuild + retrain.
 
-## Known Limitations
+**`NODE_FEATURE_DIM = 12`** — `GNNEncoder.conv1.in_channels` is set to this constant at construction. Any graph `.pt` file with a different `x.shape[1]` will crash at the first forward pass.
 
-**1. Multi-contract files**
-Only the first non-dependency contract per `.sol` file is analysed. `GraphExtractionConfig.multi_contract_policy` scaffold exists (`"first"`, `"by_name"`); the `"all"` policy is not yet implemented. See `docs/ROADMAP.md` Move 9.
+**`NUM_EDGE_TYPES = 8`** — `GNNEncoder` embeds all 8 edge type IDs via `nn.Embedding(8, gnn_edge_emb_dim)`. `REVERSE_CONTAINS=7` is never written to disk; it is generated at runtime.
 
-**2. DenialOfService class**
-137 training samples — 39× fewer than IntegerUO. Even with threshold tuned to 0.95, F1 is 0.40. Weighted sampling and focal loss are the planned remediation for v4.
+**`type_id` normalisation** — stored as `float(type_id) / 12.0` in graph `.pt` files. Recover with `(x[:, 0] * _MAX_TYPE_ID).round().long()`. Raw IDs 0–12 must never appear unnormalised in `graph.x`.
 
-**3. Drift baseline not yet collected**
-`DriftDetector` is code-complete but cannot be activated until the warm-up phase (first 500 real audit requests) has been run. Use `compute_drift_baseline.py --source warmup` after warm-up completes.
+**`peft` library** — hard requirement. Missing `peft` raises `RuntimeError` at `TransformerEncoder` import time, not at model construction.
 
-**4. Temp-file cleanup on SIGKILL (Move 8 partial)**
-`preprocess.py`'s `process_source()` writes a `NamedTemporaryFile` because solc requires a real path. The `finally` block cleans up on normal exit and graceful signals, but a `SIGKILL` (e.g. OOM kill) leaves the temp file on disk. Low-priority hardening task — does not affect correctness. Tracked in `docs/ROADMAP.md`.
+**`slither-analyzer >= 0.9.3`** — enforced at `graph_schema.py` import. Older Slither silently produces wrong `in_unchecked` features (`NodeType.STARTUNCHECKED` only available in ≥ 0.9.3).
 
-**5. M6 Integration API not built**
-The `api/` directory for the public-facing audit endpoint does not exist. Auth/rate-limit design is required before building routes. See `docs/STATUS.md` and `docs/ROADMAP.md`.
+**`TRANSFORMERS_OFFLINE=1`** — must be set before any Python import, not inside Python. HuggingFace reads it at import time.
+
+**`add_self_loops=False` in Phase 2** — self-loops cancel directional signal in CONTROL_FLOW edges. Do not add them.
+
+**No `torch.no_grad()` around `self.bert()`** — would cut gradients to LoRA A/B matrices. The `requires_grad=False` split is handled internally by `peft`.
+
+**JK tensors collected without `.detach()`** — `_live = []` in `GNNEncoder.forward()` must not use `.detach()`. The diagnostic `_intermediates` dict uses `.detach().clone()` only for test inspection.
+
+**`process_source()` requires a temp file** — Slither shells out to `solc`, which requires a real file path. Never pass raw source code directly to Slither.
+
+**`graph_builder.py` must not be used in `preprocess.py`** — its one-hot encoding produces 17-dim features; the model expects 12-dim. Using it causes a mat-mul shape error.
