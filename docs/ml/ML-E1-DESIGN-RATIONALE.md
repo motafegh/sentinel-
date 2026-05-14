@@ -543,3 +543,19 @@ Symptom: The ZKML module fails to generate a valid EZKL proof, or the Groth16 on
 Root cause: The ZK circuit was compiled with `fusion_output_dim = 128` and the proxy MLP architecture `Linear(128, 64) → Linear(64, 32) → Linear(32, 10)`. Any mismatch between the live model's fusion output and these hardcoded circuit dimensions will cause the circuit's constraint system to be unsatisfied. The most common cause is a change to `CrossAttentionFusion`'s output projection that produces a tensor with a different size. A secondary cause is sigmoid being applied inside the model — the circuit receives probabilities where it expects logits, and the proxy MLP's expected input distribution is calibrated to logit-scale values.
 
 Diagnostic check: Assert that `CrossAttentionFusion.forward()` produces an output of shape `[batch_size, 128]` by adding a shape assertion to the forward method during debugging. Confirm that the proxy MLP module's `fc1` layer has `in_features = 128`. Confirm that `model.forward()` returns raw logits (check that the maximum absolute value across a batch is not constrained to (0, 1), which would indicate sigmoid has been applied). If all checks pass and proof generation still fails, the likely cause is that the circuit was compiled against a different checkpoint and needs to be recompiled against the current architecture.
+
+---
+
+## Summary: Principles Behind the Architecture
+
+Every decision described in this document traces back to a small set of principles that emerged from real failures:
+
+**Measure what you care about.** Validation F1 measures distribution matching. Behavioral tests measure vulnerability detection. Only the latter matters for a security tool. Every training run must clear both gates — validation F1 as a sanity check, behavioral tests as the real verdict.
+
+**Preserve gradient pathways.** The dual-path architecture is only effective if both paths receive gradient signal. JK connections, auxiliary loss, separate LR groups, and function-level pooling all exist to ensure neither path goes dormant. Any architectural change should be evaluated against the question: "does this risk cutting off gradient flow to part of the model?"
+
+**Separate what is different.** Edge types with different semantic relationships require different propagation rules. Learning rates for pre-trained and randomly-initialised components should be different. Structural and semantic modalities should be allowed to specialise. When the original architecture mixed these, performance was poor and the failures were opaque.
+
+**Make failures visible.** NaN loss counter, GNN collapse streak alert, JK phase dominance warning, per-epoch JK weight logging — these diagnostics exist because silent failures are the hardest to debug. A model that silently ignores the graph and achieves mediocre F1 using only CodeBERT is far more dangerous than one that crashes with an error.
+
+**Lock what is locked.** The constants labeled "locked" are physical constraints, not conventions. Changing them without rebuilding the data pipeline produces misaligned shapes at runtime. Treat locked constants as you would treat an API contract: they can be changed, but changing them has a known, non-trivial cost that must be planned for.
