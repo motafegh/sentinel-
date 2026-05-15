@@ -110,6 +110,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
+from loguru import logger
 from torch_geometric.nn import GATConv
 
 from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES, EDGE_TYPES

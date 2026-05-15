@@ -106,16 +106,21 @@ class _TinyMLP(nn.Module):
         super().__init__()
         self.fc = nn.Linear(8, num_classes)
 
-    def forward(self, graphs: Batch, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+    def forward(self, graphs: Batch, input_ids: torch.Tensor, attention_mask: torch.Tensor,
+                return_aux: bool = False):
         # Use global mean of node features as a cheap summary
         x = graphs.x                                   # [N, 8]
         batch = graphs.batch                            # [N]
-        B = batch.max().item() + 1
-        pooled = torch.zeros(B, 8)
+        B = int(batch.max().item()) + 1
+        pooled = torch.zeros(B, 8, device=x.device)
         for i in range(B):
             mask = batch == i
             pooled[i] = x[mask].mean(dim=0)
-        return self.fc(pooled)                          # [B, 10]
+        logits = self.fc(pooled)                       # [B, 10]
+        if return_aux:
+            aux = {"gnn": logits, "transformer": logits, "fused": logits}
+            return logits, aux
+        return logits
 
 
 def _make_pyg_batch(B: int, n_per_graph: int = 4) -> Batch:
@@ -210,13 +215,15 @@ class TestTrainOneEpoch:
         optimizer = AdamW(model.parameters(), lr=1e-3)
         scheduler = OneCycleLR(optimizer, max_lr=1e-3, total_steps=2)
         scaler    = torch.amp.GradScaler("cpu", enabled=False)
-        loss_fn   = nn.BCEWithLogitsLoss()
+        loss_fn     = nn.BCEWithLogitsLoss()
+        aux_loss_fn = nn.BCEWithLogitsLoss()
 
-        loss = train_one_epoch(
+        loss, nan_count, gnn_share = train_one_epoch(
             model=model,
             loader=loader,
             optimizer=optimizer,
             loss_fn=loss_fn,
+            aux_loss_fn=aux_loss_fn,
             scheduler=scheduler,
             scaler=scaler,
             device="cpu",
@@ -233,18 +240,20 @@ class TestTrainOneEpoch:
         loader    = _make_loader(n_batches=4)
         optimizer = AdamW(model.parameters(), lr=1e-2)
         scaler    = torch.amp.GradScaler("cpu", enabled=False)
-        loss_fn   = nn.BCEWithLogitsLoss()
+        loss_fn     = nn.BCEWithLogitsLoss()
+        aux_loss_fn = nn.BCEWithLogitsLoss()
 
         total_steps = 4 * 3  # n_batches * n_epochs
         scheduler   = OneCycleLR(optimizer, max_lr=1e-2, total_steps=total_steps)
 
         losses = []
         for _ in range(3):
-            loss = train_one_epoch(
+            loss, _, _ = train_one_epoch(
                 model=model,
                 loader=loader,
                 optimizer=optimizer,
                 loss_fn=loss_fn,
+                aux_loss_fn=aux_loss_fn,
                 scheduler=scheduler,
                 scaler=scaler,
                 device="cpu",

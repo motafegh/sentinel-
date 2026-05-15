@@ -262,30 +262,7 @@ class ContractPreprocessor:
                 logger.info(f"Cache hit — skipped Slither for {name!r}")
                 return graph, tokens
 
-        # Sanitise name for use as a temp-file prefix.
-        safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name[:32])
-
-        # delete=False: we must close the file before Slither opens it (required
-        # on some platforms). The finally block guarantees cleanup.
-        # Fixed prefix lets _purge_orphaned_sentinel_temps() find leftovers on restart.
-        tmp = tempfile.NamedTemporaryFile(
-            suffix=".sol",
-            prefix=_SENTINEL_TMP_PREFIX,
-            mode="w",
-            encoding="utf-8",
-            delete=False,
-        )
-        _active_temp_files.add(tmp.name)
-        try:
-            tmp.write(source_code)
-            tmp.close()
-            graph = self._extract_graph(Path(tmp.name), contract_hash)
-        finally:
-            try:
-                os.unlink(tmp.name)
-            except OSError as exc:
-                logger.warning(f"Failed to delete temp file {tmp.name}: {exc}")
-            _active_temp_files.discard(tmp.name)
+        graph = self._run_slither(source_code, name, contract_hash)
 
         tokens = self._tokenize(source_code, contract_hash)
 
@@ -334,12 +311,34 @@ class ContractPreprocessor:
         Raises:
             ValueError, RuntimeError — same as process_source().
         """
-        # Build the graph via process_source to reuse temp-file management and
-        # exception translation. Then replace the single token dict with windows.
-        graph, single_tokens = self.process_source(source_code, name)
+        if not source_code or not source_code.strip():
+            raise ValueError("source_code is empty")
+        source_bytes = len(source_code.encode("utf-8"))
+        if source_bytes > self.MAX_SOURCE_BYTES:
+            raise ValueError(
+                f"source_code too large ({source_bytes:,} bytes > "
+                f"{self.MAX_SOURCE_BYTES:,} limit). "
+                "Consider splitting or summarising the contract before analysis."
+            )
+
+        content_hash  = get_contract_hash_from_content(source_code)
+        contract_hash = f"{content_hash}_{FEATURE_SCHEMA_VERSION}"
+
+        # Use cached graph if available (avoids re-running Slither 3-5 s).
+        # Cached tokens are single-window; discard and compute sliding windows below.
+        if self._cache is not None:
+            cached = self._cache.get(contract_hash)
+            if cached is not None:
+                graph, _ = cached
+                logger.info(f"Cache hit (windowed) — skipped Slither for {name!r}")
+            else:
+                graph = self._run_slither(source_code, name, contract_hash)
+        else:
+            graph = self._run_slither(source_code, name, contract_hash)
+
         windows = self._tokenize_sliding_window(
             source_code,
-            single_tokens["contract_hash"],
+            contract_hash,
             stride=stride,
             max_windows=max_windows,
         )
@@ -348,6 +347,33 @@ class ContractPreprocessor:
     # ─────────────────────────────────────────────────────────────────────────
     # Private helpers
     # ─────────────────────────────────────────────────────────────────────────
+
+    def _run_slither(self, source_code: str, name: str, contract_hash: str) -> Data:
+        """Write source to a temp file, run Slither, return the PyG Data graph.
+
+        Isolated here so both process_source() and process_source_windowed() can
+        call it without duplicating temp-file management.  No tokenization is done.
+        """
+        # delete=False: close before Slither opens (required on some platforms).
+        # Fixed prefix lets _purge_orphaned_sentinel_temps() find SIGKILL leftovers.
+        tmp = tempfile.NamedTemporaryFile(
+            suffix=".sol",
+            prefix=_SENTINEL_TMP_PREFIX,
+            mode="w",
+            encoding="utf-8",
+            delete=False,
+        )
+        _active_temp_files.add(tmp.name)
+        try:
+            tmp.write(source_code)
+            tmp.close()
+            return self._extract_graph(Path(tmp.name), contract_hash)
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except OSError as exc:
+                logger.warning(f"Failed to delete temp file {tmp.name}: {exc}")
+            _active_temp_files.discard(tmp.name)
 
     def _extract_graph(self, sol_path: Path, contract_hash: str) -> Data:
         """
