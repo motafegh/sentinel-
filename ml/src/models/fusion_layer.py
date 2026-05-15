@@ -70,7 +70,7 @@ class CrossAttentionFusion(nn.Module):
     CodeBERT token embeddings.
 
     Args:
-        node_dim:    GNNEncoder output dimension (default: 64)
+        node_dim:    GNNEncoder output dimension (default: 128 in v5)
         token_dim:   TransformerEncoder output dimension per token (default: 768)
         attn_dim:    Common projection dimension for attention (default: 256).
                      Must be divisible by num_heads.
@@ -209,6 +209,5 @@ class CrossAttentionFusion(nn.Module):
         # ── Step 6: Concatenate and project ───────────────────────────────
         fused  = torch.cat([pooled_nodes, pooled_tokens], dim=1)  # [B, 512]
         output = self.output_proj(fused)                           # [B, 128]
-
 
         return output

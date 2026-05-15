@@ -783,6 +783,12 @@ def train(config: TrainConfig) -> dict:
             else:
                 logger.warning(f"BATCH SIZE MISMATCH (Fix #12): ckpt={ckpt_batch_size} current={config.batch_size}.")
 
+    # Auxiliary heads always use plain BCE (no pos_weight, no focal reweighting).
+    # pos_weight in aux losses amplifies rare-class gradients through the already-
+    # struggling GNN/TF/fused heads, exacerbating instability.  The main loss
+    # carries the class-balance signal; aux heads provide pathway-level supervision.
+    aux_loss_fn: nn.Module = nn.BCEWithLogitsLoss()
+
     if config.loss_fn == "focal":
         _focal = FocalLoss(gamma=config.focal_gamma, alpha=config.focal_alpha)
         class _FocalFromLogits(nn.Module):
@@ -792,16 +798,10 @@ def train(config: TrainConfig) -> dict:
         logger.info(f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha})")
     else:
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-        # Auxiliary heads use a separate loss function WITHOUT pos_weight.
-        # Applying pos_weight to aux losses amplifies rare-class gradients through
-        # the already-struggling GNN/TF/fused aux heads, exacerbating instability.
-        # The main loss already carries the class-balance signal; aux heads provide
-        # pathway-level supervision and should use equal class weighting.
-        aux_loss_fn = nn.BCEWithLogitsLoss()
         logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
-        logger.info("Aux loss: BCEWithLogitsLoss without pos_weight (pathway supervision only)")
         if pos_weight is not None and config.resume_from and not config.resume_model_only:
             logger.warning("Fix #13: pos_weight recomputed from current training split.")
+    logger.info("Aux loss: BCEWithLogitsLoss without pos_weight (pathway supervision only)")
 
     # Phase 2-B1 (2026-05-14): separate LR groups to counteract GNN gradient collapse.
     # GNN share dropped to ~10% by epoch 8 in v5.1-fix28; boosting its LR × 2.5

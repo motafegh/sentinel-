@@ -20,7 +20,8 @@ from ml.src.inference.cache import InferenceCache
 # ---------------------------------------------------------------------------
 
 def _make_graph(n_nodes: int = 3) -> Data:
-    x          = torch.randn(n_nodes, 8)
+    from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM
+    x          = torch.randn(n_nodes, NODE_FEATURE_DIM)
     edge_index = torch.zeros(2, 0, dtype=torch.long)
     edge_attr  = torch.zeros(0, dtype=torch.long)
     return Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
@@ -28,8 +29,8 @@ def _make_graph(n_nodes: int = 3) -> Data:
 
 def _make_tokens() -> dict:
     return {
-        "input_ids":      torch.ones(512, dtype=torch.long),
-        "attention_mask": torch.ones(512, dtype=torch.long),
+        "input_ids":      torch.ones(1, 512, dtype=torch.long),
+        "attention_mask": torch.ones(1, 512, dtype=torch.long),
     }
 
 

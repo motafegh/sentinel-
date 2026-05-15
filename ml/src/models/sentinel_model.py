@@ -245,10 +245,10 @@ class SentinelModel(nn.Module):
         # constant derived from NODE_TYPES so it tracks schema changes.
         # Use .float() before * to guard against AMP/BF16 round-trip precision loss.
         node_type_ids = (graphs.x[:, 0].float() * _MAX_TYPE_ID).round().long()
-        func_mask = torch.zeros(node_embs.size(0), dtype=torch.bool,
-                                device=node_embs.device)
-        for tid in _FUNC_TYPE_IDS:
-            func_mask |= (node_type_ids == tid)
+        _func_ids_tensor = torch.tensor(
+            list(_FUNC_TYPE_IDS), dtype=torch.long, device=node_embs.device
+        )
+        func_mask = torch.isin(node_type_ids, _func_ids_tensor)
 
         # Per-graph fallback: a graph with NO function-level nodes (ghost graph
         # or interface-only contract) would produce zero rows for its batch index,

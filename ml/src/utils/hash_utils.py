@@ -316,8 +316,3 @@ if __name__ == "__main__":
     print("✅ ALL TESTS PASSED - Hash utility ready for production")
     print("="*70)
     print()
-    print("Next Steps:")
-    print("  1. Update ast_extractor_v3_production.py to use get_contract_hash()")
-    print("  2. Regenerate all graph files with MD5 naming")
-    print("  3. Build tokenizer with same hash function")
-    print("  4. Perfect pairing guaranteed!")
