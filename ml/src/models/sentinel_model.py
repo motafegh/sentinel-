@@ -255,9 +255,20 @@ class SentinelModel(nn.Module):
         # causing global_max/mean_pool to silently drop it and return B-k outputs
         # instead of B. Fix: for such graphs, include ALL their nodes in the pool.
         if batch.numel() == 0:
-            # Empty batch guard: return zero logits rather than crashing in batch.max().
-            B = input_ids.size(0)
-            return torch.zeros(B, self.num_classes, device=node_embs.device)
+            # Empty batch guard: return zero logits (and zero aux dict when requested)
+            # rather than crashing in batch.max(). Must return the correct type so the
+            # training loop can unpack (logits, aux) without a ValueError.
+            B   = input_ids.size(0)
+            dev = node_embs.device
+            zeros = torch.zeros(B, self.num_classes, device=dev)
+            if not return_aux:
+                return zeros
+            aux_zeros = {
+                "gnn":         torch.zeros(B, self.num_classes, device=dev),
+                "transformer": torch.zeros(B, self.num_classes, device=dev),
+                "fused":       torch.zeros(B, self.num_classes, device=dev),
+            }
+            return zeros, aux_zeros
         num_graphs = int(batch.max().item()) + 1
         graph_has_func = torch.zeros(num_graphs, dtype=torch.bool, device=node_embs.device)
         if func_mask.any():

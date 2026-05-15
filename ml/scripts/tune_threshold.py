@@ -176,6 +176,27 @@ def resolve_output_path(checkpoint_path: Path, explicit_output: str | None) -> P
     return checkpoint_path.with_name(f"{checkpoint_path.stem}_thresholds.json")
 
 
+def _ensure_list(value: Any, default: list) -> list:
+    """
+    Fix F1 (C7): guarantee lora_target_modules is always a list.
+
+    Checkpoints saved before 2026-05-12 may store lora_target_modules as a string
+    (single target), a tuple, or be absent altogether.  SentinelModel and PEFT both
+    require a Python list; passing a string causes PEFT to silently treat the entire
+    string as a module name (e.g., "query" works by luck, but "query,value" matches
+    nothing and disables LoRA with no error).
+    """
+    if value is None:
+        return default
+    if isinstance(value, list):
+        return value
+    if isinstance(value, (tuple, set)):
+        return list(value)
+    if isinstance(value, str):
+        return [value]
+    return list(value)
+
+
 def load_model_from_checkpoint(
     checkpoint_path: Path,
     device: str,
@@ -213,8 +234,9 @@ def load_model_from_checkpoint(
         lora_dropout=ckpt_config.get("lora_dropout", 0.1),
         dropout=ckpt_config.get("fusion_dropout", 0.3),
         gnn_dropout=ckpt_config.get("gnn_dropout", 0.2),
-        lora_target_modules=ckpt_config.get(
-            "lora_target_modules", ["query", "value"]
+        lora_target_modules=_ensure_list(
+            ckpt_config.get("lora_target_modules"),
+            default=["query", "value"],
         ),
     ).to(device)
 

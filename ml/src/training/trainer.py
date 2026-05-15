@@ -298,7 +298,10 @@ def compute_pos_weight(
             )
             pos = 1
         raw_ratio = float(N - pos) / float(pos)
-        pos_weight_vals.append(float(raw_ratio ** 0.5))
+        # Cap at 20.0: without a ceiling, severely data-starved classes (e.g. DoS
+        # with 377 samples → raw_ratio≈120) produce unchecked gradient spikes that
+        # destabilise the loss scale for the entire batch.
+        pos_weight_vals.append(min(float(raw_ratio ** 0.5), 20.0))
 
     logger.info("pos_weight sqrt-scaled (training split only):")
     for name, pw in zip(CLASS_NAMES[:num_classes], pos_weight_vals):
@@ -362,6 +365,7 @@ def train_one_epoch(
     loader:                      DataLoader,
     optimizer:                   AdamW,
     loss_fn:                     nn.Module,
+    aux_loss_fn:                 nn.Module,
     scheduler:                   OneCycleLR,
     scaler:                      torch.amp.GradScaler,
     device:                      str,
@@ -402,11 +406,20 @@ def train_one_epoch(
         with torch.amp.autocast(device, enabled=use_amp):
             logits, aux = model(graphs, input_ids, attention_mask, return_aux=True)
             main_loss   = loss_fn(logits, labels)
-            loss_gnn_a  = loss_fn(aux["gnn"],         labels)
-            loss_tf_a   = loss_fn(aux["transformer"], labels)
-            loss_fus_a  = loss_fn(aux["fused"],       labels)
+            # aux_loss_fn has no pos_weight — pathway heads give supervision signal
+            # without amplifying rare-class imbalance through struggling aux heads.
+            loss_gnn_a  = aux_loss_fn(aux["gnn"],         labels)
+            loss_tf_a   = aux_loss_fn(aux["transformer"], labels)
+            loss_fus_a  = aux_loss_fn(aux["fused"],       labels)
             aux_loss    = loss_gnn_a + loss_tf_a + loss_fus_a
-            loss = (main_loss + aux_loss_weight * aux_loss) / accum_steps
+            # Divide by actual window size, not the fixed accum_steps.
+            # When len(loader) % accum_steps != 0 the last window has fewer
+            # micro-batches; dividing by accum_steps under-scales that gradient
+            # by (actual / accum_steps). Using actual_window_size keeps gradients
+            # correctly normalised across all windows including the tail.
+            _window_start      = (batch_idx // accum_steps) * accum_steps
+            _actual_window     = min(accum_steps, len(loader) - _window_start)
+            loss = (main_loss + aux_loss_weight * aux_loss) / _actual_window
 
         # Accumulate per-eye loss for the upcoming log line.
         _run_main  += main_loss.item()
@@ -768,7 +781,14 @@ def train(config: TrainConfig) -> dict:
         logger.info(f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha})")
     else:
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        # Auxiliary heads use a separate loss function WITHOUT pos_weight.
+        # Applying pos_weight to aux losses amplifies rare-class gradients through
+        # the already-struggling GNN/TF/fused aux heads, exacerbating instability.
+        # The main loss already carries the class-balance signal; aux heads provide
+        # pathway-level supervision and should use equal class weighting.
+        aux_loss_fn = nn.BCEWithLogitsLoss()
         logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
+        logger.info("Aux loss: BCEWithLogitsLoss without pos_weight (pathway supervision only)")
         if pos_weight is not None and config.resume_from and not config.resume_model_only:
             logger.warning("Fix #13: pos_weight recomputed from current training split.")
 
@@ -812,7 +832,10 @@ def train(config: TrainConfig) -> dict:
         _param_groups.append({"params": _gnn_params,   "lr": _gnn_lr})
         _max_lrs.append(_gnn_lr)
     if _lora_params:
-        _param_groups.append({"params": _lora_params,  "lr": _lora_lr})
+        # LoRA matrices are low-rank adaptation updates; L2 weight decay competes
+        # directly with the adaptation signal. Standard PEFT practice is weight_decay=0
+        # for LoRA parameters while keeping decay on the rest of the network.
+        _param_groups.append({"params": _lora_params, "lr": _lora_lr, "weight_decay": 0.0})
         _max_lrs.append(_lora_lr)
     if _other_params:
         _param_groups.append({"params": _other_params, "lr": _other_lr})
@@ -912,6 +935,14 @@ def train(config: TrainConfig) -> dict:
         else:
             logger.warning("Full resume requested but no 'optimizer' key in checkpoint. Fresh AdamW.")
 
+        # ── GradScaler state restoration ──
+        # Restoring the loss scale prevents the default scale=65536 from triggering
+        # a NaN calibration wave (several optimizer.step() skips) at the start of
+        # resumed training. Only restored on full resume, not model-only.
+        if "scaler" in ckpt and _optimizer_restored:
+            scaler.load_state_dict(ckpt["scaler"])
+            logger.info(f"GradScaler state restored (scale={scaler.get_scale():.0f}).")
+
         # ── Fix #32 (continued): scheduler state restoration ──
         # Compare checkpoint total_steps against the full-run total_steps
         # (config.epochs × steps_per_epoch).  If they match, restore state;
@@ -1010,7 +1041,9 @@ def train(config: TrainConfig) -> dict:
             # (observed: aux loss 2-4× main loss at epoch 1, causing the main
             # classifier to learn slowly and rare classes to stay at F1=0).
             if config.aux_loss_warmup_epochs > 0 and epoch <= config.aux_loss_warmup_epochs:
-                warmup_frac = epoch / config.aux_loss_warmup_epochs
+                # (epoch-1) so the ramp starts at 0 on epoch 1, not at 1/warmup_epochs.
+                # Previous formula started at 1/3 of target on epoch 1, never at 0.
+                warmup_frac = (epoch - 1) / config.aux_loss_warmup_epochs
                 effective_aux_weight = config.aux_loss_weight * warmup_frac
                 logger.info(
                     f"  Aux warmup: epoch {epoch}/{config.aux_loss_warmup_epochs} "
@@ -1025,6 +1058,7 @@ def train(config: TrainConfig) -> dict:
                 loader=train_loader,
                 optimizer=optimizer,
                 loss_fn=loss_fn,
+                aux_loss_fn=aux_loss_fn,
                 scheduler=scheduler,
                 scaler=scaler,
                 device=device,
@@ -1107,6 +1141,10 @@ def train(config: TrainConfig) -> dict:
                         "model":            model.state_dict(),
                         "optimizer":        optimizer.state_dict(),
                         "scheduler":        scheduler.state_dict(),
+                        # GradScaler state: saves the current loss scale so resumed
+                        # training doesn't start with the default scale=65536 and
+                        # trigger a NaN calibration wave on the first few steps.
+                        "scaler":           scaler.state_dict(),
                         "epoch":            epoch,
                         "best_f1":          best_f1,
                         "patience_counter": patience_counter,

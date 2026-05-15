@@ -376,6 +376,22 @@ class GNNEncoder(nn.Module):
         # ── Edge embeddings ──────────────────────────────────────────────────
         e = None
         if self.edge_embedding is not None and edge_attr is not None:
+            # Fix C1 (H9): clamp OOB edge_attr before nn.Embedding lookup.
+            # Corrupted .pt files with type IDs outside [0, NUM_EDGE_TYPES-1] cause
+            # nn.Embedding to throw an unhelpful index-out-of-range CUDA error with
+            # no indication of which contract caused it. Clamping lets the forward
+            # pass continue on a bad sample with a logged warning instead of crashing
+            # the entire training run on an unrecoverable CUDA illegal-memory error.
+            if edge_attr.numel() > 0:
+                _oob_mask = (edge_attr < 0) | (edge_attr >= NUM_EDGE_TYPES)
+                if _oob_mask.any():
+                    logger.warning(
+                        f"GNNEncoder: {_oob_mask.sum().item()} OOB edge_attr value(s) "
+                        f"clamped to [0, {NUM_EDGE_TYPES - 1}] "
+                        f"(observed min={edge_attr.min().item()}, max={edge_attr.max().item()}). "
+                        "Source .pt file may be corrupted — rerun ast_extractor.py for this contract."
+                    )
+                    edge_attr = edge_attr.clamp(0, NUM_EDGE_TYPES - 1)
             e = self.edge_embedding(edge_attr)   # [E, edge_emb_dim]
 
         # ── Edge masks — one per phase ───────────────────────────────────────

@@ -47,6 +47,9 @@ from torch_geometric.data import Data
 from torch_geometric.data.data import DataEdgeAttr, DataTensorAttr
 from torch_geometric.data.storage import GlobalStorage
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from ml.src.preprocessing.graph_schema import FEATURE_SCHEMA_VERSION
+
 torch.serialization.add_safe_globals([Data, DataEdgeAttr, DataTensorAttr, GlobalStorage])
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
@@ -117,6 +120,12 @@ def build_cache(
                 bar.update(1)
 
     log.info(f"Loaded {len(cached):,} pairs  ({errors} errors skipped)")
+
+    # Fix D2 (H15): embed schema version so DualPathDataset can detect stale caches.
+    # The sentinel key "__schema_version__" is checked on load; any mismatch raises
+    # RuntimeError rather than silently feeding the model mismatched features.
+    cached["__schema_version__"] = FEATURE_SCHEMA_VERSION
+    log.info(f"  Schema version embedded: FEATURE_SCHEMA_VERSION={FEATURE_SCHEMA_VERSION!r}")
 
     # ── 5. Write pickle ──────────────────────────────────────────────────────
     log.info(f"Writing cache to {output} …")

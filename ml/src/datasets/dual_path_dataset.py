@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import logging
 import pickle
+import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -57,6 +58,13 @@ from torch.utils.data import Dataset
 from torch_geometric.data import Batch, Data
 from torch_geometric.data.data import DataEdgeAttr, DataTensorAttr
 from torch_geometric.data.storage import GlobalStorage
+
+# Imported for cache schema version validation (Fix D2/H15).
+# Only used in __init__ when a cache_path is supplied.
+try:
+    from ..preprocessing.graph_schema import FEATURE_SCHEMA_VERSION as _FEATURE_SCHEMA_VERSION
+except ImportError:
+    _FEATURE_SCHEMA_VERSION = None  # fallback: skip schema check if import fails
 
 logger = logging.getLogger(__name__)
 
@@ -198,31 +206,63 @@ class DualPathDataset(Dataset):
                 with open(cache_path, "rb") as f:
                     self.cached_data = pickle.load(f)
 
-                # Audit #11: integrity check on the loaded cache.
+                # Type guard.
                 if not isinstance(self.cached_data, dict):
                     raise RuntimeError(
                         f"RAM cache at {cache_path} is malformed — "
                         f"expected dict, got {type(self.cached_data).__name__}. "
                         "Delete the cache file and re-run create_cache.py."
                     )
-                if self.paired_hashes:
-                    _spot = self.paired_hashes[0]
-                    if _spot not in self.cached_data:
+
+                # Fix D2 (H15): validate schema version stored in the cache.
+                # create_cache.py writes "__schema_version__" into the dict so we can
+                # detect stale caches after a feature-engineering change without
+                # relying on downstream inference errors.
+                _cached_schema = self.cached_data.get("__schema_version__")
+                if _cached_schema is not None and _FEATURE_SCHEMA_VERSION is not None:
+                    if _cached_schema != _FEATURE_SCHEMA_VERSION:
                         raise RuntimeError(
-                            f"RAM cache is stale — hash {_spot!r} not found. "
-                            "Delete the cache file and re-run create_cache.py."
+                            f"RAM cache schema mismatch: cache has version={_cached_schema!r} "
+                            f"but current FEATURE_SCHEMA_VERSION={_FEATURE_SCHEMA_VERSION!r}. "
+                            "Delete the cache file and re-run create_cache.py to rebuild with "
+                            "the current schema."
                         )
-                    try:
-                        _g, _t = self.cached_data[_spot]
-                        if not hasattr(_g, "x"):
-                            raise ValueError("cached graph missing 'x' attribute")
-                        if "input_ids" not in _t:
-                            raise ValueError("cached tokens missing 'input_ids'")
-                    except (ValueError, TypeError) as _exc:
-                        raise RuntimeError(
-                            f"RAM cache entry for {_spot!r} is malformed: {_exc}. "
-                            "Delete the cache file and re-run create_cache.py."
-                        ) from _exc
+                elif _cached_schema is None and _FEATURE_SCHEMA_VERSION is not None:
+                    # Old cache without version key — warn but don't crash.
+                    # The stale-hash check below will catch the most severe corruption.
+                    logger.warning(
+                        f"RAM cache at {cache_path} has no '__schema_version__' key. "
+                        f"It may be stale (current schema: {_FEATURE_SCHEMA_VERSION}). "
+                        "Rebuild with create_cache.py to silence this warning."
+                    )
+
+                # Fix D1 (H14): random 10-hash integrity sample instead of
+                # single spot-check on paired_hashes[0].  A single check can pass
+                # even when the majority of the cache is stale or misaligned —
+                # the first hash in sorted order tends to be stable across builds
+                # (same source, same MD5), so it would survive a partial rebuild.
+                # Sampling 10 random hashes makes undetected staleness 10× less likely.
+                if self.paired_hashes:
+                    _sample_size  = min(10, len(self.paired_hashes))
+                    _sample_hashes = random.sample(self.paired_hashes, _sample_size)
+                    for _spot in _sample_hashes:
+                        if _spot not in self.cached_data:
+                            raise RuntimeError(
+                                f"RAM cache is stale — hash {_spot!r} not found "
+                                f"(sampled 1 of {_sample_size} checks failed). "
+                                "Delete the cache file and re-run create_cache.py."
+                            )
+                        try:
+                            _g, _t = self.cached_data[_spot]
+                            if not hasattr(_g, "x"):
+                                raise ValueError("cached graph missing 'x' attribute")
+                            if "input_ids" not in _t:
+                                raise ValueError("cached tokens missing 'input_ids'")
+                        except (ValueError, TypeError) as _exc:
+                            raise RuntimeError(
+                                f"RAM cache entry for {_spot!r} is malformed: {_exc}. "
+                                "Delete the cache file and re-run create_cache.py."
+                            ) from _exc
 
                 logger.info(
                     f"Loaded {len(self.cached_data)} samples from RAM cache "
