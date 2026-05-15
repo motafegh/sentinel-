@@ -45,7 +45,7 @@ NOTE — why there is no torch.no_grad() around self.bert():
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -103,7 +103,7 @@ class TransformerEncoder(nn.Module):
         lora_r:              int       = 16,
         lora_alpha:          int       = 32,
         lora_dropout:        float     = 0.1,
-        lora_target_modules: List[str] = None,
+        lora_target_modules: Optional[List[str]] = None,
     ) -> None:
         super().__init__()
 

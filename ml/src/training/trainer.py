@@ -51,10 +51,6 @@ import gc
 import json
 import os
 # ---------------------------------------------------------------------------
-# Force offline mode for HuggingFace models (no internet attempts)
-# ---------------------------------------------------------------------------
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-os.environ["HF_HUB_OFFLINE"]       = "1"
 import sys
 import dataclasses
 from dataclasses import dataclass, field
@@ -75,17 +71,8 @@ from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate
 from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.focalloss import FocalLoss
 
-
-
 # ---------------------------------------------------------------------------
-# Optimisation #2: TF32 matmuls
-# ---------------------------------------------------------------------------
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32       = True
-torch.backends.cudnn.benchmark = True
-
-# ---------------------------------------------------------------------------
-# Logging setup
+# Logging setup — module level only (handlers added per-run inside train())
 # ---------------------------------------------------------------------------
 logger.remove()
 logger.add(sys.stderr, level="INFO")
@@ -343,7 +330,7 @@ def evaluate(
             attention_mask = tokens["attention_mask"].to(device)
             labels         = labels.to(device).float()
 
-            with torch.amp.autocast("cuda", enabled=use_amp):
+            with torch.amp.autocast(device, enabled=use_amp):
                 logits = model(graphs, input_ids, attention_mask)
 
             probs = torch.sigmoid(logits.float())
@@ -412,7 +399,7 @@ def train_one_epoch(
         attention_mask = tokens["attention_mask"].to(device)
         labels         = labels.to(device).float()
 
-        with torch.amp.autocast("cuda", enabled=use_amp):
+        with torch.amp.autocast(device, enabled=use_amp):
             logits, aux = model(graphs, input_ids, attention_mask, return_aux=True)
             main_loss   = loss_fn(logits, labels)
             loss_gnn_a  = loss_fn(aux["gnn"],         labels)
@@ -444,7 +431,7 @@ def train_one_epoch(
                 gnn_norm   = _grad_norm(model.gnn_eye_proj)
                 tf_norm    = _grad_norm(model.transformer_eye_proj)
                 fused_norm = _grad_norm(model.fusion)
-                _total_norm = gnn_norm + tf_norm + fused_norm
+                _total_norm = (gnn_norm**2 + tf_norm**2 + fused_norm**2) ** 0.5
                 _gnn_share  = gnn_norm / _total_norm if _total_norm > 1e-8 else 0.0
                 last_gnn_share = _gnn_share
 
@@ -482,9 +469,11 @@ def train_one_epoch(
                         torch.cuda.empty_cache()
                         logger.info(f"  VRAM cleanup triggered: {_vram_str()} (was {vpct:.1%} reserved)")
 
+            _scale_before = scaler.get_scale()
             scaler.step(optimizer)
             scaler.update()
-            scheduler.step()
+            if scaler.get_scale() == _scale_before:
+                scheduler.step()
             optimizer.zero_grad(set_to_none=True)
 
         loss_for_log = loss.item() * accum_steps
@@ -557,6 +546,16 @@ def _build_weighted_sampler(
 def train(config: TrainConfig) -> dict:
     os.makedirs(config.checkpoint_dir, exist_ok=True)
     device = config.device
+
+    # ── Environment + backend configuration (done here, not at module level) ──
+    # Module-level mutation fires at import time and affects the entire process.
+    # Doing it here is safe: train() is only called intentionally.
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    os.environ["HF_HUB_OFFLINE"]       = "1"
+    if device == "cuda":
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32       = True
+        torch.backends.cudnn.benchmark        = True
 
     # ── Per-run file log (append mode — never overwrites previous runs) ──────
     # trainer.py uses loguru, not stdlib logging — use logger.add() not
@@ -711,7 +710,11 @@ def train(config: TrainConfig) -> dict:
 
             _resume_state_path = Path(config.resume_from).with_suffix(".state.json")
             if _resume_state_path.exists():
-                _saved_state = json.loads(_resume_state_path.read_text())
+                try:
+                    _saved_state = json.loads(_resume_state_path.read_text())
+                except json.JSONDecodeError as _e:
+                    logger.warning(f"Corrupt .state.json ({_e}) — patience_counter from checkpoint.")
+                    _saved_state = {}
                 _state_epoch = _saved_state.get("epoch", 0)
                 if _state_epoch >= start_epoch - 1:
                     patience_counter = _saved_state.get("patience_counter", patience_counter)
@@ -790,7 +793,7 @@ def train(config: TrainConfig) -> dict:
         if not _p.requires_grad or id(_p) in _seen_param_ids:
             continue
         _seen_param_ids.add(id(_p))
-        if _pname.startswith("gnn."):
+        if _pname.startswith("gnn.") or _pname.startswith("gnn_eye_proj."):
             _gnn_params.append(_p)
         elif "lora_" in _pname:
             _lora_params.append(_p)
@@ -887,6 +890,7 @@ def train(config: TrainConfig) -> dict:
     if _ckpt_state is not None and not config.resume_model_only:
         ckpt = _ckpt_state
         _skip_optimizer = config.force_optimizer_reset
+        _optimizer_restored = False
         if not _skip_optimizer and "optimizer" in ckpt:
             # Phase 2-B1: guard against param-group count mismatch.
             # Pre-v5.2 checkpoints have 1 group; v5.2 has up to 3 (GNN/LoRA/other).
@@ -902,6 +906,7 @@ def train(config: TrainConfig) -> dict:
             else:
                 optimizer.load_state_dict(ckpt["optimizer"])
                 logger.info("Optimizer state restored.")
+                _optimizer_restored = True
         elif _skip_optimizer:
             logger.info("Optimizer state skipped — force_optimizer_reset=True.")
         else:
@@ -913,7 +918,10 @@ def train(config: TrainConfig) -> dict:
         # otherwise the scheduler was created with the correct full-run
         # horizon but starts from step 0 — which is still better than the
         # old behaviour where the scheduler was discarded entirely.
-        if "scheduler" in ckpt and not _skip_optimizer:
+        # Guard: only restore scheduler if optimizer was also restored — a
+        # group-count mismatch skips the optimizer but left _skip_optimizer=False,
+        # which previously caused base_lrs list-length mismatch on load.
+        if "scheduler" in ckpt and _optimizer_restored:
             full_total_steps = config.epochs * steps_per_epoch
             if "total_steps" not in ckpt["scheduler"]:
                 logger.warning("Scheduler state skipped — no 'total_steps' in checkpoint.")
@@ -1093,6 +1101,7 @@ def train(config: TrainConfig) -> dict:
             if val_metrics["f1_macro"] > best_f1:
                 best_f1 = val_metrics["f1_macro"]
                 patience_counter = 0
+                _tmp_path = checkpoint_path.with_suffix(".tmp")
                 torch.save(
                     {
                         "model":            model.state_dict(),
@@ -1111,8 +1120,9 @@ def train(config: TrainConfig) -> dict:
                             "architecture": ARCHITECTURE,
                         },
                     },
-                    checkpoint_path,
+                    _tmp_path,
                 )
+                _tmp_path.replace(checkpoint_path)  # atomic on POSIX
                 logger.info(f"  ★ New best F1-macro: {best_f1:.4f} — checkpoint saved")
             else:
                 patience_counter += 1

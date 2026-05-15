@@ -135,9 +135,11 @@ class _JKAttention(nn.Module):
     that self.attn receives non-zero gradients after a backward pass.
     """
 
-    def __init__(self, channels: int) -> None:
+    def __init__(self, channels: int, num_phases: int = 3) -> None:
         super().__init__()
         self.attn = nn.Linear(channels, 1, bias=False)
+        # Register as buffer so it survives .to(device), save/load, and DDP.
+        self.register_buffer("last_weights", torch.zeros(num_phases))
 
     def forward(self, xs: list[torch.Tensor]) -> torch.Tensor:
         """
@@ -153,8 +155,8 @@ class _JKAttention(nn.Module):
         stacked = torch.stack(xs, dim=1)        # [N, K, channels]
         scores  = self.attn(stacked)             # [N, K, 1]
         weights = torch.softmax(scores, dim=1)   # [N, K, 1]  (sum-to-1 over K)
-        # Cache mean weights for per-epoch monitoring (C1/C3).
-        self.last_weights = weights.squeeze(-1).mean(0).detach()  # [K]
+        # Update registered buffer in-place (preserves device + save/load).
+        self.last_weights.copy_(weights.squeeze(-1).mean(0).detach())  # [K]
         return (weights * stacked).sum(dim=1)    # [N, channels]
 
 
@@ -388,7 +390,15 @@ class GNNEncoder(nn.Module):
             cfg_mask      = edge_attr == _CONTROL_FLOW
             contains_mask = edge_attr == _CONTAINS
         else:
-            # Without edge_attr: all edges participate in all phases (degraded mode)
+            # Without edge_attr: Phase 2 (CFG) and Phase 3 (REVERSE_CONTAINS) are
+            # disabled — no edges match cfg_mask or contains_mask. This is degraded
+            # mode and almost certainly a data-pipeline error when use_edge_attr=True.
+            if self.use_edge_attr:
+                logger.warning(
+                    "GNNEncoder: use_edge_attr=True but edge_attr is None. "
+                    "Phase 2 (CONTROL_FLOW) and Phase 3 (REVERSE_CONTAINS) are disabled. "
+                    "Check that your graphs were extracted with graph_extractor.py v5+."
+                )
             n_edges = edge_index.shape[1]
             struct_mask   = torch.ones(n_edges, dtype=torch.bool, device=edge_index.device)
             cfg_mask      = torch.zeros(n_edges, dtype=torch.bool, device=edge_index.device)
@@ -433,7 +443,7 @@ class GNNEncoder(nn.Module):
         # Layer 2: hidden_dim→hidden_dim with residual from Layer 1.
         x2 = self.conv2(x, struct_ei, struct_ea)    # [N, 128] → [N, 128]
         x2 = self.relu(x2)
-        x  = self.dropout(x2 + x)                   # residual ✓ (same dim)
+        x  = x + self.dropout(x2)                   # residual: identity preserved, only branch dropped
         # Phase 1-A2: LayerNorm before collecting for JK.
         x  = self.phase_norm[0](x)
 

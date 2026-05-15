@@ -348,7 +348,7 @@ def process_batch_with_checkpoint(
                 try:
                     failed_hash = get_contract_hash(contract_paths[i])
                     failed_hashes.append(failed_hash)
-                except:
+                except Exception:
                     pass
                 stats['failed'] += 1
             
