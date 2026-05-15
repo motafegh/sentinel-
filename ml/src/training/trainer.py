@@ -197,7 +197,18 @@ class TrainConfig:
     # CodeBERT features that took many epochs to adapt.
     gnn_lr_multiplier:   float = 2.5        # effective GNN LR = lr * 2.5
     lora_lr_multiplier:  float = 0.5        # effective LoRA LR = lr * 0.5
-    threshold:           float = 0.5
+    threshold:           float = 0.5   # inference threshold (used by predictor/tune_threshold)
+    # Training-time evaluation threshold — intentionally lower than inference threshold.
+    # At threshold=0.5 minority classes (UnusedReturn, TOD, ExternalBug, Timestamp) have
+    # predicted probabilities clustering at 0.35–0.50.  A ±0.03 probability shift near
+    # the boundary flips them between F1=0 and F1=0.15, causing ±0.04 macro-F1 swings
+    # per epoch that are pure measurement noise.  The patience counter then fires early
+    # while training loss is still declining (observed: stopped at ep30, loss=0.8855,
+    # still improving).  Setting eval_threshold=0.35 moves minority classes away from
+    # the boundary so patience receives a real learning signal, not threshold noise.
+    # This only affects training-time F1 logging and early stopping — inference still
+    # uses per-class thresholds from tune_threshold.py.
+    eval_threshold:      float = 0.35
     early_stop_patience: int   = 10
     aux_loss_weight:     float = 0.3
 
@@ -994,6 +1005,7 @@ def train(config: TrainConfig) -> dict:
             "lr":                          config.lr,
             "weight_decay":                config.weight_decay,
             "threshold":                   config.threshold,
+            "eval_threshold":              config.eval_threshold,
             "grad_clip":                   config.grad_clip,
             "warmup_pct":                  config.warmup_pct,
             "num_workers":                 config.num_workers,
@@ -1073,7 +1085,7 @@ def train(config: TrainConfig) -> dict:
                 model=model,
                 loader=val_loader,
                 device=device,
-                threshold=config.threshold,
+                threshold=config.eval_threshold,   # training-time threshold (lower = stable signal)
                 use_amp=config.use_amp,
             )
 

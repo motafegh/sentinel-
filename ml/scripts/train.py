@@ -84,7 +84,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch-size",   type=int,   default=16)
     p.add_argument("--lr",           type=float, default=2e-4)
     p.add_argument("--weight-decay", type=float, default=1e-2)
-    p.add_argument("--threshold",    type=float, default=0.5)
+    p.add_argument("--threshold",      type=float, default=0.5,
+                   help="Inference decision threshold (also used by tune_threshold.py).")
+    p.add_argument("--eval-threshold", type=float, default=0.35,
+                   help=(
+                       "Training-time evaluation threshold for early stopping / patience. "
+                       "Intentionally lower than --threshold (0.5) so minority classes are "
+                       "not flipping above/below the boundary every epoch, which would "
+                       "inject ±0.04 macro-F1 noise into the patience counter. "
+                       "Default 0.35 based on observed minority-class probability clustering."
+                   ))
 
     # --- Gradient accumulation ---
     p.add_argument(
@@ -180,6 +189,7 @@ def main() -> None:
         lr                    = args.lr,
         weight_decay          = args.weight_decay,
         threshold             = args.threshold,
+        eval_threshold        = args.eval_threshold,
         loss_fn               = args.loss_fn,
         focal_gamma           = args.focal_gamma,
         focal_alpha           = args.focal_alpha,
