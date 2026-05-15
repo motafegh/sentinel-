@@ -62,3 +62,15 @@ BCCC-SCsVul-2024/
 
 # Agent data (RAG index, FAISS files, embeddings)
 agents/data/
+
+# ZKML large binary artifacts (DVC or external storage instead)
+zkml/ezkl/proving_key.pk
+zkml/ezkl/srs.params
+
+# Large binary archives
+ml/peft.zip
+
+# Scratch / output files not part of the codebase
+create_cache.py
+validation_full_output.txt
+docs/manual-saved-log.txt

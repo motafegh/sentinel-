@@ -75,7 +75,7 @@ Load: SENTINEL-COMMANDS.md
 **GitHub:** https://github.com/motafegh/sentinel-
 **Environment:** WSL2 Ubuntu, RTX 3070 8GB VRAM, Python 3.12.1, Poetry
 **Python venv:** `source ml/.venv/bin/activate`
-**Active run:** v5.2-jk-20260515c-r3 (PID 43784, epoch 28+ best F1=0.3290, training in progress)
+**Active run:** v5.2-jk-20260515c-r3 (PID 43784, epoch 32+ best F1=0.3306, training in progress)
 **Active checkpoint:** ml/checkpoints/v5.2-jk-20260515c-r3_best.pt
 **v4 fallback:** ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt (tuned F1=0.5422)
 **MLflow experiment:** sentinel-v5.2 — `sqlite:///mlruns.db`
