@@ -53,7 +53,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-from torch_geometric.loader import DataLoader
+from torch.utils.data import DataLoader
 
 # Make project root importable when running as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
