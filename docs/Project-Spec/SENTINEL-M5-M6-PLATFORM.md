@@ -83,15 +83,17 @@ contracts/lib/             Run forge install first:
   forge-std/               Foundry test utilities
   openzeppelin-contracts/  ERC-20, UUPS, Ownable
 
-NOTE: forge install + forge build + forge test not yet run (forge not installed in env).
-      Source complete; execution blocked on environment setup.
+NOTE: forge is not installed in the current environment.
+      forge install, forge build, and forge test have NEVER been run.
+      Contract source is complete; all execution is blocked on environment setup.
 ```
 
 ---
 
 ## Module 6 — Integration API (Not Yet Built)
 
-**Path:** `api/` (directory does not exist)
+**Path:** `api/` — **this directory does not exist.**
+Design auth and rate-limit strategy completely before writing any routes.
 
 ### Security Design — Complete Before Building Routes
 
@@ -149,3 +151,193 @@ On merge to main:
 
 Secrets: DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY, SEPOLIA_RPC_URL
 ```
+
+---
+
+## Upgrade Proposals (v2)
+
+### M5-1: Multi-chain audit registry
+
+**Problem:** AuditRegistry is deployed on Sepolia only. Most production DeFi activity
+runs on Ethereum mainnet and L2s; a Sepolia-only registry has no credibility for
+production contracts.
+
+**Solution:** Deploy AuditRegistry on Ethereum mainnet, Base, Arbitrum One, and
+Optimism. Use LayerZero OApp messaging to keep audit results consistent across chains.
+
+**New contracts:**
+- `contracts/src/bridge/SentinelOApp.sol` — LayerZero OApp; sends and receives audit
+  result messages cross-chain
+- `contracts/src/bridge/AuditBridge.sol` — one instance per destination chain; receives
+  OApp messages and writes into the local AuditRegistry
+
+**Configuration:** Deployed contract addresses stored in environment variables per chain;
+`agents/src/orchestration/` reads the target chain from the audit request and selects
+the correct RPC and registry address accordingly.
+
+---
+
+### M5-2: Dispute mechanism
+
+**Problem:** `AuditRegistry.submitAudit()` accepts any call with a valid ZK proof, but
+the human interpretation embedded in the score and label can still be wrong. There is
+currently no way to challenge a submitted audit result.
+
+**Solution:** `DisputeRegistry.sol` — allow any party to challenge an audit within a
+7-day window; arbitration by a 3-of-5 multisig (upgradeable to DAO vote).
+
+**Interface:**
+```solidity
+interface IDisputeRegistry {
+    function challengeAudit(uint256 auditId, bytes32 evidenceHash) external;
+    function resolveDispute(uint256 disputeId, bool challengerWins) external;
+}
+```
+
+**Staking and slashing:**
+- `MIN_STAKE = 1000 SENTINEL` already required per audit (designed in SentinelToken)
+- Slash amount: 10% of staked balance per upheld dispute
+- `evidenceHash` is an IPFS CID of the challenger's counter-analysis
+
+---
+
+### M5-3: Property-based testing (Echidna / Halmos)
+
+**Current state:** Foundry unit tests and invariant fuzz tests are written but have
+never been executed (forge not installed).
+
+**Proposal:** Add Echidna property tests for `SentinelToken` and Halmos symbolic proofs
+for `AuditRegistry`, and gate Sepolia deployment on both passing.
+
+**Echidna properties (SentinelToken):**
+- `invariant_total_staked_le_total_supply` — sum of all `stakedBalance` values never
+  exceeds `totalSupply()`
+- `invariant_unstake_always_possible_after_lockout` — if lockout period has elapsed,
+  `unstake()` must not revert for any valid staker
+
+**Halmos symbolic proof (AuditRegistry):**
+- Verify that `submitAudit` reverts if and only if `stakedBalance(msg.sender) < MIN_STAKE`
+  (under any symbolic proof bytes and signal array)
+
+**CI gate:** echidna and halmos runs must both pass before the `Deploy.s.sol` script is
+permitted to execute in the GitHub Actions `deploy` job.
+
+---
+
+### M6-1: WebSocket streaming API
+
+**Problem:** SSE (AGENT-3) covers server-to-client streaming but provides no
+bidirectional channel; clients cannot cancel an in-progress audit over the same
+connection.
+
+**Solution:** Complement the SSE endpoint with a WebSocket endpoint sharing the same
+`asyncio.Queue` infrastructure.
+
+**Message protocol:**
+```json
+// Client → server
+{"type": "audit",  "source_code": "pragma solidity ..."}
+{"type": "cancel", "job_id": "abc123"}
+
+// Server → client (same event format as SSE AGENT-3)
+{"stage": "ml_assessment", "status": "running", "elapsed_ms": 1200}
+{"stage": "synthesizer",   "status": "streaming", "token": "The contract..."}
+```
+
+**Implementation:** `api/ws/audit_ws.py`; FastAPI `WebSocket` endpoint at
+`/v1/audit/ws`; shares the per-job `asyncio.Queue` with the SSE endpoint so both
+transports reflect the same live state.
+
+---
+
+### M6-2: SDK (Python + TypeScript)
+
+**Problem:** Integrators must construct raw HTTP calls against the M6 REST API; no
+typed client library exists.
+
+**Python SDK:**
+- Package: `pip install sentinel-sdk`
+- Synchronous: `SentinelClient(api_key).audit(source_code) → AuditResult`
+- Async: `await AsyncSentinelClient(api_key).audit(source_code) → AuditResult`
+- Streaming: `.audit_stream(source_code, on_progress=callback)`
+- Path: `sdk/python/`
+
+**TypeScript SDK:**
+- Package: `npm install @sentinel/sdk`
+- `sentinel.audit(sourceCode): Promise<AuditResult>`
+- `sentinel.auditStream(sourceCode, { onProgress }): Promise<AuditResult>`
+- Path: `sdk/typescript/`
+
+**Versioning:** SDK major version tracks API major version (semver; breaking API change
+requires SDK major bump and migration guide).
+
+---
+
+### M6-3: Public audit explorer
+
+**Problem:** Audit results are stored on-chain but are not navigable by humans without
+writing RPC calls.
+
+**Solution:** Read-only Next.js frontend at `explorer.sentinel.ai`:
+- Browse complete audit history for any contract address
+- Vulnerability distribution chart (10 classes as a stacked bar chart)
+- Link to IPFS-hosted full audit report PDF
+- ZK proof verification status (verified on-chain / pending / failed)
+
+**Backend:** `api/routes/explorer.py` — read-only endpoints wrapping
+`AuditRegistry.getAuditHistory()`; no authentication required for GET; `submitAudit`
+(write path) continues to require a staked agent key.
+
+---
+
+### M6-4: Tiered access control
+
+**Problem:** No differentiation between casual users and production integrators; flat
+rate limiting cannot price appropriately for different usage levels.
+
+| Tier | Price | Audits/day | Source storage | History |
+|------|-------|-----------|---------------|---------|
+| Free | $0 | 5 | Hash only (no plaintext) | 30 days |
+| Pro | $99/mo | 100 | Full report | Unlimited |
+| Enterprise | Custom | Unlimited | Full report + on-prem option | Unlimited + SLA |
+
+**SENTINEL token discount:** 50% off Pro tier with 10,000 SENTINEL staked (checked
+via SentinelToken.stakedBalance at billing time).
+
+**Implementation:**
+- `api/auth/tiers.py` — tier resolution from API key metadata
+- `slowapi` rate limiter with per-tier token bucket configuration
+- Enterprise custom vulnerability classes: passed as additional label schema at
+  inference time (requires model fine-tune; out of scope for v1 Enterprise)
+
+---
+
+### M6-5: Async job queue with Redis + Celery
+
+**Problem:** The planned `POST /v1/audit` endpoint is synchronous in the current design;
+a 30–120 s audit would hold the HTTP connection open and block the worker.
+
+**Solution:** Make the audit pipeline fully asynchronous end-to-end.
+
+**Flow:**
+```
+POST /v1/audit
+  → immediate HTTP 202 {job_id: "abc123"}
+  → Celery task spawned: api/tasks/audit_task.py
+
+GET /v1/audit/{id}
+  → {status: "pending"|"running"|"complete"|"failed", result?, error?}
+
+GET /v1/audit/{id}/stream
+  → SSE progress events (see AGENT-3)
+```
+
+**Celery worker:** `audit_task.py` builds the LangGraph and calls `ainvoke()`; stores
+result in Redis with TTL=7 days.
+
+**Redis roles:**
+- Celery broker and result backend
+- Rate limiting: token bucket per API key (avoids DB round-trip on every request)
+- Result cache: identical `SHA256(source_code)` within 24 h returns the cached result
+  without re-running the pipeline (cache key includes model version to invalidate on
+  checkpoint updates)
