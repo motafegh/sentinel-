@@ -1,0 +1,84 @@
+{
+  "structural": {
+    "file_counts": {
+      "graphs": 68555,
+      "tokens": 68568,
+      "expected": 68568
+    },
+    "pairing": {
+      "paired": 68555,
+      "only_graphs": 0,
+      "only_tokens": 13,
+      "pairing_rate": 99.9810407187026
+    },
+    "schema": {
+      "samples_checked": 100,
+      "graph_issues": 0,
+      "token_issues": 0,
+      "pairing_issues": 0,
+      "details": {
+        "graph_issues": [],
+        "token_issues": [],
+        "pairing_issues": []
+      }
+    }
+  },
+  "statistical": {
+    "labels": {
+      "safe_count": 356,
+      "vulnerable_count": 644,
+      "safe_percentage": 35.6,
+      "vulnerable_percentage": 64.4,
+      "balance_ratio": 0.5527950310559007
+    },
+    "graphs": {
+      "nodes": {
+        "mean": 8.992,
+        "median": 5.0,
+        "std": 10.067965832282109,
+        "min": 1,
+        "max": 89,
+        "p25": 5.0,
+        "p75": 9.0,
+        "p95": 32.049999999999955,
+        "p99": 52.00999999999999
+      },
+      "edges": {
+        "mean": 5.757,
+        "median": 0.0,
+        "std": 16.91490322171546,
+        "min": 0,
+        "max": 163,
+        "p95": 37.0,
+        "p99": 89.0
+      },
+      "node_to_edge_ratio": {
+        "mean": 0.24995789876573718,
+        "median": 0.0
+      }
+    },
+    "tokens": {
+      "num_tokens": {
+        "mean": 505.875,
+        "median": 512.0,
+        "min": 56,
+        "max": 512,
+        "p95": 512.0
+      },
+      "truncation": {
+        "rate": 0.972,
+        "count": 972
+      },
+      "padding": {
+        "mean_ratio": 0.011962890625,
+        "median_ratio": 0.0
+      }
+    },
+    "outliers": {
+      "tiny_graphs": 90,
+      "huge_graphs": 10,
+      "disconnected": 702,
+      "very_sparse": 777
+    }
+  }
+}

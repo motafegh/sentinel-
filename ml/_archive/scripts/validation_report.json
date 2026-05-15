@@ -1,0 +1,26 @@
+{
+  "structural": {
+    "file_counts": {
+      "graphs": 68555,
+      "tokens": 68568,
+      "expected": 68568
+    },
+    "pairing": {
+      "paired": 68555,
+      "only_graphs": 0,
+      "only_tokens": 13,
+      "pairing_rate": 99.9810407187026
+    },
+    "schema": {
+      "samples_checked": 100,
+      "graph_issues": 0,
+      "token_issues": 0,
+      "pairing_issues": 0,
+      "details": {
+        "graph_issues": [],
+        "token_issues": [],
+        "pairing_issues": []
+      }
+    }
+  }
+}

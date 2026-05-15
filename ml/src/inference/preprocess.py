@@ -486,37 +486,58 @@ class ContractPreprocessor:
             List of dicts; each has the same keys as _tokenize() plus
             "window_index" (int, 0-based).
         """
-        # Full token sequence — no truncation, no padding.
-        full_ids = self.tokenizer.encode(source_code, add_special_tokens=True)
-        total_tokens = len(full_ids)
+        # Fix E1 (C4): encode content tokens only (no special tokens) so we can
+        # reconstruct proper [CLS]…[SEP] framing for EVERY window, not just the first.
+        #
+        # Bug in original code: tokenizer.encode(src, add_special_tokens=True) gave
+        #   [CLS] c1 c2 … cN [SEP]
+        # Slicing full_ids[256:768] for window 2 produced c257…c767 — a bare token
+        # sequence with no [CLS] at position 0 and no [SEP] at the end.
+        # CodeBERT was pre-trained to always see [CLS]…[SEP]; the CLS embedding at
+        # position 0 is used by the TransformerEncoder "tf eye" for contract-level
+        # representation. Non-first windows in the old code gave a random mid-contract
+        # token in the CLS slot, making those windows nearly useless for prediction.
+        #
+        # Fix: encode without special tokens → slide over pure content → prepend [CLS]
+        # and append [SEP] to each window individually.  Content window capacity is
+        # MAX_TOKEN_LENGTH - 2 (512 - 2 = 510) to leave room for the two special tokens.
+        full_content_ids = self.tokenizer.encode(source_code, add_special_tokens=False)
+        _CONTENT_CAP     = self.MAX_TOKEN_LENGTH - 2  # 510 content tokens per window
+        total_content    = len(full_content_ids)
 
-        if total_tokens <= self.MAX_TOKEN_LENGTH:
-            # Fast path: no windowing needed.
+        if total_content <= _CONTENT_CAP:
+            # Fast path: whole source fits in one window. Delegate to _tokenize()
+            # which produces the standard [CLS] c1…c510 [SEP] [PAD]… encoding.
             single = self._tokenize(source_code, contract_hash)
             single["window_index"] = 0
             return [single]
 
-        # Sliding window over the raw token ID list.
+        cls_id = self.tokenizer.cls_token_id
+        sep_id = self.tokenizer.sep_token_id
+
         windows: list[dict] = []
         start = 0
-        while start < total_tokens and len(windows) < max_windows:
-            end     = min(start + self.MAX_TOKEN_LENGTH, total_tokens)
-            chunk   = full_ids[start:end]
+        while start < total_content and len(windows) < max_windows:
+            content_chunk = full_content_ids[start : start + _CONTENT_CAP]
+            # Wrap each window with [CLS] … [SEP] so every window is a
+            # self-contained sequence CodeBERT was trained to handle.
+            chunk   = [cls_id] + content_chunk + [sep_id]
             pad_len = self.MAX_TOKEN_LENGTH - len(chunk)
 
             input_ids      = torch.tensor([chunk + [self.tokenizer.pad_token_id] * pad_len], dtype=torch.long)
             attention_mask = torch.tensor([[1] * len(chunk) + [0] * pad_len],               dtype=torch.long)
 
+            end_content = start + _CONTENT_CAP
             windows.append({
                 "input_ids":      input_ids,
                 "attention_mask": attention_mask,
                 "contract_hash":  contract_hash,
                 "num_tokens":     len(chunk),
-                "truncated":      (end < total_tokens),
+                "truncated":      (end_content < total_content),
                 "window_index":   len(windows),
             })
 
-            if end == total_tokens:
+            if end_content >= total_content:
                 break
             start += stride
 
