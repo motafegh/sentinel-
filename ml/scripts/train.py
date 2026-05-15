@@ -58,7 +58,6 @@ import argparse
 import sys
 from pathlib import Path
 import torch.multiprocessing as mp
-mp.set_start_method('spawn', force=True)
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ml.src.training.trainer import TrainConfig, train
@@ -220,4 +219,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    mp.set_start_method('spawn', force=True)
     main()

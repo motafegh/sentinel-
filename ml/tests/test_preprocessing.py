@@ -56,8 +56,8 @@ class TestSchemaSanity:
     def test_feature_names_length_matches_dim(self):
         assert len(FEATURE_NAMES) == NODE_FEATURE_DIM
 
-    def test_num_edge_types_is_7(self):
-        assert NUM_EDGE_TYPES == 7
+    def test_num_edge_types_is_8(self):
+        assert NUM_EDGE_TYPES == 8  # REVERSE_CONTAINS=7 added in v5.2 (2026-05-14)
 
     def test_edge_types_contains_new_v2_edges(self):
         assert "CONTAINS"     in EDGE_TYPES and EDGE_TYPES["CONTAINS"]     == 5

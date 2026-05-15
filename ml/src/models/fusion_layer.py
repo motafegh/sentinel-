@@ -210,11 +210,5 @@ class CrossAttentionFusion(nn.Module):
         fused  = torch.cat([pooled_nodes, pooled_tokens], dim=1)  # [B, 512]
         output = self.output_proj(fused)                           # [B, 128]
 
-        logger.debug(
-            f"CrossAttentionFusion — "
-            f"enriched nodes: {enriched_nodes.shape} "
-            f"enriched tokens: {enriched_tokens.shape} "
-            f"output: {output.shape}"
-        )
 
         return output

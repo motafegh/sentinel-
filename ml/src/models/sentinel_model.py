@@ -254,6 +254,10 @@ class SentinelModel(nn.Module):
         # or interface-only contract) would produce zero rows for its batch index,
         # causing global_max/mean_pool to silently drop it and return B-k outputs
         # instead of B. Fix: for such graphs, include ALL their nodes in the pool.
+        if batch.numel() == 0:
+            # Empty batch guard: return zero logits rather than crashing in batch.max().
+            B = input_ids.size(0)
+            return torch.zeros(B, self.num_classes, device=node_embs.device)
         num_graphs = int(batch.max().item()) + 1
         graph_has_func = torch.zeros(num_graphs, dtype=torch.bool, device=node_embs.device)
         if func_mask.any():
@@ -264,8 +268,8 @@ class SentinelModel(nn.Module):
         pool_embs  = node_embs[pool_mask]
         pool_batch = batch[pool_mask]
 
-        gnn_max  = global_max_pool(pool_embs, pool_batch)   # [B, gnn_hidden_dim]
-        gnn_mean = global_mean_pool(pool_embs, pool_batch)  # [B, gnn_hidden_dim]
+        gnn_max  = global_max_pool(pool_embs, pool_batch, size=num_graphs)   # [B, gnn_hidden_dim]
+        gnn_mean = global_mean_pool(pool_embs, pool_batch, size=num_graphs)  # [B, gnn_hidden_dim]
         gnn_eye  = self.gnn_eye_proj(
             torch.cat([gnn_max, gnn_mean], dim=1)           # [B, 2*gnn_hidden_dim]
         )                                                    # [B, eye_dim]
@@ -295,21 +299,21 @@ class SentinelModel(nn.Module):
         if self.num_classes == 1:
             logits = logits.squeeze(1)  # [B,1] → [B] for binary BCEWithLogitsLoss
 
-        logger.debug(
-            f"SentinelModel forward — nodes: {node_embs.shape} | "
-            f"tokens: {token_embs.shape} | "
-            f"gnn_eye: {gnn_eye.shape} | tf_eye: {transformer_eye.shape} | "
-            f"fused_eye: {fused_eye.shape} | logits: {logits.shape}"
-        )
-
         if not return_aux:
             return logits
 
         # ── Auxiliary heads (training only) ───────────────────────────────
+        aux_gnn   = self.aux_gnn(gnn_eye)
+        aux_tf    = self.aux_transformer(transformer_eye)
+        aux_fused = self.aux_fused(fused_eye)
+        if self.num_classes == 1:
+            aux_gnn   = aux_gnn.squeeze(1)
+            aux_tf    = aux_tf.squeeze(1)
+            aux_fused = aux_fused.squeeze(1)
         aux = {
-            "gnn":         self.aux_gnn(gnn_eye),          # [B, num_classes]
-            "transformer": self.aux_transformer(transformer_eye),
-            "fused":       self.aux_fused(fused_eye),
+            "gnn":         aux_gnn,    # [B, num_classes] or [B] for binary
+            "transformer": aux_tf,
+            "fused":       aux_fused,
         }
         return logits, aux
 
