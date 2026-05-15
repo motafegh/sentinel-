@@ -454,10 +454,15 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
     --epochs 60 \
     --gradient-accumulation-steps 4
 
-# Resume from checkpoint
+# Resume from checkpoint (example — continue r3)
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
-    --resume ml/checkpoints/v5.2-full_best.pt \
-    --epochs 60
+    --resume ml/checkpoints/v5.2-jk-20260515c-r3_best.pt \
+    --no-resume-model-only \
+    --run-name v5.2-jk-20260515c-r4 \
+    --experiment-name sentinel-v5.2 \
+    --epochs 60 \
+    --gradient-accumulation-steps 4 \
+    --early-stop-patience 20
 ```
 
 **Phase 4 gates (smoke run)**: GNN gradient share ≥ 15% at step 100; JK all-phase attention weights > 5%; no NaN loss after step 50.
@@ -526,7 +531,7 @@ Architecture mismatch detection: if the checkpoint's `model_version` pre-dates v
 
 ```bash
 PYTHONPATH=. python ml/scripts/tune_threshold.py \
-    --checkpoint ml/checkpoints/v5.2-full_best.pt
+    --checkpoint ml/checkpoints/v5.2-jk-20260515c-r3_best.pt
 ```
 
 Runs one forward pass over the val set, sweeps thresholds per class (default 0.05–0.95 in steps of 0.01), picks the threshold that maximises per-class F1, saves to `<checkpoint_stem>_thresholds.json`. The `Predictor` loads this file automatically.
@@ -553,14 +558,14 @@ nohup python ml/scripts/run_overnight_experiments.py \
 ```bash
 # Promote to Staging
 PYTHONPATH=. python ml/scripts/promote_model.py \
-    --checkpoint ml/checkpoints/v5.2-full_best.pt \
+    --checkpoint ml/checkpoints/v5.2-jk-20260515c-r3_best.pt \
     --stage Staging \
     --val-f1-macro 0.52 \
     --note "v5.2 full run; JK active"
 
 # Promote to Production
 PYTHONPATH=. python ml/scripts/promote_model.py \
-    --checkpoint ml/checkpoints/v5.2-full_best.pt \
+    --checkpoint ml/checkpoints/v5.2-jk-20260515c-r3_best.pt \
     --stage Production \
     --val-f1-macro 0.52
 
@@ -577,16 +582,16 @@ Logs checkpoint as MLflow artifact, registers as `sentinel-vulnerability-detecto
 `ml/src/inference/api.py` — FastAPI application. Predictor loads once at startup via the lifespan context manager.
 
 ```bash
-SENTINEL_CHECKPOINT=ml/checkpoints/v5.2-full_best.pt \
+SENTINEL_CHECKPOINT=ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt \
 TRANSFORMERS_OFFLINE=1 \
-uvicorn ml.src.inference.api:app --host 0.0.0.0 --port 8000
+uvicorn ml.src.inference.api:app --host 0.0.0.0 --port 8001
 ```
 
 Environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel_crossattn_v2_best.pt` | Checkpoint path |
+| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt` | Checkpoint path |
 | `SENTINEL_PREDICT_TIMEOUT` | `60` | Inference timeout in seconds |
 | `SENTINEL_DRIFT_BASELINE` | `ml/data/drift_baseline.json` | Drift baseline path |
 | `SENTINEL_DRIFT_CHECK_INTERVAL` | `50` | Run KS test every N requests |
@@ -759,8 +764,8 @@ Data files too large for Git are tracked with DVC:
 
 | DVC pointer | Tracks |
 |---|---|
-| `ml/data/graphs.dvc` | `ml/data/graphs/` (44,470 `.pt` graph files) |
-| `ml/data/tokens.dvc` | `ml/data/tokens/` (44,470 `.pt` token files) |
+| `ml/data/graphs.dvc` | `ml/data/graphs/` (44,472 `.pt` graph files) |
+| `ml/data/tokens.dvc` | `ml/data/tokens/` (44,472 `.pt` token files) |
 | `ml/data/splits.dvc` | `ml/data/splits/` (train/val/test `.npy` index arrays) |
 | `ml/checkpoints.dvc` | `ml/checkpoints/` (trained model checkpoints) |
 
@@ -885,8 +890,8 @@ ml/
 │   └── Dockerfile.slither      — Ubuntu 20.04 + slither==0.10.0 + solc binaries
 │
 ├── data/
-│   ├── graphs.dvc              — 44,470 .pt graph files (tracked by DVC)
-│   ├── tokens.dvc              — 44,470 .pt token files (tracked by DVC)
+│   ├── graphs.dvc              — 44,472 .pt graph files (tracked by DVC)
+│   ├── tokens.dvc              — 44,472 .pt token files (tracked by DVC)
 │   ├── splits.dvc              — train/val/test .npy arrays (tracked by DVC)
 │   ├── augmented/              — 50 synthetic CEI contract pairs (.sol)
 │   ├── tokens_orphaned/        — 24,148 legacy token files (no graph counterpart; not used in training)

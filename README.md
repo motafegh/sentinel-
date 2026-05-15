@@ -65,7 +65,7 @@ Polls AuditRegistry, ingests findings back into RAG index
 
 | # | Path | What it does | Status |
 |---|------|-------------|--------|
-| M1 | `ml/` | Three-eye SentinelModel v5.2: three-phase GAT (JK connections) + CodeBERT LoRA + CrossAttentionFusion; 10-class multi-label; per-class threshold tuning; sliding-window inference; FastAPI with Prometheus metrics and KS drift detection | ✅ Complete |
+| M1 | `ml/` | Three-eye SentinelModel v5.2: three-phase GAT (JK connections) + CodeBERT LoRA + CrossAttentionFusion; 10-class multi-label; per-class threshold tuning; sliding-window inference; FastAPI with Prometheus metrics and KS drift detection | ✅ Complete — v5.2 training r3 in progress (epoch 33+, best F1=0.3306) |
 | M2 | `zkml/` | ProxyMLP distillation (128→64→32→10), EZKL circuit setup, per-audit Groth16 proof generation | ⚠️ Source complete — pipeline not yet run end-to-end |
 | M3 | `ml/` (mlops) | MLflow experiment tracking, DVC data versioning, Dagster RAG scheduling, model registry promotion | ✅ Complete |
 | M4 | `agents/` | LangGraph orchestration (parallel fan-out), 3 MCP servers (SSE), hybrid RAG (FAISS+BM25+RRF), ingestion pipeline, feedback loop | ✅ Complete |
@@ -80,27 +80,29 @@ Polls AuditRegistry, ingests findings back into RAG index
 
 Three-eye classifier: GNN eye (three-phase GAT with JK connections and per-phase LayerNorm) + Transformer eye (CodeBERT CLS token + LoRA r=16) + Fused eye (CrossAttentionFusion) → `cat [B, 384]` → `Linear(384, 10)`.
 
+**v5.2 training:** run `v5.2-jk-20260515c-r3` in progress — epoch 33+, best F1=0.3306 (eval_threshold=0.35). Active checkpoint: `ml/checkpoints/v5.2-jk-20260515c-r3_best.pt`.
+
 **Active fallback checkpoint:** `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt`  
-Trained on deduplicated BCCC-SCsVul-2024 · 31,142 train / 6,661 val / 6,667 test · tuned F1-macro 0.5422 · per-class threshold tuning applied.
+Trained on deduplicated BCCC-SCsVul-2024 · 31,092 train / 6,661 val / 6,667 test · tuned F1-macro 0.5422 · per-class threshold tuning applied.
 
-> v5.2 architecture code is complete (three-phase GNN + JK connections + per-phase LayerNorm + separate LR groups). The v5.2 full 60-epoch training run is the next milestone. Pre-dedup metrics (v3, early v4 runs) are not valid baselines — 34.9% cross-split content leakage inflated those numbers.
+> Pre-dedup metrics (v3, early v4 runs) are not valid baselines — 34.9% cross-split content leakage inflated those numbers. The deduped 44K dataset is the only honest baseline.
 
-### Per-class F1 (v4 checkpoint, deduplicated dataset — minimum floor for v5.2)
+### Per-class F1 (v4 checkpoint, deduplicated dataset)
 
-> These are the honest baseline numbers on the deduplicated 44K dataset. v3/early-v4 numbers are higher but invalid (34.9% data leakage). v5.2 must exceed each class's floor (F1 − 0.05) to be considered an improvement.
+v5.2 must exceed each class's **floor** (v4 tuned − 0.05) after `tune_threshold.py` to be declared an improvement.
 
-| Vulnerability | F1 (v4 tuned) |
-|---------------|---------------|
-| IntegerUO | 0.776 |
-| Reentrancy | 0.519 |
-| GasException | 0.507 |
-| MishandledException | 0.459 |
-| UnusedReturn | 0.495 |
-| Timestamp | 0.478 |
-| TransactionOrderDependence | 0.472 |
-| ExternalBug | 0.434 |
-| DenialOfService | 0.384 |
-| CallToUnknown | 0.397 |
+| Vulnerability | v4 Tuned F1 | v5.2 Floor |
+|---------------|-------------|------------|
+| IntegerUO | 0.826 | 0.776 |
+| Reentrancy | 0.569 | 0.519 |
+| GasException | 0.557 | 0.507 |
+| MishandledException | 0.509 | 0.459 |
+| UnusedReturn | 0.545 | 0.495 |
+| Timestamp | 0.528 | 0.478 |
+| TransactionOrderDependence | 0.522 | 0.472 |
+| ExternalBug | 0.484 | 0.434 |
+| DenialOfService | 0.434 | 0.384 |
+| CallToUnknown | 0.447 | 0.397 |
 
 **Overall:** F1-macro 0.5422 (tuned thresholds)
 
@@ -149,7 +151,7 @@ All must be exported at **shell level** before any service starts. Setting them 
 |----------|---------|----------|-------|
 | `TRANSFORMERS_OFFLINE` | — | **Yes** | Must be `1`. Set at shell level. |
 | `HF_HUB_OFFLINE` | — | **Yes** | Set alongside `TRANSFORMERS_OFFLINE`. |
-| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel_crossattn_v2_best.pt` | **Yes** | Path to `.pt` checkpoint. |
+| `SENTINEL_CHECKPOINT` | `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt` | **Yes** | Path to `.pt` checkpoint. |
 | `SENTINEL_PREDICT_TIMEOUT` | `60` | No | Seconds before HTTP 504. |
 | `SENTINEL_DRIFT_BASELINE` | `ml/data/drift_baseline.json` | No | KS drift baseline. Alerts suppressed until file exists. |
 | `SENTINEL_DRIFT_CHECK_INTERVAL` | `50` | No | Run KS test every N requests. |
@@ -207,8 +209,8 @@ sentinel/
 │   ├── tests/                   # 12 pytest modules (~3,100 lines)
 │   ├── docker/                  # Dockerfile.slither (Ubuntu 20.04 + slither 0.10.0)
 │   └── data/
-│       ├── graphs.dvc           # 44,470 .pt graph files (DVC-tracked)
-│       ├── tokens.dvc           # 44,470 .pt token files (DVC-tracked)
+│       ├── graphs.dvc           # 44,472 .pt graph files (DVC-tracked)
+│       ├── tokens.dvc           # 44,472 .pt token files (DVC-tracked)
 │       ├── splits.dvc           # train/val/test .npy arrays (DVC-tracked)
 │       └── processed/           # multilabel_index_deduped.csv
 │
@@ -262,7 +264,7 @@ cd agents && poetry install && cd ..
 ```bash
 export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
-export SENTINEL_CHECKPOINT=ml/checkpoints/multilabel_crossattn_v2_best.pt
+export SENTINEL_CHECKPOINT=ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt
 
 PYTHONPATH=. ml/.venv/bin/uvicorn ml.src.inference.api:app --host 0.0.0.0 --port 8001
 ```
@@ -346,6 +348,10 @@ Example response:
 | 1234 | LM Studio (Windows host) |
 | 3000 | Dagster UI |
 | 5000 | MLflow UI |
+| 5432 | PostgreSQL (planned — M6 Celery backend) |
+| 6379 | Redis (planned — M6 task queue) |
+| 9090 | Prometheus (planned — observability) |
+| 3001 | Grafana (planned — dashboards) |
 
 ---
 
