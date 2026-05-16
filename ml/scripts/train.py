@@ -80,7 +80,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--label-csv", default="ml/data/processed/multilabel_index_deduped.csv")
 
     # --- Training hyperparameters ---
-    p.add_argument("--epochs",       type=int,   default=60)
+    p.add_argument("--epochs",       type=int,   default=100)
     p.add_argument("--batch-size",   type=int,   default=16)
     p.add_argument("--lr",           type=float, default=2e-4)
     p.add_argument("--weight-decay", type=float, default=1e-2)
@@ -120,8 +120,8 @@ def parse_args() -> argparse.Namespace:
                    help="RAM cache pickle. Use ml/data/cached_dataset_windowed.pkl for windowed tokens.")
 
     # --- Loss and regularisation ---
-    p.add_argument("--loss-fn",              choices=["bce", "focal"], default="bce")
-    p.add_argument("--early-stop-patience",  type=int,   default=10)
+    p.add_argument("--loss-fn",              choices=["bce", "focal", "asl"], default="bce")
+    p.add_argument("--early-stop-patience",  type=int,   default=30)
     p.add_argument("--grad-clip",            type=float, default=1.0)
     p.add_argument("--warmup-pct",           type=float, default=0.10)
     p.add_argument("--use-amp",              action="store_true", default=True)
@@ -130,6 +130,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--log-interval",         type=int, default=100)
     p.add_argument("--focal-gamma",          type=float, default=2.0)
     p.add_argument("--focal-alpha",          type=float, default=0.25)
+    p.add_argument("--asl-gamma-neg",        type=float, default=4.0,
+                   help="ASL focus exponent for negatives (default 4.0). Only used when --loss-fn=asl.")
+    p.add_argument("--asl-gamma-pos",        type=float, default=1.0,
+                   help="ASL focus exponent for positives (default 1.0). Only used when --loss-fn=asl.")
+    p.add_argument("--asl-clip",             type=float, default=0.05,
+                   help="ASL probability margin (default 0.05). Negatives with p<clip→zero gradient.")
     p.add_argument("--label-smoothing",      type=float, default=0.05,
                    help="Label smoothing ε (0=off). Prevents extreme overconfidence.")
     p.add_argument("--fusion-lr-multiplier", type=float, default=0.5,
@@ -152,8 +158,8 @@ def parse_args() -> argparse.Namespace:
                    help="Disable JK attention aggregation (v5.2 default: enabled)")
     p.add_argument("--gnn-lr-multiplier",  type=float, default=2.5,
                    help="GNN LR = lr × this (default 2.5 — counteracts GNN gradient collapse)")
-    p.add_argument("--lora-lr-multiplier", type=float, default=0.5,
-                   help="LoRA LR = lr × this (default 0.5 — prevents CodeBERT forgetting)")
+    p.add_argument("--lora-lr-multiplier", type=float, default=0.3,
+                   help="LoRA LR = lr × this (default 0.3 — v6: tighter than 0.5 with wider GNN)")
 
     # --- Auxiliary loss (v5 three-eye) ---
     p.add_argument("--aux-loss-weight", type=float, default=0.3)
@@ -206,6 +212,9 @@ def main() -> None:
         loss_fn               = args.loss_fn,
         focal_gamma           = args.focal_gamma,
         focal_alpha           = args.focal_alpha,
+        asl_gamma_neg         = args.asl_gamma_neg,
+        asl_gamma_pos         = args.asl_gamma_pos,
+        asl_clip              = args.asl_clip,
         gnn_hidden_dim        = args.gnn_hidden_dim,
         gnn_layers            = args.gnn_layers,
         gnn_heads             = args.gnn_heads,

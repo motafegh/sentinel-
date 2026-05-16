@@ -70,6 +70,7 @@ from tqdm import tqdm
 from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
 from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.focalloss import FocalLoss
+from ml.src.training.losses import AsymmetricLoss
 
 # ---------------------------------------------------------------------------
 # Logging setup — module level only (handlers added per-run inside train())
@@ -186,7 +187,7 @@ class TrainConfig:
     label_csv: str = "ml/data/processed/multilabel_index_deduped.csv"
 
     # --- Training ---
-    epochs:              int   = 60
+    epochs:              int   = 100         # v6: 100 epochs (was 60); more data + harder loss need more steps
     batch_size:          int   = 16          # Fix #28: was 16, reduced for 8 GB GPU
     lr:                  float = 2e-4
     weight_decay:        float = 1e-2
@@ -196,7 +197,7 @@ class TrainConfig:
     # global schedule.  LoRA at 0.5× prevents catastrophic forgetting of
     # CodeBERT features that took many epochs to adapt.
     gnn_lr_multiplier:     float = 2.5      # effective GNN LR = lr * 2.5
-    lora_lr_multiplier:    float = 0.5      # effective LoRA LR = lr * 0.5
+    lora_lr_multiplier:    float = 0.3      # effective LoRA LR = lr * 0.3 (v6: tighter than 0.5 — GNN is wider)
     # RC1 fix (2026-05-16): CrossAttentionFusion (821K params) was running at
     # full base LR and producing 4-5× higher gradient norms than the GNN.
     # CodeBERT's "external-call = Reentrancy" signal propagates through fusion
@@ -215,7 +216,7 @@ class TrainConfig:
     # This only affects training-time F1 logging and early stopping — inference still
     # uses per-class thresholds from tune_threshold.py.
     eval_threshold:      float = 0.35
-    early_stop_patience: int   = 10
+    early_stop_patience: int   = 30         # v6: 30 epochs patience (was 10; 100-ep run needs room)
     aux_loss_weight:     float = 0.3
 
     # --- Aux loss warmup (Fix #33) ---
@@ -238,13 +239,16 @@ class TrainConfig:
     persistent_workers:  bool = True
 
     # --- Loss function ---
-    # v4 used BCE successfully. Focal loss was trialled for v5.3 but the rationale
-    # was wrong (v4 never used focal) and focalloss.py is AMP-unsafe (crashes with
-    # autocast). Reentrancy collapse is a data co-occurrence problem, not an
-    # easy/hard example problem that focal solves. Reverted to BCE.
+    # v4/v5 used BCE. ASL (Ridnik et al. ICCV 2021) is recommended for v6:
+    # gamma_neg=4 down-weights easy negatives (vast majority of 44K×10 cells),
+    # freeing gradient budget for rare positives like DoS (377 train samples).
     loss_fn:        str   = "bce"
     focal_gamma:    float = 2.0
     focal_alpha:    float = 0.25
+    # ASL hyperparameters (only used when loss_fn="asl")
+    asl_gamma_neg:  float = 4.0   # focus exponent for negatives (hard negative mining)
+    asl_gamma_pos:  float = 1.0   # focus exponent for positives (mild — less than gamma_neg)
+    asl_clip:       float = 0.05  # probability margin; negatives with p<clip → zero gradient
     # RC3 fix (2026-05-16): label smoothing prevents extreme overconfidence.
     # Without smoothing the model pushes Reentrancy → 0.97 on safe contracts
     # with zero penalty.  ε=0.05 sets soft targets: positive→0.95, negative→0.05.
@@ -833,6 +837,16 @@ def train(config: TrainConfig) -> dict:
                 return _focal(torch.sigmoid(logits.float()), targets)
         loss_fn: nn.Module = _FocalFromLogits()
         logger.info(f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha})")
+    elif config.loss_fn == "asl":
+        loss_fn = AsymmetricLoss(
+            gamma_neg=config.asl_gamma_neg,
+            gamma_pos=config.asl_gamma_pos,
+            clip=config.asl_clip,
+        )
+        logger.info(
+            f"Loss: AsymmetricLoss(gamma_neg={config.asl_gamma_neg}, "
+            f"gamma_pos={config.asl_gamma_pos}, clip={config.asl_clip})"
+        )
     else:
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         logger.info("Loss: BCEWithLogitsLoss with class-balanced pos_weight")
