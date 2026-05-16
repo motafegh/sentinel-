@@ -20,6 +20,18 @@ FIX
 6. Rebuild train/val/test splits on the deduped index (stratified by label density,
    same 70/15/15 ratio). Write to splits/deduped/.
 
+OPTIONAL: --relabel-timestamp
+─────────────────────────────
+When enabled, performs source-verified Timestamp label relabeling AFTER deduplication.
+For every row where Timestamp=1:
+  a. Load the graph .pt file and check if uses_block_globals (feat[2]) fires for
+     any function node (any value > 0.5 in x[:, 2]).
+  b. Also grep the source .sol file for block.timestamp, block.number, now,
+     block.difficulty, blockhash(.
+  c. If NEITHER source grep NOR feature activation → set Timestamp=0.
+  d. If EITHER confirms → keep Timestamp=1.
+This is conservative: only removes labels where BOTH checks fail.
+
 AFTER THIS SCRIPT
 ─────────────────
 - Update create_cache.py (or pass --label-csv flag) to use the deduped CSV.
@@ -32,12 +44,14 @@ USAGE
   source ml/.venv/bin/activate
   PYTHONPATH=. python ml/scripts/dedup_multilabel_index.py
   PYTHONPATH=. python ml/scripts/dedup_multilabel_index.py --dry-run
+  PYTHONPATH=. python ml/scripts/dedup_multilabel_index.py --relabel-timestamp
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -53,6 +67,7 @@ from ml.src.utils.hash_utils import get_contract_hash  # noqa: E402
 DEFAULT_CSV    = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index.csv"
 DEFAULT_OUT    = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index_deduped.csv"
 DEFAULT_SPLITS = PROJECT_ROOT / "ml" / "data" / "splits" / "deduped"
+DEFAULT_GRAPHS = PROJECT_ROOT / "ml" / "data" / "graphs"
 
 SOURCE_DIRS = [
     PROJECT_ROOT / "BCCC-SCsVul-2024" / "SourceCodes",
@@ -74,14 +89,25 @@ VAL_PCT   = 0.15
 TEST_PCT  = 0.15
 SEED      = 42
 
+# ── Block-global source patterns for Timestamp relabeling ─────────────────────
+
+_BLOCK_GLOBAL_PATTERNS = [
+    re.compile(r'\bblock\s*\.\s*timestamp\b', re.IGNORECASE),
+    re.compile(r'\bblock\s*\.\s*number\b',   re.IGNORECASE),
+    re.compile(r'\bblock\s*\.\s*difficulty\b', re.IGNORECASE),
+    re.compile(r'\bblock\s*\.\s*prevrandao\b', re.IGNORECASE),
+    re.compile(r'\bblockhash\s*\(',          re.IGNORECASE),
+    re.compile(r'\bnow\b'),  # Solidity <0.7 alias for block.timestamp
+]
+
 
 # ── Step 1 — Rebuild path-MD5 → content-hash map ─────────────────────────────
 
-def build_content_map(all_path_md5s: set[str]) -> dict[str, str]:
+def build_content_map(all_path_md5s: set[str], source_dirs: list[Path]) -> dict[str, str]:
     """Return path_md5 → content_md5 for all mapped files."""
     path_md5_to_content: dict[str, str] = {}
 
-    for src_dir in SOURCE_DIRS:
+    for src_dir in source_dirs:
         if not src_dir.exists():
             continue
         for sol in src_dir.rglob("*.sol"):
@@ -130,7 +156,153 @@ def deduplicate(df: pd.DataFrame, path_md5_to_content: dict[str, str]) -> pd.Dat
     return agg[["md5"] + CLASS_NAMES]
 
 
-# ── Step 3 — Rebuild splits ───────────────────────────────────────────────────
+# ── Step 3 — Source-verified Timestamp relabeling ────────────────────────────
+
+def _find_source_for_md5(md5: str, source_dirs: list[Path]) -> Path | None:
+    """Walk source dirs to find the .sol file whose path-MD5 matches *md5*.
+
+    NOTE: This is O(N × |source files|). Call build_md5_to_sol_map() once and
+    use the returned dict directly — don't call this in a tight loop.
+    """
+    for src_dir in source_dirs:
+        if not src_dir.exists():
+            continue
+        for sol in src_dir.rglob("*.sol"):
+            rel = sol.relative_to(PROJECT_ROOT)
+            if get_contract_hash(rel) == md5:
+                return sol
+    return None
+
+
+def _build_md5_to_sol_map(
+    md5_set: set[str], source_dirs: list[Path]
+) -> dict[str, Path]:
+    """Scan source dirs ONCE and return {md5 → absolute .sol path} for all md5s in md5_set."""
+    md5_map: dict[str, Path] = {}
+    for src_dir in source_dirs:
+        if not src_dir.exists():
+            continue
+        for sol in src_dir.rglob("*.sol"):
+            rel = sol.relative_to(PROJECT_ROOT)
+            m = get_contract_hash(rel)
+            if m in md5_set and m not in md5_map:
+                md5_map[m] = sol
+    return md5_map
+
+
+def _source_has_block_globals(sol_path: Path) -> bool:
+    """Return True if any block-global pattern matches the source file."""
+    try:
+        text = sol_path.read_text(errors="replace")
+    except OSError:
+        return False
+    return any(pat.search(text) for pat in _BLOCK_GLOBAL_PATTERNS)
+
+
+def _graph_has_block_globals(md5: str, graphs_dir: Path) -> bool:
+    """Return True if uses_block_globals (feat index 2) fires in any function node."""
+    pt_path = graphs_dir / f"{md5}.pt"
+    if not pt_path.exists():
+        return False
+
+    import torch
+
+    try:
+        data = torch.load(pt_path, weights_only=False)
+    except Exception:
+        return False
+
+    if not hasattr(data, "x") or data.x is None:
+        return False
+
+    # feat[2] = uses_block_globals; any node with value > 0.5 means it fires
+    try:
+        block_global_feats = data.x[:, 2]
+        return bool((block_global_feats > 0.5).any())
+    except (IndexError, RuntimeError):
+        return False
+
+
+def relabel_timestamp(
+    deduped_df: pd.DataFrame,
+    graphs_dir: Path,
+    source_dirs: list[Path],
+    dry_run: bool,
+) -> pd.DataFrame:
+    """
+    Source-verified Timestamp label relabeling.
+
+    For every row where Timestamp=1:
+      - Check graph features (uses_block_globals, feat[2] > 0.5 on any node)
+      - Check source patterns (block.timestamp, block.number, etc.)
+      - If NEITHER confirms → set Timestamp=0
+      - If EITHER confirms → keep Timestamp=1
+    """
+    ts_mask = deduped_df["Timestamp"] == 1
+    ts_indices = deduped_df.index[ts_mask].tolist()
+    n_ts = len(ts_indices)
+    logger.info(f"  Timestamp=1 rows to verify: {n_ts:,}")
+
+    # Pre-build md5 → .sol path map with a single source-dir scan (not per-row)
+    ts_md5_set = set(deduped_df.loc[ts_mask, "md5"])
+    logger.info("  Building md5→source map (single scan) ...")
+    md5_to_sol = _build_md5_to_sol_map(ts_md5_set, source_dirs)
+    logger.info(f"  {len(md5_to_sol):,}/{n_ts:,} Timestamp rows mapped to source file")
+
+    n_removed = 0
+    n_confirmed_graph = 0
+    n_confirmed_source = 0
+    n_confirmed_both = 0
+    n_no_graph = 0
+    n_no_source = 0
+
+    for idx in ts_indices:
+        md5 = deduped_df.at[idx, "md5"]
+
+        # Check graph features
+        graph_confirms = _graph_has_block_globals(md5, graphs_dir)
+
+        # Check source patterns (use pre-built map — no per-row directory scan)
+        sol_path = md5_to_sol.get(md5)
+        source_confirms = False
+        if sol_path is not None:
+            source_confirms = _source_has_block_globals(sol_path)
+        else:
+            n_no_source += 1
+
+        if not graph_confirms and not source_confirms:
+            if not dry_run:
+                deduped_df.at[idx, "Timestamp"] = 0
+            n_removed += 1
+
+        # Track confirmation sources
+        if graph_confirms and source_confirms:
+            n_confirmed_both += 1
+        elif graph_confirms:
+            n_confirmed_graph += 1
+        elif source_confirms:
+            n_confirmed_source += 1
+
+        if not graph_confirms and sol_path is None:
+            n_no_graph += 1
+
+    logger.info(f"  Timestamp relabeling results:")
+    logger.info(f"    Removed (neither source nor graph confirms): {n_removed:,}")
+    logger.info(f"    Confirmed by both source + graph: {n_confirmed_both:,}")
+    logger.info(f"    Confirmed by graph only: {n_confirmed_graph:,}")
+    logger.info(f"    Confirmed by source only: {n_confirmed_source:,}")
+    logger.info(f"    No graph .pt found: {n_no_graph:,}")
+    logger.info(f"    No source .sol found: {n_no_source:,}")
+    logger.info(
+        f"    Timestamp=1 remaining: {n_ts - n_removed:,} / {n_ts:,}  "
+        f"({100 * (n_ts - n_removed) / n_ts:.1f}% kept)" if n_ts else
+        f"    Timestamp=1 remaining: 0 / 0"
+    )
+
+    return deduped_df
+
+
+# ── Step 4 — Rebuild splits ───────────────────────────────────────────────────
 
 def rebuild_splits(
     deduped_df: pd.DataFrame,
@@ -225,6 +397,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--multilabel-csv", type=Path, default=DEFAULT_CSV)
     p.add_argument("--out-csv",        type=Path, default=DEFAULT_OUT)
     p.add_argument("--splits-dir",     type=Path, default=DEFAULT_SPLITS)
+    p.add_argument("--graphs-dir",     type=Path, default=DEFAULT_GRAPHS,
+                   help="Directory containing graph .pt files for feature-based checks")
+    p.add_argument("--source-dirs",    type=Path, nargs="*", default=SOURCE_DIRS,
+                   help="Directories to scan for .sol source files")
+    p.add_argument("--relabel-timestamp", action="store_true",
+                   help="After dedup, verify Timestamp=1 labels against source "
+                        "patterns and graph features; remove labels neither confirms")
     p.add_argument("--dry-run",        action="store_true")
     return p.parse_args()
 
@@ -245,7 +424,7 @@ def main() -> None:
 
     # ── Map path-MD5 → content hash ───────────────────────────────────────────
     logger.info("Scanning source dirs to build content-hash map ...")
-    path_md5_to_content = build_content_map(set(df["md5"]))
+    path_md5_to_content = build_content_map(set(df["md5"]), args.source_dirs)
     logger.info(f"  {len(path_md5_to_content):,}/{len(df):,} rows mapped to content hash")
 
     # ── Deduplicate ───────────────────────────────────────────────────────────
@@ -262,6 +441,22 @@ def main() -> None:
         before = int(df[cls].sum())
         after  = int(deduped_df[cls].sum())
         logger.info(f"    {cls:<28} {before:>7,} → {after:>7,}  ({after-before:+,})")
+
+    # ── Source-verified Timestamp relabeling ──────────────────────────────────
+    if args.relabel_timestamp:
+        logger.info("Source-verified Timestamp relabeling ...")
+        ts_before = int(deduped_df["Timestamp"].sum())
+        deduped_df = relabel_timestamp(
+            deduped_df,
+            graphs_dir=args.graphs_dir,
+            source_dirs=args.source_dirs,
+            dry_run=args.dry_run,
+        )
+        ts_after = int(deduped_df["Timestamp"].sum())
+        logger.info(
+            f"  Timestamp labels: {ts_before:,} → {ts_after:,}  "
+            f"(removed {ts_before - ts_after:,} unverified labels)"
+        )
 
     # ── Rebuild splits ────────────────────────────────────────────────────────
     logger.info(f"Rebuilding stratified 70/15/15 splits → {args.splits_dir} ...")
@@ -282,6 +477,8 @@ def main() -> None:
     logger.info("DONE")
     logger.info(f"  Original    : {len(df):,} rows, splits in ml/data/splits/")
     logger.info(f"  Deduplicated: {len(deduped_df):,} rows, splits in {args.splits_dir}")
+    if args.relabel_timestamp:
+        logger.info(f"  Timestamp relabeling: {ts_before - ts_after:,} labels removed")
     logger.info("")
     if not args.dry_run:
         logger.info("Next steps:")
