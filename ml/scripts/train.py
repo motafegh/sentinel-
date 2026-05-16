@@ -127,6 +127,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--log-interval",         type=int, default=100)
     p.add_argument("--focal-gamma",          type=float, default=2.0)
     p.add_argument("--focal-alpha",          type=float, default=0.25)
+    p.add_argument("--label-smoothing",      type=float, default=0.05,
+                   help="Label smoothing ε (0=off). Prevents extreme overconfidence.")
+    p.add_argument("--fusion-lr-multiplier", type=float, default=0.5,
+                   help="LR multiplier for fusion+classifier params (RC1 fix).")
+    p.add_argument("--pos-weight-min-samples", type=int, default=0,
+                   help=(
+                       "Classes with >= this many training positives get pos_weight=1.0 "
+                       "(no amplification). 0=disabled. Recommended: 3000 for v5.3 to "
+                       "prevent Reentrancy collapse from 2.82× FN penalty on a 3500-sample class."
+                   ))
 
     # --- GNN architecture (v5.2) ---
     p.add_argument("--gnn-hidden-dim",   type=int,   default=128)
@@ -202,6 +212,9 @@ def main() -> None:
         gnn_use_jk            = args.gnn_use_jk,
         gnn_lr_multiplier     = args.gnn_lr_multiplier,
         lora_lr_multiplier    = args.lora_lr_multiplier,
+        fusion_lr_multiplier  = args.fusion_lr_multiplier,
+        label_smoothing       = args.label_smoothing,
+        pos_weight_min_samples = args.pos_weight_min_samples,
         aux_loss_weight       = args.aux_loss_weight,
         lora_r                = args.lora_r,
         lora_alpha            = args.lora_alpha,

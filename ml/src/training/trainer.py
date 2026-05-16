@@ -195,8 +195,14 @@ class TrainConfig:
     # its LR relative to LoRA counteracts the imbalance without changing the
     # global schedule.  LoRA at 0.5× prevents catastrophic forgetting of
     # CodeBERT features that took many epochs to adapt.
-    gnn_lr_multiplier:   float = 2.5        # effective GNN LR = lr * 2.5
-    lora_lr_multiplier:  float = 0.5        # effective LoRA LR = lr * 0.5
+    gnn_lr_multiplier:     float = 2.5      # effective GNN LR = lr * 2.5
+    lora_lr_multiplier:    float = 0.5      # effective LoRA LR = lr * 0.5
+    # RC1 fix (2026-05-16): CrossAttentionFusion (821K params) was running at
+    # full base LR and producing 4-5× higher gradient norms than the GNN.
+    # CodeBERT's "external-call = Reentrancy" signal propagates through fusion
+    # and overwhelms the classifier when fusion learns too fast.  0.5× matches
+    # the LoRA rate and lets the GNN signal catch up.
+    fusion_lr_multiplier:  float = 0.5      # effective fusion LR = lr * 0.5
     threshold:           float = 0.5   # inference threshold (used by predictor/tune_threshold)
     # Training-time evaluation threshold — intentionally lower than inference threshold.
     # At threshold=0.5 minority classes (UnusedReturn, TOD, ExternalBug, Timestamp) have
@@ -232,9 +238,26 @@ class TrainConfig:
     persistent_workers:  bool = True
 
     # --- Loss function ---
-    loss_fn:     str   = "bce"
-    focal_gamma: float = 2.0
-    focal_alpha: float = 0.25
+    # v4 used BCE successfully. Focal loss was trialled for v5.3 but the rationale
+    # was wrong (v4 never used focal) and focalloss.py is AMP-unsafe (crashes with
+    # autocast). Reentrancy collapse is a data co-occurrence problem, not an
+    # easy/hard example problem that focal solves. Reverted to BCE.
+    loss_fn:        str   = "bce"
+    focal_gamma:    float = 2.0
+    focal_alpha:    float = 0.25
+    # RC3 fix (2026-05-16): label smoothing prevents extreme overconfidence.
+    # Without smoothing the model pushes Reentrancy → 0.97 on safe contracts
+    # with zero penalty.  ε=0.05 sets soft targets: positive→0.95, negative→0.05.
+    label_smoothing: float = 0.05
+
+    # --- pos_weight cap ---
+    # Classes with >= pos_weight_min_samples training positives are NOT amplified.
+    # Reentrancy has ~3500 train positives and is not actually rare; giving it a
+    # 2.82× FN penalty + BCCC external-call co-occurrence is the primary driver of
+    # the behavioral collapse seen in v5.2. Setting min_samples=3000 clamps
+    # Reentrancy, GasException, and MishandledException to 1.0 while leaving
+    # DoS (257), Timestamp (~1500), and minority classes at their sqrt-scaled weights.
+    pos_weight_min_samples: int = 0    # 0 = disabled (all classes get sqrt weight)
 
     # --- Cache ---
     cache_path: str | None = "ml/data/cached_dataset_deduped.pkl"
@@ -285,10 +308,11 @@ class TrainConfig:
 # pos_weight computation
 # ---------------------------------------------------------------------------
 def compute_pos_weight(
-    label_csv:     str,
-    train_indices: np.ndarray,
-    num_classes:   int,
-    device:        str,
+    label_csv:            str,
+    train_indices:        np.ndarray,
+    num_classes:          int,
+    device:               str,
+    pos_weight_min_samples: int = 0,
 ) -> torch.Tensor:
     import pandas as pd
 
@@ -308,15 +332,23 @@ def compute_pos_weight(
                 "Using pos=1 to avoid division by zero."
             )
             pos = 1
-        raw_ratio = float(N - pos) / float(pos)
-        # Cap at 20.0: without a ceiling, severely data-starved classes (e.g. DoS
-        # with 377 samples → raw_ratio≈120) produce unchecked gradient spikes that
-        # destabilise the loss scale for the entire batch.
-        pos_weight_vals.append(min(float(raw_ratio ** 0.5), 20.0))
+        if pos_weight_min_samples > 0 and pos >= pos_weight_min_samples:
+            # Well-represented class: no amplification needed. A 2.82× FN penalty
+            # on Reentrancy (3500 train samples) combined with BCCC external-call
+            # co-occurrence causes the model to associate any external call with
+            # Reentrancy regardless of CEI pattern (observed behavioral failure v5.2).
+            pos_weight_vals.append(1.0)
+        else:
+            raw_ratio = float(N - pos) / float(pos)
+            # Cap at 20.0: without a ceiling, severely data-starved classes (e.g. DoS
+            # with 257 samples → raw_ratio≈120) produce unchecked gradient spikes that
+            # destabilise the loss scale for the entire batch.
+            pos_weight_vals.append(min(float(raw_ratio ** 0.5), 20.0))
 
-    logger.info("pos_weight sqrt-scaled (training split only):")
+    logger.info(f"pos_weight sqrt-scaled (min_samples={pos_weight_min_samples}) — training split only:")
     for name, pw in zip(CLASS_NAMES[:num_classes], pos_weight_vals):
-        logger.info(f"  {name:<32} {pw:.2f}")
+        capped = " [capped=1.0]" if pw == 1.0 and pos_weight_min_samples > 0 else ""
+        logger.info(f"  {name:<32} {pw:.2f}{capped}")
 
     return torch.tensor(pos_weight_vals, dtype=torch.float32, device=device)
 
@@ -385,6 +417,7 @@ def train_one_epoch(
     use_amp:                     bool,
     aux_loss_weight:             float = 0.3,
     gradient_accumulation_steps: int   = 1,
+    label_smoothing:             float = 0.0,
 ) -> tuple[float, int, float]:
     """Returns (avg_loss, nan_batch_count, last_gnn_share)."""
     model.train()
@@ -413,6 +446,9 @@ def train_one_epoch(
         input_ids      = tokens["input_ids"].to(device)
         attention_mask = tokens["attention_mask"].to(device)
         labels         = labels.to(device).float()
+
+        if label_smoothing > 0.0:
+            labels = labels * (1.0 - label_smoothing) + 0.5 * label_smoothing
 
         with torch.amp.autocast(device, enabled=use_amp):
             logits, aux = model(graphs, input_ids, attention_mask, return_aux=True)
@@ -678,7 +714,8 @@ def train(config: TrainConfig) -> dict:
     )
 
     if label_csv_path is not None:
-        pos_weight = compute_pos_weight(str(label_csv_path), train_indices, config.num_classes, device)
+        pos_weight = compute_pos_weight(str(label_csv_path), train_indices, config.num_classes, device,
+                                        pos_weight_min_samples=config.pos_weight_min_samples)
     else:
         logger.info("Binary mode (label_csv=None) — pos_weight not computed.")
         pos_weight = None
@@ -816,9 +853,10 @@ def train(config: TrainConfig) -> dict:
     # Parameters are assigned to exactly one group; iteration order is stable
     # (dict preserves insertion order in Python 3.7+, same here). seen_ids
     # prevents double-counting if a parameter is reachable via multiple paths.
-    _gnn_params:   list = []
-    _lora_params:  list = []
-    _other_params: list = []
+    _gnn_params:    list = []
+    _lora_params:   list = []
+    _fusion_params: list = []
+    _other_params:  list = []
     _seen_param_ids: set = set()
     for _pname, _p in model.named_parameters():
         if not _p.requires_grad or id(_p) in _seen_param_ids:
@@ -828,34 +866,50 @@ def train(config: TrainConfig) -> dict:
             _gnn_params.append(_p)
         elif "lora_" in _pname:
             _lora_params.append(_p)
+        elif (
+            _pname.startswith("fusion.")
+            or _pname.startswith("transformer_eye_proj.")
+            or _pname.startswith("classifier.")
+            or _pname.startswith("aux_")
+        ):
+            # RC1 fix: fusion + classifier at reduced LR to prevent CodeBERT's
+            # Reentrancy bias from overwhelming the GNN signal via high-gradient
+            # cross-attention (821K params running at full LR produced 4-5× the
+            # GNN gradient norm throughout all of r3).
+            _fusion_params.append(_p)
         else:
             _other_params.append(_p)
 
-    _gnn_lr   = config.lr * config.gnn_lr_multiplier
-    _lora_lr  = config.lr * config.lora_lr_multiplier
-    _other_lr = config.lr
+    _gnn_lr    = config.lr * config.gnn_lr_multiplier
+    _lora_lr   = config.lr * config.lora_lr_multiplier
+    _fusion_lr = config.lr * config.fusion_lr_multiplier
+    _other_lr  = config.lr
 
     # Only include non-empty groups — empty param groups cause OneCycleLR to
     # misalign its max_lr list.
     _param_groups = []
     _max_lrs      = []
     if _gnn_params:
-        _param_groups.append({"params": _gnn_params,   "lr": _gnn_lr})
+        _param_groups.append({"params": _gnn_params,    "lr": _gnn_lr})
         _max_lrs.append(_gnn_lr)
     if _lora_params:
         # LoRA matrices are low-rank adaptation updates; L2 weight decay competes
         # directly with the adaptation signal. Standard PEFT practice is weight_decay=0
         # for LoRA parameters while keeping decay on the rest of the network.
-        _param_groups.append({"params": _lora_params, "lr": _lora_lr, "weight_decay": 0.0})
+        _param_groups.append({"params": _lora_params,  "lr": _lora_lr,   "weight_decay": 0.0})
         _max_lrs.append(_lora_lr)
+    if _fusion_params:
+        _param_groups.append({"params": _fusion_params, "lr": _fusion_lr})
+        _max_lrs.append(_fusion_lr)
     if _other_params:
-        _param_groups.append({"params": _other_params, "lr": _other_lr})
+        _param_groups.append({"params": _other_params,  "lr": _other_lr})
         _max_lrs.append(_other_lr)
 
     logger.info(
         f"Optimizer param groups: "
         f"GNN={len(_gnn_params)} params (lr×{config.gnn_lr_multiplier}) | "
         f"LoRA={len(_lora_params)} params (lr×{config.lora_lr_multiplier}) | "
+        f"Fusion={len(_fusion_params)} params (lr×{config.fusion_lr_multiplier}) | "
         f"Other={len(_other_params)} params (lr×1.0)"
     )
     optimizer = AdamW(_param_groups, weight_decay=config.weight_decay)
@@ -1033,6 +1087,9 @@ def train(config: TrainConfig) -> dict:
             "lora_dropout":                config.lora_dropout,
             "lora_target_modules":         ",".join(config.lora_target_modules),
             "fusion_output_dim":           config.fusion_output_dim,
+            "fusion_lr_multiplier":        config.fusion_lr_multiplier,
+            "label_smoothing":             config.label_smoothing,
+            "pos_weight_min_samples":      config.pos_weight_min_samples,
         }
         if pos_weight is not None:
             for name, pw in zip(CLASS_NAMES[:config.num_classes], pos_weight.cpu().tolist()):
@@ -1079,6 +1136,7 @@ def train(config: TrainConfig) -> dict:
                 use_amp=config.use_amp,
                 aux_loss_weight=effective_aux_weight,
                 gradient_accumulation_steps=accum_steps,
+                label_smoothing=config.label_smoothing,
             )
 
             val_metrics = evaluate(

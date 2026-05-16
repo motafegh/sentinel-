@@ -188,6 +188,11 @@ def _worker(args: Tuple[str, str, str]) -> Tuple[str, str, str]:
         # training dataset doesn't include them.
         return md5, "ghost", f"nodes={g.num_nodes}"
 
+    # Set caller-specific metadata (graph_extractor.py does not set these).
+    # contract_path is required by build_multilabel_index.py to bridge path-MD5
+    # back to the BCCC SHA256 for label lookup.  Without it, every label = zeros.
+    g.contract_path = str(sol_path.relative_to(PROJECT_ROOT))
+
     tmp = out_path.with_suffix(".tmp")
     torch.save(g, tmp)
     tmp.rename(out_path)   # atomic on same filesystem
