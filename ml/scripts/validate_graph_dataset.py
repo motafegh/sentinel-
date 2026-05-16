@@ -8,19 +8,16 @@ Checks performed (by default):
   3. edge_attr values are in [0, NUM_EDGE_TYPES)
   4. x.shape[1] == NODE_FEATURE_DIM  (feature dimension matches schema)
 
-Additional checks enabled by flags (used after Phase 4 v5 re-extraction):
-  --check-edge-types N   verify edge_attr max < N  (use 7 for v5 schema)
+Additional checks enabled by flags (used after re-extraction):
+  --check-edge-types N   verify edge_attr max < N  (use 8 for v5/v6 schema — REVERSE_CONTAINS=7 added)
   --check-contains-edges verify at least one CONTAINS (id=5) edge exists per file
   --check-control-flow   verify at least one CONTROL_FLOW (id=6) edge exists per file
 
 Usage:
-    # v4 validation (default)
-    python ml/scripts/validate_graph_dataset.py
-
-    # v5 validation after Phase 4 re-extraction
+    # v6 validation after re-extraction (schema v4, 12 node features, 8 edge types stored on disk)
     python ml/scripts/validate_graph_dataset.py \\
-      --check-dim 13 \\
-      --check-edge-types 7 \\
+      --check-dim 12 \\
+      --check-edge-types 8 \\
       --check-contains-edges \\
       --check-control-flow
 

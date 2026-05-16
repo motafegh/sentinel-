@@ -77,25 +77,27 @@ class TransformerEncoder(nn.Module):
     CodeBERT encoder with LoRA fine-tuning for vulnerability-aware embeddings.
 
     Architecture:
-        Frozen CodeBERT (125M params) + LoRA matrices (~295K trainable at defaults)
+        Frozen CodeBERT (125M params) + LoRA matrices (~590K trainable at r=16)
         on query+value projections of all 12 attention layers.
 
     Args:
-        lora_r:              LoRA rank — higher = more capacity, higher overfit risk.
-                             Default 8 (295K trainable params across Q+V, 12 layers).
-        lora_alpha:          LoRA scale = alpha/r applied to the LoRA delta.
-                             Default 16 → effective scale 2.0.
+        lora_r:              LoRA rank. Default 16.
+        lora_alpha:          LoRA scale factor. Default 32.
         lora_dropout:        Dropout on LoRA paths. Default 0.1.
         lora_target_modules: Which attention projections to adapt.
-                             Default ["query", "value"] — controls what CodeBERT attends to.
 
-    Input:
-        input_ids:      [B, 512]  — CodeBERT token IDs
-        attention_mask: [B, 512]  — 1=real token, 0=padding
+    Input (single-window legacy):
+        input_ids:      [B, L]     — token IDs  (L=512)
+        attention_mask: [B, L]     — 1=real, 0=pad
+
+    Input (multi-window):
+        input_ids:      [B, W, L]  — W windows of L=512 tokens each
+        attention_mask: [B, W, L]  — 1=real, 0=pad
 
     Output:
-        [B, 512, 768]  — ALL token embeddings (not just CLS).
-                         CrossAttentionFusion uses these for node→token attention.
+        Single-window: [B, L, 768]      — all token embeddings
+        Multi-window:  [B, W×L, 768]    — all windows concatenated along seq dim
+                       First L positions are window 0 (index 0 = CLS of first window).
     """
 
     def __init__(
@@ -143,29 +145,37 @@ class TransformerEncoder(nn.Module):
 
     def forward(
         self,
-        input_ids:      torch.Tensor,  # [B, 512]
-        attention_mask: torch.Tensor,  # [B, 512]
+        input_ids:      torch.Tensor,  # [B, L] or [B, W, L]
+        attention_mask: torch.Tensor,  # [B, L] or [B, W, L]
     ) -> torch.Tensor:
         """
         Run CodeBERT + LoRA forward pass and return all token embeddings.
 
+        Accepts both single-window [B, L] and multi-window [B, W, L] inputs.
+        Multi-window: windows are flattened into the batch dim, passed through
+        CodeBERT in one fused call (B*W sequences), then reassembled so each
+        batch item has W×L token positions.  Window 0 position 0 is the CLS
+        token for the first 512 tokens of the contract.
+
         Gradient flow:
-            Frozen weights (requires_grad=False): PyTorch skips backward nodes
-            automatically — no activation memory allocated for them.
+            Frozen weights (requires_grad=False): PyTorch skips backward nodes.
             LoRA A/B matrices (requires_grad=True): gradients flow normally.
             peft manages this split internally; no manual no_grad() is needed.
 
         Returns:
-            all_token_embeddings: [B, 512, 768]
-                All 512 positions, not just CLS.
-                CrossAttentionFusion uses every position for node→token attention
-                so that withdraw() can directly query "call.value" and "transfer"
-                tokens before pooling loses that granularity.
+            Single-window: [B, L, 768]    — all L positions, CLS at [:, 0, :]
+            Multi-window:  [B, W*L, 768]  — windows concatenated along seq dim,
+                                            CLS of window 0 at [:, 0, :]
         """
-        outputs = self.bert(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-        )
+        if input_ids.dim() == 2:
+            # Legacy single-window path — no reshape overhead
+            outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+            return outputs.last_hidden_state  # [B, L, 768]
 
-        # last_hidden_state: [B, 512, 768] — full sequence, not just position 0
-        return outputs.last_hidden_state
+        # Multi-window path: [B, W, L] → [B*W, L] → CodeBERT → [B, W*L, 768]
+        B, W, L = input_ids.shape
+        flat_ids  = input_ids.view(B * W, L)
+        flat_mask = attention_mask.view(B * W, L)
+        outputs   = self.bert(input_ids=flat_ids, attention_mask=flat_mask)
+        # Reassemble: [B*W, L, 768] → [B, W*L, 768]
+        return outputs.last_hidden_state.view(B, W * L, 768)

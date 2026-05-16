@@ -332,13 +332,17 @@ class DualPathDataset(Dataset):
             label = label.view(1).long()  # [1] long
 
         # ── Validate token shapes ───────────────────────────────────────────────
-        if tokens["input_ids"].shape != torch.Size([512]):
+        # Accept both single-window [512] and multi-window [W, 512].
+        ids_shape  = tokens["input_ids"].shape
+        mask_shape = tokens["attention_mask"].shape
+        if ids_shape != mask_shape:
             raise ValueError(
-                f"input_ids shape {tokens['input_ids'].shape} != [512]"
+                f"input_ids shape {ids_shape} != attention_mask shape {mask_shape}"
             )
-        if tokens["attention_mask"].shape != torch.Size([512]):
+        # Shape must be [512] or [W, 512]
+        if ids_shape not in (torch.Size([512]),) and (len(ids_shape) != 2 or ids_shape[1] != 512):
             raise ValueError(
-                f"attention_mask shape {tokens['attention_mask'].shape} != [512]"
+                f"input_ids shape {ids_shape} is not [512] or [W, 512]"
             )
 
         # ── Fix #1: Guard against pre-refactor .pt files with edge_attr [E, 1] ──
@@ -365,7 +369,8 @@ def dual_path_collate_fn(
 
     PyG graphs are variable-size; Batch.from_data_list() merges them into a
     single disconnected graph with a `batch` index tensor.
-    Token tensors are fixed-size [512] and stack normally.
+    Token tensors are either [512] (single-window) or [W, 512] (multi-window)
+    and stack normally into [B, 512] or [B, W, 512] respectively.
     Labels: multi-label keeps [B, 10] float32; binary squeezes to [B] long.
     """
     graphs = [item[0] for item in batch]
@@ -380,6 +385,7 @@ def dual_path_collate_fn(
                 "node_metadata", "num_edges", "num_nodes", "y"]
     batched_graphs: Batch = Batch.from_data_list(graphs, exclude_keys=_EXCLUDE)
 
+    # Stack tokens — works for both [512] → [B, 512] and [W, 512] → [B, W, 512]
     batched_tokens: Dict[str, torch.Tensor] = {
         "input_ids":      torch.stack([t["input_ids"]      for t in tokens]),
         "attention_mask": torch.stack([t["attention_mask"] for t in tokens]),

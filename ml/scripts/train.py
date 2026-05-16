@@ -111,10 +111,13 @@ def parse_args() -> argparse.Namespace:
 
     # --- Paths ---
     p.add_argument("--graphs-dir",      default="ml/data/graphs")
-    p.add_argument("--tokens-dir",      default="ml/data/tokens")
+    p.add_argument("--tokens-dir",      default="ml/data/tokens",
+                   help="Token .pt directory. Use ml/data/tokens_windowed for multi-window mode.")
     p.add_argument("--splits-dir",      default="ml/data/splits/deduped")
     p.add_argument("--checkpoint-dir",  default="ml/checkpoints")
     p.add_argument("--checkpoint-name", default=None)
+    p.add_argument("--cache-path",      default="ml/data/cached_dataset_deduped.pkl",
+                   help="RAM cache pickle. Use ml/data/cached_dataset_windowed.pkl for windowed tokens.")
 
     # --- Loss and regularisation ---
     p.add_argument("--loss-fn",              choices=["bce", "focal"], default="bce")
@@ -232,6 +235,7 @@ def main() -> None:
         splits_dir            = args.splits_dir,
         checkpoint_dir        = args.checkpoint_dir,
         checkpoint_name       = args.checkpoint_name or f"{args.run_name}_best.pt",
+        cache_path            = args.cache_path,
         resume_from           = args.resume,
         resume_model_only     = args.resume_model_only,
         force_optimizer_reset = args.force_optimizer_reset,
