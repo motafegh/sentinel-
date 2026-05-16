@@ -192,16 +192,32 @@ def _compute_return_ignored(func: Any) -> float:
     1.0 if any external call discards its return value.
     -1.0 (SENTINEL) if Slither IR is unavailable — not assumed safe.
 
-    No regex fallback: regex over multi-line source is unreliable for this
-    feature (multi-line assignments, self-calls). The -1.0 sentinel gives the
-    GNN a distinct embedding for "unknown" vs "safe" vs "discarded".
+    Slither ALWAYS assigns a TupleVariable or TemporaryVariable as lvalue even
+    when the programmer ignores the return — op.lvalue is never None. The correct
+    check is whether that lvalue variable is referenced in any subsequent IR op
+    within the function. If it is never read, the return was discarded.
     """
     try:
         from slither.slithir.operations import LowLevelCall, HighLevelCall
-        for op in func.slithir_operations:
-            if isinstance(op, (LowLevelCall, HighLevelCall)):
-                if op.lvalue is None:
-                    return 1.0
+
+        # Collect all read-variable sets across every node/IR in the function
+        # once up front, so we can do O(1) lookup per call op.
+        all_read_vars: set = set()
+        for node in (getattr(func, "nodes", None) or []):
+            for op in (getattr(node, "irs", None) or []):
+                for rv in (getattr(op, "read", None) or []):
+                    all_read_vars.add(id(rv))
+
+        for node in (getattr(func, "nodes", None) or []):
+            for op in (getattr(node, "irs", None) or []):
+                if isinstance(op, (LowLevelCall, HighLevelCall)):
+                    lval = op.lvalue
+                    if lval is None:
+                        # Truly None (shouldn't happen in practice, but guard it)
+                        return 1.0
+                    if id(lval) not in all_read_vars:
+                        return 1.0
+
         return 0.0
     except AttributeError:
         logger.warning(
