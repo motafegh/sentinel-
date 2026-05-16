@@ -100,9 +100,9 @@ ARCHITECTURE = "three_eye_v5"
 # Allows the resume path to detect and warn about architecture mismatches when
 # loading a pre-v5.2 checkpoint (which lacks JK/REVERSE_CONTAINS) into a v5.2
 # model.  Use _parse_version() for tuple comparison (not string sort).
-MODEL_VERSION = "v5.2"
+MODEL_VERSION = "v6.0"
 
-_VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal"})
+_VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal", "asl"})
 
 # ---------------------------------------------------------------------------
 # VRAM helpers
@@ -165,13 +165,13 @@ class TrainConfig:
     fusion_output_dim: int   = 128
     fusion_dropout:    float = 0.3
 
-    # --- GNN architecture (v5) ---
-    gnn_hidden_dim:   int   = 128
-    gnn_layers:       int   = 4
+    # --- GNN architecture (v6) ---
+    gnn_hidden_dim:   int   = 256
+    gnn_layers:       int   = 6
     gnn_heads:        int   = 8
     gnn_dropout:      float = 0.2
     use_edge_attr:    bool  = True
-    gnn_edge_emb_dim: int   = 32
+    gnn_edge_emb_dim: int   = 64
     # JK connections (Phase 1-A1, 2026-05-14)
     gnn_use_jk:       bool  = True
     gnn_jk_mode:      str   = 'attention'
@@ -292,11 +292,11 @@ class TrainConfig:
                 "(three-phase architecture requires layers 1+2 for Phase 1, "
                 "layer 3 for Phase 2 CONTROL_FLOW, layer 4 for Phase 3 CONTAINS)."
             )
-        if self.gnn_layers > 4:
+        if self.gnn_layers > 6:
             logger.warning(
-                f"gnn_layers={self.gnn_layers} is experimental. "
-                "Only gnn_layers=4 is validated for v5.x. "
-                "Extra layers beyond 4 receive Phase 1 (structural) edge masking by default."
+                f"gnn_layers={self.gnn_layers} is non-standard. "
+                "v6 uses gnn_layers=6 (2 per phase). "
+                "Extra layers beyond 6 receive Phase 1 (structural) edge masking by default."
             )
         if self.gradient_accumulation_steps < 1:
             raise ValueError(

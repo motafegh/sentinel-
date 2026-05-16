@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-reextract_graphs.py — Parallel re-extraction of all graph .pt files (v5.1 Phase 1).
+reextract_graphs.py — Parallel re-extraction of all graph .pt files (v6 Phase 5).
 
-After v5.1 Phase 0 fixes (_select_contract interface bug, CFG failure counter),
-this script re-extracts every graph in multilabel_index.csv using
-multiprocessing.Pool (one worker per CPU), overwriting existing .pt files.
+Re-extracts every graph in multilabel_index_deduped.csv (44,420 contracts) using
+multiprocessing.Pool, overwriting existing .pt files with v4 feature schema:
+- uses_block_globals replaces pure (feat[2])
+- loc log-normalized (feat[6])
+- return_ignored correctly computed (feat[7])
+- Transfer/Send counted in ext_calls + CFG typing (feat[11])
 Token .pt files and the CSV are left untouched.
 
 Architecture
@@ -67,7 +70,7 @@ SOURCE_DIRS = [
     PROJECT_ROOT / "ml" / "data" / "augmented",
 ]
 
-DEFAULT_CSV        = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index.csv"
+DEFAULT_CSV        = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index_deduped.csv"
 DEFAULT_GRAPHS     = PROJECT_ROOT / "ml" / "data" / "graphs"
 DEFAULT_CHECKPOINT = DEFAULT_GRAPHS / "reextract_checkpoint.json"
 CHECKPOINT_EVERY   = 1000   # flush checkpoint to disk every N completions
