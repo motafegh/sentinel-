@@ -323,13 +323,51 @@ def _compute_external_call_count(func: Any) -> float:
     """
     log1p(count) / log1p(20), clamped [0, 1].
     1 call → 0.23,  5 calls → 0.60,  20 calls → 1.0.
+
+    Counts HighLevelCall, LowLevelCall, Transfer, and Send so that
+    ETH-transfer loops (DoS pattern) produce a non-zero signal. Prior to
+    this fix, `payable(addr).transfer(amount)` inside distribute() produced
+    ext_calls=0.0 because Slither classifies it as Transfer, not LowLevelCall.
     """
     try:
+        from slither.slithir.operations import Transfer, Send
         n  = len(list(getattr(func, "high_level_calls", None) or []))
         n += len(list(getattr(func, "low_level_calls",  None) or []))
+        # Count Transfer/Send ops in each node's IR
+        for node in (getattr(func, "nodes", None) or []):
+            for op in (getattr(node, "irs", None) or []):
+                if isinstance(op, (Transfer, Send)):
+                    n += 1
         return min(math.log1p(n) / math.log1p(20), 1.0)
     except Exception:
         return 0.0
+
+
+def _compute_uses_block_globals(func: Any) -> float:
+    """
+    1.0 if any IR op in this function reads block.timestamp, block.number,
+    block.difficulty, or block.basefee.
+    0.0 otherwise.
+
+    These are SolidityVariableComposed objects in Slither IR — they do NOT
+    appear in func.state_variables_read and therefore create no READS edge in
+    the graph. Without this direct feature, Timestamp contracts are completely
+    invisible to the GNN. This feature gives Timestamp and TOD a direct signal.
+    """
+    try:
+        _BLOCK_GLOBALS = {"timestamp", "number", "difficulty", "basefee", "prevrandao"}
+        for node in (getattr(func, "nodes", None) or []):
+            for op in (getattr(node, "irs", None) or []):
+                for rv in (getattr(op, "read", None) or []):
+                    if type(rv).__name__ == "SolidityVariableComposed":
+                        name = getattr(rv, "name", "") or ""
+                        # name is e.g. "block.timestamp" — split on '.'
+                        part = name.split(".")[-1].lower()
+                        if part in _BLOCK_GLOBALS:
+                            return 1.0
+    except Exception:
+        pass
+    return 0.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -353,15 +391,17 @@ def _cfg_node_type(slither_node: Any) -> int:
     """
     try:
         from slither.core.cfg.node import NodeType as SNT
-        from slither.slithir.operations import LowLevelCall, HighLevelCall
+        from slither.slithir.operations import LowLevelCall, HighLevelCall, Transfer, Send
         from slither.core.variables.state_variable import StateVariable
 
         check_types = {SNT.IF, SNT.IFLOOP, SNT.STARTLOOP, SNT.ENDLOOP, SNT.THROW}
 
         irs = list(getattr(slither_node, "irs", None) or [])
 
-        # Priority 1: any IR op is an external call
-        if any(isinstance(op, (LowLevelCall, HighLevelCall)) for op in irs):
+        # Priority 1: any IR op is an external call (including Transfer/Send which
+        # Slither classifies separately from LowLevelCall/HighLevelCall but are still
+        # ETH-sending operations — critical for DoS loop detection).
+        if any(isinstance(op, (LowLevelCall, HighLevelCall, Transfer, Send)) for op in irs):
             return NODE_TYPES["CFG_NODE_CALL"]
 
         # Priority 2: node writes a state variable.
@@ -520,23 +560,26 @@ def _build_control_flow_edges(
 
 def _build_node_features(obj: Any, type_id: int) -> list:
     """
-    Compute the 12-dimensional feature vector (v2 schema) for one AST node.
+    Compute the 12-dimensional feature vector (v4 schema) for one AST node.
 
     Returns list[float] of exactly NODE_FEATURE_DIM (12) elements.
 
-    Feature layout:
-      [0]  type_id             — float(NODE_TYPES[kind])
-      [1]  visibility          — VISIBILITY_MAP ordinal 0-2
-      [2]  pure                — 1.0 if Function.pure
-      [3]  view                — 1.0 if Function.view
-      [4]  payable             — 1.0 if Function.payable
-      [5]  complexity          — float(len(func.nodes)) CFG block count
-      [6]  loc                 — float(len(source_mapping.lines))
-      [7]  return_ignored      — 0.0/1.0/-1.0 sentinel
-      [8]  call_target_typed   — 0.0/1.0/-1.0 sentinel
-      [9]  in_unchecked        — 1.0 if body contains unchecked{} block
-      [10] has_loop            — 1.0 if function contains a loop
-      [11] external_call_count — log-normalized count of external calls
+    Feature layout (v4 schema — changes from v2/v3 marked with *):
+      [0]  type_id              — float(NODE_TYPES[kind]) / 12.0, normalised [0,1]
+      [1]  visibility           — VISIBILITY_MAP ordinal 0-2
+      [2]  uses_block_globals * — 1.0 if func reads block.timestamp/number/etc.
+                                  (replaces `pure` which was rarely informative)
+      [3]  view                 — 1.0 if Function.view
+      [4]  payable              — 1.0 if Function.payable
+      [5]  complexity           — float(len(func.nodes)) CFG block count
+      [6]  loc *                — log1p(lines) / log1p(1000), normalised [0,1]
+                                  (was raw line count; CONTRACT node hit 2538 raw,
+                                   crushing binary features in dot products)
+      [7]  return_ignored       — 0.0/1.0/-1.0 sentinel
+      [8]  call_target_typed    — 0.0/1.0/-1.0 sentinel
+      [9]  in_unchecked         — 1.0 if body contains unchecked{} block
+      [10] has_loop             — 1.0 if function contains a loop
+      [11] external_call_count  — log-normalized count (now includes Transfer/Send)
 
     Non-Function nodes receive 0.0 for features [2:] except:
       - call_target_typed [8] defaults to 1.0 (safe: not applicable)
@@ -547,13 +590,19 @@ def _build_node_features(obj: Any, type_id: int) -> list:
     visibility = float(VISIBILITY_MAP.get(
         str(getattr(obj, "visibility", "public")), 0
     ))
-    loc = 0.0
+
+    # loc: normalise with log1p to prevent scale dominance.
+    # Raw values hit 2538 vs all other features in [0,1] — this caused the
+    # CONTRACT node (avg loc=133) to overwhelm other features in early dot products.
+    loc_raw = 0.0
     sm = getattr(obj, "source_mapping", None)
     if sm is not None and getattr(sm, "lines", None):
-        loc = float(len(sm.lines))
+        loc_raw = float(len(sm.lines))
+    loc = min(math.log1p(loc_raw) / math.log1p(1000), 1.0)
 
     # Defaults for non-Function nodes
-    pure = view = payable = 0.0
+    uses_block_globals = 0.0
+    view = payable = 0.0
     complexity = 0.0
     return_ignored     = 0.0
     call_target_typed  = 1.0   # safe default: "not applicable"
@@ -562,7 +611,7 @@ def _build_node_features(obj: Any, type_id: int) -> list:
     external_call_count = 0.0
 
     if _is_function:
-        pure    = 1.0 if getattr(obj, "pure",    False) else 0.0
+        uses_block_globals = _compute_uses_block_globals(obj)
         view    = 1.0 if getattr(obj, "view",    False) else 0.0
         payable = 1.0 if getattr(obj, "payable", False) else 0.0
         try:
@@ -590,11 +639,11 @@ def _build_node_features(obj: Any, type_id: int) -> list:
     return [
         float(type_id) / _MAX_TYPE_ID,  # normalised to [0,1]
         visibility,
-        pure,
+        uses_block_globals,   # [2] was pure — now block.timestamp/number signal
         view,
         payable,
         complexity,
-        loc,
+        loc,                  # [6] log-normalised (was raw line count)
         return_ignored,
         call_target_typed,
         in_unchecked,
