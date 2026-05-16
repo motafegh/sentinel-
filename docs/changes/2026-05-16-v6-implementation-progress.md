@@ -1,5 +1,5 @@
 # SENTINEL v6 — Implementation Progress Record
-**Date:** 2026-05-16 (evening session)
+**Date:** 2026-05-16 (updated across two sessions)
 **Plan reference:** `docs/changes/2026-05-16-v6-complete-plan.md`
 
 This document tracks what has actually been implemented vs what the plan prescribes,
@@ -11,12 +11,12 @@ notes deviations and their rationale, and lists exact next commands to run.
 
 | Phase | Description | Code Status | Data Status |
 |---|---|---|---|
-| 0 — Feature schema v4 | All 4 graph feature bugs fixed | **COMMITTED** (commits `bef1f2a`, `310e738`) | **NOT YET RUN** — re-extraction pending |
-| 1 — Windowed tokenization | Model + dataset + tokenizer script | **DONE, uncommitted** | **NOT YET RUN** — retokenize pending |
-| 2 — GNN arch (256 dim, 6 layers) | hidden_dim, depth, edge_emb, classifier | **NOT STARTED** | — |
-| 3 — Training config (ASL, 100ep) | Loss fn, epochs, LR groups | **NOT STARTED** | — |
+| 0 — Feature schema v4 | All 4 graph feature bugs fixed | **COMMITTED** (commits `bef1f2a`, `310e738`) | **IN PROGRESS** — re-extraction running (PID 187896, ~23% @ 22:37) |
+| 1 — Windowed tokenization | Model + dataset + tokenizer script | **COMMITTED** (commit `b38c9da`) | **NOT YET RUN** — retokenize pending |
+| 2 — GNN arch (256 dim, 6 layers) | hidden_dim, depth, edge_emb, classifier, WindowAttentionPooler | **COMMITTED** (commit `2bb0e16`) | — |
+| 3 — Training config (ASL, 100ep) | AsymmetricLoss, epochs=100, patience=30, LoRA LR 0.3× | **COMMITTED** (commit `64dfc5a`) | — |
 | 4 — Data augmentation (DoS, Timestamp) | Clean single-label contracts | **NOT STARTED** | — |
-| 5 — Re-extraction + cache rebuild | Run scripts after phase 0 + 1 code | **NOT STARTED** | — |
+| 5 — Re-extraction + cache rebuild | Run scripts after phase 0 + 1 code | **IN PROGRESS** | — |
 | 6 — v6.0 training | Launch train.py with all fixes | **NOT STARTED** | — |
 
 ---
@@ -122,6 +122,53 @@ correctly masks out padding windows so they contribute zero to cross-attention.
 
 ---
 
+## Phase 2 — GNN Architecture: COMMITTED (2bb0e16)
+
+### Changes
+
+| File | Change |
+|---|---|
+| `gnn_encoder.py` | hidden_dim 128→256, edge_emb_dim 32→64, num_layers 4→6 defaults; conv3b (2nd CF hop), conv4b (2nd RC hop); `_head_dim` 16→32 |
+| `sentinel_model.py` | gnn_hidden_dim/num_layers/edge_emb defaults updated; classifier `Linear(384,10)` → `Sequential[384→192→ReLU→Dropout→10]`; added `self.window_pooler` |
+| `transformer_encoder.py` | `WindowAttentionPooler` class added |
+| `trainer.py` | MODEL_VERSION "v5.2"→"v6.0"; gnn_hidden_dim/gnn_layers/gnn_edge_emb_dim defaults; `gnn_layers > 6` warning (was `> 4`) |
+| `train.py` | `--gnn-hidden-dim` 128→256, `--gnn-layers` 4→6, `--gnn-edge-emb-dim` 32→64 |
+
+### WindowAttentionPooler (deviation from Phase 1)
+Phase 1 left transformer eye as `token_embs[:, 0, :]` (CLS of window 0 only). Phase 2 implemented the WindowAttentionPooler:
+- Extracts CLS from each window (position 0, 512, 1024, 1536 for max_windows=4)
+- Single linear layer `[768→1]` produces per-window attention score
+- Softmax over W windows → weighted sum → [B, 768]
+- Single-window fallback: returns CLS directly (no allocation overhead)
+
+### Why conv3b / conv4b (second hops)
+v5.x only had 1 CF hop (conv3): CALL node → TMP variable node was the longest CFG path reachable.
+With conv3b (2nd CF hop): CALL node → TMP → WRITE node, which is the CEI pattern (Check-Effect-Interaction).
+conv4b (2nd RC hop): after two reverse-CONTAINS steps, the contract-level node carries phase-3 signal.
+
+---
+
+## Phase 3 — Training Config: COMMITTED (64dfc5a)
+
+### Changes
+
+| Item | Before | After |
+|---|---|---|
+| `losses.py` | did not exist | `AsymmetricLoss(gamma_neg, gamma_pos, clip)` — AMP-safe |
+| `trainer.py` loss branches | bce / focal | bce / focal / **asl** |
+| `trainer.py` epochs default | 60 | 100 |
+| `trainer.py` patience default | 10 | 30 |
+| `trainer.py` lora_lr_multiplier | 0.5 | 0.3 |
+| `train.py` --loss-fn choices | bce, focal | bce, focal, **asl** |
+| `train.py` --asl-* flags | absent | `--asl-gamma-neg`, `--asl-gamma-pos`, `--asl-clip` |
+
+### ASL rationale
+BCE treats all 440K (sample, class) cells equally. 85%+ are negative. ASL with gamma_neg=4
+gives easy negatives (p≈0 but y=0) near-zero gradient weight, freeing capacity for the 15%
+positive cells — especially the severely data-starved DoS class (377 train samples out of 31,092).
+
+---
+
 ## Other Fixes Applied This Session
 
 ### `ml/scripts/reextract_graphs.py`
@@ -135,32 +182,24 @@ correctly masks out padding windows so they contribute zero to cross-attention.
 
 ## Exact Next Commands (Sequential Order)
 
-Everything below must run in order. Each step depends on the previous.
+Steps 1–7 complete. Steps 2–3 (re-extraction) currently running.
 
-### Step 1: Commit Phase 1 code
-```bash
-cd /home/motafeq/projects/sentinel
-git add ml/src/models/transformer_encoder.py \
-        ml/src/models/sentinel_model.py \
-        ml/src/datasets/dual_path_dataset.py \
-        ml/scripts/train.py \
-        ml/scripts/retokenize_windowed.py \
-        ml/scripts/reextract_graphs.py \
-        ml/scripts/validate_graph_dataset.py
-git commit -m "feat(v6): windowed tokenization + Phase 1 model/dataset/script changes"
-```
+| Step | Status |
+|---|---|
+| 1. Commit Phase 1 (b38c9da) | ✅ DONE |
+| 2. Re-extract graphs (PID 187896) | ⏳ RUNNING — ~23% @ 22:37 (est. ~45 min remaining) |
+| 3. Validate graphs | ⏳ pending re-extraction |
+| 4. Re-tokenize windowed | ⏳ pending validation |
+| 5. Rebuild cache | ⏳ pending retokenization |
+| 6. Commit Phase 2 (2bb0e16) | ✅ DONE |
+| 7. Commit Phase 3 (64dfc5a) | ✅ DONE |
+| 8. Launch v6 training | ⏳ pending cache |
 
-### Step 2: Re-extract graphs (v4 schema, ~4–6 hours, 16 workers)
+---
+
+### Step 3: Validate re-extracted graphs (run after PID 187896 exits)
 ```bash
 source ml/.venv/bin/activate
-PYTHONPATH=. TRANSFORMERS_OFFLINE=1 python ml/scripts/reextract_graphs.py \
-    --workers 16
-```
-Expected: 44,420 `.pt` files rewritten with FEATURE_SCHEMA_VERSION="v4",
-feat[2]=uses_block_globals, feat[6]=log-normalized loc, return_ignored correct.
-
-### Step 3: Validate re-extracted graphs
-```bash
 PYTHONPATH=. python ml/scripts/validate_graph_dataset.py \
     --check-dim 12 \
     --check-edge-types 8 \
@@ -190,18 +229,8 @@ PYTHONPATH=. python ml/scripts/create_cache.py \
     --workers 8
 ```
 
-### Step 6: Phase 2 — Architecture changes (code)
-Before training, implement in separate PR/commit:
-- `gnn_encoder.py`: hidden_dim 128→256, 6 layers (2 per phase), edge_emb 32→64
-- `sentinel_model.py`: classifier `[384→192→10]` hidden layer, WindowAttentionPooler for transformer eye
-- `transformer_encoder.py`: WindowAttentionPooler class, LoRA r=16→32 (optional — adds VRAM)
-- `trainer.py`: MODEL_VERSION="v6.0", update param group sizes
-
-### Step 7: Phase 3 — Training config changes (code)
-- `trainer.py`: implement AsymmetricLoss (or add as `ml/src/training/losses.py`)
-- `train.py`: add `--loss-fn asl`, `--asl-gamma-neg`, epochs=100, patience=30 flags
-
 ### Step 8: Launch v6 training
+All defaults are now baked in — these flags just override for clarity.
 ```bash
 source ml/.venv/bin/activate
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
@@ -209,19 +238,13 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
     --experiment-name sentinel-v6 \
     --tokens-dir ml/data/tokens_windowed \
     --cache-path ml/data/cached_dataset_windowed.pkl \
-    --gnn-hidden-dim 256 \
-    --gnn-layers 6 \
-    --gnn-edge-emb-dim 64 \
-    --lora-r 32 \
-    --lora-alpha 64 \
-    --lora-lr-multiplier 0.3 \
     --loss-fn asl \
-    --epochs 100 \
-    --early-stop-patience 30 \
     --gradient-accumulation-steps 8 \
-    --label-smoothing 0.05 \
-    --eval-threshold 0.35
+    --label-smoothing 0.05
 ```
+All other v6 values (gnn_hidden_dim=256, gnn_layers=6, epochs=100, patience=30,
+lora_lr_multiplier=0.3, asl_gamma_neg=4.0, asl_gamma_pos=1.0, asl_clip=0.05)
+are now the TrainConfig defaults.
 
 ---
 
