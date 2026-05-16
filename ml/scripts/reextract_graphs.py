@@ -31,7 +31,7 @@ USAGE
 
 AFTER THIS SCRIPT
 ─────────────────
-  python ml/scripts/validate_graph_dataset.py --check-dim 12 --check-edge-types 7
+  python ml/scripts/validate_graph_dataset.py --check-dim 12 --check-edge-types 8
   python ml/scripts/create_cache.py
 """
 
@@ -336,7 +336,7 @@ def main() -> None:
     gate_ok = ghost_pct < 1.0
     if gate_ok:
         logger.info(f"Gate PASS: ghost rate {ghost_pct:.1f}% < 1%")
-        logger.info("Next: python ml/scripts/validate_graph_dataset.py --check-dim 12 --check-edge-types 7")
+        logger.info("Next: python ml/scripts/validate_graph_dataset.py --check-dim 12 --check-edge-types 8")
         logger.info("Then: python ml/scripts/create_cache.py")
     else:
         # Issue 2: ghost .pt files ARE on disk — make it actionable

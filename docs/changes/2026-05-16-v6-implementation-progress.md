@@ -1,0 +1,259 @@
+# SENTINEL v6 — Implementation Progress Record
+**Date:** 2026-05-16 (evening session)
+**Plan reference:** `docs/changes/2026-05-16-v6-complete-plan.md`
+
+This document tracks what has actually been implemented vs what the plan prescribes,
+notes deviations and their rationale, and lists exact next commands to run.
+
+---
+
+## Status Summary
+
+| Phase | Description | Code Status | Data Status |
+|---|---|---|---|
+| 0 — Feature schema v4 | All 4 graph feature bugs fixed | **COMMITTED** (commits `bef1f2a`, `310e738`) | **NOT YET RUN** — re-extraction pending |
+| 1 — Windowed tokenization | Model + dataset + tokenizer script | **DONE, uncommitted** | **NOT YET RUN** — retokenize pending |
+| 2 — GNN arch (256 dim, 6 layers) | hidden_dim, depth, edge_emb, classifier | **NOT STARTED** | — |
+| 3 — Training config (ASL, 100ep) | Loss fn, epochs, LR groups | **NOT STARTED** | — |
+| 4 — Data augmentation (DoS, Timestamp) | Clean single-label contracts | **NOT STARTED** | — |
+| 5 — Re-extraction + cache rebuild | Run scripts after phase 0 + 1 code | **NOT STARTED** | — |
+| 6 — v6.0 training | Launch train.py with all fixes | **NOT STARTED** | — |
+
+---
+
+## Phase 0 — Feature Schema v4: COMPLETE
+
+All four feature bugs fixed and committed. The extractor now produces v4 graphs.
+
+### What changed in `ml/src/preprocessing/graph_extractor.py`
+
+| Bug | What was wrong | Fix |
+|---|---|---|
+| `return_ignored` always 0 | `op.lvalue is None` is never True — Slither always creates TupleVariable | Check if `id(lval)` appears in any subsequent `op.read` across all IR ops |
+| `Transfer`/`Send` invisible in ext_calls | Only `HighLevelCall`/`LowLevelCall` were counted | Added `Transfer, Send` to `_compute_external_call_count()` |
+| `Transfer`/`Send` typed as CFG_READ | Priority check only looked for HL/LL calls | Added `Transfer, Send` to `_cfg_node_type()` priority-1 check |
+| `block.timestamp` invisible | `SolidityVariableComposed` not in `state_variables_read` | New `_compute_uses_block_globals()` scans raw IR ops for `SolidityVariableComposed` |
+| `loc` scale dominance | Raw loc=133+ vs binary features [0,1] — 2538× scale | `log1p(loc) / log1p(1000)`, range now [0, 1] |
+| `pure` feature low-value | `pure=1` only for non-vulnerable functions — near-zero gradient | Replaced with `uses_block_globals` at feat[2] |
+
+### What changed in `ml/src/preprocessing/graph_schema.py`
+
+- `FEATURE_SCHEMA_VERSION` bumped from `"v3"` to `"v4"`
+- `FEATURE_NAMES[2]` updated: `"pure"` → `"uses_block_globals"`
+- Schema history and feature layout docs updated
+
+### v4 feature vector (12 dimensions)
+
+```
+[0]  type_id / 12.0          — node type (0=CONTRACT … 12=CFG_NODE_RETURN)
+[1]  visibility               — 0/1 (public=1)
+[2]  uses_block_globals  ★   — 1.0 if func reads block.timestamp/number/etc. (was pure)
+[3]  view                     — 0/1
+[4]  payable                  — 0/1
+[5]  complexity               — cyclomatic complexity, normalized
+[6]  loc                 ★   — log1p(lines) / log1p(1000), range [0,1] (was raw count)
+[7]  return_ignored      ★   — 1.0 if call return value not used in any subsequent op (was always 0)
+[8]  call_target_typed        — 0/1 (typed interface vs dynamic call)
+[9]  in_unchecked             — 0/1 (inside unchecked block)
+[10] has_loop                 — 0/1
+[11] external_call_count ★   — log1p(count)/log1p(20), now includes Transfer/Send (was 0 for ETH loops)
+```
+★ = changed from v3
+
+---
+
+## Phase 1 — Windowed Tokenization: CODE DONE, NOT COMMITTED
+
+### Files modified (not yet committed)
+
+- `ml/src/models/transformer_encoder.py` — `forward()` handles `[B, L]` and `[B, W, L]`
+- `ml/src/models/sentinel_model.py` — `forward()` builds `flat_mask = [B, W*L]` for fusion
+- `ml/src/datasets/dual_path_dataset.py` — shape validation accepts `[max_windows, 512]`
+- `ml/scripts/train.py` — `--cache-path` flag added
+
+### New files (not yet committed)
+
+- `ml/scripts/retokenize_windowed.py` — windowed tokenizer producing `[max_windows, 512]` output
+
+### How windowed mode works
+
+```
+Contract source code
+        ↓
+HuggingFace tokenizer (return_overflowing_tokens=True, stride=256)
+        ↓
+W raw windows, W ∈ [1, very large]
+        ↓
+_select_windows(): if W > max_windows, linspace sub-sample to cover start/middle/end
+        ↓
+Pad to exactly max_windows with zero-windows (attention_mask=0 on padding windows)
+        ↓
+Save: input_ids [max_windows, 512], attention_mask [max_windows, 512]
+
+In model forward():
+    TransformerEncoder: [B, max_windows, 512] → reshape [B*max_windows, 512] → CodeBERT
+                        → [B*max_windows, 512, 768] → reshape [B, max_windows*512, 768]
+    SentinelModel:      flat_mask = attention_mask.view(B, max_windows*512) for CrossAttentionFusion
+                        transformer_eye = token_embs[:, 0, :] — CLS of window 0 (contract header)
+```
+
+### Why outputs `[max_windows, 512]` not `[W, 512]` (bug fix applied)
+
+Variable W per contract would crash `torch.stack()` in the DataLoader collate function.
+All contracts must have the same tensor shape for batching. The fix: always pad to `max_windows`
+with zero-attention-mask windows. CrossAttentionFusion's `key_padding_mask` (from `attention_mask==0`)
+correctly masks out padding windows so they contribute zero to cross-attention.
+
+### Deviations from plan
+
+| Plan says | What we implemented | Rationale |
+|---|---|---|
+| TransformerEncoder returns `[B, 768]` after WindowAttentionPooler | Returns `[B, W*L, 768]` — all tokens | More fine-grained: CrossAttentionFusion can attend to specific tokens in any window |
+| `max_windows=8` | `max_windows=4` | 8GB VRAM limit: 4×512×B=8 = 16,384 positions; 8× would push VRAM limits |
+| WindowAttentionPooler for transformer eye | Transformer eye uses CLS of window 0 only | Window 0 CLS covers pragma + contract opening; full WindowAttentionPooler is Phase 2 work |
+| Token files overwrite `ml/data/tokens/` | Written to `ml/data/tokens_windowed/` | Keeps old single-window tokens available as fallback; cleaner separation |
+
+### Still missing from Phase 1 (deferred to Phase 2 code)
+
+- **WindowAttentionPooler for transformer eye**: The plan described pooling W window-CLS embeddings
+  via learned attention. Currently transformer eye = CLS of window 0 only. Contracts where the
+  relevant vulnerability appears in window 2+ will have weakened transformer eye signal. This
+  should be added as part of Phase 2 architecture work.
+
+---
+
+## Other Fixes Applied This Session
+
+### `ml/scripts/reextract_graphs.py`
+- Docstring `--check-edge-types 7` corrected to `--check-edge-types 8` (NUM_EDGE_TYPES=8, not 7)
+
+### `ml/scripts/validate_graph_dataset.py`
+- Usage example updated: `--check-edge-types 8` (was 7), `--check-dim 12` (correct)
+- Comment updated: "use 8 for v5/v6 schema — REVERSE_CONTAINS=7 added"
+
+---
+
+## Exact Next Commands (Sequential Order)
+
+Everything below must run in order. Each step depends on the previous.
+
+### Step 1: Commit Phase 1 code
+```bash
+cd /home/motafeq/projects/sentinel
+git add ml/src/models/transformer_encoder.py \
+        ml/src/models/sentinel_model.py \
+        ml/src/datasets/dual_path_dataset.py \
+        ml/scripts/train.py \
+        ml/scripts/retokenize_windowed.py \
+        ml/scripts/reextract_graphs.py \
+        ml/scripts/validate_graph_dataset.py
+git commit -m "feat(v6): windowed tokenization + Phase 1 model/dataset/script changes"
+```
+
+### Step 2: Re-extract graphs (v4 schema, ~4–6 hours, 16 workers)
+```bash
+source ml/.venv/bin/activate
+PYTHONPATH=. TRANSFORMERS_OFFLINE=1 python ml/scripts/reextract_graphs.py \
+    --workers 16
+```
+Expected: 44,420 `.pt` files rewritten with FEATURE_SCHEMA_VERSION="v4",
+feat[2]=uses_block_globals, feat[6]=log-normalized loc, return_ignored correct.
+
+### Step 3: Validate re-extracted graphs
+```bash
+PYTHONPATH=. python ml/scripts/validate_graph_dataset.py \
+    --check-dim 12 \
+    --check-edge-types 8 \
+    --check-contains-edges \
+    --check-control-flow
+```
+Gate: 0 validation errors, ghost graphs ≤ 100 (0.2%).
+
+### Step 4: Re-tokenize with windowed tokenizer (~1–2 hours)
+```bash
+PYTHONPATH=. python ml/scripts/retokenize_windowed.py \
+    --input ml/data/processed/multilabel_index_deduped.csv \
+    --output ml/data/tokens_windowed \
+    --max-windows 4 \
+    --workers 11
+```
+Expected: 44,420 `.pt` files in `ml/data/tokens_windowed/`,
+each with shape `input_ids=[4, 512]`, `attention_mask=[4, 512]`.
+
+### Step 5: Rebuild cache for windowed tokens
+```bash
+PYTHONPATH=. python ml/scripts/create_cache.py \
+    --graphs-dir ml/data/graphs \
+    --tokens-dir ml/data/tokens_windowed \
+    --label-csv ml/data/processed/multilabel_index_deduped.csv \
+    --output ml/data/cached_dataset_windowed.pkl \
+    --workers 8
+```
+
+### Step 6: Phase 2 — Architecture changes (code)
+Before training, implement in separate PR/commit:
+- `gnn_encoder.py`: hidden_dim 128→256, 6 layers (2 per phase), edge_emb 32→64
+- `sentinel_model.py`: classifier `[384→192→10]` hidden layer, WindowAttentionPooler for transformer eye
+- `transformer_encoder.py`: WindowAttentionPooler class, LoRA r=16→32 (optional — adds VRAM)
+- `trainer.py`: MODEL_VERSION="v6.0", update param group sizes
+
+### Step 7: Phase 3 — Training config changes (code)
+- `trainer.py`: implement AsymmetricLoss (or add as `ml/src/training/losses.py`)
+- `train.py`: add `--loss-fn asl`, `--asl-gamma-neg`, epochs=100, patience=30 flags
+
+### Step 8: Launch v6 training
+```bash
+source ml/.venv/bin/activate
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
+    --run-name v6.0-20260517 \
+    --experiment-name sentinel-v6 \
+    --tokens-dir ml/data/tokens_windowed \
+    --cache-path ml/data/cached_dataset_windowed.pkl \
+    --gnn-hidden-dim 256 \
+    --gnn-layers 6 \
+    --gnn-edge-emb-dim 64 \
+    --lora-r 32 \
+    --lora-alpha 64 \
+    --lora-lr-multiplier 0.3 \
+    --loss-fn asl \
+    --epochs 100 \
+    --early-stop-patience 30 \
+    --gradient-accumulation-steps 8 \
+    --label-smoothing 0.05 \
+    --eval-threshold 0.35
+```
+
+---
+
+## Not-in-Plan Items Found
+
+| Item | Where | Action |
+|---|---|---|
+| `--check-edge-types 7` stale (should be 8) | `reextract_graphs.py`, `validate_graph_dataset.py` | Fixed in this session |
+| `--cache-path` CLI flag missing from `train.py` | `train.py` | Added in this session |
+| Batch collation crash on variable W | `retokenize_windowed.py` | Fixed: always pad to `max_windows` |
+| Windowed tokenizer writes to `tokens_windowed/` not `tokens/` | Design decision | Documented above |
+| `FEATURE_SCHEMA_VERSION="v3"` in MEMORY.md | Memory file | Updated below |
+| v5.3 "RUNNING" in MEMORY.md | Memory file | Updated below (KILLED epoch 47) |
+
+---
+
+## v6 Targets vs v5.2 Baselines
+
+| Class | v5.2 Tuned F1 | v6.0 Target | Primary fix driving improvement |
+|---|---|---|---|
+| IntegerUO | 0.732 | ≥ 0.75 | Windowed tokens + hidden_dim=256 |
+| GasException | 0.407 | ≥ 0.45 | 6-layer GNN + CF signal depth |
+| Reentrancy | 0.322 | ≥ 0.40 | ASL + augmentation + 2nd CF layer |
+| MishandledException | 0.342 | ≥ 0.50 | return_ignored fix (was always 0) |
+| UnusedReturn | 0.238 | ≥ 0.45 | return_ignored fix (was always 0) |
+| Timestamp | 0.174 | ≥ 0.30 | uses_block_globals + windowed tokens |
+| DenialOfService | 0.329 | ≥ 0.35 | Transfer/Send fix + augmentation |
+| CallToUnknown | 0.284 | ≥ 0.35 | Windowed tokenization |
+| TOD | 0.283 | ≥ 0.30 | uses_block_globals + windowed |
+| ExternalBug | 0.262 | ≥ 0.30 | Deeper GNN + cleaner data |
+| **Macro avg** | **0.3422** | **≥ 0.43** | All fixes combined |
+
+**Behavioral gates (primary pass/fail):**
+- Detection rate ≥ 80% (v5.2: 36%)
+- Safe specificity ≥ 80% (v5.2: 33%)

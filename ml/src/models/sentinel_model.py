@@ -22,8 +22,9 @@ function nodes via reversed CONTAINS edges (Phase 3).
     gnn_eye_proj  Linear(256,128)+ReLU+Dropout → [B, 128]
 
   Transformer eye (semantic opinion):
-    token_embs[:, 0, :]   → CLS token   [B, 768]
+    token_embs[:, 0, :]   → CLS of window 0  [B, 768]
     transformer_eye_proj  Linear(768,128)+ReLU+Dropout → [B, 128]
+    (multi-window: position 0 is still window 0 CLS — contract header/pragma)
 
   Fused eye       (joint structural+semantic opinion):
     CrossAttentionFusion(node_embs, token_embs) → [B, 128]
@@ -204,8 +205,8 @@ class SentinelModel(nn.Module):
     def forward(
         self,
         graphs:         Batch,                   # PyG Batch — batched contract graphs
-        input_ids:      torch.Tensor,            # [B, 512]
-        attention_mask: torch.Tensor,            # [B, 512] — 1=real token, 0=PAD
+        input_ids:      torch.Tensor,            # [B, L] or [B, W, L]
+        attention_mask: torch.Tensor,            # [B, L] or [B, W, L]
         return_aux:     bool = False,            # True during training only
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, Dict[str, torch.Tensor]]]:
         """
@@ -213,8 +214,8 @@ class SentinelModel(nn.Module):
 
         Args:
             graphs:         Batched PyG graph (from DataLoader via Batch.from_data_list).
-            input_ids:      CodeBERT token IDs     [B, 512].
-            attention_mask: CodeBERT attention mask [B, 512].
+            input_ids:      CodeBERT token IDs     [B, L] or [B, W, L].
+            attention_mask: CodeBERT attention mask [B, L] or [B, W, L].
             return_aux:     When True, also return per-eye auxiliary logits for
                             the auxiliary loss computation in trainer.py.
                             Always False at inference — zero overhead.
@@ -227,6 +228,15 @@ class SentinelModel(nn.Module):
                 (logits [B, num_classes],
                  {"gnn": [B, C], "transformer": [B, C], "fused": [B, C]})
         """
+        # ── Windowed token reshape (before GNN — builds flat_mask for fusion) ─
+        # Multi-window input [B, W, L]: flatten mask to [B, W*L] for CrossAttentionFusion.
+        # Single-window [B, L]: pass through unchanged.
+        if input_ids.dim() == 3:
+            B_tok, W, L = input_ids.shape
+            flat_mask = attention_mask.view(B_tok, W * L)   # [B, W*L] for fusion
+        else:
+            flat_mask = attention_mask                       # [B, L]
+
         # ── GNN path: node embeddings ─────────────────────────────────────
         edge_attr = getattr(graphs, "edge_attr", None) if self.use_edge_attr else None
         node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
@@ -287,20 +297,20 @@ class SentinelModel(nn.Module):
 
         # ── Transformer path ──────────────────────────────────────────────
         token_embs = self.transformer(input_ids, attention_mask)
-        # token_embs: [B, 512, 768]
+        # token_embs: [B, L, 768] or [B, W*L, 768]
 
         # ── Transformer eye: CLS token → project ─────────────────────────
-        # CLS token at position 0 is CodeBERT's hierarchical sequence summary
-        # (12-layer bidirectional self-attention over all 512 positions).
-        # It is order-aware and distinct from the masked-mean pool inside fusion.
+        # CLS token is always at position 0 (start of window 0).
+        # In multi-window mode this is still the CLS of the first 512-token window,
+        # which encodes the contract header (pragma, imports, main contract opening).
         transformer_eye = self.transformer_eye_proj(
             token_embs[:, 0, :]   # [B, 768]
         )                          # [B, eye_dim]
 
         # ── Fused eye: cross-attention fusion ────────────────────────────
-        # Encodes joint evidence that neither modality holds alone:
-        # "which structural patterns co-occur with which token sequences?"
-        fused_eye = self.fusion(node_embs, batch, token_embs, attention_mask)
+        # flat_mask is [B, W*L] in multi-window mode so CrossAttentionFusion's
+        # key_padding_mask correctly marks padding positions across all windows.
+        fused_eye = self.fusion(node_embs, batch, token_embs, flat_mask)
         # fused_eye: [B, eye_dim]
 
         # ── Main classifier ───────────────────────────────────────────────
