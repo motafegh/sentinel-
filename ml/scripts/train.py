@@ -141,12 +141,12 @@ def parse_args() -> argparse.Namespace:
                        "prevent Reentrancy collapse from 2.82× FN penalty on a 3500-sample class."
                    ))
 
-    # --- GNN architecture (v5.2) ---
-    p.add_argument("--gnn-hidden-dim",   type=int,   default=128)
-    p.add_argument("--gnn-layers",       type=int,   default=4)
+    # --- GNN architecture (v6) ---
+    p.add_argument("--gnn-hidden-dim",   type=int,   default=256)
+    p.add_argument("--gnn-layers",       type=int,   default=6)
     p.add_argument("--gnn-heads",        type=int,   default=8)
     p.add_argument("--gnn-dropout",      type=float, default=0.2)
-    p.add_argument("--gnn-edge-emb-dim", type=int,   default=32)
+    p.add_argument("--gnn-edge-emb-dim", type=int,   default=64)
     p.add_argument("--no-edge-attr",     dest="use_edge_attr", action="store_false", default=True)
     p.add_argument("--no-jk",            dest="gnn_use_jk",   action="store_false", default=True,
                    help="Disable JK attention aggregation (v5.2 default: enabled)")

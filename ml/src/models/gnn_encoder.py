@@ -1,109 +1,66 @@
 """
-gnn_encoder.py — GNN Encoder for SENTINEL (v5 — three-phase architecture)
+gnn_encoder.py — GNN Encoder for SENTINEL (v6 — three-phase, 6-layer architecture)
 
-THREE-PHASE DESIGN
-──────────────────
+THREE-PHASE DESIGN (v6: 2 layers per phase = 6 total)
+──────────────────────────────────────────────────────
 Phase 1 (Layers 1+2): Structural aggregation
   Edges: types 0–5 (CALLS, READS, WRITES, EMITS, INHERITS, CONTAINS)
   add_self_loops=True
   Layer 1: NODE_FEATURE_DIM→hidden_dim (concat 8 heads)
-  Layer 2: hidden_dim→hidden_dim (concat 8 heads) + residual from Layer 1
+  Layer 2: hidden_dim→hidden_dim (concat 8 heads) + residual
   Purpose: propagate function-level properties DOWN into CFG_NODE children
   via CONTAINS edges, and aggregate inter-function structural context.
 
-Phase 2 (Layer 3): CFG-directed aggregation
+Phase 2 (Layers 3+4): CFG-directed aggregation
   Edges: type 6 (CONTROL_FLOW only)
   add_self_loops=False  ← CRITICAL — self-loops cancel directional signal
-  heads=1, concat=False → output stays hidden_dim (128)
+  heads=1, concat=False → output stays hidden_dim
   Purpose: enrich CFG_NODE embeddings with execution-order information.
-  One message-passing hop: sufficient for diameter-2 CFGs (require→call→write).
-  Known limitation: diameter-4+ CFGs (complex branching) may need 2 hops.
-  v5.1 target: gnn_layers=5 for 2 CONTROL_FLOW hops.
+  Layer 3: first CF hop (CALL→adjacent nodes)
+  Layer 4: second CF hop (reaches WRITE 2 hops from CALL — CEI/CEA pattern)
+  Why 2 hops: typical reentrancy CFG: ENTRY→CHECK→CALL→TMP→WRITE→RETURN
+    1 hop: CALL sends to TMP only; 2 hops: CALL signal reaches WRITE.
+    This is the "call before write" vs "write before call" signal for CEI detection.
 
-Phase 3 (Layer 4): Reverse-CONTAINS aggregation
+Phase 3 (Layers 5+6): Reverse-CONTAINS aggregation
   Edges: type 7 REVERSE_CONTAINS (runtime-only, CFG_NODE → FUNCTION direction)
   add_self_loops=False
-  heads=1, concat=False → output stays hidden_dim (128)
+  heads=1, concat=False → output stays hidden_dim
   Purpose: aggregate Phase-2-enriched CFG embeddings UP into FUNCTION nodes.
-  This is the path by which execution-order information reaches the function
-  nodes that the classifier operates on. Without Phase 3, function-node
-  embeddings are order-blind regardless of CFG machinery below them.
+  Layer 5: first RC hop (CFG→direct FUNCTION parent)
+  Layer 6: second RC hop (grandchild→grandparent propagation, multi-function patterns)
 
-  Phase 1-A3 (2026-05-14): Phase 3 now uses REVERSE_CONTAINS (type 7) instead
-  of reusing the forward CONTAINS (type 5) embedding. This gives the GNN a
-  distinct learned representation for the reverse direction, fixing v5.0
-  limitation L2. Type-7 edges are generated at runtime by flipping CONTAINS(5)
-  edges in the forward pass — no graph re-extraction needed.
+  Phase 1-A3 (2026-05-14): Phase 3 uses REVERSE_CONTAINS (type 7) embeddings.
+  Type-7 edges are generated at runtime by flipping CONTAINS(5) edges — no re-extraction.
 
   Zero-message behaviour (correct — do not "fix"):
   FUNCTION nodes with no CFG children receive no Phase 3 messages.
-  conv4 returns zero for them; residual x = x + dropout(0) is a no-op.
-  They retain their Phase 2 embedding. Adding add_self_loops=True to
-  "fix" this would dilute the Phase 2 order signal for functions that DO
-  have CFG children.
+  conv returns zero for them; residual x = x + dropout(0) is a no-op.
 
 JK Connections (Phase 1-A1, 2026-05-14)
 ─────────────────────────────────────────
-When use_jk=True, a learned attention over all three phase outputs is used
-instead of returning only the final Phase 3 embedding. This prevents Phase 1
-structural signal from being over-smoothed by phases 2 and 3, fixing the
-gradient collapse observed in v5.1-fix28 where the GNN share dropped to ~10%
-by epoch 8.
-
-Implementation: custom _JKAttention module (NOT PyG's built-in JumpingKnowledge
-with mode='lstm'). Reasons: (1) simpler gradient flow analysis, (2) output
-dimension is exactly hidden_dim with no LSTM overhead, (3) easier to inspect
-per-phase attention weights for monitoring.
-
-CRITICAL — live intermediates:
-JK aggregation consumes tensors from _live = [] which are collected WITHOUT
-.detach(). If .detach() were used (as in the existing _intermediates diagnostic
-dict), JK attention weights would receive zero gradients for the entire training
-run. The _intermediates diagnostic dict still uses .detach().clone() for
-backwards compatibility with test_cfg_embedding_separation.py.
+Learned attention aggregation over all three phase outputs. Prevents Phase 1
+structural signal from being over-smoothed by phases 2 and 3.
 
 Per-Phase LayerNorm (Phase 1-A2, 2026-05-14)
 ──────────────────────────────────────────────
-self.phase_norm = ModuleList([LayerNorm(hidden_dim) for _ in range(3)])
-Applied after each phase's residual connection, before collecting for JK.
-Prevents Phase 1 magnitude from dominating the JK attention softmax — without
-LayerNorm, Phase 1 (two conv layers + residual) tends to produce higher norms
-than Phase 2 and 3 (one layer each), causing JK to ignore later phases.
+Applied once after each complete phase (after both layers of that phase),
+before collecting for JK. Prevents Phase 1's higher norm (two conv layers)
+from dominating the JK attention softmax.
 
-return_intermediates
-────────────────────
-forward(return_intermediates=False) — default; returns (x, batch)
-forward(return_intermediates=True)  — returns (x, batch, intermediates_dict)
-  intermediates_dict keys: "after_phase1", "after_phase2", "after_phase3"
-  Each is a detached tensor of shape [N, hidden_dim].
-  Used by the pre-flight embedding-separation test (test_cfg_embedding_separation.py).
-
-num_layers validation
-─────────────────────
-Stored as an attribute for serialisation only. Validation is in
-TrainConfig.__post_init__() — fires at startup before data loading or
-GPU allocation, not deep inside model construction.
-
-NODE FEATURE SCALING NOTE
+PARAMETERS (v6 defaults)
 ─────────────────────────
-x[:, 0] = type_id is normalised to [0, 1] in graph_extractor.py (/ 12.0).
-This is required: raw type_id 0–12 dominates the dot product and makes
-adjacent CFG subtypes (CALL=8/12, WRITE=9/12) indistinguishable.
-All other features are already in [0, 1] or small normalised ranges.
-
-PARAMETERS (v5 defaults)
-─────────────────────────
-  in_channels   = NODE_FEATURE_DIM (12) — never hardcode 8 or 13 here
-  hidden_dim    = 128
+  in_channels   = NODE_FEATURE_DIM (12)
+  hidden_dim    = 256    (was 128 — doubles capacity for complex vulnerability patterns)
   heads         = 8 (Phase 1 only; Phases 2+3 use heads=1)
   dropout       = 0.2
   use_edge_attr = True
-  edge_emb_dim  = 32  (nn.Embedding(NUM_EDGE_TYPES=8, 32))
-  num_layers    = 4
-  use_jk        = True   (Phase 1-A1; attention over 3 phase outputs)
+  edge_emb_dim  = 64     (was 32 — 64/8 = 8 dims per edge type vs 4 previously)
+  num_layers    = 6      (was 4 — 2 layers per phase)
+  use_jk        = True
   jk_mode       = 'attention'
 
-Total trainable parameters (v5 defaults): ~91K (JK adds ~128 params)
+Total trainable parameters (v6 defaults): ~2.4M GNN (was ~91K at hidden=128)
 """
 
 from __future__ import annotations
@@ -193,32 +150,29 @@ class GNNEncoder(nn.Module):
 
     def __init__(
         self,
-        hidden_dim:    int   = 128,
+        hidden_dim:    int   = 256,
         heads:         int   = 8,
         dropout:       float = 0.2,
         use_edge_attr: bool  = True,
-        edge_emb_dim:  int   = 32,
-        num_layers:    int   = 4,
+        edge_emb_dim:  int   = 64,
+        num_layers:    int   = 6,
         use_jk:        bool  = True,
         jk_mode:       str   = 'attention',
     ) -> None:
         """
         Args:
-            hidden_dim:    Node embedding dimension throughout all phases.
+            hidden_dim:    Node embedding width (default 256; was 128 in v5).
             heads:         Multi-head count for Phase 1 (Phases 2+3 always use 1).
             dropout:       Dropout probability applied after each conv layer.
             use_edge_attr: If True, embed edge types and feed to GATConv.
-            edge_emb_dim:  Edge type embedding dimension.
+            edge_emb_dim:  Edge type embedding dimension (default 64; was 32 in v5).
             num_layers:    Stored for serialisation; validation in TrainConfig.
             use_jk:        If True, use JK attention aggregation over all three
                            phase outputs instead of returning only Phase 3.
-                           Phase 1-A1 (2026-05-14).
-            jk_mode:       JK aggregation mode. 'attention' is the only supported
-                           mode (preserved-dim attention over phase outputs).
+            jk_mode:       'attention' only.
         """
         super().__init__()
 
-        # Stored for serialisation; validation fires in TrainConfig.__post_init__().
         self.num_layers    = num_layers
         self.hidden_dim    = hidden_dim
         self.use_edge_attr = use_edge_attr
@@ -226,18 +180,16 @@ class GNNEncoder(nn.Module):
         self.use_jk        = use_jk
         self.jk_mode       = jk_mode
 
-        _head_dim = hidden_dim // heads  # 16 per head when hidden=128, heads=8
+        _head_dim = hidden_dim // heads  # 32 per head when hidden=256, heads=8
         if _head_dim * heads != hidden_dim:
             raise ValueError(
                 f"hidden_dim ({hidden_dim}) must be divisible by heads ({heads}). "
                 f"Each head needs hidden_dim/heads = {hidden_dim/heads:.1f} dims."
             )
 
-        # Edge type embedding: [E] int64 → [E, edge_emb_dim]
-        # Now covers all NUM_EDGE_TYPES (8) including REVERSE_CONTAINS(7).
-        # Type 7 is runtime-only (generated in forward pass from flipped CONTAINS
-        # edges), so graph files on disk never contain id=7 — but the embedding
-        # table must have 8 rows so index-7 lookups don't crash.
+        # Edge type embedding: covers all 8 edge types including REVERSE_CONTAINS(7).
+        # Type 7 is runtime-only — graph files never contain id=7 but the table
+        # needs 8 rows so index-7 lookups don't crash during forward pass.
         _edge_dim: int | None = None
         if use_edge_attr:
             self.edge_embedding = nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)
@@ -245,20 +197,17 @@ class GNNEncoder(nn.Module):
         else:
             self.edge_embedding = None
 
-        # ── Phase 1 — structural + CONTAINS forward ─────────────────────────
-        # add_self_loops=True: harmless for non-directional structural aggregation.
+        # ── Phase 1 — structural + CONTAINS (Layers 1+2) ────────────────────
         # out_channels is PER HEAD in PyG GATConv. With heads=8 and concat=True:
-        #   total output = 8 × _head_dim = 8 × 16 = 128 = hidden_dim.
-        # WARNING: passing out_channels=128 with heads=8, concat=True gives 1024-dim.
+        #   total output = 8 × _head_dim = 8 × 32 = 256 = hidden_dim.
         self.conv1 = GATConv(
             in_channels=NODE_FEATURE_DIM,  # 12
-            out_channels=_head_dim,         # 16 per head
-            heads=heads,                    # 8
-            concat=True,                    # total out = 8*16 = 128
+            out_channels=_head_dim,         # 32 per head
+            heads=heads,                    # 8 → total 256
+            concat=True,
             add_self_loops=True,
             edge_dim=_edge_dim,
         )
-        # Layer 2: 128 → 128 with residual (dimensions match for skip connection).
         self.conv2 = GATConv(
             in_channels=hidden_dim,
             out_channels=_head_dim,
@@ -268,31 +217,32 @@ class GNNEncoder(nn.Module):
             edge_dim=_edge_dim,
         )
 
-        # ── Phase 2 — CONTROL_FLOW directed ─────────────────────────────────
-        # add_self_loops=False — CRITICAL.
-        # Self-loops add each node as its own predecessor in the attention sum.
-        # During CONTROL_FLOW attention, each CFG_NODE would then attend to both
-        # its genuine predecessor (execution order signal) AND itself (no order
-        # information). The self-loop term partially cancels the directional signal.
-        # With add_self_loops=False, only genuine directed CONTROL_FLOW edges participate.
-        #
-        # heads=1: CONTROL_FLOW is a single relationship type (execution order);
-        # one head with full hidden_dim capacity is preferable here.
+        # ── Phase 2 — CONTROL_FLOW directed (Layers 3+4) ────────────────────
+        # add_self_loops=False — CRITICAL: self-loops cancel directional CF signal.
+        # heads=1: one head with full hidden_dim capacity for execution-order encoding.
+        # Layer 3: first CF hop (reaches direct successor).
+        # Layer 4: second CF hop (reaches WRITE 2 hops from CALL — CEI/CEA pattern).
         self.conv3 = GATConv(
             in_channels=hidden_dim,
-            out_channels=hidden_dim,  # 128 (heads=1, concat=False → no head expansion)
+            out_channels=hidden_dim,
             heads=1,
             concat=False,
-            add_self_loops=False,     # CRITICAL — preserve directional signal
+            add_self_loops=False,     # CRITICAL
+            edge_dim=_edge_dim,
+        )
+        self.conv3b = GATConv(
+            in_channels=hidden_dim,
+            out_channels=hidden_dim,
+            heads=1,
+            concat=False,
+            add_self_loops=False,     # CRITICAL
             edge_dim=_edge_dim,
         )
 
-        # ── Phase 3 — reverse-CONTAINS ───────────────────────────────────────
+        # ── Phase 3 — reverse-CONTAINS (Layers 5+6) ─────────────────────────
         # CFG_NODE nodes (enriched by Phase 2) send messages TO FUNCTION nodes.
-        # Uses REVERSE_CONTAINS (type 7) edges — CONTAINS edges with src↔dst flipped
-        # AND a distinct type-7 embedding (Phase 1-A3 fix: was reusing type-5).
-        # add_self_loops=False — we only want CFG → function aggregation.
-        # See module docstring for zero-message behaviour explanation.
+        # Layer 5: first RC hop (CFG→direct FUNCTION parent).
+        # Layer 6: second RC hop (multi-function vulnerability propagation).
         self.conv4 = GATConv(
             in_channels=hidden_dim,
             out_channels=hidden_dim,
@@ -301,22 +251,25 @@ class GNNEncoder(nn.Module):
             add_self_loops=False,
             edge_dim=_edge_dim,
         )
+        self.conv4b = GATConv(
+            in_channels=hidden_dim,
+            out_channels=hidden_dim,
+            heads=1,
+            concat=False,
+            add_self_loops=False,
+            edge_dim=_edge_dim,
+        )
 
-        # ── Per-phase LayerNorm (Phase 1-A2) ────────────────────────────────
-        # Applied after each phase's residual connection, before collecting
-        # intermediates for JK.  Prevents Phase 1's higher norm (two conv layers)
-        # from dominating the JK attention softmax.
-        # Always present (regardless of use_jk) for training stability.
+        # ── Per-phase LayerNorm ──────────────────────────────────────────────
+        # Applied once after each complete phase (after both layers), before
+        # collecting for JK. Prevents Phase 1's higher norm from dominating JK.
         self.phase_norm = nn.ModuleList([
             nn.LayerNorm(hidden_dim),  # after Phase 1
             nn.LayerNorm(hidden_dim),  # after Phase 2
             nn.LayerNorm(hidden_dim),  # after Phase 3
         ])
 
-        # ── JK attention aggregator (Phase 1-A1) ────────────────────────────
-        # Collects all three (LayerNorm-ed) phase outputs and produces a
-        # learned weighted sum.  Output dimension == hidden_dim (preserved).
-        # Only instantiated when use_jk=True to keep non-JK checkpoints smaller.
+        # ── JK attention aggregator ──────────────────────────────────────────
         if use_jk:
             if jk_mode != 'attention':
                 raise ValueError(
@@ -467,27 +420,37 @@ class GNNEncoder(nn.Module):
         _live.append(x)
         _intermediates["after_phase1"] = x.detach().clone()
 
-        # ── Phase 2: CONTROL_FLOW directed (Layer 3) ────────────────────────
-        # Non-CFG_NODE nodes have no CONTROL_FLOW edges — GATConv returns zero
-        # for nodes with no incoming edges. They carry their Phase 1 embeddings forward.
-        x2 = self.conv3(x, cfg_ei, cfg_ea)          # [N, 128] → [N, 128]
+        # ── Phase 2: CONTROL_FLOW directed (Layers 3+4) ─────────────────────
+        # Layer 3: first CF hop — nodes receive signal from direct CF predecessor.
+        # Layer 4: second CF hop — CALL signal reaches WRITE node 2 hops away.
+        #   Typical reentrancy CFG: ENTRY→CHECK→CALL→TMP→WRITE→RETURN
+        #   With 1 hop: CALL→TMP only. With 2 hops: CALL signal reaches WRITE.
+        #   This is the "call before write" vs "write before call" CEI/CEA signal.
+        # Non-CFG_NODE nodes have no CONTROL_FLOW edges — GATConv returns zero for
+        # them. They carry their Phase 1 embeddings forward via residual.
+        x2 = self.conv3(x, cfg_ei, cfg_ea)
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)                   # residual
-        # Phase 1-A2: LayerNorm before collecting for JK.
-        x  = self.phase_norm[1](x)
+        x2 = self.conv3b(x, cfg_ei, cfg_ea)         # second CF hop
+        x2 = self.relu(x2)
+        x  = x + self.dropout(x2)                   # residual
+        x  = self.phase_norm[1](x)                  # LayerNorm after complete Phase 2
 
         _live.append(x)
         _intermediates["after_phase2"] = x.detach().clone()
 
-        # ── Phase 3: reverse-CONTAINS (Layer 4) ─────────────────────────────
+        # ── Phase 3: reverse-CONTAINS (Layers 5+6) ──────────────────────────
         # Phase-2-enriched CFG_NODE embeddings flow UP to FUNCTION nodes.
-        # FUNCTION nodes with no CFG children receive zero messages — this is
-        # correct behaviour (no-op residual). Do NOT add add_self_loops=True.
-        x2 = self.conv4(x, rev_contains_ei, rev_contains_ea)  # [N, 128]
+        # Layer 5: first RC hop (CFG→direct FUNCTION parent).
+        # Layer 6: second RC hop (grandchild→grandparent, multi-function patterns).
+        # FUNCTION nodes with no CFG children receive zero messages — correct.
+        x2 = self.conv4(x, rev_contains_ei, rev_contains_ea)
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)                   # residual
-        # Phase 1-A2: LayerNorm before collecting for JK.
-        x  = self.phase_norm[2](x)
+        x2 = self.conv4b(x, rev_contains_ei, rev_contains_ea)  # second RC hop
+        x2 = self.relu(x2)
+        x  = x + self.dropout(x2)                   # residual
+        x  = self.phase_norm[2](x)                  # LayerNorm after complete Phase 3
 
         _live.append(x)
         _intermediates["after_phase3"] = x.detach().clone()

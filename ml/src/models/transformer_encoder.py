@@ -179,3 +179,43 @@ class TransformerEncoder(nn.Module):
         outputs   = self.bert(input_ids=flat_ids, attention_mask=flat_mask)
         # Reassemble: [B*W, L, 768] → [B, W*L, 768]
         return outputs.last_hidden_state.view(B, W * L, 768)
+
+
+class WindowAttentionPooler(nn.Module):
+    """
+    Pool W window-CLS embeddings into a single vector via learned attention.
+
+    In multi-window mode TransformerEncoder returns [B, W*L, 768].  The CLS token
+    of window i is at position i*window_size.  This module extracts those W CLS
+    vectors and produces a weighted sum using a learned score function.
+
+    Args:
+        hidden_dim:   Embedding width (default 768 for CodeBERT).
+        window_size:  Tokens per window (default 512 = MAX_TOKEN_LENGTH).
+
+    Single-window fallback: if W*L == window_size, returns CLS directly — zero
+    overhead, no learned weights invoked.
+    """
+
+    def __init__(self, hidden_dim: int = 768, window_size: int = 512) -> None:
+        super().__init__()
+        self.window_size = window_size
+        self.attn = nn.Linear(hidden_dim, 1, bias=False)
+
+    def forward(self, token_embs: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            token_embs: [B, W*L, 768] or [B, L, 768]
+        Returns:
+            [B, 768] — attention-weighted window-CLS pooling
+        """
+        B, WL, D = token_embs.shape
+        if WL <= self.window_size:
+            return token_embs[:, 0, :]  # single-window: CLS at position 0
+        W = WL // self.window_size
+        # Extract CLS from each window: position 0, window_size, 2*window_size, ...
+        cls_indices = torch.arange(W, device=token_embs.device) * self.window_size
+        window_cls = token_embs[:, cls_indices, :]   # [B, W, 768]
+        scores  = self.attn(window_cls)              # [B, W, 1]
+        weights = torch.softmax(scores, dim=1)       # [B, W, 1]
+        return (weights * window_cls).sum(dim=1)     # [B, 768]

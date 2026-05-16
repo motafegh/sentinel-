@@ -22,16 +22,16 @@ function nodes via reversed CONTAINS edges (Phase 3).
     gnn_eye_proj  Linear(256,128)+ReLU+Dropout → [B, 128]
 
   Transformer eye (semantic opinion):
-    token_embs[:, 0, :]   → CLS of window 0  [B, 768]
+    WindowAttentionPooler → learned-attention over W window-CLS tokens → [B, 768]
     transformer_eye_proj  Linear(768,128)+ReLU+Dropout → [B, 128]
-    (multi-window: position 0 is still window 0 CLS — contract header/pragma)
+    (single-window fallback: returns CLS at position 0 with zero overhead)
 
   Fused eye       (joint structural+semantic opinion):
     CrossAttentionFusion(node_embs, token_embs) → [B, 128]
 
   Classifier:
     cat([gnn_eye, transformer_eye, fused_eye])  → [B, 384]
-    Linear(384, num_classes)                    → raw logits [B, num_classes]
+    Linear(384, 192) → ReLU → Dropout → Linear(192, num_classes) → raw logits [B, num_classes]
 
 Auxiliary heads (training only — prevents eye dominance):
   aux_gnn         = Linear(128, num_classes)(gnn_eye)         → [B, num_classes]
@@ -65,7 +65,7 @@ from torch_geometric.nn import global_max_pool, global_mean_pool
 
 from ml.src.models.fusion_layer import CrossAttentionFusion
 from ml.src.models.gnn_encoder import GNNEncoder
-from ml.src.models.transformer_encoder import TransformerEncoder
+from ml.src.models.transformer_encoder import TransformerEncoder, WindowAttentionPooler
 from ml.src.preprocessing.graph_schema import NODE_TYPES
 
 # ── Schema-derived constant (single source of truth) ──────────────────────────
@@ -118,12 +118,12 @@ class SentinelModel(nn.Module):
         dropout:              float               = 0.3,
         num_classes:          int                 = 10,
         # GNN architecture
-        gnn_hidden_dim:       int                 = 128,
-        gnn_num_layers:       int                 = 4,
+        gnn_hidden_dim:       int                 = 256,
+        gnn_num_layers:       int                 = 6,
         gnn_heads:            int                 = 8,
         gnn_dropout:          float               = 0.2,
         use_edge_attr:        bool                = True,
-        gnn_edge_emb_dim:     int                 = 32,
+        gnn_edge_emb_dim:     int                 = 64,
         # JK connections (Phase 1-A1, 2026-05-14)
         gnn_use_jk:           bool                = True,
         gnn_jk_mode:          str                 = 'attention',
@@ -173,7 +173,8 @@ class SentinelModel(nn.Module):
             nn.Dropout(dropout),
         )
 
-        # Transformer eye: CLS token → [B, 768] → [B, eye_dim]
+        # Transformer eye: window-attention pooled CLS → [B, 768] → [B, eye_dim]
+        self.window_pooler = WindowAttentionPooler(hidden_dim=768, window_size=512)
         self.transformer_eye_proj = nn.Sequential(
             nn.Linear(768, eye_dim),
             nn.ReLU(),
@@ -181,9 +182,16 @@ class SentinelModel(nn.Module):
         )
 
         # ── Main classifier ────────────────────────────────────────────────
-        # All three eyes concatenated: [B, 3*eye_dim] → [B, num_classes]
+        # All three eyes concatenated: [B, 3*eye_dim] → hidden → [B, num_classes]
+        # Hidden layer at 192 adds capacity without overfitting on 44K contracts.
         # No Sigmoid — applied externally.
-        self.classifier = nn.Linear(3 * eye_dim, num_classes)
+        _cls_hidden = 192
+        self.classifier = nn.Sequential(
+            nn.Linear(3 * eye_dim, _cls_hidden),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(_cls_hidden, num_classes),
+        )
 
         # ── Auxiliary heads (training only — eye-independence enforcement) ──
         # Each head produces independent logits for its eye so the loss keeps
@@ -194,9 +202,9 @@ class SentinelModel(nn.Module):
         self.aux_fused       = nn.Linear(eye_dim, num_classes)
 
         logger.info(
-            f"SentinelModel v5 (three-eye) initialised | "
+            f"SentinelModel v6 (three-eye) initialised | "
             f"num_classes={num_classes} | eye_dim={eye_dim} | "
-            f"classifier_in={3 * eye_dim} | "
+            f"classifier [{3 * eye_dim}→192→{num_classes}] | "
             f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} layers={gnn_num_layers} "
             f"use_jk={gnn_use_jk} jk_mode={gnn_jk_mode} | "
             f"lora_r={lora_r} lora_alpha={lora_alpha}"
@@ -299,13 +307,12 @@ class SentinelModel(nn.Module):
         token_embs = self.transformer(input_ids, attention_mask)
         # token_embs: [B, L, 768] or [B, W*L, 768]
 
-        # ── Transformer eye: CLS token → project ─────────────────────────
-        # CLS token is always at position 0 (start of window 0).
-        # In multi-window mode this is still the CLS of the first 512-token window,
-        # which encodes the contract header (pragma, imports, main contract opening).
+        # ── Transformer eye: window-pooled CLS → project ─────────────────
+        # WindowAttentionPooler extracts the CLS of each window and combines them
+        # via learned attention weights. Single-window fallback returns CLS at [0].
         transformer_eye = self.transformer_eye_proj(
-            token_embs[:, 0, :]   # [B, 768]
-        )                          # [B, eye_dim]
+            self.window_pooler(token_embs)   # [B, 768]
+        )                                     # [B, eye_dim]
 
         # ── Fused eye: cross-attention fusion ────────────────────────────
         # flat_mask is [B, W*L] in multi-window mode so CrossAttentionFusion's
