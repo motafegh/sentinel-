@@ -40,7 +40,7 @@ import warnings
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import numpy as np
 import torch
@@ -51,6 +51,52 @@ warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.utils.hash_utils import get_contract_hash, get_filename_from_hash
 from src.preprocessing.graph_schema import FEATURE_SCHEMA_VERSION
+
+
+# ── Source directories (mirrors reextract_graphs.py) ─────────────────────────
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+SOURCE_DIRS = [
+    PROJECT_ROOT / "BCCC-SCsVul-2024" / "SourceCodes",
+    PROJECT_ROOT / "ml" / "data" / "SolidiFI-processed",
+    PROJECT_ROOT / "ml" / "data" / "SolidiFI",
+    PROJECT_ROOT / "ml" / "data" / "smartbugs-curated",
+    PROJECT_ROOT / "ml" / "data" / "smartbugs-wild",
+    PROJECT_ROOT / "ml" / "data" / "augmented",
+]
+
+
+def _md5_of_path(sol_path: Path) -> str:
+    """MD5 of path relative to project root — matches how reextract_graphs names files."""
+    return get_contract_hash(sol_path.relative_to(PROJECT_ROOT))
+
+
+def build_md5_to_path(target_md5s: Set[str]) -> Dict[str, Path]:
+    """
+    Scan SOURCE_DIRS for .sol files and map each md5_stem → Path.
+
+    The BCCC dataset stores the same contract in multiple category folders
+    (e.g. Reentrancy/foo.sol and Timestamp/foo.sol may be identical content).
+    Each copy has a different path → different md5. The deduped CSV keeps
+    exactly one md5 per unique content, so we find that one canonical path.
+    """
+    mapping: Dict[str, Path] = {}
+    scanned = 0
+    for src_dir in SOURCE_DIRS:
+        if not src_dir.exists():
+            continue
+        for sol in src_dir.rglob("*.sol"):
+            scanned += 1
+            md5 = _md5_of_path(sol)
+            if md5 in target_md5s and md5 not in mapping:
+                mapping[md5] = sol
+            if len(mapping) == len(target_md5s):
+                break
+        if len(mapping) == len(target_md5s):
+            break
+    print(f"  Scanned {scanned:,} .sol files, mapped {len(mapping):,}/{len(target_md5s):,} md5s")
+    return mapping
 
 try:
     import pandas as pd
@@ -116,9 +162,12 @@ def _select_windows(
     return sel_ids, sel_masks
 
 
-def tokenize_windowed(contract_path: str, max_windows: int = MAX_WINDOWS) -> Optional[Dict[str, Any]]:
+def tokenize_windowed(md5: str, contract_path: str, max_windows: int = MAX_WINDOWS) -> Optional[Dict[str, Any]]:
     """
     Tokenize a single contract into exactly [max_windows, 512] tensors.
+
+    md5 is the canonical md5_stem from the CSV (path-based MD5 of the relative path).
+    The output file is named {md5}.pt so it pairs correctly with the graph file.
 
     Always outputs shape [max_windows, 512] regardless of contract length:
     - Short contracts (< 512 tokens): W=1 real window, remaining (max_windows-1)
@@ -174,17 +223,14 @@ def tokenize_windowed(contract_path: str, max_windows: int = MAX_WINDOWS) -> Opt
         input_ids      = torch.tensor(all_ids,   dtype=torch.long)    # [max_windows, 512]
         attention_mask = torch.tensor(all_masks, dtype=torch.long)    # [max_windows, 512]
 
-        # Real token count: sum of attention mask 1s across real windows only
         num_real_tokens = int(attention_mask.sum().item())
-
-        contract_hash = get_contract_hash(contract_path)
 
         return {
             "input_ids":              input_ids,               # [max_windows, 512]
             "attention_mask":         attention_mask,           # [max_windows, 512]
-            "num_windows":            num_real_windows,         # actual windows (not counting padding)
+            "num_windows":            num_real_windows,
             "stride":                 STRIDE,
-            "contract_hash":          contract_hash,
+            "contract_hash":          md5,                      # canonical md5_stem from CSV
             "contract_path":          str(contract_path),
             "num_tokens":             num_real_tokens,
             "tokenizer_name":         TOKENIZER_MODEL,
@@ -197,8 +243,8 @@ def tokenize_windowed(contract_path: str, max_windows: int = MAX_WINDOWS) -> Opt
 
 
 def _tokenize_with_args(args: tuple) -> Optional[Dict[str, Any]]:
-    contract_path, max_windows = args
-    return tokenize_windowed(contract_path, max_windows=max_windows)
+    md5, contract_path, max_windows = args
+    return tokenize_windowed(md5, contract_path, max_windows=max_windows)
 
 
 # ── Save ──────────────────────────────────────────────────────────────────────
@@ -215,14 +261,17 @@ def save_token_file(token_data: Dict[str, Any], output_dir: Path) -> bool:
 # ── Batch processing ──────────────────────────────────────────────────────────
 
 def process_batch(
-    contracts_df:       "pd.DataFrame",
+    md5_to_path:        Dict[str, Path],
     output_dir:         Path,
     max_windows:        int = MAX_WINDOWS,
     n_workers:          int = DEFAULT_WORKERS,
     chunk_size:         int = DEFAULT_CHUNK_SIZE,
     checkpoint_every:   int = CHECKPOINT_INTERVAL,
 ) -> Dict[str, Any]:
-
+    """
+    md5_to_path: {md5_stem → absolute .sol path} for all contracts to tokenize.
+    Output file for each contract: {md5_stem}.pt (matches graph file name exactly).
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_file = output_dir / "checkpoint.json"
     failed_file     = output_dir / "failed_contracts.json"
@@ -240,20 +289,19 @@ def process_batch(
         print(f"  Found {len(processed_hashes):,} processed, {len(failed_hashes):,} failed")
 
     # Filter already processed
-    if processed_hashes:
-        contracts_df = contracts_df.copy()
-        contracts_df["_h"] = contracts_df["contract_path"].apply(get_contract_hash)
-        contracts_df = contracts_df[~contracts_df["_h"].isin(processed_hashes)].drop(columns=["_h"])
-        print(f"  Remaining: {len(contracts_df):,} contracts")
+    remaining = {md5: path for md5, path in md5_to_path.items()
+                 if md5 not in processed_hashes}
+    if len(remaining) < len(md5_to_path):
+        print(f"  Remaining: {len(remaining):,} contracts (skipped {len(md5_to_path)-len(remaining):,} already done)")
 
-    if len(contracts_df) == 0:
+    if len(remaining) == 0:
         print("All contracts already processed.")
         return {"total": len(processed_hashes), "successful": len(processed_hashes),
                 "failed": len(failed_hashes), "new": 0}
 
-    contract_paths = contracts_df["contract_path"].tolist()
-    total = len(contract_paths)
-    args_iter = [(p, max_windows) for p in contract_paths]
+    pairs = list(remaining.items())   # [(md5, path), ...]
+    total = len(pairs)
+    args_iter = [(md5, str(path), max_windows) for md5, path in pairs]
 
     print(f"\nStarting windowed tokenization (max_windows={max_windows}, stride={STRIDE})...")
     print(f"  Contracts: {total:,}  Workers: {n_workers}  Chunk: {chunk_size}")
@@ -264,6 +312,7 @@ def process_batch(
         results_iter = pool.imap(_tokenize_with_args, args_iter, chunksize=chunk_size)
 
         for i, result in enumerate(tqdm(results_iter, total=total, desc="Tokenizing")):
+            md5_i = pairs[i][0]
             if result is not None:
                 if save_token_file(result, output_dir):
                     processed_hashes.add(result["contract_hash"])
@@ -274,16 +323,10 @@ def process_batch(
                     elif W == 3: stats["w3"] += 1
                     else:        stats["w4plus"] += 1
                 else:
-                    try:
-                        failed_hashes.append(get_contract_hash(contract_paths[i]))
-                    except Exception:
-                        pass
+                    failed_hashes.append(md5_i)
                     stats["failed"] += 1
             else:
-                try:
-                    failed_hashes.append(get_contract_hash(contract_paths[i]))
-                except Exception:
-                    pass
+                failed_hashes.append(md5_i)
                 stats["failed"] += 1
 
             current_total = len(processed_hashes)
@@ -353,17 +396,28 @@ Examples:
     print(f"Output:      {args.output}")
     print("=" * 70)
 
+    # Load md5 stems from CSV (first column — works for both multilabel_index*.csv formats)
     df = pd.read_parquet(args.input) if args.input.endswith(".parquet") else pd.read_csv(args.input)
     if "success" in df.columns:
         df = df[df["success"] == True].copy()
-    print(f"Loaded {len(df):,} contracts")
+    all_md5s = set(df["md5_stem"].tolist())
+    print(f"Loaded {len(all_md5s):,} md5 stems from CSV")
 
     if args.test:
-        df = df.head(100)
-        print(f"TEST MODE: {len(df)} contracts")
+        all_md5s = set(list(all_md5s)[:100])
+        print(f"TEST MODE: {len(all_md5s)} contracts")
+
+    # Build md5 → .sol path mapping by scanning source directories.
+    # BCCC stores same contract in multiple category folders; deduped CSV keeps
+    # one canonical md5 per unique content — we find that one path on disk.
+    print("\nScanning source directories for .sol files...")
+    md5_to_path = build_md5_to_path(all_md5s)
+    unmapped = all_md5s - set(md5_to_path)
+    if unmapped:
+        print(f"  WARNING: {len(unmapped):,} md5s not found on disk (will be skipped)")
 
     stats = process_batch(
-        contracts_df=df,
+        md5_to_path=md5_to_path,
         output_dir=Path(args.output),
         max_windows=args.max_windows,
         n_workers=args.workers,
