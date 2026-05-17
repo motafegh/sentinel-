@@ -24,6 +24,14 @@ AsymmetricLoss (ASL):
         negative with p < clip is treated as zero probability and contributes zero
         gradient.  clip=0.05 removes very-confident negatives from the gradient.
 
+    Per-class gamma/clip (BUG-M3):
+        gamma_neg, gamma_pos, and clip can each be a float (scalar, broadcast to
+        all classes) or a 1-D Tensor of shape [C] (per-class values).  Tensor
+        inputs are registered as buffers so they move with .to(device).
+
+        Example — apply softer negative focus to rare classes:
+            gamma_neg = torch.tensor([4.0, 2.0, 4.0, ...])  # shape [C]
+
 AMP Safety:
     Both classes guard against log(0) with .clamp(min=1e-8) on probabilities.
     Operations stay in the float32 regime via explicit .float() casts so they
@@ -31,6 +39,8 @@ AMP Safety:
 """
 
 from __future__ import annotations
+
+from typing import Union
 
 import torch
 import torch.nn as nn
@@ -41,30 +51,30 @@ class AsymmetricLoss(nn.Module):
     Asymmetric Loss for multi-label classification (Ridnik et al., ICCV 2021).
 
     Args:
-        gamma_neg: Focus parameter for negatives (y=0). Higher → more focus
-                   on hard negatives (misclassified negatives). Default 4.
-        gamma_pos: Focus parameter for positives (y=1). Lower than gamma_neg
-                   gives positives more weight relative to easy negatives.
-                   Default 1 (mild focal on positives).
-        clip:      Probability margin shift applied to negative probabilities
-                   before computing focus weight.  Negatives with p < clip
-                   are clipped to zero and contribute zero gradient.
-                   Default 0.05.
+        gamma_neg: Focus parameter for negatives (y=0). Float scalar OR 1-D
+                   Tensor of shape [C] for per-class values. Default 4.
+        gamma_pos: Focus parameter for positives (y=1). Float scalar OR 1-D
+                   Tensor of shape [C]. Default 1.
+        clip:      Probability margin shift for negatives. Float scalar OR 1-D
+                   Tensor of shape [C]. Default 0.05.
         reduction: "mean" (default), "sum", or "none".
     """
 
     def __init__(
         self,
-        gamma_neg:  float = 4.0,
-        gamma_pos:  float = 1.0,
-        clip:       float = 0.05,
-        reduction:  str   = "mean",
+        gamma_neg:  Union[float, torch.Tensor] = 4.0,
+        gamma_pos:  Union[float, torch.Tensor] = 1.0,
+        clip:       Union[float, torch.Tensor] = 0.05,
+        reduction:  str                        = "mean",
     ) -> None:
         super().__init__()
-        self.gamma_neg = gamma_neg
-        self.gamma_pos = gamma_pos
-        self.clip      = clip
         self.reduction = reduction
+
+        # Register as buffers so .to(device) / .cuda() propagates automatically.
+        # torch.as_tensor converts float → scalar tensor; 1-D tensors pass through.
+        self.register_buffer("gamma_neg", torch.as_tensor(gamma_neg, dtype=torch.float32))
+        self.register_buffer("gamma_pos", torch.as_tensor(gamma_pos, dtype=torch.float32))
+        self.register_buffer("clip",      torch.as_tensor(clip,      dtype=torch.float32))
 
     def forward(
         self,
@@ -86,25 +96,24 @@ class AsymmetricLoss(nn.Module):
         labels = labels.float()
 
         # Probabilities from sigmoid
-        prob = torch.sigmoid(logits)                     # [B, C], range (0, 1)
+        prob = torch.sigmoid(logits)                              # [B, C]
 
-        # Shifted negative probability for the clip margin
-        prob_neg = (prob - self.clip).clamp(min=0.0)     # [B, C]
+        # Shifted negative probability for the clip margin.
+        # self.clip is scalar or [C]; broadcasting handles [B, C] - [C] correctly.
+        prob_neg = (prob - self.clip).clamp(min=0.0)              # [B, C]
 
         # Cross-entropy terms: log(p) for positives, log(1-p) for negatives
-        log_pos  = torch.log(prob.clamp(min=1e-8))           # [B, C]
-        log_neg  = torch.log((1.0 - prob_neg).clamp(min=1e-8))  # [B, C]
+        log_pos  = torch.log(prob.clamp(min=1e-8))                # [B, C]
+        log_neg  = torch.log((1.0 - prob_neg).clamp(min=1e-8))    # [B, C]
 
-        # Focal weights
-        #   pos_weight = (1 - p)^gamma_pos  — focus on uncertain positives
-        #   neg_weight = p_shifted^gamma_neg — focus on hard negatives
-        focal_pos = (1.0 - prob) ** self.gamma_pos
-        focal_neg = prob_neg     ** self.gamma_neg
+        # Focal weights — scalar or [C] gamma broadcasts correctly over [B, C]
+        focal_pos = (1.0 - prob) ** self.gamma_pos                # [B, C]
+        focal_neg = prob_neg     ** self.gamma_neg                 # [B, C]
 
         # Asymmetric loss per cell
-        loss_pos = -labels       * focal_pos * log_pos
-        loss_neg = -(1.0 - labels) * focal_neg * log_neg
-        loss     = loss_pos + loss_neg                   # [B, C]
+        loss_pos = -labels         * focal_pos * log_pos          # [B, C]
+        loss_neg = -(1.0 - labels) * focal_neg * log_neg          # [B, C]
+        loss     = loss_pos + loss_neg                            # [B, C]
 
         if self.reduction == "mean":
             return loss.mean()

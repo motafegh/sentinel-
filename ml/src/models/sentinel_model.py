@@ -84,6 +84,10 @@ _FUNC_TYPE_IDS: frozenset[int] = frozenset({  # FUNCTION MODIFIER FALLBACK RECEI
     NODE_TYPES["RECEIVE"],
     NODE_TYPES["CONSTRUCTOR"],
 })
+# Pre-built CPU tensor of func type IDs — moved to module level to avoid
+# allocating a new tensor on every forward pass (BUG-L1 perf fix).
+# .to(device) in forward() is a no-op if already on the right device.
+_FUNC_IDS_CPU: torch.Tensor = torch.tensor(sorted(_FUNC_TYPE_IDS), dtype=torch.long)
 
 
 class SentinelModel(nn.Module):
@@ -263,10 +267,7 @@ class SentinelModel(nn.Module):
         # constant derived from NODE_TYPES so it tracks schema changes.
         # Use .float() before * to guard against AMP/BF16 round-trip precision loss.
         node_type_ids = (graphs.x[:, 0].float() * _MAX_TYPE_ID).round().long()
-        _func_ids_tensor = torch.tensor(
-            list(_FUNC_TYPE_IDS), dtype=torch.long, device=node_embs.device
-        )
-        func_mask = torch.isin(node_type_ids, _func_ids_tensor)
+        func_mask = torch.isin(node_type_ids, _FUNC_IDS_CPU.to(node_embs.device))
 
         # Per-graph fallback: a graph with NO function-level nodes (ghost graph
         # or interface-only contract) would produce zero rows for its batch index,
@@ -291,9 +292,15 @@ class SentinelModel(nn.Module):
         graph_has_func = torch.zeros(num_graphs, dtype=torch.bool, device=node_embs.device)
         if func_mask.any():
             graph_has_func[batch[func_mask]] = True
-        # Nodes belonging to graphs that have no function nodes → use as fallback
-        fallback_mask = ~graph_has_func[batch]
-        pool_mask  = func_mask | fallback_mask
+
+        # Ghost graph fix (BUG-H2): graphs with no FUNCTION/MODIFIER/FALLBACK/
+        # RECEIVE/CONSTRUCTOR nodes (interface-only contracts, Slither failures)
+        # now produce a zero GNN embedding instead of pooling over STATE_VAR nodes.
+        # global_max/mean_pool returns a zero row for any graph index with no
+        # contributing nodes — that is the correct degenerate behavior.
+        # The old fallback_mask approach pooled STATE_VARs, injecting misleading
+        # variable-type signal for 9% of training samples.
+        pool_mask  = func_mask
         pool_embs  = node_embs[pool_mask]
         pool_batch = batch[pool_mask]
 

@@ -168,7 +168,7 @@ class TrainConfig:
 
     # --- GNN architecture (v6) ---
     gnn_hidden_dim:   int   = 256
-    gnn_layers:       int   = 6
+    gnn_layers:       int   = 7
     gnn_heads:        int   = 8
     gnn_dropout:      float = 0.2
     use_edge_attr:    bool  = True
@@ -222,7 +222,7 @@ class TrainConfig:
     # --- Aux loss warmup (Fix #33) ---
     # aux_loss_weight ramps from 0 → aux_loss_weight linearly over this many
     # epochs.  Set to 0 to disable warmup (always full aux weight).
-    aux_loss_warmup_epochs: int = 3
+    aux_loss_warmup_epochs: int = 8
 
     # --- Gradient accumulation (2026-05-12) ---
     gradient_accumulation_steps: int = 1
@@ -243,17 +243,41 @@ class TrainConfig:
     # v4/v5 used BCE. ASL (Ridnik et al. ICCV 2021) is recommended for v6:
     # gamma_neg=4 down-weights easy negatives (vast majority of 44K×10 cells),
     # freeing gradient budget for rare positives like DoS (377 train samples).
-    loss_fn:        str   = "bce"
+    loss_fn:        str   = "asl"
     focal_gamma:    float = 2.0
     focal_alpha:    float = 0.25
     # ASL hyperparameters (only used when loss_fn="asl")
-    asl_gamma_neg:  float = 4.0   # focus exponent for negatives (hard negative mining)
+    asl_gamma_neg:  float = 2.0   # focus exponent for negatives; reduced from 4.0 (BUG-C4: γ⁻=4 caused all-zeros collapse with 60% zero-label rows)
     asl_gamma_pos:  float = 1.0   # focus exponent for positives (mild — less than gamma_neg)
-    asl_clip:       float = 0.05  # probability margin; negatives with p<clip → zero gradient
+    asl_clip:       float = 0.01  # probability margin; negatives with p<clip → zero gradient; reduced from 0.05 (BUG-M2: hard boundary caused oscillation at p≈0.03–0.06)
     # RC3 fix (2026-05-16): label smoothing prevents extreme overconfidence.
     # Without smoothing the model pushes Reentrancy → 0.97 on safe contracts
     # with zero penalty.  ε=0.05 sets soft targets: positive→0.95, negative→0.05.
-    label_smoothing: float = 0.05
+    label_smoothing: float = 0.0   # replaced by per-class smoothing below (BUG-M9)
+
+    # --- Per-class label smoothing (BUG-M9) ---
+    # Calibrated to confirmed/estimated noise rates per class.
+    # Applied as: labels[:,c] = labels[:,c]*(1-eps[c]) + 0.5*eps[c]
+    # Replaces uniform label_smoothing=0.05.
+    class_label_smoothing: dict = field(default_factory=lambda: {
+        "CallToUnknown":               0.10,
+        "DenialOfService":             0.18,
+        "ExternalBug":                 0.10,
+        "GasException":                0.12,
+        "IntegerUO":                   0.08,
+        "MishandledException":         0.12,
+        "Reentrancy":                  0.14,  # confirmed 14% noise (no external calls)
+        "Timestamp":                   0.05,  # structural check exists; lower noise
+        "TransactionOrderDependence":  0.10,
+        "UnusedReturn":                0.10,
+    })
+
+    # --- DoS loss mask (BUG-H6) ---
+    # DenialOfService has 3 pure training samples; 98.1% co-occur with Reentrancy.
+    # The class is structurally unlearnable — gradient on DoS column is harmful.
+    # 0.0 = no gradient for DoS column; 1.0 = normal (re-enable if augmented).
+    # NUM_CLASSES stays 10 (ZKML proxy MLP is hardcoded to 10 outputs — LOCKED).
+    dos_loss_weight: float = 0.0
 
     # --- pos_weight cap ---
     # Classes with >= pos_weight_min_samples training positives are NOT amplified.
@@ -262,7 +286,7 @@ class TrainConfig:
     # the behavioral collapse seen in v5.2. Setting min_samples=3000 clamps
     # Reentrancy, GasException, and MishandledException to 1.0 while leaving
     # DoS (257), Timestamp (~1500), and minority classes at their sqrt-scaled weights.
-    pos_weight_min_samples: int = 0    # 0 = disabled (all classes get sqrt weight)
+    pos_weight_min_samples: int = 3000  # classes with ≥3000 train positives get pos_weight=1.0 (BUG-H3: Reentrancy 2.82× amplification dominated gradient)
 
     # --- Cache ---
     cache_path: str | None = "ml/data/cached_dataset_deduped.pkl"
@@ -284,7 +308,7 @@ class TrainConfig:
 
     # --- Autoresearch harness knobs ---
     smoke_subsample_fraction: float = 1.0
-    use_weighted_sampler:     str   = "none"
+    use_weighted_sampler:     str   = "positive"  # "positive"=3× weight on any-vuln rows; "DoS-only"; "all-rare"; "none" (BUG-H10: 60% zero-label rows trained at natural frequency)
 
     def __post_init__(self) -> None:
         # Phase 0-A4 (2026-05-14): Relaxed hard raise to conditional guard.
@@ -297,11 +321,11 @@ class TrainConfig:
                 "(three-phase architecture requires layers 1+2 for Phase 1, "
                 "layer 3 for Phase 2 CONTROL_FLOW, layer 4 for Phase 3 CONTAINS)."
             )
-        if self.gnn_layers > 6:
+        if self.gnn_layers > 7:
             logger.warning(
                 f"gnn_layers={self.gnn_layers} is non-standard. "
-                "v6 uses gnn_layers=6 (2 per phase). "
-                "Extra layers beyond 6 receive Phase 1 (structural) edge masking by default."
+                "v7 uses gnn_layers=7 (2+3+2 per phase — conv3c 3rd CF hop, BUG-H1). "
+                "Extra layers beyond 7 receive Phase 1 (structural) edge masking by default."
             )
         if self.gradient_accumulation_steps < 1:
             raise ValueError(
@@ -362,14 +386,22 @@ def compute_pos_weight(
 # Evaluation
 # ---------------------------------------------------------------------------
 def evaluate(
-    model:     SentinelModel,
-    loader:    DataLoader,
-    device:    str,
-    threshold: float = 0.5,
-    use_amp:   bool  = True,
+    model:           SentinelModel,
+    loader:          DataLoader,
+    device:          str,
+    threshold:       float = 0.5,
+    use_amp:         bool  = True,
+    tune_thresholds: bool  = False,
 ) -> dict[str, float]:
+    """Evaluate model on loader.
+
+    When tune_thresholds=True (BUG-M8), sweeps 19 thresholds per class over
+    [0.1, 0.9] and picks the one maximising each class's F1. Reports both
+    fixed-threshold and tuned-threshold macro F1. Tuned thresholds are stored
+    in metrics["tuned_thresholds"] (list[float] of length num_classes).
+    """
     model.eval()
-    all_preds = []
+    all_probs = []
     all_true  = []
 
     with torch.no_grad():
@@ -385,13 +417,12 @@ def evaluate(
                 logits = model(graphs, input_ids, attention_mask)
 
             probs = torch.sigmoid(logits.float())
-            preds = (probs >= threshold).long()
-
-            all_preds.append(preds.cpu().numpy())
+            all_probs.append(probs.cpu().numpy())
             all_true.append(labels.long().cpu().numpy())
 
-    y_true = np.concatenate(all_true)
-    y_pred = np.concatenate(all_preds)
+    y_true  = np.concatenate(all_true)
+    y_probs = np.concatenate(all_probs)
+    y_pred  = (y_probs >= threshold).astype(int)
 
     f1_macro     = f1_score(y_true, y_pred, average="macro",  zero_division=0)
     f1_micro     = f1_score(y_true, y_pred, average="micro",  zero_division=0)
@@ -401,6 +432,29 @@ def evaluate(
     metrics = {"f1_macro": f1_macro, "f1_micro": f1_micro, "hamming": hamming}
     for i, name in enumerate(CLASS_NAMES[:y_true.shape[1]]):
         metrics[f"f1_{name}"] = float(f1_per_class[i])
+
+    if tune_thresholds:
+        # BUG-M8: sweep 19 candidate thresholds per class; pick best per-class F1.
+        _candidates = np.linspace(0.1, 0.9, 19)
+        num_classes = y_true.shape[1]
+        tuned = []
+        for c in range(num_classes):
+            best_t, best_f1 = threshold, 0.0
+            for t in _candidates:
+                preds_c = (y_probs[:, c] >= t).astype(int)
+                f1_c = f1_score(y_true[:, c], preds_c, zero_division=0)
+                if f1_c > best_f1:
+                    best_f1, best_t = f1_c, t
+            tuned.append(float(best_t))
+
+        # Re-evaluate with per-class tuned thresholds
+        y_pred_tuned = np.stack(
+            [(y_probs[:, c] >= tuned[c]).astype(int) for c in range(num_classes)],
+            axis=1,
+        )
+        f1_tuned = f1_score(y_true, y_pred_tuned, average="macro", zero_division=0)
+        metrics["f1_macro_tuned"]  = float(f1_tuned)
+        metrics["tuned_thresholds"] = tuned
 
     return metrics
 
@@ -422,7 +476,9 @@ def train_one_epoch(
     use_amp:                     bool,
     aux_loss_weight:             float = 0.3,
     gradient_accumulation_steps: int   = 1,
-    label_smoothing:             float = 0.0,
+    label_smoothing:             float = 0.0,   # kept for backward compat; overridden by class_eps
+    class_eps:                   "torch.Tensor | None" = None,  # [NUM_CLASSES] per-class smoothing (BUG-M9)
+    dos_loss_weight:             float = 0.0,   # 0.0 = zero DoS gradient (BUG-H6)
 ) -> tuple[float, int, float]:
     """Returns (avg_loss, nan_batch_count, last_gnn_share)."""
     model.train()
@@ -452,12 +508,27 @@ def train_one_epoch(
         attention_mask = tokens["attention_mask"].to(device)
         labels         = labels.to(device).float()
 
-        if label_smoothing > 0.0:
+        # Per-class label smoothing (BUG-M9): class_eps overrides uniform label_smoothing.
+        if class_eps is not None:
+            labels = labels * (1.0 - class_eps) + 0.5 * class_eps
+        elif label_smoothing > 0.0:
             labels = labels * (1.0 - label_smoothing) + 0.5 * label_smoothing
 
         with torch.amp.autocast(device, enabled=use_amp):
             logits, aux = model(graphs, input_ids, attention_mask, return_aux=True)
-            main_loss   = loss_fn(logits, labels)
+
+            # DoS loss mask (BUG-H6): detach DoS column so it produces no gradient.
+            # Predictions are still made for DoS (inference unaffected); only
+            # the backward pass is blocked for that column.
+            # dos_loss_weight=0.0 = fully masked; 1.0 = normal (re-enable if augmented).
+            if dos_loss_weight < 1.0:
+                _dos_idx = CLASS_NAMES.index("DenialOfService")
+                _logits_for_loss = logits.clone()
+                _logits_for_loss[:, _dos_idx] = logits[:, _dos_idx].detach()
+            else:
+                _logits_for_loss = logits
+
+            main_loss   = loss_fn(_logits_for_loss, labels)
             # aux_loss_fn has no pos_weight — pathway heads give supervision signal
             # without amplifying rare-class imbalance through struggling aux heads.
             loss_gnn_a  = aux_loss_fn(aux["gnn"],         labels)
@@ -589,7 +660,13 @@ def _build_weighted_sampler(
             weights.append(1.0)
             continue
         row = df.loc[md5]
-        if mode == "DoS-only":
+        if mode == "positive":
+            # 3× weight for any row with at least one positive label.
+            # Shifts effective positive/negative ratio from ~40/60 to ~60/40
+            # without modifying labels. (BUG-H10 fix)
+            has_vuln = any(float(row.get(cls, 0)) == 1.0 for cls in CLASS_NAMES)
+            w = 3.0 if has_vuln else 1.0
+        elif mode == "DoS-only":
             w = 39.0 if float(row.get("DenialOfService", 0)) == 1.0 else 1.0
         elif mode == "all-rare":
             n_pos = max(1, sum(float(row.get(cls, 0)) for cls in CLASS_NAMES))
@@ -1122,6 +1199,17 @@ def train(config: TrainConfig) -> dict:
         checkpoint_path = _checkpoint_path   # already computed above
         final_epoch = start_epoch - 1
 
+        # Build per-class label smoothing tensor once (BUG-M9).
+        _class_eps = torch.tensor(
+            [config.class_label_smoothing.get(c, 0.05) for c in CLASS_NAMES[:config.num_classes]],
+            dtype=torch.float32, device=device,
+        )
+
+        # Guardrail counters (BUG-M10).
+        _consecutive_allzeros  = 0
+        _consecutive_gnn_coll  = 0
+        _class_death_counter   = [0] * config.num_classes
+
         for epoch in range(start_epoch, config.epochs + 1):
             final_epoch = epoch
             logger.info(f"\n{'='*60}\nEpoch {epoch}/{config.epochs}\n{'='*60}")
@@ -1160,6 +1248,8 @@ def train(config: TrainConfig) -> dict:
                 aux_loss_weight=effective_aux_weight,
                 gradient_accumulation_steps=accum_steps,
                 label_smoothing=config.label_smoothing,
+                class_eps=_class_eps,
+                dos_loss_weight=config.dos_loss_weight,
             )
 
             val_metrics = evaluate(
@@ -1168,6 +1258,7 @@ def train(config: TrainConfig) -> dict:
                 device=device,
                 threshold=config.eval_threshold,   # training-time threshold (lower = stable signal)
                 use_amp=config.use_amp,
+                tune_thresholds=True,              # BUG-M8: per-epoch threshold sweep
             )
 
             # Fix #27: release CUDA caching allocator free-blocks between epochs.
@@ -1202,10 +1293,13 @@ def train(config: TrainConfig) -> dict:
                             "Other phases are underutilised — consider checking LayerNorm or LR."
                         )
 
-            mlflow.log_metric("val_f1_macro",  val_metrics["f1_macro"],  step=epoch)
-            mlflow.log_metric("val_f1_micro",  val_metrics["f1_micro"],  step=epoch)
-            mlflow.log_metric("val_hamming",   val_metrics["hamming"],   step=epoch)
-            mlflow.log_metric("aux_loss_weight_effective", effective_aux_weight, step=epoch)
+            mlflow.log_metric("val_f1_macro",       val_metrics["f1_macro"],       step=epoch)
+            mlflow.log_metric("val_f1_micro",       val_metrics["f1_micro"],       step=epoch)
+            mlflow.log_metric("val_hamming",        val_metrics["hamming"],        step=epoch)
+            mlflow.log_metric("aux_loss_weight_effective", effective_aux_weight,   step=epoch)
+            # BUG-M8: log tuned macro F1 (per-class threshold sweep)
+            if "f1_macro_tuned" in val_metrics:
+                mlflow.log_metric("val_f1_macro_tuned", val_metrics["f1_macro_tuned"], step=epoch)
             for name in CLASS_NAMES[:config.num_classes]:
                 mlflow.log_metric(f"val_f1_{name}", val_metrics[f"f1_{name}"], step=epoch)
 
@@ -1224,6 +1318,48 @@ def train(config: TrainConfig) -> dict:
                 f"  Top3:    {top3}\n"
                 f"  Bottom3: {bottom3}"
             )
+
+            # ── Training guardrails (BUG-M10) ────────────────────────────────
+            # All-zeros collapse: Hamming >0.85 for 3+ epochs means the model
+            # predicts all-zeros on everything (maximizes Hamming by being always
+            # wrong in the worst possible way for this task).
+            _hamming = val_metrics["hamming"]
+            if _hamming > 0.85:
+                _consecutive_allzeros += 1
+                if _consecutive_allzeros >= 3:
+                    logger.critical(
+                        f"ALL-ZEROS COLLAPSE DETECTED: Hamming={_hamming:.4f} for "
+                        f"{_consecutive_allzeros} consecutive epochs. "
+                        "Model is predicting all-zeros. Consider reducing gamma_neg, "
+                        "increasing dos_loss_weight, or checking the weighted sampler."
+                    )
+            else:
+                _consecutive_allzeros = 0
+
+            # Class death: any class with F1=0.0 for 5+ epochs.
+            for _ci, _cname in enumerate(CLASS_NAMES[:config.num_classes]):
+                _cf1 = val_metrics.get(f"f1_{_cname}", 0.0)
+                if _cf1 == 0.0:
+                    _class_death_counter[_ci] += 1
+                    if _class_death_counter[_ci] >= 5:
+                        logger.warning(
+                            f"CLASS DEATH: {_cname} F1=0.0 for "
+                            f"{_class_death_counter[_ci]} consecutive epochs."
+                        )
+                else:
+                    _class_death_counter[_ci] = 0
+
+            # GNN collapse: gnn_grad_share <10% sustained.
+            if last_gnn_share < 0.10:
+                _consecutive_gnn_coll += 1
+                if _consecutive_gnn_coll >= 5:
+                    logger.critical(
+                        f"GNN COLLAPSE: gnn_grad_share={last_gnn_share:.3f} for "
+                        f"{_consecutive_gnn_coll} consecutive epochs. "
+                        "GNN is not contributing. Check LayerNorm, GNN LR multiplier."
+                    )
+            else:
+                _consecutive_gnn_coll = 0
 
             if val_metrics["f1_macro"] > best_f1:
                 best_f1 = val_metrics["f1_macro"]

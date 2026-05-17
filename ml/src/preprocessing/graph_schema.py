@@ -144,7 +144,7 @@ except importlib.metadata.PackageNotFoundError:
 # Schema version
 # ─────────────────────────────────────────────────────────────────────────────
 
-FEATURE_SCHEMA_VERSION: str = "v6"
+FEATURE_SCHEMA_VERSION: str = "v7"
 """
 Suffix appended to inference cache keys: "{content_md5}_{FEATURE_SCHEMA_VERSION}".
 
@@ -158,43 +158,35 @@ change — or whenever _build_node_features() logic changes in graph_extractor.p
 # Structural constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-NODE_FEATURE_DIM: int = 12
+NODE_FEATURE_DIM: int = 11
 """
-Number of scalar features per graph node (v2 schema).
+Number of scalar features per graph node (v7 schema — 11 dims).
 
 GNNEncoder is constructed with in_channels=NODE_FEATURE_DIM. Changing this
 number requires a full graph re-extraction and model retrain.
 
-Feature layout (v4 — 12 dims, same dim as v2/v3, changed semantics at [2] and [6]):
+Feature layout (v7 — 11 dims; dropped in_unchecked [was dim 9] from v6):
   [0]  type_id              — NODE_TYPES int (range 0–12), normalised /12.0
   [1]  visibility           — VISIBILITY_MAP ordinal
   [2]  uses_block_globals   — 1.0 if func reads block.timestamp/number/difficulty/basefee
-                              (was `pure` in v2/v3 — replaced because pure≈0 always;
-                               block global access is the direct Timestamp/TOD signal)
   [3]  view                 — bool
   [4]  payable              — bool
   [5]  complexity           — log1p(CFG block count)/log1p(100), normalised [0,1]
-                              (was raw count; large contracts hit 100+ causing scale
-                               dominance over binary features. Log normalization in v5.)
   [6]  loc                  — log1p(lines)/log1p(1000), normalised [0,1]
-                              (was raw line count; CONTRACT node hit 2538 raw, causing
-                               scale dominance over binary features)
   [7]  return_ignored       — 0.0 (captured) / 1.0 (discarded) / -1.0 (IR unavailable)
   [8]  call_target_typed    — 0.0 (raw addr) / 1.0 (typed) / -1.0 (source unavailable)
-  [9]  in_unchecked         — bool (Solidity 0.8.x unchecked{} blocks only)
-                              NOTE: always 0.0 for Solidity <0.8 (no unchecked syntax
-                              exists prior to 0.8.0; this is correct, not a bug)
-  [10] has_loop             — bool
-  [11] external_call_count  — float, log-normalized; now includes Transfer/Send ops
+  [9]  has_loop             — bool  (was dim [10] in v6)
+  [10] external_call_count  — float, log-normalized; includes Transfer/Send ops
+                              (was dim [11] in v6)
+
+Removed from v6:
+  [9]  in_unchecked         — DEAD signal. 87.9% of BCCC dataset is Solidity 0.4.x
+                              which predates the unchecked{} keyword (0.8.0+). Feature
+                              was 0.0 for nearly all training samples. BUG-L2.
 
 Note: `reentrant` (Slither's own is_reentrant flag) was feature[5] in v1 and
 is removed in v2 — keeping it gave the model a Slither-provided answer rather
 than forcing it to detect reentrancy from structural patterns.
-
-Note: `gas_intensity` was feature[12] in the intermediate v2 draft but is
-removed in the final v2 schema — it was f(complexity, has_loop, external_call_count),
-a circular heuristic over features already present at indices 5, 10, 11.
-The GNN learns the combination itself and learns it better.
 """
 
 NUM_NODE_TYPES: int = 13
@@ -351,20 +343,18 @@ FEATURE_NAMES: tuple[str, ...] = (
     "type_id",              # [0]  float(NODE_TYPES[kind])/12.0           node category [0,1]
     "visibility",           # [1]  VISIBILITY_MAP ordinal 0-2             access control
     "uses_block_globals",   # [2]  1.0 if reads block.timestamp/number    Timestamp/TOD signal
-                            #      (was `pure` in v2/v3 — replaced in v4)
     "view",                 # [3]  1.0 if Function.view                   read-only state
     "payable",              # [4]  1.0 if Function.payable                Ether entry point
-    "complexity",           # [5]  log1p(len(func.nodes))/log1p(100)       normalised CFG block count
+    "complexity",           # [5]  log1p(len(func.nodes))/log1p(100)      normalised CFG block count
     "loc",                  # [6]  log1p(lines)/log1p(1000), [0,1]        normalised LoC
-                            #      (was raw line count in v2/v3 — caused scale dominance)
     "return_ignored",       # [7]  0.0=captured / 1.0=discarded / -1.0=IR unavailable
     "call_target_typed",    # [8]  0.0=raw addr / 1.0=typed / -1.0=source unavailable
-    "in_unchecked",         # [9]  1.0 if function contains unchecked{} block (0.8.x only)
-    "has_loop",             # [10] 1.0 if function contains a loop
-    "external_call_count",  # [11] log1p(n)/log1p(20), [0,1]; includes Transfer/Send (v4)
+    "has_loop",             # [9]  1.0 if function contains a loop        (was [10] in v6)
+    "external_call_count",  # [10] log1p(n)/log1p(20), [0,1]; incl. Transfer/Send
+                            #      (was [11] in v6)
 )
 """
-Human-readable labels for each node feature dimension (v4 — 12 dims).
+Human-readable labels for each node feature dimension (v7 — 11 dims).
 
 Used by:
   - drift detection baseline scripts (compute_drift_baseline.py)
@@ -381,8 +371,6 @@ Sentinel values:
 Non-Function nodes receive 0.0 for features [2:] except:
   - call_target_typed [8]: non-Function defaults to 1.0 (not applicable, safe default)
   - type_id [0], visibility [1], loc [6]: computed per declaration kind
-CFG_NODE nodes receive features computed from the corresponding Slither FunctionNode.
-CFG_NODE in_unchecked [9] is always 0.0 — never inherited from the parent function.
 """
 
 # Invariant: length must match NODE_FEATURE_DIM. Caught at import time so any

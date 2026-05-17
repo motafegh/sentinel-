@@ -101,6 +101,12 @@ class CrossAttentionFusion(nn.Module):
 
         self.node_proj  = nn.Linear(node_dim,  attn_dim)
         self.token_proj = nn.Linear(token_dim, attn_dim)
+        # Normalize token embeddings before projection (BUG-C2).
+        # CodeBERT hidden states have L2 norm ~10-15; GNN output after its own
+        # LayerNorm has norm ~1. Without this, token keys dominate cross-attention
+        # dot products by 10-15×, making node→token attention attend to
+        # highest-norm tokens rather than semantically relevant ones.
+        self.token_norm = nn.LayerNorm(token_dim)
 
         # Direction 1: every node queries the 512 tokens.
         # Q=nodes [B,n,256]  K=V=tokens [B,512,256]
@@ -153,8 +159,8 @@ class CrossAttentionFusion(nn.Module):
             )
 
         # ── Step 1: Project both modalities to common attention space ──────
-        nodes_proj  = self.node_proj(node_embs)    # [N, 64]       → [N, 256]
-        tokens_proj = self.token_proj(token_embs)  # [B, 512, 768] → [B, 512, 256]
+        nodes_proj  = self.node_proj(node_embs)                    # [N, 64]       → [N, 256]
+        tokens_proj = self.token_proj(self.token_norm(token_embs)) # [B, 512, 768] → [B, 512, 256]
 
         # ── Step 2: Pad nodes to uniform length across the batch ───────────
         # padded_nodes:   [B, max_nodes, 256]  — zero-padded at trailing positions
