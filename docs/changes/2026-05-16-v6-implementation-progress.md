@@ -1,5 +1,6 @@
 # SENTINEL v6 — Implementation Progress Record
-**Date:** 2026-05-16 (updated across two sessions)
+**Date:** 2026-05-16–17 (updated across three sessions)  
+**Final status:** v6.0 training RUNNING (PID 450936, launched 2026-05-17 03:30 UTC+3:30)  
 **Plan reference:** `docs/changes/2026-05-16-v6-complete-plan.md`
 
 This document tracks what has actually been implemented vs what the plan prescribes,
@@ -11,13 +12,14 @@ notes deviations and their rationale, and lists exact next commands to run.
 
 | Phase | Description | Code Status | Data Status |
 |---|---|---|---|
-| 0 — Feature schema v4 | All 4 graph feature bugs fixed | **COMMITTED** (commits `bef1f2a`, `310e738`) | **IN PROGRESS** — re-extraction running (PID 187896, ~23% @ 22:37) |
-| 1 — Windowed tokenization | Model + dataset + tokenizer script | **COMMITTED** (commit `b38c9da`) | **NOT YET RUN** — retokenize pending |
+| 0 — Feature schema v4 | All 4 graph feature bugs fixed | **COMMITTED** (commits `bef1f2a`, `310e738`) | ✅ DONE — re-extracted v7, 41521 ok + 2702 in-place patched |
+| 0.5 — Feature schema v5 | 5 more bugs fixed (loc/complexity/contract-sel/return_ignored) | **COMMITTED** (commit `0d11e18`, user session) | ✅ DONE — same re-extraction |
+| 1 — Windowed tokenization | Model + dataset + tokenizer script | **COMMITTED** (commit `b38c9da`, `74e968c`) | ✅ DONE — 44,470/44,470 tokens_windowed/ |
 | 2 — GNN arch (256 dim, 6 layers) | hidden_dim, depth, edge_emb, classifier, WindowAttentionPooler | **COMMITTED** (commit `2bb0e16`) | — |
 | 3 — Training config (ASL, 100ep) | AsymmetricLoss, epochs=100, patience=30, LoRA LR 0.3× | **COMMITTED** (commit `64dfc5a`) | — |
-| 4 — Data augmentation (DoS, Timestamp) | Clean single-label contracts | **NOT STARTED** | — |
-| 5 — Re-extraction + cache rebuild | Run scripts after phase 0 + 1 code | **IN PROGRESS** | — |
-| 6 — v6.0 training | Launch train.py with all fixes | **NOT STARTED** | — |
+| 4 — Data augmentation (DoS, Timestamp) | Clean single-label contracts | **NOT STARTED** | deferred to v7 if behavioral gate fails |
+| 5 — Re-extraction + cache rebuild | Run scripts after phase 0 + 1 code | **COMMITTED** (`a75ae67`) | ✅ DONE — 2.47 GB pkl, schema v5, 44470 pairs |
+| 6 — v6.0 training | Launch train.py with all fixes | **RUNNING** | 🔄 PID 450936, epoch 1/100, ~34 min/epoch |
 
 ---
 
@@ -187,13 +189,15 @@ Steps 1–7 complete. Steps 2–3 (re-extraction) currently running.
 | Step | Status |
 |---|---|
 | 1. Commit Phase 1 (b38c9da) | ✅ DONE |
-| 2. Re-extract graphs (PID 187896) | ⏳ RUNNING — ~23% @ 22:37 (est. ~45 min remaining) |
-| 3. Validate graphs | ⏳ pending re-extraction |
-| 4. Re-tokenize windowed | ⏳ pending validation |
-| 5. Rebuild cache | ⏳ pending retokenization |
+| 2. Re-extract graphs v7 | ✅ DONE — 41,521 ok / 74 ghost / 2,875 skipped |
+| 2.5. Patch stale graphs in-place | ✅ DONE — 2,702 graphs normalized |
+| 3. Validate graphs | ✅ DONE — 44,470 PASS, uses_block_globals 9.9% |
+| 4. Re-tokenize windowed (74e968c) | ✅ DONE — 44,470/44,470 |
+| 5. Dedup + Timestamp relabeling (a75ae67) | ✅ DONE — 972 labels removed |
+| 5.5 Rebuild cache | ✅ DONE — 2.47 GB pkl |
 | 6. Commit Phase 2 (2bb0e16) | ✅ DONE |
 | 7. Commit Phase 3 (64dfc5a) | ✅ DONE |
-| 8. Launch v6 training | ⏳ pending cache |
+| 8. Launch v6 training | ✅ DONE — PID 450936, epoch 1/100 @ 03:30 May 17 |
 
 ---
 
