@@ -36,10 +36,18 @@ import numpy as np
 import pandas as pd
 import torch
 from loguru import logger
+from transformers import AutoTokenizer
 
 PROJECT_ROOT   = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 from ml.src.utils.hash_utils import get_contract_hash  # noqa: E402
+from ml.src.preprocessing.graph_schema import FEATURE_SCHEMA_VERSION  # noqa: E402
+
+_TOKENIZER_MODEL = "microsoft/codebert-base"
+_WINDOW_SIZE     = 512
+_STRIDE          = 256
+_MAX_WINDOWS     = 4
+_tokenizer       = None  # lazy-loaded on first use
 AUG_DIR        = PROJECT_ROOT / "ml" / "data" / "augmented"
 GRAPHS_DIR     = PROJECT_ROOT / "ml" / "data" / "graphs"
 TOKENS_DIR     = PROJECT_ROOT / "ml" / "data" / "tokens_windowed"
@@ -116,17 +124,66 @@ def _extract_graph(sol: Path, dry_run: bool) -> bool:
     return True
 
 
-def _check_tokens(sol: Path) -> bool:
-    """Tokens must already exist in tokens_windowed/ (written by retokenize_windowed.py)."""
+def _tokenize_contract(sol: Path, dry_run: bool) -> bool:
+    """Tokenize one augmented contract into tokens_windowed/{md5}.pt."""
+    global _tokenizer
+    if _tokenizer is None:
+        logger.info("Loading CodeBERT tokenizer...")
+        _tokenizer = AutoTokenizer.from_pretrained(
+            _TOKENIZER_MODEL, cache_dir=".cache/huggingface", use_fast=True
+        )
+
     md5 = _md5(sol)
-    pt = TOKENS_DIR / f"{md5}.pt"
-    if pt.exists():
+    out = TOKENS_DIR / f"{md5}.pt"
+    if out.exists():
+        logger.debug(f"  Token OK  {sol.name} (already exists)")
+        return True
+
+    try:
+        code = sol.read_text(encoding="utf-8", errors="replace")
+        if not code.strip():
+            logger.warning(f"  Token skip {sol.name}: empty file")
+            return False
+
+        pad_id = _tokenizer.pad_token_id or 0
+        encoded = _tokenizer(
+            code, max_length=_WINDOW_SIZE, padding="max_length",
+            truncation=True, stride=_STRIDE,
+            return_overflowing_tokens=True, return_tensors="pt",
+        )
+        all_ids   = encoded["input_ids"].tolist()
+        all_masks = encoded["attention_mask"].tolist()
+
+        # Sub-sample if more than MAX_WINDOWS
+        if len(all_ids) > _MAX_WINDOWS:
+            import numpy as _np
+            idxs = [round(i) for i in _np.linspace(0, len(all_ids) - 1, _MAX_WINDOWS)]
+            all_ids   = [all_ids[i]   for i in idxs]
+            all_masks = [all_masks[i] for i in idxs]
+
+        while len(all_ids) < _MAX_WINDOWS:
+            all_ids.append([pad_id] * _WINDOW_SIZE)
+            all_masks.append([0] * _WINDOW_SIZE)
+
+        payload = {
+            "input_ids":              torch.tensor(all_ids,   dtype=torch.long),
+            "attention_mask":         torch.tensor(all_masks, dtype=torch.long),
+            "num_windows":            len([m for m in all_masks if any(m)]),
+            "contract_hash":          md5,
+            "contract_path":          str(sol),
+            "tokenizer_name":         _TOKENIZER_MODEL,
+            "max_length":             _WINDOW_SIZE,
+            "feature_schema_version": FEATURE_SCHEMA_VERSION,
+        }
+        if not dry_run:
+            tmp = out.with_suffix(".tmp")
+            torch.save(payload, tmp)
+            tmp.rename(out)
         logger.debug(f"  Token OK  {sol.name}")
         return True
-    logger.warning(
-        f"  Token missing {sol.name} ({pt}) — run retokenize_windowed.py first."
-    )
-    return False
+    except Exception as e:
+        logger.error(f"  Token fail {sol.name}: {e}")
+        return False
 
 
 def main() -> None:
@@ -164,7 +221,7 @@ def main() -> None:
         logger.info(f"  {sol.name}  [{vuln_str}]")
 
         g_ok = _extract_graph(sol, args.dry_run)
-        t_ok = _check_tokens(sol)
+        t_ok = _tokenize_contract(sol, args.dry_run)
 
         if g_ok:
             graph_ok += 1

@@ -1,6 +1,15 @@
 # SENTINEL — Active Bug List
 
-Last updated: 2026-05-17 (rev 4 — Phase 3+4 fixes implemented)
+Last updated: 2026-05-18 (rev 5 — full pipeline complete, ready for v7.0 training)
+
+**Pipeline status (2026-05-18):**
+- All 27 code bugs fixed (schema v7, NODE_FEATURE_DIM=11, gnn_layers=7)
+- Re-extraction: 41,522 v7 graphs · 44,470 windowed tokens
+- inject_augmented: +54 rows (+26 DoS vuln, 6 compile-fail skipped)
+- label_cleaner: −17,722 noisy labels → multilabel_index_cleaned.csv
+- create_cache: 41,577 pairs, 2.28 GB → cached_dataset_deduped.pkl
+- Model forward pass verified: output [B,10], layers=7, edge types 0–7
+- Pre-training verification: feature ranges clean, splits valid, no OOB indices
 Sources: internal deep inspection + external reviewer cross-validation (docs/checking.md + docs/sentinel_remediation_plan.md, both verified against source)
 
 Legend: **OPEN** = not fixed · **DEFERRED** = known, accepted for now · **FIXED** = resolved this session
