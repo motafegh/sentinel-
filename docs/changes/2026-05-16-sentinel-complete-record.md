@@ -960,3 +960,28 @@ If val F1 is below 0.43 but converging:
 8. **eval_threshold during training must match expected inference probability range.** Using
    threshold=0.5 when minority class probabilities cluster at 0.35–0.45 creates noise that
    triggers premature early stopping.
+
+---
+
+## Postscript: Actual v6 Launch (2026-05-17)
+
+*This section was added after this document was written. The doc was written when re-extraction was 51% complete. Here is what actually happened.*
+
+**Three sessions of work between 2026-05-16 and 2026-05-17 completed the v6 pipeline:**
+
+| Completed | Notes |
+|-----------|-------|
+| User's independent audit session | Ran 26 audit tasks; found BUG-6 (47.4% wrong contract selection), BUG-1/2 (loc/complexity not normalized for CFG nodes), BUG-3, BUG-9 |
+| Schema bumped v4→v5 | All 5 fixes applied in `graph_extractor.py`; commit `b12669c` |
+| Re-extraction v7 | 41,521 ok / 74 ghost / 2,875 skipped; most_derived heuristic now active |
+| Stale graph patching | 2,702 skipped graphs patched in-place (log1p normalization applied atomically) |
+| Orphan graph cleanup | 4,311 pre-dedup graphs moved to `ml/data/graphs_legacy/` |
+| Windowed retokenization | 44,470/44,470; `ml/data/tokens_windowed/` [4,512] per file |
+| Timestamp label relabeling | 972 false Timestamp labels removed (50.3% unverified); 1,933→961 |
+| Cache rebuild | `ml/data/cached_dataset_windowed.pkl` — 2.47 GB, 44,470 pairs, schema v5 |
+| Training launch | PID 455743; batch=8, grad_accum=8, torch.compile, workers=4 |
+| Speed | 2.33 batch/s → ~27 min/epoch → ~45h total |
+
+**Step-100 training health (epoch 1):** gnn_eye=0.6913, tf_eye=0.7030, fused_eye=0.6838 — all three eyes live, no NaNs, ASL loss 0.05–0.08 (expected — different scale from BCE).
+
+Full details in `docs/changes/2026-05-17-v6-audit-findings-and-fixes.md`.
