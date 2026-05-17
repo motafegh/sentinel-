@@ -323,6 +323,11 @@ class GNNEncoder(nn.Module):
             (diagnostic only — detached tensors, not used for gradients)
         """
         # ── Guards ───────────────────────────────────────────────────────────
+        if x.shape[1] != NODE_FEATURE_DIM:
+            raise ValueError(
+                f"GNNEncoder expects {NODE_FEATURE_DIM}-dim node features (schema v7) "
+                f"but got {x.shape[1]}. Likely a stale v6 .pt file — re-run reextract_graphs.py."
+            )
         # Bug #1: use_edge_attr=True with edge_attr=None silently disables
         # Phase 2 CONTROL_FLOW masking (cfg_mask becomes all-zeros). Raise
         # early so the caller knows the graph is missing edge_attr.

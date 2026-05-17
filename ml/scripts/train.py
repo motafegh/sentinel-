@@ -151,7 +151,7 @@ def parse_args() -> argparse.Namespace:
 
     # --- GNN architecture (v6) ---
     p.add_argument("--gnn-hidden-dim",   type=int,   default=256)
-    p.add_argument("--gnn-layers",       type=int,   default=6)
+    p.add_argument("--gnn-layers",       type=int,   default=7)
     p.add_argument("--gnn-heads",        type=int,   default=8)
     p.add_argument("--gnn-dropout",      type=float, default=0.2)
     p.add_argument("--gnn-edge-emb-dim", type=int,   default=64)
@@ -165,6 +165,8 @@ def parse_args() -> argparse.Namespace:
 
     # --- Auxiliary loss (v5 three-eye) ---
     p.add_argument("--aux-loss-weight", type=float, default=0.3)
+    p.add_argument("--dos-loss-weight", type=float, default=0.0,
+                   help="DoS gradient weight (0.0=masked per BUG-H6, 1.0=normal; set to 1.0 after DoS augmentation)")
 
     # --- LoRA architecture (v5) ---
     p.add_argument("--lora-r",       type=int,   default=16)
@@ -174,7 +176,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--smoke-subsample-fraction", type=float, default=1.0)
     p.add_argument(
         "--weighted-sampler",
-        choices=["none", "DoS-only", "all-rare"],
+        choices=["none", "positive", "DoS-only", "all-rare"],
         default="none",
     )
 
@@ -252,6 +254,7 @@ def main() -> None:
         resume_model_only     = args.resume_model_only,
         force_optimizer_reset = args.force_optimizer_reset,
         use_weighted_sampler  = args.weighted_sampler,
+        dos_loss_weight       = args.dos_loss_weight,
     )
 
     train(config)

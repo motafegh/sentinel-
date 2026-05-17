@@ -531,9 +531,19 @@ def train_one_epoch(
             main_loss   = loss_fn(_logits_for_loss, labels)
             # aux_loss_fn has no pos_weight — pathway heads give supervision signal
             # without amplifying rare-class imbalance through struggling aux heads.
-            loss_gnn_a  = aux_loss_fn(aux["gnn"],         labels)
-            loss_tf_a   = aux_loss_fn(aux["transformer"], labels)
-            loss_fus_a  = aux_loss_fn(aux["fused"],       labels)
+            # Apply same DoS masking to aux heads so the ~47% leaked gradient
+            # from 3 aux paths doesn't teach spurious DoS↔Reentrancy correlations.
+            if dos_loss_weight < 1.0:
+                _aux_masked = {}
+                for _k, _v in aux.items():
+                    _vv = _v.clone()
+                    _vv[:, _dos_idx] = _v[:, _dos_idx].detach()
+                    _aux_masked[_k] = _vv
+            else:
+                _aux_masked = aux
+            loss_gnn_a  = aux_loss_fn(_aux_masked["gnn"],         labels)
+            loss_tf_a   = aux_loss_fn(_aux_masked["transformer"], labels)
+            loss_fus_a  = aux_loss_fn(_aux_masked["fused"],       labels)
             aux_loss    = loss_gnn_a + loss_tf_a + loss_fus_a
             # Divide by actual window size, not the fixed accum_steps.
             # When len(loader) % accum_steps != 0 the last window has fewer

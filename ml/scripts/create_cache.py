@@ -13,7 +13,7 @@ Usage
 
     Optional flags:
       --graphs-dir   ml/data/graphs              (default)
-      --tokens-dir   ml/data/tokens              (default)
+      --tokens-dir   ml/data/tokens_windowed      (default)
       --label-csv    ml/data/processed/multilabel_index_deduped.csv  (default)
       --output       ml/data/cached_dataset_deduped.pkl  (default)
       --workers      8   parallel loaders        (default: 8)
@@ -141,7 +141,7 @@ def build_cache(
 def main() -> None:
     p = argparse.ArgumentParser(description="Build DualPathDataset RAM cache")
     p.add_argument("--graphs-dir", default="ml/data/graphs")
-    p.add_argument("--tokens-dir", default="ml/data/tokens")
+    p.add_argument("--tokens-dir", default="ml/data/tokens_windowed")
     p.add_argument("--label-csv",  default="ml/data/processed/multilabel_index_deduped.csv")
     p.add_argument("--output",     default="ml/data/cached_dataset_deduped.pkl")
     p.add_argument("--workers",    type=int, default=8)
