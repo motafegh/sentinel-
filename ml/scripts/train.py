@@ -127,6 +127,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--use-amp",              action="store_true", default=True)
     p.add_argument("--no-amp",               dest="use_amp", action="store_false")
     p.add_argument("--num-workers",          type=int, default=2)
+    p.add_argument("--compile",              action="store_true", default=False,
+                   help="torch.compile(model, dynamic=True) — ~20-40%% speedup on PyTorch 2.x")
     p.add_argument("--log-interval",         type=int, default=100)
     p.add_argument("--focal-gamma",          type=float, default=2.0)
     p.add_argument("--focal-alpha",          type=float, default=0.25)
@@ -238,6 +240,7 @@ def main() -> None:
         warmup_pct            = args.warmup_pct,
         use_amp               = args.use_amp,
         num_workers           = args.num_workers,
+        use_compile           = args.compile,
         log_interval          = args.log_interval,
         graphs_dir            = args.graphs_dir,
         tokens_dir            = args.tokens_dir,
