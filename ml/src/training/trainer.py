@@ -234,9 +234,10 @@ class TrainConfig:
     # --- Speed: AMP ---
     use_amp: bool = True
 
-    # --- Speed: DataLoader ---
+    # --- Speed: DataLoader + compilation ---
     num_workers:         int  = 2
     persistent_workers:  bool = True
+    use_compile:         bool = False  # torch.compile(model, dynamic=True); ~20-40% speedup
 
     # --- Loss function ---
     # v4/v5 used BCE. ASL (Ridnik et al. ICCV 2021) is recommended for v6:
@@ -741,6 +742,14 @@ def train(config: TrainConfig) -> dict:
         lora_dropout=config.lora_dropout,
         lora_target_modules=config.lora_target_modules,
     ).to(device)
+
+    if config.use_compile:
+        try:
+            torch._dynamo.config.suppress_errors = True  # fall back on unsupported ops
+            model = torch.compile(model, dynamic=True)
+            logger.info("torch.compile enabled (dynamic=True, suppress_errors=True)")
+        except Exception as e:
+            logger.warning(f"torch.compile failed, running eager: {e}")
 
     start_epoch      = 1
     best_f1          = 0.0
