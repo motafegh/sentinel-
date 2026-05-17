@@ -103,7 +103,7 @@ class SentinelModel(nn.Module):
 
         --- GNN hyperparameters ---
         gnn_hidden_dim:       GNN node embedding width (default: 128).
-        gnn_num_layers:       Number of GAT layers (default: 4; validated in TrainConfig).
+        gnn_num_layers:       Number of GAT layers (default: 7; 2+3+2 phases, v7).
         gnn_heads:            GAT attention heads for Phase 1 (default: 8).
         gnn_dropout:          GNN attention + node dropout (default: 0.2).
         use_edge_attr:        Feed edge type embeddings into GATConv (default: True).
@@ -123,7 +123,7 @@ class SentinelModel(nn.Module):
         num_classes:          int                 = 10,
         # GNN architecture
         gnn_hidden_dim:       int                 = 256,
-        gnn_num_layers:       int                 = 6,
+        gnn_num_layers:       int                 = 7,
         gnn_heads:            int                 = 8,
         gnn_dropout:          float               = 0.2,
         use_edge_attr:        bool                = True,

@@ -58,7 +58,7 @@ log = logging.getLogger(__name__)
 
 def _load_pair(stem: str, graphs_dir: Path, tokens_dir: Path):
     """Load one (graph, tokens) pair. Returns (stem, graph, tokens) or raises."""
-    graph  = torch.load(graphs_dir / f"{stem}.pt", weights_only=True)
+    graph  = torch.load(graphs_dir / f"{stem}.pt", weights_only=False)  # PyG DataEdgeAttr not in safe globals
     tokens = torch.load(tokens_dir / f"{stem}.pt", weights_only=True)
     return stem, graph, tokens
 
