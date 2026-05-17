@@ -206,7 +206,7 @@ class SentinelModel(nn.Module):
         self.aux_fused       = nn.Linear(eye_dim, num_classes)
 
         logger.info(
-            f"SentinelModel v6 (three-eye) initialised | "
+            f"SentinelModel v7 (three-eye) initialised | "
             f"num_classes={num_classes} | eye_dim={eye_dim} | "
             f"classifier [{3 * eye_dim}→192→{num_classes}] | "
             f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} layers={gnn_num_layers} "
