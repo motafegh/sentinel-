@@ -238,6 +238,19 @@ class GNNEncoder(nn.Module):
             add_self_loops=False,     # CRITICAL
             edge_dim=_edge_dim,
         )
+        # BUG-H1: Layer 3c — 3rd CF hop.
+        # 2 hops (conv3+conv3b): covers CALL→TMP→WRITE (classic 2-step CEI).
+        # 3 hops (conv3c):       covers ENTRY→CALL→TMP→WRITE — start-of-function
+        # CALL that is followed two steps later by the state WRITE. Captures the
+        # full CEI sequence from entry to write in one aggregation pass.
+        self.conv3c = GATConv(
+            in_channels=hidden_dim,
+            out_channels=hidden_dim,
+            heads=1,
+            concat=False,
+            add_self_loops=False,     # CRITICAL
+            edge_dim=_edge_dim,
+        )
 
         # ── Phase 3 — reverse-CONTAINS (Layers 5+6) ─────────────────────────
         # CFG_NODE nodes (enriched by Phase 2) send messages TO FUNCTION nodes.
@@ -432,6 +445,9 @@ class GNNEncoder(nn.Module):
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)                   # residual
         x2 = self.conv3b(x, cfg_ei, cfg_ea)         # second CF hop
+        x2 = self.relu(x2)
+        x  = x + self.dropout(x2)                   # residual
+        x2 = self.conv3c(x, cfg_ei, cfg_ea)         # third CF hop (BUG-H1)
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)                   # residual
         x  = self.phase_norm[1](x)                  # LayerNorm after complete Phase 2

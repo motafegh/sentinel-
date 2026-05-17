@@ -42,7 +42,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from ml.src.utils.hash_utils import get_contract_hash  # noqa: E402
 AUG_DIR        = PROJECT_ROOT / "ml" / "data" / "augmented"
 GRAPHS_DIR     = PROJECT_ROOT / "ml" / "data" / "graphs"
-TOKENS_DIR     = PROJECT_ROOT / "ml" / "data" / "tokens"
+TOKENS_DIR     = PROJECT_ROOT / "ml" / "data" / "tokens_windowed"
 DEDUP_CSV      = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index_deduped.csv"
 SPLITS_DIR     = PROJECT_ROOT / "ml" / "data" / "splits" / "deduped"
 
@@ -82,10 +82,12 @@ def _solc_binary(ver: str) -> Path | None:
 def _label_row(sol: Path) -> dict:
     row = {c: 0 for c in CLASS_NAMES}
     name = sol.stem.lower()
-    if "vuln" in name:
+    # Match on prefix patterns — "safe" contracts always get all-zeros.
+    if name.startswith("cei_vuln"):
         row["Reentrancy"] = 1
-    if "dos_" in name:
+    elif name.startswith("dos_vuln"):
         row["DenialOfService"] = 1
+    # Any other prefix (cei_safe, dos_safe) → all zeros.
     return row
 
 
@@ -114,22 +116,17 @@ def _extract_graph(sol: Path, dry_run: bool) -> bool:
     return True
 
 
-def _extract_tokens(sol: Path, dry_run: bool) -> bool:
-    from ml.src.data_extraction.tokenizer import tokenize_single_contract, save_token_file
-    # Pass relative path so tokenizer MD5 = md5(str(relative_path)) = graph MD5
-    rel_path = str(sol.relative_to(PROJECT_ROOT))
-    try:
-        result = tokenize_single_contract(rel_path)
-    except Exception as e:
-        logger.warning(f"  Token skip {sol.name}: {e}")
-        return False
-    if result is None:
-        logger.warning(f"  Token skip {sol.name}: tokenize returned None")
-        return False
-    if not dry_run:
-        save_token_file(result, TOKENS_DIR)
-    logger.debug(f"  Token OK  {sol.name}")
-    return True
+def _check_tokens(sol: Path) -> bool:
+    """Tokens must already exist in tokens_windowed/ (written by retokenize_windowed.py)."""
+    md5 = _md5(sol)
+    pt = TOKENS_DIR / f"{md5}.pt"
+    if pt.exists():
+        logger.debug(f"  Token OK  {sol.name}")
+        return True
+    logger.warning(
+        f"  Token missing {sol.name} ({pt}) — run retokenize_windowed.py first."
+    )
+    return False
 
 
 def main() -> None:
@@ -144,10 +141,6 @@ def main() -> None:
 
     if args.dry_run:
         logger.info("DRY RUN — no files written")
-
-    # Initialise CodeBERT tokenizer once (tokenize_single_contract uses a global)
-    from ml.src.data_extraction.tokenizer import init_worker
-    init_worker()
 
     sol_files = sorted(args.aug_dir.glob("*.sol"))
     logger.info(f"Found {len(sol_files)} .sol files in {args.aug_dir}")
@@ -171,7 +164,7 @@ def main() -> None:
         logger.info(f"  {sol.name}  [{vuln_str}]")
 
         g_ok = _extract_graph(sol, args.dry_run)
-        t_ok = _extract_tokens(sol, args.dry_run)
+        t_ok = _check_tokens(sol)
 
         if g_ok:
             graph_ok += 1

@@ -1,39 +1,42 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-17 (v6.0 training RUNNING — epoch 1/100 @ 03:30 UTC+3:30)
+Last updated: 2026-05-17 (v6.0 training STOPPED — data fixes applied, cache rebuilding)
 
 ---
 
-## v6.0 Training — LIVE
+## v6.0 Training — STOPPED (data fixes in progress)
 
-| Item | Value |
-|------|-------|
-| Run name | `v6.0-20260517` |
-| PID | **455743** |
-| Launched | 2026-05-17 ~03:48 UTC+3:30 |
-| Epoch | 1/100 (in progress) |
-| Effective batch | 64 (batch=8 × accum=8) |
-| VRAM | 6.9/8.0 GiB (1.1 GiB headroom) |
-| Speed | **~2.33 batch/s → ~27 min/epoch** |
-| ETA | **~45h total** (early stopping expected ep 40–60) |
-| Loss | AsymmetricLoss(γ⁻=4.0, γ⁺=1.0, clip=0.05) — values ~0.05–0.08, NOT ~0.8 (different scale from BCE, expected) |
-| AMP / TF32 | ✅ / ✅ |
-| torch.compile | ✅ `dynamic=True, suppress_errors=True` — 27% speedup vs eager |
-| DataLoader workers | 4 (was 2; GPU util 86%→94%, bandwidth 1%→33%) |
-| LoRA | r=16, alpha=32, modules=[query, value] — 589,824 trainable / 124M frozen |
-| Log | `ml/logs/v6.0-20260517.log` (structured) + `ml/logs/train_v6.0_20260517.log` (tqdm) |
-| Checkpoint | `ml/checkpoints/v6.0-20260517_best.pt` |
+Training was killed at epoch ~16 (best F1-macro = **0.1717** at epoch 9, stalled).
 
-**Resume command (if killed):**
+**Why stopped:** Fresh full validation found **22.4% of graphs (9,973 / 44,470)** had out-of-range features:
+- BUG-1: 2,856 graphs with raw `loc` values (max=2,167 vs expected [0,1])
+- BUG-2: 37 graphs with raw `complexity` values (max=48 vs expected [0,1])
+- BUG-3: 7,854 graphs with `visibility=2` (out of [0,1] range)
+
+**Fixes applied (commit 8c8ce8c):**
+- All 44,470 graphs patched in-place — 0 OOR nodes confirmed post-patch
+- `FEATURE_SCHEMA_VERSION` bumped v5 → v6
+- `VISIBILITY_MAP` changed: `{0,1,2}` → `{0.0, 0.5, 1.0}`
+- Cache rebuilding now (PID 110135)
+
+**Decisions pending before restart:**
+- ASL γ⁻: keep 4 or reduce to 2? (60.1% zero-label rows + γ⁻=4 may cause all-zeros collapse)
+- DoS class: keep (3 pure train samples), drop, or augment?
+- Resume from epoch 9 checkpoint or restart from scratch?
+
+**Best checkpoint:** `ml/checkpoints/v6.0-20260517_best.pt` (epoch 9, F1=0.1717)
+
+**Resume command (after cache rebuild + config decisions):**
 ```bash
 source ml/.venv/bin/activate
-TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. nohup python ml/scripts/train.py \
     --resume ml/checkpoints/v6.0-20260517_best.pt \
     --run-name v6.0-20260517-resumed \
     --experiment-name sentinel-v6 \
     --epochs 100 \
     --gradient-accumulation-steps 8 \
-    --compile --num-workers 4
+    --compile --num-workers 0 \
+    > ml/logs/train_v6.0_20260517.log 2>&1 &
 ```
 
 ---
@@ -52,8 +55,10 @@ All 8 pipeline steps completed. Training running.
 | Graph re-extraction (v7) | ✅ DONE | 41,521 ok / 74 ghost / 2,875 skipped; stale graphs patched in-place |
 | Windowed retokenization | ✅ DONE | 44,470/44,470; ml/data/tokens_windowed/ [4,512] per file |
 | Dedup + Timestamp relabeling | ✅ DONE (a75ae67) | 972 Timestamp labels removed (50.3% unverified); 1,933→961 |
-| Cache rebuild | ✅ DONE | ml/data/cached_dataset_windowed.pkl — 2.47 GB, 44,470 pairs |
-| v6.0 training | 🔄 **RUNNING** | PID 450936, epoch 1/100, ~34 min/epoch |
+| Full data validation | ✅ DONE | 22.4% graphs had OOR features; BUG-1/2/3 confirmed |
+| Graph feature patch (schema v6) | ✅ DONE (8c8ce8c) | BUG-1/2/3 patched; 0 OOR nodes; schema v5→v6 |
+| Cache rebuild (post-patch) | ✅ DONE | 2.3 GB, 44,470 pairs, all features verified in-range |
+| v6.0 training | ⏸ **STOPPED** | Killed ep~16 for data fixes; best F1=0.1717 (ep9) |
 
 ---
 

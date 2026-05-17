@@ -234,13 +234,18 @@ def _compute_return_ignored(func: Any) -> float:
     try:
         from slither.slithir.operations import LowLevelCall, HighLevelCall, Send
 
-        # Collect all read-variable sets across every node/IR in the function
+        # Collect all read-variable names across every node/IR in the function
         # once up front, so we can do O(1) lookup per call op.
-        all_read_vars: set = set()
+        # BUG-M1: use lval.name (stable string) instead of id(lval) (memory
+        # address). Slither may reconstruct IR objects across iterations so
+        # id()-based identity comparisons produce false positives.
+        all_read_names: set = set()
         for node in (getattr(func, "nodes", None) or []):
             for op in (getattr(node, "irs", None) or []):
                 for rv in (getattr(op, "read", None) or []):
-                    all_read_vars.add(id(rv))
+                    name = getattr(rv, "name", None)
+                    if name is not None:
+                        all_read_names.add(name)
 
         for node in (getattr(func, "nodes", None) or []):
             for op in (getattr(node, "irs", None) or []):
@@ -249,7 +254,8 @@ def _compute_return_ignored(func: Any) -> float:
                     if lval is None:
                         # Truly None (shouldn't happen in practice, but guard it)
                         return 1.0
-                    if id(lval) not in all_read_vars:
+                    lval_name = getattr(lval, "name", None)
+                    if lval_name is None or lval_name not in all_read_names:
                         return 1.0
 
         return 0.0
@@ -474,13 +480,24 @@ def _cfg_node_type(slither_node: Any) -> int:
     return NODE_TYPES["CFG_NODE_OTHER"]
 
 
-def _build_cfg_node_features(slither_node: Any, func: Any, cfg_type: int) -> list:
+def _build_cfg_node_features(
+    slither_node: Any,
+    func: Any,
+    cfg_type: int,
+    parent_features: list | None = None,
+) -> list:
     """
     Build the 12-dim feature vector for a CFG (statement-level) node.
 
     Returns list[float] of exactly NODE_FEATURE_DIM (12) elements.
     torch.tensor(x_list) requires all sublists to be the same length;
     returning a different length silently causes crashes at tensor assembly.
+
+    BUG-C3 FIX: CFG nodes inherit function-level features from parent_features
+    (the parent FUNCTION node's feature vector) for dims that are function-scoped:
+        [1] visibility, [3] view, [4] payable, [5] complexity, [10] has_loop.
+    Without inheritance, 9/12 dims were 0.0 for all CFG nodes — statement-level
+    nodes carried almost no signal, undermining CEI pattern detection.
 
     CRITICAL: in_unchecked [9] is ALWAYS 0.0 — never inherited from the parent
     function's flag. If a function has any unchecked block, ALL its child CFG
@@ -503,24 +520,29 @@ def _build_cfg_node_features(slither_node: Any, func: Any, cfg_type: int) -> lis
         loc_raw = float(len(sm.lines))
     loc = min(math.log1p(loc_raw) / math.log1p(1000), 1.0)
 
-    # CFG nodes must never inherit the parent function's unchecked scope —
-    # in_unchecked [9] is always 0.0 at statement level.
-    _cfg_in_unchecked = 0.0
-    assert _cfg_in_unchecked == 0.0, "CFG node in_unchecked invariant violated"
+    # Inherit function-scoped dims from the parent FUNCTION node feature vector.
+    # Dims [1,3,4,5,10] are properties of the function that apply to all its
+    # statements.  Falls back to 0.0 when parent_features is unavailable.
+    p = parent_features or []
+    visibility  = p[1] if len(p) > 1 else 0.0
+    view        = p[3] if len(p) > 3 else 0.0
+    payable     = p[4] if len(p) > 4 else 0.0
+    complexity  = p[5] if len(p) > 5 else 0.0
+    has_loop    = p[9] if len(p) > 9 else 0.0  # dim[9] in v7 (was [10] in v6)
 
     return [
         float(cfg_type) / _MAX_TYPE_ID,  # [0]  type_id normalised to [0,1]
-        0.0,              # [1]  visibility — not applicable
-        0.0,              # [2]  uses_block_globals — not applicable
-        0.0,              # [3]  view — not applicable
-        0.0,              # [4]  payable — not applicable
-        0.0,              # [5]  complexity — function-level metric
-        loc,              # [6]  loc — log-normalised lines of this statement's source span
-        0.0,              # [7]  return_ignored — not per-statement in v5.0
-        1.0,              # [8]  call_target_typed — default safe (not applicable)
-        _cfg_in_unchecked, # [9]  in_unchecked — NEVER inherited from parent func
-        0.0,              # [10] has_loop — not applicable at statement level
-        0.0,              # [11] external_call_count — not applicable
+        visibility,   # [1]  inherited from parent FUNCTION (BUG-C3)
+        0.0,          # [2]  uses_block_globals — not applicable per-statement
+        view,         # [3]  inherited from parent FUNCTION (BUG-C3)
+        payable,      # [4]  inherited from parent FUNCTION (BUG-C3)
+        complexity,   # [5]  inherited from parent FUNCTION (BUG-C3)
+        loc,          # [6]  loc — log-normalised lines of this statement's source span
+        0.0,          # [7]  return_ignored — not per-statement in v6
+        1.0,          # [8]  call_target_typed — default safe (not applicable)
+        # in_unchecked removed (BUG-L2 schema v7) — was dim[9], always 0.0 anyway
+        has_loop,     # [9]  inherited from parent FUNCTION (BUG-C3; was [10] in v6)
+        0.0,          # [10] external_call_count — not applicable per-statement
     ]
 
 
@@ -530,6 +552,7 @@ def _build_control_flow_edges(
     node_index_map: dict,
     x_list: list,
     node_metadata: list,
+    parent_features: list | None = None,
 ) -> tuple:
     """
     For a given function, build CFG_NODE children and their edges.
@@ -582,7 +605,7 @@ def _build_control_flow_edges(
         graph_idx = len(x_list)          # CORRECT: next available global index
         node_index_map[slither_node] = graph_idx
 
-        x_list.append(_build_cfg_node_features(slither_node, func, cfg_type))
+        x_list.append(_build_cfg_node_features(slither_node, func, cfg_type, parent_features))
 
         cfg_type_name = _type_name_map.get(cfg_type, "CFG_NODE_OTHER")
         sm = getattr(slither_node, "source_mapping", None)
@@ -689,18 +712,18 @@ def _build_node_features(obj: Any, type_id: int) -> list:
     assert call_target_typed in (-1.0, 0.0, 1.0), f"call_target_typed out of range: {call_target_typed}"
 
     return [
-        float(type_id) / _MAX_TYPE_ID,  # normalised to [0,1]
-        visibility,
-        uses_block_globals,   # [2] was pure — now block.timestamp/number signal
-        view,
-        payable,
-        complexity,           # [5] log-normalised CFG block count (BUG-2 fix)
-        loc,                  # [6] log-normalised (was raw line count)
-        return_ignored,
-        call_target_typed,
-        in_unchecked,
-        has_loop,
-        external_call_count,
+        float(type_id) / _MAX_TYPE_ID,  # [0]  normalised to [0,1]
+        visibility,                      # [1]
+        uses_block_globals,              # [2]  block.timestamp/number signal
+        view,                            # [3]
+        payable,                         # [4]
+        complexity,                      # [5]  log-normalised CFG block count (BUG-2 fix)
+        loc,                             # [6]  log-normalised (was raw line count)
+        return_ignored,                  # [7]
+        call_target_typed,               # [8]
+        # in_unchecked removed (BUG-L2): dead signal for 87.9% Solidity 0.4.x dataset
+        has_loop,                        # [9]  (was [10] in v6)
+        external_call_count,             # [10] (was [11] in v6)
     ]
 
 
@@ -936,6 +959,12 @@ def extract_contract_graph(
     # ── Add declaration nodes (fixed insertion order) ──────────────────────
     # ⚠  This order must remain stable — node indices flow into edge_index.
     _add_node(contract, NODE_TYPES["CONTRACT"])
+    # BUG-H8: add inherited parent contracts as CONTRACT nodes so that
+    # INHERITS edges (added in the edge section below) can resolve their indices.
+    # Slither's contract.functions already includes inherited functions, so we
+    # don't re-add functions here — just the parent CONTRACT node itself.
+    for parent in (getattr(contract, "inheritance", None) or []):
+        _add_node(parent, NODE_TYPES["CONTRACT"])
     for var   in contract.state_variables: _add_node(var,   NODE_TYPES["STATE_VAR"])
 
     # For functions: add function node first, then immediately add its CFG children
@@ -959,7 +988,8 @@ def extract_contract_graph(
         try:
             cfg_node_map: dict = {}  # slither_node → graph_idx, scoped per function
             contains_edges, control_flow_edges = _build_control_flow_edges(
-                func, fn_idx, cfg_node_map, x_list, node_metadata
+                func, fn_idx, cfg_node_map, x_list, node_metadata,
+                parent_features=x_list[fn_idx],  # BUG-C3: propagate function features
             )
             for src, dst in contains_edges:
                 edges.append([src, dst])
@@ -1011,6 +1041,21 @@ def extract_contract_graph(
             f"each must return exactly {NODE_FEATURE_DIM} floats."
         )
 
+    # BUG-L4: validate feature ranges at extraction time — catch OOR values
+    # before they corrupt the training cache. Log a warning (don't raise) so
+    # a single bad contract doesn't abort a full extraction run.
+    oor_mask = (x < -1.0) | (x > 1.0)
+    if oor_mask.any():
+        oor_nodes, oor_dims = oor_mask.nonzero(as_tuple=True)
+        logger.warning(
+            "OOR features in '%s': %d cells across nodes %s dims %s — "
+            "feature values outside [-1, 1] may destabilise training.",
+            contract.name,
+            int(oor_mask.sum()),
+            oor_nodes.unique().tolist()[:5],
+            oor_dims.unique().tolist(),
+        )
+
     # node_metadata must stay index-aligned with x_list
     assert len(node_metadata) == x.shape[0], (
         f"node_metadata length {len(node_metadata)} ≠ x.shape[0] {x.shape[0]} "
@@ -1038,16 +1083,38 @@ def extract_contract_graph(
         for var in (getattr(func, "state_variables_written", None) or []):
             _add_edge(fn, var.canonical_name, EDGE_TYPES["WRITES"])
 
+        # BUG-H7: events_emitted is unreliable for Solidity <0.4.21 (no `emit`
+        # keyword). Fall back to scanning IR ops for EventCall objects, which
+        # Slither populates even for old-style "Transfer(...)" event emission.
+        emitted: set[str] = set()
         if hasattr(func, "events_emitted"):
             try:
                 for evt in func.events_emitted:
-                    _add_edge(fn, evt.canonical_name, EDGE_TYPES["EMITS"])
+                    key = getattr(evt, "canonical_name", None) or getattr(evt, "name", None)
+                    if key:
+                        emitted.add(key)
             except Exception:
                 pass
+        if not emitted:
+            try:
+                from slither.slithir.operations import EventCall as _EventCall
+                for node in (getattr(func, "nodes", None) or []):
+                    for ir in (getattr(node, "irs", None) or []):
+                        if isinstance(ir, _EventCall):
+                            key = getattr(ir, "name", None)
+                            if key:
+                                emitted.add(key)
+            except Exception:
+                pass
+        for key in emitted:
+            _add_edge(fn, key, EDGE_TYPES["EMITS"])
 
+    # BUG-H8: Use canonical_name for both src and dst so they match node_map keys.
     try:
+        contract_key = getattr(contract, "canonical_name", None) or contract.name
         for parent in (getattr(contract, "inheritance", None) or []):
-            _add_edge(contract.name, parent.name, EDGE_TYPES["INHERITS"])
+            parent_key = getattr(parent, "canonical_name", None) or parent.name
+            _add_edge(contract_key, parent_key, EDGE_TYPES["INHERITS"])
     except Exception:
         pass
 
