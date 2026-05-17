@@ -28,7 +28,7 @@ ordering in FEATURE_NAMES requires ALL of the following steps:
        python ml/scripts/train.py
        (GNNEncoder reads in_channels=NODE_FEATURE_DIM at construction time)
   4. Increment FEATURE_SCHEMA_VERSION to invalidate all inference caches:
-       FEATURE_SCHEMA_VERSION = "v3"  (next increment)
+       FEATURE_SCHEMA_VERSION = "v8"  (next increment — currently v7)
 
 Skipping any of these steps will cause silent accuracy regression.
 
@@ -115,6 +115,18 @@ v6  — 12 features (same dim — BUG-3 visibility fix, in-place patch applied):
       BUG-1/2 in-place patch confirmed complete: all 44,470 graphs verified to have
            loc ∈ [0,1] and complexity ∈ [0,1] after patch_graph_features.py run.
       (2026-05-17 session — fresh full validation + in-place patch)
+
+v7  — 11 features (in_unchecked dropped — BUG-L2):
+      [9]  in_unchecked removed: dead for 87.9% of dataset (nearly always 0.0).
+           Index shift: has_loop [10]→[9], external_call_count [11]→[10].
+      EMITS(3) now fires: EventCall IR fallback added (BUG-H7).
+      INHERITS(4) now fires: parent Contract nodes added (BUG-H8).
+      CFG nodes inherit dims [1,3,4,5,9] from FUNCTION parent (BUG-C3).
+      return_ignored uses lval.name not id(lval) for hashability (BUG-M1).
+      OOR validation logged at extraction time (BUG-L4).
+      REVERSE_CONTAINS(7) runtime edge type formalised in schema constants.
+      Requires full re-extraction of all graph .pt files.
+      (2026-05-18 session — all 27 pre-training bugs fixed, 41,522 graphs re-extracted)
 """
 
 from __future__ import annotations

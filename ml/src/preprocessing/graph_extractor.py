@@ -31,11 +31,11 @@ PUBLIC SURFACE
   Never returns None. Always raises GraphExtractionError on failure.
   Callers decide how to handle it (re-raise, translate, log+skip).
 
-SHAPE CONTRACT  (v2 schema — must match training data)
+SHAPE CONTRACT  (v7 schema — must match training data)
 ──────────────────────────────────────────────────────────────────────────────
-  graph.x             [N, 12]  float32  node feature matrix (NODE_FEATURE_DIM=12)
+  graph.x             [N, 11]  float32  node feature matrix (NODE_FEATURE_DIM=11)
   graph.edge_index    [2, E]   int64    edge connectivity in COO format
-  graph.edge_attr     [E]      int64    edge type IDs 0-6 (1-D per PyG convention)
+  graph.edge_attr     [E]      int64    edge type IDs 0-7 (1-D per PyG convention)
                                          (only attached when config.include_edge_attr)
   graph.node_metadata list     of dicts, one per node, index-aligned with graph.x
                                 Required: {"name", "type", "source_lines"} keys.
@@ -48,30 +48,30 @@ SHAPE CONTRACT  (v2 schema — must match training data)
   Caller-specific metadata (.contract_hash, .contract_path, .y) is NOT set
   here; each caller attaches its own values after the call returns.
 
-V2 SCHEMA CHANGES (2026-05-11)
-───────────────────────────────
-  Node features: 8 → 12 dims.
-    - `reentrant` (Slither.is_reentrant) removed: Slither shortcut.
-    - `gas_intensity` removed: circular heuristic over features already in vector.
-    - 5 new features added: return_ignored (sentinel -1.0), call_target_typed
-      (sentinel -1.0), in_unchecked, has_loop, external_call_count.
+V7 SCHEMA (current — 2026-05-18)
+─────────────────────────────────
+  Node features: 11 dims (in_unchecked dropped — BUG-L2).
+    [0]  type_id / 12.0          [1]  visibility (0=pub, 0.5=internal, 1=private)
+    [2]  uses_block_globals       [3]  view        [4]  payable
+    [5]  complexity (log1p)       [6]  loc (log1p)
+    [7]  return_ignored           [8]  call_target_typed
+    [9]  has_loop                 [10] external_call_count (log1p)
 
-  Edge types: 5 → 7.
-    - CONTAINS(5):     function → its CFG_NODE children (new)
-    - CONTROL_FLOW(6): CFG_NODE → successor CFG_NODE, directed (new)
+  Edge types: 8 (CALLS=0 READS=1 WRITES=2 EMITS=3 INHERITS=4 CONTAINS=5 CF=6 RC=7).
+    - EMITS(3):            EventCall IR fallback (BUG-H7)
+    - INHERITS(4):         parent nodes added (BUG-H8)
+    - REVERSE_CONTAINS(7): runtime-only, flipped from CONTAINS at training time
 
-  Node types: 8 → 13.
-    - CFG_NODE_CALL(8):  statement containing an external call
-    - CFG_NODE_WRITE(9): statement writing a state variable
-    - CFG_NODE_READ(10): statement reading a state variable
-    - CFG_NODE_CHECK(11): require / assert / if condition
-    - CFG_NODE_OTHER(12): all other statement types (including synthetic nodes)
+  Node types: 13 (ids 0–12, unchanged from v2).
 
-  graph.node_metadata: new attribute — parallel list of metadata dicts,
-    one entry per node, required for pre-flight embedding-separation test.
-
-  These changes require a full re-extraction of all ~68K graph .pt files.
-  See graph_schema.py CHANGE POLICY.
+V2→V6 SCHEMA HISTORY (archived — see graph_schema.py for full changelog)
+──────────────────────────────────────────────────────────────────────────
+  v2 (2026-05-11): 8→12 dims; CONTAINS(5) + CF(6) edges; 8→13 node types.
+  v5 (2026-05-17): BUG-1/2/6/9 bugfixes (loc log-norm, complexity log-norm,
+    most_derived contract selection, Send return-ignored detection).
+  v6 (2026-05-17): visibility fixed (BUG-3, in-place patch).
+  v7 (2026-05-18): 12→11 dims (in_unchecked dropped); EMITS/INHERITS fire;
+    CFG nodes inherit dims from FUNCTION parent (BUG-C3); RC(7) edges added.
 
 V5 BUGFIXES (2026-05-17)
 ─────────────────────────
