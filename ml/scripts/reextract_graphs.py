@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-reextract_graphs.py — Parallel re-extraction of all graph .pt files (v6 Phase 5).
+reextract_graphs.py — Parallel re-extraction of all graph .pt files (v7 Phase 1 — BUG-6 fix).
 
 Re-extracts every graph in multilabel_index_deduped.csv (44,420 contracts) using
 multiprocessing.Pool, overwriting existing .pt files with v4 feature schema:
@@ -8,7 +8,20 @@ multiprocessing.Pool, overwriting existing .pt files with v4 feature schema:
 - loc log-normalized (feat[6])
 - return_ignored correctly computed (feat[7])
 - Transfer/Send counted in ext_calls + CFG typing (feat[11])
+
+BUG-6 fix: The most_derived contract selection heuristic now replaces the old
+"most functions" heuristic in graph_extractor.py. When a .sol file contains
+multiple contracts, the most-derived (i.e. most-inherited) contract is selected
+rather than the one with the most function definitions. This prevents selecting
+utility/library contracts that happen to have many functions but carry no
+meaningful vulnerability signal. GraphExtractionConfig uses the new default
+("most_derived") automatically — no explicit policy argument is needed.
+
 Token .pt files and the CSV are left untouched.
+
+NOTE (Timestamp relabeling): After re-extraction completes, run the Timestamp
+label relabeling step to ensure any contracts whose labels were affected by the
+contract-selection change are corrected in the index CSV.
 
 Architecture
 ────────────
@@ -36,6 +49,7 @@ AFTER THIS SCRIPT
 ─────────────────
   python ml/scripts/validate_graph_dataset.py --check-dim 12 --check-edge-types 8
   python ml/scripts/create_cache.py
+  Then: run Timestamp label relabeling to fix any label drift from contract-selection change.
 """
 
 from __future__ import annotations
@@ -173,6 +187,9 @@ def _worker(args: Tuple[str, str, str]) -> Tuple[str, str, str]:
     out_path   = graphs_dir / f"{md5}.pt"
 
     solc_ver = _detect_solc_version(sol_path)
+    # BUG-6 fix: GraphExtractionConfig now defaults to the "most_derived"
+    # contract selection policy (selects the most-inherited contract rather
+    # than the one with the most functions). No explicit policy argument needed.
     cfg = GraphExtractionConfig(
         solc_version=solc_ver,
         solc_binary=_solc_binary(solc_ver),
@@ -207,7 +224,7 @@ def _worker(args: Tuple[str, str, str]) -> Tuple[str, str, str]:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Parallel re-extraction of graph .pt files (v5.1 Phase 1)",
+        description="Parallel re-extraction of graph .pt files (v7 Phase 1 — BUG-6 fix re-extraction)",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument("--multilabel-csv",  type=Path,  default=DEFAULT_CSV)
@@ -234,7 +251,7 @@ def main() -> None:
     logger.add(sys.stderr, level=level,
                format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | {message}")
 
-    logger.info("v5.1 Phase 1 — Parallel re-extraction")
+    logger.info("v7 Phase 1 — BUG-6 fix re-extraction")
     logger.info(f"Workers: {args.workers}  chunksize: {args.chunksize}")
     if args.dry_run:
         logger.info("DRY RUN — no files written")
@@ -341,6 +358,7 @@ def main() -> None:
         logger.info(f"Gate PASS: ghost rate {ghost_pct:.1f}% < 1%")
         logger.info("Next: python ml/scripts/validate_graph_dataset.py --check-dim 12 --check-edge-types 8")
         logger.info("Then: python ml/scripts/create_cache.py")
+        logger.info("Then: run Timestamp label relabeling to fix any label drift from contract-selection change")
     else:
         # Issue 2: ghost .pt files ARE on disk — make it actionable
         logger.error(

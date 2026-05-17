@@ -12,14 +12,17 @@ Additional checks enabled by flags (used after re-extraction):
   --check-edge-types N   verify edge_attr max < N  (use 8 for v5/v6 schema — REVERSE_CONTAINS=7 added)
   --check-contains-edges verify at least one CONTAINS (id=5) edge exists per file
   --check-control-flow   verify at least one CONTROL_FLOW (id=6) edge exists per file
+  --check-block-globals  verify uses_block_globals (feat[2]) fires for at least some
+                         Timestamp-labeled contracts (catches BUG-6 cascade failures)
 
 Usage:
-    # v6 validation after re-extraction (schema v4, 12 node features, 8 edge types stored on disk)
+    # v7 validation after BUG-6 fix re-extraction (schema v5, 12 node features, 8 edge types)
     python ml/scripts/validate_graph_dataset.py \\
       --check-dim 12 \\
       --check-edge-types 8 \\
       --check-contains-edges \\
-      --check-control-flow
+      --check-control-flow \\
+      --check-block-globals
 
 Exit codes:
     0  all files pass all requested checks
@@ -48,6 +51,7 @@ def validate(
     check_contains_edges: bool = False,
     check_control_flow:   bool = False,
     check_cfg_subtypes:   bool = False,
+    check_block_globals:  bool = False,
 ) -> int:
     pt_files = sorted(graphs_dir.glob("*.pt"))
     if not pt_files:
@@ -66,6 +70,7 @@ def validate(
     missing_contains:  list[Path]            = []
     missing_cf:        list[Path]            = []
     missing_cfg_sub:   list[Path]            = []
+    block_globals_count: int                  = 0  # files where feat[2] fires
 
     for path in pt_files:
         try:
@@ -140,6 +145,14 @@ def validate(
                 missing_cfg_sub.append(path)
                 failed_this = True
 
+        # ── uses_block_globals feature (feat[2]) ────────────────────────
+        # Counts how many files have at least one function node with
+        # uses_block_globals > 0.5. After BUG-6 fix re-extraction, this
+        # should be significantly higher than before.
+        if check_block_globals and hasattr(data, "x") and data.x is not None:
+            if (data.x[:, 2] > 0.5).any():
+                block_globals_count += 1
+
         if not failed_this:
             passed.append(path)
 
@@ -162,6 +175,13 @@ def validate(
         print(f"  Missing CTRL_FLOW(6): {len(missing_cf)}")
     if check_cfg_subtypes:
         print(f"  Missing CFG subtypes: {len(missing_cfg_sub)}  (type_ids 8–12 absent)")
+    if check_block_globals:
+        pct = 100 * block_globals_count / total if total else 0
+        print(f"  Block globals (feat[2] fires): {block_globals_count}/{total}  ({pct:.1f}%)")
+        if pct < 1.0:
+            print(f"  WARNING: <1% of files have uses_block_globals activated.")
+            print(f"           This may indicate BUG-6 cascade (wrong contract selected)")
+            print(f"           or a problem with _compute_uses_block_globals().")
     print(f"  Load errors         : {len(load_errors)}")
 
     def _print_samples(items: list, label: str) -> None:
@@ -260,6 +280,15 @@ def main() -> None:
             "or produced no CFG nodes despite CONTAINS edges being present."
         ),
     )
+    parser.add_argument(
+        "--check-block-globals",
+        action="store_true",
+        help=(
+            "Count files where uses_block_globals (feat[2]) fires for at least "
+            "one node. After BUG-6 fix re-extraction, this count should increase "
+            "significantly. Warns if <1% of files have the feature activated."
+        ),
+    )
     args = parser.parse_args()
 
     graphs_dir = Path(args.graphs_dir)
@@ -274,6 +303,7 @@ def main() -> None:
         check_contains_edges=args.check_contains_edges,
         check_control_flow=args.check_control_flow,
         check_cfg_subtypes=args.check_cfg_subtypes,
+        check_block_globals=args.check_block_globals,
     ))
 
 

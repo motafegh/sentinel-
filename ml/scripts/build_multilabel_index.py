@@ -15,15 +15,27 @@ Label construction:
   Class=1. To get a multi-hot per contract: GROUP BY SHA256, max() the Class
   columns (max of 0/1 == OR).
 
+IMPORTANT (2026-05-17 — BUG-6 fix):
+  After re-extracting graphs with the "most_derived" contract selection
+  heuristic, the contract_path stored in each .pt file may now point to a
+  DIFFERENT contract in the same .sol file. This is CORRECT — the old
+  "most functions" heuristic picked the wrong contract 47.4% of the time.
+  Re-run this script after re-extraction to rebuild the label index with
+  the corrected contract_path values.
+
+  After building this index, run dedup_multilabel_index.py with
+  --relabel-timestamp to remove garbage Timestamp labels (48.2% of
+  Timestamp=1 contracts had no block-global usage in source or features).
+
 Output: ml/data/processed/multilabel_index.csv
   Columns: md5_stem, CallToUnknown, DenialOfService, ExternalBug, GasException,
            IntegerUO, MishandledException, Reentrancy, Timestamp,
-           TransactionOrderDependence, UnusedReturn, WeakAccessMod
-  Rows: 68,555  (one per .pt file in ml/data/graphs/)
+           TransactionOrderDependence, UnusedReturn
+  Rows: ~68K  (one per .pt file in ml/data/graphs/)
 
 Usage:
     cd ~/projects/sentinel
-    poetry run python ml/scripts/build_multilabel_index.py
+    PYTHONPATH=. python ml/scripts/build_multilabel_index.py
 """
 
 from __future__ import annotations
