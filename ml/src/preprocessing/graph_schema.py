@@ -101,6 +101,20 @@ v5  — 12 features (same dim, changed semantics — BUG FIXES from full audit):
            implementation contract (ERC20Token with 3-5 overrides). 47.4% of
            multi-contract files had the wrong contract selected.
       (2026-05-17 session — full audit BUG-1,2,6,9 fixes)
+
+v6  — 12 features (same dim — BUG-3 visibility fix, in-place patch applied):
+      [1]  visibility: ordinal {public=0, internal=1, private=2} →
+                       normalised {public=0.0, external=0.0, internal=0.5, private=1.0}
+           Rationale: full data validation (2026-05-17) confirmed that 7,854 graphs
+           (17.7% of dataset) had visibility=2 for private functions, which exceeded
+           the declared [0,1] feature range. The GNN receives these as input dot-product
+           operands; a value of 2 creates a 2× scale mismatch against all other [0,1]
+           features in the first layer. The ordinal ordering is preserved
+           (private=1.0 > internal=0.5 > public=0.0). Existing graphs are patched
+           in-place by ml/scripts/patch_graph_features.py.
+      BUG-1/2 in-place patch confirmed complete: all 44,470 graphs verified to have
+           loc ∈ [0,1] and complexity ∈ [0,1] after patch_graph_features.py run.
+      (2026-05-17 session — fresh full validation + in-place patch)
 """
 
 from __future__ import annotations
@@ -130,7 +144,7 @@ except importlib.metadata.PackageNotFoundError:
 # Schema version
 # ─────────────────────────────────────────────────────────────────────────────
 
-FEATURE_SCHEMA_VERSION: str = "v5"
+FEATURE_SCHEMA_VERSION: str = "v6"
 """
 Suffix appended to inference cache keys: "{content_md5}_{FEATURE_SCHEMA_VERSION}".
 
@@ -266,20 +280,28 @@ Total node types: 13 (ids 0–12).
 # Visibility ordinal encoding
 # ─────────────────────────────────────────────────────────────────────────────
 
-VISIBILITY_MAP: dict[str, int] = {
-    "public":   0,
-    "external": 0,
-    "internal": 1,
-    "private":  2,
+VISIBILITY_MAP: dict[str, float] = {
+    "public":   0.0,
+    "external": 0.0,
+    "internal": 0.5,
+    "private":  1.0,
 }
 """
-Ordinal encoding for Solidity visibility qualifiers (node feature[1]).
+Normalised ordinal encoding for Solidity visibility qualifiers (node feature[1]).
 
-Ordinal (not one-hot) so the model can learn that private > internal > public
-on the open-to-closed axis without needing 3 extra dimensions.
+Values are in [0, 1] and preserve the ordinal ordering:
+    private (1.0) > internal (0.5) > public/external (0.0)
 
-public=0 is the default fallback for declarations without explicit visibility.
-Values not present in this map map to 0 (public) via dict.get().
+History:
+    v5 and earlier used int encoding {public:0, internal:1, private:2}.
+    private=2 exceeded the nominal [0,1] feature range and created a 2× scale
+    imbalance in GNN dot products for 17.7% of graphs (7,854 / 44,470).
+
+    Changed to float normalised encoding in schema v6 (2026-05-17).
+    Existing graphs on disk were patched in-place by patch_graph_features.py.
+
+public=0.0 is the default fallback for declarations without explicit visibility.
+Values not present in this map map to 0.0 (public) via dict.get(..., 0.0).
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
