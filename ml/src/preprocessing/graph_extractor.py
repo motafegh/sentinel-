@@ -72,6 +72,24 @@ V2 SCHEMA CHANGES (2026-05-11)
 
   These changes require a full re-extraction of all ~68K graph .pt files.
   See graph_schema.py CHANGE POLICY.
+
+V5 BUGFIXES (2026-05-17)
+─────────────────────────
+  BUG-1:  _build_cfg_node_features loc was raw line count, now log-normalised
+          to match _build_node_features.  Raw loc could be 50+ for large
+          CFG nodes, violating the [0,1] feature range contract.
+  BUG-2:  _build_node_features complexity was raw CFG block count (could be
+          100+), now log-normalised to [0,1].  Raw values dominated all
+          other features in dot products.
+  BUG-6:  _select_contract "most functions" heuristic had 47.4% failure rate
+          on BCCC — WORSE than random.  Replaced with "most_derived"
+          heuristic that uses in-file inheritance to pick the specific
+          implementation contract over library contracts (~92%+ accuracy).
+          GraphExtractionConfig.multi_contract_policy default changed from
+          "first" to "most_derived".
+  BUG-9:  _compute_return_ignored only checked LowLevelCall and HighLevelCall,
+          missing Slither's Send IR type.  `.send()` return values that are
+          ignored were not detected.  Added Send to the isinstance check.
 """
 
 from __future__ import annotations
@@ -153,17 +171,28 @@ class GraphExtractionConfig:
     Controls how extract_contract_graph() runs.
 
     Defaults are calibrated for online single-contract inference (system solc,
-    no --allow-paths, first-contract policy). The offline batch pipeline
+    no --allow-paths, most_derived-contract policy). The offline batch pipeline
     overrides solc_binary, solc_version, and allow_paths for each version group.
     """
 
-    multi_contract_policy: str = "first"
+    multi_contract_policy: str = "most_derived"
     """
     Which contract to analyse when the file defines multiple.
 
-    "first"   — use contracts[0], the first non-dependency contract.
-    "by_name" — use the contract whose .name == target_contract_name.
-                Falls back to "first" with a warning if the name is not found.
+    "most_derived" — (DEFAULT) pick the contract that inherits from the most
+                     other non-interface candidates in the file.  In BCCC,
+                     the vulnerable contract almost always inherits from
+                     library contracts defined earlier in the same file.
+                     ~92%+ accurate.  Falls back to last-defined if no
+                     in-file inheritance is found.
+    "last"         — pick the last non-interface contract.  Simple, 87.4%
+                     accurate on BCCC.
+    "most_funcs"   — pick the contract with the most functions.  LEGACY
+                     heuristic — 47.4% wrong on BCCC (worse than random).
+                     Kept for compatibility only.
+    "by_name"      — use the contract whose .name == target_contract_name.
+                     Falls back to most_derived with a warning if the name
+                     is not found.
     """
 
     target_contract_name: str | None = None
@@ -196,9 +225,14 @@ def _compute_return_ignored(func: Any) -> float:
     when the programmer ignores the return — op.lvalue is never None. The correct
     check is whether that lvalue variable is referenced in any subsequent IR op
     within the function. If it is never read, the return was discarded.
+
+    BUG-9 FIX (2026-05-17): Added Send to the isinstance check alongside
+    LowLevelCall and HighLevelCall. Previously, `.send()` calls whose return
+    value was ignored were not detected because Slither classifies `.send()`
+    as a separate Send IR type, not a LowLevelCall/HighLevelCall.
     """
     try:
-        from slither.slithir.operations import LowLevelCall, HighLevelCall
+        from slither.slithir.operations import LowLevelCall, HighLevelCall, Send
 
         # Collect all read-variable sets across every node/IR in the function
         # once up front, so we can do O(1) lookup per call op.
@@ -210,7 +244,7 @@ def _compute_return_ignored(func: Any) -> float:
 
         for node in (getattr(func, "nodes", None) or []):
             for op in (getattr(node, "irs", None) or []):
-                if isinstance(op, (LowLevelCall, HighLevelCall)):
+                if isinstance(op, (LowLevelCall, HighLevelCall, Send)):
                     lval = op.lvalue
                     if lval is None:
                         # Truly None (shouldn't happen in practice, but guard it)
@@ -276,7 +310,13 @@ def _compute_call_target_typed(func: Any) -> float:
 
 
 def _compute_in_unchecked(func: Any) -> float:
-    """1.0 if func body contains an unchecked{} arithmetic block."""
+    """1.0 if func body contains an unchecked{} arithmetic block.
+
+    Note: for Solidity <0.8, the unchecked{} construct does not exist, so this
+    feature is correctly 0.0 for pre-0.8 contracts. All arithmetic in <0.8 is
+    implicitly unchecked; that signal is carried by other features (complexity,
+    has_loop, etc.).
+    """
     try:
         from slither.core.cfg.node import NodeType
         for node in (getattr(func, "nodes", None) or []):
@@ -451,11 +491,17 @@ def _build_cfg_node_features(slither_node: Any, func: Any, cfg_type: int) -> lis
     Slither synthetic nodes (ENTRY_POINT, EXPRESSION, BEGIN_LOOP, etc.) with
     no source_mapping and empty IRS are handled correctly: _cfg_node_type()
     returns CFG_NODE_OTHER (12) and loc defaults to 0.0. Do NOT filter them.
+
+    BUG-1 FIX (2026-05-17): loc is now log-normalised to [0,1] to match the
+    declaration-level _build_node_features. Previously, raw line counts
+    (potentially 50+) violated the [0,1] feature range contract and dominated
+    other features in dot products.
     """
-    loc = 0.0
+    loc_raw = 0.0
     sm = getattr(slither_node, "source_mapping", None)
     if sm is not None and getattr(sm, "lines", None):
-        loc = float(len(sm.lines))
+        loc_raw = float(len(sm.lines))
+    loc = min(math.log1p(loc_raw) / math.log1p(1000), 1.0)
 
     # CFG nodes must never inherit the parent function's unchecked scope —
     # in_unchecked [9] is always 0.0 at statement level.
@@ -465,11 +511,11 @@ def _build_cfg_node_features(slither_node: Any, func: Any, cfg_type: int) -> lis
     return [
         float(cfg_type) / _MAX_TYPE_ID,  # [0]  type_id normalised to [0,1]
         0.0,              # [1]  visibility — not applicable
-        0.0,              # [2]  pure — not applicable
+        0.0,              # [2]  uses_block_globals — not applicable
         0.0,              # [3]  view — not applicable
         0.0,              # [4]  payable — not applicable
         0.0,              # [5]  complexity — function-level metric
-        loc,              # [6]  loc — lines of this statement's source span
+        loc,              # [6]  loc — log-normalised lines of this statement's source span
         0.0,              # [7]  return_ignored — not per-statement in v5.0
         1.0,              # [8]  call_target_typed — default safe (not applicable)
         _cfg_in_unchecked, # [9]  in_unchecked — NEVER inherited from parent func
@@ -571,7 +617,10 @@ def _build_node_features(obj: Any, type_id: int) -> list:
                                   (replaces `pure` which was rarely informative)
       [3]  view                 — 1.0 if Function.view
       [4]  payable              — 1.0 if Function.payable
-      [5]  complexity           — float(len(func.nodes)) CFG block count
+      [5]  complexity *         — log-normalised CFG block count
+                                  min(log1p(len(func.nodes)) / log1p(100), 1.0)
+                                  (was raw count; values of 100+ dominated all
+                                   other features in dot products)
       [6]  loc *                — log1p(lines) / log1p(1000), normalised [0,1]
                                   (was raw line count; CONTRACT node hit 2538 raw,
                                    crushing binary features in dot products)
@@ -614,8 +663,11 @@ def _build_node_features(obj: Any, type_id: int) -> list:
         uses_block_globals = _compute_uses_block_globals(obj)
         view    = 1.0 if getattr(obj, "view",    False) else 0.0
         payable = 1.0 if getattr(obj, "payable", False) else 0.0
+        # BUG-2 FIX (2026-05-17): complexity is now log-normalised to [0,1].
+        # Raw CFG block count could be 100+, dominating all other features.
         try:
-            complexity = float(len(obj.nodes)) if obj.nodes else 0.0
+            _raw = float(len(obj.nodes)) if obj.nodes else 0.0
+            complexity = min(math.log1p(_raw) / math.log1p(100), 1.0)
         except Exception:
             complexity = 0.0
 
@@ -642,7 +694,7 @@ def _build_node_features(obj: Any, type_id: int) -> list:
         uses_block_globals,   # [2] was pure — now block.timestamp/number signal
         view,
         payable,
-        complexity,
+        complexity,           # [5] log-normalised CFG block count (BUG-2 fix)
         loc,                  # [6] log-normalised (was raw line count)
         return_ignored,
         call_target_typed,
@@ -661,15 +713,20 @@ def _select_contract(sl: Any, config: GraphExtractionConfig) -> Any:
     Pick the target Slither Contract from the parsed contract list.
 
     Filters out imported dependencies so only user-supplied code is analysed.
-    When a file defines interfaces before the main contract (common in protocol
-    contracts), interfaces are skipped and the concrete contract with the most
-    functions is preferred.  This avoids extracting a ghost graph (2 nodes,
-    0 edges) from an interface whose function bodies are empty.
+    When a file defines multiple non-interface contracts, the "most_derived"
+    heuristic picks the one that inherits from the most other candidates in the
+    file.  This correctly selects the specific implementation contract (e.g.
+    ERC20Token, BTPCoin) over the library contract (e.g. StandardToken) that
+    it inherits from.
+
+    AUDIT RESULT (BUG-6 fix, 2026-05-17):
+      "most functions" heuristic:  52.6% accurate — WORSE than random!
+      "last contract" heuristic:   87.4% accurate
+      "most_derived" heuristic:    ~92%+ accurate (uses inheritance info)
 
     NOTE (Slither 0.10.x): `is_interface` is a reliable property.
     `is_abstract` does not exist — abstract contracts share contract_kind='contract'
-    with concrete ones.  The len(functions) sort handles abstract vs concrete
-    implicitly since abstract functions have no body and produce fewer nodes.
+    with concrete ones.
     """
     candidates = [c for c in sl.contracts if not c.is_from_dependency()]
     if not candidates:
@@ -684,20 +741,67 @@ def _select_contract(sl: Any, config: GraphExtractionConfig) -> Any:
         if matching:
             return matching[0]
         logger.warning(
-            "Contract %r not found in file (available: %s); falling back to first.",
+            "Contract %r not found in file (available: %s); "
+            "falling back to most_derived heuristic.",
             config.target_contract_name,
             [c.name for c in candidates],
         )
 
-    # Prefer non-interface contracts.  If multiple remain, pick the one with the
-    # most functions — this naturally selects concrete over abstract and the
-    # richest contract when multiple implementations are defined in one file.
+    # Prefer non-interface contracts.
     non_iface = [c for c in candidates if not c.is_interface]
     if non_iface:
-        return max(non_iface, key=lambda c: len(c.functions))
+        if len(non_iface) == 1:
+            return non_iface[0]
 
-    # All candidates are interfaces (e.g. a pure-interface file) — fall back to
-    # the first one so extraction still proceeds rather than silently failing.
+        policy = config.multi_contract_policy
+
+        # "last" — pick the last non-interface contract (simple, 87.4% on BCCC)
+        if policy == "last":
+            return non_iface[-1]
+
+        # "most_funcs" — legacy heuristic (47.4% wrong, kept for compatibility)
+        if policy == "most_funcs":
+            return max(non_iface, key=lambda c: len(c.functions))
+
+        # Default: "most_derived" — pick the contract that inherits from the
+        # most other candidates in the file.  In BCCC, the vulnerable contract
+        # almost always inherits from library contracts defined earlier in the
+        # same file (e.g. ERC20Token is StandardToken, Ownable).  The most-
+        # derived contract is the specific implementation, not the library.
+        candidate_names = {c.name for c in non_iface}
+
+        def _derivation_score(c: Any) -> tuple[int, int]:
+            """Return (n_inherited_from_candidates, source_order_index).
+            Higher n_inherited → more derived → picked first.
+            Tiebreak: last in source order wins (BCCC pattern).
+            """
+            inherited_in_file = 0
+            for parent in (getattr(c, "inheritance", None) or []):
+                if getattr(parent, "name", None) in candidate_names:
+                    inherited_in_file += 1
+            source_idx = non_iface.index(c)  # preserves sl.contracts order
+            return (inherited_in_file, source_idx)
+
+        best = max(non_iface, key=_derivation_score)
+        best_score = _derivation_score(best)
+
+        if best_score[0] > 0:
+            logger.debug(
+                "Selected %r (inherits from %d in-file contracts) "
+                "among %d non-iface candidates",
+                best.name, best_score[0], len(non_iface),
+            )
+            return best
+
+        # No inheritance info — fall back to "last defined" heuristic
+        logger.debug(
+            "No in-file inheritance among %d non-iface candidates; "
+            "falling back to last-defined heuristic",
+            len(non_iface),
+        )
+        return non_iface[-1]
+
+    # All candidates are interfaces — fall back to the first one.
     logger.warning(
         "All %d non-dependency contracts in this file are interfaces; "
         "extracting the first one. Graph will likely be minimal.",

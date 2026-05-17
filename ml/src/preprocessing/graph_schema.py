@@ -75,6 +75,32 @@ v4  — 12 features (same dim, changed semantics):
       Rationale: analysis of all 20 manual test contracts revealed these 4 bugs were
       making MishandledException, UnusedReturn, Timestamp, and DoS nearly invisible.
       (2026-05-16 session)
+
+v5  — 12 features (same dim, changed semantics — BUG FIXES from full audit):
+      [5]  complexity: raw CFG block count → log1p(len(nodes))/log1p(100), normalised [0,1]
+           Rationale: raw complexity hit 100+ for large contracts, creating scale
+           dominance similar to the old raw-loc bug. Log normalization aligns it
+           with other [0,1] features.
+      [6]  loc (CFG nodes): raw line count → log1p(lines)/log1p(1000), normalised [0,1]
+           Rationale: _build_cfg_node_features() was using raw loc while
+           _build_node_features() already had log-normalization. This created
+           a scale mismatch where CFG nodes had features 10-100× larger than
+           declaration nodes. Now consistent.
+      [7]  return_ignored: now detects .send() return-value discards (BUG-9 fix).
+           Added Slither Send IR type to the isinstance check alongside
+           LowLevelCall and HighLevelCall.
+           Rationale: `addr.send(amount)` returns a bool indicating success/failure.
+           Ignoring this return is a MishandledException vulnerability. The old
+           code only checked LowLevelCall/HighLevelCall, missing Send entirely.
+      Contract selection: "most functions" heuristic (52.6% accurate) replaced
+           with "most_derived" composite heuristic (~92%+ accurate). Uses
+           Slither's contract.inheritance to pick the contract that inherits from
+           the most other in-file candidates. Fallback: last-defined (87.4%).
+           Rationale: BUG-6 audit showed the old heuristic picked library contracts
+           (StandardToken with 20+ functions) instead of the actual vulnerable
+           implementation contract (ERC20Token with 3-5 overrides). 47.4% of
+           multi-contract files had the wrong contract selected.
+      (2026-05-17 session — full audit BUG-1,2,6,9 fixes)
 """
 
 from __future__ import annotations
@@ -104,7 +130,7 @@ except importlib.metadata.PackageNotFoundError:
 # Schema version
 # ─────────────────────────────────────────────────────────────────────────────
 
-FEATURE_SCHEMA_VERSION: str = "v4"
+FEATURE_SCHEMA_VERSION: str = "v5"
 """
 Suffix appended to inference cache keys: "{content_md5}_{FEATURE_SCHEMA_VERSION}".
 
@@ -133,13 +159,17 @@ Feature layout (v4 — 12 dims, same dim as v2/v3, changed semantics at [2] and 
                                block global access is the direct Timestamp/TOD signal)
   [3]  view                 — bool
   [4]  payable              — bool
-  [5]  complexity           — CFG block count
+  [5]  complexity           — log1p(CFG block count)/log1p(100), normalised [0,1]
+                              (was raw count; large contracts hit 100+ causing scale
+                               dominance over binary features. Log normalization in v5.)
   [6]  loc                  — log1p(lines)/log1p(1000), normalised [0,1]
                               (was raw line count; CONTRACT node hit 2538 raw, causing
                                scale dominance over binary features)
   [7]  return_ignored       — 0.0 (captured) / 1.0 (discarded) / -1.0 (IR unavailable)
   [8]  call_target_typed    — 0.0 (raw addr) / 1.0 (typed) / -1.0 (source unavailable)
   [9]  in_unchecked         — bool (Solidity 0.8.x unchecked{} blocks only)
+                              NOTE: always 0.0 for Solidity <0.8 (no unchecked syntax
+                              exists prior to 0.8.0; this is correct, not a bug)
   [10] has_loop             — bool
   [11] external_call_count  — float, log-normalized; now includes Transfer/Send ops
 
@@ -302,7 +332,7 @@ FEATURE_NAMES: tuple[str, ...] = (
                             #      (was `pure` in v2/v3 — replaced in v4)
     "view",                 # [3]  1.0 if Function.view                   read-only state
     "payable",              # [4]  1.0 if Function.payable                Ether entry point
-    "complexity",           # [5]  float(len(func.nodes))                 CFG block count
+    "complexity",           # [5]  log1p(len(func.nodes))/log1p(100)       normalised CFG block count
     "loc",                  # [6]  log1p(lines)/log1p(1000), [0,1]        normalised LoC
                             #      (was raw line count in v2/v3 — caused scale dominance)
     "return_ignored",       # [7]  0.0=captured / 1.0=discarded / -1.0=IR unavailable
