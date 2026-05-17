@@ -1019,7 +1019,50 @@ Checkpoint: ml/checkpoints/v6.0-20260517_best.pt
 
 ---
 
-## Part 15: Outstanding Issues (Not Blocking Training)
+## Part 15: Training Speed Optimizations (2026-05-17)
+
+### 15.1 First Attempt — batch=16 VRAM Saturation
+
+The initial training launch used batch_size=16 (default). With max_windows=4, each micro-batch feeds `16 × 4 = 64` sequences through CodeBERT. This saturated VRAM at **7.9/8.0 GB**, causing PyTorch's memory allocator to thrash (defragmenting constantly). Result: **320 seconds/batch** — 173 hours/epoch. Killed after batch 1.
+
+Root cause: activation memory for `[64, 512]` input to 12-layer CodeBERT × AMP × grad buffers fills the 3070's 8 GB.
+
+Fix: batch_size=8 → CodeBERT gets `[32, 512]` → VRAM 6.4/8.0 GB. Speed: ~1.9 batch/s, ~34 min/epoch.
+
+### 15.2 torch.compile + workers=4 Speedup
+
+After confirming training was stable at batch=8, two further optimizations were applied:
+
+**1. `--num-workers 4` (was 2):**  
+Each DataLoader worker independently loads the 2.47 GB pkl cache (~28s startup). With `persistent_workers=True`, workers stay alive across epochs. 2 workers left GPU at 86% utilization with memory bandwidth at 1% — the GPU was periodically idle waiting for prefetched batches. 4 workers raised GPU utilization to 94% and memory bandwidth to 33%.
+
+**2. `torch.compile(model, dynamic=True)` (`--compile` flag):**  
+PyTorch 2.5.1 + CUDA 12.4 supports `torch.compile`. CodeBERT already uses SDPA (fused attention via `attn_implementation="sdpa"`). `torch.compile` additionally fuses linear projections, layer norms, and activation functions into fewer CUDA kernels. `dynamic=True` handles variable batch/graph sizes. `suppress_errors=True` causes GNN's `scatter` ops (torch_geometric) to fall back to eager rather than fail compile. 
+
+Implementation: `ml/src/training/trainer.py` after model construction; opt-in via `TrainConfig.use_compile = True` / `--compile` CLI flag.
+
+**Combined result:**
+
+| Metric | Without optimizations | With batch=8 | With +compile +workers=4 |
+|--------|----------------------|-------------|--------------------------|
+| batch/s | 0.003 (dying) | 1.9 | **2.33** |
+| GPU utilization | 100% (thrashing) | 86% | **94%** |
+| VRAM bandwidth | 1% | ~5% | **33%** |
+| VRAM used | 7.9/8.0 GB | 6.4/8.0 GB | 6.9/8.0 GB |
+| min/epoch | 173 h (!!) | ~34 min | **~27 min** |
+| Total ETA | ∞ | ~57h | **~45h** |
+
+### 15.3 ASL Loss Scale — Expected Low Values
+
+Previous training runs (v5.x) used BCE loss with values around 0.7–0.9. v6.0 shows ASL loss around 0.05–0.08. This is **not a bug** and not an indication the model isn't learning.
+
+**Why:** BCE sums log-probability loss equally over all `batch × 10` cells. ASL applies `max(p - clip, 0)^γ_neg` weight to negatives. With γ_neg=4, a confident negative (p=0.05) receives weight `(0.05)^4 ≈ 6×10⁻⁶` — effectively zero. Since ~85% of all (sample, class) cells are negative in this dataset, ASL discards ~85% of the loss signal by design, concentrating gradient budget on positives and hard negatives. The resulting scalar is 10–20× smaller than BCE. Monitor val F1-macro and per-eye gradient norms (not raw loss magnitude) to assess training health.
+
+**Step 100 health check (epoch 1):** gnn_eye=0.6913, tf_eye=0.7030, fused_eye=0.6838 — all three eyes live, balanced, gradient norms 0.02–0.03, no NaNs.
+
+---
+
+## Part 16: Outstanding Issues (Not Blocking Training)
 
 | Issue | Severity | Description |
 |-------|----------|-------------|

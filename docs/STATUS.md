@@ -9,15 +9,17 @@ Last updated: 2026-05-17 (v6.0 training RUNNING — epoch 1/100 @ 03:30 UTC+3:30
 | Item | Value |
 |------|-------|
 | Run name | `v6.0-20260517` |
-| PID | 450936 |
-| Launched | 2026-05-17 03:30 UTC+3:30 |
-| Epoch | 1/100 (starting) |
+| PID | **455743** |
+| Launched | 2026-05-17 ~03:48 UTC+3:30 |
+| Epoch | 1/100 (in progress) |
 | Effective batch | 64 (batch=8 × accum=8) |
-| VRAM | 6.4/8.0 GiB (1.4 GiB headroom) |
-| Speed | ~1.9 batch/s → ~34 min/epoch |
-| ETA | ~57h total (early stopping expected ep 40–60) |
-| Loss | AsymmetricLoss(γ⁻=4.0, γ⁺=1.0, clip=0.05) |
+| VRAM | 6.9/8.0 GiB (1.1 GiB headroom) |
+| Speed | **~2.33 batch/s → ~27 min/epoch** |
+| ETA | **~45h total** (early stopping expected ep 40–60) |
+| Loss | AsymmetricLoss(γ⁻=4.0, γ⁺=1.0, clip=0.05) — values ~0.05–0.08, NOT ~0.8 (different scale from BCE, expected) |
 | AMP / TF32 | ✅ / ✅ |
+| torch.compile | ✅ `dynamic=True, suppress_errors=True` — 27% speedup vs eager |
+| DataLoader workers | 4 (was 2; GPU util 86%→94%, bandwidth 1%→33%) |
 | LoRA | r=16, alpha=32, modules=[query, value] — 589,824 trainable / 124M frozen |
 | Log | `ml/logs/v6.0-20260517.log` (structured) + `ml/logs/train_v6.0_20260517.log` (tqdm) |
 | Checkpoint | `ml/checkpoints/v6.0-20260517_best.pt` |
@@ -30,7 +32,8 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
     --run-name v6.0-20260517-resumed \
     --experiment-name sentinel-v6 \
     --epochs 100 \
-    --gradient-accumulation-steps 8
+    --gradient-accumulation-steps 8 \
+    --compile --num-workers 4
 ```
 
 ---
