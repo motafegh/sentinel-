@@ -637,7 +637,7 @@ def _build_node_features(obj: Any, type_id: int) -> list:
     _is_function = hasattr(obj, "nodes") and hasattr(obj, "pure")
 
     visibility = float(VISIBILITY_MAP.get(
-        str(getattr(obj, "visibility", "public")), 0
+        str(getattr(obj, "visibility", "public")), 0.0
     ))
 
     # loc: normalise with log1p to prevent scale dominance.
