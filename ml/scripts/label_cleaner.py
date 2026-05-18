@@ -90,46 +90,71 @@ def _has_external_call(data) -> bool:
 
 
 def check_reentrancy(data) -> bool:
-    """Reentrancy requires at least one external call (CALLS edge)."""
-    return _has_calls_edge(data)
+    """Reentrancy requires an external call (Transfer/Send/HL/LL call).
+    FIX: CALLS edge (type 0) is internal function calls — NOT external calls.
+    External calls are captured in external_call_count (dim[10]).
+    Old bug: _has_calls_edge() tested internal calls → 72.8% of removed
+    Reentrancy contracts had ext_call_count>0 and were incorrectly stripped."""
+    return bool((data.x[:, 10] > 0.0).any())  # external_call_count dim[10]
 
 
 def check_timestamp(data) -> bool:
-    """Timestamp requires at least one node reading block globals."""
+    """Timestamp requires at least one node reading block globals.
+    KNOWN LIMITATION: the `now` alias (SolidityVariable, pre-Solidity 0.5)
+    is not captured by _compute_uses_block_globals in the extractor — it only
+    checks SolidityVariableComposed. Contracts using only `now` will have
+    x[2]=0 and get incorrectly removed. Fix requires re-extraction.
+    Scope: BCCC is predominantly pre-0.5, so this may affect a meaningful
+    fraction of the 423 removed Timestamp contracts."""
     return bool((data.x[:, 2] > 0.5).any())
 
 
-def check_integer_uo(data) -> bool:
-    """IntegerUO requires a loop (arithmetic overflow context).
-    in_unchecked dropped in schema v7 (BUG-L2); only has_loop [9] remains."""
-    return bool((data.x[:, 9] > 0.5).any())  # has_loop is dim[9] in v7
-
-
 def check_mishandled_exception(data) -> bool:
-    """MishandledException requires an ignored return value or an untyped external call."""
+    """MishandledException requires an ignored return value or an external call
+    to an untyped target. Inherits partial benefit from the CallToUnknown fix:
+    the OR on external_call_count catches Transfer/Send-only contracts whose
+    call_target_typed is incorrectly 1.0 due to extractor gap."""
     return bool(
-        (data.x[:, 7] > 0.5).any()    # return_ignored
+        (data.x[:, 7] > 0.5).any()      # return_ignored
         or (data.x[:, 8] == 0.0).any()  # call_target_typed=0 → raw address call
+        or (data.x[:, 10] > 0.0).any()  # Transfer/Send gap: ext call exists but typed=1 incorrectly
     )
 
 
 def check_call_to_unknown(data) -> bool:
-    """CallToUnknown requires at least one untyped external call."""
-    return bool((data.x[:, 8] == 0.0).any())
+    """CallToUnknown requires a call to an address whose type is unknown.
+    FIX: call_target_typed (dim[8]) misses Transfer and Send — the extractor's
+    _compute_call_target_typed only scans func.low_level_calls and
+    func.high_level_calls; Transfer/Send are excluded, so contracts using only
+    transfer() get call_target_typed=1.0 despite calling an unknown address.
+    Fix: accept any contract with external_call_count>0 as a necessary condition
+    (all CTU contracts must have ≥1 external call). 82.6% of incorrectly removed
+    CTU contracts had external_call_count>0; this restores them.
+    Phase-2 fix: add Transfer/Send detection in _compute_call_target_typed."""
+    return bool(
+        (data.x[:, 8] == 0.0).any()    # untyped call (raw address)
+        or (data.x[:, 10] > 0.0).any() # Transfer/Send gap — has external call
+    )
 
 
 def check_unused_return(data) -> bool:
-    """UnusedReturn requires at least one ignored external call return value."""
+    """UnusedReturn requires at least one ignored external call return value.
+    VALID: return_ignored (dim[7]) is reliably computed. No fix needed."""
     return bool((data.x[:, 7] > 0.5).any())
 
 
 # Mapping: CSV column name → precondition function.
 # Classes not listed here have no reliable structural precondition
 # (GasException, ExternalBug, TOD, DoS) and are left as-is.
+#
+# REMOVED: IntegerUO — the has_loop heuristic is wrong. Integer overflow in
+# Solidity <0.8 requires only arithmetic operations, not a loop. Removing
+# IntegerUO from PRECONDITIONS restores ~9,897 incorrectly stripped labels.
+# There is no reliable IntegerUO precondition derivable from the v7 feature
+# vector after in_unchecked was dropped (BUG-L2).
 PRECONDITIONS: dict[str, callable] = {
     "Reentrancy":          check_reentrancy,
     "Timestamp":           check_timestamp,
-    "IntegerUO":           check_integer_uo,
     "MishandledException": check_mishandled_exception,
     "CallToUnknown":       check_call_to_unknown,
     "UnusedReturn":        check_unused_return,

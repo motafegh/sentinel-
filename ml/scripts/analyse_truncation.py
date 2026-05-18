@@ -298,7 +298,7 @@ def main() -> None:
     parser.add_argument(
         "--tokens-dir",
         type=Path,
-        default=Path("data/tokens"),
+        default=Path("ml/data/tokens_windowed"),
         help="Directory containing token .pt files (one per contract, MD5 stem).",
     )
     parser.add_argument(

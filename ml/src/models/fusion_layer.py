@@ -7,8 +7,8 @@ WHAT CHANGED FROM ORIGINAL:
     BEFORE: concat([B,64], [B,768]) → MLP → [B,64]
             Two pooled summaries fused — node/token detail already gone.
 
-    AFTER:  Node embeddings [N,64] attend to token embeddings [B,512,768]
-            Token embeddings [B,512,768] attend to node embeddings [N,64]
+    AFTER:  Node embeddings [N,256] attend to token embeddings [B,512,768]
+            Token embeddings [B,512,768] attend to node embeddings [N,256]
             Pool AFTER enrichment → [B,128]
             Structural patterns find their semantic counterparts before averaging.
 
@@ -24,7 +24,7 @@ OUTPUT DIM CHANGE:
     SentinelModel classifier must use: Linear(128, num_classes)
 
 ARCHITECTURE:
-    1. Project GNN nodes [N,64] → [N,256]         (common attention dim)
+    1. Project GNN nodes [N,256] → [N,256]        (node_proj is identity-sized; hidden_dim=256)
     2. Project tokens [B,512,768] → [B,512,256]   (common attention dim)
     3. Pad nodes → [B,max_nodes,256] via to_dense_batch(); build node padding mask
     4. Node→Token cross-attention (key_padding_mask=token PAD positions)
@@ -61,7 +61,43 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 from loguru import logger
-from torch_geometric.utils import to_dense_batch
+
+
+def _scatter_to_dense(
+    x: torch.Tensor,
+    batch: torch.Tensor,
+    num_graphs: int,
+    max_nodes: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    torch.compile-compatible replacement for to_dense_batch.
+
+    Uses static max_nodes (a config constant) instead of a data-dependent
+    repeat(size), which caused a GuardOnDataDependentSymNode graph break that
+    forced the entire CrossAttentionFusion forward to run in eager mode.
+
+    Contracts with more than max_nodes nodes have excess nodes silently
+    truncated (affects <1% of the corpus at max_nodes=1024).
+    """
+    N, D = x.shape
+    ones = torch.ones(N, dtype=torch.long, device=x.device)
+    counts = torch.zeros(num_graphs, dtype=torch.long, device=x.device)
+    counts.scatter_add_(0, batch, ones)
+
+    # Per-graph start offsets: [0, count0, count0+count1, ...]
+    offsets = torch.cat([
+        x.new_zeros(1, dtype=torch.long),
+        counts[:-1].cumsum(0),
+    ])                                           # [num_graphs]
+
+    local_idx = torch.arange(N, device=x.device) - offsets[batch]
+    local_idx = local_idx.clamp(max=max_nodes - 1)  # truncate oversized graphs
+
+    out  = x.new_zeros(num_graphs, max_nodes, D)
+    mask = torch.zeros(num_graphs, max_nodes, dtype=torch.bool, device=x.device)
+    out[batch, local_idx]  = x
+    mask[batch, local_idx] = True
+    return out, mask
 
 
 class CrossAttentionFusion(nn.Module):
@@ -87,6 +123,7 @@ class CrossAttentionFusion(nn.Module):
         num_heads:  int   = 8,
         output_dim: int   = 128,
         dropout:    float = 0.1,
+        max_nodes:  int   = 1024,
     ) -> None:
         super().__init__()
 
@@ -98,6 +135,7 @@ class CrossAttentionFusion(nn.Module):
 
         self.attn_dim   = attn_dim
         self.output_dim = output_dim
+        self.max_nodes  = max_nodes
 
         self.node_proj  = nn.Linear(node_dim,  attn_dim)
         self.token_proj = nn.Linear(token_dim, attn_dim)
@@ -135,12 +173,13 @@ class CrossAttentionFusion(nn.Module):
         logger.info(
             f"CrossAttentionFusion init — "
             f"node_dim={node_dim} token_dim={token_dim} "
-            f"attn_dim={attn_dim} heads={num_heads} output={output_dim}"
+            f"attn_dim={attn_dim} heads={num_heads} output={output_dim} "
+            f"max_nodes={max_nodes} (static; compile-safe)"
         )
 
     def forward(
         self,
-        node_embs:      torch.Tensor,  # [N, 64]        all nodes across the batch
+        node_embs:      torch.Tensor,  # [N, gnn_hidden_dim]  all nodes across the batch (hidden_dim=256)
         batch:          torch.Tensor,  # [N]             node→graph index mapping
         token_embs:     torch.Tensor,  # [B, 512, 768]  all token embeddings
         attention_mask: torch.Tensor,  # [B, 512]        1=real token, 0=PAD
@@ -159,13 +198,19 @@ class CrossAttentionFusion(nn.Module):
             )
 
         # ── Step 1: Project both modalities to common attention space ──────
-        nodes_proj  = self.node_proj(node_embs)                    # [N, 64]       → [N, 256]
+        nodes_proj  = self.node_proj(node_embs)                    # [N, hidden_dim] → [N, 256]
         tokens_proj = self.token_proj(self.token_norm(token_embs)) # [B, 512, 768] → [B, 512, 256]
 
         # ── Step 2: Pad nodes to uniform length across the batch ───────────
         # padded_nodes:   [B, max_nodes, 256]  — zero-padded at trailing positions
         # node_real_mask: [B, max_nodes]        — True=real node, False=padding
-        padded_nodes, node_real_mask = to_dense_batch(nodes_proj, batch)
+        # _scatter_to_dense uses a static self.max_nodes instead of a
+        # data-dependent repeat, enabling torch.compile to trace the full
+        # fusion forward without a graph break.
+        B = token_embs.shape[0]
+        padded_nodes, node_real_mask = _scatter_to_dense(
+            nodes_proj, batch, num_graphs=B, max_nodes=self.max_nodes
+        )
         # MHA key_padding_mask convention: True = IGNORE. Invert node_real_mask.
         node_padding_mask  = ~node_real_mask           # [B, max_nodes] True=pad
         # Fix #2: token PAD mask for node→token attention

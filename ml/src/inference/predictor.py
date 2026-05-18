@@ -86,7 +86,8 @@ def _ensure_list(v: object) -> list:
 # Registry pattern: adding a new architecture = one dict entry, not an elif hunt.
 # Keys must match exactly what trainer.py writes into checkpoint["config"]["architecture"].
 _ARCH_TO_FUSION_DIM: dict[str, int] = {
-    "three_eye_v5":         128,   # v5 three-eye classifier (current)
+    "three_eye_v7":         128,   # v7 three-eye classifier (current) — 11-dim nodes, 7-layer GNN
+    "three_eye_v5":         128,   # v5 three-eye classifier
     "cross_attention_lora": 128,   # v4 (previous)
     "legacy":               64,
     "legacy_binary":        64,
@@ -95,6 +96,7 @@ _ARCH_TO_FUSION_DIM: dict[str, int] = {
 # Node feature dimension per architecture — used for warmup dummy graph.
 # Current architecture imports directly from graph_schema; legacy values are hardcoded.
 _ARCH_TO_NODE_DIM: dict[str, int] = {
+    "three_eye_v7":         NODE_FEATURE_DIM,  # always in sync with schema
     "three_eye_v5":         NODE_FEATURE_DIM,  # always in sync with schema
     "cross_attention_lora": 8,     # v4 legacy
     "legacy":               8,

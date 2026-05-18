@@ -1,13 +1,13 @@
 """
-train.py — SENTINEL Training Entry Point (v5.2 three-eye + JK architecture)
+train.py — SENTINEL Training Entry Point (v7 three-eye + JK, 7-layer GNN, LoRA)
 
 NAMING CONVENTION
 -----------------
 Always include the date in --run-name so checkpoints, log files, and MLflow
 runs are uniquely named and never overwrite each other:
 
-    --run-name v5.2-smoke-20260514
-    --run-name v5.2-jk-20260514
+    --run-name v7.0-20260518
+    --run-name v7.0-smoke-20260518
 
 Each run produces:
     ml/checkpoints/<run-name>_best.pt          ← checkpoint
@@ -21,35 +21,30 @@ The resume command is printed at training startup. General form:
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
         --resume ml/checkpoints/<run-name>_best.pt \\
         --run-name <run-name>-resumed \\
-        --experiment-name sentinel-v5.2 \\
-        --epochs 60 \\
-        --gradient-accumulation-steps 4
+        --experiment-name sentinel-v7 \\
+        --epochs 100
 
 Usage examples:
 
-    # v5.2 smoke run (2 epochs, 10% data — run this first to clear Phase 4 gates)
-    # Note: log_interval auto-adjusts to ~12 steps for 10% smoke data + accum=4
+    # v7.0 smoke run (2 epochs, 10% data)
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
-        --run-name v5.2-smoke-20260514 \\
-        --experiment-name sentinel-v5.2 \\
+        --run-name v7.0-smoke-20260518 \\
+        --experiment-name sentinel-v7 \\
         --epochs 2 \\
-        --smoke-subsample-fraction 0.1 \\
-        --gradient-accumulation-steps 4
-    # Phase 4 gates: GNN share ≥ 15%; JK all phases > 5%; no NaN after step 50
+        --smoke-subsample-fraction 0.1
+    # Gates: GNN share ≥ 15%; JK all phases > 5%; no NaN after step 50
 
-    # v5.2 full 60-epoch run (after smoke gates pass)
+    # v7.0 full run
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
-        --run-name v5.2-jk-20260514 \\
-        --experiment-name sentinel-v5.2 \\
-        --epochs 60 \\
-        --gradient-accumulation-steps 4
+        --run-name v7.0-20260518 \\
+        --experiment-name sentinel-v7 \\
+        --epochs 100
 
     # Disable JK (ablation)
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
-        --run-name v5.2-no-jk-20260514 \\
+        --run-name v7.0-no-jk-20260518 \\
         --no-jk \\
-        --epochs 60 \\
-        --gradient-accumulation-steps 4
+        --epochs 100
 """
 
 from __future__ import annotations
@@ -81,7 +76,7 @@ def parse_args() -> argparse.Namespace:
 
     # --- Training hyperparameters ---
     p.add_argument("--epochs",       type=int,   default=100)
-    p.add_argument("--batch-size",   type=int,   default=16)
+    p.add_argument("--batch-size",   type=int,   default=8)
     p.add_argument("--lr",           type=float, default=2e-4)
     p.add_argument("--weight-decay", type=float, default=1e-2)
     p.add_argument("--threshold",      type=float, default=0.5,
@@ -99,20 +94,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--gradient-accumulation-steps",
         type=int,
-        default=1,
+        default=8,
         metavar="N",
         help=(
             "Accumulate gradients over N micro-batches before stepping the optimizer. "
             "Effective batch size = batch_size × N. "
-            "Use 4 on RTX 3070 8 GB (effective batch=64) to avoid VRAM fragmentation "
-            "slowdown that appears from epoch 2 onward. Default: 1 (disabled)."
+            "v7 default: 8 (batch=8 × 8 = effective 64) on RTX 3070 8 GB."
         ),
     )
 
     # --- Paths ---
     p.add_argument("--graphs-dir",      default="ml/data/graphs")
-    p.add_argument("--tokens-dir",      default="ml/data/tokens",
-                   help="Token .pt directory. Use ml/data/tokens_windowed for multi-window mode.")
+    p.add_argument("--tokens-dir",      default="ml/data/tokens_windowed",
+                   help="Token .pt directory. Multi-window [W,512] tensors (v7 default).")
     p.add_argument("--splits-dir",      default="ml/data/splits/deduped")
     p.add_argument("--checkpoint-dir",  default="ml/checkpoints")
     p.add_argument("--checkpoint-name", default=None)
@@ -120,33 +114,36 @@ def parse_args() -> argparse.Namespace:
                    help="RAM cache pickle. Use ml/data/cached_dataset_windowed.pkl for windowed tokens.")
 
     # --- Loss and regularisation ---
-    p.add_argument("--loss-fn",              choices=["bce", "focal", "asl"], default="bce")
+    p.add_argument("--loss-fn",              choices=["bce", "focal", "asl"], default="asl")
     p.add_argument("--early-stop-patience",  type=int,   default=30)
     p.add_argument("--grad-clip",            type=float, default=1.0)
     p.add_argument("--warmup-pct",           type=float, default=0.10)
     p.add_argument("--use-amp",              action="store_true", default=True)
     p.add_argument("--no-amp",               dest="use_amp", action="store_false")
-    p.add_argument("--num-workers",          type=int, default=2)
-    p.add_argument("--compile",              action="store_true", default=False,
-                   help="torch.compile(model, dynamic=True) — ~20-40%% speedup on PyTorch 2.x")
+    p.add_argument("--num-workers",          type=int, default=4,
+                   help="DataLoader workers. Uses fork workers (CoW cache, no RAM copy). 0=main-process fallback.")
+    p.add_argument("--compile",              action="store_true", default=True,
+                   help="torch.compile(model, dynamic=True) — ~20-40%% speedup. Set TRITON_CACHE_DIR=/tmp/triton_cache to avoid WSL p9io crash.")
+    p.add_argument("--no-compile",           dest="compile", action="store_false")
     p.add_argument("--log-interval",         type=int, default=100)
     p.add_argument("--focal-gamma",          type=float, default=2.0)
     p.add_argument("--focal-alpha",          type=float, default=0.25)
-    p.add_argument("--asl-gamma-neg",        type=float, default=4.0,
-                   help="ASL focus exponent for negatives (default 4.0). Only used when --loss-fn=asl.")
+    p.add_argument("--asl-gamma-neg",        type=float, default=2.0,
+                   help="ASL focus exponent for negatives. v7: 2.0 (4.0 caused all-zeros collapse). Only used when --loss-fn=asl.")
     p.add_argument("--asl-gamma-pos",        type=float, default=1.0,
                    help="ASL focus exponent for positives (default 1.0). Only used when --loss-fn=asl.")
-    p.add_argument("--asl-clip",             type=float, default=0.05,
-                   help="ASL probability margin (default 0.05). Negatives with p<clip→zero gradient.")
-    p.add_argument("--label-smoothing",      type=float, default=0.05,
-                   help="Label smoothing ε (0=off). Prevents extreme overconfidence.")
+    p.add_argument("--asl-clip",             type=float, default=0.01,
+                   help="ASL probability margin. v7: 0.01 (0.05 caused oscillation at p≈0.03–0.06). Negatives with p<clip→zero gradient.")
+    p.add_argument("--label-smoothing",      type=float, default=0.0,
+                   help="Uniform label smoothing ε (0=off). v7: replaced by per-class class_label_smoothing in TrainConfig.")
     p.add_argument("--fusion-lr-multiplier", type=float, default=0.5,
                    help="LR multiplier for fusion+classifier params (RC1 fix).")
-    p.add_argument("--pos-weight-min-samples", type=int, default=0,
+    p.add_argument("--pos-weight-min-samples", type=int, default=3000,
                    help=(
                        "Classes with >= this many training positives get pos_weight=1.0 "
-                       "(no amplification). 0=disabled. Recommended: 3000 for v5.3 to "
-                       "prevent Reentrancy collapse from 2.82× FN penalty on a 3500-sample class."
+                       "(no amplification). v7 default 3000: caps Reentrancy (4498 samples) at 1.0× "
+                       "to prevent the 2.82× FN penalty that dominated gradients in v5.2. "
+                       "0=disabled (all classes amplified)."
                    ))
 
     # --- GNN architecture (v6) ---
@@ -177,7 +174,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--weighted-sampler",
         choices=["none", "positive", "DoS-only", "all-rare"],
-        default="none",
+        default="positive",
     )
 
     # --- Resume ---
