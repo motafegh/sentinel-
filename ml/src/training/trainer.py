@@ -1026,7 +1026,7 @@ def train(config: TrainConfig) -> dict:
         f"Fusion={len(_fusion_params)} params (lr×{config.fusion_lr_multiplier}) | "
         f"Other={len(_other_params)} params (lr×1.0)"
     )
-    optimizer = AdamW(_param_groups, weight_decay=config.weight_decay)
+    optimizer = AdamW(_param_groups, weight_decay=config.weight_decay, fused=True)
 
     # torch.compile is applied AFTER the optimizer so that param group name
     # matching ("gnn.", "lora_", "fusion.") uses the original uncompiled model

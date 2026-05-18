@@ -124,8 +124,13 @@ class TransformerEncoder(nn.Module):
             task_type="FEATURE_EXTRACTION",
         )
 
-        # Load pretrained CodeBERT — 125M parameters
-        self.bert = AutoModel.from_pretrained("microsoft/codebert-base")
+        # Load pretrained CodeBERT — 125M parameters.
+        # sdpa uses PyTorch's fused memory-efficient attention (avoids materialising
+        # the full [B*W,512,512] attention matrix). Must be set before get_peft_model.
+        self.bert = AutoModel.from_pretrained(
+            "microsoft/codebert-base",
+            attn_implementation="sdpa",
+        )
 
         # Inject LoRA matrices into targeted attention projections.
         # get_peft_model():
