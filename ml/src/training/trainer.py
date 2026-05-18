@@ -1,7 +1,6 @@
 """
-trainer.py — SENTINEL Training Loop (Cross-Attention + LoRA Upgrade)
-FINAL STANDALONE VERSION – with tqdm progress bars, safe resume, offline mode,
-and EARLY STOPPING.
+trainer.py — SENTINEL Training Loop (v7 — Three-Eye GNN+CodeBERT+LoRA)
+With tqdm progress bars, safe resume, offline mode, and EARLY STOPPING.
 
 SPEED OPTIMISATIONS APPLIED (vs original):
 ────────────────────────────────────────────────────────────────────────────
@@ -24,13 +23,13 @@ Fix #28 — batch_size default 16→8 (8 GB GPU compatibility)
            Also: grad norm logging moved inside is_accum_step block, before
            zero_grad(). Previously _grad_norm() fired AFTER zero_grad
            (set_to_none=True), so .grad was always None → always 0.000.
-           Now grads are read after scaler.unscale_() but before zero_grad,
-           i.e. in fp32 and post-clip — the correct moment to measure them.
+           Now grads are read after grad_clip but before zero_grad,
+           i.e. post-clip — the correct moment to measure them.
            Logging fires on optimizer steps that cross log_interval, not on
            every micro-batch.
-Fix #29 — Mid-epoch VRAM cleanup: when reserved VRAM > 90 %, call
-           gc.collect() + torch.cuda.empty_cache() to release fragmented
-           blocks.  Checked every log_interval optimizer steps.
+Fix #29 — VRAM monitoring: when reserved VRAM > 90 %, log a warning.
+           Mid-epoch empty_cache() removed — it forced a CUDA sync every
+           log_interval steps. Between-epoch cleanup is sufficient.
 Fix #30 — train.py CLI --batch-size default 32→8 (see that file)
 Fix #31 — dual_path_dataset.py improved diagnostics (see that file)
 Fix #32 — Scheduler resume bug: OneCycleLR was created with
@@ -95,13 +94,9 @@ CLASS_NAMES = [
 ]
 NUM_CLASSES = len(CLASS_NAMES)
 
-ARCHITECTURE = "three_eye_v5"
+ARCHITECTURE = "three_eye_v7"
 
-# Phase 1-A6 (2026-05-14): version string written to every saved checkpoint.
-# Allows the resume path to detect and warn about architecture mismatches when
-# loading a pre-v5.2 checkpoint (which lacks JK/REVERSE_CONTAINS) into a v5.2
-# model.  Use _parse_version() for tuple comparison (not string sort).
-MODEL_VERSION = "v6.0"
+MODEL_VERSION = "v7.0"
 
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal", "asl"})
 
@@ -156,7 +151,7 @@ def _parse_version(v: str) -> tuple[int, ...]:
 class TrainConfig:
     # --- Paths ---
     graphs_dir:      str = "ml/data/graphs"
-    tokens_dir:      str = "ml/data/tokens"
+    tokens_dir:      str = "ml/data/tokens_windowed"
     splits_dir:      str = "ml/data/splits/deduped"
     checkpoint_dir:  str = "ml/checkpoints"
     checkpoint_name: str = "multilabel-v5-fresh_best.pt"
@@ -184,11 +179,11 @@ class TrainConfig:
     lora_target_modules:  list[str]  = field(default_factory=lambda: ["query", "value"])
 
     # --- Label source ---
-    label_csv: str = "ml/data/processed/multilabel_index_deduped.csv"
+    label_csv: str = "ml/data/processed/multilabel_index_cleaned.csv"
 
     # --- Training ---
     epochs:              int   = 100         # v6: 100 epochs (was 60); more data + harder loss need more steps
-    batch_size:          int   = 16          # Fix #28: was 16, reduced for 8 GB GPU
+    batch_size:          int   = 8           # Fix #28: 8 fits 8 GB GPU with MAX_WINDOWS=4 (16 saturated 7.9/8.0 GB)
     lr:                  float = 2e-4
     weight_decay:        float = 1e-2
     # Phase 2-B1 (2026-05-14): per-group LR multipliers.
@@ -225,7 +220,7 @@ class TrainConfig:
     aux_loss_warmup_epochs: int = 8
 
     # --- Gradient accumulation (2026-05-12) ---
-    gradient_accumulation_steps: int = 1
+    gradient_accumulation_steps: int = 8  # v7: batch=8 × 8 = effective 64
 
     # --- Stability ---
     grad_clip:  float = 1.0
@@ -235,9 +230,15 @@ class TrainConfig:
     use_amp: bool = True
 
     # --- Speed: DataLoader + compilation ---
-    num_workers:         int  = 2
+    # num_workers=4: fork workers inherit shared cache via copy-on-write — zero extra RAM.
+    # prefetch_factor=4 keeps the GPU fed; workers never call CUDA so fork is safe.
+    # use_compile=True: submodule-level compile (GNN+fusion+classifier, NOT transformer).
+    # CodeBERT+LoRA has HuggingFace control flow that breaks dynamo's compile graph when
+    # the whole model is compiled; compiling submodules separately isolates those breaks.
+    # TRITON_CACHE_DIR=/tmp/triton_cache routes Triton JIT to tmpfs, avoiding WSL2 p9io crash.
+    num_workers:         int  = 4
     persistent_workers:  bool = True
-    use_compile:         bool = False  # torch.compile(model, dynamic=True); ~20-40% speedup
+    use_compile:         bool = True
 
     # --- Loss function ---
     # v4/v5 used BCE. ASL (Ridnik et al. ICCV 2021) is recommended for v6:
@@ -413,7 +414,7 @@ def evaluate(
             attention_mask = tokens["attention_mask"].to(device)
             labels         = labels.to(device).float()
 
-            with torch.amp.autocast(device, enabled=use_amp):
+            with torch.amp.autocast(device, dtype=torch.bfloat16, enabled=use_amp):
                 logits = model(graphs, input_ids, attention_mask)
 
             probs = torch.sigmoid(logits.float())
@@ -469,7 +470,6 @@ def train_one_epoch(
     loss_fn:                     nn.Module,
     aux_loss_fn:                 nn.Module,
     scheduler:                   OneCycleLR,
-    scaler:                      torch.amp.GradScaler,
     device:                      str,
     grad_clip:                   float,
     log_interval:                int,
@@ -514,7 +514,7 @@ def train_one_epoch(
         elif label_smoothing > 0.0:
             labels = labels * (1.0 - label_smoothing) + 0.5 * label_smoothing
 
-        with torch.amp.autocast(device, enabled=use_amp):
+        with torch.amp.autocast(device, dtype=torch.bfloat16, enabled=use_amp):
             logits, aux = model(graphs, input_ids, attention_mask, return_aux=True)
 
             # DoS loss mask (BUG-H6): detach DoS column so it produces no gradient.
@@ -561,13 +561,12 @@ def train_one_epoch(
         _run_fus_a += loss_fus_a.item()
         _run_n     += 1
 
-        scaler.scale(loss).backward()
+        loss.backward()
 
         is_last_batch = (batch_idx + 1 == len(loader))
         is_accum_step = ((batch_idx + 1) % accum_steps == 0) or is_last_batch
 
         if is_accum_step:
-            scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=grad_clip)
 
             # Fix #28: read grad norms after unscale_(), before zero_grad().
@@ -611,15 +610,10 @@ def train_one_epoch(
                 if device == "cuda":
                     vpct = _vram_pct()
                     if vpct > 0.90:
-                        gc.collect()
-                        torch.cuda.empty_cache()
-                        logger.info(f"  VRAM cleanup triggered: {_vram_str()} (was {vpct:.1%} reserved)")
+                        logger.info(f"  VRAM high: {_vram_str()} ({vpct:.1%} reserved)")
 
-            _scale_before = scaler.get_scale()
-            scaler.step(optimizer)
-            scaler.update()
-            if scaler.get_scale() == _scale_before:
-                scheduler.step()
+            optimizer.step()
+            scheduler.step()
             optimizer.zero_grad(set_to_none=True)
 
         loss_for_log = loss.item() * accum_steps
@@ -637,7 +631,6 @@ def train_one_epoch(
     if nan_loss_count > 0:
         logger.warning(
             f"NaN/Inf loss in {nan_loss_count}/{n_batches} batches this epoch. "
-            f"GradScaler skipped those steps silently. "
             f"If > 5% of batches, reduce lr or inspect inputs."
         )
 
@@ -755,14 +748,28 @@ def train(config: TrainConfig) -> dict:
         raise FileNotFoundError(f"label_csv not found: {label_csv_path}.")
     cache_path = Path(config.cache_path) if config.cache_path else None
 
+    # Load the cache once and share the dict between train and val datasets.
+    # Both datasets cover disjoint subsets of the same cache — there is no
+    # correctness reason to load it twice. Sharing halves cache RAM usage
+    # (2.28 GB → once instead of twice = saves ~2.28 GB in the main process).
+    _shared_cache: dict | None = None
+    if cache_path is not None and cache_path.exists():
+        import pickle
+        logger.info(f"Loading shared cache: {cache_path} ...")
+        with open(cache_path, "rb") as _f:
+            _shared_cache = pickle.load(_f)
+        logger.info(f"Shared cache loaded: {len(_shared_cache)} entries")
+
     logger.info("Creating training dataset...")
     train_dataset = DualPathDataset(
         graphs_dir=config.graphs_dir,
         tokens_dir=config.tokens_dir,
         indices=train_indices.tolist(),
         label_csv=label_csv_path,
-        cache_path=cache_path,
+        cache_path=None,  # shared below
     )
+    if _shared_cache is not None:
+        train_dataset.cached_data = _shared_cache
     logger.info(f"Train dataset cache loaded: {train_dataset.cached_data is not None}")
 
     logger.info("Creating validation dataset...")
@@ -771,8 +778,10 @@ def train(config: TrainConfig) -> dict:
         tokens_dir=config.tokens_dir,
         indices=val_indices.tolist(),
         label_csv=label_csv_path,
-        cache_path=cache_path,
+        cache_path=None,  # shared below
     )
+    if _shared_cache is not None:
+        val_dataset.cached_data = _shared_cache
 
     _use_workers = config.num_workers > 0
     _loader_kwargs: dict = dict(
@@ -784,7 +793,10 @@ def train(config: TrainConfig) -> dict:
         _loader_kwargs.update(
             pin_memory=True,
             persistent_workers=config.persistent_workers,
-            prefetch_factor=2,
+            prefetch_factor=4,
+            # fork workers inherit the parent's shared cache via copy-on-write —
+            # no 2.28 GB copy per worker (safe: workers never call CUDA)
+            multiprocessing_context="fork",
         )
 
     _sampler = None
@@ -830,14 +842,6 @@ def train(config: TrainConfig) -> dict:
         lora_target_modules=config.lora_target_modules,
     ).to(device)
 
-    if config.use_compile:
-        try:
-            torch._dynamo.config.suppress_errors = True  # fall back on unsupported ops
-            model = torch.compile(model, dynamic=True)
-            logger.info("torch.compile enabled (dynamic=True, suppress_errors=True)")
-        except Exception as e:
-            logger.warning(f"torch.compile failed, running eager: {e}")
-
     start_epoch      = 1
     best_f1          = 0.0
     patience_counter = 0
@@ -845,7 +849,7 @@ def train(config: TrainConfig) -> dict:
 
     if config.resume_from:
         logger.info(f"Resuming from: {config.resume_from}")
-        ckpt = torch.load(config.resume_from, map_location=device, weights_only=True)
+        ckpt = torch.load(config.resume_from, map_location=device, weights_only=False)  # LoRA peft objects not in safe globals
         _ckpt_state = ckpt
 
         if not isinstance(ckpt, dict) or "model" not in ckpt:
@@ -900,9 +904,9 @@ def train(config: TrainConfig) -> dict:
             logger.warning(
                 f"Checkpoint model_version='{ckpt_version_str}' is older than "
                 f"current MODEL_VERSION='{MODEL_VERSION}'. "
-                f"New parameters (JK attention, REVERSE_CONTAINS embedding row) "
-                f"will be randomly initialised — this is expected for a fresh "
-                f"v5.2 training run, but NOT for a true resume of the same model."
+                f"New parameters (v7: conv3c 3rd CF hop, 11-dim schema) "
+                f"will be randomly initialised — OK for fresh v7.0 training start, "
+                f"NOT for a true resume of the same model."
             )
 
         ckpt_cfg = ckpt.get("config", {})
@@ -1024,6 +1028,36 @@ def train(config: TrainConfig) -> dict:
     )
     optimizer = AdamW(_param_groups, weight_decay=config.weight_decay)
 
+    # torch.compile is applied AFTER the optimizer so that param group name
+    # matching ("gnn.", "lora_", "fusion.") uses the original uncompiled model
+    # names. torch.compile wraps only the forward pass — the underlying parameter
+    # tensors are the same objects, so the optimizer's references remain valid.
+    if config.use_compile:
+        try:
+            torch._dynamo.config.suppress_errors = True
+            torch._dynamo.config.capture_scalar_outputs = True
+            # Raise the per-module cache limit so dynamo can hold shape variants
+            # for the GNN (variable node/edge counts per batch) without falling
+            # back to eager after the default 8 compilations.
+            torch._dynamo.config.cache_size_limit = 256
+            torch._dynamo.config.accumulated_cache_size_limit = 256
+            # Compile submodules individually, skipping model.transformer (CodeBERT+LoRA).
+            # CodeBERT's HuggingFace forward has Python-level control flow that causes
+            # graph breaks contaminating the GNN/fusion compile context when the whole
+            # model is compiled. Submodule compilation isolates those breaks.
+            for name in ("gnn", "fusion", "classifier",
+                         "gnn_eye_proj", "transformer_eye_proj", "window_pooler",
+                         "aux_gnn", "aux_transformer"):
+                sub = getattr(model, name, None)
+                if sub is not None:
+                    setattr(model, name, torch.compile(sub, dynamic=True))
+            logger.info(
+                "torch.compile enabled on submodules (GNN/fusion/classifier/aux; "
+                "transformer skipped — isolates CodeBERT graph breaks)"
+            )
+        except Exception as e:
+            logger.warning(f"torch.compile failed, running eager: {e}")
+
     remaining_epochs = config.epochs - start_epoch + 1
     if remaining_epochs <= 0:
         logger.warning(f"start_epoch={start_epoch} >= config.epochs={config.epochs}: nothing to train.")
@@ -1083,8 +1117,6 @@ def train(config: TrainConfig) -> dict:
         anneal_strategy="cos",
     )
 
-    scaler = torch.amp.GradScaler("cuda", enabled=config.use_amp)
-
     if _ckpt_state is not None and not config.resume_model_only:
         ckpt = _ckpt_state
         _skip_optimizer = config.force_optimizer_reset
@@ -1109,14 +1141,6 @@ def train(config: TrainConfig) -> dict:
             logger.info("Optimizer state skipped — force_optimizer_reset=True.")
         else:
             logger.warning("Full resume requested but no 'optimizer' key in checkpoint. Fresh AdamW.")
-
-        # ── GradScaler state restoration ──
-        # Restoring the loss scale prevents the default scale=65536 from triggering
-        # a NaN calibration wave (several optimizer.step() skips) at the start of
-        # resumed training. Only restored on full resume, not model-only.
-        if "scaler" in ckpt and _optimizer_restored:
-            scaler.load_state_dict(ckpt["scaler"])
-            logger.info(f"GradScaler state restored (scale={scaler.get_scale():.0f}).")
 
         # ── Fix #32 (continued): scheduler state restoration ──
         # Compare checkpoint total_steps against the full-run total_steps
@@ -1250,7 +1274,6 @@ def train(config: TrainConfig) -> dict:
                 loss_fn=loss_fn,
                 aux_loss_fn=aux_loss_fn,
                 scheduler=scheduler,
-                scaler=scaler,
                 device=device,
                 grad_clip=config.grad_clip,
                 log_interval=_auto_log_interval,
@@ -1380,10 +1403,6 @@ def train(config: TrainConfig) -> dict:
                         "model":            model.state_dict(),
                         "optimizer":        optimizer.state_dict(),
                         "scheduler":        scheduler.state_dict(),
-                        # GradScaler state: saves the current loss scale so resumed
-                        # training doesn't start with the default scale=65536 and
-                        # trigger a NaN calibration wave on the first few steps.
-                        "scaler":           scaler.state_dict(),
                         "epoch":            epoch,
                         "best_f1":          best_f1,
                         "patience_counter": patience_counter,

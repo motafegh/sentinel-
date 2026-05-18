@@ -1,21 +1,51 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-18 (v7 pipeline complete — ready for v7.0 training)
+Last updated: 2026-05-18 (rev 8 — speed optimizations: BF16, submodule compile, _scatter_to_dense, torch-scatter; data audit 7-section clean; training running)
 
 ---
 
-## v7.0 Training — READY TO START
-
-All 27 pre-training bugs fixed. Full data pipeline verified. No blockers.
+## v7.0 Training — RUNNING (2026-05-18)
 
 ```bash
 source ml/.venv/bin/activate
-TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
+TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup python ml/scripts/train.py \
     --run-name v7.0 --experiment-name sentinel-v7 \
-    --epochs 100 --gradient-accumulation-steps 8 --compile --num-workers 4
+    --epochs 100 --gradient-accumulation-steps 8 \
+    > ml/logs/v7.0-launch.log 2>&1 &
 ```
 
-Expected VRAM: ~6.9 / 8.0 GB (batch_size=8, MAX_WINDOWS=4, grad_accum=8 → effective batch=64)
+All v7 defaults correct out-of-the-box (no override flags needed except grad-accum):
+- `--batch-size 8` · `--gradient-accumulation-steps 8` (effective batch=64)
+- `--loss-fn asl` · `--asl-gamma-neg 2.0` · `--asl-clip 0.01`
+- `--tokens-dir ml/data/tokens_windowed` · `--label-csv multilabel_index_cleaned.csv`
+- `--weighted-sampler positive` · `--num-workers 4` (fork, CoW cache, prefetch_factor=4)
+- `TRITON_CACHE_DIR=/tmp/triton_cache` — routes compile cache to tmpfs, avoids WSL p9io crash
+
+Expected VRAM: ~6.9 / 8.0 GB · Speed: ~1.91 batch/s · ~32 min/epoch
+
+### Speed stack (rev 8 — all active)
+| Change | File | Effect |
+|--------|------|--------|
+| `_scatter_to_dense` replaces `to_dense_batch` | `fusion_layer.py` | 0 GuardOnDataDependentSymNode; fusion fully compiles |
+| Submodule compile (skip `model.transformer`) | `trainer.py` | CodeBERT graph breaks isolated; GNN+fusion+classifier compile cleanly |
+| `cache_size_limit=256` | `trainer.py` | Dynamo holds more shape variants before fallback |
+| BF16 autocast + GradScaler removed | `trainer.py` | −4 CUDA syncs/optimizer step; simpler loop |
+| `num_workers=4`, `prefetch_factor=4` | `trainer.py` / `train.py` | Fork CoW; zero extra RAM; GPU stays fed |
+| `torch-scatter 2.1.2` installed | venv | `global_max_pool` uses CUDA scatter kernel |
+| Mid-epoch `empty_cache()` removed | `trainer.py` | −1 CUDA sync per log_interval steps |
+
+---
+
+### Data audit (rev 8 — 7-section manual inspection, all clean)
+| Section | Result |
+|---------|--------|
+| Graphs (spot checks) | [N,11] float32, edge attrs valid int64 — CLEAN |
+| Tokens (spot checks) | dict format, [4,512] int64, valid vocab range — CLEAN |
+| Cache | 41,577 entries, schema v7 embedded — CLEAN |
+| Label/graph alignment | 2,948 CSV stems have no graph (expected extraction failures; cache skips them) |
+| Label distribution | 59.3% negative rows, all labels binary, IntegerUO 9,316 train positives |
+| Feature sanity (all 41,576 graphs) | All 11 dims in [0,1], no NaN, no OOR |
+| Graph↔token stem matching | Perfect 1:1 for all 41,576 |
 
 ---
 
@@ -62,22 +92,22 @@ Schema:                FEATURE_SCHEMA_VERSION="v7"; NODE_FEATURE_DIM=11
 
 ---
 
-## Label Counts (cleaned CSV — training targets)
+## Label Counts (cleaned CSV rev 7 — training targets)
 
-| Class | Count | Notes |
-|-------|-------|-------|
-| IntegerUO | 3,900 | Reduced from 13,797 by label_cleaner |
-| GasException | 4,957 | Unchanged (structural filter has no rule) |
-| ExternalBug | 3,009 | Unchanged |
-| Reentrancy | 3,335 | Reduced from 4,498 |
-| TransactionOrderDependence | 3,028 | Unchanged |
-| MishandledException | 1,810 | Reduced from 4,186 |
-| CallToUnknown | 1,058 | Reduced from 3,256 |
-| UnusedReturn | 1,051 | Reduced from 2,716 |
-| Timestamp | 538 | Reduced from 961 |
-| **DenialOfService** | **372** | +26 from augmentation; still data-starved |
+| Class | Count (rev 7) | Rev 6 (buggy) | Change | Notes |
+|-------|--------------|---------------|--------|-------|
+| IntegerUO | **13,797** | 3,900 | +9,897 | has_loop heuristic was wrong; fully restored |
+| GasException | 4,957 | 4,957 | — | no precondition rule |
+| ExternalBug | 3,009 | 3,009 | — | no precondition rule |
+| Reentrancy | **3,886** | 3,335 | +551 | CALLS edge bug fixed; uses ext_call_count now |
+| TransactionOrderDependence | 3,028 | 3,028 | — | no precondition rule |
+| MishandledException | **2,442** | 1,810 | +632 | Transfer/Send gap fixed via ext_call_count OR |
+| CallToUnknown | **2,873** | 1,058 | +1,815 | Transfer/Send gap fixed via ext_call_count OR |
+| UnusedReturn | 1,051 | 1,051 | — | valid check, unchanged |
+| Timestamp | 538 | 538 | — | now alias gap needs phase-2 re-extraction |
+| **DenialOfService** | **372** | 372 | — | +26 from augmentation; still data-starved |
 
-Total: 44,524 rows (train=31,182 / val=6,669 / test=6,673)
+Total: 44,524 rows · Splits (from 41,576 paired): train=29,103 / val=6,236 / test=6,237
 
 ---
 
@@ -138,7 +168,7 @@ ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt   ← ACTIVE FALLBACK
 |--------|--------|-------|
 | M1 ML Core — models | ✅ v7 complete | 7-layer GNN, 11-dim schema, all 27 bugs fixed |
 | M1 ML Core — inference | ✅ Complete | api.py, predictor.py, preprocess.py |
-| M1 ML Core — training | ✅ Complete | ASL per-class, per-epoch threshold tuning, DoS detach, weighted sampler |
+| M1 ML Core — training | ✅ Complete | ASL per-class, BF16, submodule compile, per-epoch threshold tuning, DoS detach, weighted sampler |
 | M1 ML Core — data pipeline | ✅ Complete | v7 extractor, windowed tokenizer, inject+clean pipeline |
 | M2 ZKML | ✅ Source complete | NEVER run — awaiting v7.0 checkpoint |
 | M3 MLOps | ✅ Complete | MLflow `sqlite:///mlruns.db`, Dagster, promote_model.py |

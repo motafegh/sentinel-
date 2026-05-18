@@ -1,15 +1,25 @@
 # SENTINEL — Active Bug List
 
-Last updated: 2026-05-18 (rev 5 — full pipeline complete, ready for v7.0 training)
+Last updated: 2026-05-18 (rev 8 — speed optimizations applied; 7-section data audit complete; no new bugs found)
 
-**Pipeline status (2026-05-18):**
+**Pipeline status (2026-05-18 rev 8):**
 - All 27 code bugs fixed (schema v7, NODE_FEATURE_DIM=11, gnn_layers=7)
 - Re-extraction: 41,522 v7 graphs · 44,470 windowed tokens
 - inject_augmented: +54 rows (+26 DoS vuln, 6 compile-fail skipped)
-- label_cleaner: −17,722 noisy labels → multilabel_index_cleaned.csv
-- create_cache: 41,577 pairs, 2.28 GB → cached_dataset_deduped.pkl
-- Model forward pass verified: output [B,10], layers=7, edge types 0–7
-- Pre-training verification: feature ranges clean, splits valid, no OOB indices
+- **label_cleaner (rev 7):** −3,665 noisy labels (was −17,722; 4 heuristic bugs fixed — see below)
+  → multilabel_index_cleaned.csv; audit trail in multilabel_index_cleaned.audit.json
+- **create_cache (rev 7):** 41,577 pairs, 2.28 GB → cached_dataset_deduped.pkl (rebuilt with fixed labels)
+- **Splits (rev 7):** regenerated from paired stems (41,576) not full CSV — fixes Index OOB crash
+  → train=29,103 / val=6,236 / test=6,237; max_index=41,575 ✓
+- **label_cleaner bugs fixed (rev 7):**
+  - CRITICAL: IntegerUO removed from PRECONDITIONS — `has_loop` is unrelated to overflow; restored 9,897 labels
+  - HIGH: Reentrancy check fixed — was testing CALLS edge (internal calls), not external calls; now uses x[10]>0; restored 601 labels
+  - HIGH: CallToUnknown check fixed — Transfer/Send gap in extractor (not counted in call_target_typed); OR on x[10]>0; restored 1,815 labels
+  - MEDIUM: MishandledException check improved — inherits Transfer/Send fix; OR on x[10]>0; restored 1,744 labels
+  - KNOWN LIMITATION: Timestamp `now` alias (pre-Solidity 0.5) not captured by extractor — needs phase-2 re-extraction
+- **inference fix (BUG-I1):** `three_eye_v7` added to predictor.py `_ARCH_TO_FUSION_DIM` — v7 checkpoints were unloadable
+- **Full source audit (rev 6):** 12 config/default fixes in trainer.py + train.py + sentinel_model.py + fusion_layer.py
+- All 36 fixes independently verified present in code (100% pass)
 Sources: internal deep inspection + external reviewer cross-validation (docs/checking.md + docs/sentinel_remediation_plan.md, both verified against source)
 
 Legend: **OPEN** = not fixed · **DEFERRED** = known, accepted for now · **FIXED** = resolved this session

@@ -70,6 +70,16 @@ zkml/ezkl/srs.params
 # Large binary archives
 ml/peft.zip
 
+# Model checkpoints (large binary weights)
+ml/checkpoints/
+
+# Cache and split files (large, reproducible from pipeline)
+*.pkl
+*.npy
+
+# Temp directory
+/tmp/
+
 # Scratch / output files not part of the codebase
 create_cache.py
 validation_full_output.txt

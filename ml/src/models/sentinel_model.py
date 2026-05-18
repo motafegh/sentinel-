@@ -1,14 +1,12 @@
 """
-sentinel_model.py — SENTINEL Three-Eye Model (v5 architecture)
+sentinel_model.py — SENTINEL Three-Eye Model (v7 architecture)
 
-V5 CHANGES FROM V4
-───────────────────
-Three-eye classifier architecture: instead of routing everything through a
-single 128-dim fused bottleneck, the classifier receives three independent
-128-dim vectors — one from each modality — concatenated to [B, 384].
-GNN is now a three-phase, four-layer GAT (see gnn_encoder.py) that encodes
-execution order via CFG CONTROL_FLOW edges and propagates it back up to
-function nodes via reversed CONTAINS edges (Phase 3).
+v7 ARCHITECTURE
+───────────────
+Three-eye classifier: three independent 128-dim vectors concatenated to [B, 384].
+GNN is a three-phase, 7-layer GAT (2+3+2) that encodes execution order via
+CFG CONTROL_FLOW edges (3 hops: CEI + ENTRY pattern) and propagates back up
+via reversed CONTAINS edges (Phase 3). NODE_FEATURE_DIM=11, NUM_EDGE_TYPES=8.
 
   GNN eye         (structural opinion):
     Pool over FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes only.
