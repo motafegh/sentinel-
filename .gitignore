@@ -84,3 +84,7 @@ ml/checkpoints/
 create_cache.py
 validation_full_output.txt
 docs/manual-saved-log.txt
+
+# Archive directories (local only — not published to GitHub)
+docs/archive/
+ml/scripts/archive/
