@@ -125,12 +125,22 @@ class TransformerEncoder(nn.Module):
         )
 
         # Load pretrained CodeBERT — 125M parameters.
-        # sdpa uses PyTorch's fused memory-efficient attention (avoids materialising
-        # the full [B*W,512,512] attention matrix). Must be set before get_peft_model.
-        self.bert = AutoModel.from_pretrained(
-            "microsoft/codebert-base",
-            attn_implementation="sdpa",
-        )
+        # flash_attention_2 uses tiled CUDA kernels that avoid materialising the
+        # full [B*W,512,512] attention matrix. Falls back to sdpa if unavailable.
+        # Must be set before get_peft_model so LoRA sees the correct implementation.
+        try:
+            self.bert = AutoModel.from_pretrained(
+                "microsoft/codebert-base",
+                attn_implementation="flash_attention_2",
+                torch_dtype=torch.bfloat16,
+            )
+            logger.info("TransformerEncoder — Flash Attention 2 active")
+        except (ImportError, ValueError):
+            self.bert = AutoModel.from_pretrained(
+                "microsoft/codebert-base",
+                attn_implementation="sdpa",
+            )
+            logger.info("TransformerEncoder — SDPA active (flash-attn unavailable)")
 
         # Inject LoRA matrices into targeted attention projections.
         # get_peft_model():
