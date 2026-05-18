@@ -315,6 +315,9 @@ def _compute_call_target_typed(func: Any) -> float:
     return 1.0
 
 
+# DEPRECATED (v7 BUG-L2) — safe to delete after v8 extraction is complete.
+# in_unchecked was dropped from the v7 feature vector: dead signal for 87.9% of
+# the dataset (Solidity <0.8 contracts). Result is computed but never returned.
 def _compute_in_unchecked(func: Any) -> float:
     """1.0 if func body contains an unchecked{} arithmetic block.
 
@@ -629,29 +632,26 @@ def _build_control_flow_edges(
 
 def _build_node_features(obj: Any, type_id: int) -> list:
     """
-    Compute the 12-dimensional feature vector (v4 schema) for one AST node.
+    Compute the 11-dimensional feature vector (v7 schema) for one AST node.
 
-    Returns list[float] of exactly NODE_FEATURE_DIM (12) elements.
+    Returns list[float] of exactly NODE_FEATURE_DIM (11) elements.
 
-    Feature layout (v4 schema — changes from v2/v3 marked with *):
+    Feature layout (v7 schema):
       [0]  type_id              — float(NODE_TYPES[kind]) / 12.0, normalised [0,1]
       [1]  visibility           — VISIBILITY_MAP ordinal 0-2
-      [2]  uses_block_globals * — 1.0 if func reads block.timestamp/number/etc.
-                                  (replaces `pure` which was rarely informative)
+      [2]  uses_block_globals   — 1.0 if func reads block.timestamp/number/etc.
       [3]  view                 — 1.0 if Function.view
       [4]  payable              — 1.0 if Function.payable
-      [5]  complexity *         — log-normalised CFG block count
+      [5]  complexity           — log-normalised CFG block count
                                   min(log1p(len(func.nodes)) / log1p(100), 1.0)
-                                  (was raw count; values of 100+ dominated all
-                                   other features in dot products)
-      [6]  loc *                — log1p(lines) / log1p(1000), normalised [0,1]
-                                  (was raw line count; CONTRACT node hit 2538 raw,
-                                   crushing binary features in dot products)
+      [6]  loc                  — log1p(lines) / log1p(1000), normalised [0,1]
       [7]  return_ignored       — 0.0/1.0/-1.0 sentinel
       [8]  call_target_typed    — 0.0/1.0/-1.0 sentinel
-      [9]  in_unchecked         — 1.0 if body contains unchecked{} block
-      [10] has_loop             — 1.0 if function contains a loop
-      [11] external_call_count  — log-normalized count (now includes Transfer/Send)
+      [9]  has_loop             — 1.0 if function contains a loop  (was [10] in v6)
+      [10] external_call_count  — log-normalized count             (was [11] in v6)
+
+    Removed from v6→v7 (BUG-L2): in_unchecked — dead signal for 87.9% of the
+    dataset (Solidity <0.8 contracts where unchecked{} does not exist).
 
     Non-Function nodes receive 0.0 for features [2:] except:
       - call_target_typed [8] defaults to 1.0 (safe: not applicable)
@@ -678,7 +678,6 @@ def _build_node_features(obj: Any, type_id: int) -> list:
     complexity = 0.0
     return_ignored     = 0.0
     call_target_typed  = 1.0   # safe default: "not applicable"
-    in_unchecked       = 0.0
     has_loop           = 0.0
     external_call_count = 0.0
 
@@ -696,7 +695,9 @@ def _build_node_features(obj: Any, type_id: int) -> list:
 
         return_ignored      = _compute_return_ignored(obj)
         call_target_typed   = _compute_call_target_typed(obj)
-        in_unchecked        = _compute_in_unchecked(obj)
+        # in_unchecked removed from v7 feature vector (BUG-L2) — call kept for
+        # deprecation period; result is intentionally discarded.
+        _compute_in_unchecked(obj)
         has_loop            = _compute_has_loop(obj)
         external_call_count = _compute_external_call_count(obj)
 
