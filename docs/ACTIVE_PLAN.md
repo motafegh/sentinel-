@@ -1,16 +1,16 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-18 (rev 3 — epoch 9 passed clean; training state updated through epoch 11)
+Last updated: 2026-05-19 (rev 4 — v7 training COMPLETE; final results documented)
 
-**Current state (2026-05-18 23:03):**
-- v7 training running — **Epoch 11 F1=0.2362** (new best), 1.90–1.98 batch/s, no NaN/collapse
-- **Epoch 9 PASSED** — the v6 collapse point. F1 jumped 0.2102→0.2317 (no collapse, no guardrail fires)
-- Epoch 10 dipped to 0.2186 (patience 1/30) — normal oscillation, immediately recovered at epoch 11
-- Schema v7, NODE_FEATURE_DIM=11, NUM_EDGE_TYPES=8, gnn_layers=7, cache=41,577 pairs
-- Phase 0 cleanup DONE (graph_extractor.py dead code + stale docstring fixed)
-- Speed: S2 (fused AdamW) + S3 (SDPA) already applied. S1 blocked (86% VRAM). S4 optional.
-- v7 F1=0.2362 is **37.5% above v6's all-time best of 0.1717**
-- All v8/v9 code changes blocked until v7 training completes and final checkpoint is captured
+**Current state (2026-05-19 11:46):**
+- **v7 training COMPLETE** — killed at epoch 34 (patience 10/30). Best checkpoint saved.
+- **Best F1-macro: 0.2651** at epoch 23 (2026-05-19 05:49) — **+54.4% above v6's best of 0.1717**
+- **Best per-class:** IntegerUO=0.583 · GasException=0.301 · MishandledException=0.276 · TOD=0.228 · Timestamp=0.227 · DenialOfService=0.019 (detached)
+- **Plateau pattern:** Epochs 24–33 oscillated 0.2432–0.2618, never beating 0.2651. Step loss still declining (~0.1409–0.1451) — training loss improving but val F1 structurally capped.
+- **JK weight diagnosis (epoch 33):** Phase1=0.050 · Phase2=0.182 · Phase3=0.768. Phase 3 (REVERSE_CONTAINS) dominates — model learned to de-weight Phase 2 CFG signal because intra-function CONTROL_FLOW edges don't cross function boundaries. This is the structural ceiling ICFG-Lite (PLAN-1D) is designed to break.
+- **v7 checkpoint:** `ml/checkpoints/v7.0_best.pt` (saved epoch 23, F1=0.2651)
+- **Phase 0 cleanup:** DONE — committed in 907e442
+- **Next:** Phase 1 — extractor refactor (ICFG + DEF_USE edges). All code changes now unblocked.
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -327,15 +327,15 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 - **Status:** OPEN
 
 ### OPS-2 — Monitor v7 training through convergence
-- **Epoch 9 watch point: PASSED** — F1 jumped 0.2102→0.2317 with no collapse, no guardrail fires. v6 died here; v7 is clear.
-- **Current:** Epoch 11 F1=0.2362 (new best), patience 0/30. Epoch 12 in progress.
-- **Next watch point:** epoch 15–20 range (v6 was manually killed at epoch 16; monitor for plateau or Hamming regression)
-- **Signs of health:** F1 improving or stable within patience window, gnn_share > 10%, Hamming < 0.85
-- **Status:** IN PROGRESS — healthy, past danger zone
+- **Epoch 9 watch point: PASSED** — F1 jumped 0.2102→0.2317 with no collapse, no guardrail fires.
+- **FINAL RESULT:** Best F1=0.2651 at epoch 23 (2026-05-19 05:49). Killed at epoch 34, patience 10/30.
+- **Plateau analysis:** Val F1 flat epochs 24–33 (0.2432–0.2618) while train loss still declining. Structural ceiling confirmed by JK Phase3 weight drifting 0.572→0.784 — model learned to distrust intra-function CFG signal. No cross-function edges available to rescue.
+- **v7 vs v6:** +54.4% F1 (0.2651 vs 0.1717). Improvement attributed to: 3-hop CFG (conv3c), AsymmetricLoss, LR schedule, weighted sampler, correct VRAM headroom.
+- **Status:** DONE — best checkpoint at `ml/checkpoints/v7.0_best.pt`
 
 ### OPS-3 — Commit Phase 0 cleanup to git
 - **Files changed:** `ml/src/preprocessing/graph_extractor.py`
-- **Status:** OPEN
+- **Status:** DONE — included in commit 907e442
 
 ---
 
@@ -373,5 +373,5 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | BUG-M7 | 8.5% graphs have empty contract_path | 1 | P3 | — | OPEN |
 | BUG-L3 | Path-hash pairing fragile to dir restructure | — | P3 | — | DEFERRED |
 | OPS-1 | Install CUDA toolkit + Flash Attention 2 (S2/S3 already applied) | — | P3 | not blocking | OPEN |
-| OPS-2 | Monitor v7 training through epoch 9 | — | P0 | — | IN PROGRESS |
-| OPS-3 | Commit Phase 0 cleanup | — | P1 | — | OPEN |
+| OPS-2 | Monitor v7 training through convergence | — | P0 | — | **DONE** |
+| OPS-3 | Commit Phase 0 cleanup | — | P1 | — | **DONE** |
