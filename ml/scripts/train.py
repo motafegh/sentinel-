@@ -110,8 +110,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--splits-dir",      default="ml/data/splits/deduped")
     p.add_argument("--checkpoint-dir",  default="ml/checkpoints")
     p.add_argument("--checkpoint-name", default=None)
-    p.add_argument("--cache-path",      default="ml/data/cached_dataset_deduped.pkl",
-                   help="RAM cache pickle. Use ml/data/cached_dataset_windowed.pkl for windowed tokens.")
+    p.add_argument("--cache-path",      default="ml/data/cached_dataset_v8.pkl",
+                   help="RAM cache pickle (v8 — schema v8 graphs with CALL_ENTRY/RETURN_TO/DEF_USE).")
 
     # --- Loss and regularisation ---
     p.add_argument("--loss-fn",              choices=["bce", "focal", "asl"], default="asl")
@@ -155,6 +155,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-edge-attr",     dest="use_edge_attr", action="store_false", default=True)
     p.add_argument("--no-jk",            dest="gnn_use_jk",   action="store_false", default=True,
                    help="Disable JK attention aggregation (v5.2 default: enabled)")
+    p.add_argument("--phase2-edge-types", type=int, nargs="+", default=None,
+                   dest="gnn_phase2_edge_types",
+                   help=(
+                       "Edge type IDs for Phase 2 cfg_mask. None=all v8 types (6,8,9,10). "
+                       "Ablation examples: ICFG-only=6 8 9  DFG-only=6 10"
+                   ))
     p.add_argument("--gnn-lr-multiplier",  type=float, default=2.5,
                    help="GNN LR = lr × this (default 2.5 — counteracts GNN gradient collapse)")
     p.add_argument("--lora-lr-multiplier", type=float, default=0.3,
@@ -223,6 +229,7 @@ def main() -> None:
         gnn_edge_emb_dim      = args.gnn_edge_emb_dim,
         use_edge_attr         = args.use_edge_attr,
         gnn_use_jk            = args.gnn_use_jk,
+        gnn_phase2_edge_types = args.gnn_phase2_edge_types,
         gnn_lr_multiplier     = args.gnn_lr_multiplier,
         lora_lr_multiplier    = args.lora_lr_multiplier,
         fusion_lr_multiplier  = args.fusion_lr_multiplier,
