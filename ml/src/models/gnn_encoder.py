@@ -1,7 +1,7 @@
 """
-gnn_encoder.py — GNN Encoder for SENTINEL (v7 — three-phase, 7-layer architecture)
+gnn_encoder.py — GNN Encoder for SENTINEL (v8 — three-phase, 7-layer architecture)
 
-THREE-PHASE DESIGN (v7: 2+3+2 layers = 7 total)
+THREE-PHASE DESIGN (v8: 2+3+2 layers = 7 total)
 ─────────────────────────────────────────────────
 Phase 1 (Layers 1+2): Structural aggregation
   Edges: types 0–5 (CALLS, READS, WRITES, EMITS, INHERITS, CONTAINS)
@@ -11,18 +11,19 @@ Phase 1 (Layers 1+2): Structural aggregation
   Purpose: propagate function-level properties DOWN into CFG_NODE children
   via CONTAINS edges, and aggregate inter-function structural context.
 
-Phase 2 (Layers 3+4+5): CFG-directed aggregation
-  Edges: type 6 (CONTROL_FLOW only)
+Phase 2 (Layers 3+4+5): CFG + ICFG directed aggregation
+  Edges: CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9)
   add_self_loops=False  ← CRITICAL — self-loops cancel directional signal
   heads=1, concat=False → output stays hidden_dim
-  Purpose: enrich CFG_NODE embeddings with execution-order information.
-  Layer 3: first CF hop  (CALL→adjacent nodes)
-  Layer 4: second CF hop (reaches WRITE 2 hops from CALL — CEI/CEA pattern)
-  Layer 5: third CF hop  (reaches WRITE 3 hops from ENTRY — full CEI: ENTRY→CALL→TMP→WRITE)
+  Purpose: enrich CFG_NODE embeddings with execution-order information,
+  now spanning cross-function boundaries via ICFG-Lite edges.
+  Layer 3: first hop  (intra-function successors + CALL_ENTRY to callees)
+  Layer 4: second hop (CEI/CEA + callee body reachable via ICFG)
+  Layer 5: third hop  (ENTRY→CALL→TMP→WRITE; full CEI via ICFG)
   Why 3 hops: typical reentrancy CFG: ENTRY→CHECK→CALL→TMP→WRITE→RETURN
     1 hop: CALL sends to TMP only; 2 hops: CALL signal reaches WRITE;
     3 hops: ENTRY signal reaches WRITE — needed for patterns where ENTRY node is
-    2 steps before CALL (BUG-H1 fix).
+    2 steps before CALL (BUG-H1 fix). ICFG edges extend this across functions.
 
 Phase 3 (Layers 6+7): Reverse-CONTAINS aggregation
   Edges: type 7 REVERSE_CONTAINS (runtime-only, CFG_NODE → FUNCTION direction)
@@ -189,9 +190,8 @@ class GNNEncoder(nn.Module):
                 f"Each head needs hidden_dim/heads = {hidden_dim/heads:.1f} dims."
             )
 
-        # Edge type embedding: covers all 8 edge types including REVERSE_CONTAINS(7).
-        # Type 7 is runtime-only — graph files never contain id=7 but the table
-        # needs 8 rows so index-7 lookups don't crash during forward pass.
+        # Edge type embedding: covers all 10 edge types including REVERSE_CONTAINS(7)
+        # (runtime-only) and CALL_ENTRY(8) + RETURN_TO(9) (v8 ICFG-Lite, on disk).
         _edge_dim: int | None = None
         if use_edge_attr:
             self.edge_embedding = nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)
@@ -219,11 +219,13 @@ class GNNEncoder(nn.Module):
             edge_dim=_edge_dim,
         )
 
-        # ── Phase 2 — CONTROL_FLOW directed (Layers 3+4) ────────────────────
+        # ── Phase 2 — CFG + ICFG directed (Layers 3+4+5) ───────────────────
+        # Edge types: CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9).
         # add_self_loops=False — CRITICAL: self-loops cancel directional CF signal.
         # heads=1: one head with full hidden_dim capacity for execution-order encoding.
-        # Layer 3: first CF hop (reaches direct successor).
-        # Layer 4: second CF hop (reaches WRITE 2 hops from CALL — CEI/CEA pattern).
+        # Layer 3: first hop  (intra-function successors + cross-function CALL_ENTRY).
+        # Layer 4: second hop (CEI/CEA pattern + callee body via ICFG).
+        # Layer 5 (conv3c): third hop — ENTRY→CALL→TMP→WRITE full CEI sequence.
         self.conv3 = GATConv(
             in_channels=hidden_dim,
             out_channels=hidden_dim,
@@ -370,14 +372,20 @@ class GNNEncoder(nn.Module):
 
         # ── Edge masks — one per phase ───────────────────────────────────────
         # struct_mask:   types 0–CONTAINS (all structural + CONTAINS forward)
-        # cfg_mask:      CONTROL_FLOW only
+        # cfg_mask:      CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9) — Phase 2
         # contains_mask: CONTAINS only; used to build Phase 3 reverse edges
         _CONTAINS         = EDGE_TYPES["CONTAINS"]          # 5
         _CONTROL_FLOW     = EDGE_TYPES["CONTROL_FLOW"]       # 6
         _REVERSE_CONTAINS = EDGE_TYPES["REVERSE_CONTAINS"]   # 7 (runtime-only)
+        _CALL_ENTRY       = EDGE_TYPES["CALL_ENTRY"]         # 8 (v8 ICFG-Lite)
+        _RETURN_TO        = EDGE_TYPES["RETURN_TO"]          # 9 (v8 ICFG-Lite)
         if edge_attr is not None:
             struct_mask   = edge_attr <= _CONTAINS
-            cfg_mask      = edge_attr == _CONTROL_FLOW
+            cfg_mask      = (
+                (edge_attr == _CONTROL_FLOW) |
+                (edge_attr == _CALL_ENTRY)   |
+                (edge_attr == _RETURN_TO)
+            )
             contains_mask = edge_attr == _CONTAINS
         else:
             # Without edge_attr: Phase 2 (CFG) and Phase 3 (REVERSE_CONTAINS) are
