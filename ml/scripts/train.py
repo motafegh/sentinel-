@@ -65,7 +65,7 @@ def parse_args() -> argparse.Namespace:
     )
 
     # --- Run identity ---
-    p.add_argument("--run-name",        default="multilabel-v5-fresh")
+    p.add_argument("--run-name",        default="sentinel-v8")
     p.add_argument("--experiment-name", default="sentinel-multilabel")
 
     # --- Model ---
