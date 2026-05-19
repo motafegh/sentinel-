@@ -279,23 +279,13 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 
 ## Operational Items
 
-### OPS-1 — Install CUDA toolkit for Flash Attention 2
-- **Blocker:** `nvcc` not available in WSL2 — only CUDA runtime at `/usr/lib/wsl/lib/`; CUDA 11.8 on Windows side is `.exe`, unusable from Linux; PyTorch compiled against CUDA 12.4
-- **Current speed stack (already applied):**
+### OPS-1 — Install CUDA toolkit + Flash Attention 2
+- **Status:** **DONE (2026-05-19)** — CUDA toolkit installed; flash-attn 2.8.3 installed via pre-built wheel
+- **Current speed stack:**
   - S2 Fused AdamW: `trainer.py:1029` — `fused=True` ✓
-  - S3 SDPA: `transformer_encoder.py:131–143` — flash_attention_2 try/except → sdpa ✓
-  - Both carry forward automatically to v8 training
-- **Flash Attention 2 install (when convenient):**
-  ```bash
-  wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
-  sudo dpkg -i cuda-keyring_1.1-1_all.deb
-  sudo apt-get update
-  sudo apt-get install -y cuda-toolkit-12-4
-  pip install flash-attn --no-build-isolation
-  ```
-  Expected gain: ~15% speedup on CodeBERT attention layers (on top of SDPA).
-- **Priority:** P3 — training is healthy without it
-- **Status:** OPEN
+  - S3 SDPA: `transformer_encoder.py:131–143` ✓ (active — see note below)
+  - flash-attn 2.8.3: installed ✓
+- **Note:** CodeBERT (RoBERTa architecture) does NOT support `attn_implementation="flash_attention_2"` via HuggingFace Transformers — only decoder models (LLaMA, Mistral etc.) have it. The `TransformerEncoder` falls back to SDPA, which is the correct ceiling for this architecture. flash-attn is available for any future backbone swap.
 
 ### OPS-2 — Monitor v7 training through convergence
 - **Epoch 9 watch point: PASSED** — F1 jumped 0.2102→0.2317 with no collapse, no guardrail fires.
@@ -343,6 +333,6 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | BUG-M6 | Stale token schema version metadata | 2 | P3 | auto-resolved by retokenize | OPEN |
 | BUG-M7 | 8.5% graphs have empty contract_path | 1 | P3 | — | OPEN |
 | BUG-L3 | Path-hash pairing fragile to dir restructure | — | P3 | — | DEFERRED |
-| OPS-1 | Install CUDA toolkit + Flash Attention 2 (S2/S3 already applied) | — | P3 | not blocking | OPEN |
+| OPS-1 | Install CUDA toolkit + Flash Attention 2 | — | P3 | — | **DONE** (SDPA is ceiling for CodeBERT; flash-attn ready for backbone swap) |
 | OPS-2 | Monitor v7 training through convergence | — | P0 | — | **DONE** |
 | OPS-3 | Commit Phase 0 cleanup | — | P1 | — | **DONE** |
