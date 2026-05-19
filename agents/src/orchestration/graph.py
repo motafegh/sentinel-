@@ -2,62 +2,48 @@
 """
 M5 — SENTINEL audit graph (LangGraph).
 
-Wires ml_assessment → [rag_research ‖ static_analysis → audit_check →] synthesizer
-into a stateful, checkpointed LangGraph.
+Phase 0 topology:
+    START → ml_assessment → evidence_router → [fan-out] → audit_check → synthesizer → END
+
+Conditional routing after evidence_router:
+    Deep path  → rag_research ──┐
+                 static_analysis ─┴→ audit_check → synthesizer
+    Fast path  → synthesizer directly (all classes below per-class threshold)
 
 RECALL — LangGraph execution model:
     StateGraph compiles to a Pregel-style message-passing graph.
     Each node is a Python coroutine. LangGraph calls nodes in topological
     order, passing the current state snapshot and merging returned updates.
-    MemorySaver checkpoints after EVERY node — if the process crashes
+    SqliteSaver checkpoints after EVERY node — if the process crashes
     mid-graph, it can be resumed from the last completed node by
     providing the same thread_id in the config.
 
-RECALL — why conditional routing:
-    ML assessment is cheap (~5-15s GPU). RAG + on-chain lookup is slower.
-    High-confidence vulnerable contracts get full deep analysis.
-    Low-confidence or borderline results get the fast path to synthesizer.
-    The routing function (_route_after_ml) is the single place to update
-    for Track 3 (multi-label) — see nodes._is_high_risk() docstring.
-
 RECALL — parallel branches (deep path):
-    _route_after_ml returns a list ["rag_research", "static_analysis"] for
-    high-risk contracts. LangGraph fans out to both nodes in the same
-    superstep (parallel execution). audit_check waits for BOTH to complete
-    before running — LangGraph's fan-in semantics handle this automatically.
+    _route_from_evidence_router returns a list when deep analysis is needed.
+    LangGraph fans out to all listed nodes in the same superstep.
+    audit_check waits for ALL to complete before running — LangGraph's
+    fan-in semantics handle this automatically.
 
-Graph topology:
-    START
-      │
-      ▼
-    ml_assessment
-      │
-      ├─ high risk (deep)──► rag_research ──┐
-      │                   ├─ static_analysis ──► audit_check ──► synthesizer
-      │
-      └─ low risk (fast)──────────────────────────────────────► synthesizer
-                                                                     │
-                                                                    END
+RECALL — routing split:
+    evidence_router NODE  → logs routing_decisions to AuditState
+    _route_from_evidence_router FUNCTION → returns node names for LangGraph edges
+    Both call compute_active_tools(ml_result). The node call is for state logging;
+    the function call is for graph branching. Slight redundancy is intentional —
+    keeps the node pure (no branching) and the function stateless (no state update).
 
 Usage (standalone):
     from src.orchestration.graph import build_graph
 
     graph = build_graph()
-
     result = await graph.ainvoke(
-        {
-            "contract_code":    "<solidity source>",
-            "contract_address": "0x...",
-        },
+        {"contract_code": "<solidity source>", "contract_address": "0x..."},
         config={"configurable": {"thread_id": "audit-001"}},
     )
     print(result["final_report"])
 
-Usage (with resume from checkpoint):
-    # If a previous run with thread_id="audit-001" was interrupted,
-    # ainvoke with the same thread_id resumes from the last completed node.
+Usage (resume from checkpoint):
     result = await graph.ainvoke(
-        None,  # pass None to resume — state is loaded from checkpointer
+        None,  # state loaded from SqliteSaver by thread_id
         config={"configurable": {"thread_id": "audit-001"}},
     )
 """
@@ -69,71 +55,49 @@ from pathlib import Path
 from typing import Any
 
 # ── sys.path — make agents/ importable regardless of cwd ──────────────────
-# __file__ is agents/src/orchestration/graph.py → parents[2] = agents/
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from langgraph.graph import END, StateGraph
-from langgraph.checkpoint.memory import MemorySaver
 from loguru import logger
 
 from src.orchestration.state import AuditState
+from src.orchestration.routing import compute_active_tools
 from src.orchestration.nodes import (
     audit_check,
+    evidence_router,
     ml_assessment,
     rag_research,
     static_analysis,
     synthesizer,
-    _is_high_risk,
 )
 
 
 # ---------------------------------------------------------------------------
-# Routing function
+# Routing function (conditional edge — not a node)
 # ---------------------------------------------------------------------------
 
-def _route_after_ml(state: AuditState) -> str | list[str]:
+def _route_from_evidence_router(state: AuditState) -> str | list[str]:
     """
-    Decide which path to take after ml_assessment completes.
+    Decide which path to take after evidence_router has logged its decisions.
 
     Returns:
-        list["rag_research", "static_analysis"]
-            → fan out to both nodes in parallel (deep path)
-        "synthesizer"
-            → skip directly to synthesizer (fast path)
+        list[str]  — node names to fan out to in parallel (deep path)
+        "synthesizer" — fast path: skip directly to synthesizer
 
-    RECALL — parallel fan-out semantics:
-        Returning a list from a LangGraph conditional edge function causes
-        LangGraph to execute all listed nodes concurrently in the same
-        superstep. Both nodes write to independent state keys (rag_results
-        and static_findings), so there are no write conflicts.
-        audit_check will NOT run until BOTH branches complete — LangGraph's
-        fan-in handles the synchronisation automatically.
-
-    NOTE — error fallback:
-        If ml_assessment failed (ml_result is empty), route to fast path.
-        The synthesizer produces a partial report noting the failure.
+    RECALL — evidence_router node already called compute_active_tools and
+    stored results in routing_decisions for auditability. This function calls
+    it again (cheap — pure dict lookup) to produce the LangGraph branch target.
+    The two calls must be consistent; routing.py is the single source of truth.
     """
     ml_result = state.get("ml_result", {})
+    active    = compute_active_tools(ml_result)
 
-    if not ml_result:
-        logger.warning("_route_after_ml | ml_result empty — using fast path")
+    if not active:
+        logger.info("_route_from_evidence_router | fast path (no tools activated)")
         return "synthesizer"
 
-    if _is_high_risk(ml_result):
-        vulns = ml_result.get("vulnerabilities", [])
-        top_prob = max((v.get("probability", 0.0) for v in vulns), default=0.0)
-        logger.info(
-            "_route_after_ml | label={} | top_prob={:.3f} | path=deep (parallel)",
-            ml_result.get("label"),
-            top_prob,
-        )
-        return ["rag_research", "static_analysis"]
-
-    logger.info(
-        "_route_after_ml | label={} | path=fast",
-        ml_result.get("label"),
-    )
-    return "synthesizer"
+    logger.info("_route_from_evidence_router | deep path → {}", active)
+    return active
 
 
 # ---------------------------------------------------------------------------
@@ -145,47 +109,43 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     Build and compile the SENTINEL audit StateGraph.
 
     Args:
-        use_checkpointer: If True (default), attach a MemorySaver so the
-            graph can be resumed after interruption. Set False in unit tests
-            to avoid the overhead of checkpointing.
+        use_checkpointer: If True (default), attach a SqliteSaver so the
+            graph persists state across restarts. Set False in unit tests.
 
     Returns:
-        Compiled LangGraph (CompiledStateGraph) ready for .ainvoke() or
-        .invoke() calls.
+        Compiled LangGraph (CompiledStateGraph) ready for .ainvoke() calls.
 
-    RECALL — MemorySaver vs Redis:
-        MemorySaver: in-process dict. Fast, zero setup. State is lost on
-            process restart. Fine for M5 (single-process, single-machine).
-        Redis (langgraph-checkpoint-redis): persistent across restarts.
-            Required for M6 production (multi-replica Docker Compose).
-            Swap by replacing MemorySaver() with RedisSaver(redis_url=...).
-
-    RECALL — compile() locks the graph topology.
-        After compile(), add_node/add_edge are no longer valid.
-        To modify the graph, rebuild from scratch with build_graph().
+    RECALL — SqliteSaver vs MemorySaver:
+        MemorySaver: in-process dict. State lost on restart. Was used in M5.
+        SqliteSaver: persists to agents/data/checkpoints.db. Resume-from-node
+            on crash. Full audit trail inspectable via sqlite3. Required for
+            production and for debugging mid-graph state.
+        To upgrade to PostgresSaver for M6 multi-replica: swap one import.
     """
     graph = StateGraph(AuditState)
 
     # ── Register nodes ──────────────────────────────────────────────────────
-    graph.add_node("ml_assessment",  ml_assessment)
-    graph.add_node("rag_research",   rag_research)
+    graph.add_node("ml_assessment",   ml_assessment)
+    graph.add_node("evidence_router", evidence_router)
+    graph.add_node("rag_research",    rag_research)
     graph.add_node("static_analysis", static_analysis)
-    graph.add_node("audit_check",    audit_check)
-    graph.add_node("synthesizer",    synthesizer)
+    graph.add_node("audit_check",     audit_check)
+    graph.add_node("synthesizer",     synthesizer)
 
     # ── Entry point ─────────────────────────────────────────────────────────
     graph.set_entry_point("ml_assessment")
 
-    # ── Conditional routing after ml_assessment ─────────────────────────────
-    # _route_after_ml returns either:
-    #   ["rag_research", "static_analysis"] → LangGraph fans out to BOTH in parallel
-    #   "synthesizer"                       → skip directly to synthesizer
-    # No path_map — function returns node name(s) directly.
-    graph.add_conditional_edges("ml_assessment", _route_after_ml)
+    # ── ml_assessment → evidence_router (always) ────────────────────────────
+    graph.add_edge("ml_assessment", "evidence_router")
 
-    # ── Deep path fan-in: both parallel branches converge at audit_check ─────
-    # LangGraph waits for ALL nodes with edges pointing to audit_check before
-    # executing it — so audit_check sees both rag_results and static_findings.
+    # ── evidence_router → conditional fan-out ───────────────────────────────
+    # _route_from_evidence_router returns either:
+    #   ["rag_research", "static_analysis"] → parallel fan-out (deep path)
+    #   ["static_analysis"]                 → single tool (depends on class)
+    #   "synthesizer"                       → fast path
+    graph.add_conditional_edges("evidence_router", _route_from_evidence_router)
+
+    # ── Deep path fan-in: all parallel branches converge at audit_check ──────
     graph.add_edge("rag_research",    "audit_check")
     graph.add_edge("static_analysis", "audit_check")
     graph.add_edge("audit_check",     "synthesizer")
@@ -193,14 +153,35 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     # ── Terminal edge ────────────────────────────────────────────────────────
     graph.add_edge("synthesizer", END)
 
-    # ── Compile ─────────────────────────────────────────────────────────────
-    checkpointer = MemorySaver() if use_checkpointer else None
+    # ── Checkpointer ────────────────────────────────────────────────────────
+    checkpointer = None
+    if use_checkpointer:
+        try:
+            import sqlite3
+            from langgraph.checkpoint.sqlite import SqliteSaver
+            db_path = Path(__file__).parents[2] / "data" / "checkpoints.db"
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            # SqliteSaver.from_conn_string() is a context manager in langgraph >= 1.2.
+            # Use sqlite3.connect() directly to avoid requiring a `with` block.
+            conn = sqlite3.connect(str(db_path), check_same_thread=False)
+            checkpointer = SqliteSaver(conn)
+            logger.debug("graph | checkpointer=SqliteSaver | db={}", db_path)
+        except ImportError:
+            from langgraph.checkpoint.memory import MemorySaver
+            checkpointer = MemorySaver()
+            logger.warning(
+                "graph | langgraph-checkpoint-sqlite not installed — "
+                "falling back to MemorySaver (state lost on restart). "
+                "Run: pip install langgraph-checkpoint-sqlite"
+            )
+
     compiled = graph.compile(checkpointer=checkpointer)
 
     logger.info(
         "Audit graph compiled | checkpointer={} | nodes={}",
-        "MemorySaver" if use_checkpointer else "None",
-        ["ml_assessment", "rag_research", "static_analysis", "audit_check", "synthesizer"],
+        type(checkpointer).__name__ if checkpointer else "None",
+        ["ml_assessment", "evidence_router", "rag_research",
+         "static_analysis", "audit_check", "synthesizer"],
     )
     return compiled
 
