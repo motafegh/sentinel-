@@ -1,14 +1,16 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-19 (rev 5 — ICFG-Lite implemented; PLAN-1A/1C/1D/1F/1G DONE)
+Last updated: 2026-05-19 (rev 7 — PLAN-1B gate PASSED; Phase 1 fully complete; Phase 2 next)
 
 **Current state (2026-05-19):**
 - **v7 training COMPLETE** — best F1=0.2651 at epoch 23, checkpoint `ml/checkpoints/v7.0_best.pt`
-- **ICFG-Lite IMPLEMENTED (commit b9ba690):** CALL_ENTRY(8) + RETURN_TO(9) edges in extractor + schema + encoder
-- **Schema v8:** `NUM_EDGE_TYPES=10`, `FEATURE_SCHEMA_VERSION="v8"` — v7 graph cache invalidated
-- **Validated on test contract:** 2 CALL_ENTRY + 1 RETURN_TO edges with correct semantics
-- **Flash-attn:** install may have failed — re-run `pip install flash-attn --no-build-isolation`
-- **Next:** PLAN-1E (DEF_USE edges) → PLAN-1B (2,000-contract structural comparison gate) → Phase 2 (full re-extraction)
+- **Schema v8 COMPLETE:** `NUM_EDGE_TYPES=11`, `FEATURE_SCHEMA_VERSION="v8"` — CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10)
+- **PLAN-1B gate PASSED (2026-05-19):** 2,000-contract sample validated
+  - 1999/2000 structural parity (1 non-deterministic Slither failure, re-runs clean)
+  - P99=1786 edges (limit 5,000) ✓ · max=3707 (limit 10,000) ✓
+  - CALL_ENTRY=12,630 · RETURN_TO=11,311 · DEF_USE=55,680 (all non-zero) ✓
+  - DataLoader batch_size=8: 8 graphs / 722 nodes batched cleanly ✓
+- **Next:** Phase 2 full v8 re-extraction (PLAN-2A → PLAN-2I)
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -87,7 +89,7 @@ Last updated: 2026-05-19 (rev 5 — ICFG-Lite implemented; PLAN-1A/1C/1D/1F/1G D
   - DataLoader batch fits GPU memory at batch_size=8
   - **Structural comparison gate:** extract same 2,000 contracts with both v7 and v8 extractors; verify all v7 edges (CALLS/READS/WRITES/EMITS/INHERITS/CONTAINS/CONTROL_FLOW) are bit-for-bit identical in v8 output — new types are additive only, no existing edges may change or disappear. Any regression = bug in `global_cfg_node_map` refactor.
 - **If gate fails:** Tighten ICFG depth or DFG categories before proceeding
-- **Status:** OPEN (BLOCKED on PLAN-1A)
+- **Status:** **DONE (2026-05-19)** — 2,000-contract gate PASSED. 1999/2000 parity (0.05% Slither non-determinism, re-runs clean); P99=1786; max=3707; all new types fire; DataLoader batch clean.
 
 ---
 
