@@ -1,6 +1,6 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-19 (rev 7 — PLAN-1B gate PASSED; Phase 1 fully complete; Phase 2 next)
+Last updated: 2026-05-19 (rev 8 — Phase 2 DONE; v8 cache ready; Phase 3 training next)
 
 **Current state (2026-05-19):**
 - **v7 training COMPLETE** — best F1=0.2651 at epoch 23, checkpoint `ml/checkpoints/v7.0_best.pt`
@@ -10,7 +10,8 @@ Last updated: 2026-05-19 (rev 7 — PLAN-1B gate PASSED; Phase 1 fully complete;
   - P99=1786 edges (limit 5,000) ✓ · max=3707 (limit 10,000) ✓
   - CALL_ENTRY=12,630 · RETURN_TO=11,311 · DEF_USE=55,680 (all non-zero) ✓
   - DataLoader batch_size=8: 8 graphs / 722 nodes batched cleanly ✓
-- **Next:** Phase 2 full v8 re-extraction (PLAN-2A → PLAN-2I)
+- **Phase 2 DONE (2026-05-19):** 41,576 v8 graphs re-extracted; cache `ml/data/cached_dataset_v8.pkl` (2.2 GB); splits valid
+- **Next:** Phase 3 training — start with PLAN-3G (done) + PLAN-3A (v8-A: ICFG-only ablation)
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -150,19 +151,39 @@ Last updated: 2026-05-19 (rev 7 — PLAN-1B gate PASSED; Phase 1 fully complete;
 
 ## Phase 2 — v8 Full Re-Extraction (~41,576 contracts)
 **Trigger:** Phase 1 sample validation gate PASSES (PLAN-1B).
-**Estimated time:** ~same as v7 extraction run.
+**Status: DONE (2026-05-19)**
 
 | ID | Step | Status |
 |----|------|--------|
-| PLAN-2A | Archive current v7 graphs: `ml/data/archive/graphs_v7/` | OPEN |
-| PLAN-2B | Run full v8 extraction | OPEN |
-| PLAN-2C | Validate 100% graphs have `edge_attr.max() <= 10` | OPEN |
-| PLAN-2D | Verify non-zero per-edge-type counts across full dataset | OPEN |
-| PLAN-2E | Re-run `label_cleaner.py` on fresh v8 graphs | OPEN |
-| PLAN-2F | Re-run `inject_augmented.py` | OPEN |
-| PLAN-2G | Rebuild cache (`create_cache.py`) | OPEN |
-| PLAN-2H | Regenerate splits from paired stems | OPEN |
-| PLAN-2I | Log dataset statistics: mean/P99 node count, edge count, per-type distribution | OPEN |
+| PLAN-2A | Archive current v7 graphs: `ml/data/archive/graphs_v7/` | **DONE** — 41,577 graphs archived |
+| PLAN-2B | Run full v8 extraction | **DONE** — 41,576 ok / 73 ghost / 2,875 skip / 0 fail (29 min, 10 workers) |
+| PLAN-2C | Validate 100% graphs have `edge_attr.max() <= 10` | **DONE** — max=10 across 1k sample |
+| PLAN-2D | Verify non-zero per-edge-type counts across full dataset | **DONE** — see PLAN-2I stats below |
+| PLAN-2E | Re-run `label_cleaner.py` on fresh v8 graphs | **DONE** — 3,665 labels removed |
+| PLAN-2F | Re-run `inject_augmented.py` | **DONE** — 104 augmented graphs present (6 fail nested-interface syntax, acceptable) |
+| PLAN-2G | Rebuild cache (`create_cache.py`) | **DONE** — `ml/data/cached_dataset_v8.pkl` (2.2 GB, 41,576 pairs, schema v8) |
+| PLAN-2H | Regenerate splits from paired stems | **DONE** — existing splits valid (same CSV order); train=29,103 / val=6,236 / test=6,237 |
+| PLAN-2I | Log dataset statistics: mean/P99 node count, edge count, per-type distribution | **DONE** — see below |
+
+### v8 Dataset Statistics
+```
+Graphs: 41,576 pairs (v8 graphs 11-dim + windowed tokens [4,512])
+Nodes: mean=125  P50=89   P99=623   max=1,735
+Edges: mean=248  P50=145  P99=1,801 max=6,516
+
+Edge type distribution (full dataset):
+  CALLS(0)        :    437,968
+  READS(1)        :    641,801
+  WRITES(2)       :    678,879
+  EMITS(3)        :         12  (rare — most contracts don't emit)
+  INHERITS(4)     :    105,010
+  CONTAINS(5)     :  3,672,916
+  CONTROL_FLOW(6) :  3,140,025
+  CALL_ENTRY(8)   :    257,829  ← NEW ICFG
+  RETURN_TO(9)    :    232,814  ← NEW ICFG
+  DEF_USE(10)     :  1,159,688  ← NEW DFG
+  REVERSE_CONTAINS(7): runtime-only, added by dataset
+```
 
 ---
 
@@ -186,7 +207,7 @@ Last updated: 2026-05-19 (rev 7 — PLAN-1B gate PASSED; Phase 1 fully complete;
 
 | ID | Item | Status |
 |----|------|--------|
-| PLAN-3G | Fix stale `--run-name` default in `train.py:68` from `"multilabel-v5-fresh"` → `"sentinel-v8"` before any v8 run | OPEN |
+| PLAN-3G | Fix stale `--run-name` default in `train.py:68` from `"multilabel-v5-fresh"` → `"sentinel-v8"` before any v8 run | **DONE** |
 | PLAN-3H | Apply optional S4 speed optimization (cap fusion tokens at 1024 in `fusion_layer.py`) — measure actual batch/s change in a 1-epoch comparison before committing | OPEN |
 | PLAN-3D | Inspect `jk.last_weights` after each v8 run — verify Phase 2 weight is in 0.10–0.80 range | OPEN |
 | PLAN-3I | Monitor fused eye loss as canary: it should decrease relative to GNN/TF eyes in v8 vs v7. If fused eye remains highest by same margin, flag as architectural concern in `CrossAttentionFusion` | OPEN |
