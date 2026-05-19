@@ -204,7 +204,7 @@ than forcing it to detect reentrancy from structural patterns.
 NUM_NODE_TYPES: int = 13
 """Number of distinct node types (ids 0–12). Used by GNNEncoder for the node type embedding."""
 
-NUM_EDGE_TYPES: int = 10
+NUM_EDGE_TYPES: int = 11
 """
 Number of distinct edge-relation types (width of the EDGE_TYPES vocabulary).
 
@@ -222,12 +222,17 @@ v2 additions (ids 5 and 6):
 Phase 1-A3 addition (id 7):
   REVERSE_CONTAINS — runtime-only; CFG_NODE → parent function (Phase 3).
 
-v8 additions (ids 8 and 9) — ICFG-Lite cross-function edges:
+v8 additions (ids 8–10) — ICFG-Lite and DEF_USE, stored on disk:
   CALL_ENTRY — calling CFG_NODE → ENTRYPOINT of the callee function.
                Enables cross-function CFG signal for reentrancy and CEI.
   RETURN_TO  — terminal CFG_NODE of callee → successor of the call site.
                Closes the inter-procedural control-flow loop.
-Both are stored in v8 graph .pt files and routed through Phase 2 in GNNEncoder.
+  DEF_USE    — CFG_NODE defining a LocalVariable → CFG_NODE reading it.
+               Intra-function data-flow: captures how values computed (by
+               arithmetic ops, call returns) flow into checks and state writes.
+               Key for integer overflow and return-value-ignored patterns.
+CALL_ENTRY/RETURN_TO are routed through Phase 2 in GNNEncoder.
+DEF_USE is also routed through Phase 2 (data-flow is execution-order-dependent).
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -321,6 +326,8 @@ EDGE_TYPES: dict[str, int] = {
     # v8 additions — ICFG-Lite cross-function edges, stored on disk
     "CALL_ENTRY":        8,   # calling CFG_NODE → ENTRYPOINT of callee function
     "RETURN_TO":         9,   # terminal CFG_NODE of callee → call-site successor
+    # v8 addition — intra-function data-flow edges, stored on disk
+    "DEF_USE":           10,  # CFG_NODE defining a LocalVariable → node reading it
 }
 """
 Maps each semantic edge relation to an integer ID stored in graph.edge_attr.
@@ -331,7 +338,7 @@ into each GATConv layer.
 
 GNNEncoder uses three phases, each seeing a different subset of edge types:
   Phase 1 (Layers 1+2): types 0–5 (structural + CONTAINS forward)
-  Phase 2 (Layers 3–5): types 6,8,9 (CONTROL_FLOW + CALL_ENTRY + RETURN_TO; directed)
+  Phase 2 (Layers 3–5): types 6,8,9,10 (CONTROL_FLOW + CALL_ENTRY + RETURN_TO + DEF_USE; directed)
   Phase 3 (Layers 6+7): type  7  REVERSE_CONTAINS (CFG_NODE → function; runtime-only)
 
 Shape: graph.edge_attr must be a 1-D int64 tensor of shape [E] (PyG

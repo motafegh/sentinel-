@@ -379,12 +379,14 @@ class GNNEncoder(nn.Module):
         _REVERSE_CONTAINS = EDGE_TYPES["REVERSE_CONTAINS"]   # 7 (runtime-only)
         _CALL_ENTRY       = EDGE_TYPES["CALL_ENTRY"]         # 8 (v8 ICFG-Lite)
         _RETURN_TO        = EDGE_TYPES["RETURN_TO"]          # 9 (v8 ICFG-Lite)
+        _DEF_USE          = EDGE_TYPES["DEF_USE"]            # 10 (v8 data-flow)
         if edge_attr is not None:
             struct_mask   = edge_attr <= _CONTAINS
             cfg_mask      = (
                 (edge_attr == _CONTROL_FLOW) |
                 (edge_attr == _CALL_ENTRY)   |
-                (edge_attr == _RETURN_TO)
+                (edge_attr == _RETURN_TO)    |
+                (edge_attr == _DEF_USE)
             )
             contains_mask = edge_attr == _CONTAINS
         else:

@@ -693,6 +693,77 @@ def _add_icfg_edges(
                         edge_types.append(_RETURN_TO)
 
 
+def _add_def_use_edges(
+    contract: Any,
+    func_cfg_maps: dict,
+    edges: list,
+    edge_types: list,
+) -> None:
+    """
+    PLAN-1E — intra-function DEF_USE data-flow edges.
+
+    For each function, tracks LocalVariable definitions (lval of any IR op)
+    and emits DEF_USE(10) edges from the defining CFG node to every CFG node
+    that reads the variable — provided they are distinct nodes.
+
+    Only LocalVariable is tracked (not TemporaryVariable — those are intra-node
+    SSA temporaries — and not StateVariable — those are covered by READS/WRITES).
+
+    Deduplicates (def_node, use_node) pairs so multi-IR reads on the same node
+    produce one edge.
+    """
+    _DEF_USE = EDGE_TYPES["DEF_USE"]
+
+    try:
+        from slither.core.variables.local_variable import LocalVariable as _LV
+    except ImportError:
+        return
+
+    for func in contract.functions:
+        func_key = getattr(func, "canonical_name", None) or func.name
+        local_map = func_cfg_maps.get(func_key)
+        if local_map is None:
+            continue
+
+        func_nodes = getattr(func, "nodes", None) or []
+
+        # Pass 1: build def_map — var_name → [graph_idx of defining nodes]
+        def_map: dict = {}
+        for node in func_nodes:
+            node_idx = local_map.get(node)
+            if node_idx is None:
+                continue
+            for ir in (getattr(node, "irs", None) or []):
+                lval = getattr(ir, "lvalue", None)
+                if isinstance(lval, _LV):
+                    def_map.setdefault(lval.name, []).append(node_idx)
+
+        if not def_map:
+            continue
+
+        # Pass 2: emit DEF_USE edges for any node reading a defined variable
+        defined_names = set(def_map)
+        seen_pairs: set = set()
+        for node in func_nodes:
+            use_idx = local_map.get(node)
+            if use_idx is None:
+                continue
+            for ir in (getattr(node, "irs", None) or []):
+                for var in (getattr(ir, "read", None) or []):
+                    vname = getattr(var, "name", None)
+                    if vname not in defined_names:
+                        continue
+                    for def_idx in def_map[vname]:
+                        if def_idx == use_idx:
+                            continue
+                        pair = (def_idx, use_idx)
+                        if pair in seen_pairs:
+                            continue
+                        seen_pairs.add(pair)
+                        edges.append([def_idx, use_idx])
+                        edge_types.append(_DEF_USE)
+
+
 def _build_node_features(obj: Any, type_id: int) -> list:
     """
     Compute the 11-dimensional feature vector (v7 schema) for one AST node.
@@ -1104,6 +1175,15 @@ def extract_contract_graph(
     except Exception as exc:
         logger.warning(
             "ICFG edge extraction failed for '%s': %s — CALL_ENTRY/RETURN_TO omitted.",
+            contract.name, exc,
+        )
+
+    # PLAN-1E: add intra-function DEF_USE data-flow edges.
+    try:
+        _add_def_use_edges(contract, _func_cfg_maps, edges, edge_types)
+    except Exception as exc:
+        logger.warning(
+            "DEF_USE edge extraction failed for '%s': %s — DEF_USE edges omitted.",
             contract.name, exc,
         )
 
