@@ -117,7 +117,7 @@ Last updated: 2026-05-19 (rev 5 — ICFG-Lite implemented; PLAN-1A/1C/1D/1F/1G D
   - Definition categories: (1) HighLevelCall/LowLevelCall/Send return values, (2) arithmetic Binary results, (3) Assignment RHS reading StateVariable
   - Condition nodes are USE sites, NOT definition sites — Condition IR ops have no lvalue
   - Key by `lval.name` strings (consistent with BUG-M1 fix in `_compute_return_ignored`)
-- **Status:** OPEN — next item to implement
+- **Status:** **DONE** — `_add_def_use_edges()` implemented; LocalVariable DEF→USE edges; NUM_EDGE_TYPES=11 (commit ce95e59)
 
 ---
 
@@ -137,12 +137,12 @@ Last updated: 2026-05-19 (rev 5 — ICFG-Lite implemented; PLAN-1A/1C/1D/1F/1G D
   # NUM_NODE_TYPES   = 13  (UNCHANGED)
   ```
 - **Note:** Assertion guards at `graph_schema.py:391–402` enforce `NUM_EDGE_TYPES` consistency at import time — mismatch raises `AssertionError` on startup, catching any missed constant
-- **Status:** **DONE (partial)** — `FEATURE_SCHEMA_VERSION="v8"`, `NUM_EDGE_TYPES=10`, CALL_ENTRY(8) + RETURN_TO(9) added. DEF_USE(10) will bump to 11 when PLAN-1E lands.
+- **Status:** **DONE** — `FEATURE_SCHEMA_VERSION="v8"`, `NUM_EDGE_TYPES=11`, CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10) all added (commit ce95e59)
 
 #### PLAN-1G — Update `gnn_encoder.py` Phase 2 mask for v8
 - **Priority:** P2
 - **File:** `ml/src/models/gnn_encoder.py`
-- **Status:** **DONE** — `Embedding(10, 64)`; `cfg_mask` extended to CONTROL_FLOW(6)|CALL_ENTRY(8)|RETURN_TO(9). Will add DEF_USE(10) when PLAN-1E lands.
+- **Status:** **DONE** — `Embedding(11, 64)`; `cfg_mask` = CONTROL_FLOW(6)|CALL_ENTRY(8)|RETURN_TO(9)|DEF_USE(10) (commit ce95e59)
 
 ---
 
@@ -308,9 +308,9 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | PLAN-1A | Validate `node.internal_calls` at node level (10 contracts) | 1 | P0 | v7 training done | **DONE** |
 | PLAN-1C | Accumulate `global_cfg_node_map` in extractor loop | 1 | P1 | PLAN-1A | **DONE** |
 | PLAN-1D | Implement `_add_icfg_edges()` (CALL_ENTRY, RETURN_TO) | 1 | P1 | PLAN-1C | **DONE** |
-| PLAN-1F | Update `graph_schema.py` to v8 constants | 1 | P2 | PLAN-1D/1E | **DONE (partial)** |
-| PLAN-1G | Update `gnn_encoder.py` Phase 2 mask + embedding size | 1 | P2 | PLAN-1F | **DONE (partial)** |
-| PLAN-1E | Implement `_add_def_use_edges()` (DEF_USE) | 1 | P1 | PLAN-1C | OPEN — next |
+| PLAN-1F | Update `graph_schema.py` to v8 constants | 1 | P2 | PLAN-1D/1E | **DONE** |
+| PLAN-1G | Update `gnn_encoder.py` Phase 2 mask + embedding size | 1 | P2 | PLAN-1F | **DONE** |
+| PLAN-1E | Implement `_add_def_use_edges()` (DEF_USE) | 1 | P1 | PLAN-1C | **DONE** |
 | PLAN-1B | 2,000-contract sample validation gate | 1 | P0 | PLAN-1D/1E | OPEN |
 | PLAN-2A | Archive v7 graphs | 2 | P0 | Phase 1 done | OPEN |
 | PLAN-2B–2I | Full v8 re-extraction + validation + cache rebuild | 2 | P1 | PLAN-2A | OPEN |
