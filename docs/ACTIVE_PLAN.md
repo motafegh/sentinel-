@@ -1,16 +1,14 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-19 (rev 4 — v7 training COMPLETE; final results documented)
+Last updated: 2026-05-19 (rev 5 — ICFG-Lite implemented; PLAN-1A/1C/1D/1F/1G DONE)
 
-**Current state (2026-05-19 11:46):**
-- **v7 training COMPLETE** — killed at epoch 34 (patience 10/30). Best checkpoint saved.
-- **Best F1-macro: 0.2651** at epoch 23 (2026-05-19 05:49) — **+54.4% above v6's best of 0.1717**
-- **Best per-class:** IntegerUO=0.583 · GasException=0.301 · MishandledException=0.276 · TOD=0.228 · Timestamp=0.227 · DenialOfService=0.019 (detached)
-- **Plateau pattern:** Epochs 24–33 oscillated 0.2432–0.2618, never beating 0.2651. Step loss still declining (~0.1409–0.1451) — training loss improving but val F1 structurally capped.
-- **JK weight diagnosis (epoch 33):** Phase1=0.050 · Phase2=0.182 · Phase3=0.768. Phase 3 (REVERSE_CONTAINS) dominates — model learned to de-weight Phase 2 CFG signal because intra-function CONTROL_FLOW edges don't cross function boundaries. This is the structural ceiling ICFG-Lite (PLAN-1D) is designed to break.
-- **v7 checkpoint:** `ml/checkpoints/v7.0_best.pt` (saved epoch 23, F1=0.2651)
-- **Phase 0 cleanup:** DONE — committed in 907e442
-- **Next:** Phase 1 — extractor refactor (ICFG + DEF_USE edges). All code changes now unblocked.
+**Current state (2026-05-19):**
+- **v7 training COMPLETE** — best F1=0.2651 at epoch 23, checkpoint `ml/checkpoints/v7.0_best.pt`
+- **ICFG-Lite IMPLEMENTED (commit b9ba690):** CALL_ENTRY(8) + RETURN_TO(9) edges in extractor + schema + encoder
+- **Schema v8:** `NUM_EDGE_TYPES=10`, `FEATURE_SCHEMA_VERSION="v8"` — v7 graph cache invalidated
+- **Validated on test contract:** 2 CALL_ENTRY + 1 RETURN_TO edges with correct semantics
+- **Flash-attn:** install may have failed — re-run `pip install flash-attn --no-build-isolation`
+- **Next:** PLAN-1E (DEF_USE edges) → PLAN-1B (2,000-contract structural comparison gate) → Phase 2 (full re-extraction)
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -77,7 +75,7 @@ Last updated: 2026-05-19 (rev 4 — v7 training COMPLETE; final results document
   from slither.slithir.operations import InternalCall
   called_funcs = [ir_op.function for ir_op in (node.irs or []) if isinstance(ir_op, InternalCall)]
   ```
-- **Status:** OPEN
+- **Status:** **DONE** — `node.internal_calls` validated on synthetic contract; returns correct per-node callee canonical_names. IR fallback not needed.
 
 #### PLAN-1B — 2,000-contract sample validation gate
 - **Priority:** P0 (blocks full re-extraction)
@@ -102,33 +100,24 @@ Last updated: 2026-05-19 (rev 4 — v7 training COMPLETE; final results document
 - **Change:** Declare `global_cfg_node_map: dict = {}` before the loop; rename loop-local map to `func_cfg_map`; call `global_cfg_node_map.update(func_cfg_map)` after each iteration
 - **Signature impact:** `_build_control_flow_edges()` signature UNCHANGED — still receives and populates its own local map; only the caller changes
 - **Required by:** `_add_icfg_edges()` and `_add_def_use_edges()` (both need cross-function CFG node lookup)
-- **Status:** OPEN (BLOCKED on PLAN-1A passing)
+- **Status:** **DONE** — `_func_entry_map` / `_func_terminal_map` / `_func_cfg_maps` accumulated in extraction loop (commit b9ba690)
 
 #### PLAN-1D — Implement `_add_icfg_edges()`
 - **Priority:** P1
-- **File:** `ml/src/preprocessing/graph_extractor.py` (new helper function)
-- **New edge types:** `CALL_ENTRY(8)`, `RETURN_TO(9)`
-- **Critical correctness rules:**
-  - `node_map` is keyed by `canonical_name` STRINGS — never use a `Function` object as dict key (always resolve via `callee_key = func.canonical_name or func.name`)
-  - Depth = 1 only (do not follow callee's own internal calls)
-  - `visited_pairs: set[tuple[str,str]]` recursion guard to handle mutual recursion
-  - Use IR fallback if PLAN-1A confirmed node-level `internal_calls` is unreliable
-- **Also implement:** `_get_callee_entry_idx()`, `_get_callee_exit_idxs()`, `_get_cfg_post_call_idx()` helpers
-- **Full implementation:** see Proposal §4.A.4
-- **Status:** OPEN (BLOCKED on PLAN-1C)
+- **File:** `ml/src/preprocessing/graph_extractor.py`
+- **Status:** **DONE** — `_add_icfg_edges()` implemented and called from extraction loop; CALL_ENTRY(8) + RETURN_TO(9) edges validated on test contract (commit b9ba690)
 
 #### PLAN-1E — Implement `_add_def_use_edges()`
 - **Priority:** P1
 - **File:** `ml/src/preprocessing/graph_extractor.py` (new helper function)
-- **New edge type:** `DEF_USE(10)`
+- **New edge type:** `DEF_USE(10)` — will bump `NUM_EDGE_TYPES` 10→11
 - **Critical correctness rules (from audit):**
-  - Use `isinstance(v, StateVariable)` NOT `v.is_storage` — `v.is_storage` is not a Slither API attribute; always returns False
+  - Use `isinstance(v, StateVariable)` NOT `v.is_storage` — `v.is_storage` is not a Slither API attribute
   - Use `isinstance(ir_op, Binary) AND ir_op.type in _ARITHMETIC` NOT just `isinstance(ir_op, Binary)` — Binary covers comparisons/logical/bitwise too
   - Definition categories: (1) HighLevelCall/LowLevelCall/Send return values, (2) arithmetic Binary results, (3) Assignment RHS reading StateVariable
-  - Condition nodes are USE sites (they receive DEF_USE when tracked defs flow in), NOT definition sites — Condition IR ops have no lvalue
+  - Condition nodes are USE sites, NOT definition sites — Condition IR ops have no lvalue
   - Key by `lval.name` strings (consistent with BUG-M1 fix in `_compute_return_ignored`)
-- **Full implementation:** see Proposal §4.B.3
-- **Status:** OPEN (BLOCKED on PLAN-1C)
+- **Status:** OPEN — next item to implement
 
 ---
 
@@ -148,30 +137,12 @@ Last updated: 2026-05-19 (rev 4 — v7 training COMPLETE; final results document
   # NUM_NODE_TYPES   = 13  (UNCHANGED)
   ```
 - **Note:** Assertion guards at `graph_schema.py:391–402` enforce `NUM_EDGE_TYPES` consistency at import time — mismatch raises `AssertionError` on startup, catching any missed constant
-- **Status:** OPEN (BLOCKED on PLAN-1D + PLAN-1E working on sample)
+- **Status:** **DONE (partial)** — `FEATURE_SCHEMA_VERSION="v8"`, `NUM_EDGE_TYPES=10`, CALL_ENTRY(8) + RETURN_TO(9) added. DEF_USE(10) will bump to 11 when PLAN-1E lands.
 
 #### PLAN-1G — Update `gnn_encoder.py` Phase 2 mask for v8
 - **Priority:** P2
 - **File:** `ml/src/models/gnn_encoder.py`
-- **Changes:**
-  ```python
-  # Edge embedding table grows
-  nn.Embedding(8, 64)  →  nn.Embedding(11, 64)
-
-  # Phase 2 cfg_mask extended
-  # CURRENT:
-  cfg_mask = edge_attr == _CONTROL_FLOW
-  # v8:
-  cfg_mask = (
-      (edge_attr == _CONTROL_FLOW) |
-      (edge_attr == _CALL_ENTRY)   |
-      (edge_attr == _RETURN_TO)    |
-      (edge_attr == _DEF_USE)
-  )
-  ```
-- **Critical:** `add_self_loops=False` must remain on ALL Phase 2 convolutions — self-loops cancel directional signal
-- **No checkpoint compatibility** — model must train from scratch on v8 graphs
-- **Status:** OPEN (BLOCKED on PLAN-1F)
+- **Status:** **DONE** — `Embedding(10, 64)`; `cfg_mask` extended to CONTROL_FLOW(6)|CALL_ENTRY(8)|RETURN_TO(9). Will add DEF_USE(10) when PLAN-1E lands.
 
 ---
 
@@ -344,13 +315,13 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | ID | Item | Phase | Priority | Blocker | Status |
 |----|------|-------|----------|---------|--------|
 | P0-1..5 | Phase 0 dead-code + docstring cleanup | 0 | P0 | — | **DONE** |
-| PLAN-1A | Validate `node.internal_calls` at node level (10 contracts) | 1 | P0 | v7 training done | OPEN |
+| PLAN-1A | Validate `node.internal_calls` at node level (10 contracts) | 1 | P0 | v7 training done | **DONE** |
+| PLAN-1C | Accumulate `global_cfg_node_map` in extractor loop | 1 | P1 | PLAN-1A | **DONE** |
+| PLAN-1D | Implement `_add_icfg_edges()` (CALL_ENTRY, RETURN_TO) | 1 | P1 | PLAN-1C | **DONE** |
+| PLAN-1F | Update `graph_schema.py` to v8 constants | 1 | P2 | PLAN-1D/1E | **DONE (partial)** |
+| PLAN-1G | Update `gnn_encoder.py` Phase 2 mask + embedding size | 1 | P2 | PLAN-1F | **DONE (partial)** |
+| PLAN-1E | Implement `_add_def_use_edges()` (DEF_USE) | 1 | P1 | PLAN-1C | OPEN — next |
 | PLAN-1B | 2,000-contract sample validation gate | 1 | P0 | PLAN-1D/1E | OPEN |
-| PLAN-1C | Accumulate `global_cfg_node_map` in extractor loop | 1 | P1 | PLAN-1A | OPEN |
-| PLAN-1D | Implement `_add_icfg_edges()` (CALL_ENTRY, RETURN_TO) | 1 | P1 | PLAN-1C | OPEN |
-| PLAN-1E | Implement `_add_def_use_edges()` (DEF_USE) | 1 | P1 | PLAN-1C | OPEN |
-| PLAN-1F | Update `graph_schema.py` to v8 constants | 1 | P2 | PLAN-1D/1E | OPEN |
-| PLAN-1G | Update `gnn_encoder.py` Phase 2 mask + embedding size | 1 | P2 | PLAN-1F | OPEN |
 | PLAN-2A | Archive v7 graphs | 2 | P0 | Phase 1 done | OPEN |
 | PLAN-2B–2I | Full v8 re-extraction + validation + cache rebuild | 2 | P1 | PLAN-2A | OPEN |
 | PLAN-3G | Fix stale `--run-name` default in `train.py:68` | 3 | P0 | before any v8 run | OPEN |
