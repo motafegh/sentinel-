@@ -104,7 +104,7 @@ from typing import Any
 import torch
 from torch_geometric.data import Data
 
-from .graph_schema import EDGE_TYPES, NODE_FEATURE_DIM, NODE_TYPES, VISIBILITY_MAP
+from .graph_schema import EDGE_TYPES, NODE_FEATURE_DIM, NODE_TYPES, NUM_EDGE_TYPES, VISIBILITY_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -630,6 +630,69 @@ def _build_control_flow_edges(
     return contains_edges, control_flow_edges
 
 
+def _add_icfg_edges(
+    contract: Any,
+    func_entry_map: dict,
+    func_terminal_map: dict,
+    func_cfg_maps: dict,
+    edges: list,
+    edge_types: list,
+) -> None:
+    """
+    PLAN-1D — ICFG-Lite: add cross-function control-flow edges.
+
+    For every CFG node that makes an internal call:
+      CALL_ENTRY (8): calling CFG node → ENTRYPOINT of the callee function.
+      RETURN_TO  (9): each terminal node of the callee → each successor of the
+                      calling CFG node (call-site return targets).
+
+    Only emits edges when both endpoints are present in the extracted graph
+    (callee may be absent if it failed CFG extraction or is a library stub).
+
+    Args:
+        func_entry_map:    canonical_name → graph_idx of callee ENTRYPOINT node.
+        func_terminal_map: canonical_name → [graph_idx, ...] of callee terminal nodes.
+        func_cfg_maps:     canonical_name → {slither_node → graph_idx} per function.
+    """
+    _CALL_ENTRY = EDGE_TYPES["CALL_ENTRY"]
+    _RETURN_TO  = EDGE_TYPES["RETURN_TO"]
+
+    for func in contract.functions:
+        func_key = getattr(func, "canonical_name", None) or func.name
+        local_map = func_cfg_maps.get(func_key)
+        if local_map is None:
+            continue
+
+        for node in (getattr(func, "nodes", None) or []):
+            caller_idx = local_map.get(node)
+            if caller_idx is None:
+                continue
+
+            for callee in (getattr(node, "internal_calls", None) or []):
+                callee_key = getattr(callee, "canonical_name", None)
+                if not callee_key:
+                    continue
+
+                # CALL_ENTRY: caller node → callee ENTRYPOINT
+                callee_entry = func_entry_map.get(callee_key)
+                if callee_entry is not None:
+                    edges.append([caller_idx, callee_entry])
+                    edge_types.append(_CALL_ENTRY)
+
+                # RETURN_TO: callee terminals → call-site successors
+                callee_terminals = func_terminal_map.get(callee_key)
+                if not callee_terminals:
+                    continue
+                call_site_sons = getattr(node, "sons", None) or []
+                for son in call_site_sons:
+                    son_idx = local_map.get(son)
+                    if son_idx is None:
+                        continue
+                    for terminal_idx in callee_terminals:
+                        edges.append([terminal_idx, son_idx])
+                        edge_types.append(_RETURN_TO)
+
+
 def _build_node_features(obj: Any, type_id: int) -> list:
     """
     Compute the 11-dimensional feature vector (v7 schema) for one AST node.
@@ -976,6 +1039,11 @@ def extract_contract_graph(
     _cfg_failure_count = 0
     _func_total = len(contract.functions)
 
+    # PLAN-1C: accumulated across functions — needed by _add_icfg_edges after the loop.
+    _func_entry_map:    dict = {}   # canonical_name → graph_idx of ENTRYPOINT node
+    _func_terminal_map: dict = {}   # canonical_name → [graph_idx of terminal nodes]
+    _func_cfg_maps:     dict = {}   # canonical_name → {slither_node → graph_idx}
+
     for func in contract.functions:
         fn_idx = _add_node(func, NODE_TYPES["FUNCTION"])
         if fn_idx is None:
@@ -998,6 +1066,25 @@ def extract_contract_graph(
             for src, dst in control_flow_edges:
                 edges.append([src, dst])
                 edge_types.append(EDGE_TYPES["CONTROL_FLOW"])
+
+            # PLAN-1C: record per-function maps for ICFG edge construction.
+            func_key = getattr(func, "canonical_name", None) or func.name
+            _func_cfg_maps[func_key] = cfg_node_map
+            try:
+                from slither.core.cfg.node import NodeType as _SNT
+                func_nodes = getattr(func, "nodes", None) or []
+                for _n in func_nodes:
+                    if _n.type == _SNT.ENTRYPOINT and _n in cfg_node_map:
+                        _func_entry_map[func_key] = cfg_node_map[_n]
+                        break
+                _func_terminal_map[func_key] = [
+                    cfg_node_map[_n]
+                    for _n in func_nodes
+                    if _n in cfg_node_map and not (getattr(_n, "sons", None) or [])
+                ]
+            except Exception:
+                pass
+
         except Exception as exc:
             _cfg_failure_count += 1
             logger.warning(
@@ -1007,6 +1094,18 @@ def extract_contract_graph(
                 contract.name,
                 exc,
             )
+
+    # PLAN-1D: add ICFG-Lite cross-function edges (CALL_ENTRY + RETURN_TO).
+    try:
+        _add_icfg_edges(
+            contract, _func_entry_map, _func_terminal_map, _func_cfg_maps,
+            edges, edge_types,
+        )
+    except Exception as exc:
+        logger.warning(
+            "ICFG edge extraction failed for '%s': %s — CALL_ENTRY/RETURN_TO omitted.",
+            contract.name, exc,
+        )
 
     # Warn if CFG extraction failures exceeded 5% of functions in this contract.
     # Single-statement or synthetic functions raising here is benign; a high rate
@@ -1033,7 +1132,7 @@ def extract_contract_graph(
         )
 
     # ── Feature tensor + dimension guard ──────────────────────────────────
-    x = torch.tensor(x_list, dtype=torch.float)   # [N, 12]
+    x = torch.tensor(x_list, dtype=torch.float)   # [N, NODE_FEATURE_DIM]
     if x.shape[1] != NODE_FEATURE_DIM:
         raise SlitherParseError(
             f"Node feature dimension mismatch for '{contract.name}': "

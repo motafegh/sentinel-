@@ -156,7 +156,7 @@ except importlib.metadata.PackageNotFoundError:
 # Schema version
 # ─────────────────────────────────────────────────────────────────────────────
 
-FEATURE_SCHEMA_VERSION: str = "v7"
+FEATURE_SCHEMA_VERSION: str = "v8"
 """
 Suffix appended to inference cache keys: "{content_md5}_{FEATURE_SCHEMA_VERSION}".
 
@@ -204,35 +204,30 @@ than forcing it to detect reentrancy from structural patterns.
 NUM_NODE_TYPES: int = 13
 """Number of distinct node types (ids 0–12). Used by GNNEncoder for the node type embedding."""
 
-NUM_EDGE_TYPES: int = 8
+NUM_EDGE_TYPES: int = 10
 """
 Number of distinct edge-relation types (width of the EDGE_TYPES vocabulary).
 
-IDs 0–6 are stored in graph.edge_attr as integer IDs in [0, 7).
-ID 7 (REVERSE_CONTAINS) is RUNTIME-ONLY — it is generated inside GNNEncoder's
-Phase 3 forward pass by reversing the CONTAINS(5) edges; it is NEVER written to
-graph .pt files on disk.
+IDs 0–6 are stored in graph.edge_attr on disk. IDs 8–9 (CALL_ENTRY, RETURN_TO)
+are the v8 ICFG-Lite additions — stored on disk in v8 graphs.
+ID 7 (REVERSE_CONTAINS) is RUNTIME-ONLY — generated inside GNNEncoder Phase 3
+by reversing CONTAINS(5) edges; NEVER written to .pt files on disk.
 
-GNNEncoder embeds all 8 IDs via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim).
-Bumping this from 7 → 8 adds one row to the embedding table but does NOT require
-graph re-extraction — existing .pt files contain only ids 0–6.
+GNNEncoder embeds all 10 IDs via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim).
 
 v2 additions (ids 5 and 6):
-  CONTAINS     — function node → its CFG_NODE children; makes the CFG subgraph
-                 connected to the rest of the contract graph so GNN message
-                 passing can aggregate function-level properties into statement
-                 nodes and vice versa (Phase 1).
-  CONTROL_FLOW — CFG_NODE → successor CFG_NODE; encodes intra-function
-                 execution order, enabling the model to distinguish
-                 "call before write" (reentrancy) from "write before call" (CEI)
-                 via Phase 2 directed message passing.
+  CONTAINS     — function node → its CFG_NODE children (Phase 1).
+  CONTROL_FLOW — CFG_NODE → successor CFG_NODE, intra-function (Phase 2).
 
 Phase 1-A3 addition (id 7):
-  REVERSE_CONTAINS — CFG_NODE → parent function (opposite of CONTAINS); runtime
-                     only. Allows Phase 3 to propagate CFG information back into
-                     function nodes with a DISTINCT learned embedding rather than
-                     reusing the forward CONTAINS embedding (v5.0 limitation L2).
-                     No graph re-extraction needed — generated at forward-pass time.
+  REVERSE_CONTAINS — runtime-only; CFG_NODE → parent function (Phase 3).
+
+v8 additions (ids 8 and 9) — ICFG-Lite cross-function edges:
+  CALL_ENTRY — calling CFG_NODE → ENTRYPOINT of the callee function.
+               Enables cross-function CFG signal for reentrancy and CEI.
+  RETURN_TO  — terminal CFG_NODE of callee → successor of the call site.
+               Closes the inter-procedural control-flow loop.
+Both are stored in v8 graph .pt files and routed through Phase 2 in GNNEncoder.
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -318,14 +313,14 @@ EDGE_TYPES: dict[str, int] = {
     "WRITES":       2,   # function → state variable it writes
     "EMITS":        3,   # function → event it emits
     "INHERITS":     4,   # contract → parent contract (linearised MRO)
-    # v2 additions — control-flow structure
-    "CONTAINS":          5,   # function node → its CFG_NODE children (NEW in v2)
-    "CONTROL_FLOW":      6,   # CFG_NODE → successor CFG_NODE, directed (NEW in v2)
-    # Phase 1-A3 addition — runtime-only reverse edge (2026-05-14)
-    # NOT stored in graph .pt files. Generated in GNNEncoder Phase 3 forward pass
-    # by reversing CONTAINS(5) edges so CFG_NODEs propagate back into function nodes
-    # with a distinct learned embedding. Fixes v5.0 limitation L2.
-    "REVERSE_CONTAINS":  7,   # CFG_NODE → parent function (runtime only, NEVER on disk)
+    # v2 additions — intra-function control-flow structure
+    "CONTAINS":          5,   # function node → its CFG_NODE children
+    "CONTROL_FLOW":      6,   # CFG_NODE → successor CFG_NODE, directed
+    # Phase 1-A3 — runtime-only reverse edge, NEVER on disk
+    "REVERSE_CONTAINS":  7,   # CFG_NODE → parent function (GNNEncoder Phase 3 only)
+    # v8 additions — ICFG-Lite cross-function edges, stored on disk
+    "CALL_ENTRY":        8,   # calling CFG_NODE → ENTRYPOINT of callee function
+    "RETURN_TO":         9,   # terminal CFG_NODE of callee → call-site successor
 }
 """
 Maps each semantic edge relation to an integer ID stored in graph.edge_attr.
@@ -336,9 +331,8 @@ into each GATConv layer.
 
 GNNEncoder uses three phases, each seeing a different subset of edge types:
   Phase 1 (Layers 1+2): types 0–5 (structural + CONTAINS forward)
-  Phase 2 (Layer 3):    type  6  (CONTROL_FLOW only, directed)
-  Phase 3 (Layer 4):    type  7  REVERSE_CONTAINS (CFG_NODE → function; distinct
-                                  embedding from forward CONTAINS — fixes L2)
+  Phase 2 (Layers 3–5): types 6,8,9 (CONTROL_FLOW + CALL_ENTRY + RETURN_TO; directed)
+  Phase 3 (Layers 6+7): type  7  REVERSE_CONTAINS (CFG_NODE → function; runtime-only)
 
 Shape: graph.edge_attr must be a 1-D int64 tensor of shape [E] (PyG
 convention). Pre-refactor .pt files produced by the old ast_extractor.py
