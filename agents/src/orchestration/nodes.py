@@ -19,19 +19,21 @@ RECALL — MCP client pattern:
     for M5. In M6 the connection can be promoted to a module-level
     persistent client if latency becomes an issue.
 
-Node execution order (Track 3 / multi-label):
+Graph topology (Phase 0):
     ml_assessment
-        ├─ [max(probability) > 0.70] → rag_research → audit_check → synthesizer
-        └─ [max(probability) ≤ 0.70] → synthesizer  (fast path)
+        ↓
+    evidence_router          ← logs routing_decisions to state
+        ├─ (deep path) → rag_research ──┐
+        │               static_analysis ─┤→ audit_check → synthesizer
+        └─ (fast path) ──────────────────────────────────→ synthesizer
 
-Nodes (M5):
+Nodes:
     ml_assessment   — calls sentinel-inference: predict
-    rag_research    — calls sentinel-rag: search
-    audit_check     — calls sentinel-audit: get_audit_history
-    synthesizer     — assembles final_report from available state
-
-Nodes added in M6:
-    static_analysis — Slither + Mythril (no MCP, direct call)
+    evidence_router — computes per-class routing; logs to routing_decisions
+    rag_research    — calls sentinel-rag: search (deep path only)
+    static_analysis — Slither direct call, scoped to flagged classes (deep path)
+    audit_check     — calls sentinel-audit: get_audit_history (deep path only)
+    synthesizer     — assembles final_report; computes rule-based verdicts
 """
 
 from __future__ import annotations
@@ -47,6 +49,14 @@ from loguru import logger
 
 # ── sys.path is already set by graph.py before nodes is imported ──────────
 from src.orchestration.state import AuditState
+from src.orchestration.routing import (
+    CLASS_TO_DETECTORS,
+    build_routing_decisions,
+    compute_active_tools,
+    compute_overall_verdict,
+    compute_verdict,
+    prob_to_severity,
+)
 
 # BRIDGE (Issue #1): import REPORTS_DIR so synthesizer can persist the
 # final_report for feedback_loop.py to read back via contract_address.
@@ -64,37 +74,6 @@ _AUDIT_URL:     str = os.getenv("MCP_AUDIT_URL",     "http://localhost:8012/sse"
 
 # Default number of RAG chunks to retrieve for deep-path analysis.
 _RAG_K: int = int(os.getenv("AUDIT_RAG_K", "5"))
-
-# ---------------------------------------------------------------------------
-# Risk routing helper
-# ---------------------------------------------------------------------------
-
-def _is_high_risk(ml_result: dict[str, Any]) -> bool:
-    """
-    Return True if the ML result warrants deep analysis.
-
-    Track 3 (multi-label, current):
-        Uses max(v["probability"]) across all detected vulnerabilities.
-        Threshold 0.70 is deliberately higher than the per-class inference
-        threshold (0.50): we want deep analysis only for high-confidence
-        detections, not every contract that crosses any class boundary.
-        Safe contracts have an empty vulnerabilities list → max() returns
-        0.0 → fast path. Correct behaviour.
-
-    Args:
-        ml_result: dict from ml_assessment node.
-                   Track 3 schema: label, vulnerabilities, threshold,
-                   truncated, num_nodes, num_edges.
-                   NO "confidence" field — removed in Track 3.
-
-    Returns:
-        True  → deep path: rag_research → audit_check → synthesizer
-        False → fast path: synthesizer only
-    """
-    vulns = ml_result.get("vulnerabilities", [])
-    if not vulns:
-        return False
-    return max(v.get("probability", 0.0) for v in vulns) > 0.70
 
 
 # ---------------------------------------------------------------------------
@@ -142,6 +121,40 @@ async def _call_mcp_tool(
                 raise RuntimeError(
                     f"MCP tool '{tool_name}' returned non-JSON response: {raw[:200]}"
                 ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Node: evidence_router
+# ---------------------------------------------------------------------------
+
+async def evidence_router(state: AuditState) -> dict[str, Any]:
+    """
+    Compute per-class routing and log decisions to AuditState.routing_decisions.
+
+    This node runs after ml_assessment. It does NOT perform the actual
+    conditional branching (that is handled by _route_from_evidence_router in
+    graph.py). Its sole job is to log routing decisions into state so the final
+    report can explain why each tool was or was not activated.
+
+    The routing_decisions field uses an append-reducer — this node writes the
+    primary entries; other nodes may append their own notes.
+
+    State updates:
+        routing_decisions → list of human-readable routing decision strings
+    """
+    ml_result = state.get("ml_result", {})
+    decisions = build_routing_decisions(ml_result)
+
+    active = compute_active_tools(ml_result)
+    logger.info(
+        "evidence_router | active_tools={} | classes_evaluated={}",
+        active or ["fast-path"],
+        len(ml_result.get("vulnerabilities", [])),
+    )
+    for d in decisions:
+        logger.debug("evidence_router | {}", d)
+
+    return {"routing_decisions": decisions}
 
 
 # ---------------------------------------------------------------------------
@@ -367,10 +380,12 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
                 "lines":       list  — source line numbers affected (may be []),
             }
 
-    RECALL — why Slither in detectors_to_run default (all detectors):
-        For calibration we want everything — the synthesizer filters by impact.
-        The ML model already caught what it caught; Slither catches rule-based
-        patterns the GNN/BERT may have missed (e.g. tx.origin misuse).
+    RECALL — scoped detectors:
+        Slither is run with only the detectors relevant to ML-flagged classes.
+        CLASS_TO_DETECTORS in routing.py defines the mapping.
+        This reduces runtime 3–8× vs running all 90+ detectors on large contracts.
+        Any class above DEEP_THRESHOLDS contributes its detectors to the active set.
+        If ml_result is empty or no class is flagged, all detectors run (safe fallback).
 
     State updates:
         static_findings → list of finding dicts (may be empty)
@@ -381,15 +396,27 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
         logger.warning("static_analysis | contract_code empty — skipping")
         return {"static_findings": []}
 
+    # Collect detector names relevant to flagged classes.
+    ml_result = state.get("ml_result", {})
+    flagged_classes = {
+        v["vulnerability_class"]
+        for v in ml_result.get("vulnerabilities", [])
+        if v.get("probability", 0.0) >= 0.35
+    }
+    scoped_detectors: set[str] = set()
+    for cls in flagged_classes:
+        scoped_detectors.update(CLASS_TO_DETECTORS.get(cls, []))
+
     logger.info(
-        "static_analysis | running Slither | contract_address={}",
+        "static_analysis | running Slither | address={} | classes={} | detectors={}",
         state.get("contract_address", "unknown"),
+        sorted(flagged_classes) or ["all"],
+        sorted(scoped_detectors) or ["all"],
     )
 
     tmp_path: str | None = None
     try:
         from slither import Slither
-        from slither.core.declarations import Function
 
         # Slither requires a real file path — write to temp file.
         with tempfile.NamedTemporaryFile(
@@ -402,29 +429,41 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
             tmp.write(contract_code)
             tmp_path = tmp.name
 
-        # Run all detectors (default). detectors_to_run=[] disables them;
-        # omitting the argument runs all available detectors.
         sl = Slither(tmp_path)
+
+        # If we have a scoped detector set, filter _detectors before running.
+        # Slither stores detector classes in sl._detectors (list).
+        # Filtering by ARGUMENT attribute (the detector's CLI name) is stable
+        # across Slither versions as it's part of the public detector interface.
+        if scoped_detectors:
+            sl._detectors = [  # type: ignore[attr-defined]
+                d for d in sl._detectors  # type: ignore[attr-defined]
+                if getattr(d, "ARGUMENT", "") in scoped_detectors
+            ]
 
         findings: list[dict] = []
         for result in sl.run_detectors():
             for finding in result:
-                # Normalise: extract line numbers from source mappings when present.
                 elements = finding.get("elements", [])
                 lines: list[int] = []
+                fn_names: list[str] = []
                 for elem in elements:
                     src = elem.get("source_mapping", {})
                     elem_lines = src.get("lines", [])
                     if isinstance(elem_lines, list):
                         lines.extend(int(ln) for ln in elem_lines if isinstance(ln, int))
+                    if elem.get("type") == "function":
+                        fn_names.append(elem.get("name", ""))
 
+                detector_name = finding.get("check", "unknown")
                 findings.append({
-                    "tool":        "slither",
-                    "detector":    finding.get("check", "unknown"),
-                    "impact":      finding.get("impact", "Unknown"),
-                    "confidence":  finding.get("confidence", "Unknown"),
-                    "description": finding.get("description", ""),
-                    "lines":       sorted(set(lines)),
+                    "tool":           "slither",
+                    "detector":       detector_name,
+                    "impact":         finding.get("impact", "Unknown"),
+                    "confidence":     finding.get("confidence", "Unknown"),
+                    "description":    finding.get("description", ""),
+                    "lines":          sorted(set(lines)),
+                    "function_names": fn_names,
                 })
 
         logger.info(
@@ -500,11 +539,12 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     State updates:
         final_report → complete report dict
     """
-    ml_result      : dict      = state.get("ml_result",      {})
-    rag_results    : list      = state.get("rag_results",    [])
-    audit_history  : list      = state.get("audit_history",  [])
-    static_findings: list      = state.get("static_findings", [])
-    error          : str | None = state.get("error")
+    ml_result       : dict       = state.get("ml_result",       {})
+    rag_results     : list       = state.get("rag_results",     [])
+    audit_history   : list       = state.get("audit_history",   [])
+    static_findings : list       = state.get("static_findings",  [])
+    routing_decisions: list      = state.get("routing_decisions", [])
+    error           : str | None = state.get("error")
 
     label     = ml_result.get("label",     "unknown")
     vulns     = ml_result.get("vulnerabilities", [])
@@ -514,7 +554,6 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     num_edges = ml_result.get("num_edges", 0)
 
     # Derive risk_probability and top_vulnerability from the vulnerabilities list.
-    # These replace the binary-era "confidence" field (removed in Track 3).
     if vulns:
         top_vuln      = max(vulns, key=lambda v: v.get("probability", 0.0))
         risk_prob     = round(top_vuln.get("probability", 0.0), 4)
@@ -523,9 +562,32 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         risk_prob     = 0.0
         top_vuln_name = None
 
-    # Determine which path was taken — useful for debugging and observability.
-    # If rag_results or static_findings is populated, we went deep.
+    # Determine which path was taken.
     path_taken = "deep" if (rag_results or static_findings) else "fast"
+
+    # ── Per-class verdict computation (rule-based, Phase 0) ──────────────────
+    # Phase 2 will replace this with the cross_validator node (LLM-adjudicated).
+    verdicts:      dict[str, str]        = {}
+    confirmations: dict[str, list[str]]  = {}
+    vuln_verdicts: list[dict]            = []
+
+    for vuln in vulns:
+        cls  = vuln.get("vulnerability_class", "?")
+        prob = vuln.get("probability", 0.0)
+        verdict, sources = compute_verdict(
+            cls, prob, static_findings, rag_results, path_taken
+        )
+        verdicts[cls]      = verdict
+        confirmations[cls] = sources
+        vuln_verdicts.append({
+            "vulnerability_class": cls,
+            "probability":         prob,
+            "verdict":             verdict,
+            "evidence_sources":    sources,
+            "severity":            prob_to_severity(prob),
+        })
+
+    overall_verdict = compute_overall_verdict(verdicts)
 
     # ── Rule-based recommendation (fallback) ─────────────────────────────────
     # Used when the LLM is unavailable or times out.
@@ -639,22 +701,25 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     final_recommendation = (narrative or recommendation) + truncated_note
 
     report = {
-        "contract_address":  state.get("contract_address", ""),
-        "overall_label":     label,
-        "risk_probability":  risk_prob,
-        "top_vulnerability": top_vuln_name,
-        "vulnerabilities":   vulns,
-        "threshold":         threshold,
-        "ml_truncated":      truncated,
-        "num_nodes":         num_nodes,
-        "num_edges":         num_edges,
-        "rag_evidence":      rag_results,
-        "audit_history":     audit_history,
-        "static_findings":   static_findings,
-        "recommendation":    final_recommendation,
-        "narrative":         narrative,
-        "error":             error,
-        "path_taken":        path_taken,
+        "contract_address":       state.get("contract_address", ""),
+        "overall_label":          label,
+        "overall_verdict":        overall_verdict,
+        "risk_probability":       risk_prob,
+        "top_vulnerability":      top_vuln_name,
+        "vulnerabilities":        vulns,
+        "vulnerability_verdicts": vuln_verdicts,
+        "threshold":              threshold,
+        "ml_truncated":           truncated,
+        "num_nodes":              num_nodes,
+        "num_edges":              num_edges,
+        "rag_evidence":           rag_results,
+        "audit_history":          audit_history,
+        "static_findings":        static_findings,
+        "routing_decisions":      routing_decisions,
+        "recommendation":         final_recommendation,
+        "narrative":              narrative,
+        "error":                  error,
+        "path_taken":             path_taken,
     }
 
     # ── BRIDGE (Issue #1): persist report for feedback_loop.py ──────────────
@@ -679,14 +744,21 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             )
 
     logger.info(
-        "synthesizer complete | label={} | risk_prob={:.3f} | top_vuln={} | "
-        "path={} | rag_chunks={} | prior_audits={}",
+        "synthesizer complete | label={} | verdict={} | risk_prob={:.3f} | "
+        "top_vuln={} | path={} | rag_chunks={} | prior_audits={} | "
+        "static_findings={}",
         label,
+        overall_verdict,
         risk_prob,
         top_vuln_name,
         path_taken,
         len(rag_results),
         len(audit_history),
+        len(static_findings),
     )
 
-    return {"final_report": report}
+    return {
+        "final_report":  report,
+        "verdicts":      verdicts,
+        "confirmations": confirmations,
+    }

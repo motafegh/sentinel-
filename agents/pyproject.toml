@@ -34,6 +34,7 @@ python-dotenv = "^1.0"           # load .env
 filelock = "^3.13"               # FIX-8: single-writer lock for index files — prevents concurrent pipeline corruption
 dagster = "^1.12.22"
 dagster-webserver = "^1.12.22"
+langgraph-checkpoint-sqlite = ">=1.0"
 web3 = "^7.15.0"
 torch = "^2.11.0"
 numpy = "^2.4.4"

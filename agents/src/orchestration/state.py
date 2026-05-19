@@ -9,25 +9,28 @@ RECALL — LangGraph state design:
 
 RECALL — reducers:
     By default LangGraph replaces each key on update.
-    If a key needs list-append semantics (e.g. a log), annotate it with
-    Annotated[list, operator.add]. We keep all fields as replace-semantics
-    for now — the synthesizer assembles the final report from snapshots,
-    not accumulating streams.
+    `Annotated[list, operator.add]` gives append semantics — used for
+    routing_decisions so every node can append without overwriting prior entries.
 
 Field lifecycle:
-    contract_code     — set by caller, never mutated
-    contract_address  — set by caller, never mutated
-    ml_result         — set by ml_assessment node
-    rag_results       — set by rag_research node (deep path only)
-    audit_history     — set by audit_check node (deep path only)
-    static_findings   — placeholder (static_analysis node, M6)
-    final_report      — set by synthesizer node
-    error             — set by any node on failure; synthesizer reads it
+    contract_code      — set by caller, never mutated
+    contract_address   — set by caller, never mutated
+    ml_result          — set by ml_assessment node
+    routing_decisions  — set by evidence_router, appended by any node (reducer)
+    rag_results        — set by rag_research node (deep path only)
+    audit_history      — set by audit_check node (deep path only)
+    static_findings    — set by static_analysis node (deep path only)
+    verdicts           — set by synthesizer (rule-based) or cross_validator (Phase 2)
+    confirmations      — set by synthesizer / cross_validator
+    contradictions     — set by cross_validator (Phase 2)
+    final_report       — set by synthesizer node
+    error              — set by any node on failure; synthesizer reads it
 """
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+import operator
+from typing import Annotated, Any, TypedDict
 
 
 class AuditState(TypedDict, total=False):
@@ -48,52 +51,80 @@ class AuditState(TypedDict, total=False):
     contract_code:    str           # raw Solidity source to audit
     contract_address: str           # on-chain address (for audit registry lookup)
 
-    # ── Node outputs ────────────────────────────────────────────────────────
+    # ── ML evidence ─────────────────────────────────────────────────────────
     ml_result: dict[str, Any]
     # Set by ml_assessment.
-    # Track 3 (multi-label) schema — NO "confidence" field (removed in Track 3):
+    # Track 3 (multi-label) schema:
     #   label:           str   — "vulnerable" | "safe"
     #   vulnerabilities: list  — [{vulnerability_class: str, probability: float}, ...]
-    #                            empty list when label == "safe"
     #   threshold:       float — per-class decision boundary (default 0.50)
     #   truncated:       bool  — True if contract exceeded 512 CodeBERT tokens
     #   num_nodes:       int   — AST node count
     #   num_edges:       int   — AST edge count
-    # Example:
-    #   {
-    #     "label": "vulnerable",
-    #     "vulnerabilities": [
-    #       {"vulnerability_class": "Reentrancy", "probability": 0.91},
-    #       {"vulnerability_class": "AccessControl", "probability": 0.43},
-    #     ],
-    #     "threshold": 0.50,
-    #     "truncated": False,
-    #     "num_nodes": 142,
-    #     "num_edges": 187,
-    #   }
 
+    ml_hotspots: list[dict[str, Any]]
+    # Phase 1 — set by ml_assessment (extended) or graph_explain node.
+    # Each item: {class, fn_name, lines, node_ids, score}
+    # GNN attention + CodeBERT gradient × attention per flagged class.
+
+    # ── Routing trace ────────────────────────────────────────────────────────
+    routing_decisions: Annotated[list[str], operator.add]
+    # Append-reducer: every node can append without overwriting prior entries.
+    # Evidence_router writes the primary routing decisions.
+    # Example entries:
+    #   "Reentrancy prob=0.872 >= threshold=0.35 → static_analysis+rag_research"
+    #   "GasException prob=0.290 < threshold=0.40 → skip"
+
+    # ── Graph explanation (Phase 1) ──────────────────────────────────────────
+    graph_explanations: dict[str, Any]
+    # {class: {subgraph_json, feature_descriptions, node_ids}}
+    # Set by graph_explain node once graph_inspector_server :8013 is built.
+
+    # ── Static analysis ──────────────────────────────────────────────────────
+    static_findings: list[dict[str, Any]]
+    # Set by static_analysis node (deep path only).
+    # Each item: {tool, detector, impact, confidence, description, lines}
+
+    # ── RAG evidence ─────────────────────────────────────────────────────────
     rag_results: list[dict[str, Any]]
-    # Set by rag_research (deep path only).
+    # Set by rag_research node (deep path only).
     # Each item: a ranked RAG chunk with content, metadata, score.
-    # Empty list if rag_research was skipped (fast path).
 
+    # ── Economic simulation (Phase 3) ────────────────────────────────────────
+    econ_scenarios: list[dict[str, Any]]
+    # Set by econ_assessment node (Phase 3).
+    # Each item: {name, inputs, outcome, exploitable: bool, description}
+
+    # ── Cross-validation ─────────────────────────────────────────────────────
+    verdicts: dict[str, str]
+    # {vulnerability_class: "CONFIRMED" | "LIKELY" | "DISPUTED" | "SAFE"}
+    # Set by synthesizer (rule-based, Phase 0) or cross_validator (Phase 2).
+
+    confirmations: dict[str, list[str]]
+    # {vulnerability_class: [evidence_source, ...]}
+    # Tools that corroborate the ML signal for this class.
+    # Example: {"Reentrancy": ["ml:0.872", "slither:reentrancy-eth", "rag:0.81"]}
+
+    contradictions: dict[str, list[str]]
+    # {vulnerability_class: [description, ...]}
+    # Phase 2 — populated by cross_validator when tools disagree.
+    # Example: {"IntegerUO": ["ml_flagged", "slither_clean", "rag_nomatch"]}
+
+    # ── On-chain history ─────────────────────────────────────────────────────
     audit_history: list[dict[str, Any]]
-    # Set by audit_check (deep path only).
+    # Set by audit_check node (deep path only).
     # Each item: one historical AuditResult from AuditRegistry.
-    # Empty list if the contract has never been audited on-chain.
 
-    static_findings: list[dict]
-    # Set by static_analysis node (deep path, parallel with rag_research).
-    # Each item: one Slither detector finding —
-    #   {tool, detector, impact, confidence, description, lines: list[int]}
-    # Empty list on fast path or if Slither finds nothing.
-
+    # ── Final output ─────────────────────────────────────────────────────────
     final_report: dict[str, Any]
     # Set by synthesizer.
-    # Track 3 report schema (matches SENTINEL-SPEC §8.1):
-    #   contract_address, overall_label, risk_probability, top_vulnerability,
-    #   vulnerabilities, threshold, ml_truncated, num_nodes, num_edges,
-    #   rag_evidence, audit_history, static_findings, recommendation,
+    # Schema (extended Phase 0):
+    #   contract_address, overall_label, overall_verdict,
+    #   risk_probability, top_vulnerability,
+    #   vulnerabilities, vulnerability_verdicts,
+    #   threshold, ml_truncated, num_nodes, num_edges,
+    #   rag_evidence, audit_history, static_findings,
+    #   routing_decisions, recommendation, narrative,
     #   error, path_taken
 
     narrative: str | None
