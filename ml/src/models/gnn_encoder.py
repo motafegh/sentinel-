@@ -153,35 +153,43 @@ class GNNEncoder(nn.Module):
 
     def __init__(
         self,
-        hidden_dim:    int   = 256,
-        heads:         int   = 8,
-        dropout:       float = 0.2,
-        use_edge_attr: bool  = True,
-        edge_emb_dim:  int   = 64,
-        num_layers:    int   = 7,
-        use_jk:        bool  = True,
-        jk_mode:       str   = 'attention',
+        hidden_dim:         int            = 256,
+        heads:              int            = 8,
+        dropout:            float          = 0.2,
+        use_edge_attr:      bool           = True,
+        edge_emb_dim:       int            = 64,
+        num_layers:         int            = 7,
+        use_jk:             bool           = True,
+        jk_mode:            str            = 'attention',
+        phase2_edge_types:  list[int]|None = None,
     ) -> None:
         """
         Args:
-            hidden_dim:    Node embedding width (default 256; was 128 in v5).
-            heads:         Multi-head count for Phase 1 (Phases 2+3 always use 1).
-            dropout:       Dropout probability applied after each conv layer.
-            use_edge_attr: If True, embed edge types and feed to GATConv.
-            edge_emb_dim:  Edge type embedding dimension (default 64; was 32 in v5).
-            num_layers:    Stored for serialisation; validation in TrainConfig.
-            use_jk:        If True, use JK attention aggregation over all three
-                           phase outputs instead of returning only Phase 3.
-            jk_mode:       'attention' only.
+            hidden_dim:         Node embedding width (default 256).
+            heads:              Multi-head count for Phase 1 (Phases 2+3 always use 1).
+            dropout:            Dropout probability applied after each conv layer.
+            use_edge_attr:      If True, embed edge types and feed to GATConv.
+            edge_emb_dim:       Edge type embedding dimension (default 64).
+            num_layers:         Stored for serialisation; validation in TrainConfig.
+            use_jk:             If True, use JK attention aggregation over all three
+                                phase outputs instead of returning only Phase 3.
+            jk_mode:            'attention' only.
+            phase2_edge_types:  Edge type IDs to include in Phase 2 cfg_mask.
+                                None (default) = all four v8 types:
+                                [CF(6), CALL_ENTRY(8), RETURN_TO(9), DEF_USE(10)].
+                                Ablation examples:
+                                  ICFG-only: [6, 8, 9]
+                                  DFG-only:  [6, 10]
         """
         super().__init__()
 
-        self.num_layers    = num_layers
-        self.hidden_dim    = hidden_dim
-        self.use_edge_attr = use_edge_attr
-        self.dropout_p     = dropout
-        self.use_jk        = use_jk
-        self.jk_mode       = jk_mode
+        self.num_layers        = num_layers
+        self.hidden_dim        = hidden_dim
+        self.use_edge_attr     = use_edge_attr
+        self.dropout_p         = dropout
+        self.use_jk            = use_jk
+        self.jk_mode           = jk_mode
+        self.phase2_edge_types = phase2_edge_types
 
         _head_dim = hidden_dim // heads  # 32 per head when hidden=256, heads=8
         if _head_dim * heads != hidden_dim:
@@ -382,12 +390,17 @@ class GNNEncoder(nn.Module):
         _DEF_USE          = EDGE_TYPES["DEF_USE"]            # 10 (v8 data-flow)
         if edge_attr is not None:
             struct_mask   = edge_attr <= _CONTAINS
-            cfg_mask      = (
-                (edge_attr == _CONTROL_FLOW) |
-                (edge_attr == _CALL_ENTRY)   |
-                (edge_attr == _RETURN_TO)    |
-                (edge_attr == _DEF_USE)
-            )
+            if self.phase2_edge_types is not None:
+                cfg_mask = torch.zeros(n_edges, dtype=torch.bool, device=edge_index.device)
+                for _t in self.phase2_edge_types:
+                    cfg_mask |= (edge_attr == _t)
+            else:
+                cfg_mask  = (
+                    (edge_attr == _CONTROL_FLOW) |
+                    (edge_attr == _CALL_ENTRY)   |
+                    (edge_attr == _RETURN_TO)    |
+                    (edge_attr == _DEF_USE)
+                )
             contains_mask = edge_attr == _CONTAINS
         else:
             # Without edge_attr: Phase 2 (CFG) and Phase 3 (REVERSE_CONTAINS) are

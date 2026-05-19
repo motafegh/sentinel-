@@ -129,6 +129,8 @@ class SentinelModel(nn.Module):
         # JK connections (Phase 1-A1, 2026-05-14)
         gnn_use_jk:           bool                = True,
         gnn_jk_mode:          str                 = 'attention',
+        # Phase 2 ablation control
+        gnn_phase2_edge_types: list[int]|None     = None,
         # LoRA architecture
         lora_r:               int                 = 16,
         lora_alpha:           int                 = 32,
@@ -151,6 +153,7 @@ class SentinelModel(nn.Module):
             num_layers=gnn_num_layers,
             use_jk=gnn_use_jk,
             jk_mode=gnn_jk_mode,
+            phase2_edge_types=gnn_phase2_edge_types,
         )
         self.transformer = TransformerEncoder(
             lora_r=lora_r,

@@ -171,6 +171,8 @@ class TrainConfig:
     # JK connections (Phase 1-A1, 2026-05-14)
     gnn_use_jk:       bool  = True
     gnn_jk_mode:      str   = 'attention'
+    # Phase 2 ablation: list of edge type IDs in Phase 2 cfg_mask; None = all v8 types
+    gnn_phase2_edge_types: list[int]|None = None
 
     # --- LoRA architecture (v5) ---
     lora_r:               int        = 16
@@ -834,8 +836,9 @@ def train(config: TrainConfig) -> dict:
         gnn_dropout=config.gnn_dropout,
         use_edge_attr=config.use_edge_attr,
         gnn_edge_emb_dim=config.gnn_edge_emb_dim,
-        gnn_use_jk=config.gnn_use_jk,         # Phase 1-A5
-        gnn_jk_mode=config.gnn_jk_mode,       # Phase 1-A5
+        gnn_use_jk=config.gnn_use_jk,
+        gnn_jk_mode=config.gnn_jk_mode,
+        gnn_phase2_edge_types=config.gnn_phase2_edge_types,
         lora_r=config.lora_r,
         lora_alpha=config.lora_alpha,
         lora_dropout=config.lora_dropout,
