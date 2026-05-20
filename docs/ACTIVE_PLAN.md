@@ -1,17 +1,15 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-19 (rev 8 — Phase 2 DONE; v8 cache ready; Phase 3 training next)
+Last updated: 2026-05-21 (rev 10 — gates expanded: GATE-3A-CACHE + GATE-3A-VRAM added; GATE-3A-2 extended; Phase 4 gates detailed; Phase 1+2 retrospective notes added)
 
-**Current state (2026-05-19):**
-- **v7 training COMPLETE** — best F1=0.2651 at epoch 23, checkpoint `ml/checkpoints/v7.0_best.pt`
-- **Schema v8 COMPLETE:** `NUM_EDGE_TYPES=11`, `FEATURE_SCHEMA_VERSION="v8"` — CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10)
-- **PLAN-1B gate PASSED (2026-05-19):** 2,000-contract sample validated
-  - 1999/2000 structural parity (1 non-deterministic Slither failure, re-runs clean)
-  - P99=1786 edges (limit 5,000) ✓ · max=3707 (limit 10,000) ✓
-  - CALL_ENTRY=12,630 · RETURN_TO=11,311 · DEF_USE=55,680 (all non-zero) ✓
-  - DataLoader batch_size=8: 8 graphs / 722 nodes batched cleanly ✓
-- **Phase 2 DONE (2026-05-19):** 41,576 v8 graphs re-extracted; cache `ml/data/cached_dataset_v8.pkl` (2.2 GB); splits valid
-- **Next:** Phase 3 training — start with PLAN-3G (done) + PLAN-3A (v8-A: ICFG-only ablation)
+**Current state (2026-05-21):**
+- **v7.0 COMPLETE** — F1=0.2651 ep23 · `ml/checkpoints/v7.0_best.pt` · tuned F1=0.2875
+- **v8.0-AB COMPLETE** — F1=0.2621 ep29 · `ml/checkpoints/v8.0-AB-20260520_best.pt` · killed ep37 patience 8/30 · tuned F1=0.2851
+- **v7 vs v8 comparison DONE (2026-05-20):** full results in `docs/ml/v8-vs-v7-comparison-results.md`
+  - H1 CONFIRMED: Phase 2 multi-edge dilution hurts Reentrancy CEI pattern (−0.017 F1)
+  - H5 CONFIRMED: class tradeoff — v8 wins IntegerUO/ExternalBug/TOD, loses Reentrancy/GasException/CallToUnknown
+  - Loader bugs fixed: `_orig_mod` strip, edge-emb resize, `model.float()` in tune_threshold.py + predictor.py + gnn_encoder.py OOB clamp
+- **Next:** PLAN-3A — ICFG-only ablation (`--phase2-edge-types 6 8 9`, drop DEF_USE)
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -90,7 +88,9 @@ Last updated: 2026-05-19 (rev 8 — Phase 2 DONE; v8 cache ready; Phase 3 traini
   - DataLoader batch fits GPU memory at batch_size=8
   - **Structural comparison gate:** extract same 2,000 contracts with both v7 and v8 extractors; verify all v7 edges (CALLS/READS/WRITES/EMITS/INHERITS/CONTAINS/CONTROL_FLOW) are bit-for-bit identical in v8 output — new types are additive only, no existing edges may change or disappear. Any regression = bug in `global_cfg_node_map` refactor.
 - **If gate fails:** Tighten ICFG depth or DFG categories before proceeding
-- **Status:** **DONE (2026-05-19)** — 2,000-contract gate PASSED. 1999/2000 parity (0.05% Slither non-determinism, re-runs clean); P99=1786; max=3707; all new types fire; DataLoader batch clean.
+- **Status:** **DONE (2026-05-19)** — 2,000-contract gate PASSED. 1999/2000 parity (0.05% Slither non-determinism, re-runs clean); P99=1786; max=3707; all new types fire; DataLoader batch clean. Note: presence validated but distribution-by-class not checked (retroactively added as GATE-3A-0).
+
+> **RETRO-1 (2026-05-20 — learned from v8-AB results):** PLAN-1B validated edge *presence* and *total counts* only. Three gaps discovered after training: (1) CALL_ENTRY edge direction was not spot-checked (should be caller→callee, not callee→caller — a direction inversion would silently produce non-semantic ICFG and be undetectable from loss curves alone); (2) DEF_USE semantic correctness not verified on a known Reentrancy contract (definition at assignment, use at later read); (3) CALL_ENTRY density on Reentrancy-labeled contracts not checked — we only know global counts. All three gaps are now covered by GATE-3A-0 for any new edge type added in v9+.
 
 ---
 
@@ -185,35 +185,275 @@ Edge type distribution (full dataset):
   REVERSE_CONTAINS(7): runtime-only, added by dataset
 ```
 
+> **RETRO-2 (2026-05-20 — learned from v8-AB results):** Full extraction validated P99 edge counts and per-type totals at Phase 2. We confirmed DEF_USE has 1.16M edges globally without verifying that those edges concentrate on the *right contracts* (IntegerUO, Reentrancy). After v8-AB we discovered DEF_USE was noise-diluting the CEI Reentrancy signal — a per-class edge distribution check at Phase 2 time would have caught this before the full training run. **For v9 (CONTROL_DEP):** run `edge_activation.py` at Phase 2 validation time, not post-hoc. Add it to Phase 2 item PLAN-2I.
+
 ---
 
 ## Phase 3 — v8 Training Ablations
 **Trigger:** Phase 2 complete (v8 cache rebuilt, splits valid).
-**Goal:** Attribute F1 gains to ICFG vs DFG separately, then jointly.
+**Goal:** Attribute F1 gains to ICFG vs DFG separately; understand which edge types help which vulnerability classes.
+
+### Ablation runs
 
 | ID | Run | Edges in Phase 2 mask | Purpose | Status |
 |----|-----|-----------------------|---------|--------|
-| PLAN-3A | v8-A | `CF(6) + CALL_ENTRY(8) + RETURN_TO(9)` | Isolate ICFG contribution | OPEN |
-| PLAN-3B | v8-B | `CF(6) + DEF_USE(10)` | Isolate DFG contribution | OPEN |
-| PLAN-3C | v8-AB | `CF(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10)` | Joint effect | OPEN |
+| PLAN-3C | v8-AB | `CF(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10)` | Joint effect (baseline) | **DONE** |
+| PLAN-3A | v8-A | `CF(6) + CALL_ENTRY(8) + RETURN_TO(9)` | Isolate ICFG contribution (drop DEF_USE) | OPEN |
+| PLAN-3B | v8-B | `CF(6) + DEF_USE(10)` | Isolate DFG contribution (drop ICFG) | OPEN |
 
-**After all three runs:**
-- Compare per-class F1 delta from v7 baseline for each
-- Check `jk.last_weights` per phase — Phase 2 weight < 0.10 or > 0.80 indicates Phase 2b sub-phase needed
-- Run `return_ignored [7]` scalar ablation on best v8-AB checkpoint:
-  - Zero out dim [7] in all graphs, retrain everything else equal
-  - If per-class F1 delta for MishandledException + UnusedReturn < 0.5pp → deprecate in v9
-  - If delta ≥ 0.5pp → keep scalar; it carries signal DEF_USE does not fully capture
+### PLAN-3C results (v8-AB — DONE 2026-05-20)
+- Best F1=0.2621 (ep29) vs v7 best 0.2651 — gap 0.003
+- Tuned F1=0.2851 vs v7 tuned 0.2875 — gap 0.0024
+- JK Phase 2 at kill: 0.204 (vs v7 final 0.182) — ICFG/DEF_USE contributing but diluted
+- Full findings: `docs/ml/v8-vs-v7-comparison-results.md`
+
+---
+
+### Pre-Training Validation Protocol — required before PLAN-3A and PLAN-3B
+
+**Why this exists:** v8-AB was launched directly after PLAN-1B (shallow structural gate). We never validated edge type distribution across the full dataset by class, never confirmed that CALL_ENTRY/RETURN_TO are actually present on the contracts where they matter (Reentrancy-labeled), and never smoke-tested the new edge configuration before the full training run. This cost us a full training run to discover that DEF_USE was diluting the CEI signal. The protocol below prevents the same mistake.
+
+---
+
+#### GATE-3A-CACHE — RAM cache integrity (P0 — verify before any training run)
+
+**What:** Confirm the v8 cache is intact, schema-compatible, and not a leftover v7 cache before spending GPU time on a run that would fail mid-epoch.
+
+```bash
+source ml/.venv/bin/activate
+PYTHONPATH=. python -c "
+import pickle
+from pathlib import Path
+
+cache_path = Path('ml/data/cached_dataset_v8.pkl')
+assert cache_path.exists(), f'Cache not found: {cache_path}'
+
+size_gb = cache_path.stat().st_size / (1024**3)
+assert size_gb > 1.5, f'Cache too small: {size_gb:.2f} GB — may be truncated write'
+print(f'Cache size: {size_gb:.2f} GB  OK')
+
+with open(cache_path, 'rb') as f:
+    cache = pickle.load(f)
+
+version = cache.get('version', '<missing>')
+assert version == 'v8', f'Wrong schema version: {version!r} (expected v8)'
+print(f'Schema version: {version}  OK')
+
+n_pairs = len(cache.get('data', {}))
+assert n_pairs >= 40000, f'Too few pairs: {n_pairs} (expected ~41,576)'
+print(f'Pair count: {n_pairs}  OK')
+print('GATE-3A-CACHE PASSED')
+"
+```
+
+| Check | Expected | Fail action |
+|-------|----------|-------------|
+| File exists | `ml/data/cached_dataset_v8.pkl` present | Rebuild: `python ml/scripts/create_cache.py` |
+| File size | > 1.5 GB | Truncated write — rebuild cache |
+| Schema version | `v8` | Wrong file (v7 cache) — check `--cache-path` arg |
+| Pair count | ≥ 40,000 | Incomplete extraction — re-run `create_cache.py` |
+
+- **Status:** OPEN (blocking — run before GATE-3A-0)
+
+---
+
+#### GATE-3A-0 — Edge activation analysis (P0 — run before PLAN-3A)
+
+**What:** Count per-edge-type frequency across the full dataset, broken down by vulnerability class label.
+
+**Script to write and run:** `ml/scripts/edge_activation.py`
+
+```bash
+source ml/.venv/bin/activate
+PYTHONPATH=. python ml/scripts/edge_activation.py \
+    --cache ml/data/cached_dataset_v8.pkl \
+    --splits-dir ml/data/splits/deduped \
+    --split train \
+    --out ml/logs/edge_activation_train.json
+```
+
+**Required checks (must ALL pass before PLAN-3A launches):**
+
+| Check | Threshold | Rationale |
+|-------|-----------|-----------|
+| CALL_ENTRY present in ≥ 30% of all training graphs | <30% → sparse signal, model can't learn reliably | |
+| RETURN_TO present in ≥ 30% of all training graphs | Same as above | |
+| DEF_USE present in ≥ 50% of all training graphs | DEF_USE is denser by design (1.16M edges) — should be widespread | |
+| CALL_ENTRY present in ≥ 40% of Reentrancy=1 graphs | Reentrancy requires external calls by definition; if CALL_ENTRY is sparse on Reentrancy contracts, the ICFG edges are not even reaching the right contracts | |
+| CALL_ENTRY present in ≥ 40% of ExternalBug=1 graphs | ExternalBug is entirely cross-function — ICFG is its primary signal | |
+| DEF_USE present in ≥ 60% of IntegerUO=1 graphs | Integer overflow involves arithmetic def-use chains — should be dense on these contracts | |
+
+**What to do if checks fail:**
+- CALL_ENTRY < 30% overall → the intra-function ICFG representation is too sparse; consider PLAN-1D-v2 with deeper call traversal
+- CALL_ENTRY < 40% on Reentrancy=1 → check if CALL_ENTRY is firing on internal calls only (not external) — bug in `_add_icfg_edges()` filtering
+- DEF_USE < 50% overall → extraction bug; DEF_USE was 1.16M edges in the full dataset which should cover most contracts
+
+**Output to document:** `ml/logs/edge_activation_train.json` — per-type counts + per-class breakdown table. Record results in `docs/ml/v8-vs-v7-comparison-results.md` appendix before PLAN-3A launch.
+
+- **Status:** OPEN (blocking PLAN-3A)
+
+---
+
+#### GATE-3A-1 — Edge mask code verification (P0)
+
+**What:** Confirm that `--phase2-edge-types 6 8 9` actually excludes DEF_USE(10) from the convolution masks before starting the training run. This is a code correctness check, not a data check.
+
+**Protocol:** Run this snippet and verify DEF_USE is absent:
+
+```bash
+source ml/.venv/bin/activate
+PYTHONPATH=. python -c "
+from ml.src.models.gnn_encoder import GNNEncoder
+import torch
+
+# Simulate what train.py passes when --phase2-edge-types 6 8 9
+phase2_types = [6, 8, 9]
+
+# Check gnn_encoder builds the right mask
+# edge_attr with all types 0-10
+ea = torch.arange(11)
+cfg_mask = torch.zeros(11, dtype=torch.bool)
+for t in phase2_types:
+    cfg_mask |= (ea == t)
+print('Phase 2 mask active types:', ea[cfg_mask].tolist())
+assert 10 not in ea[cfg_mask].tolist(), 'DEF_USE(10) must NOT be in PLAN-3A mask'
+print('GATE-3A-1 PASSED: DEF_USE correctly excluded')
+"
+```
+
+- **Status:** OPEN (run immediately before PLAN-3A launch)
+
+---
+
+#### GATE-3A-2 — Config review (P0)
+
+Before each training run, verify these are set correctly:
+
+| Config | Expected value for PLAN-3A | How to verify |
+|--------|---------------------------|---------------|
+| `--phase2-edge-types` | `6 8 9` | Check launch command |
+| `--cache` | `ml/data/cached_dataset_v8.pkl` | Confirm file exists, mtime after 2026-05-19 |
+| `--splits-dir` | `ml/data/splits/deduped` | Confirm `train_indices.npy` / `val_indices.npy` / `test_indices.npy` exist |
+| `--run-name` | `v8.0-A-YYYYMMDD` (no duplicate of v8-AB name) | Check MLflow for name conflicts: `python -c "import mlflow; mlflow.set_tracking_uri('sqlite:///mlruns.db'); [print(r.info.run_name) for r in mlflow.search_runs(experiment_names=['sentinel-v8']).itertuples()]"` |
+| Log file | `ml/logs/v8.0-A-YYYYMMDD.log` | Confirm path is writable |
+| `dos_loss_weight` | 0.0 (DoS gradient detached) | If 1.0, DoS will destabilise Reentrancy gradient — check `trainer.py:283` or grep launch args for `--dos-loss-weight` |
+| Augmented data | ≥ 60 `.sol` files in `ml/data/augmented/` | `ls ml/data/augmented/*.sol | wc -l` — needed when DoS re-enabled; currently 111 files present |
+| Log format (tqdm) | `disable=not sys.stdout.isatty()` in trainer.py | `grep -c "isatty" ml/src/training/trainer.py` must be ≥ 2; prevents `\r` pollution in redirected logs |
+| Weighted sampler | `use_weighted_sampler="positive"` in TrainConfig | Check default in `trainer.py:314` — `"none"` removes 3× upweighting on vuln rows and will hurt rare classes |
+
+- **Status:** OPEN
+
+---
+
+#### GATE-3A-VRAM — GPU memory budget (P0 — run immediately before smoke test)
+
+**What:** Confirm the GPU has enough free VRAM to run the smoke test without OOM. RTX 3070 has 8 GB; training at batch_size=8 needs ~6.9 GB reserved. A background process holding 2+ GB will OOM mid-epoch with no diagnostic.
+
+```bash
+source ml/.venv/bin/activate
+python -c "
+import torch
+if not torch.cuda.is_available():
+    print('No CUDA — skip VRAM gate')
+else:
+    reserved = torch.cuda.memory_reserved() / (1024**3)
+    total = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+    free = total - reserved
+    print(f'VRAM: {reserved:.1f}/{total:.1f} GB reserved  {free:.1f} GB free')
+    assert free >= 6.0, f'Insufficient free VRAM: {free:.1f} GB (need >= 6.0 for batch_size=8)'
+    print('GATE-3A-VRAM PASSED')
+"
+```
+
+**If fails:** Run `nvidia-smi` to identify which process holds VRAM; kill or wait, then re-check.
+
+- **Status:** OPEN (run immediately before GATE-3A-3)
+
+---
+
+#### GATE-3A-3 — Smoke test (P1 — 2 epochs only)
+
+**What:** Run 2 epochs before committing to the full 100-epoch training. Verify the new edge configuration is healthy.
+
+```bash
+source ml/.venv/bin/activate
+TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. python ml/scripts/train.py \
+    --run-name v8.0-A-smoke \
+    --experiment-name sentinel-v8 \
+    --phase2-edge-types 6 8 9 \
+    --cache ml/data/cached_dataset_v8.pkl \
+    --splits-dir ml/data/splits/deduped \
+    --epochs 2 \
+    --gradient-accumulation-steps 8 \
+    2>&1 | tee ml/logs/v8.0-A-smoke.log
+```
+
+**Pass criteria (check after 2 epochs):**
+
+| Signal | Expected | Fail condition |
+|--------|----------|----------------|
+| Step loss at ep1 step 100 | 0.15–0.20 (same range as v8-AB ep1) | < 0.05 (collapsed) or > 0.30 (not learning) |
+| GNN eye loss at ep1 | 0.55–0.80 | > 0.90 (model ignoring graph entirely) |
+| JK Phase 2 weight at ep1 | > 0.15 (ICFG edges must be used) | < 0.05 (Phase 2 being ignored — edge mask bug) |
+| NaN count | 0 | Any NaN → kill immediately, investigate |
+| GNN share | 40–75% | < 20% → GNN disabled; > 90% → transformer not participating |
+| No CUDA OOM | — | OOM → reduce batch_size |
+| Probability spread (ep2 val) | Each class has predictions in [0.1, 0.9] range (not all collapsed) | All predictions clustered at > 0.9 or < 0.1 → model collapsed; check loss scale and `dos_loss_weight` |
+
+**Probability spread quick check after ep2:**
+```bash
+# After smoke run completes, load checkpoint and check output distribution on 1 val batch
+source ml/.venv/bin/activate
+PYTHONPATH=. python -c "
+import torch, pickle
+# Load first val batch from cache and run forward pass to inspect raw sigmoid outputs
+# If all outputs < 0.05 or all > 0.95 for a given class → calibration collapse
+print('Load smoke checkpoint and inspect per-class probability histograms before full run')
+"
+```
+
+**If smoke test fails:** Do NOT launch full training. Diagnose the failure point first.
+
+- **Status:** OPEN
+
+---
+
+#### GATE-3A-4 — Early epoch monitoring gate (P1 — first 10 epochs of full run)
+
+After smoke test passes and full training launches, monitor the first 10 epochs before walking away:
+
+| Epoch | Check | Action if fails |
+|-------|-------|-----------------|
+| ep1 end | F1 > 0.10 (any learning at all) | Kill — training not learning; check loss function and optimizer |
+| ep3 end | JK Phase 2 weight in 0.10–0.50 range | If < 0.10, ICFG edges are being ignored — log and flag, do not kill yet |
+| ep5 end | Fused eye loss < GNN eye loss (fused head is most discriminative) | If fused > GNN, fusion layer is not learning — architectural concern |
+| ep8 end | F1 > 0.15 (past aux warmup, real learning happening) | Kill if still < 0.10 after warmup ends |
+| ep10 end | JK Phase 2 weight trend: compare to v8-AB ep10 (was 0.330) | If 3A's Phase 2 weight is < 0.15 at ep10, ICFG-only is not contributing more than CF(6) alone would |
+
+- **Status:** OPEN
+
+---
+
+### Phase 3 remaining items
 
 | ID | Item | Status |
 |----|------|--------|
-| PLAN-3G | Fix stale `--run-name` default in `train.py:68` from `"multilabel-v5-fresh"` → `"sentinel-v8"` before any v8 run | **DONE** |
-| PLAN-3H | Apply optional S4 speed optimization (cap fusion tokens at 1024 in `fusion_layer.py`) — measure actual batch/s change in a 1-epoch comparison before committing | OPEN |
-| PLAN-3D | Inspect `jk.last_weights` after each v8 run — verify Phase 2 weight is in 0.10–0.80 range | OPEN |
-| PLAN-3I | Monitor fused eye loss as canary: it should decrease relative to GNN/TF eyes in v8 vs v7. If fused eye remains highest by same margin, flag as architectural concern in `CrossAttentionFusion` | OPEN |
-| PLAN-3E | Run `return_ignored` ablation on best v8-AB checkpoint — 0.5pp F1 gate decides v9 deprecation | OPEN |
-| PLAN-3J | Review `early_stop_patience=30` after first complete v8 run — if best F1 is near epoch 60–80 and still rising, increase to 40–50 | OPEN |
-| PLAN-3F | Document per-class F1 deltas v7→v8-A/B/AB | OPEN |
+| PLAN-3G | Fix stale `--run-name` default in `train.py:68` | **DONE** |
+| GATE-3A-CACHE | Cache integrity check | **OPEN** |
+| GATE-3A-0 | Edge activation analysis — P0 blocking PLAN-3A | **OPEN** |
+| GATE-3A-1 | Edge mask code verification | **OPEN** |
+| GATE-3A-2 | Config review before each run (extended: DoS weight, aug data, MLflow, sampler, log format) | **OPEN** |
+| GATE-3A-VRAM | GPU memory budget check | **OPEN** |
+| GATE-3A-3 | Smoke test — 2 epochs + probability spread check | **OPEN** |
+| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | **OPEN** |
+| PLAN-3A | v8-A full training run (ICFG-only) | **OPEN** — blocked on GATE-3A-CACHE through GATE-3A-3 |
+| PLAN-3B | v8-B full training run (DFG-only) | **OPEN** — same gate sequence required |
+| PLAN-3H | Apply optional S4 speed optimization (cap fusion tokens at 1024) — measure 1-epoch comparison first | OPEN |
+| PLAN-3D | Inspect `jk.last_weights` after each run; verify Phase 2 weight in 0.10–0.80 range | OPEN |
+| PLAN-3I | Monitor fused eye loss relative to GNN/TF eyes — should be lowest of three | OPEN |
+| PLAN-3E | Run `return_ignored` scalar ablation on best ablation checkpoint — 0.5pp F1 gate decides v9 dim drop | OPEN |
+| PLAN-3J | Review `early_stop_patience=30` after first complete run — if best F1 is near ep60–80 and still rising, increase to 40–50 | OPEN |
+| PLAN-3F | Document per-class F1 deltas v7→v8-A/B and write findings in `docs/ml/` | OPEN |
 
 ---
 
@@ -251,6 +491,142 @@ Edge type distribution (full dataset):
   struct_mask  = (edge_attr <= _CONTAINS) | (edge_attr == _CONTROL_DEP)
   ```
 - **Status:** OPEN (BLOCKED on PLAN-4B)
+
+---
+
+### Pre-Training Validation Protocol — required before any v9 training run
+
+Same gate sequence as Phase 3, adapted for v9:
+
+#### GATE-4-0 — CONTROL_DEP edge activation analysis (P0)
+
+**What:** Same analysis as GATE-3A-0 but for CONTROL_DEP(11). Confirm edges concentrate where they should.
+
+```bash
+source ml/.venv/bin/activate
+PYTHONPATH=. python ml/scripts/edge_activation.py \
+    --cache ml/data/cached_dataset_v9.pkl \
+    --splits-dir ml/data/splits/deduped \
+    --split train \
+    --out ml/logs/edge_activation_v9_train.json
+```
+
+| Check | Threshold | Rationale |
+|-------|-----------|-----------|
+| CONTROL_DEP in ≥ 40% of all training graphs | < 40% → branch nodes are absent; extractor bug | |
+| CONTROL_DEP in ≥ 60% of `has_loop=1` graphs | These contracts have explicit control flow structure; should have dense CD edges | |
+| CONTROL_DEP absent in contracts with no branch nodes | Spurious edges = bug in `_add_control_dep_edges()` — check `check_types` filter | |
+| CONTROL_DEP concentrated on Reentrancy=1 graphs (≥ 50%) | Reentrancy requires CEI ordering; CD edges should appear on the guard-check nodes | |
+
+**If check fails:** Debug `_add_control_dep_edges()` — verify `check_types` filter and symmetric-difference reachability logic on a known if/loop contract.
+
+- **Status:** OPEN (blocking Phase 4)
+
+---
+
+#### GATE-4-1 — Structural parity gate (P0)
+
+**What:** Extract 2,000 contracts with v9 extractor and compare edge-for-edge against their v8 graphs. CONTROL_DEP(11) must be purely additive — no existing edge type may change or disappear.
+
+```bash
+source ml/.venv/bin/activate
+PYTHONPATH=. python -c "
+import torch, os, glob, random
+v8_dir = 'ml/data/archive/graphs_v8'  # archive v8 before re-extraction
+v9_dir = 'ml/data/graphs'
+stems = random.sample([p.stem for p in sorted(Path(v8_dir).glob('*.pt'))], 2000)
+fails = []
+for stem in stems:
+    v8 = torch.load(f'{v8_dir}/{stem}.pt', weights_only=False)
+    v9 = torch.load(f'{v9_dir}/{stem}.pt', weights_only=False)
+    # Types 0-10 must be identical
+    v8_mask = v8.edge_attr <= 10
+    v9_mask = v9.edge_attr <= 10
+    if not torch.equal(v8.edge_attr[v8_mask], v9.edge_attr[v9_mask]):
+        fails.append(stem)
+print(f'Parity check: {len(stems)-len(fails)}/{len(stems)} clean')
+assert len(fails) == 0, f'Regressions in {len(fails)} graphs: {fails[:5]}'
+print('GATE-4-1 PASSED')
+"
+```
+
+| Check | Expected | Fail action |
+|-------|----------|-------------|
+| v8 edge types (0–10) unchanged in v9 | Bit-for-bit identical | Regression in extractor — debug `_add_control_dep_edges()` for side effects |
+| P99 edge count | < 5,000 | CD edges too dense — tighten depth or `check_types` |
+| Max edge count | < 10,000 | Single pathological graph — investigate and exclude |
+
+- **Status:** OPEN (blocking Phase 4)
+
+---
+
+#### GATE-4-2 — Edge mask code verification (P0)
+
+**What:** Confirm CONTROL_DEP(11) is in Phase 1 `struct_mask` and NOT in Phase 2 `cfg_mask`. Control dependence is a scope relationship, not sequential execution order.
+
+```bash
+source ml/.venv/bin/activate
+PYTHONPATH=. python -c "
+import torch
+from ml.src.models.gnn_encoder import GNNEncoder
+
+ea = torch.arange(12)
+# Phase 1: struct_mask should include types 0,1,2,3,4,5,7,11 (structural + CONTROL_DEP)
+# Phase 2: cfg_mask should include types 6,8,9 (or 6,10 for PLAN-3B variant) but NOT 11
+# Exact masks come from gnn_encoder — instantiate and inspect
+print('Verify CONTROL_DEP(11) in Phase 1 struct_mask: YES')
+print('Verify CONTROL_DEP(11) in Phase 2 cfg_mask:   NO (it is structural, not sequential)')
+print('GATE-4-2 requires reading gnn_encoder.py Phase masks after PLAN-4C is implemented')
+"
+```
+
+After PLAN-4C is implemented, replace the above with a concrete assertion matching GATE-3A-1 format.
+
+- **Status:** OPEN (BLOCKED on PLAN-4C)
+
+---
+
+#### GATE-4-3 — Smoke test (P1 — 2 epochs only)
+
+**What:** Same smoke protocol as GATE-3A-3 adapted for 12 edge types and v9 schema.
+
+```bash
+source ml/.venv/bin/activate
+TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. python ml/scripts/train.py \
+    --run-name v9.0-smoke-YYYYMMDD \
+    --experiment-name sentinel-v9 \
+    --cache-path ml/data/cached_dataset_v9.pkl \
+    --splits-dir ml/data/splits/deduped \
+    --epochs 2 \
+    --gradient-accumulation-steps 8 \
+    2>&1 | tee ml/logs/v9.0-smoke-YYYYMMDD.log
+```
+
+| Signal | Expected | Fail condition |
+|--------|----------|----------------|
+| Step loss at ep1 step 100 | 0.15–0.20 (same range as v8 runs) | < 0.05 (collapsed) or > 0.30 |
+| JK Phase 1 weight at ep1 | > JK Phase 1 from v8 smoke (Phase 1 now has CD edges) | Lower than v8 Phase 1 → CD edges not contributing |
+| JK Phase 2 weight at ep1 | Similar to v8-A/B Phase 2 baseline | Drastic change → CD edges leaking into Phase 2 mask (mask bug) |
+| NaN count | 0 | Any NaN → kill immediately |
+| No CUDA OOM | — | 12 edge types → marginally larger embedding; batch_size=8 should still fit |
+
+- **Status:** OPEN (BLOCKED on GATE-4-0, GATE-4-1, GATE-4-2)
+
+---
+
+#### GATE-4-4 — Early epoch monitoring (P1 — first 10 epochs of full run)
+
+| Epoch | Check | Action if fails |
+|-------|-------|-----------------|
+| ep1 end | F1 > 0.10 | Kill — not learning; check loss and CD edge mask |
+| ep3 end | JK Phase 1 weight > v8 baseline Phase 1 at ep3 | CD edges adding Phase 1 signal; if still lower → may not be Phase 1 placement |
+| ep5 end | Reentrancy F1 > v8-A at ep5 (CD should help guard-scope detection) | If lower, CD edges may be noise-diluting Phase 1 just as DEF_USE diluted Phase 2 |
+| ep8 end | F1 > 0.15 (past aux warmup) | Kill if < 0.10 after warmup |
+| ep10 end | JK Phase 1 weight trend stable or growing | If Phase 1 weight collapsing → Phase 3 (CONTAINS) is absorbing CD signal |
+
+**Additional Phase 4 watch:** Monitor per-class F1 on Timestamp and MishandledException — these are the FN-heavy classes where `CONTROL_DEP` was hypothesized to help (guard-scope mislabeling). If those don't improve over v8-A, Phase 4 is not addressing the right failure mode.
+
+- **Status:** OPEN (BLOCKED on GATE-4-3)
 
 ---
 
@@ -334,19 +710,26 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | PLAN-1F | Update `graph_schema.py` to v8 constants | 1 | P2 | PLAN-1D/1E | **DONE** |
 | PLAN-1G | Update `gnn_encoder.py` Phase 2 mask + embedding size | 1 | P2 | PLAN-1F | **DONE** |
 | PLAN-1E | Implement `_add_def_use_edges()` (DEF_USE) | 1 | P1 | PLAN-1C | **DONE** |
-| PLAN-1B | 2,000-contract sample validation gate | 1 | P0 | PLAN-1D/1E | OPEN |
-| PLAN-2A | Archive v7 graphs | 2 | P0 | Phase 1 done | OPEN |
-| PLAN-2B–2I | Full v8 re-extraction + validation + cache rebuild | 2 | P1 | PLAN-2A | OPEN |
-| PLAN-3G | Fix stale `--run-name` default in `train.py:68` | 3 | P0 | before any v8 run | OPEN |
-| PLAN-3A | v8-A ablation run (ICFG only) | 3 | P1 | Phase 2 done | OPEN |
-| PLAN-3B | v8-B ablation run (DFG only) | 3 | P1 | Phase 2 done | OPEN |
-| PLAN-3C | v8-AB ablation run (both) | 3 | P1 | Phase 2 done | OPEN |
+| PLAN-1B | 2,000-contract sample validation gate | 1 | P0 | PLAN-1D/1E | **DONE** — presence validated, distribution-by-class not checked (retroactively added as GATE-3A-0) |
+| PLAN-2A | Archive v7 graphs | 2 | P0 | Phase 1 done | **DONE** |
+| PLAN-2B–2I | Full v8 re-extraction + validation + cache rebuild | 2 | P1 | PLAN-2A | **DONE** |
+| PLAN-3G | Fix stale `--run-name` default in `train.py:68` | 3 | P0 | before any v8 run | **DONE** |
+| PLAN-3C | v8-AB ablation run (both ICFG + DFG) | 3 | P1 | Phase 2 done | **DONE (2026-05-20, F1=0.2621)** |
+| GATE-3A-CACHE | Cache integrity check (schema v8, size, pair count) | 3 | P0 | PLAN-3C done | **OPEN** |
+| GATE-3A-0 | Edge activation analysis — P0 blocking PLAN-3A | 3 | P0 | GATE-3A-CACHE | **OPEN** |
+| GATE-3A-1 | Edge mask code verification | 3 | P0 | GATE-3A-0 | **OPEN** |
+| GATE-3A-2 | Config review before each run (incl. DoS weight, aug data, MLflow, sampler) | 3 | P0 | GATE-3A-1 | **OPEN** |
+| GATE-3A-VRAM | GPU memory budget check before smoke test | 3 | P0 | GATE-3A-2 | **OPEN** |
+| GATE-3A-3 | Smoke test — 2 epochs + probability spread check | 3 | P1 | GATE-3A-VRAM | **OPEN** |
+| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | 3 | P1 | GATE-3A-3 | **OPEN** |
+| PLAN-3A | v8-A ablation run (ICFG only) | 3 | P1 | GATE-3A-CACHE through GATE-3A-3 | **OPEN (blocked on all GATE-3A-* gates)** |
+| PLAN-3B | v8-B ablation run (DFG only) | 3 | P1 | same gate sequence | **OPEN (same gate sequence required)** |
 | PLAN-3H | Apply optional S4 (cap fusion tokens at 1024) — measure first | 3 | P2 | Phase 2 done | OPEN |
-| PLAN-3D | Inspect `jk.last_weights` per run; check fused eye canary | 3 | P2 | PLAN-3A/B/C | OPEN |
-| PLAN-3I | Monitor fused eye loss relative to GNN/TF eyes in v8 | 3 | P2 | PLAN-3A/B/C | OPEN |
-| PLAN-3E | `return_ignored` scalar ablation on best v8-AB | 3 | P2 | PLAN-3C | OPEN |
+| PLAN-3D | Inspect `jk.last_weights` per run; check fused eye canary | 3 | P2 | PLAN-3A/B | OPEN |
+| PLAN-3I | Monitor fused eye loss relative to GNN/TF eyes in v8 | 3 | P2 | PLAN-3A/B | OPEN |
+| PLAN-3E | `return_ignored` scalar ablation on best ablation checkpoint | 3 | P2 | PLAN-3A/B | OPEN |
 | PLAN-3J | Review `early_stop_patience` after first v8 run | 3 | P3 | PLAN-3A | OPEN |
-| PLAN-3F | Document per-class F1 deltas v7→v8-A/B/AB | 3 | P2 | PLAN-3A/B/C | OPEN |
+| PLAN-3F | Document per-class F1 deltas v7→v8-A/B | 3 | P2 | PLAN-3A/B | OPEN |
 | PLAN-4A | Implement `_add_control_dep_edges()` (CONTROL_DEP) | 4 | P1 | Phase 3 results | OPEN |
 | PLAN-4B | Update `graph_schema.py` to v9 constants | 4 | P2 | PLAN-3E + 4A | OPEN |
 | PLAN-4C | Update `gnn_encoder.py` Phase 1 mask + embedding size | 4 | P2 | PLAN-4B | OPEN |

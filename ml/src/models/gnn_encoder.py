@@ -367,15 +367,16 @@ class GNNEncoder(nn.Module):
             # pass continue on a bad sample with a logged warning instead of crashing
             # the entire training run on an unrecoverable CUDA illegal-memory error.
             if edge_attr.numel() > 0:
-                _oob_mask = (edge_attr < 0) | (edge_attr >= NUM_EDGE_TYPES)
+                _max_valid = self.edge_embedding.num_embeddings - 1
+                _oob_mask = (edge_attr < 0) | (edge_attr > _max_valid)
                 if _oob_mask.any():
                     logger.warning(
                         f"GNNEncoder: {_oob_mask.sum().item()} OOB edge_attr value(s) "
-                        f"clamped to [0, {NUM_EDGE_TYPES - 1}] "
+                        f"clamped to [0, {_max_valid}] "
                         f"(observed min={edge_attr.min().item()}, max={edge_attr.max().item()}). "
-                        "Source .pt file may be corrupted — rerun ast_extractor.py for this contract."
+                        "Source .pt file may be corrupted or uses a newer schema than this model."
                     )
-                    edge_attr = edge_attr.clamp(0, NUM_EDGE_TYPES - 1)
+                    edge_attr = edge_attr.clamp(0, _max_valid)
             e = self.edge_embedding(edge_attr)   # [E, edge_emb_dim]
 
         # ── Edge masks — one per phase ───────────────────────────────────────

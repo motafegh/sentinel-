@@ -1,45 +1,48 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-20 (rev 9 — v8.0-AB training analysis; tqdm log-pollution fix applied to trainer.py)
+Last updated: 2026-05-20 (rev 10 — v8.0-AB killed ep37; v7 vs v8 comparison complete; PLAN-3A ready)
 
 ---
 
-## v8.0-AB Training — RUNNING (2026-05-20) · Epoch 27 in progress
+## v8.0-AB Training — COMPLETE (2026-05-20) · Killed ep37, patience 8/30
 
-**Schema:** v8 (ICFG-Lite + DEF_USE; NUM_EDGE_TYPES=11)  
-**Cache:** `ml/data/cached_dataset_v8.pkl` (41,576 pairs, 2.2 GB)  
-**Splits:** `ml/data/splits/deduped/`  
-**Best so far:** F1-macro=0.2593 at epoch 22 → `ml/checkpoints/v8.0-AB_best.pt`  
-**Patience:** 4/30 as of epoch 26
+**Checkpoint:** `ml/checkpoints/v8.0-AB-20260520_best.pt` — Epoch 29, F1-macro=0.2621  
+**Analysis:** [docs/ml/v8-AB-training-analysis.md](ml/v8-AB-training-analysis.md)  
+**Comparison results:** [docs/ml/v8-vs-v7-comparison-results.md](ml/v8-vs-v7-comparison-results.md)
 
-**Kill condition:** Kill manually at epoch ~32 if patience reaches 10/30 with no new best. Then start PLAN-3A (ICFG-only ablation).  
-**Full analysis:** [docs/ml/v8-AB-training-analysis.md](ml/v8-AB-training-analysis.md)
+Kill rationale: JK Phase 2 declining to 0.204 (→ v7's 0.182), Phase 3 at 0.744 (run high), fused grad subdued, 8 consecutive epochs without improvement.
+
+---
+
+## Comparison: v7.0 vs v8.0-AB — COMPLETE (2026-05-20)
+
+| Metric | v7.0 | v8.0-AB |
+|--------|------|---------|
+| Default threshold F1 | 0.2651 | 0.2621 |
+| Tuned threshold F1 | **0.2875** | 0.2851 |
+| Manual test (19 vuln) | 7/19 | **8/19** |
+| Safe contract clean | 0/3 | **1/3** |
+
+**v8 wins:** IntegerUO (+0.009), ExternalBug (+0.013), TOD (+0.005)  
+**v7 wins:** Reentrancy (+0.017), GasException (+0.009), CallToUnknown (+0.014)  
+**Conclusion:** Phase 2 multi-edge-type dilution hurts Reentrancy CEI pattern. PLAN-3A drops DEF_USE to isolate ICFG contribution.
+
+---
+
+## Next — PLAN-3A: ICFG-only ablation
+
+Drop DEF_USE, keep CALL_ENTRY(8) + RETURN_TO(9). Tests whether DEF_USE is causing the Reentrancy regression.
 
 ```bash
-# Resume command (if needed):
 TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup python ml/scripts/train.py \
-    --run-name sentinel-v8 --experiment-name sentinel-v8 \
-    --cache ml/data/cached_dataset_v8.pkl \
-    --splits-dir ml/data/splits/deduped \
-    --epochs 100 --gradient-accumulation-steps 8 \
-    > ml/logs/v8.0-AB-$(date +%Y%m%d).log 2>&1 &
-
-# PLAN-3A (after v8-AB finishes/killed):
-TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup python ml/scripts/train.py \
-    --run-name v8.0-A-$(date +%Y%m%d) --experiment-name sentinel-v8 \
+    --run-name v8.0-A-$(date +%Y%m%d) \
+    --experiment-name sentinel-v8 \
     --phase2-edge-types 6 8 9 \
     --cache ml/data/cached_dataset_v8.pkl \
     --splits-dir ml/data/splits/deduped \
     --epochs 100 --gradient-accumulation-steps 8 \
     > ml/logs/v8.0-A-$(date +%Y%m%d).log 2>&1 &
 ```
-
-### Key findings (v8-AB through epoch 26)
-- **Step loss** 0.190→0.142 — monotone decline, model has capacity
-- **Eye scores**: Fused head wins (0.700→0.429), GNN (0.747→0.449) beats TF (0.689→0.497) standalone
-- **JK Phase 2**: 0.263 vs v7 final 0.182 — ICFG/DEF_USE edges are genuinely contributing (+45%)
-- **Fused grad spikes** cause F1 jumps — fusion layer is the learning bottleneck
-- **F1 plateau**: oscillating 0.236–0.259 since ep10; same structural ceiling as v7
 
 ---
 
