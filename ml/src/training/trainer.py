@@ -408,7 +408,8 @@ def evaluate(
     all_true  = []
 
     with torch.no_grad():
-        for batch in tqdm(loader, desc="Evaluating", leave=False):
+        for batch in tqdm(loader, desc="Evaluating", leave=False,
+                          disable=not sys.stdout.isatty()):
             graphs, tokens, labels = batch
 
             graphs         = graphs.to(device)
@@ -501,7 +502,8 @@ def train_one_epoch(
     _run_fus_a = 0.0
     _run_n     = 0
 
-    pbar = tqdm(loader, desc="Training", unit="batch", leave=False)
+    pbar = tqdm(loader, desc="Training", unit="batch", leave=False,
+                disable=not sys.stdout.isatty())
     for batch_idx, batch in enumerate(pbar):
         graphs, tokens, labels = batch
 

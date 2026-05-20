@@ -1,29 +1,80 @@
 # SENTINEL — Current Status
 
-Last updated: 2026-05-18 (rev 8 — speed optimizations: BF16, submodule compile, _scatter_to_dense, torch-scatter; data audit 7-section clean; training running)
+Last updated: 2026-05-20 (rev 9 — v8.0-AB training analysis; tqdm log-pollution fix applied to trainer.py)
 
 ---
 
-## v7.0 Training — RUNNING (2026-05-18)
+## v8.0-AB Training — RUNNING (2026-05-20) · Epoch 27 in progress
+
+**Schema:** v8 (ICFG-Lite + DEF_USE; NUM_EDGE_TYPES=11)  
+**Cache:** `ml/data/cached_dataset_v8.pkl` (41,576 pairs, 2.2 GB)  
+**Splits:** `ml/data/splits/deduped/`  
+**Best so far:** F1-macro=0.2593 at epoch 22 → `ml/checkpoints/v8.0-AB_best.pt`  
+**Patience:** 4/30 as of epoch 26
+
+**Kill condition:** Kill manually at epoch ~32 if patience reaches 10/30 with no new best. Then start PLAN-3A (ICFG-only ablation).  
+**Full analysis:** [docs/ml/v8-AB-training-analysis.md](ml/v8-AB-training-analysis.md)
 
 ```bash
-source ml/.venv/bin/activate
+# Resume command (if needed):
 TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup python ml/scripts/train.py \
-    --run-name v7.0 --experiment-name sentinel-v7 \
+    --run-name sentinel-v8 --experiment-name sentinel-v8 \
+    --cache ml/data/cached_dataset_v8.pkl \
+    --splits-dir ml/data/splits/deduped \
     --epochs 100 --gradient-accumulation-steps 8 \
-    > ml/logs/v7.0-launch.log 2>&1 &
+    > ml/logs/v8.0-AB-$(date +%Y%m%d).log 2>&1 &
+
+# PLAN-3A (after v8-AB finishes/killed):
+TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup python ml/scripts/train.py \
+    --run-name v8.0-A-$(date +%Y%m%d) --experiment-name sentinel-v8 \
+    --phase2-edge-types 6 8 9 \
+    --cache ml/data/cached_dataset_v8.pkl \
+    --splits-dir ml/data/splits/deduped \
+    --epochs 100 --gradient-accumulation-steps 8 \
+    > ml/logs/v8.0-A-$(date +%Y%m%d).log 2>&1 &
 ```
 
-All v7 defaults correct out-of-the-box (no override flags needed except grad-accum):
-- `--batch-size 8` · `--gradient-accumulation-steps 8` (effective batch=64)
-- `--loss-fn asl` · `--asl-gamma-neg 2.0` · `--asl-clip 0.01`
-- `--tokens-dir ml/data/tokens_windowed` · `--label-csv multilabel_index_cleaned.csv`
-- `--weighted-sampler positive` · `--num-workers 4` (fork, CoW cache, prefetch_factor=4)
-- `TRITON_CACHE_DIR=/tmp/triton_cache` — routes compile cache to tmpfs, avoids WSL p9io crash
+### Key findings (v8-AB through epoch 26)
+- **Step loss** 0.190→0.142 — monotone decline, model has capacity
+- **Eye scores**: Fused head wins (0.700→0.429), GNN (0.747→0.449) beats TF (0.689→0.497) standalone
+- **JK Phase 2**: 0.263 vs v7 final 0.182 — ICFG/DEF_USE edges are genuinely contributing (+45%)
+- **Fused grad spikes** cause F1 jumps — fusion layer is the learning bottleneck
+- **F1 plateau**: oscillating 0.236–0.259 since ep10; same structural ceiling as v7
 
-Expected VRAM: ~6.9 / 8.0 GB · Speed: ~1.91 batch/s · ~32 min/epoch
+---
 
-### Speed stack (rev 8 — all active)
+## v7.0 Training — COMPLETE (2026-05-19)
+
+Best checkpoint: `ml/checkpoints/v7.0_best.pt` — Epoch 23, F1-macro=0.2651  
+Killed at epoch 34 (patience 10/30). Best per-class: IntegerUO=0.583 · GasException=0.301 · MishandledException=0.276
+
+---
+
+## v8 Pipeline — COMPLETE (2026-05-19)
+
+| Step | Status | Key Output |
+|------|--------|-----------|
+| PLAN-1B structural gate | ✅ DONE | 1999/2000 parity, P99=1786, all new types fire |
+| v8 graph re-extraction | ✅ DONE | 41,576 graphs; NUM_EDGE_TYPES=11; CALL_ENTRY/RETURN_TO/DEF_USE active |
+| v8 cache creation | ✅ DONE | `ml/data/cached_dataset_v8.pkl` 2.2 GB; 41,576 pairs |
+| Splits | ✅ DONE | `ml/data/splits/deduped/` — train=29,103/val=6,236/test=6,237 |
+
+---
+
+## Agents Phase 0 — COMPLETE (2026-05-20)
+
+All 7 Phase 0 items implemented and tested (46/46 tests pass):
+- `agents/src/orchestration/routing.py` — per-class DEEP_THRESHOLDS, ROUTING_RULES, compute_active_tools, compute_verdict
+- `agents/src/orchestration/state.py` — verdicts/confirmations/contradictions/routing_decisions (append reducer)
+- `agents/src/orchestration/nodes.py` — evidence_router node, scoped Slither detectors, synthesizer verdict logic
+- `agents/src/orchestration/graph.py` — SqliteSaver checkpointer, evidence_router in topology
+- `agents/tests/test_routing_phase0.py` — 46 tests covering all routing logic
+
+Topology: `START → ml_assessment → evidence_router → [conditional] → [rag_research ‖ static_analysis] → audit_check → synthesizer → END`
+
+---
+
+## Speed stack (rev 8 — all active)
 | Change | File | Effect |
 |--------|------|--------|
 | `_scatter_to_dense` replaces `to_dense_batch` | `fusion_layer.py` | 0 GuardOnDataDependentSymNode; fusion fully compiles |
