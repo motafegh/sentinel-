@@ -42,7 +42,7 @@
 kill $(pgrep -f "train.py.*sentinel-v8")
 
 # Verify both checkpoints exist
-ls -lh ml/checkpoints/v7.0_best.pt ml/checkpoints/v8.0-AB_best.pt
+ls -lh ml/checkpoints/v7.0_best.pt ml/checkpoints/v8.0-AB-20260520_best.pt
 ```
 
 Expected: v7 ~258 MB, v8-AB similar size. Both files must exist before proceeding.
@@ -57,7 +57,7 @@ Expected: v7 ~258 MB, v8-AB similar size. Both files must exist before proceedin
 source ml/.venv/bin/activate
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/compare_checkpoints.py \
     --ckpt-a ml/checkpoints/v7.0_best.pt \
-    --ckpt-b ml/checkpoints/v8.0-AB_best.pt \
+    --ckpt-b ml/checkpoints/v8.0-AB-20260520_best.pt \
     --label-a "v7.0 (ep23)" \
     --label-b "v8.0-AB (ep22)" \
     --cache ml/data/cached_dataset_v8.pkl \
@@ -86,7 +86,7 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/tune_threshold.py \
 
 # Tune v8-AB thresholds on val split
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/tune_threshold.py \
-    --checkpoint ml/checkpoints/v8.0-AB_best.pt \
+    --checkpoint ml/checkpoints/v8.0-AB-20260520_best.pt \
     --cache ml/data/cached_dataset_v8.pkl \
     --splits-dir ml/data/splits/deduped
 ```
@@ -101,7 +101,7 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/tune_threshold.py \
 ```bash
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/compare_checkpoints.py \
     --ckpt-a ml/checkpoints/v7.0_best.pt \
-    --ckpt-b ml/checkpoints/v8.0-AB_best.pt \
+    --ckpt-b ml/checkpoints/v8.0-AB-20260520_best.pt \
     --thresholds-a ml/checkpoints/v7.0_best_thresholds.json \
     --thresholds-b ml/checkpoints/v8.0-AB_best_thresholds.json \
     --cache ml/data/cached_dataset_v8.pkl \
@@ -117,7 +117,7 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/compare_checkpoints.py \
 ```bash
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/compare_checkpoints.py \
     --ckpt-a ml/checkpoints/v7.0_best.pt \
-    --ckpt-b ml/checkpoints/v8.0-AB_best.pt \
+    --ckpt-b ml/checkpoints/v8.0-AB-20260520_best.pt \
     --cache ml/data/cached_dataset_v8.pkl \
     --splits-dir ml/data/splits/deduped \
     --split test \
@@ -138,7 +138,7 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/compare_checkpoints.py \
 ```bash
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/compare_checkpoints.py \
     --ckpt-a ml/checkpoints/v7.0_best.pt \
-    --ckpt-b ml/checkpoints/v8.0-AB_best.pt \
+    --ckpt-b ml/checkpoints/v8.0-AB-20260520_best.pt \
     --cache ml/data/cached_dataset_v8.pkl \
     --splits-dir ml/data/splits/deduped \
     --split test \
@@ -168,7 +168,7 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/manual_test.py \
 
 # v8-AB behavioral test
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/manual_test.py \
-    --checkpoint ml/checkpoints/v8.0-AB_best.pt \
+    --checkpoint ml/checkpoints/v8.0-AB-20260520_best.pt \
     --contracts ml/scripts/test_contracts/
 ```
 

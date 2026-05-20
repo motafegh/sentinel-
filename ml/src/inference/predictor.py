@@ -239,7 +239,20 @@ class Predictor:
                 saved_cfg.get("lora_target_modules", ["query", "value"])
             ),
         ).to(self.device)
+        # Strip _orig_mod. prefix left by torch.compile when saving compiled checkpoints
+        state_dict = {k.replace("._orig_mod.", "."): v for k, v in state_dict.items()}
+        # Resize edge_embedding if checkpoint used fewer edge types than current schema
+        edge_emb_key = next((k for k in state_dict if "edge_embedding.weight" in k), None)
+        if edge_emb_key and self.model.gnn.edge_embedding is not None:
+            ckpt_num_edge_types = state_dict[edge_emb_key].shape[0]
+            current = self.model.gnn.edge_embedding.num_embeddings
+            if ckpt_num_edge_types != current:
+                import torch.nn as nn
+                emb_dim = self.model.gnn.edge_embedding.embedding_dim
+                self.model.gnn.edge_embedding = nn.Embedding(ckpt_num_edge_types, emb_dim).to(self.device)
+                logger.info(f"Resized edge_embedding: {current} → {ckpt_num_edge_types} types (checkpoint predates current schema)")
         self.model.load_state_dict(state_dict)
+        self.model.float()  # Normalize BF16 AMP checkpoints to float32 for inference
         self.model.eval()
         self.model.parameter_summary()
 

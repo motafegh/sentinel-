@@ -133,6 +133,12 @@ def parse_args() -> argparse.Namespace:
         help="Override DataLoader worker count. Defaults to TrainConfig.num_workers.",
     )
     parser.add_argument(
+        "--cache",
+        type=str,
+        default=None,
+        help="Path to a pre-built cached dataset .pkl (overrides TrainConfig cache_path).",
+    )
+    parser.add_argument(
         "--start",
         type=float,
         default=0.05,
@@ -241,7 +247,23 @@ def load_model_from_checkpoint(
     ).to(device)
 
     state_dict = raw["model"] if isinstance(raw, dict) and "model" in raw else raw
+    # Strip _orig_mod. prefix left by torch.compile when saving compiled checkpoints
+    state_dict = {k.replace("._orig_mod.", "."): v for k, v in state_dict.items()}
+    # Resize edge_embedding if checkpoint used a different NUM_EDGE_TYPES than current code
+    edge_emb_key = next((k for k in state_dict if "edge_embedding.weight" in k), None)
+    if edge_emb_key and model.gnn.edge_embedding is not None:
+        ckpt_num_edge_types = state_dict[edge_emb_key].shape[0]
+        current_num_edge_types = model.gnn.edge_embedding.num_embeddings
+        if ckpt_num_edge_types != current_num_edge_types:
+            import torch.nn as nn
+            emb_dim = model.gnn.edge_embedding.embedding_dim
+            model.gnn.edge_embedding = nn.Embedding(ckpt_num_edge_types, emb_dim).to(device)
+            logger.info(
+                "Resized edge_embedding: {} → {} types (checkpoint predates current schema)",
+                current_num_edge_types, ckpt_num_edge_types,
+            )
     model.load_state_dict(state_dict)
+    model.float()  # Checkpoints saved under BF16 AMP have mixed dtypes; cast all to float32 for inference
     model.eval()
 
     logger.info(
@@ -538,6 +560,8 @@ def main() -> None:
         raise FileNotFoundError(f"Label CSV not found: {label_csv}")
 
     config = TrainConfig(splits_dir=args.splits_dir, label_csv=args.label_csv)
+    if args.cache is not None:
+        config.cache_path = args.cache
     device = config.device
     batch_size = args.batch_size if args.batch_size is not None else config.batch_size
     num_workers = args.num_workers if args.num_workers is not None else getattr(config, "num_workers", 0)
