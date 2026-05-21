@@ -217,22 +217,144 @@ FUNCTION-level `external_call_count` feature and ignore CFG topology?
 
 ### R2 — "Phase 3 Dominating Means Containment Is the Right Signal"
 
-**Observation:** JK phase weights at epoch 11: Phase1=0.096, Phase2=0.33, Phase3=0.57.
-Phase 3 (REVERSE_CONTAINS) carries 57% of the model's attention.
+**Observation (epoch 11 scalar):** Phase1=0.096, Phase2=0.33, Phase3=0.57.
 
-**The assumption:** this means the model has learned that bottom-up information
-flow from CFG nodes to FUNCTION nodes is the most informative signal.
+**Observation (per-node diagnostic, 936 val contracts):**
 
-**Why it might be wrong:** the model could be using Phase 3 dominance as a
-shortcut for contract size/complexity. Contracts with more CFG nodes (larger,
-more complex) send more Phase 3 messages to their parent FUNCTION nodes. More
-messages → more varied FUNCTION embeddings → easier classification. The model
-might be learning "complex contracts have more vulnerabilities" rather than
-reasoning about which specific patterns cause them.
+| Phase | Mean   | Std   | p5    | p50   | p95   | Dominant% |
+|-------|--------|-------|-------|-------|-------|-----------|
+| P1    | 0.065  | 0.074 | 0.002 | 0.018 | 0.188 | 0.0%      |
+| P2    | 0.247  | 0.078 | 0.035 | 0.269 | 0.315 | 0.01%     |
+| P3    | 0.688  | 0.097 | 0.569 | 0.688 | 0.938 | 99.99%    |
 
-**Evidence needed:** ablation removing Phase 3 entirely. If F1 stays similar,
-Phase 3 is not contributing genuine signal. Also: compare JK weights on
-contracts where the model is correct vs incorrect.
+Normalised entropy across per-node weight distributions: **0.650**
+(0.0 = one phase monopolizes; 1.0 = perfectly uniform)
+
+**What the numbers say, precisely:**
+- **Phase 1 is near-dead.** p50 = 0.018 means half of all nodes in the entire
+  validation set assign less than 1.8% of their JK weight to structural edges.
+  Phase 1 features (CALLS, READS, WRITES, HAS_MODIFIER, etc.) are contributing
+  almost nothing to final embeddings. This is not a small bias — it is near-total
+  suppression.
+- **Phase 3 dominates globally, not locally.** 99.99% of nodes report Phase 3
+  as their highest-weight phase. This is not a subset of contracts — it is
+  essentially every node, in every contract, across the entire validation set.
+  The JK attention is behaving like a fixed scalar multiplier, not a per-node
+  selection mechanism.
+- **Phase 2 has genuine per-node variance.** Std=0.078 and the p5–p95 spread
+  (0.035 to 0.315) show that Phase 2 weight varies meaningfully across nodes —
+  some nodes rely on control-flow signal at ~3.5%, others at ~31.5%. This is
+  the only phase where JK is doing per-node discrimination.
+- **Entropy 0.650 is misleading.** Phase 2's variance inflates entropy. The
+  Phase 3 near-total dominance (p50=0.688 with p5=0.569) means the system is
+  closer to entropy=0 in practice than the scalar suggests.
+
+**The assumption the architecture makes:**
+JK should learn which phase is informative per node. A reentrancy-related CFG
+node should up-weight Phase 2 (execution ordering); a CONTRACT node should
+up-weight Phase 1 (structural topology). The observation above shows this is
+not happening — Phase 3 wins globally regardless of node type.
+
+**Two competing interpretations (cannot distinguish without ablation):**
+
+*Interpretation A (correct behavior):* REVERSE_CONTAINS is genuinely the most
+informative signal because the model correctly learns that function-level
+aggregation from CFG children is the best summary for contract classification.
+Phase 1 and Phase 2 contributed during early training but their signal is now
+encoded inside the node representations that feed Phase 3. The JK weight is
+low for P1/P2 not because they failed but because their work is already done.
+
+*Interpretation B (shortcut learning):* the model is using Phase 3 dominance
+as a proxy for contract size. Contracts with more CFG nodes send more and more
+varied Phase 3 messages to FUNCTION nodes → richer FUNCTION embeddings →
+easier separation in classifier space. The model is learning "how complex is
+this contract?" not "which specific vulnerability pattern does this contract
+exhibit?" Phase 1 is suppressed because structural topology (CALLS graph,
+READS/WRITES relationships) does not add predictive power once raw CFG size
+is captured via Phase 3.
+
+**Why the two interpretations are indistinguishable without an experiment:**
+Both produce the same JK weight histogram. Both produce similar validation F1.
+Both are consistent with the Phase 2 variance pattern.
+
+**Evidence needed:**
+1. **Ablation A1:** remove JK entirely (last-layer only). If F1 is equal or
+   higher, JK is adding parameters without benefit.
+2. **Phase 3 ablation:** train without REVERSE_CONTAINS edges at all. If F1
+   drops significantly, Phase 3 carries genuine signal. If F1 stays similar,
+   the model was using Phase 3 as a size/complexity shortcut.
+3. **Complexity correlation check (no training required):** compute the
+   Spearman correlation between (number of CFG nodes in a contract) and
+   (model's predicted vulnerability probability). If correlation is high,
+   shortcut learning is likely. This can be done on the existing model output
+   without retraining.
+4. **JK weight vs correctness:** compare Phase 3 weight distribution on
+   correctly-classified contracts vs incorrectly-classified ones. If wrong
+   predictions cluster at extreme Phase 3 dominance (p95+), shortcut
+   interpretation is supported.
+
+**Assessment: why Interpretation B (shortcut) is the more likely hypothesis:**
+
+Three specific observations push the evidence toward shortcut learning rather
+than correct behavior:
+
+*1. Phase 1 should be earning its weight and it isn't.*
+Phase 1 processes CALLS, READS, WRITES, HAS_MODIFIER edges — the structural
+relationships that encode "who calls whom, at what visibility, through which
+modifier chain." For access control vulnerabilities specifically, the CALLS graph
+is the primary distinguishing signal: which public function calls which internal
+function, which modifier guards which entry point. If the model had genuinely
+learned to detect access control bugs, Phase 1 weights on FUNCTION and CONTRACT
+nodes should be non-trivial. p50 = 1.8% on a dataset where access control is one
+of the most common classes is not "Phase 1 already did its work" — it is
+near-complete suppression of the most structurally informative signal.
+
+*2. Phase 3 uniformity across node types reveals the JK is not doing per-node selection.*
+Even CONTRACT-level and FUNCTION-level nodes — which have no CFG children and
+receive zero Phase 3 messages if isolated — should use Phase 1 more than CFG leaf
+nodes. If the Phase 3 dominance at 99.99% is uniform across node types (CONTRACT,
+FUNCTION, CFG_NODE all showing the same pattern), the JK attention learned a
+global scalar, not a node-role-aware selection. This is consistent with
+shortcut learning: the gradient signal for "predict vulnerability class" is
+easiest to satisfy by amplifying Phase 3 regardless of node identity.
+
+*3. Phase 2 variance is more likely CFG-depth artifact than genuine control-flow selection.*
+Phase 2 is the one phase showing real per-node variation (Std=0.078). But Phase 2
+operates on CFG nodes with identical feature vectors — every statement in the same
+function inherits the same 11-feature parent vector (BUG-C3 fix). GAT attention
+on uniform features produces near-uniform edge weights. The Phase 2 JK variance
+is more plausibly explained by CFG subgraph depth (nodes deeper in a long
+control-flow path accumulate more Phase 2 signal) than by the model
+discriminating "this is the call node vs the write node."
+
+**Three diagnostics that do NOT require retraining:**
+
+*D-A. Complexity correlation (fastest, 1 forward pass):*
+Compute Spearman rank correlation between (CFG node count per contract) and
+(model's predicted probability for predicted class) across the validation set.
+Threshold: r > 0.40 is strong evidence of size-as-feature shortcut.
+If r < 0.15: the model is not using raw size as its primary signal.
+
+*D-B. JK weight by node type (uses existing diagnostic output):*
+If the 936-contract diagnostic preserved node-type labels alongside per-node
+weights, group weights by node type (CONTRACT, FUNCTION, CFG_NODE). Prediction
+under shortcut: Phase 3 dominance is equally strong for CONTRACT nodes as for
+CFG leaf nodes, because the JK learned a global scalar. Prediction under correct
+behavior: CONTRACT nodes should show higher Phase 1/2 weights than leaf CFG nodes.
+
+*D-C. Phase 3 weight on correctly vs incorrectly classified contracts:*
+If wrong predictions cluster at extreme Phase 3 values (p95+), the model is
+most confident when Phase 3 dominance is highest — consistent with using
+contract complexity as a confidence signal rather than vulnerability structure.
+
+**Current working hypothesis:** Interpretation B is correct. The model has learned
+a partial shortcut: contracts in vulnerability classes tend to be larger/more complex
+(more functions, more external calls, more CFG nodes), and Phase 3 captures this
+complexity signal efficiently. Phase 1 (structural topology) is suppressed because
+raw CFG count is easier to gradient-descend on than relational structure.
+The model still generalizes moderately well because complexity does correlate with
+vulnerability presence — but it is not learning the causal mechanism.
+D-A above can confirm or refute this hypothesis without any training run.
 
 ---
 

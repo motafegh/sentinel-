@@ -113,7 +113,7 @@ Every bug fixed here represents a real data quality problem that corrupted train
 - ✅ Node insertion order: CONTRACT → parent CONTRACTs → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs
 - ✅ Why insertion order matters for graph_idx assignment — position = permanent identity
 - ✅ `graph_idx = len(x_list)` vs `len(node_index_map)` — parent CONTRACT node inserted in x_list but not always in node_index_map → index divergence → silent edge corruption
-- ☐ Slither integration — what Slither provides (IR, AST, CFG), what the extractor transforms
+- ✅ Slither integration — three layers: contract/function objects → CFG nodes → IR operations; extractor translates hierarchical objects into flat tensors; single shared module prevents silent feature divergence between training and inference
 
 ### CFG Construction
 
@@ -123,16 +123,15 @@ Every bug fixed here represents a real data quality problem that corrupted train
 - ✅ BUG-C3: CFG nodes had all-zero features except type_id — Phase 2 attention was uniform (useless)
 - ✅ BUG-C3: inheriting parent FUNCTION features (visibility, payable, complexity, has_loop) gives inter-function differentiation
 - ✅ The implication: intra-function CFG statements still identical in feature space — ordering from topology only
-- ☐ cfg_node_map scoped per-function — what changes in v8 (global map for ICFG)
+- ✅ cfg_node_map scoped per-function vs global — local works now; v8 ICFG needs global so cross-function CFG entry indices are accessible; nested per-function maps would also work but require function-context lookup
 
 ### Feature Computation
 
-- ☐ `_compute_return_ignored` — how the extractor detects unchecked call returns
-- ☐ Why LowLevelCall, HighLevelCall, AND Send IR types are all included (BUG-9 fix)
-- ☐ `_compute_uses_block_globals` — detecting block.timestamp/number/difficulty/basefee
-- ☐ BUG-1: loc log-normalization fix (was raw, caused scale explosion)
-- ☐ BUG-2: complexity log-normalization fix (could be 100+, was raw)
-- ☐ Feature range validation at extraction time — why [-1, 1], what happens outside it
+- ✅ `_compute_return_ignored` — walks IR ops, checks lvalue is None or never read; BUG-9 added Send alongside LowLevelCall/HighLevelCall
+- ✅ `_compute_uses_block_globals` — walks IR ops, finds SolidityVariableComposed reads matching block.* names; uses type(rv).__name__ defensively
+- ☐ BUG-1: loc log-normalization fix — was raw line count per CFG node, violated [0,1] range
+- ☐ BUG-2: complexity log-normalization fix — raw CFG block count could be 100+, dominated dot products
+- ☐ Feature range validation at extraction time — why [-1, 1], what the sentinel value -1.0 means
 
 ---
 
@@ -358,7 +357,7 @@ Cover after all current files are understood. These are the next design decision
 |-------|------|--------|
 | 1 | `graph_schema.py` — node features | ✅ Complete |
 | 1 | `graph_schema.py` — edge types | ✅ Complete (assert guards remain) |
-| 2 | `graph_extractor.py` | 🔄 In progress — contract selection ✅, construction ✅, CFG mostly ✅ |
+| 2 | `graph_extractor.py` | 🔄 Nearly complete — 3 feature computation items remain |
 | 3 | `gnn_encoder.py` | ☐ Not started |
 | 4 | `transformer_encoder.py` | ✅ Mostly complete (4 items remain) |
 | 5 | `fusion_layer.py` | ☐ Not started |
