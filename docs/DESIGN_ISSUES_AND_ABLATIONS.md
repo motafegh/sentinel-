@@ -293,10 +293,68 @@ Both are consistent with the Phase 2 variance pattern.
    predictions cluster at extreme Phase 3 dominance (p95+), shortcut
    interpretation is supported.
 
-**Current status:** Interpretation B (shortcut) is the higher-risk hypothesis
-because it would explain the observed pattern with fewer assumptions. The
-complexity-correlation check (point 3 above) can be done right now on the
-existing model without any retraining — it is the cheapest diagnostic available.
+**Assessment: why Interpretation B (shortcut) is the more likely hypothesis:**
+
+Three specific observations push the evidence toward shortcut learning rather
+than correct behavior:
+
+*1. Phase 1 should be earning its weight and it isn't.*
+Phase 1 processes CALLS, READS, WRITES, HAS_MODIFIER edges — the structural
+relationships that encode "who calls whom, at what visibility, through which
+modifier chain." For access control vulnerabilities specifically, the CALLS graph
+is the primary distinguishing signal: which public function calls which internal
+function, which modifier guards which entry point. If the model had genuinely
+learned to detect access control bugs, Phase 1 weights on FUNCTION and CONTRACT
+nodes should be non-trivial. p50 = 1.8% on a dataset where access control is one
+of the most common classes is not "Phase 1 already did its work" — it is
+near-complete suppression of the most structurally informative signal.
+
+*2. Phase 3 uniformity across node types reveals the JK is not doing per-node selection.*
+Even CONTRACT-level and FUNCTION-level nodes — which have no CFG children and
+receive zero Phase 3 messages if isolated — should use Phase 1 more than CFG leaf
+nodes. If the Phase 3 dominance at 99.99% is uniform across node types (CONTRACT,
+FUNCTION, CFG_NODE all showing the same pattern), the JK attention learned a
+global scalar, not a node-role-aware selection. This is consistent with
+shortcut learning: the gradient signal for "predict vulnerability class" is
+easiest to satisfy by amplifying Phase 3 regardless of node identity.
+
+*3. Phase 2 variance is more likely CFG-depth artifact than genuine control-flow selection.*
+Phase 2 is the one phase showing real per-node variation (Std=0.078). But Phase 2
+operates on CFG nodes with identical feature vectors — every statement in the same
+function inherits the same 11-feature parent vector (BUG-C3 fix). GAT attention
+on uniform features produces near-uniform edge weights. The Phase 2 JK variance
+is more plausibly explained by CFG subgraph depth (nodes deeper in a long
+control-flow path accumulate more Phase 2 signal) than by the model
+discriminating "this is the call node vs the write node."
+
+**Three diagnostics that do NOT require retraining:**
+
+*D-A. Complexity correlation (fastest, 1 forward pass):*
+Compute Spearman rank correlation between (CFG node count per contract) and
+(model's predicted probability for predicted class) across the validation set.
+Threshold: r > 0.40 is strong evidence of size-as-feature shortcut.
+If r < 0.15: the model is not using raw size as its primary signal.
+
+*D-B. JK weight by node type (uses existing diagnostic output):*
+If the 936-contract diagnostic preserved node-type labels alongside per-node
+weights, group weights by node type (CONTRACT, FUNCTION, CFG_NODE). Prediction
+under shortcut: Phase 3 dominance is equally strong for CONTRACT nodes as for
+CFG leaf nodes, because the JK learned a global scalar. Prediction under correct
+behavior: CONTRACT nodes should show higher Phase 1/2 weights than leaf CFG nodes.
+
+*D-C. Phase 3 weight on correctly vs incorrectly classified contracts:*
+If wrong predictions cluster at extreme Phase 3 values (p95+), the model is
+most confident when Phase 3 dominance is highest — consistent with using
+contract complexity as a confidence signal rather than vulnerability structure.
+
+**Current working hypothesis:** Interpretation B is correct. The model has learned
+a partial shortcut: contracts in vulnerability classes tend to be larger/more complex
+(more functions, more external calls, more CFG nodes), and Phase 3 captures this
+complexity signal efficiently. Phase 1 (structural topology) is suppressed because
+raw CFG count is easier to gradient-descend on than relational structure.
+The model still generalizes moderately well because complexity does correlate with
+vulnerability presence — but it is not learning the causal mechanism.
+D-A above can confirm or refute this hypothesis without any training run.
 
 ---
 
