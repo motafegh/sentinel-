@@ -298,7 +298,13 @@ CALL_ENTRY(8):  63.7% overall  |  Reentrancy=68.3%  ExternalBug=69.5%
 RETURN_TO(9):   55.5% overall
 DEF_USE(10):    80.3% overall  |  IntegerUO=81.0%
 ```
-All 6 required checks PASSED. CALL_ENTRY is well-distributed across all vulnerability classes (63–70%), confirming ICFG edges reach the contracts where they matter. DEF_USE is dense (80%) and concentrated on IntegerUO (81%) as expected.
+All 6 required checks PASSED.
+
+Key insights from full per-class breakdown (see `ml/logs/edge_activation_train.json`):
+- **CALL_ENTRY/RETURN_TO are not class-discriminative by presence** — range is 63–85% uniformly across all classes. They fire wherever there are internal function calls, regardless of vulnerability type. The model must learn structural *patterns* within ICFG traversal, not just edge presence.
+- **DEF_USE is lowest on Reentrancy (77.5%)** vs IntegerUO (81.0%) — consistent with H1: DEF_USE tracks arithmetic def-use chains, not CEI control-flow ordering. This was noise on Reentrancy contracts.
+- **DEF_USE highest on Timestamp (92.5%)** — block-global assignments generate dense def-use chains. Dropping DEF_USE in PLAN-3A will significantly reduce Timestamp signal.
+- **IntegerUO regress risk in PLAN-3A**: DEF_USE at 81.0% on IntegerUO is its primary discriminative signal. This is the class most likely to regress when DEF_USE is dropped. Monitor per-class F1 from ep5 onwards.
 
 - **Status:** **DONE (2026-05-21)** — ALL 6 CHECKS PASSED. Report: `ml/logs/edge_activation_train.json`
 
@@ -351,7 +357,7 @@ Before each training run, verify these are set correctly:
 | Log format (tqdm) | `disable=not sys.stdout.isatty()` in trainer.py | `grep -c "isatty" ml/src/training/trainer.py` must be ≥ 2; prevents `\r` pollution in redirected logs |
 | Weighted sampler | `use_weighted_sampler="positive"` in TrainConfig | Check default in `trainer.py:314` — `"none"` removes 3× upweighting on vuln rows and will hurt rare classes |
 
-- **Status:** OPEN (complete manually before launch — fill in run-name and confirm MLflow)
+- **Status:** **DONE (2026-05-21)** — run-name=`v8.0-A-20260521` (no MLflow conflict), `dos_loss_weight=0.0` ✓, `use_weighted_sampler="positive"` ✓, `isatty` guards=2 ✓, splits OK, cache OK, 110 augmented files OK.
 
 ---
 
@@ -440,6 +446,22 @@ After smoke test passes and full training launches, monitor the first 10 epochs 
 | ep8 end | F1 > 0.15 (past aux warmup, real learning happening) | Kill if still < 0.10 after warmup ends |
 | ep10 end | JK Phase 2 weight trend: compare to v8-AB ep10 (was 0.330) | If 3A's Phase 2 weight is < 0.15 at ep10, ICFG-only is not contributing more than CF(6) alone would |
 
+**Per-class predictions for PLAN-3A (from GATE-3A-0 results — updated 2026-05-21):**
+
+CALL_ENTRY/RETURN_TO are structurally uniform across all classes (63–85% by presence), confirming they are not class-discriminative by presence alone. The model must learn structural *patterns* within those edges. Expected directional changes vs v8-AB:
+
+| Class | Expected direction | Reasoning from GATE-3A-0 |
+|-------|--------------------|--------------------------|
+| Reentrancy | ↑ Improve | DEF_USE coverage 77.5% on Reentrancy — lowest of all classes. DEF_USE was uncorrelated noise for the CEI control-flow pattern; removing it should reduce false activations |
+| IntegerUO | ↓ Regress | DEF_USE 81.0% on IntegerUO — its primary arithmetic def-use signal. IntegerUO gained +0.009 F1 in v8-AB; dropping DEF_USE is likely the largest single regression risk |
+| ExternalBug | → Hold or slight ↑ | CALL_ENTRY 69.5% on ExternalBug; cross-function call pattern is preserved; may gain slightly from less noise |
+| Timestamp | ↓ Moderate regress | DEF_USE 92.5% on Timestamp — highest of all classes; block-global assignments create dense def-use chains. Dropping DEF_USE removes dense signal |
+| GasException | → Roughly hold | DEF_USE 81.0%, CALL_ENTRY 70.4%; similar density to IntegerUO but gas-limiting patterns also in CFG |
+| CallToUnknown | → Roughly hold | CALL_ENTRY 63.2% — lowest overall; may not change much |
+| TOD | → Roughly hold | Uniform signal; TOD gained +0.005 in v8-AB from ICFG, should hold |
+
+**Watch signal for kill decision:** If IntegerUO F1 at ep15 drops > 0.020 below v8-AB ep15, and Reentrancy has not recovered proportionally, PLAN-3A may yield net negative — flag and decide whether to continue to convergence or kill.
+
 - **Status:** OPEN
 
 ---
@@ -452,7 +474,7 @@ After smoke test passes and full training launches, monitor the first 10 epochs 
 | GATE-3A-CACHE | Cache integrity check | **DONE (2026-05-21)** |
 | GATE-3A-0 | Edge activation analysis — P0 blocking PLAN-3A | **DONE (2026-05-21)** |
 | GATE-3A-1 | Edge mask code verification | **DONE (2026-05-21)** |
-| GATE-3A-2 | Config review before each run (extended: DoS weight, aug data, MLflow, sampler, log format) | OPEN (manual — fill in run-name before launch) |
+| GATE-3A-2 | Config review before each run (extended: DoS weight, aug data, MLflow, sampler, log format) | **DONE (2026-05-21)** |
 | GATE-3A-VRAM | GPU memory budget check | **DONE (2026-05-21)** |
 | GATE-3A-3 | Smoke test — 2 epochs + probability spread check | **OPEN** |
 | GATE-3A-4 | Early epoch monitoring gate — first 10 eps | **OPEN** |
@@ -728,7 +750,7 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | GATE-3A-CACHE | Cache integrity check (schema v8, size, pair count) | 3 | P0 | PLAN-3C done | **DONE (2026-05-21)** |
 | GATE-3A-0 | Edge activation analysis — P0 blocking PLAN-3A | 3 | P0 | GATE-3A-CACHE | **DONE (2026-05-21)** |
 | GATE-3A-1 | Edge mask code verification | 3 | P0 | GATE-3A-0 | **DONE (2026-05-21)** |
-| GATE-3A-2 | Config review before each run (incl. DoS weight, aug data, MLflow, sampler) | 3 | P0 | GATE-3A-1 | OPEN (manual — complete before launch) |
+| GATE-3A-2 | Config review before each run (incl. DoS weight, aug data, MLflow, sampler) | 3 | P0 | GATE-3A-1 | **DONE (2026-05-21)** |
 | GATE-3A-VRAM | GPU memory budget check before smoke test | 3 | P0 | GATE-3A-2 | **DONE (2026-05-21)** — 8.0 GB free |
 | GATE-3A-3 | Smoke test — 2 epochs + probability spread check | 3 | P1 | GATE-3A-VRAM | OPEN |
 | GATE-3A-4 | Early epoch monitoring gate — first 10 eps | 3 | P1 | GATE-3A-3 | OPEN |
