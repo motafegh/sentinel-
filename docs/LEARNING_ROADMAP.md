@@ -64,18 +64,18 @@ anything else.
 
 ### Edge Types
 
-- ☐ `CONTAINS` (0) — parent→child relationships; CONTRACT→FUNCTION, FUNCTION→CFG_ENTRY
-- ☐ `CALLS` (1) — function A calls function B; cross-function reachability
-- ☐ `READS` (2) — function reads state variable; data dependency
-- ☐ `WRITES` (3) — function writes state variable; reentrancy core signal
-- ☐ `MODIFIES` (4) — function applies modifier; access control chain
-- ☐ `HAS_MODIFIER` (5) — modifier definition linkage
-- ☐ `CONTROL_FLOW` (6) — CFG statement A executes before B; execution ordering
-- ☐ `REVERSE_CONTAINS` (7) — bottom-up direction; why runtime-only, not stored on disk
-- ☐ Why these 8 and not more — the inclusion criteria for the schema
-- ☐ EMITS and INHERITS — defined but never appear in training graphs; why define them
-- ☐ What the current edge set cannot express — the blind spots (cross-function CFG, value flow)
-- ☐ Schema versioning: v7 → v8 → v9 and the discipline of versioning graph representations
+- ✅ `CONTAINS` (0) — parent→child relationships; CONTRACT→FUNCTION, FUNCTION→CFG_ENTRY
+- ✅ `CALLS` (1) — function A calls function B; cross-function reachability
+- ✅ `READS` (2) — function reads state variable; data dependency
+- ✅ `WRITES` (3) — function writes state variable; direction problem + compensation via features
+- ✅ `MODIFIES` (4) — function applies modifier; access control chain
+- ✅ `HAS_MODIFIER` (5) — modifier definition linkage
+- ✅ `CONTROL_FLOW` (6) — CFG statement A executes before B; execution ordering
+- ✅ `REVERSE_CONTAINS` (7) — runtime-only: disk=contract semantics, runtime=GNN architecture
+- ✅ Why these 8 and not more — each edge describes a real semantic relationship in Solidity
+- ✅ EMITS and INHERITS — placeholder slots; untrained embeddings = random noise if ever used
+- ✅ What the current edge set cannot express — cross-function CFG, value flow (v8/v9)
+- ✅ Schema versioning: v7→v8→v9 coupled system (graph files + embedding table + weights)
 - ☐ Assert guards at import time — what consistency invariants they enforce and why at import
 
 ---
@@ -87,10 +87,10 @@ Every bug fixed here represents a real data quality problem that corrupted train
 
 ### Contract Selection
 
-- ☐ BUG-6: why `most_funcs` heuristic was wrong (47.4% selected wrong contract)
+- ✅ BUG-6: why `most_funcs` was wrong — 47.4% picked base contract, not the deployed derived one
+- ✅ The impact on training: identical corruption in train+val = undetectable from loss curve
 - ☐ What "most derived" means in Solidity inheritance — base vs derived contracts
 - ☐ Why selecting the most derived contract reaches ~92% accuracy
-- ☐ The impact on training: 47.4% of graphs representing the wrong contract silently
 
 ### Graph Construction Algorithm
 
@@ -341,8 +341,8 @@ Cover after all current files are understood. These are the next design decision
 | Phase | File | Status |
 |-------|------|--------|
 | 1 | `graph_schema.py` — node features | ✅ Complete |
-| 1 | `graph_schema.py` — edge types | ☐ Not started |
-| 2 | `graph_extractor.py` | ☐ Not started |
+| 1 | `graph_schema.py` — edge types | ✅ Complete (assert guards remain) |
+| 2 | `graph_extractor.py` | 🔄 In progress — contract selection started |
 | 3 | `gnn_encoder.py` | ☐ Not started |
 | 4 | `transformer_encoder.py` | ✅ Mostly complete (4 items remain) |
 | 5 | `fusion_layer.py` | ☐ Not started |
@@ -351,4 +351,4 @@ Cover after all current files are understood. These are the next design decision
 | 8 | `trainer.py` | ☐ Not started |
 | 9 | v8/v9 extensions | ☐ Not started |
 
-**Next up:** Phase 1 — edge types (`graph_schema.py`), then Phase 2 — graph extractor.
+**Next up:** Phase 2 — complete graph extractor (contract selection → construction algorithm → CFG → features).
