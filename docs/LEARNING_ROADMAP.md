@@ -11,11 +11,26 @@ it makes, and what would break if it were wrong.
 
 ---
 
+## Teaching Approach
+
+**Code:** every concept from a source file is shown with the relevant code
+snippet first, then explained, then questioned. You do not need to keep files
+open — relevant code is brought here.
+
+**Questions:** answer from your understanding of what was just explained.
+Do not look up the code to answer — the questions test understanding, not
+memory or search skill.
+
+**If you don't get the question itself:** ask for a hint.
+**If you partially don't know:** ask for a hint.
+**If you have no idea at all:** say so and the full explanation follows.
+
+---
+
 ## How To Use This
 
-Work through each section in order. Before each item, reason about it yourself
-first. After it is covered, the item gets checked. If a concept was covered
-partially and needs revisiting, it stays unchecked with a note.
+Work through each section in order. Code is shown alongside each concept.
+After an item is covered and understood, it gets checked.
 
 ---
 
@@ -89,24 +104,25 @@ Every bug fixed here represents a real data quality problem that corrupted train
 
 - ✅ BUG-6: why `most_funcs` was wrong — 47.4% picked base contract, not the deployed derived one
 - ✅ The impact on training: identical corruption in train+val = undetectable from loss curve
-- ☐ What "most derived" means in Solidity inheritance — base vs derived contracts
-- ☐ Why selecting the most derived contract reaches ~92% accuracy
+- ✅ What "most derived" means in Solidity inheritance — deepest inheritance chain = final deployed contract
+- ✅ Why ~92% accuracy and not 100% — flat files with multiple unrelated inheritance trees are ambiguous
+- ✅ Single-contract analysis scope: inherited parents ARE included (Slither merges them); unrelated siblings correctly excluded; cross-deployment calls are the real blind spot
 
 ### Graph Construction Algorithm
 
-- ☐ Node insertion order: CONTRACT → parent CONTRACTs → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs
-- ☐ Why insertion order matters for graph_idx assignment — position = permanent identity
-- ☐ `graph_idx = len(x_list)` vs `len(node_index_map)` — the indexing fix and why they differ
+- ✅ Node insertion order: CONTRACT → parent CONTRACTs → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs
+- ✅ Why insertion order matters for graph_idx assignment — position = permanent identity
+- ✅ `graph_idx = len(x_list)` vs `len(node_index_map)` — parent CONTRACT node inserted in x_list but not always in node_index_map → index divergence → silent edge corruption
 - ☐ Slither integration — what Slither provides (IR, AST, CFG), what the extractor transforms
 
 ### CFG Construction
 
-- ☐ Two-pass CFG building — why two passes instead of one
-- ☐ Pass 1: assign node indices; Pass 2: build edges — why this order
-- ☐ CFG node sorting: deterministic ordering by (source_line, node_id)
-- ☐ BUG-C3: why CFG nodes had no meaningful features before the fix
-- ☐ BUG-C3: what inheriting parent FUNCTION features means (visibility, payable, complexity, has_loop)
-- ☐ The implication: 72% of nodes now have partially redundant features — does this hurt Phase 2?
+- ✅ Two-pass CFG building — forward edges need target indices that don't exist yet in one pass
+- ✅ Pass 1: assign node indices; Pass 2: build edges — why this order
+- ✅ CFG node sorting: source_line order for determinism across machines and Slither versions
+- ✅ BUG-C3: CFG nodes had all-zero features except type_id — Phase 2 attention was uniform (useless)
+- ✅ BUG-C3: inheriting parent FUNCTION features (visibility, payable, complexity, has_loop) gives inter-function differentiation
+- ✅ The implication: intra-function CFG statements still identical in feature space — ordering from topology only
 - ☐ cfg_node_map scoped per-function — what changes in v8 (global map for ICFG)
 
 ### Feature Computation
@@ -342,7 +358,7 @@ Cover after all current files are understood. These are the next design decision
 |-------|------|--------|
 | 1 | `graph_schema.py` — node features | ✅ Complete |
 | 1 | `graph_schema.py` — edge types | ✅ Complete (assert guards remain) |
-| 2 | `graph_extractor.py` | 🔄 In progress — contract selection started |
+| 2 | `graph_extractor.py` | 🔄 In progress — contract selection ✅, construction ✅, CFG mostly ✅ |
 | 3 | `gnn_encoder.py` | ☐ Not started |
 | 4 | `transformer_encoder.py` | ✅ Mostly complete (4 items remain) |
 | 5 | `fusion_layer.py` | ☐ Not started |
@@ -351,4 +367,4 @@ Cover after all current files are understood. These are the next design decision
 | 8 | `trainer.py` | ☐ Not started |
 | 9 | v8/v9 extensions | ☐ Not started |
 
-**Next up:** Phase 2 — complete graph extractor (contract selection → construction algorithm → CFG → features).
+**Next up:** Phase 2 — finish extractor (cfg_node_map scope, Slither integration, feature computation). Then Phase 3 GNN encoder.
