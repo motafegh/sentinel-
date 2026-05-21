@@ -9,7 +9,7 @@ Last updated: 2026-05-21 (rev 12 — JK attention collapse documented: per-node 
   - H1 CONFIRMED: Phase 2 multi-edge dilution hurts Reentrancy CEI pattern (−0.017 F1)
   - H5 CONFIRMED: class tradeoff — v8 wins IntegerUO/ExternalBug/TOD, loses Reentrancy/GasException/CallToUnknown
   - Loader bugs fixed: `_orig_mod` strip, edge-emb resize, `model.float()` in tune_threshold.py + predictor.py + gnn_encoder.py OOB clamp
-- **Next:** PLAN-3A — ICFG-only ablation (`--phase2-edge-types 6 8 9`, drop DEF_USE)
+- **PLAN-3A IN PROGRESS** — ICFG-only (`--phase2-edge-types 6 8 9`), run `v8.0-A-20260521`, launched 2026-05-21
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -495,9 +495,9 @@ CALL_ENTRY/RETURN_TO are structurally uniform across all classes (63–85% by pr
 | GATE-3A-1 | Edge mask code verification | **DONE (2026-05-21)** |
 | GATE-3A-2 | Config review before each run (extended: DoS weight, aug data, MLflow, sampler, log format) | **DONE (2026-05-21)** |
 | GATE-3A-VRAM | GPU memory budget check | **DONE (2026-05-21)** |
-| GATE-3A-3 | Smoke test — 2 epochs + probability spread check | **OPEN** |
-| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | **OPEN** |
-| PLAN-3A | v8-A full training run (ICFG-only) | **OPEN** — blocked on GATE-3A-2 (config review) + GATE-3A-3 (smoke test) |
+| GATE-3A-3 | Smoke test — 2 epochs + probability spread check | **DONE (2026-05-21)** — all signals pass; Phase2 0.363→0.380 (rising); F1=0.1784 ep2; VRAM 0.5/8.0 GiB |
+| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | **IN PROGRESS** — PLAN-3A launched 2026-05-21 |
+| PLAN-3A | v8-A full training run (ICFG-only) | **IN PROGRESS** — `v8.0-A-20260521`, log: `ml/logs/v8.0-A-20260521.log` |
 | PLAN-3B | v8-B full training run (DFG-only) | **OPEN** — same gate sequence required |
 | PLAN-3H | Apply optional S4 speed optimization (cap fusion tokens at 1024) — measure 1-epoch comparison first | OPEN |
 | PLAN-3D | JK collapse follow-on: if PLAN-3A+3B both confirm per-node std ≤ 0.08, run JK mode switch experiment (`gnn_jk_mode="cat"`) or entropy regularisation — see `docs/ml/jk-attention-collapse-findings.md` | OPEN — blocked on PLAN-3A+3B convergence |
