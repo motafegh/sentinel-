@@ -1313,14 +1313,26 @@ def train(config: TrainConfig) -> dict:
             # Gate: all three should be > 5% after smoke run (v5.2 success criterion).
             if config.gnn_use_jk and hasattr(model.gnn, "jk") and model.gnn.jk is not None:
                 _jk_cache = getattr(model.gnn.jk, "last_weights", None)
+                _jk_std_cache = getattr(model.gnn.jk, "last_weight_stds", None)
                 if _jk_cache is not None:
                     _jk_w = _jk_cache.cpu().tolist()   # [3] mean weights
-                    for _pi, _w in enumerate(_jk_w, start=1):
+                    _jk_s = _jk_std_cache.cpu().tolist() if _jk_std_cache is not None else [0.0] * len(_jk_w)
+                    for _pi, (_w, _s) in enumerate(zip(_jk_w, _jk_s), start=1):
                         mlflow.log_metric(f"jk_phase{_pi}_weight", _w, step=epoch)
+                        mlflow.log_metric(f"jk_phase{_pi}_std",    _s, step=epoch)
                     logger.info(
                         f"  JK attention weights — "
-                        f"Phase1={_jk_w[0]:.3f} Phase2={_jk_w[1]:.3f} Phase3={_jk_w[2]:.3f}"
+                        f"Phase1={_jk_w[0]:.3f}±{_jk_s[0]:.3f} "
+                        f"Phase2={_jk_w[1]:.3f}±{_jk_s[1]:.3f} "
+                        f"Phase3={_jk_w[2]:.3f}±{_jk_s[2]:.3f}"
                     )
+                    # std collapse alert: all stds < 0.05 → per-node mechanism is a global constant
+                    if max(_jk_s) < 0.05 and epoch >= 3:
+                        logger.warning(
+                            f"  ⚠ JK STD COLLAPSE: all per-phase stds < 0.05 "
+                            f"(max={max(_jk_s):.3f}). Per-node routing has collapsed to "
+                            "a global weight — the JK mean is the full story."
+                        )
                     # Phase 2-C3: phase dominance alert (> 80% = JK learned to ignore phases).
                     _max_w = max(_jk_w)
                     if _max_w > 0.80:
