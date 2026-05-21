@@ -235,11 +235,13 @@ print(f'Cache size: {size_gb:.2f} GB  OK')
 with open(cache_path, 'rb') as f:
     cache = pickle.load(f)
 
-version = cache.get('version', '<missing>')
+# Cache is a flat dict {md5_stem: (graph, token_dict)} plus a __schema_version__ key
+version = cache.get('__schema_version__', '<missing>')
 assert version == 'v8', f'Wrong schema version: {version!r} (expected v8)'
 print(f'Schema version: {version}  OK')
 
-n_pairs = len(cache.get('data', {}))
+# Pair count excludes the __schema_version__ metadata key
+n_pairs = len(cache) - 1  # one reserved key: __schema_version__
 assert n_pairs >= 40000, f'Too few pairs: {n_pairs} (expected ~41,576)'
 print(f'Pair count: {n_pairs}  OK')
 print('GATE-3A-CACHE PASSED')
@@ -253,7 +255,7 @@ print('GATE-3A-CACHE PASSED')
 | Schema version | `v8` | Wrong file (v7 cache) — check `--cache-path` arg |
 | Pair count | ≥ 40,000 | Incomplete extraction — re-run `create_cache.py` |
 
-- **Status:** OPEN (blocking — run before GATE-3A-0)
+- **Status:** **DONE (2026-05-21)** — size=2.16 GB, schema=v8, pairs=41,576. PASSED.
 
 ---
 
@@ -290,7 +292,15 @@ PYTHONPATH=. python ml/scripts/edge_activation.py \
 
 **Output to document:** `ml/logs/edge_activation_train.json` — per-type counts + per-class breakdown table. Record results in `docs/ml/v8-vs-v7-comparison-results.md` appendix before PLAN-3A launch.
 
-- **Status:** OPEN (blocking PLAN-3A)
+**Results (2026-05-21 — train split, 27,124 graphs):**
+```
+CALL_ENTRY(8):  63.7% overall  |  Reentrancy=68.3%  ExternalBug=69.5%
+RETURN_TO(9):   55.5% overall
+DEF_USE(10):    80.3% overall  |  IntegerUO=81.0%
+```
+All 6 required checks PASSED. CALL_ENTRY is well-distributed across all vulnerability classes (63–70%), confirming ICFG edges reach the contracts where they matter. DEF_USE is dense (80%) and concentrated on IntegerUO (81%) as expected.
+
+- **Status:** **DONE (2026-05-21)** — ALL 6 CHECKS PASSED. Report: `ml/logs/edge_activation_train.json`
 
 ---
 
@@ -321,7 +331,7 @@ print('GATE-3A-1 PASSED: DEF_USE correctly excluded')
 "
 ```
 
-- **Status:** OPEN (run immediately before PLAN-3A launch)
+- **Status:** **DONE (2026-05-21)** — Phase 2 mask active types: [6, 8, 9]. DEF_USE(10) correctly excluded. PASSED.
 
 ---
 
@@ -341,7 +351,7 @@ Before each training run, verify these are set correctly:
 | Log format (tqdm) | `disable=not sys.stdout.isatty()` in trainer.py | `grep -c "isatty" ml/src/training/trainer.py` must be ≥ 2; prevents `\r` pollution in redirected logs |
 | Weighted sampler | `use_weighted_sampler="positive"` in TrainConfig | Check default in `trainer.py:314` — `"none"` removes 3× upweighting on vuln rows and will hurt rare classes |
 
-- **Status:** OPEN
+- **Status:** OPEN (complete manually before launch — fill in run-name and confirm MLflow)
 
 ---
 
@@ -367,7 +377,7 @@ else:
 
 **If fails:** Run `nvidia-smi` to identify which process holds VRAM; kill or wait, then re-check.
 
-- **Status:** OPEN (run immediately before GATE-3A-3)
+- **Status:** **DONE (2026-05-21)** — 8.0/8.0 GB free. PASSED.
 
 ---
 
@@ -439,14 +449,14 @@ After smoke test passes and full training launches, monitor the first 10 epochs 
 | ID | Item | Status |
 |----|------|--------|
 | PLAN-3G | Fix stale `--run-name` default in `train.py:68` | **DONE** |
-| GATE-3A-CACHE | Cache integrity check | **OPEN** |
-| GATE-3A-0 | Edge activation analysis — P0 blocking PLAN-3A | **OPEN** |
-| GATE-3A-1 | Edge mask code verification | **OPEN** |
-| GATE-3A-2 | Config review before each run (extended: DoS weight, aug data, MLflow, sampler, log format) | **OPEN** |
-| GATE-3A-VRAM | GPU memory budget check | **OPEN** |
+| GATE-3A-CACHE | Cache integrity check | **DONE (2026-05-21)** |
+| GATE-3A-0 | Edge activation analysis — P0 blocking PLAN-3A | **DONE (2026-05-21)** |
+| GATE-3A-1 | Edge mask code verification | **DONE (2026-05-21)** |
+| GATE-3A-2 | Config review before each run (extended: DoS weight, aug data, MLflow, sampler, log format) | OPEN (manual — fill in run-name before launch) |
+| GATE-3A-VRAM | GPU memory budget check | **DONE (2026-05-21)** |
 | GATE-3A-3 | Smoke test — 2 epochs + probability spread check | **OPEN** |
 | GATE-3A-4 | Early epoch monitoring gate — first 10 eps | **OPEN** |
-| PLAN-3A | v8-A full training run (ICFG-only) | **OPEN** — blocked on GATE-3A-CACHE through GATE-3A-3 |
+| PLAN-3A | v8-A full training run (ICFG-only) | **OPEN** — blocked on GATE-3A-2 (config review) + GATE-3A-3 (smoke test) |
 | PLAN-3B | v8-B full training run (DFG-only) | **OPEN** — same gate sequence required |
 | PLAN-3H | Apply optional S4 speed optimization (cap fusion tokens at 1024) — measure 1-epoch comparison first | OPEN |
 | PLAN-3D | Inspect `jk.last_weights` after each run; verify Phase 2 weight in 0.10–0.80 range | OPEN |
@@ -715,14 +725,14 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | PLAN-2B–2I | Full v8 re-extraction + validation + cache rebuild | 2 | P1 | PLAN-2A | **DONE** |
 | PLAN-3G | Fix stale `--run-name` default in `train.py:68` | 3 | P0 | before any v8 run | **DONE** |
 | PLAN-3C | v8-AB ablation run (both ICFG + DFG) | 3 | P1 | Phase 2 done | **DONE (2026-05-20, F1=0.2621)** |
-| GATE-3A-CACHE | Cache integrity check (schema v8, size, pair count) | 3 | P0 | PLAN-3C done | **OPEN** |
-| GATE-3A-0 | Edge activation analysis — P0 blocking PLAN-3A | 3 | P0 | GATE-3A-CACHE | **OPEN** |
-| GATE-3A-1 | Edge mask code verification | 3 | P0 | GATE-3A-0 | **OPEN** |
-| GATE-3A-2 | Config review before each run (incl. DoS weight, aug data, MLflow, sampler) | 3 | P0 | GATE-3A-1 | **OPEN** |
-| GATE-3A-VRAM | GPU memory budget check before smoke test | 3 | P0 | GATE-3A-2 | **OPEN** |
-| GATE-3A-3 | Smoke test — 2 epochs + probability spread check | 3 | P1 | GATE-3A-VRAM | **OPEN** |
-| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | 3 | P1 | GATE-3A-3 | **OPEN** |
-| PLAN-3A | v8-A ablation run (ICFG only) | 3 | P1 | GATE-3A-CACHE through GATE-3A-3 | **OPEN (blocked on all GATE-3A-* gates)** |
+| GATE-3A-CACHE | Cache integrity check (schema v8, size, pair count) | 3 | P0 | PLAN-3C done | **DONE (2026-05-21)** |
+| GATE-3A-0 | Edge activation analysis — P0 blocking PLAN-3A | 3 | P0 | GATE-3A-CACHE | **DONE (2026-05-21)** |
+| GATE-3A-1 | Edge mask code verification | 3 | P0 | GATE-3A-0 | **DONE (2026-05-21)** |
+| GATE-3A-2 | Config review before each run (incl. DoS weight, aug data, MLflow, sampler) | 3 | P0 | GATE-3A-1 | OPEN (manual — complete before launch) |
+| GATE-3A-VRAM | GPU memory budget check before smoke test | 3 | P0 | GATE-3A-2 | **DONE (2026-05-21)** — 8.0 GB free |
+| GATE-3A-3 | Smoke test — 2 epochs + probability spread check | 3 | P1 | GATE-3A-VRAM | OPEN |
+| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | 3 | P1 | GATE-3A-3 | OPEN |
+| PLAN-3A | v8-A ablation run (ICFG only) | 3 | P1 | GATE-3A-2, GATE-3A-3 | **OPEN — blocked on GATE-3A-2 (config review) + GATE-3A-3 (smoke test)** |
 | PLAN-3B | v8-B ablation run (DFG only) | 3 | P1 | same gate sequence | **OPEN (same gate sequence required)** |
 | PLAN-3H | Apply optional S4 (cap fusion tokens at 1024) — measure first | 3 | P2 | Phase 2 done | OPEN |
 | PLAN-3D | Inspect `jk.last_weights` per run; check fused eye canary | 3 | P2 | PLAN-3A/B | OPEN |
