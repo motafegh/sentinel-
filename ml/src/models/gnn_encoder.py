@@ -101,6 +101,14 @@ class _JKAttention(nn.Module):
         self.attn = nn.Linear(channels, 1, bias=False)
         # Register as buffer so it survives .to(device), save/load, and DDP.
         self.register_buffer("last_weights", torch.zeros(num_phases))
+        # Per-phase std across all nodes in the batch — same shape [K] as last_weights.
+        # Tells the trainer whether the attention is behaving as a global constant
+        # (std ≈ 0) or genuinely routing different node types to different phases (std > 0.10).
+        self.register_buffer("last_weight_stds", torch.zeros(num_phases))
+        # Per-node weights stored in eval mode only (N varies per batch — not a buffer).
+        # Shape [N, K] after each forward pass in eval mode; None during training.
+        # Read by jk_weight_hist.py diagnostic; zero cost in training.
+        self.last_node_weights: "torch.Tensor | None" = None
 
     def forward(self, xs: list[torch.Tensor]) -> torch.Tensor:
         """
@@ -109,15 +117,21 @@ class _JKAttention(nn.Module):
         Returns:
             [N, channels]  — weighted sum, same shape as each input
 
-        Side effect: stores mean per-phase attention weights in self.last_weights
-        as a detached [K] tensor so the trainer can log them without an extra
-        forward pass. Phase 2-C1 (2026-05-14).
+        Side effects:
+          - always:    stores mean per-phase weights in self.last_weights [K]
+          - eval mode: stores full per-node weights in self.last_node_weights [N, K]
+                       for use by jk_weight_hist.py diagnostic script
         """
         stacked = torch.stack(xs, dim=1)        # [N, K, channels]
         scores  = self.attn(stacked)             # [N, K, 1]
         weights = torch.softmax(scores, dim=1)   # [N, K, 1]  (sum-to-1 over K)
-        # Update registered buffer in-place (preserves device + save/load).
-        self.last_weights.copy_(weights.squeeze(-1).mean(0).detach())  # [K]
+        w_nk    = weights.squeeze(-1)            # [N, K]
+        # Update registered buffers in-place (preserves device + save/load).
+        self.last_weights.copy_(w_nk.mean(0).detach())      # [K]
+        self.last_weight_stds.copy_(w_nk.std(0).detach())   # [K] — 0 if N=1
+        # Full per-node weights: only kept in eval mode (N varies, can't be a buffer).
+        if not self.training:
+            self.last_node_weights = w_nk.detach().cpu()
         return (weights * stacked).sum(dim=1)    # [N, channels]
 
 
@@ -392,7 +406,7 @@ class GNNEncoder(nn.Module):
         if edge_attr is not None:
             struct_mask   = edge_attr <= _CONTAINS
             if self.phase2_edge_types is not None:
-                cfg_mask = torch.zeros(n_edges, dtype=torch.bool, device=edge_index.device)
+                cfg_mask = torch.zeros(edge_attr.shape[0], dtype=torch.bool, device=edge_index.device)
                 for _t in self.phase2_edge_types:
                     cfg_mask |= (edge_attr == _t)
             else:

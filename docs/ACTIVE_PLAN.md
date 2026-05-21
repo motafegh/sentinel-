@@ -1,6 +1,6 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-21 (rev 10 — gates expanded: GATE-3A-CACHE + GATE-3A-VRAM added; GATE-3A-2 extended; Phase 4 gates detailed; Phase 1+2 retrospective notes added)
+Last updated: 2026-05-21 (rev 12 — JK attention collapse documented: per-node routing collapsed to global constant in v8-AB; PLAN-3D defined; GATE-3A-4 updated with ±std watch signal; trainer now logs jk_phase{i}_std; jk-attention-collapse-findings.md created)
 
 **Current state (2026-05-21):**
 - **v7.0 COMPLETE** — F1=0.2651 ep23 · `ml/checkpoints/v7.0_best.pt` · tuned F1=0.2875
@@ -206,6 +206,23 @@ Edge type distribution (full dataset):
 - Tuned F1=0.2851 vs v7 tuned 0.2875 — gap 0.0024
 - JK Phase 2 at kill: 0.204 (vs v7 final 0.182) — ICFG/DEF_USE contributing but diluted
 - Full findings: `docs/ml/v8-vs-v7-comparison-results.md`
+
+### JK attention collapse diagnosis (2026-05-21)
+Diagnostic script `ml/scripts/jk_weight_hist.py` run on v8-AB (936 val contracts, 123,139 nodes):
+
+| Phase | Mean | Std | IQR | Dominant% |
+|-------|------|-----|-----|-----------|
+| Phase 1 (struct+CONTAINS) | 0.065 | 0.074 | 0.006→0.157 (bimodal) | 0.0% |
+| Phase 2 (CF/ICFG/DFG) | 0.247 | 0.078 | 0.233→0.297 (0.064 range) | 0.01% |
+| Phase 3 (rev-CONTAINS) | 0.688 | 0.097 | 0.616→0.702 | 99.99% |
+
+**Normalised entropy: 0.650** — MODERATE; Phase 3 dominates every node; Phase 2 is a global constant (IQR 0.064). Per-node routing has NOT been learned — JK is behaving as a fixed global weighting.
+
+**This also held in v7** (Phase3=0.768 at plateau). Not a regression; a structural tendency of the architecture.
+
+**Not a blocker for PLAN-3A** — changing edge types and fixing JK collapse simultaneously makes results uninterpretable. Run PLAN-3A first.
+
+**Full analysis:** `docs/ml/jk-attention-collapse-findings.md`
 
 ---
 
@@ -442,9 +459,11 @@ After smoke test passes and full training launches, monitor the first 10 epochs 
 |-------|-------|-----------------|
 | ep1 end | F1 > 0.10 (any learning at all) | Kill — training not learning; check loss function and optimizer |
 | ep3 end | JK Phase 2 weight in 0.10–0.50 range | If < 0.10, ICFG edges are being ignored — log and flag, do not kill yet |
+| ep3 end | JK Phase 2 **std** > 0.05 (trainer now logs `±std`) | If all phase stds < 0.05, per-node routing has collapsed to a global constant immediately — structural concern, same as v8-AB but worse; collapse alert will fire in log |
 | ep5 end | Fused eye loss < GNN eye loss (fused head is most discriminative) | If fused > GNN, fusion layer is not learning — architectural concern |
 | ep8 end | F1 > 0.15 (past aux warmup, real learning happening) | Kill if still < 0.10 after warmup ends |
 | ep10 end | JK Phase 2 weight trend: compare to v8-AB ep10 (was 0.330) | If 3A's Phase 2 weight is < 0.15 at ep10, ICFG-only is not contributing more than CF(6) alone would |
+| ep10 end | JK Phase 2 **std** vs v8-AB baseline (0.078) | If std rises above 0.10, ICFG-only is creating genuine per-node differentiation; if stays ≤ 0.08, collapse is structural regardless of edge content |
 
 **Per-class predictions for PLAN-3A (from GATE-3A-0 results — updated 2026-05-21):**
 
@@ -481,7 +500,7 @@ CALL_ENTRY/RETURN_TO are structurally uniform across all classes (63–85% by pr
 | PLAN-3A | v8-A full training run (ICFG-only) | **OPEN** — blocked on GATE-3A-2 (config review) + GATE-3A-3 (smoke test) |
 | PLAN-3B | v8-B full training run (DFG-only) | **OPEN** — same gate sequence required |
 | PLAN-3H | Apply optional S4 speed optimization (cap fusion tokens at 1024) — measure 1-epoch comparison first | OPEN |
-| PLAN-3D | Inspect `jk.last_weights` after each run; verify Phase 2 weight in 0.10–0.80 range | OPEN |
+| PLAN-3D | JK collapse follow-on: if PLAN-3A+3B both confirm per-node std ≤ 0.08, run JK mode switch experiment (`gnn_jk_mode="cat"`) or entropy regularisation — see `docs/ml/jk-attention-collapse-findings.md` | OPEN — blocked on PLAN-3A+3B convergence |
 | PLAN-3I | Monitor fused eye loss relative to GNN/TF eyes — should be lowest of three | OPEN |
 | PLAN-3E | Run `return_ignored` scalar ablation on best ablation checkpoint — 0.5pp F1 gate decides v9 dim drop | OPEN |
 | PLAN-3J | Review `early_stop_patience=30` after first complete run — if best F1 is near ep60–80 and still rising, increase to 40–50 | OPEN |
