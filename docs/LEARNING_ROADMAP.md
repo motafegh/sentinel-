@@ -142,16 +142,18 @@ vulnerability embedding. Every architectural decision here is a hypothesis.
 
 ### Message Passing Fundamentals
 
-- ☐ The actual mathematical operation — not the metaphor, the formula
-- ☐ Simultaneous update vs sequential traversal — why all nodes update at once
-- ☐ Aggregation functions: sum, mean, max — order-independence and what each preserves
+- ✅ The actual mathematical operation — one layer = one hop; aggregate(transform(neighbors))
+- ✅ Simultaneous update vs sequential traversal — all nodes read current embeddings, write at once
+- ✅ Aggregation functions: sum, mean, max — what each preserves; max catches rare extremes mean washes out
+- ✅ Softmax normalization — sums to 1; dense neighborhoods dilute individual attention
+- ✅ Phase 2 two compounding problems — identical features + dense neighborhoods → uniform attention
 - ☐ The "maybe" problem: capacity vs guarantee — why architecture creates conditions not certainty
 - ☐ What the model might actually be learning vs what we designed it to learn
 
 ### GAT — Graph Attention Networks
 
-- ☐ Why GAT over GCN (Graph Convolutional Network) — the fixed vs learned weight distinction
-- ☐ Attention weight computation — how node feature vectors produce edge weights
+- ✅ Why GAT over GCN — GCN uses fixed degree-based weights; GAT uses learned feature-based weights
+- ✅ Attention weight computation — e_ij = LeakyReLU(a · concat(W·h_i, W·h_j, W_e·edge_attr)); softmax → α_ij
 - ☐ Multi-head attention in GAT — 8 heads × 32 dims = 256 hidden dim
 - ☐ Why multiple heads — what each head can specialize to detect
 - ☐ What attention weights do NOT tell you — the faithfulness problem
@@ -358,7 +360,7 @@ Cover after all current files are understood. These are the next design decision
 | 1 | `graph_schema.py` — node features | ✅ Complete |
 | 1 | `graph_schema.py` — edge types | ✅ Complete (assert guards remain) |
 | 2 | `graph_extractor.py` | 🔄 Nearly complete — 3 feature computation items remain |
-| 3 | `gnn_encoder.py` | ☐ Not started |
+| 3 | `gnn_encoder.py` | 🔄 In progress — message passing fundamentals done, mid-GAT |
 | 4 | `transformer_encoder.py` | ✅ Mostly complete (4 items remain) |
 | 5 | `fusion_layer.py` | ☐ Not started |
 | 6 | `sentinel_model.py` | ☐ Not started |
