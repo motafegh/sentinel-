@@ -204,10 +204,28 @@ identical feature vectors. The model must distinguish "call before write" from
 "write before call" using CONTROL_FLOW topology alone, without any feature
 signal about what kind of statement each node is.
 
-**Why it might be wrong:** GAT attention computes edge weights from feature
-similarity. If source and target have identical features, attention weights
-are identical — effectively uniform aggregation. The topology signal exists
-but the attention mechanism cannot amplify it for specific edge types.
+**Two compounding problems that neutralize Phase 2 attention:**
+
+*Problem 1 — Identical features → uniform attention:*
+GAT computes edge weights from feature similarity between source and target.
+All CFG nodes within the same function inherit identical feature vectors
+(BUG-C3 fix: inherit parent FUNCTION features). Identical features → identical
+attention scores → softmax produces 1/N for all N neighbors → uniform
+aggregation. The attention mechanism is completely neutralized: every CFG node
+contributes equally regardless of whether it contains a `.call()` or a balance
+update. Phase 2 degrades to plain averaging over topology.
+
+*Problem 2 — Dense neighborhoods dilute individual signals:*
+Softmax weights sum to 1 regardless of neighborhood size. A function with 3
+CFG nodes can give one node 80% attention. A function with 40 CFG nodes
+cannot give any single node more than ~12-15% even if its score is highest.
+Complex functions — exactly those most likely to contain vulnerability patterns
+— tend to have more CFG nodes. This means the model has less ability to
+spotlight a critical statement precisely when spotlighting matters most.
+
+Together: Phase 2 is doing near-uniform weighted averaging over dense
+neighborhoods of identically-featured nodes. The topology signal (ordering)
+still exists in the edges, but attention cannot amplify any specific part of it.
 
 **Evidence needed:** GradCAM analysis on confirmed reentrancy predictions.
 Do CFG nodes receive high attribution? Or does the model rely only on the
