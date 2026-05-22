@@ -6,6 +6,23 @@ and learning sessions. Items are not bugs (those live in ACTIVE_BUGS.md) but
 rather open questions about whether design decisions are correct, and things
 worth testing or improving.
 
+## Project Philosophy
+
+**This is an educational project.** The primary goal is deep understanding of
+every design decision — why it was made, what it assumes, what would break if
+the assumption is wrong. Schema changes, re-extraction, and retraining are
+not costs to minimize — they are learning opportunities. Changing the schema
+to test a hypothesis teaches more than leaving it unchanged.
+
+**Re-extraction is fast (~45 minutes on the development system).** Items marked
+"requires re-extraction" are not blocked by engineering effort. The only real
+cost is retraining time. This means improvements that require schema changes
+are more actionable than they might appear.
+
+**When in doubt, run the experiment.** The items in this document are hypotheses.
+The only way to confirm or refute them is to change one thing and measure the
+result. Do not leave hypotheses open indefinitely.
+
 **Sections:**
 1. [Ablation Candidates](#1-ablation-candidates) — controlled experiments to validate assumptions
 2. [Design Risks](#2-design-risks) — assumptions baked into the architecture that might be wrong
@@ -499,7 +516,8 @@ contains an external call or a state write. The model must infer this from
 topology alone.
 
 **Fix:** per-statement binary features (stmt_has_call, stmt_has_write) — see
-Ablation A8. Requires schema version bump and re-extraction.
+Ablation A8. Requires schema version bump, re-extraction (~45 min), and
+retraining. Not blocked by engineering effort — re-extraction is fast.
 
 ---
 
@@ -649,17 +667,19 @@ review would provide the highest information gain.
 
 ---
 
-### I2 — Per-Statement CFG Features (Medium impact, High effort)
+### I2 — Per-Statement CFG Features (High impact, Actionable)
 
 **What it is:** instead of inheriting function features, give each CFG node
 binary indicators of what that specific statement does.
 
-**Why:** solves Limitation L3 — Phase 2 can distinguish the `.call()` statement
-from the balance-update statement using features, not only topology.
+**Why:** solves Limitation L3 and directly addresses R1's two compounding
+problems — gives Phase 2 non-uniform features so GAT attention can actually
+differentiate the `.call()` statement from the balance-update statement.
 
 **What it requires:** changes to graph_schema.py (new feature columns),
 graph_extractor.py (per-statement Slither IR analysis), schema version bump,
-full re-extraction, full retraining.
+re-extraction (~45 min), retraining. Re-extraction is fast — this is not
+blocked by engineering effort, only by the decision to run the experiment.
 
 ---
 
