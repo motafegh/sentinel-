@@ -202,7 +202,14 @@ Three separate ablations when v8 extraction is ready:
 - **v8-B only:** DEF_USE edges — does value flow tracking improve precision?
 - **v8-AB:** both together — do they interact constructively or add noise?
 
-Each ablation requires full re-extraction of ~41K contracts at the new schema version.
+Re-extraction is ~45 min. Each ablation requires a retraining run after extraction.
+
+**v8 heads decision (open question):** current Phase 2 uses heads=1 because
+CONTROL_FLOW is a single edge type — one relationship to specialize across.
+v8 adds CALL_ENTRY(8) and RETURN_TO(9) to Phase 2, making it three edge types.
+Three distinct relationships (intra-function ordering, cross-function call entry,
+cross-function return) is a stronger argument for multi-head attention in Phase 2.
+When implementing v8, revisit whether Phase 2 should be upgraded to heads > 1.
 
 ---
 
