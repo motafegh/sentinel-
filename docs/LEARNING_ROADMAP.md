@@ -164,16 +164,19 @@ v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 
 ### Three-Phase Architecture (v8)
 
-- ☐ Phase 1: 2 layers, structural edges (types 0–5), self-loops ON
-- ☐ Why self-loops are ON in Phase 1 — what it means for a node to include itself
-- ☐ Phase 2: 3 layers, CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10), self-loops OFF
-- ☐ Why no self-loops in Phase 2 — what self-loops would destroy for CFG learning
-- ☐ Why Phase 2 has 3 layers — what requires the extra depth (CEI hop count)
-- ☐ `phase2_edge_types` parameter — runtime ablation switch; None=all 4, [6,8,9]=ICFG-only, [6,10]=DFG-only
-- ☐ Phase 3: 2 layers, REVERSE_CONTAINS (type 7), self-loops OFF
-- ☐ Why REVERSE_CONTAINS runs last — what information flows bottom-up
-- ☐ Why each phase is isolated — what bleeds together without isolation
-- ☐ Docstring inconsistency — header says 3 Phase 2 edge types, code (line 413–418) does 4 (DEF_USE included); also still says "v7 defaults" in PARAMETERS
+- ✅ Phase 1: 2 layers, structural edges (types 0–5), self-loops ON
+- ✅ Why self-loops are ON in Phase 1 — node participates in its own attention; own features influence neighbor weighting
+- ✅ Self-loop vs residual — self-loop is inside attention computation; residual is added after
+- ✅ Phase 2: 3 layers, CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10), self-loops OFF
+- ✅ Why no self-loops in Phase 2 — self-loops inject undirected Phase 1 context into directed CFG flow; dilutes ordering signal at every hop
+- ✅ Why Phase 2 has 3 layers — CEI hop count: ENTRY→CHECK→CALL→TMP→WRITE needs 3 hops
+- ✅ `phase2_edge_types` parameter — runtime ablation switch; None=all 4, [6,8,9]=ICFG-only, [6,10]=DFG-only
+- ✅ Phase 3: 2 layers, REVERSE_CONTAINS (type 7), self-loops OFF
+- ✅ Why REVERSE_CONTAINS runs last — CFG nodes must be enriched by Phase 2 before lifting to FUNCTION
+- ✅ `.flip(0)` to reverse edges at runtime — no re-extraction needed; type-7 embedding distinct from type-5
+- ✅ Residual connections — gradient vanishing problem; identity path ensures gradient ≥ 1 at every layer
+- ✅ Three phases as a pipeline — Phase 1 output feeds Phase 2; Phase 2 output feeds Phase 3
+- ☐ Why each phase uses isolated edge sets — what bleeds together without isolation
 
 ### JK — Jumping Knowledge Connections
 
