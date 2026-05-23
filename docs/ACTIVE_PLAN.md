@@ -647,12 +647,12 @@ CALL_ENTRY/RETURN_TO are structurally uniform across all classes (63–85% by pr
 | GATE-GCB-2 | P0 go/no-go: ep3 F1=0.2178 > 0.20 threshold, clear upward trend | ✅ PASSED (2026-05-24) |
 | P0b | Optional: CodeBERT + GNN prefix ablation | ⏩ SKIPPED (P0 sufficient for gate) |
 | P1-IMPL | Option B code changes + unit tests + predictor.py prefix support | ✅ DONE (2026-05-24) |
-| GATE-GCB-3 | 2-epoch smoke with K=48 — verify warmup suppression, no NaN | 🔵 LAUNCHING NOW |
-| P1-TRAIN | Full Phase 1 training (60–80h GPU) | 🔴 BLOCKED on GATE-GCB-3 |
+| GATE-GCB-3 | 2-epoch smoke with K=48 — passed on ep1, killed early | ✅ PASSED (2026-05-24) |
+| P1-TRAIN | Full 100-epoch run — `graphcodebert-v1-prefix48-20260524` | 🔵 RUNNING overnight |
 | P2 | Option C: shared contract-level DFG (1.5–2 weeks) | 🔴 FUTURE |
 | P3 | Option A: full per-window DFG masking (3–4 weeks) | 🔴 FUTURE |
 
-**Next gate:** GATE-GCB-3 smoke test running (2 epochs, ~80 min). If all signals pass → launch P1-TRAIN immediately after.
+**Next gate:** GATE-GCB-4 — monitor ep1–20 of P1-TRAIN. Prefix activates at ep16. Watch for loss spike then recovery. Target: tuned F1 > 0.30 at convergence.
 
 ---
 
@@ -942,8 +942,8 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | GCB-P0 | GraphCodeBERT drop-in — killed ep4, best ep3 F1=0.2178 | 3.6 | P0 | GCB-PRE | **DONE (2026-05-24)** — GATE-GCB-2 PASSED |
 | GCB-GATE-GCB-2 | P0 go/no-go gate | 3.6 | P0 | GCB-P0 | **PASSED (2026-05-24)** — ep3 F1=0.2178 > 0.20 |
 | GCB-P1-IMPL | Option B code + unit tests + predictor.py prefix support | 3.6 | P0 | — | **DONE (2026-05-24)** — all tests pass; predictor updated |
-| GCB-GATE-GCB-3 | 2-epoch smoke test with K=48 | 3.6 | P0 | P1-IMPL | **🔵 RUNNING** |
-| GCB-P1-TRAIN | Option B full training (60–80h GPU) | 3.6 | P0 | GATE-GCB-3 | BLOCKED |
+| GCB-GATE-GCB-3 | 2-epoch smoke — passed ep1, killed early | 3.6 | P0 | P1-IMPL | **✅ PASSED (2026-05-24)** |
+| GCB-P1-TRAIN | Full 100-epoch overnight run | 3.6 | P0 | GATE-GCB-3 | **🔵 RUNNING** |
 | GCB-P2 | Option C: shared DFG | 3.6 | P1 | GCB-P1 | FUTURE |
 | GCB-P3 | Option A: full per-window DFG | 3.6 | P2 | GCB-P2 | FUTURE |
 | BUG-M5 | Remove Brainmab mislabeled contract | 2 | P2 | — | OPEN |
