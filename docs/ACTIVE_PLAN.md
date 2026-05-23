@@ -1,15 +1,16 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-21 (rev 12 — JK attention collapse documented: per-node routing collapsed to global constant in v8-AB; PLAN-3D defined; GATE-3A-4 updated with ±std watch signal; trainer now logs jk_phase{i}_std; jk-attention-collapse-findings.md created)
+Last updated: 2026-05-23 (rev 13 — PLAN-3A COMPLETE: tuned F1=0.2877, full results in docs/ml/plan-3a-results.md; hypothesis verdicts updated; PLAN-3B predictions revised; PLAN-3B now unblocked)
 
-**Current state (2026-05-21):**
+**Current state (2026-05-23):**
 - **v7.0 COMPLETE** — F1=0.2651 ep23 · `ml/checkpoints/v7.0_best.pt` · tuned F1=0.2875
-- **v8.0-AB COMPLETE** — F1=0.2621 ep29 · `ml/checkpoints/v8.0-AB-20260520_best.pt` · killed ep37 patience 8/30 · tuned F1=0.2851
-- **v7 vs v8 comparison DONE (2026-05-20):** full results in `docs/ml/v8-vs-v7-comparison-results.md`
-  - H1 CONFIRMED: Phase 2 multi-edge dilution hurts Reentrancy CEI pattern (−0.017 F1)
-  - H5 CONFIRMED: class tradeoff — v8 wins IntegerUO/ExternalBug/TOD, loses Reentrancy/GasException/CallToUnknown
-  - Loader bugs fixed: `_orig_mod` strip, edge-emb resize, `model.float()` in tune_threshold.py + predictor.py + gnn_encoder.py OOB clamp
-- **PLAN-3A IN PROGRESS** — ICFG-only (`--phase2-edge-types 6 8 9`), run `v8.0-A-20260521`, launched 2026-05-21
+- **v8.0-AB (PLAN-3C) COMPLETE** — F1=0.2621 ep29 · tuned F1=0.2851 · full results: `docs/ml/v8-vs-v7-comparison-results.md`
+- **PLAN-3A COMPLETE (2026-05-23)** — F1=0.2790 ep41 · tuned F1=**0.2877** · `ml/checkpoints/v8.0-A-20260521_best.pt`
+  - Beats v7 tuned by +0.0002 (statistical tie) and v8-AB by +0.0026
+  - **Timestamp biggest winner: +0.032 vs v7** (DEF_USE was hurting it — opposite of prediction)
+  - **Reentrancy only +0.005 vs v8-AB** — H1 partially refuted; label noise (BUG-H5) is the real ceiling
+  - Full analysis: `docs/ml/plan-3a-results.md`
+- **Next:** PLAN-3B — DFG-only ablation (`--phase2-edge-types 6 10`, drop ICFG, keep DEF_USE)
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -197,8 +198,8 @@ Edge type distribution (full dataset):
 
 | ID | Run | Edges in Phase 2 mask | Purpose | Status |
 |----|-----|-----------------------|---------|--------|
-| PLAN-3C | v8-AB | `CF(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10)` | Joint effect (baseline) | **DONE** |
-| PLAN-3A | v8-A | `CF(6) + CALL_ENTRY(8) + RETURN_TO(9)` | Isolate ICFG contribution (drop DEF_USE) | OPEN |
+| PLAN-3C | v8-AB | `CF(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10)` | Joint effect (baseline) | **DONE** — tuned F1=0.2851 |
+| PLAN-3A | v8-A | `CF(6) + CALL_ENTRY(8) + RETURN_TO(9)` | Isolate ICFG contribution (drop DEF_USE) | **DONE** — tuned F1=0.2877 |
 | PLAN-3B | v8-B | `CF(6) + DEF_USE(10)` | Isolate DFG contribution (drop ICFG) | OPEN |
 
 ### PLAN-3C results (v8-AB — DONE 2026-05-20)
@@ -223,6 +224,33 @@ Diagnostic script `ml/scripts/jk_weight_hist.py` run on v8-AB (936 val contracts
 **Not a blocker for PLAN-3A** — changing edge types and fixing JK collapse simultaneously makes results uninterpretable. Run PLAN-3A first.
 
 **Full analysis:** `docs/ml/jk-attention-collapse-findings.md`
+
+---
+
+### PLAN-3A results (v8-A — DONE 2026-05-23)
+
+- **Best raw F1=0.2790** (ep41) · **Tuned F1=0.2877** · killed ep67 patience 26/30
+- Beats v7 tuned (0.2875) by **+0.0002** — statistical tie; beats v8-AB (0.2851) by +0.0026
+- **Full results + hypothesis verdicts:** `docs/ml/plan-3a-results.md`
+
+**Key per-class outcomes (tuned, vs v8-AB):**
+
+| Class | v8-AB | PLAN-3A | Δ | Predicted? |
+|-------|-------|---------|---|------------|
+| **Timestamp** | 0.217 | **0.255** | **+0.038** | ✗ predicted ↓, actually ↑ |
+| CallToUnknown | 0.236 | **0.256** | +0.020 | ✗ predicted →, actually ↑ |
+| Reentrancy | 0.286 | 0.291 | +0.005 | ✓ direction, ✗ magnitude |
+| MishandledException | 0.287 | **0.289** | +0.002 | — unpredicted |
+| IntegerUO | **0.715** | 0.699 | −0.016 | ✓ |
+| ExternalBug | **0.270** | 0.255 | −0.015 | ✗ predicted →, actually ↓ |
+| TOD | **0.262** | 0.251 | −0.011 | ✗ slight regress |
+| GasException | **0.360** | 0.358 | −0.002 | ✓ (approx hold) |
+
+**What H1 tells us now:** Reentrancy only recovered +0.005 vs v8-AB. The real ceiling is BUG-H5 (~14% of Reentrancy=1 contracts have no external calls — label noise). Edge type choice cannot fix mislabeled training data. Fix BUG-H5 in label_cleaner.py before v9.
+
+**Timestamp surprise:** DEF_USE was *hurting* Timestamp detection. PLAN-3B (DEF_USE restored) should reverse this gain — if Timestamp drops below 0.230 in PLAN-3B, the finding is confirmed.
+
+**JK in PLAN-3A:** Phase 2 peaked at 0.365±0.152 (ep3) — much higher std than v8-AB's final 0.078, confirming genuine per-node routing early. Faded to 0.048 by ep67. Improvement over v8-AB is mainly from better early initialization, not sustained ICFG routing.
 
 ---
 
@@ -481,7 +509,7 @@ CALL_ENTRY/RETURN_TO are structurally uniform across all classes (63–85% by pr
 
 **Watch signal for kill decision:** If IntegerUO F1 at ep15 drops > 0.020 below v8-AB ep15, and Reentrancy has not recovered proportionally, PLAN-3A may yield net negative — flag and decide whether to continue to convergence or kill.
 
-- **Status:** OPEN
+- **Status:** **DONE (2026-05-23)** — see PLAN-3A results above and `docs/ml/plan-3a-results.md`
 
 ---
 
@@ -496,15 +524,15 @@ CALL_ENTRY/RETURN_TO are structurally uniform across all classes (63–85% by pr
 | GATE-3A-2 | Config review before each run (extended: DoS weight, aug data, MLflow, sampler, log format) | **DONE (2026-05-21)** |
 | GATE-3A-VRAM | GPU memory budget check | **DONE (2026-05-21)** |
 | GATE-3A-3 | Smoke test — 2 epochs + probability spread check | **DONE (2026-05-21)** — all signals pass; Phase2 0.363→0.380 (rising); F1=0.1784 ep2; VRAM 0.5/8.0 GiB |
-| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | **IN PROGRESS** — PLAN-3A launched 2026-05-21 |
-| PLAN-3A | v8-A full training run (ICFG-only) | **IN PROGRESS** — `v8.0-A-20260521`, log: `ml/logs/v8.0-A-20260521.log` |
-| PLAN-3B | v8-B full training run (DFG-only) | **OPEN** — same gate sequence required |
+| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | **DONE (2026-05-22)** — all signals passed; Phase2 std=0.152 at ep3 (genuine per-node routing confirmed) |
+| PLAN-3A | v8-A full training run (ICFG-only) | **DONE (2026-05-23)** — tuned F1=0.2877 · `ml/checkpoints/v8.0-A-20260521_best.pt` · results: `docs/ml/plan-3a-results.md` |
+| PLAN-3B | v8-B full training run (DFG-only) | **OPEN** — same gate sequence required; run `edge_activation.py` first for DFG-specific checks |
 | PLAN-3H | Apply optional S4 speed optimization (cap fusion tokens at 1024) — measure 1-epoch comparison first | OPEN |
 | PLAN-3D | JK collapse follow-on: if PLAN-3A+3B both confirm per-node std ≤ 0.08, run JK mode switch experiment (`gnn_jk_mode="cat"`) or entropy regularisation — see `docs/ml/jk-attention-collapse-findings.md` | OPEN — blocked on PLAN-3A+3B convergence |
 | PLAN-3I | Monitor fused eye loss relative to GNN/TF eyes — should be lowest of three | OPEN |
 | PLAN-3E | Run `return_ignored` scalar ablation on best ablation checkpoint — 0.5pp F1 gate decides v9 dim drop | OPEN |
 | PLAN-3J | Review `early_stop_patience=30` after first complete run — if best F1 is near ep60–80 and still rising, increase to 40–50 | OPEN |
-| PLAN-3F | Document per-class F1 deltas v7→v8-A/B and write findings in `docs/ml/` | OPEN |
+| PLAN-3F | Document per-class F1 deltas v7→v8-A/B and write findings in `docs/ml/` | **DONE (2026-05-23)** — `docs/ml/plan-3a-results.md` contains full 3-way comparison |
 
 ---
 
@@ -771,10 +799,10 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | GATE-3A-1 | Edge mask code verification | 3 | P0 | GATE-3A-0 | **DONE (2026-05-21)** |
 | GATE-3A-2 | Config review before each run (incl. DoS weight, aug data, MLflow, sampler) | 3 | P0 | GATE-3A-1 | **DONE (2026-05-21)** |
 | GATE-3A-VRAM | GPU memory budget check before smoke test | 3 | P0 | GATE-3A-2 | **DONE (2026-05-21)** — 8.0 GB free |
-| GATE-3A-3 | Smoke test — 2 epochs + probability spread check | 3 | P1 | GATE-3A-VRAM | OPEN |
-| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | 3 | P1 | GATE-3A-3 | OPEN |
-| PLAN-3A | v8-A ablation run (ICFG only) | 3 | P1 | GATE-3A-2, GATE-3A-3 | **OPEN — blocked on GATE-3A-2 (config review) + GATE-3A-3 (smoke test)** |
-| PLAN-3B | v8-B ablation run (DFG only) | 3 | P1 | same gate sequence | **OPEN (same gate sequence required)** |
+| GATE-3A-3 | Smoke test — 2 epochs + probability spread check | 3 | P1 | GATE-3A-VRAM | **DONE (2026-05-21)** |
+| GATE-3A-4 | Early epoch monitoring gate — first 10 eps | 3 | P1 | GATE-3A-3 | **DONE (2026-05-22)** |
+| PLAN-3A | v8-A ablation run (ICFG only) | 3 | P1 | GATE-3A-2, GATE-3A-3 | **DONE (2026-05-23)** — tuned F1=0.2877 |
+| PLAN-3B | v8-B ablation run (DFG only) | 3 | P1 | same gate sequence | **OPEN** |
 | PLAN-3H | Apply optional S4 (cap fusion tokens at 1024) — measure first | 3 | P2 | Phase 2 done | OPEN |
 | PLAN-3D | Inspect `jk.last_weights` per run; check fused eye canary | 3 | P2 | PLAN-3A/B | OPEN |
 | PLAN-3I | Monitor fused eye loss relative to GNN/TF eyes in v8 | 3 | P2 | PLAN-3A/B | OPEN |
