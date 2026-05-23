@@ -123,28 +123,35 @@ Every bug fixed here represents a real data quality problem that corrupted train
 
 ### Graph Construction Algorithm
 
-- ✅ Node insertion order: CONTRACT → parent CONTRACTs → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs
-- ✅ Why insertion order matters for graph_idx assignment — position = permanent identity
-- ✅ `graph_idx = len(x_list)` vs `len(node_index_map)` — parent CONTRACT node inserted in x_list but not always in node_index_map → index divergence → silent edge corruption
-- ✅ Slither integration — three layers: contract/function objects → CFG nodes → IR operations; extractor translates hierarchical objects into flat tensors; single shared module prevents silent feature divergence between training and inference
+- ☐ Node insertion order: CONTRACT → parent CONTRACTs → STATE_VARs → FUNCTIONs → MODIFIERs → EVENTs — why this order is fixed
+- ☐ Why insertion order matters for graph_idx assignment — position = permanent identity; changing order silently corrupts all edges
+- ☐ `x_list` (global, all nodes) vs `node_index_map` (local, CFG nodes only) — why `graph_idx = len(x_list)` not `len(node_index_map)`; what bug the wrong choice creates
+- ☐ Slither integration — three abstraction layers: contract/function objects → CFG nodes → IR operations; single shared module prevents silent feature divergence
 
 ### CFG Construction
 
-- ✅ Two-pass CFG building — forward edges need target indices that don't exist yet in one pass
-- ✅ Pass 1: assign node indices; Pass 2: build edges — why this order
-- ✅ CFG node sorting: source_line order for determinism across machines and Slither versions
-- ✅ BUG-C3: CFG nodes had all-zero features except type_id — Phase 2 attention was uniform (useless)
-- ✅ BUG-C3: inheriting parent FUNCTION features (visibility, payable, complexity, has_loop) gives inter-function differentiation
-- ✅ The implication: intra-function CFG statements still identical in feature space — ordering from topology only
-- ✅ cfg_node_map scoped per-function vs global — local works now; v8 ICFG needs global so cross-function CFG entry indices are accessible; nested per-function maps would also work but require function-context lookup
+- ☐ Two-pass CFG building — why forward edges cannot be built in one pass; what forward-reference problem arises
+- ☐ Pass 1: assign indices + build feature vectors; Pass 2: build CONTROL_FLOW edges — why this exact split
+- ☐ CFG node sorting: source_line order for determinism across Slither versions and machines
+- ☐ BUG-C3: CFG nodes had all-zero features except type_id — Phase 2 attention was completely uniform; what was useless about it
+- ☐ BUG-C3 fix: inheriting parent FUNCTION features (visibility, payable, complexity, has_loop) — what this gives the model that zeros don't
+- ☐ The remaining implication: intra-function CFG statements still identical in feature space — ordering comes from topology only
+- ☐ `cfg_node_map` scoped per-function vs global — why local works for CONTROL_FLOW; why v8 ICFG needs global
 
 ### Feature Computation
 
-- ✅ `_compute_return_ignored` — walks IR ops, checks lvalue is None or never read; BUG-9 added Send alongside LowLevelCall/HighLevelCall
-- ✅ `_compute_uses_block_globals` — walks IR ops, finds SolidityVariableComposed reads matching block.* names; uses type(rv).__name__ defensively
+- ☐ `_compute_return_ignored` — why `op.lvalue is never None`; what the actual check is; BUG-9 added Send
+- ☐ `_compute_uses_block_globals` — why block.timestamp creates no READS edge; the SolidityVariableComposed distinction
 - ☐ BUG-1: loc log-normalization fix — was raw line count per CFG node, violated [0,1] range
 - ☐ BUG-2: complexity log-normalization fix — raw CFG block count could be 100+, dominated dot products
-- ☐ Feature range validation at extraction time — why [-1, 1], what the sentinel value -1.0 means
+- ☐ Feature range validation at extraction time — why [-1, 1], what the OOR warning does
+
+### v8 Edge Construction (ICFG + DEF_USE)
+
+- ☐ `_add_icfg_edges` — func_entry_map, func_terminal_map, func_cfg_maps — what each stores and why all three are needed
+- ☐ CALL_ENTRY: calling CFG node → callee ENTRYPOINT; RETURN_TO: callee terminals → call-site successors
+- ☐ `_add_def_use_edges` — two-pass: def_map build → use scan; why only LocalVariable tracked (not StateVariable, not TemporaryVariable)
+- ☐ Deduplication of (def_node, use_node) pairs — why multi-IR reads on the same node produce one edge
 
 ---
 
