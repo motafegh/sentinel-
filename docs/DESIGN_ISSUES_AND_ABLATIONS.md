@@ -922,9 +922,9 @@ checks, identify any gaps.
 | A9 Transformer eye ablation | ☐ Not run |
 | A10 v8 extension ablations | ✅ v8-AB + PLAN-3A done; PLAN-3B pending |
 | A11 PLAN-3D JK mode switch | ☐ Blocked on Step 1 (label quality) |
-| D1 Timestamp relabeling | 🔴 CRITICAL — confirmed primary bottleneck |
-| D2 DoS data collection | ☐ Open |
-| D3 Reentrancy no-external-calls audit | 🔴 CRITICAL — confirmed by PLAN-3A |
+| D1 Timestamp relabeling | ✅ Structural cleanup done (−568 via stricter check); semantic relabeling still open |
+| D2 DoS data collection | ⚠ ~260 samples in dataset — re-enable dos_loss_weight=0.5 before next run |
+| D3 Reentrancy no-external-calls audit | ✅ Structural cleanup done (−611 via WRITES-edge check); semantic noise still open |
 | D4 EMITS/INHERITS decision | ☐ Open |
 | D5 Empty contract_path fix | ☐ Open |
 | I1 Active learning setup | ☐ Not started |

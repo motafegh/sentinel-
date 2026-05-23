@@ -1,6 +1,6 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-23 (rev 13 — PLAN-3A COMPLETE: tuned F1=0.2877, full results in docs/ml/plan-3a-results.md; hypothesis verdicts updated; PLAN-3B predictions revised; PLAN-3B now unblocked)
+Last updated: 2026-05-23 (rev 14 — PIVOT TO DATA QUALITY: architecture ablations showed flat ceiling; label cleaning improved; PLAN-3B deferred; next run is v8.0-B with cleaned labels + dos_loss_weight=0.5)
 
 **Current state (2026-05-23):**
 - **v7.0 COMPLETE** — F1=0.2651 ep23 · `ml/checkpoints/v7.0_best.pt` · tuned F1=0.2875
@@ -10,7 +10,9 @@ Last updated: 2026-05-23 (rev 13 — PLAN-3A COMPLETE: tuned F1=0.2877, full res
   - **Timestamp biggest winner: +0.032 vs v7** (DEF_USE was hurting it — opposite of prediction)
   - **Reentrancy only +0.005 vs v8-AB** — H1 partially refuted; label noise (BUG-H5) is the real ceiling
   - Full analysis: `docs/ml/plan-3a-results.md`
-- **Next:** PLAN-3B — DFG-only ablation (`--phase2-edge-types 6 10`, drop ICFG, keep DEF_USE)
+- **PIVOT (2026-05-23):** v7/v8-AB/PLAN-3A all converge to same ~0.287 ceiling. Architecture is ruled out. **Data quality is the bottleneck.** Full analysis: `docs/ml/data-quality-findings.md`
+- **Next:** v8.0-B training with cleaned labels + DoS loss enabled (see Data Quality Phase below)
+- **PLAN-3B deferred** — no value running DFG-only ablation on the same noisy labels
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -251,6 +253,100 @@ Diagnostic script `ml/scripts/jk_weight_hist.py` run on v8-AB (936 val contracts
 **Timestamp surprise:** DEF_USE was *hurting* Timestamp detection. PLAN-3B (DEF_USE restored) should reverse this gain — if Timestamp drops below 0.230 in PLAN-3B, the finding is confirmed.
 
 **JK in PLAN-3A:** Phase 2 peaked at 0.365±0.152 (ep3) — much higher std than v8-AB's final 0.078, confirming genuine per-node routing early. Faded to 0.048 by ep67. Improvement over v8-AB is mainly from better early initialization, not sustained ICFG routing.
+
+---
+
+## Phase 3.5 — Data Quality Fixes (CURRENT FOCUS, 2026-05-23)
+
+**Trigger:** v7, v8-AB, PLAN-3A all hit the same ~0.287 tuned F1 ceiling. Architecture ruled out as bottleneck. Label quality is the bottleneck. Full analysis: `docs/ml/data-quality-findings.md`
+
+**Goal:** Raise the training signal quality so the next retraining run has a real chance of breaking the 0.29 barrier.
+
+---
+
+### DQ-1 — Improved structural label cleaning (DONE 2026-05-23)
+
+**What changed in `label_cleaner.py`:**
+
+1. **`check_reentrancy` (stricter):** Previously checked only `external_call_count > 0`. Now requires BOTH external calls AND at least one WRITES edge (edge type 2). Reentrancy requires a state write after an external call — without state writes, the contract is structurally incapable of classic reentrancy.
+
+2. **`check_timestamp` (stricter):** Previously checked only `uses_block_globals > 0`. Now requires block globals on a node that ALSO has external calls or is payable. Filters pure informational/logging timestamp use where no value-sensitive operation is affected.
+
+**Results (dry run + applied on `multilabel_index_deduped.csv`):**
+
+| Class | Labels removed |
+|-------|---------------|
+| Reentrancy | −611 |
+| Timestamp | −568 |
+| UnusedReturn | −1,665 |
+| CallToUnknown | −383 |
+| MishandledException | −632 |
+| **Total** | **−3,859** |
+
+**Output:** `ml/data/processed/multilabel_index_cleaned.csv` (updated 2026-05-23)  
+**Audit log:** `ml/data/processed/multilabel_index_cleaned.audit.json`  
+**Status: DONE**
+
+---
+
+### DQ-2 — Re-enable DoS loss weight (OPEN)
+
+**Current:** `dos_loss_weight=0.0` — DoS gradient detached. Set when DoS had 7 training samples.  
+**Current state:** ~260 DoS training positives (after augmented data injection from generate_dos_pairs.py).  
+**Action:** Set `dos_loss_weight=0.5` in next training run. Start conservative — augmented data shouldn't dominate real gradients.  
+**Expected:** Non-zero DoS F1 (currently ~0.030 which is threshold-tuning artifact with no real learning).  
+**Status: OPEN** — edit `dos_loss_weight` in TrainConfig before next run.
+
+---
+
+### DQ-3 — Complexity correlation diagnostic (IN PROGRESS 2026-05-23)
+
+**What:** `ml/scripts/complexity_correlation.py` — Spearman rank correlation between per-contract complexity metrics (node count, edge count, CFG density) and predicted vulnerability probability across val split.
+
+**Motivation:** R2 shortcut learning hypothesis — model may be using contract complexity (size) as a proxy for vulnerability presence rather than specific structural patterns. If true, F1 improvements from architectural changes are illusory — the model would still fail on small vulnerable contracts and pass on large safe contracts.
+
+**Threshold:** r > 0.40 = strong shortcut evidence; r < 0.15 = model learning structural patterns not raw size.  
+**Output:** `ml/logs/complexity_correlation_v8.0-A-20260521_best.json`  
+**Status: DONE (2026-05-23)**
+
+Results (1500 val contracts on PLAN-3A checkpoint):
+- Single alert: `ext_calls_sum` vs `MishandledException` r=0.402 — expected and benign (ext calls are necessary for MishandledException)
+- Highest near-shortcut: `num_nodes` vs `Timestamp` r=0.396 — consistent with BUG-H4 label noise
+- All other class-metric pairs: r=0.15–0.40 (moderate — not strong shortcuts)
+- **Conclusion:** Model shows moderate complexity correlations but NOT dominant shortcuts. No single metric drives the model's predictions. Label quality fixes expected to reduce these correlations.
+
+---
+
+### DQ-4 — Add confirmed-clean negative contracts (OPEN)
+
+**Problem:** Behavioral testing: `0/3 safe contracts clean`. Model fires 7/10 classes on a clean ERC20. Root cause: OR-labeling from BCCC dataset labeled benign ERC20s in vulnerability folders as vulnerable.
+
+**Fix:** Inject 100+ audited-clean contracts (OpenZeppelin ERC20/ERC721/Ownable base contracts) with all-zero labels into the training set via `inject_augmented.py`.
+
+**Impact:** Teaches the model what genuinely safe contract structure looks like. Reduces false positive rate in production use. Cannot fix OR-labeling noise for the 44K existing contracts — only adds clean anchors.
+
+**Status: OPEN** — requires sourcing 100+ confirmed-clean Solidity files.
+
+---
+
+### DQ-5 — Next training run: v8.0-B with clean labels (OPEN — after DQ-1 + DQ-2)
+
+**Config:** Use PLAN-3A best configuration (CF+CALL_ENTRY+RETURN_TO edges) — best F1 found so far.  
+**Changes vs PLAN-3A:**
+- Labels from updated `multilabel_index_cleaned.csv` (DQ-1 improvements)
+- `dos_loss_weight=0.5` (DQ-2)
+- Same architecture, same hyperparams
+
+**Expected improvements:**
+- Reentrancy: +0.01–0.02 (−611 structural noise contracts removed)
+- Timestamp: small additional gain (−568 additional noise contracts)
+- DoS: first real learning signal
+
+**After this run:** analyze results, then decide on:
+- Active learning loop for Timestamp (surface highest-uncertainty preds for manual review)
+- PLAN-3D (JK concatenation mode) only if data quality improvements clearly moved the ceiling
+
+**Status: OPEN**
 
 ---
 
@@ -812,8 +908,12 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | PLAN-4A | Implement `_add_control_dep_edges()` (CONTROL_DEP) | 4 | P1 | Phase 3 results | OPEN |
 | PLAN-4B | Update `graph_schema.py` to v9 constants | 4 | P2 | PLAN-3E + 4A | OPEN |
 | PLAN-4C | Update `gnn_encoder.py` Phase 1 mask + embedding size | 4 | P2 | PLAN-4B | OPEN |
-| BUG-H4 | Filter Timestamp labels with no source evidence | 2 | P1 | v8 graphs ready | OPEN |
-| BUG-H5 | Filter Reentrancy labels with no external calls | 2 | P1 | v8 graphs ready | OPEN |
+| BUG-H4 | Filter Timestamp labels with no source evidence | 3.5 | P0 | v8 graphs ready | **DONE (2026-05-23)** — stricter check applied in label_cleaner.py; −568 labels |
+| BUG-H5 | Filter Reentrancy labels with no external calls | 3.5 | P0 | v8 graphs ready | **DONE (2026-05-23)** — stricter check applied; −611 labels |
+| DQ-2 | Re-enable DoS loss weight (dos_loss_weight=0.5) | 3.5 | P1 | DQ-1 done | OPEN |
+| DQ-3 | Complexity correlation diagnostic (shortcut detection) | 3.5 | P1 | label cleaning done | IN PROGRESS |
+| DQ-4 | Add 100+ confirmed-clean negative contracts | 3.5 | P2 | — | OPEN |
+| DQ-5 | v8.0-B retraining with cleaned labels | 3.5 | P0 | DQ-1 + DQ-2 | OPEN |
 | BUG-M5 | Remove Brainmab mislabeled contract | 2 | P2 | — | OPEN |
 | BUG-M6 | Stale token schema version metadata | 2 | P3 | auto-resolved by retokenize | OPEN |
 | BUG-M7 | 8.5% graphs have empty contract_path | 1 | P3 | — | OPEN |

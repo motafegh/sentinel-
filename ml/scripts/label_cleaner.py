@@ -90,23 +90,71 @@ def _has_external_call(data) -> bool:
 
 
 def check_reentrancy(data) -> bool:
-    """Reentrancy requires an external call (Transfer/Send/HL/LL call).
-    FIX: CALLS edge (type 0) is internal function calls — NOT external calls.
-    External calls are captured in external_call_count (dim[10]).
+    """
+    Reentrancy requires an external call AND a state write (WRITES edge type 2).
+    Two conditions must both hold:
+    1. At least one function node has external_call_count > 0
+    2. At least one WRITES edge (type 2) exists — the contract writes state
+
+    Reentrancy cannot occur if either is absent: a contract with no external
+    calls cannot re-enter, and a contract with no state writes has no state to
+    corrupt on re-entry.
+
+    Stricter than the previous single-check: reduces false positives from
+    contracts that have external calls but are structurally incapable of
+    reentrancy (e.g., view-only callers, stateless helpers).
+
+    FIX note: CALLS edge (type 0) is internal function calls — NOT external.
+    External calls are in external_call_count (dim[10]).
     Old bug: _has_calls_edge() tested internal calls → 72.8% of removed
-    Reentrancy contracts had ext_call_count>0 and were incorrectly stripped."""
-    return bool((data.x[:, 10] > 0.0).any())  # external_call_count dim[10]
+    Reentrancy contracts had ext_call_count>0 and were incorrectly stripped.
+    """
+    EDGE_WRITES = 2
+    has_ext_call = bool((data.x[:, 10] > 0.0).any())
+    if not has_ext_call:
+        return False
+    ea = data.edge_attr
+    if ea is None:
+        return False
+    if ea.dim() > 1:
+        ea = ea.squeeze(-1)
+    has_writes = bool((ea == EDGE_WRITES).any())
+    return has_writes
 
 
 def check_timestamp(data) -> bool:
-    """Timestamp requires at least one node reading block globals.
+    """
+    Timestamp requires block globals usage AND the contract does something
+    value-sensitive with them. Two conditions:
+    1. At least one node reads block globals (uses_block_globals dim[2] > 0.5)
+    2. AND the contract either has external calls or has payable functions —
+       i.e., there's a value-sensitive operation the timestamp could influence.
+
+    Motivation: Slither's Timestamp detector fires on ANY conditional use of
+    block.timestamp, including safe patterns like event timestamps, expiry for
+    informational logs, or public getters. The majority of false positives are
+    contracts where block.timestamp is read but only for display/logging or
+    non-critical operations (no value transfer, no payable path).
+
+    This is still conservative — it will keep some false positives (contracts
+    that log timestamps AND have unrelated payable functions) but reduces the
+    48.2% mislabeling rate measured in BUG-H4.
+
     KNOWN LIMITATION: the `now` alias (SolidityVariable, pre-Solidity 0.5)
     is not captured by _compute_uses_block_globals in the extractor — it only
     checks SolidityVariableComposed. Contracts using only `now` will have
     x[2]=0 and get incorrectly removed. Fix requires re-extraction.
-    Scope: BCCC is predominantly pre-0.5, so this may affect a meaningful
-    fraction of the 423 removed Timestamp contracts."""
-    return bool((data.x[:, 2] > 0.5).any())
+    """
+    x = data.x
+    has_globals = (x[:, 2] > 0.5)
+    if not bool(has_globals.any()):
+        return False
+    # Require at least one function node that BOTH reads block globals
+    # AND has external calls or is payable — the value-sensitive combination.
+    has_ext_call = (x[:, 10] > 0.0)
+    has_payable  = (x[:, 4] > 0.5)
+    meaningful   = has_globals & (has_ext_call | has_payable)
+    return bool(meaningful.any())
 
 
 def check_mishandled_exception(data) -> bool:
