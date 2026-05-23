@@ -1,51 +1,39 @@
 # ml/src/data_extraction — Raw Data Processing
 
-Offline batch processing pipeline for converting Solidity contracts into model-ready representations.
+Offline batch pipeline converting Solidity contracts into model-ready graph and token representations.
 
 ## Purpose
 
-This module handles the extraction and tokenization of raw Solidity source code into the graph and token representations used by the SENTINEL dual-path architecture.
+Handles the extraction and tokenization of raw Solidity source code into the v8 graph and token formats consumed by the SENTINEL dual-path model. Both scripts checkpoint/resume so they can be interrupted and restarted.
 
 ## Components
 
 ### `ast_extractor.py`
-**AST Extractor V4.3 — Offline Batch Pipeline**
+**Graph Extraction Pipeline**
 
-Orchestration layer for graph extraction from Solidity contracts:
+Orchestration layer for batch graph extraction from Solidity contracts:
 - Reads contract metadata from parquet files
-- Resolves correct solc binary for each Solidity version
-- Spawns 11 worker processes for parallel extraction
-- Extracts PyTorch Geometric graphs with v7 schema (11-dim features)
+- Resolves correct `solc` binary per Solidity version via `solc-select`
+- Spawns parallel worker processes for extraction
+- Extracts PyG graphs with v8 schema (11-dim node features, 11 edge types)
 - Writes `<md5_hash>.pt` files to `ml/data/graphs/`
 
-**Key Features:**
-- Checkpoint/resume system for large batches
-- Version-pinned solc binary resolution
-- Multiprocessing for speed
-- Error handling with skip-and-log policy
+**Architecture note:** core graph construction logic lives in:
+- `ml/src/preprocessing/graph_schema.py` — schema constants, NodeType IntEnum
+- `ml/src/preprocessing/graph_extractor.py` — `extract_contract_graph()`, feature builders, edge constructors
 
-**Architecture Note:**
-Graph construction logic has been extracted to:
-- `ml/src/preprocessing/graph_schema.py` — Schema definitions
-- `ml/src/preprocessing/graph_extractor.py` — Core extraction logic
-
-This ensures training/inference feature consistency.
+This ensures offline extraction and online inference compute identical features.
 
 ### `tokenizer.py`
-**CodeBERT Tokenizer V1 — Production Pipeline**
+**GraphCodeBERT Tokenizer Pipeline**
 
-Converts Solidity contracts to CodeBERT token sequences:
-- MD5 hash naming (matches graph files)
-- Checkpoint/resume system
-- Multiprocessing (11 workers)
-- Sliding window tokenization (4 windows × 512 tokens)
-- Batch processing for speed
+Converts Solidity contracts to GraphCodeBERT token sequences:
+- MD5 hash naming (matches graph files for pairing)
+- Sliding window tokenization: 4 windows × 512 tokens, stride=256
+- Checkpoint/resume for interrupted runs
+- Parallel workers
 
-**Key Features:**
-- Handles long contracts via sliding windows
-- Consistent hashing for graph-token pairing
-- Error handling and logging
-- Progress tracking with tqdm
+**Stride=256 with K=48 note:** code_budget per window = 512 − K = 464. Stride=256 < 464 → 208-token overlap between windows — no gaps. Retokenization is only needed if K exceeds 256.
 
 ## Data Flow
 
@@ -53,10 +41,10 @@ Converts Solidity contracts to CodeBERT token sequences:
 Raw Solidity Contracts (.sol)
         │
         ├─► ast_extractor.py ──► ml/data/graphs/<hash>.pt
-        │                         (PyG graphs, 11-dim features)
+        │                         PyG Data, graph.x=[N,11], graph.edge_attr=[E] int64
         │
         └─► tokenizer.py ──────► ml/data/tokens_windowed/<hash>.pt
-                                  (4×512 token windows)
+                                  tensor [4, 512] (4 windows, stride=256)
 ```
 
 ## Usage
@@ -77,49 +65,38 @@ poetry run python ml/src/data_extraction/tokenizer.py \
     --workers 11
 ```
 
-## Schema Compatibility
+Or via the pipeline scripts (preferred — handles checkpoint/resume automatically):
+```bash
+poetry run python ml/scripts/reextract_graphs.py
+poetry run python ml/scripts/retokenize_windowed.py
+```
 
-**Current Schema: v7**
-- NODE_FEATURE_DIM = 11
-- FEATURE_SCHEMA_VERSION = "v7"
-- 8 edge types (0-7)
+## Schema Reference
 
-**Important:** 
-- Existing .pt files in `ml/data/graphs/` use edge_attr shape [E, 1]
-- New files use edge_attr shape [E] (PyG 1-D convention)
-- GNNEncoder ignores edge_attr, so both shapes are safe
+**Current Schema: v8**
+
+| Constant | Value |
+|----------|-------|
+| `NODE_FEATURE_DIM` | 11 |
+| `FEATURE_SCHEMA_VERSION` | `"v8"` |
+| `NUM_EDGE_TYPES` | 11 |
+| `edge_attr` shape | `[E]` 1-D int64 |
+
+`edge_attr` is stored as 1-D int64 (PyG convention). Older extractions may have `[E, 1]` shape — the GNNEncoder's `Embedding(11, 64)` handles both via `.squeeze(-1)` normalization in the dataset loader.
+
+## Current Data State
+
+| Directory / File | Count | Notes |
+|-----------------|-------|-------|
+| `ml/data/graphs/` | 41,576 `.pt` | v8 schema, 11-dim |
+| `ml/data/tokens_windowed/` | 44,470 `.pt` | [4, 512], stride=256 |
+
+2,948 stems in the label CSV have no matching graph — expected Slither extraction failures. The cache builder excludes them automatically.
 
 ## Dependencies
 
-- `slither-analyzer` >= 0.9.3 — Static analysis and graph extraction
-- `solc-select` — Solidity version management
+- `slither-analyzer` ≥ 0.9.3 — static analysis and graph extraction
+- `solc-select` — Solidity compiler version management
 - `torch-geometric` — PyG graph structures
-- `transformers` — CodeBERT tokenizer
-- `pandas` — Metadata handling
-
-## Performance
-
-**Graph Extraction:**
-- ~41,522 contracts
-- 11 workers
-- Several hours (depends on hardware)
-
-**Tokenization:**
-- ~44,470 contracts
-- 11 workers
-- ~30-60 minutes
-
-## Error Handling
-
-Both scripts implement:
-- Checkpoint/resume for interrupted runs
-- Skip-and-log policy for failed extractions
-- Progress tracking
-- Comprehensive error logging
-
-## Integration
-
-These scripts are called by:
-- `ml/scripts/reextract_graphs.py` — Full graph re-extraction
-- `ml/scripts/retokenize_windowed.py` — Full tokenization
-- Manual runs for individual contracts or subsets
+- `transformers` — GraphCodeBERT tokenizer (`microsoft/graphcodebert-base`)
+- `pandas` — metadata parquet handling

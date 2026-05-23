@@ -1,84 +1,107 @@
 # ml/src/data — Data Storage Directory
 
-Storage location for processed ML data artifacts.
-
-## Purpose
-
-This directory contains the actual data files used by the SENTINEL ML pipeline, including extracted graphs, tokenized contracts, and cached datasets.
+Storage location for processed ML data artifacts. This directory and its contents are **not committed to git** (see `.gitignore`).
 
 ## Structure
 
-### `graphs/`
-- **Contents**: PyTorch Geometric graph files (.pt format)
-- **Schema**: v7 schema with 11-dimensional node features
-- **Count**: 41,522 graph files
-- **Naming**: `<md5_hash>.pt` (MD5 hash of contract path)
-- **Features**:
-  - 8 edge types (CALLS, READS, WRITES, EMITS, INHERITS, CONTAINS, CONTROL_FLOW, REVERSE_CONTAINS)
-  - 11-dimensional node feature vectors
-  - FEATURE_SCHEMA_VERSION = "v7"
+```
+ml/data/
+├── graphs/                      # PyG graph files — v8 schema, 11-dim
+├── tokens_windowed/             # GraphCodeBERT token windows — [4, 512]
+├── cached_dataset_v8.pkl        # 2.2 GB paired cache — 41,576 samples
+├── processed/
+│   ├── multilabel_index.csv             # raw label index
+│   ├── multilabel_index_deduped.csv     # after content-hash dedup
+│   └── multilabel_index_cleaned.csv     # after structural label cleaning (training target)
+└── splits/
+    └── deduped/
+        ├── train_indices.npy    # 29,103 positions
+        ├── val_indices.npy      # 6,236 positions
+        └── test_indices.npy     # 6,237 positions
+```
 
 ## Data Files
 
 ### Graph Files (`graphs/*.pt`)
-Each graph file contains:
-- Node features: shape [N, 11] where N is number of nodes
-- Edge indices: shape [2, E] where E is number of edges
-- Edge types: shape [E] with values 0-7
-- Graph metadata: contract hash, extraction timestamp
 
-### Token Files (stored in `ml/data/tokens_windowed/`)
-- **Location**: Parent directory `ml/data/tokens_windowed/`
-- **Format**: PyTorch tensors (.pt)
-- **Shape**: [4, 512] - 4 sliding windows of 512 tokens each
-- **Count**: 44,470 token files
-- **Naming**: `<md5_hash>.pt` (matches corresponding graph file)
+Each file is a PyG `Data` object:
 
-### Cached Dataset (stored in parent directory)
-- **Location**: `ml/data/cached_dataset_deduped.pkl`
-- **Size**: 2.28 GB
-- **Contents**: 41,577 paired (graph, tokens) samples
-- **Purpose**: Fast loading for training/inference
+| Field | Shape | Dtype | Notes |
+|-------|-------|-------|-------|
+| `graph.x` | `[N, 11]` | float32 | Node features, v8 schema |
+| `graph.edge_index` | `[2, E]` | int64 | Directed edges, COO format |
+| `graph.edge_attr` | `[E]` | int64 | Edge type indices 0–10 |
+| `graph.contract_hash` | str | — | MD5 hash, matches token file name |
 
-## Data Pipeline
+- **Count:** 41,576 files
+- **Naming:** `<md5_hash>.pt`
+- **Schema version:** `FEATURE_SCHEMA_VERSION = "v8"`
+- **Loading:** `torch.load(path, weights_only=False)` — PyG 2.7 metadata blocks `weights_only=True`
 
-Data flows through these stages:
-1. **Raw contracts** → `ml/src/data_extraction/ast_extractor.py` → `graphs/*.pt`
-2. **Raw contracts** → `ml/src/data_extraction/tokenizer.py` → `tokens_windowed/*.pt`
-3. **Graphs + tokens** → `ml/scripts/create_cache.py` → `cached_dataset_deduped.pkl`
+### Token Files (`tokens_windowed/*.pt`)
 
-## Schema Versioning
+Each file is a tensor of shape `[4, 512]`:
+- 4 sliding windows of 512 GraphCodeBERT tokens
+- Stride=256 between windows; code_budget=464 per window when K=48
+- **Count:** 44,470 files (includes contracts without matching graphs)
+- **Naming:** `<md5_hash>.pt` (matches graph file)
 
-Current schema version: **v7**
-- NODE_FEATURE_DIM = 11
-- FEATURE_SCHEMA_VERSION = "v7"
-- Any schema changes require bumping this version and re-extracting all graphs
+### Cached Dataset (`cached_dataset_v8.pkl`)
 
-## Important Notes
+Pre-built paired cache:
+- **Size:** ~2.2 GB
+- **Contents:** 41,576 `(graph, tokens, label)` tuples
+- **Schema:** v8 — regenerate if `FEATURE_SCHEMA_VERSION` is bumped
+- **Build:** `poetry run python ml/scripts/create_cache.py`
 
-- This directory is NOT committed to git (see .gitignore)
-- Graph files use MD5 hash naming for consistent pairing with token files
-- All graph files follow the v7 schema (11-dim node features)
-- Missing graphs (2,948 stems) are expected due to Slither extraction failures
-- Cache builder automatically excludes samples without matching graphs
+### Split Indices (`splits/deduped/*.npy`)
 
-## Storage Requirements
+Stratified train/val/test split (seed=42). Stored as int64 position arrays into the cached dataset's sorted sample list.
 
-- Graphs directory: ~2-3 GB
-- Tokens directory: ~1-2 GB
-- Cached dataset: 2.28 GB
-- Total: ~5-7 GB
+| File | Samples |
+|------|---------|
+| `train_indices.npy` | 29,103 |
+| `val_indices.npy` | 6,236 |
+| `test_indices.npy` | 6,237 |
+
+Always load from `.npy` files — never from `.txt` equivalents.
+
+## Schema Version
+
+**Current: v8**
+
+| Constant | Value |
+|----------|-------|
+| `NODE_FEATURE_DIM` | 11 |
+| `FEATURE_SCHEMA_VERSION` | `"v8"` |
+| `NUM_EDGE_TYPES` | 11 |
+| `NUM_CLASSES` | 10 |
+
+Bump `FEATURE_SCHEMA_VERSION` in `graph_schema.py` for any schema change. This invalidates the cache (`create_cache.py` checks the version and refuses stale data).
 
 ## Regeneration
 
-To regenerate all data files:
 ```bash
-# Re-extract graphs
+# Full re-extraction + cache rebuild:
 poetry run python ml/scripts/reextract_graphs.py
-
-# Re-tokenize contracts
 poetry run python ml/scripts/retokenize_windowed.py
-
-# Rebuild cache
+poetry run python ml/scripts/build_multilabel_index.py
+poetry run python ml/scripts/dedup_multilabel_index.py --relabel-timestamp
+poetry run python ml/scripts/inject_augmented.py
+poetry run python ml/scripts/label_cleaner.py \
+    --graphs-dir ml/data/graphs \
+    --label-csv ml/data/processed/multilabel_index_deduped.csv
 poetry run python ml/scripts/create_cache.py
+# Splits are stable — regenerate only if the dataset composition changes:
+# poetry run python ml/scripts/create_splits.py
 ```
+
+## Storage Requirements
+
+| Location | Size |
+|----------|------|
+| `graphs/` | ~2–3 GB |
+| `tokens_windowed/` | ~1–2 GB |
+| `cached_dataset_v8.pkl` | ~2.2 GB |
+| `processed/` + `splits/` | < 100 MB |
+| **Total** | **~5–8 GB** |
