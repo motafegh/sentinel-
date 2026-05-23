@@ -137,50 +137,62 @@ Every bug fixed here represents a real data quality problem that corrupted train
 
 ## Phase 3 — GNN Encoder (`ml/src/models/gnn_encoder.py`)
 
-The graph neural network that converts the extracted graph into a 128-dimensional
-vulnerability embedding. Every architectural decision here is a hypothesis.
+The graph neural network that converts the extracted graph into a 256-dimensional
+node embedding (then pooled to 128 for the classifier). Every architectural
+decision here is a hypothesis. Currently at v8 — v7 added JK+LayerNorm,
+v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 
 ### Message Passing Fundamentals
 
-- ☐ The actual mathematical operation — not the metaphor, the formula
-- ☐ Simultaneous update vs sequential traversal — why all nodes update at once
-- ☐ Aggregation functions: sum, mean, max — order-independence and what each preserves
+- ✅ The actual mathematical operation — one layer = one hop; aggregate(transform(neighbors))
+- ✅ Simultaneous update vs sequential traversal — all nodes read current embeddings, write at once
+- ✅ Aggregation functions: sum, mean, max — what each preserves; max catches rare extremes mean washes out
+- ✅ Softmax normalization — sums to 1; dense neighborhoods dilute individual attention
+- ✅ Phase 2 two compounding problems — identical features + dense neighborhoods → uniform attention
 - ☐ The "maybe" problem: capacity vs guarantee — why architecture creates conditions not certainty
 - ☐ What the model might actually be learning vs what we designed it to learn
 
 ### GAT — Graph Attention Networks
 
-- ☐ Why GAT over GCN (Graph Convolutional Network) — the fixed vs learned weight distinction
-- ☐ Attention weight computation — how node feature vectors produce edge weights
-- ☐ Multi-head attention in GAT — 8 heads × 32 dims = 256 hidden dim
-- ☐ Why multiple heads — what each head can specialize to detect
+- ✅ Why GAT over GCN — GCN uses fixed degree-based weights; GAT uses learned feature-based weights
+- ✅ Attention weight computation — e_ij = LeakyReLU(a · concat(W·h_i, W·h_j, W_e·edge_attr)); softmax → α_ij
+- ✅ Multi-head attention in GAT — 8 heads × 32 dims = 256 hidden dim; each head learns independently
+- ✅ Why multiple heads — different heads specialize for different edge type relationships
+- ✅ Why Phase 2 uses heads=1 — all Phase 2 edge types express the same semantic (execution ordering)
+- ✅ v8 heads=1 open question — 3→4 edge types in Phase 2; same-purpose argument still holds but weaker
 - ☐ What attention weights do NOT tell you — the faithfulness problem
 
-### Three-Phase Architecture
+### Three-Phase Architecture (v8)
 
-- ☐ Phase 1: 2 layers, structural edges (types 0–5), self-loops ON
-- ☐ Why self-loops are ON in Phase 1 — what it means for a node to include itself
-- ☐ Phase 2: 3 layers, CONTROL_FLOW only (type 6), self-loops OFF — why critical
-- ☐ Why no self-loops in Phase 2 — what self-loops would destroy for CFG learning
-- ☐ Why Phase 2 has 3 layers instead of 2 — what requires the extra depth
-- ☐ Phase 3: 2 layers, REVERSE_CONTAINS (type 7), self-loops OFF
-- ☐ Why REVERSE_CONTAINS runs last — what information flows bottom-up
-- ☐ Why each phase is isolated — what bleeds together without isolation
-- ☐ Phase separation as computation-level separation in a unified graph
+- ✅ Phase 1: 2 layers, structural edges (types 0–5), self-loops ON
+- ✅ Why self-loops are ON in Phase 1 — node participates in its own attention; own features influence neighbor weighting
+- ✅ Self-loop vs residual — self-loop is inside attention computation; residual is added after
+- ✅ Phase 2: 3 layers, CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10), self-loops OFF
+- ✅ Why no self-loops in Phase 2 — self-loops inject undirected Phase 1 context into directed CFG flow; dilutes ordering signal at every hop
+- ✅ Why Phase 2 has 3 layers — CEI hop count: ENTRY→CHECK→CALL→TMP→WRITE needs 3 hops
+- ✅ `phase2_edge_types` parameter — runtime ablation switch; None=all 4, [6,8,9]=ICFG-only, [6,10]=DFG-only
+- ✅ Phase 3: 2 layers, REVERSE_CONTAINS (type 7), self-loops OFF
+- ✅ Why REVERSE_CONTAINS runs last — CFG nodes must be enriched by Phase 2 before lifting to FUNCTION
+- ✅ `.flip(0)` to reverse edges at runtime — no re-extraction needed; type-7 embedding distinct from type-5
+- ✅ Residual connections — gradient vanishing problem; identity path ensures gradient ≥ 1 at every layer
+- ✅ Three phases as a pipeline — Phase 1 output feeds Phase 2; Phase 2 output feeds Phase 3
+- ☐ Why each phase uses isolated edge sets — what bleeds together without isolation
 
 ### JK — Jumping Knowledge Connections
 
 - ☐ Oversmoothing — what it is, why it happens at depth, why it destroys node distinctiveness
 - ☐ What oversmoothing looks like in practice — all nodes converging to the same embedding
 - ☐ JK design — learned attention over all 3 phase outputs, not just final layer
-- ☐ `_JKAttention`: Linear(channels, 1), softmax over phases
-- ☐ `register_buffer("last_weights")` — why JK weights are logged as a diagnostic
-- ☐ JK weights as signal: Phase3=0.57 dominating — what it tells you and what it doesn't
-- ☐ The _live list (without .detach()) vs _intermediates dict (with .detach()) — gradient flow reason
+- ☐ `_JKAttention`: Linear(channels, 1), softmax over phases — the full forward pass
+- ☐ `register_buffer("last_weights")` — why buffers survive .to(device), save/load, DDP
+- ☐ `last_weight_stds` buffer — per-phase std across nodes; 0=global constant, >0.10=genuine routing
+- ☐ `last_node_weights` — stored in eval mode only (not a buffer — N varies); used by jk_weight_hist.py
+- ☐ eval vs training mode distinction — why full per-node weights only stored during eval
+- ☐ The _live list (no .detach()) vs _intermediates dict (.detach().clone()) — gradient flow reason
 
 ### Layer Normalization
 
-- ☐ What LayerNorm does — normalizing across feature dimensions
+- ☐ What LayerNorm does — normalizing across feature dimensions per node
 - ☐ Per-phase LayerNorm — why between phases, not once at the end
 - ☐ What happens without it — Phase 1 magnitude dominating JK softmax
 - ☐ The interaction between LayerNorm and JK — why both are needed together
@@ -197,8 +209,8 @@ vulnerability embedding. Every architectural decision here is a hypothesis.
 ### Architecture Parameters
 
 - ☐ Hidden dim 256 (was 128) — what doubled capacity enables vs costs
-- ☐ Edge embedding dim 64 — why embed edge types as learned vectors
-- ☐ `nn.Embedding` for edge types — what this means vs one-hot encoding
+- ☐ Edge embedding dim 64 — why embed edge types as learned vectors not one-hot
+- ☐ `nn.Embedding` for edge types — lookup table; row per type; learned during training
 - ☐ ~2.4M parameters vs original ~91K — what changed and whether it's justified
 
 ---
@@ -336,18 +348,27 @@ the transferable skills — the things that apply beyond this project.
 
 ---
 
-## Phase 9 — Graph Extensions (v8/v9 Proposal)
+## Phase 9 — Graph Extensions (v8 implemented; v9 pending)
 
-Cover after all current files are understood. These are the next design decisions.
+v8 is fully implemented and ablations have been run (see git log and docs/).
+Cover the design decisions and results after all other files are understood.
 
-- ☐ Extension A: ICFG-Lite — CALL_ENTRY(8) and RETURN_TO(9) edges crossing function boundaries
-- ☐ Why global_cfg_node_map is needed for ICFG (vs per-function map in v7)
+### v8 — Implemented (cover the design reasoning)
+
+- ☐ Extension A: ICFG-Lite — CALL_ENTRY(8) and RETURN_TO(9): what cross-function CFG enables
+- ☐ Why global_cfg_node_map was needed for ICFG (vs per-function map in v7)
 - ☐ Extension B: DEF_USE(10) — value flow from definition site to use sites
 - ☐ Three DEF_USE categories: call return values, arithmetic results, state variable reads
-- ☐ Extension C: Control-Dep(11) — direct edge from CHECK to governed statements
-- ☐ Schema evolution: v7(8) → v8(11) → v9(12) edge types
-- ☐ Risk analysis: graph explosion, recursive cycles, Phase 2 heterogeneity
-- ☐ Ablation plan: v8-A, v8-B, v8-AB — how to isolate which extension actually helps
+- ☐ `phase2_edge_types` ablation param — how it isolates v8-A vs v8-B vs v8-AB
+- ☐ v8-AB ablation results — what actually improved and what didn't (results in docs/)
+- ☐ Schema evolution: v7(8 edge types) → v8(11 edge types) — what changed and why
+
+### v9 — Not yet implemented (future)
+
+- ☐ Extension C: Control-Dep(11) — direct edge from CHECK node to governed statements
+- ☐ Why Control-Dep is different from CONTROL_FLOW — semantic vs structural dependency
+- ☐ Schema evolution: v8(11) → v9(12) edge types
+- ☐ Risk analysis: graph explosion on recursive contracts, Phase 2 heterogeneity with 5 edge types
 
 ---
 
@@ -358,12 +379,13 @@ Cover after all current files are understood. These are the next design decision
 | 1 | `graph_schema.py` — node features | ✅ Complete |
 | 1 | `graph_schema.py` — edge types | ✅ Complete (assert guards remain) |
 | 2 | `graph_extractor.py` | 🔄 Nearly complete — 3 feature computation items remain |
-| 3 | `gnn_encoder.py` | ☐ Not started |
+| 3 | `gnn_encoder.py` | 🔄 In progress — message passing fundamentals done, mid-GAT |
 | 4 | `transformer_encoder.py` | ✅ Mostly complete (4 items remain) |
 | 5 | `fusion_layer.py` | ☐ Not started |
 | 6 | `sentinel_model.py` | ☐ Not started |
 | 7 | `losses.py` | ☐ Not started |
 | 8 | `trainer.py` | ☐ Not started |
-| 9 | v8/v9 extensions | ☐ Not started |
+| 9 | v8 extensions (implemented) | ☐ Design reasoning not yet covered |
+| 9 | v9 extensions (pending) | ☐ Not yet implemented |
 
-**Next up:** Phase 2 — finish extractor (cfg_node_map scope, Slither integration, feature computation). Then Phase 3 GNN encoder.
+**Current position:** Phase 3 GNN encoder — mid-GAT section. Next: faithfulness problem, then Three-Phase Architecture.
