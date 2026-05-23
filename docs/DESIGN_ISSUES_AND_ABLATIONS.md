@@ -6,6 +6,131 @@ and learning sessions. Items are not bugs (those live in ACTIVE_BUGS.md) but
 rather open questions about whether design decisions are correct, and things
 worth testing or improving.
 
+## Project Philosophy
+
+**This is an educational project.** The primary goal is deep understanding of
+every design decision — why it was made, what it assumes, what would break if
+the assumption is wrong. Schema changes, re-extraction, and retraining are
+not costs to minimize — they are learning opportunities. Changing the schema
+to test a hypothesis teaches more than leaving it unchanged.
+
+**Re-extraction is fast (~45 minutes on the development system).** Items marked
+"requires re-extraction" are not blocked by engineering effort. The only real
+cost is retraining time. This means improvements that require schema changes
+are more actionable than they might appear.
+
+**When in doubt, run the experiment.** The items in this document are hypotheses.
+The only way to confirm or refute them is to change one thing and measure the
+result. Do not leave hypotheses open indefinitely.
+
+---
+
+## Current Diagnosis (2026-05-23)
+
+**Evidence base:** v7.0 (ep23), v8.0-AB (ep29), PLAN-3A/v8.0-A (ep41).
+Full results in `docs/ml/`.
+
+### The Ceiling Is Flat Across All Architectures
+
+| Run | Tuned F1-macro | Architecture change vs v7 |
+|-----|---------------|--------------------------|
+| v7.0 | 0.2875 | baseline |
+| v8.0-AB | 0.2851 | +ICFG-Lite + DEF_USE (11 edge types) |
+| PLAN-3A | 0.2877 | +ICFG-only (drop DEF_USE) |
+
+Three architecturally different models. Same ceiling. **The bottleneck is not
+the architecture.** Adding edge types, re-extracting, and retraining produced
+effectively zero F1 improvement. The entire v8 engineering effort = +0.0002 F1.
+
+### The Real Bottleneck: Data Quality
+
+Confirmed by PLAN-3A analysis: *"The architecture is not the bottleneck — it's
+the label quality and the fundamental limit of the v8 graph representation for
+ambiguous classes."*
+
+- **Timestamp (D1):** 48.2% mislabeled. Model trains on wrong signal. No
+  architecture can learn the right pattern from wrong labels. PLAN-3A confirmed:
+  removing DEF_USE improved Timestamp +0.038 — not by fixing the architecture,
+  but by removing edges that amplified the noise in mislabeled training data.
+- **Reentrancy (D3):** H1 hypothesis (ICFG improves Reentrancy) partially
+  refuted. ICFG gave only +0.005, still −0.012 below v7. The ceiling is
+  label noise (14% of Reentrancy=1 contracts have no external calls), not
+  missing edges.
+- **DoS (D2):** 7 training samples, excluded from loss. Unfixable without
+  data collection.
+
+### JK Collapse Is Confirmed and Structural
+
+Both v7 and v8 converge to the same Phase 3 dominance pattern:
+
+| Model | Phase 1 | Phase 2 | Phase 3 |
+|-------|---------|---------|---------|
+| v7 final | 0.050 | 0.182 | 0.768 |
+| v8-AB best (ep29) | 0.063 | 0.243 | 0.694 |
+| v8-AB killed (ep37) | 0.052 | 0.204 | 0.744 |
+| PLAN-3A best (ep41) | ~0.067 | 0.155 | 0.778 |
+
+Per-node diagnostic: 99.99% of nodes assign Phase 3 as dominant weight. JK
+is functioning as a fixed global scalar, not a per-node routing mechanism.
+The 3-phase architecture is, in practice, a weighted average with fixed weights.
+
+The model is learning "which contract contains this node" (REVERSE_CONTAINS
+hierarchy) as its primary signal — a proxy for contract complexity/size.
+This shortcut works moderately (0.28 F1) but has a hard ceiling.
+
+### What PLAN-3A Taught About Edge Presence vs Signal Quality
+
+Pre-PLAN-3A: predicted 4 directions wrong, 1 opposite (Timestamp).
+DEF_USE had 92.5% coverage on Timestamp but was actively hurting it.
+**Edge presence rate does not predict signal quality direction.**
+Theoretical coverage analysis is insufficient for edge type decisions.
+Only ablation experiments can determine whether an edge type helps or hurts.
+
+### The Fusion Layer Is the Real Learning Mechanism
+
+After epoch 10, individual GNN and Transformer eye losses are frozen.
+Every significant F1 gain throughout all runs correlates with a fused gradient
+spike (elevation above 0.065). The fusion layer is squeezing the last signal
+out of two partially-useful representations. This is close to its own ceiling
+given the current upstream representation quality.
+
+---
+
+## Priority Action Plan
+
+Steps in order of expected ROI. Do not proceed to step N+1 until step N is
+evaluated.
+
+**Step 1 — Fix label quality (highest ROI, no architecture changes)**
+1. Run `label_cleaner.py` on Timestamp class — target: reduce mislabeling
+   below 25% (from 48.2%). Expected F1 gain: +0.03–0.05 on Timestamp.
+2. Audit Reentrancy no-external-calls contracts (14%) — classify as
+   mislabeled, wrong contract selection, or Slither failure. Drop or relabel.
+   Expected Reentrancy gain: +0.01–0.02 if mislabeled contracts removed.
+3. Collect DoS data — minimum 50 confirmed DoS contracts to enable loss weight.
+
+**Step 2 — Fix JK structural collapse (PLAN-3D)**
+Run PLAN-3D option B: switch `gnn_jk_mode` from `"attention"` to `"cat"`.
+Concatenation cannot collapse — each phase's output is preserved independently
+for the downstream linear layers. Doubles JK output dim (3×256=768), requires
+fusion head resize. Run after Step 1 so the comparison is clean.
+
+**Step 3 — Fix Phase 2 feature differentiation (I2)**
+Add per-statement CFG features (stmt_has_call, stmt_has_write). Directly
+addresses R1's two compounding problems — gives Phase 2 non-uniform features
+so GAT attention can differentiate statements. Run after Step 2.
+
+**Step 4 — Complete ablation matrix**
+PLAN-3B (DFG-only: CF + DEF_USE, drop ICFG) is still pending. Run to confirm
+or refute PLAN-3A's Timestamp finding from the other direction.
+Expected: Timestamp drops back below 0.230, IntegerUO recovers above 0.710.
+
+**Do NOT proceed to v9 extensions** until Steps 1–2 are done. Adding more
+architectural complexity to a model with corrupted training data produces
+models that express the wrong patterns more sophisticatedly.
+
+---
+
 **Sections:**
 1. [Ablation Candidates](#1-ablation-candidates) — controlled experiments to validate assumptions
 2. [Design Risks](#2-design-risks) — assumptions baked into the architecture that might be wrong
@@ -31,9 +156,18 @@ vectors at depth, by giving the model access to all phase outputs not just the l
 **Risk:** JK adds parameters and complexity. With 41K training examples, the
 additional capacity may add noise rather than signal.
 
-**Ablation:** train identical model without JK (replace with last-layer output only).
-If F1 drops: JK is earning its cost. If F1 is equal or higher: JK is adding
-parameters without benefit and should be simplified.
+**Confirmed finding (2026-05-21, jk_weight_hist.py on v8-AB ep29):**
+JK is not doing per-node routing. Per-node diagnostic on 936 val contracts:
+99.99% of nodes assign Phase 3 as dominant weight. Both v7 and v8 show the same
+collapse pattern. JK learned a fixed global weighting (effectively a scalar),
+not the per-node selection mechanism it was designed for. See `docs/ml/jk-attention-collapse-findings.md`.
+
+**Ablation still needed:** train without JK (last-layer only) to confirm whether
+JK is adding any value at all vs just acting as a learned scalar multiplier.
+If F1 is equal: JK provides no benefit over simply weighting the final phase.
+
+**Follow-on (PLAN-3D):** see A11 below. The more promising fix is switching
+from `jk_mode="attention"` to `jk_mode="cat"` — concatenation cannot collapse.
 
 ---
 
@@ -178,14 +312,57 @@ contributes something the fused eye cannot replicate alone.
 
 ---
 
-### A10 — v8 Graph Extensions (Planned in ACTIVE_PLAN.md)
+### A10 — v8 Graph Extensions (COMPLETE)
 
-Three separate ablations when v8 extraction is ready:
-- **v8-A only:** ICFG-Lite edges (CALL_ENTRY + RETURN_TO) — does cross-function CFG help?
-- **v8-B only:** DEF_USE edges — does value flow tracking improve precision?
-- **v8-AB:** both together — do they interact constructively or add noise?
+**Status: all three ablations run.** Full results in `docs/ml/`.
 
-Each ablation requires full re-extraction of ~41K contracts at the new schema version.
+| Run | Phase 2 edges | Tuned F1-macro | vs v7 |
+|-----|--------------|---------------|-------|
+| v7.0 | CF(6) only | 0.2875 | baseline |
+| v8.0-AB | CF+ICFG+DEF_USE | 0.2851 | −0.0024 |
+| PLAN-3A (v8.0-A) | CF+ICFG only | **0.2877** | +0.0002 |
+| PLAN-3B (pending) | CF+DEF_USE only | TBD | TBD |
+
+**Key findings:**
+- v8-AB: adding all v8 edges slightly hurt macro F1 (−0.0024). ICFG helped
+  some classes (ExternalBug +0.013, TOD +0.005), DEF_USE hurt others.
+- PLAN-3A: dropping DEF_USE gave best macro F1 to date. Timestamp +0.038
+  (surprise — DEF_USE was amplifying label noise, not helping).
+- Edge presence rate ≠ signal quality direction: 4/7 pre-experiment
+  predictions wrong or opposite. Theoretical coverage analysis is insufficient.
+- All variants converge to same ~0.28–0.29 ceiling regardless of edge types.
+  **The bottleneck is data quality, not edge types.**
+
+**PLAN-3B still pending:** run `--phase2-edge-types 6 10` to complete the
+ablation matrix. Key diagnostic: does Timestamp drop back below 0.230
+(confirming ICFG not DEF_USE is Timestamp's signal)?
+
+**v8 heads open question:** Phase 2 now has 3–4 edge types. Same-purpose
+argument (all express execution ordering) still holds but is weaker with
+CALL_ENTRY/RETURN_TO expressing different scopes. Revisit after PLAN-3B.
+
+---
+
+### A11 — PLAN-3D: JK Mode Switch (Pending)
+
+**Problem:** JK attention collapses to a global constant (Phase 3 = 99.99%
+dominant) in both v7 and v8. The per-node routing mechanism is not routing.
+The 3-phase architecture is effectively a weighted average with fixed weights.
+
+**Option A — Entropy regularization:**
+Add `λ * (H_max - H_mean)` loss penalty forcing per-node entropy above a
+minimum. Risk: fights gradient if Phase 3 genuinely is best for most nodes.
+
+**Option B — Switch to `jk_mode="cat"` (concatenation):**
+Instead of weighted sum, concatenate all 3 phase outputs → [N, 768].
+Downstream linear layers decide what to extract from each phase independently
+per vulnerability class. Cannot collapse by construction.
+Cost: fusion head resize (768 → 256 projection needed). ~+300K parameters.
+This is the cleaner fix and the recommended option.
+
+**When to run:** after Priority Action Plan Step 1 (label quality fixes).
+Running PLAN-3D on corrupted labels produces a model that expresses wrong
+patterns with better per-node routing — that is not an improvement.
 
 ---
 
@@ -204,10 +381,28 @@ identical feature vectors. The model must distinguish "call before write" from
 "write before call" using CONTROL_FLOW topology alone, without any feature
 signal about what kind of statement each node is.
 
-**Why it might be wrong:** GAT attention computes edge weights from feature
-similarity. If source and target have identical features, attention weights
-are identical — effectively uniform aggregation. The topology signal exists
-but the attention mechanism cannot amplify it for specific edge types.
+**Two compounding problems that neutralize Phase 2 attention:**
+
+*Problem 1 — Identical features → uniform attention:*
+GAT computes edge weights from feature similarity between source and target.
+All CFG nodes within the same function inherit identical feature vectors
+(BUG-C3 fix: inherit parent FUNCTION features). Identical features → identical
+attention scores → softmax produces 1/N for all N neighbors → uniform
+aggregation. The attention mechanism is completely neutralized: every CFG node
+contributes equally regardless of whether it contains a `.call()` or a balance
+update. Phase 2 degrades to plain averaging over topology.
+
+*Problem 2 — Dense neighborhoods dilute individual signals:*
+Softmax weights sum to 1 regardless of neighborhood size. A function with 3
+CFG nodes can give one node 80% attention. A function with 40 CFG nodes
+cannot give any single node more than ~12-15% even if its score is highest.
+Complex functions — exactly those most likely to contain vulnerability patterns
+— tend to have more CFG nodes. This means the model has less ability to
+spotlight a critical statement precisely when spotlighting matters most.
+
+Together: Phase 2 is doing near-uniform weighted averaging over dense
+neighborhoods of identically-featured nodes. The topology signal (ordering)
+still exists in the edges, but attention cannot amplify any specific part of it.
 
 **Evidence needed:** GradCAM analysis on confirmed reentrancy predictions.
 Do CFG nodes receive high attribution? Or does the model rely only on the
@@ -481,7 +676,8 @@ contains an external call or a state write. The model must infer this from
 topology alone.
 
 **Fix:** per-statement binary features (stmt_has_call, stmt_has_write) — see
-Ablation A8. Requires schema version bump and re-extraction.
+Ablation A8. Requires schema version bump, re-extraction (~45 min), and
+retraining. Not blocked by engineering effort — re-extraction is fast.
 
 ---
 
@@ -532,10 +728,19 @@ contracts where `block.timestamp` is used safely.
 conditionals" not "contracts where timing manipulation affects outcomes."
 Timestamp F1 will be low regardless of model sophistication.
 
-**Fix required:** manual re-labeling of Timestamp class, or a better Slither
-heuristic. Active Learning approach: surface the highest-uncertainty Timestamp
-predictions for manual human review. ~500 carefully selected examples
-would provide more signal than all 48.2% wrong labels combined.
+**Experimental confirmation (PLAN-3A):** Timestamp surged +0.038 when DEF_USE
+edges were removed. DEF_USE traces block.timestamp def-use chains — these chains
+connected timestamp reads to unrelated downstream data flows, amplifying the
+noise from mislabeled contracts. The architecture was making the label noise
+problem worse. This confirms D1 is the primary Timestamp bottleneck: the model
+cannot learn the correct pattern because 48.2% of its Timestamp training signal
+is wrong, and complex edge patterns make that wrongness more expressive.
+
+**Fix required:** run `label_cleaner.py` on Timestamp class. Target: reduce
+mislabeling below 25%. Active Learning: surface 500 highest-uncertainty
+Timestamp predictions for manual review — these are the labels that matter
+most for model improvement. Do this before any further architecture changes
+to Timestamp-related edge types.
 
 ---
 
@@ -572,8 +777,19 @@ by definition — a contract with no external calls cannot have reentrancy.
 reentrancy" when the structure has no mechanism for reentrancy. Adds noise
 to the reentrancy embedding.
 
-**Fix required:** audit these 14% manually. Separate cause from effect before
-deciding whether to drop or relabel.
+**Experimental confirmation (PLAN-3A):** H1 hypothesis — "ICFG edges will
+recover Reentrancy toward v7 baseline" — was partially refuted. ICFG gave
+only +0.005 (v8-AB 0.286 → PLAN-3A 0.291), still −0.012 below v7 (0.303).
+The analysis concluded: *"The Reentrancy ceiling appears to be a label noise
+problem more than an edge type problem."* No combination of edges can teach
+the model the correct reentrancy pattern when 14% of reentrancy training
+contracts are structurally incapable of reentrancy.
+
+**Fix required:** audit the 14% manually via `label_cleaner.py`. Classify
+each as: (a) mislabeled — drop from training, (b) wrong contract selected —
+fix selection and re-extract, (c) Slither failure — add Slither version note.
+This is the primary action item for Reentrancy improvement. Expected gain
+after cleanup: +0.01–0.02 F1 on Reentrancy.
 
 ---
 
@@ -631,17 +847,19 @@ review would provide the highest information gain.
 
 ---
 
-### I2 — Per-Statement CFG Features (Medium impact, High effort)
+### I2 — Per-Statement CFG Features (High impact, Actionable)
 
 **What it is:** instead of inheriting function features, give each CFG node
 binary indicators of what that specific statement does.
 
-**Why:** solves Limitation L3 — Phase 2 can distinguish the `.call()` statement
-from the balance-update statement using features, not only topology.
+**Why:** solves Limitation L3 and directly addresses R1's two compounding
+problems — gives Phase 2 non-uniform features so GAT attention can actually
+differentiate the `.call()` statement from the balance-update statement.
 
 **What it requires:** changes to graph_schema.py (new feature columns),
 graph_extractor.py (per-statement Slither IR analysis), schema version bump,
-full re-extraction, full retraining.
+re-extraction (~45 min), retraining. Re-extraction is fast — this is not
+blocked by engineering effort, only by the decision to run the experiment.
 
 ---
 
@@ -693,7 +911,7 @@ checks, identify any gaps.
 
 | Item | Status |
 |------|--------|
-| A1 JK ablation | ☐ Not run |
+| A1 JK ablation | ⚠ Collapse confirmed — no-JK ablation still needed |
 | A2 Phase separation ablation | ☐ Not run |
 | A3 Phase 2 depth ablation | ☐ Not run |
 | A4 Visibility encoding ablation | ☐ Not run |
@@ -702,14 +920,15 @@ checks, identify any gaps.
 | A7 Pooling strategy ablation | ☐ Not run |
 | A8 CFG feature inheritance ablation | ☐ Not run |
 | A9 Transformer eye ablation | ☐ Not run |
-| A10 v8 extension ablations | ☐ Blocked on v8 extraction |
-| D1 Timestamp relabeling | ☐ Open |
+| A10 v8 extension ablations | ✅ v8-AB + PLAN-3A done; PLAN-3B pending |
+| A11 PLAN-3D JK mode switch | ☐ Blocked on Step 1 (label quality) |
+| D1 Timestamp relabeling | 🔴 CRITICAL — confirmed primary bottleneck |
 | D2 DoS data collection | ☐ Open |
-| D3 Reentrancy no-external-calls audit | ☐ Open |
+| D3 Reentrancy no-external-calls audit | 🔴 CRITICAL — confirmed by PLAN-3A |
 | D4 EMITS/INHERITS decision | ☐ Open |
 | D5 Empty contract_path fix | ☐ Open |
 | I1 Active learning setup | ☐ Not started |
-| I2 Per-statement CFG features | ☐ Blocked on schema decision |
+| I2 Per-statement CFG features | ☐ After label quality fixed |
 | I3 Learnable ghost embedding | ☐ Ready to implement |
-| I4 Reverse WRITES/READS phase | ☐ Requires schema change |
+| I4 Reverse WRITES/READS phase | ☐ After label quality fixed |
 | I5 Assert guards audit | ☐ Not started |
