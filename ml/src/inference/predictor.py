@@ -238,6 +238,8 @@ class Predictor:
             lora_target_modules=_ensure_list(
                 saved_cfg.get("lora_target_modules", ["query", "value"])
             ),
+            gnn_prefix_k=saved_cfg.get("gnn_prefix_k", 0),
+            gnn_prefix_warmup_epochs=saved_cfg.get("gnn_prefix_warmup_epochs", 15),
         ).to(self.device)
         # Strip _orig_mod. prefix left by torch.compile when saving compiled checkpoints
         state_dict = {k.replace("._orig_mod.", "."): v for k, v in state_dict.items()}
@@ -254,6 +256,7 @@ class Predictor:
         self.model.load_state_dict(state_dict)
         self.model.float()  # Normalize BF16 AMP checkpoints to float32 for inference
         self.model.eval()
+        self.model._current_epoch = 9999  # prefix always active at inference (no warmup suppression)
         self.model.parameter_summary()
 
         # ------------------------------------------------------------------

@@ -132,6 +132,7 @@ v7  — 11 features (in_unchecked dropped — BUG-L2):
 from __future__ import annotations
 
 import sys
+from enum import IntEnum
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slither version assertion — hard failure at import, not a warning.
@@ -278,6 +279,68 @@ Priority for _cfg_node_type() when a single IR node spans multiple operations:
   5. CFG_NODE_OTHER (12) — everything else, including synthetic nodes
 
 Total node types: 13 (ids 0–12).
+"""
+
+
+class NodeType(IntEnum):
+    """
+    Typed aliases for NODE_TYPES integer IDs.
+
+    Use these instead of raw integers when selecting or filtering node types in
+    sentinel_model.py, predictor.py, or audit scripts.  The IntEnum values are
+    identical to NODE_TYPES — they are derived from it at module load time, so
+    they cannot drift.  Any future NODE_TYPES addition must also add a member here.
+
+    Usage:
+        STRUCTURAL_PREFIX_TYPES = {
+            NodeType.FUNCTION, NodeType.MODIFIER, NodeType.CONSTRUCTOR,
+            NodeType.FALLBACK,  NodeType.RECEIVE,
+            NodeType.CFG_NODE_CALL, NodeType.CFG_NODE_WRITE, NodeType.CFG_NODE_CHECK,
+        }
+        eligible = [n for n in graph.node_type if n in STRUCTURAL_PREFIX_TYPES]
+    """
+    STATE_VAR      = NODE_TYPES["STATE_VAR"]        # 0
+    FUNCTION       = NODE_TYPES["FUNCTION"]          # 1
+    MODIFIER       = NODE_TYPES["MODIFIER"]          # 2
+    EVENT          = NODE_TYPES["EVENT"]             # 3
+    FALLBACK       = NODE_TYPES["FALLBACK"]          # 4
+    RECEIVE        = NODE_TYPES["RECEIVE"]           # 5
+    CONSTRUCTOR    = NODE_TYPES["CONSTRUCTOR"]       # 6
+    CONTRACT       = NODE_TYPES["CONTRACT"]          # 7
+    CFG_NODE_CALL  = NODE_TYPES["CFG_NODE_CALL"]    # 8
+    CFG_NODE_WRITE = NODE_TYPES["CFG_NODE_WRITE"]   # 9
+    CFG_NODE_READ  = NODE_TYPES["CFG_NODE_READ"]    # 10
+    CFG_NODE_CHECK = NODE_TYPES["CFG_NODE_CHECK"]   # 11
+    CFG_NODE_OTHER = NODE_TYPES["CFG_NODE_OTHER"]   # 12
+
+
+STRUCTURAL_PREFIX_TYPES: frozenset[NodeType] = frozenset({
+    NodeType.FUNCTION,
+    NodeType.MODIFIER,
+    NodeType.CONSTRUCTOR,
+    NodeType.FALLBACK,
+    NodeType.RECEIVE,
+})
+"""
+Node types eligible for GNN prefix injection — Phase 1 (declaration-level only).
+
+PRE-4 audit (41,576 training graphs, 2026-05-23):
+  Declaration-level only: mean=20.3, P50=16, P95=47 → K=48 covers 95.5%.
+  All-types (incl. CFG): mean=48.7, P95=122 → K=32 covers only 42.3% (unusable).
+
+Why declaration-level only:
+  After Phase 3 REVERSE_CONTAINS, FUNCTION nodes carry aggregated CFG signal
+  from their child CFG_NODE_* children.  The transformer gets structural context
+  from function-level nodes; CrossAttentionFusion provides CFG-level detail.
+  CFG nodes inflate the prefix budget for minimal additional signal in Phase 1.
+
+Phase 1B ablation (after Phase 1 results): add NodeType.CFG_NODE_CALL with K=64
+to isolate whether explicit call-site visibility helps Reentrancy.
+
+Priority ordering within eligible nodes (when contract has > K=48 eligible nodes):
+  1. CONSTRUCTOR, FALLBACK, RECEIVE  — always first (≤ 3 per contract)
+  2. MODIFIER                        — included next  (typically ≤ 5)
+  3. FUNCTION                        — sorted by feature[10] descending (external_call_count)
 """
 
 # ─────────────────────────────────────────────────────────────────────────────

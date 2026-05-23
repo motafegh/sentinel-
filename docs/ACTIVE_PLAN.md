@@ -1,6 +1,6 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-23 (rev 15 — v8.0-B LAUNCHED: cleaned labels −4,304 + dos_loss_weight=0.5; session doc: docs/ml/v8.0-B-training.md)
+Last updated: 2026-05-24 (rev 17 — P0 killed ep4, best ep3 F1=0.2178; GATE-GCB-2 PASSED; predictor.py updated for prefix; GATE-GCB-3 smoke launching now)
 
 **Current state (2026-05-23):**
 - **v7.0 COMPLETE** — F1=0.2651 ep23 · `ml/checkpoints/v7.0_best.pt` · tuned F1=0.2875
@@ -10,9 +10,9 @@ Last updated: 2026-05-23 (rev 15 — v8.0-B LAUNCHED: cleaned labels −4,304 + 
   - **Timestamp biggest winner: +0.032 vs v7** (DEF_USE was hurting it — opposite of prediction)
   - **Reentrancy only +0.005 vs v8-AB** — H1 partially refuted; label noise (BUG-H5) is the real ceiling
   - Full analysis: `docs/ml/plan-3a-results.md`
-- **PIVOT (2026-05-23):** v7/v8-AB/PLAN-3A all converge to same ~0.287 ceiling. Architecture is ruled out. **Data quality is the bottleneck.** Full analysis: `docs/ml/data-quality-findings.md`
-- **v8.0-B RUNNING (launched 2026-05-23 15:08):** cleaned labels (−4,304 total across 6 classes) + dos_loss_weight=0.5. Session doc: `docs/ml/v8.0-B-training.md`
-- **PLAN-3B deferred** — no value running DFG-only ablation on the same noisy labels
+- **PIVOT (2026-05-23):** v7/v8-AB/PLAN-3A all converge to same ~0.287 ceiling. Architecture is the bottleneck. **GraphCodeBERT + GNN prefix injection is the next lever.** Full analysis: `docs/ml/data-quality-findings.md`
+- **v8.0-B KILLED (ep11 — 2026-05-23):** best F1=0.2460 at ep10 (< 0.288 ceiling). H5 refuted — data cleaning alone cannot break the architectural ceiling. See GATE-GCB-0 in `docs/proposal/EXECUTION_PLAN.md`.
+- **PLAN-3B deferred** — no value running DFG-only ablation given architectural ceiling is confirmed
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
 
@@ -343,9 +343,7 @@ Results (1500 val contracts on PLAN-3A checkpoint):
 
 **Key hypotheses:** H1 Reentrancy +0.01–0.03 · H2 DoS non-zero F1 · H3 Timestamp holds · H4 ExternalBug improves · H5 macro F1 > 0.288
 
-**Status: RUNNING**
-
-**Status: OPEN**
+**Status: KILLED — ep11, best F1=0.2460 at ep10. H5 refuted (data cleaning alone cannot break architectural ceiling). GATE-GCB-0 verdict: accelerate GraphCodeBERT plan.**
 
 ---
 
@@ -631,6 +629,33 @@ CALL_ENTRY/RETURN_TO are structurally uniform across all classes (63–85% by pr
 
 ---
 
+## Phase 3.6 — Architecture Upgrade: GraphCodeBERT + GNN Prefix Injection
+
+**Status:** IN PROGRESS
+**Proposal:** `docs/proposal/2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md`
+**Execution plan:** `docs/proposal/EXECUTION_PLAN.md` — all stages, gates, and pass/fail criteria
+
+**Core idea:** Replace CodeBERT with GraphCodeBERT (same size, DFG-aware pre-training) and inject K=48 selected GNN node embeddings (declaration-level: FUNCTION/MODIFIER/CONSTRUCTOR/FALLBACK/RECEIVE) as prefix tokens before code tokens in every window. Makes contract structure visible to all 12 GraphCodeBERT attention layers — not just at the final CrossAttentionFusion step.
+
+**Stage summary:**
+
+| Stage | Description | Status |
+|-------|-------------|--------|
+| GATE-GCB-0 | v8.0-B result gate | ✅ CLOSED — F1=0.2460 ep10, H5 refuted, ceiling architectural |
+| PRE-1..5 | Prerequisites: GraphCodeBERT download, tokenizer identity, UNK rate, node counts, LoRA | ✅ ALL DONE |
+| P0 | GraphCodeBERT pure drop-in — killed ep4, best ep3 F1=0.2178 (upward trend, GATE-GCB-2 clear) | ✅ DONE (killed 2026-05-24) |
+| GATE-GCB-2 | P0 go/no-go: ep3 F1=0.2178 > 0.20 threshold, clear upward trend | ✅ PASSED (2026-05-24) |
+| P0b | Optional: CodeBERT + GNN prefix ablation | ⏩ SKIPPED (P0 sufficient for gate) |
+| P1-IMPL | Option B code changes + unit tests + predictor.py prefix support | ✅ DONE (2026-05-24) |
+| GATE-GCB-3 | 2-epoch smoke with K=48 — verify warmup suppression, no NaN | 🔵 LAUNCHING NOW |
+| P1-TRAIN | Full Phase 1 training (60–80h GPU) | 🔴 BLOCKED on GATE-GCB-3 |
+| P2 | Option C: shared contract-level DFG (1.5–2 weeks) | 🔴 FUTURE |
+| P3 | Option A: full per-window DFG masking (3–4 weeks) | 🔴 FUTURE |
+
+**Next gate:** GATE-GCB-3 smoke test running (2 epochs, ~80 min). If all signals pass → launch P1-TRAIN immediately after.
+
+---
+
 ## Phase 4 — v9 (Extension C — Control-Dependence Edges)
 **Trigger:** Phase 3 ablation results show headroom; return_ignored decision made.
 **Conditional:** Only proceed if v8 validation F1 ≥ target and remaining FNs are guard-scope-related.
@@ -912,7 +937,15 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | DQ-2 | Re-enable DoS loss weight (dos_loss_weight=0.5) | 3.5 | P1 | DQ-1 done | **DONE (2026-05-23)** — fractional gradient scaling implemented |
 | DQ-3 | Complexity correlation diagnostic (shortcut detection) | 3.5 | P1 | label cleaning done | **DONE (2026-05-23)** — moderate shortcuts r=0.25–0.40, one benign alert |
 | DQ-4 | Add 100+ confirmed-clean negative contracts | 3.5 | P2 | — | OPEN |
-| DQ-5 | v8.0-B retraining with cleaned labels | 3.5 | P0 | DQ-1 + DQ-2 | **RUNNING (2026-05-23 15:08)** |
+| DQ-5 | v8.0-B retraining with cleaned labels | 3.5 | P0 | DQ-1 + DQ-2 | **KILLED ep11 — F1=0.2460 (H5 refuted)** |
+| GCB-PRE | Download GraphCodeBERT, validate tokenizer, node counts, LoRA | 3.6 | P1 | — | **DONE (2026-05-23)** |
+| GCB-P0 | GraphCodeBERT drop-in — killed ep4, best ep3 F1=0.2178 | 3.6 | P0 | GCB-PRE | **DONE (2026-05-24)** — GATE-GCB-2 PASSED |
+| GCB-GATE-GCB-2 | P0 go/no-go gate | 3.6 | P0 | GCB-P0 | **PASSED (2026-05-24)** — ep3 F1=0.2178 > 0.20 |
+| GCB-P1-IMPL | Option B code + unit tests + predictor.py prefix support | 3.6 | P0 | — | **DONE (2026-05-24)** — all tests pass; predictor updated |
+| GCB-GATE-GCB-3 | 2-epoch smoke test with K=48 | 3.6 | P0 | P1-IMPL | **🔵 RUNNING** |
+| GCB-P1-TRAIN | Option B full training (60–80h GPU) | 3.6 | P0 | GATE-GCB-3 | BLOCKED |
+| GCB-P2 | Option C: shared DFG | 3.6 | P1 | GCB-P1 | FUTURE |
+| GCB-P3 | Option A: full per-window DFG | 3.6 | P2 | GCB-P2 | FUTURE |
 | BUG-M5 | Remove Brainmab mislabeled contract | 2 | P2 | — | OPEN |
 | BUG-M6 | Stale token schema version metadata | 2 | P3 | auto-resolved by retokenize | OPEN |
 | BUG-M7 | 8.5% graphs have empty contract_path | 1 | P3 | — | OPEN |

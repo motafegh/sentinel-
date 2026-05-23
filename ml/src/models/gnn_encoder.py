@@ -212,8 +212,8 @@ class GNNEncoder(nn.Module):
                 f"Each head needs hidden_dim/heads = {hidden_dim/heads:.1f} dims."
             )
 
-        # Edge type embedding: covers all 10 edge types including REVERSE_CONTAINS(7)
-        # (runtime-only) and CALL_ENTRY(8) + RETURN_TO(9) (v8 ICFG-Lite, on disk).
+        # Edge type embedding: covers all 11 edge types including REVERSE_CONTAINS(7)
+        # (runtime-only), CALL_ENTRY(8) + RETURN_TO(9) (v8 ICFG-Lite, on disk), DEF_USE(10).
         _edge_dim: int | None = None
         if use_edge_attr:
             self.edge_embedding = nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)

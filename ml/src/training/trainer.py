@@ -297,6 +297,14 @@ class TrainConfig:
     # DoS (257), Timestamp (~1500), and minority classes at their sqrt-scaled weights.
     pos_weight_min_samples: int = 3000  # classes with ≥3000 train positives get pos_weight=1.0 (BUG-H3: Reentrancy 2.82× amplification dominated gradient)
 
+    # --- GNN prefix injection (Phase 1) ---
+    # gnn_prefix_k=0 disables prefix entirely — identical to original model.
+    # During warmup epochs the prefix is suppressed (None path); projection trains
+    # from random init starting at epoch gnn_prefix_warmup_epochs.
+    gnn_prefix_k:             int   = 0     # 0 = disabled; 48 for Phase 1
+    gnn_prefix_warmup_epochs: int   = 15   # epochs without prefix
+    gnn_prefix_proj_lr_mult:  float = 1.0  # LR for gnn_to_bert_proj + prefix_type_embedding
+
     # --- Cache ---
     cache_path: str | None = "ml/data/cached_dataset_deduped.pkl"
 
@@ -857,6 +865,8 @@ def train(config: TrainConfig) -> dict:
         lora_alpha=config.lora_alpha,
         lora_dropout=config.lora_dropout,
         lora_target_modules=config.lora_target_modules,
+        gnn_prefix_k=config.gnn_prefix_k,
+        gnn_prefix_warmup_epochs=config.gnn_prefix_warmup_epochs,
     ).to(device)
 
     start_epoch      = 1
@@ -984,10 +994,11 @@ def train(config: TrainConfig) -> dict:
     # Parameters are assigned to exactly one group; iteration order is stable
     # (dict preserves insertion order in Python 3.7+, same here). seen_ids
     # prevents double-counting if a parameter is reachable via multiple paths.
-    _gnn_params:    list = []
-    _lora_params:   list = []
-    _fusion_params: list = []
-    _other_params:  list = []
+    _gnn_params:        list = []
+    _lora_params:       list = []
+    _fusion_params:     list = []
+    _prefix_proj_params: list = []
+    _other_params:      list = []
     _seen_param_ids: set = set()
     for _pname, _p in model.named_parameters():
         if not _p.requires_grad or id(_p) in _seen_param_ids:
@@ -1008,13 +1019,19 @@ def train(config: TrainConfig) -> dict:
             # cross-attention (821K params running at full LR produced 4-5× the
             # GNN gradient norm throughout all of r3).
             _fusion_params.append(_p)
+        elif (
+            _pname.startswith("gnn_to_bert_proj.")
+            or _pname.startswith("prefix_type_embedding.")
+        ):
+            _prefix_proj_params.append(_p)
         else:
             _other_params.append(_p)
 
-    _gnn_lr    = config.lr * config.gnn_lr_multiplier
-    _lora_lr   = config.lr * config.lora_lr_multiplier
-    _fusion_lr = config.lr * config.fusion_lr_multiplier
-    _other_lr  = config.lr
+    _gnn_lr         = config.lr * config.gnn_lr_multiplier
+    _lora_lr        = config.lr * config.lora_lr_multiplier
+    _fusion_lr      = config.lr * config.fusion_lr_multiplier
+    _prefix_proj_lr = config.lr * config.gnn_prefix_proj_lr_mult
+    _other_lr       = config.lr
 
     # Only include non-empty groups — empty param groups cause OneCycleLR to
     # misalign its max_lr list.
@@ -1032,6 +1049,9 @@ def train(config: TrainConfig) -> dict:
     if _fusion_params:
         _param_groups.append({"params": _fusion_params, "lr": _fusion_lr})
         _max_lrs.append(_fusion_lr)
+    if _prefix_proj_params:
+        _param_groups.append({"params": _prefix_proj_params, "lr": _prefix_proj_lr})
+        _max_lrs.append(_prefix_proj_lr)
     if _other_params:
         _param_groups.append({"params": _other_params,  "lr": _other_lr})
         _max_lrs.append(_other_lr)
@@ -1041,6 +1061,7 @@ def train(config: TrainConfig) -> dict:
         f"GNN={len(_gnn_params)} params (lr×{config.gnn_lr_multiplier}) | "
         f"LoRA={len(_lora_params)} params (lr×{config.lora_lr_multiplier}) | "
         f"Fusion={len(_fusion_params)} params (lr×{config.fusion_lr_multiplier}) | "
+        f"PrefixProj={len(_prefix_proj_params)} params (lr×{config.gnn_prefix_proj_lr_mult}) | "
         f"Other={len(_other_params)} params (lr×1.0)"
     )
     optimizer = AdamW(_param_groups, weight_decay=config.weight_decay, fused=True)
@@ -1264,6 +1285,25 @@ def train(config: TrainConfig) -> dict:
         for epoch in range(start_epoch, config.epochs + 1):
             final_epoch = epoch
             logger.info(f"\n{'='*60}\nEpoch {epoch}/{config.epochs}\n{'='*60}")
+
+            # Inform the model of the current epoch so it can apply the prefix
+            # warmup suppression (gnn_prefix_k > 0 only; no-op otherwise).
+            model._current_epoch = epoch
+
+            # ── GNN prefix injection status logging ──
+            if config.gnn_prefix_k > 0:
+                _prefix_active = (epoch >= config.gnn_prefix_warmup_epochs)
+                _prefix_status = "ACTIVE" if _prefix_active else f"WARMUP (starts ep{config.gnn_prefix_warmup_epochs})"
+                logger.info(f"  GNN prefix K={config.gnn_prefix_k}: {_prefix_status}")
+                mlflow.log_metric("prefix_active", int(_prefix_active), step=epoch)
+
+                # Weight norm of gnn_to_bert_proj: constant during warmup (proj not called),
+                # begins drifting from random init at epoch gnn_prefix_warmup_epochs.
+                _proj = getattr(model, "gnn_to_bert_proj", None)
+                if _proj is not None:
+                    _proj_norm = _proj.weight.data.norm().item()
+                    logger.info(f"  gnn_to_bert_proj weight norm: {_proj_norm:.4f}")
+                    mlflow.log_metric("prefix_proj_weight_norm", _proj_norm, step=epoch)
 
             # ── Fix #33: aux loss warmup ──
             # Ramp aux_loss_weight from 0 → config.aux_loss_weight over the
