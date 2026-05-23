@@ -102,12 +102,18 @@ Steps in order of expected ROI. Do not proceed to step N+1 until step N is
 evaluated.
 
 **Step 1 — Fix label quality (highest ROI, no architecture changes)**
-1. Run `label_cleaner.py` on Timestamp class — target: reduce mislabeling
-   below 25% (from 48.2%). Expected F1 gain: +0.03–0.05 on Timestamp.
-2. Audit Reentrancy no-external-calls contracts (14%) — classify as
-   mislabeled, wrong contract selection, or Slither failure. Drop or relabel.
-   Expected Reentrancy gain: +0.01–0.02 if mislabeled contracts removed.
-3. Collect DoS data — minimum 50 confirmed DoS contracts to enable loss weight.
+1. ✅ Run `label_cleaner.py` on Timestamp class — DONE (2026-05-23). Stricter
+   check (requires value-sensitive path, not just any block globals) removed 568
+   labels. 0 remaining contracts with no block globals. Structural cleanup complete.
+   Semantic noise (safe use of block.timestamp) still requires active learning.
+2. ✅ Audit Reentrancy no-external-calls contracts (14%) — DONE (2026-05-23).
+   Added WRITES-edge requirement: removed 611 contracts. 100% pass rate confirmed
+   on 561 sampled Reentrancy=1 contracts. Structural cleanup complete.
+   NEW (same session): ExternalBug had same 14.8% no-ext-call problem — FIXED,
+   445 labels removed. Total: 4,304 labels cleaned across all classes.
+3. ⚠ DoS data collection — PARTIALLY DONE. 243 training positives now (60
+   augmented contracts injected). Next action: enable `dos_loss_weight=0.5`
+   before next training run (currently 0.0).
 
 **Step 2 — Fix JK structural collapse (PLAN-3D)**
 Run PLAN-3D option B: switch `gnn_jk_mode` from `"attention"` to `"cat"`.
@@ -525,31 +531,25 @@ discriminating "this is the call node vs the write node."
 **Three diagnostics that do NOT require retraining:**
 
 *D-A. Complexity correlation (fastest, 1 forward pass):*
-Compute Spearman rank correlation between (CFG node count per contract) and
-(model's predicted probability for predicted class) across the validation set.
-Threshold: r > 0.40 is strong evidence of size-as-feature shortcut.
-If r < 0.15: the model is not using raw size as its primary signal.
+✅ **DONE (2026-05-23).** Script: `ml/scripts/complexity_correlation.py`.
+Results on PLAN-3A checkpoint (1,500 val contracts):
+- All metrics show r=0.15–0.40 (moderate range, no dominant shortcuts)
+- Single alert: ext_calls_sum vs MishandledException r=0.402 — expected and benign
+  (external call count IS a necessary condition for MishandledException)
+- Most concerning near-shortcut: num_nodes vs Timestamp r=0.396 — consistent
+  with BUG-H4 semantic noise (model falls back to size proxy when labels are wrong)
+**Conclusion:** Moderate shortcuts present, not dominant. Interpretation B is
+PARTIALLY correct. The model uses complexity as a secondary signal, not primary.
+Label quality improvements expected to reduce these correlations.
 
 *D-B. JK weight by node type (uses existing diagnostic output):*
-If the 936-contract diagnostic preserved node-type labels alongside per-node
-weights, group weights by node type (CONTRACT, FUNCTION, CFG_NODE). Prediction
-under shortcut: Phase 3 dominance is equally strong for CONTRACT nodes as for
-CFG leaf nodes, because the JK learned a global scalar. Prediction under correct
-behavior: CONTRACT nodes should show higher Phase 1/2 weights than leaf CFG nodes.
+Open. The jk_weight_hist.py diagnostic collects per-node weights but does not
+currently group by node type (CONTRACT, FUNCTION, CFG_NODE). Extend the script
+to stratify by node type to test whether JK learned a global scalar.
 
 *D-C. Phase 3 weight on correctly vs incorrectly classified contracts:*
-If wrong predictions cluster at extreme Phase 3 values (p95+), the model is
-most confident when Phase 3 dominance is highest — consistent with using
-contract complexity as a confidence signal rather than vulnerability structure.
-
-**Current working hypothesis:** Interpretation B is correct. The model has learned
-a partial shortcut: contracts in vulnerability classes tend to be larger/more complex
-(more functions, more external calls, more CFG nodes), and Phase 3 captures this
-complexity signal efficiently. Phase 1 (structural topology) is suppressed because
-raw CFG count is easier to gradient-descend on than relational structure.
-The model still generalizes moderately well because complexity does correlate with
-vulnerability presence — but it is not learning the causal mechanism.
-D-A above can confirm or refute this hypothesis without any training run.
+Open. Would require a classification run that tracks per-contract Phase 3 weight
+alongside ground truth labels. Not yet implemented.
 
 ---
 
@@ -717,99 +717,145 @@ Source: ACTIVE_BUGS.md and discoveries during learning sessions.
 
 ---
 
-### D1 — Timestamp Labels 48.2% Mislabeled (BUG-H4)
+### D1 — Timestamp Labels Mislabeled (BUG-H4)
 
 **What it is:** Slither's Timestamp detector flags any use of `block.timestamp`
 in a conditional, regardless of whether the timing can actually affect
-security-sensitive behavior. Almost half the Timestamp training labels are
-contracts where `block.timestamp` is used safely.
-
-**Effect on training:** the model learns "contracts with block.timestamp in
-conditionals" not "contracts where timing manipulation affects outcomes."
-Timestamp F1 will be low regardless of model sophistication.
+security-sensitive behavior. Many Timestamp training labels are contracts where
+`block.timestamp` is used safely (logging, non-critical expiry checks).
 
 **Experimental confirmation (PLAN-3A):** Timestamp surged +0.038 when DEF_USE
 edges were removed. DEF_USE traces block.timestamp def-use chains — these chains
 connected timestamp reads to unrelated downstream data flows, amplifying the
 noise from mislabeled contracts. The architecture was making the label noise
-problem worse. This confirms D1 is the primary Timestamp bottleneck: the model
-cannot learn the correct pattern because 48.2% of its Timestamp training signal
-is wrong, and complex edge patterns make that wrongness more expressive.
+problem worse. This confirms D1 is the primary Timestamp bottleneck.
 
-**Fix required:** run `label_cleaner.py` on Timestamp class. Target: reduce
-mislabeling below 25%. Active Learning: surface 500 highest-uncertainty
-Timestamp predictions for manual review — these are the labels that matter
-most for model improvement. Do this before any further architecture changes
-to Timestamp-related edge types.
+**Fix applied (2026-05-23):** `check_timestamp()` in label_cleaner.py upgraded.
+Now requires block globals AND a value-sensitive path (ext_call OR payable node).
+Removed 568 labels. Post-cleaning audit (full dataset):
+- 0 remaining contracts with no block globals — structural impossibilities gone
+- 0 remaining contracts with block globals but no value path — the new filter works
+- 379 remaining Timestamp=1: 260 (68.4%) have globals+ext+payable, 119 (31.3%)
+  have globals+ext only — both likely true positives
+- Remaining noise is SEMANTIC: contracts using block.timestamp safely in a
+  conditional that happens to be near a payable function. Cannot fix without
+  human review.
 
----
-
-### D2 — DoS Has 7 Pure Training Samples
-
-**What it is:** the DoS via unbounded loops vulnerability class has effectively
-no training data. 7 samples cannot train any model component — LoRA, GNN,
-or classifier — to detect this pattern.
-
-**Current handling:** `dos_loss_weight=0.0` — DoS is excluded from the loss
-entirely. The model never tries to learn DoS.
-
-**Effect:** SENTINEL cannot detect DoS. Confirmed by near-zero DoS F1.
-ZKML constraint prevents removing the class from the output.
-
-**Fix required:** data collection. Identify Solidity contracts with confirmed
-DoS vulnerabilities, add them to the training set. No architectural change
-needed — just more labeled data for this class.
+**Remaining action:** active learning — surface highest-uncertainty Timestamp
+predictions (prob 0.35–0.65) for manual review. ~200 corrected labels would
+likely yield meaningful F1 improvement on Timestamp.
 
 ---
 
-### D3 — 14% Reentrancy Contracts Have No External Calls (BUG-H5)
+### D2 — DoS Training Data
 
-**What it is:** 14% of contracts labeled as reentrancy-vulnerable have zero
-external calls in their extracted graph. Reentrancy requires an external call
-by definition — a contract with no external calls cannot have reentrancy.
+**Original issue:** 7 pure training samples — effectively nothing to learn from.
+`dos_loss_weight=0.0` was set to detach DoS gradient entirely.
 
-**Possible causes:**
-- Contract selection chose the wrong contract (most_derived fix may not be 100%)
-- Slither did not detect the external call (Slither limitation)
-- Labels are wrong for these contracts
+**Current state (2026-05-23):** 243 DoS training positives after augmented data
+injection (60 augmented contracts from generate_dos_pairs.py). Full dataset: 372
+DoS=1 contracts total (342 after dedup across splits).
 
-**Effect:** the model receives training examples that say "this structure =
-reentrancy" when the structure has no mechanism for reentrancy. Adds noise
-to the reentrancy embedding.
+**Audit (2026-05-23):** Only 28.4% of DoS=1 contracts have `has_loop=1`.
+DoS via unbounded loops would need has_loop, but DoS also occurs from:
+large array iterations, excessive gas costs from many storage reads, DoS via
+revert in fallback functions. The 71.6% without loops are plausible.
 
-**Experimental confirmation (PLAN-3A):** H1 hypothesis — "ICFG edges will
-recover Reentrancy toward v7 baseline" — was partially refuted. ICFG gave
-only +0.005 (v8-AB 0.286 → PLAN-3A 0.291), still −0.012 below v7 (0.303).
-The analysis concluded: *"The Reentrancy ceiling appears to be a label noise
-problem more than an edge type problem."* No combination of edges can teach
-the model the correct reentrancy pattern when 14% of reentrancy training
-contracts are structurally incapable of reentrancy.
-
-**Fix required:** audit the 14% manually via `label_cleaner.py`. Classify
-each as: (a) mislabeled — drop from training, (b) wrong contract selected —
-fix selection and re-extract, (c) Slither failure — add Slither version note.
-This is the primary action item for Reentrancy improvement. Expected gain
-after cleanup: +0.01–0.02 F1 on Reentrancy.
+**Action required before next training run:** set `dos_loss_weight=0.5`. The
+original reason for 0.0 (7 samples) no longer applies. 243 training positives
+is sufficient to attempt learning. Start at 0.5 (not 1.0) to avoid synthetic
+augmented data dominating real contract gradients.
 
 ---
 
-### D4 — EMITS/INHERITS Edges Never Appear in Training
+### D3 — Reentrancy No-External-Calls Mislabeling (BUG-H5)
 
-**What it is:** both edge types are defined in graph_schema.py with reserved
-type numbers, but graph_extractor.py has no code to extract them. Zero edges
-of these types exist in any training graph.
+**What it was:** ~14% of Reentrancy=1 contracts had no external calls — structurally
+impossible for reentrancy (requires an external call to re-enter).
 
-**Effect on model:** `nn.Embedding` rows for these edge types are randomly
-initialized and never updated. If extraction code is ever added without
-retraining, these edge types will inject random noise into message passing.
+**Experimental confirmation (PLAN-3A):** H1 hypothesis — ICFG edges will recover
+Reentrancy — gave only +0.005. Label noise was confirmed as the real ceiling.
 
-**Fix required:** either implement extraction (add to extractor, bump schema
-version, re-extract, retrain) OR remove from schema if not planned. Do not
-leave named-but-empty slots indefinitely.
+**Fix applied (2026-05-23):** `check_reentrancy()` upgraded. Now requires BOTH
+external_call_count > 0 AND at least one WRITES edge (type 2). Logic: reentrancy
+needs an external call that can re-enter AND state to corrupt on re-entry. Removed
+611 labels. Post-cleaning audit on 561 sampled Reentrancy=1 contracts: 100% pass.
+
+**Remaining noise (cannot fix structurally):** contracts with external calls AND
+state writes but the reentrancy guard (`nonReentrant` modifier, CEI-ordered code)
+makes them safe. These pass the structural check but are semantically safe. Fixing
+these requires either manual review or Slither re-analysis checking for re-entrant
+execution paths specifically.
 
 ---
 
-### D5 — 8.5% Graphs Have Empty contract_path (BUG-M7)
+### D4 — EMITS/INHERITS Edges: Split Status
+
+**Original issue:** both edge types were defined in graph_schema.py with
+reserved type numbers but graph_extractor.py had no extraction code. Zero
+edges of either type in training graphs. `nn.Embedding` rows randomly
+initialized and never updated.
+
+**Status after BUG-H7/H8 fixes (2026-05-23 audit):**
+
+| Edge type | Type id | Status | Coverage |
+|-----------|---------|--------|----------|
+| EMITS | 3 | ❌ Still 0 | 0% of edges |
+| INHERITS | 4 | ✅ Now fires | ~1.0% of edges |
+
+INHERITS (type 4): BUG-H8 fix added parent contract nodes and INHERITS edges
+in graph_extractor.py. Edge scan on 500 randomly sampled graphs confirms INHERITS
+fires at ~1.0% of total edges — small but non-zero. The embedding row is now
+being trained. Inheritance relationships are present in the model's training
+signal.
+
+EMITS (type 3): extractor still has no EMITS extraction code. Zero EMITS edges
+in all 41K training graphs. The embedding row for type 3 is randomly initialized
+and receives no gradient. If event-emission extraction is added later without
+retraining, the EMITS embedding will inject random noise into message passing.
+
+**Action required:** either implement EMITS extraction (add to extractor, bump
+schema, re-extract, retrain) OR explicitly document EMITS as deferred/cancelled.
+Do not leave named-but-empty indefinitely — the embedding row grows stale.
+
+---
+
+### D5 — ExternalBug No-External-Calls Mislabeling
+
+**What it is:** ExternalBug by definition is a vulnerability in how an external
+call is made — wrong target, unchecked success, wrong assumptions about the
+callee. A contract with no external calls structurally cannot have an ExternalBug.
+
+**Discovery (2026-05-23 audit):** 14.8% of ExternalBug=1 contracts in the
+cleaned CSV had `external_call_count=0` across all nodes — a structural
+impossibility. Same OR-labeling root cause as Reentrancy (D3): contracts in
+an "external bug" BCCC folder received ExternalBug=1 even when they contain no
+external calls.
+
+**Fix applied (2026-05-23):** `check_external_bug()` added to label_cleaner.py.
+Check: any node must have `external_call_count > 0` (dim[10]). Added to
+PRECONDITIONS dict. Re-ran label_cleaner.py — removed 445 ExternalBug labels.
+
+**Combined cleaning totals (2026-05-23):**
+
+| Class | Labels removed |
+|-------|---------------|
+| UnusedReturn | −1,665 |
+| Reentrancy | −611 |
+| Timestamp | −568 |
+| MishandledException | −632 |
+| ExternalBug | −445 |
+| CallToUnknown | −383 |
+| **Total** | **−4,304** |
+
+**Remaining noise:** contracts that have external calls but the ExternalBug
+label came from OR-labeling of a folder where a different contract in the same
+folder had the bug. Cannot fix structurally — same semantic mislabeling problem
+as Reentrancy.
+
+---
+
+### D7 — 8.5% Graphs Have Empty contract_path (BUG-M7)
 
 **What it is:** 8.5% of saved graph files have no contract_path metadata.
 The source Solidity file cannot be traced for these graphs.
@@ -911,7 +957,7 @@ checks, identify any gaps.
 
 | Item | Status |
 |------|--------|
-| A1 JK ablation | ⚠ Collapse confirmed — no-JK ablation still needed |
+| A1 JK ablation | ⚠ Collapse confirmed (99.99% Phase 3 dominant) — no-JK ablation still needed |
 | A2 Phase separation ablation | ☐ Not run |
 | A3 Phase 2 depth ablation | ☐ Not run |
 | A4 Visibility encoding ablation | ☐ Not run |
@@ -920,15 +966,22 @@ checks, identify any gaps.
 | A7 Pooling strategy ablation | ☐ Not run |
 | A8 CFG feature inheritance ablation | ☐ Not run |
 | A9 Transformer eye ablation | ☐ Not run |
-| A10 v8 extension ablations | ✅ v8-AB + PLAN-3A done; PLAN-3B pending |
-| A11 PLAN-3D JK mode switch | ☐ Blocked on Step 1 (label quality) |
-| D1 Timestamp relabeling | ✅ Structural cleanup done (−568 via stricter check); semantic relabeling still open |
-| D2 DoS data collection | ⚠ ~260 samples in dataset — re-enable dos_loss_weight=0.5 before next run |
-| D3 Reentrancy no-external-calls audit | ✅ Structural cleanup done (−611 via WRITES-edge check); semantic noise still open |
-| D4 EMITS/INHERITS decision | ☐ Open |
-| D5 Empty contract_path fix | ☐ Open |
-| I1 Active learning setup | ☐ Not started |
-| I2 Per-statement CFG features | ☐ After label quality fixed |
-| I3 Learnable ghost embedding | ☐ Ready to implement |
-| I4 Reverse WRITES/READS phase | ☐ After label quality fixed |
+| A10 v8 extension ablations | ✅ v8-AB + PLAN-3A done; PLAN-3B deferred (data quality pivot) |
+| A11 PLAN-3D JK mode switch | ☐ Blocked on label quality fixes first |
+| R2 D-A complexity correlation | ✅ Done (2026-05-23) — moderate shortcuts r=0.25–0.40, single alert at 0.402 (benign) |
+| R2 D-B JK weight by node type | ☐ Open — requires extending jk_weight_hist.py to stratify by node type |
+| R2 D-C Phase 3 weight on correct vs incorrect | ☐ Open — requires classification run with per-contract weight tracking |
+| D1 Timestamp structural cleanup | ✅ Done (2026-05-23) — −568 labels, 0 remaining impossibilities; semantic noise still open |
+| D1 Timestamp semantic relabeling | ☐ Requires active learning — surface prob 0.35–0.65 for manual review |
+| D2 DoS loss weight | ⚠ 243 training positives — must set dos_loss_weight=0.5 before next run |
+| D3 Reentrancy structural cleanup | ✅ Done (2026-05-23) — −611 labels via WRITES-edge check; 100% pass on 561 sampled |
+| D3 Reentrancy semantic noise | ☐ Open — nonReentrant/CEI-ordered contracts still mislabeled; needs Slither taint analysis |
+| D4 EMITS extraction | ☐ Open — 0 EMITS edges in 41K graphs; decide implement vs defer |
+| D4 INHERITS extraction | ✅ BUG-H8 fixed — INHERITS fires at ~1.0% of edges; embedding row now trained |
+| D5 ExternalBug structural cleanup | ✅ Done (2026-05-23) — −445 labels via ext_call check |
+| D6 Empty contract_path fix | ☐ Open |
+| I1 Active learning setup | ☐ Not started — high priority after next training run |
+| I2 Per-statement CFG features | ☐ After label quality stabilised |
+| I3 Learnable ghost embedding | ☐ Low effort — ready to implement anytime |
+| I4 Reverse WRITES/READS phase | ☐ After label quality stabilised |
 | I5 Assert guards audit | ☐ Not started |
