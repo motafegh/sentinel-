@@ -8,6 +8,7 @@ it makes, and what would break if it were wrong.
 **Status markers:**
 - ✅ Covered and understood
 - ☐ Not yet covered
+- ⚠ Covered but needs reinforcement (recall session flagged)
 
 ---
 
@@ -24,6 +25,11 @@ memory or search skill.
 **If you don't get the question itself:** ask for a hint.
 **If you partially don't know:** ask for a hint.
 **If you have no idea at all:** say so and the full explanation follows.
+
+**Experimental grounding:** wherever a design decision has been tested by an
+actual ablation run (v7, v8-AB, PLAN-3A), the results are brought in alongside
+the theory. Knowing what happened in practice is as important as knowing why
+the architecture was designed a certain way.
 
 ---
 
@@ -160,7 +166,7 @@ v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 - ✅ Why multiple heads — different heads specialize for different edge type relationships
 - ✅ Why Phase 2 uses heads=1 — all Phase 2 edge types express the same semantic (execution ordering)
 - ✅ v8 heads=1 open question — 3→4 edge types in Phase 2; same-purpose argument still holds but weaker
-- ☐ What attention weights do NOT tell you — the faithfulness problem
+- ✅ The faithfulness problem — softmax always sums to 1 regardless of actual importance; high attention ≠ causal importance; local per-layer weights don't reflect 7-layer global prediction influence
 
 ### Three-Phase Architecture (v8)
 
@@ -176,19 +182,24 @@ v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 - ✅ `.flip(0)` to reverse edges at runtime — no re-extraction needed; type-7 embedding distinct from type-5
 - ✅ Residual connections — gradient vanishing problem; identity path ensures gradient ≥ 1 at every layer
 - ✅ Three phases as a pipeline — Phase 1 output feeds Phase 2; Phase 2 output feeds Phase 3
-- ☐ Why each phase uses isolated edge sets — what bleeds together without isolation
+- ✅ Why each phase uses isolated edge sets — mixing edge types in one pass prevents per-relationship specialization
+- ✅ Docstring inconsistency — header says 3 Phase 2 edge types; code (line 413–418) processes 4 (DEF_USE included); PARAMETERS section still says "v7 defaults"
 
 ### JK — Jumping Knowledge Connections
 
-- ☐ Oversmoothing — what it is, why it happens at depth, why it destroys node distinctiveness
-- ☐ What oversmoothing looks like in practice — all nodes converging to the same embedding
-- ☐ JK design — learned attention over all 3 phase outputs, not just final layer
-- ☐ `_JKAttention`: Linear(channels, 1), softmax over phases — the full forward pass
-- ☐ `register_buffer("last_weights")` — why buffers survive .to(device), save/load, DDP
-- ☐ `last_weight_stds` buffer — per-phase std across nodes; 0=global constant, >0.10=genuine routing
-- ☐ `last_node_weights` — stored in eval mode only (not a buffer — N varies); used by jk_weight_hist.py
-- ☐ eval vs training mode distinction — why full per-node weights only stored during eval
-- ☐ The _live list (no .detach()) vs _intermediates dict (.detach().clone()) — gradient flow reason
+- ✅ Oversmoothing — repeated averaging at depth; node embeddings converge to global average; loses per-node distinctiveness
+- ✅ What oversmoothing looks like in practice — FUNCTION and CFG_ENTRY end up with near-identical embeddings after 7 layers
+- ✅ JK design — learned attention over all 3 phase outputs; early phases = sharp local; late phases = smooth global
+- ✅ `_JKAttention`: Linear(channels, 1) scores each phase; softmax normalizes; weighted sum combines
+- ✅ `register_buffer("last_weights")` — buffers survive .to(device), state_dict save/load, DDP; contrast with plain attribute
+- ✅ `last_weight_stds` buffer — per-phase std; std < 0.05 = global constant (collapse); std > 0.10 = genuine per-node routing
+- ✅ `last_node_weights` — stored in eval mode only; [N, K] size varies per batch (can't be buffer); zero cost in training
+- ✅ eval vs training mode — `if not self.training` gate; per-node weights only needed by diagnostic scripts in eval
+- ✅ The _live list (no .detach()) vs _intermediates dict (.detach().clone()) — gradients must flow through _live into all conv layers; _intermediates are disconnected copies for inspection only
+- ✅ JK collapse confirmed — v7 and v8 both: 99.99% of nodes Phase 3 dominant; global constant not per-node routing
+- ✅ JK trajectory during training — Phase 2 starts high (new edges novel), collapses to Phase 3 dominance by training end
+- ✅ PLAN-3D fix — switch jk_mode from "attention" to "cat"; concatenation cannot collapse; downstream linear decides per class
+- ☐ `Linear(256, 1)` shared across all node types — what this means for per-node specialization limits
 
 ### Layer Normalization
 
@@ -318,33 +329,133 @@ the transferable skills — the things that apply beyond this project.
 
 ### Training Dynamics
 
-- ✅ Shortcut learning — model finding valid-but-wrong correlates
+- ✅ Shortcut learning — model finding valid-but-wrong correlates; confirmed in SENTINEL via Phase 3 dominance
 - ✅ Catastrophic forgetting — gradient overwriting of pretrained knowledge
 - ✅ Label leakage / target leakage — answer given as input feature
 - ✅ Data contamination — entity-level vs row-level deduplication
 - ✅ Heavy-tailed distributions and their effect on gradient signal
-- ☐ Oversmoothing — mechanics in depth beyond the JK motivation
-- ☐ Gradient flow — how requires_grad=False stops backward computation
-- ☐ Class imbalance — the full landscape of solutions (resampling, reweighting, loss design)
+- ✅ Oversmoothing — repeated averaging at depth; all nodes converge to global average; destroys distinctiveness
+- ⚠ Gradient flow / backpropagation — chain rule, gradient vanishing at depth; covered but needs reinforcement
+- ✅ Residual connections fix gradient vanishing — identity path; gradient always ≥ 1 along skip connection
+- ✅ Data ceiling — when label quality caps F1 regardless of architecture; confirmed by v7/v8-AB/PLAN-3A
+- ✅ Edge presence ≠ signal quality direction — PLAN-3A: 92.5% DEF_USE coverage on Timestamp, yet DEF_USE hurt Timestamp
+- ☐ Class imbalance — full landscape of solutions (resampling, reweighting, loss design)
 - ☐ Evaluation metrics — precision, recall, F1 for multi-label; why accuracy is useless here
-- ☐ Threshold calibration — why the optimal threshold is not 0.5 for imbalanced problems
+- ☐ Threshold calibration — why optimal threshold is not 0.5; v7 gained +0.022 F1 from tuning alone
 
 ### Architecture Patterns
 
 - ✅ Transfer learning — pretrain then adapt, why it works, data efficiency argument
 - ✅ Low-rank adaptation (LoRA) — the parameter efficiency argument
-- ☐ Attention mechanism from first principles — dot product attention formula
-- ☐ Multi-head attention — why multiple heads, what each head can specialize for
-- ☐ Residual connections — why skip connections prevent gradient vanishing
+- ✅ Multi-head attention — why multiple heads, what each head can specialize for
+- ✅ Residual connections — skip connections prevent gradient vanishing (covered in Phase 3)
+- ☐ Attention mechanism from first principles — dot product attention formula (vs GAT's additive attention)
 - ☐ Hierarchical GNN — the two-level alternative to unified graph
 - ☐ HGT (Heterogeneous Graph Transformer) — different weights per edge type
 
 ### Interpretability
 
+- ✅ The faithfulness problem — attention weights ≠ causal importance; softmax distributes over irrelevant neighbors
+- ✅ JK phase weights as diagnostic — global constant behavior, not per-node routing; what std tells you
 - ☐ GradCAM on graphs — gradient of output w.r.t. node features as importance scores
 - ☐ Three explanation families: gradient-based, perturbation-based, attention-based
-- ☐ The faithfulness problem — why explanations ≠ understanding
-- ☐ JK phase weights as diagnostic — what high Phase 3 weight tells and doesn't tell
+
+---
+
+## Phase 10 — Training Dynamics (Experimental Evidence)
+
+Understanding what the training logs and ablation results actually teach us.
+This phase is grounded entirely in docs/ml/ — real runs, real numbers.
+
+### Convergence Patterns
+
+- ☐ What a healthy loss curve looks like — steady descent, matched train/val
+- ☐ Plateau-then-burst pattern — PLAN-3A: plateau ep17–35, then ep36→38→41 rapid improvement; what causes it
+- ☐ Why F1 breakthroughs correlate with fused gradient spikes — the fusion layer as the main learner
+- ☐ Patience=30 in practice — why PLAN-3A spent 26 epochs after ep41 without improvement; auto-expire mechanics
+- ☐ Aux warmup pattern ep1–8 — what auxiliary heads do early; why the main classifier lags behind
+- ☐ GNN share dropping below 55% after ep25 — what this says about which eye dominates post-ep25
+
+### JK Attention Trajectory During Training
+
+- ☐ Phase 2 weight starts high (ep1: ~0.329 in v8-AB) — why new edge types get explored early
+- ☐ Collapse over training — Phase 2 falls from 0.329→0.204; Phase 3 rises 0.486→0.744
+- ☐ PLAN-3A ICFG-only trajectory — Phase 2 std=0.152 at ep3 (higher than v8-AB's 0.078); why ICFG-only gave cleaner early signal
+- ☐ Phase 2 collapse vs Phase 2 std — mean tells you where weight landed; std tells you if it's routing or fixed
+- ☐ Collapse alert threshold — all phase stds < 0.05 after ep3; what would trigger it in practice
+
+### Prediction vs Reality
+
+- ☐ Pre-PLAN-3A predictions scorecard — 4/7 correct direction, 3/7 wrong or opposite
+- ☐ Why edge coverage rates don't predict signal quality direction — DEF_USE 92.5% on Timestamp yet hurt Timestamp
+- ☐ Timestamp surprise — DEF_USE was amplifying label noise, not adding signal; ICFG better captured guard patterns
+- ☐ ExternalBug surprise — CALL_ENTRY preserved but DEF_USE removal still hurt; both dimensions needed together
+- ☐ What this teaches about designing ablations — one-at-a-time changes; predictions force you to make your assumptions explicit
+
+### Macro F1 Ceiling
+
+- ☐ v7: 0.2875 / v8-AB: 0.2851 / PLAN-3A: 0.2877 — all three converge to same ceiling
+- ☐ Why different architectures converge to the same ceiling — the data bottleneck argument
+- ☐ What "beating the ceiling" would require — not architecture change, data quality fix
+
+---
+
+## Phase 11 — Label Quality & Data Engineering
+
+The confirmed primary bottleneck. Label noise directly caps F1 regardless of architecture.
+All items here are actionable before v9 training.
+
+### Documented Label Problems
+
+- ☐ D1: Timestamp — 48.2% of Timestamp=1 contracts don't actually use block.timestamp; what mislabeling does to training
+- ☐ D3: Reentrancy — 14% of Reentrancy=1 contracts have no external calls; the impossible vulnerability signal
+- ☐ D2: DoS — 7 training samples; why excluded from loss (`dos_loss_weight=0.0`); what the exclusion costs
+- ☐ Why PLAN-3A confirmed D1 — Timestamp surged +0.038 when DEF_USE (which amplifies false timestamp chains) was removed; but label noise still caps it
+- ☐ Why PLAN-3A confirmed D3 — Reentrancy only recovered +0.005 despite ICFG preserved; label noise is the ceiling
+
+### label_cleaner.py
+
+- ☐ What the script does — automated re-labeling pass on existing dataset
+- ☐ Heuristic for Timestamp — contract uses block.timestamp in condition or storage write; not just any read
+- ☐ Heuristic for Reentrancy — must have external call + state write + re-entry path
+- ☐ Risk of over-cleaning — cleaning removes true positives if heuristic is wrong; the precision-recall tradeoff of cleaning
+- ☐ Why re-extraction is needed after cleaning — graph features (uses_block_globals) derived from same source
+
+### Re-Extraction Pipeline
+
+- ☐ Why 45 minutes matters — fast re-extraction makes data experiments as cheap as architecture experiments
+- ☐ Version coupling: graph files + embedding table + weights must stay synchronized
+- ☐ What happens if you train with v8 graphs + v9 embeddings — silent feature mismatch; no error at load time
+- ☐ The re-extraction checklist — schema version bump, graph_schema.py constants, assert guards, embedding table dim
+
+### v9 Data Roadmap
+
+- ☐ Fix D1 (Timestamp) via label_cleaner.py — expected Timestamp F1 ceiling to rise 0.255→0.35+
+- ☐ Fix D3 (Reentrancy) via label_cleaner.py — expected Reentrancy F1 ceiling to rise 0.291→0.35+
+- ☐ Add more DoS samples — 7 is too few; what "enough" means for stable gradient signal
+- ☐ PLAN-3B (DFG-only: CF + DEF_USE) — complete the ablation matrix before v9; run is still pending
+- ☐ PLAN-3D (JK concatenation mode) — switch jk_mode="cat"; expected to break the Phase 3 dominance ceiling
+
+---
+
+## Recall Sessions Needed
+
+Items flagged ⚠ require a focused re-teaching session before we advance past
+the phase that depends on them. These are not gaps — they were covered — but
+the understanding was incomplete or a misconception was found.
+
+| Topic | Why flagged | Blocking phase |
+|-------|-------------|----------------|
+| Backpropagation / gradient flow | User said "no idea" during residuals explanation; misconception about 0.4 gradients; chain rule not yet internalized | Phase 3 LayerNorm, Phase 8 Trainer |
+| Softmax sums to 1 | Initial misconception: "softmax doesn't make sum=1." Corrected but benefit of re-doing from scratch | Phase 3 GAT, Phase 7 Losses |
+
+### Recall Session Format
+
+Each recall session:
+1. **Code first** — show the actual line where the concept appears in the codebase
+2. **From scratch** — re-derive the concept without assuming prior explanation held
+3. **Check question** — one question with the answer closed; see if it sticks this time
+4. **Mark ✅** when the user answers without a hint
 
 ---
 
@@ -374,18 +485,40 @@ Cover the design decisions and results after all other files are understood.
 
 ## Progress Summary
 
-| Phase | File | Status |
-|-------|------|--------|
-| 1 | `graph_schema.py` — node features | ✅ Complete |
-| 1 | `graph_schema.py` — edge types | ✅ Complete (assert guards remain) |
-| 2 | `graph_extractor.py` | 🔄 Nearly complete — 3 feature computation items remain |
-| 3 | `gnn_encoder.py` | 🔄 In progress — message passing fundamentals done, mid-GAT |
-| 4 | `transformer_encoder.py` | ✅ Mostly complete (4 items remain) |
-| 5 | `fusion_layer.py` | ☐ Not started |
-| 6 | `sentinel_model.py` | ☐ Not started |
-| 7 | `losses.py` | ☐ Not started |
-| 8 | `trainer.py` | ☐ Not started |
-| 9 | v8 extensions (implemented) | ☐ Design reasoning not yet covered |
-| 9 | v9 extensions (pending) | ☐ Not yet implemented |
+| Phase | File / Topic | Status | Next item |
+|-------|-------------|--------|-----------|
+| 1 | `graph_schema.py` — node types + features | ✅ Complete | — |
+| 1 | `graph_schema.py` — edge types | ✅ Complete | assert guards (1 item) |
+| 2 | `graph_extractor.py` | 🔄 Nearly complete | BUG-1/BUG-2 log-norm fixes (2 items) |
+| 3 | `gnn_encoder.py` — message passing | ✅ Complete | — |
+| 3 | `gnn_encoder.py` — GAT | ✅ Complete | — |
+| 3 | `gnn_encoder.py` — Three-Phase Architecture | ✅ Complete | — |
+| 3 | `gnn_encoder.py` — JK Connections | 🔄 Nearly complete | `Linear(256,1)` shared weights (1 item) |
+| 3 | `gnn_encoder.py` — LayerNorm | ☐ Not started | — |
+| 3 | `gnn_encoder.py` — Pooling | ☐ Not started | — |
+| 3 | `gnn_encoder.py` — Architecture Parameters | ☐ Not started | — |
+| 4 | `transformer_encoder.py` | 🔄 Mostly complete | Flash Attention, bfloat16, LoRA alpha/r, B=0 init (4 items) |
+| 5 | `fusion_layer.py` | ☐ Not started | — |
+| 6 | `sentinel_model.py` | ☐ Not started | — |
+| 7 | `losses.py` | ☐ Not started | — |
+| 8 | `trainer.py` | ☐ Not started | — |
+| 9 | v8 extensions (implemented) | ☐ Design reasoning not yet covered | — |
+| 9 | v9 extensions (pending) | ☐ Not yet implemented | — |
+| 10 | Training Dynamics (experimental) | ☐ Not started | — |
+| 11 | Label Quality & Data Engineering | ☐ Not started | — |
+| — | Recall: Backpropagation | ⚠ Needs reinforcement | Chain rule re-derivation |
+| — | Recall: Softmax sums to 1 | ⚠ Needs reinforcement | From-scratch re-teaching |
 
-**Current position:** Phase 3 GNN encoder — mid-GAT section. Next: faithfulness problem, then Three-Phase Architecture.
+**Current position:** Phase 3 GNN encoder — JK section complete except one item (`Linear(256,1)` shared weights).
+**Recommended next step:** Complete JK, then LayerNorm → Pooling → Architecture Parameters, then Phase 10 training dynamics session grounded in docs/ml/ evidence.
+
+### Key Findings Integrated Into Roadmap
+
+| Finding | Source | Impact on what we're learning |
+|---------|--------|-------------------------------|
+| JK collapse confirmed: 99.99% Phase 3 dominant | jk-attention-collapse-findings.md | JK is a fixed global weighting, not routing; PLAN-3D needed |
+| All three architectures hit 0.2875 ceiling | plan-3a-results.md + v8-vs-v7 | Bottleneck is data, not model |
+| DEF_USE hurt Timestamp (surprise +0.038 when dropped) | plan-3a-results.md | Edge presence ≠ signal quality; label noise interacts with edge types |
+| Reentrancy: only +0.005 with ICFG preserved | plan-3a-results.md | Label noise is the ceiling, not architecture |
+| Fusion layer drives all F1 breakthroughs | v8-AB-training-analysis.md | Fused grad spikes = mechanism of learning |
+| Phase 2 std=0.152 at ep3 then collapses | plan-3a-results.md | ICFG-only creates early routing; routing doesn't persist |
