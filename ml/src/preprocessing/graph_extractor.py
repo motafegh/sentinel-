@@ -490,9 +490,9 @@ def _build_cfg_node_features(
     parent_features: list | None = None,
 ) -> list:
     """
-    Build the 12-dim feature vector for a CFG (statement-level) node.
+    Build the 11-dim feature vector for a CFG (statement-level) node.
 
-    Returns list[float] of exactly NODE_FEATURE_DIM (12) elements.
+    Returns list[float] of exactly NODE_FEATURE_DIM (11) elements.
     torch.tensor(x_list) requires all sublists to be the same length;
     returning a different length silently causes crashes at tensor assembly.
 
@@ -829,9 +829,6 @@ def _build_node_features(obj: Any, type_id: int) -> list:
 
         return_ignored      = _compute_return_ignored(obj)
         call_target_typed   = _compute_call_target_typed(obj)
-        # in_unchecked removed from v7 feature vector (BUG-L2) — call kept for
-        # deprecation period; result is intentionally discarded.
-        _compute_in_unchecked(obj)
         has_loop            = _compute_has_loop(obj)
         external_call_count = _compute_external_call_count(obj)
 
