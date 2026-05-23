@@ -74,7 +74,12 @@ from ml.src.training.losses import AsymmetricLoss
 # ---------------------------------------------------------------------------
 # Logging setup — module level only (handlers added per-run inside train())
 # ---------------------------------------------------------------------------
-logger.remove()
+# Use handler ID 0 (loguru's default stderr sink) specifically rather than
+# logger.remove() which would destroy any caller-configured handlers.
+try:
+    logger.remove(0)
+except ValueError:
+    pass  # already removed (e.g. in test environments that pre-configure loguru)
 logger.add(sys.stderr, level="INFO")
 
 # ---------------------------------------------------------------------------
