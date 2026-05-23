@@ -110,20 +110,19 @@ The architectural constraint is: fusion provides graph context for the *classifi
 
 The case for architectural change is supported by three lines of evidence from the training record.
 
-### 3.1 The F1-Macro Plateau (v4 through PLAN-3A)
+### 3.1 The F1-Macro Plateau (v7 through PLAN-3A)
+
+The valid plateau evidence consists of three independent post-deduplication training runs:
 
 | Run | Key change | Tuned F1-macro | Δ vs prev |
 |-----|-----------|----------------|-----------|
-| v3 | Baseline multi-label | 0.507 | — |
-| v4 | Focal loss fix, LoRA r=16 | 0.542 | +0.035 |
-| v5.0 | 3-phase GNN, 3-eye, aux loss | 0.583 (val) | +0.041 |
-| v5.1 | Dedup fix (34.9% leakage removed) | — | (reset) |
-| v6 | Schema rebuild, windowed tokens, ASL | — | (rebuild) |
-| v7.0 | 27 bugs fixed, v7 schema, 11-dim | 0.2875 | baseline |
-| v8-AB | ICFG + DEF_USE edges (v8 schema) | 0.2851 | −0.0024 |
-| PLAN-3A | ICFG-only Phase 2 | 0.2877 | +0.0002 |
+| v7.0 | 27 bugs fixed, v7 schema, 11-dim features | 0.2875 | baseline |
+| v8-AB | + ICFG + DEF_USE edges (v8 schema) | 0.2851 | −0.0024 |
+| PLAN-3A | ICFG-only Phase 2 (best GNN config found) | 0.2877 | +0.0002 |
 
-After the data quality reset (v5.1 dedup), three independent runs across different graph schemas and edge type combinations all converge to **0.287–0.288**. The model is not learning from architectural changes at this scale. The plateau is real.
+Three independent runs across significantly different graph schemas and edge type combinations all converge to **0.287–0.288**. The model is not learning from architectural changes at this scale. The plateau is real.
+
+> **Important note on pre-dedup runs:** Earlier results — v3 (F1=0.507), v4 (0.542), v5.0 (0.583 val) — are **not included in the plateau evidence** and should not be compared to post-dedup numbers. The v5.1 deduplication fix removed 34.9% of train/val data that was leaking across splits. The drop from 0.583 to 0.2875 reflects dataset correction, not architectural regression. Only runs from v7.0 onward, all trained on the deduplicated dataset with proper splits, are valid evidence for the plateau claim.
 
 ### 3.2 Behavioral Test Results (Most Diagnostic Metric)
 
@@ -133,7 +132,9 @@ After the data quality reset (v5.1 dedup), three independent runs across differe
 | v8-AB | 8/19 (42%) |
 | PLAN-3A | Comparable to v8 (not independently retested) |
 
-42% behavioral pass rate means the model fails to detect known vulnerable patterns in 58% of hand-curated test cases. The Peculiar paper (GraphCodeBERT for smart contracts) achieved 91.8% precision / 92.4% recall on reentrancy alone — a class where SENTINEL currently achieves F1=0.291. This gap is too large to be explained by dataset differences; the architecture is the primary constraint.
+42% behavioral pass rate means the model fails to detect known vulnerable patterns in 58% of hand-curated test cases. For directional context: the Peculiar paper (GraphCodeBERT for smart contracts, ISSRE 2021) achieved 91.8% precision / 92.4% recall on reentrancy — a class where SENTINEL currently achieves F1=0.291.
+
+**Important:** this comparison is directional evidence only, not a performance benchmark. Peculiar detects a **single class** (Reentrancy) on a small, manually curated dataset with clean labels. SENTINEL is a **10-class multilabel system** operating on 44K BCCC contracts with OR-labeling noise (~14% mislabeling in Reentrancy alone). The task complexity difference explains a substantial portion of the gap. The Peculiar result is cited to establish that GraphCodeBERT transfers to Solidity and can produce strong vulnerability detection results — not to imply SENTINEL should match 91%+ after this change.
 
 ### 3.3 PLAN-3A Hypothesis Autopsy
 
@@ -271,21 +272,36 @@ The proposal adds a third use: **project K selected node embeddings from the GNN
 Not all N graph nodes are equally informative. The following node types carry the vulnerability-relevant structural signals:
 
 ```python
+# Phase 1 (declaration-level only — audited against 41,576 training graphs):
 STRUCTURAL_PREFIX_TYPES = {
-    NodeType.FUNCTION,         # function definitions — entry points
-    NodeType.MODIFIER,         # access control guards
-    NodeType.CONSTRUCTOR,      # initialization patterns
-    NodeType.FALLBACK,         # low-level call receivers
-    NodeType.RECEIVE,          # ETH receive handlers
-    NodeType.CFG_NODE_CALL,    # external call sites — reentrancy, gas griefing
-    NodeType.CFG_NODE_WRITE,   # state variable writes — CEI violations
-    NodeType.CFG_NODE_CHECK,   # conditional guards — access control
+    NodeType.FUNCTION,     # function definitions — entry points (after Phase 3: carry CFG signal)
+    NodeType.MODIFIER,     # access control guards
+    NodeType.CONSTRUCTOR,  # initialization patterns
+    NodeType.FALLBACK,     # low-level call receivers
+    NodeType.RECEIVE,      # ETH receive handlers
 }
 ```
 
-Contracts typically have 10–25 nodes of these types. The upper bound K=32 covers ~95% of contracts. Contracts with fewer than K eligible nodes pad the prefix with zero embeddings (which the attention mask marks as invalid, contributing nothing).
+**PRE-4 audit result (2026-05-23, n=41,576 graphs):** Declaration-level only: mean=20.3, P50=16, P90=38, P95=47, P99=84. K=48 covers 95.5% of contracts without truncation.
 
-Nodes NOT included: `STATE_VAR`, `CFG_NODE_READ`, `CFG_NODE_OTHER`, `CONTRACT`, `EVENT` — these carry less direct vulnerability signal and their information is already aggregated into FUNCTION/CFG_CALL/CFG_WRITE nodes after Phase 3 (REVERSE_CONTAINS).
+> **Why declaration-level only (not including CFG nodes):** The original proposal included CFG_NODE_CALL, CFG_NODE_WRITE, CFG_NODE_CHECK. These inflate the eligible count to mean=48.7, P95=122 — K=32 would only cover 42.3% of contracts, making truncation the rule rather than the exception. More importantly, after Phase 3 (REVERSE_CONTAINS), FUNCTION nodes already carry aggregated CFG signal from their child nodes. The transformer gets structural context from the function level; CrossAttentionFusion provides CFG-level detail separately. **Phase 1B ablation** (after Phase 1 results) will add `CFG_NODE_CALL` back with K=64 to isolate whether explicit call-site visibility in the prefix helps Reentrancy beyond the function-level prefix signal.
+
+Contracts with fewer than K eligible nodes pad the prefix with zero embeddings (attention mask marks as invalid, contributing no gradient or signal).
+
+Nodes NOT in Phase 1 prefix: `STATE_VAR`, `CFG_NODE_*`, `CONTRACT`, `EVENT` — CFG nodes are included in the Phase 1B ablation only.
+
+**Node selection ordering (when eligible count > K):**
+
+When a contract has more than K eligible structural nodes, the following priority order determines which K are selected:
+
+1. `CONSTRUCTOR`, `FALLBACK`, `RECEIVE` — always included first (at most 3 per contract)
+2. `MODIFIER` nodes — included next (typically ≤ 5)
+3. `FUNCTION` nodes — sorted by descending `external_call_count` feature (dim[10]) so the most externally-active functions come first
+4. `CFG_NODE_CALL` nodes — sorted by node index (deterministic, matches graph insertion order)
+5. `CFG_NODE_WRITE` nodes — sorted by node index
+6. `CFG_NODE_CHECK` nodes — sorted by node index
+
+This ordering ensures the highest vulnerability-signal nodes enter the prefix first. Sorting is deterministic (no randomness) so training and inference select the same nodes for any given contract. The ordering must be implemented identically in `sentinel_model.py` (training) and `predictor.py` (inference).
 
 ### 6.3 Projection Layer
 
@@ -325,8 +341,37 @@ gnn_emb   = self.gnn_to_bert_proj(selected_nodes)     # [B, K, 768]
 code_emb  = bert.embeddings.word_embeddings(input_ids) # [B, L_code, 768]
 
 full_emb  = cat([cls_emb, gnn_emb, sep_emb, code_emb, sep_emb, pad_emb], dim=1)
-# Pass: model(inputs_embeds=full_emb, attention_mask=full_mask)
+# Pass: model(inputs_embeds=full_emb, attention_mask=full_mask, position_ids=pos_ids)
 ```
+
+### 6.4.1 Position Embedding Design for Prefix Tokens
+
+When using `inputs_embeds`, BERT still adds position embeddings internally. The default sequential assignment would give CLS position 0, GNN prefix tokens positions 1..K, [SEP] position K+1, and the first code token position K+2. This misaligns code token positions relative to GraphCodeBERT's pre-training (where the first code token received position 1), which could degrade the pre-trained positional representations of early code tokens.
+
+**Required:** explicitly construct and pass `position_ids` to the model forward call:
+
+```python
+# Position ID assignment — avoids misaligning code token positions
+pos_ids = torch.zeros(B, seq_len, dtype=torch.long, device=device)
+# CLS → position 0
+pos_ids[:, 0] = 0
+# GNN prefix tokens → all assigned position 1 (treated as a single "structural context slot")
+pos_ids[:, 1:K+1] = 1
+# [SEP] after prefix → position 2
+pos_ids[:, K+1] = 2
+# Code tokens → positions 3, 4, 5, ... (shifted by 3 to leave room for the prefix slot)
+# This keeps relative code-token positions intact within the window
+code_len = seq_len - K - 3  # CLS + K prefix + SEP + code + SEP
+for i in range(code_len):
+    pos_ids[:, K+2+i] = 3 + i
+# Trailing [SEP] and [PAD] positions follow sequentially
+```
+
+The key design decision: GNN prefix tokens all share **position 1** (a single shared slot). This avoids displacing code token positions by K positions and preserves the positional relationship between code tokens that GraphCodeBERT learned during pre-training. The prefix tokens are semantically non-positional (they represent structural nodes, not sequential text) so sharing a position slot is appropriate.
+
+This `position_ids` construction must be validated in Phase 0 by comparing training loss curves with and without explicit position IDs.
+
+**Position embedding overflow — validated, not a risk:** A potential concern is that code token position IDs (starting at 3) might exceed the model's `max_position_embeddings`. GraphCodeBERT/CodeBERT use RoBERTa-base with `max_position_embeddings=514` (positions 0–513 supported). With K=48 and a 461-token code budget, the highest code token position is 3 + 460 = **463**, and the trailing [SEP] reaches position **464**. Both are safely within the 514-position limit. Even for K=64 (Phase 1B, code budget 446), the maximum position is 3 + 445 = 448. No overflow is possible for any K value in this proposal.
 
 ### 6.5 Attention Mask for the Prefix Region
 
@@ -359,6 +404,31 @@ For a multi-window contract (W=4 windows), the GNN prefix tokens are **identical
 ### 6.7 The WindowAttentionPooler Under the New Design
 
 The `WindowAttentionPooler` currently extracts the CLS token from position 0 of each window. This is unchanged — CLS remains at position 0. However, the CLS embedding is now substantially richer: by layer 12 of GraphCodeBERT, CLS has attended to K GNN structural tokens (positions 1..K), the code tokens, and the DFG variable nodes (if Option A or C). The pooler's learned attention over window-CLS embeddings now has a better signal for selecting the most vulnerability-relevant window.
+
+### 6.8 Batching Contract for Variable-Length Prefixes
+
+Contracts in a training batch have different numbers of eligible structural nodes. This requires a defined padding contract:
+
+**Problem:** contract A has 55 eligible declaration nodes, contract B has 12. Both must produce `[B, K, 768]` prefix tensors of the same shape (K=48).
+
+**Solution:**
+```python
+# In sentinel_model.py, after node selection and projection:
+# gnn_prefix: [B, K, 768] — zero-padded for contracts with < K eligible nodes
+# gnn_prefix_mask: [B, K] — 1 for real nodes, 0 for padding
+
+gnn_prefix = torch.zeros(B, K, 768, device=device)
+gnn_prefix_mask = torch.zeros(B, K, dtype=torch.long, device=device)
+
+for i, (nodes, count) in enumerate(zip(selected_node_embs, eligible_counts)):
+    real_k = min(count, K)
+    gnn_prefix[i, :real_k] = self.gnn_to_bert_proj(nodes[:real_k])
+    gnn_prefix_mask[i, :real_k] = 1
+```
+
+The `gnn_prefix_mask` is then merged into the sequence-level attention mask: padded prefix positions (mask=0) are blocked from attending to anything and from being attended to. This ensures that zero-padded prefix embeddings contribute no signal to the transformer's attention, equivalent to not being in the sequence.
+
+This batching contract must be unit-tested before the first training run: verify that a batch of mixed-size contracts produces correct attention masks and that no gradient flows through zero-padded prefix positions.
 
 ---
 
@@ -522,12 +592,17 @@ The window does not need to see these things in its own token slice — they arr
 
 With GNN prefix (all options include this):
 
-| Option | CLS | GNN prefix | SEP tokens | DFG nodes | Code budget | Effective coverage (4 windows, stride adjusted) |
-|---|---|---|---|---|---|---|
-| Current (CodeBERT) | 1 | 0 | 2 | 0 | 509 | ~1280 unique code tokens |
-| Option B (K=16) | 1 | 16 | 2 | 0 | 493 | ~1240 unique code tokens |
-| Option C (K=16, M=64) | 1 | 16 | 2 | 64 | 429 | ~1080 unique code tokens |
-| Option A (K=16, M=32) | 1 | 16 | 2 | 32 | 461 | ~1160 unique code tokens |
+| Option | CLS | GNN prefix | SEP tokens | DFG nodes | Code budget | Stride (50% overlap) | Effective coverage (4 windows) |
+|---|---|---|---|---|---|---|---|
+| Current (CodeBERT) | 1 | 0 | 2 | 0 | 509 | 256 | ~1280 unique code tokens |
+| Option B (K=48, decl-only) | 1 | 48 | 2 | 0 | 461 | **231** | ~1156 unique code tokens |
+| Option B Phase 1B (K=64, +CFG_CALL) | 1 | 64 | 2 | 0 | 446 | **223** | ~1120 unique code tokens |
+| Option C (K=48, M=64) | 1 | 48 | 2 | 64 | 397 | **199** | ~1000 unique code tokens |
+| Option A (K=48, M=32) | 1 | 48 | 2 | 32 | 429 | **215** | ~1080 unique code tokens |
+
+*K values updated from K=16 to K=48 following PRE-4 audit (2026-05-23). Stride = floor(code_budget / 2).*
+
+Stride values are computed as `floor(code_budget / 2)` to maintain ~50% window overlap. Option B stride changes from 256 → 246 (a 4% reduction). This must be updated in the `STRIDE` constant when switching to Option B.
 
 Coverage loss is 3–16% of code tokens per window. This is acceptable given that each token now has structural context (worth more information per token processed).
 
@@ -563,18 +638,60 @@ The following components are preserved exactly:
 | DVC data versioning | Unchanged | Token file format unchanged in Options B/C |
 | Inference cache | Unchanged | Schema version bump invalidates stale caches |
 | Drift detector | Unchanged | KS test on graph statistics still valid |
-| `FEATURE_SCHEMA_VERSION` | Bump to `v9` | New architecture version — invalidates inference caches |
+| `FEATURE_SCHEMA_VERSION` | **No change for Option B** | Option B changes no graph features or token format — `FEATURE_SCHEMA_VERSION` stays `"v8"`. Only bump to `"v9"` for Options C or A which change the token file format (DFG nodes added). Instead, version the model checkpoint with a new `"architecture"` key in the saved config dict. |
 
 ---
 
 ## 10. Implementation Phases
 
-### Phase 0 — Prerequisite Validation (3–5 days)
+### Phase 0 — Prerequisite Validation (~3–4 days engineering + ~6–8 hours GPU)
 
-Before any model code changes:
+**Timing note:** the 3–4 day estimate is engineering time (environment setup, scripts, shape validation). The 5-epoch diagnostic training run itself takes ~6–8 hours on RTX 3070 — it is not "3 days of training."
 
-1. **Verify GraphCodeBERT loads in the current environment:**
+**Prerequisites before any model code changes:**
+
+0. **Download GraphCodeBERT to local HuggingFace cache** — `TRANSFORMERS_OFFLINE=1` is set in **two places**: at the shell level by convention, and programmatically in `ml/src/training/trainer.py` line 714 (`os.environ["TRANSFORMERS_OFFLINE"] = "1"`) alongside `HF_HUB_OFFLINE=1`. The model must be cached **before** the first call to `train()`, or the Python-level flag will block the download. Run once with internet access before any code changes:
    ```bash
+   # Run from WSL2 with internet access, TRANSFORMERS_OFFLINE must NOT be set
+   unset TRANSFORMERS_OFFLINE
+   unset HF_HUB_OFFLINE
+   python -c "
+   from transformers import AutoModel, AutoTokenizer
+   AutoTokenizer.from_pretrained('microsoft/graphcodebert-base')
+   AutoModel.from_pretrained('microsoft/graphcodebert-base')
+   print('GraphCodeBERT cached successfully')
+   "
+   # After this, re-set TRANSFORMERS_OFFLINE=1 for all training runs
+   ```
+   Confirm the model appears in `~/.cache/huggingface/hub/` before proceeding.
+
+0b. **Validate tokenizer identity (CodeBERT vs GraphCodeBERT)** — The codebase hardcodes `"microsoft/codebert-base"` in four locations: `ml/src/data_extraction/tokenizer.py:60` (`TOKENIZER_MODEL`), `ml/src/inference/preprocess.py:145` (`TOKENIZER_NAME`), and `ml/src/models/transformer_encoder.py` (model load, two fallback paths). All pre-tokenized training data uses CodeBERT's tokenizer. GraphCodeBERT and CodeBERT both derive from RoBERTa-base and are expected to have an identical vocabulary, but this must be verified before assuming the existing token files are valid:
+   ```python
+   from transformers import AutoTokenizer
+   tok_codebert = AutoTokenizer.from_pretrained("microsoft/codebert-base")
+   tok_gcb      = AutoTokenizer.from_pretrained("microsoft/graphcodebert-base")
+   assert tok_codebert.vocab_size == tok_gcb.vocab_size, "vocab mismatch — token files invalid!"
+   
+   test_snippet = "function withdraw(uint amount) external payable { call.value(amount)(); }"
+   ids_codebert = tok_codebert.encode(test_snippet)
+   ids_gcb      = tok_gcb.encode(test_snippet)
+   assert ids_codebert == ids_gcb, "Token ID mismatch — all token files must be regenerated!"
+   print("Tokenizers identical — existing token files are valid")
+   ```
+   If the assertion fails, all 44,470 token files in `ml/data/tokens_windowed/` must be regenerated before any training run. If the assertion passes, no token pipeline changes are needed for Options B or C.
+
+0c. **Check tokenizer unknown-token rate on Solidity** — GraphCodeBERT was pre-trained on 6 languages (not Solidity). Validate it doesn't produce significantly more `[UNK]` tokens on Solidity code:
+   ```python
+   from transformers import AutoTokenizer
+   tok = AutoTokenizer.from_pretrained("microsoft/graphcodebert-base")
+   # Run on 100 random Solidity files from ml/data/contracts/
+   # Report: UNK token rate, avg token count per contract
+   # Pass threshold: UNK rate < 0.5% (same as CodeBERT baseline)
+   ```
+
+1. **Verify GraphCodeBERT loads in the training environment:**
+   ```bash
+   source ml/.venv/bin/activate
    python -c "from transformers import AutoModel; AutoModel.from_pretrained('microsoft/graphcodebert-base')"
    ```
    Confirm Flash Attention 2 or SDPA falls back correctly.
@@ -600,6 +717,71 @@ Before any model code changes:
    - Expected: same or slightly improved loss trajectory
    - This separates the effect of better pre-training from the GNN prefix injection
 
+5. **Test `inputs_embeds` + LoRA + Flash Attention 2 on a single batch (G1):**
+   Before any full training run, run a single forward+backward pass with `inputs_embeds` to confirm the full stack works together. These three components interact in a rarely-tested combination:
+   - LoRA (PEFT) wraps the base model — when `inputs_embeds` is passed, PEFT must skip the embedding layer and pass the embeddings through. Verify no shape errors or missing embedding layer assumptions.
+   - Flash Attention 2 requires contiguous memory and specific mask formats. With `inputs_embeds` + custom `position_ids` + the new flat attention mask, FA2 must not raise a shape or dtype error.
+   - Gradient must flow through `gnn_to_bert_proj` back to the GNN.
+   - **Critically: verify LoRA adapters are actually active with `inputs_embeds`.** PEFT's embedding bypass is a rarely-exercised code path — LoRA matrices could be silently skipped.
+   ```python
+   # Minimal validation script (run before full training):
+   import torch
+   from ml.src.models.sentinel_model import SentinelModel  # after Phase 1 modifications
+
+   model = SentinelModel(cfg).to("cuda")
+   dummy_prefix = torch.randn(2, 16, 256, device="cuda")  # [B, K, gnn_hidden]
+   dummy_input_ids = torch.randint(0, 1000, (2, 512), device="cuda")
+   dummy_mask = torch.ones(2, 512, dtype=torch.long, device="cuda")
+
+   # Forward + backward
+   out = model.transformer_encoder(dummy_input_ids, dummy_mask, gnn_prefix_nodes=dummy_prefix)
+   out.sum().backward()
+
+   # 1. Verify grad reached gnn_to_bert_proj
+   assert model.gnn_to_bert_proj.weight.grad is not None, "No gradient in gnn_to_bert_proj!"
+
+   # 2. Verify LoRA adapters are actually applied (not silently bypassed) with inputs_embeds:
+   #    With LoRA active, output differs from the base model's output.
+   model.eval()
+   with torch.no_grad():
+       full_emb = _build_prefix_sequence(dummy_prefix, dummy_input_ids, dummy_mask)  # after §6.4
+       lora_out  = model.transformer_encoder.bert(inputs_embeds=full_emb, attention_mask=dummy_mask)
+       base_out  = model.transformer_encoder.bert.base_model.model(
+                       inputs_embeds=full_emb, attention_mask=dummy_mask)
+   assert not torch.allclose(lora_out.last_hidden_state, base_out.last_hidden_state, atol=1e-4), \
+       "LoRA adapters are NOT being applied with inputs_embeds — outputs identical to base model!"
+   print("inputs_embeds + LoRA + FA2 stack validated, LoRA active confirmed")
+   ```
+
+6. **Verify CLS position in `last_hidden_state` with `inputs_embeds`:**
+   The `WindowAttentionPooler` extracts CLS using `token_embs[:, torch.arange(W) * window_size, :]`. With `inputs_embeds`, CLS is the first element of the manually assembled sequence (position 0). Confirm BERT preserves this ordering in its output:
+   ```python
+   # CLS position validation:
+   output = bert_model(inputs_embeds=full_emb, attention_mask=mask, position_ids=pos_ids)
+   cls_repr = output.last_hidden_state[:, 0, :]  # must be CLS, not shifted
+   # Run a single forward pass and check: cls_repr should differ from all other positions
+   # and should respond to a CLS-type query (high cosine similarity with other CLS outputs)
+   assert cls_repr.shape == (B, 768), f"Unexpected shape: {cls_repr.shape}"
+   print("CLS at position 0 confirmed in last_hidden_state")
+   ```
+
+7. **Measure single-contract inference latency:**
+   The predictor.py warmup call uses `model(dummy_batch, dummy_ids, dummy_mask)`. With the prefix, the call becomes `model(dummy_batch, dummy_ids, dummy_mask, gnn_prefix_nodes=...)`. Measure the added latency:
+   - Target: < 500ms per contract on RTX 3070 (end-to-end including GNN forward + prefix selection + projection + transformer)
+   - If > 500ms: profile node selection/projection vs GNN as the bottleneck
+
+### Phase 0b — Optional Ablation: CodeBERT + GNN Prefix (K=16, flat mask)
+
+Before committing to GraphCodeBERT weights, run a 5-epoch diagnostic with **CodeBERT + GNN prefix** (original CodeBERT weights, same GNN prefix injection). This separates the contribution of GraphCodeBERT's pre-training from the contribution of the prefix injection mechanism:
+
+| Config | GraphCodeBERT weights | GNN prefix |
+|---|---|---|
+| Phase 0 (current) | Yes | No |
+| Phase 0b | No (CodeBERT) | Yes (K=16) |
+| Phase 1 | Yes | Yes (K=16) |
+
+If Phase 0b shows significant improvement over Phase 0 (CodeBERT alone), the prefix mechanism is effective even without GraphCodeBERT. If Phase 1 (both) beats Phase 0b, GraphCodeBERT's pre-training adds value beyond just the prefix. This ablation fully decomposes the two components. It requires ~6–8 hours GPU — worth running before the 60-80 hour Phase 1 run.
+
 ### Phase 1 — Option B Implementation (5–7 days)
 
 **Files to modify:**
@@ -616,20 +798,121 @@ Before any model code changes:
 **New checkpoint config keys to add:**
 ```python
 {
-    "architecture": "three_eye_graphcodebert_v1",
-    "transformer_model": "microsoft/graphcodebert-base",
-    "gnn_prefix_k": 16,
-    "gnn_prefix_node_types": [...],  # list of included NodeType values
-    "gnn_to_bert_proj_dim": [256, 768],
+    "architecture":               "three_eye_graphcodebert_prefix_v1",
+    "transformer_model":          "microsoft/graphcodebert-base",
+    "gnn_prefix_k":               16,
+    "gnn_prefix_warmup_epochs":   15,
+    "gnn_prefix_node_types":      [1, 2, 6, 4, 5, 8, 9, 11],  # NodeType int values
+    "gnn_to_bert_proj_dim":       [256, 768],
+    "use_prefix_type_embedding":  True,   # G11 — nn.Embedding(8, 768) summed into prefix
+    "num_prefix_types":           8,      # len(STRUCTURAL_PREFIX_TYPES)
 }
 ```
+`gnn_prefix_node_types` stores the raw int values (so the predictor doesn't need to import `graph_schema`). `use_prefix_type_embedding` is a first-class flag so a checkpoint without G11 can still be loaded cleanly by setting it to `False`.
 
 **Training run: `graphcodebert-v1-prefix16`**
 - All training hyperparameters unchanged from PLAN-3A
 - `gnn_prefix_k = 16`
+- `gnn_prefix_warmup_epochs = 15` (see below)
 - `max_epochs = 100`, `early_stop_patience = 30`
 - Gate metric: tuned F1-macro > 0.2877 (beat PLAN-3A) AND ≥ 1 behavioral test improvement
 - Full run expected: ~60–80 hours on RTX 3070
+
+**Projection layer warmup (corrected strategy):** The `gnn_to_bert_proj` layer is initialized from scratch (Kaiming uniform). A naive approach — inject the prefix but freeze the projection — still exposes the transformer to random GNN→BERT projections for 15 epochs, corrupting pre-trained attention patterns before the projection has learned anything useful.
+
+**Correct warmup strategy: suppress the prefix entirely during warmup.**
+
+During `gnn_prefix_warmup_epochs`, pass `gnn_prefix_nodes=None` to `transformer_encoder.forward()` — the `None` guard falls back to the standard `input_ids` path with no prefix. After warmup ends, the projection weights have been initialised by gradient signal through the GNN→proj path (CrossAttentionFusion still sends gradient through the GNN during warmup), and the transformer is unfamiliar with the prefix. Then enable prefix injection gradually.
+
+```python
+# In trainer.py, per-epoch logic:
+if epoch < cfg.gnn_prefix_warmup_epochs:
+    # Standard path — no prefix, transformer trains cleanly.
+    # gnn_to_bert_proj still receives gradient via CrossAttentionFusion→GNN.
+    prefix_nodes = None
+else:
+    # Prefix injection active. gnn_to_bert_proj now bridges GNN→BERT space.
+    prefix_nodes = model.select_prefix_nodes(gnn_node_embeddings, graph_batch)
+
+logits = model(batch, input_ids, attention_mask, gnn_prefix_nodes=prefix_nodes)
+```
+
+`gnn_prefix_warmup_epochs` is a **separate configurable hyperparameter** (not tied to `aux_loss_warmup_epochs`). They serve different purposes:
+- `aux_loss_warmup_epochs = 8` — stabilises classifier before aux gradients compete
+- `gnn_prefix_warmup_epochs = 15` — keeps prefix suppressed until projection has trained via the CrossAttentionFusion→GNN gradient path (default; tune based on weight norm monitoring)
+
+```python
+# Log projection weight norm after warmup to detect convergence:
+if epoch >= cfg.gnn_prefix_warmup_epochs:
+    proj_norm = model.gnn_to_bert_proj.weight.norm().item()
+    logger.info(f"  gnn_to_bert_proj weight norm: {proj_norm:.4f}")
+    # When norm change epoch-to-epoch < 1%, projection has converged
+```
+
+> Note: `prefix_type_embedding` (G11) should also be suppressed during warmup. Since it is summed into the prefix before injection, it receives no gradient when `gnn_prefix_nodes=None`. No separate freeze needed — the `None` path naturally handles it.
+
+**GNN gradient collapse monitoring (G5):** The GNN prefix path creates a new gradient pathway: loss → transformer → gnn_to_bert_proj → GNN node embeddings. This adds gradient demand on the GNN on top of the existing CrossAttentionFusion path. The existing GNN collapse detector (trainer.py line 612) alerts when GNN gradient share drops below 10%. With the prefix path active, this may trigger more frequently in early training. Guidance:
+- If GNN share drops below 5% for 3+ consecutive intervals, consider: (a) detaching the selected node embeddings before projection (`stop_gradient` so prefix trains only the projection, not the GNN via this path), or (b) increasing `gnn_lr_multiplier` from 2.5 to 3.5.
+- Monitor the first 20 epochs carefully before assuming stable gradient flow.
+
+**Predictor warmup update (G12):** `ml/src/inference/predictor.py` runs a warmup forward pass to initialize CUDA graphs. Current signature: `model(dummy_batch, dummy_ids, dummy_mask)`. After Phase 1, this must include the GNN prefix:
+```python
+# Current (predictor.py ~line 365):
+_ = self.model(dummy_batch, dummy_ids, dummy_mask)
+
+# Required after Phase 1:
+dummy_prefix_nodes = torch.zeros(1, K, gnn_hidden_dim, device=self.device)
+_ = self.model(dummy_batch, dummy_ids, dummy_mask, gnn_prefix_nodes=dummy_prefix_nodes)
+```
+The `K` and `gnn_hidden_dim` values must be read from `self._saved_cfg` so the predictor is checkpoint-config-driven, not hardcoded.
+
+**Predictor load-time architecture guard (Option B):** Because Option B does not bump `FEATURE_SCHEMA_VERSION`, a naive checkpoint load into the old predictor will silently fall back to non-prefix behavior (or crash) if `gnn_prefix_nodes=None`. Add an explicit check at `Predictor.__init__` after loading `self._saved_cfg`:
+```python
+arch = self._saved_cfg.get("architecture", "three_eye_v1")
+if arch.startswith("three_eye_graphcodebert_prefix") and not hasattr(self.model, "gnn_to_bert_proj"):
+    raise RuntimeError(
+        f"Checkpoint architecture '{arch}' requires GNN prefix injection "
+        f"but the loaded model has no `gnn_to_bert_proj`. "
+        f"Load with the correct SentinelModel version."
+    )
+```
+This ensures the mismatch is caught immediately with a clear message rather than a silent degradation.
+
+**tune_threshold.py requires the same update:** `tune_threshold.py` runs forward passes on the validation set to optimize per-class thresholds post-training. If it does not thread `gnn_prefix_nodes` through its forward call, thresholds are calibrated on non-prefix inference — the tuned thresholds will not match deployment behavior. Update `tune_threshold.py` to pass `gnn_prefix_nodes` (or load it from the batch's graph data) before running threshold optimization for Phase 1.
+
+**Inference pipeline — `_score_windowed()` must share the prefix across windows (Gap 6):** The current `predictor._score_windowed()` iterates over windows and calls `model(batch, input_ids, attention_mask)` per window. With GNN prefix injection, the GNN forward pass must run **once** per contract, and the resulting prefix nodes must be reused for every window. The updated flow:
+```python
+def _score_windowed(self, graph, windows: list[dict]) -> dict:
+    self.model.eval()
+    batch = Batch.from_data_list([graph]).to(self.device)
+
+    with torch.no_grad():
+        # GNN forward pass once — same prefix for all windows of this contract.
+        gnn_node_embs = self.model.gnn_encoder(batch)          # [N_nodes, 256]
+        prefix_nodes  = self.model.select_prefix_nodes(         # [1, K, 256]
+            gnn_node_embs, batch)
+
+        per_window_probs = []
+        for window in windows:
+            input_ids     = window["input_ids"].to(self.device)
+            attention_mask = window["attention_mask"].to(self.device)
+            logits = self.model(batch, input_ids, attention_mask,
+                                gnn_prefix_nodes=prefix_nodes,
+                                _precomputed_gnn_embs=gnn_node_embs)
+            per_window_probs.append(torch.sigmoid(logits.float()).squeeze(0))
+    ...
+```
+The `_precomputed_gnn_embs` argument avoids running the GNN twice (once for prefix selection, once inside the full forward). Add a `_precomputed_gnn_embs` fast path to `SentinelModel.forward()` that skips the GNN forward call when pre-computed embeddings are provided.
+
+**`max_windows` — training vs inference (Gap 8):** Training data uses `max_windows=4` (retokenize_windowed.py default — all token files in `ml/data/tokens_windowed/` have shape `[4, 512]`). Inference defaults to `max_windows=8` in `predictor.py` (lines ~281 and ~490). For Phase 1 evaluation on the validation/test splits (which come from the training token files), the predictor must use `max_windows=4` to match the cached token files. The mismatch is benign for live inference on new contracts (where the predictor re-tokenizes at runtime), but ensure that any threshold calibration (`tune_threshold.py`) and behavioral tests (`manual_test.py`) use `max_windows=4` to match the training distribution. Add `max_windows` to the checkpoint config so the predictor loads it automatically.
+
+**Optional enhancement — Node type embedding in prefix (G11):** The `gnn_to_bert_proj` projects raw GNN embeddings without giving the transformer any explicit signal about what each prefix token represents (FUNCTION vs CFG_CALL vs CFG_WRITE). Adding a learnable node type embedding is trivial:
+```python
+self.prefix_type_embedding = nn.Embedding(len(STRUCTURAL_PREFIX_TYPES), 768)
+# In forward:
+gnn_emb = self.gnn_to_bert_proj(selected_nodes) + self.prefix_type_embedding(selected_node_type_ids)
+```
+Cost: 8 × 768 = 6,144 additional parameters. Benefit: the transformer gets an explicit signal about structural role of each prefix token. **Recommended for Phase 1 implementation** — low cost, clear benefit.
 
 ### Phase 2 — Option C Implementation (1.5–2 weeks)
 
@@ -663,11 +946,16 @@ The following assumptions underpin the proposal. Each should be validated during
 **A1 — GraphCodeBERT LoRA works identically:**
 The PEFT library applies LoRA to `query` and `value` modules by name. GraphCodeBERT uses the same module naming as CodeBERT (`roberta.encoder.layer.N.attention.self.query/value`). Assumption: LoRA applies without modification. *Validation: Phase 0 step 2.*
 
-**A2 — GNN prefix node count is bounded by K=32 for most contracts:**
-Contracts in the BCCC dataset have a typical function count of 5–15 and CFG_CALL/CFG_WRITE counts of 5–20. Together these sum to 10–35 structural nodes. Assumption: K=32 covers ≥95% without overflow. *Validation: Phase 0 step 3.*
+**A2 — GNN prefix node count (declaration-level) is bounded by K=48 for most contracts:**
+PRE-4 audit (41,576 training graphs, 2026-05-23): declaration-level nodes (FUNCTION+MODIFIER+CONSTRUCTOR+FALLBACK+RECEIVE) have mean=20.3, P95=47, P99=84. K=48 covers 95.5% of contracts without truncation; K=64 covers 97.9%. The original all-types estimate (10–25 nodes, K=32 ≥95%) was incorrect — CFG nodes alone add 28.4 mean, pushing P95 to 122 for the full set. Phase 1 uses declaration-level only with K=48. *Validation: PRE-4 COMPLETE.*
 
 **A3 — The F1 plateau is architectural, not purely a data problem:**
 The convergence of v7, v8-AB, and PLAN-3A to ~0.287 across different graph schemas is taken as evidence of an architectural ceiling, not purely a data ceiling. However, label noise (BUG-H5: ~14% Reentrancy mislabeling) is a contributing factor. Assumption: fixing the architectural bottleneck will unlock improvement even with current label quality. If this assumption is wrong (i.e., F1 does not improve even with GraphCodeBERT+prefix), the next step is label cleaning before any further architectural work.
+
+**Dependency on v8.0-B (critical):** This assumption is being directly tested by the v8.0-B training run (launched 2026-05-23, config: PLAN-3A architecture + cleaned labels −4,304 + dos_loss_weight=0.5). v8.0-B tests the competing hypothesis — that the ceiling is data quality, not architecture. **Phase 0 of this proposal should not begin until v8.0-B results are available** (~4–6 days). The v8.0-B outcome updates this assumption:
+- v8.0-B tuned F1-macro **> 0.30**: data quality was a meaningful contributor; run this proposal AND continue label cleaning in parallel (both hypotheses were partly true)
+- v8.0-B tuned F1-macro **≤ 0.29**: data quality alone cannot break the ceiling; architectural change is the primary lever; accelerate this proposal
+- Either outcome: Phase 0 GraphCodeBERT drop-in is cheap enough to run as the data quality picture becomes clearer
 
 **A4 — GraphCodeBERT pre-training transfers to Solidity:**
 GraphCodeBERT was pre-trained on 6 programming languages (Python, Java, JavaScript, PHP, Ruby, Go) — Solidity is not included. Assumption: the DFG-aware pre-training generalizes to Solidity's def-use patterns via LoRA fine-tuning, similar to how CodeBERT generalizes despite Solidity not being in its training data. *Evidence: Peculiar paper used GraphCodeBERT on Solidity and achieved strong results.*
@@ -703,7 +991,10 @@ The `fusion_output_dim=128` constraint is not violated by any proposed change. T
 | Behavioral test | 12–15/19 | Major improvement over current 8/19 |
 | DoS F1 | 0.02–0.05 | Data problem dominates — architecture helps little |
 | Training time | +15–20% | GNN prefix projection is ~197K params, minimal overhead |
-| VRAM | +200–400 MB | K=16 extra tokens per window × 4 windows × batch size 8 |
+| VRAM | +30–80 MB | Sequence length stays at 512 (prefix displaces code tokens, same tensor shapes); overhead is projection layer + selected node embedding storage only |
+| Activation memory (new gradient path) | +50–150 MB | The gnn_to_bert_proj creates a new gradient path: loss → transformer → proj → GNN. Transformer activation tensors must be retained for backprop through this path. If VRAM becomes tight, enable gradient checkpointing via `model.transformer_encoder.bert.gradient_checkpointing_enable()` — this recomputes activations on the backward pass at ~20% training speed cost. PEFT supports gradient checkpointing natively. |
+
+> **Note on F1 predictions:** The 0.31–0.35 macro range and Reentrancy 0.33–0.42 are upper-range estimates contingent on the architectural hypothesis being correct and label noise not being the dominant bottleneck. More conservative estimates: F1-macro 0.295–0.32, Reentrancy 0.30–0.38. The decision matrix (Section 15) uses the conservative gate threshold (F1 > 0.30) for proceed/stop decisions.
 
 ### 12.3 Phase 2 (Option C: + Shared Contract-Level DFG)
 
@@ -735,21 +1026,28 @@ The `fusion_output_dim=128` constraint is not violated by any proposed change. T
 
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
-| GraphCodeBERT pre-training doesn't transfer to Solidity | Low | High | Phase 0 validation before committing; fallback to CodeBERT + prefix |
-| GNN prefix confuses transformer on contracts with many unrelated structural nodes | Medium | Medium | Ablate K=8, 16, 32; try masking prefix-to-code attention if needed |
+| GraphCodeBERT pre-training doesn't transfer to Solidity | Low | High | Phase 0 validation before committing; fallback to CodeBERT + prefix (Phase 0b) |
+| `inputs_embeds` + LoRA + Flash Attention 2 incompatibility | Medium | High | Phase 0 step 5: mandatory single-batch forward+backward test before full training |
+| CodeBERT tokenizer ≠ GraphCodeBERT tokenizer (vocab mismatch) | Low | Critical | Phase 0 step 0b: explicit tokenizer comparison; if mismatch, regenerate all 44,470 token files |
+| `TRANSFORMERS_OFFLINE=1` set in Python (trainer.py line 714) blocks model load | High | High | Cache both model and tokenizer before ANY call to train(); verified in Phase 0 step 0 |
+| GNN gradient collapse from new prefix gradient path | Medium | Medium | Monitor GNN gradient share closely in first 20 epochs; reduce to `stop_gradient` on prefix nodes if share drops below 5% |
+| GNN prefix confuses transformer on contracts with many unrelated structural nodes | Medium | Medium | Ablate K=8, 16, 32; node type embedding (§Phase 1 enhancement) helps distinguish prefix roles |
 | BF16 dtype issues during training (documented in past runs) | Medium | Low | `model.float()` after load_state_dict — already a known fix |
-| VRAM overflow with K=32 prefix + 4 windows | Low | Medium | Reduce K to 16 or reduce max_windows to 3 |
-| Windowing code path breaks with `inputs_embeds` vs `input_ids` | Medium | Medium | Careful unit test of shapes before full training run |
+| VRAM overflow with K=32 prefix + 4 windows | Low | Low | **Not a concern** — sequence length stays 512; extra VRAM is <80 MB |
+| Position embedding index overflow with K-shifted positions | **None** | — | **Verified not a risk** — max position 496 < 514 (RoBERTa limit) for K=32 |
+| Windowing code path breaks with `inputs_embeds` vs `input_ids` | Medium | Medium | Phase 0 step 5 + step 6 unit tests cover this before full training run |
 | `_orig_mod.` prefix on compiled model state dict | Known | Low | Already fixed in predictor.py and tune_threshold.py |
+| predictor.py warmup call missing `gnn_prefix_nodes` argument | Known | Medium | Update warmup call per Phase 1 code snippet; validate shape in Phase 0 step 6 |
 | Label noise caps Reentrancy regardless of architecture | High | Medium | Accept — fix label_cleaner.py (BUG-H5) in parallel as independent track |
 
 ### 13.2 Fallback Plan
 
 If Phase 1 (Option B) does not beat PLAN-3A after full training:
 1. Investigate per-class breakdown — if 3+ classes improve, proceed to Phase 2 regardless of macro
-2. Try increasing K to 32 (more structural context)
-3. Try including `STATE_VAR` nodes in prefix (def-use chains explicitly represented)
-4. If macro still flat after K=32: the architectural ceiling is label noise, not graph blindness — shift to label cleaning track
+2. Run K=8 diagnostic (5 epochs): if K=8 improves over K=16, the longer prefix is introducing too many unrelated structural nodes — prune the `STRUCTURAL_PREFIX_TYPES` set before trying K=32
+3. Run K=32 diagnostic (5 epochs): if K=32 improves over K=16, the model needs more structural context
+4. Try including `STATE_VAR` nodes in prefix (def-use chains explicitly represented)
+5. If macro still flat after K=32: the architectural ceiling is label noise, not graph blindness — shift to label cleaning track; revisit architecture after BUG-H5 is resolved
 
 ---
 
@@ -770,28 +1068,43 @@ The ZKML pipeline interfaces with SENTINEL through the proxy MLP that takes the 
 ## 15. Decision Matrix — Which Option to Start With
 
 ```
-START HERE:
-  Phase 0 — Pure GraphCodeBERT drop-in (3 days, diagnostic)
+BEFORE STARTING:
+  Wait for v8.0-B results (launched 2026-05-23, ~4–6 days to complete)
     │
-    ├── Improvement seen at 5 epochs? ──NO──► Investigate transfer; consider stopping
+    ├── v8.0-B F1-macro > 0.30 ──► data quality IS a real lever
+    │       │                      continue label cleaning AND proceed with this proposal
+    │       │                      (both hypotheses partly true)
+    │       └── v8.0-B F1-macro ≤ 0.29 ──► architecture is primary bottleneck
+    │                                      accelerate this proposal; deprioritize label cleaning
     │
+    ▼
+  Download GraphCodeBERT to local cache (one-time, requires internet)
+    │
+    ▼
+  Phase 0 — Pure GraphCodeBERT drop-in (~3–4 days engineering + ~6–8 hours GPU)
+    │
+    ├── Improvement seen at 5 epochs? ──NO──► Transfer assumption (A4) is wrong;
+    │                                         do not proceed; fallback to CodeBERT + prefix only
     └──YES──►
          Phase 1 — Option B (GraphCodeBERT + GNN prefix K=16, flat mask)
+           │        ~5–7 days engineering + ~60–80 hours GPU
            │
-           ├── Tuned F1 > 0.30 AND behavioral > 10/19? ──NO──► Debug K, node types, LR
-           │                                                   Try K=32 before stopping
+           ├── Tuned F1 > 0.30 AND behavioral > 10/19? ──NO──► Debug: try K=32, check
+           │                                                    position_ids, verify padding
+           │                                                    contract. Try K=32 before stopping.
            └──YES──►
                 Phase 2 — Option C (+ shared contract-level DFG)
+                  │        ~1.5–2 weeks
                   │
                   ├── Δ F1 > 0.02 vs Phase 1? ──NO──► Option C marginal; skip to analysis
                   │
                   └──YES──►
                        Phase 3 — Option A (full per-window DFG masking)
-                         │
+                         │        ~3–4 weeks
                          └── Full ablation complete; document and decide next steps
 ```
 
-The strong recommendation is to execute Phase 0 and Phase 1 before any decision on Phase 2 or 3. Phase 0 is cheap (3 days, no data pipeline changes) and provides a clear signal on whether the GraphCodeBERT transfer works. Phase 1 is the main investment and the expected primary source of improvement.
+The strong recommendation is to execute Phase 0 and Phase 1 before any decision on Phase 2 or 3. Phase 0 is cheap (~6–8 hours GPU, no data pipeline changes) and provides a clear signal on whether the GraphCodeBERT transfer works. Phase 1 is the main investment and the expected primary source of improvement. Neither phase should begin before v8.0-B completes — that result directly informs the urgency and interpretation of Phase 0.
 
 ---
 
@@ -858,13 +1171,37 @@ GraphCodeBERT (Option B — our pragmatic use):
 | Edge Prediction | Predict DFG edge existence | Learns variable relationship patterns |
 | Node Alignment | Predict code token ↔ DFG node mapping | Learns token-to-structure correspondence |
 
-### B.3 Key Paper Citation
+### B.3 Key Paper Citations
 
-Guo, D., Ren, S., Lu, S., Feng, Z., Tang, D., Liu, S., ... & Zhou, M. (2021). GraphCodeBERT: Pre-training Code Representations with Data Flow. *ICLR 2021*. https://arxiv.org/abs/2009.08366
+**GraphCodeBERT (foundation):** Guo, D., et al. (2021). GraphCodeBERT: Pre-training Code Representations with Data Flow. *ICLR 2021*. https://arxiv.org/abs/2009.08366
 
-Peculiar (most relevant applied work): Wang, S., et al. (2021). Peculiar: Smart Contract Vulnerability Detection Based on Crucial Data Flow Graph. *ISSRE 2021*. Achieved 91.8%/92.4% precision/recall on Reentrancy using GraphCodeBERT on Solidity.
+**Peculiar (most relevant applied work):** Wang, S., et al. (2021). Peculiar: Smart Contract Vulnerability Detection Based on Crucial Data Flow Graph. *ISSRE 2021*. 91.8%/92.4% precision/recall on Reentrancy using GraphCodeBERT on Solidity. Note: single-class detection on a curated dataset — results are not directly comparable to SENTINEL's 10-class multilabel task (see §3.2).
 
-DeepDFA (architectural inspiration): Steenhoek, B., et al. (2024). Dataflow Analysis-Inspired Deep Learning for Efficient Vulnerability Detection. *ICSE 2024*. F1=96.46 using graph-guided GNN embeddings injected into UniXcoder.
+**DeepDFA (closest architectural analogue):** Steenhoek, B., et al. (2024). Dataflow Analysis-Inspired Deep Learning for Efficient Vulnerability Detection. *ICSE 2024*. F1=96.46 using graph-guided GNN embeddings injected into UniXcoder.
+
+### B.4 DeepDFA Architecture Analysis
+
+DeepDFA is the closest architectural precedent for the GNN prefix injection design proposed here. Analyzing it is important for understanding what SENTINEL's approach borrows and where it differs.
+
+**DeepDFA's approach:**
+- Uses a program dependence graph (PDG) — edges represent data flow and control flow between statements
+- Runs a GNN over the PDG to produce per-node embeddings [N, hidden]
+- Selects statement-level nodes (one per code line) and injects their embeddings into UniXcoder at every transformer layer via a cross-attention mechanism (not just at input)
+- The injection is layer-by-layer: each transformer layer receives a fresh cross-attention query against the GNN node embeddings before processing its self-attention
+
+**How SENTINEL's proposal differs:**
+| Aspect | DeepDFA | SENTINEL Proposal |
+|---|---|---|
+| Graph type | PDG (statement-level) | Contract graph (function/CFG level) |
+| Injection point | Every transformer layer (cross-attention) | Input prefix only (position 0..K) |
+| Injection mechanism | Layer-wise cross-attention | Single prefix token sequence |
+| Base model | UniXcoder | GraphCodeBERT |
+| Task | Single-class binary (CWE detection) | 10-class multilabel |
+| Training set size | ~270K samples | 41,577 pairs |
+
+**What SENTINEL could borrow from DeepDFA (future work):** DeepDFA's layer-wise injection (graph context at every transformer layer, not just the input) is theoretically stronger than prefix injection. The GNN output would cross-attend to transformer hidden states at each layer, allowing the graph to reshape representations progressively rather than only at the start. This is more complex to implement than prefix injection but could yield significantly better performance for classes requiring deep structural understanding (Reentrancy, ExternalBug). Consider this as a Phase 4 direction if Options B/C plateau.
+
+**Why DeepDFA's F1=96.46 doesn't translate to SENTINEL:** DeepDFA is evaluated on a single vulnerability class (C/C++ CWEs), with a carefully curated dataset, clean binary labels, and balanced splits. SENTINEL's 10-class multilabel problem with BCCC OR-labeling noise makes direct comparison invalid. The architectural inspiration is the relevant takeaway, not the reported metrics.
 
 ---
 

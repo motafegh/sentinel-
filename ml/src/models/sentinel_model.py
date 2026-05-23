@@ -1,12 +1,13 @@
 """
-sentinel_model.py — SENTINEL Three-Eye Model (v7 architecture)
+sentinel_model.py — SENTINEL Three-Eye Model (v8 architecture)
 
-v7 ARCHITECTURE
+v8 ARCHITECTURE
 ───────────────
 Three-eye classifier: three independent 128-dim vectors concatenated to [B, 384].
 GNN is a three-phase, 7-layer GAT (2+3+2) that encodes execution order via
-CFG CONTROL_FLOW edges (3 hops: CEI + ENTRY pattern) and propagates back up
-via reversed CONTAINS edges (Phase 3). NODE_FEATURE_DIM=11, NUM_EDGE_TYPES=8.
+CFG CONTROL_FLOW edges (3 hops: CEI + ENTRY pattern) plus CALL_ENTRY(8)/RETURN_TO(9)
+ICFG-Lite edges, and propagates back up via reversed CONTAINS edges (Phase 3).
+NODE_FEATURE_DIM=11, NUM_EDGE_TYPES=11.
 
   GNN eye         (structural opinion):
     Pool over FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes only.
@@ -87,10 +88,31 @@ _FUNC_TYPE_IDS: frozenset[int] = frozenset({  # FUNCTION MODIFIER FALLBACK RECEI
 # .to(device) in forward() is a no-op if already on the right device.
 _FUNC_IDS_CPU: torch.Tensor = torch.tensor(sorted(_FUNC_TYPE_IDS), dtype=torch.long)
 
+# ── GNN prefix injection constants (Phase 1) ──────────────────────────────────
+# Selection priority for K-capped truncation: lower number = selected first.
+# Entry-point nodes carry the most vulnerability-relevant signal after Phase 3.
+_PREFIX_NODE_PRIORITY: dict[int, int] = {
+    NODE_TYPES["CONSTRUCTOR"]: 0,  # unique entry point — always include first
+    NODE_TYPES["FALLBACK"]:    1,  # plain-transfer entry — reentrancy-critical
+    NODE_TYPES["RECEIVE"]:     2,  # receive hook — reentrancy-critical
+    NODE_TYPES["MODIFIER"]:    3,  # access control — important for auth checks
+    NODE_TYPES["FUNCTION"]:    4,  # general — selected last if K forces truncation
+}
+# Embedding index (0-4) for prefix_type_embedding.  Stable mapping independent
+# of the raw NODE_TYPES integer values, which differ from these indices.
+_PREFIX_TYPE_IDX: dict[int, int] = {
+    NODE_TYPES["FUNCTION"]:    0,
+    NODE_TYPES["MODIFIER"]:    1,
+    NODE_TYPES["FALLBACK"]:    2,
+    NODE_TYPES["RECEIVE"]:     3,
+    NODE_TYPES["CONSTRUCTOR"]: 4,
+}
+_NUM_PREFIX_TYPES: int = 5  # FUNCTION MODIFIER FALLBACK RECEIVE CONSTRUCTOR
+
 
 class SentinelModel(nn.Module):
     """
-    Three-eye smart contract vulnerability detection model (v5).
+    Three-eye smart contract vulnerability detection model (v8).
 
     See module docstring for the full architecture description.
 
@@ -136,11 +158,17 @@ class SentinelModel(nn.Module):
         lora_alpha:           int                 = 32,
         lora_dropout:         float               = 0.1,
         lora_target_modules:  Optional[List[str]] = None,
+        # GNN prefix injection (Phase 1)
+        gnn_prefix_k:               int   = 0,   # 0 = disabled; 48 for Phase 1
+        gnn_prefix_warmup_epochs:   int   = 15,  # epochs prefix is suppressed
     ) -> None:
         super().__init__()
 
-        self.num_classes   = num_classes
-        self.use_edge_attr = use_edge_attr
+        self.num_classes             = num_classes
+        self.use_edge_attr           = use_edge_attr
+        self.gnn_prefix_k            = gnn_prefix_k
+        self.gnn_prefix_warmup_epochs = gnn_prefix_warmup_epochs
+        self._current_epoch: int     = 0
         eye_dim = fusion_output_dim  # all three eyes output this width
 
         # ── Sub-modules ────────────────────────────────────────────────────
@@ -170,6 +198,15 @@ class SentinelModel(nn.Module):
             dropout=dropout,
         )
 
+        # ── GNN prefix injection modules (Phase 1; only when gnn_prefix_k > 0) ─
+        if gnn_prefix_k > 0:
+            # Projects GNN node embeddings [K, gnn_hidden_dim] → [K, 768]
+            # so they can be prepended to GraphCodeBERT's input_embeds.
+            self.gnn_to_bert_proj = nn.Linear(gnn_hidden_dim, 768)
+            # Type-specific bias per declaration node type (5 types).
+            # Added to proj output so the transformer can distinguish node roles.
+            self.prefix_type_embedding = nn.Embedding(_NUM_PREFIX_TYPES, 768)
+
         # ── Eye projections ────────────────────────────────────────────────
         # GNN eye: max+mean pool → [B, 2*gnn_hidden_dim] → [B, eye_dim]
         self.gnn_eye_proj = nn.Sequential(
@@ -179,7 +216,8 @@ class SentinelModel(nn.Module):
         )
 
         # Transformer eye: window-attention pooled CLS → [B, 768] → [B, eye_dim]
-        self.window_pooler = WindowAttentionPooler(hidden_dim=768, window_size=512)
+        # prefix_k shifts CLS position from 0 → prefix_k within each window.
+        self.window_pooler = WindowAttentionPooler(hidden_dim=768, window_size=512, prefix_k=gnn_prefix_k)
         self.transformer_eye_proj = nn.Sequential(
             nn.Linear(768, eye_dim),
             nn.ReLU(),
@@ -207,13 +245,76 @@ class SentinelModel(nn.Module):
         self.aux_fused       = nn.Linear(eye_dim, num_classes)
 
         logger.info(
-            f"SentinelModel v7 (three-eye) initialised | "
+            f"SentinelModel v8 (three-eye) initialised | "
             f"num_classes={num_classes} | eye_dim={eye_dim} | "
             f"classifier [{3 * eye_dim}→192→{num_classes}] | "
             f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} layers={gnn_num_layers} "
             f"use_jk={gnn_use_jk} jk_mode={gnn_jk_mode} | "
-            f"lora_r={lora_r} lora_alpha={lora_alpha}"
+            f"lora_r={lora_r} lora_alpha={lora_alpha} | "
+            f"gnn_prefix_k={gnn_prefix_k} warmup={gnn_prefix_warmup_epochs}"
         )
+
+    def select_prefix_nodes(
+        self,
+        node_embs:    torch.Tensor,  # [N, gnn_hidden_dim]
+        batch:        torch.Tensor,  # [N] — graph index per node
+        node_type_ids: torch.Tensor, # [N] — integer type IDs
+        num_graphs:   int,
+    ) -> torch.Tensor:
+        """
+        Select up to K=gnn_prefix_k declaration-level nodes per graph, project
+        to [B, K, 768] for injection as GraphCodeBERT prefix tokens.
+
+        Selection priority (lower = selected first if K forces truncation):
+            CONSTRUCTOR(6) > FALLBACK(4) > RECEIVE(5) > MODIFIER(2) > FUNCTION(1)
+
+        Graphs with fewer than K eligible nodes are zero-padded on the right.
+        Zero-padded positions get position_id=1 in TransformerEncoder (same as
+        non-padded prefix tokens), so attention still sees them — but their
+        embedding is effectively zero (identity of nn.Linear with bias), which
+        the transformer can learn to ignore.
+
+        Returns:
+            [B, K, 768] — projected prefix embeddings ready for injection.
+        """
+        K = self.gnn_prefix_k
+        device = node_embs.device
+        prefix = torch.zeros(num_graphs, K, 768, device=device, dtype=node_embs.dtype)
+
+        for g in range(num_graphs):
+            g_mask    = batch == g
+            g_types   = node_type_ids[g_mask]
+            g_embs    = node_embs[g_mask]
+
+            # Indices of eligible nodes within this graph's node list
+            eligible_local = [
+                i for i, t in enumerate(g_types.tolist())
+                if t in _PREFIX_NODE_PRIORITY
+            ]
+            if not eligible_local:
+                continue  # no declaration nodes; prefix stays zero
+
+            eli_t = torch.tensor(eligible_local, device=device, dtype=torch.long)
+            # Sort by priority (ascending = highest priority first), then truncate to K
+            priorities = torch.tensor(
+                [_PREFIX_NODE_PRIORITY[g_types[i].item()] for i in eligible_local],
+                device=device, dtype=torch.long,
+            )
+            sort_order = priorities.argsort()          # stable; lowest priority value first
+            selected   = eli_t[sort_order[:K]]         # ≤ K indices
+
+            proj = self.gnn_to_bert_proj(g_embs[selected])  # [n_sel, 768]
+
+            # Add type-specific embedding bias so transformer knows node roles
+            type_indices = torch.tensor(
+                [_PREFIX_TYPE_IDX[g_types[i].item()] for i in selected.tolist()],
+                device=device, dtype=torch.long,
+            )
+            proj = proj + self.prefix_type_embedding(type_indices)  # [n_sel, 768]
+
+            prefix[g, :proj.shape[0]] = proj
+
+        return prefix  # [B, K, 768]
 
     def forward(
         self,
@@ -311,8 +412,18 @@ class SentinelModel(nn.Module):
             torch.cat([gnn_max, gnn_mean], dim=1)           # [B, 2*gnn_hidden_dim]
         )                                                    # [B, eye_dim]
 
+        # ── GNN prefix selection (suppressed during warmup and when disabled) ──
+        # During warmup the prefix is None; gnn_to_bert_proj is untrained but the
+        # GNN itself trains normally.  At epoch warmup+1 the projection starts from
+        # random init with a well-trained GNN — it rapidly aligns node embeddings
+        # into transformer space over the remaining epochs.
+        gnn_prefix: Optional[torch.Tensor] = None
+        if self.gnn_prefix_k > 0 and self._current_epoch >= self.gnn_prefix_warmup_epochs:
+            gnn_prefix = self.select_prefix_nodes(node_embs, batch, node_type_ids, num_graphs)
+            # gnn_prefix: [B, K, 768]
+
         # ── Transformer path ──────────────────────────────────────────────
-        token_embs = self.transformer(input_ids, attention_mask)
+        token_embs = self.transformer(input_ids, attention_mask, gnn_prefix_nodes=gnn_prefix)
         # token_embs: [B, L, 768] or [B, W*L, 768]
 
         # ── Transformer eye: window-pooled CLS → project ─────────────────
@@ -366,6 +477,9 @@ class SentinelModel(nn.Module):
             "aux_transformer":       self.aux_transformer,
             "aux_fused":             self.aux_fused,
         }
+        if self.gnn_prefix_k > 0:
+            components["gnn_to_bert_proj"]     = self.gnn_to_bert_proj
+            components["prefix_type_embedding"] = self.prefix_type_embedding
         total_trainable = total_frozen = 0
 
         for name, module in components.items():

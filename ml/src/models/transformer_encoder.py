@@ -19,18 +19,18 @@ WHAT CHANGED FROM ORIGINAL:
     3. LoRA hyperparameters now passed as constructor arguments (P0-A refactor)
        - Removed module-level LORA_CONFIG constant
        - r, lora_alpha, lora_dropout, target_modules are configurable via TrainConfig
-       - Defaults unchanged from original: r=8, alpha=16, dropout=0.1, ["query","value"]
+       - Defaults updated from original: r=16, alpha=32, dropout=0.1, ["query","value"]
 
 WHY LoRA:
     Full fine-tune: 125M params → OOM on 8GB VRAM, catastrophic forgetting on 68K contracts
     Frozen:         0 trainable → CodeBERT never adapts to vulnerability semantics
-    LoRA:           295K trainable → adapts query+value attention to security patterns
+    LoRA:           590K trainable (r=16) → adapts query+value attention to security patterns
                     without touching the 125M frozen weights
 
-PARAMETER COUNT (defaults):
+PARAMETER COUNT (current config r=16, alpha=32):
     Frozen (CodeBERT backbone):  124,705,536  (unchanged, never updated)
-    Trainable (LoRA matrices):       295,296  (~295K across 12 layers × Q+V)
-    Scale factor (alpha/r):              2.0  (lora_alpha=16, r=8)
+    Trainable (LoRA matrices):       589,824  (~590K across 12 layers × Q+V at r=16)
+    Scale factor (alpha/r):              2.0  (lora_alpha=32, r=16)
 
 NOTE — why there is no torch.no_grad() around self.bert():
     peft's get_peft_model() marks every original CodeBERT weight with
@@ -130,14 +130,14 @@ class TransformerEncoder(nn.Module):
         # Must be set before get_peft_model so LoRA sees the correct implementation.
         try:
             self.bert = AutoModel.from_pretrained(
-                "microsoft/codebert-base",
+                "microsoft/graphcodebert-base",
                 attn_implementation="flash_attention_2",
                 torch_dtype=torch.bfloat16,
             )
             logger.info("TransformerEncoder — Flash Attention 2 active")
         except (ImportError, ValueError):
             self.bert = AutoModel.from_pretrained(
-                "microsoft/codebert-base",
+                "microsoft/graphcodebert-base",
                 attn_implementation="sdpa",
             )
             logger.info("TransformerEncoder — SDPA active (flash-attn unavailable)")
@@ -158,19 +158,33 @@ class TransformerEncoder(nn.Module):
             f"trainable: {trainable:,} | frozen: {frozen:,}"
         )
 
+    @property
+    def _word_embeddings(self) -> nn.Embedding:
+        """Word embedding layer of the underlying GraphCodeBERT model."""
+        return self.bert.base_model.model.embeddings.word_embeddings
+
     def forward(
         self,
-        input_ids:      torch.Tensor,  # [B, L] or [B, W, L]
-        attention_mask: torch.Tensor,  # [B, L] or [B, W, L]
+        input_ids:        torch.Tensor,                   # [B, L] or [B, W, L]
+        attention_mask:   torch.Tensor,                   # [B, L] or [B, W, L]
+        gnn_prefix_nodes: Optional[torch.Tensor] = None,  # [B, K, 768] or None
     ) -> torch.Tensor:
         """
-        Run CodeBERT + LoRA forward pass and return all token embeddings.
+        Run GraphCodeBERT + LoRA forward pass and return all token embeddings.
 
         Accepts both single-window [B, L] and multi-window [B, W, L] inputs.
+        When gnn_prefix_nodes is provided ([B, K, 768]), injects K GNN-derived
+        prefix tokens before the code tokens using inputs_embeds.  The total
+        sequence length stays L (K prefix + L-K code).  CLS moves to position K.
+
         Multi-window: windows are flattened into the batch dim, passed through
-        CodeBERT in one fused call (B*W sequences), then reassembled so each
-        batch item has W×L token positions.  Window 0 position 0 is the CLS
-        token for the first 512 tokens of the contract.
+        GraphCodeBERT in one fused call (B*W sequences), then reassembled.
+        Prefix is shared across all windows (same K nodes per contract).
+
+        Position IDs with prefix:
+            Prefix tokens:  position_id=1  (RoBERTa padding pos — no positional bias)
+            Code tokens:    position_ids 3..3+(L-K-1)  (CLS at 3, then 4, 5, ...)
+            Max position:   3+(L-K-1)  well within RoBERTa's 514 limit for K≥2.
 
         Gradient flow:
             Frozen weights (requires_grad=False): PyTorch skips backward nodes.
@@ -178,21 +192,81 @@ class TransformerEncoder(nn.Module):
             peft manages this split internally; no manual no_grad() is needed.
 
         Returns:
-            Single-window: [B, L, 768]    — all L positions, CLS at [:, 0, :]
-            Multi-window:  [B, W*L, 768]  — windows concatenated along seq dim,
-                                            CLS of window 0 at [:, 0, :]
+            No prefix,  single-window: [B, L, 768]   — CLS at [:, 0, :]
+            No prefix,  multi-window:  [B, W*L, 768] — CLS of win i at [:, i*L, :]
+            With prefix, single-window:[B, L, 768]   — prefix [:, :K, :], CLS [:, K, :]
+            With prefix, multi-window: [B, W*L, 768] — prefix at [:, i*L:i*L+K, :],
+                                                        CLS of win i at [:, i*L+K, :]
         """
+        if gnn_prefix_nodes is None:
+            # Standard path — no prefix overhead
+            if input_ids.dim() == 2:
+                outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+                return outputs.last_hidden_state  # [B, L, 768]
+
+            # Multi-window: [B, W, L] → [B*W, L] → GraphCodeBERT → [B, W*L, 768]
+            B, W, L = input_ids.shape
+            flat_ids  = input_ids.view(B * W, L)
+            flat_mask = attention_mask.view(B * W, L)
+            outputs   = self.bert(input_ids=flat_ids, attention_mask=flat_mask)
+            return outputs.last_hidden_state.view(B, W * L, 768)
+
+        # ── Prefix injection path ─────────────────────────────────────────────
+        K = gnn_prefix_nodes.shape[1]
+
         if input_ids.dim() == 2:
-            # Legacy single-window path — no reshape overhead
-            outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+            B, L        = input_ids.shape
+            code_budget = L - K
+
+            code_ids  = input_ids[:, :code_budget]       # [B, L-K] keep CLS at position 0
+            code_mask = attention_mask[:, :code_budget]  # [B, L-K]
+
+            word_embs = self._word_embeddings(code_ids).to(dtype=gnn_prefix_nodes.dtype)
+            inputs_embeds = torch.cat([gnn_prefix_nodes, word_embs], dim=1)  # [B, L, 768]
+
+            prefix_mask  = torch.ones(B, K, dtype=attention_mask.dtype, device=attention_mask.device)
+            full_mask    = torch.cat([prefix_mask, code_mask], dim=1)        # [B, L]
+
+            prefix_pos   = input_ids.new_ones(B, K)                          # pos_id=1 (pad slot)
+            code_pos     = torch.arange(3, 3 + code_budget, dtype=torch.long,
+                                        device=input_ids.device).unsqueeze(0).expand(B, -1)
+            position_ids = torch.cat([prefix_pos, code_pos], dim=1)          # [B, L]
+
+            outputs = self.bert(
+                inputs_embeds=inputs_embeds,
+                attention_mask=full_mask,
+                position_ids=position_ids,
+            )
             return outputs.last_hidden_state  # [B, L, 768]
 
-        # Multi-window path: [B, W, L] → [B*W, L] → CodeBERT → [B, W*L, 768]
-        B, W, L = input_ids.shape
-        flat_ids  = input_ids.view(B * W, L)
-        flat_mask = attention_mask.view(B * W, L)
-        outputs   = self.bert(input_ids=flat_ids, attention_mask=flat_mask)
-        # Reassemble: [B*W, L, 768] → [B, W*L, 768]
+        # Multi-window with prefix: [B, W, L] — shared prefix across all windows
+        B, W, L     = input_ids.shape
+        code_budget = L - K
+
+        flat_ids  = input_ids[:, :, :code_budget].reshape(B * W, code_budget)   # [B*W, L-K]
+        flat_mask = attention_mask[:, :, :code_budget].reshape(B * W, code_budget)
+
+        word_embs = self._word_embeddings(flat_ids).to(dtype=gnn_prefix_nodes.dtype)  # [B*W, L-K, 768]
+
+        # Expand prefix: [B, K, 768] → [B*W, K, 768]
+        prefix_expanded = (
+            gnn_prefix_nodes.unsqueeze(1).expand(-1, W, -1, -1).reshape(B * W, K, 768)
+        )
+        inputs_embeds = torch.cat([prefix_expanded, word_embs], dim=1)  # [B*W, L, 768]
+
+        prefix_mask  = torch.ones(B * W, K, dtype=flat_mask.dtype, device=flat_mask.device)
+        full_mask    = torch.cat([prefix_mask, flat_mask], dim=1)        # [B*W, L]
+
+        prefix_pos   = flat_ids.new_ones(B * W, K)
+        code_pos     = torch.arange(3, 3 + code_budget, dtype=torch.long,
+                                    device=input_ids.device).unsqueeze(0).expand(B * W, -1)
+        position_ids = torch.cat([prefix_pos, code_pos], dim=1)          # [B*W, L]
+
+        outputs = self.bert(
+            inputs_embeds=inputs_embeds,
+            attention_mask=full_mask,
+            position_ids=position_ids,
+        )
         return outputs.last_hidden_state.view(B, W * L, 768)
 
 
@@ -201,20 +275,24 @@ class WindowAttentionPooler(nn.Module):
     Pool W window-CLS embeddings into a single vector via learned attention.
 
     In multi-window mode TransformerEncoder returns [B, W*L, 768].  The CLS token
-    of window i is at position i*window_size.  This module extracts those W CLS
-    vectors and produces a weighted sum using a learned score function.
+    of window i is at position i*window_size + prefix_k.  This module extracts
+    those W CLS vectors and produces a weighted sum using a learned score function.
 
     Args:
-        hidden_dim:   Embedding width (default 768 for CodeBERT).
+        hidden_dim:   Embedding width (default 768 for GraphCodeBERT).
         window_size:  Tokens per window (default 512 = MAX_TOKEN_LENGTH).
+        prefix_k:     Number of GNN prefix tokens prepended per window (default 0).
+                      When prefix injection is active, CLS of window i is at
+                      i*window_size + prefix_k instead of i*window_size.
 
     Single-window fallback: if W*L == window_size, returns CLS directly — zero
     overhead, no learned weights invoked.
     """
 
-    def __init__(self, hidden_dim: int = 768, window_size: int = 512) -> None:
+    def __init__(self, hidden_dim: int = 768, window_size: int = 512, prefix_k: int = 0) -> None:
         super().__init__()
         self.window_size = window_size
+        self.prefix_k    = prefix_k
         self.attn = nn.Linear(hidden_dim, 1, bias=False)
 
     def forward(self, token_embs: torch.Tensor) -> torch.Tensor:
@@ -226,10 +304,10 @@ class WindowAttentionPooler(nn.Module):
         """
         B, WL, D = token_embs.shape
         if WL <= self.window_size:
-            return token_embs[:, 0, :]  # single-window: CLS at position 0
+            return token_embs[:, self.prefix_k, :]  # single-window: CLS at prefix_k
         W = WL // self.window_size
-        # Extract CLS from each window: position 0, window_size, 2*window_size, ...
-        cls_indices = torch.arange(W, device=token_embs.device) * self.window_size
+        # CLS of window i is at i*window_size + prefix_k
+        cls_indices = torch.arange(W, device=token_embs.device) * self.window_size + self.prefix_k
         window_cls = token_embs[:, cls_indices, :]   # [B, W, 768]
         scores  = self.attn(window_cls)              # [B, W, 1]
         weights = torch.softmax(scores, dim=1)       # [B, W, 1]

@@ -176,6 +176,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lora-alpha",   type=int,   default=32)
     p.add_argument("--lora-dropout", type=float, default=0.1)
 
+    # --- GNN prefix injection (Phase 1) ---
+    p.add_argument("--gnn-prefix-k",             type=int,   default=0,
+                   help="Number of GNN prefix tokens injected before code (0=disabled; 48 for Phase 1)")
+    p.add_argument("--gnn-prefix-warmup-epochs", type=int,   default=15,
+                   help="Epochs to suppress prefix injection (projection trains from random init after warmup)")
+    p.add_argument("--gnn-prefix-proj-lr-mult",  type=float, default=1.0,
+                   help="LR multiplier for gnn_to_bert_proj and prefix_type_embedding")
+
     p.add_argument("--smoke-subsample-fraction", type=float, default=1.0)
     p.add_argument(
         "--weighted-sampler",
@@ -259,6 +267,9 @@ def main() -> None:
         force_optimizer_reset = args.force_optimizer_reset,
         use_weighted_sampler  = args.weighted_sampler,
         dos_loss_weight       = args.dos_loss_weight,
+        gnn_prefix_k          = args.gnn_prefix_k,
+        gnn_prefix_warmup_epochs = args.gnn_prefix_warmup_epochs,
+        gnn_prefix_proj_lr_mult  = args.gnn_prefix_proj_lr_mult,
     )
 
     train(config)
