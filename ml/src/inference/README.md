@@ -1,15 +1,16 @@
 # inference — Inference Pipeline
 
-Converts a Solidity contract (file or raw string) into a vulnerability score.
+Converts a Solidity contract (file or raw string) into per-class vulnerability probabilities across 10 classes.
 
 ---
 
 ## Files
 
-| File | Class | Status |
-|---|---|---|
-| `preprocess.py` | `ContractPreprocessor` | Complete |
-| `predictor.py` | `Predictor` | Next to build (M3.4) |
+| File | Class / Purpose |
+|------|----------------|
+| `preprocess.py` | `ContractPreprocessor` — Slither + tokenizer → `(graph, tokens)` |
+| `predictor.py` | `SentinelPredictor` — loads checkpoint, runs full pipeline |
+| `api.py` | FastAPI app at `:8001` — HTTP wrapper around `SentinelPredictor` |
 
 ---
 
@@ -17,19 +18,16 @@ Converts a Solidity contract (file or raw string) into a vulnerability score.
 
 Two public entry points — one for files on disk, one for raw strings from an API.
 
-**Design:** instantiate once, reuse for many contracts.
-All expensive setup (tokenizer load, Slither/ASTExtractor init) happens in `__init__`.
+**Design:** instantiate once, reuse for many contracts. All expensive setup (GraphCodeBERT tokenizer load, Slither/graph extractor init) happens in `__init__`.
 
 ### Why two entry points?
 
-`ASTExtractor` calls Slither, which shells out to `solc` (the Solidity compiler).
-`solc` requires a **real file path** — it cannot accept source as a string argument.
-This is an external tool constraint that cannot be worked around.
+Slither shells out to `solc` (the Solidity compiler), which requires a **real file path**. This is an external tool constraint that cannot be worked around.
 
-| Caller context | Method to use |
-|---|---|
+| Caller context | Method |
+|----------------|--------|
 | Contract file already on disk (CLI, batch eval) | `process(sol_path)` |
-| Raw string from HTTP request / stdin | `process_source(source_code)` |
+| Raw string from HTTP request | `process_source(source_code)` |
 
 ### Instantiation
 
@@ -37,53 +35,35 @@ This is an external tool constraint that cannot be worked around.
 from ml.src.inference.preprocess import ContractPreprocessor
 
 preprocessor = ContractPreprocessor()
-# Loads once: CodeBERT tokenizer + ASTExtractor (Slither) + GraphBuilder
+# Loads once: GraphCodeBERT tokenizer + graph extractor (Slither)
 ```
-
-### process(sol_path) — file on disk
-
-```python
-graph, tokens = preprocessor.process("contracts/Vault.sol")
-```
-
-Hash = MD5 of the resolved file path (matches the offline pipeline convention).
-
-### process_source(source_code) — raw string
-
-```python
-source = open("Vault.sol").read()   # or from HTTP request body
-graph, tokens = preprocessor.process_source(source, name="Vault")
-```
-
-Internally: writes a `NamedTemporaryFile`, runs Slither on it, deletes it in `finally`.
-The tokeniser is called directly with the string — no redundant file read.
-Hash = MD5 of the source content (content-addressable; enables result caching).
 
 ### Return value (both methods)
 
 ```python
+graph, tokens = preprocessor.process("contracts/Vault.sol")
+graph, tokens = preprocessor.process_source(open("Vault.sol").read(), name="Vault")
+
 # graph: PyG Data object
-#   graph.x              [N, 8]    float32 — node features
-#   graph.edge_index     [2, E]    int64   — directed edges
-#   graph.contract_hash  str               — MD5 hash
-#   graph.y              tensor([0])       — dummy label (not used by model)
+#   graph.x              [N, 11]    float32 — node features (v8 schema)
+#   graph.edge_index     [2, E]     int64   — directed edges
+#   graph.edge_attr      [E]        int64   — edge type (1-D, values 0–10)
+#   graph.contract_hash  str                — MD5 hash
 
 # tokens: dict
-#   tokens["input_ids"]      [1, 512]  long  — CodeBERT token IDs
-#   tokens["attention_mask"] [1, 512]  long  — 1=real token, 0=padding
+#   tokens["input_ids"]      [4, 512]  long  — GraphCodeBERT token IDs, 4 windows
+#   tokens["attention_mask"] [4, 512]  long  — 1=real token, 0=padding
 #   tokens["contract_hash"]  str
-#   tokens["num_tokens"]     int             — real (non-padding) tokens
-#   tokens["truncated"]      bool            — True if source > 512 tokens
 ```
 
-Token shape is `[1, 512]` (batch dim=1). Pass directly to `SentinelModel` — no collate needed.
+Token shape is `[4, 512]` (4 windows). `SentinelPredictor` adds the batch dimension before the forward pass.
 
 ### Errors
 
 | Exception | Cause |
-|---|---|
+|-----------|-------|
 | `FileNotFoundError` | `sol_path` does not exist (`process()` only) |
-| `ValueError` | Empty source (`process_source()`), or Slither/AST extraction failed |
+| `ValueError` | Empty source, or Slither/graph extraction failed |
 
 ---
 
@@ -92,78 +72,90 @@ Token shape is `[1, 512]` (batch dim=1). Pass directly to `SentinelModel` — no
 These shapes must match training data exactly:
 
 | Tensor | Training (from dataset) | Inference (from preprocessor) |
-|---|---|---|
-| `graph.x` | `[N, 8]` | `[N, 8]` ✓ |
-| `graph.edge_index` | `[2, E]` | `[2, E]` ✓ |
-| `tokens["input_ids"]` | `[B, 512]` after collate | `[1, 512]` ✓ |
-| `tokens["attention_mask"]` | `[B, 512]` after collate | `[1, 512]` ✓ |
+|--------|-------------------------|-------------------------------|
+| `graph.x` | `[N, 11]` | `[N, 11]` ✓ |
+| `graph.edge_attr` | `[E]` 1-D int64 | `[E]` 1-D int64 ✓ |
+| `tokens["input_ids"]` | `[B, 4, 512]` after collate | `[1, 4, 512]` ✓ |
+| `tokens["attention_mask"]` | `[B, 4, 512]` after collate | `[1, 4, 512]` ✓ |
 
 ---
 
-## Confirmed Inference Threshold
+## SentinelPredictor (`predictor.py`)
 
-Threshold sweep was run on the val set (10,283 samples) using `run-alpha-tune_best.pt`.
-Selection criterion: **F1-macro** (not F1-vuln — see [scripts/README.md](../../scripts/README.md) for why F1-vuln is gameable).
+Loads a checkpoint, reconstructs the model from its saved config, and runs the full pipeline.
 
-```
- Threshold |  F1-vuln |  Precision |   Recall |  F1-macro
-------------------------------------------------------------
-      0.40 |   0.8013 |     0.6701 |   0.9962 |    0.5036   ← degenerate (recall-gaming)
-      0.50 |   0.7458 |     0.7797 |   0.7147 |    0.6686   ← best (selected)
-      0.55 |   0.6446 |     0.8543 |   0.5176 |    0.6325
-```
+### Instantiation
 
-**INFERENCE_THRESHOLD = 0.50** (confirmed 2026-02-27, run-alpha-tune checkpoint)
-
-At 0.50: of all flagged contracts 78% are genuinely vulnerable, and 71.5% of all
-truly vulnerable contracts are caught. Precision/recall are well-balanced.
-
-`run-more-epochs_best.pt` (ep 22, F1-macro 0.6584) needs a threshold sweep.
-`run-lr-lower` and `run-combined` never ran — overnight process was killed at ep 25/40.
-Compare `run-more-epochs` sweep result against `run-alpha-tune` (0.6686) to pick the
-production checkpoint for `predictor.py`.
-
----
-
-## Predictor (`predictor.py`) — Next to Build (M3.4)
-
-`predictor.py` is the single remaining file for milestone M3.4.
-
-**Contract:**
-1. Accept `checkpoint` path and `threshold` (default `0.50`)
-2. Load `SentinelModel` with `weights_only=True`
-3. Instantiate `ContractPreprocessor` once in `__init__`
-4. `predict(sol_path) -> dict` — full pipeline, single contract
-
-**Target API:**
 ```python
-from ml.src.inference.predictor import Predictor
+from ml.src.inference.predictor import SentinelPredictor
 
-predictor = Predictor(
-    checkpoint="ml/checkpoints/run-alpha-tune_best.pt",
-    threshold=0.50,
+predictor = SentinelPredictor(
+    checkpoint="ml/checkpoints/graphcodebert-v1-prefix48_best.pt",
     device="cuda",
 )
+```
 
-# From a file on disk (CLI / batch)
+**Checkpoint loading:**
+1. Reads `saved_cfg` from the checkpoint dict — reconstructs `TrainConfig` including `gnn_prefix_k`, `gnn_prefix_warmup_epochs`
+2. Builds `SentinelModel` with those params
+3. Strips `._orig_mod.` infix from state dict keys (torch.compile artifact)
+4. Sets `model._current_epoch = 9999` — prefix always active regardless of warmup setting
+5. Calls `model.eval()`
+
+The architecture string `"three_eye_v7"` is used for `_ARCH_TO_FUSION_DIM` / `_ARCH_TO_NODE_DIM` validation — no architecture string change needed for GCB-P1 since the fusion output shape (128) and node feature dim (11) are unchanged.
+
+### Prediction
+
+```python
+# From a file on disk
 result = predictor.predict("contracts/Vault.sol")
 
-# From a raw string (HTTP API)
+# From a raw string
 result = predictor.predict_source(source_code, name="Vault")
 
-# result dict (both methods):
+# result dict:
 # {
-#   "score":      0.823,          # raw sigmoid probability [0, 1]
-#   "label":      "vulnerable",   # "vulnerable" | "safe"
-#   "threshold":  0.50,
-#   "truncated":  False,          # source > 512 tokens?
-#   "num_nodes":  147,
-#   "num_edges":  203,
+#   "vulnerabilities": [
+#     {"vulnerability_class": "Reentrancy",  "probability": 0.8943, "detected": true},
+#     {"vulnerability_class": "IntegerUO",   "probability": 0.2101, "detected": false},
+#     ...  # all 10 classes
+#   ],
+#   "thresholds": [0.45, 0.50, ...],   # per-class, from checkpoint
+#   "num_nodes":  42,
+#   "num_edges":  89,
+#   "architecture": "three_eye_v7",
 # }
 ```
 
-**Implementation notes:**
-- `predict()` → calls `preprocessor.process(sol_path)`
-- `predict_source()` → calls `preprocessor.process_source(source_code, name)`
-- Both routes produce identical `(graph, tokens)` shapes — same model forward pass
-- Token shape `[1, 512]` passes directly to `SentinelModel` — no collate needed
+**Thresholds:** per-class thresholds are stored in the checkpoint by `trainer.py` and loaded automatically. Defaults to 0.5 per class if not present (pre-tuning checkpoints).
+
+### Backward compatibility
+
+Checkpoints trained without GNN prefix (`gnn_prefix_k=0`) load correctly — `saved_cfg.get("gnn_prefix_k", 0)` defaults to 0, and the model is built without prefix components. No separate `_ARCH_TO_FUSION_DIM` entry needed.
+
+---
+
+## API (`api.py`) — FastAPI at port 8001
+
+```bash
+TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache \
+SENTINEL_CHECKPOINT=ml/checkpoints/graphcodebert-v1-prefix48_best.pt \
+PYTHONPATH=. uvicorn ml.src.inference.api:app --host 0.0.0.0 --port 8001
+```
+
+**Endpoints:**
+
+| Method | Path | Input | Output |
+|--------|------|-------|--------|
+| `POST` | `/predict` | `{"source_code": "..."}` | vulnerabilities + thresholds + metadata |
+| `GET` | `/health` | — | `{"status": "ok", "model_loaded": true, ...}` |
+| `GET` | `/metrics` | — | Prometheus text format |
+
+**Environment variables:**
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `SENTINEL_CHECKPOINT` | Yes | Path to `.pt` checkpoint |
+| `TRANSFORMERS_OFFLINE` | Yes | Must be `1` at shell level |
+| `SENTINEL_PREDICT_TIMEOUT` | No | Default 60s |
+| `SENTINEL_DRIFT_BASELINE` | No | KS drift baseline JSON |
