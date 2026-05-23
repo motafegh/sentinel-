@@ -191,9 +191,22 @@ def check_unused_return(data) -> bool:
     return bool((data.x[:, 7] > 0.5).any())
 
 
+def check_external_bug(data) -> bool:
+    """
+    ExternalBug requires an external call by definition — the bug IS the external
+    call (wrong target, unchecked success, wrong assumptions about callee behavior).
+    A contract with no external calls cannot have an ExternalBug.
+
+    Audit finding (2026-05-23): 14.8% of ExternalBug=1 contracts in the cleaned
+    CSV have external_call_count=0 on all nodes — structural impossibility.
+    Root cause: BCCC OR-labeling. Fix: same as check_reentrancy — gate on ext_call.
+    """
+    return bool((data.x[:, 10] > 0.0).any())
+
+
 # Mapping: CSV column name → precondition function.
 # Classes not listed here have no reliable structural precondition
-# (GasException, ExternalBug, TOD, DoS) and are left as-is.
+# (GasException, TOD, DoS, IntegerUO) and are left as-is.
 #
 # REMOVED: IntegerUO — the has_loop heuristic is wrong. Integer overflow in
 # Solidity <0.8 requires only arithmetic operations, not a loop. Removing
@@ -203,6 +216,7 @@ def check_unused_return(data) -> bool:
 PRECONDITIONS: dict[str, callable] = {
     "Reentrancy":          check_reentrancy,
     "Timestamp":           check_timestamp,
+    "ExternalBug":         check_external_bug,
     "MishandledException": check_mishandled_exception,
     "CallToUnknown":       check_call_to_unknown,
     "UnusedReturn":        check_unused_return,
