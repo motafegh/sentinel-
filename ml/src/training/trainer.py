@@ -275,12 +275,13 @@ class TrainConfig:
         "UnusedReturn":                0.10,
     })
 
-    # --- DoS loss mask (BUG-H6) ---
-    # DenialOfService has 3 pure training samples; 98.1% co-occur with Reentrancy.
-    # The class is structurally unlearnable — gradient on DoS column is harmful.
-    # 0.0 = no gradient for DoS column; 1.0 = normal (re-enable if augmented).
+    # --- DoS loss weight (BUG-H6) ---
+    # 0.0 = no gradient for DoS column (original setting when DoS had 3 samples).
+    # 0.5 = half gradient — safe starting point with ~243 training positives.
+    # 1.0 = full gradient (normal).
+    # Fractional values scale the gradient contribution, not a hard mask.
     # NUM_CLASSES stays 10 (ZKML proxy MLP is hardcoded to 10 outputs — LOCKED).
-    dos_loss_weight: float = 0.0
+    dos_loss_weight: float = 0.5
 
     # --- pos_weight cap ---
     # Classes with >= pos_weight_min_samples training positives are NOT amplified.
@@ -521,27 +522,33 @@ def train_one_epoch(
         with torch.amp.autocast(device, dtype=torch.bfloat16, enabled=use_amp):
             logits, aux = model(graphs, input_ids, attention_mask, return_aux=True)
 
-            # DoS loss mask (BUG-H6): detach DoS column so it produces no gradient.
-            # Predictions are still made for DoS (inference unaffected); only
-            # the backward pass is blocked for that column.
-            # dos_loss_weight=0.0 = fully masked; 1.0 = normal (re-enable if augmented).
+            # DoS gradient scaling (BUG-H6): blend between detached (no gradient)
+            # and full logit to scale the gradient contribution by dos_loss_weight.
+            # w=0.0 → fully detached (no DoS gradient); w=1.0 → full gradient;
+            # w=0.5 → 50% gradient. Predictions are unaffected (inference uses
+            # the original logits, not _logits_for_loss).
             if dos_loss_weight < 1.0:
                 _dos_idx = CLASS_NAMES.index("DenialOfService")
                 _logits_for_loss = logits.clone()
-                _logits_for_loss[:, _dos_idx] = logits[:, _dos_idx].detach()
+                _logits_for_loss[:, _dos_idx] = (
+                    dos_loss_weight * logits[:, _dos_idx]
+                    + (1.0 - dos_loss_weight) * logits[:, _dos_idx].detach()
+                )
             else:
                 _logits_for_loss = logits
 
             main_loss   = loss_fn(_logits_for_loss, labels)
             # aux_loss_fn has no pos_weight — pathway heads give supervision signal
             # without amplifying rare-class imbalance through struggling aux heads.
-            # Apply same DoS masking to aux heads so the ~47% leaked gradient
-            # from 3 aux paths doesn't teach spurious DoS↔Reentrancy correlations.
+            # Apply same DoS scaling to aux heads.
             if dos_loss_weight < 1.0:
                 _aux_masked = {}
                 for _k, _v in aux.items():
                     _vv = _v.clone()
-                    _vv[:, _dos_idx] = _v[:, _dos_idx].detach()
+                    _vv[:, _dos_idx] = (
+                        dos_loss_weight * _v[:, _dos_idx]
+                        + (1.0 - dos_loss_weight) * _v[:, _dos_idx].detach()
+                    )
                     _aux_masked[_k] = _vv
             else:
                 _aux_masked = aux

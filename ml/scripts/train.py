@@ -168,8 +168,8 @@ def parse_args() -> argparse.Namespace:
 
     # --- Auxiliary loss (v5 three-eye) ---
     p.add_argument("--aux-loss-weight", type=float, default=0.3)
-    p.add_argument("--dos-loss-weight", type=float, default=0.0,
-                   help="DoS gradient weight (0.0=masked per BUG-H6, 1.0=normal; set to 1.0 after DoS augmentation)")
+    p.add_argument("--dos-loss-weight", type=float, default=0.5,
+                   help="DoS gradient weight (0.0=no gradient, 0.5=half, 1.0=full; 243 training positives as of 2026-05-23)")
 
     # --- LoRA architecture (v5) ---
     p.add_argument("--lora-r",       type=int,   default=16)
