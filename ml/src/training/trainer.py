@@ -1422,9 +1422,14 @@ def train(config: TrainConfig) -> dict:
                 best_f1 = val_metrics["f1_macro"]
                 patience_counter = 0
                 _tmp_path = checkpoint_path.with_suffix(".tmp")
+                # Strip torch.compile's ._orig_mod. infix from state dict keys so
+                # every load path works identically whether the model was compiled or not.
+                _sd = model.state_dict()
+                if any("._orig_mod." in k for k in _sd):
+                    _sd = {k.replace("._orig_mod.", "."): v for k, v in _sd.items()}
                 torch.save(
                     {
-                        "model":            model.state_dict(),
+                        "model":            _sd,
                         "optimizer":        optimizer.state_dict(),
                         "scheduler":        scheduler.state_dict(),
                         "epoch":            epoch,
