@@ -1,6 +1,6 @@
 # SENTINEL — Active Plan: v8 + v9 Roadmap
 
-Last updated: 2026-05-23 (rev 14 — PIVOT TO DATA QUALITY: architecture ablations showed flat ceiling; label cleaning improved; PLAN-3B deferred; next run is v8.0-B with cleaned labels + dos_loss_weight=0.5)
+Last updated: 2026-05-23 (rev 15 — v8.0-B LAUNCHED: cleaned labels −4,304 + dos_loss_weight=0.5; session doc: docs/ml/v8.0-B-training.md)
 
 **Current state (2026-05-23):**
 - **v7.0 COMPLETE** — F1=0.2651 ep23 · `ml/checkpoints/v7.0_best.pt` · tuned F1=0.2875
@@ -11,7 +11,7 @@ Last updated: 2026-05-23 (rev 14 — PIVOT TO DATA QUALITY: architecture ablatio
   - **Reentrancy only +0.005 vs v8-AB** — H1 partially refuted; label noise (BUG-H5) is the real ceiling
   - Full analysis: `docs/ml/plan-3a-results.md`
 - **PIVOT (2026-05-23):** v7/v8-AB/PLAN-3A all converge to same ~0.287 ceiling. Architecture is ruled out. **Data quality is the bottleneck.** Full analysis: `docs/ml/data-quality-findings.md`
-- **Next:** v8.0-B training with cleaned labels + DoS loss enabled (see Data Quality Phase below)
+- **v8.0-B RUNNING (launched 2026-05-23 15:08):** cleaned labels (−4,304 total across 6 classes) + dos_loss_weight=0.5. Session doc: `docs/ml/v8.0-B-training.md`
 - **PLAN-3B deferred** — no value running DFG-only ablation on the same noisy labels
 
 **Proposal source:** `docs/2026-18-05-SENTINEL — Graph Representation Extension Proposal.md` (v3 — Final Consolidated)
@@ -289,13 +289,14 @@ Diagnostic script `ml/scripts/jk_weight_hist.py` run on v8-AB (936 val contracts
 
 ---
 
-### DQ-2 — Re-enable DoS loss weight (OPEN)
+### DQ-2 — Re-enable DoS loss weight (DONE 2026-05-23)
 
-**Current:** `dos_loss_weight=0.0` — DoS gradient detached. Set when DoS had 7 training samples.  
-**Current state:** ~260 DoS training positives (after augmented data injection from generate_dos_pairs.py).  
-**Action:** Set `dos_loss_weight=0.5` in next training run. Start conservative — augmented data shouldn't dominate real gradients.  
-**Expected:** Non-zero DoS F1 (currently ~0.030 which is threshold-tuning artifact with no real learning).  
-**Status: OPEN** — edit `dos_loss_weight` in TrainConfig before next run.
+**Previous:** `dos_loss_weight=0.0` — DoS gradient detached. Set when DoS had 7 training samples.  
+**Current state:** ~243 DoS training positives (after augmented data injection).  
+**Fix applied:** TrainConfig default changed to 0.5. Implementation upgraded from hard binary mask
+to true fractional gradient scaling: `w * logit + (1-w) * logit.detach()`. CLI default also changed.
+Same DoS scaling applied to all 3 aux heads.  
+**Status: DONE** — active in v8.0-B run.
 
 ---
 
@@ -329,22 +330,20 @@ Results (1500 val contracts on PLAN-3A checkpoint):
 
 ---
 
-### DQ-5 — Next training run: v8.0-B with clean labels (OPEN — after DQ-1 + DQ-2)
+### DQ-5 — v8.0-B training run (RUNNING — launched 2026-05-23 15:08)
 
-**Config:** Use PLAN-3A best configuration (CF+CALL_ENTRY+RETURN_TO edges) — best F1 found so far.  
+**Run name:** `v8.0-B-20260523`  
+**Config:** PLAN-3A best config (CF+CALL_ENTRY+RETURN_TO) + cleaned labels + dos_loss_weight=0.5  
+**Log:** `ml/logs/v8.0-B-20260523.log`  
+**Session doc:** `docs/ml/v8.0-B-training.md` (hypotheses, startup diagnostics, results template)
+
 **Changes vs PLAN-3A:**
-- Labels from updated `multilabel_index_cleaned.csv` (DQ-1 improvements)
-- `dos_loss_weight=0.5` (DQ-2)
-- Same architecture, same hyperparams
+- Labels from updated `multilabel_index_cleaned.csv` (−4,304 labels: Reentrancy −611, Timestamp −568, ExternalBug −445, MishandledException −632, CallToUnknown −383, UnusedReturn −1,665)
+- `dos_loss_weight=0.5` with true fractional gradient scaling (was fully masked at 0.0)
 
-**Expected improvements:**
-- Reentrancy: +0.01–0.02 (−611 structural noise contracts removed)
-- Timestamp: small additional gain (−568 additional noise contracts)
-- DoS: first real learning signal
+**Key hypotheses:** H1 Reentrancy +0.01–0.03 · H2 DoS non-zero F1 · H3 Timestamp holds · H4 ExternalBug improves · H5 macro F1 > 0.288
 
-**After this run:** analyze results, then decide on:
-- Active learning loop for Timestamp (surface highest-uncertainty preds for manual review)
-- PLAN-3D (JK concatenation mode) only if data quality improvements clearly moved the ceiling
+**Status: RUNNING**
 
 **Status: OPEN**
 
@@ -910,10 +909,10 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 | PLAN-4C | Update `gnn_encoder.py` Phase 1 mask + embedding size | 4 | P2 | PLAN-4B | OPEN |
 | BUG-H4 | Filter Timestamp labels with no source evidence | 3.5 | P0 | v8 graphs ready | **DONE (2026-05-23)** — stricter check applied in label_cleaner.py; −568 labels |
 | BUG-H5 | Filter Reentrancy labels with no external calls | 3.5 | P0 | v8 graphs ready | **DONE (2026-05-23)** — stricter check applied; −611 labels |
-| DQ-2 | Re-enable DoS loss weight (dos_loss_weight=0.5) | 3.5 | P1 | DQ-1 done | OPEN |
-| DQ-3 | Complexity correlation diagnostic (shortcut detection) | 3.5 | P1 | label cleaning done | IN PROGRESS |
+| DQ-2 | Re-enable DoS loss weight (dos_loss_weight=0.5) | 3.5 | P1 | DQ-1 done | **DONE (2026-05-23)** — fractional gradient scaling implemented |
+| DQ-3 | Complexity correlation diagnostic (shortcut detection) | 3.5 | P1 | label cleaning done | **DONE (2026-05-23)** — moderate shortcuts r=0.25–0.40, one benign alert |
 | DQ-4 | Add 100+ confirmed-clean negative contracts | 3.5 | P2 | — | OPEN |
-| DQ-5 | v8.0-B retraining with cleaned labels | 3.5 | P0 | DQ-1 + DQ-2 | OPEN |
+| DQ-5 | v8.0-B retraining with cleaned labels | 3.5 | P0 | DQ-1 + DQ-2 | **RUNNING (2026-05-23 15:08)** |
 | BUG-M5 | Remove Brainmab mislabeled contract | 2 | P2 | — | OPEN |
 | BUG-M6 | Stale token schema version metadata | 2 | P3 | auto-resolved by retokenize | OPEN |
 | BUG-M7 | 8.5% graphs have empty contract_path | 1 | P3 | — | OPEN |
