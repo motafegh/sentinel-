@@ -99,6 +99,13 @@ anything else.
 - ✅ Schema versioning: v7→v8→v9 coupled system (graph files + embedding table + weights)
 - ☐ Assert guards at import time — what consistency invariants they enforce and why at import
 
+### Typed Aliases and Prefix Constants (Phase 3.6 additions)
+
+- ☐ `NodeType` IntEnum — typed aliases for NODE_TYPES integer IDs; derived from NODE_TYPES at module load, cannot drift; why IntEnum over plain int constants
+- ☐ `STRUCTURAL_PREFIX_TYPES` frozenset — 5 declaration node types eligible for GNN prefix injection; why CFG nodes excluded (Phase 3 already aggregates them into FUNCTION nodes)
+- ☐ PRE-4 audit result — mean=20.3 declaration nodes per graph, P50=16, P95=47 → K=48 covers 95.5%; why K=48 not K=32 or K=64
+- ☐ `_PREFIX_NODE_PRIORITY` ordering — CONSTRUCTOR > FALLBACK > RECEIVE > MODIFIER > FUNCTION; why entry-point nodes get highest priority
+
 ---
 
 ## Phase 2 — Graph Extractor (`ml/src/preprocessing/graph_extractor.py`)
@@ -228,10 +235,12 @@ v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 
 ## Phase 4 — Transformer Encoder (`ml/src/models/transformer_encoder.py`)
 
+**Current model: GraphCodeBERT** (`microsoft/graphcodebert-base`), not CodeBERT. Pretrained on code + data-flow graphs. All LoRA mechanics unchanged.
+
 ### Covered
 
-- ✅ Why CodeBERT — pretrained semantics from 6M+ code files
-- ✅ Domain gap — CodeBERT trained on Python/Java/Go, not Solidity
+- ✅ Why pretrained transformer — pretrained semantics from 6M+ code files
+- ✅ Domain gap — pretrained on Python/Java/Go, not Solidity
 - ✅ Catastrophic forgetting — the gradient overwriting mechanism
 - ✅ LoRA — freeze 125M, train 590K; requires_grad=False as the physical barrier
 - ✅ Why query+value projections specifically — redirect what model looks for and extracts
@@ -239,15 +248,25 @@ v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 - ✅ LoRA rank-16 constraint — 16 directions of adaptation, class competition problem
 - ✅ Multi-window design — contracts avg 1,737 tokens, 82% need multiple 512-token windows
 - ✅ WindowAttentionPooler — CLS per window → learned attention → [768]
-- ✅ Two CodeBERT output paths: all tokens (fusion) vs CLS (transformer eye)
+- ✅ Two output paths: all tokens (fusion) vs CLS (transformer eye)
 - ✅ Transformer eye value: global semantic fingerprint, not ordering
 
-### Still Needed
+### Still Needed — Core
 
 - ☐ Flash Attention 2 vs SDPA — what they are, why the fallback exists
-- ☐ bfloat16 vs float32 — numerical precision tradeoff in CodeBERT
+- ☐ bfloat16 vs float32 — numerical precision tradeoff
 - ☐ alpha/r scaling (32/16 = 2.0) — what it controls at initialization and during training
 - ☐ B is zero at init, A is random — why this matters for stable LoRA training start
+
+### Still Needed — GraphCodeBERT Upgrade (Phase 3.6)
+
+- ☐ Why GraphCodeBERT over CodeBERT — pretrained with DFG signal; what the additional pretraining teaches the model about data flow
+- ☐ `_word_embeddings` property — why direct access to the embedding layer is needed for prefix injection
+- ☐ GNN prefix injection path in `forward()` — `inputs_embeds` instead of `input_ids`; how K prefix embeddings are prepended before code tokens
+- ☐ Position IDs with prefix — prefix tokens at `position_id=1` (RoBERTa padding slot); code tokens at positions 3..3+(L-K-1); why position 1 not 0 or 2
+- ☐ Code budget: `code_budget = L - K` — window is still exactly L tokens; K prefix tokens displace K code tokens from the right end; tradeoff
+- ☐ Multi-window prefix expansion — `[B, K, 768]` expanded to `[B*W, K, 768]` via `.expand(); same K nodes shared across all windows; why shared not per-window
+- ☐ `WindowAttentionPooler.prefix_k` — CLS shifts from position 0 to position K when prefix active; single-window returns `token_embs[:, prefix_k, :]`
 
 ---
 
@@ -268,6 +287,8 @@ v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 
 ## Phase 6 — SENTINEL Model (`ml/src/models/sentinel_model.py`)
 
+### Core Three-Eye Architecture
+
 - ☐ Three-eye architecture: GNN eye + Transformer eye + Fused eye → [384] → classifier
 - ☐ GNN eye projection: Linear(2×256, 128) — why 2×256 (max+mean concatenation from pooling)
 - ☐ Transformer eye projection: Linear(768, 128) — the dimension reduction
@@ -278,6 +299,18 @@ v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 - ☐ Auxiliary heads (aux_gnn, aux_transformer, aux_fused) — what they are and why
 - ☐ `return_aux=False` at inference — why auxiliary heads are training-only
 - ☐ `_FUNC_IDS_CPU` prebuilt tensor — BUG-L1 performance fix, what was wrong before
+
+### GNN Prefix Injection (Phase 3.6 — active)
+
+- ☐ `gnn_prefix_k` parameter — 0=disabled (backward compat); 48=Phase 1 setting; why 48
+- ☐ `gnn_prefix_warmup_epochs=15` — prefix suppressed during warmup; why train GNN first
+- ☐ `_current_epoch` — set by trainer each epoch; how the warmup gate works: `if epoch >= warmup_epochs`
+- ☐ `gnn_to_bert_proj` — Linear(256, 768); projects GNN node embeddings into transformer embedding space; why this projection needs its own LR group
+- ☐ `prefix_type_embedding` — Embedding(5, 768); type-specific bias per declaration node type; why the transformer needs to know node type not just embedding value
+- ☐ `select_prefix_nodes()` — priority sort → truncate to K → project → add type bias → zero-pad; the zero-pad choice vs attention mask
+- ☐ Priority order: CONSTRUCTOR(6) > FALLBACK(4) > RECEIVE(5) > MODIFIER(2) > FUNCTION(1) — why entry-point nodes first
+- ☐ Warmup design: projection starts from random init at epoch 15 with a well-trained GNN — why this is better than training both from scratch simultaneously
+- ☐ Backward compat: `gnn_prefix_k=0` → identical output to original model; all existing checkpoints load unchanged
 
 ---
 
@@ -299,17 +332,38 @@ v8 added ICFG-Lite (CALL_ENTRY, RETURN_TO) and DEF_USE edges to Phase 2.
 
 ## Phase 8 — Trainer (`ml/src/training/trainer.py`)
 
+### Optimization
+
 - ☐ AdamW optimizer — why AdamW not Adam; weight decay as implicit regularization
 - ☐ Parameter groups — why different learning rates for different parts
-- ☐ `lora_lr_multiplier=0.3` — why LoRA trains slower than the rest
-- ☐ `fusion_lr_multiplier=0.5` — why fusion layer gets its own rate
+- ☐ `gnn_lr_multiplier=2.5` — GNN collapsed to ~10% gradient share by ep8; boosting LR counteracts dominance
+- ☐ `lora_lr_multiplier=0.3` — why LoRA trains slower; catastrophic forgetting risk at higher LR
+- ☐ `fusion_lr_multiplier=0.5` — fusion had 4-5× higher grad norm than GNN; 0.5× lets GNN catch up
+- ☐ `gnn_prefix_proj_lr_mult=1.0` — PrefixProj gets its own LR group; why full LR (not reduced) for projection
+
+### Data and Sampling
+
 - ☐ Weighted sampler — 3× weight on any-vulnerable contracts; what this does to batch composition
-- ☐ `eval_threshold=0.35` vs naive 0.5 — why 0.5 is wrong for imbalanced multi-label
+- ☐ `label_csv = "multilabel_index_cleaned.csv"` — model now trains on cleaned labels (3,859 removed); what changed
+
+### Loss and Thresholds
+
+- ☐ `eval_threshold=0.35` vs naive 0.5 — why 0.5 is wrong for imbalanced multi-label; patience trap at 0.5
 - ☐ Threshold calibration — how to find the right threshold and what F1 measures
 - ☐ `pos_weight_min_samples=3000` — the Reentrancy 2.82× over-amplification fix
-- ☐ `dos_loss_weight=0.0` — why DoS is excluded from loss, and the cost of that decision
+- ☐ `dos_loss_weight=0.5` — changed from 0.0; fractional gradient scaling mechanism: `w*logit + (1-w)*logit.detach()`; why detach not mask
+- ☐ `aux_loss_warmup_epochs=8` — aux weight ramps 0→0.3 over first 8 epochs; why aux heads hurt early training
 - ☐ Patience=30 and early stopping — what patience measures and what the trap is
 - ☐ Auxiliary loss weighting — how aux_gnn, aux_transformer, aux_fused contribute to total loss
+
+### Prefix Injection Training
+
+- ☐ `gnn_prefix_k=0` default; `48` for Phase 1 run — how trainer passes this to model and how model uses `_current_epoch`
+- ☐ Per-epoch prefix status logging — `prefix_active` flag + `prefix_proj_weight_norm` logged to MLflow
+- ☐ Weight norm trajectory of `gnn_to_bert_proj` during warmup vs post-warmup — what drift means
+
+### Observability
+
 - ☐ MLflow tracking — what gets logged and how to use it for post-hoc debugging
 
 ---
@@ -396,7 +450,9 @@ This phase is grounded entirely in docs/ml/ — real runs, real numbers.
 
 - ☐ v7: 0.2875 / v8-AB: 0.2851 / PLAN-3A: 0.2877 — all three converge to same ceiling
 - ☐ Why different architectures converge to the same ceiling — the data bottleneck argument
-- ☐ What "beating the ceiling" would require — not architecture change, data quality fix
+- ☐ v8.0-B result (GATE-GCB-0): F1=0.2460 at ep10-11, killed; cleaned labels did NOT break the ceiling
+- ☐ H5 REFUTED — label cleaning alone cannot break the 0.287 ceiling; ceiling is architectural
+- ☐ What this means for strategy — ceiling is architecture not data; GraphCodeBERT + prefix injection is the path forward, data cleaning is secondary
 
 ---
 
@@ -405,21 +461,21 @@ This phase is grounded entirely in docs/ml/ — real runs, real numbers.
 The confirmed primary bottleneck. Label noise directly caps F1 regardless of architecture.
 All items here are actionable before v9 training.
 
-### Documented Label Problems
+### Documented Label Problems and Root Cause
 
-- ☐ D1: Timestamp — 48.2% of Timestamp=1 contracts don't actually use block.timestamp; what mislabeling does to training
-- ☐ D3: Reentrancy — 14% of Reentrancy=1 contracts have no external calls; the impossible vulnerability signal
-- ☐ D2: DoS — 7 training samples; why excluded from loss (`dos_loss_weight=0.0`); what the exclusion costs
-- ☐ Why PLAN-3A confirmed D1 — Timestamp surged +0.038 when DEF_USE (which amplifies false timestamp chains) was removed; but label noise still caps it
-- ☐ Why PLAN-3A confirmed D3 — Reentrancy only recovered +0.005 despite ICFG preserved; label noise is the ceiling
+- ☐ OR-labeling root cause — BCCC uses folder-level labeling; every contract in "reentrancy/" folder gets Reentrancy=1 regardless of whether that specific contract is vulnerable; systematic false positives
+- ☐ Tier 1 mislabeling — structural impossibility: contract labeled vulnerable when graph literally cannot exhibit the vulnerability (has no external calls → cannot reenter)
+- ☐ Tier 2 mislabeling — semantic: structure permits vulnerability but specific contract is safe (has external call + state write, but nonReentrant modifier or safe CEI order)
+- ☐ D1: Timestamp — before cleaning: 48.2% had uses_block_globals=0 (structural impossibility); after cleaning: structural cases removed but semantic noise (~20–35%) remains
+- ☐ D3: Reentrancy — 14% of Reentrancy=1 contracts have no external calls; cleaned -611 labels
+- ☐ D2: DoS — was 7 training samples (excluded); now ~243 positives; dos_loss_weight=0.5
 
-### label_cleaner.py
+### label_cleaner.py (`ml/scripts/label_cleaner.py`)
 
-- ☐ What the script does — automated re-labeling pass on existing dataset
-- ☐ Heuristic for Timestamp — contract uses block.timestamp in condition or storage write; not just any read
-- ☐ Heuristic for Reentrancy — must have external call + state write + re-entry path
-- ☐ Risk of over-cleaning — cleaning removes true positives if heuristic is wrong; the precision-recall tradeoff of cleaning
-- ☐ Why re-extraction is needed after cleaning — graph features (uses_block_globals) derived from same source
+- ☐ Conservative design — can only REMOVE positive labels, never CREATE new ones; audit JSON logs every change
+- ☐ Per-class structural precondition functions — what each class requires to be structurally possible
+- ☐ Actual cleaning results (2026-05-23): −611 Reentrancy, −568 Timestamp, −1665 UnusedReturn, −383 CallToUnknown, −632 MishandledException = 3,859 total from 44,524 rows
+- ☐ v8.0-B used cleaned labels — F1=0.2460 at ep10-11, did not break 0.287 ceiling → Tier 1 cleaning was necessary but not sufficient; Tier 2 and architecture are the real limiters
 
 ### Re-Extraction Pipeline
 
@@ -428,13 +484,11 @@ All items here are actionable before v9 training.
 - ☐ What happens if you train with v8 graphs + v9 embeddings — silent feature mismatch; no error at load time
 - ☐ The re-extraction checklist — schema version bump, graph_schema.py constants, assert guards, embedding table dim
 
-### v9 Data Roadmap
+### Current Status and Pending Experiments
 
-- ☐ Fix D1 (Timestamp) via label_cleaner.py — expected Timestamp F1 ceiling to rise 0.255→0.35+
-- ☐ Fix D3 (Reentrancy) via label_cleaner.py — expected Reentrancy F1 ceiling to rise 0.291→0.35+
-- ☐ Add more DoS samples — 7 is too few; what "enough" means for stable gradient signal
-- ☐ PLAN-3B (DFG-only: CF + DEF_USE) — complete the ablation matrix before v9; run is still pending
-- ☐ PLAN-3D (JK concatenation mode) — switch jk_mode="cat"; expected to break the Phase 3 dominance ceiling
+- ☐ PLAN-3B (DFG-only: CF + DEF_USE) — ablation matrix still incomplete; pending
+- ☐ PLAN-3D (JK concatenation mode) — switch jk_mode="cat"; pending; superseded by GraphCodeBERT priority
+- ☐ Tier 2 noise remains — architecture upgrade (GraphCodeBERT + prefix) is now the primary path
 
 ---
 
@@ -456,6 +510,67 @@ Each recall session:
 2. **From scratch** — re-derive the concept without assuming prior explanation held
 3. **Check question** — one question with the answer closed; see if it sticks this time
 4. **Mark ✅** when the user answers without a hint
+
+---
+
+## Phase 12 — GraphCodeBERT + GNN Prefix Injection (`docs/proposal/`)
+
+**Status: ACTIVE EXPERIMENT.** GATE-GCB-2 passed (Phase 0 verified); GATE-GCB-3 smoke running; P1-TRAIN scheduled.
+This is the primary architectural upgrade path. Learn alongside the other phases — execution plan at `docs/proposal/EXECUTION_PLAN.md`.
+
+### Why This Architecture Change
+
+- ☐ Why the 0.287 ceiling is architectural not data — v8.0-B confirmed H5 REFUTED
+- ☐ What GraphCodeBERT knows that CodeBERT doesn't — DFG-aware pretraining; what data flow in pretraining teaches vs LoRA adaptation
+- ☐ The core problem being solved — GNN and transformer run in parallel paths; neither knows what the other found; cross-attention fusion is one-directional signal transfer
+
+### GNN Prefix Injection Concept
+
+- ☐ The key idea — inject K GNN node embeddings as prefix tokens into the transformer's input; transformer can attend to structural context while processing code tokens
+- ☐ Why prefix (not postfix or fusion) — prefix tokens are attended to by all subsequent code tokens via self-attention; equivalent to giving the transformer "context notes" before reading code
+- ☐ `gnn_to_bert_proj` Linear(256, 768) — why a projection is needed; the embedding spaces of GNN and BERT are not aligned
+- ☐ `prefix_type_embedding` Embedding(5, 768) — type-specific bias added to proj output; why the transformer needs to know node role, not just embedding value
+- ☐ Warmup design — GNN trains 15 epochs independently; at ep15 projection starts from random init with well-trained GNN; why this ordering matters
+
+### Execution Plan Gates
+
+- ☐ GATE-GCB-0 — v8.0-B result gate: CLOSED; F1=0.2460, H5 REFUTED → ceiling is architectural → accelerate
+- ☐ GATE-GCB-1 — Prerequisites (PRE-1 to PRE-5): GraphCodeBERT download, tokenizer update, audit_prefix_node_counts.py (K=48 covers 95.5%)
+- ☐ GATE-GCB-2 — Phase 0 go/no-go: GraphCodeBERT drop-in smoke test → PASSED
+- ☐ GATE-GCB-3 — Implementation verification smoke test (K=48 prefix): running now
+- ☐ GATE-GCB-4 — Phase 1 full training results: 60–80 GPU hours; go/no-go for Phase 2
+- ☐ GATE-GCB-5 — Phase 2 results: Option C (shared DFG)
+
+### Expected Outcomes and What to Watch
+
+- ☐ Primary signal: does prefix injection improve Reentrancy? (CALL→WRITE pattern visible to transformer)
+- ☐ `prefix_proj_weight_norm` trajectory — constant during warmup, drifts post-ep15; fast drift = projection learning fast
+- ☐ Risk: prefix tokens dominate CLS → transformer ignores code; monitor transformer eye F1 vs GNN eye F1 balance
+
+---
+
+## Phase 13 — Scripts (`ml/scripts/`)
+
+Supporting scripts for diagnostics, data preparation, and model validation. Each script is a learning artifact — they reveal what problems were discovered and how they were diagnosed.
+
+### Data Quality Scripts
+
+- ☐ `label_cleaner.py` — structural precondition filter; per-class checks; audit JSON output (covered in Phase 11)
+- ☐ `audit_prefix_node_counts.py` — PRE-4 gate; counts declaration-level nodes across 41,576 graphs; output: mean=20.3, P50=16, P95=47; why this audit was needed before choosing K=48
+- ☐ `validate_graph_dataset.py` — pre-training validation; checks shape contract [N,11] and [E] (not [E,1])
+- ☐ `patch_graph_features.py` — in-place patch for BUG-3 visibility fix; why in-place patching instead of re-extraction
+
+### Diagnostic Scripts
+
+- ☐ `jk_weight_hist.py` — full per-node JK weight distribution on val set; used to confirm JK collapse (Phase 3 dominant 99.99%); run on any checkpoint post-training
+- ☐ `complexity_correlation.py` — correlates complexity feature with vulnerability labels; was complexity discriminative?
+- ☐ `edge_activation.py` — per-edge-type attention weight analysis; which edge types actually get attended to
+
+### Training Support
+
+- ☐ `tune_threshold.py` — per-class threshold calibration; v7 gained +0.022 F1 from tuning alone; how grid search works over threshold space
+- ☐ `create_splits.py` and `dedup_multilabel_index.py` — entity-level deduplication; why contract-level not row-level
+- ☐ `retokenize_windowed.py` — re-tokenizes dataset when window strategy changes
 
 ---
 
@@ -488,37 +603,43 @@ Cover the design decisions and results after all other files are understood.
 | Phase | File / Topic | Status | Next item |
 |-------|-------------|--------|-----------|
 | 1 | `graph_schema.py` — node types + features | ✅ Complete | — |
-| 1 | `graph_schema.py` — edge types | ✅ Complete | assert guards (1 item) |
-| 2 | `graph_extractor.py` | 🔄 Nearly complete | BUG-1/BUG-2 log-norm fixes (2 items) |
+| 1 | `graph_schema.py` — edge types | 🔄 Nearly complete | assert guards ☐ + NodeType IntEnum ☐ + STRUCTURAL_PREFIX_TYPES ☐ |
+| 2 | `graph_extractor.py` | 🔄 Nearly complete | BUG-1/BUG-2 log-norm ☐, feature range validation ☐ |
 | 3 | `gnn_encoder.py` — message passing | ✅ Complete | — |
 | 3 | `gnn_encoder.py` — GAT | ✅ Complete | — |
 | 3 | `gnn_encoder.py` — Three-Phase Architecture | ✅ Complete | — |
-| 3 | `gnn_encoder.py` — JK Connections | 🔄 Nearly complete | `Linear(256,1)` shared weights (1 item) |
+| 3 | `gnn_encoder.py` — JK Connections | 🔄 Nearly complete | `Linear(256,1)` shared weights ☐ |
 | 3 | `gnn_encoder.py` — LayerNorm | ☐ Not started | — |
 | 3 | `gnn_encoder.py` — Pooling | ☐ Not started | — |
 | 3 | `gnn_encoder.py` — Architecture Parameters | ☐ Not started | — |
-| 4 | `transformer_encoder.py` | 🔄 Mostly complete | Flash Attention, bfloat16, LoRA alpha/r, B=0 init (4 items) |
+| 4 | `transformer_encoder.py` — core LoRA | 🔄 Mostly complete | Flash Attn ☐, bfloat16 ☐, LoRA alpha/r ☐, B=0 init ☐ |
+| 4 | `transformer_encoder.py` — GraphCodeBERT + prefix | ☐ Not started | Why GCB, prefix path, position IDs, multi-window expand |
 | 5 | `fusion_layer.py` | ☐ Not started | — |
-| 6 | `sentinel_model.py` | ☐ Not started | — |
+| 6 | `sentinel_model.py` — three-eye | ☐ Not started | — |
+| 6 | `sentinel_model.py` — GNN prefix injection | ☐ Not started | gnn_prefix_k, warmup gate, select_prefix_nodes |
 | 7 | `losses.py` | ☐ Not started | — |
 | 8 | `trainer.py` | ☐ Not started | — |
 | 9 | v8 extensions (implemented) | ☐ Design reasoning not yet covered | — |
 | 9 | v9 extensions (pending) | ☐ Not yet implemented | — |
 | 10 | Training Dynamics (experimental) | ☐ Not started | — |
 | 11 | Label Quality & Data Engineering | ☐ Not started | — |
+| 12 | GraphCodeBERT + GNN Prefix Injection | ☐ Not started | Active experiment — learn alongside other phases |
+| 13 | Scripts (`ml/scripts/`) | ☐ Not started | label_cleaner ☐, audit_prefix_node_counts ☐, jk_weight_hist ☐ |
 | — | Recall: Backpropagation | ⚠ Needs reinforcement | Chain rule re-derivation |
 | — | Recall: Softmax sums to 1 | ⚠ Needs reinforcement | From-scratch re-teaching |
 
-**Current position:** Phase 3 GNN encoder — JK section complete except one item (`Linear(256,1)` shared weights).
-**Recommended next step:** Complete JK, then LayerNorm → Pooling → Architecture Parameters, then Phase 10 training dynamics session grounded in docs/ml/ evidence.
+**Current position:** Recall sessions for Phase 1+2 (in progress). Mid-recall on graph_extractor.py Round 1 — 4 questions pending (Q1–Q4 from last session).
+**Recommended next step:** Complete recall sessions → finish Phase 3 remaining items → Phase 10 (training dynamics) and Phase 12 (GCB+prefix) can be taught in parallel as an active experiment.
 
 ### Key Findings Integrated Into Roadmap
 
 | Finding | Source | Impact on what we're learning |
 |---------|--------|-------------------------------|
 | JK collapse confirmed: 99.99% Phase 3 dominant | jk-attention-collapse-findings.md | JK is a fixed global weighting, not routing; PLAN-3D needed |
-| All three architectures hit 0.2875 ceiling | plan-3a-results.md + v8-vs-v7 | Bottleneck is data, not model |
-| DEF_USE hurt Timestamp (surprise +0.038 when dropped) | plan-3a-results.md | Edge presence ≠ signal quality; label noise interacts with edge types |
-| Reentrancy: only +0.005 with ICFG preserved | plan-3a-results.md | Label noise is the ceiling, not architecture |
+| v7/v8-AB/PLAN-3A all hit 0.2877 ceiling | plan-3a-results.md + v8-vs-v7 | Architecture is not the bottleneck — or so it seemed |
+| DEF_USE hurt Timestamp (+0.038 when dropped) | plan-3a-results.md | Edge presence ≠ signal quality; label noise interacts with edge types |
+| Reentrancy: only +0.005 with ICFG preserved | plan-3a-results.md | Label noise was believed to be ceiling |
+| v8.0-B: F1=0.2460 with cleaned labels, ceiling holds | GATE-GCB-0 | H5 REFUTED — ceiling is architectural, not data; pivot to GCB |
 | Fusion layer drives all F1 breakthroughs | v8-AB-training-analysis.md | Fused grad spikes = mechanism of learning |
-| Phase 2 std=0.152 at ep3 then collapses | plan-3a-results.md | ICFG-only creates early routing; routing doesn't persist |
+| K=48 covers 95.5% of declaration nodes | audit_prefix_node_counts.py | PRE-4 gate passed; K=48 is the right budget |
+| GATE-GCB-2 passed (Phase 0 smoke) | EXECUTION_PLAN.md | GraphCodeBERT drop-in works; P1-IMPL complete; P1-TRAIN imminent |
