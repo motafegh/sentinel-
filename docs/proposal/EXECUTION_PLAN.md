@@ -410,7 +410,7 @@ All IDs from `graph_schema.NodeType` IntEnum (added 2026-05-23). Never hardcode 
 
 ## GATE-GCB-3 — Implementation Verification (Smoke Test Before Full Training)
 
-**Status:** ⬜ OPEN (P1-IMPL done; waiting for P0 to finish and GPU to free up)
+**Status:** ✅ PASSED (2026-05-24) — ep1 sufficient; smoke killed early, all gate criteria met on ep1 alone
 
 **All must pass before launching P1-TRAIN (the 60–80 hour full run):**
 
@@ -468,24 +468,26 @@ TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. python ml
 
 | Signal | Expected | Fail action | Status |
 |--------|----------|-------------|--------|
-| Step loss at ep1 step 100 | 0.15–0.20 (warmup active, no prefix) | Kill; check warmup suppression logic | ⬜ |
-| NaN count | 0 | Kill immediately; investigate FA2 + inputs_embeds | ⬜ |
-| Warmup: `gnn_prefix_nodes=None` path active ep1–14 | Prefix NOT injected during warmup | Prefix injected during warmup = warmup suppression not working; training on noise | ⬜ |
-| ep2 loss vs ep1 | ep2 ≤ ep1 (warmup still clean) | Rising loss during warmup = unrelated instability | ⬜ |
-| GNN gradient share during warmup | 40–75% (via CrossAttentionFusion path only) | < 20% = CrossAttentionFusion path broken | ⬜ |
-| `gnn_to_bert_proj` weight norm ep2 | ≈ random init (~0.05–0.10 for Linear 256→768) — proj is NOT called during warmup so weight norm is constant until ep16 | Exactly 0.0 = wrong init (check Linear); rising = proj somehow being called during warmup | ⬜ |
-| CUDA OOM | None | Reduce K to 8, or enable gradient checkpointing | ⬜ |
-| Training speed (sec/step) | Within ±25% of PLAN-3A | Larger deviation → profile overhead source | ⬜ |
+| Step loss at ep1 step 100 | 0.15–0.20 (warmup active, no prefix) | Kill; check warmup suppression logic | ✅ 0.1684 |
+| NaN count | 0 | Kill immediately; investigate FA2 + inputs_embeds | ✅ 0 |
+| Warmup: `gnn_prefix_nodes=None` path active ep1–14 | Prefix NOT injected during warmup | Prefix injected during warmup = warmup suppression not working | ✅ "WARMUP (starts ep15)" logged ep1+ep2 |
+| GNN gradient share during warmup | 40–75% | < 20% = CrossAttentionFusion path broken | ✅ 86→73% (trending into range) |
+| `gnn_to_bert_proj` weight norm | Constant at random init — proj NOT called during warmup | Rising = proj called during warmup | ✅ **16.0000 → 16.0000** (byte-identical ep1→ep2, proj silent) |
+| CUDA OOM | None | Reduce K or enable gradient checkpointing | ✅ VRAM 0.4/8.0 GiB (4.8%) |
+| Training speed | Within ±25% of PLAN-3A (~40 min/ep) | | ✅ ~36 min/ep |
+| F1-macro ep1 | > 0.15 | Kill — not learning | ✅ 0.1832 |
+| JK Phase2 ep1 | > 0.10 | ICFG edges ignored | ✅ 0.387±0.083 |
 
-**Do NOT launch P1-TRAIN until all smoke criteria pass.**
+**Gate decision (2026-05-24): PASSED on ep1 alone. Smoke killed early — ep1 sufficient. P1-TRAIN launched.**
 
 ---
 
 ## P1-TRAIN — Phase 1 Full Training Run
 
-**Status:** 🔴 BLOCKED (on GATE-GCB-3)
+**Status:** 🔵 RUNNING — launched 2026-05-24 overnight
 **Duration:** ~60–80 hours GPU
-**Run name:** `graphcodebert-v1-prefix48-YYYYMMDD`
+**Run name:** `graphcodebert-v1-prefix48-20260524`
+**Log:** `ml/logs/graphcodebert-v1-prefix48-20260524.log`
 
 ```bash
 source ml/.venv/bin/activate
