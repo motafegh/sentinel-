@@ -33,7 +33,8 @@ from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, EDGE_TYPES
 
 class _StubTransformer(nn.Module):
     """Returns zeros with correct CodeBERT shape — no HuggingFace required."""
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor,
+                gnn_prefix_nodes=None, gnn_prefix_counts=None, output_attentions: bool = False):
         B = input_ids.shape[0]
         return torch.zeros(B, 512, 768)
 
@@ -200,10 +201,11 @@ def test_forward_return_aux_false_returns_tensor():
 # ---------------------------------------------------------------------------
 
 def test_classifier_input_dim_is_384():
-    """Classifier input must be 3 × eye_dim = 3 × 128 = 384."""
+    """Classifier first layer input must be 3 × eye_dim = 3 × 128 = 384."""
     model = _make_model(num_classes=10)
-    assert model.classifier.in_features == 384, (
-        f"classifier.in_features = {model.classifier.in_features}, expected 384 "
+    first_linear = model.classifier[0]
+    assert first_linear.in_features == 384, (
+        f"classifier[0].in_features = {first_linear.in_features}, expected 384 "
         "(3 × 128: gnn_eye + transformer_eye + fused_eye)."
     )
 
@@ -241,10 +243,10 @@ def test_gnn_return_intermediates_keys():
 
     assert len(result) == 3, f"expected 3-tuple, got {len(result)}"
     node_embs, batch_out, intermediates = result
-    assert node_embs.shape == (3, 128), f"node_embs shape: {node_embs.shape}"
+    assert node_embs.shape == (3, 256), f"node_embs shape: {node_embs.shape}"
     assert set(intermediates.keys()) == {"after_phase1", "after_phase2", "after_phase3"}
     for key, tensor in intermediates.items():
-        assert tensor.shape == (3, 128), f"intermediates['{key}'] shape: {tensor.shape}"
+        assert tensor.shape == (3, 256), f"intermediates['{key}'] shape: {tensor.shape}"
 
 
 def test_gnn_phase3_changes_function_node():
@@ -299,7 +301,7 @@ def test_gnn_return_intermediates_false_is_2_tuple():
         f"return_intermediates=False must return 2-tuple, got len={len(result)}"
     )
     node_embs, batch_out = result
-    assert node_embs.shape == (5, 128)
+    assert node_embs.shape == (5, 256)
 
 
 # ---------------------------------------------------------------------------

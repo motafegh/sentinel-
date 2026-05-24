@@ -143,7 +143,7 @@ class SentinelModel(nn.Module):
         num_classes:          int                 = 10,
         # GNN architecture
         gnn_hidden_dim:       int                 = 256,
-        gnn_num_layers:       int                 = 7,
+        gnn_num_layers:       int                 = 8,   # 2+3+3 phases (IMP-G3 adds conv4c)
         gnn_heads:            int                 = 8,
         gnn_dropout:          float               = 0.2,
         use_edge_attr:        bool                = True,
@@ -260,26 +260,31 @@ class SentinelModel(nn.Module):
         batch:        torch.Tensor,  # [N] — graph index per node
         node_type_ids: torch.Tensor, # [N] — integer type IDs
         num_graphs:   int,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Select up to K=gnn_prefix_k declaration-level nodes per graph, project
         to [B, K, 768] for injection as GraphCodeBERT prefix tokens.
 
         Selection priority (lower = selected first if K forces truncation):
             CONSTRUCTOR(6) > FALLBACK(4) > RECEIVE(5) > MODIFIER(2) > FUNCTION(1)
+        Within FUNCTION nodes, secondary sort by feature[10] (external_call_count)
+        descending — nodes with more external calls are selected first (IMP-M1).
 
         Graphs with fewer than K eligible nodes are zero-padded on the right.
-        Zero-padded positions get position_id=1 in TransformerEncoder (same as
-        non-padded prefix tokens), so attention still sees them — but their
-        embedding is effectively zero (identity of nn.Linear with bias), which
-        the transformer can learn to ignore.
+        IMP-M3: the actual node count per graph is returned so TransformerEncoder
+        can mask padded positions (attention=0) instead of attending to zero vectors.
 
         Returns:
-            [B, K, 768] — projected prefix embeddings ready for injection.
+            prefix:      [B, K, 768] — projected prefix embeddings.
+            node_counts: [B]         — number of real (non-padded) nodes per graph.
         """
         K = self.gnn_prefix_k
         device = node_embs.device
-        prefix = torch.zeros(num_graphs, K, 768, device=device, dtype=node_embs.dtype)
+        prefix      = torch.zeros(num_graphs, K, 768, device=device, dtype=node_embs.dtype)
+        node_counts = torch.zeros(num_graphs, dtype=torch.long, device=device)  # IMP-M3
+
+        _EXT_CALL_DIM = 10  # feature[10] = external_call_count (log1p-normalised)
+        _FUNCTION_ID  = NODE_TYPES["FUNCTION"]
 
         for g in range(num_graphs):
             g_mask    = batch == g
@@ -294,14 +299,19 @@ class SentinelModel(nn.Module):
             if not eligible_local:
                 continue  # no declaration nodes; prefix stays zero
 
-            eli_t = torch.tensor(eligible_local, device=device, dtype=torch.long)
-            # Sort by priority (ascending = highest priority first), then truncate to K
-            priorities = torch.tensor(
-                [_PREFIX_NODE_PRIORITY[g_types[i].item()] for i in eligible_local],
-                device=device, dtype=torch.long,
-            )
-            sort_order = priorities.argsort()          # stable; lowest priority value first
-            selected   = eli_t[sort_order[:K]]         # ≤ K indices
+            # IMP-M1: two-key sort — primary=type priority, secondary=−ext_call_count
+            # (FUNCTION nodes only; others use 0.0). Within each priority group,
+            # nodes with more external calls are selected first when K forces truncation.
+            sort_keys = []
+            g_types_list = g_types.tolist()
+            for local_idx in eligible_local:
+                t    = g_types_list[local_idx]
+                prio = _PREFIX_NODE_PRIORITY[t]
+                sec  = -g_embs[local_idx, _EXT_CALL_DIM].item() if t == _FUNCTION_ID else 0.0
+                sort_keys.append((prio, sec, local_idx))
+            sort_keys.sort()   # Python stable tuple sort
+            selected_local = [sk[2] for sk in sort_keys[:K]]
+            selected = torch.tensor(selected_local, device=device, dtype=torch.long)
 
             proj = self.gnn_to_bert_proj(g_embs[selected])  # [n_sel, 768]
 
@@ -312,9 +322,11 @@ class SentinelModel(nn.Module):
             )
             proj = proj + self.prefix_type_embedding(type_indices)  # [n_sel, 768]
 
-            prefix[g, :proj.shape[0]] = proj
+            n_sel = proj.shape[0]
+            prefix[g, :n_sel]  = proj
+            node_counts[g]     = n_sel  # IMP-M3: track real node count
 
-        return prefix  # [B, K, 768]
+        return prefix, node_counts  # [B, K, 768], [B]
 
     def forward(
         self,
@@ -417,13 +429,20 @@ class SentinelModel(nn.Module):
         # GNN itself trains normally.  At epoch warmup+1 the projection starts from
         # random init with a well-trained GNN — it rapidly aligns node embeddings
         # into transformer space over the remaining epochs.
-        gnn_prefix: Optional[torch.Tensor] = None
+        gnn_prefix:       Optional[torch.Tensor] = None
+        gnn_prefix_counts: Optional[torch.Tensor] = None
         if self.gnn_prefix_k > 0 and self._current_epoch >= self.gnn_prefix_warmup_epochs:
-            gnn_prefix = self.select_prefix_nodes(node_embs, batch, node_type_ids, num_graphs)
-            # gnn_prefix: [B, K, 768]
+            gnn_prefix, gnn_prefix_counts = self.select_prefix_nodes(
+                node_embs, batch, node_type_ids, num_graphs
+            )
+            # gnn_prefix: [B, K, 768]  gnn_prefix_counts: [B]
 
         # ── Transformer path ──────────────────────────────────────────────
-        token_embs = self.transformer(input_ids, attention_mask, gnn_prefix_nodes=gnn_prefix)
+        token_embs = self.transformer(
+            input_ids, attention_mask,
+            gnn_prefix_nodes=gnn_prefix,
+            gnn_prefix_counts=gnn_prefix_counts,
+        )
         # token_embs: [B, L, 768] or [B, W*L, 768]
 
         # ── Transformer eye: window-pooled CLS → project ─────────────────
@@ -463,6 +482,48 @@ class SentinelModel(nn.Module):
             "fused":       aux_fused,
         }
         return logits, aux
+
+    @torch.no_grad()
+    def compute_prefix_attention_mean(
+        self,
+        graphs:         "Batch",
+        input_ids:      torch.Tensor,
+        attention_mask: torch.Tensor,
+    ) -> Optional[float]:
+        """
+        IMP-M2 Tier 2: run one diagnostic forward with output_attentions=True.
+
+        Returns mean attention weight from code token positions → GNN prefix positions,
+        averaged over all BERT layers, heads, and sequences.  Returns None when prefix
+        is disabled or still in warmup (no prefix injected — nothing to measure).
+
+        Call once per validation epoch (not per training step) with a single batch.
+        Add ~15% overhead vs normal eval forward — restrict to one batch per epoch.
+        """
+        if self.gnn_prefix_k == 0 or self._current_epoch < self.gnn_prefix_warmup_epochs:
+            return None
+
+        edge_attr = getattr(graphs, "edge_attr", None) if self.use_edge_attr else None
+        node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
+        node_type_ids = (graphs.x[:, 0].float() * _MAX_TYPE_ID).round().long()
+
+        if batch.numel() == 0:
+            return None
+        num_graphs = int(batch.max().item()) + 1
+        gnn_prefix = self.select_prefix_nodes(node_embs, batch, node_type_ids, num_graphs)
+        # After IMP-M3: select_prefix_nodes returns (prefix, counts); unpack accordingly.
+        if isinstance(gnn_prefix, tuple):
+            gnn_prefix, _ = gnn_prefix
+
+        result = self.transformer(
+            input_ids, attention_mask,
+            gnn_prefix_nodes=gnn_prefix,
+            output_attentions=True,
+        )
+        if isinstance(result, tuple):
+            _, prefix_attn_mean = result
+            return prefix_attn_mean
+        return None
 
     def parameter_summary(self) -> None:
         """Log trainable vs frozen parameter counts per sub-module."""

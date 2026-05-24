@@ -225,7 +225,7 @@ class TestTrainOneEpoch:
             loss_fn=loss_fn,
             aux_loss_fn=aux_loss_fn,
             scheduler=scheduler,
-            scaler=scaler,
+
             device="cpu",
             grad_clip=1.0,
             log_interval=100,
@@ -255,7 +255,7 @@ class TestTrainOneEpoch:
                 loss_fn=loss_fn,
                 aux_loss_fn=aux_loss_fn,
                 scheduler=scheduler,
-                scaler=scaler,
+    
                 device="cpu",
                 grad_clip=1.0,
                 log_interval=100,

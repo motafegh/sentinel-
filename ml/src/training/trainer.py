@@ -168,7 +168,7 @@ class TrainConfig:
 
     # --- GNN architecture (v6) ---
     gnn_hidden_dim:   int   = 256
-    gnn_layers:       int   = 7
+    gnn_layers:       int   = 8
     gnn_heads:        int   = 8
     gnn_dropout:      float = 0.2
     use_edge_attr:    bool  = True
@@ -338,10 +338,10 @@ class TrainConfig:
                 "(three-phase architecture requires layers 1+2 for Phase 1, "
                 "layer 3 for Phase 2 CONTROL_FLOW, layer 4 for Phase 3 CONTAINS)."
             )
-        if self.gnn_layers > 7:
+        if self.gnn_layers > 8:
             logger.warning(
                 f"gnn_layers={self.gnn_layers} is non-standard. "
-                "v7 uses gnn_layers=7 (2+3+2 per phase — conv3c 3rd CF hop, BUG-H1). "
+                "v8+IMP uses gnn_layers=8 (2+3+3 per phase — IMP-G3 downward CONTAINS pass). "
                 "Extra layers beyond 7 receive Phase 1 (structural) edge masking by default."
             )
         if self.gradient_accumulation_steps < 1:
@@ -1394,6 +1394,38 @@ def train(config: TrainConfig) -> dict:
                             f"{_max_w:.1%} attention weight. "
                             "Other phases are underutilised — consider checking LayerNorm or LR."
                         )
+
+            # IMP-M2 Tier 2: prefix_attention_mean diagnostic — once per epoch when
+            # prefix is active. Runs on the first val batch only (eval mode + no_grad).
+            # Near-zero (< 0.002) for 5+ consecutive post-warmup epochs = transformer
+            # ignoring prefix → investigate projection LR or reduce K.
+            if (
+                config.gnn_prefix_k > 0
+                and epoch >= config.gnn_prefix_warmup_epochs
+                and hasattr(model, "compute_prefix_attention_mean")
+            ):
+                try:
+                    _diag_graphs, _diag_ids, _diag_mask, _ = next(iter(val_loader))
+                    _diag_graphs = _diag_graphs.to(device)
+                    _diag_ids    = _diag_ids.to(device)
+                    _diag_mask   = _diag_mask.to(device)
+                    model.eval()
+                    _prefix_attn = model.compute_prefix_attention_mean(
+                        _diag_graphs, _diag_ids, _diag_mask
+                    )
+                    model.train()
+                    if _prefix_attn is not None:
+                        mlflow.log_metric("prefix_attention_mean", _prefix_attn, step=epoch)
+                        logger.info(f"  prefix_attention_mean: {_prefix_attn:.6f}")
+                        if _prefix_attn < 0.002:
+                            logger.warning(
+                                f"  ⚠ prefix_attention_mean={_prefix_attn:.6f} < 0.002 "
+                                "— transformer may be ignoring GNN prefix tokens. "
+                                "Monitor for 5+ consecutive epochs; consider reducing K or "
+                                "increasing gnn_prefix_proj_lr_mult."
+                            )
+                except Exception as _e:
+                    logger.warning(f"  prefix_attention_mean diagnostic failed: {_e}")
 
             mlflow.log_metric("val_f1_macro",       val_metrics["f1_macro"],       step=epoch)
             mlflow.log_metric("val_f1_micro",       val_metrics["f1_micro"],       step=epoch)

@@ -47,6 +47,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import mlflow
+from mlflow.tracking import MlflowClient
 import torch
 
 VALID_STAGES = {"Staging", "Production"}
@@ -83,9 +85,6 @@ def promote(
     experiment_name: str,
     dry_run: bool,
 ) -> int:
-    import mlflow
-    from mlflow.tracking import MlflowClient
-
     meta = _load_checkpoint_meta(checkpoint)
     git_sha = _git_commit()
 
