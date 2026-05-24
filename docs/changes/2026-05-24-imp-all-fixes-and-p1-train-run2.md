@@ -147,7 +147,7 @@ For each call op at `call_idx`, checks if `lval_name` appears in any `later_op.r
 Re-extraction of all 41K graphs is pending (separate run, not blocking P1-TRAIN Run 2).
 
 ### IMP-BUG — Close BUG-H4 and BUG-H5
-**File:** `docs/ACTIVE_PLAN.md`
+**File:** `docs/phases-v8-and-earlier.md` (formerly `docs/ACTIVE_PLAN.md`)
 
 Both bugs were fixed by `label_cleaner.py` changes on 2026-05-23 (−568 Timestamp labels,
 −611 Reentrancy labels) but the Open Bugs section had not been updated. Marked DONE.
@@ -275,7 +275,7 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. nohup python ml/scripts/train.py \
 | `ml/src/preprocessing/graph_extractor.py` | IMP-D1 (CFG-ordered temporal scan in _compute_return_ignored) |
 | `ml/src/training/trainer.py` | IMP-M2 T2 (prefix_attention_mean logging), gnn_layers default 7→8, warning threshold 7→8 |
 | `ml/scripts/promote_model.py` | mlflow/MlflowClient imports moved to module level |
-| `docs/ACTIVE_PLAN.md` | IMP-BUG: BUG-H4 + BUG-H5 marked DONE |
+| `docs/phases-v8-and-earlier.md` | IMP-BUG: BUG-H4 + BUG-H5 marked DONE (file renamed from ACTIVE_PLAN.md) |
 | `docs/proposal/EXECUTION_PLAN.md` | Full IMP-* documentation section added; P1-TRAIN Run 2 details; Summary Checklist updated |
 | `ml/tests/test_model.py` | Stub signature, shape assertions updated for new architecture |
 | `ml/tests/test_preprocessing.py` | Schema constants, normalisation fixes, IMP-D1 API, integration test helpers |

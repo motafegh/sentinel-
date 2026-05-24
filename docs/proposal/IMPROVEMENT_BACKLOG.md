@@ -34,17 +34,17 @@ is pending. Item **IMP-D2** and **N-02** remain open.
 | IMP-G1 | GNN | N-01: Phase 2 layer-specific edge subsets | P1 | 4–6 hrs | ✅ DONE 2026-05-24 (Run 2) |
 | IMP-G2 | GNN | N-03: Phase 1 input projection skip | P2 | 2–3 hrs | ✅ DONE 2026-05-24 (Run 2) |
 | IMP-G3 | GNN | N-04: Phase 3 bidirectional context pass | P2 | 3–4 hrs | ✅ DONE 2026-05-24 (Run 2) |
-| IMP-BUG | Housekeeping | Close BUG-H4 and BUG-H5 in ACTIVE_PLAN.md | P0 | 15 min | ✅ DONE 2026-05-24 |
+| IMP-BUG | Housekeeping | Close BUG-H4 and BUG-H5 in phases-v8-and-earlier.md | P0 | 15 min | ✅ DONE 2026-05-24 |
 | N-02 | GNN | Phase 2 multi-head attention (heads=1→4) | P2 | 3–4 hrs | ⬜ OPEN (conditional on Run 2 results) |
 
 ---
 
 ## Status Note: BUG-H4 and BUG-H5
 
-**Status: ✅ DONE** — `ACTIVE_PLAN.md` BUG-H4 and BUG-H5 entries marked DONE on 2026-05-24.
+**Status: ✅ DONE** — `phases-v8-and-earlier.md` BUG-H4 and BUG-H5 entries marked DONE on 2026-05-24.
 
 Both are already addressed in the current `label_cleaner.py` but the Open Bugs section of
-`ACTIVE_PLAN.md` was not updated. Confirmed:
+`phases-v8-and-earlier.md` was not updated. Confirmed:
 
 - **BUG-H5** (Reentrancy with no external calls): `check_reentrancy()` now requires
   `external_call_count > 0` (dim[10]) AND a WRITES edge. −611 Reentrancy labels removed by DQ-1.
@@ -54,7 +54,7 @@ Both are already addressed in the current `label_cleaner.py` but the Open Bugs s
   `uses_block_globals > 0.5` (dim[2]) as its first condition. −568 Timestamp labels removed by DQ-1.
   **→ Close as DONE.**
 
-The Open Bugs section of `ACTIVE_PLAN.md` should be updated accordingly.
+The Open Bugs section of `phases-v8-and-earlier.md` should be updated accordingly.
 
 ---
 
@@ -750,7 +750,7 @@ are too invasive.
 
 ```
 ✅ DONE (between P1-TRAIN Run 1 kill and Run 2 launch, 2026-05-24):
-  IMP-BUG — BUG-H4 + BUG-H5 marked DONE in ACTIVE_PLAN.md
+  IMP-BUG — BUG-H4 + BUG-H5 marked DONE in phases-v8-and-earlier.md
   IMP-M1  — FUNCTION secondary sort by external_call_count
   IMP-M2  — proj_norm logging (Tier 1) + prefix_attention_mean (Tier 2)
   IMP-M3  — zero-padded prefix mask (count-based attention mask)
