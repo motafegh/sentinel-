@@ -87,6 +87,9 @@ _FUNC_TYPE_IDS: frozenset[int] = frozenset({  # FUNCTION MODIFIER FALLBACK RECEI
 # allocating a new tensor on every forward pass (BUG-L1 perf fix).
 # .to(device) in forward() is a no-op if already on the right device.
 _FUNC_IDS_CPU: torch.Tensor = torch.tensor(sorted(_FUNC_TYPE_IDS), dtype=torch.long)
+assert _FUNC_IDS_CPU.numel() == len(_FUNC_TYPE_IDS) and _FUNC_IDS_CPU.min() >= 0, (
+    f"NC-2: _FUNC_IDS_CPU has unexpected shape or values: {_FUNC_IDS_CPU.tolist()}"
+)
 
 # ── GNN prefix injection constants (Phase 1) ──────────────────────────────────
 # Selection priority for K-capped truncation: lower number = selected first.
@@ -365,7 +368,7 @@ class SentinelModel(nn.Module):
 
         # ── GNN path: node embeddings ─────────────────────────────────────
         edge_attr = getattr(graphs, "edge_attr", None) if self.use_edge_attr else None
-        node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
+        node_embs, batch, _jk_entropy = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
         # node_embs: [N, gnn_hidden_dim]  batch: [N]
 
         # ── GNN eye: function-level pool → project ───────────────────────
@@ -480,6 +483,7 @@ class SentinelModel(nn.Module):
             "gnn":         aux_gnn,    # [B, num_classes] or [B] for binary
             "transformer": aux_tf,
             "fused":       aux_fused,
+            "jk_entropy":  _jk_entropy,
         }
         return logits, aux
 
@@ -504,7 +508,7 @@ class SentinelModel(nn.Module):
             return None
 
         edge_attr = getattr(graphs, "edge_attr", None) if self.use_edge_attr else None
-        node_embs, batch = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
+        node_embs, batch, _ = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
         node_type_ids = (graphs.x[:, 0].float() * _MAX_TYPE_ID).round().long()
 
         if batch.numel() == 0:

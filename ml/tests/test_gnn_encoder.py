@@ -71,7 +71,7 @@ def test_output_shape_with_edge_attr():
     enc = GNNEncoder(hidden_dim=64, heads=8, use_edge_attr=True)
     x, edge_index, batch, edge_attr = _make_graph()
 
-    node_embs, batch_out = enc(x, edge_index, batch, edge_attr=edge_attr)
+    node_embs, batch_out, _ = enc(x, edge_index, batch, edge_attr=edge_attr)
 
     assert node_embs.shape == (x.shape[0], 64), \
         f"Expected [{x.shape[0]}, 64], got {node_embs.shape}"
@@ -83,7 +83,7 @@ def test_output_shape_without_edge_attr():
     enc = GNNEncoder(hidden_dim=64, heads=8, use_edge_attr=False)
     x, edge_index, batch, _ = _make_graph()
 
-    node_embs, _ = enc(x, edge_index, batch, edge_attr=None)
+    node_embs, _, _jk = enc(x, edge_index, batch, edge_attr=None)
     assert node_embs.shape == (x.shape[0], 64)
 
 
@@ -133,8 +133,8 @@ def test_edge_attr_influences_output():
     edge_attr_b = torch.tensor([4, 4, 4, 4], dtype=torch.long)  # all INHERITS
 
     with torch.no_grad():
-        out_a, _ = enc(x, edge_index, batch, edge_attr=edge_attr_a)
-        out_b, _ = enc(x, edge_index, batch, edge_attr=edge_attr_b)
+        out_a, _, _jk_a = enc(x, edge_index, batch, edge_attr=edge_attr_a)
+        out_b, _, _jk_b = enc(x, edge_index, batch, edge_attr=edge_attr_b)
 
     assert not torch.allclose(out_a, out_b, atol=1e-5), \
         "Edge attr values must influence output — embedding layer may be ignored."
@@ -169,7 +169,7 @@ def test_no_edge_graph():
     batch      = torch.zeros(3, dtype=torch.long)
     edge_attr  = torch.zeros(0, dtype=torch.long)
 
-    node_embs, _ = enc(x, edge_index, batch, edge_attr=edge_attr)
+    node_embs, _, _jk = enc(x, edge_index, batch, edge_attr=edge_attr)
     assert node_embs.shape == (3, 64)
 
 
@@ -208,7 +208,7 @@ def test_jk_gradient_flow():
         dtype=torch.long,
     )
 
-    out, _ = gnn(x, edge_index, batch, edge_attr)
+    out, _, _jk_ent = gnn(x, edge_index, batch, edge_attr)
     loss = out.sum()
     loss.backward()
 
@@ -283,7 +283,7 @@ def test_jk_output_shape_unchanged():
     """
     gnn = GNNEncoder(hidden_dim=128, heads=8, use_jk=True, jk_mode='attention')
     x, edge_index, batch, edge_attr = _make_graph(n_nodes=10, n_edges=8)
-    out, returned_batch = gnn(x, edge_index, batch, edge_attr)
+    out, returned_batch, _jk_ent = gnn(x, edge_index, batch, edge_attr)
 
     assert out.shape == (10, 128), \
         f"JK output shape changed: expected [10, 128], got {out.shape}"
@@ -298,7 +298,7 @@ def test_jk_disabled_output_shape():
     """
     gnn = GNNEncoder(hidden_dim=128, heads=8, use_jk=False)
     x, edge_index, batch, edge_attr = _make_graph(n_nodes=10, n_edges=8)
-    out, _ = gnn(x, edge_index, batch, edge_attr)
+    out, _, _jk_ent = gnn(x, edge_index, batch, edge_attr)
 
     assert out.shape == (10, 128), \
         f"Non-JK output shape: expected [10, 128], got {out.shape}"

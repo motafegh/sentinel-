@@ -65,6 +65,7 @@ class AsymmetricLoss(nn.Module):
         gamma_neg:  Union[float, torch.Tensor] = 4.0,
         gamma_pos:  Union[float, torch.Tensor] = 1.0,
         clip:       Union[float, torch.Tensor] = 0.05,
+        pos_weight: "torch.Tensor | None"      = None,
         reduction:  str                        = "mean",
     ) -> None:
         super().__init__()
@@ -75,6 +76,7 @@ class AsymmetricLoss(nn.Module):
         self.register_buffer("gamma_neg", torch.as_tensor(gamma_neg, dtype=torch.float32))
         self.register_buffer("gamma_pos", torch.as_tensor(gamma_pos, dtype=torch.float32))
         self.register_buffer("clip",      torch.as_tensor(clip,      dtype=torch.float32))
+        self.register_buffer("pos_weight", torch.as_tensor(pos_weight, dtype=torch.float32) if pos_weight is not None else None)
 
     def forward(
         self,
@@ -112,6 +114,8 @@ class AsymmetricLoss(nn.Module):
 
         # Asymmetric loss per cell
         loss_pos = -labels         * focal_pos * log_pos          # [B, C]
+        if self.pos_weight is not None:
+            loss_pos = loss_pos * self.pos_weight  # [C] broadcasts over [B, C]
         loss_neg = -(1.0 - labels) * focal_neg * log_neg          # [B, C]
         loss     = loss_pos + loss_neg                            # [B, C]
 
