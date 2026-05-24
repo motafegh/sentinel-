@@ -22,9 +22,29 @@ Loads paired samples from a pre-built pickle cache (`cached_dataset_v8.pkl`). Ea
 
 The cache stores 41,576 paired (graph, tokens) objects keyed by MD5 hash. Samples with no matching graph or no matching tokens are excluded at cache-build time.
 
+### Label Modes
+
+**Binary mode (label_csv=None, default):**
+- Labels come from graph.y — scalar 0/1 long tensor
+- Collate produces [B] long
+- Used for binary training and inference with old checkpoints
+
+**Multi-label mode (label_csv=Path(...)):**
+- Labels come from multilabel_index.csv — float32 tensor [10]
+- Each position is 0.0 or 1.0 for one of the 10 vulnerability classes
+- Collate produces [B, 10] float32
+- Used for Track 3 multi-label retrain
+
 ### Lazy loading from cache
 
 The cache is memory-mapped: graph and token data are loaded in `__getitem__`, not all at once. Memory usage stays flat regardless of dataset size.
+
+### Cache validation
+
+When `cache_path` is provided, the dataset performs several validation checks:
+- **Schema version validation:** Cache must contain `__schema_version__` key matching current `FEATURE_SCHEMA_VERSION`
+- **Random integrity sampling:** 10 random hashes are sampled to verify cache entries exist and have correct structure
+- **Type guard:** Validates cache is a dict and entries have required attributes (graph.x, tokens.input_ids)
 
 ### Instantiation
 
@@ -34,9 +54,21 @@ from ml.src.datasets.dual_path_dataset import DualPathDataset
 
 val_indices = np.load("ml/data/splits/deduped/val_indices.npy")
 
+# Multi-label mode (Track 3)
 dataset = DualPathDataset(
+    graphs_dir="ml/data/graphs",
+    tokens_dir="ml/data/tokens_windowed",
+    indices=val_indices.tolist(),
+    label_csv="ml/data/processed/multilabel_index_cleaned.csv",
     cache_path="ml/data/cached_dataset_v8.pkl",
-    indices=val_indices.tolist(),   # list[int] — positions into the sorted sample list
+)
+
+# Binary mode (legacy)
+dataset = DualPathDataset(
+    graphs_dir="ml/data/graphs",
+    tokens_dir="ml/data/tokens_windowed",
+    indices=val_indices.tolist(),
+    cache_path="ml/data/cached_dataset_v8.pkl",
 )
 # indices=None → uses all 41,576 cached samples
 ```
@@ -55,13 +87,18 @@ graph, tokens, label = dataset[i]
 # tokens: dict
 #   tokens["input_ids"]      [4, 512]  long  — GraphCodeBERT token IDs, 4 windows
 #   tokens["attention_mask"] [4, 512]  long  — 1=real token, 0=padding
+#   (Also accepts single-window [512] shape for backward compatibility)
 
-# label: Tensor[10]  float  — multi-hot vulnerability label vector
+# label: Tensor[10]  float  — multi-hot vulnerability label vector (multi-label mode)
+#        Tensor[1]   long   — binary label (binary mode)
 ```
 
 ### Safe-globals allowlist
 
-Graph files contain PyG `Data` objects. `torch.load(..., weights_only=False)` is used for both graph `.pt` files and checkpoints — PyG 2.7 metadata and PEFT LoRA objects are not safe-tensors serialisable.
+Graph files contain PyG `Data` objects. The following classes are registered via `torch.serialization.add_safe_globals()` to enable `weights_only=True`:
+- `Data`, `DataEdgeAttr`, `DataTensorAttr`, `GlobalStorage`
+
+This allows safe deserialization of PyG objects without disabling pickle security entirely. If future PyG releases add new wrapper classes, they must be added to this allowlist.
 
 ---
 

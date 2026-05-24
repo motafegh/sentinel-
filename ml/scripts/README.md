@@ -5,33 +5,32 @@ Activate the venv first: `source ml/.venv/bin/activate`
 
 ---
 
-## Active Pipeline (v8 + GCB-P1)
+## Active Pipeline (v8)
 
 ### Training
 
-- **train.py** — main training entry point (v8, GraphCodeBERT+LoRA, GNN prefix injection, AsymmetricLoss, torch.compile)
+- **train.py** — main training entry point (v8, 8-layer GNN, GraphCodeBERT+LoRA, Flash Attention 2, GNN prefix injection, AsymmetricLoss, torch.compile)
 - **monitor.sh** — live training dashboard; run in a second terminal while training
 
 ```bash
-# GCB-P1 full overnight run (K=48 prefix, warmup=15 epochs)
+# v8 training run (K=48 prefix, warmup=15 epochs)
 TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup \
     python ml/scripts/train.py \
-    --run-name graphcodebert-v1-prefix48 \
-    --experiment-name sentinel-gcb \
+    --run-name v8-$(date +%Y%m%d) \
+    --experiment-name sentinel-v8 \
     --epochs 100 \
     --gradient-accumulation-steps 8 \
     --gnn-prefix-k 48 \
     --gnn-prefix-warmup-epochs 15 \
     --gnn-prefix-proj-lr-mult 1.0 \
-    --phase2-edge-types 6 8 9 \
-    --dos-loss-weight 0.5 \
+    --phase2-edge-types 6 8 9 10 \
     --weighted-sampler positive \
     --cache-path ml/data/cached_dataset_v8.pkl \
-    > ml/logs/graphcodebert-v1-prefix48-$(date +%Y%m%d).log 2>&1 &
+    > ml/logs/v8-$(date +%Y%m%d).log 2>&1 &
 
 # Monitor:
 bash ml/scripts/monitor.sh
-tail -f ml/logs/graphcodebert-v1-prefix48-*.log
+tail -f ml/logs/v8-$(date +%Y%m%d).log
 ```
 
 **Key train.py flags:**
@@ -41,8 +40,7 @@ tail -f ml/logs/graphcodebert-v1-prefix48-*.log
 | `--gnn-prefix-k` | `0` | Set to 48 for GNN prefix injection |
 | `--gnn-prefix-warmup-epochs` | `15` | Prefix suppressed until this epoch |
 | `--gnn-prefix-proj-lr-mult` | `1.0` | LR multiplier for gnn_to_bert_proj |
-| `--phase2-edge-types` | `6` | Space-separated edge type ints for Phase 2 |
-| `--dos-loss-weight` | `0.5` | DoS auxiliary loss weight |
+| `--phase2-edge-types` | `6` | Space-separated edge type ints for Phase 2 (default CF only) |
 | `--weighted-sampler` | `""` | `"positive"` = 3× weight for any-vuln rows |
 | `--cache-path` | auto | Path to cached_dataset_v8.pkl |
 | `--early-stop-patience` | `30` | Epochs without val improvement before stop |
@@ -77,12 +75,12 @@ tail -f ml/logs/graphcodebert-v1-prefix48-*.log
 - **tune_threshold.py** — per-class threshold sweep on val set; prints optimal cutoff per class
   ```bash
   TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/tune_threshold.py \
-      --checkpoint ml/checkpoints/graphcodebert-v1-prefix48_best.pt
+      --checkpoint ml/checkpoints/v8-<date>_best.pt
   ```
 - **manual_test.py** — behavioral gate (≥80% detection, ≥80% specificity on 20 test contracts in `test_contracts/`)
   ```bash
   TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/manual_test.py \
-      --checkpoint ml/checkpoints/graphcodebert-v1-prefix48_best.pt
+      --checkpoint ml/checkpoints/v8-<date>_best.pt
   ```
 - **promote_model.py** — move best checkpoint to production path after both gates pass
 

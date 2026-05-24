@@ -1,8 +1,8 @@
 # ml — SENTINEL Machine Learning Core
 
-Dual-path smart contract vulnerability detector. A three-phase 7-layer **Graph Attention Network** encodes AST/CFG structure with typed edge relations; a **LoRA-adapted GraphCodeBERT** encodes source text across sliding windows with optional GNN-prefix injection. A **three-eye CrossAttentionFusion** (GNN eye, Transformer eye, Fused eye) produces per-class probabilities across **10 vulnerability classes**.
+Dual-path smart contract vulnerability detector. A three-phase 8-layer **Graph Attention Network** encodes AST/CFG structure with typed edge relations; a **LoRA-adapted GraphCodeBERT** encodes source text across sliding windows with optional GNN-prefix injection. A **three-eye CrossAttentionFusion** (GNN eye, Transformer eye, Fused eye) produces per-class probabilities across **10 vulnerability classes**.
 
-**Current architecture: v8 + GCB-P1** — `FEATURE_SCHEMA_VERSION = "v8"`, `NODE_FEATURE_DIM = 11`, backbone: `microsoft/graphcodebert-base`
+**Current architecture: v8** — `FEATURE_SCHEMA_VERSION = "v8"`, `NODE_FEATURE_DIM = 11`, backbone: `microsoft/graphcodebert-base`
 
 ---
 
@@ -66,17 +66,22 @@ Input: Solidity contract (.sol)
         ┌───────┴────────────────────────────────────────────┐
         │                                                    │
    GNNEncoder                                    TransformerEncoder
-   7-layer GAT, 3 phases                         GraphCodeBERT + LoRA r=16
+   8-layer GAT, 3 phases (2+3+3)              GraphCodeBERT + LoRA r=16
    JK attention, hidden_dim=256                  12 layers, Q+V adapters
-        │                                        frozen base, BF16
+   IMP-G2 input_proj skip, IMP-G1 edge subsets  frozen base, BF16
+   IMP-G3 bidirectional CONTAINS                Flash Attention 2
+        │                                        │
         │  [B, K, 256] prefix nodes (K=48)            │
         │  ──gnn_to_bert_proj(256→768)──►              │
         │  prepended as inputs_embeds prefix            │
         │  (suppressed during warmup epochs 0–14)       │
+        │  IMP-M3: actual node count masking            │
         │                                               │
         └─────────── CrossAttentionFusion ──────────────┘
                      bidirectional cross-attention
                      node↔token, attn_dim=256
+                     token_norm LayerNorm (BUG-C2)
+                     need_weights=False (Fix #26)
                      output_dim=128 LOCKED
                 │
          Three-Eye Classifier
@@ -161,25 +166,33 @@ poetry run python ml/scripts/create_splits.py
 
 **File:** `ml/src/models/gnn_encoder.py`
 
-7-layer Graph Attention Network, three phases, Jumping Knowledge (JK) attention aggregation:
+8-layer Graph Attention Network, three phases (2+3+3), Jumping Knowledge (JK) attention aggregation:
 
 ```
 Phase 1 — Structural + CONTAINS (layers 1+2)
   GAT over edge types 0–5, 8 heads, add_self_loops=True
+  IMP-G2: input_proj skip connection (Linear(11,256)) added before relu in Layer 1
+         Prevents raw feature loss when GAT attention weights start near-uniform
   LayerNorm after phase
 
-Phase 2 — CF + CALL_ENTRY + RETURN_TO directed (layers 3+4+5, 3 hops)
-  conv3:  CF(6), 1 head — first hop
-  conv3b: CALL_ENTRY(8) — 2nd hop (CALL→ENTRY pattern)
-  conv3c: RETURN_TO(9)  — 3rd hop (ENTRY→CALL→RETURN pattern)
+Phase 2 — CFG + ICFG directed (layers 3+4+5)
+  IMP-G1: each layer processes a DISTINCT edge subset (vs same cfg_mask before)
+  conv3:  CONTROL_FLOW(6) only — intra-function execution ordering
+  conv3b: CALL_ENTRY(8) + RETURN_TO(9) only — cross-function call structure
+  conv3c: CF(6)+CALL_ENTRY(8)+RETURN_TO(9) joint — integration layer
+  add_self_loops=False (CRITICAL — self-loops cancel directional signal)
+  heads=1, concat=False
   LayerNorm after phase
 
-Phase 3 — REVERSE_CONTAINS type-7 (layers 6+7)
-  Reversed CONTAINS edges (flipped at runtime, never written to .pt files)
+Phase 3 — Bidirectional CONTAINS (layers 6+7+8)
+  conv4:  REVERSE_CONTAINS up — CFG→FUNCTION (Phase 2 signal rises)
+  conv4b: REVERSE_CONTAINS up — second hop (multi-function patterns)
+  conv4c: CONTAINS down (IMP-G3) — FUNCTION→CFG, distributes enriched
+          FUNCTION context back to CFG children. All nodes carry Phase 3 depth after this.
   1 head
   LayerNorm after phase
 
-JK attention aggregation over all 7 layer outputs → hidden_dim=256
+JK attention aggregation over all 8 layer outputs → hidden_dim=256
 Edge type embedding: Embedding(11, 64) concatenated per message
 ```
 
@@ -193,6 +206,7 @@ Edge type embedding: Embedding(11, 64) concatenated per message
 
 `microsoft/graphcodebert-base` (124M params) + LoRA:
 - Base model frozen; LoRA r=16, α=32 on Q+V of all 12 layers
+- Flash Attention 2 support (falls back to SDPA if unavailable)
 - Input: `[B, 4, 512]` — 4 sliding windows of 512 tokens each (stride=256)
 - Each window processed independently via `WindowAttentionPooler` → `[B, 768]`
 - **GNN prefix path:** when `gnn_prefix_nodes` is not None, uses `inputs_embeds` instead of `input_ids`; prefix occupies positions 0..K−1, code occupies positions K..K+code_budget−1
@@ -201,8 +215,10 @@ Edge type embedding: Embedding(11, 64) concatenated per message
 
 ```python
 # Signature
-def forward(self, input_ids, attention_mask, gnn_prefix_nodes=None):
+def forward(self, input_ids, attention_mask, gnn_prefix_nodes=None, gnn_prefix_counts=None, output_attentions=False):
     # gnn_prefix_nodes: [B, K, 768] or None
+    # gnn_prefix_counts: [B] real node counts (IMP-M3)
+    # output_attentions: returns prefix_attn_mean when True (IMP-M2)
 ```
 
 ### GNN Prefix Injection
@@ -214,6 +230,7 @@ Declaration-level GNN node embeddings are projected into BERT space and prepende
 ```
 select_prefix_nodes()
   Priority: CONSTRUCTOR > FALLBACK > RECEIVE > MODIFIER > FUNCTION
+  Secondary sort: FUNCTION nodes by external_call_count descending (IMP-M1)
   Selects top-K=48 declaration nodes per contract
   Audit (P95 decl count=47): K=48 covers 95.5% of contracts without truncation
 
@@ -228,6 +245,11 @@ Warmup suppression (epochs 0..gnn_prefix_warmup_epochs-1):
   gnn_prefix_nodes = None passed to TransformerEncoder
   gnn_to_bert_proj receives zero gradient during warmup
   Projection starts from random init at epoch gnn_prefix_warmup_epochs (default 15)
+
+IMP-M3: actual node count masking
+  gnn_prefix_counts [B] tracks real (non-padded) nodes per graph
+  Zero-padded prefix positions are masked in attention (95.5% of contracts fill all K slots)
+  Prevents transformer from attending to meaningless zero vectors
 ```
 
 **Inference:** `predictor.py` sets `model._current_epoch = 9999` after load so the prefix is always active regardless of the trained warmup value.
@@ -240,7 +262,7 @@ Bidirectional cross-attention fusing graph and text modalities:
 
 ```
 1. Project nodes [N,256] → [N,256]
-2. LayerNorm(768) + project tokens [B,512,768] → [B,512,256]
+2. token_norm LayerNorm(768) + project tokens [B,512,768] → [B,512,256] (BUG-C2 fix)
 3. _scatter_to_dense → static [B,1024,256]  (compile-safe; max_nodes=1024)
 4. Node→Token cross-attention → enriched_nodes [B,1024,256]
 5. Token→Node cross-attention → enriched_tokens [B,512,256]
@@ -252,6 +274,10 @@ Bidirectional cross-attention fusing graph and text modalities:
 **output_dim=128 is LOCKED** — the ZKML proxy MLP depends on this shape.
 
 `_scatter_to_dense` replaces PyG's `to_dense_batch` to eliminate the `GuardOnDataDependentSymNode` compile graph break (zero graph breaks confirmed in production).
+
+**Key improvements:**
+- BUG-C2: `token_norm` LayerNorm before token projection prevents CodeBERT embeddings (L2 norm ~10-15) from dominating cross-attention dot products
+- Fix #26: `need_weights=False` on both MHA calls saves ~12.6 MB VRAM per forward pass by skipping attention weight matrix materialization
 
 ### Three-Eye Classifier
 
@@ -327,52 +353,50 @@ CFG nodes inherit dims [1,3,4,5,9] from their parent FUNCTION node.
 
 ## Training
 
-### Launch (GCB-P1 — overnight run)
+### Launch (v8 training)
 
 ```bash
 source ml/.venv/bin/activate
 TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup \
     python ml/scripts/train.py \
-    --run-name graphcodebert-v1-prefix48 \
-    --experiment-name sentinel-gcb \
+    --run-name v8-$(date +%Y%m%d) \
+    --experiment-name sentinel-v8 \
     --epochs 100 \
     --gradient-accumulation-steps 8 \
     --gnn-prefix-k 48 \
     --gnn-prefix-warmup-epochs 15 \
     --gnn-prefix-proj-lr-mult 1.0 \
-    --phase2-edge-types 6 8 9 \
-    --dos-loss-weight 0.5 \
+    --phase2-edge-types 6 8 9 10 \
     --weighted-sampler positive \
     --cache-path ml/data/cached_dataset_v8.pkl \
-    > ml/logs/graphcodebert-v1-prefix48-20260524.log 2>&1 &
+    > ml/logs/v8-$(date +%Y%m%d).log 2>&1 &
 
 # Monitor:
 bash ml/scripts/monitor.sh
-tail -f ml/logs/graphcodebert-v1-prefix48-20260524.log
+tail -f ml/logs/v8-$(date +%Y%m%d).log
 ```
 
-### Key Training Milestones (GCB-P1)
+### Key Training Milestones
 
 | Epoch | Event |
 |-------|-------|
-| 0–14 | Warmup: `gnn_prefix_nodes=None`; GCB learns code representations without prefix |
+| 0–14 | Warmup: `gnn_prefix_nodes=None`; transformer learns code representations without prefix |
 | 15 | Prefix fires for first time; expect brief loss spike at ep15–16 |
 | 20 | Check: GNN share trend and `prefix_proj_weight_norm` growth |
 | 40+ | Expected convergence region based on prior ablation runs |
 
-### TrainConfig Reference (GCB-P1)
+### TrainConfig Reference (v8)
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | `batch_size` | `8` | 6.9 / 8.0 GB VRAM |
 | `gradient_accumulation_steps` | `8` | effective batch = 64 |
 | `gnn_hidden_dim` | `256` | |
-| `gnn_layers` | `7` | 2+3+2 three-phase |
+| `gnn_layers` | `8` | 2+3+3 three-phase (IMP-G3 added conv4c) |
 | `lora_r` | `16` | LoRA rank on Q+V |
 | `lora_alpha` | `32` | |
 | `epochs` | `100` | |
 | `loss_fn` | `"asl"` | AsymmetricLoss(γ⁻=2.0, γ⁺=1.0, clip=0.01) |
-| `dos_loss_weight` | `0.5` | DoS auxiliary loss weight |
 | `use_weighted_sampler` | `"positive"` | 3× for any-vuln rows |
 | `lora_lr_mult` | `0.3` | LoRA adapter LR multiplier |
 | `gnn_lr_mult` | `2.5` | GNN LR multiplier |
@@ -380,7 +404,7 @@ tail -f ml/logs/graphcodebert-v1-prefix48-20260524.log
 | `gnn_prefix_k` | `48` | Prefix token count (0 = disabled) |
 | `gnn_prefix_warmup_epochs` | `15` | Epochs before prefix activates |
 | `gnn_prefix_proj_lr_mult` | `1.0` | `gnn_to_bert_proj` LR multiplier |
-| `phase2_edge_types` | `[6, 8, 9]` | CF + CALL_ENTRY + RETURN_TO |
+| `phase2_edge_types` | `[6, 8, 9, 10]` | CF + CALL_ENTRY + RETURN_TO + DEF_USE (v8) |
 | `use_compile` | `True` | Submodule-level; transformer excluded |
 | `use_amp` | `True` | BF16; no GradScaler |
 
@@ -392,10 +416,8 @@ tail -f ml/logs/graphcodebert-v1-prefix48-20260524.log
 | v8-AB (PLAN-3C) | CF+CE+RT+DU | 29 | 0.2621 | 0.2851 | DEF_USE degrades |
 | **PLAN-3A** | **CF+CE+RT** | **41** | **0.2790** | **0.2877** | **best v8 checkpoint** |
 | v8.0-B | PLAN-3A + label clean | ep10 | 0.2460 | killed | ceiling confirmed |
-| GCB-P0 (5ep) | CF+CE+RT | ep3 | 0.2178 | — | GraphCodeBERT drop-in gate |
-| **GCB-P1** | **CF+CE+RT** | running | — | — | **K=48, warmup=15, overnight** |
 
-**Ceiling conclusion:** All v7/v8 CodeBERT runs converge to ~0.287 tuned F1. GCB-P0 proved ExternalBug and TOD non-zero from ep1 (CodeBERT produced 0.000 on these classes). GCB-P1 is the current architectural intervention.
+**Ceiling conclusion:** All v7/v8 CodeBERT runs converge to ~0.287 tuned F1. Current v8 architecture with 8-layer GNN (2+3+3 phases) includes IMP-G1, IMP-G2, IMP-G3 improvements for better structural encoding.
 
 ### Per-epoch Prefix Logging
 
@@ -415,15 +437,15 @@ MLflow metrics: `prefix_active` (0/1), `prefix_proj_weight_norm`.
 ```bash
 # Threshold tuning
 poetry run python ml/scripts/tune_threshold.py \
-    --checkpoint ml/checkpoints/graphcodebert-v1-prefix48_best.pt
+    --checkpoint ml/checkpoints/v8-<date>_best.pt
 
 # Behavioral gate (≥80% detection, ≥80% specificity required)
 poetry run python ml/scripts/manual_test.py \
-    --checkpoint ml/checkpoints/graphcodebert-v1-prefix48_best.pt
+    --checkpoint ml/checkpoints/v8-<date>_best.pt
 
 # Promote to production
 poetry run python ml/scripts/promote_model.py \
-    --checkpoint ml/checkpoints/graphcodebert-v1-prefix48_best.pt
+    --checkpoint ml/checkpoints/v8-<date>_best.pt
 ```
 
 ---
@@ -481,9 +503,9 @@ ml/
 ├── src/
 │   ├── models/
 │   │   ├── sentinel_model.py       ← SentinelModel v8, three-eye + GNN prefix
-│   │   ├── gnn_encoder.py          ← 7-layer three-phase GAT, Embedding(11,64)
-│   │   ├── transformer_encoder.py  ← GraphCodeBERT + LoRA + prefix inputs_embeds path
-│   │   └── fusion_layer.py         ← CrossAttentionFusion, compile-safe
+│   │   ├── gnn_encoder.py          ← 8-layer three-phase GAT (2+3+3), Embedding(11,64)
+│   │   ├── transformer_encoder.py  ← GraphCodeBERT + LoRA + Flash Attention 2 + prefix inputs_embeds path
+│   │   └── fusion_layer.py         ← CrossAttentionFusion, compile-safe, token_norm (BUG-C2)
 │   ├── preprocessing/
 │   │   ├── graph_schema.py         ← NODE_FEATURE_DIM=11, FEATURE_SCHEMA_VERSION="v8",
 │   │   │                              NodeType IntEnum (13 types), STRUCTURAL_PREFIX_TYPES
@@ -505,8 +527,6 @@ ml/
 │   └── cached_dataset_v8.pkl       ← 2.2 GB paired cache
 ├── checkpoints/                    ← NOT committed
 └── logs/                           ← NOT committed
-    ├── graphcodebert-v1-prefix48-20260524.log   ← GCB-P1 overnight run
-    └── prefix_node_count_audit.json             ← K=48 coverage analysis
 ```
 
 ---
@@ -520,6 +540,7 @@ ml/
 | `NUM_CLASSES` | **10** | Locked — ZKML circuit and CLASS_NAMES order both depend on this |
 | `NUM_EDGE_TYPES` | **11** | GNNEncoder Embedding(11,64) + retrain |
 | `fusion_output_dim` | **128** | ZKML proxy MLP (M2) depends on this; never change |
+| `gnn_num_layers` | **8** | 2+3+3 phases (IMP-G3 added conv4c for downward CONTAINS) |
 | `gnn_to_bert_proj` at inference | always active | `predictor.py` sets `_current_epoch=9999` |
 | `weights_only` for graph `.pt` | `False` | PyG 2.7 metadata not safe-tensors serialisable |
 | `weights_only` for checkpoint `.pt` | `False` | LoRA PEFT objects not safe-tensors serialisable |
@@ -527,6 +548,9 @@ ml/
 | Checkpoint dtype | BF16 → call `.float()` | For diagnostic inference outside training loop |
 | `TRANSFORMERS_OFFLINE` | Set at **shell level** | HuggingFace reads this at `transformers` import time |
 | `add_self_loops` in Phase 2 | `False` | Self-loops cancel directional CF signal |
+| `add_self_loops` in Phase 3 | `False` | Bidirectional CONTAINS requires directional edges |
 | JK tensors in GNNEncoder | Collected **without** `.detach()` | Zero gradients to JK attention weights |
 | Backbone model | `microsoft/graphcodebert-base` | Token files + retrain if changed |
 | Prefix position IDs | prefix=1, code=3..466 | RoBERTa uses 0=BOS, 1=padding, 2=EOS slots |
+| `token_norm` in CrossAttentionFusion | Always active | BUG-C2 fix; prevents CodeBERT norm dominance |
+| `need_weights=False` in MHA | Always set | Fix #26; saves ~12.6 MB VRAM per forward pass |

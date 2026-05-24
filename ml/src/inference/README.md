@@ -2,6 +2,8 @@
 
 Converts a Solidity contract (file or raw string) into per-class vulnerability probabilities across 10 classes.
 
+**Current architecture:** v8 with 8-layer GNN (2+3+3 phases), Flash Attention 2, GNN prefix injection
+
 ---
 
 ## Files
@@ -102,7 +104,7 @@ predictor = SentinelPredictor(
 4. Sets `model._current_epoch = 9999` — prefix always active regardless of warmup setting
 5. Calls `model.eval()`
 
-The architecture string `"three_eye_v7"` is used for `_ARCH_TO_FUSION_DIM` / `_ARCH_TO_NODE_DIM` validation — no architecture string change needed for GCB-P1 since the fusion output shape (128) and node feature dim (11) are unchanged.
+The architecture string `"three_eye_v7"` is used for `_ARCH_TO_FUSION_DIM` / `_ARCH_TO_NODE_DIM` validation — no architecture string change needed for v8 since the fusion output shape (128) and node feature dim (11) are unchanged.
 
 ### Prediction
 
@@ -123,7 +125,7 @@ result = predictor.predict_source(source_code, name="Vault")
 #   "thresholds": [0.45, 0.50, ...],   # per-class, from checkpoint
 #   "num_nodes":  42,
 #   "num_edges":  89,
-#   "architecture": "three_eye_v7",
+#   "architecture": "three_eye_v7",  # legacy string for compatibility
 # }
 ```
 

@@ -2,6 +2,8 @@
 
 Training loop, loss function, and configuration for SENTINEL v8 + GraphCodeBERT.
 
+**Current architecture:** 8-layer GNN (2+3+3 phases), Flash Attention 2, IMP improvements (G1, G2, G3, M1, M3, C2, #26)
+
 ---
 
 ## Files
@@ -10,6 +12,7 @@ Training loop, loss function, and configuration for SENTINEL v8 + GraphCodeBERT.
 |------|----------|
 | `trainer.py` | `TrainConfig`, `train_one_epoch()`, `evaluate()`, `train()` |
 | `losses.py` | `AsymmetricLoss` — multi-label focal loss for class-imbalanced training |
+| `focalloss.py` | `FocalLoss` and `MultiLabelFocalLoss` — focal loss implementations |
 
 ---
 
@@ -29,8 +32,8 @@ class TrainConfig:
 
     # Architecture
     gnn_hidden_dim:   int   = 256
-    gnn_layers:       int   = 7
-    phase2_edge_types: list = field(default_factory=lambda: [6, 8, 9])
+    gnn_layers:       int   = 8      # 2+3+3 phases (IMP-G3 added conv4c)
+    phase2_edge_types: list = field(default_factory=lambda: [6, 8, 9, 10])  # CF+CE+RT+DU (v8)
     lora_r:           int   = 16
     lora_alpha:       int   = 32
 
@@ -43,7 +46,7 @@ class TrainConfig:
     epochs:                     int   = 100
     batch_size:                 int   = 8
     gradient_accumulation_steps: int  = 8     # effective batch = 64
-    lr:                         float = 3e-5
+    lr:                         float = 2e-4
 
     # Per-group LR multipliers
     lora_lr_mult:    float = 0.3    # LoRA adapter LR
@@ -208,7 +211,7 @@ gnn_to_bert_proj weight norm: 16.0000    ← constant during warmup (zero gradie
 | v7.0 | CF | 23 | 0.2875 | CodeBERT baseline |
 | PLAN-3A | CF+CE+RT | 41 | **0.2877** | Best v8 checkpoint |
 | v8.0-B | PLAN-3A + labels | 10 | killed | ceiling confirmed at ~0.287 |
-| GCB-P0 | CF+CE+RT | 3 | 0.2178 raw | GraphCodeBERT gate — passed |
-| **GCB-P1** | **CF+CE+RT** | running | — | **K=48, warmup=15, overnight** |
+
+**Ceiling conclusion:** All v7/v8 CodeBERT runs converge to ~0.287 tuned F1. Current v8 architecture with 8-layer GNN (2+3+3 phases) includes IMP-G1, IMP-G2, IMP-G3 improvements for better structural encoding.
 
 MLflow backend: `sqlite:///mlruns.db`. View: `poetry run mlflow ui --backend-store-uri sqlite:///mlruns.db`
