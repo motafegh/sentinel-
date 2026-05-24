@@ -1,8 +1,8 @@
 # GraphCodeBERT + GNN Prefix Injection — Execution Plan
 
 **Proposal:** [2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md](2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md)
-**Last updated:** 2026-05-25 (adversarial audit findings integrated)
-**Status:** ACTIVE — P1-TRAIN Run 2 running; all IMP-* fixes applied; audit findings triaged
+**Last updated:** 2026-05-25 (Run 2 killed ep4; Run 3 pre-flight fixes applied; ready to launch)
+**Status:** ACTIVE — P1-TRAIN Run 2 KILLED ep4 (JK Phase3 86.6% structural collapse); 13 audit fixes applied; Run 3 ready
 
 ---
 
@@ -1045,9 +1045,9 @@ These have no model architecture impact and can be applied to a running training
 
 | ID | File | Finding | Fix | Status |
 |----|------|---------|-----|--------|
-| **NC-4** | `trainer.py:968` | `pos_weight` computed and logged but **never passed to `AsymmetricLoss`**. Dead code when `loss_fn="asl"` (the default). Per-class balancing is completely missing from ASL training. | Add `logger.warning()` when `loss_fn="asl" and pos_weight is not None`; OR restructure to pass `pos_weight` as a per-class `gamma_neg` modifier to ASL. Minimal fix: add warning so the gap is visible. | ⬜ OPEN |
-| **NH-4** | `trainer.py:880` | `_ckpt_state` dict (full checkpoint: model + optimizer + scheduler, up to 500 MB) held alive for the entire training run. `del` never called after use at line 1213. | Add `del _ckpt_state` immediately after the last use of `_ckpt_state` (after optimizer/scheduler restore block). | ⬜ OPEN |
-| **NL-1** | `trainer.py:102,104` | `ARCHITECTURE = "three_eye_v7"` and `MODEL_VERSION = "v7.0"` are hardcoded. GCB-P1-Run2 checkpoints (8-layer IMP GNN + GraphCodeBERT) are tagged as v7. Resume guard at line 944 raises `ValueError` if `ckpt_arch != ARCHITECTURE` — any future correctly-versioned checkpoint cannot resume without a manual patch. | Update to `ARCHITECTURE = "three_eye_v8"`, `MODEL_VERSION = "v8.0"`. | ⬜ OPEN |
+| **NC-4** | `trainer.py:968` | `pos_weight` computed and logged but **never passed to `AsymmetricLoss`**. Dead code when `loss_fn="asl"` (the default). Per-class balancing is completely missing from ASL training. | `AsymmetricLoss` now accepts `pos_weight` buffer; trainer passes it when `loss_fn="asl"`. | ✅ DONE 2026-05-25 |
+| **NH-4** | `trainer.py:880` | `_ckpt_state` dict (full checkpoint: model + optimizer + scheduler, up to 500 MB) held alive for the entire training run. `del` never called after use at line 1213. | `del _ckpt_state` added after checkpoint restore block. | ✅ DONE 2026-05-25 |
+| **NL-1** | `trainer.py:102,104` | `ARCHITECTURE = "three_eye_v7"` and `MODEL_VERSION = "v7.0"` are hardcoded. GCB-P1-Run2 checkpoints (8-layer IMP GNN + GraphCodeBERT) are tagged as v7. Resume guard at line 944 raises `ValueError` if `ckpt_arch != ARCHITECTURE` — any future correctly-versioned checkpoint cannot resume without a manual patch. | Updated: `ARCHITECTURE = "three_eye_v8"`, `MODEL_VERSION = "v8.0"`. | ✅ DONE 2026-05-25 |
 | **H-7** | `inference/preprocess.py` | Docstring says `graph.x [N, NODE_FEATURE_DIM] (13 in v5; was 8 in v4)`. Current is **11** (v7+). Wrong comment in inference-critical path. | Update docstring to `(11 in v7/v8; was 12 in v5/v6; 13 was never correct)`. | ⬜ OPEN |
 | **M-4 / D-3** | `gnn_encoder.py:538` | `conv3c` docstring says "Layer 5: CF+CALL_ENTRY+RETURN_TO joint". When `phase2_edge_types=None` (default config), `cfg_mask` at line 430–434 also includes `DEF_USE(10)`. Docstring is factually wrong for the default run. GCB-P1-Run2 uses `--phase2-edge-types 6 8 9` explicitly so it's safe in practice — but anyone running without the flag gets a silently different model than documented. | Fix the docstring to say "Layer 5: all phase2_edge_types joint (default: CF+ICFG+DEF_USE; Run2: CF+ICFG via --phase2-edge-types 6 8 9)". | ⬜ OPEN |
 | **NL-1b** | `gnn_encoder.py` | Variable `cfg_ei` is misleading — it is NOT always "control flow + ICFG". When `phase2_edge_types=None`, it includes DEF_USE. The name implies a fixed subset. | Rename to `phase2_ei` / `phase2_ea` throughout `forward()`. | ⬜ OPEN |
@@ -1479,18 +1479,31 @@ significant improvement and the source is unclear.
 
 Items are grouped by when they should happen. All safe to start independent of training.
 
-### Now — Safe to apply while P1-TRAIN Run 2 runs
+### Run 3 Pre-Flight (Applied 2026-05-25 — commit 34bbf4b)
 
-| Item | Source | Description | Effort |
+Run 2 killed at ep4: JK Phase3=86.6%→85.2%, GNN share 86%→63%. Structural collapse confirmed.
+All items below applied before Run 3 launch.
+
+| Item | Source | Description | Status |
 |------|--------|-------------|--------|
-| **NC-4** | Audit-1A | `pos_weight` dead code for ASL — add warning when `loss_fn="asl"` | 5 min |
-| **NH-4** | Audit-1A | `_ckpt_state` memory leak — `del _ckpt_state` after line 1213 | 1 min |
-| **NL-1** | Audit-1A | `ARCHITECTURE="three_eye_v7"` stale — update to `"three_eye_v8"` / `"v8.0"` | 5 min |
-| **H-7** | Audit-1A | `preprocess.py` docstring says NODE_FEATURE_DIM=13; correct is 11 | 5 min |
-| **M-4/D-3** | Audit-1A | Fix `conv3c` docstring + rename `cfg_ei`→`phase2_ei` | 10 min |
-| **L-1** | Audit-1A | Delete `dual_path_dataset.py.backup` from repo | 1 min |
-| **NL-3** | Audit-1A | Remove dead top-level `FocalLoss` import or document inline wrapper | 5 min |
-| **NH-2** | Audit-1A | Validate `class_label_smoothing` keys against `CLASS_NAMES` in `__post_init__` | 15 min |
+| **C-3** | Audit-1B conditional | JK entropy regularizer λ=0.01 in `_JKAttention` + trainer | ✅ DONE |
+| **NC-1** | Second audit | `gnn_to_bert_proj` Adam state reset at warmup transition | ✅ DONE |
+| **NC-4** | Audit-1A | `pos_weight` now passed to `AsymmetricLoss` (was dead code) | ✅ DONE |
+| **NH-5** | Audit-1B | prefix_proj LR mult 1.0→5.0 for cold-start | ✅ DONE |
+| **NH-4** | Audit-1A | `del _ckpt_state` after checkpoint loading | ✅ DONE |
+| **NL-1** | Audit-1A | `ARCHITECTURE="three_eye_v8"`, `MODEL_VERSION="v8.0"` | ✅ DONE |
+| **NH-7** | Second audit | `_build_weighted_sampler` "all-rare": weight=n_pos (was 1/n_pos) | ✅ DONE |
+| **M-1/H-4** | Audit | pos_weight_cap 20.0→10.0 (new TrainConfig field) | ✅ DONE |
+| **NH-2** | Audit-1A | Validate `class_label_smoothing` keys in `__post_init__` | ✅ DONE |
+| **C-1** | Audit-1B | BF16 dtype assertion on GNN conv1 params after model build | ✅ DONE |
+| **C-4** | Audit-1B | `_scatter_to_dense` truncation warning (once per unique size) | ✅ DONE |
+| **NC-2** | Second audit | `_FUNC_IDS_CPU` assert at module level | ✅ DONE |
+| **H-7/M-4/D-3** | Audit-1A | schema v7→v8 error msg; cfg_ei→phase2_ei rename; conv3c comment | ✅ DONE |
+| **L-1** | Audit-1A | Deleted `dual_path_dataset.py.backup` | ✅ DONE |
+
+**Still deferred:**
+| **NL-3** | Audit-1A | Dead top-level `FocalLoss` import — inline wrapper confirmed valid; keep | Deferred |
+| **H-7 preprocess.py** | Audit-1A | preprocess.py docstring NODE_FEATURE_DIM comment | Deferred |
 
 ### Before Phase DATA-1 — Data quality work
 
@@ -1582,28 +1595,37 @@ Use this to track overall progress at a glance:
 | IMP-G2: Phase 1 input projection skip (11→256) | ✅ DONE | 2026-05-24 |
 | IMP-G3: Phase 3 bidirectional pass (downward CONTAINS) | ✅ DONE | 2026-05-24 |
 | IMP-D1: return_ignored temporal fix (code change) | ✅ DONE (re-extraction pending) | 2026-05-24 |
-| IMP-D1: Graph re-extraction (41K graphs) | ⬜ OPEN (run after Run 2 stable) | — |
+| IMP-D1: Graph re-extraction (41K graphs) | ⬜ OPEN (run after Run 3 stable) | — |
 | IMP-D2 / Sol-5: 100+ clean anchors injected (OZ/Solmate, 15×) | ⬜ OPEN | — |
-| Test suite: 134/134 pass | ✅ DONE | 2026-05-24 |
-| GATE-DATA-1: Data quality run results | 🔴 BLOCKED (on data fixes + P1-TRAIN Run 2) | — |
+| Test suite: 134/134 pass | ✅ DONE | 2026-05-25 |
+| GATE-DATA-1: Data quality run results | 🔴 BLOCKED (on data fixes + P1-TRAIN Run 3) | — |
 | Phase GNN-A | ✅ PULLED FORWARD — IMP-G1/G2/G3 applied in P1-TRAIN Run 2 baseline | 2026-05-24 |
-| N-02: Phase 2 heads=1→4 | ⬜ CONDITIONAL (trigger: Phase 2 JK < 0.12 at Run 2 convergence) | — |
+| N-02: Phase 2 heads=1→4 | ⬜ CONDITIONAL (trigger: Phase 2 JK < 0.12 at Run 3 convergence) | — |
 | **Adversarial audit triaged (AUDIT-1)** | ✅ DONE — findings in EXECUTION_PLAN.md §AUDIT-1 | 2026-05-25 |
-| AUDIT-1A NC-4: pos_weight warning for ASL | ⬜ OPEN | — |
-| AUDIT-1A NH-4: del _ckpt_state memory leak | ⬜ OPEN | — |
-| AUDIT-1A NL-1: ARCHITECTURE/MODEL_VERSION strings | ⬜ OPEN | — |
-| AUDIT-1A H-7: preprocess.py docstring fix | ⬜ OPEN | — |
-| AUDIT-1A M-4/D-3: conv3c docstring + rename cfg_ei | ⬜ OPEN | — |
-| AUDIT-1A L-1: delete .backup file | ⬜ OPEN | — |
-| AUDIT-1A NL-3: FocalLoss dead import | ⬜ OPEN | — |
-| AUDIT-1A NH-2: class_label_smoothing validation | ⬜ OPEN | — |
+| **P1-TRAIN Run 2 KILLED ep4** | ✅ KILLED — JK Ph3=86.6% structural collapse | 2026-05-25 |
+| AUDIT-1A NC-4: pos_weight now passed to ASL | ✅ DONE | 2026-05-25 |
+| AUDIT-1A NH-4: del _ckpt_state memory leak | ✅ DONE | 2026-05-25 |
+| AUDIT-1A NL-1: ARCHITECTURE/MODEL_VERSION strings | ✅ DONE | 2026-05-25 |
+| AUDIT-1A H-7: gnn_encoder schema v7→v8 error message | ✅ DONE | 2026-05-25 |
+| AUDIT-1A M-4/D-3: conv3c docstring + rename cfg_ei→phase2_ei | ✅ DONE | 2026-05-25 |
+| AUDIT-1A L-1: delete .backup file | ✅ DONE | 2026-05-25 |
+| AUDIT-1A NL-3: FocalLoss dead import | Deferred (inline wrapper confirmed valid) | — |
+| AUDIT-1A NH-2: class_label_smoothing validation | ✅ DONE | 2026-05-25 |
+| C-3 JK entropy regularizer (λ=0.01) | ✅ DONE | 2026-05-25 |
+| NC-1 proj cold-start Adam reset | ✅ DONE | 2026-05-25 |
+| NH-5 prefix_proj LR mult 1.0→5.0 | ✅ DONE | 2026-05-25 |
+| NH-7 all-rare sampler inverted logic | ✅ DONE | 2026-05-25 |
+| M-1 pos_weight_cap 20→10 | ✅ DONE | 2026-05-25 |
+| C-1 BF16 dtype assertion | ✅ DONE | 2026-05-25 |
+| C-4 _scatter_to_dense truncation warning | ✅ DONE | 2026-05-25 |
+| NC-2 _FUNC_IDS_CPU assert | ✅ DONE | 2026-05-25 |
 | Sol-1: CEI-order Reentrancy filter | ⬜ OPEN (before DATA-1) | — |
 | Sol-2: Pragma-based IntegerUO filter | ⬜ OPEN (before DATA-1) | — |
 | Sol-3: Timestamp CFG-path gating | ⬜ OPEN (before DATA-1) | — |
 | Sol-4: Ensemble label audit script | ⬜ OPEN (before DATA-1, after Sol-1/2/3) | — |
 | Sol-7: Threshold tuning on held-out test set | ⬜ OPEN (before deployment) | — |
 | Sol-8: SmartBugs Wild / SWC / SolidiFI integration | ⬜ OPEN (Phase B, ~2–3 weeks) | — |
-| TL-1 watch: JK Phase 3 < 0.75 at ep15 | 🔵 WATCHING (trigger for JK entropy reg) | — |
+| TL-1 watch: JK Phase 3 < 0.75 at ep15 | ✅ TRIGGERED ep2 (86.6%); entropy reg applied Run 3 | 2026-05-25 |
 | TL-2 watch: proj_norm changing > 0.5/epoch post ep16 | 🔵 WATCHING | — |
 | JK entropy regularizer | ⬜ CONDITIONAL (trigger: Phase 3 JK > 0.75 at ep15) | — |
 | NM-1: v8.0-B 60-epoch re-run | ⬜ CONDITIONAL (if Run 2 < 0.30) | — |
