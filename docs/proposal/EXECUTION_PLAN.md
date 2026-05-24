@@ -1,8 +1,8 @@
 # GraphCodeBERT + GNN Prefix Injection — Execution Plan
 
 **Proposal:** [2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md](2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md)
-**Last updated:** 2026-05-24 (evening — P1-TRAIN Run 2 launched)
-**Status:** ACTIVE — all IMP-* fixes applied; P1-TRAIN Run 2 running overnight
+**Last updated:** 2026-05-25 (adversarial audit findings integrated)
+**Status:** ACTIVE — P1-TRAIN Run 2 running; all IMP-* fixes applied; audit findings triaged
 
 ---
 
@@ -1028,6 +1028,250 @@ comparing against raw integer type IDs — a pre-existing bug causing `.int()` t
 
 ---
 
+## AUDIT-1 — Adversarial Audit Findings (2026-05-25)
+
+**Sources:**
+- First audit: `docs/25-05-2026-sentinel-ml-adversarial-audit.md` (C/H/M/L tiers)
+- Second audit (meta): `docs/audit-on-the-audit.md` (NC/NH/NM/NL tiers + training log analysis + first-audit corrections)
+- Data fixes: `docs/sentinel-c2-concrete-data-fixing-solutions.md` (8 solutions with full code; Sol-8 added 2026-05-25)
+
+All items are tracked here. Items marked ⬜ require a decision or implementation. Items marked ✅ are already fixed. Items marked 🔵 are watch-only (no code change needed).
+
+---
+
+### Audit-1A — Code Bugs: Quick Fixes (safe to apply while training runs)
+
+These have no model architecture impact and can be applied to a running training job's codebase without risk.
+
+| ID | File | Finding | Fix | Status |
+|----|------|---------|-----|--------|
+| **NC-4** | `trainer.py:968` | `pos_weight` computed and logged but **never passed to `AsymmetricLoss`**. Dead code when `loss_fn="asl"` (the default). Per-class balancing is completely missing from ASL training. | Add `logger.warning()` when `loss_fn="asl" and pos_weight is not None`; OR restructure to pass `pos_weight` as a per-class `gamma_neg` modifier to ASL. Minimal fix: add warning so the gap is visible. | ⬜ OPEN |
+| **NH-4** | `trainer.py:880` | `_ckpt_state` dict (full checkpoint: model + optimizer + scheduler, up to 500 MB) held alive for the entire training run. `del` never called after use at line 1213. | Add `del _ckpt_state` immediately after the last use of `_ckpt_state` (after optimizer/scheduler restore block). | ⬜ OPEN |
+| **NL-1** | `trainer.py:102,104` | `ARCHITECTURE = "three_eye_v7"` and `MODEL_VERSION = "v7.0"` are hardcoded. GCB-P1-Run2 checkpoints (8-layer IMP GNN + GraphCodeBERT) are tagged as v7. Resume guard at line 944 raises `ValueError` if `ckpt_arch != ARCHITECTURE` — any future correctly-versioned checkpoint cannot resume without a manual patch. | Update to `ARCHITECTURE = "three_eye_v8"`, `MODEL_VERSION = "v8.0"`. | ⬜ OPEN |
+| **H-7** | `inference/preprocess.py` | Docstring says `graph.x [N, NODE_FEATURE_DIM] (13 in v5; was 8 in v4)`. Current is **11** (v7+). Wrong comment in inference-critical path. | Update docstring to `(11 in v7/v8; was 12 in v5/v6; 13 was never correct)`. | ⬜ OPEN |
+| **M-4 / D-3** | `gnn_encoder.py:538` | `conv3c` docstring says "Layer 5: CF+CALL_ENTRY+RETURN_TO joint". When `phase2_edge_types=None` (default config), `cfg_mask` at line 430–434 also includes `DEF_USE(10)`. Docstring is factually wrong for the default run. GCB-P1-Run2 uses `--phase2-edge-types 6 8 9` explicitly so it's safe in practice — but anyone running without the flag gets a silently different model than documented. | Fix the docstring to say "Layer 5: all phase2_edge_types joint (default: CF+ICFG+DEF_USE; Run2: CF+ICFG via --phase2-edge-types 6 8 9)". | ⬜ OPEN |
+| **NL-1b** | `gnn_encoder.py` | Variable `cfg_ei` is misleading — it is NOT always "control flow + ICFG". When `phase2_edge_types=None`, it includes DEF_USE. The name implies a fixed subset. | Rename to `phase2_ei` / `phase2_ea` throughout `forward()`. | ⬜ OPEN |
+| **L-1 / NL-2** | `ml/src/datasets/dual_path_dataset.py.backup` | 20KB backup file from 2026-04-20 committed to the repo. Contains stale pre-v8 code that could mislead future developers. | Delete the file; ensure `.gitignore` covers `*.backup`. | ⬜ OPEN |
+| **NL-3** | `focalloss.py`, `trainer.py:71` | `FocalLoss` is imported but **unreachable**: `loss_fn="focal"` falls into the inline `_FocalFromLogits` wrapper branch (line 962–965) which correctly handles logit→sigmoid→FocalLoss. The top-level import `from ml.src.training.focalloss import FocalLoss` at line 71 is thus dead import. **Note:** NC-3 in the second audit incorrectly said `_FocalFromLogits` doesn't exist — it does, inline at lines 962–965. But the standalone import is still dead. | Remove the top-level `FocalLoss` import if the inline wrapper is the intended path. Or add `loss_fn="focal"` to `_VALID_LOSS_FNS` and document it clearly. | ⬜ OPEN |
+| **NH-2** | `trainer.py:270` | `class_label_smoothing: dict` is not validated against `CLASS_NAMES`. A typo (e.g., `"CalltoUnknown"` vs `"CallToUnknown"`) silently gives `eps=0.0` with no error. | Add validation in `TrainConfig.__post_init__`: `assert set(class_label_smoothing.keys()) == set(CLASS_NAMES[:num_classes])`. | ⬜ OPEN |
+| **M-5** | `sentinel_model.py` | `select_prefix_nodes()` `continue` for ghost graphs (no declaration nodes) sets `node_counts[g]=0` silently. Future maintainer may try to "fix" the silent zero by injecting fallback embeddings, which would break the masking logic. | Add explicit comment: `# node_counts[g]=0 → prefix_mask will be all-zero for this graph; do NOT inject fallback embeddings here`. | ⬜ OPEN |
+| **L-3** | `label_cleaner.py` | Schema constants (EDGE_CALLS, CLASS_NAMES, etc.) duplicated manually instead of imported. When `graph_schema.py` changes (e.g., new edge type shifts IDs), `label_cleaner.py` silently uses stale values. | Refactor: extract constants into a zero-dependency `graph_schema_constants.py` that both `graph_schema.py` and `label_cleaner.py` import from. | ⬜ OPEN |
+
+---
+
+### Audit-1B — Architecture & Training: Watch Items
+
+Findings that require monitoring during P1-TRAIN Run 2 or an explicit decision before the next training run. No code change possible today.
+
+**TL-1 — JK Phase 3 Dominance Amplified by IMP-G3 (WATCH — highest priority)**
+
+Training log shows Phase3 = `0.744±0.168` (ep1) → `0.866±0.212` (ep2, WARNING triggered). IMP-G3's downward CONTAINS pass gives Phase 3 an additional aggregation step, making it the deepest and most processed representation. JK rationally weights it higher — collapsing faster than PLAN-3A at convergence (0.688). The IMP-G1/G2 fixes may be insufficient to counteract this.
+
+| Epoch | Phase 3 JK — expected | Phase 3 JK — actual | Action if bad |
+|-------|-----------------------|---------------------|---------------|
+| ep5 | < 0.80 (improving from ep2 spike) | — | If still > 0.85: JK collapse is structural, not warmup noise |
+| ep10 | < 0.75 | — | If > 0.80 and rising: activate N-02 early (heads=1→4 for Phase 2) |
+| ep15 (warmup end) | < 0.72 | — | Prefix activation is the real test; brief loss spike expected |
+| ep20 | < 0.70 with std > 0.15 | — | If < 0.10 std: collapsed to fixed global weight again |
+| convergence | < 0.65 (vs 0.688 PLAN-3A) | — | If ≥ 0.688: IMP-G3 made no progress on JK; consider JK entropy reg |
+
+**Recommended contingency:** If Phase 3 JK > 0.75 at ep15, add a JK entropy regularization term (from D-1 in audit-on-audit). This penalizes collapsed JK weights more gently than switching to `jk_mode="cat"` (which triples the GNN-to-classifier param count). Formula: `L_jk = -λ * Σ_phases w_p * log(w_p)`, λ=0.01 to start.
+
+---
+
+**TL-2 — gnn_to_bert_proj Cold-Start at ep16 (WATCH)**
+
+`gnn_to_bert_proj` weight norm stays at 15.9853 across all warmup epochs (correct — receives zero gradient). At ep16, the projection starts from random init while the GNN has 15 epochs of training. Two related findings:
+
+- **NC-1 / NH-5**: The `gnn_prefix_proj_lr_mult=1.0` default gives the projection the same LR as base training. After a cold start, a ramp from 3.0→1.0 over 3 post-warmup epochs would help the projection catch up faster (similar to how `gnn_lr_multiplier=2.5` helped the GNN).
+- **Run 1 evidence**: proj_norm moved only 16.0→16.25 over 13 post-warmup epochs — either BF16 quantization floor (now fixed by DTYPE FIX) or cold-start LR being too low. Run 2 should be better (no BF16 pollution), but monitor carefully.
+
+Watch: at ep16–20, `gnn_to_bert_proj weight norm` should change by > 0.5 per epoch. If < 0.2 change/epoch after 5 post-warmup epochs, increase `gnn_prefix_proj_lr_mult` in a resumed run.
+
+---
+
+**TL-3 — Bottom Classes at Zero (WATCH)**
+
+Timestamp=0.000 at ep2. DoS and UnusedReturn also near-zero. These are the three classes most likely to benefit from the data fixes (Solution 3, clean anchors, IMP-D1). Track their F1 at each epoch post-warmup.
+
+---
+
+**C-1 — BF16 Dtype Pollution: Scope of Fix (VERIFY ONCE)**
+
+The DTYPE FIX in `transformer_encoder.py.__init__` restores `torch.default_dtype` after BERT load. This is correct for all modules created AFTER `TransformerEncoder.__init__` runs. The fix is structurally sound for the current construction order in `SentinelModel`. However, it is fragile to future refactors that change construction order.
+
+Recommended hardening: at the end of `SentinelModel.__init__`, add an assertion:
+```python
+for name, param in self.named_parameters():
+    if "bert" not in name and param.dtype != torch.float32:
+        raise RuntimeError(f"Non-BERT param {name} has dtype {param.dtype}; expected float32")
+```
+This converts a silent bug into an immediate crash if construction order ever changes.
+Status: ⬜ OPEN (low urgency — current code is correct)
+
+---
+
+**C-3 / TL-1 — JK Attention Collapse Is Structural (DECISION NEEDED at convergence)**
+
+As identified in both audits, JK in `attention` mode degrades to a learned global constant weighting. The IMP-G1/G2/G3 fixes address *why* Phase 1 and Phase 2 collapse but not the incentive structure: Phase 3 is always the deepest representation, so JK always has reason to weight it most.
+
+Options after GATE-GCB-4:
+1. **JK entropy regularizer** (preferred first attempt) — penalty term forces JK to distribute weight. Low parameter cost, simple to add.
+2. **`jk_mode="cat"`** — triples GNN→classifier input dim (3×256=768). Eliminates the collapse by construction but risks overfitting on this dataset size.
+3. **N-02 (Phase 2 heads=1→4)** — more distinct Phase 2 representations give JK more reason to attend to Phase 2. Already conditional on Run 2 convergence results.
+
+Decision point: GATE-GCB-4. If Phase 2 JK < 0.12 at convergence → activate N-02 + JK regularizer simultaneously.
+
+---
+
+**C-4 — `_scatter_to_dense` Silent Truncation at max_nodes=1024**
+
+`fusion_layer.py`: `local_idx = local_idx.clamp(max=max_nodes - 1)` drops nodes silently for graphs with > 1024 nodes. These are disproportionately large, complex contracts — the hardest cases. Creates an asymmetry: GNN eye pools all nodes, fused eye misses nodes > 1024.
+
+Action: add a warning counter and log at training end: "X graphs had > 1024 nodes; fusion eye truncated for those." Check whether > 1024 graphs are disproportionately vulnerable contracts (if so, increase max_nodes or add a per-graph dynamic cap).
+Status: ⬜ OPEN (low urgency for Run 2; validate count before Phase 2)
+
+---
+
+**H-1 — Per-Eye Loss Logging Not Divided by grad_accum (ACCEPT)**
+
+The running sums `_run_gnn_a`, `_run_tf_a`, etc. accumulate raw per-step loss values, not divided by `_actual_window`. The absolute values are larger than the effective-batch loss by a factor of `grad_accum=8`. Values are internally consistent across runs with same `grad_accum` but not comparable cross-config.
+
+Status: 🔵 ACCEPTED — logged values are internally consistent. Not worth changing mid-run; add a note in the trainer docstring.
+
+---
+
+**H-2 — `dos_loss_weight` Forward Identity (ACCEPT)**
+
+```python
+_logits_for_loss[:, _dos_idx] = (
+    dos_loss_weight * logits[:, _dos_idx]
+    + (1.0 - dos_loss_weight) * logits[:, _dos_idx].detach()
+)
+```
+Forward value is identical to `logits[:, _dos_idx]` (blending a value with its own detached copy returns the original). This is intentional: only the backward pass is modified (gradient scaled by `dos_loss_weight`). The code is correct but confusing.
+
+Status: 🔵 ACCEPTED — add comment explaining the gradient-only intent. Fix alongside L-3 / code hygiene pass.
+
+---
+
+**H-3 — Weighted Sampler vs Dataset Label Sync (WATCH)**
+
+`_build_weighted_sampler` and `DualPathDataset` both read from `label_csv_path`. If the CSV changes between dataset construction and sampler construction (e.g., during re-extraction), weights and labels can drift. No assertion validates they agree.
+
+Status: ⬜ OPEN — add `assert sampler.num_samples == len(dataset)` and a warning if weight distribution changes by > 10% from the previous run.
+
+---
+
+**H-8 — Empty Batch Guard Wrong Behavior (LOW URGENCY)**
+
+`sentinel_model.py forward()`: when `batch.numel() == 0`, returns zero logits without running the transformer path. Transformer eye contribution silently dropped. Unreachable in practice (DataLoader never produces empty batches), but wrong by design.
+
+Status: ⬜ OPEN (deferred — fix in code hygiene pass, not urgent)
+
+---
+
+**M-1 — Checkpoint Selection vs Reported F1 Inconsistency (ACCEPT WITH NOTE)**
+
+Early stopping selects checkpoints at `eval_threshold=0.35`. Performance is reported at per-class tuned thresholds. Best-at-metric-A checkpoint ≠ best-at-metric-B checkpoint. This is a known engineering pragmatism — the fixed threshold gives a stable training signal while the tuned threshold gives a fair comparison metric.
+
+Status: 🔵 ACCEPTED — document explicitly in trainer docstring. Acceptable for research; for deployment, use tuned thresholds from Solution 7.
+
+---
+
+**M-2 / Solution 7 — Threshold Tuning Double-Dips on Val Set**
+
+`tune_threshold.py` sweeps thresholds on the same val set used for checkpoint selection. Reported "tuned F1-macro" (0.2877) is optimistic. True generalization estimate requires thresholds tuned on a separate held-out portion (see Solution 7 in `sentinel-c2-concrete-data-fixing-solutions.md`).
+
+Status: ⬜ OPEN — apply Solution 7 after label cleaning and before any deployment decision.
+
+---
+
+**M-6 — WindowAttentionPooler Single-Window + Prefix Not Tested (DEFERRED)**
+
+Single-window fallback with `prefix_k=48` would extract CLS at position 48 (not 0). Untested and undocumented. All production runs use windowed mode; this is a latent edge case.
+
+Status: ⬜ OPEN (deferred — add unit test covering single-window + prefix_k > 0)
+
+---
+
+**M-7 — `_build_weighted_sampler` "all-rare" Mode Inverted (DEFERRED)**
+
+Mode "all-rare" gives LOWER weight to contracts with MORE positive labels — the opposite of what the name implies. Single-class contracts (even if common class like GasException) get weight 1.0. Mode is never used in documented runs.
+
+Status: ⬜ OPEN (deferred — fix or remove the "all-rare" mode; no production impact today)
+
+---
+
+**NC-2 — `_FUNC_IDS_CPU` No Runtime Validation (DEFERRED)**
+
+Module-level tensor built from `NODE_TYPES` at import time. If `NODE_TYPES` changes (schema version mismatch), the pooling mask silently selects wrong node types.
+
+Status: ⬜ OPEN — add `__post_init__` check or assertion in `SentinelModel.__init__` that `_FUNC_IDS_CPU` values are a subset of `set(NODE_TYPES.values())`.
+
+---
+
+**NL-4 — EMITS Edges Near-Zero (12 total across 41K graphs) (INVESTIGATE)**
+
+From CHANGELOG edge statistics: `EMITS(3): 12` — only 12 EMITS edges across all 41,576 graphs. The GNN's edge embedding for type 3 is trained on 12 examples. Either the extractor (BUG-H7 EventCall fallback) is still under-generating EMITS edges, or the BCCC dataset genuinely has very few event emission patterns.
+
+Status: ⬜ OPEN — run `python -c "import torch; from pathlib import Path; ..." ` diagnostic to count EMITS edges per graph; if < 1% of graphs have EMITS edges, consider removing the edge type from the schema or investigating the extractor.
+
+---
+
+**NM-1 — v8.0-B Kill Was Premature: H5 Verdict Uncertain (STRATEGIC)**
+
+Second audit challenges the "H5 refuted" conclusion from GATE-GCB-0. v8.0-B was killed at ep11 with F1=0.2460. PLAN-3A peaked at ep41. Cleaner labels create a harder optimization landscape (less noisy gradient signal = slower early progress). v8.0-B was never given a fair comparison epoch count.
+
+**Current position:** The "ceiling is purely architectural" conclusion underpinned the acceleration of this plan. If that conclusion is wrong, Phase DATA-1 becomes higher priority than Phase P2/P3.
+
+**Resolution strategy:** Let GCB-P1-Run2 complete. If it breaks 0.30 (architectural fix), the data hypothesis is moot for now. If it doesn't break 0.30, re-run v8.0-B for 40+ epochs before concluding data can't break the ceiling.
+
+Status: 🔵 WATCH — revisit at GATE-GCB-4.
+
+---
+
+**NL-5 / L-6 — Empty `src/validation/` and `src/tools/` Directories**
+
+`ml/src/validation/` and `ml/src/tools/` are empty (no files). `src/validation/` in a security-critical ML system is a notable gap.
+
+Status: ⬜ OPEN — either populate `src/validation/` with schema compatibility checks and label distribution sanity checks, or remove the directory from the repo and record the intent in a ticket.
+
+---
+
+**H-6 / NH-3 — `weights_only=False` Security Surface (ACCEPTED AS KNOWN RISK)**
+
+`trainer.py` and `predictor.py` use `weights_only=False` because LoRA/peft objects are not in PyTorch's safe globals list. A malicious checkpoint could execute arbitrary code on load. The correct long-term fix is to extract LoRA state dicts to plain tensors at save time (`peft.get_peft_model_state_dict`) and load with `weights_only=True`.
+
+Status: 🔵 ACCEPTED for now (internal research environment). Flag for pre-deployment hardening.
+
+---
+
+### Audit-1C — Data Strategy (see Phase DATA-1 and solutions doc)
+
+Full data fixing strategy consolidated in `docs/sentinel-c2-concrete-data-fixing-solutions.md`.
+
+**Priority order (revised from second audit — audit-on-the-audit.md:NM-2):**
+
+| Priority | Solution | Expected Impact | Effort |
+|----------|---------|-----------------|--------|
+| 1 | **Sol-5: Safe contract injection** (100+ OZ/Solmate, 15× sampler weight) | 0/3 behavioral → 3/3 clean; false positive reduction | 2–3 days |
+| 2 | **Sol-1: CEI-order Reentrancy filter** (label_cleaner.py BFS) | ~300 labels removed; Reentrancy F1 +0.01–0.03 | 1 day |
+| 3 | **Sol-2: Pragma-based IntegerUO filter** (Solidity ≥0.8 no unchecked) | ~1,500 labels removed; cleaner IntegerUO signal | 2–3 hrs |
+| 4 | **Sol-8: SmartBugs Wild + SWC + SolidiFI integration** (NM-3/NM-5) | 10K+ new contracts; per-contract Slither labels vs folder OR-labels | 2–3 weeks |
+| 5 | **Sol-4: Cross-checkpoint ensemble label audit** (Confident Learning) | ~350–560 mislabels found; apply after Sol-1/2/3 clean obvious noise first | 1–2 days |
+| 6 | **Sol-3: Timestamp CFG-path gating** | ~150 labels removed; Timestamp F1 +0.01 | 4–6 hrs |
+| 7 | **Sol-7: Threshold tuning on held-out test set** | Honest F1 estimate (may drop ~0.01–0.02); required before deployment | 2–3 hrs |
+| 8 | **Sol-6: Pragma-aware temporal splitting** | Prevents version-shortcut learning; rebuild splits once | 1 day |
+
+**Critical gap in original solutions doc:** SmartBugs Wild (~47K contracts with per-Slither labels), SWC Registry (~400 canonical examples), and SolidiFI (synthetic but precisely labeled) were not covered. See Solution 8 added to `sentinel-c2-concrete-data-fixing-solutions.md`.
+
+**Root cause of 0/3 behavioral failure (NM-4):** The model has never seen a contract with ground-truth all-zero labels. BCCC's "benign" contracts are in vulnerability folders and receive OR-labels. Safe contract injection (Sol-5) is the direct fix.
+
+**DoS starvation (NM-3):** 243 training positives after augmentation. No loss engineering fixes this. SmartBugs Wild + SolidiFI are the only scalable additions for DoS (SWC-128 pattern).
+
+---
+
 ## GATE-GCB-4 — Phase 1 Results Go/No-Go
 
 **Status:** 🔴 BLOCKED (on P1-TRAIN)
@@ -1067,38 +1311,53 @@ comparing against raw integer type IDs — a pre-existing bug causing `.int()` t
 
 **Status:** 🔴 BLOCKED (on GATE-GCB-4 results)
 **Trigger:** GATE-GCB-4 results known; decide whether to continue architecture track or fix data first
-**Reference:** `docs/proposal/IMPROVEMENT_BACKLOG.md:IMP-D1, IMP-D2, IMP-M1, IMP-M2, IMP-M3`
+**Reference:** `docs/proposal/IMPROVEMENT_BACKLOG.md:IMP-D1, IMP-D2`
+**Data fixes reference:** `docs/sentinel-c2-concrete-data-fixing-solutions.md` — full implementation code for all 7+1 solutions
 
-**Purpose:** A dedicated training run that incorporates all data quality and model fixes before
-investing in Phase 2 (shared DFG) or Phase GNN-A (GNN overhaul). Running Phase 2 on dirty data
-and with the FUNCTION sort bug active would make results harder to interpret.
+**Purpose:** A dedicated training run that incorporates all data quality fixes identified in the
+adversarial audits before investing in Phase 2 (shared DFG). Running Phase 2 on dirty data
+would make results harder to interpret.
 
-**Changes vs P1-TRAIN:**
+**Note on NM-1 (v8.0-B reinterpretation):** If GATE-GCB-4 shows Run 2 still cannot break 0.30, Phase DATA-1 becomes higher urgency than P2/P3. Cleaner labels require more epochs to converge (not fewer) — v8.0-B was killed at ep11 which was too early to judge. A full 60-epoch re-run with clean data may be necessary before concluding the ceiling is purely architectural.
 
-| Change | Item | Impact |
-|--------|------|--------|
-| IMP-D1: return_ignored temporal fix | Re-extract all 41K graphs with corrected `_compute_return_ignored` | Cleaner UnusedReturn + MishandledException labels |
-| IMP-D2: inject 100+ OZ clean negatives | Add to `ml/data/augmented/`, re-run cache | False positive reduction |
-| IMP-M1: FUNCTION secondary sort | Already in code before this run | Better K=48 node selection for large contracts |
-| IMP-M2: prefix attention logging | Already in trainer before this run | Diagnostic visibility |
-| IMP-M3: zero-padded mask fix | Already in code before this run | Cleaner attention for sparse contracts |
+**Changes vs P1-TRAIN (priority order from Audit-1C):**
 
-**IMP-D1 requires full re-extraction.** Follow the same gate protocol as Phase 2 (PLAN-2A–2I):
+| Priority | Change | Item | Impact | Pre-extraction needed |
+|----------|--------|------|--------|----------------------|
+| 1 | Sol-5: Safe contract injection (100+ OZ/Solmate, 15× sampler weight) | IMP-D2 extended | 0/3 behavioral → 3/3; false positive reduction | No |
+| 2 | Sol-1: CEI-order Reentrancy filter in `label_cleaner.py` | new PRECONDITION | ~300 Reentrancy labels removed | No |
+| 3 | Sol-2: Pragma-based IntegerUO filter in `label_cleaner.py` | new PRECONDITION | ~1,500 IntegerUO labels removed | No |
+| 4 | Sol-3: Timestamp CFG-path gating filter | new PRECONDITION | ~150 Timestamp labels removed | No |
+| 5 | IMP-D1: return_ignored temporal ordering fix | `graph_extractor.py` | Cleaner UnusedReturn + MishandledException | **Yes — full 41K re-extraction** |
+| 6 | Sol-4: Cross-checkpoint ensemble label audit (manual step) | script only | ~350–560 mislabels removed | No |
+| 7 | Sol-8: SmartBugs Wild / SWC / SolidiFI integration | new data source | 10K+ contracts with per-Slither labels | Yes — new graph extraction |
+
+**Audit-1A quick fixes to apply before this run:**
+- NC-4: add pos_weight warning when loss_fn="asl" (5 min)
+- NH-4: del _ckpt_state after use (1 min)
+- NL-1: update ARCHITECTURE/MODEL_VERSION strings (5 min)
+- H-7: fix preprocess.py docstring (5 min)
+- M-4/D-3: fix conv3c docstring + rename cfg_ei→phase2_ei (10 min)
+
+**IMP-D1 re-extraction protocol:**
 1. Validate fix on 10 known contracts with confirmed discarded returns
 2. 2,000-contract sample gate: structural parity (existing edge types unchanged)
 3. Rebuild cache with `FEATURE_SCHEMA_VERSION = "v8-d1"` (or bump to v9 if v9 is also being applied)
-4. Update label CSV via `label_cleaner.py`
+4. Update label CSV via `label_cleaner.py` (runs Sol-1/2/3 filters automatically)
 
 ### GATE-DATA-1 — Data Quality Run Go/No-Go
 
 | Check | Pass | Action |
 |-------|------|--------|
-| UnusedReturn F1 vs P1-TRAIN baseline | > +0.01 improvement | If no improvement: IMP-D1 fix not helping — investigate `return_ignored` distribution |
-| MishandledException F1 vs P1-TRAIN | > 0.0 improvement | Baseline already weak (0.289); expect small gain |
-| Behavioral Test safe contracts | ≥ 2/3 | If still 0/3: clean negatives not in training data — check injection pipeline |
-| F1-macro vs P1-TRAIN tuned | ≥ P1-TRAIN result | If regression: data changes introduced noise — investigate per-class |
+| **Behavioral Test safe contracts** | ≥ 2/3 clean (primary gate — Sol-5 target) | If still 0/3: clean anchors not reaching training — check injection pipeline and sampler weight |
+| Reentrancy F1 vs P1-TRAIN baseline | > +0.01 (Sol-1 target) | If no improvement: CEI filter not removing enough labels — check BFS logic |
+| IntegerUO F1 stable or improved | ≥ P1-TRAIN − 0.01 (Sol-2 target) | If regression > 0.01: pragma filter too aggressive — check 0.8+ with unchecked |
+| UnusedReturn F1 vs P1-TRAIN | > +0.01 (IMP-D1 target) | If no improvement: re-extraction fix not propagating — check return_ignored distribution |
+| MishandledException F1 vs P1-TRAIN | > 0.0 improvement | Baseline already weak; any improvement validates IMP-D1 |
+| F1-macro vs P1-TRAIN tuned | ≥ P1-TRAIN result OR within 0.005 | If regression > 0.01: one of the label filters introduced noise — run per-filter ablation |
+| JK Phase 3 weight vs P1-TRAIN | < Phase 3 weight at same epoch in Run 2 | Data fixes shouldn't change JK — if Phase 3 spikes, investigate batch composition change |
 
-**Status:** 🔴 BLOCKED (on GATE-GCB-4 and IMP-D1/D2 implementation)
+**Status:** 🔴 BLOCKED (on GATE-GCB-4 and data fix implementation)
 
 ---
 
@@ -1218,24 +1477,74 @@ significant improvement and the source is unclear.
 
 ## Parallel Track — What Runs Alongside This Plan
 
-These items are independent of the GraphCodeBERT proposal and should continue in parallel:
+Items are grouped by when they should happen. All safe to start independent of training.
 
-| Item | Description | Priority |
-|------|-------------|----------|
-| DQ-4 | Inject 100+ confirmed-clean negative contracts (OpenZeppelin) | P1 — do before Phase 1 training |
-| PLAN-3B | v8-B ablation (CF + DEF_USE only) — completes the ablation matrix | P2 — low urgency, can skip if v8.0-B + Phase 1 are decisive |
-| BUG-H5 active learning | Surface Timestamp val contracts with prob 0.35–0.65 for manual review | P2 — parallel to Phase 1 training |
-| M5 Contracts | Fix foundry.toml remappings; run forge build + forge test | P1 — independent, do now |
-| M4 Agents | Build RAG index; start MCP servers; run actual audit pipeline | P2 — after M5 verified |
-| BUG-M5 | Remove Brainmab mislabeled contract | P2 |
-| IMP-BUG | Close stale BUG-H4 + BUG-H5 entries in phases-v8-and-earlier.md | ✅ DONE (2026-05-24) |
-| IMP-M1 | FUNCTION secondary sort by external_call_count | P0 — before next run |
-| IMP-M2 | prefix_attention_mean diagnostic (Tier 1: proj norm) | P0 — add to trainer now |
-| IMP-M3 | Zero-padded prefix attention mask fix | P1 — before P1B/Phase DATA-1 |
-| IMP-D1 | return_ignored temporal ordering fix + re-extraction | P1 — before Phase DATA-1 run |
-| IMP-D2 | Inject 100+ OZ clean negative contracts | P1 — before Phase DATA-1 run |
-| IMP-G1/G2/G3 | GNN Architecture Overhaul (Phase GNN-A) | ✅ PULLED FORWARD — applied in P1-TRAIN Run 2 (2026-05-24); Run 1 JK analysis confirmed urgency |
-| N-02 | Phase 2 multi-head attention (heads=1→4) | P2 — CONDITIONAL: implement only if Phase 2 JK < 0.12 at Run 2 convergence; see IMPROVEMENT_BACKLOG.md:N-02 |
+### Now — Safe to apply while P1-TRAIN Run 2 runs
+
+| Item | Source | Description | Effort |
+|------|--------|-------------|--------|
+| **NC-4** | Audit-1A | `pos_weight` dead code for ASL — add warning when `loss_fn="asl"` | 5 min |
+| **NH-4** | Audit-1A | `_ckpt_state` memory leak — `del _ckpt_state` after line 1213 | 1 min |
+| **NL-1** | Audit-1A | `ARCHITECTURE="three_eye_v7"` stale — update to `"three_eye_v8"` / `"v8.0"` | 5 min |
+| **H-7** | Audit-1A | `preprocess.py` docstring says NODE_FEATURE_DIM=13; correct is 11 | 5 min |
+| **M-4/D-3** | Audit-1A | Fix `conv3c` docstring + rename `cfg_ei`→`phase2_ei` | 10 min |
+| **L-1** | Audit-1A | Delete `dual_path_dataset.py.backup` from repo | 1 min |
+| **NL-3** | Audit-1A | Remove dead top-level `FocalLoss` import or document inline wrapper | 5 min |
+| **NH-2** | Audit-1A | Validate `class_label_smoothing` keys against `CLASS_NAMES` in `__post_init__` | 15 min |
+
+### Before Phase DATA-1 — Data quality work
+
+| Item | Source | Description | Effort |
+|------|--------|-------------|--------|
+| **Sol-5 (IMP-D2 extended)** | Solutions doc | Inject 100+ OZ/Solmate clean anchors with 15× sampler weight | 2–3 days |
+| **Sol-1** | Solutions doc | CEI-order Reentrancy filter in `label_cleaner.py` | 1 day |
+| **Sol-2** | Solutions doc | Pragma-based IntegerUO filter (Solidity ≥0.8.0) | 2–3 hrs |
+| **Sol-3** | Solutions doc | Timestamp CFG-path gating filter | 4–6 hrs |
+| **IMP-D1 re-extraction** | IMPROVEMENT_BACKLOG | Full 41K graph re-extraction with temporal return_ignored fix | ~30 min run |
+| **Sol-4** | Solutions doc | Cross-checkpoint ensemble label audit (3 checkpoints) | 1–2 days |
+| **Sol-7** | Solutions doc | Threshold tuning on held-out test set (stop double-dipping on val) | 2–3 hrs |
+| **Sol-8** | Solutions doc | SmartBugs Wild / SWC Registry / SolidiFI integration | 2–3 weeks |
+
+### Conditional — trigger depends on GATE-GCB-4
+
+| Item | Source | Description | Trigger |
+|------|--------|-------------|---------|
+| **N-02** | IMPROVEMENT_BACKLOG | Phase 2 heads=1→4 for Phase 2 GATConv layers | Phase 2 JK < 0.12 at Run 2 convergence |
+| **JK entropy regularizer** | Audit-1B/C-3 | Penalize collapsed JK weights (λ=0.01, formula in Audit-1B) | Phase 3 JK > 0.75 at ep15 |
+| **C-1 dtype assertion** | Audit-1B | Add `__init__` assertion that non-BERT params are float32 | Next architecture refactor |
+| **NM-1 v8.0-B re-run** | Audit-1C | Full 60-epoch v8.0-B re-run to properly test H5 | If Run 2 cannot break 0.30 |
+| **C-4 max_nodes diagnostic** | Audit-1B | Log how many graphs exceed 1024 nodes; decide on increasing limit | Before Phase 2 (larger graphs expected) |
+
+### Deferred — low urgency
+
+| Item | Source | Description |
+|------|--------|-------------|
+| **M-5 comment** | Audit-1A | Add comment to ghost-graph `continue` in `select_prefix_nodes` |
+| **L-3 constants refactor** | Audit-1A | Extract `graph_schema_constants.py` to avoid label_cleaner duplication |
+| **M-6 unit test** | Audit-1B | Unit test for single-window + prefix_k > 0 in WindowAttentionPooler |
+| **M-7 all-rare fix** | Audit-1B | Fix or remove inverted "all-rare" sampler mode |
+| **H-8 empty batch guard** | Audit-1B | Fix empty batch guard to run transformer path even when GNN graph is empty |
+| **NC-2 _FUNC_IDS_CPU** | Audit-1B | Add runtime assertion validating _FUNC_IDS_CPU vs NODE_TYPES |
+| **NL-4 EMITS diagnostic** | Audit-1B | Count EMITS edges per graph; investigate if extractor under-generating |
+| **NL-5 validation dir** | Audit-1B | Populate `src/validation/` with schema checks or remove placeholder |
+| **L-5 monitor.sh** | Audit-1A | Document what `scripts/monitor.sh` does in the README or remove |
+| **M-3 correlation threshold** | Audit-1B | Lower complexity_correlation.py alert threshold from r=0.40 to r=0.20 for security tool standards |
+| **H-1 log clarification** | Audit-1B | Add docstring noting per-eye losses are not divided by grad_accum |
+| **H-2 dos_loss_weight comment** | Audit-1B | Add comment explaining gradient-only intent of the identity-forward blend |
+| **H-3 sampler/dataset sync** | Audit-1B | Add assertion that sampler num_samples == len(dataset) |
+
+### Existing items (unchanged)
+
+| Item | Status | Priority |
+|------|--------|----------|
+| IMP-BUG: Close BUG-H4 + BUG-H5 | ✅ DONE (2026-05-24) | — |
+| IMP-M1/M2/M3 | ✅ DONE (2026-05-24) | — |
+| IMP-G1/G2/G3 | ✅ PULLED FORWARD into P1-TRAIN Run 2 | — |
+| IMP-D1 code change | ✅ DONE (re-extraction pending) | P1 |
+| PLAN-3B | ⬜ Low urgency (can skip if Run 2 + DATA-1 decisive) | P3 |
+| M5 Contracts | ⬜ P1 — independent, do now | P1 |
+| M4 Agents | ⬜ P2 — after M5 verified | P2 |
+| BUG-M5 | ⬜ Remove Brainmab mislabeled contract | P2 |
 
 ---
 
@@ -1274,11 +1583,30 @@ Use this to track overall progress at a glance:
 | IMP-G3: Phase 3 bidirectional pass (downward CONTAINS) | ✅ DONE | 2026-05-24 |
 | IMP-D1: return_ignored temporal fix (code change) | ✅ DONE (re-extraction pending) | 2026-05-24 |
 | IMP-D1: Graph re-extraction (41K graphs) | ⬜ OPEN (run after Run 2 stable) | — |
-| IMP-D2: 100+ clean negatives injected | ⬜ OPEN | — |
+| IMP-D2 / Sol-5: 100+ clean anchors injected (OZ/Solmate, 15×) | ⬜ OPEN | — |
 | Test suite: 134/134 pass | ✅ DONE | 2026-05-24 |
-| GATE-DATA-1: Data quality run results | 🔴 BLOCKED (on IMP-D1 re-extraction + P1-TRAIN Run 2) | — |
+| GATE-DATA-1: Data quality run results | 🔴 BLOCKED (on data fixes + P1-TRAIN Run 2) | — |
 | Phase GNN-A | ✅ PULLED FORWARD — IMP-G1/G2/G3 applied in P1-TRAIN Run 2 baseline | 2026-05-24 |
-| N-02: Phase 2 heads=1→4 | ⬜ CONDITIONAL OPEN (trigger: Phase 2 JK < 0.12 at Run 2 convergence) | — |
+| N-02: Phase 2 heads=1→4 | ⬜ CONDITIONAL (trigger: Phase 2 JK < 0.12 at Run 2 convergence) | — |
+| **Adversarial audit triaged (AUDIT-1)** | ✅ DONE — findings in EXECUTION_PLAN.md §AUDIT-1 | 2026-05-25 |
+| AUDIT-1A NC-4: pos_weight warning for ASL | ⬜ OPEN | — |
+| AUDIT-1A NH-4: del _ckpt_state memory leak | ⬜ OPEN | — |
+| AUDIT-1A NL-1: ARCHITECTURE/MODEL_VERSION strings | ⬜ OPEN | — |
+| AUDIT-1A H-7: preprocess.py docstring fix | ⬜ OPEN | — |
+| AUDIT-1A M-4/D-3: conv3c docstring + rename cfg_ei | ⬜ OPEN | — |
+| AUDIT-1A L-1: delete .backup file | ⬜ OPEN | — |
+| AUDIT-1A NL-3: FocalLoss dead import | ⬜ OPEN | — |
+| AUDIT-1A NH-2: class_label_smoothing validation | ⬜ OPEN | — |
+| Sol-1: CEI-order Reentrancy filter | ⬜ OPEN (before DATA-1) | — |
+| Sol-2: Pragma-based IntegerUO filter | ⬜ OPEN (before DATA-1) | — |
+| Sol-3: Timestamp CFG-path gating | ⬜ OPEN (before DATA-1) | — |
+| Sol-4: Ensemble label audit script | ⬜ OPEN (before DATA-1, after Sol-1/2/3) | — |
+| Sol-7: Threshold tuning on held-out test set | ⬜ OPEN (before deployment) | — |
+| Sol-8: SmartBugs Wild / SWC / SolidiFI integration | ⬜ OPEN (Phase B, ~2–3 weeks) | — |
+| TL-1 watch: JK Phase 3 < 0.75 at ep15 | 🔵 WATCHING (trigger for JK entropy reg) | — |
+| TL-2 watch: proj_norm changing > 0.5/epoch post ep16 | 🔵 WATCHING | — |
+| JK entropy regularizer | ⬜ CONDITIONAL (trigger: Phase 3 JK > 0.75 at ep15) | — |
+| NM-1: v8.0-B 60-epoch re-run | ⬜ CONDITIONAL (if Run 2 < 0.30) | — |
 
 ---
 
