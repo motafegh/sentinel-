@@ -2,40 +2,46 @@
 
 *Derived from adversarial audit (2026-05-23) and architectural analysis of Phase 3.6 (2026-05-24)*
 *Reference: `docs/sentinel_ml_adversarial_audit.md`*
+*Last updated: 2026-05-24 (post P1-TRAIN Run 2 launch)*
 
 ---
 
 ## Overview
 
-Nine concrete improvements identified after Phase 3.6 implementation and adversarial audit review.
-Organized into three categories: Data Quality (IMP-D), GNN Architecture (IMP-G), and Model/Monitoring
-quick fixes (IMP-M). Each item includes the problem it addresses, exact implementation, gate criteria
-to verify correctness, and expected impact.
+Ten concrete improvements across three categories: Data Quality (IMP-D), GNN Architecture (IMP-G),
+and Model/Monitoring quick fixes (IMP-M). Each item includes the problem it addresses, exact
+implementation, gate criteria, and expected impact.
 
-Items **IMP-M1 through IMP-M3** can be implemented while P1-TRAIN is running — they affect the next
-training run, not the current one. Items **IMP-D1 and IMP-D2** must be done before the training run
-after GATE-GCB-4 results are known. Items **IMP-G1 through IMP-G3** are a coordinated GNN architecture
-overhaul requiring a dedicated ablation run.
+**Current status (2026-05-24):** 7 items fully implemented, 1 code-done pending data re-extraction,
+1 open data task, 1 new architectural finding (N-02) added from P1-TRAIN Run 1 JK analysis.
+
+Items **IMP-M1 through IMP-M3** were implemented between P1-TRAIN Run 1 kill and Run 2 launch.
+Items **IMP-G1 through IMP-G3** were pulled forward from Phase GNN-A into Run 2 (Run 1 JK weight
+trajectory confirmed urgency before GATE-GCB-4). Item **IMP-D1** code is merged; 41K re-extraction
+is pending. Item **IMP-D2** and **N-02** remain open.
 
 ---
 
 ## Priority Matrix
 
-| ID | Category | Title | Priority | Effort | Implement Before |
-|----|----------|-------|----------|--------|-----------------|
-| IMP-M1 | Model | FUNCTION secondary sort by external_call_count | P0 | 30 min | P1B or next run |
-| IMP-M2 | Monitoring | prefix_attention_mean diagnostic logging | P0 | 2–3 hrs | GATE-GCB-4 analysis |
-| IMP-M3 | Model | Zero-padded prefix attention mask fix | P1 | 1–2 hrs | Next run with prefix |
-| IMP-D1 | Data | G-04: return_ignored temporal ordering | P1 | 4–6 hrs | Phase DATA-1 training run |
-| IMP-D2 | Data | DQ-4: 100+ confirmed-clean negative contracts | P1 | 1 day | Phase DATA-1 training run |
-| IMP-G1 | GNN | N-01: Phase 2 layer-specific edge subsets | P1 | 4–6 hrs | Phase GNN-A training run |
-| IMP-G2 | GNN | N-03: Phase 1 input projection skip | P2 | 2–3 hrs | Phase GNN-A training run |
-| IMP-G3 | GNN | N-04: Phase 3 bidirectional context pass | P2 | 3–4 hrs | Phase GNN-A training run |
-| IMP-BUG | Housekeeping | Close BUG-H4 and BUG-H5 in ACTIVE_PLAN.md | P0 | 15 min | Now |
+| ID | Category | Title | Priority | Effort | Status |
+|----|----------|-------|----------|--------|--------|
+| IMP-M1 | Model | FUNCTION secondary sort by external_call_count | P0 | 30 min | ✅ DONE 2026-05-24 |
+| IMP-M2 | Monitoring | prefix_attention_mean diagnostic logging | P0 | 2–3 hrs | ✅ DONE 2026-05-24 |
+| IMP-M3 | Model | Zero-padded prefix attention mask fix | P1 | 1–2 hrs | ✅ DONE 2026-05-24 |
+| IMP-D1 | Data | G-04: return_ignored temporal ordering | P1 | 4–6 hrs | 🔄 CODE DONE — re-extraction pending |
+| IMP-D2 | Data | DQ-4: 100+ confirmed-clean negative contracts | P1 | 1 day | ⬜ OPEN |
+| IMP-G1 | GNN | N-01: Phase 2 layer-specific edge subsets | P1 | 4–6 hrs | ✅ DONE 2026-05-24 (Run 2) |
+| IMP-G2 | GNN | N-03: Phase 1 input projection skip | P2 | 2–3 hrs | ✅ DONE 2026-05-24 (Run 2) |
+| IMP-G3 | GNN | N-04: Phase 3 bidirectional context pass | P2 | 3–4 hrs | ✅ DONE 2026-05-24 (Run 2) |
+| IMP-BUG | Housekeeping | Close BUG-H4 and BUG-H5 in ACTIVE_PLAN.md | P0 | 15 min | ✅ DONE 2026-05-24 |
+| N-02 | GNN | Phase 2 multi-head attention (heads=1→4) | P2 | 3–4 hrs | ⬜ OPEN (conditional on Run 2 results) |
 
 ---
 
 ## Status Note: BUG-H4 and BUG-H5
+
+**Status: ✅ DONE** — `ACTIVE_PLAN.md` BUG-H4 and BUG-H5 entries marked DONE on 2026-05-24.
 
 Both are already addressed in the current `label_cleaner.py` but the Open Bugs section of
 `ACTIVE_PLAN.md` was not updated. Confirmed:
@@ -55,6 +61,10 @@ The Open Bugs section of `ACTIVE_PLAN.md` should be updated accordingly.
 ## IMP-D: Data Quality Improvements
 
 ### IMP-D1 — G-04: return_ignored Temporal Ordering
+
+**Status: 🔄 CODE DONE — re-extraction pending** — Merged 2026-05-24. All 41K graphs need re-extraction
+with the updated extractor before Phase DATA-1 training. Same protocol as Phase 2 (archive old cache,
+run extractor, 2K spot-check gate, rebuild `cached_dataset_v8.pkl`).
 
 **Audit finding:** G-04 (CRITICAL)
 **File:** `ml/src/preprocessing/graph_extractor.py:218–267`
@@ -156,6 +166,8 @@ current rate before fix).
 
 ### IMP-D2 — DQ-4: 100+ Confirmed-Clean Negative Contracts
 
+**Status: ⬜ OPEN** — Not started. Must complete before Phase DATA-1 training run.
+
 **Audit finding:** DQ-4 (OPEN)
 **File:** `ml/scripts/inject_augmented.py`, `ml/data/augmented/`
 **Affects:** False positive rate, Behavioral Test score on safe contracts
@@ -224,6 +236,10 @@ F1 > 0.30). If not, GNN architecture may not be the next bottleneck — see GATE
 ---
 
 ### IMP-G1 — N-01: Phase 2 Layer-Specific Edge Subsets
+
+**Status: ✅ DONE** — Applied in P1-TRAIN Run 2 (2026-05-24). Run 1 JK analysis confirmed urgency
+(Phase 2 weight declined 0.387→0.234 over 27 epochs). Run 2 ep1: Phase 2 JK 0.147±0.076 — mean
+lower but std now meaningful (genuine per-node routing active, not constant weighting).
 
 **Audit finding:** N-01 (HIGH)
 **File:** `ml/src/models/gnn_encoder.py:489–497`
@@ -307,6 +323,9 @@ handles correctly. No special casing needed.
 
 ### IMP-G2 — N-03: Phase 1 Input Projection Skip
 
+**Status: ✅ DONE** — Applied in P1-TRAIN Run 2 (2026-05-24). Run 2 ep1: Phase 1 JK 0.109±0.094
+(vs 0.063±flat in Run 1 — confirmed improvement; std shows genuine per-node routing).
+
 **Audit finding:** N-03 (HIGH)
 **File:** `ml/src/models/gnn_encoder.py:467–474` (Phase 1 Layer 1)
 **GNN share evidence:** Gradient share collapses from ~70% at ep1 to ~7% by ep8-43
@@ -362,6 +381,11 @@ immediately. Store `x_init = x` at the top of the forward pass before any convol
 ---
 
 ### IMP-G3 — N-04: Phase 3 Bidirectional Context Pass
+
+**Status: ✅ DONE** — Applied in P1-TRAIN Run 2 (2026-05-24). Architecture now 8 layers (2+3+3).
+Run 2 ep1: Phase 3 JK 0.744±0.168 — mean still high but std dramatically increased vs Run 1 constant
+0.707 (genuine per-node selective use; some nodes now route away from Phase 3 where before all nodes
+were locked to it). Full effect measured after Run 2 convergence.
 
 **Audit finding:** N-04 (HIGH)
 **File:** `ml/src/models/gnn_encoder.py:503–513` (Phase 3)
@@ -442,13 +466,96 @@ entry in `_live` reflects the enriched state (both up and down passes) — no ch
 
 ---
 
+### N-02 — Phase 2 Multi-Head Attention (heads=1 → 4)
+
+**Status: ⬜ OPEN** — Conditional. Implement only if P1-TRAIN Run 2 shows Phase 2 JK weight still
+< 0.12 at convergence despite IMP-G1. If Phase 2 JK recovers to > 0.15, this item is deprioritized.
+
+**Source:** Run 1 JK analysis + adversarial audit N-02 finding
+**File:** `ml/src/models/gnn_encoder.py` — `conv3`, `conv3b`, `conv3c` init
+
+#### Problem
+
+All three Phase 2 layers use `heads=1` — a single attention head per node pair. With IMP-G1 giving
+each layer a distinct edge subset (CF-only, ICFG-only, joint), per-layer routing is now meaningfully
+different. But within each layer, a single attention head collapses all relationship types to one
+scalar score.
+
+For `conv3` (CONTROL_FLOW edges), there are structurally distinct relationships:
+- Sequential execution (next statement)
+- Conditional branch-true vs branch-false
+- Loop back-edge vs loop-exit-edge
+A single head assigns one attention score per (source, target) pair regardless of which of these
+relationship types the edge represents.
+
+Run 2 ep1 evidence: Phase 2 JK 0.147±0.076 — std is now meaningful (IMP-G1 working), but mean is
+still well below Phase 3 (0.744). This is expected at ep1 but the trend through convergence will
+determine whether heads=1 remains the bottleneck.
+
+#### Fix
+
+Change Phase 2 `GATConv` layers from `heads=1` to `heads=4, concat=True` with `out_channels = hidden_dim // 4`:
+
+```python
+# In GNNEncoder.__init__(), replace three Phase 2 GATConv definitions:
+
+# OLD:
+self.conv3  = GATConv(hidden_dim, hidden_dim, heads=1, concat=False, ...)
+self.conv3b = GATConv(hidden_dim, hidden_dim, heads=1, concat=False, ...)
+self.conv3c = GATConv(hidden_dim, hidden_dim, heads=1, concat=False, ...)
+
+# NEW (heads=4, output concat → still hidden_dim total):
+_ph2_head_dim = hidden_dim // 4  # 64 when hidden_dim=256
+self.conv3  = GATConv(hidden_dim, _ph2_head_dim, heads=4, concat=True, add_self_loops=False, edge_dim=_edge_dim)
+self.conv3b = GATConv(hidden_dim, _ph2_head_dim, heads=4, concat=True, add_self_loops=False, edge_dim=_edge_dim)
+self.conv3c = GATConv(hidden_dim, _ph2_head_dim, heads=4, concat=True, add_self_loops=False, edge_dim=_edge_dim)
+```
+
+Output shape: `4 × 64 = 256 = hidden_dim` — residual connections unchanged.
+
+**Parameter cost per layer:** roughly 4× the single-head version (~4K → ~16K params per layer). Total
+increase: ~36K params for three layers — still negligible vs 125M total.
+
+**Alternative (lower cost):** `heads=4, concat=False` averages the 4 heads into one `hidden_dim`
+vector. Simpler and zero output shape change, but loses head diversity at the representation level.
+The `concat=True` variant is preferred as it gives the downstream norm/residual access to all 4 heads.
+
+#### Gate Criteria
+
+| Check | Expected | Trigger to implement |
+|-------|----------|---------------------|
+| Run 2 Phase 2 JK weight at convergence | ≥ 0.15 → skip N-02 | If < 0.12 → implement |
+| After N-02: ep3 Phase 2 JK std | > 0.12 (vs 0.076 at Run 2 ep1) | Per-head diversity active |
+| After N-02: Phase 2 JK mean at convergence | > 0.18 | Matches PLAN-3A historical best |
+| No output shape regression | `conv3` output dim still 256 | `concat=True` with `out_channels=64` confirms this |
+
+#### Expected Impact
+
+- Phase 2 JK weight stabilization: multi-head routing gives JK more distinct Phase 2 signals to
+  weight, so Phase 2 contribution should increase
+- Reentrancy F1: conv3 learns separate attention heads for sequential-CEI vs branch-protected-CEI
+  paths — expected moderate improvement
+- No expected regression in Phase 1 or Phase 3 (isolated change)
+
+#### Ordering Constraints
+
+- Depends on: GATE-GCB-4 (Run 2 convergence results)
+- Conditional trigger: only if Phase 2 JK < 0.12 at convergence despite IMP-G1
+- If triggered: implement as standalone change in a dedicated run; do NOT combine with Phase 2 (P2)
+  DFG changes (confounds measurement)
+
+---
+
 ## IMP-M: Model + Monitoring Quick Fixes
 
-These can be implemented while P1-TRAIN is running. They apply to the NEXT training run.
+These items have all been implemented. Section preserved for implementation reference.
 
 ---
 
 ### IMP-M1 — FUNCTION Node Secondary Sort by external_call_count
+
+**Status: ✅ DONE** — Applied 2026-05-24. Sort key `(priority, -ext_call_count, local_idx)` active
+in Run 2. Affects the 4.5% of contracts where K=48 truncation occurs.
 
 **Source:** `graph_schema.py:343` (documents intended behavior, not yet implemented)
 **File:** `ml/src/models/sentinel_model.py:select_prefix_nodes()`
@@ -503,6 +610,10 @@ Run diagnostic on 5 large contracts (> 50 FUNCTION nodes) from the val set:
 ---
 
 ### IMP-M2 — prefix_attention_mean Diagnostic Logging
+
+**Status: ✅ DONE** — Both tiers applied 2026-05-24. Tier 1 (`gnn_to_bert_proj_norm`) was already in
+trainer.py as of 2026-05-23. Tier 2 (`prefix_attention_mean` from output_attentions path) merged for
+Run 2. Warning threshold: < 0.002 for 5+ consecutive post-warmup epochs.
 
 **Source:** `docs/proposal/EXECUTION_PLAN.md` — P1-TRAIN monitoring section
 **File:** `ml/src/training/trainer.py`
@@ -568,6 +679,9 @@ After warmup ends (ep ≥ 16):
 ---
 
 ### IMP-M3 — Zero-Padded Prefix Attention Mask Fix
+
+**Status: ✅ DONE** — Applied 2026-05-24. Option A implemented: `select_prefix_nodes()` returns
+`(prefix [B,K,768], node_counts [B])`; `TransformerEncoder` builds count-based prefix mask.
 
 **File:** `ml/src/models/sentinel_model.py:select_prefix_nodes()` and `transformer_encoder.py:forward()`
 
@@ -635,23 +749,28 @@ are too invasive.
 ## Implementation Schedule Summary
 
 ```
-NOW (while P1-TRAIN running):
-  IMP-M1 — FUNCTION secondary sort (30 min, code change only)
-  IMP-M2 Tier 1 — proj_norm logging (30 min, add to trainer.py)
-  IMP-BUG — Close BUG-H4 and BUG-H5 in ACTIVE_PLAN.md
+✅ DONE (between P1-TRAIN Run 1 kill and Run 2 launch, 2026-05-24):
+  IMP-BUG — BUG-H4 + BUG-H5 marked DONE in ACTIVE_PLAN.md
+  IMP-M1  — FUNCTION secondary sort by external_call_count
+  IMP-M2  — proj_norm logging (Tier 1) + prefix_attention_mean (Tier 2)
+  IMP-M3  — zero-padded prefix mask (count-based attention mask)
+  IMP-G1  — Phase 2 layer-specific edge subsets (PULLED FORWARD from Phase GNN-A)
+  IMP-G2  — Phase 1 input projection skip (PULLED FORWARD from Phase GNN-A)
+  IMP-G3  — Phase 3 bidirectional CONTAINS pass (PULLED FORWARD from Phase GNN-A)
+  IMP-D1  — return_ignored temporal ordering FIX (code only)
 
-BEFORE P1B / NEXT RUN (after GATE-GCB-4):
-  IMP-M2 Tier 2 — attention extraction (2–3 hrs)
-  IMP-M3 — zero-padded mask fix (1–2 hrs)
-  IMP-D2 — inject 100+ clean negatives (1 day)
+🔄 PENDING (code done, action needed):
+  IMP-D1 re-extraction — run full 41K graph re-extraction with updated graph_extractor.py
+                          (same protocol as Phase 2: archive cache, extract, 2K spot-check,
+                           rebuild cached_dataset_v8.pkl)
+                          → do before Phase DATA-1 training run
 
-PHASE DATA-1 (new training run incorporating data + model fixes):
-  IMP-D1 — return_ignored temporal ordering (4–6 hrs + re-extraction)
-  All IMP-M fixes active
+⬜ OPEN (not started):
+  IMP-D2 — inject 100+ OpenZeppelin clean negatives
+            → do before Phase DATA-1 training run
 
-PHASE GNN-A (after GATE-DATA-1 confirms ceiling is lifted):
-  IMP-G1 — Phase 2 layer-specific edges
-  IMP-G2 — Phase 1 input projection skip
-  IMP-G3 — Phase 3 bidirectional pass
-  (Implemented together, validated in single ablation run)
+⬜ OPEN (conditional — implement only if Phase 2 JK < 0.12 at Run 2 convergence):
+  N-02 — Phase 2 multi-head attention (heads=1→4)
+          → trigger: GATE-GCB-4 shows Phase 2 JK still weak despite IMP-G1
+          → standalone run, do NOT combine with Phase 2 (P2) DFG changes
 ```

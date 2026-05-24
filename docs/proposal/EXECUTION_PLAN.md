@@ -1235,6 +1235,7 @@ These items are independent of the GraphCodeBERT proposal and should continue in
 | IMP-D1 | return_ignored temporal ordering fix + re-extraction | P1 — before Phase DATA-1 run |
 | IMP-D2 | Inject 100+ OZ clean negative contracts | P1 — before Phase DATA-1 run |
 | IMP-G1/G2/G3 | GNN Architecture Overhaul (Phase GNN-A) | ✅ PULLED FORWARD — applied in P1-TRAIN Run 2 (2026-05-24); Run 1 JK analysis confirmed urgency |
+| N-02 | Phase 2 multi-head attention (heads=1→4) | P2 — CONDITIONAL: implement only if Phase 2 JK < 0.12 at Run 2 convergence; see IMPROVEMENT_BACKLOG.md:N-02 |
 
 ---
 
@@ -1277,6 +1278,7 @@ Use this to track overall progress at a glance:
 | Test suite: 134/134 pass | ✅ DONE | 2026-05-24 |
 | GATE-DATA-1: Data quality run results | 🔴 BLOCKED (on IMP-D1 re-extraction + P1-TRAIN Run 2) | — |
 | Phase GNN-A | ✅ PULLED FORWARD — IMP-G1/G2/G3 applied in P1-TRAIN Run 2 baseline | 2026-05-24 |
+| N-02: Phase 2 heads=1→4 | ⬜ CONDITIONAL OPEN (trigger: Phase 2 JK < 0.12 at Run 2 convergence) | — |
 
 ---
 
