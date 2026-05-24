@@ -566,6 +566,77 @@ Look for `Vulnerability detection: X/19 (Y%)` at the bottom of output.
 
 ---
 
+## IMP-M — Immediate Actions (While P1-TRAIN Runs)
+
+**Status:** ⬜ OPEN
+**When:** Implement now — these affect the next training run, not P1-TRAIN
+**Reference:** `docs/proposal/IMPROVEMENT_BACKLOG.md` for full details on each
+
+These items can be coded while P1-TRAIN runs overnight. They have no impact on the current run
+but must be ready before P1B / Phase DATA-1 launches.
+
+### IMP-BUG — Close stale BUG-H4 and BUG-H5 entries
+
+Both were addressed by DQ-1 (`label_cleaner.py` changes, 2026-05-23) but the Open Bugs section
+of `ACTIVE_PLAN.md` was not updated. Update ACTIVE_PLAN.md:
+- BUG-H4: mark DONE — `check_timestamp()` requires `uses_block_globals > 0.5` (dim[2]); −568 labels removed
+- BUG-H5: mark DONE — `check_reentrancy()` requires `external_call_count > 0` (dim[10]); −611 labels removed
+
+**Status:** ⬜ OPEN
+
+---
+
+### IMP-M1 — FUNCTION Node Secondary Sort
+
+**File:** `ml/src/models/sentinel_model.py:select_prefix_nodes()`
+**Effort:** 30 min
+
+`graph_schema.py:343` documents that FUNCTION nodes should be sorted by `feature[10]`
+(external_call_count) descending when K truncation occurs. The current implementation uses
+graph-index order within the FUNCTION priority group — a spec-implementation gap.
+
+Replace the `priorities.argsort()` logic with a two-key sort:
+`(priority_type, -external_call_count, original_index)`. See `IMPROVEMENT_BACKLOG.md:IMP-M1`
+for the exact code.
+
+**Status:** ⬜ OPEN
+
+---
+
+### IMP-M2 — prefix_attention_mean Diagnostic Logging
+
+**File:** `ml/src/training/trainer.py`
+**Effort:** Tier 1 = 30 min; Tier 2 = 2–3 hrs
+
+**Tier 1 (do now):** Log `gnn_to_bert_proj.weight.norm()` to MLflow each epoch after warmup ends.
+Healthy sign: norm changing 1–5%/epoch for first 5 post-warmup epochs. Flatline at ep17 = optimizer
+not reaching the projection.
+
+**Tier 2 (before GATE-GCB-4 analysis):** Add `output_attentions=True` path to `TransformerEncoder`
+and log `prefix_attention_mean` (mean attention weight from code token positions → prefix positions).
+Target: > 0.005 by ep20. Near-zero for 5+ epochs = transformer ignoring prefix. See
+`IMPROVEMENT_BACKLOG.md:IMP-M2` for full implementation.
+
+**Status:** ⬜ OPEN
+
+---
+
+### IMP-M3 — Zero-Padded Prefix Attention Mask Fix
+
+**Files:** `ml/src/models/sentinel_model.py`, `ml/src/models/transformer_encoder.py`
+**Effort:** 1–2 hrs
+
+Currently all K prefix positions use `attention_mask=1` regardless of whether they contain real node
+embeddings or zero-padding. For the 4.5% of contracts with < K eligible nodes, this wastes attention
+capacity on zero vectors the transformer cannot meaningfully attend to.
+
+Fix: return actual node count per graph from `select_prefix_nodes()` and construct the prefix mask
+with `1` only for real nodes and `0` for padded positions. See `IMPROVEMENT_BACKLOG.md:IMP-M3`.
+
+**Status:** ⬜ OPEN
+
+---
+
 ## GATE-GCB-4 — Phase 1 Results Go/No-Go
 
 **Status:** 🔴 BLOCKED (on P1-TRAIN)
@@ -598,6 +669,104 @@ Look for `Vulnerability detection: X/19 (Y%)` at the bottom of output.
 | DoS | 0.030 | — | — | — |
 | **F1-macro** | **0.2877** | **—** | **—** | H-GCB-4 |
 | Behavioral | 8/19 | — | — | H-GCB-5 |
+
+---
+
+## Phase DATA-1 — Data Quality + Model Fix Training Run
+
+**Status:** 🔴 BLOCKED (on GATE-GCB-4 results)
+**Trigger:** GATE-GCB-4 results known; decide whether to continue architecture track or fix data first
+**Reference:** `docs/proposal/IMPROVEMENT_BACKLOG.md:IMP-D1, IMP-D2, IMP-M1, IMP-M2, IMP-M3`
+
+**Purpose:** A dedicated training run that incorporates all data quality and model fixes before
+investing in Phase 2 (shared DFG) or Phase GNN-A (GNN overhaul). Running Phase 2 on dirty data
+and with the FUNCTION sort bug active would make results harder to interpret.
+
+**Changes vs P1-TRAIN:**
+
+| Change | Item | Impact |
+|--------|------|--------|
+| IMP-D1: return_ignored temporal fix | Re-extract all 41K graphs with corrected `_compute_return_ignored` | Cleaner UnusedReturn + MishandledException labels |
+| IMP-D2: inject 100+ OZ clean negatives | Add to `ml/data/augmented/`, re-run cache | False positive reduction |
+| IMP-M1: FUNCTION secondary sort | Already in code before this run | Better K=48 node selection for large contracts |
+| IMP-M2: prefix attention logging | Already in trainer before this run | Diagnostic visibility |
+| IMP-M3: zero-padded mask fix | Already in code before this run | Cleaner attention for sparse contracts |
+
+**IMP-D1 requires full re-extraction.** Follow the same gate protocol as Phase 2 (PLAN-2A–2I):
+1. Validate fix on 10 known contracts with confirmed discarded returns
+2. 2,000-contract sample gate: structural parity (existing edge types unchanged)
+3. Rebuild cache with `FEATURE_SCHEMA_VERSION = "v8-d1"` (or bump to v9 if v9 is also being applied)
+4. Update label CSV via `label_cleaner.py`
+
+### GATE-DATA-1 — Data Quality Run Go/No-Go
+
+| Check | Pass | Action |
+|-------|------|--------|
+| UnusedReturn F1 vs P1-TRAIN baseline | > +0.01 improvement | If no improvement: IMP-D1 fix not helping — investigate `return_ignored` distribution |
+| MishandledException F1 vs P1-TRAIN | > 0.0 improvement | Baseline already weak (0.289); expect small gain |
+| Behavioral Test safe contracts | ≥ 2/3 | If still 0/3: clean negatives not in training data — check injection pipeline |
+| F1-macro vs P1-TRAIN tuned | ≥ P1-TRAIN result | If regression: data changes introduced noise — investigate per-class |
+
+**Status:** 🔴 BLOCKED (on GATE-GCB-4 and IMP-D1/D2 implementation)
+
+---
+
+## Phase GNN-A — GNN Architecture Overhaul
+
+**Status:** 🔴 BLOCKED (on GATE-DATA-1 + GATE-GCB-4)
+**Trigger:** GATE-DATA-1 shows data quality fixes are absorbed; architectural ceiling confirmed lifted by GATE-GCB-4
+**Reference:** `docs/proposal/IMPROVEMENT_BACKLOG.md:IMP-G1, IMP-G2, IMP-G3`
+**Duration:** ~60–80 hrs GPU + 1 week engineering
+
+**Purpose:** Address the three highest-impact GNN architectural weaknesses identified in the adversarial
+audit. These are implemented together and measured in a single training run so their combined effect
+is visible. Individual ablations (G1-only, G2-only, G3-only) can follow if the combined run shows
+significant improvement and the source is unclear.
+
+**Changes vs Phase DATA-1 baseline:**
+
+| Change | Item | What it fixes |
+|--------|------|---------------|
+| IMP-G1 | Phase 2 layer-specific edge subsets | N-01: redundant layers sharing same edge set; Phase 2 JK collapse |
+| IMP-G2 | Phase 1 input projection skip | N-03: no skip for 11→256 dim change; raw feature loss risk |
+| IMP-G3 | Phase 3 bidirectional pass | N-04: CFG nodes lack Phase 3 context; CrossAttentionFusion sees representation gap |
+
+**Total new parameters:**
+- IMP-G2: `Linear(11, 256, bias=False)` = 2,816 params
+- IMP-G3: one additional `GATConv(256, 256, heads=1, ...)` = ~66K params
+- Net addition: ~69K params (0.05% of total model — negligible)
+
+### Pre-Training Gate: GATE-GNN-A-SMOKE
+
+2-epoch smoke test before full training:
+
+| Signal | Expected | Fail condition |
+|--------|----------|----------------|
+| Step loss ep1 | 0.15–0.20 | > 0.30 or NaN → IMP-G changes introduce instability |
+| JK Phase 2 std ep1 | > 0.08 (per-node routing active immediately) | ≤ 0.05 → layer-specific subsets not differentiating |
+| GNN gradient share ep1 | > 40% | < 20% → input projection skip not connecting |
+| Phase 1 JK weight ep1 | > 0.08 | < 0.04 → Phase 1 still being down-weighted; check skip wiring |
+| No NaN in Phase 3 down pass | 0 NaN | Any NaN → check fwd_contains edge handling for graphs with no CONTAINS edges |
+
+### GATE-GNN-A — GNN Overhaul Results Go/No-Go
+
+| Outcome | Decision |
+|---------|----------|
+| F1-macro > Phase DATA-1 AND Phase 2 JK weight > 0.15 at convergence | ✅ GNN overhaul effective; proceed with this as new baseline |
+| F1-macro ≈ Phase DATA-1 (± 0.005) | Investigate per-class — if individual improvements cancel out, consider individual ablations |
+| Phase 2 JK weight still < 0.10 at convergence despite IMP-G1 | IMP-G1 not fully fixing the collapse; consider Phase 2 head count increase (N-02: heads=1 bottleneck) |
+| F1-macro regresses | Identify which IMP-G change caused regression; run individual ablations |
+
+**Hypotheses:**
+
+| Hypothesis | Prediction | Rationale |
+|------------|-----------|-----------|
+| H-GNN-A-1 | Reentrancy F1 > P1-TRAIN + 0.01 | IMP-G1 CF layer builds better CEI pattern; IMP-G3 gives CFG fusion nodes Phase 3 context |
+| H-GNN-A-2 | Phase 2 JK weight at convergence > 0.15 (vs 0.048 PLAN-3A) | IMP-G1 makes Phase 2 layers genuinely distinct → JK has reason to use them |
+| H-GNN-A-3 | GNN gradient share stable > 15% through convergence | IMP-G2 skip connection prevents representation loss in Phase 1 |
+| H-GNN-A-4 | CrossAttentionFusion loss < GNN eye loss from ep10 | IMP-G3 CFG nodes with Phase 3 context → richer fusion cross-attention keys/values |
+
+**Status:** 🔴 BLOCKED (on Phase DATA-1 completion)
 
 ---
 
@@ -664,6 +833,13 @@ These items are independent of the GraphCodeBERT proposal and should continue in
 | M5 Contracts | Fix foundry.toml remappings; run forge build + forge test | P1 — independent, do now |
 | M4 Agents | Build RAG index; start MCP servers; run actual audit pipeline | P2 — after M5 verified |
 | BUG-M5 | Remove Brainmab mislabeled contract | P2 |
+| IMP-BUG | Close stale BUG-H4 + BUG-H5 entries in ACTIVE_PLAN.md | P0 — do now |
+| IMP-M1 | FUNCTION secondary sort by external_call_count | P0 — before next run |
+| IMP-M2 | prefix_attention_mean diagnostic (Tier 1: proj norm) | P0 — add to trainer now |
+| IMP-M3 | Zero-padded prefix attention mask fix | P1 — before P1B/Phase DATA-1 |
+| IMP-D1 | return_ignored temporal ordering fix + re-extraction | P1 — before Phase DATA-1 run |
+| IMP-D2 | Inject 100+ OZ clean negative contracts | P1 — before Phase DATA-1 run |
+| IMP-G1/G2/G3 | GNN Architecture Overhaul (Phase GNN-A) | P2 — after GATE-DATA-1 |
 
 ---
 
@@ -691,6 +867,17 @@ Use this to track overall progress at a glance:
 | GATE-GCB-5: Phase 2 results recorded | ⬜ | — |
 | P3: Option A (full per-window DFG) | ⬜ | — |
 | GATE-GCB-6: Full ablation complete | ⬜ | — |
+| IMP-BUG: Close BUG-H4+H5 in ACTIVE_PLAN.md | ⬜ OPEN | — |
+| IMP-M1: FUNCTION secondary sort | ⬜ OPEN | — |
+| IMP-M2 Tier 1: proj_norm logging | ⬜ OPEN | — |
+| IMP-M2 Tier 2: prefix_attention_mean | ⬜ OPEN | — |
+| IMP-M3: zero-padded prefix mask fix | ⬜ OPEN | — |
+| IMP-D1: return_ignored temporal fix + re-extraction | ⬜ OPEN | — |
+| IMP-D2: 100+ clean negatives injected | ⬜ OPEN | — |
+| GATE-DATA-1: Data quality run results | ⬜ OPEN | — |
+| Phase GNN-A: Smoke test (GATE-GNN-A-SMOKE) | ⬜ OPEN | — |
+| Phase GNN-A: Full training run | ⬜ OPEN | — |
+| GATE-GNN-A: GNN overhaul results | ⬜ OPEN | — |
 
 ---
 
