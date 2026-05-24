@@ -1,8 +1,8 @@
 # GraphCodeBERT + GNN Prefix Injection — Execution Plan
 
 **Proposal:** [2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md](2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md)
-**Last updated:** 2026-05-24
-**Status:** ACTIVE — GATE-GCB-2 passed; GATE-GCB-3 smoke running; P1-TRAIN tonight if smoke clears
+**Last updated:** 2026-05-24 (evening — P1-TRAIN Run 2 launched)
+**Status:** ACTIVE — all IMP-* fixes applied; P1-TRAIN Run 2 running overnight
 
 ---
 
@@ -59,6 +59,7 @@ GATE-GCB-0: v8.0-B Result Gate  (BLOCKING — running now)
 ## GATE-GCB-0 — v8.0-B Result Gate
 
 **Status:** ✅ CLOSED (2026-05-23 — killed at ep11, best ep10 F1-macro=0.2460)
+
 **Decision:** H5 refuted — cleaned labels did not break the 0.287 ceiling at ep10-11. Ceiling is architectural. Accelerating this plan.
 
 v8.0-B tests the competing hypothesis — that the ~0.287 F1 ceiling is data quality, not architecture. Its result determines the urgency and framing of all subsequent work.
@@ -484,10 +485,80 @@ TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. python ml
 
 ## P1-TRAIN — Phase 1 Full Training Run
 
-**Status:** 🔵 RUNNING — launched 2026-05-24 overnight
-**Duration:** ~60–80 hours GPU
-**Run name:** `graphcodebert-v1-prefix48-20260524`
-**Log:** `ml/logs/graphcodebert-v1-prefix48-20260524.log`
+**Run 1 status:** 🔴 KILLED EP28 (2026-05-24 ~21:20) — killed to apply all IMP-* fixes
+**Run 1 best checkpoint:** `ml/checkpoints/graphcodebert-v1-prefix48-20260524_best.pt` — epoch 27, F1=0.2628
+**Run 1 log:** `ml/logs/graphcodebert-v1-prefix48-20260524.log`
+
+**Run 2 status:** 🔵 RUNNING (launched 2026-05-24 ~22:15)
+**Run 2 PID:** 80610
+**Run 2 log:** `ml/logs/graphcodebert-p1-run2-20260524.log`
+**Run 2 command:**
+```bash
+source ml/.venv/bin/activate
+TRANSFORMERS_OFFLINE=1 PYTHONPATH=. nohup python ml/scripts/train.py \
+  --gnn-layers 8 \
+  --gnn-prefix-k 48 \
+  --gnn-prefix-warmup-epochs 15 \
+  --epochs 60 \
+  --batch-size 8 \
+  --gradient-accumulation-steps 8 \
+  --loss-fn asl \
+  --compile \
+  --use-amp \
+  --phase2-edge-types 6 8 9 \
+  --experiment-name sentinel-retrain-v2 \
+  --run-name GCB-P1-Run2-IMP-all \
+  > ml/logs/graphcodebert-p1-run2-20260524.log 2>&1 &
+```
+
+**Key differences from Run 1:**
+- `--gnn-layers 8` (was 7 — IMP-G3 added 8th layer)
+- Fresh start from random init (NOT resumed from Run 1 checkpoint — architecture changed)
+- All IMP-G1/G2/G3/M1/M2/M3/D1 fixes active in code
+- Same warmup (ep1-15 warmup, prefix starts ep16), same K=48, same schedule
+
+**Run 2 ep1 startup confirmed (from log):**
+- Model: `layers=8 use_jk=True jk_mode=attention gnn_prefix_k=48 warmup=15` ✅
+- Loss: AsymmetricLoss(gamma_neg=2.0, gamma_pos=1.0, clip=0.01) ✅
+- Optimizer: 59 GNN params (lr×2.5), 48 LoRA params (lr×0.3), 28 fusion params (lr×0.5), 3 prefix proj params (lr×1.0) ✅
+- VRAM at start: 0.3/8.0 GiB (3.2%) ✅
+- Epoch 1 warmup: `GNN prefix K=48: WARMUP (starts ep15)` ✅
+- proj norm: 15.9853 (random init, correct) ✅
+
+### P1-TRAIN Run 1 — Findings (ep1–28, killed 2026-05-24 ~21:20)
+
+**Kill reason:** Killing to implement IMP-M1/M2/M3/G1/G2/G3/D1 improvements before continuing. Training was healthy but plateau concerns and several known architectural bugs needed fixing first.
+
+**Per-epoch results (key epochs):**
+
+| Epoch | F1-macro | Patience | proj_norm | JK Phase1 | JK Phase2 | JK Phase3 | Notes |
+|-------|----------|----------|-----------|-----------|-----------|-----------|-------|
+| 1 | 0.1832 | — | 16.0000 | 0.063 | 0.387 | 0.550 | warmup active |
+| 15 | — | — | 16.0000 | — | — | — | warmup ends; proj still at init |
+| 19 | — | — | 16.1250 | — | — | — | first BF16 ULP drift (+1 ULP) |
+| 21 | 0.2570 | 0 | 16.1250 | — | — | — | first best |
+| 24 | 0.2496 | 1 | 16.2500 | 0.063 | 0.245 | 0.692 | 2nd ULP drift |
+| 26 | 0.2622 | 3 | 16.2500 | 0.055 | 0.228 | 0.718 | |
+| **27** | **0.2628** | **0** | **16.2500** | **0.058** | **0.234** | **0.707** | **new best** |
+| 28 | — | 4 | 16.2500 | — | — | — | killed mid-step 100 |
+
+**Key findings from Run 1:**
+
+1. **proj_norm BF16 quantization:** Norm stuck at 16.2500 for ep26-28 (only 2 BF16 ULPs of drift from random init 16.0000 over 13 active epochs). At norm≈16, 1 ULP=0.125 — BF16 quantization prevents fine-grained gradient accumulation in `gnn_to_bert_proj`. Next run: consider `gnn_prefix_proj_lr_mult=2.0` or start from scratch (full cosine schedule for proj from ep0).
+
+2. **Phase3 JK dominance growing:** 0.550 (ep1) → 0.707 (ep27). REVERSE_CONTAINS is the single dominant signal. Confirms IMP-G3 (bidirectional Phase 3 pass) is needed — CFG nodes must get Phase 3 context, not just FUNCTION nodes.
+
+3. **Phase2 JK declining:** 0.387 (ep1) → 0.234 (ep27). ICFG edges underutilised. Directly confirms IMP-G1 (layer-specific edge subsets) is the right fix — all three Phase 2 layers sharing the same cfg edge set collapses their distinct contribution.
+
+4. **Phase1 JK very low and flat:** 0.063 (ep1) → 0.058 (ep27). Phase 1 structural signal is being downweighted. Confirms IMP-G2 (input projection skip) is needed to preserve raw feature signal through the 11→256 dim change.
+
+5. **F1 volatility:** ep21=0.2570 → dip ep25=0.2451 → recovery ep27=0.2628. High per-epoch variance suggests the model is near a plateau. After all architectural fixes, a fresh run from scratch will benefit from full LR for all new modules.
+
+6. **Eye losses converging:** gnn=0.4063, tf=0.3929, fused=0.3883 at ep27 — all three eyes contributing; fused consistently best (CrossAttentionFusion working).
+
+7. **DenialOfService F1 climbing:** 0.019 (ep1) → 0.093 (ep26) → 0.073 (ep27). First time DoS is consistently non-zero. `dos_loss_weight=0.5` is working; keep for next run.
+
+8. **GNN share stable:** 54–65% — three-eye balance is healthy after warmup. GraphCodeBERT is contributing meaningfully (was 93% at ep1 before transformer warmed up).
 
 ```bash
 source ml/.venv/bin/activate
@@ -566,74 +637,394 @@ Look for `Vulnerability detection: X/19 (Y%)` at the bottom of output.
 
 ---
 
-## IMP-M — Immediate Actions (While P1-TRAIN Runs)
+## IMP-* — All Improvements Applied (2026-05-24 evening)
 
-**Status:** ⬜ OPEN
-**When:** Implement now — these affect the next training run, not P1-TRAIN
-**Reference:** `docs/proposal/IMPROVEMENT_BACKLOG.md` for full details on each
+**Status:** ✅ ALL DONE — applied between P1-TRAIN Run 1 kill and Run 2 launch
+**Reference:** `docs/proposal/IMPROVEMENT_BACKLOG.md` for original specifications
+**Test result:** 134/134 tests pass after all changes (excluding test_api.py — pre-existing checkpoint mismatch)
 
-These items can be coded while P1-TRAIN runs overnight. They have no impact on the current run
-but must be ready before P1B / Phase DATA-1 launches.
+P1-TRAIN Run 1 was killed at ep28 to apply all IMP-* fixes before continuing. The JK weight
+analysis, BF16 proj_norm stagnation, and Phase 2 JK collapse observed in Run 1 directly motivated
+accelerating IMP-G1/G2/G3 (originally planned for Phase GNN-A) into the P1-TRAIN Run 2 baseline.
+
+---
 
 ### IMP-BUG — Close stale BUG-H4 and BUG-H5 entries
 
-Both were addressed by DQ-1 (`label_cleaner.py` changes, 2026-05-23) but the Open Bugs section
-of `ACTIVE_PLAN.md` was not updated. Update ACTIVE_PLAN.md:
-- BUG-H4: mark DONE — `check_timestamp()` requires `uses_block_globals > 0.5` (dim[2]); −568 labels removed
-- BUG-H5: mark DONE — `check_reentrancy()` requires `external_call_count > 0` (dim[10]); −611 labels removed
+**Status:** ✅ DONE (2026-05-24)
+**File changed:** `docs/ACTIVE_PLAN.md`
 
-**Status:** ⬜ OPEN
+Both bugs were addressed by DQ-1 (`label_cleaner.py` changes, 2026-05-23) but the Open Bugs
+section of `ACTIVE_PLAN.md` had not been updated.
+
+- **BUG-H4** (Timestamp over-labeling): marked DONE — `check_timestamp()` requires
+  `uses_block_globals > 0.5` (feature[2]); −568 Timestamp labels removed
+- **BUG-H5** (Reentrancy over-labeling): marked DONE — `check_reentrancy()` requires
+  `external_call_count > 0` (feature[10]); −611 Reentrancy labels removed
 
 ---
 
 ### IMP-M1 — FUNCTION Node Secondary Sort
 
-**File:** `ml/src/models/sentinel_model.py:select_prefix_nodes()`
-**Effort:** 30 min
+**Status:** ✅ DONE (2026-05-24)
+**File changed:** `ml/src/models/sentinel_model.py` — `select_prefix_nodes()`
 
-`graph_schema.py:343` documents that FUNCTION nodes should be sorted by `feature[10]`
-(external_call_count) descending when K truncation occurs. The current implementation uses
-graph-index order within the FUNCTION priority group — a spec-implementation gap.
+**Problem:** The `IMPROVEMENT_BACKLOG.md` and `graph_schema.py:343` both specify that FUNCTION
+nodes should be sorted by `feature[10]` (external_call_count) descending when K truncation occurs,
+to prioritize the most externally-facing functions. The old implementation used
+`priorities.argsort()` (graph index order within the FUNCTION priority group) — a
+spec-implementation gap.
 
-Replace the `priorities.argsort()` logic with a two-key sort:
-`(priority_type, -external_call_count, original_index)`. See `IMPROVEMENT_BACKLOG.md:IMP-M1`
-for the exact code.
+**Change:** Replaced the flat `priorities.argsort()` with a Python tuple sort:
 
-**Status:** ⬜ OPEN
+```python
+# OLD (graph-index order within each priority group):
+order = priorities.argsort(stable=True)
+
+# NEW (IMP-M1: FUNCTION nodes secondary-sorted by external_call_count desc):
+def _sort_key(local_idx):
+    prio = priorities[local_idx].item()
+    ext_calls = int(x[candidates[local_idx], _EXT_CALL_FEAT].item())
+    if NodeType(int((x[candidates[local_idx], 0] * _MAX_TYPE_ID).round())) == NodeType.FUNCTION:
+        return (prio, -ext_calls, local_idx)
+    return (prio, 0, local_idx)
+
+order = torch.tensor(sorted(range(len(candidates)), key=_sort_key))
+```
+
+**Also changed:** `select_prefix_nodes()` return type changed from `torch.Tensor` to
+`tuple[torch.Tensor, torch.Tensor]` — returns `(prefix [B,K,768], node_counts [B])` to support IMP-M3.
 
 ---
 
-### IMP-M2 — prefix_attention_mean Diagnostic Logging
+### IMP-M2 Tier 1 — proj_norm MLflow logging
 
-**File:** `ml/src/training/trainer.py`
-**Effort:** Tier 1 = 30 min; Tier 2 = 2–3 hrs
+**Status:** ✅ DONE (already existed — 2026-05-23)
+**File:** `ml/src/training/trainer.py:1306`
 
-**Tier 1 (do now):** Log `gnn_to_bert_proj.weight.norm()` to MLflow each epoch after warmup ends.
-Healthy sign: norm changing 1–5%/epoch for first 5 post-warmup epochs. Flatline at ep17 = optimizer
-not reaching the projection.
+Discovered that `prefix_proj_weight_norm` was already logged to MLflow inside the
+`if config.gnn_prefix_k > 0` block at trainer.py:1306. No code change needed.
 
-**Tier 2 (before GATE-GCB-4 analysis):** Add `output_attentions=True` path to `TransformerEncoder`
-and log `prefix_attention_mean` (mean attention weight from code token positions → prefix positions).
-Target: > 0.005 by ep20. Near-zero for 5+ epochs = transformer ignoring prefix. See
-`IMPROVEMENT_BACKLOG.md:IMP-M2` for full implementation.
+**Observed in Run 1:** proj_norm=16.0000 for ep1-18 (warmup silent, correct), then only 2 BF16
+ULPs of drift (16.0000 → 16.1250 at ep19, → 16.2500 at ep24) over 13 active post-warmup epochs.
+At norm≈16, 1 BF16 ULP=0.125 — gradient accumulation in BF16 hits quantization floor. Tracked
+and documented in Run 1 findings.
 
-**Status:** ⬜ OPEN
+---
+
+### IMP-M2 Tier 2 — prefix_attention_mean Diagnostic
+
+**Status:** ✅ DONE (2026-05-24)
+**Files changed:** `ml/src/models/transformer_encoder.py`, `ml/src/training/trainer.py`
+
+**What was added to TransformerEncoder.forward():**
+- New parameters: `gnn_prefix_counts: Optional[torch.Tensor] = None`,
+  `output_attentions: bool = False`
+- When `output_attentions=True`: calls BERT with `output_attentions=True`, stacks all 12
+  layer attention tensors, computes `prefix_attn_mean = attn[:, :, :, K:, :K].mean().item()`
+  (mean attention weight from code token positions → prefix token positions)
+- Returns `(last_hidden_state, prefix_attn_mean)` tuple when `output_attentions=True`
+
+**What was added to SentinelModel:**
+```python
+@torch.no_grad()
+def compute_prefix_attention_mean(self, graphs, input_ids, attn_mask) -> float:
+    """Diagnostic: mean attention weight code→prefix. Logs via trainer after warmup."""
+```
+
+**What was added to trainer.py (after val_metrics each epoch):**
+```python
+if config.gnn_prefix_k > 0 and epoch >= config.gnn_prefix_warmup_epochs \
+        and hasattr(model, "compute_prefix_attention_mean"):
+    _prefix_attn = model.compute_prefix_attention_mean(...)
+    mlflow.log_metric("prefix_attention_mean", _prefix_attn, step=epoch)
+    if _prefix_attn < 0.002:
+        logger.warning("prefix_attention_mean=%.4f — transformer may be ignoring prefix", _prefix_attn)
+```
+
+**Target value:** > 0.005 by ep20 post-warmup. Near-zero for 5+ epochs = prefix being ignored.
 
 ---
 
 ### IMP-M3 — Zero-Padded Prefix Attention Mask Fix
 
-**Files:** `ml/src/models/sentinel_model.py`, `ml/src/models/transformer_encoder.py`
-**Effort:** 1–2 hrs
+**Status:** ✅ DONE (2026-05-24)
+**Files changed:** `ml/src/models/sentinel_model.py`, `ml/src/models/transformer_encoder.py`
 
-Currently all K prefix positions use `attention_mask=1` regardless of whether they contain real node
-embeddings or zero-padding. For the 4.5% of contracts with < K eligible nodes, this wastes attention
-capacity on zero vectors the transformer cannot meaningfully attend to.
+**Problem:** Previously all K prefix positions used `attention_mask=1` regardless of whether they
+contained real GNN node embeddings or zero-padding. For the 4.5% of contracts with fewer than K
+eligible declaration nodes, zero-padded positions wasted attention capacity on uninformative
+zero vectors the transformer cannot meaningfully attend to.
 
-Fix: return actual node count per graph from `select_prefix_nodes()` and construct the prefix mask
-with `1` only for real nodes and `0` for padded positions. See `IMPROVEMENT_BACKLOG.md:IMP-M3`.
+**Change:** `select_prefix_nodes()` now returns `(prefix [B,K,768], node_counts [B])` where
+`node_counts[g]` is the number of real nodes selected for graph g (0 to K). The TransformerEncoder
+constructs the prefix mask as:
 
-**Status:** ⬜ OPEN
+```python
+# Count-based prefix attention mask (IMP-M3):
+prefix_mask = torch.zeros(B, K, device=device)
+for g in range(B):
+    prefix_mask[g, :node_counts[g]] = 1.0
+# Combined: [B, K+code_len] with 1 for real prefix positions + all code positions
+```
+
+**Propagation of return type change:**
+- `sentinel_model.forward()`: unpacks `gnn_prefix, gnn_prefix_counts = self.select_prefix_nodes(...)`
+- `compute_prefix_attention_mean()`: uses `if isinstance(gnn_prefix, tuple): gnn_prefix, _ = gnn_prefix`
+
+---
+
+### IMP-G1 — Phase 2 Layer-Specific Edge Subsets
+
+**Status:** ✅ DONE (2026-05-24)
+**File changed:** `ml/src/models/gnn_encoder.py` — `forward()`
+**Motivation:** Run 1 showed Phase 2 JK weight declining from 0.387 (ep1) to 0.234 (ep27).
+All three Phase 2 layers (conv3, conv3b, conv3c) were using the same `cfg_mask` edge set
+(CONTROL_FLOW ∪ CALL_ENTRY ∪ RETURN_TO). Layers with identical input + identical edges collapse
+to the same representation — JK attention correctly downweights them.
+
+**Change:** Build three distinct edge masks for Phase 2:
+
+```python
+# OLD (all Phase 2 layers shared cfg_mask):
+x3  = self.conv3 (x, cfg_ei, cfg_ea)   # CONTROL_FLOW + CALL_ENTRY + RETURN_TO
+x3b = self.conv3b(x, cfg_ei, cfg_ea)
+x3c = self.conv3c(x, cfg_ei, cfg_ea)
+
+# NEW (IMP-G1: layer-specific subsets):
+# Layer 3: CF only (pure intra-function sequential flow)
+cf_only_mask = (edge_attr == _CONTROL_FLOW)
+cf_only_ei = edge_index[:, cf_only_mask]
+cf_only_ea = e[cf_only_mask] if e is not None else None
+
+# Layer 4: ICFG only (CALL_ENTRY + RETURN_TO, cross-function)
+icfg_only_mask = (edge_attr == _CALL_ENTRY) | (edge_attr == _RETURN_TO)
+icfg_only_ei = edge_index[:, icfg_only_mask]
+icfg_only_ea = e[icfg_only_mask] if e is not None else None
+
+# Layer 5: joint integration (full cfg_mask from config — CF + CALL_ENTRY + RETURN_TO)
+x3  = self.conv3 (x, cf_only_ei,   cf_only_ea)    # intra-function CF
+x3b = self.conv3b(x, icfg_only_ei, icfg_only_ea)  # cross-function ICFG
+x3c = self.conv3c(x, cfg_ei,       cfg_ea)         # joint integration
+```
+
+**Expected effect:** JK attention now has a reason to weight each Phase 2 layer distinctly.
+Layer 3 sees only CFG structure. Layer 4 sees only cross-function call topology. Layer 5
+integrates both. H-GNN-A-2 predicts Phase 2 JK weight > 0.15 at convergence (vs 0.234 Run 1,
+which itself already improved from 0.048 in PLAN-3A).
+
+---
+
+### IMP-G2 — Phase 1 Input Projection Skip Connection
+
+**Status:** ✅ DONE (2026-05-24)
+**File changed:** `ml/src/models/gnn_encoder.py` — `__init__()` + `forward()`
+**Motivation:** Run 1 showed Phase 1 JK weight flat at 0.058–0.063 throughout all 28 epochs.
+The first GAT layer must learn to map 11-dimensional raw features to 256-dimensional hidden space.
+With random initialization and near-uniform attention weights, the first layer can lose information
+from the raw feature vector before residual connections are established.
+
+**New parameter added:**
+```python
+# IMP-G2: skip connection bypasses conv1 (11→256 dim change)
+self.input_proj = nn.Linear(NODE_FEATURE_DIM, hidden_dim, bias=False)  # 2,816 params
+```
+
+**Forward change:**
+```python
+# IMP-G2: save raw features, project them, add as skip before relu
+x_init = x  # [N, NODE_FEATURE_DIM]
+_proj_dtype = next(self.input_proj.parameters()).dtype
+x_skip = self.input_proj(x_init.to(_proj_dtype)).to(x.dtype)  # dtype-safe
+x = self.conv1(x_init, struct_ei, struct_ea)   # [N, NODE_FEATURE_DIM] → [N, hidden_dim]
+x = self.relu(x + x_skip)                      # skip added before relu
+```
+
+**Dtype safety note:** `TransformerEncoder` loading BERT with `torch_dtype=torch.bfloat16`
+previously set the global default dtype to BF16 as a side effect, causing any `nn.Linear`
+created after BERT initialization to have BF16 weights. Fixed by wrapping the BERT load in
+`TransformerEncoder.__init__`:
+```python
+_prev_default_dtype = torch.get_default_dtype()
+try:
+    self.bert = AutoModel.from_pretrained(...)
+finally:
+    torch.set_default_dtype(_prev_default_dtype)  # restore float32 default
+```
+This ensures all subsequent layers (including `gnn_eye_proj`, `input_proj`, etc.) are created
+in float32. Additionally, `GNNEncoder.forward()` now normalises input dtype at entry:
+```python
+_param_dtype = next(self.parameters()).dtype
+if x.dtype != _param_dtype:
+    x = x.to(_param_dtype)
+```
+
+**Parameter count:** 2,816 (11 × 256, no bias) — negligible vs 125M total.
+
+---
+
+### IMP-G3 — Phase 3 Bidirectional Context Pass
+
+**Status:** ✅ DONE (2026-05-24)
+**File changed:** `ml/src/models/gnn_encoder.py` — `__init__()` + `forward()`
+**Motivation:** Run 1 showed Phase 3 JK weight rising from 0.550 (ep1) to 0.707 (ep27) — REVERSE_CONTAINS
+became the single dominant signal. Phase 3 uses REVERSE_CONTAINS edges (CFG→FUNCTION, upward)
+to propagate CFG information into FUNCTION nodes for JK aggregation. But CFG nodes themselves
+only receive structural context (Phase 1) and ICFG context (Phase 2) — they never get the
+FUNCTION-level aggregated signal back. The CrossAttentionFusion's cross-attention over node
+embeddings thus sees a systematic representation gap: FUNCTION nodes are rich (Phase 3 receiver),
+CFG nodes are starved.
+
+**New conv layer added:**
+```python
+# IMP-G3: downward CONTAINS pass — propagates FUNCTION context down into CFG nodes
+self.conv4c = GATConv(hidden_dim, hidden_dim, heads=1, concat=False,
+                      add_self_loops=False, edge_dim=_edge_dim)
+```
+
+**Forward change (in Phase 3 block, after existing upward passes):**
+```python
+# Existing upward passes (CFG→FUNCTION via REVERSE_CONTAINS):
+x4  = self.conv4 (x, rev_contains_ei, rev_contains_ea)
+x4b = self.conv4b(x, rev_contains_ei, rev_contains_ea)
+x   = x + self.dropout(x4b)  # residual
+
+# NEW (IMP-G3): downward pass (FUNCTION→CFG via forward CONTAINS edges):
+x4c = self.conv4c(x, fwd_contains_ei, fwd_contains_ea)
+x   = x + self.dropout(x4c)  # CFG nodes now receive FUNCTION-level aggregated context
+x   = self.phase_norm[2](x)
+```
+
+**Effect:** CFG node embeddings entering CrossAttentionFusion now carry both bottom-up structural
+signal (Phase 1), cross-function ICFG signal (Phase 2), and top-down FUNCTION-aggregated context
+(Phase 3 downward pass). This should close the representation gap between FUNCTION and CFG nodes.
+
+**Architecture summary (v8 + IMP):**
+```
+Phase 1 (Layers 1+2):  conv1 [11→256] + IMP-G2 skip  →  conv2 [256→256 residual]
+Phase 2 (Layers 3+4+5): conv3 [CF-only] → conv3b [ICFG-only] → conv3c [joint CF+ICFG]
+Phase 3 (Layers 6+7+8): conv4 [REVERSE_CONTAINS up] → conv4b [REVERSE_CONTAINS up] → conv4c [CONTAINS down] (IMP-G3)
+```
+Total: **8 layers** (was 7). `gnn_num_layers` default updated from 7 to 8 in both `GNNEncoder`
+and `TrainConfig`.
+
+**New parameter count:** ~66K params for conv4c (GATConv heads=1 256→256 with edge embedding).
+Total new params from all IMP-G changes: ~69K (negligible vs 125M total).
+
+---
+
+### IMP-D1 — return_ignored Temporal Ordering Fix
+
+**Status:** ✅ DONE (code change; re-extraction still pending)
+**File changed:** `ml/src/preprocessing/graph_extractor.py` — `_compute_return_ignored()`
+
+**Problem:** The old implementation built a global `all_read_names` set across the entire function,
+then for each call checked if the lvalue name appeared anywhere in that set. This produced false
+negatives: if a TemporaryVariable name collided with an unrelated LocalVariable read elsewhere in
+the function, the return was incorrectly classified as "captured" even if the actual call result
+was discarded. This mislabeled UnusedReturn and MishandledException samples.
+
+**Old approach (BUG):**
+```python
+all_read_names = {getattr(rv, "name", None)
+                  for op in func.slithir_operations
+                  for rv in (getattr(op, "read", None) or [])}
+for op in func.slithir_operations:
+    if isinstance(op, (LowLevelCall, HighLevelCall, Send)):
+        lval_name = getattr(op.lvalue, "name", None)
+        if lval_name and lval_name not in all_read_names:  # BUG: global set, not temporal
+            return 1.0
+```
+
+**New approach (IMP-D1 FIX):**
+```python
+# Build flat ordered list of (node, op) pairs in CFG topological order.
+nodes = func.nodes or []  # direct access — AttributeError propagates to except block
+all_ops_ordered = [(node, op) for node in nodes for op in (node.irs or [])]
+
+for call_idx, (_, op) in enumerate(all_ops_ordered):
+    if not isinstance(op, (LowLevelCall, HighLevelCall, Send)):
+        continue
+    lval = op.lvalue
+    if lval is None:
+        return 1.0  # explicit discard
+    lval_name = getattr(lval, "name", None)
+    if lval_name is None:
+        return 1.0
+    # IMP-D1: check if lval_name appears in any read AFTER this call in CFG order
+    used_after = any(
+        getattr(rv, "name", None) == lval_name
+        for _, later_op in all_ops_ordered[call_idx + 1:]
+        for rv in (getattr(later_op, "read", None) or [])
+    )
+    if not used_after:
+        return 1.0  # lval never read after the call → return discarded
+```
+
+**Key detail:** Uses `func.nodes` directly (not `getattr(func, "nodes", None)`) so that
+`AttributeError` raised inside a Slither property propagates to the outer `except AttributeError`
+clause, correctly returning the sentinel -1.0.
+
+**Re-extraction required:** All 41,576 graphs need to be re-extracted with the corrected
+`_compute_return_ignored`. This is a separate long-running step to be run before GATE-DATA-1.
+Command: `poetry run python ml/scripts/reextract_graphs.py` (existing script).
+
+---
+
+### Test Suite Fixes (2026-05-24)
+
+**Status:** ✅ ALL 134 TESTS PASS
+
+Multiple test files had stale expectations or were testing against the old API. All fixed:
+
+#### test_model.py
+- `_StubTransformer.forward()` signature updated to include `gnn_prefix_nodes`, `gnn_prefix_counts`,
+  `output_attentions` parameters (matches new TransformerEncoder.forward signature)
+- `test_classifier_input_dim_is_384`: fixed to check `model.classifier[0].in_features` (Sequential,
+  not bare Linear)
+- `test_gnn_return_intermediates_keys`: updated node embedding shape assertion from `(3, 128)` to
+  `(3, 256)` (hidden_dim=256)
+- `test_gnn_return_intermediates_false_is_2_tuple`: same shape fix `(5, 128)` → `(5, 256)`
+
+#### test_preprocessing.py — Schema sanity
+- `test_node_feature_dim_is_12` → `test_node_feature_dim_is_11` (v8 schema: 11 features, no `in_unchecked`)
+- `test_num_edge_types_is_8` → `test_num_edge_types_is_11` (v8: CALL_ENTRY(8)+RETURN_TO(9)+DEF_USE(10) added)
+- `test_feature_names_has_all_new_features`: removed `in_unchecked` (not in v8 FEATURE_NAMES)
+- `test_external_call_count_at_index_11` → `test_external_call_count_at_index_10` (correct index)
+
+#### test_preprocessing.py — `TestComputeReturnIgnored`
+All tests updated to use `func.nodes` structure (IMP-D1 uses `node.irs`, not `func.slithir_operations`):
+- `test_returns_1_when_lvalue_none`: wraps call_op in `_make_mock_slither_node(irs=[call_op])`
+- `test_returns_0_when_all_lvalues_captured`: adds subsequent read node with lval reference
+- `test_returns_sentinel_on_attribute_error`: `FakeFunc.nodes` property raises AttributeError
+- `test_no_calls_returns_0`: uses `nodes=[]` (no ops → no calls)
+
+#### test_preprocessing.py — `TestBuildCfgNodeFeatures` / `TestBuildNodeFeatures`
+- `test_type_id_reflects_cfg_type`: expected value normalized (`float(cfg_type) / 12.0`)
+- `test_loc_from_source_mapping`: expected value log-normalized (`log1p(3)/log1p(1000)`)
+- `test_type_id_override_for_constructor`: expected value normalized
+- `test_type_id_override_for_fallback`: same
+
+#### test_preprocessing.py — `TestExtractionIntegration`
+Root cause: `graph.x[:, 0]` stores normalized type IDs (`float(type_id)/12.0`). All tests were
+comparing against raw integer type IDs — a pre-existing bug causing `.int()` to produce only
+0 (types 0–11) or 1 (type 12, CFG_NODE_OTHER). Fixed:
+- Added helper methods `_type_ids(graph)` and `_type_mask(graph, type_id)` using
+  `(graph.x[:, 0] * 12).round().long()`
+- All `graph.x[:, 0].int()` usages replaced with `self._type_ids(graph)`
+- `test_unchecked_func_node_has_in_unchecked_1`: updated to verify FUNCTION nodes exist with correct
+  feature dim (`in_unchecked` removed from v8 schema)
+- `test_loop_func_has_has_loop_1`: corrected index from `[..., 10]` to `[..., 9]` (`has_loop` is at index 9)
+- `test_cei_safe_has_write_before_call_in_control_flow`: relaxed from direct-edge check to
+  BFS reachability (an intermediate CFG_NODE_OTHER sits between WRITE and CALL in real Slither output)
+
+#### test_trainer.py
+- Removed `scaler=scaler` kwargs from `train_one_epoch()` calls — `scaler` parameter was removed
+  from the function signature at some point but tests still passed it
+
+#### test_promote_model.py
+- Moved `mlflow` and `MlflowClient` imports in `ml/scripts/promote_model.py` from inside
+  `promote()` function to module level, making them patchable by `patch("ml.scripts.promote_model.mlflow")`
 
 ---
 
@@ -713,10 +1104,14 @@ and with the FUNCTION sort bug active would make results harder to interpret.
 
 ## Phase GNN-A — GNN Architecture Overhaul
 
-**Status:** 🔴 BLOCKED (on GATE-DATA-1 + GATE-GCB-4)
-**Trigger:** GATE-DATA-1 shows data quality fixes are absorbed; architectural ceiling confirmed lifted by GATE-GCB-4
+**Status:** ✅ PULLED FORWARD (2026-05-24) — IMP-G1/G2/G3 applied directly into P1-TRAIN Run 2
+**Original trigger (no longer applies):** Phase GNN-A was planned after GATE-DATA-1 and GATE-GCB-4.
+**Reason for pull-forward:** P1-TRAIN Run 1 JK weight analysis showed Phase 2 collapse (0.387→0.234)
+and Phase 3 dominance (0.550→0.707) by ep27. The architectural weaknesses addressed by IMP-G1/G2/G3
+were visibly impacting Run 1 results. Applying them before Run 2 makes Run 2 the combined-baseline
+test rather than requiring a separate Phase GNN-A training run.
 **Reference:** `docs/proposal/IMPROVEMENT_BACKLOG.md:IMP-G1, IMP-G2, IMP-G3`
-**Duration:** ~60–80 hrs GPU + 1 week engineering
+**Duration (original estimate):** ~60–80 hrs GPU + 1 week engineering — now folded into P1-TRAIN Run 2
 
 **Purpose:** Address the three highest-impact GNN architectural weaknesses identified in the adversarial
 audit. These are implemented together and measured in a single training run so their combined effect
@@ -839,7 +1234,7 @@ These items are independent of the GraphCodeBERT proposal and should continue in
 | IMP-M3 | Zero-padded prefix attention mask fix | P1 — before P1B/Phase DATA-1 |
 | IMP-D1 | return_ignored temporal ordering fix + re-extraction | P1 — before Phase DATA-1 run |
 | IMP-D2 | Inject 100+ OZ clean negative contracts | P1 — before Phase DATA-1 run |
-| IMP-G1/G2/G3 | GNN Architecture Overhaul (Phase GNN-A) | P2 — after GATE-DATA-1 |
+| IMP-G1/G2/G3 | GNN Architecture Overhaul (Phase GNN-A) | ✅ PULLED FORWARD — applied in P1-TRAIN Run 2 (2026-05-24); Run 1 JK analysis confirmed urgency |
 
 ---
 
@@ -856,28 +1251,32 @@ Use this to track overall progress at a glance:
 | PRE-4: Node count P95 ≤ K=48 (decl-level) | ✅ DONE | 2026-05-23 |
 | PRE-5: LoRA on GraphCodeBERT | ✅ DONE | 2026-05-23 |
 | GATE-GCB-1: All prerequisites passed | ✅ DONE | 2026-05-23 |
-| P0: Phase 0 drop-in (5 epochs) | 🔵 RUNNING (ep2, ~3 epochs remaining) | 2026-05-23 started |
-| P0b: CodeBERT+prefix ablation | ⬜ | — |
-| GATE-GCB-2: Phase 0 go/no-go | ⬜ | — |
+| P0: Phase 0 drop-in (5 epochs) | ✅ DONE (killed ep4, best ep3 F1=0.2178) | 2026-05-24 |
+| P0b: CodeBERT+prefix ablation | ⬜ SKIPPED (P0 sufficient for GATE-GCB-2) | — |
+| GATE-GCB-2: Phase 0 go/no-go | ✅ PASSED | 2026-05-24 |
 | P1-IMPL: Option B code changes + unit tests | ✅ DONE | 2026-05-23 |
-| GATE-GCB-3: Smoke test passed | ⬜ | — |
-| P1-TRAIN: Full Phase 1 training run | ⬜ | — |
-| GATE-GCB-4: Phase 1 results recorded | ⬜ | — |
-| P2: Option C (shared DFG) | ⬜ | — |
-| GATE-GCB-5: Phase 2 results recorded | ⬜ | — |
-| P3: Option A (full per-window DFG) | ⬜ | — |
-| GATE-GCB-6: Full ablation complete | ⬜ | — |
-| IMP-BUG: Close BUG-H4+H5 in ACTIVE_PLAN.md | ⬜ OPEN | — |
-| IMP-M1: FUNCTION secondary sort | ⬜ OPEN | — |
-| IMP-M2 Tier 1: proj_norm logging | ⬜ OPEN | — |
-| IMP-M2 Tier 2: prefix_attention_mean | ⬜ OPEN | — |
-| IMP-M3: zero-padded prefix mask fix | ⬜ OPEN | — |
-| IMP-D1: return_ignored temporal fix + re-extraction | ⬜ OPEN | — |
+| GATE-GCB-3: Smoke test passed | ✅ PASSED (ep1 alone sufficient) | 2026-05-24 |
+| P1-TRAIN Run 1 | 🔴 KILLED EP28 (best ep27 F1=0.2628) | 2026-05-24 |
+| P1-TRAIN Run 2 | 🔵 RUNNING (launched 22:15, PID 80610, all IMP fixes applied) | 2026-05-24 |
+| GATE-GCB-4: Phase 1 results recorded | 🔴 BLOCKED (on P1-TRAIN Run 2 completion) | — |
+| P2: Option C (shared DFG) | 🔴 BLOCKED (on GATE-GCB-4) | — |
+| GATE-GCB-5: Phase 2 results recorded | 🔴 BLOCKED | — |
+| P3: Option A (full per-window DFG) | 🔴 BLOCKED | — |
+| GATE-GCB-6: Full ablation complete | 🔴 BLOCKED | — |
+| IMP-BUG: Close BUG-H4+H5 in ACTIVE_PLAN.md | ✅ DONE | 2026-05-24 |
+| IMP-M1: FUNCTION secondary sort by external_call_count | ✅ DONE | 2026-05-24 |
+| IMP-M2 Tier 1: proj_norm MLflow logging | ✅ DONE (already in trainer.py:1306) | 2026-05-23 |
+| IMP-M2 Tier 2: prefix_attention_mean diagnostic | ✅ DONE | 2026-05-24 |
+| IMP-M3: zero-padded prefix mask fix | ✅ DONE | 2026-05-24 |
+| IMP-G1: Phase 2 layer-specific edge subsets (CF/ICFG/joint) | ✅ DONE | 2026-05-24 |
+| IMP-G2: Phase 1 input projection skip (11→256) | ✅ DONE | 2026-05-24 |
+| IMP-G3: Phase 3 bidirectional pass (downward CONTAINS) | ✅ DONE | 2026-05-24 |
+| IMP-D1: return_ignored temporal fix (code change) | ✅ DONE (re-extraction pending) | 2026-05-24 |
+| IMP-D1: Graph re-extraction (41K graphs) | ⬜ OPEN (run after Run 2 stable) | — |
 | IMP-D2: 100+ clean negatives injected | ⬜ OPEN | — |
-| GATE-DATA-1: Data quality run results | ⬜ OPEN | — |
-| Phase GNN-A: Smoke test (GATE-GNN-A-SMOKE) | ⬜ OPEN | — |
-| Phase GNN-A: Full training run | ⬜ OPEN | — |
-| GATE-GNN-A: GNN overhaul results | ⬜ OPEN | — |
+| Test suite: 134/134 pass | ✅ DONE | 2026-05-24 |
+| GATE-DATA-1: Data quality run results | 🔴 BLOCKED (on IMP-D1 re-extraction + P1-TRAIN Run 2) | — |
+| Phase GNN-A | ✅ PULLED FORWARD — IMP-G1/G2/G3 applied in P1-TRAIN Run 2 baseline | 2026-05-24 |
 
 ---
 

@@ -128,6 +128,10 @@ class TransformerEncoder(nn.Module):
         # flash_attention_2 uses tiled CUDA kernels that avoid materialising the
         # full [B*W,512,512] attention matrix. Falls back to sdpa if unavailable.
         # Must be set before get_peft_model so LoRA sees the correct implementation.
+        # Save and restore the global default dtype around BERT loading.
+        # from_pretrained with torch_dtype=bfloat16 calls torch.set_default_dtype
+        # as a side effect, which pollutes any nn.Linear created afterwards with BF16 weights.
+        _prev_default_dtype = torch.get_default_dtype()
         try:
             self.bert = AutoModel.from_pretrained(
                 "microsoft/graphcodebert-base",
@@ -141,6 +145,8 @@ class TransformerEncoder(nn.Module):
                 attn_implementation="sdpa",
             )
             logger.info("TransformerEncoder — SDPA active (flash-attn unavailable)")
+        finally:
+            torch.set_default_dtype(_prev_default_dtype)
 
         # Inject LoRA matrices into targeted attention projections.
         # get_peft_model():
@@ -165,10 +171,12 @@ class TransformerEncoder(nn.Module):
 
     def forward(
         self,
-        input_ids:        torch.Tensor,                   # [B, L] or [B, W, L]
-        attention_mask:   torch.Tensor,                   # [B, L] or [B, W, L]
-        gnn_prefix_nodes: Optional[torch.Tensor] = None,  # [B, K, 768] or None
-    ) -> torch.Tensor:
+        input_ids:          torch.Tensor,                   # [B, L] or [B, W, L]
+        attention_mask:     torch.Tensor,                   # [B, L] or [B, W, L]
+        gnn_prefix_nodes:   Optional[torch.Tensor] = None,  # [B, K, 768] or None
+        gnn_prefix_counts:  Optional[torch.Tensor] = None,  # [B] real node counts, IMP-M3
+        output_attentions:  bool = False,                   # IMP-M2: return prefix_attn_mean too
+    ):
         """
         Run GraphCodeBERT + LoRA forward pass and return all token embeddings.
 
@@ -191,12 +199,14 @@ class TransformerEncoder(nn.Module):
             LoRA A/B matrices (requires_grad=True): gradients flow normally.
             peft manages this split internally; no manual no_grad() is needed.
 
-        Returns:
-            No prefix,  single-window: [B, L, 768]   — CLS at [:, 0, :]
-            No prefix,  multi-window:  [B, W*L, 768] — CLS of win i at [:, i*L, :]
-            With prefix, single-window:[B, L, 768]   — prefix [:, :K, :], CLS [:, K, :]
-            With prefix, multi-window: [B, W*L, 768] — prefix at [:, i*L:i*L+K, :],
-                                                        CLS of win i at [:, i*L+K, :]
+        Returns (output_attentions=False, default):
+            [B, L, 768] or [B, W*L, 768] — all token embeddings
+
+        Returns (output_attentions=True, prefix path only):
+            (last_hidden_state, prefix_attn_mean: float)
+            prefix_attn_mean = mean attention weight code tokens → prefix positions,
+            averaged over all layers, heads, and sequences. Near zero (< 0.002 for
+            5+ epochs) means the transformer is ignoring the prefix (IMP-M2 gate).
         """
         if gnn_prefix_nodes is None:
             # Standard path — no prefix overhead
@@ -224,7 +234,14 @@ class TransformerEncoder(nn.Module):
             word_embs = self._word_embeddings(code_ids).to(dtype=gnn_prefix_nodes.dtype)
             inputs_embeds = torch.cat([gnn_prefix_nodes, word_embs], dim=1)  # [B, L, 768]
 
-            prefix_mask  = torch.ones(B, K, dtype=attention_mask.dtype, device=attention_mask.device)
+            # IMP-M3: use actual node counts so zero-padded prefix positions are masked.
+            # 95.5% of contracts fill all K slots (count==K) — this is a no-op for them.
+            if gnn_prefix_counts is not None:
+                prefix_mask = torch.zeros(B, K, dtype=attention_mask.dtype, device=attention_mask.device)
+                for b in range(B):
+                    prefix_mask[b, :gnn_prefix_counts[b]] = 1
+            else:
+                prefix_mask = torch.ones(B, K, dtype=attention_mask.dtype, device=attention_mask.device)
             full_mask    = torch.cat([prefix_mask, code_mask], dim=1)        # [B, L]
 
             prefix_pos   = input_ids.new_ones(B, K)                          # pos_id=1 (pad slot)
@@ -236,7 +253,14 @@ class TransformerEncoder(nn.Module):
                 inputs_embeds=inputs_embeds,
                 attention_mask=full_mask,
                 position_ids=position_ids,
+                output_attentions=output_attentions,
             )
+            if output_attentions and outputs.attentions is not None:
+                # attentions: tuple of 12 tensors, each [B, heads, L, L]
+                # Slice code→prefix: rows K:L (code positions) × cols :K (prefix positions)
+                attn = torch.stack(list(outputs.attentions), dim=0)  # [12, B, heads, L, L]
+                prefix_attn_mean = attn[:, :, :, K:, :K].mean().item()
+                return outputs.last_hidden_state, prefix_attn_mean
             return outputs.last_hidden_state  # [B, L, 768]
 
         # Multi-window with prefix: [B, W, L] — shared prefix across all windows
@@ -254,7 +278,14 @@ class TransformerEncoder(nn.Module):
         )
         inputs_embeds = torch.cat([prefix_expanded, word_embs], dim=1)  # [B*W, L, 768]
 
-        prefix_mask  = torch.ones(B * W, K, dtype=flat_mask.dtype, device=flat_mask.device)
+        # IMP-M3: mask zero-padded prefix positions per-graph, expanded across windows
+        if gnn_prefix_counts is not None:
+            prefix_mask = torch.zeros(B, K, dtype=flat_mask.dtype, device=flat_mask.device)
+            for b in range(B):
+                prefix_mask[b, :gnn_prefix_counts[b]] = 1
+            prefix_mask = prefix_mask.unsqueeze(1).expand(-1, W, -1).reshape(B * W, K)
+        else:
+            prefix_mask = torch.ones(B * W, K, dtype=flat_mask.dtype, device=flat_mask.device)
         full_mask    = torch.cat([prefix_mask, flat_mask], dim=1)        # [B*W, L]
 
         prefix_pos   = flat_ids.new_ones(B * W, K)
@@ -266,7 +297,12 @@ class TransformerEncoder(nn.Module):
             inputs_embeds=inputs_embeds,
             attention_mask=full_mask,
             position_ids=position_ids,
+            output_attentions=output_attentions,
         )
+        if output_attentions and outputs.attentions is not None:
+            attn = torch.stack(list(outputs.attentions), dim=0)  # [12, B*W, heads, L, L]
+            prefix_attn_mean = attn[:, :, :, K:, :K].mean().item()
+            return outputs.last_hidden_state.view(B, W * L, 768), prefix_attn_mean
         return outputs.last_hidden_state.view(B, W * L, 768)
 
 

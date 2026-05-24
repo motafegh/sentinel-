@@ -227,36 +227,49 @@ def _compute_return_ignored(func: Any) -> float:
     within the function. If it is never read, the return was discarded.
 
     BUG-9 FIX (2026-05-17): Added Send to the isinstance check alongside
-    LowLevelCall and HighLevelCall. Previously, `.send()` calls whose return
-    value was ignored were not detected because Slither classifies `.send()`
-    as a separate Send IR type, not a LowLevelCall/HighLevelCall.
+    LowLevelCall and HighLevelCall.
+
+    IMP-D1 FIX (2026-05-24): Replace the global all_read_names set with a
+    sequential scan that checks whether lval is read AFTER the call in IR order.
+    The old approach had a false-negative: a TemporaryVariable name that happened
+    to match an unrelated LocalVariable read anywhere in the function would
+    incorrectly conclude the return was captured, mislabeling UnusedReturn and
+    MishandledException samples. Slither's func.nodes is in CFG topological order.
     """
     try:
         from slither.slithir.operations import LowLevelCall, HighLevelCall, Send
 
-        # Collect all read-variable names across every node/IR in the function
-        # once up front, so we can do O(1) lookup per call op.
-        # BUG-M1: use lval.name (stable string) instead of id(lval) (memory
-        # address). Slither may reconstruct IR objects across iterations so
-        # id()-based identity comparisons produce false positives.
-        all_read_names: set = set()
-        for node in (getattr(func, "nodes", None) or []):
-            for op in (getattr(node, "irs", None) or []):
-                for rv in (getattr(op, "read", None) or []):
-                    name = getattr(rv, "name", None)
-                    if name is not None:
-                        all_read_names.add(name)
+        # Build flat ordered list of (node, op) pairs in CFG topological order.
+        # Use direct attribute access (not getattr) so that AttributeError raised
+        # inside a property (e.g. unavailable Slither IR) propagates to the outer
+        # except block instead of being silently swallowed by getattr's default.
+        nodes = func.nodes or []
+        all_ops_ordered = [
+            (node, op)
+            for node in nodes
+            for op in (node.irs or [])
+        ]
 
-        for node in (getattr(func, "nodes", None) or []):
-            for op in (getattr(node, "irs", None) or []):
-                if isinstance(op, (LowLevelCall, HighLevelCall, Send)):
-                    lval = op.lvalue
-                    if lval is None:
-                        # Truly None (shouldn't happen in practice, but guard it)
-                        return 1.0
-                    lval_name = getattr(lval, "name", None)
-                    if lval_name is None or lval_name not in all_read_names:
-                        return 1.0
+        for call_idx, (_, op) in enumerate(all_ops_ordered):
+            if not isinstance(op, (LowLevelCall, HighLevelCall, Send)):
+                continue
+            lval = op.lvalue
+            if lval is None:
+                return 1.0
+            lval_name = getattr(lval, "name", None)
+            if lval_name is None:
+                return 1.0
+            # IMP-D1: check if lval_name appears in any read AFTER this call in IR order.
+            used_after = False
+            for _, later_op in all_ops_ordered[call_idx + 1:]:
+                for rv in (getattr(later_op, "read", None) or []):
+                    if getattr(rv, "name", None) == lval_name:
+                        used_after = True
+                        break
+                if used_after:
+                    break
+            if not used_after:
+                return 1.0  # lval never read after the call → return discarded
 
         return 0.0
     except AttributeError:

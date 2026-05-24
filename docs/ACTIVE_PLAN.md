@@ -836,16 +836,16 @@ These were OPEN in v7 and remain unresolved. Address during v8 data preparation.
 ### BUG-H4 — Timestamp labels: 48.2% have no source evidence
 - **File:** `ml/data/processed/multilabel_index_deduped.csv`
 - **Impact:** ~463 Timestamp=1 contracts with `uses_block_globals=0` — model learns to associate "no timestamp signal" with timestamp vulnerability (inverted signal)
-- **Fix:** Filter Timestamp=1 rows where `uses_block_globals=0.0` across all nodes — can be added to `label_cleaner.py` as a new precondition rule
-- **When:** During PLAN-2E (re-run label_cleaner on v8 graphs)
-- **Status:** OPEN
+- **Fix:** Filter Timestamp=1 rows where `uses_block_globals=0.0` across all nodes — added to `label_cleaner.py` as a precondition rule (`check_timestamp()` requires `uses_block_globals > 0.5`)
+- **When:** PLAN-2E
+- **Status:** **DONE (2026-05-23)** — −568 Timestamp labels removed; running with cleaned CSV since P1-TRAIN
 
 ### BUG-H5 — ~14% of Reentrancy=1 contracts have no external calls
 - **File:** `ml/data/graphs/*.pt`
 - **Impact:** ~630 mislabeled training samples; Reentrancy requires external call by definition
-- **Fix:** Filter Reentrancy=1 rows where `external_call_count=0` across all FUNCTION nodes — add to `label_cleaner.py`
-- **When:** During PLAN-2E
-- **Status:** OPEN
+- **Fix:** Filter Reentrancy=1 rows where `external_call_count=0` across all FUNCTION nodes — `check_reentrancy()` now requires `external_call_count > 0` (dim[10]) AND a WRITES edge
+- **When:** PLAN-2E
+- **Status:** **DONE (2026-05-23)** — −611 Reentrancy labels removed; running with cleaned CSV since P1-TRAIN
 
 ### BUG-M5 — Brainmab contract mislabeled across 4 classes
 - **File:** `ml/data/processed/multilabel_index_deduped.csv`

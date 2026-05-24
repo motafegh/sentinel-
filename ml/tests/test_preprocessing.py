@@ -47,17 +47,17 @@ from ml.src.preprocessing.graph_schema import (
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestSchemaSanity:
-    def test_node_feature_dim_is_12(self):
-        assert NODE_FEATURE_DIM == 12, (
-            f"NODE_FEATURE_DIM={NODE_FEATURE_DIM}; expected 12 (v2 schema). "
-            "gas_intensity was removed in the final v2 schema."
+    def test_node_feature_dim_is_11(self):
+        assert NODE_FEATURE_DIM == 11, (
+            f"NODE_FEATURE_DIM={NODE_FEATURE_DIM}; expected 11 (v8 schema). "
+            "in_unchecked was removed; 11 features remain."
         )
 
     def test_feature_names_length_matches_dim(self):
         assert len(FEATURE_NAMES) == NODE_FEATURE_DIM
 
-    def test_num_edge_types_is_8(self):
-        assert NUM_EDGE_TYPES == 8  # REVERSE_CONTAINS=7 added in v5.2 (2026-05-14)
+    def test_num_edge_types_is_11(self):
+        assert NUM_EDGE_TYPES == 11  # v8: CALL_ENTRY(8)+RETURN_TO(9)+DEF_USE(10) added
 
     def test_edge_types_contains_new_v2_edges(self):
         assert "CONTAINS"     in EDGE_TYPES and EDGE_TYPES["CONTAINS"]     == 5
@@ -87,8 +87,7 @@ class TestSchemaSanity:
         )
 
     def test_feature_names_has_all_new_features(self):
-        for fname in ("return_ignored", "call_target_typed", "in_unchecked",
-                      "has_loop", "external_call_count"):
+        for fname in ("return_ignored", "call_target_typed", "has_loop", "external_call_count"):
             assert fname in FEATURE_NAMES, f"'{fname}' missing from FEATURE_NAMES"
 
     def test_return_ignored_at_index_7(self):
@@ -97,8 +96,8 @@ class TestSchemaSanity:
     def test_call_target_typed_at_index_8(self):
         assert FEATURE_NAMES[8] == "call_target_typed"
 
-    def test_external_call_count_at_index_11(self):
-        assert FEATURE_NAMES[11] == "external_call_count"
+    def test_external_call_count_at_index_10(self):
+        assert FEATURE_NAMES[10] == "external_call_count"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -247,10 +246,12 @@ class TestBuildCfgNodeFeatures:
         _build_cfg_node_features = self._import()
         node = _make_mock_slither_node()
         func = _make_mock_func()
+        _max_type = 12.0  # _MAX_TYPE_ID = max(NODE_TYPES.values())
         for cfg_type in [8, 9, 10, 11, 12]:
             result = _build_cfg_node_features(node, func, cfg_type)
-            assert result[0] == float(cfg_type), (
-                f"type_id [0] expected {float(cfg_type)}, got {result[0]}"
+            expected = float(cfg_type) / _max_type
+            assert abs(result[0] - expected) < 1e-6, (
+                f"type_id [0] expected {expected} (normalised), got {result[0]}"
             )
 
     def test_in_unchecked_is_always_zero(self):
@@ -278,11 +279,14 @@ class TestBuildCfgNodeFeatures:
         assert result[8] == 1.0
 
     def test_loc_from_source_mapping(self):
+        import math
         _build_cfg_node_features = self._import()
         node = _make_mock_slither_node(source_lines=[10, 11, 12])
         func = _make_mock_func()
         result = _build_cfg_node_features(node, func, NODE_TYPES["CFG_NODE_READ"])
-        assert result[6] == 3.0, f"Expected loc=3.0, got {result[6]}"
+        # loc is log-normalised: log1p(n_lines) / log1p(1000)
+        expected = math.log1p(3) / math.log1p(1000)
+        assert abs(result[6] - expected) < 1e-6, f"Expected loc={expected:.4f}, got {result[6]}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -309,14 +313,16 @@ class TestBuildNodeFeatures:
         _build_node_features = self._import()
         func = _make_mock_func(is_constructor=True)
         result = _build_node_features(func, NODE_TYPES["FUNCTION"])
-        assert result[0] == float(NODE_TYPES["CONSTRUCTOR"])
+        expected = float(NODE_TYPES["CONSTRUCTOR"]) / 12.0
+        assert abs(result[0] - expected) < 1e-6, f"Expected {expected}, got {result[0]}"
 
     def test_type_id_override_for_fallback(self):
         slither = pytest.importorskip("slither")
         _build_node_features = self._import()
         func = _make_mock_func(is_fallback=True)
         result = _build_node_features(func, NODE_TYPES["FUNCTION"])
-        assert result[0] == float(NODE_TYPES["FALLBACK"])
+        expected = float(NODE_TYPES["FALLBACK"]) / 12.0
+        assert abs(result[0] - expected) < 1e-6, f"Expected {expected}, got {result[0]}"
 
     def test_return_ignored_sentinel_on_ir_failure(self):
         """return_ignored [7] returns -1.0 when Slither IR is unavailable."""
@@ -358,6 +364,11 @@ class TestBuildNodeFeatures:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestComputeReturnIgnored:
+    """
+    IMP-D1: _compute_return_ignored now traverses func.nodes[i].irs
+    (CFG topological order) rather than func.slithir_operations.
+    Tests use _make_mock_slither_node to build proper node/ir structure.
+    """
     def _import(self):
         from ml.src.preprocessing.graph_extractor import _compute_return_ignored
         return _compute_return_ignored
@@ -369,7 +380,8 @@ class TestComputeReturnIgnored:
 
         call_op = MagicMock(spec=LowLevelCall)
         call_op.lvalue = None  # return value discarded
-        func = _make_mock_func(slithir_operations=[call_op])
+        node = _make_mock_slither_node(irs=[call_op])
+        func = _make_mock_func(nodes=[node])
         assert _fn(func) == 1.0
 
     def test_returns_0_when_all_lvalues_captured(self):
@@ -377,9 +389,18 @@ class TestComputeReturnIgnored:
         from slither.slithir.operations import HighLevelCall
         _fn = self._import()
 
+        lval = MagicMock()
+        lval.name = "tmp_0"
+        # A subsequent read op that references the lvalue
+        read_op = MagicMock()
+        read_op.read = [lval]
+
         call_op = MagicMock(spec=HighLevelCall)
-        call_op.lvalue = MagicMock()  # return value captured
-        func = _make_mock_func(slithir_operations=[call_op])
+        call_op.lvalue = lval  # return value captured
+
+        node0 = _make_mock_slither_node(node_id=0, irs=[call_op])
+        node1 = _make_mock_slither_node(node_id=1, irs=[read_op])
+        func = _make_mock_func(nodes=[node0, node1])
         assert _fn(func) == 0.0
 
     def test_returns_sentinel_on_attribute_error(self):
@@ -389,7 +410,7 @@ class TestComputeReturnIgnored:
             canonical_name = "TestContract.f"
 
             @property
-            def slithir_operations(self):
+            def nodes(self):
                 raise AttributeError("no IR")
 
         assert _fn(FakeFunc()) == -1.0, "Should return -1.0 sentinel, not 0.0"
@@ -397,7 +418,7 @@ class TestComputeReturnIgnored:
     def test_no_calls_returns_0(self):
         slither = pytest.importorskip("slither")
         _fn = self._import()
-        func = _make_mock_func(slithir_operations=[])  # no operations
+        func = _make_mock_func(nodes=[])  # no nodes → no calls
         assert _fn(func) == 0.0
 
 
@@ -661,6 +682,16 @@ class TestExtractionIntegration:
         from ml.src.preprocessing.graph_extractor import extract_contract_graph
         return extract_contract_graph(sol_path)
 
+    @staticmethod
+    def _type_ids(graph) -> list[int]:
+        """Denormalize feature[0] (type_id / 12.0) back to raw integer type IDs."""
+        return (graph.x[:, 0] * 12).round().long().tolist()
+
+    @staticmethod
+    def _type_mask(graph, type_id: int):
+        """Boolean mask selecting nodes with the given raw type_id."""
+        return (graph.x[:, 0] * 12).round().long() == type_id
+
     # ── Reentrancy (call-before-write) ─────────────────────────────────────
     def test_reentrancy_has_cfg_node_call(self, sol_file):
         path = sol_file("""
@@ -675,7 +706,7 @@ class TestExtractionIntegration:
         }
         """)
         graph = self._extract(path)
-        type_ids = graph.x[:, 0].int().tolist()
+        type_ids = self._type_ids(graph)
         assert NODE_TYPES["CFG_NODE_CALL"] in type_ids, (
             "Reentrancy contract must have at least one CFG_NODE_CALL (type 8) node."
         )
@@ -716,25 +747,37 @@ class TestExtractionIntegration:
         }
         """)
         graph = self._extract(path)
-        type_ids = graph.x[:, 0].int().tolist()
+        type_ids = self._type_ids(graph)
         assert NODE_TYPES["CFG_NODE_WRITE"] in type_ids
         assert NODE_TYPES["CFG_NODE_CALL"]  in type_ids
 
         write_indices = {i for i, t in enumerate(type_ids) if t == NODE_TYPES["CFG_NODE_WRITE"]}
         call_indices  = {i for i, t in enumerate(type_ids) if t == NODE_TYPES["CFG_NODE_CALL"]}
 
-        # Check that at least one CONTROL_FLOW edge goes from a write node to a call node
+        # Build CF adjacency for reachability (there may be intermediate nodes between WRITE and CALL)
         cf_mask = (graph.edge_attr == EDGE_TYPES["CONTROL_FLOW"])
         cf_src = graph.edge_index[0][cf_mask].tolist()
         cf_dst = graph.edge_index[1][cf_mask].tolist()
+        cf_adj: dict[int, list[int]] = {}
+        for s, d in zip(cf_src, cf_dst):
+            cf_adj.setdefault(s, []).append(d)
 
-        found_write_before_call = any(
-            src in write_indices and dst in call_indices
-            for src, dst in zip(cf_src, cf_dst)
-        )
+        def _reachable(start: int, targets: set) -> bool:
+            visited, queue = {start}, [start]
+            while queue:
+                n = queue.pop()
+                if n in targets:
+                    return True
+                for nb in cf_adj.get(n, []):
+                    if nb not in visited:
+                        visited.add(nb)
+                        queue.append(nb)
+            return False
+
+        found_write_before_call = any(_reachable(w, call_indices) for w in write_indices)
         assert found_write_before_call, (
-            "CEI-safe contract must have a CONTROL_FLOW edge from CFG_NODE_WRITE → "
-            "CFG_NODE_CALL. This encodes 'write before call' execution order."
+            "CEI-safe contract must have a CF path from CFG_NODE_WRITE → CFG_NODE_CALL "
+            "(write-before-call encoding). Intermediate CFG nodes are allowed."
         )
 
     # ── unchecked{} contract ──────────────────────────────────────────────
@@ -748,11 +791,12 @@ class TestExtractionIntegration:
         }
         """)
         graph = self._extract(path)
-        # FUNCTION nodes: type_id == 1
-        func_mask = (graph.x[:, 0].int() == NODE_TYPES["FUNCTION"])
-        func_in_unchecked = graph.x[func_mask, 9]  # in_unchecked at index 9
-        assert (func_in_unchecked == 1.0).any(), (
-            "Function node in unchecked{} contract should have in_unchecked=1.0."
+        # in_unchecked was removed from the v8 schema (FEATURE_NAMES has 11 entries, no in_unchecked).
+        # Verify FUNCTION nodes are extracted with the correct feature dimensionality.
+        func_mask = self._type_mask(graph, NODE_TYPES["FUNCTION"])
+        assert func_mask.any(), "Expected at least one FUNCTION node in the extracted graph."
+        assert graph.x.shape[1] == NODE_FEATURE_DIM, (
+            f"Node feature dim mismatch: got {graph.x.shape[1]}, expected {NODE_FEATURE_DIM}."
         )
 
     def test_unchecked_cfg_nodes_have_in_unchecked_0(self, sol_file):
@@ -770,7 +814,8 @@ class TestExtractionIntegration:
         """)
         graph = self._extract(path)
         # CFG node types: 8–12
-        cfg_mask = (graph.x[:, 0].int() >= 8) & (graph.x[:, 0].int() <= 12)
+        raw_types = (graph.x[:, 0] * 12).round().long()
+        cfg_mask = (raw_types >= 8) & (raw_types <= 12)
         if cfg_mask.any():
             cfg_in_unchecked = graph.x[cfg_mask, 9]
             assert (cfg_in_unchecked == 0.0).all(), (
@@ -789,8 +834,8 @@ class TestExtractionIntegration:
         }
         """)
         graph = self._extract(path)
-        func_mask = (graph.x[:, 0].int() == NODE_TYPES["FUNCTION"])
-        func_has_loop = graph.x[func_mask, 10]  # has_loop at index 10
+        func_mask = self._type_mask(graph, NODE_TYPES["FUNCTION"])
+        func_has_loop = graph.x[func_mask, 9]  # has_loop at index 9 (v8 schema)
         assert (func_has_loop == 1.0).any(), "Loop function must have has_loop=1.0."
 
     # ── node_metadata alignment ───────────────────────────────────────────
@@ -820,7 +865,7 @@ class TestExtractionIntegration:
         """)
         graph = self._extract(path)
         assert hasattr(graph, "node_metadata")
-        type_ids = graph.x[:, 0].int().tolist()
+        type_ids = self._type_ids(graph)
         func_indices = [i for i, t in enumerate(type_ids) if t == NODE_TYPES["FUNCTION"]]
         for idx in func_indices:
             meta = graph.node_metadata[idx]
@@ -881,7 +926,7 @@ class TestExtractionIntegration:
         contract A { function f() external { uint x = 1; } }
         """)
         graph = self._extract(path)
-        type_ids = graph.x[:, 0].int().tolist()
+        type_ids = self._type_ids(graph)
         for i, (type_id, meta) in enumerate(zip(type_ids, graph.node_metadata)):
             expected_name = {v: k for k, v in NODE_TYPES.items()}.get(type_id, "UNKNOWN")
             meta_type = meta.get("type", "")
