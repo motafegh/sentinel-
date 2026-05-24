@@ -2,6 +2,8 @@
 
 Four modules, one forward pass. Shapes and layer counts are **locked** — changes require full retrain.
 
+**Current architecture:** 8-layer GNN (2+3+3 phases), Flash Attention 2, IMP improvements (G1, G2, G3, M1, M3, C2, #26)
+
 ---
 
 ## Module Map
@@ -17,25 +19,33 @@ Four modules, one forward pass. Shapes and layer counts are **locked** — chang
 
 ## GNNEncoder (`gnn_encoder.py`)
 
-7-layer Graph Attention Network, three phases, Jumping Knowledge (JK) attention aggregation.
+8-layer Graph Attention Network, three phases (2+3+3), Jumping Knowledge (JK) attention aggregation.
 
 ```
 Phase 1 — Structural + CONTAINS (layers 1+2)
   GAT over edge types 0–5, 8 heads, add_self_loops=True
+  IMP-G2: input_proj skip connection (Linear(11,256)) added before relu in Layer 1
+         Prevents raw feature loss when GAT attention weights start near-uniform
   LayerNorm after phase
 
-Phase 2 — CF + CALL_ENTRY + RETURN_TO directed (layers 3+4+5, 3 hops)
-  conv3:  CF(6), 1 head
-  conv3b: CALL_ENTRY(8)
-  conv3c: RETURN_TO(9)
-  add_self_loops=False  ← directional signal preserved
+Phase 2 — CFG + ICFG directed (layers 3+4+5)
+  IMP-G1: each layer processes a DISTINCT edge subset (vs same cfg_mask before)
+  conv3:  CONTROL_FLOW(6) only — intra-function execution ordering
+  conv3b: CALL_ENTRY(8) + RETURN_TO(9) only — cross-function call structure
+  conv3c: CF(6)+CALL_ENTRY(8)+RETURN_TO(9) joint — integration layer
+  add_self_loops=False (CRITICAL — self-loops cancel directional signal)
+  heads=1, concat=False
   LayerNorm after phase
 
-Phase 3 — REVERSE_CONTAINS type-7 (layers 6+7)
-  1 head; REVERSE_CONTAINS generated at runtime from CONTAINS edges
+Phase 3 — Bidirectional CONTAINS (layers 6+7+8)
+  conv4:  REVERSE_CONTAINS up — CFG→FUNCTION (Phase 2 signal rises)
+  conv4b: REVERSE_CONTAINS up — second hop (multi-function patterns)
+  conv4c: CONTAINS down (IMP-G3) — FUNCTION→CFG, distributes enriched
+          FUNCTION context back to CFG children. All nodes carry Phase 3 depth after this.
+  1 head
   LayerNorm after phase
 
-JK attention aggregation over all 7 layer outputs → hidden_dim=256
+JK attention aggregation over all 8 layer outputs → hidden_dim=256
 Edge embedding: Embedding(11, 64) concatenated to each message
 ```
 
@@ -62,7 +72,8 @@ Also exports `select_prefix_nodes(x, batch, k) -> Tensor[B, K, 256]` for GNN pre
 
 **LoRA configuration:**
 - Base model frozen; LoRA r=16, α=32 on Q+V of all 12 layers
-- Only LoRA A/B matrices (trainable ~3.1M params) receive gradients
+- Only LoRA A/B matrices (trainable ~590K params) receive gradients
+- Flash Attention 2 support (falls back to SDPA if unavailable)
 
 **Standard path** (warmup epochs 0–14, or when `gnn_prefix_nodes=None`):
 ```
@@ -79,7 +90,7 @@ Mean over 4 windows → [B, 768]
 **Prefix path** (epoch ≥ gnn_prefix_warmup_epochs):
 ```
 Input: input_ids [B, 4, 512], attention_mask [B, 4, 512],
-       gnn_prefix_nodes [B, K, 768]
+       gnn_prefix_nodes [B, K, 768], gnn_prefix_counts [B]
 
 Uses inputs_embeds instead of input_ids:
   prefix_embeds [B, K, 768] + code_embeds [B, code_budget, 768]
@@ -89,16 +100,22 @@ Position IDs:
   Prefix: position_id = 1  (RoBERTa padding slot)
   Code:   position_ids = 3..3+code_budget-1
 
+IMP-M3: actual node count masking
+  gnn_prefix_counts [B] tracks real (non-padded) nodes per graph
+  Zero-padded prefix positions are masked in attention (95.5% of contracts fill all K slots)
+
 WindowAttentionPooler: CLS at i*window_size + prefix_k
   (offset shifts CLS extraction by prefix length)
 ```
 
 **Forward signature:**
 ```python
-TransformerEncoder.forward(input_ids, attention_mask, gnn_prefix_nodes=None) -> Tensor[B, 768]
+TransformerEncoder.forward(input_ids, attention_mask, gnn_prefix_nodes=None, gnn_prefix_counts=None, output_attentions=False) -> Tensor[B, 768]
 #   input_ids:        [B, 4, 512]    long
 #   attention_mask:   [B, 4, 512]    long
 #   gnn_prefix_nodes: [B, K, 768] | None  — projected GNN nodes
+#   gnn_prefix_counts: [B] | None  — real node counts (IMP-M3)
+#   output_attentions: bool  — returns prefix_attn_mean when True (IMP-M2)
 ```
 
 ---
@@ -115,6 +132,7 @@ prefix_type_embedding = Embedding(5, 768)     # type-specific bias per STRUCTURA
 
 **select_prefix_nodes():**
 Priority: CONSTRUCTOR > FALLBACK > RECEIVE > MODIFIER > FUNCTION
+Secondary sort: FUNCTION nodes by external_call_count descending (IMP-M1)
 Returns top-K=48 declaration nodes per graph in the batch.
 
 **Warmup suppression:**
@@ -132,7 +150,7 @@ Bidirectional cross-attention between graph nodes and token sequence.
 
 ```
 1. Project nodes [N, 256] → [N, 256]
-2. LayerNorm(768) + project tokens [B, 512, 768] → [B, 512, 256]
+2. token_norm LayerNorm(768) + project tokens [B, 512, 768] → [B, 512, 256] (BUG-C2 fix)
 3. _scatter_to_dense → [B, 1024, 256]  (max_nodes=1024; compile-safe, zero graph breaks)
 4. Node→Token cross-attention → enriched_nodes [B, 1024, 256]
 5. Token→Node cross-attention → enriched_tokens [B, 512, 256]
@@ -144,6 +162,10 @@ Bidirectional cross-attention between graph nodes and token sequence.
 **output_dim=128 is LOCKED** — the ZKML proxy MLP (M2) input depends on this exact shape.
 
 `_scatter_to_dense` replaces PyG's `to_dense_batch` to eliminate `GuardOnDataDependentSymNode` compile graph breaks. Zero graph breaks confirmed in production.
+
+**Key improvements:**
+- BUG-C2: `token_norm` LayerNorm before token projection prevents CodeBERT embeddings (L2 norm ~10-15) from dominating cross-attention dot products
+- Fix #26: `need_weights=False` on both MHA calls saves ~12.6 MB VRAM per forward pass by skipping attention weight matrix materialization
 
 **Forward signature:**
 ```python
@@ -194,7 +216,7 @@ Output is **raw logits** — apply `sigmoid()` for probabilities, use `BCEWithLo
 ```python
 model = SentinelModel(
     gnn_hidden_dim=256,
-    gnn_layers=7,
+    gnn_num_layers=8,                 # 2+3+3 phases (IMP-G3 added conv4c)
     lora_r=16,
     lora_alpha=32,
     gnn_prefix_k=48,                  # 0 = disabled
@@ -218,10 +240,10 @@ model._current_epoch = 9999          # ensures prefix always active at inference
 
 | Sub-module | Trainable | Frozen |
 |------------|-----------|--------|
-| GNNEncoder (7-layer GAT) | ~2.5M | 0 |
+| GNNEncoder (8-layer GAT) | ~2.4M | 0 |
 | GraphCodeBERT base | 0 | 124M |
-| LoRA adapters (Q+V × 12) | ~3.1M | 0 |
+| LoRA adapters (Q+V × 12) | ~590K | 0 |
 | gnn_to_bert_proj + prefix_type_embedding | ~200K | 0 |
 | CrossAttentionFusion | ~1.5M | 0 |
 | Classifier + eye projectors | ~300K | 0 |
-| **Total** | **~7.6M** | **~124M** |
+| **Total** | **~5.0M** | **~124M** |

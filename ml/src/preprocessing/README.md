@@ -25,10 +25,12 @@ NUM_CLASSES             = 10
 **NodeType IntEnum (13 types):**
 ```python
 class NodeType(IntEnum):
-    CONTRACT, FUNCTION, PARAMETER, VARIABLE, EVENT, MODIFIER,
-    STRUCT, ENUM, STATE_VARIABLE, BLOCK, UNCHECKED_BLOCK, TMP_VARIABLE, ERROR
+    STATE_VAR, FUNCTION, MODIFIER, EVENT, FALLBACK, RECEIVE, CONSTRUCTOR, CONTRACT,
+    CFG_NODE_CALL, CFG_NODE_WRITE, CFG_NODE_READ, CFG_NODE_CHECK, CFG_NODE_OTHER
 ```
 Always use `NodeType.FUNCTION` etc. — never hardcode raw integer values.
+
+**CFG subtypes (8–12):** Distinct type_ids give the GNN different initial embeddings for different statement roles. CFG_NODE_CALL (8) for external calls, CFG_NODE_WRITE (9) for state writes, CFG_NODE_READ (10) for state reads, CFG_NODE_CHECK (11) for require/assert/if conditions, CFG_NODE_OTHER (12) for all other statements.
 
 **STRUCTURAL_PREFIX_TYPES:**
 ```python
@@ -55,7 +57,7 @@ Used by `select_prefix_nodes()` in `sentinel_model.py` to identify declaration-l
 | [9] | `has_loop` | 0/1 |
 | [10] | `external_call_count` | log1p(count) / log1p(20) |
 
-CFG nodes (BLOCK, UNCHECKED_BLOCK, TMP_VARIABLE) inherit dims [1,3,4,5,9] from their parent FUNCTION node.
+CFG nodes (CFG_NODE_CALL, CFG_NODE_WRITE, CFG_NODE_READ, CFG_NODE_CHECK, CFG_NODE_OTHER) inherit dims [1,3,4,5,9] from their parent FUNCTION node.
 
 **Edge Types (11 types):**
 
@@ -93,6 +95,10 @@ Implements `extract_contract_graph()` — the single source of truth for graph c
 ## Schema Versioning
 
 **Current Version: v8**
+
+Schema history:
+- v7: 11 features (dropped in_unchecked), EMITS(3) and INHERITS(4) now fire, CFG nodes inherit dims from FUNCTION, DEF_USE(10) added
+- v8: CALL_ENTRY(8), RETURN_TO(9), DEF_USE(10) stored on disk (ICFG-Lite + data-flow edges)
 
 When modifying the schema:
 1. Update `FEATURE_SCHEMA_VERSION` in `graph_schema.py`

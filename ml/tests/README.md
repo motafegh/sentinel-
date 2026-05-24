@@ -51,7 +51,7 @@ This directory contains pytest-based tests for validating the correctness, robus
 ### Specialized Tests
 
 - **`test_gnn_encoder.py`** — GNN encoder specific tests
-  - 7-layer GAT architecture
+  - 8-layer GAT architecture (2+3+3 phases)
   - Three-phase attention
   - JK aggregation
   - Edge type handling
@@ -130,7 +130,7 @@ poetry run pytest tests/ -n auto
 ## Test Data
 
 Tests use:
-- Mock graph data with v7 schema
+- Mock graph data with v8 schema (11-dim features, 11 edge types)
 - Synthetic token sequences
 - Minimal test contracts
 - Cached test fixtures

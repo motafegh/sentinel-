@@ -31,9 +31,13 @@ Converts Solidity contracts to GraphCodeBERT token sequences:
 - MD5 hash naming (matches graph files for pairing)
 - Sliding window tokenization: 4 windows × 512 tokens, stride=256
 - Checkpoint/resume for interrupted runs
-- Parallel workers
+- Parallel workers with `init_worker()` pattern (tokenizer loaded once per worker process)
 
-**Stride=256 with K=48 note:** code_budget per window = 512 − K = 464. Stride=256 < 464 → 208-token overlap between windows — no gaps. Retokenization is only needed if K exceeds 256.
+**Multiprocessing efficiency:** The `init_worker()` function loads the 500MB GraphCodeBERT tokenizer once per worker process at startup. Without this pattern, the tokenizer would be loaded 68,568 times (once per contract), causing severe performance degradation.
+
+**Error handling:** Failed contracts are tracked in `failed_contracts.json` with their MD5 hashes. The pipeline logs success rate warnings if below 95%.
+
+**Statistics output:** Reports truncation rate (contracts exceeding 512 tokens) and success/failure counts at completion.
 
 ## Data Flow
 
