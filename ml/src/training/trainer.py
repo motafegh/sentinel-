@@ -99,9 +99,9 @@ CLASS_NAMES = [
 ]
 NUM_CLASSES = len(CLASS_NAMES)
 
-ARCHITECTURE = "three_eye_v7"
+ARCHITECTURE = "three_eye_v8"
 
-MODEL_VERSION = "v7.0"
+MODEL_VERSION = "v8.0"
 
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal", "asl"})
 
@@ -295,6 +295,7 @@ class TrainConfig:
     # the behavioral collapse seen in v5.2. Setting min_samples=3000 clamps
     # Reentrancy, GasException, and MishandledException to 1.0 while leaving
     # DoS (257), Timestamp (~1500), and minority classes at their sqrt-scaled weights.
+    pos_weight_cap: float = 10.0  # M-1/H-4: cap on sqrt-scaled pos_weight; was 20.0
     pos_weight_min_samples: int = 3000  # classes with ≥3000 train positives get pos_weight=1.0 (BUG-H3: Reentrancy 2.82× amplification dominated gradient)
 
     # --- GNN prefix injection (Phase 1) ---
@@ -303,7 +304,9 @@ class TrainConfig:
     # from random init starting at epoch gnn_prefix_warmup_epochs.
     gnn_prefix_k:             int   = 0     # 0 = disabled; 48 for Phase 1
     gnn_prefix_warmup_epochs: int   = 15   # epochs without prefix
-    gnn_prefix_proj_lr_mult:  float = 1.0  # LR for gnn_to_bert_proj + prefix_type_embedding
+    gnn_prefix_proj_lr_mult:       float = 5.0   # NH-5: raised from 1.0; cold-start needs faster LR
+    gnn_prefix_proj_reset_on_warmup: bool = True  # NC-1: reset Adam state for proj at ep=warmup_epoch
+    jk_entropy_reg_lambda:         float = 0.01  # C-3: JK entropy regularizer weight (0=disabled)
 
     # --- Cache ---
     cache_path: str | None = "ml/data/cached_dataset_deduped.pkl"
@@ -348,6 +351,17 @@ class TrainConfig:
             raise ValueError(
                 f"gradient_accumulation_steps={self.gradient_accumulation_steps} must be >= 1."
             )
+        unknown_cls = set(self.class_label_smoothing) - set(CLASS_NAMES)
+        if unknown_cls:
+            raise ValueError(
+                f"NH-2: class_label_smoothing contains unknown class names: {unknown_cls}. "
+                f"Valid classes: {CLASS_NAMES}"
+            )
+        invalid_eps = {k: v for k, v in self.class_label_smoothing.items() if not (0.0 <= v < 1.0)}
+        if invalid_eps:
+            raise ValueError(
+                f"NH-2: class_label_smoothing values must be in [0, 1): invalid entries: {invalid_eps}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -359,6 +373,7 @@ def compute_pos_weight(
     num_classes:          int,
     device:               str,
     pos_weight_min_samples: int = 0,
+    pos_weight_cap: float = 20.0,
 ) -> torch.Tensor:
     import pandas as pd
 
@@ -386,10 +401,10 @@ def compute_pos_weight(
             pos_weight_vals.append(1.0)
         else:
             raw_ratio = float(N - pos) / float(pos)
-            # Cap at 20.0: without a ceiling, severely data-starved classes (e.g. DoS
+            # Cap at pos_weight_cap: without a ceiling, severely data-starved classes (e.g. DoS
             # with 257 samples → raw_ratio≈120) produce unchecked gradient spikes that
             # destabilise the loss scale for the entire batch.
-            pos_weight_vals.append(min(float(raw_ratio ** 0.5), 20.0))
+            pos_weight_vals.append(min(float(raw_ratio ** 0.5), pos_weight_cap))
 
     logger.info(f"pos_weight sqrt-scaled (min_samples={pos_weight_min_samples}) — training split only:")
     for name, pw in zip(CLASS_NAMES[:num_classes], pos_weight_vals):
@@ -496,6 +511,7 @@ def train_one_epoch(
     label_smoothing:             float = 0.0,   # kept for backward compat; overridden by class_eps
     class_eps:                   "torch.Tensor | None" = None,  # [NUM_CLASSES] per-class smoothing (BUG-M9)
     dos_loss_weight:             float = 0.0,   # 0.0 = zero DoS gradient (BUG-H6)
+    jk_entropy_reg_lambda:       float = 0.0,   # C-3: JK entropy regularizer weight
 ) -> tuple[float, int, float]:
     """Returns (avg_loss, nan_batch_count, last_gnn_share)."""
     model.train()
@@ -557,6 +573,9 @@ def train_one_epoch(
             if dos_loss_weight < 1.0:
                 _aux_masked = {}
                 for _k, _v in aux.items():
+                    if _k == "jk_entropy":
+                        _aux_masked[_k] = _v  # scalar — no DoS column masking
+                        continue
                     _vv = _v.clone()
                     _vv[:, _dos_idx] = (
                         dos_loss_weight * _v[:, _dos_idx]
@@ -577,6 +596,16 @@ def train_one_epoch(
             _window_start      = (batch_idx // accum_steps) * accum_steps
             _actual_window     = min(accum_steps, len(loader) - _window_start)
             loss = (main_loss + aux_loss_weight * aux_loss) / _actual_window
+            # C-3: JK entropy regularizer — penalizes Phase 3 JK attention collapse.
+            # Adds to loss: lambda * (log(K) - H) where H is the mean per-node entropy.
+            # When one phase dominates (H≈0), penalty ≈ lambda*log(3)≈0.011; at uniform H=log(3), penalty=0.
+            if jk_entropy_reg_lambda > 0.0:
+                _jk_ent = aux.get("jk_entropy") if isinstance(aux, dict) else None
+                if _jk_ent is not None:
+                    import math
+                    _H_max = math.log(3)
+                    _jk_reg = jk_entropy_reg_lambda * (_H_max - _jk_ent.clamp(max=_H_max))
+                    loss = loss + _jk_reg / _actual_window
 
         # Accumulate per-eye loss for the upcoming log line.
         _run_main  += main_loss.item()
@@ -696,8 +725,8 @@ def _build_weighted_sampler(
         elif mode == "DoS-only":
             w = 39.0 if float(row.get("DenialOfService", 0)) == 1.0 else 1.0
         elif mode == "all-rare":
-            n_pos = max(1, sum(float(row.get(cls, 0)) for cls in CLASS_NAMES))
-            w = 1.0 / n_pos
+            n_pos = sum(float(row.get(cls, 0)) for cls in CLASS_NAMES)
+            w = float(n_pos) if n_pos > 0 else 1.0
         else:
             w = 1.0
         weights.append(w)
@@ -843,7 +872,8 @@ def train(config: TrainConfig) -> dict:
 
     if label_csv_path is not None:
         pos_weight = compute_pos_weight(str(label_csv_path), train_indices, config.num_classes, device,
-                                        pos_weight_min_samples=config.pos_weight_min_samples)
+                                        pos_weight_min_samples=config.pos_weight_min_samples,
+                                        pos_weight_cap=config.pos_weight_cap)
     else:
         logger.info("Binary mode (label_csv=None) — pos_weight not computed.")
         pos_weight = None
@@ -868,6 +898,17 @@ def train(config: TrainConfig) -> dict:
         gnn_prefix_k=config.gnn_prefix_k,
         gnn_prefix_warmup_epochs=config.gnn_prefix_warmup_epochs,
     ).to(device)
+
+    # C-1: Verify GNN conv layers are float32 (BF16 global dtype pollution check).
+    # The DTYPE FIX in transformer_encoder.py restores torch.default_dtype after BERT load.
+    # This assertion catches any regression where GNN parameters are created as BF16.
+    _gnn_dtype = next(model.gnn.conv1.parameters()).dtype
+    if _gnn_dtype != torch.float32:
+        raise RuntimeError(
+            f"C-1: GNN conv1 parameters are {_gnn_dtype} (expected float32). "
+            "BF16 global dtype pollution likely — check transformer_encoder.py DTYPE FIX."
+        )
+    logger.info(f"C-1: GNN dtype check passed — conv1 params are {_gnn_dtype}.")
 
     start_epoch      = 1
     best_f1          = 0.0
@@ -965,10 +1006,13 @@ def train(config: TrainConfig) -> dict:
         loss_fn: nn.Module = _FocalFromLogits()
         logger.info(f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha})")
     elif config.loss_fn == "asl":
+        if pos_weight is not None:
+            logger.info("NC-4: Passing pos_weight to AsymmetricLoss (was ignored in prior runs).")
         loss_fn = AsymmetricLoss(
             gamma_neg=config.asl_gamma_neg,
             gamma_pos=config.asl_gamma_pos,
             clip=config.asl_clip,
+            pos_weight=pos_weight,
         )
         logger.info(
             f"Loss: AsymmetricLoss(gamma_neg={config.asl_gamma_neg}, "
@@ -1050,7 +1094,7 @@ def train(config: TrainConfig) -> dict:
         _param_groups.append({"params": _fusion_params, "lr": _fusion_lr})
         _max_lrs.append(_fusion_lr)
     if _prefix_proj_params:
-        _param_groups.append({"params": _prefix_proj_params, "lr": _prefix_proj_lr})
+        _param_groups.append({"params": _prefix_proj_params, "lr": _prefix_proj_lr, "name": "prefix_proj"})
         _max_lrs.append(_prefix_proj_lr)
     if _other_params:
         _param_groups.append({"params": _other_params,  "lr": _other_lr})
@@ -1212,6 +1256,7 @@ def train(config: TrainConfig) -> dict:
             logger.info("Scheduler state skipped — force_optimizer_reset=True.")
     elif _ckpt_state is not None:
         logger.info("Resumed model weights only (fresh optimizer/scheduler).")
+    del _ckpt_state
 
     # ── Fix #34: log VRAM at training start ──
     if device == "cuda":
@@ -1262,6 +1307,7 @@ def train(config: TrainConfig) -> dict:
             "fusion_lr_multiplier":        config.fusion_lr_multiplier,
             "label_smoothing":             config.label_smoothing,
             "pos_weight_min_samples":      config.pos_weight_min_samples,
+            "jk_entropy_reg_lambda":       config.jk_entropy_reg_lambda,
         }
         if pos_weight is not None:
             for name, pw in zip(CLASS_NAMES[:config.num_classes], pos_weight.cpu().tolist()):
@@ -1324,6 +1370,28 @@ def train(config: TrainConfig) -> dict:
             else:
                 effective_aux_weight = config.aux_loss_weight
 
+            # NC-1: Reset Adam optimizer state for prefix_proj at warmup transition.
+            # gnn_to_bert_proj received no gradient during warmup (prefix suppressed);
+            # its Adam m1/m2 are stale near-zero. Fresh state gives a clean cold start.
+            if (
+                epoch == config.gnn_prefix_warmup_epochs
+                and config.gnn_prefix_k > 0
+                and config.gnn_prefix_proj_reset_on_warmup
+            ):
+                for _pg in optimizer.param_groups:
+                    if _pg.get("name") == "prefix_proj":
+                        _n_reset = sum(
+                            1 for _p in _pg["params"] if _p in optimizer.state
+                        )
+                        for _p in _pg["params"]:
+                            optimizer.state[_p] = {}
+                        logger.info(
+                            f"NC-1: Reset Adam state for {_n_reset} prefix_proj params "
+                            f"at warmup transition (ep{epoch})."
+                        )
+                        mlflow.log_metric("prefix_proj_adam_reset", 1, step=epoch)
+                        break
+
             train_loss, nan_batch_count, last_gnn_share = train_one_epoch(
                 model=model,
                 loader=train_loader,
@@ -1340,6 +1408,7 @@ def train(config: TrainConfig) -> dict:
                 label_smoothing=config.label_smoothing,
                 class_eps=_class_eps,
                 dos_loss_weight=config.dos_loss_weight,
+                jk_entropy_reg_lambda=config.jk_entropy_reg_lambda,
             )
 
             val_metrics = evaluate(

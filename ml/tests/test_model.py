@@ -163,7 +163,7 @@ def test_forward_many_nodes():
 # ---------------------------------------------------------------------------
 
 def test_forward_return_aux_shapes():
-    """return_aux=True must return (logits [B, C], aux dict with three [B, C] tensors)."""
+    """return_aux=True must return (logits [B, C], aux dict with eye tensors + jk_entropy)."""
     model = _make_model(num_classes=10)
     model.train()  # aux heads active in training mode
     graphs, input_ids, attention_mask = _make_batch(batch_size=4)
@@ -175,12 +175,12 @@ def test_forward_return_aux_shapes():
     )
     logits, aux = result
     assert logits.shape == (4, 10), f"logits shape: {logits.shape}"
-    assert set(aux.keys()) == {"gnn", "transformer", "fused"}, (
-        f"aux keys must be {{'gnn', 'transformer', 'fused'}}, got {set(aux.keys())}"
+    assert {"gnn", "transformer", "fused", "jk_entropy"} == set(aux.keys()), (
+        f"aux keys must be {{'gnn', 'transformer', 'fused', 'jk_entropy'}}, got {set(aux.keys())}"
     )
-    for key, tensor in aux.items():
-        assert tensor.shape == (4, 10), (
-            f"aux['{key}'] shape: {tensor.shape}, expected (4, 10)"
+    for key in ("gnn", "transformer", "fused"):
+        assert aux[key].shape == (4, 10), (
+            f"aux['{key}'] shape: {aux[key].shape}, expected (4, 10)"
         )
 
 
@@ -226,7 +226,7 @@ def test_aux_heads_exist_and_output_dim():
 # ---------------------------------------------------------------------------
 
 def test_gnn_return_intermediates_keys():
-    """GNNEncoder(return_intermediates=True) must return (x, batch, dict)."""
+    """GNNEncoder(return_intermediates=True) must return (x, batch, jk_entropy, dict)."""
     gnn = GNNEncoder()
     gnn.eval()
     x          = torch.randn(3, NODE_FEATURE_DIM)
@@ -241,8 +241,8 @@ def test_gnn_return_intermediates_keys():
     with torch.no_grad():
         result = gnn(x, edge_index, batch, edge_attr, return_intermediates=True)
 
-    assert len(result) == 3, f"expected 3-tuple, got {len(result)}"
-    node_embs, batch_out, intermediates = result
+    assert len(result) == 4, f"expected 4-tuple, got {len(result)}"
+    node_embs, batch_out, jk_entropy, intermediates = result
     assert node_embs.shape == (3, 256), f"node_embs shape: {node_embs.shape}"
     assert set(intermediates.keys()) == {"after_phase1", "after_phase2", "after_phase3"}
     for key, tensor in intermediates.items():
@@ -270,7 +270,7 @@ def test_gnn_phase3_changes_function_node():
     batch = torch.zeros(3, dtype=torch.long)
 
     with torch.no_grad():
-        _, _, intermediates = gnn(
+        _, _, _, intermediates = gnn(
             x, edge_index, batch, edge_attr, return_intermediates=True
         )
 
@@ -285,8 +285,8 @@ def test_gnn_phase3_changes_function_node():
     )
 
 
-def test_gnn_return_intermediates_false_is_2_tuple():
-    """Default return_intermediates=False must return (x, batch) only."""
+def test_gnn_return_false_is_3_tuple():
+    """Default return_intermediates=False must return (x, batch, jk_entropy) 3-tuple."""
     gnn = GNNEncoder()
     gnn.eval()
     x          = torch.randn(5, NODE_FEATURE_DIM)
@@ -297,10 +297,10 @@ def test_gnn_return_intermediates_false_is_2_tuple():
     with torch.no_grad():
         result = gnn(x, edge_index, batch, edge_attr)
 
-    assert isinstance(result, tuple) and len(result) == 2, (
-        f"return_intermediates=False must return 2-tuple, got len={len(result)}"
+    assert isinstance(result, tuple) and len(result) == 3, (
+        f"return_intermediates=False must return 3-tuple, got len={len(result)}"
     )
-    node_embs, batch_out = result
+    node_embs, batch_out, jk_entropy = result
     assert node_embs.shape == (5, 256)
 
 

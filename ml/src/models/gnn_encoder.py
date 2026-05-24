@@ -103,12 +103,11 @@ class _JKAttention(nn.Module):
         # Read by jk_weight_hist.py diagnostic; zero cost in training.
         self.last_node_weights: "torch.Tensor | None" = None
 
-    def forward(self, xs: list[torch.Tensor]) -> torch.Tensor:
+    def forward(self, xs: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             xs: list of K tensors each [N, channels]
-        Returns:
-            [N, channels]  — weighted sum, same shape as each input
+        Returns: tuple([N, channels], scalar entropy)
 
         Side effects:
           - always:    stores mean per-phase weights in self.last_weights [K]
@@ -125,7 +124,11 @@ class _JKAttention(nn.Module):
         # Full per-node weights: only kept in eval mode (N varies, can't be a buffer).
         if not self.training:
             self.last_node_weights = w_nk.detach().cpu()
-        return (weights * stacked).sum(dim=1)    # [N, channels]
+        output = (weights * stacked).sum(dim=1)
+        # C-3: Mean entropy over nodes. Gradient-attached for JK entropy regularizer.
+        # H in [0, log(K)]; low H = collapsed attention = one phase dominates.
+        jk_entropy = -(w_nk * (w_nk + 1e-8).log()).sum(dim=1).mean()
+        return output, jk_entropy
 
 
 # ---------------------------------------------------------------------------
@@ -361,7 +364,7 @@ class GNNEncoder(nn.Module):
         # ── Guards ───────────────────────────────────────────────────────────
         if x.shape[1] != NODE_FEATURE_DIM:
             raise ValueError(
-                f"GNNEncoder expects {NODE_FEATURE_DIM}-dim node features (schema v7) "
+                f"GNNEncoder expects {NODE_FEATURE_DIM}-dim node features (schema v8) "
                 f"but got {x.shape[1]}. Likely a stale v6 .pt file — re-run reextract_graphs.py."
             )
         # Bug #1: use_edge_attr=True with edge_attr=None silently disables
@@ -452,8 +455,8 @@ class GNNEncoder(nn.Module):
         struct_ei = edge_index[:, struct_mask]
         struct_ea = e[struct_mask]   if e is not None else None
 
-        cfg_ei    = edge_index[:, cfg_mask]
-        cfg_ea    = e[cfg_mask]      if e is not None else None
+        phase2_ei    = edge_index[:, cfg_mask]
+        phase2_ea    = e[cfg_mask]      if e is not None else None
 
         # IMP-G1: layer-specific Phase 2 edge subsets so each layer builds distinct context.
         # Layer 3 (conv3):  CONTROL_FLOW only — intra-function execution order
@@ -469,8 +472,8 @@ class GNNEncoder(nn.Module):
             icfg_only_ei = edge_index[:, _icfg_mask]
             icfg_only_ea = e[_icfg_mask] if e is not None else None
         else:
-            cf_only_ei = icfg_only_ei = cfg_ei
-            cf_only_ea = icfg_only_ea = cfg_ea
+            cf_only_ei = icfg_only_ei = phase2_ei
+            cf_only_ea = icfg_only_ea = phase2_ea
 
         # Phase 3: CONTAINS edges used in both directions (IMP-G3).
         # fwd_contains_ei: FUNCTION→CFG (original CONTAINS direction)
@@ -535,7 +538,7 @@ class GNNEncoder(nn.Module):
         x2 = self.conv3b(x, icfg_only_ei, icfg_only_ea)     # Layer 4: ICFG only
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)
-        x2 = self.conv3c(x, cfg_ei, cfg_ea)                 # Layer 5: joint integration
+        x2 = self.conv3c(x, phase2_ei, phase2_ea)            # Layer 5: Phase 2 joint (CF+ICFG)
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)
         x  = self.phase_norm[1](x)                          # LayerNorm after complete Phase 2
@@ -569,9 +572,10 @@ class GNNEncoder(nn.Module):
         # attention scores.  When use_jk=False, only Phase 3 output is returned
         # (same behaviour as v5.0, preserved for checkpoint compatibility).
         if self.use_jk and self.jk is not None:
-            x = self.jk(_live)   # [N, hidden_dim]
-        # else: x is already the Phase 3 output
+            x, _jk_entropy = self.jk(_live)
+        else:
+            _jk_entropy = x.new_zeros(1).squeeze()
 
         if return_intermediates:
-            return x, batch, _intermediates
-        return x, batch
+            return x, batch, _jk_entropy, _intermediates
+        return x, batch, _jk_entropy

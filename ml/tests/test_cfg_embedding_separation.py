@@ -180,10 +180,10 @@ def test_reentrancy_embedding_separation():
     gnn.eval()
 
     with torch.no_grad():
-        node_embs_a, _ = gnn(
+        node_embs_a, _, _jk_a = gnn(
             graph_a.x, graph_a.edge_index, graph_a.batch, graph_a.edge_attr
         )
-        node_embs_b, _ = gnn(
+        node_embs_b, _, _jk_b = gnn(
             graph_b.x, graph_b.edge_index, graph_b.batch, graph_b.edge_attr
         )
 
@@ -262,7 +262,7 @@ def test_phase3_changes_function_node_embedding():
     gnn.eval()
 
     with torch.no_grad():
-        _, _, intermediates = gnn(
+        _, _, _, intermediates = gnn(
             graph.x, graph.edge_index, graph.batch, graph.edge_attr,
             return_intermediates=True
         )
