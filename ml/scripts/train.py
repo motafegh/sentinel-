@@ -181,8 +181,14 @@ def parse_args() -> argparse.Namespace:
                    help="Number of GNN prefix tokens injected before code (0=disabled; 48 for Phase 1)")
     p.add_argument("--gnn-prefix-warmup-epochs", type=int,   default=15,
                    help="Epochs to suppress prefix injection (projection trains from random init after warmup)")
-    p.add_argument("--gnn-prefix-proj-lr-mult",  type=float, default=1.0,
-                   help="LR multiplier for gnn_to_bert_proj and prefix_type_embedding")
+    p.add_argument("--gnn-prefix-proj-lr-mult",  type=float, default=5.0,
+                   help="LR multiplier for gnn_to_bert_proj and prefix_type_embedding (NH-5: raised from 1.0 for cold-start)")
+    p.add_argument("--no-prefix-proj-reset", action="store_true",
+                   help="Disable NC-1 Adam state reset for prefix_proj at warmup transition")
+    p.add_argument("--jk-entropy-reg-lambda", type=float, default=0.01,
+                   help="C-3: JK entropy regularizer weight (0=disabled; 0.01 default penalises Phase3 collapse)")
+    p.add_argument("--pos-weight-cap", type=float, default=10.0,
+                   help="M-1: cap on sqrt-scaled pos_weight per class (was 20.0)")
 
     p.add_argument("--smoke-subsample-fraction", type=float, default=1.0)
     p.add_argument(
@@ -267,9 +273,12 @@ def main() -> None:
         force_optimizer_reset = args.force_optimizer_reset,
         use_weighted_sampler  = args.weighted_sampler,
         dos_loss_weight       = args.dos_loss_weight,
-        gnn_prefix_k          = args.gnn_prefix_k,
-        gnn_prefix_warmup_epochs = args.gnn_prefix_warmup_epochs,
-        gnn_prefix_proj_lr_mult  = args.gnn_prefix_proj_lr_mult,
+        gnn_prefix_k                    = args.gnn_prefix_k,
+        gnn_prefix_warmup_epochs        = args.gnn_prefix_warmup_epochs,
+        gnn_prefix_proj_lr_mult         = args.gnn_prefix_proj_lr_mult,
+        gnn_prefix_proj_reset_on_warmup = not args.no_prefix_proj_reset,
+        jk_entropy_reg_lambda           = args.jk_entropy_reg_lambda,
+        pos_weight_cap                  = args.pos_weight_cap,
     )
 
     train(config)
