@@ -652,10 +652,10 @@ accelerating IMP-G1/G2/G3 (originally planned for Phase GNN-A) into the P1-TRAIN
 ### IMP-BUG — Close stale BUG-H4 and BUG-H5 entries
 
 **Status:** ✅ DONE (2026-05-24)
-**File changed:** `docs/ACTIVE_PLAN.md`
+**File changed:** `docs/phases-v8-and-earlier.md` (formerly `docs/ACTIVE_PLAN.md` — renamed 2026-05-24)
 
 Both bugs were addressed by DQ-1 (`label_cleaner.py` changes, 2026-05-23) but the Open Bugs
-section of `ACTIVE_PLAN.md` had not been updated.
+section had not been updated.
 
 - **BUG-H4** (Timestamp over-labeling): marked DONE — `check_timestamp()` requires
   `uses_block_globals > 0.5` (feature[2]); −568 Timestamp labels removed
@@ -1228,7 +1228,7 @@ These items are independent of the GraphCodeBERT proposal and should continue in
 | M5 Contracts | Fix foundry.toml remappings; run forge build + forge test | P1 — independent, do now |
 | M4 Agents | Build RAG index; start MCP servers; run actual audit pipeline | P2 — after M5 verified |
 | BUG-M5 | Remove Brainmab mislabeled contract | P2 |
-| IMP-BUG | Close stale BUG-H4 + BUG-H5 entries in ACTIVE_PLAN.md | P0 — do now |
+| IMP-BUG | Close stale BUG-H4 + BUG-H5 entries in phases-v8-and-earlier.md | ✅ DONE (2026-05-24) |
 | IMP-M1 | FUNCTION secondary sort by external_call_count | P0 — before next run |
 | IMP-M2 | prefix_attention_mean diagnostic (Tier 1: proj norm) | P0 — add to trainer now |
 | IMP-M3 | Zero-padded prefix attention mask fix | P1 — before P1B/Phase DATA-1 |
@@ -1264,7 +1264,7 @@ Use this to track overall progress at a glance:
 | GATE-GCB-5: Phase 2 results recorded | 🔴 BLOCKED | — |
 | P3: Option A (full per-window DFG) | 🔴 BLOCKED | — |
 | GATE-GCB-6: Full ablation complete | 🔴 BLOCKED | — |
-| IMP-BUG: Close BUG-H4+H5 in ACTIVE_PLAN.md | ✅ DONE | 2026-05-24 |
+| IMP-BUG: Close BUG-H4+H5 in phases-v8-and-earlier.md | ✅ DONE | 2026-05-24 |
 | IMP-M1: FUNCTION secondary sort by external_call_count | ✅ DONE | 2026-05-24 |
 | IMP-M2 Tier 1: proj_norm MLflow logging | ✅ DONE (already in trainer.py:1306) | 2026-05-23 |
 | IMP-M2 Tier 2: prefix_attention_mean diagnostic | ✅ DONE | 2026-05-24 |
