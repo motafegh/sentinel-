@@ -68,3 +68,32 @@ Each entry: what was taught, what was answered, gaps closed, audit flags raised.
 - PyG `Data` raises `AttributeError` for missing attrs (not `None`) → hard crash is good
 
 **Audit flags raised:** A3, A4
+
+---
+
+## Session 3 — Phase 2: `graph_extractor.py` (Chunk 2) + preferences P11–P14
+
+**File:** `ml/src/preprocessing/graph_extractor.py` (lines 218–432)
+
+**New preferences added:** P11 (Solidity domain knowledge inline), P12 (expand abbreviations),
+P13 (specify learning mode per code block), P14 (explain mechanism of complex code)
+
+**Concepts taught:**
+- 6 feature computation helpers and which feature index each produces
+- `_compute_return_ignored`: IMP-D1 fix — why global-set approach had false negatives,
+  why sequential CFG-order scan fixes it, sentinel -1.0 semantics
+- `_compute_call_target_typed`: two-pass IR + regex fallback, closed-world assumption guard,
+  negative lookahead regex for address(this) exclusion
+- `_compute_in_unchecked`: dead code, deprecated, should be deleted
+- `_compute_has_loop`: Slither NodeType loop markers, `is True` vs bool() issue
+- `_compute_external_call_count`: why Transfer/Send counted separately, log1p normalization
+- `_compute_uses_block_globals`: why feature exists (no READS edge for block globals),
+  string-based vs isinstance type check tradeoff
+- Broad `except Exception` anti-pattern across all helpers
+- Alternative approaches: symbolic execution vs IR traversal for return-value tracking
+
+**Warm-up recall:** Q1 slightly off (compatibility = configs not file versioning) — gap closed
+**Learning questions answered:** high/low level calls explained, sequential scan disambiguation
+**Challenge questions answered:** Q1–Q5 with gaps closed on all
+
+**Audit flags raised:** A5, A6, A7, A8, A9

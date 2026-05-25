@@ -76,3 +76,74 @@ if len(node_metadata) != x.shape[0]:
 **Severity:** Medium
 **Status:** Open
 **Raised:** Session 2, Chunk 1
+
+---
+
+## A5 — `graph_extractor.py` — `except AttributeError` scope too broad in `_compute_return_ignored`
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_compute_return_ignored()`, outer `except AttributeError` block
+**Issue:** The broad `except AttributeError` catches any AttributeError from inside the entire
+function body — including programming errors like refactored field names. A bug introduced during
+refactoring would silently return `-1.0` (sentinel) instead of crashing, hiding the error.
+**Fix:** Tighten the try scope to only wrap `func.nodes` access. Inner loop errors should propagate.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 2, Chunk 2
+
+---
+
+## A6 — `graph_extractor.py` — `except Exception: pass` in `_compute_call_target_typed`
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_compute_call_target_typed()`, line ~312
+**Issue:** `except Exception: pass` is maximally broad — catches all exceptions including
+`SystemExit` subclasses and hides Slither API changes. If Slither renames a field and
+`recv_type.name` raises `AttributeError`, the code silently falls to the regex scan instead
+of surfacing the API breakage. Should be `except (ImportError, AttributeError, TypeError)`.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 2, Chunk 2
+
+---
+
+## A7 — `graph_extractor.py` — `_compute_in_unchecked` is dead code
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** Lines 331–360, `_compute_in_unchecked()` function
+**Issue:** Function is marked DEPRECATED with comment "safe to delete after v8 extraction is
+complete." v8 is the current schema. The function is never called anywhere in the file.
+Dead code adds maintenance burden and confusion.
+**Fix:** Delete the function entirely. Verify no tests, docstrings, or scripts reference it first.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 2, Chunk 2
+
+---
+
+## A8 — `graph_extractor.py` — `is True` identity check misses truthy non-booleans
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_compute_has_loop()`, fallback: `getattr(func, "is_loop_present", None) is True`
+**Issue:** `is True` uses identity comparison, not truthiness. If `is_loop_present` returns
+integer `1` or any truthy non-boolean, the check silently returns `False` — loop presence missed.
+**Fix:** Replace with `bool(getattr(func, "is_loop_present", False))`.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 2, Chunk 2
+
+---
+
+## A9 — `graph_extractor.py` — string-based type check fragile on Slither class rename
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_compute_uses_block_globals()`: `type(rv).__name__ == "SolidityVariableComposed"`
+**Issue:** If Slither renames the class (not just moves it), this check silently returns 0.0
+for all timestamp-related variables. The `Timestamp` and `TOD` vulnerability classes lose
+their primary direct signal with no warning. No crash, no log — pure silent miss.
+**Fix:** Try the import first, fall back to string check only on ImportError:
+```python
+try:
+    from slither.core.variables.variable import SolidityVariableComposed as _SVC
+    _is_svc = lambda rv: isinstance(rv, _SVC)
+except ImportError:
+    _is_svc = lambda rv: type(rv).__name__ == "SolidityVariableComposed"
+```
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 2, Chunk 2

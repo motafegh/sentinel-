@@ -130,3 +130,53 @@ This aids sleep-based memory consolidation (encoding what matters most before th
 Recall questions must require retrieval from memory, not scanning back through the chat.
 If the user needs to look something up to answer a warm-up question, that signals the concept
 needs re-teaching, not re-reading.
+
+---
+
+### P11 — Teach Domain Knowledge Inline (Solidity + Smart Contracts)
+When teaching touches Solidity concepts, smart contract vulnerabilities, or blockchain mechanics,
+explain them inline — do not assume prior knowledge. This project's domain is smart contract
+security; understanding the ML is incomplete without understanding what it's detecting.
+
+Covers: Solidity syntax, vulnerability patterns (reentrancy, integer overflow, DoS, etc.),
+EVM execution model, Slither analysis concepts, and any other domain term that appears.
+
+Format: brief inline explanation at first occurrence, not a separate deep-dive section unless
+the concept is central to the chunk being taught.
+
+---
+
+### P12 — Expand Abbreviations and Jargon on First Use
+When any abbreviation, acronym, or technical shorthand appears — in code, prose, or diagrams —
+expand it explicitly on its first use in that chunk.
+
+Examples: IR → Intermediate Representation, CFG → Control Flow Graph, lvalue → left-hand value
+(the variable being assigned to), op → operation (single IR instruction), SSA → Static Single
+Assignment, MRO → Method Resolution Order.
+
+Goal: every term should be pronounceable, memorable, and fully understood — not just recognized.
+
+---
+
+### P13 — Specify Learning Mode for Each Code Block
+When showing any code block, explicitly state the intended learning mode:
+- **Memorize** — exact syntax matters; must be recalled verbatim (rare)
+- **Understand the pattern** — know what it does and why; don't memorize syntax
+- **Master the detail** — specific mechanism must be internalized; will appear in challenges
+- **Awareness only** — context for the surrounding concept; don't spend time on it
+
+Also: if a code block contains a known failure mode or a place where bugs commonly originate,
+say so explicitly alongside the learning mode label.
+
+---
+
+### P14 — Explain Mechanism of Complex or Educationally Valuable Code
+When a code block contains:
+  (a) complex logic that isn't obvious from reading it
+  (b) a non-trivial algorithm or data structure operation
+  (c) a syntax pattern that is not common knowledge
+  (d) an important bug fix whose subtlety must be understood
+
+— explain the **mechanism step by step**, not just the overall outcome.
+Do not assume the user knows Python or any library well enough to infer how a pattern works.
+This is not for all code — only code where understanding the steps matters for mastery.
