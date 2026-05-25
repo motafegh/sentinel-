@@ -97,3 +97,43 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions answered:** Q1–Q5 with gaps closed on all
 
 **Audit flags raised:** A5, A6, A7, A8, A9
+
+---
+
+## Session 4 — Phase 2: `graph_extractor.py` (Chunk 3)
+
+**File:** `ml/src/preprocessing/graph_extractor.py` (lines 435–643)
+
+**Concepts taught:**
+- `_cfg_node_type()` — 5-priority CFG node classifier: CALL > WRITE > READ > CHECK > OTHER
+- Priority ordering rationale — most vulnerability-relevant op wins when Slither merges IR nodes
+- `_build_cfg_node_features()` — 11-dim feature vector for CFG (statement-level) nodes
+- BUG-C3 fix — CFG nodes inherit visibility, view, payable, complexity, has_loop from parent FUNCTION
+- Why in_unchecked is never inherited (function-level flag would cause false positives on all child nodes)
+- `_build_control_flow_edges()` — 2-pass edge construction for CFG
+- Pass 1: index assignment + feature vector + metadata (safe to build edges in pass 2)
+- Pass 2: CONTROL_FLOW edge wiring using indices from pass 1
+- Why 2-pass is necessary — backward CFG edges (loop end → loop condition) need the target's index
+- `len(x_list)` as global index — why `len(node_index_map)` would give wrong indices
+- Deterministic node ordering — sort by (source_line, node_id) for cross-run stability
+- Slither `node_id` stability risk — different Slither versions may assign different node_id values
+
+**Warm-up recall (from Chunk 2):**
+- Q1: _compute_return_ignored — sequential CFG scan (correct)
+- Q2: sentinel -1.0 meaning — "feature could not be determined" (correct)
+- Q3: _compute_call_target_typed — two-pass + regex fallback (correct)
+- Q4: _compute_has_loop Slither markers (partial: NodeType.STARTLOOP/ENDLOOP loop markers named but is_loop_present fallback missed)
+- Q5: log1p normalization for external_call_count (correct)
+
+**Challenge questions answered:**
+- Q1: DEF_USE edge not catching writes through reference variables ✓ (user got this exactly right)
+- Q2: return_ignored as function-level not per-statement — user said "misleading" without the mechanism
+  - Gap closed: function-level sufficient because FUNCTION node carries signal + CONTAINS edges propagate it to CFG children; per-statement would need IMP-D1 scan per call node, requiring forward-reachability per-call
+- Q3: why 2-pass needed — user had no idea
+  - Gap closed: backward CFG edges from loop-end→loop-condition require loop-condition's index to already exist; 1-pass would hit unknown target index; 2-pass indexes all nodes first, builds edges second
+- Q4: parent_features `len(p) > 9` — user had no idea
+  - Gap closed: if parent_features has < 10 elements, has_loop silently falls back to 0.0 for all CFG children; GNN Phase 2 loses loop detection signal; DoS loop patterns degrade with no error
+- Q5: deterministic ordering guarantee across Slither versions — user had correct intuition (sorting) but did not identify the node_id stability risk
+  - Gap closed: node_id values can differ across Slither versions; training on v0.9.x and inference on v0.10.x can produce different node orderings → wrong edge wiring
+
+**Audit flags raised:** A10, A11, A12, A13

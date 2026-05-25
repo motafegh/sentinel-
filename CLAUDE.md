@@ -133,14 +133,15 @@ sentinel-/
 An active deep-dive study of the ML module is in progress.
 
 **Every time a learning session starts, Claude MUST:**
-1. Read `learning_with_claude/reference.md` — get current status and rules
-2. Read `learning_with_claude/preferences.md` — apply ALL preferences (P1–P10) to every response
+1. Read `learning_with_claude/reference.md` — get current status, rules, and update protocol
+2. Read `learning_with_claude/preferences.md` — apply ALL preferences (P1–P14) to every response
 3. Read `learning_with_claude/audit_flags.md` — know what issues are already flagged
 4. Read `learning_with_claude/session_log.md` — know what has been taught and what gaps were closed
 
 **During learning sessions:**
 - Raise `[AUDIT]` flags inline and immediately add to `audit_flags.md`
 - Update `session_log.md` after each chunk is delivered
+- Follow the **Spec File Update Protocol** in `reference.md` — defines exactly when/how/what to update
 - Follow P10 (spaced repetition): warm-up recall at chunk start, lock-in summary at chunk end
 
-Current status: Phase 2 — `graph_extractor.py` Chunk 1 complete, ready for Chunk 2.
+Current status: Phase 2 — `graph_extractor.py` Chunks 1–3 complete, ready for Chunk 4.

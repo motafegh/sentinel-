@@ -147,3 +147,66 @@ except ImportError:
 **Severity:** Medium
 **Status:** Open
 **Raised:** Session 2, Chunk 2
+
+---
+
+## A10 — `graph_extractor.py` — `except Exception: pass` in `_cfg_node_type`
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_cfg_node_type()`, lines 493–494: `except Exception: pass`
+**Issue:** The entire priority-classification logic — all 4 priority branches — is wrapped in a
+single `except Exception: pass`. If Slither renames `NodeType.IF`, moves `LowLevelCall`, or
+changes `state_variables_written`, the exception is swallowed and every node silently becomes
+`CFG_NODE_OTHER` (12). CALL nodes become OTHER: the GNN sees no external calls. WRITE nodes
+become OTHER: reentrancy patterns vanish. Zero crash, zero log — silent total loss of CFG signal.
+**Fix:** Move each import to module level with a clear ImportError guard. Inside the function,
+catch only the specific exceptions that Slither attribute access can raise
+(`AttributeError`, `TypeError`). Let unexpected exceptions propagate.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 3, Chunk 3
+
+---
+
+## A11 — `graph_extractor.py` — hardcoded parent feature indices in `_build_cfg_node_features`
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_build_cfg_node_features()`, lines 543–547: `p[1]`, `p[3]`, `p[4]`, `p[5]`, `p[9]`
+**Issue:** Parent feature dims are accessed by raw integer index. The comment names them
+(visibility=1, view=3, payable=4, complexity=5, has_loop=9) but nothing enforces that contract.
+If `graph_schema.py` reorders `FEATURE_NAMES` — e.g. inserting a new dim before index 3 — these
+indices silently read the wrong feature (e.g. `p[3]` might now be `view` → `payable`, swapping
+two values). The `len(p) > 9` guard for has_loop means if parent_features is shorter than 10
+elements, has_loop falls back to 0.0 for every CFG node — all DoS loop detection degrades silently.
+**Fix:** Use `FEATURE_NAMES.index("has_loop")` etc. to derive indices at parse time, or define
+named constants `_F_VISIBILITY = 1` etc. in graph_schema.py alongside FEATURE_NAMES.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 3, Chunk 3
+
+---
+
+## A12 — `graph_extractor.py` — `n.node_id` accessed without `getattr` fallback in sort key
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_build_control_flow_edges()`, line 611: `n.node_id`
+**Issue:** The CFG sort key uses `n.node_id` directly (no `getattr` with default). If a Slither
+version does not attach `node_id` to synthetic nodes (ENTRY_POINT, BEGIN_LOOP, etc.), this raises
+`AttributeError` inside the `sorted()` call, aborting CFG construction for the entire function
+with no edges produced — silently dropped with zero graph signal for that function.
+**Fix:** `getattr(n, "node_id", 0)` in the sort key lambda.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 3, Chunk 3
+
+---
+
+## A13 — `graph_extractor.py` — silently dropped CONTROL_FLOW edges not logged
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_build_control_flow_edges()`, lines 639–641: `if successor in node_index_map`
+**Issue:** When a CFG successor node is not in `node_index_map` (e.g. a cross-function edge or
+Slither synthetic node not added in Pass 1), the edge is silently dropped. No log, no counter.
+In a contract with complex control flow, entire branches may produce zero CONTROL_FLOW edges.
+The GNN's Phase 2 (which uses CONTROL_FLOW(6) edges) operates on a structurally incomplete graph.
+**Fix:** Log a debug/warning when a successor is not found:
+`logger.debug("CFG edge dropped: successor %s not in node_index_map for func %s", successor, func.name)`
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 3, Chunk 3

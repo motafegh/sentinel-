@@ -9,10 +9,73 @@ It contains 4 files. This file is the entry point — read it first.
 
 | File | Purpose | When to Update |
 |------|---------|----------------|
-| `reference.md` | **This file.** How the system works, rules for each file, overall structure. | When the meta-rules or workflow change. |
-| `preferences.md` | All teaching preferences (P1, P2, ...). Controls HOW teaching is delivered. | When a new preference is stated or observed. Add immediately — do not batch. |
-| `audit_flags.md` | All issues found during teaching (A1, A2, ...). Bugs, design problems, missing guards. | Every time an `[AUDIT]` flag is raised during teaching. |
-| `session_log.md` | Record of what was covered in each session. Progress tracker. | At the end of each teaching chunk or session. |
+| `reference.md` | **This file.** How the system works, rules for each file, overall structure. | When meta-rules, current status, or roadmap change. |
+| `preferences.md` | All teaching preferences (P1, P2, ...). Controls HOW teaching is delivered. | Immediately when a new preference is stated or observed. Never batch. |
+| `audit_flags.md` | All issues found during teaching (A1, A2, ...). Bugs, design problems, missing guards. | Immediately when an `[AUDIT]` flag is raised during teaching. |
+| `session_log.md` | Record of what was covered in each session. Progress tracker. | After each chunk is fully delivered and questions posted. |
+
+---
+
+## Spec File Update Protocol
+
+This protocol defines exactly when, how, and what to update in each file.
+Claude must follow this on every session — not selectively.
+
+### WHEN to update
+
+| Trigger | File(s) to update | Timing |
+|---------|------------------|--------|
+| User states a new preference | `preferences.md` | **Immediately** — before continuing teaching |
+| Claude observes a new teaching pattern | `preferences.md` | At the end of the current response |
+| An `[AUDIT]` flag is raised inline | `audit_flags.md` | **Immediately** — same response that raised it |
+| A chunk finishes (teaching delivered, questions posted) | `session_log.md` | End of that response |
+| Current status changes (chunk complete, phase done) | `reference.md` (Current Status section) | End of that response |
+| A preference is refined or clarified | `preferences.md` | Immediately, with a note on what changed |
+| CLAUDE.md project facts change (branch, constraints, etc.) | `CLAUDE.md` | When the change is confirmed |
+
+### HOW to update
+
+- **preferences.md** — Append new `### P#` section at the bottom. Never rewrite existing ones silently; add a "(refined: ...)" note if clarifying.
+- **audit_flags.md** — Append new `## A#` entry at the bottom. Full format: File, Location, Issue, Fix, Severity, Status, Raised. Never delete or edit past entries.
+- **session_log.md** — Append new `## Session N` block. Include: file/lines, concepts taught, warm-up results, gaps closed, audit flags raised.
+- **reference.md** — Update the `Current Status` section inline. Update roadmap phase markers (✅ → 🔄 → pending).
+
+### WHAT must be in each entry
+
+**preferences.md entry minimum:**
+```
+### P# — Short Title
+What the rule is.
+When it applies.
+Format/example if relevant.
+```
+
+**audit_flags.md entry minimum:**
+```
+## A# — File — Short description
+**File:** path
+**Location:** function/line
+**Issue:** what is wrong and why it matters
+**Fix:** concrete fix
+**Severity:** Low / Medium / High
+**Status:** Open / Noted / Fixed
+**Raised:** Session N, Chunk N
+```
+
+**session_log.md entry minimum:**
+```
+## Session N — Phase X: filename (Chunk N)
+**File:** path (lines)
+**Concepts taught:** bullet list
+**Warm-up recall:** pass/fail per question, gaps noted
+**Challenge questions:** answered Y/N, gaps closed
+**Audit flags raised:** A# list
+```
+
+### Commit rule
+
+After any spec file update: `git add learning_with_claude/ && git commit && git push`.
+Spec files are the persistent memory of this journey — uncommitted updates are lost if the session ends.
 
 ---
 
@@ -38,6 +101,9 @@ It contains 4 files. This file is the entry point — read it first.
 6. **Preferences can be updated or refined** — add new ones, clarify existing ones.
    Never silently override an existing preference; add a note if it evolves.
 
+7. **Follow the Spec File Update Protocol above** on every session, every response that triggers
+   an update. No exceptions.
+
 ### For the User
 
 - State new preferences at any time — Claude will add them to `preferences.md` immediately.
@@ -49,10 +115,10 @@ It contains 4 files. This file is the entry point — read it first.
 ## Current Status
 
 - **Active phase:** Phase 2 — `graph_extractor.py`
-- **Current chunk:** Chunk 1 complete, questions answered, gap-fill done → ready for Chunk 2
-- **Preferences active:** P1 through P8
-- **Audit flags raised:** A1 through A4
-- **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (Chunk 1)
+- **Current chunk:** Chunk 3 complete (teaching + gap-fill delivered); ready for Chunk 4
+- **Preferences active:** P1 through P14
+- **Audit flags raised:** A1 through A13
+- **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (Chunks 1–3)
 
 ---
 
@@ -60,12 +126,17 @@ It contains 4 files. This file is the entry point — read it first.
 
 ```
 Phase 1  ✅  graph_schema.py + hash_utils.py
-Phase 2  🔄  graph_extractor.py  (Chunk 1 ✅, Chunks 2–5 pending)
-Phase 3      data_extraction/  (ast_extractor.py, tokenizer.py)
-Phase 4      datasets/         (dual_path_dataset.py)
-Phase 5      models/           (gnn_encoder.py, transformer_encoder.py,
+Phase 2  🔄  graph_extractor.py
+              Chunk 1 ✅  exceptions, config, _MAX_TYPE_ID
+              Chunk 2 ✅  feature computation helpers (_compute_*)
+              Chunk 3 ✅  CFG node typing, feature building, control-flow edges
+              Chunk 4 ⬜  ICFG + DEF_USE + _build_node_features + _select_contract
+              Chunk 5 ⬜  extract_contract_graph() — main assembly
+Phase 3  ⬜  data_extraction/  (ast_extractor.py, tokenizer.py)
+Phase 4  ⬜  datasets/         (dual_path_dataset.py)
+Phase 5  ⬜  models/           (gnn_encoder.py, transformer_encoder.py,
                                 fusion_layer.py, sentinel_model.py)
-Phase 6      training/         (focalloss.py, losses.py, trainer.py)
-Phase 7      inference/        (preprocess.py, predictor.py, cache.py,
+Phase 6  ⬜  training/         (focalloss.py, losses.py, trainer.py)
+Phase 7  ⬜  inference/        (preprocess.py, predictor.py, cache.py,
                                 drift_detector.py, api.py)
 ```
