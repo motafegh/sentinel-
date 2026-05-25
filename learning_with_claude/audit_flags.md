@@ -263,3 +263,39 @@ if call_target_typed not in (-1.0, 0.0, 1.0):
 **Severity:** Low
 **Status:** Open
 **Raised:** Session 4, Chunk 4
+
+---
+
+## A17 — `graph_extractor.py` — Slither exception routing by string keyword matching
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `extract_contract_graph()`, lines 1059–1067
+**Issue:** `Slither(...)` failures are routed to `SolcCompilationError` vs `SlitherParseError`
+by checking if `str(exc).lower()` contains keywords like "compil", "syntax", "solc". This is
+fragile in two directions: (1) A genuine Slither internal error whose message mentions "compiler"
+gets misclassified as user fault → API returns HTTP 400 instead of HTTP 500. (2) A Solidity
+syntax error whose message doesn't match keywords (non-English locale, future Slither version)
+gets misclassified as system fault → API returns HTTP 500 for bad user input. Both mask the
+real failure category.
+**Fix:** Catch specific exception types from Slither's and crytic-compile's public exception
+hierarchy: `slither.exceptions.SlitherError`, `crytic_compile.CryticCompileException` etc.
+instead of pattern-matching the string representation.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 5, Chunk 5
+
+---
+
+## A18 — `graph_extractor.py` — `except Exception: pass` when building ICFG maps
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `extract_contract_graph()`, lines 1154–1167: inner `try/except Exception: pass`
+**Issue:** The block that populates `_func_entry_map` and `_func_terminal_map` for a given
+function is wrapped in a bare `except Exception: pass`. If the `NodeType` import fails or any
+Slither attribute raises, the maps for this function are silently left empty. Then
+`_add_icfg_edges` finds no entry point and no terminals for calls into this function,
+producing zero CALL_ENTRY and RETURN_TO edges for all callers. The GNN's inter-procedural
+reentrancy detection loses these edges with zero signal: no log, no counter, no warning.
+**Fix:** At minimum, `logger.warning(...)` with the function name and exception. Ideally catch
+only `ImportError, AttributeError` and let unexpected exceptions propagate.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 5, Chunk 5

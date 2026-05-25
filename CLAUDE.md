@@ -144,4 +144,6 @@ An active deep-dive study of the ML module is in progress.
 - Follow the **Spec File Update Protocol** in `reference.md` — defines exactly when/how/what to update
 - Follow P10 (spaced repetition): warm-up recall at chunk start, lock-in summary at chunk end
 
-Current status: Phase 2 — `graph_extractor.py` Chunks 1–3 complete, ready for Chunk 4.
+Current status: Phase 2 COMPLETE — `graph_extractor.py` all 5 chunks done.
+Next: Phase 3 — `data_extraction/` (ast_extractor.py, tokenizer.py).
+Active preferences: P1–P14. Audit flags raised: A1–A18.

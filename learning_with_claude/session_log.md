@@ -169,3 +169,44 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Posted below in teaching response
 
 **Audit flags raised:** A14, A15, A16
+
+---
+
+## Session 6 — Phase 2: `graph_extractor.py` (Chunk 5) — COMPLETE
+
+**File:** `ml/src/preprocessing/graph_extractor.py` (lines 981–1329)
+
+**Concepts taught:**
+- `_build_solc_args()`: --allow-paths flag, pre-0.5 solc version guard
+- `extract_contract_graph()`: main public API — single canonical .sol → PyG converter
+- Slither instantiation: detectors_to_run=[], solc_binary override, exception routing
+- Exception routing via keyword string matching — fragility and fix (A17)
+- Shared state design: x_list / node_metadata / node_map / edges / edge_types (all parallel)
+- `_add_node` inner function: duplicate guard, type_id reverse-decode (round(x*12))
+- Node insertion order: CONTRACT → parents → STATE_VARs → FUNCTIONs+CFG → MODIFIERs → EVENTs
+- BUG-H8: parent CONTRACT nodes pre-added so INHERITS edges can resolve
+- Per-function loop: _add_node → _build_control_flow_edges → accumulate ICFG maps
+- Duplicate function handling (inherited functions in contract.functions)
+- ICFG map accumulation: entry = NodeType.ENTRYPOINT, terminals = nodes with no sons
+- except Exception: pass in ICFG map accumulation (A18)
+- CFG failure rate monitoring: 5% threshold, dynamic log level selection
+- MODIFIERs and EVENTs added last — CFG-free, spatial locality in x_list
+- EmptyGraphError guard (zero x_list after all filtering)
+- Feature tensor: torch.tensor(x_list) → [N, 11], dimension guard, OOR validation (BUG-L4)
+- OOR = out-of-range: warn not raise (single bad contract must not abort batch run)
+- node_metadata alignment assert (A4 pattern)
+- Declaration-level edges: CALLS, READS, WRITES using Slither pre-computed summaries
+- _add_edge silent skip for cross-contract/missing endpoints
+- EMITS dual-path: events_emitted API (>=0.4.21) + EventCall IR scan fallback (BUG-H7)
+- INHERITS using pre-added parent nodes
+- PyG Data assembly: torch.tensor(edges).t().contiguous() — [E,2] → [2,E] COO
+- .contiguous() necessity after .t() (non-contiguous view → crash in PyG C++ kernels)
+- include_edge_attr flag: edge_attr attached only when True; missing attr = AttributeError (fail-fast)
+
+**Phase 2 status:** graph_extractor.py COMPLETE (all 5 chunks)
+
+**Warm-up recall (from Chunk 4):** Questions posted; answers pending
+
+**Challenge questions:** Posted below
+
+**Audit flags raised:** A17, A18
