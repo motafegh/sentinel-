@@ -1464,10 +1464,11 @@ def train(config: TrainConfig) -> dict:
                         f"Phase2={_jk_w[1]:.3f}±{_jk_s[1]:.3f} "
                         f"Phase3={_jk_w[2]:.3f}±{_jk_s[2]:.3f}"
                     )
-                    # std collapse alert: all stds < 0.05 → per-node mechanism is a global constant
-                    if max(_jk_s) < 0.05 and epoch >= 3:
+                    # std collapse alert: all stds < 0.015 → per-node routing has collapsed.
+                    # Threshold was 0.05 but Run4 STDs (0.020–0.044) are healthy and fired every epoch.
+                    if max(_jk_s) < 0.015 and epoch >= 3:
                         logger.warning(
-                            f"  ⚠ JK STD COLLAPSE: all per-phase stds < 0.05 "
+                            f"  ⚠ JK STD COLLAPSE: all per-phase stds < 0.015 "
                             f"(max={max(_jk_s):.3f}). Per-node routing has collapsed to "
                             "a global weight — the JK mean is the full story."
                         )
