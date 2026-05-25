@@ -1,8 +1,8 @@
 # GraphCodeBERT + GNN Prefix Injection — Execution Plan
 
 **Proposal:** [2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md](2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md)
-**Last updated:** 2026-05-25 (Run 2 killed ep4; Run 3 pre-flight fixes applied; ready to launch)
-**Status:** ACTIVE — P1-TRAIN Run 2 KILLED ep4 (JK Phase3 86.6% structural collapse); 13 audit fixes applied; Run 3 ready
+**Last updated:** 2026-05-25 (Run 4 launched 14:52 PID 58484 — all fixes applied incl. C2 collision fix)
+**Status:** ACTIVE — P1-TRAIN Run 4 🔵 RUNNING (Run 2 killed ep4 JK collapse; Run 3 killed ep16 ASL double-amp + JK uniform; Run 4 has all fixes)
 
 ---
 
@@ -489,41 +489,63 @@ TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. python ml
 **Run 1 best checkpoint:** `ml/checkpoints/graphcodebert-v1-prefix48-20260524_best.pt` — epoch 27, F1=0.2628
 **Run 1 log:** `ml/logs/graphcodebert-v1-prefix48-20260524.log`
 
-**Run 2 status:** 🔵 RUNNING (launched 2026-05-24 ~22:15)
-**Run 2 PID:** 80610
+**Run 2 status:** 🔴 KILLED EP4 (2026-05-25) — JK Phase3 structural collapse (74%→86.6%→85.2%). Root cause: IMP-G3 downward CONTAINS pass made Phase3 the deepest representation; JK rationally collapsed to it.
 **Run 2 log:** `ml/logs/graphcodebert-p1-run2-20260524.log`
-**Run 2 command:**
+
+**Run 2 ep1–4 findings:**
+| Epoch | JK Phase3 | GNN share | F1 | Notes |
+|-------|-----------|-----------|-----|-------|
+| ep1 | 0.744 | 86% | 0.1402 | Phase3 dominance early |
+| ep2 | 0.866 ⚠️ | 67% | 0.1678 | WARNING triggered |
+| ep3 | 0.852 ⚠️ | 75% | 0.1868 | Not recovering |
+| ep4 | — | ~63% | — | Killed mid-epoch |
+
+**Run 3 status:** 🔴 KILLED EP16 (2026-05-25) — two separate root causes identified:
+1. **NC-4 double-amplification (primary):** `pos_weight` (DoS=10×) passed to ASL which already applies asymmetric gamma. Combined ~20,000× gradient amplification for 243 DoS positives. GNN share collapsed 92%→24% by ep16; F1 stuck at 0.17.
+2. **JK entropy λ=0.01 too strong:** Forced perfect 33/33/33 uniform weights (JK STD Collapse) — Phase3 dominance solved but per-node routing eliminated. STD near-zero every epoch.
+3. **NC-1 bug:** Reset logged "0 params" — prefix_proj params had no Adam state during warmup (zero gradient = Adam never initializes state entries).
+**Run 3 log:** `ml/logs/graphcodebert-p1-run3-20260525.log`
+
+**Run 3 ep1–16 findings (key metrics):**
+| Epoch | JK (Ph1/Ph2/Ph3) | GNN share | F1 | Notes |
+|-------|-----------------|-----------|-----|-------|
+| ep1 | 0.321/0.334/0.344 ±0.022 | 92% | 0.1477 | Uniform but with STD |
+| ep4 | ~0.33/0.33/0.33 ±~0.01 | 79% | 0.16 | STD collapsing |
+| ep8 | ~uniform | 59% | 0.17 | GNN share collapsing |
+| ep16 | ~0.33/0.33/0.33 | 24% | 0.17 | Stagnant — killed |
+
+**Run 4 status:** 🔵 RUNNING (launched 2026-05-25 14:52, PID 58484)
+**Run 4 log:** `ml/logs/graphcodebert-p1-run4-20260525.log`
+**Run 4 command:**
 ```bash
-source ml/.venv/bin/activate
-TRANSFORMERS_OFFLINE=1 PYTHONPATH=. nohup python ml/scripts/train.py \
-  --gnn-layers 8 \
-  --gnn-prefix-k 48 \
-  --gnn-prefix-warmup-epochs 15 \
-  --epochs 60 \
-  --batch-size 8 \
-  --gradient-accumulation-steps 8 \
-  --loss-fn asl \
-  --compile \
-  --use-amp \
-  --phase2-edge-types 6 8 9 \
-  --experiment-name sentinel-retrain-v2 \
-  --run-name GCB-P1-Run2-IMP-all \
-  > ml/logs/graphcodebert-p1-run2-20260524.log 2>&1 &
+TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup python ml/scripts/train.py \
+  --gnn-layers 8 --gnn-prefix-k 48 --gnn-prefix-warmup-epochs 15 \
+  --epochs 60 --batch-size 8 --gradient-accumulation-steps 8 \
+  --loss-fn asl --compile --use-amp --phase2-edge-types 6 8 9 \
+  --experiment-name sentinel-retrain-v2 --run-name GCB-P1-Run4-no-asl-pw \
+  --jk-entropy-reg-lambda 0.005 \
+  > ml/logs/graphcodebert-p1-run4-20260525.log 2>&1 &
 ```
+
+**Run 4 fixes vs Run 3 (commit e022018 + f1e228b):**
+- NC-4 REVERTED: pos_weight NOT passed to ASL — ASL handles imbalance via asymmetric gamma
+- JK entropy lambda: 0.01 → 0.005 (halved — prevents Phase3 dominance without forcing uniform)
+- NC-1 fixed: logs total param count vs state-initialized count; clears all params regardless
+- C2 fixed: `_scatter_to_dense` valid mask before clamp — no collision at slot 1023
+- C1: gnn_enc_norm (full GNN backbone) logged separately alongside gnn_eye_proj norm
+- H5: aux_fused added to torch.compile submodule list
+
+**Run 4 ep1–2 results (confirmed healthy):**
+| Epoch | JK (Ph1/Ph2/Ph3) | GNN share | F1 | Notes |
+|-------|-----------------|-----------|-----|-------|
+| ep1 | 0.321±0.022 / 0.334±0.023 / 0.344±0.033 | 86–91% | 0.1475 | Phase3 not dominant, STD healthy |
+| ep2 | 0.327±0.025 / 0.349±0.026 / 0.323±0.044 | 66–74% | 0.1743 | Phase2 leads, Phase3 decreasing ✅ |
 
 **Key differences from Run 1:**
 - `--gnn-layers 8` (was 7 — IMP-G3 added 8th layer)
 - Fresh start from random init (NOT resumed from Run 1 checkpoint — architecture changed)
 - All IMP-G1/G2/G3/M1/M2/M3/D1 fixes active in code
 - Same warmup (ep1-15 warmup, prefix starts ep16), same K=48, same schedule
-
-**Run 2 ep1 startup confirmed (from log):**
-- Model: `layers=8 use_jk=True jk_mode=attention gnn_prefix_k=48 warmup=15` ✅
-- Loss: AsymmetricLoss(gamma_neg=2.0, gamma_pos=1.0, clip=0.01) ✅
-- Optimizer: 59 GNN params (lr×2.5), 48 LoRA params (lr×0.3), 28 fusion params (lr×0.5), 3 prefix proj params (lr×1.0) ✅
-- VRAM at start: 0.3/8.0 GiB (3.2%) ✅
-- Epoch 1 warmup: `GNN prefix K=48: WARMUP (starts ep15)` ✅
-- proj norm: 15.9853 (random init, correct) ✅
 
 ### P1-TRAIN Run 1 — Findings (ep1–28, killed 2026-05-24 ~21:20)
 
@@ -1124,12 +1146,13 @@ Decision point: GATE-GCB-4. If Phase 2 JK < 0.12 at convergence → activate N-0
 
 ---
 
-**C-4 — `_scatter_to_dense` Silent Truncation at max_nodes=1024**
+**C-4 — `_scatter_to_dense` Truncation and Collision at max_nodes=1024**
 
-`fusion_layer.py`: `local_idx = local_idx.clamp(max=max_nodes - 1)` drops nodes silently for graphs with > 1024 nodes. These are disproportionately large, complex contracts — the hardest cases. Creates an asymmetry: GNN eye pools all nodes, fused eye misses nodes > 1024.
+`fusion_layer.py`: clamp caused write collision — all excess nodes wrote to slot 1023, last-write-wins = random embedding included in pooling. C-4 warning (fires once) was added in Run 3 pre-flight. **C2 collision fix applied in Run 4 pre-flight (commit f1e228b):** `valid = local_idx < max_nodes` computed before clamp; only valid nodes write. Excess nodes truly dropped.
 
-Action: add a warning counter and log at training end: "X graphs had > 1024 nodes; fusion eye truncated for those." Check whether > 1024 graphs are disproportionately vulnerable contracts (if so, increase max_nodes or add a per-graph dynamic cap).
-Status: ⬜ OPEN (low urgency for Run 2; validate count before Phase 2)
+C-4 warning confirmed in Run 4 log: graphs up to 1735 nodes exist in corpus — the "<1% exceed 1024" claim in the original design was wrong. Investigate before Phase 2 (larger contracts may be systematically truncated).
+
+Status: ✅ Collision fixed (C2, Run 4). ⬜ OPEN: audit what fraction of corpus exceeds max_nodes=1024 and whether those contracts are disproportionately vulnerable (if so, consider raising max_nodes to 2048).
 
 ---
 
@@ -1269,6 +1292,26 @@ Full data fixing strategy consolidated in `docs/sentinel-c2-concrete-data-fixing
 **Root cause of 0/3 behavioral failure (NM-4):** The model has never seen a contract with ground-truth all-zero labels. BCCC's "benign" contracts are in vulnerability folders and receive OR-labels. Safe contract injection (Sol-5) is the direct fix.
 
 **DoS starvation (NM-3):** 243 training positives after augmentation. No loss engineering fixes this. SmartBugs Wild + SolidiFI are the only scalable additions for DoS (SWC-128 pattern).
+
+---
+
+## AUDIT-2 — External Adversarial Review (2026-05-25)
+
+**Source:** External review posted by user during Run 4 launch. Full triage in conversation.
+**Commits:** f1e228b (C2/C1/H5 fixes)
+
+| ID | Claim | Verdict | Action |
+|----|-------|---------|--------|
+| **C1** | GNN share metric measures `gnn_eye_proj` not 2.4M GNN encoder — collapse undetectable | **Partially valid** (overstated). gnn_eye_proj proxies GNN pathway health. "Undetectable" wrong — if encoder collapses, proj collapses too. | ✅ Added `gnn_enc_norm = _grad_norm(model.gnn)` as separate logged metric alongside existing share. |
+| **C2** | `_scatter_to_dense` write collision — clamped excess nodes all write to slot 1023 | **VALID — real data corruption.** ~711 nodes for a 1735-node graph all clamped to pos 1023; last-write-wins = random embedding included in masked-mean pooling. | ✅ Fixed: `valid = local_idx < max_nodes` before clamp; only valid nodes write. commit f1e228b. |
+| **C3** | `select_prefix_nodes` Python for-loop breaks torch.compile | **INVALID.** `SentinelModel.forward()` is NOT compiled — only submodules are. The for-loop runs in eager mode by design. | No action needed. |
+| **C4** | Run name `GCB-P1-Run4-no-asl-pw` contradicts config — "no ASL" | **INVALID.** "no-asl-pw" = no ASL **pos-weight** (not no ASL). Name correctly describes the delta from Run 3. | No action needed. |
+| **C5** | `model._current_epoch = epoch` invisible to torch.compile | **INVALID.** `SentinelModel.forward()` is in eager mode. `_current_epoch` check runs in plain Python. Compiled submodules don't touch it. | No action needed. |
+| **H1** | Transformer eye loss stagnant — LoRA barely adapting | **Invalid as stated.** Logs show tf eye drops 0.7172→0.4429 across ep1–2 steps. Auditor sampled ep1 intra-step only. LoRA at 0.3× is intentionally conservative. | No action needed. |
+| **H2** | `edge_attr.squeeze(-1)` mutates shared cache — train/val corruption | **INVALID.** Guard `if graph.edge_attr.ndim > 1` prevents it for v8 data (already 1D). Even if it fired, squeeze is idempotent — first access corrects, subsequent accesses see correct shape. | No action needed. |
+| **H3** | OneCycleLR warmup 8.3× steeper for GNN than LoRA | **INVALID.** OneCycleLR applies the same `div_factor` (default 25) to all groups — relative warmup ramp is identical. Absolute LR values differ by design. | No action needed. |
+| **H4** | WeightedRandomSampler + grad accumulation = stochastic effective weights | **Valid but benign.** Expected property of all sampled training loops, averages out over batches. | No action. |
+| **H5** | `aux_fused` missing from torch.compile list — inconsistent compilation | **Valid (trivial).** `aux_fused = Linear(128, 10)` exists and is used but wasn't compiled. | ✅ Added to compile loop. commit f1e228b. |
 
 ---
 
@@ -1487,8 +1530,8 @@ All items below applied before Run 3 launch.
 | Item | Source | Description | Status |
 |------|--------|-------------|--------|
 | **C-3** | Audit-1B conditional | JK entropy regularizer λ=0.01 in `_JKAttention` + trainer | ✅ DONE |
-| **NC-1** | Second audit | `gnn_to_bert_proj` Adam state reset at warmup transition | ✅ DONE |
-| **NC-4** | Audit-1A | `pos_weight` now passed to `AsymmetricLoss` (was dead code) | ✅ DONE |
+| **NC-1** | Second audit | `gnn_to_bert_proj` Adam state reset at warmup transition | ✅ DONE (had logging bug — fixed Run 4) |
+| **NC-4** | Audit-1A | `pos_weight` passed to `AsymmetricLoss` | ✅ DONE then ⚠️ REVERTED in Run 4 (caused double-amp) |
 | **NH-5** | Audit-1B | prefix_proj LR mult 1.0→5.0 for cold-start | ✅ DONE |
 | **NH-4** | Audit-1A | `del _ckpt_state` after checkpoint loading | ✅ DONE |
 | **NL-1** | Audit-1A | `ARCHITECTURE="three_eye_v8"`, `MODEL_VERSION="v8.0"` | ✅ DONE |
@@ -1496,7 +1539,7 @@ All items below applied before Run 3 launch.
 | **M-1/H-4** | Audit | pos_weight_cap 20.0→10.0 (new TrainConfig field) | ✅ DONE |
 | **NH-2** | Audit-1A | Validate `class_label_smoothing` keys in `__post_init__` | ✅ DONE |
 | **C-1** | Audit-1B | BF16 dtype assertion on GNN conv1 params after model build | ✅ DONE |
-| **C-4** | Audit-1B | `_scatter_to_dense` truncation warning (once per unique size) | ✅ DONE |
+| **C-4** | Audit-1B | `_scatter_to_dense` truncation warning (once per unique size) | ✅ DONE (collision fix C2 added Run 4) |
 | **NC-2** | Second audit | `_FUNC_IDS_CPU` assert at module level | ✅ DONE |
 | **H-7/M-4/D-3** | Audit-1A | schema v7→v8 error msg; cfg_ei→phase2_ei rename; conv3c comment | ✅ DONE |
 | **L-1** | Audit-1A | Deleted `dual_path_dataset.py.backup` | ✅ DONE |
@@ -1504,6 +1547,21 @@ All items below applied before Run 3 launch.
 **Still deferred:**
 | **NL-3** | Audit-1A | Dead top-level `FocalLoss` import — inline wrapper confirmed valid; keep | Deferred |
 | **H-7 preprocess.py** | Audit-1A | preprocess.py docstring NODE_FEATURE_DIM comment | Deferred |
+
+---
+
+### Run 4 Pre-Flight (Applied 2026-05-25 — commits e022018 + f1e228b)
+
+Run 3 killed at ep16: two root causes — NC-4 pos_weight×ASL double-amplification + JK λ=0.01 uniform collapse.
+
+| Item | Description | Commit | Status |
+|------|-------------|--------|--------|
+| **NC-4 REVERTED** | pos_weight NOT passed to ASL — ASL is self-contained for imbalance via asymmetric gamma. Adding pos_weight created ~20,000× DoS gradient amplification. | e022018 | ✅ DONE |
+| **C-3 lambda 0.01→0.005** | JK entropy regularizer halved — 0.01 forced perfect uniform 33/33/33 (no per-node discrimination). 0.005 prevents Phase3 dominance without eliminating routing. | e022018 | ✅ DONE |
+| **NC-1 logging fix** | Now logs total param count + how many had existing state (warmup params never get Adam state — expected). Clears all params regardless. | e022018 | ✅ DONE |
+| **C2 collision fix** | `_scatter_to_dense`: compute `valid = local_idx < max_nodes` BEFORE clamping. Excess nodes are now truly dropped instead of all colliding at slot 1023 (last-write-wins = random embedding). | f1e228b | ✅ DONE |
+| **C1 gnn_enc_norm** | `_grad_norm(model.gnn)` (full backbone) logged alongside `gnn_eye_proj` norm each step. | f1e228b | ✅ DONE |
+| **H5 aux_fused compile** | `aux_fused` (Linear 128→10) added to torch.compile submodule list. | f1e228b | ✅ DONE |
 
 ### Before Phase DATA-1 — Data quality work
 
@@ -1603,7 +1661,7 @@ Use this to track overall progress at a glance:
 | N-02: Phase 2 heads=1→4 | ⬜ CONDITIONAL (trigger: Phase 2 JK < 0.12 at Run 3 convergence) | — |
 | **Adversarial audit triaged (AUDIT-1)** | ✅ DONE — findings in EXECUTION_PLAN.md §AUDIT-1 | 2026-05-25 |
 | **P1-TRAIN Run 2 KILLED ep4** | ✅ KILLED — JK Ph3=86.6% structural collapse | 2026-05-25 |
-| AUDIT-1A NC-4: pos_weight now passed to ASL | ✅ DONE | 2026-05-25 |
+| AUDIT-1A NC-4: pos_weight now passed to ASL | ✅ DONE then ⚠️ REVERTED (Run 4 — double-amp root cause) | 2026-05-25 |
 | AUDIT-1A NH-4: del _ckpt_state memory leak | ✅ DONE | 2026-05-25 |
 | AUDIT-1A NL-1: ARCHITECTURE/MODEL_VERSION strings | ✅ DONE | 2026-05-25 |
 | AUDIT-1A H-7: gnn_encoder schema v7→v8 error message | ✅ DONE | 2026-05-25 |
@@ -1611,24 +1669,28 @@ Use this to track overall progress at a glance:
 | AUDIT-1A L-1: delete .backup file | ✅ DONE | 2026-05-25 |
 | AUDIT-1A NL-3: FocalLoss dead import | Deferred (inline wrapper confirmed valid) | — |
 | AUDIT-1A NH-2: class_label_smoothing validation | ✅ DONE | 2026-05-25 |
-| C-3 JK entropy regularizer (λ=0.01) | ✅ DONE | 2026-05-25 |
-| NC-1 proj cold-start Adam reset | ✅ DONE | 2026-05-25 |
+| C-3 JK entropy regularizer (λ=0.01→0.005 in Run 4) | ✅ DONE | 2026-05-25 |
+| NC-1 proj cold-start Adam reset (logging fix in Run 4) | ✅ DONE | 2026-05-25 |
 | NH-5 prefix_proj LR mult 1.0→5.0 | ✅ DONE | 2026-05-25 |
 | NH-7 all-rare sampler inverted logic | ✅ DONE | 2026-05-25 |
 | M-1 pos_weight_cap 20→10 | ✅ DONE | 2026-05-25 |
 | C-1 BF16 dtype assertion | ✅ DONE | 2026-05-25 |
-| C-4 _scatter_to_dense truncation warning | ✅ DONE | 2026-05-25 |
+| C-4 _scatter_to_dense truncation warning + C2 collision fix | ✅ DONE | 2026-05-25 |
 | NC-2 _FUNC_IDS_CPU assert | ✅ DONE | 2026-05-25 |
+| **P1-TRAIN Run 3 KILLED ep16** | ✅ KILLED — NC-4 double-amp (GNN share→24%) + JK λ=0.01 uniform collapse | 2026-05-25 |
+| **Run 4 pre-flight: NC-4 reverted, λ→0.005, NC-1 fix, C2/C1/H5** | ✅ DONE — commit e022018 + f1e228b | 2026-05-25 |
+| **P1-TRAIN Run 4** | 🔵 RUNNING — PID 58484, launched 14:52, ep1-2 healthy | 2026-05-25 |
+| **AUDIT-2: External review triaged (C1–C5, H1–H5)** | ✅ DONE — C2+C1+H5 fixed; C3/C4/C5/H1/H2/H3 invalid | 2026-05-25 |
 | Sol-1: CEI-order Reentrancy filter | ⬜ OPEN (before DATA-1) | — |
 | Sol-2: Pragma-based IntegerUO filter | ⬜ OPEN (before DATA-1) | — |
 | Sol-3: Timestamp CFG-path gating | ⬜ OPEN (before DATA-1) | — |
 | Sol-4: Ensemble label audit script | ⬜ OPEN (before DATA-1, after Sol-1/2/3) | — |
 | Sol-7: Threshold tuning on held-out test set | ⬜ OPEN (before deployment) | — |
 | Sol-8: SmartBugs Wild / SWC / SolidiFI integration | ⬜ OPEN (Phase B, ~2–3 weeks) | — |
-| TL-1 watch: JK Phase 3 < 0.75 at ep15 | ✅ TRIGGERED ep2 (86.6%); entropy reg applied Run 3 | 2026-05-25 |
-| TL-2 watch: proj_norm changing > 0.5/epoch post ep16 | 🔵 WATCHING | — |
-| JK entropy regularizer | ⬜ CONDITIONAL (trigger: Phase 3 JK > 0.75 at ep15) | — |
-| NM-1: v8.0-B 60-epoch re-run | ⬜ CONDITIONAL (if Run 2 < 0.30) | — |
+| TL-1 watch: JK Phase 3 < 0.75 | ✅ TRIGGERED Run 2 ep2 (86.6%); λ=0.005 active in Run 4 | 2026-05-25 |
+| TL-2 watch: proj_norm changing > 0.5/epoch post ep16 | 🔵 WATCHING (Run 4 ep15 milestone check at 00:10) | — |
+| JK entropy regularizer | ✅ ACTIVE in Run 4 (λ=0.005; ep1-2 Phase3=0.344→0.323, healthy) | 2026-05-25 |
+| NM-1: v8.0-B 60-epoch re-run | ⬜ CONDITIONAL (if Run 4 < 0.30 at convergence) | — |
 
 ---
 
