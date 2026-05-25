@@ -104,12 +104,16 @@ def _scatter_to_dense(
                 f"(first seen: {_max_n} nodes). Excess nodes silently truncated. "
                 f"This warning fires once — further occurrences suppressed."
             )
-    local_idx = local_idx.clamp(max=max_nodes - 1)  # truncate oversized graphs
+    # C2 fix: compute valid mask BEFORE clamping so excess nodes (local_idx >= max_nodes)
+    # are truly dropped. Without this, all excess nodes clamp to position max_nodes-1
+    # and overwrite each other (last-write-wins = random embedding at that slot).
+    valid     = local_idx < max_nodes
+    local_idx = local_idx.clamp(max=max_nodes - 1)
 
     out  = x.new_zeros(num_graphs, max_nodes, D)
     mask = torch.zeros(num_graphs, max_nodes, dtype=torch.bool, device=x.device)
-    out[batch, local_idx]  = x
-    mask[batch, local_idx] = True
+    out[batch[valid], local_idx[valid]]  = x[valid]
+    mask[batch[valid], local_idx[valid]] = True
     return out, mask
 
 

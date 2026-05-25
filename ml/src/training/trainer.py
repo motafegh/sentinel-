@@ -626,11 +626,12 @@ def train_one_epoch(
             optimizer_step += 1
             should_log = (optimizer_step % log_interval == 0)
             if should_log:
-                gnn_norm   = _grad_norm(model.gnn_eye_proj)
-                tf_norm    = _grad_norm(model.transformer_eye_proj)
-                fused_norm = _grad_norm(model.fusion)
-                _total_norm = (gnn_norm**2 + tf_norm**2 + fused_norm**2) ** 0.5
-                _gnn_share  = gnn_norm / _total_norm if _total_norm > 1e-8 else 0.0
+                gnn_norm     = _grad_norm(model.gnn_eye_proj)
+                gnn_enc_norm = _grad_norm(model.gnn)  # C1: full GNN encoder backbone
+                tf_norm      = _grad_norm(model.transformer_eye_proj)
+                fused_norm   = _grad_norm(model.fusion)
+                _total_norm  = (gnn_norm**2 + tf_norm**2 + fused_norm**2) ** 0.5
+                _gnn_share   = gnn_norm / _total_norm if _total_norm > 1e-8 else 0.0
                 last_gnn_share = _gnn_share
 
                 n = max(1, _run_n)
@@ -639,7 +640,7 @@ def train_one_epoch(
                     f"(batch {batch_idx+1}/{len(loader)}) | "
                     f"loss={_run_main/n:.4f} "
                     f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}] | "
-                    f"grad: gnn={gnn_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
+                    f"grad: gnn={gnn_norm:.3f} gnn_enc={gnn_enc_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
                     f"GNN share={_gnn_share:.1%}"
                 )
                 # Reset running sums for next interval.
@@ -1132,7 +1133,7 @@ def train(config: TrainConfig) -> dict:
             # model is compiled. Submodule compilation isolates those breaks.
             for name in ("gnn", "fusion", "classifier",
                          "gnn_eye_proj", "transformer_eye_proj", "window_pooler",
-                         "aux_gnn", "aux_transformer"):
+                         "aux_gnn", "aux_transformer", "aux_fused"):  # H5: aux_fused was missing
                 sub = getattr(model, name, None)
                 if sub is not None:
                     setattr(model, name, torch.compile(sub, dynamic=True))
