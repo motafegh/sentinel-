@@ -21,6 +21,19 @@ Flagging format to use during teaching:
 
 ---
 
+### P3 — Chunk Large/Complex/Important Files
+For any file or section that is: (a) complex, (b) large, (c) important, or (d) necessary to understand deeply —
+**do not teach it in one pass**. Break it into logical chunks. After each chunk, post challenge questions
+before moving to the next chunk.
+
+This applies unconditionally to: `graph_extractor.py` (1,328 lines), `trainer.py` (1,633 lines),
+`sentinel_model.py`, `gnn_encoder.py`, `predictor.py`, and any other file that qualifies on criteria a–d.
+
+Chunk boundaries should follow natural logical units (e.g. one class, one phase, one responsibility),
+not arbitrary line counts.
+
+---
+
 ### P2 — Gap-Fill After Challenge Questions
 After the user answers challenge questions, identify gaps and misconceptions explicitly.
 Do not just say "correct" or "incorrect" — teach back the exact concept they were missing,
