@@ -62,7 +62,7 @@ import torch
 import torch.nn as nn
 from loguru import logger
 
-_c4_truncation_warned: set = set()
+_c4_truncation_warned: bool = False  # log once total, not once per unique size
 
 
 def _scatter_to_dense(
@@ -95,13 +95,14 @@ def _scatter_to_dense(
     local_idx = torch.arange(N, device=x.device) - offsets[batch]
     _max_n = int(counts.max().item())
     if _max_n > max_nodes:
-        import logging as _logging
-        _log = _logging.getLogger(__name__)
-        if _max_n not in _c4_truncation_warned:
-            _c4_truncation_warned.add(_max_n)
-            _log.warning(
-                f"C-4: _scatter_to_dense: max_graph_nodes={_max_n} exceeds max_nodes={max_nodes}. "
-                f"Excess nodes silently truncated. Increase max_nodes if this occurs frequently."
+        global _c4_truncation_warned
+        if not _c4_truncation_warned:
+            _c4_truncation_warned = True
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                f"C-4: _scatter_to_dense: graphs exceeding max_nodes={max_nodes} detected "
+                f"(first seen: {_max_n} nodes). Excess nodes silently truncated. "
+                f"This warning fires once — further occurrences suppressed."
             )
     local_idx = local_idx.clamp(max=max_nodes - 1)  # truncate oversized graphs
 
