@@ -306,7 +306,7 @@ class TrainConfig:
     gnn_prefix_warmup_epochs: int   = 15   # epochs without prefix
     gnn_prefix_proj_lr_mult:       float = 5.0   # NH-5: raised from 1.0; cold-start needs faster LR
     gnn_prefix_proj_reset_on_warmup: bool = True  # NC-1: reset Adam state for proj at ep=warmup_epoch
-    jk_entropy_reg_lambda:         float = 0.01  # C-3: JK entropy regularizer weight (0=disabled)
+    jk_entropy_reg_lambda:         float = 0.005  # C-3: JK entropy regularizer weight (0=disabled); 0.01 forced uniform 33/33/33 in Run 3
 
     # --- Cache ---
     cache_path: str | None = "ml/data/cached_dataset_deduped.pkl"
@@ -1006,17 +1006,20 @@ def train(config: TrainConfig) -> dict:
         loss_fn: nn.Module = _FocalFromLogits()
         logger.info(f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha})")
     elif config.loss_fn == "asl":
-        if pos_weight is not None:
-            logger.info("NC-4: Passing pos_weight to AsymmetricLoss (was ignored in prior runs).")
+        # pos_weight intentionally NOT passed to ASL. ASL handles class imbalance
+        # via asymmetric gamma (gamma_neg > gamma_pos). Adding pos_weight on top
+        # creates double-amplification: DoS pos_weight=10× combined with
+        # ASL's asymmetric gradient scaling produced ~20,000× signal for 243 DoS
+        # positives vs easy negatives — GNN share collapsed to 24% by ep16 (Run 3).
         loss_fn = AsymmetricLoss(
             gamma_neg=config.asl_gamma_neg,
             gamma_pos=config.asl_gamma_pos,
             clip=config.asl_clip,
-            pos_weight=pos_weight,
         )
         logger.info(
             f"Loss: AsymmetricLoss(gamma_neg={config.asl_gamma_neg}, "
-            f"gamma_pos={config.asl_gamma_pos}, clip={config.asl_clip})"
+            f"gamma_pos={config.asl_gamma_pos}, clip={config.asl_clip}) — "
+            f"pos_weight NOT applied (ASL is self-contained for imbalance)"
         )
     else:
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -1373,6 +1376,9 @@ def train(config: TrainConfig) -> dict:
             # NC-1: Reset Adam optimizer state for prefix_proj at warmup transition.
             # gnn_to_bert_proj received no gradient during warmup (prefix suppressed);
             # its Adam m1/m2 are stale near-zero. Fresh state gives a clean cold start.
+            # NOTE: params with zero gradient during warmup never get Adam state
+            # initialized — optimizer.state[p] won't exist. We initialize them to {}
+            # regardless (clearing existing state OR ensuring a fresh entry at step 0).
             if (
                 epoch == config.gnn_prefix_warmup_epochs
                 and config.gnn_prefix_k > 0
@@ -1380,14 +1386,16 @@ def train(config: TrainConfig) -> dict:
             ):
                 for _pg in optimizer.param_groups:
                     if _pg.get("name") == "prefix_proj":
-                        _n_reset = sum(
+                        _n_params = len(_pg["params"])
+                        _n_had_state = sum(
                             1 for _p in _pg["params"] if _p in optimizer.state
                         )
                         for _p in _pg["params"]:
-                            optimizer.state[_p] = {}
+                            optimizer.state[_p] = {}  # clear or init fresh
                         logger.info(
-                            f"NC-1: Reset Adam state for {_n_reset} prefix_proj params "
-                            f"at warmup transition (ep{epoch})."
+                            f"NC-1: Reset Adam state for {_n_params} prefix_proj params "
+                            f"at warmup transition (ep{epoch}). "
+                            f"{_n_had_state} had existing state (rest were zero-grad during warmup)."
                         )
                         mlflow.log_metric("prefix_proj_adam_reset", 1, step=epoch)
                         break
