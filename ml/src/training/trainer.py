@@ -647,7 +647,7 @@ def train_one_epoch(
                     f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}] | "
                     f"grad: gnn={gnn_norm:.3f} gnn_enc={gnn_enc_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
                     f"GNN share={_gnn_share:.1%} | "
-                    f"{_sps:.2f} step/s ({1/_sps*60:.1f} min/100steps)"
+                    f"{_sps:.2f} step/s ({100/_sps/60:.1f} min/100steps)"
                 )
                 # Reset running sums and interval timer for next interval.
                 _run_main = _run_gnn_a = _run_tf_a = _run_fus_a = 0.0
