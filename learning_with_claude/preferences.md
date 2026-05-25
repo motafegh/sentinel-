@@ -84,3 +84,49 @@ else, common source of bugs, or non-obvious — mark it explicitly.
 
 Format:
 > ⚠️ **CRITICAL** — [why this must not be skimmed]
+
+---
+
+### P9 — Cross-References to Not-Yet-Taught Code Must Be Made Accessible
+When teaching or gap-fill references code from a file that has NOT yet been taught, never
+assume the user knows it or can answer from memory. Two allowed approaches — choose based
+on context:
+
+**Option A — Inline snippet (default for gap-fill and teaching):**
+Paste the relevant 3–10 lines directly into the response with full context. The user should
+never have to hunt for code that is required to understand the point being made.
+
+**Option B — Guided discovery (when the act of finding is part of learning):**
+Give an explicit, precise instruction: *"Open `ml/src/models/gnn_encoder.py`, find the
+`forward()` method, locate `self.edge_embedding(...)` — what argument does it receive?"*
+The user goes and looks, then answers. Use this when reading the code yourself IS the exercise.
+
+**Never:** reference a function, method, or variable from an untaught file and expect the user
+to answer about it without either the snippet or explicit navigation instructions.
+
+---
+
+### P10 — Spaced Repetition and Active Recall (Anti-Forgetting)
+Based on the Ebbinghaus forgetting curve and the spacing effect: we forget ~70% of new material
+within 24 hours without deliberate retrieval. Re-reading does not consolidate — active recall
+(being tested) does. Spaced intervals compound retention dramatically.
+
+Implementation in this journey:
+
+**A — Chunk warm-up (every chunk):**
+Begin each new chunk with 2–3 quick recall questions from the immediately preceding chunk.
+These are fast — 1-sentence answers — meant to trigger retrieval before new material loads.
+
+**B — Periodic spaced review (every 3–4 chunks):**
+Include 2–3 recall questions from older material (Phase 1, early Phase 2, etc.) at increasing
+intervals. The older the material, the more spaced the review. This is the core spacing mechanic.
+
+**C — End-of-chunk consolidation ("lock-in" summary):**
+After the teaching of each chunk, before the challenge questions, provide a
+**"3 things to lock in"** list — the 3 most important concepts from this chunk in plain language.
+This aids sleep-based memory consolidation (encoding what matters most before the session ends).
+
+**D — No re-reading as review:**
+Recall questions must require retrieval from memory, not scanning back through the chat.
+If the user needs to look something up to answer a warm-up question, that signals the concept
+needs re-teaching, not re-reading.
