@@ -21,13 +21,22 @@ Flagging format to use during teaching:
 
 ---
 
+### P2 — Gap-Fill After Challenge Questions
+After the user answers challenge questions, identify gaps and misconceptions explicitly.
+Do not just say "correct" or "incorrect" — teach back the exact concept they were missing,
+with enough depth that the gap is closed before moving to the next phase.
+
+Observed from: Session 1 challenge question review.
+
+---
+
 ## Session Log
 
 ### Session 1 — Phase 1: `graph_schema.py` + `hash_utils.py`
 - Covered: node types (13), edge types (11), feature vector (11 dims), schema versioning, hash-based file pairing
-- Audit flags raised: *(none yet — pending answers to challenge questions)*
-- Challenge questions: posted, awaiting answers
-- Status: in progress
+- Challenge questions: answered, gap-fill teaching delivered (see Session 1 gap analysis)
+- Audit flags raised: A1, A2 (see table below)
+- Status: complete
 
 ---
 
@@ -35,8 +44,9 @@ Flagging format to use during teaching:
 
 | # | File | Location | Issue | Severity |
 |---|------|----------|-------|----------|
-| — | — | — | none yet | — |
+| A1 | `graph_schema.py` | `NODE_FEATURE_DIM` / `type_id` normalization | `type_id` is hardcoded `/12.0` but the comment says "range 0–12". If a 14th node type is added (id=13), normalization silently exceeds [0,1] without any assert catching it. Should add: `assert max(NODE_TYPES.values()) == NODE_FEATURE_DIM - 1` or normalize by `max(NODE_TYPES.values())` dynamically at extraction time, not at GNNEncoder runtime. | Medium |
+| A2 | `hash_utils.py` | `validate_hash()` | Uses `int(hash_string, 16)` which accepts uppercase hex (e.g. `"ABCDEF..."`), but `hashlib.md5().hexdigest()` always returns lowercase. The validator is silently permissive — it accepts hashes the system never produces. A regex `re.match(r'^[0-9a-f]{32}$', hash_string)` would be more precise and more readable. Not a bug, but a misleading contract. | Low |
 
 ---
 
-*Last updated: Session 1*
+*Last updated: Session 1 — gap-fill review*
