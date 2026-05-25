@@ -1492,10 +1492,10 @@ def train(config: TrainConfig) -> dict:
                 and hasattr(model, "compute_prefix_attention_mean")
             ):
                 try:
-                    _diag_graphs, _diag_ids, _diag_mask, _ = next(iter(val_loader))
+                    _diag_graphs, _diag_tokens, _ = next(iter(val_loader))
                     _diag_graphs = _diag_graphs.to(device)
-                    _diag_ids    = _diag_ids.to(device)
-                    _diag_mask   = _diag_mask.to(device)
+                    _diag_ids    = _diag_tokens["input_ids"].to(device)
+                    _diag_mask   = _diag_tokens["attention_mask"].to(device)
                     model.eval()
                     _prefix_attn = model.compute_prefix_attention_mean(
                         _diag_graphs, _diag_ids, _diag_mask
