@@ -137,3 +137,35 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
   - Gap closed: node_id values can differ across Slither versions; training on v0.9.x and inference on v0.10.x can produce different node orderings → wrong edge wiring
 
 **Audit flags raised:** A10, A11, A12, A13
+
+---
+
+## Session 5 — Phase 2: `graph_extractor.py` (Chunk 4)
+
+**File:** `ml/src/preprocessing/graph_extractor.py` (lines 646–979)
+
+**Concepts taught:**
+- `_add_icfg_edges()`: ICFG-Lite — stitches per-function CFGs via CALL_ENTRY(8) + RETURN_TO(9)
+- ICFG vs CFG — inter-procedural vs intra-procedural; why cross-function connectivity matters for reentrancy detection
+- "Lite" scope: only internal calls; full ICFG alternative with call-return matching
+- RETURN_TO cartesian product: all callee terminals × all call-site successors (including impossible revert→normal paths, A14)
+- `_add_def_use_edges()`: DEF_USE(10) edges for LocalVariable only (not TemporaryVariable/StateVariable)
+- SSA and TemporaryVariable — why SSA temporaries need no edges
+- 2-pass DEF_USE: Pass 1 builds def_map, Pass 2 emits edges with seen_pairs deduplication
+- def_map keyed by name not object identity — variable name collision risk (A15)
+- Reaching definitions analysis alternative — over-approximation vs precision tradeoff
+- `_build_node_features()`: 11-dim declaration-level feature vector assembly
+- Duck-typing _is_function with hasattr instead of isinstance
+- type_id override for constructor/fallback/receive — Solidity special function types
+- assert for sentinel range (A16, same pattern as A4)
+- `_select_contract()`: contract selection from multi-contract file
+- is_from_dependency() filter, is_interface filter
+- most_derived heuristic (≥92%) vs last (87.4%) vs most_funcs (52.6% — worse than random)
+- Derivation score: (n_in_file_ancestors, source_order_index) — tiebreak rationale
+- Fallback chain: by_name → most_derived → last
+
+**Warm-up recall (from Chunk 3):** Questions posted; answers pending
+
+**Challenge questions:** Posted below in teaching response
+
+**Audit flags raised:** A14, A15, A16

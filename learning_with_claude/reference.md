@@ -115,9 +115,9 @@ Spec files are the persistent memory of this journey — uncommitted updates are
 ## Current Status
 
 - **Active phase:** Phase 2 — `graph_extractor.py`
-- **Current chunk:** Chunk 3 complete (teaching + gap-fill delivered); ready for Chunk 4
+- **Current chunk:** Chunk 4 delivered, warm-up + questions posted
 - **Preferences active:** P1 through P14
-- **Audit flags raised:** A1 through A13
+- **Audit flags raised:** A1 through A16
 - **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (Chunks 1–3)
 
 ---

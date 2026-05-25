@@ -210,3 +210,56 @@ The GNN's Phase 2 (which uses CONTROL_FLOW(6) edges) operates on a structurally 
 **Severity:** Low
 **Status:** Open
 **Raised:** Session 3, Chunk 3
+
+---
+
+## A14 — `graph_extractor.py` — RETURN_TO creates cartesian product including impossible revert→normal paths
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_add_icfg_edges()`, lines 699–706: cartesian product of callee_terminals × call_site_sons
+**Issue:** Every terminal of the callee (including revert/throw terminals) gets a RETURN_TO edge
+to every successor of the call site (post-call code). A revert terminal unwinds the call stack and
+never transfers control to post-call code — but the graph models this as a possible path. The GNN
+can form spurious reentrancy patterns: a node that always reverts appears to "reach" the code after
+the call. A full ICFG would distinguish normal-return terminals from exceptional-exit terminals.
+**Fix:** Classify callee terminal nodes as normal-exit or exceptional-exit (revert/throw). Only
+wire normal-exit terminals to call-site successors. This requires Slither to expose CFG node type
+for THROW/REVERT nodes, which it does via `NodeType.THROW`.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 4, Chunk 4
+
+---
+
+## A15 — `graph_extractor.py` — DEF_USE def_map keyed by variable name, not object identity
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_add_def_use_edges()`, line 752: `def_map.setdefault(lval.name, [])`
+**Issue:** Two different `LocalVariable` objects with the same name (e.g. loop variable `i` in
+nested scopes, or Solidity variable shadowing) are conflated in `def_map`. Reads of the inner
+variable appear as uses of the outer variable's definitions, producing spurious DEF_USE edges
+that model data flow that cannot occur. Slither's SSA partially mitigates this but `.name` does
+not always include SSA suffixes depending on the Slither version.
+**Fix:** Key `def_map` by the variable object itself (Python objects are hashable by identity)
+rather than by `.name`: `def_map.setdefault(id(lval), []).append(node_idx)` and match on
+`id(var)` in Pass 2 (requires building a secondary `var_id_to_name` lookup or using object keys).
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 4, Chunk 4
+
+---
+
+## A16 — `graph_extractor.py` — `assert` for sentinel range in `_build_node_features`
+**File:** `ml/src/preprocessing/graph_extractor.py`
+**Location:** `_build_node_features()`, lines 856–857: `assert return_ignored in (-1.0, 0.0, 1.0)`
+**Issue:** Same pattern as A4. Under `python -O` / `PYTHONOPTIMIZE=1`, these asserts are silently
+removed. If a future change to `_compute_return_ignored` or `_compute_call_target_typed` returns
+an out-of-range value, it passes through to the model's feature vector with no crash and no log.
+**Fix:** Replace with explicit checks:
+```python
+if return_ignored not in (-1.0, 0.0, 1.0):
+    raise SlitherParseError(f"return_ignored out of range: {return_ignored}")
+if call_target_typed not in (-1.0, 0.0, 1.0):
+    raise SlitherParseError(f"call_target_typed out of range: {call_target_typed}")
+```
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 4, Chunk 4
