@@ -185,8 +185,8 @@ def parse_args() -> argparse.Namespace:
                    help="LR multiplier for gnn_to_bert_proj and prefix_type_embedding (NH-5: raised from 1.0 for cold-start)")
     p.add_argument("--no-prefix-proj-reset", action="store_true",
                    help="Disable NC-1 Adam state reset for prefix_proj at warmup transition")
-    p.add_argument("--jk-entropy-reg-lambda", type=float, default=0.01,
-                   help="C-3: JK entropy regularizer weight (0=disabled; 0.01 default penalises Phase3 collapse)")
+    p.add_argument("--jk-entropy-reg-lambda", type=float, default=0.005,
+                   help="C-3: JK entropy regularizer weight (0=disabled; 0.005 default — 0.01 caused uniform 33/33/33 collapse in Run 3)")
     p.add_argument("--pos-weight-cap", type=float, default=10.0,
                    help="M-1: cap on sqrt-scaled pos_weight per class (was 20.0)")
 
