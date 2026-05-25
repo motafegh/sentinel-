@@ -49,6 +49,7 @@ from __future__ import annotations
 import gc
 import json
 import os
+import time
 # ---------------------------------------------------------------------------
 import sys
 import dataclasses
@@ -531,6 +532,7 @@ def train_one_epoch(
     _run_tf_a  = 0.0
     _run_fus_a = 0.0
     _run_n     = 0
+    _interval_t0 = time.perf_counter()   # wall-clock start of current log interval
 
     pbar = tqdm(loader, desc="Training", unit="batch", leave=False,
                 disable=not sys.stdout.isatty())
@@ -635,17 +637,22 @@ def train_one_epoch(
                 last_gnn_share = _gnn_share
 
                 n = max(1, _run_n)
+                _elapsed = time.perf_counter() - _interval_t0
+                _steps_in_interval = log_interval  # optimizer steps logged
+                _sps = _steps_in_interval / _elapsed if _elapsed > 0 else 0.0
                 logger.info(
                     f"  Step {optimizer_step}/{(len(loader) + accum_steps - 1) // accum_steps} "
                     f"(batch {batch_idx+1}/{len(loader)}) | "
                     f"loss={_run_main/n:.4f} "
                     f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}] | "
                     f"grad: gnn={gnn_norm:.3f} gnn_enc={gnn_enc_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
-                    f"GNN share={_gnn_share:.1%}"
+                    f"GNN share={_gnn_share:.1%} | "
+                    f"{_sps:.2f} step/s ({1/_sps*60:.1f} min/100steps)"
                 )
-                # Reset running sums for next interval.
+                # Reset running sums and interval timer for next interval.
                 _run_main = _run_gnn_a = _run_tf_a = _run_fus_a = 0.0
                 _run_n = 0
+                _interval_t0 = time.perf_counter()
 
                 # Phase 2-C2: GNN collapse detection.
                 if _gnn_share < 0.10:
@@ -1401,6 +1408,7 @@ def train(config: TrainConfig) -> dict:
                         mlflow.log_metric("prefix_proj_adam_reset", 1, step=epoch)
                         break
 
+            _epoch_t0 = time.perf_counter()
             train_loss, nan_batch_count, last_gnn_share = train_one_epoch(
                 model=model,
                 loader=train_loader,
@@ -1523,10 +1531,12 @@ def train(config: TrainConfig) -> dict:
             # ── Fix #34: log VRAM every epoch ──
             vram_info = f" | VRAM: {_vram_str()}" if device == "cuda" else ""
 
+            _epoch_elapsed = time.perf_counter() - _epoch_t0
             logger.info(
                 f"Epoch {epoch:>2}/{config.epochs} | "
                 f"Loss={train_loss:.4f} | F1-macro={val_metrics['f1_macro']:.4f} | "
-                f"Hamming={val_metrics['hamming']:.4f}{vram_info}\n"
+                f"Hamming={val_metrics['hamming']:.4f} | "
+                f"{_epoch_elapsed/60:.1f} min/ep{vram_info}\n"
                 f"  Top3:    {top3}\n"
                 f"  Bottom3: {bottom3}"
             )
