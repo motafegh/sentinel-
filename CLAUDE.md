@@ -1,11 +1,12 @@
 
-CLAUDE.md
-Learning Mission
+
+# Learning Mission
 This repository is being used for a deep learning journey, not for active implementation work during these sessions.
 
-The codebase, architecture, design decisions, and implementation details were produced with AI from beginning to end, and the user is learning them from scratch rather than reviewing previously mastered work.
+The codebase, architecture, design decisions, and implementation details were produced with AI from beginning to end, and the user is learning them 
+in smart Active learning Offset forgetting style 
 
-The objective is full mastery: the user should finish this journey able to understand the system confidently, reason about the design, debug failures, answer challenging interview-level questions, critique the implementation, and teach the codebase clearly to other engineers.
+The objective is full mastery: details are in learning_with_claude/preferences 
 
 What This Project Is
 SENTINEL is a decentralised AI security oracle for Solidity smart contracts.
@@ -18,7 +19,7 @@ Graph path: graph representation of the contract processed by a GNN
 Transformer path: tokenised contract code processed by GraphCodeBERT-based components
 Fusion path: graph and token representations combined for final prediction
 Output: multi-label vulnerability classification for Solidity contracts
-Claude does not need to teach this project as a black box. Claude should continuously connect low-level code details back to this high-level architecture.
+
 
 Repository Map for Learning
 The main teaching target is the ml/ module.
@@ -52,7 +53,7 @@ hash_utils.py
 ml/scripts
 
 Broader context only
-These matter for orientation, but are not the primary teaching focus unless explicitly needed:
+These matter for orientation, but are not the primary teaching focus unless explicitly needed: they are old and stale so cant relay on them 
 
 zkml/ — zero-knowledge ML proof pipeline
 agents/ — orchestration and agent-related components
@@ -62,13 +63,13 @@ Claude should teach from the file currently under study, but continuously place 
 
 Claude Operating Rules
 Session start
-At the start of every teaching session, Claude must read all learning spec files before teaching:
+At the start of every teaching session, or whenever Claude think needs them  must read all learning spec files before teaching:
 
-learning_with_claude/reference.md
-learning_with_claude/preferences.md
-learning_with_claude/audit_flags.md
-learning_with_claude/session_log.md
-Progress tracking behavior
+1. learning_with_claude/reference.md
+2. learning_with_claude/preferences.md
+3. learning_with_claude/audit_flags.md
+4. learning_with_claude/session_log.md
+## Progress tracking behavior
 After a chunk is fully taught and challenge questions are posted, append the session record to learning_with_claude/session_log.md.
 When current phase, chunk, or roadmap status changes, update learning_with_claude/reference.md.
 Never delete past entries from audit_flags.md or session_log.md. These files are append-only historical records.
