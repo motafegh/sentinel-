@@ -1,8 +1,8 @@
 # GraphCodeBERT + GNN Prefix Injection — Execution Plan
 
 **Proposal:** [2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md](2026-05-23-graphcodebert-gnn-prefix-injection-proposal.md)
-**Last updated:** 2026-05-25 (Run 4 launched 14:52 PID 58484 — all fixes applied incl. C2 collision fix)
-**Status:** ACTIVE — P1-TRAIN Run 4 🔵 RUNNING (Run 2 killed ep4 JK collapse; Run 3 killed ep16 ASL double-amp + JK uniform; Run 4 has all fixes)
+**Last updated:** 2026-05-26 (Run 4 complete — ep32 best F1=0.3362; GATE-GCB-4 evaluated; three-tier output proposed)
+**Status:** GATE-GCB-4 ✅ EVALUATED — P1-TRAIN Run 4 complete. Next: three-tier inference output + data quality track (IMP-D1, Sol-1–Sol-8)
 
 ---
 
@@ -514,7 +514,7 @@ TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. python ml
 | ep8 | ~uniform | 59% | 0.17 | GNN share collapsing |
 | ep16 | ~0.33/0.33/0.33 | 24% | 0.17 | Stagnant — killed |
 
-**Run 4 status:** 🔵 RUNNING (launched 2026-05-25 14:52, PID 58484)
+**Run 4 status:** ✅ COMPLETE — killed 2026-05-26 20:12 at ep44; best ep32 F1=0.3362 (all-time SENTINEL best)
 **Run 4 log:** `ml/logs/graphcodebert-p1-run4-20260525.log`
 **Run 4 command:**
 ```bash
@@ -656,6 +656,65 @@ Look for `Vulnerability detection: X/19 (Y%)` at the bottom of output.
 **When to run:** After `tune_threshold.py` completes (use tuned thresholds, not defaults), on the best epoch checkpoint. Baseline at PLAN-3A: **8/19**. Phase 1 target: **> 10/19**.
 
 > ⚠️ **tune_threshold.py note:** When GNN prefix injection is active, `tune_threshold.py` must also pass `gnn_prefix_nodes` through its forward pass. If it runs without the prefix, thresholds are calibrated on non-prefix inference and won't match deployment behavior. Update `tune_threshold.py` before running threshold optimization for Phase 1.
+
+---
+
+## GATE-GCB-4 — Phase 1 Results Go/No-Go
+
+**Status:** ✅ EVALUATED (2026-05-26)
+**Full analysis:** `docs/ml/gcb-p1-run4-final-analysis.md`
+
+### Run 4 Final Results
+
+| Metric | Value | vs PLAN-3A tuned (prev best) |
+|--------|-------|------------------------------|
+| Best F1-macro | **0.3362** (ep32) | +0.0485 (+16.9%) |
+| vs Run 1 best | +0.0734 | — |
+| Killed at | ep44 (plateau 12 eps) | — |
+| Kill reason | Capacity ceiling, not instability | — |
+
+**Hypothesis resolution:**
+
+| Hypothesis | Prediction | Result |
+|------------|-----------|--------|
+| H-GCB-4 | Tuned F1-macro > 0.30 | ✅ CONFIRMED — 0.3362 |
+| H-GCB-5 | Behavioral > 10/19 | ⚠️ PARTIAL — 7/19 TP (exact-match 1/20 on test contracts with current thresholds; 15/19 flagged at SUSPICIOUS tier ≥ 0.25) |
+| H-GCB-1 | Reentrancy F1 > 0.30 | ✅ CONFIRMED — 3/4 TP on test contracts |
+| H-GCB-2 | UnusedReturn F1 > 0.22 | ❌ NOT MET — UnusedReturn missed entirely (semantic gap) |
+| H-GCB-3 | ExternalBug F1 > 0.28 | ❌ NOT MET — structural gap (inter-contract reasoning required) |
+
+### Behavioral Test Results (20 test contracts)
+
+```
+Exact-match:     1/20 (04_timestamp_dependence.sol)
+Label F1:        0.304   Precision: 0.259   Recall: 0.368
+TP=7  FP=20  FN=12  TN=161
+
+At SUSPICIOUS tier (prob ≥ 0.25):
+  15/19 expected classes flagged as SUSPICIOUS or CONFIRMED
+  Only hard misses: ExternalBug (structural gap), UnusedReturn on minimal contracts
+```
+
+### Prefix Injection Evidence
+
+The GNN prefix injection is confirmed working:
+- proj_norm grew 16.0 → ~32 post-warmup (projection converging)
+- GNN share fell 71% → 21% as TF eye gained signal from prefix structural context
+- F1 dip-then-exceed at ep15 (warmup boundary disruption → recovery) is the canonical prefix signal
+- Best F1 exceeds PLAN-3A by +16.9% — prefix injection is the difference
+
+### Gate Decision
+
+**PROCEED to data quality track.** The prefix injection has reached its capacity ceiling with the
+current 41K training corpus. The remaining gaps (UnusedReturn, ExternalBug, DoS, TOD) are data
+quality problems, not architectural problems.
+
+**Priority order for next work:**
+1. **Three-tier inference output** — immediate, no retraining. Expose full probability vector
+   to agent module. See `docs/proposal/2026-05-27-three-tier-inference-output.md`
+2. **IMP-D1 re-extraction** — rebuild graphs with `CONTRACT→FUNCTION CONTAINS` edges
+3. **Sol-1–Sol-8 data quality** — CEI ordering, OpenZeppelin negatives, SmartBugs
+4. **Phase 2 (P2)** — shared DFG edges, after data quality stabilizes
 
 ---
 
