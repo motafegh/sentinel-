@@ -65,6 +65,7 @@ from __future__ import annotations
 import atexit
 import glob
 import os
+import re as _re
 import tempfile
 from pathlib import Path
 
@@ -84,6 +85,42 @@ from ..preprocessing.graph_extractor import (
 from ..preprocessing.graph_schema import FEATURE_SCHEMA_VERSION
 from ..utils.hash_utils import get_contract_hash, get_contract_hash_from_content
 from .cache import InferenceCache
+
+# ---------------------------------------------------------------------------
+# solc version detection — mirrors reextract_graphs.py so online and offline
+# use the same version-pinned binary from the project venv.
+# ---------------------------------------------------------------------------
+_PRAGMA_RE = _re.compile(r'pragma\s+solidity\s+[\^~>=<\s]*(\d+\.\d+\.\d+)')
+_LATEST_PATCH: dict[str, str] = {
+    "0.4": "0.4.26", "0.5": "0.5.17", "0.6": "0.6.12",
+    "0.7": "0.7.6",  "0.8": "0.8.31",
+}
+_SOLC_ARTIFACTS = Path(__file__).resolve().parents[3] / "ml" / ".venv" / ".solc-select" / "artifacts"
+
+
+def _detect_solc_version(source: str) -> str:
+    m = _PRAGMA_RE.search(source)
+    if m:
+        minor = ".".join(m.group(1).split(".")[:2])
+        return _LATEST_PATCH.get(minor, m.group(1))
+    return "0.8.31"
+
+
+def _solc_binary(version: str) -> Path | None:
+    binary = _SOLC_ARTIFACTS / f"solc-{version}" / f"solc-{version}"
+    return binary if binary.exists() else None
+
+
+def _make_extraction_config(source: str) -> GraphExtractionConfig:
+    ver = _detect_solc_version(source)
+    binary = _solc_binary(ver)
+    if binary is None:
+        logger.warning(
+            f"solc-{ver} not found in venv artifacts ({_SOLC_ARTIFACTS}); "
+            "falling back to system PATH solc."
+        )
+    return GraphExtractionConfig(solc_version=ver, solc_binary=binary)
+
 
 # ---------------------------------------------------------------------------
 # SIGKILL-safe temp file management (Audit #9)
@@ -142,6 +179,10 @@ class ContractPreprocessor:
       process_source_windowed(src) — sliding-window for long contracts (T1-C)
     """
 
+    # codebert-base and graphcodebert-base share identical BPE vocab (50265 tokens,
+    # cls=0, sep=2). The model backbone uses graphcodebert-base weights, but either
+    # name produces identical token IDs. retokenize_windowed.py uses codebert-base;
+    # we match it exactly so offline token files and online tokenization are identical.
     TOKENIZER_NAME   = "microsoft/codebert-base"
     MAX_TOKEN_LENGTH = 512
 
@@ -152,8 +193,6 @@ class ContractPreprocessor:
     def __init__(self, cache: InferenceCache | None = None) -> None:
         logger.info("ContractPreprocessor initialising...")
         _purge_orphaned_sentinel_temps()  # Audit #9: clean up SIGKILL survivors
-        # Load CodeBERT tokenizer once — reused for every request.
-        # Must match tokenizer_v1_production.py used during offline preprocessing.
         self.tokenizer = AutoTokenizer.from_pretrained(self.TOKENIZER_NAME)
         self._cache    = cache
         logger.info(
@@ -391,7 +430,8 @@ class ContractPreprocessor:
           graph.y             — dummy label tensor (never used in forward pass;
                                 required by some PyG internals)
         """
-        config = GraphExtractionConfig()  # online defaults: system solc, no allow-paths
+        source_text = sol_path.read_text(encoding="utf-8", errors="replace")
+        config = _make_extraction_config(source_text)
 
         try:
             graph = extract_contract_graph(sol_path, config)
@@ -565,7 +605,18 @@ class ContractPreprocessor:
 
             if end_content >= total_content:
                 break
-            start += stride
+
+            # Advance by (content_cap − stride) to match HuggingFace overflow semantics.
+            #
+            # HF tokenizer with return_overflowing_tokens=True, stride=S, max_length=L uses:
+            #   advance = (L − 2) − S  =  content_cap − stride  =  510 − 256 = 254
+            # so consecutive windows share exactly S=256 content tokens as overlap.
+            #
+            # The original code used `start += stride` (advance=256, overlap=254) which put
+            # window 1+ at different source positions than the offline training tokenizer,
+            # creating a 2-token offset that caused W1 DIFF in compare_pipelines.py.
+            # Aligning to 254 advance makes online window coverage identical to offline.
+            start += _CONTENT_CAP - stride   # was: start += stride
 
         return windows
 

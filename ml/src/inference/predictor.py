@@ -66,8 +66,14 @@ from torch_geometric.data import Batch, Data
 
 from ml.src.inference.preprocess import ContractPreprocessor
 from ml.src.models.sentinel_model import SentinelModel
-from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM
+from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NODE_TYPES
 from ml.src.training.trainer import CLASS_NAMES
+
+# Must match retokenize_windowed.py MAX_WINDOWS=4.
+# Inference batches exactly this many windows (padding with zeros when W < 4)
+# so WindowAttentionPooler and CrossAttentionFusion see the same [B, W*512, 768]
+# context they were trained on.  Changing this without retraining will break calibration.
+_TRAINING_MAX_WINDOWS: int = 4
 
 _BINARY_CLASS_NAME = "BinaryScore"
 
@@ -86,7 +92,8 @@ def _ensure_list(v: object) -> list:
 # Registry pattern: adding a new architecture = one dict entry, not an elif hunt.
 # Keys must match exactly what trainer.py writes into checkpoint["config"]["architecture"].
 _ARCH_TO_FUSION_DIM: dict[str, int] = {
-    "three_eye_v7":         128,   # v7 three-eye classifier (current) — 11-dim nodes, 7-layer GNN
+    "three_eye_v8":         128,   # v8 three-eye classifier — 8-layer GNN, gnn_prefix_k support
+    "three_eye_v7":         128,   # v7 three-eye classifier — 11-dim nodes, 7-layer GNN
     "three_eye_v5":         128,   # v5 three-eye classifier
     "cross_attention_lora": 128,   # v4 (previous)
     "legacy":               64,
@@ -96,6 +103,7 @@ _ARCH_TO_FUSION_DIM: dict[str, int] = {
 # Node feature dimension per architecture — used for warmup dummy graph.
 # Current architecture imports directly from graph_schema; legacy values are hardcoded.
 _ARCH_TO_NODE_DIM: dict[str, int] = {
+    "three_eye_v8":         NODE_FEATURE_DIM,  # v8 — same schema as v7
     "three_eye_v7":         NODE_FEATURE_DIM,  # always in sync with schema
     "three_eye_v5":         NODE_FEATURE_DIM,  # always in sync with schema
     "cross_attention_lora": 8,     # v4 legacy
@@ -318,58 +326,76 @@ class Predictor:
 
     def _warmup(self) -> None:
         """
-        Run one minimal forward pass with dummy tensors to surface CUDA
-        and model-shape issues at startup instead of on the first real request.
+        Run one minimal forward pass with dummy tensors to surface CUDA and
+        model-shape issues at startup instead of on the first real request.
 
-        Audit fix #5 (2026-05-01) — 2-node 1-edge graph:
-        The previous warmup used a single-node, zero-edge graph:
-            edge_index = torch.zeros(2, 0, ...)
-        A zero-edge graph never calls GATConv.propagate(), so attention
-        coefficient shape bugs only appear on the first real contract.
+        Graph dummy (3 nodes, exercising all critical code paths):
+          node 0 — CONTRACT    : graph root, always present
+          node 1 — FUNCTION    : triggers select_prefix_nodes() → prefix injection
+          node 2 — STATE_VAR   : non-function leaf; tests type_id normalisation
+          edges  — 0↔1 CALLS, 1→2 CONTAINS (undirected where needed)
+          edge_attr — valid Embedding indices for the active edge types
 
-        Fixed: 2 nodes, 1 undirected edge (0→1 and 1→0, so both directions
-        are covered). This forces all three GATConv.propagate() calls to run
-        and exercises the full message-passing code path at startup.
+        Rationale for FUNCTION node:
+          select_prefix_nodes() only selects FUNCTION/MODIFIER/FALLBACK/RECEIVE/
+          CONSTRUCTOR nodes.  The previous 2-node graph (both STATE_VAR, type_id=0)
+          yielded 0 eligible nodes, so gnn_to_bert_proj and prefix_type_embedding
+          were never executed during warmup.  A bug in those layers would survive
+          startup and surface only on the first real contract.  Adding one FUNCTION
+          node forces the full prefix code path to run.
 
-        Fix #4 (2026-05-04) — dummy edge_attr included:
-        When use_edge_attr=True in the checkpoint config, the warmup now adds
-        a 1-D long tensor of zeros for edge_attr (shape [E]) so that the
-        nn.Embedding lookup in GNNEncoder is exercised and edge embedding shape
-        bugs are caught here rather than on the first real inference request.
-
-        Node feature dim is read from _ARCH_TO_NODE_DIM: 12 for v5, 8 for v4/legacy.
-        Token tensor: first token real, rest PAD — avoids empty masked-mean.
+        Token dummy ([1, _TRAINING_MAX_WINDOWS, 512] batched format):
+          Matches the [B, W, L] shape that training sends.  This exercises
+          WindowAttentionPooler's multi-window learned-attention path (WL=2048 > 512)
+          and CrossAttentionFusion's 2048-position key/value context — both of which
+          are bypassed when a single [1, 512] tensor is passed instead.
+          Windows 1-3 are all-zero (mask=0) replicating how offline pads short contracts.
         """
         try:
-            # ── 2 nodes, 1 undirected edge (was 0 edges) ──────────────────────
-            # Node feature dim is architecture-specific: 12 for v5, 8 for v4/legacy.
-            _node_dim = _ARCH_TO_NODE_DIM.get(self.architecture, 12)
-            dummy_x = torch.zeros(2, _node_dim, dtype=torch.float32, device=self.device)
-            dummy_edge_index = torch.tensor(
-                [[0, 1], [1, 0]], dtype=torch.long, device=self.device
-            )  # shape [2, 2] — two directed edges forming one undirected edge
+            _node_dim = _ARCH_TO_NODE_DIM.get(self.architecture, NODE_FEATURE_DIM)
+            _max_type = float(max(NODE_TYPES.values()))   # 12.0 for v8
 
-            # Fix #4: include edge_attr when the checkpoint uses edge embeddings
-            # edge_attr must be 1-D long [E] — integer indices for nn.Embedding.
+            # ── dummy graph: CONTRACT(0) + FUNCTION(1) + STATE_VAR(2) ──────────
+            dummy_x = torch.zeros(3, _node_dim, dtype=torch.float32, device=self.device)
+            # dim[0] = type_id / max_type_id  (normalised node type)
+            dummy_x[0, 0] = NODE_TYPES.get("CONTRACT",   7) / _max_type
+            dummy_x[1, 0] = NODE_TYPES.get("FUNCTION",   1) / _max_type
+            dummy_x[2, 0] = NODE_TYPES.get("STATE_VAR",  0) / _max_type
+
+            # Edges: 0↔1 (CALLS, bidirectional) + 1→2 (CONTAINS)
+            dummy_edge_index = torch.tensor(
+                [[0, 1, 1], [1, 0, 2]], dtype=torch.long, device=self.device
+            )  # [2, 3]
+
             use_edge_attr = self._saved_cfg.get("use_edge_attr", True)
             dummy_kwargs: dict = dict(x=dummy_x, edge_index=dummy_edge_index)
             if use_edge_attr:
-                dummy_kwargs["edge_attr"] = torch.zeros(
-                    2, dtype=torch.long, device=self.device
-                )  # [E=2] long zeros — valid Embedding indices
+                from ml.src.preprocessing.graph_schema import EDGE_TYPES
+                calls_id    = EDGE_TYPES.get("CALLS",    0)
+                contains_id = EDGE_TYPES.get("CONTAINS", 5)
+                dummy_kwargs["edge_attr"] = torch.tensor(
+                    [calls_id, calls_id, contains_id], dtype=torch.long, device=self.device
+                )  # [E=3]
 
             dummy_graph = Data(**dummy_kwargs)
             dummy_batch = Batch.from_data_list([dummy_graph]).to(self.device)
 
-            # attention_mask: first token real, rest PAD — avoids empty masked mean
-            dummy_ids = torch.zeros(1, 512, dtype=torch.long, device=self.device)
-            dummy_mask = torch.zeros(1, 512, dtype=torch.long, device=self.device)
-            dummy_mask[0, 0] = 1
+            # ── token dummy: [1, W, 512] — batched multi-window format ──────────
+            # Window 0: first token real (avoids empty masked-mean in attention)
+            # Windows 1-3: all PAD (mask=0) — replicates offline zero-padding of short contracts
+            W   = _TRAINING_MAX_WINDOWS
+            dummy_ids  = torch.zeros(1, W, 512, dtype=torch.long,  device=self.device)
+            dummy_mask = torch.zeros(1, W, 512, dtype=torch.long,  device=self.device)
+            dummy_mask[0, 0, 0] = 1   # one real token in window 0
 
             with torch.no_grad():
                 _ = self.model(dummy_batch, dummy_ids, dummy_mask)
 
-            logger.info("Warmup forward pass succeeded — model ready (2-node 1-edge graph)")
+            logger.info(
+                f"Warmup forward pass succeeded — model ready "
+                f"(3-node graph with FUNCTION: prefix path exercised; "
+                f"[1,{W},512] token format: WindowAttentionPooler multi-window path exercised)"
+            )
         except Exception as exc:
             raise RuntimeError(
                 f"Model warmup failed — checkpoint may be incompatible with current code. "
@@ -377,65 +403,96 @@ class Predictor:
             ) from exc
 
     def predict(self, sol_path: str | Path) -> dict:
-        """Score a Solidity contract file on disk."""
-        graph, tokens = self.preprocessor.process(sol_path)
-        result = self._score(graph, tokens)
-        result["windows_used"] = 1
-        return result
+        """
+        Score a Solidity contract file on disk.
+
+        Reads the source text and delegates to predict_source() so that:
+          - Sliding-window tokenisation is used for long contracts (no silent truncation)
+          - The forward pass uses the same [1, W, 512] batched format as training
+          - WindowAttentionPooler's learned attention weights are exercised
+
+        Previously this called preprocessor.process() → single [1, 512] window, which
+        silently truncated contracts longer than 512 tokens and sent a shape that bypasses
+        WindowAttentionPooler's multi-window path (DISCREPANCY-5 / audit O3).
+        """
+        source = Path(sol_path).read_text(encoding="utf-8", errors="replace")
+        return self.predict_source(source)
 
     def predict_source(self, source_code: str, name: str = "contract") -> dict:
         """
-        Score a raw Solidity source string.
+        Score a raw Solidity source string using the training-aligned forward path.
 
-        For contracts ≤ 512 tokens: single forward pass (same as before).
-        For contracts > 512 tokens: sliding-window tokenization (T1-C).
-            Each window is scored independently; class probabilities are aggregated
-            by max across windows so late-file patterns (e.g. withdrawal logic at
-            line 400+) are not silently truncated.
+        Always uses the batched multi-window format [1, _TRAINING_MAX_WINDOWS, 512]:
+          - Short contracts (≤ 510 content tokens): 1 real window + 3 zero-padded
+          - Long contracts: up to _TRAINING_MAX_WINDOWS=4 sliding windows
+
+        This ensures:
+          1. WindowAttentionPooler uses its learned attention (WL=2048 > 512 triggers
+             the multi-window path instead of the single-window CLS fallback).
+          2. CrossAttentionFusion sees 4×512=2048 token positions — identical to training.
+          3. No source truncation: the sliding window covers up to 4×510=2040 content
+             tokens (vs 510 max with a single window).
         """
         graph, windows = self.preprocessor.process_source_windowed(source_code)
-
-        if len(windows) == 1:
-            result = self._score(graph, windows[0])
-            result["windows_used"] = 1
-            return result
-
         return self._score_windowed(graph, windows)
 
-    @staticmethod
-    def _aggregate_window_predictions(
-        probs_list: list[torch.Tensor],
-    ) -> torch.Tensor:
-        """
-        Aggregate per-window probability tensors into a single class vector.
-
-        Strategy: max probability per class across all windows.
-        Rationale: a vulnerability is present if ANY window detects it above
-        threshold. Taking the max preserves the strongest signal regardless of
-        window position — a reentrancy buried at line 400 will not be diluted
-        by averaging with the safe preamble at lines 1-100.
-        """
-        return torch.stack(probs_list).max(dim=0).values  # [num_classes]
-
     def _score_windowed(self, graph, windows: list[dict]) -> dict:
-        """Run forward pass for each window, aggregate, and format result."""
+        """
+        Single batched forward pass over all windows — training-aligned.
+
+        Training path (DualPathDataset + dual_path_collate_fn):
+          offline .pt tensor: [W, 512] → collated to [B, W, 512]
+          model receives:     [B, W, 512]  where W = MAX_WINDOWS = 4
+          TransformerEncoder: flattens to [B*W, 512] → CodeBERT → [B, W*512, 768]
+          WindowAttentionPooler: WL=2048 > 512 → learned-attention over 4 CLS vectors
+          CrossAttentionFusion:  key/value [B, 2048, 768]
+
+        Inference path (this method):
+          windows list (1–4 real, from process_source_windowed)
+          → capped at _TRAINING_MAX_WINDOWS=4 (model never trained with W>4)
+          → padded with zero windows to exactly W=4 (mask=0 → fusion ignores them,
+            matching how offline pads short contracts in retokenize_windowed.py)
+          → stacked to [1, 4, 512]
+          → single model() call — identical shape to training
+          → WindowAttentionPooler multi-window path, CrossAttentionFusion 2048-context
+
+        This replaces the old per-window loop + max-pool which:
+          - Sent [1, 512] per window → WL=512 ≤ 512 → WindowAttentionPooler fallback
+            (learned attention bypassed, raw CLS used instead)
+          - Ran W separate forward passes (graph re-processed W times unnecessarily)
+          - Max-pooled sigmoid probabilities (different aggregation from training)
+        """
         self.model.eval()
         batch = Batch.from_data_list([graph]).to(self.device)
 
-        per_window_probs: list[torch.Tensor] = []
+        n_real = len(windows)
+
+        # Cap: model calibrated for W=4; extra windows would shift CLS positions
+        # in WindowAttentionPooler beyond what the learned scorer expects.
+        selected = windows[:_TRAINING_MAX_WINDOWS]
+
+        # Pad to exactly _TRAINING_MAX_WINDOWS with all-zero windows.
+        # attention_mask=0 on pad windows → CrossAttentionFusion key_padding_mask
+        # masks them out (same mechanism as offline zero-padded windows).
+        pad_ids  = torch.zeros(1, 512, dtype=torch.long, device=self.device)
+        pad_mask = torch.zeros(1, 512, dtype=torch.long, device=self.device)
+        padded = list(selected)
+        while len(padded) < _TRAINING_MAX_WINDOWS:
+            padded.append({"input_ids": pad_ids, "attention_mask": pad_mask})
+
+        # Stack: [W, 1, 512] → cat on dim=0 → [W, 512] → unsqueeze → [1, W, 512]
+        stacked_ids  = torch.cat(
+            [w["input_ids"].to(self.device)      for w in padded], dim=0
+        ).unsqueeze(0)   # [1, W, 512]
+        stacked_mask = torch.cat(
+            [w["attention_mask"].to(self.device) for w in padded], dim=0
+        ).unsqueeze(0)   # [1, W, 512]
+
         with torch.no_grad():
-            for window in windows:
-                input_ids = window["input_ids"].to(self.device)      # [1, 512]
-                attention_mask = window["attention_mask"].to(self.device)  # [1, 512]
-                logits = self.model(batch, input_ids, attention_mask)
-                per_window_probs.append(torch.sigmoid(logits.float()).squeeze(0))
+            logits = self.model(batch, stacked_ids, stacked_mask)   # [1, num_classes]
 
-        agg_probs = self._aggregate_window_predictions(per_window_probs)  # [num_classes]
-
-        # Use the truncated flag from the first window (it reflects the source length)
-        first_window = windows[0]
-        result = self._format_result(graph, agg_probs, first_window, len(windows))
-        return result
+        probs = torch.sigmoid(logits.float()).squeeze(0)   # [num_classes]
+        return self._format_result(graph, probs, windows[0], n_real)
 
     def _score(self, graph, tokens: dict) -> dict:
         """

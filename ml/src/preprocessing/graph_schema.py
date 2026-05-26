@@ -28,7 +28,7 @@ ordering in FEATURE_NAMES requires ALL of the following steps:
        python ml/scripts/train.py
        (GNNEncoder reads in_channels=NODE_FEATURE_DIM at construction time)
   4. Increment FEATURE_SCHEMA_VERSION to invalidate all inference caches:
-       FEATURE_SCHEMA_VERSION = "v8"  (next increment — currently v7)
+       FEATURE_SCHEMA_VERSION = "v9"  (next increment — currently v8)
 
 Skipping any of these steps will cause silent accuracy regression.
 
@@ -173,12 +173,12 @@ change — or whenever _build_node_features() logic changes in graph_extractor.p
 
 NODE_FEATURE_DIM: int = 11
 """
-Number of scalar features per graph node (v7 schema — 11 dims).
+Number of scalar features per graph node (v8 schema — 11 dims).
 
 GNNEncoder is constructed with in_channels=NODE_FEATURE_DIM. Changing this
 number requires a full graph re-extraction and model retrain.
 
-Feature layout (v7 — 11 dims; dropped in_unchecked [was dim 9] from v6):
+Feature layout (v8 — 11 dims; dropped in_unchecked [was dim 9] from v6):
   [0]  type_id              — NODE_TYPES int (range 0–12), normalised /12.0
   [1]  visibility           — VISIBILITY_MAP ordinal
   [2]  uses_block_globals   — 1.0 if func reads block.timestamp/number/difficulty/basefee
@@ -430,7 +430,7 @@ FEATURE_NAMES: tuple[str, ...] = (
                             #      (was [11] in v6)
 )
 """
-Human-readable labels for each node feature dimension (v7 — 11 dims).
+Human-readable labels for each node feature dimension (v8 — 11 dims).
 
 Used by:
   - drift detection baseline scripts (compute_drift_baseline.py)

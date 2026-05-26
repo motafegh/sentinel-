@@ -244,6 +244,8 @@ def load_model_from_checkpoint(
             ckpt_config.get("lora_target_modules"),
             default=["query", "value"],
         ),
+        gnn_prefix_k=ckpt_config.get("gnn_prefix_k", 0),
+        gnn_prefix_warmup_epochs=ckpt_config.get("gnn_prefix_warmup_epochs", 15),
     ).to(device)
 
     state_dict = raw["model"] if isinstance(raw, dict) and "model" in raw else raw
