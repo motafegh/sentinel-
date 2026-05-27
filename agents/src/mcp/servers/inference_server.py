@@ -239,29 +239,75 @@ async def _call_inference_api(contract_code: str, contract_address: str = "") ->
 
 def _mock_prediction(contract_code: str) -> dict[str, Any]:
     """
-    Realistic fake prediction for development and testing (Track 3 schema, 2026-04-17).
+    Realistic fake prediction for development and testing (three-tier schema, 2026-05-27).
 
-    Returns multi-label format matching Track 3 PredictResponse.
-    Values are plausible for a medium-risk contract — not random,
-    so demo output looks coherent during development and interviews.
-    Structure exactly mirrors what Module 1 returns, so swapping mock → real
+    Returns multi-label format matching the current PredictResponse schema:
+        label           "safe" | "suspicious" | "confirmed_vulnerable"
+        probabilities   {class: float}  full 10-class vector, always present
+        confirmed       [{vulnerability_class, probability, tier="CONFIRMED"}, ...]
+        suspicious      [{vulnerability_class, probability, tier="SUSPICIOUS"}, ...]
+        vulnerabilities legacy alias for confirmed (backward compat)
+        tier_thresholds {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10}
+
+    Values are plausible for a medium-risk contract — not random, so demo output
+    looks coherent. Structure exactly mirrors Module 1 output; swapping mock → real
     requires zero changes to the tool handlers.
     """
     code_lower = contract_code.lower()
     has_reentrancy_pattern = "call.value" in code_lower or "transfer(" in code_lower
 
-    vulnerabilities = []
-    if has_reentrancy_pattern:
-        vulnerabilities = [
-            {"vulnerability_class": "Reentrancy",  "probability": 0.72},
-            {"vulnerability_class": "IntegerUO",   "probability": 0.54},
-        ]
+    # Full 10-class probability vector — realistic baseline probabilities.
+    _CLASS_NAMES = [
+        "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TOD",
+        "ExternalBug", "CallToUnknown", "MishandledException", "UnusedReturn", "DenialOfService",
+    ]
+    base_probs: dict[str, float] = {
+        "Reentrancy":          0.72 if has_reentrancy_pattern else 0.08,
+        "IntegerUO":           0.54 if has_reentrancy_pattern else 0.12,
+        "GasException":        0.18,
+        "Timestamp":           0.31,
+        "TOD":                 0.09,
+        "ExternalBug":         0.14,
+        "CallToUnknown":       0.07,
+        "MishandledException": 0.22,
+        "UnusedReturn":        0.19,
+        "DenialOfService":     0.06,
+    }
+
+    CONF_THR = 0.55
+    SUSP_THR = 0.25
+
+    confirmed = [
+        {"vulnerability_class": cls, "probability": prob, "tier": "CONFIRMED"}
+        for cls, prob in base_probs.items() if prob >= CONF_THR
+    ]
+    suspicious = [
+        {"vulnerability_class": cls, "probability": prob, "tier": "SUSPICIOUS"}
+        for cls, prob in base_probs.items() if SUSP_THR <= prob < CONF_THR
+    ]
+    confirmed.sort(key=lambda v: v["probability"], reverse=True)
+    suspicious.sort(key=lambda v: v["probability"], reverse=True)
+
+    if confirmed:     label = "confirmed_vulnerable"
+    elif suspicious:  label = "suspicious"
+    else:             label = "safe"
+
+    # Legacy field — confirmed only, no tier tag (backward compat).
+    vulnerabilities = [
+        {"vulnerability_class": v["vulnerability_class"], "probability": v["probability"]}
+        for v in confirmed
+    ]
 
     return {
-        "label":           "vulnerable" if vulnerabilities else "safe",
+        "label":           label,
+        "probabilities":   base_probs,
+        "confirmed":       confirmed,
+        "suspicious":      suspicious,
         "vulnerabilities": vulnerabilities,
-        "threshold":       0.50,
+        "tier_thresholds": {"confirmed": CONF_THR, "suspicious": SUSP_THR, "noteworthy": 0.10},
+        "thresholds":      [0.5] * len(_CLASS_NAMES),
         "truncated":       False,
+        "windows_used":    1,
         "num_nodes":       42,
         "num_edges":       58,
     }
@@ -302,10 +348,11 @@ async def _handle_predict(arguments: dict[str, Any]) -> list[TextContent]:
     try:
         result = await _call_inference_api(contract_code, contract_address)
         logger.info(
-            "predict complete | address={} | label={} | detected={} class(es)",
+            "predict complete | address={} | label={} | confirmed={} | suspicious={}",
             contract_address or "unknown",
             result.get("label", "unknown"),
-            len(result.get("vulnerabilities", [])),
+            len(result.get("confirmed",  result.get("vulnerabilities", []))),
+            len(result.get("suspicious", [])),
         )
         return [TextContent(type="text", text=json.dumps(result))]
 

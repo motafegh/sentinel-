@@ -149,7 +149,7 @@ async def evidence_router(state: AuditState) -> dict[str, Any]:
     logger.info(
         "evidence_router | active_tools={} | classes_evaluated={}",
         active or ["fast-path"],
-        len(ml_result.get("vulnerabilities", [])),
+        len(ml_result.get("probabilities", ml_result.get("vulnerabilities", []))),
     )
     for d in decisions:
         logger.debug("evidence_router | {}", d)
@@ -198,15 +198,17 @@ async def ml_assessment(state: AuditState) -> dict[str, Any]:
                 "error": f"ml_assessment: {result.get('error')} — {result.get('detail', '')}",
             }
 
-        # Bug 8 fix: "confidence" no longer exists in Track 3 schema.
-        # Log top vulnerability class and its probability instead.
-        vulns = result.get("vulnerabilities", [])
-        if vulns:
-            top = max(vulns, key=lambda v: v.get("probability", 0.0))
+        # Log top class from confirmed tier, then suspicious, then legacy field.
+        confirmed_list  = result.get("confirmed",  [])
+        suspicious_list = result.get("suspicious", [])
+        top_tier = confirmed_list or suspicious_list or result.get("vulnerabilities", [])
+        if top_tier:
+            top = max(top_tier, key=lambda v: v.get("probability", 0.0))
             logger.info(
-                "ml_assessment complete | label={} | top_vuln={} | prob={:.3f} | nodes={}",
+                "ml_assessment complete | label={} | top_vuln={} ({}) | prob={:.3f} | nodes={}",
                 result.get("label"),
                 top.get("vulnerability_class"),
+                top.get("tier", "CONFIRMED"),
                 top.get("probability", 0.0),
                 result.get("num_nodes"),
             )
@@ -252,14 +254,14 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
         rag_results → list of ranked exploit chunk dicts
         error       → set on failure (does not replace existing error)
     """
-    ml_result = state.get("ml_result", {})
-    vulns     = ml_result.get("vulnerabilities", [])
+    ml_result  = state.get("ml_result", {})
+    confirmed  = ml_result.get("confirmed",  [])
+    suspicious = ml_result.get("suspicious", [])
+    # Prefer highest-probability confirmed class, then suspicious, then legacy field.
+    flagged = confirmed or suspicious or ml_result.get("vulnerabilities", [])
 
-    # Use the top detected vulnerability class as the query topic.
-    # More precise than the binary label — "Reentrancy exploit" retrieves
-    # better RAG results than "vulnerable exploit".
-    if vulns:
-        top_class = max(vulns, key=lambda v: v.get("probability", 0.0))
+    if flagged:
+        top_class = max(flagged, key=lambda v: v.get("probability", 0.0))
         topic = top_class.get("vulnerability_class", ml_result.get("label", "unknown"))
     else:
         topic = ml_result.get("label", "unknown")
@@ -396,13 +398,18 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
         logger.warning("static_analysis | contract_code empty — skipping")
         return {"static_findings": []}
 
-    # Collect detector names relevant to flagged classes.
-    ml_result = state.get("ml_result", {})
-    flagged_classes = {
-        v["vulnerability_class"]
-        for v in ml_result.get("vulnerabilities", [])
-        if v.get("probability", 0.0) >= 0.35
-    }
+    # Collect detector names relevant to classes above DEEP_THRESHOLDS.
+    # Prefer probabilities dict (all 10 classes) over legacy vulnerabilities list.
+    ml_result     = state.get("ml_result", {})
+    probabilities = ml_result.get("probabilities", {})
+    if probabilities:
+        flagged_classes = {cls for cls, prob in probabilities.items() if prob >= 0.35}
+    else:
+        flagged_classes = {
+            v["vulnerability_class"]
+            for v in ml_result.get("vulnerabilities", [])
+            if v.get("probability", 0.0) >= 0.35
+        }
     scoped_detectors: set[str] = set()
     for cls in flagged_classes:
         scoped_detectors.update(CLASS_TO_DETECTORS.get(cls, []))
@@ -546,16 +553,21 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     routing_decisions: list      = state.get("routing_decisions", [])
     error           : str | None = state.get("error")
 
-    label     = ml_result.get("label",     "unknown")
-    vulns     = ml_result.get("vulnerabilities", [])
-    threshold = ml_result.get("threshold", 0.50)
-    truncated = ml_result.get("truncated", False)
-    num_nodes = ml_result.get("num_nodes", 0)
-    num_edges = ml_result.get("num_edges", 0)
+    label      = ml_result.get("label",     "unknown")
+    confirmed  = ml_result.get("confirmed",  [])
+    suspicious = ml_result.get("suspicious", [])
+    # All flagged classes (CONFIRMED + SUSPICIOUS) — used for verdicts and report.
+    # Falls back to legacy `vulnerabilities` field if three-tier keys absent.
+    all_flagged = confirmed + suspicious or ml_result.get("vulnerabilities", [])
+    threshold  = ml_result.get("threshold", 0.50)
+    truncated  = ml_result.get("truncated", False)
+    num_nodes  = ml_result.get("num_nodes", 0)
+    num_edges  = ml_result.get("num_edges", 0)
 
-    # Derive risk_probability and top_vulnerability from the vulnerabilities list.
-    if vulns:
-        top_vuln      = max(vulns, key=lambda v: v.get("probability", 0.0))
+    # Derive risk_probability and top_vulnerability from CONFIRMED tier first.
+    risk_source = confirmed or suspicious or ml_result.get("vulnerabilities", [])
+    if risk_source:
+        top_vuln      = max(risk_source, key=lambda v: v.get("probability", 0.0))
         risk_prob     = round(top_vuln.get("probability", 0.0), 4)
         top_vuln_name = top_vuln.get("vulnerability_class")
     else:
@@ -571,7 +583,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     confirmations: dict[str, list[str]]  = {}
     vuln_verdicts: list[dict]            = []
 
-    for vuln in vulns:
+    for vuln in all_flagged:
         cls  = vuln.get("vulnerability_class", "?")
         prob = vuln.get("probability", 0.0)
         verdict, sources = compute_verdict(
@@ -596,7 +608,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             "ML assessment failed — manual review required. "
             "Check that the inference server (port 8001) is running."
         )
-    elif label == "vulnerable" and risk_prob >= 0.70:
+    elif label in ("confirmed_vulnerable", "vulnerable") and risk_prob >= 0.70:
         rag_count    = len(rag_results)
         prior_count  = len(audit_history)
         slither_high = sum(
@@ -604,23 +616,27 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         )
         recommendation = (
             f"HIGH RISK — top vulnerability: {top_vuln_name} "
-            f"(probability {risk_prob:.1%}). "
+            f"(probability {risk_prob:.1%}, CONFIRMED tier). "
             f"{rag_count} similar exploit pattern(s) found in DeFiHackLabs corpus. "
             f"{slither_high} Slither High/Medium finding(s). "
             f"{prior_count} prior on-chain audit(s). "
             "Recommend full manual audit before deployment."
         )
-    elif label == "vulnerable":
+    elif label in ("confirmed_vulnerable", "suspicious", "vulnerable"):
+        tier_note = (
+            f"{len(confirmed)} confirmed, {len(suspicious)} suspicious"
+            if (confirmed or suspicious)
+            else f"probability {risk_prob:.1%}"
+        )
         recommendation = (
             f"MODERATE RISK — top vulnerability: {top_vuln_name} "
-            f"(probability {risk_prob:.1%}, above per-class threshold). "
-            "Contract crossed the vulnerability boundary but below high-confidence threshold. "
+            f"({tier_note}). "
             "Recommend targeted review of flagged patterns."
         )
     else:
         recommendation = (
-            f"LOW RISK — no vulnerability exceeded per-class threshold "
-            f"(max probability: {risk_prob:.1%}, threshold: {threshold:.0%}). "
+            f"LOW RISK — no vulnerability exceeded detection threshold "
+            f"(max probability: {risk_prob:.1%}). "
             "Standard due diligence recommended."
         )
 
@@ -635,8 +651,9 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             from src.llm.client import get_strong_llm
 
             vuln_lines = "\n".join(
-                f"  - {v.get('vulnerability_class', '?')}: {v.get('probability', 0.0):.1%}"
-                for v in vulns
+                f"  - [{v.get('tier', 'CONFIRMED')}] "
+                f"{v.get('vulnerability_class', '?')}: {v.get('probability', 0.0):.1%}"
+                for v in all_flagged
             ) or "  (none detected)"
 
             rag_lines = "\n".join(
@@ -669,10 +686,15 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
                 "Be concise. Output only the Markdown, no preamble."
             ))
 
+            tier_summary = (
+                f"{len(confirmed)} CONFIRMED (≥0.55), {len(suspicious)} SUSPICIOUS (0.25–0.54)"
+                if (confirmed or suspicious) else ""
+            )
             user_msg = HumanMessage(content=(
                 f"**Contract address:** {state.get('contract_address', 'unknown')}\n"
-                f"**ML model assessment:** {label} (threshold: {threshold:.0%})\n\n"
-                f"**Detected vulnerabilities:**\n{vuln_lines}\n\n"
+                f"**ML model assessment:** {label}"
+                + (f" — {tier_summary}" if tier_summary else "") + "\n\n"
+                f"**Detected vulnerabilities (tier: class: probability):**\n{vuln_lines}\n\n"
                 f"**RAG exploit evidence:**\n{rag_lines}\n\n"
                 f"**Static analysis findings (High/Medium):**\n{slither_lines}\n\n"
                 f"**Contract code snippet (first 500 chars):**\n```solidity\n{code_snippet}\n```"
@@ -706,7 +728,11 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         "overall_verdict":        overall_verdict,
         "risk_probability":       risk_prob,
         "top_vulnerability":      top_vuln_name,
-        "vulnerabilities":        vulns,
+        "confirmed":              confirmed,
+        "suspicious":             suspicious,
+        "vulnerabilities":        all_flagged,
+        "probabilities":          ml_result.get("probabilities", {}),
+        "tier_thresholds":        ml_result.get("tier_thresholds", {}),
         "vulnerability_verdicts": vuln_verdicts,
         "threshold":              threshold,
         "ml_truncated":           truncated,
@@ -745,12 +771,14 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
 
     logger.info(
         "synthesizer complete | label={} | verdict={} | risk_prob={:.3f} | "
-        "top_vuln={} | path={} | rag_chunks={} | prior_audits={} | "
-        "static_findings={}",
+        "top_vuln={} | confirmed={} | suspicious={} | path={} | "
+        "rag_chunks={} | prior_audits={} | static_findings={}",
         label,
         overall_verdict,
         risk_prob,
         top_vuln_name,
+        len(confirmed),
+        len(suspicious),
         path_taken,
         len(rag_results),
         len(audit_history),

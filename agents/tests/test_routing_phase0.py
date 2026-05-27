@@ -50,13 +50,29 @@ from src.orchestration.routing import (
 # ---------------------------------------------------------------------------
 
 def _ml(vulns: list[tuple[str, float]]) -> dict:
-    """Build a minimal ml_result dict from (class, prob) pairs."""
+    """Build a minimal ml_result dict from (class, prob) pairs (three-tier schema)."""
+    CONF_THR = 0.55
+    SUSP_THR = 0.25
+    probs = dict(vulns)
+    confirmed = [
+        {"vulnerability_class": c, "probability": p, "tier": "CONFIRMED"}
+        for c, p in vulns if p >= CONF_THR
+    ]
+    suspicious = [
+        {"vulnerability_class": c, "probability": p, "tier": "SUSPICIOUS"}
+        for c, p in vulns if SUSP_THR <= p < CONF_THR
+    ]
+    if confirmed:     label = "confirmed_vulnerable"
+    elif suspicious:  label = "suspicious"
+    else:             label = "safe"
     return {
-        "label": "vulnerable" if any(p >= 0.50 for _, p in vulns) else "safe",
-        "vulnerabilities": [
-            {"vulnerability_class": c, "probability": p} for c, p in vulns
-        ],
-        "threshold": 0.50,
+        "label":           label,
+        "probabilities":   probs,
+        "confirmed":       confirmed,
+        "suspicious":      suspicious,
+        "vulnerabilities": [{"vulnerability_class": c, "probability": p} for c, p in vulns if p >= CONF_THR],
+        "tier_thresholds": {"confirmed": CONF_THR, "suspicious": SUSP_THR, "noteworthy": 0.10},
+        "threshold":       0.50,
     }
 
 

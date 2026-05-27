@@ -123,6 +123,21 @@ for _cls, _dets in CLASS_TO_DETECTORS.items():
 # Core routing function
 # ---------------------------------------------------------------------------
 
+def _iter_class_probs(ml_result: dict[str, Any]):
+    """
+    Yield (class_name, probability) pairs from ml_result.
+
+    Prefers the `probabilities` dict (three-tier schema — all 10 classes present).
+    Falls back to `vulnerabilities` list (legacy schema — above-threshold only).
+    """
+    probabilities = ml_result.get("probabilities")
+    if probabilities:
+        yield from probabilities.items()
+    else:
+        for vuln in ml_result.get("vulnerabilities", []):
+            yield vuln.get("vulnerability_class", ""), vuln.get("probability", 0.0)
+
+
 def compute_active_tools(ml_result: dict[str, Any]) -> list[str]:
     """
     Given ml_result, return the list of tool node names that should run.
@@ -135,9 +150,7 @@ def compute_active_tools(ml_result: dict[str, Any]) -> list[str]:
     both trigger static_analysis and rag_research).
     """
     active: set[str] = set()
-    for vuln in ml_result.get("vulnerabilities", []):
-        cls  = vuln.get("vulnerability_class", "")
-        prob = vuln.get("probability", 0.0)
+    for cls, prob in _iter_class_probs(ml_result):
         if prob >= DEEP_THRESHOLDS.get(cls, 0.40):
             active.update(ROUTING_RULES.get(cls, []))
     return sorted(active)  # sorted for deterministic order in logs
@@ -151,9 +164,7 @@ def build_routing_decisions(ml_result: dict[str, Any]) -> list[str]:
     decisions: list[str] = []
     active_any = False
 
-    for vuln in ml_result.get("vulnerabilities", []):
-        cls   = vuln.get("vulnerability_class", "?")
-        prob  = vuln.get("probability", 0.0)
+    for cls, prob in _iter_class_probs(ml_result):
         thr   = DEEP_THRESHOLDS.get(cls, 0.40)
         tools = ROUTING_RULES.get(cls, [])
 
