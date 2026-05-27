@@ -1,33 +1,22 @@
 """
-api.py — SENTINEL FastAPI Inference Endpoint (Cross-Attention + LoRA Upgrade)
+api.py — SENTINEL FastAPI Inference Endpoint
 
-WHAT CHANGED FROM TRACK 3 ORIGINAL:
-    1. /health endpoint reports architecture type from loaded predictor
-       No longer calls torch.load() on every health check (saves ~489MB I/O).
+SCHEMA VERSION: Three-tier suspicion output (2026-05-27)
+  PredictResponse now includes:
+    label           "safe" | "suspicious" | "confirmed_vulnerable"
+    probabilities   {class: float}  full 10-class vector, always present
+    confirmed       [{vulnerability_class, probability, tier="CONFIRMED"}, ...]
+    suspicious      [{vulnerability_class, probability, tier="SUSPICIOUS"}, ...]
+    vulnerabilities legacy alias for confirmed (backward compat)
+    tier_thresholds {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10}
 
-    2. Architecture is read from predictor.architecture (stored at load time).
-
-    3. Default checkpoint updated to multilabel_crossattn_v2_best.pt (retrain v2,
-       edge_attr active). Override via SENTINEL_CHECKPOINT env var.
-
-WHAT DID NOT CHANGE:
-    - PredictRequest / PredictResponse / VulnerabilityResult schemas
-    - /predict endpoint logic
-    - Lifespan pattern (Predictor loaded once at startup)
-    - Error handling: 400/413/500/503/504
+CHECKPOINT: GCB-P1-Run4-no-asl-pw_best.pt (epoch 32, F1=0.3362, all-time best)
+  Pipeline verified FAIL=0 with compare_pipelines.py (2026-05-26).
+  Override via SENTINEL_CHECKPOINT env var.
 
 FIXES (2026-04-29):
-    Bug 1 — import torch added. Was missing — caused NameError on every CUDA OOM
-             instead of the intended HTTP 413 response.
-    Bug 3 — v['class'] → v['vulnerability_class'] to match canonical key
-             now emitted by predictor._score().
-
-IMPROVEMENTS:
-    - /health now reports thresholds_loaded from predictor.
-    - SENTINEL_PREDICT_TIMEOUT env var controls inference timeout (default 60 s).
-    - logger.exception used in catch-all so full traceback appears in logs.
-    - Source size enforced before preprocessing: reject requests > MAX_SOURCE_BYTES (1 MB).
-    - Solidity validator gives a clearer message distinguishing missing keyword vs empty input.
+    Bug 1 — import torch added.
+    Bug 3 — v['class'] → v['vulnerability_class'].
 """
 
 from __future__ import annotations
@@ -63,7 +52,7 @@ _gauge_gpu_mem_bytes = Gauge("sentinel_gpu_memory_bytes",  "Current GPU memory a
 
 CHECKPOINT: str = os.getenv(
     "SENTINEL_CHECKPOINT",
-    "ml/checkpoints/multilabel_crossattn_v2_best.pt",
+    "ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt",
 )
 
 # Inference timeout in seconds — override via SENTINEL_PREDICT_TIMEOUT env var.
@@ -133,18 +122,35 @@ class PredictRequest(BaseModel):
 
 
 class VulnerabilityResult(BaseModel):
-    vulnerability_class: str = Field(..., description="Vulnerability type name")
-    probability: float = Field(..., ge=0.0, le=1.0)
+    vulnerability_class: str   = Field(..., description="Vulnerability class name")
+    probability:         float = Field(..., ge=0.0, le=1.0)
+    tier:                str | None = Field(None, description="CONFIRMED | SUSPICIOUS (None in legacy vulnerabilities field)")
 
 
 class PredictResponse(BaseModel):
-    label: str = Field(..., description="'vulnerable' or 'safe'")
-    vulnerabilities: list[VulnerabilityResult]
-    thresholds: list[float]
-    truncated: bool
-    windows_used: int = Field(default=1, ge=1, description="Number of token windows scored (>1 for long contracts)")
-    num_nodes: int
-    num_edges: int
+    # Three-tier label: "safe" | "suspicious" | "confirmed_vulnerable"
+    label: str = Field(..., description="Highest active tier: safe | suspicious | confirmed_vulnerable")
+
+    # Full 10-class probability vector — always present, never filtered.
+    # Enables agents to see all signal regardless of tier thresholds.
+    probabilities: dict[str, float] = Field(..., description="Full per-class probability vector")
+
+    # Tiered findings — sorted descending by probability within each tier.
+    confirmed:  list[VulnerabilityResult] = Field(default_factory=list, description="prob >= tier_confirmed_threshold (default 0.55)")
+    suspicious: list[VulnerabilityResult] = Field(default_factory=list, description="tier_suspicious_threshold <= prob < tier_confirmed_threshold")
+
+    # Legacy field — backward compat alias for confirmed.
+    # Old consumers reading vulnerabilities get CONFIRMED classes only.
+    vulnerabilities: list[VulnerabilityResult] = Field(default_factory=list)
+
+    # Tier boundaries used — allows agents to interpret tiers without hardcoding thresholds.
+    tier_thresholds: dict[str, float] = Field(default_factory=dict)
+
+    thresholds:   list[float] = Field(..., description="Per-class tuned decision thresholds")
+    truncated:    bool
+    windows_used: int = Field(default=1, ge=1, description="Token windows scored (>1 for long contracts)")
+    num_nodes:    int
+    num_edges:    int
 
 
 # ------------------------------------------------------------------
@@ -154,21 +160,33 @@ class PredictResponse(BaseModel):
 @app.get("/health")
 async def health(request: Request) -> dict:
     """
-    Liveness check — confirms predictor loaded and reports architecture.
+    Liveness check — confirms predictor loaded and reports key model metadata.
     Does NOT read the checkpoint file (avoids expensive I/O on every call).
     """
     predictor: Predictor | None = getattr(request.app.state, "predictor", None)
     predictor_loaded = predictor is not None
 
-    architecture = predictor.architecture if predictor_loaded else "unknown"
-    thresholds_loaded = predictor.thresholds_loaded if predictor_loaded else False
+    if predictor_loaded:
+        cfg = predictor._saved_cfg
+        return {
+            "status":            "ok",
+            "predictor_loaded":  True,
+            "checkpoint":        CHECKPOINT,
+            "architecture":      predictor.architecture,
+            "thresholds_loaded": predictor.thresholds_loaded,
+            "tier_thresholds": {
+                "confirmed":  predictor.tier_confirmed_threshold,
+                "suspicious": predictor.tier_suspicious_threshold,
+                "noteworthy": 0.10,
+            },
+            "model_epoch":  cfg.get("epoch",    "?"),
+            "model_f1_val": cfg.get("best_f1", None),
+        }
 
     return {
-        "status": "ok" if predictor_loaded else "degraded",
-        "predictor_loaded": predictor_loaded,
-        "checkpoint": CHECKPOINT,
-        "architecture": architecture,       # "cross_attention_lora" confirms upgrade loaded
-        "thresholds_loaded": thresholds_loaded,  # False → uniform fallback threshold active
+        "status":           "degraded",
+        "predictor_loaded": False,
+        "checkpoint":       CHECKPOINT,
     }
 
 
@@ -218,12 +236,15 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
     except Exception as _prom_exc:
         logger.debug(f"Prometheus gauge update failed: {_prom_exc}")
 
-    # T2-B: drift detection — update per request, check every DRIFT_CHECK_INTERVAL
+    # T2-B: drift detection — update per request, check every DRIFT_CHECK_INTERVAL.
+    # Track confirmed+suspicious counts as additional drift signal alongside graph features.
     if drift_detector is not None:
         try:
             drift_detector.update_stats({
-                "num_nodes": float(result["num_nodes"]),
-                "num_edges": float(result["num_edges"]),
+                "num_nodes":        float(result["num_nodes"]),
+                "num_edges":        float(result["num_edges"]),
+                "confirmed_count":  float(len(result.get("confirmed",  []))),
+                "suspicious_count": float(len(result.get("suspicious", []))),
             })
             request.app.state.request_count += 1
             if request.app.state.request_count % DRIFT_CHECK_INTERVAL == 0:
@@ -233,19 +254,28 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
 
     logger.info(
         f"Complete — label={result['label']} "
-        f"detected={len(result['vulnerabilities'])} classes "
+        f"confirmed={len(result.get('confirmed', []))} "
+        f"suspicious={len(result.get('suspicious', []))} "
         f"windows={result.get('windows_used', 1)}"
     )
 
+    def _vuln_results(lst: list[dict]) -> list[VulnerabilityResult]:
+        return [
+            VulnerabilityResult(
+                vulnerability_class=v["vulnerability_class"],
+                probability=v["probability"],
+                tier=v.get("tier"),
+            )
+            for v in lst
+        ]
+
     return PredictResponse(
         label=result["label"],
-        vulnerabilities=[
-            VulnerabilityResult(
-                vulnerability_class=v["vulnerability_class"],  # Bug 3 fix — was v["class"]
-                probability=v["probability"],
-            )
-            for v in result["vulnerabilities"]
-        ],
+        probabilities=result.get("probabilities", {}),
+        confirmed=_vuln_results(result.get("confirmed",  [])),
+        suspicious=_vuln_results(result.get("suspicious", [])),
+        vulnerabilities=_vuln_results(result.get("vulnerabilities", [])),
+        tier_thresholds=result.get("tier_thresholds", {}),
         thresholds=result["thresholds"],
         truncated=result["truncated"],
         windows_used=result.get("windows_used", 1),

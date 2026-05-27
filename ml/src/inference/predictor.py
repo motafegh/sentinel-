@@ -133,17 +133,30 @@ class Predictor:
 
     DEFAULT_THRESHOLD = 0.50
 
+    # Three-tier suspicion output thresholds.
+    # CONFIRMED  — model confident enough to commit; agents hard-flag + ZK proof candidate.
+    # SUSPICIOUS — non-trivial signal; agents send to RAG + static analysis for verification.
+    # Classes below SUSPICIOUS_THRESHOLD are NOTEWORTHY (included in probabilities dict only).
+    TIER_CONFIRMED_THRESHOLD:  float = 0.55
+    TIER_SUSPICIOUS_THRESHOLD: float = 0.25
+
     def __init__(
         self,
         checkpoint: str | Path,
         threshold: float = DEFAULT_THRESHOLD,
         device: str | None = None,
+        tier_confirmed_threshold:  float | None = None,
+        tier_suspicious_threshold: float | None = None,
     ) -> None:
         if not (0.0 < threshold < 1.0):
             raise ValueError(f"Threshold must be in (0, 1), got {threshold}.")
 
         self.threshold = threshold  # kept for backward compat; not used in _score
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Tier thresholds — caller can override class defaults for deployment tuning.
+        self.tier_confirmed_threshold  = tier_confirmed_threshold  or self.TIER_CONFIRMED_THRESHOLD
+        self.tier_suspicious_threshold = tier_suspicious_threshold or self.TIER_SUSPICIOUS_THRESHOLD
 
         logger.info(f"Predictor initialising on: {self.device}")
         logger.info(f"Checkpoint: {checkpoint}")
@@ -521,44 +534,93 @@ class Predictor:
         windows_used: int,
     ) -> dict:
         """
-        Convert probability tensor + metadata into the canonical result dict.
+        Convert probability tensor + metadata into the three-tier result dict.
 
-        Fix #6: returns 'thresholds' as a per-class list instead of 'threshold'
-        (single fallback float). Consumers can now inspect the exact decision
-        boundary used for each class, including per-class tuned values loaded
-        from a JSON file.
-        BREAKING CHANGE: key renamed from 'threshold' (float) to 'thresholds' (list).
+        Three-tier suspicion output design (2026-05-27):
+          CONFIRMED  (prob >= tier_confirmed_threshold=0.55):
+            Model is confident. Hard-flag for agents; ZK proof candidate.
+          SUSPICIOUS (tier_suspicious_threshold=0.25 <= prob < 0.55):
+            Non-trivial signal. Send to RAG + static analysis for verification.
+            Evidence from 20-contract evaluation: 8 missed classes had prob
+            0.25-0.54 — binary threshold was discarding real signal.
+          NOTEWORTHY (prob < 0.25):
+            Weak signal. Included in probabilities dict only; not in tier lists.
+
+        Schema:
+          label           "safe" | "suspicious" | "confirmed_vulnerable"
+          probabilities   {class: float} — full 10-class vector, ALWAYS present
+          confirmed       [{vulnerability_class, probability, tier="CONFIRMED"}, ...]
+          suspicious      [{vulnerability_class, probability, tier="SUSPICIOUS"}, ...]
+          vulnerabilities legacy alias for confirmed (backward compat — was above-threshold)
+          tier_thresholds {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10}
+          thresholds      [float × num_classes] — per-class tuned thresholds (unchanged)
+          truncated       bool
+          windows_used    int
+          num_nodes       int
+          num_edges       int
         """
         probs_cpu = probs.cpu()
         probs_list: list[float] = probs_cpu.tolist()
         if isinstance(probs_list, float):
             probs_list = [probs_list]
 
-        # Bug 3 fix — emit canonical key 'vulnerability_class' (was 'class').
-        vulnerabilities = [
-            {"vulnerability_class": cls_name, "probability": round(prob, 4)}
-            for cls_name, prob, thresh in zip(
-                self._class_names, probs_list, self.thresholds.cpu()
-            )
-            if prob >= thresh.item()
-        ]
-        vulnerabilities.sort(key=lambda x: x["probability"], reverse=True)
+        conf_thr = self.tier_confirmed_threshold
+        susp_thr = self.tier_suspicious_threshold
 
-        label = "vulnerable" if vulnerabilities else "safe"
+        # Full probability vector — always present, no filtering.
+        probabilities: dict[str, float] = {
+            cls_name: round(prob, 4)
+            for cls_name, prob in zip(self._class_names, probs_list)
+        }
+
+        # Tiered lists — sorted descending by probability within each tier.
+        confirmed: list[dict] = []
+        suspicious: list[dict] = []
+        for cls_name, prob in zip(self._class_names, probs_list):
+            p = round(prob, 4)
+            if prob >= conf_thr:
+                confirmed.append({"vulnerability_class": cls_name, "probability": p, "tier": "CONFIRMED"})
+            elif prob >= susp_thr:
+                suspicious.append({"vulnerability_class": cls_name, "probability": p, "tier": "SUSPICIOUS"})
+        confirmed.sort(key=lambda x: x["probability"], reverse=True)
+        suspicious.sort(key=lambda x: x["probability"], reverse=True)
+
+        # Label reflects highest active tier.
+        if confirmed:
+            label = "confirmed_vulnerable"
+        elif suspicious:
+            label = "suspicious"
+        else:
+            label = "safe"
+
+        # Legacy field: backward-compat alias for confirmed.
+        # Old consumers reading result["vulnerabilities"] get CONFIRMED classes only,
+        # which is the closest equivalent to the old above-per-class-threshold list.
+        vulnerabilities = [
+            {"vulnerability_class": v["vulnerability_class"], "probability": v["probability"]}
+            for v in confirmed
+        ]
 
         logger.info(
-            f"Label: {label} | {len(vulnerabilities)} class(es) above thresholds | "
+            f"Label: {label} | confirmed={len(confirmed)} suspicious={len(suspicious)} | "
             f"nodes={graph.num_nodes} edges={graph.num_edges} "
             f"truncated={tokens.get('truncated', False)} windows={windows_used}"
         )
 
-        # Fix #6: expose per-class thresholds list instead of single fallback float.
         return {
-            "label": label,
-            "vulnerabilities": vulnerabilities,
-            "thresholds": self.thresholds.cpu().tolist(),
-            "truncated": tokens.get("truncated", False),
-            "windows_used": windows_used,
-            "num_nodes": int(graph.num_nodes),
-            "num_edges": int(graph.num_edges),
+            "label":            label,
+            "probabilities":    probabilities,
+            "confirmed":        confirmed,
+            "suspicious":       suspicious,
+            "vulnerabilities":  vulnerabilities,   # legacy
+            "tier_thresholds":  {
+                "confirmed":  conf_thr,
+                "suspicious": susp_thr,
+                "noteworthy": 0.10,
+            },
+            "thresholds":    self.thresholds.cpu().tolist(),
+            "truncated":     tokens.get("truncated", False),
+            "windows_used":  windows_used,
+            "num_nodes":     int(graph.num_nodes),
+            "num_edges":     int(graph.num_edges),
         }
