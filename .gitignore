@@ -1,90 +1,71 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Documentation backup and temporary files
+*.tmp
+*.backup
+*.bak
 
-# Dependencies
-venv/
-.venv/
-.env
-.env.local
-.env.*
-
-# Build and distribution
-dist/
-build/
-target/
-
-# Logs
+# Log files
 *.log
 
-# Coverage
-.coverage
-coverage/
-htmlcov/
+# Environment files
+.env
+.env.local
+*.env.*
 
-# IDE
+# Editor/IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*.tmp
 
-# OS
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+
+# Build artifacts
+dist/
+build/
+target/
+.gradle/
+
+# System files
 .DS_Store
 Thumbs.db
-*Zone.Identifier
 
-# MyPy
-.mypy_cache/
-
-# PyTest
-.pytest_cache/
-
-# Build artifacts & caches
-.cache/
-.local-bin/
-logs/
-ml/data/
-ml/logs/
-mlruns/
-*.pid
-*.db
-nohup.out
-slither_output.json
-
-# Backup files
-*.backup
-
-# Raw datasets (too large for git — use DVC)
-BCCC-SCsVul-2024/
-
-# Agent data (RAG index, FAISS files, embeddings)
-agents/data/
-
-# ZKML large binary artifacts (DVC or external storage instead)
-zkml/ezkl/proving_key.pk
-zkml/ezkl/srs.params
-
-# Large binary archives
-ml/peft.zip
-
-# Model checkpoints (large binary weights)
-ml/checkpoints/
-
-# Cache and split files (large, reproducible from pipeline)
-*.pkl
-*.npy
-
-# Temp directory
-/tmp/
-
-# Scratch / output files not part of the codebase
-create_cache.py
-validation_full_output.txt
-docs/manual-saved-log.txt
-
-# Archive directories (local only — not published to GitHub)
-docs/archive/
-ml/scripts/archive/
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
