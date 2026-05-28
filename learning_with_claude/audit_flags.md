@@ -486,3 +486,35 @@ construction time, or make the layer count truly dynamic.
 **Severity:** Low
 **Status:** Open
 **Raised:** Session 8
+
+---
+
+## A32 — `sentinel_model.py` — `_MAX_TYPE_ID` dynamic recomputation decoupled from encoded .pt files
+**File:** `ml/src/models/sentinel_model.py`
+**Location:** Line 75: `_MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))`
+**Issue:** `_MAX_TYPE_ID` is derived at import time from the live `NODE_TYPES` dict. If a 14th node
+type with id=13 is added to `graph_schema.py`, `_MAX_TYPE_ID` becomes 13.0. But `.pt` files already
+on disk were encoded with divisor 12.0 (feature[0] = float(type_id) / 12.0). At inference,
+`feature[0] * 13.0` does not round to the same integer as `feature[0] * 12.0` — type IDs are
+decoded wrong for all nodes. GNN prefix selection (_PREFIX_NODE_PRIORITY lookup) and function-level
+pooling (torch.isin against _FUNC_IDS_CPU) both depend on correct type ID recovery. This is the
+same class of bug as A3 (missing range assertion in graph_schema.py).
+**Fix:** `assert _MAX_TYPE_ID == 12.0, f"Schema changed: re-encode dataset before using new schema"`.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 12
+
+---
+
+## A33 — `sentinel_model.py` — `select_prefix_nodes` uses Python loop over batch dimension
+**File:** `ml/src/models/sentinel_model.py`
+**Location:** `select_prefix_nodes()`, line ~292: `for g in range(num_graphs):`
+**Issue:** Python loop over batch dimension with `batch == g` mask comparison, `.tolist()` on a
+sub-tensor, a Python list comprehension, and a Python `sort()` inside each iteration. For
+batch_size=32 this is 32 iterations in eager Python. Not catastrophic at inference batch sizes,
+but inconsistent with vectorized style elsewhere and doubles Python overhead on the prefix path.
+**Fix:** Build priority scores as a single tensor `[N]` using `torch.zeros(N).scatter_()` with type
+priorities, then use `scatter_topk` / `segment_csr` to select top-K per graph without a Python loop.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 12

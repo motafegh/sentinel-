@@ -360,3 +360,32 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Q1–Q5 posted; answers pending
 
 **Audit flags raised:** A31
+
+---
+
+## Session 12 — Phase 5: `sentinel_model.py` (Chunk 1)
+
+**File:** `ml/src/models/sentinel_model.py` (lines 1–332)
+
+**Concepts taught:**
+- Three-eye architecture overview: GNN eye + Transformer eye + Fused eye → concat [B, 384] → classifier
+- `_MAX_TYPE_ID`: derived from `max(NODE_TYPES.values())` at import — decodes feature[0] back to integer type_id; same schema-drift risk as A3
+- `_FUNC_TYPE_IDS` frozenset: declaration-level nodes (FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR) pooling target; why not all nodes (CFG_RETURN dominance)
+- `_FUNC_IDS_CPU`: pre-built CPU tensor at module level (BUG-L1 perf fix); compile-time assert for integrity
+- `_PREFIX_NODE_PRIORITY` vs `_PREFIX_TYPE_IDX`: different dicts — priority controls selection order, type_idx controls embedding slot; must not confuse them
+- `SentinelModel.__init__`: sub-module wiring (GNNEncoder, TransformerEncoder, CrossAttentionFusion)
+- Conditional prefix modules: `gnn_to_bert_proj` and `prefix_type_embedding` only created when `gnn_prefix_k > 0`
+- `_current_epoch` int attribute: set by trainer, controls prefix gating, hardcoded to 9999 at inference
+- GNN eye projection: cat([global_max_pool, global_mean_pool]) [B, 512] → Linear(512,128) → [B, 128]
+- Auxiliary heads: three Linear(128, num_classes), one per eye; training only, discarded at inference
+- Aux loss rationale: λ=0.3 * (loss_gnn + loss_tf + loss_fused) keeps all three eye gradients alive
+- `select_prefix_nodes`: step-by-step — mask per graph, eligible_local list, two-key sort (primary=type_priority, secondary=-ext_call_count for FUNCTION only), truncate to K
+- `gnn_to_bert_proj(selected_embs)` + `prefix_type_embedding(type_indices)` bias addition → [B, K, 768]
+- IMP-M3: `node_counts[g] = n_sel` tracks real (non-padded) nodes per graph; returned alongside prefix
+- Ghost graph handling: `continue` on no eligible nodes → prefix stays all-zero; node_counts stays 0
+
+**Warm-up recall (from Session 11):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A32, A33
