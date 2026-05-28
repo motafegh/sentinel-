@@ -455,7 +455,25 @@ wrapped in a try/except AttributeError with a clear message directing the user t
 
 ---
 
-## A27 — `gnn_encoder.py` — `num_layers` parameter not used to build the network
+## A31 — `fusion_layer.py` — `_scatter_to_dense` truncation overwrites real node at max_nodes-1
+**File:** `ml/src/models/fusion_layer.py`
+**Location:** `_scatter_to_dense()`, line ~107: `local_idx = local_idx.clamp(max=max_nodes - 1)`
+**Issue:** For a graph with more than `max_nodes=1024` nodes, all excess nodes are clamped to
+`local_idx = 1023`. Multiple writes `out[batch, 1023] = x[i]` overwrite each other — only the
+last truncated node's embedding survives. Additionally, the real node at position 1023 is also
+overwritten. `mask[batch, 1023]` stays True (set by the real node), so pooling treats this
+corrupted position as a valid real node. Affects <1% of corpus but produces silent data corruption.
+**Fix:** Skip the write for out-of-bounds nodes:
+`valid = local_idx < max_nodes`
+`out[batch[valid], local_idx[valid]] = x[valid]`
+`mask[batch[valid], local_idx[valid]] = True`
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 11
+
+---
+
+## A27 — `gnn_encoder.py` — `num_layers` stored but hardcoded to 8
 **File:** `ml/src/models/gnn_encoder.py`
 **Location:** `GNNEncoder.__init__()`, line ~196: `self.num_layers = num_layers`
 **Issue:** `num_layers` is stored as metadata but the 8 conv layers are hardcoded unconditionally.

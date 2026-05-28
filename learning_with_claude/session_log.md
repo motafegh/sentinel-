@@ -333,3 +333,30 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Q1–Q5 posted; answers pending
 
 **Audit flags raised:** A19, A20, A21, A22
+
+---
+
+## Session 11 — Phase 5: `fusion_layer.py` (single chunk)
+
+**File:** `ml/src/models/fusion_layer.py` (lines 1–277)
+
+**Concepts taught:**
+- Why concat+MLP was replaced: pooling before fusion collapses per-node/per-token detail; cross-attention needs full sequences
+- `_scatter_to_dense`: replaces PyG `to_dense_batch` to eliminate `GuardOnDataDependentSymNode` torch.compile graph breaks; static `max_nodes=1024` constant; output `(out [B, max_nodes, d], mask [B, max_nodes])`
+- `torch.compile` graph break mechanism: data-dependent shapes force eager mode fallback; static shapes avoid it entirely
+- `CrossAttentionFusion.__init__`: `node_proj`, `token_proj`, `token_norm`, `node_to_token_attn`, `token_to_node_attn` MHA modules, concat+project output
+- BUG-C2 fix: `token_norm = nn.LayerNorm(token_dim)` applied BEFORE `token_proj` — prevents CodeBERT L2 norm (~10-15) from dominating cross-attention dot products
+- Fix #26: `need_weights=False` on both MHA calls — saves ~33 MB VRAM per forward pass by skipping attention weight matrix materialization
+- MHA `key_padding_mask` convention: `True = IGNORE` (inverted from attention_mask); must invert with `~node_real_mask` and `(attention_mask == 0)`
+- Node→Token cross-attention: Q=nodes, K=V=tokens; each node attends across full 512-token sequence
+- Fix #8: explicit `enriched_nodes = enriched_nodes * node_real_mask.float().unsqueeze(-1)` — zeroes padded node positions after cross-attention, preventing PAD embeddings from leaking into masked mean pool
+- Token→Node cross-attention: Q=tokens, K=V=nodes; each token attends across all real graph nodes
+- Masked mean pooling: divide by `mask.sum(dim=1, keepdim=True).clamp(min=1.0)` — `clamp` prevents division by zero for ghost graphs (zero function nodes)
+- Full 6-step forward pipeline: project → scatter-to-dense → Node→Token attn → Token→Node attn → masked pool both sides → cat+project → `[B, 128]`
+- Cross-attention vs self-attention: Q and K/V come from different sequences; used here for bidirectional info flow
+
+**Warm-up recall (from Session 10):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A31
