@@ -1,11 +1,11 @@
 # Reference — Learning With Claude (How This Works)
 
 This folder tracks the ongoing deep-dive study of the Sentinel ML module.
-It contains 4 files. This file is the entry point — read it first.
+It contains 4 spec files and a `learning_roadmap/` subfolder. This file is the entry point — read it first.
 
 ---
 
-## The 4 Files
+## The 4 Spec Files
 
 | File | Purpose | When to Update |
 |------|---------|----------------|
@@ -13,6 +13,19 @@ It contains 4 files. This file is the entry point — read it first.
 | `preferences.md` | All teaching preferences (P1, P2, ...). Controls HOW teaching is delivered. | Immediately when a new preference is stated or observed. Never batch. |
 | `audit_flags.md` | All issues found during teaching (A1, A2, ...). Bugs, design problems, missing guards. | Immediately when an `[AUDIT]` flag is raised during teaching. |
 | `session_log.md` | Record of what was covered in each session. Progress tracker. | After each chunk is fully delivered and questions posted. |
+
+## The `learning_roadmap/` Subfolder
+
+Detailed per-phase teaching plans. Created ahead of teaching the phase — covers session breakdown,
+chunk boundaries, new concepts per session, anticipated audit flags, and cross-file dependencies.
+
+| File | Phase | Status |
+|------|-------|--------|
+| `learning_roadmap/phase5_models.md` | Phase 5 — `models/` | ✅ Ready (6 sessions, 7 chunks) |
+
+**When to create a roadmap file:** Before starting a new phase, after reading all source files in that
+folder. Roadmap files are read-only once created — update only if the session plan changes materially.
+Do not update them to reflect session progress; `session_log.md` tracks that.
 
 ---
 
@@ -114,12 +127,13 @@ Spec files are the persistent memory of this journey — uncommitted updates are
 
 ## Current Status
 
-- **Active phase:** Phase 3 — `data_extraction/`
-- **Current chunk:** `ast_extractor.py` delivered (Session 7); warm-up + challenge answers pending
+- **Active phase:** Phase 5 — `models/` (skipped tokenizer.py per user; Phase 3 partially complete)
+- **Current chunk:** Phase 5 roadmap created; Session 8 (`gnn_encoder.py` Chunk 1) is next
 - **Preferences active:** P1 through P14
-- **Audit flags raised:** A1 through A22
+- **Audit flags raised:** A1 through A22 (A23–A26 anticipated in Phase 5 — see roadmap)
 - **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (all 5 chunks), `ast_extractor.py`
-- **Next:** `tokenizer.py` (Phase 3, Session 8)
+- **Skipped (deferred):** `tokenizer.py` (Phase 3) — can return to later
+- **Roadmap available:** `learning_roadmap/phase5_models.md`
 
 ---
 
@@ -137,8 +151,13 @@ Phase 3  🔄  data_extraction/
               ast_extractor.py ✅
               tokenizer.py     ⬜
 Phase 4  ⬜  datasets/         (dual_path_dataset.py)
-Phase 5  ⬜  models/           (gnn_encoder.py, transformer_encoder.py,
-                                fusion_layer.py, sentinel_model.py)
+Phase 5  🔄  models/           → see learning_roadmap/phase5_models.md
+              Session 8  ⬜  gnn_encoder.py Chunk 1 (_JKAttention + __init__)
+              Session 9  ⬜  gnn_encoder.py Chunk 2 (forward pass)
+              Session 10 ⬜  transformer_encoder.py (full)
+              Session 11 ⬜  fusion_layer.py (full)
+              Session 12 ⬜  sentinel_model.py Chunk 1 (constants + __init__ + select_prefix_nodes)
+              Session 13 ⬜  sentinel_model.py Chunk 2 (forward + aux heads)
 Phase 6  ⬜  training/         (focalloss.py, losses.py, trainer.py)
 Phase 7  ⬜  inference/        (preprocess.py, predictor.py, cache.py,
                                 drift_detector.py, api.py)
