@@ -299,3 +299,63 @@ only `ImportError, AttributeError` and let unexpected exceptions propagate.
 **Severity:** Medium
 **Status:** Open
 **Raised:** Session 5, Chunk 5
+
+---
+
+## A19 — `ast_extractor.py` — `get_solc_binary` uses `Path.cwd()` instead of `get_project_root()`
+**File:** `ml/src/data_extraction/ast_extractor.py`
+**Location:** `get_solc_binary()`, line 143: `venv_path = Path.cwd() / ".venv" / ...`
+**Issue:** Binary path resolution depends on the current working directory at call time. If the script is
+invoked from any directory other than the project root (e.g. from `ml/src/`, a CI job, or a cron task
+with a different cwd), `.venv/.solc-select/artifacts/` is not found. Every contract gets `solc_binary=None`,
+silently falling back to system solc and bypassing version pinning entirely. `get_project_root()` is defined
+4 lines below and resolves the project root from `__file__`, but is not used here.
+**Fix:** Replace `Path.cwd()` with `get_project_root()`.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 7
+
+---
+
+## A20 — `ast_extractor.py` — `label=0` hardcoded for all contracts in batch extraction
+**File:** `ml/src/data_extraction/ast_extractor.py`
+**Location:** `extract_batch_with_checkpoint()`, lines 307–311: `partial(..., label=0)`
+**Issue:** Every contract extracted by the batch pipeline receives `graph.y = tensor([0])` (safe), regardless
+of the contract's actual vulnerability status. The dataframe `df` likely contains vulnerability labels but
+they are never read. If vulnerable contracts are present in the parquet, they are mislabeled as safe —
+producing poisoned training data. The model is trained to predict "safe" for patterns that are actually
+vulnerable.
+**Fix:** Pass the label per-row from `df`. Replace `pool.imap(worker, paths)` with `pool.imap(worker,
+zip(paths, labels))` and unpack in `contract_to_pyg`.
+**Severity:** High
+**Status:** Open
+**Raised:** Session 7
+
+---
+
+## A21 — `ast_extractor.py` — `print()` called from worker processes (verbose mode)
+**File:** `ml/src/data_extraction/ast_extractor.py`
+**Location:** `contract_to_pyg()`, lines 223 and 228: `print(f"  Skipped ...")` / `print(f"  Unexpected...")`
+**Issue:** `contract_to_pyg` is called inside `mp.Pool` workers via `imap`. `print()` from 11 concurrent
+worker processes writes to stdout simultaneously without serialization, producing interleaved/garbled log
+lines. Under high load, consecutive log messages from different workers overwrite each other in the terminal.
+**Fix:** Use `logging` with a `QueueHandler`/`QueueListener` pattern (designed for multiprocessing logging),
+or pass a `multiprocessing.Queue` to workers for funneling messages to the main process.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 7
+
+---
+
+## A22 — `ast_extractor.py` — `torch.save` has no error handling; disk-full crashes entire batch
+**File:** `ml/src/data_extraction/ast_extractor.py`
+**Location:** `extract_batch_with_checkpoint()`, line 329: `torch.save(result, graph_file)`
+**Issue:** `torch.save` is called in the main process loop with no `try/except`. A disk-full error or
+I/O error raises an uncaught exception that exits the `for result in tqdm(...)` loop and the `with mp.Pool()`
+block. Up to 499 successfully processed contracts since the last checkpoint are lost (hash not in checkpoint,
+`.pt` files may be partially written). The pool workers are left in undefined state.
+**Fix:** Wrap `torch.save` in `try/except OSError` (covers disk-full, permission errors). On failure, log
+to `failed_saves.json` and continue — don't abort the batch for a single save failure.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 7

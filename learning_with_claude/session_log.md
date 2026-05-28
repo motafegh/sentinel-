@@ -210,3 +210,30 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Posted below
 
 **Audit flags raised:** A17, A18
+
+---
+
+## Session 7 — Phase 3: `ast_extractor.py` (single chunk)
+
+**File:** `ml/src/data_extraction/ast_extractor.py` (lines 1–437)
+
+**Concepts taught:**
+- Pre-refactor train/inference feature drift problem — duplicate extraction logic in ast_extractor.py + preprocess.py
+- Post-refactor thin wrapper design — graph logic delegated entirely to graph_extractor.py
+- `parse_solc_version` — (major, minor, patch) tuple, never-raise contract, returns (0,0,0) on failure
+- `solc_supports_allow_paths` — 0.5.0 version gate for --allow-paths flag
+- `get_solc_binary` — solc-select binary resolution under .venv/.solc-select/artifacts/
+- `contract_to_pyg` — three-tier error policy: RuntimeError re-raise, GraphExtractionError skip, Exception skip
+- Offline metadata attachment: contract_hash, contract_path, graph.y label tensor
+- `extract_batch_with_checkpoint` — checkpoint/resume idiom for interruptible batch pipelines
+- `pool.imap` vs `pool.map` — streaming vs collect-all, memory implications at scale
+- `functools.partial` as worker factory for per-version-group configuration
+- Why group by detected_version — shared solc binary per group avoids per-contract binary resolution
+- Checkpoint race condition: hash added to processed_hashes after torch.save; kill between them is safe (idempotent re-process)
+- Schema compatibility note: edge_attr [E,1] vs [E] shapes in legacy vs new .pt files
+
+**Warm-up recall (from Session 6/Chunk 5):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A19, A20, A21, A22

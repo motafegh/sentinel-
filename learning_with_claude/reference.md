@@ -114,11 +114,12 @@ Spec files are the persistent memory of this journey — uncommitted updates are
 
 ## Current Status
 
-- **Active phase:** Phase 2 COMPLETE — moving to Phase 3 (`data_extraction/`)
-- **Current chunk:** graph_extractor.py Chunk 5 delivered — Phase 2 fully done
+- **Active phase:** Phase 3 — `data_extraction/`
+- **Current chunk:** `ast_extractor.py` delivered (Session 7); warm-up + challenge answers pending
 - **Preferences active:** P1 through P14
-- **Audit flags raised:** A1 through A18
-- **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (Chunks 1–3)
+- **Audit flags raised:** A1 through A22
+- **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (all 5 chunks), `ast_extractor.py`
+- **Next:** `tokenizer.py` (Phase 3, Session 8)
 
 ---
 
@@ -132,7 +133,9 @@ Phase 2  ✅  graph_extractor.py
               Chunk 3 ✅  CFG node typing, feature building, control-flow edges
               Chunk 4 ✅  ICFG + DEF_USE + _build_node_features + _select_contract
               Chunk 5 ✅  extract_contract_graph() — main assembly
-Phase 3  🔄  data_extraction/  (ast_extractor.py, tokenizer.py)
+Phase 3  🔄  data_extraction/
+              ast_extractor.py ✅
+              tokenizer.py     ⬜
 Phase 4  ⬜  datasets/         (dual_path_dataset.py)
 Phase 5  ⬜  models/           (gnn_encoder.py, transformer_encoder.py,
                                 fusion_layer.py, sentinel_model.py)
