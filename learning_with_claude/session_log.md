@@ -213,6 +213,38 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 
 ---
 
+## Session 8 — Phase 5: `gnn_encoder.py` (Chunk 1)
+
+**File:** `ml/src/models/gnn_encoder.py` (lines 1–337)
+
+**Concepts taught:**
+- GAT (Graph Attention Network): learned per-edge attention weights vs uniform aggregation
+- Multi-head attention in GAT: `concat=True` (concatenate heads) vs `concat=False` (average/single head)
+- `out_channels` in GATConv is per-head, not total — total = `out_channels × heads` when concat=True
+- Over-smoothing in deep GNNs; JK connections as mitigation
+- `_JKAttention`: `nn.Linear(channels, 1, bias=False)` as attention scorer; stack→score→softmax→weighted sum
+- `register_buffer` vs plain attribute: device movement, state_dict serialization, no gradients
+- JK entropy term: `-(w·log(w)).sum(dim=1).mean()` — measures attention collapse, gradient-attached
+- `last_node_weights` as plain attribute (not buffer): shape varies per batch, eval-only diagnostic
+- `GNNEncoder.__init__`: 8 conv layers across 3 phases (2+3+3), named conv1/2/3/3b/3c/4/4b/4c
+- `_head_dim = hidden_dim // heads` — ensures total Phase 1 output = hidden_dim after concat
+- `nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)` — edge type lookup table, incorporated into GATConv via edge_dim
+- IMP-G2: `input_proj = nn.Linear(11, 256, bias=False)` skip connection — prevents raw feature loss at init
+- Phase 1: `add_self_loops=True, heads=8, concat=True` — 8 parallel structural views
+- Phase 2: `add_self_loops=False, heads=1, concat=False` — directional CFG/ICFG, no self-loops
+- Phase 3: same as Phase 2 — bidirectional CONTAINS (up × 2, down × 1, IMP-G3)
+- IMP-G1: three separate Phase 2 layers (CF-only, ICFG-only, joint) for distinct representations
+- Per-phase LayerNorm: equalizes norms before JK scoring to prevent scale dominance
+- `nn.ModuleList` vs plain Python list for sub-modules
+
+**Warm-up recall (from Session 7):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A23, A24
+
+---
+
 ## Session 7 — Phase 3: `ast_extractor.py` (single chunk)
 
 **File:** `ml/src/data_extraction/ast_extractor.py` (lines 1–437)

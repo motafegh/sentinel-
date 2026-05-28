@@ -359,3 +359,35 @@ to `failed_saves.json` and continue — don't abort the batch for a single save 
 **Severity:** Medium
 **Status:** Open
 **Raised:** Session 7
+
+---
+
+## A23 — `gnn_encoder.py` — `last_weight_stds` comment says "0 if N=1" but PyTorch returns NaN
+**File:** `ml/src/models/gnn_encoder.py`
+**Location:** `_JKAttention.forward()`, line ~123: `w_nk.std(0).detach()`
+**Issue:** `torch.Tensor.std()` on a single-element tensor (N=1) returns `NaN`, not `0.0`. If a graph
+has exactly 1 node (e.g. a contract with only a constructor that has no CFG), `w_nk` is `[1, 3]`
+and `w_nk.std(0)` produces `[nan, nan, nan]`, written into the `last_weight_stds` diagnostic buffer.
+A monitoring dashboard or diagnostic script reading this buffer would see NaN and may fire incorrect
+alerts or produce misleading plots. No training impact — buffer is diagnostic-only.
+**Fix:** `w_nk.std(0, unbiased=False).nan_to_num(0.0).detach()` — biased std returns 0.0 for N=1,
+which matches the intended semantics ("no spread when only one sample").
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 8
+
+---
+
+## A24 — `gnn_encoder.py` — `num_layers` parameter not used to build the network
+**File:** `ml/src/models/gnn_encoder.py`
+**Location:** `GNNEncoder.__init__()`, line ~196: `self.num_layers = num_layers`
+**Issue:** `num_layers` is stored as metadata but the 8 conv layers are hardcoded unconditionally.
+Passing `num_layers=7` (pre-IMP-G3 value) constructs the same 8-layer network as `num_layers=8`.
+If a checkpoint was saved with `num_layers=7` and loaded into a freshly constructed model with
+`num_layers=8`, `load_state_dict` may succeed or fail depending on whether IMP-G3 (conv4c) added
+new keys — but the caller has no reliable way to know which version the checkpoint requires.
+**Fix:** Add `assert num_layers == 8, f"GNNEncoder v8 hardcodes 8 layers; got {num_layers}"` at
+construction time, or make the layer count truly dynamic.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 8
