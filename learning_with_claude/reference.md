@@ -128,10 +128,10 @@ Spec files are the persistent memory of this journey — uncommitted updates are
 ## Current Status
 
 - **Active phase:** Phase 5 — `models/`
-- **Current chunk:** Session 8 (`gnn_encoder.py` Chunk 1) delivered; warm-up + challenge answers pending
+- **Current chunk:** Session 9 (`gnn_encoder.py` Chunk 2) delivered; challenge answers pending
 - **Preferences active:** P1 through P14
-- **Audit flags raised:** A1 through A24
-- **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (all 5 chunks), `ast_extractor.py`, `gnn_encoder.py` Chunk 1
+- **Audit flags raised:** A1 through A27
+- **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (all 5 chunks), `ast_extractor.py`, `gnn_encoder.py` (both chunks)
 - **Skipped (deferred):** `tokenizer.py` (Phase 3) — can return to later
 - **Roadmap available:** `learning_roadmap/phase5_models.md`
 
@@ -153,7 +153,7 @@ Phase 3  🔄  data_extraction/
 Phase 4  ⬜  datasets/         (dual_path_dataset.py)
 Phase 5  🔄  models/           → see learning_roadmap/phase5_models.md
               Session 8  ✅  gnn_encoder.py Chunk 1 (_JKAttention + __init__)
-              Session 9  ⬜  gnn_encoder.py Chunk 2 (forward pass)
+              Session 9  ✅  gnn_encoder.py Chunk 2 (forward pass)
               Session 10 ⬜  transformer_encoder.py (full)
               Session 11 ⬜  fusion_layer.py (full)
               Session 12 ⬜  sentinel_model.py Chunk 1 (constants + __init__ + select_prefix_nodes)

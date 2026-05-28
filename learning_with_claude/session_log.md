@@ -241,7 +241,38 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 
 **Challenge questions:** Q1–Q5 posted; answers pending
 
-**Audit flags raised:** A23, A24
+**Audit flags raised:** A23, A24 (renumbered A27)
+
+---
+
+## Session 9 — Phase 5: `gnn_encoder.py` (Chunk 2)
+
+**File:** `ml/src/models/gnn_encoder.py` (lines 338–582)
+
+**Model answers delivered for:** Session 7 warm-up Q1–Q3, Session 8 challenge Q1–Q5
+
+**Concepts taught:**
+- Three input guards: feature dim (stale .pt), use_edge_attr+None (silent Phase 2 off), OOB edge_index (CUDA corruption)
+- Dtype normalization: BF16 global dtype pollution from BERT loading, `next(self.parameters()).dtype` pattern
+- Edge embedding OOB clamping: clamp-and-warn vs raise — batch robustness policy
+- Edge mask computation: struct_mask (≤5), cfg_mask (6,8,9,10), contains_mask (==5)
+- Why DEF_USE(10) goes into Phase 2 joint layer (conv3c) only, not cf_only or icfg_only
+- `fwd_contains_ei.flip(0)` — reverses COO edge direction for Phase 3 upward pass
+- Type-7 embeddings synthesized at runtime for reverse direction (not stored on disk)
+- `_live` vs `_intermediates` duality: gradient-attached vs detach+clone diagnostic snapshots
+- Phase 1 forward: IMP-G2 skip inside ReLU (unusual), Layer 2 standard post-activation residual
+- Phase 2 forward: IMP-G1 three layers with CF-only / ICFG-only / joint subsets
+- Phase 3 forward: two up-hops (CFG→FUNCTION→CONTRACT), one down-hop IMP-G3 (FUNCTION→CFG)
+- Zero-message behavior: GATConv on empty [2,0] returns zero → residual preserves identity
+- JK aggregation: `_live` list passed to `_JKAttention`, `_jk_entropy` scalar returned
+- `return_intermediates` 4-tuple vs default 3-tuple return
+- `x.new_zeros(1).squeeze()` scalar zero for use_jk=False path
+
+**Warm-up recall (from Session 8):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A25, A26, A27 (renaming A24→A27 to maintain append order)
 
 ---
 

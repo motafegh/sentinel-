@@ -378,7 +378,36 @@ which matches the intended semantics ("no spread when only one sample").
 
 ---
 
-## A24 — `gnn_encoder.py` — `num_layers` parameter not used to build the network
+## A25 — `gnn_encoder.py` — `edge_index.max()` O(E) scan on every forward pass
+**File:** `ml/src/models/gnn_encoder.py`
+**Location:** `forward()`, line ~382: `if edge_index.numel() > 0 and edge_index.max() >= x.shape[0]`
+**Issue:** `edge_index.max()` scans the full `[2, E]` edge tensor every forward pass. For a batch
+with 10,000+ edges, this is a full tensor scan on the hot path. In a training loop of 1,000 steps/epoch
+on 8 GPUs, this adds up. The check is correct but belongs at data-loading or extraction time where it
+runs once per contract, not per training step.
+**Fix:** Move to `graph_extractor.py` output validation (already has OOR checks) or to `DualPathDataset.__getitem__`.
+In `forward()`, keep only behind `if __debug__:` or remove after pipeline is proven correct.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 9
+
+---
+
+## A26 — `gnn_encoder.py` — `next(self.parameters())` called twice per forward pass
+**File:** `ml/src/models/gnn_encoder.py`
+**Location:** `forward()`, lines ~391 and ~513
+**Issue:** `next(self.parameters()).dtype` and `next(self.input_proj.parameters()).dtype` each create
+a new generator over module parameters and immediately advance it. Called on every forward pass.
+Negligible individually but unnecessary — the dtype is fixed at construction and never changes.
+**Fix:** Cache as `self._param_dtype = next(self.parameters()).dtype` in `__init__`; replace both
+forward-pass lookups with `self._param_dtype`.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 9
+
+---
+
+## A27 — `gnn_encoder.py` — `num_layers` parameter not used to build the network
 **File:** `ml/src/models/gnn_encoder.py`
 **Location:** `GNNEncoder.__init__()`, line ~196: `self.num_layers = num_layers`
 **Issue:** `num_layers` is stored as metadata but the 8 conv layers are hardcoded unconditionally.
