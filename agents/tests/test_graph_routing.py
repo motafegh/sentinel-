@@ -292,6 +292,49 @@ class TestRagResearchNode:
 
 
 # ---------------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_externalbug_uses_call_summary_for_rag_query(self, base_state, rag_chunks):
+        # When ExternalBug is the top class AND external_call_summary is present,
+        # the RAG query should reference the callee contracts/functions, not the
+        # generic contract snippet.
+        ml = _ml_three_tier(confirmed=[("ExternalBug", 0.71)])
+        ext_calls = [
+            {"caller_contract": "Vault", "caller_function": "getPrice",
+             "callee_contract": "ChainlinkOracle", "callee_function": "latestRoundData",
+             "callee_is_interface": True},
+        ]
+        state = {**base_state, "ml_result": ml, "external_call_summary": ext_calls}
+        captured = {}
+        async def capture(server_url, tool_name, arguments):
+            captured.update(arguments)
+            return rag_chunks
+        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=capture):
+            await rag_research(state)
+        # Query must reference ExternalBug and the oracle contract name
+        assert "ExternalBug" in captured.get("query", "")
+        assert "ChainlinkOracle" in captured.get("query", "")
+
+    @pytest.mark.asyncio
+    async def test_non_externalbug_uses_generic_query(self, base_state, rag_chunks):
+        # Non-ExternalBug class should use the generic snippet-based query even
+        # if external_call_summary happens to be populated.
+        ml = _ml_three_tier(confirmed=[("Reentrancy", 0.80)])
+        ext_calls = [
+            {"caller_contract": "X", "caller_function": "f",
+             "callee_contract": "Y", "callee_function": "g",
+             "callee_is_interface": False},
+        ]
+        state = {**base_state, "ml_result": ml, "external_call_summary": ext_calls}
+        captured = {}
+        async def capture(server_url, tool_name, arguments):
+            captured.update(arguments)
+            return rag_chunks
+        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=capture):
+            await rag_research(state)
+        assert "Reentrancy" in captured.get("query", "")
+        assert "ChainlinkOracle" not in captured.get("query", "")
+
+
 # audit_check node
 # ---------------------------------------------------------------------------
 

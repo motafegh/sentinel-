@@ -54,13 +54,18 @@ class AuditState(TypedDict, total=False):
     # ── ML evidence ─────────────────────────────────────────────────────────
     ml_result: dict[str, Any]
     # Set by ml_assessment.
-    # Track 3 (multi-label) schema:
-    #   label:           str   — "vulnerable" | "safe"
-    #   vulnerabilities: list  — [{vulnerability_class: str, probability: float}, ...]
-    #   threshold:       float — per-class decision boundary (default 0.50)
-    #   truncated:       bool  — True if contract exceeded 512 CodeBERT tokens
-    #   num_nodes:       int   — AST node count
-    #   num_edges:       int   — AST edge count
+    # Three-tier schema (2026-05-27):
+    #   label:           str        — "safe" | "suspicious" | "confirmed_vulnerable"
+    #   probabilities:   dict       — {class: float}  full 10-class vector
+    #   confirmed:       list       — [{vulnerability_class, probability, tier="CONFIRMED"}, ...]
+    #   suspicious:      list       — [{vulnerability_class, probability, tier="SUSPICIOUS"}, ...]
+    #   vulnerabilities: list       — legacy alias for confirmed (backward compat)
+    #   tier_thresholds: dict       — {"confirmed": 0.55, "suspicious": 0.25, ...}
+    #   thresholds:      list[float] — per-class tuned decision thresholds
+    #   truncated:       bool       — True if contract exceeded 512 CodeBERT tokens
+    #   windows_used:    int        — token windows scored (>1 for long contracts)
+    #   num_nodes:       int        — AST node count
+    #   num_edges:       int        — AST edge count
 
     ml_hotspots: list[dict[str, Any]]
     # Phase 1 — set by ml_assessment (extended) or graph_explain node.
@@ -84,6 +89,14 @@ class AuditState(TypedDict, total=False):
     static_findings: list[dict[str, Any]]
     # Set by static_analysis node (deep path only).
     # Each item: {tool, detector, impact, confidence, description, lines}
+
+    external_call_summary: list[dict[str, Any]]
+    # Set by static_analysis node when ExternalBug is flagged.
+    # Each item: {caller_contract, caller_function, callee_contract,
+    #             callee_function, callee_is_interface}
+    # Used by rag_research (enriched query) and synthesizer (LLM prompt).
+    # Addresses the GNN structural gap: call_target_typed=1.00 makes typed
+    # interface calls look safe — agent layer must compensate with Slither.
 
     # ── RAG evidence ─────────────────────────────────────────────────────────
     rag_results: list[dict[str, Any]]

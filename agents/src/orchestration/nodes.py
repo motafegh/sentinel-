@@ -268,10 +268,24 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
 
     contract_snippet = state.get("contract_code", "")[:200].strip()
 
-    query = (
-        f"smart contract {topic} vulnerability "
-        f"exploit attack pattern: {contract_snippet}"
-    )
+    # ExternalBug enrichment: include callee contracts/functions so the RAG
+    # query targets the specific oracle/price-feed pattern rather than generic
+    # "ExternalBug" (which retrieves low-signal chunks).
+    ext_calls = state.get("external_call_summary", [])
+    if topic == "ExternalBug" and ext_calls:
+        call_str = "; ".join(
+            f"{c['caller_function']}→{c['callee_contract']}.{c['callee_function']}"
+            for c in ext_calls[:6]
+        )
+        query = (
+            f"smart contract ExternalBug oracle manipulation price manipulation "
+            f"external dependency vulnerability: {call_str}"
+        )
+    else:
+        query = (
+            f"smart contract {topic} vulnerability "
+            f"exploit attack pattern: {contract_snippet}"
+        )
     logger.info("rag_research | query_prefix='{}…'", query[:80])
 
     try:
@@ -355,6 +369,60 @@ async def audit_check(state: AuditState) -> dict[str, Any]:
             "audit_history": [],
             "error": f"audit_check: {exc}",
         }
+
+
+# ---------------------------------------------------------------------------
+# ExternalBug helper
+# ---------------------------------------------------------------------------
+
+def _extract_external_call_summary(sl: Any) -> list[dict[str, Any]]:
+    """
+    Extract inter-contract call graph from a Slither object.
+
+    WHY THIS EXISTS
+    ───────────────
+    The GNN encodes call_target_typed=1.00 for all typed interface calls,
+    making them look structurally "safe" to the model. This is the primary
+    reason ExternalBug is hard to detect from graph features alone — an
+    oracle price manipulation call through an interface looks identical to
+    a safe library call at the graph level.
+
+    This function extracts the actual callee contracts and functions so that:
+    - rag_research can build a targeted query: "ExternalBug ChainlinkOracle
+      getLatestPrice stale price manipulation"
+    - synthesizer can include the call graph in the LLM prompt, enabling
+      it to reason about oracle dependency risks explicitly.
+
+    Args:
+        sl: Slither instance (already initialised on the contract file)
+
+    Returns:
+        List of call dicts: {caller_contract, caller_function,
+                             callee_contract, callee_function,
+                             callee_is_interface}
+    """
+    calls: list[dict[str, Any]] = []
+    try:
+        for contract in sl.contracts:
+            if contract.is_interface:
+                continue
+            for fn in contract.functions_and_modifiers:
+                for callee_contract, callee_fn in getattr(fn, "high_level_calls", []):
+                    callee_name = (
+                        callee_fn.name
+                        if hasattr(callee_fn, "name")
+                        else str(callee_fn)
+                    )
+                    calls.append({
+                        "caller_contract":  contract.name,
+                        "caller_function":  fn.name,
+                        "callee_contract":  callee_contract.name,
+                        "callee_function":  callee_name,
+                        "callee_is_interface": getattr(callee_contract, "is_interface", False),
+                    })
+    except Exception as exc:
+        logger.debug("_extract_external_call_summary | partial failure (non-fatal): {}", exc)
+    return calls
 
 
 # ---------------------------------------------------------------------------
@@ -448,6 +516,18 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
                 if getattr(d, "ARGUMENT", "") in scoped_detectors
             ]
 
+        # ExternalBug structural gap fix: GNN sees call_target_typed=1.00 for
+        # typed interface calls (looks safe). Extract inter-contract call graph
+        # so rag_research and synthesizer can reason about oracle/price manipulation.
+        external_calls: list[dict] = []
+        if "ExternalBug" in flagged_classes:
+            external_calls = _extract_external_call_summary(sl)
+            if external_calls:
+                logger.info(
+                    "static_analysis | ExternalBug: {} inter-contract call(s) extracted",
+                    len(external_calls),
+                )
+
         findings: list[dict] = []
         for result in sl.run_detectors():
             for finding in result:
@@ -474,20 +554,22 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
                 })
 
         logger.info(
-            "static_analysis complete | {} finding(s) | contract_address={}",
+            "static_analysis complete | {} finding(s) | {} external call(s) | contract_address={}",
             len(findings),
+            len(external_calls),
             state.get("contract_address", "unknown"),
         )
-        return {"static_findings": findings}
+        return {"static_findings": findings, "external_call_summary": external_calls}
 
     except ImportError:
         logger.warning("static_analysis | slither not installed — skipping")
-        return {"static_findings": []}
+        return {"static_findings": [], "external_call_summary": []}
 
     except Exception as exc:
         logger.error("static_analysis failed: {}", exc)
         return {
             "static_findings": [],
+            "external_call_summary": [],
             "error": f"static_analysis: {exc}",
         }
 
@@ -671,6 +753,21 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
 
             code_snippet = state.get("contract_code", "")[:500].strip()
 
+            # ExternalBug: add inter-contract call graph to prompt so LLM can
+            # reason about oracle/price-feed dependency risks explicitly.
+            ext_calls = state.get("external_call_summary", [])
+            ext_flagged = any(
+                v.get("vulnerability_class") == "ExternalBug" for v in all_flagged
+            )
+            ext_call_lines = ""
+            if ext_flagged and ext_calls:
+                ext_call_lines = "\n**Inter-contract call graph (ExternalBug context):**\n" + "\n".join(
+                    f"  {c['caller_function']}({c['caller_contract']}) "
+                    f"→ {c['callee_contract']}.{c['callee_function']}"
+                    + (" [INTERFACE]" if c.get("callee_is_interface") else "")
+                    for c in ext_calls[:8]
+                )
+
             system_msg = SystemMessage(content=(
                 "You are a senior smart contract security auditor. "
                 "Produce a concise, structured Markdown security assessment with exactly "
@@ -696,7 +793,8 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
                 + (f" — {tier_summary}" if tier_summary else "") + "\n\n"
                 f"**Detected vulnerabilities (tier: class: probability):**\n{vuln_lines}\n\n"
                 f"**RAG exploit evidence:**\n{rag_lines}\n\n"
-                f"**Static analysis findings (High/Medium):**\n{slither_lines}\n\n"
+                f"**Static analysis findings (High/Medium):**\n{slither_lines}\n"
+                + ext_call_lines + "\n\n"
                 f"**Contract code snippet (first 500 chars):**\n```solidity\n{code_snippet}\n```"
             ))
 
@@ -741,6 +839,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         "rag_evidence":           rag_results,
         "audit_history":          audit_history,
         "static_findings":        static_findings,
+        "external_call_summary":  state.get("external_call_summary", []),
         "routing_decisions":      routing_decisions,
         "recommendation":         final_recommendation,
         "narrative":              narrative,
