@@ -407,6 +407,54 @@ forward-pass lookups with `self._param_dtype`.
 
 ---
 
+## A28 — `transformer_encoder.py` — `except (ImportError, ValueError)` catches real BERT load errors
+**File:** `ml/src/models/transformer_encoder.py`
+**Location:** Lines ~142–147: `except (ImportError, ValueError)` in Flash Attention 2 fallback
+**Issue:** `from_pretrained` raises `ValueError` for many reasons beyond "flash attention not
+supported" — e.g. corrupted config.json, incompatible HuggingFace version, missing model files.
+These genuine errors are silently caught, the SDPA fallback is attempted, and the same error
+fires again on the SDPA path — but now the user sees "SDPA active" in the log and a confusing
+second traceback rather than the original root cause.
+**Fix:** Check `"flash_attention_2" in str(exc)` before accepting the fallback; re-raise other
+ValueErrors immediately. Alternatively, only catch `ImportError` (flash_attn not installed) and
+let all ValueErrors propagate.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 10
+
+---
+
+## A29 — `transformer_encoder.py` — Python loop for prefix mask construction
+**File:** `ml/src/models/transformer_encoder.py`
+**Location:** `forward()`, lines ~239–243 (single-window) and ~282–287 (multi-window)
+**Issue:** `for b in range(B): prefix_mask[b, :gnn_prefix_counts[b]] = 1` — Python loop over
+batch dimension appears in both code paths. Vectorized replacement:
+`(torch.arange(K).unsqueeze(0) < gnn_prefix_counts.unsqueeze(1)).to(mask_dtype)`
+For small batches the overhead is negligible but the pattern is inconsistent with vectorized style
+used elsewhere and doubles the forward-pass Python interpreter overhead for the prefix path.
+**Fix:** Replace both occurrences with the vectorized arange comparison.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 10
+
+---
+
+## A30 — `transformer_encoder.py` — `_word_embeddings` property uses fragile hardcoded path
+**File:** `ml/src/models/transformer_encoder.py`
+**Location:** `_word_embeddings` property, line ~170: `self.bert.base_model.model.embeddings.word_embeddings`
+**Issue:** This attribute path is specific to peft's `PeftModel` wrapper around a `RobertaModel`.
+If peft changes its internal wrapper structure (`base_model` or `model` attribute names) in a
+future version, this raises `AttributeError` inside `forward()` with no informative message.
+No validation occurs at `__init__` time — the failure only surfaces during the first prefix
+injection forward pass.
+**Fix:** Cache and validate at `__init__`: `self._word_emb_layer = self.bert.base_model.model.embeddings.word_embeddings`
+wrapped in a try/except AttributeError with a clear message directing the user to check the peft version.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 10
+
+---
+
 ## A27 — `gnn_encoder.py` — `num_layers` parameter not used to build the network
 **File:** `ml/src/models/gnn_encoder.py`
 **Location:** `GNNEncoder.__init__()`, line ~196: `self.num_layers = num_layers`

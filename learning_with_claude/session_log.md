@@ -276,6 +276,39 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 
 ---
 
+## Session 10 — Phase 5: `transformer_encoder.py` (full file)
+
+**File:** `ml/src/models/transformer_encoder.py` (lines 1–350)
+
+**Concepts taught:**
+- LoRA (Low-Rank Adaptation): A[768,r] + B[r,768] matrices injected into frozen Q+V projections;
+  rank-16 update ≈ 590K trainable params vs 125M frozen; why full fine-tune and frozen both fail
+- Module-level hard peft requirement check: raise at import vs warn-then-fallback rationale
+- Flash Attention 2 vs SDPA: full attention matrix not materialized, memory savings for 512-token batches
+- Global dtype pollution: `from_pretrained(torch_dtype=bfloat16)` calls `set_default_dtype` as side effect;
+  save/restore pattern in try/finally
+- `get_peft_model()` three operations: freeze backbone, inject A/B matrices, wrap model
+- Why no `torch.no_grad()` around `self.bert()`: would kill LoRA gradients
+- MLflow string deserialization guard for `lora_target_modules`
+- Standard single-window path: `outputs.last_hidden_state` [B, L, 768]
+- Multi-window path: `[B, W, L]` → flatten → BERT → `[B, W*L, 768]`
+- `inputs_embeds` vs `input_ids`: bypasses embedding lookup, enables continuous GNN vector injection
+- Prefix injection: `code_budget = L - K`, truncates last K tokens silently to make room
+- IMP-M3 prefix count mask: zero-padded prefix positions masked as PAD in attention
+- Position IDs: prefix at pos=1 (RoBERTa padding slot — no positional bias), code at pos 3+
+- `output_attentions=True` diagnostic: slice `attn[:, :, :, K:, :K].mean()` for prefix attention monitoring
+- Multi-window + prefix: same prefix shared across all W windows; prefix expanded via unsqueeze+expand
+- `WindowAttentionPooler`: CLS at `i*window_size + prefix_k`; learned attention over W window-CLS tokens
+- `_word_embeddings` property: accesses BERT word embedding table for code token conversion to embeddings
+
+**Warm-up recall (from Session 9):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A28, A29, A30
+
+---
+
 ## Session 7 — Phase 3: `ast_extractor.py` (single chunk)
 
 **File:** `ml/src/data_extraction/ast_extractor.py` (lines 1–437)
