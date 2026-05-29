@@ -1,13 +1,14 @@
 # agents/src/orchestration/graph.py
 """
-M5 — SENTINEL audit graph (LangGraph).
+M5/Phase1 — SENTINEL audit graph (LangGraph).
 
-Phase 0 topology:
-    START → ml_assessment → evidence_router → [fan-out] → audit_check → synthesizer → END
+Phase 1 topology:
+    START → ml_assessment → evidence_router → [fan-out] → audit_check → cross_validator → synthesizer → END
 
 Conditional routing after evidence_router:
-    Deep path  → rag_research ──┐
-                 static_analysis ─┴→ audit_check → synthesizer
+    Deep path  → rag_research ──────┐
+                 static_analysis ────┤→ audit_check → cross_validator → synthesizer
+                 graph_explain ──────┘
     Fast path  → synthesizer directly (all classes below per-class threshold)
 
 RECALL — LangGraph execution model:
@@ -64,7 +65,9 @@ from src.orchestration.state import AuditState
 from src.orchestration.routing import compute_active_tools
 from src.orchestration.nodes import (
     audit_check,
+    cross_validator,
     evidence_router,
+    graph_explain,
     ml_assessment,
     rag_research,
     static_analysis,
@@ -96,8 +99,10 @@ def _route_from_evidence_router(state: AuditState) -> str | list[str]:
         logger.info("_route_from_evidence_router | fast path (no tools activated)")
         return "synthesizer"
 
-    logger.info("_route_from_evidence_router | deep path → {}", active)
-    return active
+    # graph_explain always joins the deep-path fan-out (Phase 1 hotspot analysis).
+    deep_nodes = active + ["graph_explain"]
+    logger.info("_route_from_evidence_router | deep path → {}", deep_nodes)
+    return deep_nodes
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +134,9 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     graph.add_node("evidence_router", evidence_router)
     graph.add_node("rag_research",    rag_research)
     graph.add_node("static_analysis", static_analysis)
+    graph.add_node("graph_explain",   graph_explain)
     graph.add_node("audit_check",     audit_check)
+    graph.add_node("cross_validator", cross_validator)
     graph.add_node("synthesizer",     synthesizer)
 
     # ── Entry point ─────────────────────────────────────────────────────────
@@ -148,7 +155,14 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     # ── Deep path fan-in: all parallel branches converge at audit_check ──────
     graph.add_edge("rag_research",    "audit_check")
     graph.add_edge("static_analysis", "audit_check")
-    graph.add_edge("audit_check",     "synthesizer")
+    graph.add_edge("graph_explain",   "audit_check")
+
+    # ── Deep path: audit_check → cross_validator → synthesizer ───────────────
+    # cross_validator adjudicates per-class verdicts using LLM before synthesis.
+    # Falls back silently: if LLM is unavailable, cross_validator returns {}
+    # and synthesizer computes rule-based verdicts as before.
+    graph.add_edge("audit_check",     "cross_validator")
+    graph.add_edge("cross_validator", "synthesizer")
 
     # ── Terminal edge ────────────────────────────────────────────────────────
     graph.add_edge("synthesizer", END)
@@ -181,7 +195,8 @@ def build_graph(use_checkpointer: bool = True) -> Any:
         "Audit graph compiled | checkpointer={} | nodes={}",
         type(checkpointer).__name__ if checkpointer else "None",
         ["ml_assessment", "evidence_router", "rag_research",
-         "static_analysis", "audit_check", "synthesizer"],
+         "static_analysis", "graph_explain", "audit_check",
+         "cross_validator", "synthesizer"],
     )
     return compiled
 
