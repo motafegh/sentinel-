@@ -162,9 +162,7 @@ The heart of the AI system.
 
 **Chunks — `transformer_encoder.py` (351 lines, 2 classes):**
 
-- ❌ `04_transformer_lora_and_prefix_injection.md` — *old draft, pre-P1-P14, will be replaced*
-
-- ⬜ `04_transformer_init_lora_flash_attention.md` — *TODO* — **lines 1–165**
+- ✅ `04_transformer_init_lora_flash_attention.md` — *Done* — **lines 1–165**
   - P5: file role — why LoRA, why not full fine-tune, what this file's two classes do
   - Hard requirement check (lines 62–72): why `RuntimeError` not a warning — the silent failure mode
   - `LoraConfig` construction (lines 118–125): `r`, `alpha`, `target_modules`, `bias="none"`, `task_type`
@@ -173,7 +171,7 @@ The heart of the AI system.
   - AUDIT: `lora_target_modules` str→list guard (line 116) — why MLflow breaks this
   - P7: full fine-tune vs frozen vs LoRA — comparison with trade-offs
 
-- ⬜ `05_transformer_forward_and_window_pooler.md` — *TODO* — **lines 167–351**
+- ✅ `05_transformer_forward_and_window_pooler.md` — *Done* — **lines 167–351**
   - `_word_embeddings` property (lines 167–170): what it accesses and why a property
   - Standard path: single-window (lines 211–215), multi-window flatten/unflatten (lines 217–222)
   - Prefix path single-window (lines 224–264):
