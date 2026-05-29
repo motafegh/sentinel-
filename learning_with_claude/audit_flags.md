@@ -518,3 +518,37 @@ priorities, then use `scatter_topk` / `segment_csr` to select top-K per graph wi
 **Severity:** Low
 **Status:** Open
 **Raised:** Session 12
+
+---
+
+## A34 — `sentinel_model.py` — `select_prefix_nodes` sorts FUNCTION nodes by post-GAT embedding dimension, not raw input feature
+**File:** `ml/src/models/sentinel_model.py`
+**Location:** `select_prefix_nodes()`, line ~313: `sec = -g_embs[local_idx, _EXT_CALL_DIM].item() if t == _FUNCTION_ID else 0.0`
+**Issue:** `g_embs` is `node_embs[g_mask]` — the 256-dim post-GAT output embedding. After 8 layers
+of attention propagation, dimension 10 of this vector encodes a learned mixture of all 11 input
+features from the entire neighborhood; it has no relation to the original `external_call_count`
+feature. IMP-M1's secondary sort (intended to prefer FUNCTION nodes with more external calls) is
+silently sorting by a semantically arbitrary embedding coordinate. The intended sort is on
+`graphs.x[global_idx, _EXT_CALL_DIM]` (raw input feature), not `node_embs[local_idx, dim_10]`.
+**Fix:** Pass `graphs.x` (raw features) into `select_prefix_nodes` alongside `node_embs`, and use
+`raw_x[global_node_idx, _EXT_CALL_DIM]` for the secondary sort key. Requires mapping local_idx
+back to a global index via `g_mask.nonzero(as_tuple=True)[0][local_idx]`.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 12 (discovered during challenge Q5 answer)
+
+---
+
+## A25 — `sentinel_model.py` — `compute_prefix_attention_mean` discards `gnn_prefix_counts`, bypassing IMP-M3
+**File:** `ml/src/models/sentinel_model.py`
+**Location:** `compute_prefix_attention_mean()`, lines ~517–526
+**Issue:** `gnn_prefix, _ = gnn_prefix` discards the node counts returned by `select_prefix_nodes`.
+The diagnostic `TransformerEncoder.forward` is then called without `gnn_prefix_counts`, so all K=48
+prefix positions are treated as real regardless of how many real nodes the graph has. For a graph
+with 3 real nodes, the diagnostic averages attention over 48 positions instead of 3 — diluting the
+signal with 45 zero-embedding slots. The reported `prefix_attn_mean` is an underestimate; it appears
+the transformer attends to the prefix less than it actually does.
+**Fix:** `gnn_prefix, node_counts = gnn_prefix` and pass `gnn_prefix_counts=node_counts` to `self.transformer(...)`.
+**Severity:** Low (diagnostic only — does not affect training or inference correctness)
+**Status:** Open
+**Raised:** Session 13

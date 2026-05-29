@@ -389,3 +389,32 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Q1–Q5 posted; answers pending
 
 **Audit flags raised:** A32, A33
+
+---
+
+## Session 13 — Phase 5: `sentinel_model.py` (Chunk 2)
+
+**File:** `ml/src/models/sentinel_model.py` (lines 334–561)
+
+**Model answers delivered for:** Session 12 challenge Q1–Q5
+
+**Concepts taught:**
+- `forward()` step-by-step: flat_mask construction, GNN path, BF16-safe type decode (.float()+.round()+.long()), func_mask via torch.isin
+- Empty batch guard: zero logits returned when batch.numel()==0, correct return type for (logits, aux) unpacking
+- Ghost graph fix (BUG-H2): `pool_mask = func_mask`; `global_max/mean_pool` returns zero row for graphs with no function nodes; old fallback (STATE_VAR pooling) was actively harmful for 9% training samples
+- `size=num_graphs` argument to global_max/mean_pool: forces correct [B, d] output shape when last graph is a ghost
+- GNN prefix gating: both `gnn_prefix_k > 0` AND `_current_epoch >= warmup` required; during warmup prefix is None, gnn_to_bert_proj gets zero gradient
+- Transformer path: token_embs [B, W*L, 768]; prefix=None during warmup triggers standard (non-prefix) TransformerEncoder path
+- Fused eye: `self.fusion(node_embs, batch, token_embs, flat_mask)` — flat_mask is the W*L-length mask from Step 1
+- `size=num_graphs` critical: without it, global_max_pool omits ghost graphs at the end of a batch
+- Three-eye concat → classifier → `num_classes==1` squeeze for binary
+- `return_aux` pattern: aux dict contains gnn, transformer, fused logits + `jk_entropy` scalar piggybacked in
+- `compute_prefix_attention_mean`: diagnostic @torch.no_grad() forward; `isinstance(gnn_prefix, tuple)` check as backward-compat guard; IMP-M3 bypass (A25 confirmed)
+- `parameter_summary()`: trainable vs frozen per sub-module, conditional on gnn_prefix_k > 0
+- Phase 5 full architecture data flow recap (graphs → GNN → pool/prefix → Transformer → Fusion → three eyes → classifier)
+
+**Warm-up recall (from Session 12):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A25 (confirmed from roadmap), A34 (select_prefix_nodes sorts on post-GAT embedding dim, not raw ext_call_count)
