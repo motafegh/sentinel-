@@ -479,3 +479,35 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Q1–Q5 posted; answers pending
 
 **Audit flags raised:** A36, A37
+
+---
+
+## Session 16 — Phase 6: `trainer.py` Chunk 2
+
+**File:** `ml/src/training/trainer.py` (lines 498–698: `train_one_epoch` + `_grad_norm`)
+
+**Model answers delivered for:** Session 15 challenge Q1–Q5
+
+**Concepts taught:**
+- `train_one_epoch` signature: 10+ params including class_eps, dos_loss_weight, jk_entropy_reg_lambda
+- `label_smoothing` backward-compat: kept alongside class_eps but overridden when class_eps is provided
+- Per-class label smoothing application: `labels = labels*(1-class_eps) + 0.5*class_eps` — non-destructive broadcast
+- AMP autocast block: `torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=use_amp)`
+- DoS gradient scaling (BUG-H6): `w*logit + (1-w)*logit.detach()` — partial detach scales gradient by w; predictions unaffected; same pattern applied to aux heads
+- `.detach()` mechanism: shares storage, no grad_fn; multiply by scalar → gradient path sees w× of normal gradient
+- `_actual_window` tail-window fix: `min(accum_steps, len(loader) - window_start)` — prevents underscaling last optimizer step
+- Loss composition: `(main_loss + aux_loss_weight*aux_loss) / _actual_window + jk_reg/_actual_window`
+- JK entropy regularizer (C-3): `lambda*(log(3) - H.clamp(max=log(3)))`; penalty=0 at max entropy, ≈0.0055 at collapse; lambda=0.005 (0.01 forced rigid 33/33/33)
+- Fix #28 gradient norm ordering: clip → read norms → step → zero_grad; old code read after zero_grad (set_to_none=True) → all norms 0.000, GNN collapse detection broken
+- `set_to_none=True` vs False: None frees memory entirely; zero fills in-place; None is faster (avoids read+zero pass, next backward allocates fresh)
+- `_grad_norm()`: L2 norm of `.grad.detach().float()` — float() needed for BF16 training
+- GNN collapse detection: streak counter, 3 consecutive log_interval periods < 10% share → warning; resets to 0 on any recovery
+- `is_accum_step` condition: `(batch_idx+1) % accum_steps == 0 or is_last_batch`
+- NaN loss handling: count nan batches, exclude from avg; backward still runs before check (A38)
+- `_grad_norm()` returns 0.0 for modules with `p.grad is None` — important for set_to_none=True timing
+
+**Warm-up recall (from Session 15):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A38 (NaN backward runs before NaN check; clip_grad_norm_ doesn't catch NaN; Adam momentum corruption risk)

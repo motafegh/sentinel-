@@ -599,3 +599,27 @@ There's no mechanism to run the sweep only every N epochs without modifying the 
 **Severity:** Low
 **Status:** Open
 **Raised:** Session 15
+
+---
+
+## A38 — `trainer.py` — NaN loss backward() runs before NaN check; NaN gradients bypass clip
+**File:** `ml/src/training/trainer.py`
+**Location:** `train_one_epoch()`, lines 617–677: `loss.backward()` at line 617, NaN check at line 673
+**Issue:** `loss.backward()` runs unconditionally before the `torch.isfinite(loss)` check.
+A NaN loss produces NaN gradients across all parameters. `clip_grad_norm_` then calls `torch.norm`
+on the gradient tensor — `norm(NaN) = NaN`, and `NaN > max_norm` evaluates to False in PyTorch,
+so the clip scaling factor is 1.0 (no clip applied). The NaN gradients pass through to
+`optimizer.step()`, potentially corrupting Adam's m1 (first moment) and m2 (second moment)
+momentum buffers for affected parameters. Once m2 is NaN, the Adam update `m1 / sqrt(m2 + eps)`
+produces NaN for every subsequent step on that parameter — training may silently diverge.
+**Fix:** Check finiteness BEFORE backward:
+```python
+if not torch.isfinite(loss):
+    nan_loss_count += 1
+    optimizer.zero_grad(set_to_none=True)
+    continue
+loss.backward()
+```
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 16
