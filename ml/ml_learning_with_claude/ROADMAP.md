@@ -158,10 +158,71 @@ The heart of the AI system.
   - training vs eval mode behavior difference
   - `use_jk=False` fallback: returns Phase 3 only, jk_entropy=0
 
-**Chunks — remaining files (already done):**
+---
 
-- ✅ `04_transformer_lora_and_prefix_injection.md` — covers `transformer_encoder.py`
-- ✅ `05_fusion_layer_and_sentinel_model.md` — covers `fusion_layer.py` + `sentinel_model.py`
+**Chunks — `transformer_encoder.py` (351 lines, 2 classes):**
+
+- ❌ `04_transformer_lora_and_prefix_injection.md` — *old draft, pre-P1-P14, will be replaced*
+
+- ⬜ `04_transformer_init_lora_flash_attention.md` — *TODO* — **lines 1–165**
+  - P5: file role — why LoRA, why not full fine-tune, what this file's two classes do
+  - Hard requirement check (lines 62–72): why `RuntimeError` not a warning — the silent failure mode
+  - `LoraConfig` construction (lines 118–125): `r`, `alpha`, `target_modules`, `bias="none"`, `task_type`
+  - Flash Attention 2 with BF16 (lines 134–149): try/finally dtype pollution guard
+  - `get_peft_model()` — exactly 3 things it does (lines 157–165)
+  - AUDIT: `lora_target_modules` str→list guard (line 116) — why MLflow breaks this
+  - P7: full fine-tune vs frozen vs LoRA — comparison with trade-offs
+
+- ⬜ `05_transformer_forward_and_window_pooler.md` — *TODO* — **lines 167–351**
+  - `_word_embeddings` property (lines 167–170): what it accesses and why a property
+  - Standard path: single-window (lines 211–215), multi-window flatten/unflatten (lines 217–222)
+  - Prefix path single-window (lines 224–264):
+    - `code_budget = L - K`, `inputs_embeds` bypass, `_word_embeddings` call
+    - IMP-M3 Python loop for prefix mask (lines 239–244)
+    - Position IDs: pos=1 for prefix, pos=3+ for code, why those values (lines 247–250)
+    - `output_attentions` diagnostic: attention slice `[K:, :K]` (lines 258–263)
+  - Prefix path multi-window (lines 266–306): prefix expansion via `unsqueeze(1).expand`
+  - `WindowAttentionPooler` (lines 309–351): CLS index formula, single-window fast path, learned attention
+  - AUDIT: Python `for b in range(B)` loop at lines 241/285 — vectorizable; performance impact at B=64
+  - P7: sliding windows vs Longformer sparse attention — trade-offs
+
+---
+
+**Chunks — `fusion_layer.py` (281 lines):**
+
+- ❌ *(was combined in old 05 — gets its own chunk)*
+
+- ⬜ `06_cross_attention_fusion.md` — *TODO* — **lines 1–281**
+  - P5: what replaced concat+MLP, why fine-grained interaction before pooling matters
+  - `_scatter_to_dense` (lines 68–117): `torch.compile` graph break, BUG-C2 valid-before-clamp
+  - `CrossAttentionFusion.__init__` (lines 120–195): `node_proj`, `token_proj`, BUG-C2 `token_norm`, two MHA modules
+  - `forward` step by step (lines 197–281):
+    - Fix #4 device assertion
+    - Project + normalize (BUG-C2)
+    - `_scatter_to_dense` padding + mask inversion
+    - Node→Token attention: Fix #26 `need_weights=False`, Fix #8 zero-out padded positions
+    - Token→Node attention: Fix #26
+    - Masked mean pooling for both: Fix #6 token masking
+    - Concatenate `[B,512]` → project `[B,128]`
+  - AUDIT: Fix #8 necessity — pooling already excludes pads via mask, but Fix #8 is a structural invariant guarantee
+
+---
+
+**Chunks — `sentinel_model.py` (562 lines):**
+
+- ❌ *(was combined in old 05 — split into 2 chunks)*
+
+- ⬜ `07_sentinel_model_architecture.md` — *TODO* — **lines 1–259**
+  - P5: three-eye concept overview — what problem three eyes solve vs single classifier
+  - Module-level constants (lines 70–113): `_MAX_TYPE_ID`, `_FUNC_TYPE_IDS`, `_PREFIX_NODE_PRIORITY`, `_PREFIX_TYPE_IDX` — why defined here, not in graph_schema
+  - `__init__` (lines 116–258): GNN/TF/Fusion sub-modules, eye projections, prefix modules, auxiliary heads, classifier
+  - `parameter_summary` (lines 532–562): how to audit trainable vs frozen params
+
+- ⬜ `08_sentinel_model_forward_and_prefix.md` — *TODO* — **lines 260–531**
+  - `select_prefix_nodes` (lines 260–332): priority sort, IMP-M1 secondary sort by ext_call_count, type embedding bias
+  - `forward` (lines 334–488): flat_mask, GNN path, GNN eye (func-only pool, max+mean, BUG-H2 ghost graph), prefix warmup guard, transformer path, three eyes, classifier, auxiliary heads
+  - `compute_prefix_attention_mean` (lines 490–530): IMP-M2 diagnostic — what it measures, when to call it
+  - AUDIT: empty batch guard (lines 393–407) — correctness analysis
 
 ---
 
