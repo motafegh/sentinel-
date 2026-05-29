@@ -511,3 +511,35 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Q1–Q5 posted; answers pending
 
 **Audit flags raised:** A38 (NaN backward runs before NaN check; clip_grad_norm_ doesn't catch NaN; Adam momentum corruption risk)
+
+---
+
+## Session 17 — Phase 6: `trainer.py` Chunk 3
+
+**File:** `ml/src/training/trainer.py` (lines 744–1200: `train()` setup)
+
+**Model answers delivered for:** Session 16 challenge Q1–Q5
+
+**Concepts taught:**
+- Environment setup inside train(): TRANSFORMERS_OFFLINE, TF32, cudnn.benchmark — why inside train() not module level
+- TF32: Ampere GPU format, 10 mantissa bits, ~8× matmul throughput, negligible accuracy loss
+- Shared cache pattern: single `_shared_cache` dict assigned by reference to both datasets → halves RAM (2.28 GB once vs twice); fork CoW: workers inherit but never write → no physical copy
+- `multiprocessing_context="fork"` CUDA safety: safe only if workers never call CUDA; forked child inherits partial CUDA context → crash or corruption if CUDA touched
+- DataLoader kwargs: `pin_memory` (locked RAM for DMA), `persistent_workers` (avoid respawn overhead), `prefetch_factor=4` (keep GPU fed)
+- `sampler` vs `shuffle` mutual exclusion in PyTorch DataLoader
+- WeightedRandomSampler: 3× weight for any-vuln rows (mode="positive"); shifts effective pos/neg from 40/60 to 60/40
+- SentinelModel construction + C-1 dtype check: `next(model.gnn.conv1.parameters()).dtype` catches BF16 pollution regression post-construction
+- Loss function selection: aux_loss always plain BCE (no pos_weight); pos_weight NOT passed to ASL (double-amplification caused GNN share collapse to 24% in Run 3)
+- Per-group optimizer: 5 groups (GNN×2.5, LoRA×0.3, Fusion×0.5, PrefixProj×5.0, Other×1.0); `_seen_param_ids` prevents double-counting; non-empty group guards prevent `_max_lrs` misalignment
+- LoRA `weight_decay=0.0`: L2 decay opposes adaptation signal on small-magnitude LoRA matrices
+- `fused=True` AdamW: single CUDA kernel for all parameter updates; avoids per-parameter kernel launch overhead
+- torch.compile submodule strategy: compile gnn/fusion/classifier/aux, skip transformer (HuggingFace control flow causes graph breaks); `dynamic=True` for variable N/E; cache_size_limit=256; suppress_errors=True
+- OneCycleLR: ramp to max_lr over pct_start*total_steps, then cosine decay; `max_lr` list must match param_group order exactly
+- Fix #32: `epochs=config.epochs` always (not remaining_epochs); checkpoint scheduler.total_steps must match for state restoration
+- Checkpoint resume: `strict=False` + LoRA key split (warn) vs non-LoRA missing (raise); optimizer group count guard; scheduler total_steps guard
+
+**Warm-up recall (from Session 16):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** none (no new flags this session)
