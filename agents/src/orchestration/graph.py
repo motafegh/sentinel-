@@ -3,13 +3,16 @@
 M5/Phase1 — SENTINEL audit graph (LangGraph).
 
 Phase 1 topology:
-    START → ml_assessment → evidence_router → [fan-out] → audit_check → cross_validator → synthesizer → END
+    START → ml_assessment → quick_screen → evidence_router → [fan-out] → audit_check → cross_validator → synthesizer → END
 
 Conditional routing after evidence_router:
     Deep path  → rag_research ──────┐
                  static_analysis ────┤→ audit_check → cross_validator → synthesizer
                  graph_explain ──────┘
-    Fast path  → synthesizer directly (all classes below per-class threshold)
+    Fast path  → synthesizer directly (ML safe AND quick_screen clean)
+
+    Two-signal gate (A3): fast path requires BOTH ML AND quick_screen to agree.
+    If quick_screen fires (Slither/Aderyn High/Critical) despite ML safe → deep path.
 
 RECALL — LangGraph execution model:
     StateGraph compiles to a Pregel-style message-passing graph.
@@ -69,6 +72,7 @@ from src.orchestration.nodes import (
     evidence_router,
     graph_explain,
     ml_assessment,
+    quick_screen,
     rag_research,
     static_analysis,
     synthesizer,
@@ -84,8 +88,17 @@ def _route_from_evidence_router(state: AuditState) -> str | list[str]:
     Decide which path to take after evidence_router has logged its decisions.
 
     Returns:
-        list[str]  — node names to fan out to in parallel (deep path)
+        list[str]    — node names to fan out to in parallel (deep path)
         "synthesizer" — fast path: skip directly to synthesizer
+
+    Two-signal fast-path gate (A3):
+        Fast path requires BOTH signals to agree it is safe:
+          1. ML — all class probabilities below DEEP_THRESHOLDS
+          2. quick_screen — zero High/Critical Slither or Aderyn hits
+
+        If quick_screen fires but ML did not, we still go deep (with at least
+        static_analysis), because two independent tools disagreeing warrants
+        human-level scrutiny.
 
     RECALL — evidence_router node already called compute_active_tools and
     stored results in routing_decisions for auditability. This function calls
@@ -95,12 +108,26 @@ def _route_from_evidence_router(state: AuditState) -> str | list[str]:
     ml_result = state.get("ml_result", {})
     active    = compute_active_tools(ml_result)
 
-    if not active:
-        logger.info("_route_from_evidence_router | fast path (no tools activated)")
+    # Check quick_screen escalation signal.
+    quick_hits = state.get("quick_screen_hits", {})
+    has_screen_hits = bool(quick_hits.get("slither") or quick_hits.get("aderyn"))
+
+    if not active and not has_screen_hits:
+        logger.info("_route_from_evidence_router | fast path (ML safe + screen clean)")
         return "synthesizer"
 
+    # quick_screen fired but ML did not → minimal deep path (static_analysis only).
+    if not active and has_screen_hits:
+        logger.info(
+            "_route_from_evidence_router | screen-escalated deep path "
+            "(ML safe but quick_screen hit: slither={} aderyn={})",
+            quick_hits.get("slither", []),
+            quick_hits.get("aderyn",  []),
+        )
+        active = ["static_analysis"]
+
     # graph_explain always joins the deep-path fan-out (Phase 1 hotspot analysis).
-    deep_nodes = active + ["graph_explain"]
+    deep_nodes = sorted(set(active + ["graph_explain"]))
     logger.info("_route_from_evidence_router | deep path → {}", deep_nodes)
     return deep_nodes
 
@@ -131,6 +158,7 @@ def build_graph(use_checkpointer: bool = True) -> Any:
 
     # ── Register nodes ──────────────────────────────────────────────────────
     graph.add_node("ml_assessment",   ml_assessment)
+    graph.add_node("quick_screen",    quick_screen)
     graph.add_node("evidence_router", evidence_router)
     graph.add_node("rag_research",    rag_research)
     graph.add_node("static_analysis", static_analysis)
@@ -142,8 +170,11 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     # ── Entry point ─────────────────────────────────────────────────────────
     graph.set_entry_point("ml_assessment")
 
-    # ── ml_assessment → evidence_router (always) ────────────────────────────
-    graph.add_edge("ml_assessment", "evidence_router")
+    # ── ml_assessment → quick_screen → evidence_router (always) ─────────────
+    # quick_screen runs on EVERY contract (Tier 0) to catch cases where ML
+    # is below all DEEP_THRESHOLDS but static analysis finds High/Critical issues.
+    graph.add_edge("ml_assessment", "quick_screen")
+    graph.add_edge("quick_screen",  "evidence_router")
 
     # ── evidence_router → conditional fan-out ───────────────────────────────
     # _route_from_evidence_router returns either:
@@ -194,7 +225,7 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     logger.info(
         "Audit graph compiled | checkpointer={} | nodes={}",
         type(checkpointer).__name__ if checkpointer else "None",
-        ["ml_assessment", "evidence_router", "rag_research",
+        ["ml_assessment", "quick_screen", "evidence_router", "rag_research",
          "static_analysis", "graph_explain", "audit_check",
          "cross_validator", "synthesizer"],
     )

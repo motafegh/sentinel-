@@ -16,6 +16,7 @@ Field lifecycle:
     contract_code      — set by caller, never mutated
     contract_address   — set by caller, never mutated
     ml_result          — set by ml_assessment node
+    quick_screen_hits  — set by quick_screen node (before evidence_router, ALL contracts)
     routing_decisions  — set by evidence_router, appended by any node (reducer)
     rag_results        — set by rag_research node (deep path only)
     audit_history      — set by audit_check node (deep path only)
@@ -84,6 +85,13 @@ class AuditState(TypedDict, total=False):
     graph_explanations: dict[str, Any]
     # {class: {subgraph_json, feature_descriptions, node_ids}}
     # Set by graph_explain node once graph_inspector_server :8013 is built.
+
+    # ── Quick screen (Tier 0 — runs on every contract) ───────────────────────
+    quick_screen_hits: dict[str, list[str]]
+    # Set by quick_screen node (runs before evidence_router on ALL contracts).
+    # {"slither": [detector_name, ...], "aderyn": [rule_id, ...]}
+    # Non-empty → evidence_router escalates to deep path even if ML is below
+    # all DEEP_THRESHOLDS. Closes the "ML says safe but contract is tricky" gap.
 
     # ── Static analysis ──────────────────────────────────────────────────────
     static_findings: list[dict[str, Any]]
