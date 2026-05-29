@@ -1,15 +1,22 @@
 # SENTINEL — Documentation Index
 
-**Last updated:** 2026-05-27 (post-cleanup reorganization)
+**Last updated:** 2026-05-29
+
+## ⚠ Source of Truth for Agent Module
+
+> **[proposal/SENTINEL_AGENTS_V3.md](proposal/SENTINEL_AGENTS_V3.md)** is the single authoritative
+> plan for all agent-layer work. All previous agent plans (`AGENTS_PLAN_V2.md`,
+> `AGENTS_MODULE_PROPOSAL.md`) are archived. Do not use them for planning — they are
+> superseded. Stick to V3.
 
 ## Quick Start
 
 | Document | Purpose |
 |----------|---------|
 | [STATUS.md](STATUS.md) | **Current state** — pipeline status, training results, data locations, active checkpoints |
-| [CHANGELOG.md](CHANGELOG.md) | **Project history** — complete timeline of all changes from foundation through current phase |
-| [AGENTS_PLAN_V2.md](AGENTS_PLAN_V2.md) | **Active agents plan** — Phase 0 complete, next steps for agents module development |
 | [ROADMAP.md](ROADMAP.md) | **Forward-looking plan** — upcoming work, deferred backlog, module completion targets |
+| [CHANGELOG.md](CHANGELOG.md) | **Project history** — complete timeline of all changes from foundation through current phase |
+| [proposal/SENTINEL_AGENTS_V3.md](proposal/SENTINEL_AGENTS_V3.md) | **Agent module plan** — architecture, implementation phases, research findings (SOURCE OF TRUTH) |
 
 ---
 
@@ -62,18 +69,25 @@ See [docs/ml-educational-docs/](ml-educational-docs/) for structured learning:
 
 ## Agents Module Documentation
 
-### Active Plans
-- [AGENTS_PLAN_V2.md](AGENTS_PLAN_V2.md) — Current agents architecture and implementation plan (supersedes V1)
-- [AGENTS_MODULE_PROPOSAL.md](proposal/AGENTS_MODULE_PROPOSAL.md) — Full agents module proposal
+### Plan (source of truth)
+- [proposal/SENTINEL_AGENTS_V3.md](proposal/SENTINEL_AGENTS_V3.md) — **THE active plan** — architecture, tool coverage, research findings, Phase 1/2/3 items
 
 ### Implementation Status
-Phase 0 is **COMPLETE** (46/46 tests pass):
-- `agents/src/orchestration/routing.py` — Per-class thresholds, routing rules, tool matrix
+Phase 0 + Steps A–E **COMPLETE** (187 tests passing):
+- `agents/src/orchestration/routing.py` — Three-tier thresholds, routing rules
 - `agents/src/orchestration/state.py` — AuditState with verdicts/confirmations/contradictions
-- `agents/src/orchestration/nodes.py` — Evidence router, scoped Slither detectors, synthesizer
-- `agents/src/orchestration/graph.py` — LangGraph topology with SqliteSaver checkpointer
+- `agents/src/orchestration/nodes.py` — All nodes incl. graph_explain + cross_validator
+- `agents/src/orchestration/graph.py` — LangGraph topology with SqliteSaver
+- `agents/src/mcp/servers/graph_inspector_server.py` — :8013 Phase 1 (Slither proxy)
 
-Topology: `START → ml_assessment → evidence_router → [rag_research ‖ static_analysis] → audit_check → synthesizer → END`
+Current topology:
+```
+START → ml_assessment → evidence_router
+  deep: → [rag_research ‖ static_analysis ‖ graph_explain] → audit_check → cross_validator → synthesizer → END
+  shallow: → synthesizer → END
+```
+
+Phase 1 in progress: `/hotspots` endpoint, graph_inspector Phase 2, quick_screen node.
 
 ---
 
@@ -90,9 +104,12 @@ Topology: `START → ml_assessment → evidence_router → [rag_research ‖ sta
 Historical documents kept for reference but superseded by current versions:
 
 ### Superseded Plans
-- [archive/superseded-plans/AGENTS_PLAN.md](archive/superseded-plans/AGENTS_PLAN.md) — Replaced by AGENTS_PLAN_V2.md
+- [archive/superseded-plans/AGENTS_PLAN.md](archive/superseded-plans/AGENTS_PLAN.md) — Replaced by AGENTS_PLAN_V2
+- [archive/superseded-plans/AGENTS_PLAN_V2.md](archive/superseded-plans/AGENTS_PLAN_V2.md) — Replaced by SENTINEL_AGENTS_V3
+- [archive/superseded-plans/AGENTS_MODULE_PROPOSAL.md](archive/superseded-plans/AGENTS_MODULE_PROPOSAL.md) — Replaced by SENTINEL_AGENTS_V3
 - [archive/superseded-plans/agents-module-suggestions.md](archive/superseded-plans/agents-module-suggestions.md) — Early agents suggestions
 - [archive/superseded-plans/agents-modules-proposal-2.md](archive/superseded-plans/agents-modules-proposal-2.md) — Second agents proposal iteration
+- [archive/EXECUTION_PLAN.md](archive/EXECUTION_PLAN.md) — GCB prefix execution plan (Run 4 complete, archived)
 
 ### Historical Proposals
 - [archive/historical-proposals/SENTINEL-v7-Comprehensive-Improvement-Proposal.md](archive/historical-proposals/SENTINEL-v7-Comprehensive-Improvement-Proposal.md) — v7 improvement proposal (implemented)
