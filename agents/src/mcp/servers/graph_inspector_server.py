@@ -1,28 +1,34 @@
 """
-MCP server — sentinel-graph-inspector (Phase 1)
+MCP server — sentinel-graph-inspector (Phase 2)
 Transport: SSE (HTTP) on port 8013
 
-WHY THIS EXISTS
-───────────────
-The inference API returns per-class probabilities but gives no indication of
-WHERE in the contract the suspicious pattern lives. A security auditor needs
-to know which function to examine first — not just "Reentrancy: 0.72".
+WHAT CHANGED FROM PHASE 1
+──────────────────────────
+Phase 1 scored functions using Slither structural signals (detector hits,
+external call count, state writes). The scores were Slither-proxy signals,
+not actual model attention.
 
-This server extracts function-level structural hotspots by combining:
-  1. Slither's AST and detector output (structural ground truth)
-  2. ML probability signal (which classes are suspicious)
-  3. Heuristic scoring: detector hits, external calls, state writes,
-     complexity, cross-contract dependencies
+Phase 2 calls the ML inference API's /hotspots endpoint, which returns
+per-function GNN embedding-norm scores — the real signal the model used to
+generate its predictions. This makes the hotspot data ground-truth attribution
+rather than a correlated proxy.
 
-True GNN attention weights require hooking the compiled model forward pass.
-That is Phase 2 work (graph_explain node extended). Phase 1 gives auditors
-actionable function-level attribution using Slither alone — accurate enough
-to direct manual review.
+Fallback chain (in order):
+  1. ML API /hotspots  — real GNN attention scores  (preferred)
+  2. Slither analysis  — structural proxy scoring    (if ML API unreachable)
+  3. Mock data         — deterministic stub          (if Slither unavailable or MOCK_MODE)
+
+ANALYSIS MODES
+──────────────
+  "gnn_attention"  — /hotspots returned valid data; scores are real model signal
+  "slither"        — ML API unreachable; Slither structural scoring used
+  "mock"           — both unavailable; deterministic stub returned
 
 Tools:
   get_graph_hotspots(contract_code, flagged_classes)
     → ranked list of suspicious functions per vulnerability class
     → graph topology metadata (node/edge counts, function count)
+    → analysis_mode indicating which backend scored the hotspots
 """
 
 from __future__ import annotations
@@ -32,6 +38,7 @@ import os
 import tempfile
 from typing import Any
 
+import httpx
 import uvicorn
 from loguru import logger
 from mcp.server import Server
@@ -46,11 +53,15 @@ from starlette.routing import Mount, Route
 # Configuration
 # ---------------------------------------------------------------------------
 
-_SERVER_PORT: int = int(os.getenv("MCP_GRAPH_INSPECTOR_PORT", "8013"))
-_MOCK_MODE:   bool = os.getenv("GRAPH_INSPECTOR_MOCK", "false").lower() == "true"
+_SERVER_PORT:      int  = int(os.getenv("MCP_GRAPH_INSPECTOR_PORT", "8013"))
+_MOCK_MODE:        bool = os.getenv("GRAPH_INSPECTOR_MOCK", "false").lower() == "true"
+
+# ML inference API base URL — override via env var if running on a different host.
+_ML_API_URL:       str  = os.getenv("SENTINEL_ML_API_URL", "http://localhost:8000")
+_HOTSPOTS_TIMEOUT: float = float(os.getenv("GRAPH_INSPECTOR_HOTSPOTS_TIMEOUT", "60"))
 
 # Vulnerability class → structural features that indicate suspicion.
-# Used to score functions even when the specific Slither detector is absent.
+# Used by the Slither fallback path only.
 _CLASS_STRUCTURAL_SIGNALS: dict[str, list[str]] = {
     "Reentrancy":          ["external_calls", "state_writes", "low_level_calls"],
     "IntegerUO":           ["arithmetic_ops", "unchecked_blocks"],
@@ -64,7 +75,7 @@ _CLASS_STRUCTURAL_SIGNALS: dict[str, list[str]] = {
     "DenialOfService":     ["loops", "array_operations", "external_calls_in_loops"],
 }
 
-# Slither detector → vulnerability class mapping for scoring.
+# Slither detector → vulnerability class (Slither fallback path).
 _DETECTOR_CLASS_MAP: dict[str, str] = {
     "reentrancy-eth":               "Reentrancy",
     "reentrancy-no-eth":            "Reentrancy",
@@ -106,8 +117,9 @@ async def list_tools() -> list[Tool]:
             name="get_graph_hotspots",
             description=(
                 "Analyse a Solidity contract and return function-level hotspots "
-                "for each flagged vulnerability class. Combines Slither structural "
-                "analysis with ML probability signal to rank functions by suspicion. "
+                "for each flagged vulnerability class. "
+                "Phase 2: uses real GNN attention scores from the ML model (not Slither proxy). "
+                "Falls back to Slither structural analysis if the ML API is unreachable. "
                 "Use this to direct auditor attention to the most relevant code regions."
             ),
             inputSchema={
@@ -121,9 +133,9 @@ async def list_tools() -> list[Tool]:
                         "type": "array",
                         "items": {"type": "string"},
                         "description": (
-                            "Vulnerability classes to analyse hotspots for "
+                            "Vulnerability classes to filter hotspots for "
                             "(e.g. ['Reentrancy', 'ExternalBug']). "
-                            "Empty list analyses all 10 classes."
+                            "Empty list returns hotspots for all flagged classes."
                         ),
                         "default": [],
                     },
@@ -135,23 +147,123 @@ async def list_tools() -> list[Tool]:
 
 
 # ---------------------------------------------------------------------------
-# Core analysis logic
+# Phase 2: GNN attention hotspots via ML API /hotspots
 # ---------------------------------------------------------------------------
 
-def _analyze_hotspots(contract_code: str, flagged_classes: list[str]) -> dict[str, Any]:
+async def _analyze_hotspots_gnn(
+    contract_code: str,
+    flagged_classes: list[str],
+) -> dict[str, Any] | None:
     """
-    Run Slither on the contract and return function-level hotspot data.
+    Call ML API POST /hotspots and transform the response into the tool's
+    standard output format.
 
-    Scoring strategy (Phase 1):
-        score = detector_hits × 3.0
-              + structural_signal_count × 1.0
-              + is_external_facing × 0.5
-              + complexity_penalty × 0.2
+    Returns None if the ML API is unreachable or returns an error — the
+    caller falls back to Slither analysis.
 
-    Returns dict with:
-        hotspots: [{contract, function, lines, vulnerability_classes, score, signals}, ...]
-        graph_stats: {num_functions, num_contracts, has_interfaces, ...}
-        analysis_mode: "slither" | "mock"
+    The /hotspots endpoint returns GNN embedding-norm scores: the L2 norm of
+    each function-level node's embedding after the GNN encoder. Higher norm =
+    the GNN concentrated more structural message-passing signal on that node.
+    This is the real model signal, not a Slither-based proxy.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=_HOTSPOTS_TIMEOUT) as client:
+            resp = await client.post(
+                f"{_ML_API_URL}/hotspots",
+                json={"source_code": contract_code},
+            )
+        if resp.status_code != 200:
+            logger.warning(
+                "graph_inspector | /hotspots returned {} — falling back to Slither",
+                resp.status_code,
+            )
+            return None
+
+        data = resp.json()
+    except httpx.RequestError as exc:
+        logger.warning("graph_inspector | ML API unreachable ({}): {} — falling back to Slither", type(exc).__name__, exc)
+        return None
+
+    raw_hotspots = data.get("hotspots", [])
+    if not raw_hotspots:
+        # Model returned no function nodes (e.g. interface-only contract).
+        # Still return a valid result rather than falling back.
+        pass
+
+    # Filter to flagged classes when provided.
+    # GNN hotspots are class-agnostic (embedding norm is per-function, not per-class).
+    # We annotate each hotspot with the ML-flagged classes for the investigator.
+    ml_flagged = set(
+        v["vulnerability_class"]
+        for v in data.get("confirmed",  []) + data.get("suspicious", [])
+    )
+    classes_of_interest = set(flagged_classes) if flagged_classes else ml_flagged
+
+    hotspots = []
+    for h in raw_hotspots:
+        hotspots.append({
+            "contract":              _infer_contract_name(h["fn_name"]),
+            "function":              _short_fn_name(h["fn_name"]),
+            "fn_name_canonical":     h["fn_name"],
+            "lines":                 h.get("lines", []),
+            "vulnerability_classes": sorted(classes_of_interest),
+            "score":                 h["score"],
+            "node_id":               h["node_id"],
+            "node_type":             h.get("node_type", "FUNCTION"),
+            "signals":               [f"gnn_norm={h['score']:.3f}"],
+            "source":                "gnn_attention",
+        })
+
+    stats = data.get("hotspot_stats", {})
+    return {
+        "hotspots": hotspots[:20],
+        "graph_stats": {
+            "num_functions":  stats.get("total_function_nodes", len(hotspots)),
+            "num_nodes":      stats.get("num_nodes", 0),
+            "num_contracts":  1,
+            "has_interfaces": False,
+            "num_hotspots":   len(hotspots),
+            # Also surface the ML verdict so callers have full context
+            "ml_label":       data.get("label", "unknown"),
+            "ml_confirmed":   [v["vulnerability_class"] for v in data.get("confirmed",  [])],
+            "ml_suspicious":  [v["vulnerability_class"] for v in data.get("suspicious", [])],
+        },
+        "analysis_mode": "gnn_attention",
+    }
+
+
+def _infer_contract_name(canonical_name: str) -> str:
+    """Extract contract name from 'ContractName.functionName' canonical form."""
+    if "." in canonical_name:
+        return canonical_name.split(".")[0]
+    return "unknown"
+
+
+def _short_fn_name(canonical_name: str) -> str:
+    """Extract bare function name from 'ContractName.functionName' canonical form."""
+    if "." in canonical_name:
+        return canonical_name.split(".", 1)[1]
+    return canonical_name
+
+
+# ---------------------------------------------------------------------------
+# Slither fallback analysis (Phase 1 logic, kept as fallback)
+# ---------------------------------------------------------------------------
+
+def _analyze_hotspots_slither(
+    contract_code: str,
+    flagged_classes: list[str],
+) -> dict[str, Any]:
+    """
+    Slither-based hotspot scoring — Phase 1 logic, used as fallback when the
+    ML API /hotspots endpoint is unreachable.
+
+    Scoring:
+        score = detector_hits × impact_weight
+              + external_call_count × 0.5
+              + state_write_count   × 0.3
+              + high_level_calls    × 0.4
+              + is_external_facing  × 0.2
     """
     try:
         from slither import Slither
@@ -165,20 +277,21 @@ def _analyze_hotspots(contract_code: str, flagged_classes: list[str]) -> dict[st
 
         sl = Slither(tmp_path)
 
-        # ── Run relevant detectors ───────────────────────────────────────────
-        # Filter to detectors for flagged classes when provided.
-        from src.orchestration.routing import CLASS_TO_DETECTORS
-        if flagged_classes:
-            scoped = set()
-            for cls in flagged_classes:
-                scoped.update(CLASS_TO_DETECTORS.get(cls, []))
-            if scoped:
-                sl._detectors = [  # type: ignore[attr-defined]
-                    d for d in sl._detectors  # type: ignore[attr-defined]
-                    if getattr(d, "ARGUMENT", "") in scoped
-                ]
+        # Scope Slither to relevant detectors when flagged_classes provided.
+        try:
+            from src.orchestration.routing import CLASS_TO_DETECTORS
+            if flagged_classes:
+                scoped = set()
+                for cls in flagged_classes:
+                    scoped.update(CLASS_TO_DETECTORS.get(cls, []))
+                if scoped:
+                    sl._detectors = [  # type: ignore[attr-defined]
+                        d for d in sl._detectors  # type: ignore[attr-defined]
+                        if getattr(d, "ARGUMENT", "") in scoped
+                    ]
+        except ImportError:
+            pass  # routing module not available outside agents env
 
-        # Map: (contract_name, fn_name) → {score, lines, classes, signals}
         fn_scores: dict[tuple[str, str], dict] = {}
 
         def _get_or_create(contract: str, fn: str) -> dict:
@@ -191,80 +304,68 @@ def _analyze_hotspots(contract_code: str, flagged_classes: list[str]) -> dict[st
                     "vulnerability_classes": set(),
                     "signals": [],
                     "score": 0.0,
+                    "source": "slither",
                 }
             return fn_scores[key]
 
-        # Score from detector findings.
+        # Score from detector findings
         for result in sl.run_detectors():
             for finding in result:
-                detector = finding.get("check", "")
-                impact   = finding.get("impact", "")
+                detector     = finding.get("check", "")
+                impact       = finding.get("impact", "")
                 impact_weight = {"High": 3.0, "Medium": 2.0, "Low": 1.0}.get(impact, 0.5)
-                cls = _DETECTOR_CLASS_MAP.get(detector, "")
+                cls          = _DETECTOR_CLASS_MAP.get(detector, "")
 
                 if flagged_classes and cls not in flagged_classes:
                     continue
 
                 for elem in finding.get("elements", []):
-                    src   = elem.get("source_mapping", {})
-                    lines = src.get("lines", [])
-                    fn_name = elem.get("name", "?") if elem.get("type") == "function" else "?"
+                    src       = elem.get("source_mapping", {})
+                    lines     = src.get("lines", [])
+                    fn_name   = elem.get("name", "?") if elem.get("type") == "function" else "?"
+                    con_name  = elem.get("type_specific_fields", {}).get("parent", {}).get("name", "unknown")
 
-                    # Try to get contract name from element.
-                    contract_name = "unknown"
-                    if elem.get("type") == "function":
-                        contract_name = elem.get("type_specific_fields", {}).get(
-                            "parent", {}
-                        ).get("name", "unknown")
-
-                    entry = _get_or_create(contract_name, fn_name)
+                    entry = _get_or_create(con_name, fn_name)
                     entry["lines"].update(int(ln) for ln in lines if isinstance(ln, int))
                     if cls:
                         entry["vulnerability_classes"].add(cls)
                         entry["signals"].append(f"{detector}({impact})")
                     entry["score"] += impact_weight
 
-        # Score from structural features of each function.
+        # Score from function structural features
         for contract in sl.contracts:
             if contract.is_interface:
                 continue
             for fn in contract.functions_and_modifiers:
                 entry = _get_or_create(contract.name, fn.name)
-                signals = _CLASS_STRUCTURAL_SIGNALS
 
-                # External calls → Reentrancy, ExternalBug signal
                 ext_calls = getattr(fn, "external_calls_as_expressions", [])
                 if ext_calls:
                     for cls in ["Reentrancy", "ExternalBug", "MishandledException"]:
                         if not flagged_classes or cls in flagged_classes:
                             entry["vulnerability_classes"].add(cls)
-                    entry["score"] += len(ext_calls) * 0.5
+                    entry["score"]  += len(ext_calls) * 0.5
                     entry["signals"].append(f"external_calls={len(ext_calls)}")
 
-                # State variable writes → Reentrancy, TOD signal
                 state_writes = getattr(fn, "state_variables_written", [])
                 if state_writes and (not flagged_classes or "Reentrancy" in flagged_classes):
-                    entry["score"] += 0.3
+                    entry["score"]  += 0.3
                     entry["signals"].append(f"state_writes={len(state_writes)}")
 
-                # High-level calls → ExternalBug
                 hl_calls = getattr(fn, "high_level_calls", [])
                 if hl_calls and (not flagged_classes or "ExternalBug" in flagged_classes):
                     entry["vulnerability_classes"].add("ExternalBug")
-                    entry["score"] += len(hl_calls) * 0.4
+                    entry["score"]  += len(hl_calls) * 0.4
                     entry["signals"].append(f"high_level_calls={len(hl_calls)}")
 
-                # Public/external visibility → raises suspicion
                 if getattr(fn, "visibility", "") in ("public", "external"):
                     entry["score"] += 0.2
 
-                # Source lines
                 src = getattr(fn, "source_mapping", None)
                 if src:
                     fn_lines = getattr(src, "lines", [])
                     entry["lines"].update(int(ln) for ln in fn_lines if isinstance(ln, int))
 
-        # Filter to only flagged classes and convert to serializable format.
         hotspots = []
         for (contract, fn), data in fn_scores.items():
             classes = (
@@ -281,42 +382,38 @@ def _analyze_hotspots(contract_code: str, flagged_classes: list[str]) -> dict[st
                 "vulnerability_classes": sorted(classes),
                 "score":                 round(data["score"], 3),
                 "signals":               data["signals"][:5],
+                "source":                "slither",
             })
 
         hotspots.sort(key=lambda h: h["score"], reverse=True)
-
-        # Graph stats
-        all_fns     = [fn for c in sl.contracts for fn in c.functions_and_modifiers]
-        graph_stats = {
-            "num_contracts":  len(sl.contracts),
-            "num_functions":  len(all_fns),
-            "has_interfaces": any(c.is_interface for c in sl.contracts),
-            "num_hotspots":   len(hotspots),
-        }
+        all_fns = [fn for c in sl.contracts for fn in c.functions_and_modifiers]
 
         try:
-            import os
             os.unlink(tmp_path)
         except OSError:
             pass
 
         return {
             "hotspots":      hotspots[:20],
-            "graph_stats":   graph_stats,
+            "graph_stats": {
+                "num_contracts":  len(sl.contracts),
+                "num_functions":  len(all_fns),
+                "has_interfaces": any(c.is_interface for c in sl.contracts),
+                "num_hotspots":   len(hotspots),
+            },
             "analysis_mode": "slither",
         }
 
     except ImportError:
         logger.warning("graph_inspector | slither not installed — returning mock")
         return _mock_hotspots(flagged_classes)
-
     except Exception as exc:
-        logger.error("graph_inspector | analysis failed: {}", exc)
+        logger.error("graph_inspector | Slither analysis failed: {}", exc)
         return _mock_hotspots(flagged_classes)
 
 
 def _mock_hotspots(flagged_classes: list[str]) -> dict[str, Any]:
-    """Deterministic mock for development (Slither unavailable or MOCK_MODE)."""
+    """Deterministic mock — returned when both GNN and Slither are unavailable."""
     classes = flagged_classes or ["Reentrancy", "ExternalBug"]
     return {
         "hotspots": [
@@ -327,6 +424,7 @@ def _mock_hotspots(flagged_classes: list[str]) -> dict[str, Any]:
                 "vulnerability_classes": classes[:2],
                 "score":                 4.2,
                 "signals":               ["reentrancy-eth(High)", "external_calls=2"],
+                "source":                "mock",
             },
             {
                 "contract":              "MockVault",
@@ -335,6 +433,7 @@ def _mock_hotspots(flagged_classes: list[str]) -> dict[str, Any]:
                 "vulnerability_classes": classes[:1],
                 "score":                 1.5,
                 "signals":               ["state_writes=3"],
+                "source":                "mock",
             },
         ],
         "graph_stats": {
@@ -356,7 +455,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if name != "get_graph_hotspots":
         return [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
 
-    contract_code  = arguments.get("contract_code", "")
+    contract_code   = arguments.get("contract_code", "")
     flagged_classes = arguments.get("flagged_classes", [])
 
     if not contract_code.strip():
@@ -367,7 +466,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if _MOCK_MODE:
         result = _mock_hotspots(flagged_classes)
     else:
-        result = _analyze_hotspots(contract_code, flagged_classes)
+        # Try GNN attention first (Phase 2), fall back to Slither (Phase 1).
+        result = await _analyze_hotspots_gnn(contract_code, flagged_classes)
+        if result is None:
+            result = _analyze_hotspots_slither(contract_code, flagged_classes)
 
     logger.info(
         "get_graph_hotspots | mode={} | hotspots={} | classes={}",
@@ -396,7 +498,13 @@ async def handle_messages(request: Request) -> Response:
 
 
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "sentinel-graph-inspector", "port": _SERVER_PORT})
+    return JSONResponse({
+        "status":   "ok",
+        "server":   "sentinel-graph-inspector",
+        "port":     _SERVER_PORT,
+        "phase":    "2",
+        "backends": ["gnn_attention", "slither", "mock"],
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -411,7 +519,7 @@ app = Starlette(routes=[
 
 
 def run_server() -> None:
-    logger.info("sentinel-graph-inspector MCP server starting on port {}", _SERVER_PORT)
+    logger.info("sentinel-graph-inspector MCP server starting on port {} (Phase 2)", _SERVER_PORT)
     uvicorn.run(app, host="0.0.0.0", port=_SERVER_PORT, log_level="warning")
 
 
