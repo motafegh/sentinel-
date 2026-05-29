@@ -128,6 +128,163 @@ async def _call_mcp_tool(
 
 
 # ---------------------------------------------------------------------------
+# Node: quick_screen  (Tier 0 — runs on EVERY contract, before routing)
+# ---------------------------------------------------------------------------
+
+# High/Critical-impact Slither detectors worth escalating on even if ML is safe.
+# Informational/Low detectors are intentionally excluded to limit false escalations.
+_SCREEN_SLITHER_DETECTORS: frozenset[str] = frozenset({
+    "reentrancy-eth",
+    "reentrancy-no-eth",
+    "arbitrary-send-eth",
+    "controlled-delegatecall",
+    "delegatecall-loop",
+    "integer-overflow",
+    "msg-value-loop",
+    "unchecked-send",
+    "unchecked-transfer",
+    "calls-loop",
+    "tx-origin",
+    "suicidal",
+    "uninitialized-local",
+    "uninitialized-state",
+    "write-after-write",
+})
+
+# Aderyn rule IDs that indicate High/Critical findings worth escalating.
+# Only a subset — informational rules are ignored.
+_SCREEN_ADERYN_HIGH_IDS: frozenset[str] = frozenset({
+    "H-1", "H-2", "H-3", "H-4", "H-5",
+    "C-1", "C-2", "C-3",
+})
+
+
+async def quick_screen(state: AuditState) -> dict[str, Any]:
+    """
+    Tier 0 screen — runs Slither + Aderyn on every contract before routing.
+
+    PURPOSE: Closes the ML blind spot where all class probabilities fall below
+    DEEP_THRESHOLDS. A contract scoring "safe" on ML is still escalated to deep
+    path if either static tool fires a High/Critical finding.
+
+    Two independent signals are required to agree before fast-path is allowed:
+        Signal 1: ML — all class probabilities below DEEP_THRESHOLDS
+        Signal 2: quick_screen — zero High/Critical findings from Slither+Aderyn
+
+    Slither: subset of High-impact detectors (_SCREEN_SLITHER_DETECTORS).
+    Aderyn:  subprocess call; parses JSON output; looks for H-* / C-* rule IDs.
+             Non-fatal if aderyn is not installed — only slither result used.
+
+    State updates:
+        quick_screen_hits → {"slither": [detector_name, ...], "aderyn": [rule_id, ...]}
+                           Empty lists in each key when nothing fires or tool absent.
+    """
+    contract_code = state.get("contract_code", "")
+    if not contract_code or not contract_code.strip():
+        logger.warning("quick_screen | contract_code empty — skipping")
+        return {"quick_screen_hits": {"slither": [], "aderyn": []}}
+
+    logger.info(
+        "quick_screen | running Tier-0 screen | contract_address={}",
+        state.get("contract_address", "unknown"),
+    )
+
+    slither_hits: list[str] = []
+    aderyn_hits:  list[str] = []
+    tmp_path: str | None    = None
+
+    try:
+        from slither import Slither
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".sol",
+            prefix="sentinel_screen_",
+            mode="w",
+            encoding="utf-8",
+            delete=False,
+        ) as tmp:
+            tmp.write(contract_code)
+            tmp_path = tmp.name
+
+        sl = Slither(tmp_path)
+
+        # Scope to High-impact detectors only — avoids escalating on noise.
+        sl._detectors = [  # type: ignore[attr-defined]
+            d for d in sl._detectors  # type: ignore[attr-defined]
+            if getattr(d, "ARGUMENT", "") in _SCREEN_SLITHER_DETECTORS
+        ]
+
+        for result in sl.run_detectors():
+            for finding in result:
+                impact = finding.get("impact", "")
+                if impact in ("High", "Medium", "Critical"):
+                    detector = finding.get("check", "unknown")
+                    if detector not in slither_hits:
+                        slither_hits.append(detector)
+
+        logger.info(
+            "quick_screen | slither done | hits={} | contract_address={}",
+            slither_hits,
+            state.get("contract_address", "unknown"),
+        )
+
+    except ImportError:
+        logger.warning("quick_screen | slither not installed — skipping slither screen")
+
+    except Exception as exc:
+        logger.warning("quick_screen | slither error (non-fatal): {}", exc)
+
+    # ── Aderyn ────────────────────────────────────────────────────────────────
+    if tmp_path:
+        try:
+            import json as _json
+            import subprocess
+
+            aderyn_result = subprocess.run(
+                ["aderyn", "--output", "json", tmp_path],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if aderyn_result.returncode == 0 and aderyn_result.stdout.strip():
+                aderyn_data = _json.loads(aderyn_result.stdout)
+                # Aderyn JSON: {"high": [...], "low": [...]} or {"findings": [...]}
+                high_findings = aderyn_data.get("high", aderyn_data.get("findings", []))
+                for finding in high_findings:
+                    rule_id = finding.get("id", finding.get("rule_id", ""))
+                    if rule_id and rule_id not in aderyn_hits:
+                        aderyn_hits.append(rule_id)
+            elif aderyn_result.returncode != 0:
+                logger.debug(
+                    "quick_screen | aderyn exited {} — stderr: {}",
+                    aderyn_result.returncode,
+                    aderyn_result.stderr[:200],
+                )
+
+        except FileNotFoundError:
+            logger.debug("quick_screen | aderyn not installed — skipping")
+
+        except Exception as exc:
+            logger.warning("quick_screen | aderyn error (non-fatal): {}", exc)
+
+    # ── Cleanup ───────────────────────────────────────────────────────────────
+    if tmp_path:
+        try:
+            os.unlink(tmp_path)
+        except OSError as e:
+            logger.warning("quick_screen | failed to delete temp file {}: {}", tmp_path, e)
+
+    hits = {"slither": slither_hits, "aderyn": aderyn_hits}
+    logger.info(
+        "quick_screen complete | slither_hits={} | aderyn_hits={} | contract_address={}",
+        len(slither_hits),
+        len(aderyn_hits),
+        state.get("contract_address", "unknown"),
+    )
+    return {"quick_screen_hits": hits}
+
+
+# ---------------------------------------------------------------------------
 # Node: evidence_router
 # ---------------------------------------------------------------------------
 
@@ -135,13 +292,10 @@ async def evidence_router(state: AuditState) -> dict[str, Any]:
     """
     Compute per-class routing and log decisions to AuditState.routing_decisions.
 
-    This node runs after ml_assessment. It does NOT perform the actual
-    conditional branching (that is handled by _route_from_evidence_router in
-    graph.py). Its sole job is to log routing decisions into state so the final
-    report can explain why each tool was or was not activated.
-
-    The routing_decisions field uses an append-reducer — this node writes the
-    primary entries; other nodes may append their own notes.
+    Reads both ml_result AND quick_screen_hits — if quick_screen found anything,
+    the routing note records the escalation so the final report is fully auditable.
+    Actual branching logic lives in _route_from_evidence_router (graph.py); this
+    node only logs; it never raises.
 
     State updates:
         routing_decisions → list of human-readable routing decision strings
@@ -149,14 +303,28 @@ async def evidence_router(state: AuditState) -> dict[str, Any]:
     ml_result = state.get("ml_result", {})
     decisions = build_routing_decisions(ml_result)
 
+    # Log quick_screen signal alongside ML per-class decisions.
+    quick_screen_hits = state.get("quick_screen_hits", {})
+    slither_hits = quick_screen_hits.get("slither", [])
+    aderyn_hits  = quick_screen_hits.get("aderyn",  [])
+
     active = compute_active_tools(ml_result)
+    if slither_hits or aderyn_hits:
+        escalation = (
+            f"quick_screen: slither={slither_hits[:3]} aderyn={aderyn_hits[:3]}"
+            f" → escalate to deep path (overrides fast-path even if ML safe)"
+        )
+        decisions.append(escalation)
+        logger.info("evidence_router | {}", escalation)
+    elif not active:
+        decisions.append("quick_screen: no hits, ML safe → fast path confirmed")
+
     logger.info(
-        "evidence_router | active_tools={} | classes_evaluated={}",
+        "evidence_router | active_tools={} | quick_screen_slither={} | quick_screen_aderyn={}",
         active or ["fast-path"],
-        len(ml_result.get("probabilities", ml_result.get("vulnerabilities", []))),
+        len(slither_hits),
+        len(aderyn_hits),
     )
-    for d in decisions:
-        logger.debug("evidence_router | {}", d)
 
     return {"routing_decisions": decisions}
 

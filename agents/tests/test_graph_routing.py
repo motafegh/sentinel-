@@ -34,6 +34,7 @@ from src.orchestration.nodes import (
     cross_validator,
     graph_explain,
     ml_assessment,
+    quick_screen,
     rag_research,
     synthesizer,
 )
@@ -151,18 +152,54 @@ class TestRouteFromEvidenceRouter:
         assert "graph_explain" in result
 
     def test_all_below_threshold_routes_to_synthesizer(self, ml_low):
-        # ml_low has Reentrancy at 0.10 — below DEEP_THRESHOLD[0.35]
-        state: AuditState = {"ml_result": ml_low}
+        # ml_low has Reentrancy at 0.10 — below DEEP_THRESHOLD[0.35], no screen hits
+        state: AuditState = {"ml_result": ml_low, "quick_screen_hits": {}}
         result = _route_from_evidence_router(state)
         assert result == "synthesizer"
 
     def test_empty_ml_result_routes_to_synthesizer(self):
-        state: AuditState = {"ml_result": {}}
+        state: AuditState = {"ml_result": {}, "quick_screen_hits": {}}
         result = _route_from_evidence_router(state)
         assert result == "synthesizer"
 
     def test_missing_ml_result_key_routes_to_synthesizer(self):
         state: AuditState = {}
+        result = _route_from_evidence_router(state)
+        assert result == "synthesizer"
+
+    def test_quick_screen_escalates_ml_safe_to_deep(self, ml_low):
+        # ML says safe but quick_screen found a High-impact Slither hit → deep path
+        state: AuditState = {
+            "ml_result": ml_low,
+            "quick_screen_hits": {"slither": ["reentrancy-eth"], "aderyn": []},
+        }
+        result = _route_from_evidence_router(state)
+        assert result != "synthesizer"
+        assert isinstance(result, list)
+        assert "static_analysis" in result
+
+    def test_quick_screen_escalated_path_includes_graph_explain(self, ml_low):
+        state: AuditState = {
+            "ml_result": ml_low,
+            "quick_screen_hits": {"slither": ["arbitrary-send-eth"], "aderyn": []},
+        }
+        result = _route_from_evidence_router(state)
+        assert isinstance(result, list)
+        assert "graph_explain" in result
+
+    def test_aderyn_hit_alone_escalates(self, ml_low):
+        state: AuditState = {
+            "ml_result": ml_low,
+            "quick_screen_hits": {"slither": [], "aderyn": ["H-2"]},
+        }
+        result = _route_from_evidence_router(state)
+        assert result != "synthesizer"
+
+    def test_empty_quick_screen_plus_ml_safe_is_fast_path(self, ml_low):
+        state: AuditState = {
+            "ml_result": ml_low,
+            "quick_screen_hits": {"slither": [], "aderyn": []},
+        }
         result = _route_from_evidence_router(state)
         assert result == "synthesizer"
 
@@ -189,7 +226,7 @@ class TestBuildGraph:
     def test_graph_has_correct_nodes(self):
         graph = build_graph(use_checkpointer=False)
         node_names = set(graph.nodes.keys())
-        for name in ("ml_assessment", "evidence_router", "rag_research",
+        for name in ("ml_assessment", "quick_screen", "evidence_router", "rag_research",
                      "static_analysis", "graph_explain", "audit_check",
                      "cross_validator", "synthesizer"):
             assert name in node_names, f"missing node: {name}"
@@ -771,6 +808,107 @@ class TestSynthesizerUsesPreComputedVerdicts:
         vv = {v["vulnerability_class"]: v["verdict"] for v in report["vulnerability_verdicts"]}
         assert vv["Reentrancy"] == "CONFIRMED"
         assert vv["IntegerUO"]  == "LIKELY"
+
+
+# ---------------------------------------------------------------------------
+# quick_screen node
+# ---------------------------------------------------------------------------
+
+class TestQuickScreenNode:
+    """
+    Tests for the quick_screen (Tier 0) node.
+
+    All Slither/subprocess calls are mocked — these are unit tests.
+    The quick_screen node must be non-fatal: every test branch must return
+    {"quick_screen_hits": {"slither": [...], "aderyn": [...]}} even on errors.
+    """
+
+    @pytest.mark.asyncio
+    async def test_empty_contract_code_returns_empty_hits(self):
+        state: AuditState = {"contract_code": "", "contract_address": "0xABC"}
+        result = await quick_screen(state)
+        assert result["quick_screen_hits"] == {"slither": [], "aderyn": []}
+
+    @pytest.mark.asyncio
+    async def test_slither_not_installed_returns_empty_hits(self, base_state):
+        # Simulate ImportError for slither.
+        with patch.dict("sys.modules", {"slither": None}):
+            result = await quick_screen(base_state)
+        assert "quick_screen_hits" in result
+        assert isinstance(result["quick_screen_hits"]["slither"], list)
+        assert isinstance(result["quick_screen_hits"]["aderyn"],  list)
+
+    @pytest.mark.asyncio
+    async def test_slither_exception_is_non_fatal(self, base_state):
+        # Slither raises an unexpected exception → node returns empty hits, no raise.
+        with patch("src.orchestration.nodes.tempfile.NamedTemporaryFile",
+                   side_effect=OSError("disk full")):
+            result = await quick_screen(base_state)
+        assert "quick_screen_hits" in result
+        assert result["quick_screen_hits"]["slither"] == []
+
+    @pytest.mark.asyncio
+    async def test_slither_high_impact_finding_captured(self, base_state):
+        """
+        When Slither returns a High-impact finding for a screen detector,
+        the detector name must appear in quick_screen_hits["slither"].
+        """
+        from unittest.mock import MagicMock
+
+        mock_finding = {
+            "check": "reentrancy-eth",
+            "impact": "High",
+            "confidence": "High",
+            "description": "Reentrancy in Vault.withdraw",
+            "elements": [],
+        }
+
+        # Build a fake Slither instance with enough API surface for quick_screen.
+        mock_detector = MagicMock()
+        mock_detector.ARGUMENT = "reentrancy-eth"
+
+        mock_sl = MagicMock()
+        mock_sl._detectors = [mock_detector]
+        mock_sl.run_detectors.return_value = [[mock_finding]]
+
+        mock_slither_cls = MagicMock(return_value=mock_sl)
+
+        # Patch slither.Slither at the import location used inside quick_screen.
+        import slither as _slither_module
+        with patch.object(_slither_module, "Slither", mock_slither_cls), \
+             patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
+            result = await quick_screen(base_state)
+
+        hits = result["quick_screen_hits"]
+        assert "reentrancy-eth" in hits["slither"]
+
+    @pytest.mark.asyncio
+    async def test_aderyn_not_installed_is_non_fatal(self, base_state):
+        # FileNotFoundError from aderyn subprocess → ignored, returns empty aderyn list.
+        with patch("src.orchestration.nodes.tempfile.NamedTemporaryFile") as mock_tmp, \
+             patch("src.orchestration.nodes.os.unlink"), \
+             patch("subprocess.run", side_effect=FileNotFoundError("aderyn not found")):
+            mock_file = type("MockTmpFile", (), {"name": "/tmp/x.sol", "write": lambda s, t: None})()
+            mock_tmp.return_value.__enter__ = lambda s: mock_file
+            mock_tmp.return_value.__exit__  = lambda s, *a: None
+            # Also stub out slither import to avoid needing it installed
+            with patch.dict("sys.modules", {"slither": None}):
+                result = await quick_screen(base_state)
+
+        assert result["quick_screen_hits"]["aderyn"] == []
+
+    @pytest.mark.asyncio
+    async def test_result_always_has_both_keys(self, base_state):
+        """quick_screen_hits must always contain both 'slither' and 'aderyn' keys."""
+        with patch.dict("sys.modules", {"slither": None}), \
+             patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
+            result = await quick_screen(base_state)
+
+        hits = result["quick_screen_hits"]
+        assert "slither" in hits
+        assert "aderyn"  in hits
+        assert isinstance(hits["slither"], list)
+        assert isinstance(hits["aderyn"],  list)
 
     @pytest.mark.asyncio
     async def test_synthesizer_falls_back_without_precomputed_verdicts(self, base_state, ml_high):
