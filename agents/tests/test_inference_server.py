@@ -120,9 +120,9 @@ def test_mock_prediction_safe_contract_returns_safe():
 
 
 def test_mock_prediction_reentrancy_pattern_high_risk():
-    """Contracts with call.value pattern should return label='vulnerable' + vuln list."""
+    """Contracts with call.value pattern should return label='confirmed_vulnerable' + vuln list."""
     result = _mock_prediction(REENTRANCY_CONTRACT)
-    assert result["label"] == "vulnerable"
+    assert result["label"] == "confirmed_vulnerable"
     assert len(result["vulnerabilities"]) > 0
     vuln_map = {v["vulnerability_class"]: v["probability"] for v in result["vulnerabilities"]}
     assert "Reentrancy" in vuln_map
@@ -130,10 +130,16 @@ def test_mock_prediction_reentrancy_pattern_high_risk():
 
 
 def test_mock_prediction_result_structure():
-    """Mock result must have exact keys Module 1 returns — Track 3 schema contract."""
+    """Mock result must contain all three-tier schema keys."""
     result = _mock_prediction(SAMPLE_CONTRACT)
-    expected_keys = {"label", "vulnerabilities", "threshold", "truncated", "num_nodes", "num_edges"}
-    assert set(result.keys()) == expected_keys
+    required_keys = {
+        "label", "probabilities", "confirmed", "suspicious",
+        "vulnerabilities", "tier_thresholds", "thresholds",
+        "truncated", "num_nodes", "num_edges", "windows_used",
+    }
+    assert required_keys <= set(result.keys()), (
+        f"Missing keys: {required_keys - set(result.keys())}"
+    )
     assert "mock" not in result   # A-13: must NOT have mock key
 
 

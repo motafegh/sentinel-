@@ -265,7 +265,7 @@ def _mock_prediction(contract_code: str) -> dict[str, Any]:
         "Reentrancy":          0.72 if has_reentrancy_pattern else 0.08,
         "IntegerUO":           0.54 if has_reentrancy_pattern else 0.12,
         "GasException":        0.18,
-        "Timestamp":           0.31,
+        "Timestamp":           0.31 if has_reentrancy_pattern else 0.14,
         "TOD":                 0.09,
         "ExternalBug":         0.14,
         "CallToUnknown":       0.07,

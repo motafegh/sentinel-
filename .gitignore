@@ -126,4 +126,5 @@ Thumbs.db
 *.tar.gz
 *.tar.bz2
 *.tar.xz
-*.tar.zst
+*.tar.zstdocs/IRVLESS*.txt
+IRVLESS*.txt

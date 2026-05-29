@@ -19,21 +19,24 @@ RECALL — MCP client pattern:
     for M5. In M6 the connection can be promoted to a module-level
     persistent client if latency becomes an issue.
 
-Graph topology (Phase 0):
+Graph topology (Phase 1):
     ml_assessment
         ↓
     evidence_router          ← logs routing_decisions to state
-        ├─ (deep path) → rag_research ──┐
-        │               static_analysis ─┤→ audit_check → synthesizer
-        └─ (fast path) ──────────────────────────────────→ synthesizer
+        ├─ (deep path) → rag_research ──────┐
+        │               static_analysis ─────┤→ audit_check → cross_validator → synthesizer
+        │               graph_explain ───────┘
+        └─ (fast path) ──────────────────────────────────────────────────→ synthesizer
 
 Nodes:
     ml_assessment   — calls sentinel-inference: predict
     evidence_router — computes per-class routing; logs to routing_decisions
     rag_research    — calls sentinel-rag: search (deep path only)
     static_analysis — Slither direct call, scoped to flagged classes (deep path)
+    graph_explain   — calls sentinel-graph-inspector: function-level hotspots (deep path)
     audit_check     — calls sentinel-audit: get_audit_history (deep path only)
-    synthesizer     — assembles final_report; computes rule-based verdicts
+    cross_validator — LLM-adjudicated per-class verdicts (deep path only)
+    synthesizer     — assembles final_report; uses cross_validator verdicts or rule-based fallback
 """
 
 from __future__ import annotations
@@ -68,9 +71,10 @@ from src.ingestion.pipeline import REPORTS_DIR
 # The /sse suffix is the SSE endpoint path, NOT the base URL.
 # Pattern: http://host:port/sse
 
-_INFERENCE_URL: str = os.getenv("MCP_INFERENCE_URL", "http://localhost:8010/sse")
-_RAG_URL:       str = os.getenv("MCP_RAG_URL",       "http://localhost:8011/sse")
-_AUDIT_URL:     str = os.getenv("MCP_AUDIT_URL",     "http://localhost:8012/sse")
+_INFERENCE_URL:       str = os.getenv("MCP_INFERENCE_URL",       "http://localhost:8010/sse")
+_RAG_URL:             str = os.getenv("MCP_RAG_URL",             "http://localhost:8011/sse")
+_AUDIT_URL:           str = os.getenv("MCP_AUDIT_URL",           "http://localhost:8012/sse")
+_GRAPH_INSPECTOR_URL: str = os.getenv("MCP_GRAPH_INSPECTOR_URL", "http://localhost:8013/sse")
 
 # Default number of RAG chunks to retrieve for deep-path analysis.
 _RAG_K: int = int(os.getenv("AUDIT_RAG_K", "5"))
@@ -582,6 +586,267 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Node: graph_explain
+# ---------------------------------------------------------------------------
+
+async def graph_explain(state: AuditState) -> dict[str, Any]:
+    """
+    Call sentinel-graph-inspector to get function-level hotspot attribution.
+
+    WHY THIS EXISTS
+    ───────────────
+    The ML model returns per-class probabilities but no indication of WHERE
+    in the contract the suspicious pattern lives. graph_explain bridges this gap
+    by combining Slither structural analysis with the ML probability signal to
+    produce ranked function-level hotspots — directing auditor attention to the
+    most suspicious code regions.
+
+    Phase 1 (current): Slither structural proxy for attention — detector hits,
+        external calls, state writes, complexity, cross-contract dependencies.
+    Phase 2 (future): true GNN attention weights via forward-pass hooking.
+
+    State updates:
+        ml_hotspots       → ranked list of suspicious functions per vuln class
+        graph_explanations → per-class hotspot breakdown + graph topology stats
+    """
+    contract_code = state.get("contract_code", "")
+    if not contract_code or not contract_code.strip():
+        logger.info("graph_explain | contract_code empty — skipping")
+        return {"ml_hotspots": [], "graph_explanations": {}}
+
+    ml_result  = state.get("ml_result", {})
+    confirmed  = ml_result.get("confirmed",  [])
+    suspicious = ml_result.get("suspicious", [])
+    flagged    = confirmed + suspicious or ml_result.get("vulnerabilities", [])
+    flagged_classes = [
+        v.get("vulnerability_class", "")
+        for v in flagged
+        if v.get("vulnerability_class")
+    ]
+
+    logger.info("graph_explain | classes={}", flagged_classes or ["all"])
+
+    try:
+        result = await _call_mcp_tool(
+            server_url=_GRAPH_INSPECTOR_URL,
+            tool_name="get_graph_hotspots",
+            arguments={
+                "contract_code":   contract_code,
+                "flagged_classes": flagged_classes,
+            },
+        )
+
+        if "error" in result:
+            logger.warning("graph_explain | inspector error: {}", result["error"])
+            return {"ml_hotspots": [], "graph_explanations": {}}
+
+        hotspots    = result.get("hotspots",    [])
+        graph_stats = result.get("graph_stats", {})
+        mode        = result.get("analysis_mode", "unknown")
+
+        # Build per-class breakdown for state.graph_explanations
+        hotspots_by_class: dict[str, list[dict]] = {}
+        for cls in flagged_classes:
+            hotspots_by_class[cls] = [
+                h for h in hotspots
+                if cls in h.get("vulnerability_classes", [])
+            ]
+
+        graph_explanations: dict[str, Any] = {
+            "graph_stats":       graph_stats,
+            "analysis_mode":     mode,
+            "hotspots_by_class": hotspots_by_class,
+        }
+
+        # ml_hotspots: flat list matching AuditState schema
+        ml_hotspots = [
+            {
+                "class":   h["vulnerability_classes"][0] if h["vulnerability_classes"] else "?",
+                "fn_name": h["function"],
+                "lines":   h["lines"],
+                "node_ids": [],  # Phase 2: populated from GNN attention
+                "score":   h["score"],
+                "signals": h.get("signals", []),
+            }
+            for h in hotspots
+        ]
+
+        logger.info(
+            "graph_explain complete | mode={} | hotspots={} | contracts={}",
+            mode,
+            len(hotspots),
+            graph_stats.get("num_contracts", 0),
+        )
+        return {"ml_hotspots": ml_hotspots, "graph_explanations": graph_explanations}
+
+    except Exception as exc:
+        logger.error("graph_explain failed: {}", exc)
+        return {"ml_hotspots": [], "graph_explanations": {}}
+
+
+# ---------------------------------------------------------------------------
+# Node: cross_validator
+# ---------------------------------------------------------------------------
+
+async def cross_validator(state: AuditState) -> dict[str, Any]:
+    """
+    LLM-adjudicated per-class verdicts (Phase 2 deep path).
+
+    Runs after audit_check (fan-in) and before synthesizer.
+    For each ML-flagged class, prompts the strong LLM with all available
+    evidence (ML tier + probability, Slither findings, RAG chunks, prior audits)
+    and returns a structured per-class verdict.
+
+    Verdict scale:
+        CONFIRMED  — ML ≥ 0.55 AND Slither finding(s) agree
+        LIKELY     — ML ≥ 0.35 AND at least one corroborating signal
+        DISPUTED   — ML flagged but corroboration absent or contradictory
+        WATCH      — ML 0.25–0.34, single weak signal; monitor only
+        SAFE       — evidence points to false positive
+
+    Falls back silently to empty dict on LLM failure — synthesizer then
+    computes rule-based verdicts as before.
+
+    State updates:
+        verdicts       → {class: verdict_str}
+        confirmations  → {class: [evidence_source, ...]}
+        contradictions → {class: [description, ...]}
+    """
+    ml_result       = state.get("ml_result",       {})
+    static_findings = state.get("static_findings",  [])
+    rag_results     = state.get("rag_results",      [])
+    audit_history   = state.get("audit_history",    [])
+
+    confirmed  = ml_result.get("confirmed",  [])
+    suspicious = ml_result.get("suspicious", [])
+    all_flagged = confirmed + suspicious or ml_result.get("vulnerabilities", [])
+
+    if not all_flagged:
+        logger.info("cross_validator | no flagged classes — skipping")
+        return {}
+
+    logger.info("cross_validator | adjudicating {} class(es)", len(all_flagged))
+
+    # Build Slither-finding index keyed by vuln class (without importing routing again)
+    from src.orchestration.routing import CLASS_TO_DETECTORS
+
+    slither_by_class: dict[str, list[str]] = {}
+    for finding in static_findings:
+        detector = finding.get("detector", "")
+        for cls, detectors in CLASS_TO_DETECTORS.items():
+            if detector in detectors:
+                slither_by_class.setdefault(cls, []).append(
+                    f"{finding.get('impact', '')} {detector}: "
+                    f"{finding.get('description', '')[:80]}"
+                )
+
+    rag_topics = [
+        c.get("metadata", {}).get("vulnerability_type", "")
+        for c in rag_results[:5]
+        if c.get("metadata", {}).get("vulnerability_type")
+    ]
+    prior_count = len(audit_history)
+
+    class_lines = []
+    for vuln in all_flagged:
+        cls    = vuln.get("vulnerability_class", "?")
+        prob   = vuln.get("probability", 0.0)
+        tier   = vuln.get("tier", "CONFIRMED")
+        slither_hits = slither_by_class.get(cls, ["(no Slither findings)"])
+        class_lines.append(
+            f"- {cls} [{tier}] prob={prob:.3f}\n"
+            f"  Slither: {'; '.join(slither_hits[:3])}\n"
+            f"  RAG topics matched: {', '.join(rag_topics) or '(none)'}\n"
+            f"  Prior audits: {prior_count}"
+        )
+
+    try:
+        from langchain_core.messages import HumanMessage, SystemMessage
+        from src.llm.client import get_strong_llm
+
+        system_msg = SystemMessage(content=(
+            "You are a smart contract security auditor. "
+            "For each vulnerability class below, return a JSON object mapping "
+            "class name → verdict string.\n"
+            "Verdict options: CONFIRMED | LIKELY | DISPUTED | WATCH | SAFE\n"
+            "Rules:\n"
+            "  CONFIRMED: ML ≥ 0.55 AND Slither finding(s) agree\n"
+            "  LIKELY:    ML ≥ 0.35 AND at least one corroborating signal\n"
+            "  DISPUTED:  ML flagged but Slither/RAG contradicts or is absent\n"
+            "  WATCH:     ML 0.25–0.34, single weak signal; monitor only\n"
+            "  SAFE:      evidence points to false positive\n"
+            "Return ONLY valid JSON, no markdown fences, no explanation.\n"
+            'Example: {"Reentrancy": "CONFIRMED", "IntegerUO": "LIKELY"}'
+        ))
+        user_msg = HumanMessage(content=(
+            "Vulnerability evidence:\n" + "\n".join(class_lines)
+        ))
+
+        llm = get_strong_llm()
+        response = await asyncio.wait_for(
+            asyncio.to_thread(llm.invoke, [system_msg, user_msg]),
+            timeout=30.0,
+        )
+
+        raw = response.content.strip()
+        # Strip markdown fences if the model wraps the JSON anyway
+        if raw.startswith("```"):
+            parts = raw.split("```")
+            raw = parts[1] if len(parts) > 1 else parts[0]
+            if raw.lower().startswith("json"):
+                raw = raw[4:]
+        raw = raw.strip()
+
+        llm_verdicts: dict[str, str] = json.loads(raw)
+
+        valid_verdicts = {"CONFIRMED", "LIKELY", "DISPUTED", "WATCH", "SAFE"}
+        flagged_class_set = {v.get("vulnerability_class", "") for v in all_flagged}
+        verdicts: dict[str, str] = {
+            cls: (v if v in valid_verdicts else "DISPUTED")
+            for cls, v in llm_verdicts.items()
+            if cls in flagged_class_set
+        }
+
+        # Build confirmations / contradictions
+        confirmations:  dict[str, list[str]] = {}
+        contradictions: dict[str, list[str]] = {}
+        for cls, verdict in verdicts.items():
+            prob = next(
+                (v["probability"] for v in all_flagged
+                 if v.get("vulnerability_class") == cls),
+                0.0,
+            )
+            sources = [f"ml:{prob:.3f}"]
+            if slither_by_class.get(cls):
+                sources.append(f"slither:{len(slither_by_class[cls])} finding(s)")
+            if rag_topics:
+                sources.append(f"rag:{len(rag_topics)} relevant chunk(s)")
+
+            if verdict in ("CONFIRMED", "LIKELY"):
+                confirmations[cls]  = sources
+            elif verdict == "DISPUTED":
+                contradictions[cls] = [
+                    f"ml_flagged (prob={prob:.3f}) but insufficient corroboration"
+                ]
+                confirmations[cls]  = sources[:1]
+            else:
+                confirmations[cls]  = sources[:1]
+
+        logger.info("cross_validator complete | verdicts={}", verdicts)
+        return {
+            "verdicts":       verdicts,
+            "confirmations":  confirmations,
+            "contradictions": contradictions,
+        }
+
+    except Exception as exc:
+        logger.warning(
+            "cross_validator | failed (synthesizer will use rule-based fallback): {}", exc
+        )
+        return {}
+
+
+# ---------------------------------------------------------------------------
 # Node: synthesizer
 # ---------------------------------------------------------------------------
 
@@ -659,18 +924,27 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # Determine which path was taken.
     path_taken = "deep" if (rag_results or static_findings) else "fast"
 
-    # ── Per-class verdict computation (rule-based, Phase 0) ──────────────────
-    # Phase 2 will replace this with the cross_validator node (LLM-adjudicated).
-    verdicts:      dict[str, str]        = {}
-    confirmations: dict[str, list[str]]  = {}
-    vuln_verdicts: list[dict]            = []
+    # ── Per-class verdict computation ────────────────────────────────────────
+    # Use cross_validator pre-computed verdicts (deep path, LLM-adjudicated).
+    # Fall back to rule-based compute_verdict() when cross_validator didn't run
+    # (fast path) or when it failed (returned empty dict).
+    pre_verdicts:      dict[str, str]       = state.get("verdicts",      {})
+    pre_confirmations: dict[str, list[str]] = state.get("confirmations", {})
+
+    verdicts:      dict[str, str]       = {}
+    confirmations: dict[str, list[str]] = {}
+    vuln_verdicts: list[dict]           = []
 
     for vuln in all_flagged:
         cls  = vuln.get("vulnerability_class", "?")
         prob = vuln.get("probability", 0.0)
-        verdict, sources = compute_verdict(
-            cls, prob, static_findings, rag_results, path_taken
-        )
+        if cls in pre_verdicts:
+            verdict = pre_verdicts[cls]
+            sources = pre_confirmations.get(cls, [f"ml:{prob:.3f}"])
+        else:
+            verdict, sources = compute_verdict(
+                cls, prob, static_findings, rag_results, path_taken
+            )
         verdicts[cls]      = verdict
         confirmations[cls] = sources
         vuln_verdicts.append({
