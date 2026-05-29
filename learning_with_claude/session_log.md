@@ -418,3 +418,32 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Q1–Q5 posted; answers pending
 
 **Audit flags raised:** A25 (confirmed from roadmap), A34 (select_prefix_nodes sorts on post-GAT embedding dim, not raw ext_call_count)
+
+---
+
+## Session 14 — Phase 6: `focalloss.py` + `losses.py`
+
+**Files:**
+- `ml/src/training/focalloss.py` (lines 1–143)
+- `ml/src/training/losses.py` (lines 1–126)
+
+**Concepts taught:**
+- Multi-label imbalance problem: 44K×10 = 440K cells, 85%+ negative; why standard BCE fails
+- Positive class frequency in Sentinel: Reentrancy ~8%, DoS ~0.6%, Timestamp ~3.4%
+- `FocalLoss`: pt = model confidence on correct class (p for y=1, 1-p for y=0); focal weight (1-pt)^gamma; alpha for pos/neg balance; BF16 guard (.float() cast); post-sigmoid contract
+- `gamma` effect: gamma=2 crushes pt=0.95 to 0.0025×, keeps pt=0.05 at 0.90×
+- `_FocalFromLogits` wrapper: inline class inside train() for sigmoid→focal chaining; unpicklable (A35)
+- `MultiLabelFocalLoss`: per-class List[float] alpha; raw logits input; sigmoid applied internally; register_buffer for alpha
+- alpha_t bug fix: old code applied same alpha_c to both pos AND neg; for rare class alpha_c=0.9, negatives were over-weighted (0.9 instead of 0.1); fixed by `torch.where(targets==1, alpha, 1-alpha)`
+- `AsymmetricLoss` (Ridnik et al. ICCV 2021): gamma_neg > gamma_pos asymmetry; probability clip mechanism: `prob_neg = (prob - clip).clamp(0)` → zero gradient for confident negatives
+- ASL step-by-step: prob → prob_neg (shifted) → log_pos (full prob) / log_neg (shifted prob) → focal_pos + focal_neg → per-cell loss
+- Production settings: gamma_neg=2.0 (not 4.0 — BUG-C4 all-zeros collapse), clip=0.01 (not 0.05 — BUG-M2 oscillation)
+- Why pos_weight NOT passed to ASL: double-amplification (DoS pos_weight × ASL gamma_neg) collapsed GNN gradient share to 24% in Run 3
+- `register_buffer` vs plain attribute: automatic device placement + state_dict inclusion
+- BCE+pos_weight vs ASL comparison: amplify positives vs silence negatives
+
+**Warm-up recall (from Session 13):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A35

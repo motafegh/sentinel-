@@ -128,10 +128,10 @@ Spec files are the persistent memory of this journey — uncommitted updates are
 ## Current Status
 
 - **Active phase:** Phase 6 — `training/`
-- **Current chunk:** Session 14 starting (`focalloss.py` + `losses.py`)
+- **Current chunk:** Session 14 (`focalloss.py` + `losses.py`) delivered; challenge answers pending
 - **Preferences active:** P1 through P14
-- **Audit flags raised:** A1 through A34 (A25 confirmed in Session 13; A27 renumbered from A24; A34 new)
-- **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (all 5 chunks), `ast_extractor.py`, `gnn_encoder.py` (both chunks), `transformer_encoder.py`, `fusion_layer.py`, `sentinel_model.py` (both chunks)
+- **Audit flags raised:** A1 through A35
+- **Files taught so far:** `graph_schema.py`, `hash_utils.py`, `graph_extractor.py` (all 5 chunks), `ast_extractor.py`, `gnn_encoder.py` (both chunks), `transformer_encoder.py`, `fusion_layer.py`, `sentinel_model.py` (both chunks), `focalloss.py`, `losses.py`
 - **Skipped (deferred):** `tokenizer.py` (Phase 3) — can return to later
 - **Roadmap available:** `learning_roadmap/phase5_models.md`, `learning_roadmap/phase6_training.md`
 
@@ -159,7 +159,7 @@ Phase 5  ✅  models/           → see learning_roadmap/phase5_models.md
               Session 12 ✅  sentinel_model.py Chunk 1 (constants + __init__ + select_prefix_nodes)
               Session 13 ✅  sentinel_model.py Chunk 2 (forward + aux heads)
 Phase 6  🔄  training/         → see learning_roadmap/phase6_training.md
-              Session 14 ⬜  focalloss.py + losses.py (loss functions)
+              Session 14 ✅  focalloss.py + losses.py (loss functions)
               Session 15 ⬜  trainer.py Chunk 1 (TrainConfig + helpers + evaluate)
               Session 16 ⬜  trainer.py Chunk 2 (train_one_epoch)
               Session 17 ⬜  trainer.py Chunk 3 (train setup: dataset/optimizer/compile/resume)

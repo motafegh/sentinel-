@@ -552,3 +552,20 @@ the transformer attends to the prefix less than it actually does.
 **Severity:** Low (diagnostic only — does not affect training or inference correctness)
 **Status:** Open
 **Raised:** Session 13
+
+---
+
+## A35 — `trainer.py` — `_FocalFromLogits` is an unpicklable local class
+**File:** `ml/src/training/trainer.py`
+**Location:** Lines ~1003–1006: `class _FocalFromLogits(nn.Module):` inside `train()` body
+**Issue:** `_FocalFromLogits` is defined at runtime inside the `if config.loss_fn == "focal":` branch
+of `train()`. Python's `pickle` cannot serialize locally-defined classes, so any attempt to pass
+`loss_fn` to a subprocess (e.g. multiprocessing DataLoader workers, or saving the training state
+as a pickled object) will raise `AttributeError: Can't pickle local object`. Currently safe because
+`loss_fn` is never passed across process boundaries, but it's fragile if the training architecture
+ever moves toward multi-GPU (DDP) or distributed checkpointing.
+**Fix:** Move `_FocalFromLogits` to module level, or replace with a lambda:
+`loss_fn = lambda logits, tgts: _focal(torch.sigmoid(logits.float()), tgts)`.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 14
