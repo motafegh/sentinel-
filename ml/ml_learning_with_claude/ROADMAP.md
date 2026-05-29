@@ -233,8 +233,11 @@ The heart of the AI system.
 | `focalloss.py` | Focal loss mechanics |
 
 **Chunks:**
-- `01_training_loop_and_config.md`
-- `02_loss_functions_imbalanced_learning.md`
+- ✅ `01_focal_loss_and_imbalance.md` — *Done* — `focalloss.py` (FocalLoss, MultiLabelFocalLoss, alpha_t audit fix, BF16 guard)
+- ✅ `02_asymmetric_loss.md` — *Done* — `losses.py` (AsymmetricLoss, clip mechanism, gamma_neg≠gamma_pos, BUG-M3 per-class tensors, BCE→Focal→ASL evolution)
+- ⬜ `03_training_loop_and_config.md` — *TODO* — `trainer.py` setup, WeightedSampler, MLflow, BF16
+- ⬜ `04_training_loop_forward_backward.md` — *TODO* — `trainer.py` forward, loss, backward, gradient clipping, accumulation
+- ⬜ `05_training_loop_eval_and_mlops.md` — *TODO* — `trainer.py` validation, checkpointing, early stopping, MLflow
 
 ---
 
