@@ -350,8 +350,4 @@ Total GNN parameters: ~2.4M (was 91K with hidden=128, heads-wise scaling)
 
 ---
 
-**Next:** `02_gnn_encoder_three_phases.md` — The three-phase design philosophy and what each phase captures.
-
-Wait — we're combining this insight into the next chunk. Instead:
-
-**Next:** `03_transformer_and_lora.md` — TransformerEncoder, LoRA fine-tuning, Flash Attention, and the GNN prefix injection.
+**Next:** `02_gnn_encoder_forward_pass.md` — The actual forward pass: guards, edge mask construction, IMP-G1 layer-specific subsets, REVERSE_CONTAINS synthesis, and all three phases in code.

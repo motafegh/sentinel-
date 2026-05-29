@@ -160,8 +160,8 @@ The heart of the AI system.
 
 **Chunks — remaining files (already done):**
 
-- ✅ `02_transformer_lora_and_prefix_injection.md` — covers `transformer_encoder.py`
-- ✅ `03_fusion_layer_and_sentinel_model.md` — covers `fusion_layer.py` + `sentinel_model.py`
+- ✅ `04_transformer_lora_and_prefix_injection.md` — covers `transformer_encoder.py`
+- ✅ `05_fusion_layer_and_sentinel_model.md` — covers `fusion_layer.py` + `sentinel_model.py`
 
 ---
 
