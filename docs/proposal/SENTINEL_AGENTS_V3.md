@@ -2,51 +2,55 @@
 
 **Status:** Source of truth for all agent-layer work going forward  
 **Supersedes:** `AGENTS_PLAN_V2.md`, `AGENTS_MODULE_PROPOSAL.md`  
-**Date:** 2026-05-29 (updated post-discussion)  
-**Current implementation baseline:** Phase 0 + Steps A–E complete (see STATUS.md)
+**Date:** 2026-05-30 (updated post Phase 1 A1–A3)  
+**Current implementation baseline:** Phase 0 + Steps A–E + Phase 1 A1/A2/A3 complete (see STATUS.md)
 
 ---
 
 ## 1. Where We Are
 
-### 1.1 Implemented (all passing tests)
+### 1.1 Implemented (all passing tests — 212 agent + 18 ML API)
 
 ```
-START → ml_assessment → evidence_router
-                         │
-            ┌────────────┼───────────────┐
-       rag_research  static_analysis  graph_explain   (deep path only)
-            └────────────┼───────────────┘
-                    audit_check
-                         │
-                  cross_validator   (deep path only)
-                         │
-                    synthesizer → END
-
-Shallow path: evidence_router → synthesizer → END
+START → ml_assessment → quick_screen → evidence_router
+                        (Tier 0: always)       │
+                                 ┌─────────────┴──────────────────┐
+                                 │ deep path                       │ fast path
+                    ┌────────────┼───────────────┐                 │
+               rag_research  static_analysis  graph_explain        │
+                    └────────────┼───────────────┘                 │
+                            audit_check                            │
+                                 │                                 │
+                          cross_validator                          │
+                                 │                                 │
+                            synthesizer ←────────────────────────-─┘ → END
 ```
+
+Two-signal fast-path gate: fast path requires BOTH ML (all probs < DEEP_THRESHOLDS) AND quick_screen (0 High/Critical Slither or Aderyn hits) to agree.
 
 | Component | Port | What it does |
 |-----------|------|--------------|
-| inference_server (MCP) | 8010 | Calls ML predictor, returns three-tier result |
+| inference_server (MCP) | 8010 | Calls ML predictor; `/predict` (three-tier) + `/hotspots` (GNN embedding norms per function) |
 | rag_server (MCP) | 8011 | Chroma vector search over 44K-contract corpus |
-| audit_server (MCP) | 8012 | Slither static analysis, gas estimates |
-| graph_inspector_server (MCP) | 8013 | Function-level hotspots via Slither proxy |
+| audit_server (MCP) | 8012 | On-chain AuditRegistry lookup |
+| graph_inspector_server (MCP) | 8013 | Function-level hotspots via real GNN embedding norms (Phase 2 — falls back to Slither proxy) |
+| quick_screen (in-process) | — | Slither + Aderyn Tier-0 screen on every contract before routing |
 
 **Routing:** tier thresholds TIER_CONFIRMED=0.55, TIER_SUSPICIOUS=0.25.  
 **Verdict vocabulary:** CONFIRMED / LIKELY / DISPUTED / WATCH / SAFE (LLM-adjudicated by cross_validator).
 
-### 1.2 What the old specs called for that is NOT built
+### 1.2 What is NOT yet built
+
+Phase 1 remaining (A4–A6):
+- A4: `run_aderyn()` as explicit MCP tool in audit_server (:8012) — Aderyn currently runs in-process inside `quick_screen`, not callable as a standalone MCP tool
+- A5: End-to-end smoke test — all 4 MCP servers + real contract, full graph run
+- A6: `HIGH_VALUE_RAG_CLASSES` routing distinction (RAG only for specific classes, not all deep-path)
 
 From `AGENTS_MODULE_PROPOSAL.md` (Phases 3–4, never started):
-- `/hotspots` ML inference endpoint — true GNN attention weights, not Slither proxy
 - `econ_sim` node (port 8015) — price manipulation cost estimator
 - Mythril scoped per-function execution
-- Feedback loop — logging of disagreements between ML and cross_validator for retraining
+- Feedback loop — logging of ML vs cross_validator disagreements for retraining
 - `batch_predict` — multi-contract batch API
-
-From `AGENTS_PLAN_V2.md` (detail not yet implemented):
-- `HIGH_VALUE_RAG_CLASSES` distinction in routing (rag only for specific classes, not all deep-path)
 
 ---
 
@@ -269,14 +273,14 @@ Ordered by impact and dependency. Items are independent within a phase.
 
 These unblock data quality work and fix known gaps in the current agent layer.
 
-| ID | Item | Effort | Blocking |
-|----|------|--------|---------|
-| A1 | `/hotspots` ML inference endpoint | M | graph_inspector Phase 2 |
-| A2 | graph_inspector_server Phase 2 (real GNN attention) | M | A1 |
-| A3 | `quick_screen` node: Slither + Aderyn always-on, update routing | M | none |
-| A4 | Aderyn tool in audit_server (:8012) | S | A3 |
-| A5 | End-to-end smoke test: all 4 MCP + real contract | S | none |
-| A6 | `HIGH_VALUE_RAG_CLASSES` routing distinction | S | none |
+| ID | Item | Effort | Status |
+|----|------|--------|--------|
+| A1 | `/hotspots` ML inference endpoint | M | ✅ DONE (commit 4bf5ba5) |
+| A2 | graph_inspector_server Phase 2 (real GNN attention) | M | ✅ DONE (commit 9ede400) |
+| A3 | `quick_screen` node: Slither + Aderyn always-on, update routing | M | ✅ DONE (commit 94ca2c5) |
+| A4 | Aderyn tool in audit_server (:8012) | S | ⏳ pending |
+| A5 | End-to-end smoke test: all 4 MCP + real contract | S | ⏳ pending |
+| A6 | `HIGH_VALUE_RAG_CLASSES` routing distinction | S | ⏳ pending |
 
 **A1 — `/hotspots` endpoint spec:**
 ```
@@ -297,8 +301,8 @@ Response:
 }
 ```
 
-**A3 — quick_screen spec:**  
-New LangGraph node inserted between `ml_assessment` and `evidence_router`. Calls `audit_server:run_slither` + new `audit_server:run_aderyn`. Populates `state["quick_screen_hits"]: dict[str, list[str]]` (tool → detector names). evidence_router routing logic updated: `should_go_deep = ml_tier != "safe" OR len(quick_screen_hits) > 0`.
+**A3 — quick_screen (DONE):**  
+New LangGraph node inserted `ml_assessment → quick_screen → evidence_router`. Runs Slither (15 High-impact detectors in `_SCREEN_SLITHER_DETECTORS`) and Aderyn subprocess directly in-process — same pattern as `static_analysis`, no MCP hop needed. Populates `state["quick_screen_hits"]: {"slither": [...], "aderyn": [...]}`. Both tools are non-fatal; node always returns both keys. `evidence_router` logs escalation signal. `_route_from_evidence_router` enforces the two-signal gate: fast path only when both ML and quick_screen are clean.
 
 **A5 — smoke test criteria:**
 - All 4 servers reachable at their ports
@@ -375,8 +379,8 @@ Output: a Foundry test file (`.t.sol`), or failure reason if generation fails. F
 | Node | Phase | Type | Role |
 |------|-------|------|------|
 | `ml_assessment` | live | tool caller | Calls inference_server MCP, populates ML result |
-| `quick_screen` | Phase 1 | tool caller | Slither + Aderyn + bytecode entropy on every contract |
-| `evidence_router` | live → updated | conditional | Routes on ML + quick_screen combined signals |
+| `quick_screen` | **live** ✅ | tool caller | Slither + Aderyn (High/Critical only) on every contract; populates `quick_screen_hits` |
+| `evidence_router` | live (updated A3) ✅ | conditional | Routes on ML + quick_screen combined signals; two-signal fast-path gate |
 | `investigator` | Phase 2 | ReAct agent | Plans and executes tool sequence based on accumulated evidence |
 | `code_slicer` | Phase 2 | tool caller | Calls graph_inspector for CPG slices per class |
 | `rag_research` | live | tool caller | Calls rag_server for relevant audit patterns |
@@ -396,7 +400,7 @@ MCP servers (target):
 | inference_server | 8010 | live | ✅ live |
 | rag_server | 8011 | live | ✅ live |
 | audit_server | 8012 | live → extended | ✅ live; add Aderyn + Mythril + GPTScan tools |
-| graph_inspector_server | 8013 | live → Phase 2 | ✅ Phase 1; Phase 2 pending A1 (/hotspots endpoint) |
+| graph_inspector_server | 8013 | **Phase 2 live** ✅ | Real GNN embedding-norm hotspots via `/hotspots`; Slither+mock fallback chain |
 | defi_sim_server | 8015 | Phase 3 | ⏳ not built |
 
 ---

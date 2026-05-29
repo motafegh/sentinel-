@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-**Last updated:** 2026-05-29
+**Last updated:** 2026-05-30
 
 ---
 
@@ -15,9 +15,10 @@
 | M2 ZKML | ❌ NOT RUN | Source complete; awaiting stable checkpoint gate |
 | M3 MLOps | ✅ DONE | MLflow registry, promote_model.py gate, drift detector |
 | M4 Agents — Phase 0 | ✅ DONE | LangGraph topology, SqliteSaver, MCP :8010/:8011/:8012 |
-| M4 Agents — Step A–C | ✅ DONE | Three-tier schema, ExternalBug structural fix |
-| M4 Agents — Step D | ✅ DONE | graph_inspector_server.py (:8013), graph_explain node |
-| M4 Agents — Step E | ✅ DONE | cross_validator node, updated synthesizer, new topology |
+| M4 Agents — Step A–E | ✅ DONE | Three-tier schema, ExternalBug fix, graph_explain, cross_validator |
+| M4 Agents — Phase 1 A1 | ✅ DONE | `/hotspots` ML endpoint + `predict_with_hotspots()` in predictor |
+| M4 Agents — Phase 1 A2 | ✅ DONE | graph_inspector Phase 2: real GNN embedding-norm hotspots (not Slither proxy) |
+| M4 Agents — Phase 1 A3 | ✅ DONE | `quick_screen` Tier-0 node (Slither+Aderyn on every contract, two-signal gate) |
 | M5 Contracts | ❌ NOT BUILT | forge never run; contracts/lib/ empty |
 | M6 Integration API | ❌ NOT BUILT | No POST /v1/audit endpoint; auth/rate-limit not designed |
 
@@ -44,17 +45,19 @@
 
 ## Test Suite
 
-**Total: 187 tests passing**
+**Total: ~300 tests passing**
 
 | Suite | Count | Status |
 |-------|-------|--------|
-| `agents/tests/test_routing_phase0.py` | 46 | ✅ |
-| `agents/tests/test_graph_routing.py` (rewritten) | ~30 | ✅ |
-| graph_explain node tests | ~10 | ✅ |
-| cross_validator node tests | ~13 | ✅ |
+| `agents/tests/` (all) | **212** | ✅ (last run: 212 collected, all pass) |
+| — `test_routing_phase0.py` | 46 | ✅ routing rules, verdict logic |
+| — `test_graph_routing.py` | 59 | ✅ includes quick_screen + routing escalation |
+| — `test_audit_server.py` + `test_inference_server.py` | ~30 | ✅ |
+| — `test_chunker.py` + `test_retriever_filters.py` + others | ~77 | ✅ |
 | `ml/tests/test_model.py` | ~20 | ✅ |
 | `ml/tests/test_preprocessing.py` | ~40 | ✅ |
 | `ml/tests/test_trainer.py` | ~28 | ✅ |
+| `ml/tests/test_api.py` | 18 | ✅ includes /hotspots endpoint tests |
 
 ---
 
@@ -84,30 +87,35 @@ Three-Eye Classifier:  GNN eye + TF eye + Fused → [B,384] → Linear(384,192) 
 Schema:                FEATURE_SCHEMA_VERSION="v8"; NUM_CLASSES=10 LOCKED
 ```
 
-### Agent Topology (Phase 1 with cross_validator)
+### Agent Topology (Phase 1, A3 complete)
 
 ```
-START → ml_assessment → evidence_router
-                         │
-            ┌────────────┼───────────────┐
-       rag_research  static_analysis  graph_explain   (deep path only)
-            └────────────┼───────────────┘
-                    audit_check
-                         │
-                  cross_validator   (deep path only)
-                         │
-                    synthesizer → END
-
-Shallow path: evidence_router → synthesizer → END
+START → ml_assessment → quick_screen → evidence_router
+                        (Tier 0: always)       │
+                                 ┌─────────────┴──────────────────┐
+                                 │ deep path                       │ fast path
+                    ┌────────────┼───────────────┐                 │
+               rag_research  static_analysis  graph_explain        │
+                    └────────────┼───────────────┘                 │
+                            audit_check                            │
+                                 │                                 │
+                          cross_validator   (deep path only)       │
+                                 │                                 │
+                            synthesizer ←────────────────────────-─┘ → END
 ```
+
+**Two-signal fast-path gate (A3):**
+- Fast path: ML safe (all probs < DEEP_THRESHOLDS) AND quick_screen clean (0 High/Critical hits)
+- Screen-escalated deep path: ML safe BUT quick_screen fired → `static_analysis + graph_explain`
+- Normal deep path: ML flagged → existing fan-out
 
 **MCP servers:**
 | Server | Port | Transport | Status |
 |--------|------|-----------|--------|
-| inference_server | 8010 | SSE | ✅ |
+| inference_server | 8010 | SSE | ✅ `/predict` + `/hotspots` |
 | rag_server | 8011 | SSE | ✅ |
 | audit_server | 8012 | SSE | ✅ |
-| graph_inspector_server | 8013 | SSE | ✅ Phase 1 (Slither proxy) |
+| graph_inspector_server | 8013 | SSE | ✅ Phase 2 (real GNN embedding-norm hotspots via `/hotspots` endpoint) |
 
 **LM Studio:** Windows host port 1234 (local LLM for agent calls)
 
@@ -155,11 +163,11 @@ Shallow path: evidence_router → synthesizer → END
 
 ### Not yet integrated
 
-- MCP servers are not all running simultaneously in a tested end-to-end flow — each tested individually
-- `/hotspots` inference API endpoint: not built (graph_inspector_server uses Slither proxy, not actual GNN attention)
+- MCP servers are not all running simultaneously in a tested end-to-end flow — each tested individually (A5 smoke test still pending)
 - ZKML: source complete but EZKL pipeline never run against any checkpoint
 - Contracts: `contracts/lib/` empty; forge build never run
 - M6 Integration API (`POST /v1/audit`): does not exist
+- Phase 1 remaining: A4 (Aderyn as explicit audit_server MCP tool), A5 (end-to-end smoke test), A6 (HIGH_VALUE_RAG_CLASSES routing)
 
 ---
 

@@ -1,7 +1,7 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes) and agent Step E (cross_validator + graph topology).
-**Last updated:** 2026-05-29
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), and Phase 1 A1–A3 (hotspots endpoint, graph_inspector Phase 2, quick_screen node).
+**Last updated:** 2026-05-30
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
 
@@ -29,6 +29,7 @@ This document is the single authoritative changelog. Session-level detail lives 
 18. [Agent Layer — Three-Tier Schema Integration (2026-05-27 – 2026-05-28)](#18-agent-layer--three-tier-schema-integration)
 19. [Agent Layer — Step D: Graph Inspector (2026-05-29)](#19-agent-layer--step-d-graph-inspector)
 20. [Agent Layer — Step E: cross_validator + Graph Topology (2026-05-29)](#20-agent-layer--step-e-cross_validator--graph-topology)
+21. [Agent Layer — Phase 1 A1/A2/A3: Hotspots + GNN Attention + quick_screen (2026-05-30)](#21-agent-layer--phase-1-a1a2a3-hotspots--gnn-attention--quick_screen)
 
 ---
 
@@ -980,4 +981,91 @@ START → ml_assessment → evidence_router
 | PLAN-3A | 11 | 11 | 7 | CodeBERT+LoRA | 0.2877 tuned |
 | GCB-P0 | 11 | 11 | 7 | GraphCodeBERT+LoRA | 0.2178 (3 ep) |
 | GCB-P1-Run1 | 11 | 11 | 7 | GraphCodeBERT+LoRA+prefix K=48 | 0.2628 (ep27) |
+
+---
+
+## 21. Agent Layer — Phase 1 A1/A2/A3: Hotspots + GNN Attention + quick_screen
+
+**Period:** 2026-05-30
+**Commits:** `4bf5ba5` (A1) → `9ede400` (A2) → `94ca2c5` (A3)
+
+### Motivation
+
+Three gaps identified in the existing agent layer needed addressing before Run 5 data quality work:
+
+1. **GNN attention was fake** — graph_inspector_server used Slither as a proxy for GNN attention hotspots. The real signal was in the model's GNN node embeddings, unused.
+2. **ML blind spot** — contracts where all class probabilities fell below DEEP_THRESHOLDS were routed directly to the synthesizer with zero static tool evidence. A contract consistently scoring below 0.25 on all classes (plausible for obfuscated or atypical contracts) would receive a "safe" report based on ML alone.
+3. **graph_inspector_server Phase 2** needed A1 to land first.
+
+### A1 — `/hotspots` ML Inference Endpoint
+
+**Files:** `ml/src/inference/predictor.py`, `ml/src/inference/api.py`, `ml/tests/test_api.py`
+
+**What was added:**
+
+`predict_with_hotspots(source_code: str) -> dict` method in `Predictor`:
+- Runs the same windowed preprocessing as `predict_source`
+- Calls `GNNEncoder.forward()` to get per-node embeddings `x` of shape `[N, 256]`
+- Filters to function-type nodes (`_FUNC_TYPE_IDS_SET = {1,2,4,5,6}` — FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR)
+- Computes L2 norm per node → normalized `[0,1]` score
+- Maps node index → function name via `graph.node_metadata[i]["name"]`
+- Returns full ML result + `"hotspots"` list + `"hotspot_stats"` dict
+
+`POST /hotspots` FastAPI endpoint:
+- Request: `{"source_code": str}`  (same Pydantic validator as `/predict`)
+- Response: `HotspotsResponse` — `{hotspots, hotspot_stats, label, probabilities, confirmed, suspicious}`
+- Top-20 functions sorted by embedding-norm score descending
+- One round-trip: full ML result + hotspots together
+
+9 new tests in `TestHotspotsEndpoint` — all 18 API tests pass.
+
+### A2 — graph_inspector_server Phase 2 (Real GNN Attention)
+
+**File:** `agents/src/mcp/servers/graph_inspector_server.py`
+
+**What changed:**
+
+Phase 2 fallback chain: `_analyze_hotspots_gnn()` → `_analyze_hotspots_slither()` → `_mock_hotspots()`
+
+`_analyze_hotspots_gnn()`: calls `POST {_ML_API_URL}/hotspots` via httpx, transforms response into the inspector's hotspot format. Returns `None` on any failure (timeout, HTTP error, malformed response) so the fallback chain activates.
+
+Health endpoint now reports `phase: "2"` and lists active backends.
+
+Config: `_ML_API_URL = os.getenv("SENTINEL_ML_API_URL", "http://localhost:8000")`, `_HOTSPOTS_TIMEOUT = 60`.
+
+### A3 — quick_screen Tier-0 Node
+
+**Files:** `agents/src/orchestration/state.py`, `agents/src/orchestration/nodes.py`, `agents/src/orchestration/graph.py`, `agents/tests/test_graph_routing.py`
+
+**What changed:**
+
+New `quick_screen` LangGraph node inserted between `ml_assessment` and `evidence_router`:
+
+```
+ml_assessment → quick_screen → evidence_router → [fan-out or fast path]
+```
+
+The node runs on **every** contract (Tier 0), regardless of ML score. It:
+- Runs Slither with `_SCREEN_SLITHER_DETECTORS` (15 High-impact detectors)
+- Runs Aderyn subprocess; parses JSON output for H-*/C-* rule IDs
+- Both tools are non-fatal — ImportError/FileNotFoundError/subprocess failure all yield empty list
+- Returns `{"quick_screen_hits": {"slither": [...], "aderyn": [...]}}`
+
+`_route_from_evidence_router` updated with two-signal gate:
+- Fast path: ML safe AND screen clean → synthesizer
+- Screen-escalated deep path: ML safe BUT screen fired → `["static_analysis", "graph_explain"]`
+- Normal deep path: ML flagged → existing fan-out unchanged
+
+`evidence_router` node updated to log quick_screen signal in `routing_decisions`.
+
+`AuditState` updated: `quick_screen_hits: dict[str, list[str]]` field added.
+
+**Tests:** 16 new tests — `TestQuickScreenNode` (7), routing escalation cases (5), graph node set check updated. 59/59 passing in `test_graph_routing.py`, 212/212 across all agent tests.
+
+### Why the design choices
+
+- **In-process** (not MCP): Slither and Aderyn are installed in the process. MCP hop for Tier-0 screening would add latency with no benefit — same rationale as `static_analysis` (established pattern in existing code).
+- **High/Critical only**: Running all 90+ Slither detectors in quick_screen would produce too many informational hits and escalate clean contracts. Only High-impact detectors (reentrancy-eth, arbitrary-send-eth, etc.) justify escalation.
+- **Non-fatal design**: quick_screen is a screening gate, not a hard dependency. Slither unavailable → skip silently. Aderyn not installed → skip silently. Node always returns both keys regardless.
+- **Separate node not merged with static_analysis**: quick_screen is scoped differently (broader detector set, both tools) and runs before routing. `static_analysis` runs after routing (deep path only) with class-scoped detectors. Merging them would couple the Tier-0 screen to the deep-path tool.
 | GCB-P1-Run4 | 11 | 11 | **8** | GraphCodeBERT+LoRA+prefix K=48+IMP | **0.3362** (ep32) |
