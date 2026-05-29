@@ -65,9 +65,17 @@ from loguru import logger
 from torch_geometric.data import Batch, Data
 
 from ml.src.inference.preprocess import ContractPreprocessor
-from ml.src.models.sentinel_model import SentinelModel
+from ml.src.models.sentinel_model import (
+    SentinelModel,
+    _FUNC_TYPE_IDS,   # frozenset of function-level node type IDs
+    _MAX_TYPE_ID,     # float normalisation constant (max NODE_TYPES value)
+)
 from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NODE_TYPES
 from ml.src.training.trainer import CLASS_NAMES
+
+# Plain Python set for fast membership checks in hotspot extraction
+# (avoids torch.isin overhead for small per-node iteration).
+_FUNC_TYPE_IDS_SET: frozenset[int] = _FUNC_TYPE_IDS
 
 # Must match retokenize_windowed.py MAX_WINDOWS=4.
 # Inference batches exactly this many windows (padding with zeros when W < 4)
@@ -414,6 +422,123 @@ class Predictor:
                 f"Model warmup failed — checkpoint may be incompatible with current code. "
                 f"Error: {exc}"
             ) from exc
+
+    def predict_with_hotspots(self, source_code: str) -> dict:
+        """
+        Run full inference AND return per-function GNN attention hotspots.
+
+        Hotspot scoring uses the L2 norm of each function-level node's GNN embedding
+        as a proxy for how much structural signal the GNN concentrated on that node.
+        GAT layers route message-passing signal proportionally to attention weights;
+        nodes that aggregate more neighbourhood signal end up with higher-norm embeddings.
+
+        Function → score mapping:
+          - Only FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes are scored
+            (same filter used by select_prefix_nodes).
+          - Score = mean L2 norm of the node's GNN embedding, normalised to [0, 1]
+            across all function nodes in the contract.
+          - Lines come from node_metadata["source_lines"] stored by graph_extractor.
+          - Node IDs are the raw PyG node indices (0-indexed, stable across calls).
+
+        Returns the standard predict_source() result dict plus:
+          "hotspots": [
+            {
+              "fn_name":    str,          # canonical_name from Slither AST
+              "node_id":    int,          # PyG node index
+              "score":      float,        # normalised [0, 1]
+              "lines":      list[int],    # source line numbers (may be empty)
+              "node_type":  str,          # FUNCTION | MODIFIER | FALLBACK | etc.
+            }, ...                        # sorted descending by score, top 20
+          ],
+          "hotspot_stats": {
+            "total_function_nodes": int,
+            "num_nodes":            int,
+            "attention_source":     "gnn_embedding_norm"
+          }
+        """
+        graph, windows = self.preprocessor.process_source_windowed(source_code)
+        result = self._score_windowed(graph, windows)
+        result["hotspots"] = []
+        result["hotspot_stats"] = {
+            "total_function_nodes": 0,
+            "num_nodes": int(graph.num_nodes),
+            "attention_source": "gnn_embedding_norm",
+        }
+
+        if self.architecture not in ("three_eye_v8", "three_eye_v7", "three_eye_v5"):
+            # Legacy architectures don't have the GNN structure needed
+            return result
+
+        if not hasattr(graph, "node_metadata") or graph.node_metadata is None:
+            return result
+
+        try:
+            self.model.eval()
+            batch = Batch.from_data_list([graph]).to(self.device)
+            edge_attr = getattr(batch, "edge_attr", None) if self._saved_cfg.get("use_edge_attr", True) else None
+
+            with torch.no_grad():
+                # Run only the GNN encoder to get per-node embeddings
+                node_embs, _, _ = self.model.gnn(
+                    batch.x, batch.edge_index, batch.batch, edge_attr
+                )  # [N, gnn_hidden_dim]
+
+            node_embs_cpu = node_embs.float().cpu()  # detach from autograd + ensure float32
+
+            # Recover integer type IDs from the normalised feature dim[0]
+            node_type_ids = (batch.x[:, 0].float().cpu() * _MAX_TYPE_ID).round().long()
+
+            # Find function-level nodes (same filter as select_prefix_nodes)
+            func_indices = [
+                i for i, tid in enumerate(node_type_ids.tolist())
+                if tid in _FUNC_TYPE_IDS_SET
+            ]
+
+            if not func_indices:
+                return result
+
+            # Compute L2 norm of each function node's embedding as hotspot score
+            scores_raw = [
+                float(node_embs_cpu[i].norm(p=2).item())
+                for i in func_indices
+            ]
+
+            # Normalise to [0, 1]; guard against all-equal case
+            min_s, max_s = min(scores_raw), max(scores_raw)
+            span = max_s - min_s if max_s > min_s else 1.0
+            scores_norm = [(s - min_s) / span for s in scores_raw]
+
+            metadata = graph.node_metadata
+            type_name_map = {v: k for k, v in NODE_TYPES.items()}
+
+            hotspots = []
+            for rank, (node_idx, norm_score) in enumerate(
+                sorted(zip(func_indices, scores_norm), key=lambda x: -x[1])
+            ):
+                if rank >= 20:  # return top-20 only
+                    break
+                meta = metadata[node_idx] if node_idx < len(metadata) else {}
+                type_id = int(node_type_ids[node_idx].item())
+                hotspots.append({
+                    "fn_name":   meta.get("name", f"node_{node_idx}"),
+                    "node_id":   node_idx,
+                    "score":     round(norm_score, 4),
+                    "lines":     meta.get("source_lines", []),
+                    "node_type": type_name_map.get(type_id, "FUNCTION"),
+                })
+
+            result["hotspots"] = hotspots
+            result["hotspot_stats"] = {
+                "total_function_nodes": len(func_indices),
+                "num_nodes":            int(graph.num_nodes),
+                "attention_source":     "gnn_embedding_norm",
+            }
+
+        except Exception as exc:
+            logger.warning(f"Hotspot extraction failed (non-fatal): {exc}")
+            # Return base predict result without hotspots rather than raising
+
+        return result
 
     def predict(self, sol_path: str | Path) -> dict:
         """

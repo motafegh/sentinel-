@@ -107,6 +107,38 @@ Instrumentator().instrument(app).expose(app)
 # Schemas — unchanged from Track 3
 # ------------------------------------------------------------------
 
+class HotspotsRequest(BaseModel):
+    source_code: str = Field(..., min_length=10)
+
+    @field_validator("source_code")
+    @classmethod
+    def must_look_like_solidity(cls, v: str) -> str:
+        if "pragma" not in v.lower() and "contract" not in v.lower():
+            raise ValueError(
+                "source_code does not appear to be Solidity "
+                "(missing 'pragma' or 'contract' keyword)"
+            )
+        return v
+
+
+class FunctionHotspot(BaseModel):
+    fn_name:   str         = Field(..., description="Canonical function name from Slither AST")
+    node_id:   int         = Field(..., description="PyG node index (0-based, stable per contract)")
+    score:     float       = Field(..., ge=0.0, le=1.0, description="Normalised GNN embedding norm [0,1]")
+    lines:     list[int]   = Field(default_factory=list, description="Source line numbers")
+    node_type: str         = Field(..., description="FUNCTION | MODIFIER | FALLBACK | RECEIVE | CONSTRUCTOR")
+
+
+class HotspotsResponse(BaseModel):
+    hotspots:     list[FunctionHotspot] = Field(..., description="Top-20 function nodes by GNN attention score")
+    hotspot_stats: dict                 = Field(..., description="total_function_nodes, num_nodes, attention_source")
+    # Also include the full prediction so callers get ML + hotspots in one round-trip
+    label:         str
+    probabilities: dict[str, float]
+    confirmed:     list[VulnerabilityResult] = Field(default_factory=list)
+    suspicious:    list[VulnerabilityResult] = Field(default_factory=list)
+
+
 class PredictRequest(BaseModel):
     source_code: str = Field(..., min_length=10)
 
@@ -281,4 +313,90 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
         windows_used=result.get("windows_used", 1),
         num_nodes=result["num_nodes"],
         num_edges=result["num_edges"],
+    )
+
+
+@app.post("/hotspots", response_model=HotspotsResponse)
+async def hotspots(request: Request, body: HotspotsRequest) -> HotspotsResponse:
+    """
+    GNN attention hotspots + ML prediction in one round-trip.
+
+    Returns per-function hotspot scores derived from GNN node embedding norms —
+    the real model signal, not Slither-proxy scoring.  Higher score = the GNN
+    concentrated more structural attention on that function.
+
+    Intended for graph_inspector_server Phase 2: replaces the Slither-proxy
+    hotspot scoring with ground-truth model signal, enabling CPG-sliced LLM
+    reasoning on the functions the model actually flagged as interesting.
+
+    Response includes:
+      hotspots       — top-20 functions, sorted by score desc
+      hotspot_stats  — total_function_nodes, num_nodes, attention_source
+      label/probabilities/confirmed/suspicious — full ML result (no extra round-trip needed)
+    """
+    predictor: Predictor | None = getattr(request.app.state, "predictor", None)
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="Model not loaded.")
+
+    source_bytes = len(body.source_code.encode())
+    if source_bytes > MAX_SOURCE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"source_code too large ({source_bytes:,} bytes > {MAX_SOURCE_BYTES:,} limit).",
+        )
+
+    try:
+        logger.info(f"Hotspots request — {len(body.source_code)} chars")
+        result: dict = await asyncio.wait_for(
+            asyncio.to_thread(predictor.predict_with_hotspots, body.source_code),
+            timeout=PREDICT_TIMEOUT,
+        )
+
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Inference timeout after {PREDICT_TIMEOUT:.0f} s.",
+        )
+    except ValueError as exc:
+        logger.warning(f"Bad input: {exc}")
+        raise HTTPException(status_code=400, detail=str(exc))
+    except torch.cuda.OutOfMemoryError:
+        torch.cuda.empty_cache()
+        raise HTTPException(status_code=413, detail="Contract too large for GPU memory.")
+    except Exception as exc:
+        logger.exception(f"Hotspot extraction error: {exc}")
+        raise HTTPException(status_code=500, detail="Hotspot extraction failed.")
+
+    def _vuln_results(lst: list[dict]) -> list[VulnerabilityResult]:
+        return [
+            VulnerabilityResult(
+                vulnerability_class=v["vulnerability_class"],
+                probability=v["probability"],
+                tier=v.get("tier"),
+            )
+            for v in lst
+        ]
+
+    logger.info(
+        f"Hotspots complete — label={result['label']} "
+        f"hotspots={len(result.get('hotspots', []))} "
+        f"function_nodes={result.get('hotspot_stats', {}).get('total_function_nodes', 0)}"
+    )
+
+    return HotspotsResponse(
+        hotspots=[
+            FunctionHotspot(
+                fn_name=h["fn_name"],
+                node_id=h["node_id"],
+                score=h["score"],
+                lines=h.get("lines", []),
+                node_type=h.get("node_type", "FUNCTION"),
+            )
+            for h in result.get("hotspots", [])
+        ],
+        hotspot_stats=result.get("hotspot_stats", {}),
+        label=result["label"],
+        probabilities=result.get("probabilities", {}),
+        confirmed=_vuln_results(result.get("confirmed", [])),
+        suspicious=_vuln_results(result.get("suspicious", [])),
     )

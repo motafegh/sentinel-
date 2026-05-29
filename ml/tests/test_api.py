@@ -91,22 +91,24 @@ def test_predict_valid_contract(client):
     body = response.json()
 
     # Every field declared in PredictResponse must be present
-    assert "label" in body
-    assert "vulnerabilities" in body
-    assert "threshold" in body
-    assert "truncated" in body
-    assert "num_nodes" in body
-    assert "num_edges" in body
+    required = {"label", "probabilities", "confirmed", "suspicious",
+                "vulnerabilities", "thresholds", "truncated", "num_nodes", "num_edges"}
+    assert required <= set(body.keys()), f"Missing keys: {required - set(body.keys())}"
 
-    # Type checks
-    assert body["label"] in ("vulnerable", "safe")
+    # Three-tier label values
+    assert body["label"] in ("safe", "suspicious", "confirmed_vulnerable")
+    assert isinstance(body["probabilities"], dict)
+    assert len(body["probabilities"]) == 10   # 10 classes, always present
+    assert isinstance(body["confirmed"],  list)
+    assert isinstance(body["suspicious"], list)
     assert isinstance(body["vulnerabilities"], list)
+    assert isinstance(body["thresholds"], list)
     assert isinstance(body["truncated"], bool)
     assert isinstance(body["num_nodes"], int)
     assert body["num_nodes"] > 0  # Vault has real nodes — 0 means extraction failed
 
     # Each vulnerability entry must have the right shape
-    for vuln in body["vulnerabilities"]:
+    for vuln in body["confirmed"] + body["suspicious"]:
         assert "vulnerability_class" in vuln
         assert "probability" in vuln
         assert isinstance(vuln["vulnerability_class"], str)
@@ -148,8 +150,9 @@ contract Empty {
     assert response.status_code == 200
 
     body = response.json()
-    assert body["label"] in ("vulnerable", "safe")  # shape test — model may vary
-    assert isinstance(body["vulnerabilities"], list)  # must always be a list
+    assert body["label"] in ("safe", "suspicious", "confirmed_vulnerable")
+    assert isinstance(body["confirmed"],  list)
+    assert isinstance(body["suspicious"], list)
 
 
 # ------------------------------------------------------------------
@@ -209,3 +212,93 @@ def test_predict_consistent_on_same_input(client):
 
     assert first["label"]           == second["label"]
     assert first["vulnerabilities"] == second["vulnerabilities"]
+
+
+# ------------------------------------------------------------------
+# /hotspots — Phase 1: GNN attention-based function hotspots
+# ------------------------------------------------------------------
+
+class TestHotspotsEndpoint:
+    """
+    Tests for POST /hotspots — returns GNN embedding-norm hotspots + ML result.
+
+    All assertions are structural (shape, types, ranges) — not model-output-dependent.
+    The actual scores depend on checkpoint weights and change between training runs.
+    """
+
+    def test_hotspots_returns_200(self, client):
+        """Basic smoke test — endpoint reachable and returns 200."""
+        response = client.post("/hotspots", json={"source_code": VAULT_CONTRACT})
+        assert response.status_code == 200
+
+    def test_hotspots_response_schema(self, client):
+        """Response must contain all declared HotspotsResponse fields."""
+        body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
+
+        required = {"hotspots", "hotspot_stats", "label", "probabilities", "confirmed", "suspicious"}
+        assert required <= set(body.keys()), f"Missing keys: {required - set(body.keys())}"
+
+    def test_hotspots_label_valid(self, client):
+        """label must be one of the three-tier values."""
+        body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
+        assert body["label"] in ("safe", "suspicious", "confirmed_vulnerable")
+
+    def test_hotspots_list_structure(self, client):
+        """Each hotspot entry must have fn_name, node_id, score, lines, node_type."""
+        body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
+
+        for h in body["hotspots"]:
+            assert "fn_name"   in h,  f"Missing fn_name in hotspot: {h}"
+            assert "node_id"   in h,  f"Missing node_id in hotspot: {h}"
+            assert "score"     in h,  f"Missing score in hotspot: {h}"
+            assert "lines"     in h,  f"Missing lines in hotspot: {h}"
+            assert "node_type" in h,  f"Missing node_type in hotspot: {h}"
+
+            assert isinstance(h["fn_name"],   str),       "fn_name must be str"
+            assert isinstance(h["node_id"],   int),       "node_id must be int"
+            assert isinstance(h["score"],     float),     "score must be float"
+            assert isinstance(h["lines"],     list),      "lines must be list"
+            assert 0.0 <= h["score"] <= 1.0,              f"score out of range: {h['score']}"
+
+    def test_hotspots_at_most_20(self, client):
+        """Hotspot list is capped at 20 entries."""
+        body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
+        assert len(body["hotspots"]) <= 20
+
+    def test_hotspots_sorted_descending(self, client):
+        """Hotspots must be sorted by score descending."""
+        body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
+        scores = [h["score"] for h in body["hotspots"]]
+        assert scores == sorted(scores, reverse=True), "Hotspots not sorted by score desc"
+
+    def test_hotspot_stats_present(self, client):
+        """hotspot_stats must contain total_function_nodes, num_nodes, attention_source."""
+        body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
+        stats = body["hotspot_stats"]
+
+        assert "total_function_nodes" in stats
+        assert "num_nodes"            in stats
+        assert "attention_source"     in stats
+        assert stats["attention_source"] == "gnn_embedding_norm"
+        assert isinstance(stats["num_nodes"], int)
+        assert stats["num_nodes"] > 0
+
+    def test_vault_has_function_hotspots(self, client):
+        """Vault contract has real functions — hotspot list must be non-empty."""
+        body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
+        assert len(body["hotspots"]) > 0, "Vault has functions; hotspot list must not be empty"
+
+    def test_hotspots_probabilities_complete(self, client):
+        """probabilities dict must contain all 10 vulnerability classes."""
+        body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
+        assert len(body["probabilities"]) == 10
+        for cls, prob in body["probabilities"].items():
+            assert isinstance(cls,  str)
+            assert isinstance(prob, float)
+            assert 0.0 <= prob <= 1.0
+
+    def test_hotspots_error_cases(self, client):
+        """Invalid inputs must be rejected the same way /predict rejects them."""
+        assert client.post("/hotspots", json={"source_code": ""}).status_code          == 422
+        assert client.post("/hotspots", json={"source_code": "not solidity"}).status_code == 422
+        assert client.post("/hotspots", json={}).status_code                            == 422
