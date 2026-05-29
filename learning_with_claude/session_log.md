@@ -447,3 +447,35 @@ P13 (specify learning mode per code block), P14 (explain mechanism of complex co
 **Challenge questions:** Q1–Q5 posted; answers pending
 
 **Audit flags raised:** A35
+
+---
+
+## Session 15 — Phase 6: `trainer.py` Chunk 1
+
+**File:** `ml/src/training/trainer.py` (lines 1–492)
+
+**Model answers delivered for:** Session 14 challenge Q1–Q5
+
+**Concepts taught:**
+- `CLASS_NAMES` order sensitivity: index 1 = DoS, used by BUG-H6 gradient scaling; CLASS_NAMES reorder = silent label mis-assignment
+- 10 vulnerability class descriptions: Reentrancy, IntegerUO, DoS, Timestamp, TOD, GasException, MishandledException, CallToUnknown, UnusedReturn, ExternalBug
+- VRAM helpers: `memory_reserved()` vs `memory_allocated()` — reserved includes caching allocator free pool; `empty_cache()` operates on the gap
+- `_parse_version()`: lstrip + split + int tuple; tuple comparison for version ordering
+- `TrainConfig` dataclass: `@dataclass`, field defaults, `field(default_factory=lambda: ...)` for mutable defaults
+- `eval_threshold=0.35` vs `threshold=0.5`: minority class probability clustering near boundary; patience noise at 0.5 caused premature stopping at ep30
+- Per-class label smoothing: `label*(1-eps) + 0.5*eps`; symmetric around 0.5; DenialOfService eps=0.18 (Slither detection rule drift); Reentrancy eps=0.14 (confirmed 14% noise)
+- `gradient_accumulation_steps=8`: batch=8 × 8 = effective 64; why 8 GB GPU limit forces small micro-batch
+- `asl_gamma_neg=2.0` (not 4.0): BUG-C4 all-zeros collapse; `asl_clip=0.01` (not 0.05): BUG-M2 boundary oscillation
+- `dos_loss_weight=0.5`: DoS had 3 samples historically; fractional gradient blend prevents zero-signal
+- `__post_init__`: gnn_layers hard error vs warning tiers; class_label_smoothing name validation (set difference)
+- `compute_pos_weight`: sqrt-scaled ratio `sqrt((N-pos)/pos)`; pos_weight_min_samples cap (Reentrancy 3.4× → 1.0 prevents behavioral collapse v5.2); pos_weight_cap=10.0 ceiling
+- `evaluate()`: `model.eval()` vs `torch.no_grad()` — different purposes, both required; `sigmoid(logits.float())` BF16 guard post-AMP
+- Hamming loss definition: fraction of wrong label cells across N×C
+- Macro F1 vs Micro F1: macro = per-class independent F1 averaged (rare classes count equally); micro = global TP/FP/FN (dominated by frequent classes)
+- Threshold tuning (BUG-M8): 19 candidates per class, per-class optimal threshold; every epoch in main loop
+
+**Warm-up recall (from Session 14):** Questions posted; answers pending
+
+**Challenge questions:** Q1–Q5 posted; answers pending
+
+**Audit flags raised:** A36, A37

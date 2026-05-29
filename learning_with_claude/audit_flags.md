@@ -569,3 +569,33 @@ ever moves toward multi-GPU (DDP) or distributed checkpointing.
 **Severity:** Low
 **Status:** Open
 **Raised:** Session 14
+
+---
+
+## A36 — `trainer.py` — `compute_pos_weight` re-reads label CSV instead of using cached data
+**File:** `ml/src/training/trainer.py`
+**Location:** `compute_pos_weight()`, line ~381: `df = pd.read_csv(label_csv)`
+**Issue:** Opens and reads the full label CSV (~44K rows) fresh at startup. By the time
+`compute_pos_weight` is called, `DualPathDataset` has already loaded the same data into its
+shared cache. Reading the CSV twice is redundant I/O — not a correctness bug but wasteful
+at job startup (especially when running on NFS or slow storage with the cache already warm).
+**Fix:** Accept an optional `label_matrix: np.ndarray | None` parameter. When provided, skip
+the CSV read. The caller in `train()` can pass the cached label matrix directly.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 15
+
+---
+
+## A37 — `trainer.py` — threshold sweep runs O(N×C×19) every validation epoch
+**File:** `ml/src/training/trainer.py`
+**Location:** `evaluate()`, lines ~469–490: 19-candidate per-class threshold sweep inside `if tune_thresholds:`
+**Issue:** With `tune_thresholds=True` called every epoch (the default in the main training loop),
+the sweep runs 44K × 10 × 19 = 8.36M comparisons per eval call, 100 times over a full run.
+Fast in numpy (~0.3s per call), but the result is often not inspected at intermediate epochs.
+There's no mechanism to run the sweep only every N epochs without modifying the call site.
+**Fix:** Add `tune_thresholds_every_n: int = 10` to `TrainConfig`. In the epoch loop, pass
+`tune_thresholds=(epoch % config.tune_thresholds_every_n == 0)` to `evaluate()`.
+**Severity:** Low
+**Status:** Open
+**Raised:** Session 15
