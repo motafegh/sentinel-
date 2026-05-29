@@ -1,7 +1,7 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes).
-**Last updated:** 2026-05-24
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes) and agent Step E (cross_validator + graph topology).
+**Last updated:** 2026-05-29
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
 
@@ -23,6 +23,12 @@ This document is the single authoritative changelog. Session-level detail lives 
 12. [Phase 3.5 — Data Quality Fixes (2026-05-23)](#12-phase-35--data-quality-fixes)
 13. [Phase 3.6 — GraphCodeBERT + GNN Prefix Injection (2026-05-23 – 2026-05-24)](#13-phase-36--graphcodebert--gnn-prefix-injection)
 14. [IMP-* Architectural Fixes + P1-TRAIN Run 2 (2026-05-24)](#14-imp--architectural-fixes--p1-train-run-2)
+15. [P1-TRAIN Runs 3 and 4 (2026-05-25 – 2026-05-26)](#15-p1-train-runs-3-and-4)
+16. [Three-Tier ML Output (2026-05-27)](#16-three-tier-ml-output)
+17. [MLOps — Model Registry + Drift Detector (2026-05-27)](#17-mlops--model-registry--drift-detector)
+18. [Agent Layer — Three-Tier Schema Integration (2026-05-27 – 2026-05-28)](#18-agent-layer--three-tier-schema-integration)
+19. [Agent Layer — Step D: Graph Inspector (2026-05-29)](#19-agent-layer--step-d-graph-inspector)
+20. [Agent Layer — Step E: cross_validator + Graph Topology (2026-05-29)](#20-agent-layer--step-e-cross_validator--graph-topology)
 
 ---
 
@@ -712,3 +718,266 @@ Monitor schedule:
 - ep16: prefix activates — expect brief loss spike then recovery
 - ep17–20: `prefix_attention_mean` in MLflow; target > 0.005 by ep20
 - ep17–20: Phase 2 JK weight — expect > 0.10 (vs 0.234 declining in Run 1)
+
+---
+
+## 15. P1-TRAIN Runs 3 and 4
+
+**Period:** 2026-05-25 – 2026-05-26
+**Commits:** `e022018`, `f1e228b`, `f2d0965`, `a6d4323`, `de4fe10`
+**Log (Run 4):** `ml/logs/graphcodebert-p1-run4-20260525.log`
+**Best checkpoint:** `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt`
+
+### Run 2 outcome (killed 2026-05-25, ep4)
+
+Run 2 died from JK Phase 3 weight spiking to 86.6% (structural collapse) — a different manifestation of the same IMP-G1 routing ambiguity. Autopsy confirmed ASL `pos_weight` passed through was amplifying DoS gradient ×20,000 combined with ASL gamma (double-amp, named NC-4).
+
+### Run 3 — 8L + entropy reg λ=0.01 (killed ep16)
+
+**Config:** 8-layer GNN, `jk_entropy_reg_lambda=0.01`, ASL pos_weight still passed (NC-4 not yet identified as root cause).
+
+| Metric | Value |
+|--------|-------|
+| Best F1 | 0.17 (stuck) |
+| Killed at | ep16 |
+| Kill reason | NC-4 double-amp + JK uniform collapse (λ=0.01 forced 33/33/33 routing, no per-node differentiation) |
+
+### Run 4 pre-flight fixes (commits `e022018`, `f1e228b`)
+
+| Fix ID | Description |
+|--------|-------------|
+| NC-4 REVERTED | `pos_weight` NOT passed to ASL — double-amp was Run 3 primary root cause (DoS 10× pos_weight × ASL gamma ≈ 20,000× amplification) |
+| C-3 λ 0.01→0.005 | Halved JK entropy regularisation — λ=0.01 forced perfect uniform 33/33/33 (no per-node routing); λ=0.005 allows differentiation |
+| NC-1 logging fix | Reports total params vs state-initialised; clears all params regardless of count |
+| C2 scatter collision fix | `_scatter_to_dense`: `valid = local_idx < max_nodes` evaluated BEFORE clamp — excess nodes truly dropped, not collided at slot 1023 |
+| C1 gnn_enc_norm | `_grad_norm(model.gnn)` logged every step alongside `gnn_eye_proj` — full backbone visibility |
+| H5 aux_fused compile | `aux_fused` added to `torch.compile` submodule list |
+
+Speed logging commit `f2d0965` added per-epoch step timing to log output (applied at ep3, Run 4 restarted from ep3 checkpoint).
+
+### Run 4 — 8L + λ=0.005 + no ASL pos_weight (best ep32, F1=0.3362)
+
+**Run 4 PID:** 82628  
+**Launched:** 2026-05-25 14:52 local, restarted 16:55 at ep3.  
+**Killed:** 2026-05-26 20:12 at ep44 — F1 locked 0.31–0.34 for 12 epochs, capacity ceiling reached.
+
+| Epoch | F1 | Notes |
+|-------|-----|-------|
+| ep6 | 0.2555 | First strong epoch |
+| ep9 | 0.2670 | Run 1 beaten |
+| ep10 | 0.2787 | New best |
+| ep13 | 0.3153 | 0.30 barrier broken; DoS+Timestamp first detections |
+| ep21 | 0.3224 | Plateau resolved; prefix working |
+| ep25 | **0.3272** | New best at time |
+| ep32 | **0.3362** | Final best checkpoint |
+| ep44 | — | Killed — 12-epoch F1 ceiling 0.31–0.34 |
+
+**ep30 gate (11:23 2026-05-26):** CONTINUE — best F1=0.3272 (+0.0395 above PLAN-3A tuned peak 0.2877); loss still declining; patience 5/30.
+
+**Top classes (ep32):** IntegerUO=0.647, Timestamp=0.329, GasException=0.317  
+**Hard classes (ep32):** CallToUnknown≈0.247, ExternalBug≈0.246, TOD≈0.235
+
+**Pending fixes committed but requiring restart to take effect:**
+- JK STD threshold 0.05→0.015 (commit `a6d4323`) — prevents false-alarm warnings
+- `prefix_attention_mean` unpack bug: 3-value vs 4-value (commit `de4fe10`)
+
+### Training history summary
+
+| Run | Config | Best ep | F1 | Kill reason |
+|-----|--------|---------|-----|-------------|
+| GCB-P0 | GraphCodeBERT drop-in | ep3 | 0.2178 | GATE-GCB-2 passed |
+| GCB-P1-Run1 | GCB+K=48 prefix (7L GNN) | ep27 | 0.2628 | IMP fixes needed |
+| GCB-P1-Run2 | 8L GNN, all IMP | ep4 | — | JK Phase3=86.6% structural collapse |
+| GCB-P1-Run3 | 8L+entropy reg λ=0.01 | ep16 | 0.17 (stuck) | NC-4 double-amp + JK uniform collapse |
+| **GCB-P1-Run4** | **8L+λ=0.005+no ASL pw** | **ep32** | **0.3362** | Killed ep44 — capacity ceiling |
+
+---
+
+## 16. Three-Tier ML Output
+
+**Period:** 2026-05-27
+
+### `ml/src/inference/predictor.py`
+
+Added three-tier threshold logic:
+- `TIER_CONFIRMED_THRESHOLD = 0.55` — probability above which a class is "confirmed_vulnerable"
+- `TIER_SUSPICIOUS_THRESHOLD = 0.25` — probability above which a class is "suspicious"
+- New `_format_result()` method producing structured output with keys: `confirmed`, `suspicious`, `probabilities`, `tier_thresholds`
+
+### `ml/src/inference/api.py`
+
+- `VulnerabilityResult` gains `tier` field (`"safe"` | `"suspicious"` | `"confirmed_vulnerable"`)
+- `PredictResponse` gains full three-tier schema: `confirmed`, `suspicious`, `probabilities` dict
+- `/health` endpoint returns `tier_thresholds`, `model_epoch`, `model_f1_val`
+
+### Label values
+
+| Value | Meaning |
+|-------|---------|
+| `"safe"` | All class probabilities < `TIER_SUSPICIOUS_THRESHOLD` |
+| `"suspicious"` | At least one class in `[TIER_SUSPICIOUS_THRESHOLD, TIER_CONFIRMED_THRESHOLD)` |
+| `"confirmed_vulnerable"` | At least one class ≥ `TIER_CONFIRMED_THRESHOLD` |
+
+Legacy label `"vulnerable"` still accepted by consumers for backward compatibility.
+
+---
+
+## 17. MLOps — Model Registry + Drift Detector
+
+**Period:** 2026-05-27
+
+### `ml/scripts/promote_model.py`
+
+- Production F1 gate: new model must beat current production F1 before promotion
+- Baseline check: rejects promotion if source stage is `"warmup"` (unless `--require-baseline` bypassed)
+- Threshold JSON artifact logged to MLflow run at promotion time
+- `--require-baseline` CLI arg: enforce warmup-stage source check
+
+### `ml/scripts/exercise_drift_detector.py`
+
+Four-phase smoke test script:
+1. Warm-up: 500 requests to establish service baseline
+2. Baseline build: `drift_detector.record_baseline()` called on in-distribution contracts
+3. In-distribution check: detector should NOT fire on clean contracts
+4. Shift detection: distributional shift injected; detector expected to fire
+
+Uses `np.random.default_rng(42)` for reproducibility. Exits 0 on pass, 1 on failure.
+
+---
+
+## 18. Agent Layer — Three-Tier Schema Integration
+
+**Period:** 2026-05-27 – 2026-05-28
+**Commits:** `4aca6ff`
+
+### Routing (`agents/src/orchestration/routing.py`)
+
+Added `_iter_class_probs()` backward-compatibility helper. Old `ml_result` format used a flat list of `(class, prob)` tuples; new format uses a `probabilities` dict. Helper handles both transparently.
+
+### Nodes (`agents/src/orchestration/nodes.py`)
+
+Updated nodes to consume three-tier schema:
+
+| Node | Change |
+|------|--------|
+| `evidence_router` | Reads `ml_result["probabilities"]` dict; falls back via `_iter_class_probs()` |
+| `rag_research` | Builds query from confirmed + suspicious class names |
+| `static_analysis` | Scopes Slither detectors to confirmed + suspicious classes |
+| `synthesizer` | Reads `confirmed`/`suspicious` keys; formats tier into final report |
+
+### State (`agents/src/orchestration/state.py`)
+
+- `external_call_summary` field added to `AuditState` TypedDict
+- Comment on `ml_result` updated to document three-tier schema keys
+
+### ExternalBug structural gap fix
+
+`_extract_external_call_summary()` function added using `fn.high_level_calls` from Slither. `rag_research` uses the summary to build a targeted query. `synthesizer` includes the call graph summary in the LLM prompt context.
+
+### Tests
+
+- `agents/tests/test_graph_routing.py` completely rewritten — prior version referenced non-existent fields from the old flat schema
+- `agents/src/mcp/servers/inference_server.py`: `_mock_prediction()` rewritten to return full three-tier schema (`confirmed`, `suspicious`, `probabilities`, `tier_thresholds`)
+
+---
+
+## 19. Agent Layer — Step D: Graph Inspector
+
+**Period:** 2026-05-29
+
+### New MCP server (`agents/src/mcp/servers/graph_inspector_server.py`)
+
+Port 8013, SSE transport. Phase 1 implementation (true GNN attention weights deferred to Phase 2).
+
+**Tool:** `get_graph_hotspots(contract_code: str, flagged_classes: list[str]) → list[HotspotResult]`
+
+**Scoring engine (`_analyze_hotspots()`):**
+
+| Signal | Weight |
+|--------|--------|
+| Slither detector hit for class | ×3.0 |
+| Structural signal match for class | ×1.0 |
+| External-facing function | ×0.5 |
+| Complexity (cyclomatic proxy) | ×0.2 |
+
+**Key constants:**
+- `_CLASS_STRUCTURAL_SIGNALS` dict: 10 vulnerability classes → list of structural feature names to check
+- `_DETECTOR_CLASS_MAP` dict: Slither detector name → vulnerability class
+
+Returns top-20 hotspot nodes ranked by score. Each result includes: `node_id`, `function_name`, `score`, `signals` (list of matched signals), `detector_hits` (list of matched Slither detectors).
+
+### New `graph_explain` node (`agents/src/orchestration/nodes.py`)
+
+Calls `sentinel-graph-inspector:get_graph_hotspots` via MCP. Always runs alongside `rag_research` + `static_analysis` in the deep path (fan-out of three).
+
+State written:
+- `ml_hotspots`: flat list of hotspot dicts (top-20 nodes, score, signals)
+- `graph_explanations`: per-class breakdown dict + graph statistics (`node_count`, `edge_count`, `hotspot_count`)
+
+---
+
+## 20. Agent Layer — Step E: cross_validator + Graph Topology
+
+**Period:** 2026-05-29
+
+### New `cross_validator` node (`agents/src/orchestration/nodes.py`)
+
+LLM-adjudicated per-class verdicts. Runs after `audit_check`, before `synthesizer` (deep path only).
+
+**Verdict values:**
+| Verdict | Meaning |
+|---------|---------|
+| `CONFIRMED` | All evidence streams agree — vulnerable |
+| `LIKELY` | ML + at least one tool agree |
+| `DISPUTED` | ML and static analysis contradict each other |
+| `WATCH` | Suspicious ML signal, no static confirmation |
+| `SAFE` | No evidence across all streams |
+
+**Evidence context built per class:**
+- ML tier and probability from `ml_result`
+- Slither findings filtered to class from `static_analysis` output
+- RAG topics mentioning class from `rag_research` output
+- Prior audit count for class from `audit_check` output
+
+Falls back to empty dict on LLM failure — `synthesizer` uses rule-based fallback in that case.
+
+### `synthesizer` update
+
+When `cross_validator` verdicts are present in state, `synthesizer` uses them directly rather than rebuilding evidence assessment. Falls back to rule-based logic when verdicts dict is absent or empty.
+
+### Graph topology update (`agents/src/orchestration/graph.py`)
+
+New topology:
+
+```
+START → ml_assessment → evidence_router
+         ↓ (deep path only)
+  [rag_research ‖ static_analysis ‖ graph_explain]
+         ↓
+  audit_check → cross_validator → synthesizer → END
+         ↓ (shallow path)
+  synthesizer → END
+```
+
+`evidence_router` fans out to three parallel nodes on the deep path. `cross_validator` is inserted after `audit_check`.
+
+### Test suite
+
+23 new tests added:
+- `graph_explain` node: hotspot retrieval, MCP error handling, empty result handling
+- `cross_validator` node: all 5 verdict types, LLM failure fallback, partial class coverage
+- Routing: fan-out-of-three verification, shallow path unchanged
+- `build_graph`: topology structure assertions, node/edge count checks
+
+**Total test count: 187 passing.**
+
+### Architecture lineage update
+
+| Version | NODE_FEATURE_DIM | NUM_EDGE_TYPES | GNN layers | Backbone | Best F1 |
+|---------|-----------------|----------------|------------|----------|---------|
+| v7 | 11 | 8 | 7 | CodeBERT+LoRA | 0.2875 tuned |
+| v8-AB | 11 | 11 | 7 | CodeBERT+LoRA | 0.2851 tuned |
+| PLAN-3A | 11 | 11 | 7 | CodeBERT+LoRA | 0.2877 tuned |
+| GCB-P0 | 11 | 11 | 7 | GraphCodeBERT+LoRA | 0.2178 (3 ep) |
+| GCB-P1-Run1 | 11 | 11 | 7 | GraphCodeBERT+LoRA+prefix K=48 | 0.2628 (ep27) |
+| GCB-P1-Run4 | 11 | 11 | **8** | GraphCodeBERT+LoRA+prefix K=48+IMP | **0.3362** (ep32) |
