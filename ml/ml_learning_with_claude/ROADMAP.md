@@ -112,19 +112,56 @@ The foundation. Everything in the system depends on this.
 ### Module 4: Models `ml/src/models/`
 The heart of the AI system.
 
-| File | What you'll learn |
-|------|------------------|
-| `gnn_encoder.py` | Graph Attention Networks, message passing, 3-phase design, JK aggregation |
-| `transformer_encoder.py` | BERT internals, LoRA fine-tuning, Flash Attention, prefix injection |
-| `fusion_layer.py` | Cross-attention, multi-modal fusion, compile-safe design |
-| `sentinel_model.py` | Full model assembly, three-eye classifier, prefix warmup |
+| File | Lines | What you'll learn |
+|------|-------|------------------|
+| `gnn_encoder.py` | 581 | Graph Attention Networks, message passing, 3-phase design, JK aggregation |
+| `transformer_encoder.py` | 350 | BERT internals, LoRA fine-tuning, Flash Attention, prefix injection |
+| `fusion_layer.py` | 281 | Cross-attention, multi-modal fusion, compile-safe design |
+| `sentinel_model.py` | 562 | Full model assembly, three-eye classifier, prefix warmup |
 
-**Chunks:**
-- `01_gnn_fundamentals_and_gat.md`
-- `02_gnn_encoder_three_phases.md`
-- `03_transformer_and_lora.md`
-- `04_cross_attention_fusion.md`
-- `05_full_sentinel_model_assembly.md`
+**Chunks — `gnn_encoder.py` (581 lines):**
+
+- ✅ `01_gnn_fundamentals_and_gat.md` — *Done*
+  - Message passing concept
+  - GATConv attention formula: `e_uv = LeakyReLU(a^T · [Wh_u || Wh_v || W_e·edge_type])`
+  - Multi-head attention: 8 heads Phase 1 vs 1 head Phases 2+3
+  - `add_self_loops=False` in Phase 2: why direction matters
+  - Residual connections + IMP-G2 input skip (concept)
+  - LayerNorm after each phase: why before JK
+  - JK connections: over-smoothing problem, attention aggregation (concept)
+  - Edge type embeddings: 11 types × 64-dim
+  - Input guards overview
+
+- ⬜ `02_gnn_encoder_forward_pass.md` — *TODO* — **lines 338–581**
+  - Guards in detail (lines 364–393): schema version, edge_attr=None, OOB node index
+  - Edge embedding + OOB clamping (lines 394–414): Fix C1/H9 — why clamp not crash
+  - Edge mask construction (lines 416–498):
+    - `struct_mask` (types 0–5), `cfg_mask`, `contains_mask`
+    - `phase2_edge_types` ablation parameter (lines 428–431)
+    - IMP-G1: `cf_only_ei` / `icfg_only_ei` — Layer 3/4/5 process distinct edge subsets (lines 461–476)
+    - REVERSE_CONTAINS runtime synthesis: `.flip(0)` + type-7 embeddings (lines 481–497) — not stored on disk
+  - `_live` vs `_intermediates` (lines 499–504): gradient-attached vs detached
+  - Phase 1 execution (lines 506–526): IMP-G2 skip in code, Layer 1+2 residual
+  - Phase 2 execution (lines 528–547): IMP-G1 in code — 3 layers × 3 edge subsets
+  - Phase 3 execution (lines 549–568): 2 upward hops (rev_contains) + IMP-G3 downward (fwd_contains)
+  - JK aggregation + `return_intermediates` (lines 570–581)
+
+- ⬜ `03_jk_attention_internals.md` — *TODO* — **lines 76–131**
+  - `register_buffer` vs Python attributes: survives `.to(device)`, `state_dict`, DDP
+  - `last_weights` buffer: mean per-phase weight across batch — trainer monitoring
+  - `last_weight_stds` buffer: std of per-node weights — is JK routing or constant?
+  - `last_node_weights`: eval-only, per-node, can't be buffer (N varies per batch)
+  - `jk_entropy` (C-3): gradient-attached entropy regularizer
+    - H ≈ 0: one phase dominates (collapsed JK — bad)
+    - H ≈ log(3): uniform weights (JK not routing — also bad)
+    - H in between: healthy diversity
+  - training vs eval mode behavior difference
+  - `use_jk=False` fallback: returns Phase 3 only, jk_entropy=0
+
+**Chunks — remaining files (already done):**
+
+- ✅ `02_transformer_lora_and_prefix_injection.md` — covers `transformer_encoder.py`
+- ✅ `03_fusion_layer_and_sentinel_model.md` — covers `fusion_layer.py` + `sentinel_model.py`
 
 ---
 
