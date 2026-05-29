@@ -190,7 +190,7 @@ The heart of the AI system.
 
 - ❌ *(was combined in old 05 — gets its own chunk)*
 
-- ⬜ `06_cross_attention_fusion.md` — *TODO* — **lines 1–281**
+- ✅ `06_cross_attention_fusion.md` — *Done* — **lines 1–281**
   - P5: what replaced concat+MLP, why fine-grained interaction before pooling matters
   - `_scatter_to_dense` (lines 68–117): `torch.compile` graph break, BUG-C2 valid-before-clamp
   - `CrossAttentionFusion.__init__` (lines 120–195): `node_proj`, `token_proj`, BUG-C2 `token_norm`, two MHA modules
