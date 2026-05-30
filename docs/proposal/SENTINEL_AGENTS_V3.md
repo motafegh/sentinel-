@@ -2,8 +2,8 @@
 
 **Status:** Source of truth for all agent-layer work going forward  
 **Supersedes:** `AGENTS_PLAN_V2.md`, `AGENTS_MODULE_PROPOSAL.md`  
-**Date:** 2026-05-30 (updated post Phase 1 A1–A3)  
-**Current implementation baseline:** Phase 0 + Steps A–E + Phase 1 A1/A2/A3 complete (see STATUS.md)
+**Date:** 2026-05-30 (updated post Phase 1 A1–A5)  
+**Current implementation baseline:** Phase 0 + Steps A–E + Phase 1 A1–A5 complete (see STATUS.md)
 
 ---
 
@@ -41,10 +41,10 @@ Two-signal fast-path gate: fast path requires BOTH ML (all probs < DEEP_THRESHOL
 
 ### 1.2 What is NOT yet built
 
-Phase 1 remaining (A4–A6):
-- A4: `run_aderyn()` as explicit MCP tool in audit_server (:8012) — Aderyn currently runs in-process inside `quick_screen`, not callable as a standalone MCP tool
-- A5: End-to-end smoke test — all 4 MCP servers + real contract, full graph run
-- A6: `HIGH_VALUE_RAG_CLASSES` routing distinction (RAG only for specific classes, not all deep-path)
+Phase 1 complete — A1 through A5 all done. One item deferred:
+- A6: `HIGH_VALUE_RAG_CLASSES` routing distinction (RAG only for specific classes, not all deep-path) — low priority, deferred to Phase 2 prep since it requires routing.py changes that Phase 2 will rebuild anyway with the investigator loop
+
+Note on A4 scope: original spec said "Aderyn MCP tool in audit_server". audit_server is the on-chain AuditRegistry server — wrong home for static tools. Aderyn instead added directly to `static_analysis` node (in-process, consistent with Slither pattern). Result is the same: deep path now runs both Slither+Aderyn.
 
 From `AGENTS_MODULE_PROPOSAL.md` (Phases 3–4, never started):
 - `econ_sim` node (port 8015) — price manipulation cost estimator
@@ -278,9 +278,9 @@ These unblock data quality work and fix known gaps in the current agent layer.
 | A1 | `/hotspots` ML inference endpoint | M | ✅ DONE (commit 4bf5ba5) |
 | A2 | graph_inspector_server Phase 2 (real GNN attention) | M | ✅ DONE (commit 9ede400) |
 | A3 | `quick_screen` node: Slither + Aderyn always-on, update routing | M | ✅ DONE (commit 94ca2c5) |
-| A4 | Aderyn tool in audit_server (:8012) | S | ⏳ pending |
-| A5 | End-to-end smoke test: all 4 MCP + real contract | S | ⏳ pending |
-| A6 | `HIGH_VALUE_RAG_CLASSES` routing distinction | S | ⏳ pending |
+| A4 | Aderyn added to deep-path `static_analysis` node | S | ✅ DONE (commit 330e68e) |
+| A5 | End-to-end smoke test: 7 tests, all paths verified | S | ✅ DONE (commit 330e68e) |
+| A6 | `HIGH_VALUE_RAG_CLASSES` routing distinction | S | ⏳ deferred to Phase 2 prep |
 
 **A1 — `/hotspots` endpoint spec:**
 ```
@@ -384,7 +384,7 @@ Output: a Foundry test file (`.t.sol`), or failure reason if generation fails. F
 | `investigator` | Phase 2 | ReAct agent | Plans and executes tool sequence based on accumulated evidence |
 | `code_slicer` | Phase 2 | tool caller | Calls graph_inspector for CPG slices per class |
 | `rag_research` | live | tool caller | Calls rag_server for relevant audit patterns |
-| `static_analysis` | live | tool caller | Calls audit_server (Slither + gas) |
+| `static_analysis` | live (updated A4) ✅ | tool caller | In-process Slither (scoped) + Aderyn (full) — findings tagged tool="slither"/"aderyn" |
 | `graph_explain` | live | tool caller | Calls graph_inspector for hotspots / attention |
 | `mythril_probe` | Phase 2 | tool caller | Scoped Mythril on hot functions, 90s bounded |
 | `logic_scanner` | Phase 2 | tool caller | GPTScan for business logic pattern matching |

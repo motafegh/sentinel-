@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-**Last updated:** 2026-05-30
+**Last updated:** 2026-05-30 (post Phase 1 A1–A5)
 
 ---
 
@@ -19,6 +19,8 @@
 | M4 Agents — Phase 1 A1 | ✅ DONE | `/hotspots` ML endpoint + `predict_with_hotspots()` in predictor |
 | M4 Agents — Phase 1 A2 | ✅ DONE | graph_inspector Phase 2: real GNN embedding-norm hotspots (not Slither proxy) |
 | M4 Agents — Phase 1 A3 | ✅ DONE | `quick_screen` Tier-0 node (Slither+Aderyn on every contract, two-signal gate) |
+| M4 Agents — Phase 1 A4 | ✅ DONE | Aderyn added to deep-path `static_analysis` node (tool="aderyn" findings alongside Slither) |
+| M4 Agents — Phase 1 A5 | ✅ DONE | End-to-end smoke test: 7 tests covering all graph paths (deep/fast/screen-escalated/ML-failure) |
 | M5 Contracts | ❌ NOT BUILT | forge never run; contracts/lib/ empty |
 | M6 Integration API | ❌ NOT BUILT | No POST /v1/audit endpoint; auth/rate-limit not designed |
 
@@ -45,13 +47,14 @@
 
 ## Test Suite
 
-**Total: ~300 tests passing**
+**Total: ~226 agent tests + ~86 ML tests**
 
 | Suite | Count | Status |
 |-------|-------|--------|
-| `agents/tests/` (all) | **212** | ✅ (last run: 212 collected, all pass) |
+| `agents/tests/` (all) | **219** | ✅ (212 pre-A4/A5 + 7 smoke tests) |
 | — `test_routing_phase0.py` | 46 | ✅ routing rules, verdict logic |
 | — `test_graph_routing.py` | 59 | ✅ includes quick_screen + routing escalation |
+| — `test_smoke_e2e.py` | 7 | ✅ full graph paths (deep/fast/escalated/ML-failure) |
 | — `test_audit_server.py` + `test_inference_server.py` | ~30 | ✅ |
 | — `test_chunker.py` + `test_retriever_filters.py` + others | ~77 | ✅ |
 | `ml/tests/test_model.py` | ~20 | ✅ |
@@ -167,7 +170,8 @@ START → ml_assessment → quick_screen → evidence_router
 - ZKML: source complete but EZKL pipeline never run against any checkpoint
 - Contracts: `contracts/lib/` empty; forge build never run
 - M6 Integration API (`POST /v1/audit`): does not exist
-- Phase 1 remaining: A4 (Aderyn as explicit audit_server MCP tool), A5 (end-to-end smoke test), A6 (HIGH_VALUE_RAG_CLASSES routing)
+- Phase 1 remaining: A6 (HIGH_VALUE_RAG_CLASSES routing distinction) — low priority, deferred to Phase 2 prep
+- Phase 2 work requires Run 5 data quality fixes first (see ROADMAP.md)
 
 ---
 
