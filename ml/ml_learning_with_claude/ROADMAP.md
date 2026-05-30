@@ -237,8 +237,8 @@ The heart of the AI system.
 - ✅ `02_asymmetric_loss.md` — *Done* — `losses.py` (AsymmetricLoss, clip mechanism, gamma_neg≠gamma_pos, BUG-M3 per-class tensors, BCE→Focal→ASL evolution)
 - ✅ `03_trainer_config_and_setup.md` — *Done* — `TrainConfig` dataclass, hyperparameter groups, `__post_init__` validation, `compute_pos_weight` (sqrt scaling, caps), VRAM helpers, `_parse_version`
 - ✅ `04_trainer_eval_and_train_one_epoch.md` — *Done* — `evaluate()` (F1/Hamming, BUG-M8 threshold sweep), `train_one_epoch()` (label smoothing, DoS gradient scaling, loss combination, gradient accumulation, Fix #28 grad norm timing), `_grad_norm`, `_build_weighted_sampler`
-- ⬜ `05_trainer_train_setup.md` — *TODO* — `train()` lines 752–1270: dataset+DataLoader, model init, C-1 dtype check, checkpoint resume, loss construction, 5 param groups, `torch.compile`, OneCycleLR + Fix #32
-- ⬜ `06_trainer_epoch_loop_and_mlops.md` — *TODO* — `train()` lines 1270–1645: MLflow logging, aux warmup ramp, NC-1 Adam reset, JK monitoring, guardrails, atomic checkpoint, early stopping
+- ✅ `05_trainer_train_setup.md` — *Done* — `train()` lines 752–1270: shared cache pattern, fork workers, model init, C-1 dtype check, checkpoint resume (strict=False, version gate, optimizer restore), loss construction, 5 param groups + fused AdamW, `torch.compile` submodule strategy, OneCycleLR + Fix #32
+- ✅ `06_trainer_epoch_loop_and_mlops.md` — *Done* — `train()` lines 1270–1645: MLflow params+metrics, aux loss warmup ramp (Fix #33), NC-1 Adam state reset, JK attention monitoring, prefix attention diagnostic, BUG-M10 guardrails, atomic checkpoint write + `._orig_mod.` stripping, `.state.json` sidecar, early stopping
 
 ---
 
