@@ -547,6 +547,78 @@ async def audit_check(state: AuditState) -> dict[str, Any]:
 # ExternalBug helper
 # ---------------------------------------------------------------------------
 
+def _run_aderyn_on_file(tmp_path: str) -> list[dict[str, Any]]:
+    """
+    Run Aderyn on an already-written temp file and return a normalised findings list.
+
+    Called by static_analysis (deep path) to augment Slither findings with Aderyn's
+    detector set.  The two tools have different false-negative profiles — running both
+    on the deep path increases coverage without slowing down the fast path.
+
+    Non-fatal: any failure (not installed, timeout, bad JSON) returns an empty list.
+
+    Returns:
+        List of finding dicts: {tool="aderyn", detector, impact, confidence,
+                                description, lines, function_names}
+        Empty list on any error.
+    """
+    import json as _json
+    import subprocess
+
+    findings: list[dict[str, Any]] = []
+    try:
+        result = subprocess.run(
+            ["aderyn", "--output", "json", tmp_path],
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            logger.debug(
+                "_run_aderyn_on_file | exit={} stderr={}",
+                result.returncode,
+                result.stderr[:200],
+            )
+            return []
+
+        data = _json.loads(result.stdout)
+
+        # Aderyn JSON schema: {"high": [...], "medium": [...], "low": [...], ...}
+        # Each bucket contains finding dicts with id, title, description, instances.
+        # Impact label is inferred from which bucket the finding came from.
+        for impact_label, bucket_key in [("High", "high"), ("Medium", "medium"), ("Low", "low")]:
+            for finding in data.get(bucket_key, []):
+                instances = finding.get("instances", [])
+                lines: list[int] = []
+                fn_names: list[str] = []
+                for inst in instances:
+                    ln = inst.get("line", inst.get("src_line"))
+                    if isinstance(ln, int):
+                        lines.append(ln)
+                    fn = inst.get("function_name", inst.get("function"))
+                    if fn:
+                        fn_names.append(fn)
+
+                findings.append({
+                    "tool":           "aderyn",
+                    "detector":       finding.get("id", finding.get("title", "unknown")),
+                    "impact":         impact_label,
+                    "confidence":     "Medium",  # Aderyn does not report a confidence score
+                    "description":    finding.get("description", finding.get("title", "")),
+                    "lines":          sorted(set(lines)),
+                    "function_names": list(set(fn_names)),
+                })
+
+    except FileNotFoundError:
+        logger.debug("_run_aderyn_on_file | aderyn not installed — skipping")
+    except subprocess.TimeoutExpired:
+        logger.warning("_run_aderyn_on_file | aderyn timed out after 90s")
+    except Exception as exc:
+        logger.warning("_run_aderyn_on_file | error (non-fatal): {}", exc)
+
+    return findings
+
+
 def _extract_external_call_summary(sl: Any) -> list[dict[str, Any]]:
     """
     Extract inter-contract call graph from a Slither object.
@@ -612,26 +684,30 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
         run in parallel in the deep path (LangGraph fan-out semantics).
 
     RECALL — what this node produces:
-        Each finding is:
-            {
-                "tool":        "slither",
-                "detector":    str   — detector name (e.g. "reentrancy-eth"),
-                "impact":      str   — "High" | "Medium" | "Low" | "Informational",
-                "confidence":  str   — "High" | "Medium" | "Low",
-                "description": str   — human-readable finding description,
-                "lines":       list  — source line numbers affected (may be []),
-            }
+        Two tools run on the same temp file; findings are combined in one list.
 
-    RECALL — scoped detectors:
+        Slither (scoped to ML-flagged classes):
+            {tool="slither", detector, impact, confidence, description, lines, function_names}
+
+        Aderyn (full scan — Aderyn has no per-class scoping):
+            {tool="aderyn", detector, impact, confidence, description, lines, function_names}
+            Non-fatal: silently skipped if Aderyn is not installed.
+
+        Having both tool names in the findings lets cross_validator and synthesizer
+        reason about corroboration: "Slither AND Aderyn both found X" is stronger
+        evidence than either tool alone.
+
+    RECALL — scoped detectors (Slither only):
         Slither is run with only the detectors relevant to ML-flagged classes.
         CLASS_TO_DETECTORS in routing.py defines the mapping.
         This reduces runtime 3–8× vs running all 90+ detectors on large contracts.
         Any class above DEEP_THRESHOLDS contributes its detectors to the active set.
         If ml_result is empty or no class is flagged, all detectors run (safe fallback).
+        Aderyn always runs its full detector set — it has no equivalent scope API.
 
     State updates:
-        static_findings → list of finding dicts (may be empty)
-        error           → set on failure (non-fatal; node returns empty list)
+        static_findings → combined Slither + Aderyn findings (may be empty)
+        error           → set on Slither failure (non-fatal; returns empty list)
     """
     contract_code = state.get("contract_code", "")
     if not contract_code or not contract_code.strip():
@@ -725,9 +801,15 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
                     "function_names": fn_names,
                 })
 
+        # Run Aderyn on same temp file — adds findings with tool="aderyn".
+        # Non-fatal: _run_aderyn_on_file returns [] on any failure.
+        aderyn_findings = _run_aderyn_on_file(tmp_path)
+        findings.extend(aderyn_findings)
+
         logger.info(
-            "static_analysis complete | {} finding(s) | {} external call(s) | contract_address={}",
-            len(findings),
+            "static_analysis complete | slither={} aderyn={} external_calls={} | contract_address={}",
+            len(findings) - len(aderyn_findings),
+            len(aderyn_findings),
             len(external_calls),
             state.get("contract_address", "unknown"),
         )
