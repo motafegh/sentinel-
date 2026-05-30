@@ -1,6 +1,6 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), and Phase 1 A1–A3 (hotspots endpoint, graph_inspector Phase 2, quick_screen node).
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), and Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test).
 **Last updated:** 2026-05-30
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
@@ -30,6 +30,7 @@ This document is the single authoritative changelog. Session-level detail lives 
 19. [Agent Layer — Step D: Graph Inspector (2026-05-29)](#19-agent-layer--step-d-graph-inspector)
 20. [Agent Layer — Step E: cross_validator + Graph Topology (2026-05-29)](#20-agent-layer--step-e-cross_validator--graph-topology)
 21. [Agent Layer — Phase 1 A1/A2/A3: Hotspots + GNN Attention + quick_screen (2026-05-30)](#21-agent-layer--phase-1-a1a2a3-hotspots--gnn-attention--quick_screen)
+22. [Agent Layer — Phase 1 A4/A5: Aderyn deep-path + End-to-End Smoke Test (2026-05-30)](#22-agent-layer--phase-1-a4a5-aderyn-deep-path--end-to-end-smoke-test)
 
 ---
 
@@ -1068,4 +1069,56 @@ The node runs on **every** contract (Tier 0), regardless of ML score. It:
 - **High/Critical only**: Running all 90+ Slither detectors in quick_screen would produce too many informational hits and escalate clean contracts. Only High-impact detectors (reentrancy-eth, arbitrary-send-eth, etc.) justify escalation.
 - **Non-fatal design**: quick_screen is a screening gate, not a hard dependency. Slither unavailable → skip silently. Aderyn not installed → skip silently. Node always returns both keys regardless.
 - **Separate node not merged with static_analysis**: quick_screen is scoped differently (broader detector set, both tools) and runs before routing. `static_analysis` runs after routing (deep path only) with class-scoped detectors. Merging them would couple the Tier-0 screen to the deep-path tool.
+
+| Version | NODE_FEATURE_DIM | NUM_EDGE_TYPES | GNN layers | Backbone | Best F1 |
+|---------|-----------------|----------------|------------|----------|---------|
 | GCB-P1-Run4 | 11 | 11 | **8** | GraphCodeBERT+LoRA+prefix K=48+IMP | **0.3362** (ep32) |
+
+---
+
+## 22. Agent Layer — Phase 1 A4/A5: Aderyn deep-path + End-to-End Smoke Test
+
+**Period:** 2026-05-30
+**Commit:** `330e68e`
+
+### A4 — Aderyn in deep-path static_analysis
+
+**File:** `agents/src/orchestration/nodes.py`
+
+**Why:** quick_screen runs Aderyn at Tier 0 (High/Critical only, Tier-0 screen). The deep path should also benefit from Aderyn's full detector set, giving cross_validator and synthesizer a second independent signal alongside Slither.
+
+**Note on scope correction:** The original A4 spec said "add Aderyn to audit_server MCP (:8012)". During implementation we clarified that audit_server is the on-chain AuditRegistry server, not a static analysis tool server. The correct home for Aderyn is in-process in `static_analysis`, consistent with how Slither already runs. Result is equivalent: deep path now runs both tools.
+
+**What was added:**
+
+`_run_aderyn_on_file(tmp_path)` helper function:
+- Runs `aderyn --output json <file>` as a subprocess (90s timeout)
+- Parses JSON output: iterates `high`, `medium`, `low` buckets
+- Extracts `id/title`, `description`, `instances` (line numbers + function names)
+- Returns findings with `tool="aderyn"`, `impact` derived from bucket name, `confidence="Medium"`
+- Non-fatal: `FileNotFoundError`, `TimeoutExpired`, any other exception → returns `[]`
+
+Integration into `static_analysis`:
+- Called on the same `tmp_path` after Slither finishes (file still exists before `finally` cleanup)
+- `findings.extend(aderyn_findings)` — combined into the single `static_findings` list
+- Log line updated: `slither=N aderyn=M external_calls=K`
+
+**Impact on cross_validator:** the `static_findings` list now has both `tool="slither"` and `tool="aderyn"` entries. The existing `compute_verdict()` in routing.py looks for Slither detector names — it ignores Aderyn findings (they use rule IDs like "H-1" not Slither detector names). This is intentional: Aderyn findings are available to the synthesizer LLM but don't auto-confirm ML verdicts without a routing.py mapping. Adding ADERYN_TO_CLASSES mapping is a Phase 2 item (B1 in the plan).
+
+### A5 — End-to-End Smoke Test
+
+**File:** `agents/tests/test_smoke_e2e.py` (7 tests, all pass)
+
+**Coverage:**
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_deep_path_vault_produces_final_report` | Full Phase 1 field set in final_report; path_taken=="deep" |
+| `test_quick_screen_hits_in_final_state` | quick_screen_hits present with slither+aderyn keys |
+| `test_deep_path_graph_explanations_present` | graph_explanations non-empty after deep path |
+| `test_routing_decisions_logged` | routing_decisions populated with class names |
+| `test_fast_path_safe_contract` | ML safe + screen clean → path_taken=="fast", empty rag_evidence |
+| `test_screen_escalated_path_when_ml_safe_but_screen_fires` | ML safe but Slither fires → NOT fast path |
+| `test_ml_failure_still_produces_report` | Inference server down → still produces report with ML failure note |
+
+All MCP calls are mocked. Slither runs in-process on the Vault contract for the screen-escalated test (using `patch.object(slither_module, "Slither", ...)` to inject a mock instance). Aderyn subprocess is stubbed with `FileNotFoundError` to avoid CI dependency.
