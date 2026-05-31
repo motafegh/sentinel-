@@ -55,7 +55,7 @@ OUTPUT
 
 NOTES
 ─────
-- Uses CONTAINS edges (edge_attr==0) to find parent FUNCTION of each CFG node.
+- Uses CONTAINS edges (edge_attr==5 in v8 schema) to find parent FUNCTION of each CFG node.
 - CFG nodes have type_id 8–12 (CFG_NODE_CALL=8, CFG_NODE_WRITE=9,
   CFG_NODE_READ=10, CFG_NODE_CHECK=11, CFG_NODE_OTHER=12).
 - FUNCTION-like nodes have type_id 1–6 (FUNCTION=1, MODIFIER=2, EVENT=3,
@@ -84,6 +84,7 @@ sys.path.insert(0, str(_ROOT))
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 from ml.scripts.interpretability.utils import add_common_args, load_val_split, get_node_type_tensor
+from ml.src.preprocessing.graph_schema import EDGE_TYPES
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ INHERITED_DIMS = {
 }
 
 _MAX_TYPE_ID = 12.0
-_CONTAINS_EDGE = 0  # edge type for CONTAINS
+_CONTAINS_EDGE = EDGE_TYPES["CONTAINS"]  # 5 in v8 schema
 
 
 # ── Analysis helpers ──────────────────────────────────────────────────────────

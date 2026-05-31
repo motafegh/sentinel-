@@ -89,7 +89,7 @@ from ml.scripts.interpretability.utils import (
     get_node_type_tensor,
     plot_class_heatmap,
 )
-from ml.src.preprocessing.graph_schema import NODE_TYPES, EDGE_TYPES
+from ml.src.preprocessing.graph_schema import NODE_TYPES, EDGE_TYPES, FEATURE_NAMES
 
 logging.basicConfig(
     level=logging.INFO,
@@ -101,19 +101,11 @@ log = logging.getLogger(__name__)
 
 _MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 12.0
 
-FEATURE_NAMES: list[str] = [
-    "type_id_norm",       # dim 0
-    "visibility",         # dim 1
-    "uses_block_globals", # dim 2  ← Timestamp signal
-    "is_payable",         # dim 3
-    "has_modifier",       # dim 4
-    "fn_call_count",      # dim 5
-    "return_ignored",     # dim 6  ← UnusedReturn signal
-    "state_writes",       # dim 7
-    "state_reads",        # dim 8
-    "fn_call_depth",      # dim 9
-    "external_call_count", # dim 10 ← Reentrancy signal
-]
+# FEATURE_NAMES imported from graph_schema (v8, 11 dims):
+#   [0] type_id  [1] visibility  [2] uses_block_globals (Timestamp signal)
+#   [3] view  [4] payable  [5] complexity  [6] loc
+#   [7] return_ignored (UnusedReturn signal)  [8] call_target_typed
+#   [9] has_loop  [10] external_call_count (Reentrancy signal)
 
 NODE_TYPE_ID_TO_NAME: dict[int, str] = {v: k for k, v in NODE_TYPES.items()}
 

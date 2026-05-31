@@ -22,23 +22,27 @@ Three analyses are run:
     CFG_NODE_WRITE (type 9) reachable from any CFG_NODE_CALL (type 8)?
     Reported at k=1..8.
 
-  Analysis 2 — Phase 3 FUNCTION aggregation
-    Phase 3 edges (REVERSE_CONTAINS=7, CONTAINS=0).
-    For all contracts: what fraction of FUNCTION nodes can reach >= 50%
-    of their contract's CFG nodes within 8 hops?
+  Analysis 2 — FUNCTION→CFG child coverage (CONTAINS only)
+    CONTAINS=5 edge only (REVERSE_CONTAINS=7 is runtime-only, never stored).
+    For all contracts: what fraction of FUNCTION nodes have ≥1 CFG_NODE
+    child via CONTAINS within 1 hop?  Tests CFG extraction completeness.
 
-  Analysis 3 — Phase 1 CONTRACT coverage
-    Phase 1 edges (CONTAINS=0, READS=1, WRITES=2, EMITS=3,
-                   INHERITS=4, CALLS=5).
-    For all contracts: what fraction of CONTRACT nodes can reach their
-    FUNCTION-type children within 2 hops?
+  Analysis 3 — Intra-contract CALLS connectivity
+    Phase 1 CALLS=0 edges only.
+    For all contracts: what fraction of FUNCTION nodes can reach ≥1 other
+    FUNCTION node via CALLS within 2 hops?  Tests call-graph connectivity.
+
+NOTE: Original Analysis 2 used REVERSE_CONTAINS which is runtime-only
+(built by GNNEncoder Phase 3, never in .pt files).  Original Analysis 3
+checked CONTRACT→FUNCTION reachability, but no such edge type exists in
+v8 schema — all Phase 1 edges originate from FUNCTION or CONTRACT nodes,
+but CONTAINS goes FUNCTION→CFG_NODE, not CONTRACT→FUNCTION.
 
 PASS CRITERIA
 ─────────────
   1. Reentrancy positives: >= 50% of contracts have CFG_WRITE reachable
      from CFG_CALL via Phase 2 edges within 8 hops.
-  2. Phase 3: >= 70% of FUNCTION nodes can aggregate >= 50% of their
-     contract's CFG descendants within 8 hops.
+  2. FUNCTION→CFG coverage: >= 80% of FUNCTION nodes have ≥1 CFG child.
 
 HOW TO RUN
 ──────────
@@ -98,14 +102,15 @@ log = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-# Phase edge-type sets
+# Phase edge-type sets (v8 schema: CALLS=0, CONTAINS=5, CONTROL_FLOW=6,
+#   REVERSE_CONTAINS=7 runtime-only, CALL_ENTRY=8, RETURN_TO=9)
 PHASE1_EDGE_TYPES = {
-    EDGE_TYPES["CONTAINS"],     # 0
-    EDGE_TYPES["READS"],        # 1
-    EDGE_TYPES["WRITES"],       # 2
-    EDGE_TYPES["EMITS"],        # 3
-    EDGE_TYPES["INHERITS"],     # 4
-    EDGE_TYPES["CALLS"],        # 5
+    EDGE_TYPES["CALLS"],      # 0 — function → internally-called function
+    EDGE_TYPES["READS"],      # 1
+    EDGE_TYPES["WRITES"],     # 2
+    EDGE_TYPES["EMITS"],      # 3
+    EDGE_TYPES["INHERITS"],   # 4
+    EDGE_TYPES["CONTAINS"],   # 5 — function → CFG_NODE children
 }
 PHASE2_EDGE_TYPES = {
     EDGE_TYPES["CONTROL_FLOW"],  # 6
@@ -113,9 +118,13 @@ PHASE2_EDGE_TYPES = {
     EDGE_TYPES["RETURN_TO"],     # 9
 }
 PHASE3_EDGE_TYPES = {
-    EDGE_TYPES["REVERSE_CONTAINS"],  # 7
-    EDGE_TYPES["CONTAINS"],          # 0
+    EDGE_TYPES["REVERSE_CONTAINS"],  # 7 — runtime-only; never in stored .pt files
+    EDGE_TYPES["CONTAINS"],          # 5
 }
+# CONTAINS-only subset used for Analysis 2 (REVERSE_CONTAINS not in cache)
+_CONTAINS_ONLY = {EDGE_TYPES["CONTAINS"]}
+# CALLS-only subset used for Analysis 3
+_CALLS_ONLY = {EDGE_TYPES["CALLS"]}
 
 # Node type IDs
 _CFG_NODE_CALL  = NODE_TYPES["CFG_NODE_CALL"]   # 8
@@ -195,54 +204,60 @@ def _analysis1_cei_reachability(graph, k_max: int = 8) -> dict[int, bool]:
     return result
 
 
-def _analysis2_function_aggregation(graph, k_max: int = 8) -> list[bool]:
+def _analysis2_function_cfg_coverage(graph) -> list[bool]:
     """
-    For each FUNCTION node in the graph: can it reach >= 50% of all CFG
-    nodes in the graph within k_max hops via Phase 3 edges?
+    For each FUNCTION node: does it have >=1 CFG_NODE child via CONTAINS
+    within 1 hop?  Tests CFG extraction completeness.
+
+    REVERSE_CONTAINS (type 7) is NOT used — it is runtime-only and never
+    stored in .pt graph files.
 
     Returns a list of bool — one per FUNCTION node.
     """
     node_types = get_node_type_tensor(graph)
     func_nodes = torch.where(node_types == _FUNCTION)[0].tolist()
-    cfg_nodes  = set()
+    cfg_set: set[int] = set()
     for t in _CFG_NODE_TYPES:
-        cfg_nodes |= set(torch.where(node_types == t)[0].tolist())
+        cfg_set |= set(torch.where(node_types == t)[0].tolist())
 
-    if not func_nodes or not cfg_nodes:
+    if not func_nodes:
         return []
 
-    threshold = 0.5 * len(cfg_nodes)
     results: list[bool] = []
     for fn in func_nodes:
         by_hop = k_hop_neighbors(
-            graph.edge_index, graph.edge_attr, PHASE3_EDGE_TYPES, {fn}, k_max
+            graph.edge_index, graph.edge_attr, _CONTAINS_ONLY, {fn}, k_max=1
         )
-        reachable_cfg = by_hop.get(k_max, set()) & cfg_nodes
-        results.append(len(reachable_cfg) >= threshold)
+        reachable = by_hop.get(1, set())
+        results.append(bool(reachable & cfg_set))
     return results
 
 
-def _analysis3_contract_coverage(graph, k_max: int = 2) -> list[bool]:
+def _analysis3_calls_connectivity(graph, k_max: int = 2) -> list[bool]:
     """
-    For each CONTRACT node: can it reach at least one FUNCTION node within
-    2 hops via Phase 1 edges?
+    For each FUNCTION node: can it reach >=1 other FUNCTION node via
+    CALLS edges within k_max hops?  Tests intra-contract call graph
+    connectivity.
 
-    Returns a list of bool — one per CONTRACT node.
+    (Original Analysis 3 checked CONTRACT→FUNCTION reachability, but no
+    such edge type exists in v8 schema — replaced with this check.)
+
+    Returns a list of bool — one per FUNCTION node.
     """
-    node_types     = get_node_type_tensor(graph)
-    contract_nodes = torch.where(node_types == _CONTRACT)[0].tolist()
-    func_nodes     = set(torch.where(node_types == _FUNCTION)[0].tolist())
+    node_types = get_node_type_tensor(graph)
+    func_nodes = torch.where(node_types == _FUNCTION)[0].tolist()
+    func_set   = set(func_nodes)
 
-    if not contract_nodes or not func_nodes:
+    if len(func_nodes) < 2:
         return []
 
     results: list[bool] = []
-    for cn in contract_nodes:
+    for fn in func_nodes:
         by_hop = k_hop_neighbors(
-            graph.edge_index, graph.edge_attr, PHASE1_EDGE_TYPES, {cn}, k_max
+            graph.edge_index, graph.edge_attr, _CALLS_ONLY, {fn}, k_max
         )
         reachable = by_hop.get(k_max, set())
-        results.append(bool(reachable & func_nodes))
+        results.append(bool(reachable & (func_set - {fn})))
     return results
 
 
@@ -323,8 +338,8 @@ def run_analyses(
         for k in range(1, K_MAX + 1)
     }
 
-    # Analysis 2: Phase 3 FUNCTION aggregation
-    log.info(f"Analysis 2: Phase 3 FUNCTION aggregation ({len(all_sample)} contracts)")
+    # Analysis 2: FUNCTION→CFG child coverage via CONTAINS (on-disk only)
+    log.info(f"Analysis 2: FUNCTION→CFG coverage via CONTAINS ({len(all_sample)} contracts)")
     a2_results: list[bool] = []
     for stem in all_sample:
         if stem not in cache:
@@ -335,14 +350,14 @@ def run_analyses(
         graph, _ = entry
         if graph.edge_attr is None:
             continue
-        a2_results.extend(_analysis2_function_aggregation(graph, K_MAX))
+        a2_results.extend(_analysis2_function_cfg_coverage(graph))
 
-    a2_total        = len(a2_results)
-    a2_pass_count   = sum(a2_results)
-    a2_pass_rate    = round(100.0 * a2_pass_count / a2_total, 2) if a2_total > 0 else 0.0
+    a2_total      = len(a2_results)
+    a2_pass_count = sum(a2_results)
+    a2_pass_rate  = round(100.0 * a2_pass_count / a2_total, 2) if a2_total > 0 else 0.0
 
-    # Analysis 3: Phase 1 CONTRACT coverage
-    log.info(f"Analysis 3: Phase 1 CONTRACT coverage ({len(all_sample)} contracts)")
+    # Analysis 3: intra-contract CALLS connectivity
+    log.info(f"Analysis 3: CALLS connectivity ({len(all_sample)} contracts)")
     a3_results: list[bool] = []
     for stem in all_sample:
         if stem not in cache:
@@ -353,9 +368,9 @@ def run_analyses(
         graph, _ = entry
         if graph.edge_attr is None:
             continue
-        a3_results.extend(_analysis3_contract_coverage(graph, k_max=2))
+        a3_results.extend(_analysis3_calls_connectivity(graph, k_max=2))
 
-    a3_total     = len(a3_results)
+    a3_total      = len(a3_results)
     a3_pass_count = sum(a3_results)
     a3_pass_rate  = round(100.0 * a3_pass_count / a3_total, 2) if a3_total > 0 else 0.0
 
@@ -373,17 +388,17 @@ def run_analyses(
             "pass_criterion":  ">=50% positive contracts have CFG_WRITE reachable at k<=8",
             "pass": a1_pos_rates.get(K_MAX, 0.0) >= 50.0,
         },
-        "analysis2_function_aggregation": {
-            "description": "FUNCTION nodes that can reach >=50% of contract CFG nodes via Phase3 edges",
-            "n_function_nodes":   a2_total,
-            "pass_count":         a2_pass_count,
-            "pass_rate_pct":      a2_pass_rate,
-            "pass_criterion":     ">=70% of FUNCTION nodes can aggregate >=50% of CFG nodes at k<=8",
-            "pass":               a2_pass_rate >= 70.0,
+        "analysis2_function_cfg_coverage": {
+            "description": "FUNCTION nodes with >=1 CFG child via CONTAINS (1-hop; REVERSE_CONTAINS excluded — runtime-only)",
+            "n_function_nodes":  a2_total,
+            "pass_count":        a2_pass_count,
+            "pass_rate_pct":     a2_pass_rate,
+            "pass_criterion":    ">=80% of FUNCTION nodes have >=1 CFG child via CONTAINS",
+            "pass":              a2_pass_rate >= 80.0,
         },
-        "analysis3_contract_coverage": {
-            "description": "CONTRACT nodes that can reach FUNCTION children within 2 hops via Phase1 edges",
-            "n_contract_nodes": a3_total,
+        "analysis3_calls_connectivity": {
+            "description": "FUNCTION nodes that can reach >=1 other FUNCTION via CALLS within 2 hops",
+            "n_function_nodes": a3_total,
             "pass_count":       a3_pass_count,
             "pass_rate_pct":    a3_pass_rate,
         },
@@ -394,8 +409,8 @@ def run_analyses(
 
 def _print_report(results: dict) -> None:
     a1 = results["analysis1_cei_reachability"]
-    a2 = results["analysis2_function_aggregation"]
-    a3 = results["analysis3_contract_coverage"]
+    a2 = results["analysis2_function_cfg_coverage"]
+    a3 = results["analysis3_calls_connectivity"]
 
     print(f"\n{'═'*72}")
     print("  EXP-E1: K-Hop Receptive Field Analysis")
@@ -414,14 +429,14 @@ def _print_report(results: dict) -> None:
           f"{'PASS' if a1['pass'] else 'FAIL'} "
           f"({a1['reentrancy_positive']['rates_by_hop'].get(8, 0.0):.1f}%)")
 
-    print(f"\n  Analysis 2: Phase 3 FUNCTION Aggregation")
+    print(f"\n  Analysis 2: FUNCTION→CFG Coverage via CONTAINS (1-hop)")
     print(f"  Total FUNCTION nodes sampled: {a2['n_function_nodes']}")
-    print(f"  Can reach >=50% CFG: {a2['pass_count']} ({a2['pass_rate_pct']:.1f}%)")
-    print(f"  A2 PASS criterion: >=70%: {'PASS' if a2['pass'] else 'FAIL'}")
+    print(f"  Have >=1 CFG child: {a2['pass_count']} ({a2['pass_rate_pct']:.1f}%)")
+    print(f"  A2 PASS criterion: >=80%: {'PASS' if a2['pass'] else 'FAIL'}")
 
-    print(f"\n  Analysis 3: Phase 1 CONTRACT Coverage (k=2)")
-    print(f"  Total CONTRACT nodes sampled: {a3['n_contract_nodes']}")
-    print(f"  Can reach FUNCTION within 2 hops: {a3['pass_count']} ({a3['pass_rate_pct']:.1f}%)")
+    print(f"\n  Analysis 3: CALLS Connectivity (k=2)")
+    print(f"  Total FUNCTION nodes sampled: {a3['n_function_nodes']}")
+    print(f"  Can reach another FUNCTION via CALLS: {a3['pass_count']} ({a3['pass_rate_pct']:.1f}%)")
 
     overall = a1["pass"] and a2["pass"]
     print(f"\n{'─'*72}")
