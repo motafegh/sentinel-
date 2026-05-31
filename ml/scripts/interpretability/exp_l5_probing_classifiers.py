@@ -126,7 +126,8 @@ def extract_phase_embeddings(
     Extract pooled per-phase GNN embeddings for up to max_contracts val contracts.
 
     Returns:
-        embeddings: {"after_phase1": [N, 256], "after_phase2": ..., "after_phase3": ...}
+        embeddings: {"after_phase1": [N, 512], "after_phase2": ..., "after_phase3": ...}
+                    (max+mean pool of function-level nodes → [512], matching sentinel_model)
         labels:     [N, 10] binary label matrix
         valid_stems: list of stems in order
     """
@@ -196,9 +197,17 @@ def extract_phase_embeddings(
             for phase_key in _PHASE_KEYS:
                 phase_emb = intermediates[phase_key]  # [N, 256]
                 if func_mask.any():
-                    pooled = phase_emb[func_mask].mean(0)  # [256]
+                    func_embs = phase_emb[func_mask]               # [K, 256]
+                    pooled = torch.cat([
+                        func_embs.max(0).values,                   # [256] max
+                        func_embs.mean(0),                         # [256] mean
+                    ], dim=0)                                       # [512] — matches sentinel_model global_max+mean_pool
                 else:
-                    pooled = phase_emb.mean(0)  # fallback: all nodes
+                    all_nodes = phase_emb
+                    pooled = torch.cat([
+                        all_nodes.max(0).values,
+                        all_nodes.mean(0),
+                    ], dim=0)
                 phase_embs[phase_key].append(pooled.float().cpu().numpy())
 
             all_labels.append(labels)

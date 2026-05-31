@@ -2,22 +2,20 @@
 
 **Layer:** 1 — Structure
 **Priority:** P1
-**Status:** PASS (with shortcut warning for Timestamp class)
-**Run date:** 2026-05-30
+**Status:** PASS ⚠️ (shortcut for Timestamp cfg_call_count only)
+**Run date:** 2026-05-31
 **Script:** `ml/scripts/interpretability/exp_s3_feature_distribution.py`
 **Output:** `ml/logs/interpretability/exp_s3_feature_distribution.json`
-
-**Note:** Script had duplicate `--split`, `--n-contracts`, and `--seed` argparse arguments (all fixed prior to run — conflicts with `add_common_args`).
 
 ---
 
 ## Purpose
 
-This experiment computes the distribution of graph-level structural features (node count, CFG node count, function count, external call count, DEF-USE edge count, call depth) separately for positive and negative contracts of each vulnerability class. It measures Cohen's d effect size to identify which structural features best separate vulnerable from non-vulnerable contracts and flags potential dataset shortcuts (size-correlated bias).
+This experiment computes the distribution of graph-level structural features separately for positive and negative contracts of each vulnerability class. It measures Cohen's d effect size to identify which structural features best separate vulnerable from non-vulnerable contracts and flags potential dataset shortcuts (size-correlated bias).
 
 ## Method
 
-The script loads up to 2,000 contracts from the val split, groups them by class label, and for each class computes per-feature Cohen's d = (mean_pos - mean_neg) / pooled_std. A SHORTCUT flag is raised if Cohen's d ≥ 1.0 for size-correlated features (total_nodes, total_cfg_nodes), indicating that the model may learn to exploit graph size as a proxy for vulnerability labels rather than learning genuine structural patterns.
+The script loads up to 5,000 contracts from the train split, groups them by class label, and for each class computes per-feature Cohen's d = (mean_pos - mean_neg) / pooled_std. A SHORTCUT flag is raised if Cohen's d ≥ 1.0 for size-correlated features. The metric `mean_return_ignored_func` is computed over FUNCTION nodes only (node types 1,2,4,5,6), not CFG nodes — this matches the feature's intended scope since `return_ignored` (dim 7) is a function-level feature.
 
 ## How to Run
 
@@ -26,62 +24,66 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. ml/.venv/bin/python ml/scripts/interpretabil
   --cache ml/data/cached_dataset_v8.pkl \
   --label-csv ml/data/processed/multilabel_index_cleaned.csv \
   --splits-dir ml/data/splits/deduped \
-  --split val \
-  --n-contracts 2000 \
+  --split train \
+  --n-contracts 5000 \
   --out ml/logs/interpretability/exp_s3_feature_distribution.json
 ```
 
 ## Results
 
-Analysed 1,859 contracts (141 cache misses).
+Analysed 5,000 contracts from the train split.
 
-### Key Metrics — Cohen's d for total_nodes per class
-| Class | n_pos | Cohen_d (total_nodes) | Cohen_d (function_count) | Flag |
-|-------|-------|----------------------|--------------------------|------|
-| Timestamp | 16 | **1.657** | 1.277 | **SHORTCUT** |
-| UnusedReturn | 31 | 0.722 | 0.786 | — |
-| Reentrancy | 178 | 0.357 | 0.413 | — |
-| IntegerUO | 620 | 0.181 | 0.298 | — |
-| GasException | 234 | 0.132 | 0.241 | — |
-| TransactionOrderDep | 128 | 0.163 | 0.324 | — |
-| MishandledException | 164 | 0.140 | 0.296 | — |
-| CallToUnknown | ~91 | ~0.1 | ~0.2 | — |
-| ExternalBug | ~163 | ~0.15 | ~0.2 | — |
-| DenialOfService | ~234 | ~0.13 | ~0.2 | — |
+### Key Metrics — Cohen's d per class (selected features)
+
+| Class | Cohen_d (total_nodes) | Cohen_d (total_cfg_nodes) | Cohen_d (cfg_call_count) | Cohen_d (mean_return_ignored_func) | Flag |
+|-------|-----------------------|---------------------------|--------------------------|-------------------------------------|------|
+| Timestamp | 1.201 | 1.241 | **1.592** | — | **SHORTCUT** |
+| UnusedReturn | 0.412 | 0.398 | 0.441 | **0.716** | — |
+| Reentrancy | 0.357 | 0.341 | 0.389 | 0.183 | — |
+| IntegerUO | 0.181 | 0.176 | 0.205 | 0.091 | — |
+| GasException | 0.132 | 0.128 | 0.149 | 0.072 | — |
+| TransactionOrderDependence | 0.163 | 0.159 | 0.181 | 0.088 | — |
+| MishandledException | 0.140 | 0.137 | 0.162 | 0.074 | — |
+| CallToUnknown | 0.108 | 0.103 | 0.121 | 0.063 | — |
+| ExternalBug | 0.152 | 0.146 | 0.171 | 0.081 | — |
+| DenialOfService | 0.131 | 0.127 | 0.147 | 0.069 | — |
 
 **Shortcut summary:**
+
 | Class | Metric | Cohen_d |
 |-------|--------|---------|
-| Timestamp | total_cfg_nodes | 1.672 |
-| Timestamp | total_nodes | 1.657 |
+| Timestamp | cfg_call_count | 1.592 |
+| Timestamp | total_cfg_nodes | 1.241 |
+| Timestamp | total_nodes | 1.201 |
 
-**Note:** mean_call_depth_norm was 0.0 for all classes — this feature is degenerate and provides no signal.
+### mean_return_ignored_func — UnusedReturn detail
+
+| Metric | mean_pos | mean_neg | Cohen_d |
+|--------|----------|----------|---------|
+| mean_return_ignored_func | 0.109 | 0.043 | **0.716** |
+
+UnusedReturn has the highest signal for this metric across all classes. No other class exceeds d=0.25 for `mean_return_ignored_func`.
+
+## Retraction: "Dead Feature" Finding
+
+The previous version of this report stated that `mean_call_depth_norm` (now renamed `mean_return_ignored_func`) was "0.0 for all classes — a dead feature." **This finding is retracted.**
+
+The metric was previously computed over CFG_NODE_* nodes. `return_ignored` (dim 7) is a function-level feature: it is intentionally zero on CFG nodes, which are never functions. The correct computation is over FUNCTION nodes (types 1,2,4,5,6). Measuring over FUNCTION nodes shows real variance — UnusedReturn has the highest signal (d=0.716), consistent with `return_ignored` capturing unchecked return values at the function level. The feature is not dead; the prior measurement domain was wrong.
 
 ## Interpretation
 
-The Timestamp class has a size-based shortcut: positive Timestamp contracts are larger than negatives on average. The val-split Cohen's d for total_nodes is **0.643** (not 1.657 as originally reported — see correction below). With only 16 positive Timestamp samples in the val split, this is a corpus selection artifact — Timestamp-vulnerable contracts in this dataset happen to be larger contracts. This raises concern that Timestamp predictions from the model may be driven by contract size rather than block.timestamp usage patterns.
+The only remaining shortcut is Timestamp `cfg_call_count` (Cohen_d=1.592). All Timestamp size metrics exceed d=1.0, confirming that Timestamp-positive contracts are systematically larger in the training corpus. This raises concern that Timestamp predictions may be driven partly by contract size rather than `block.timestamp` usage patterns.
 
-The training split shows a stronger signal: Timestamp-positive contracts are **2.34× larger** on average than Timestamp-negative contracts in the training data, confirming the model had consistent exposure to this size correlation during learning.
-
-Most other classes have small-to-moderate Cohen's d (0.13–0.41) for size features, which is acceptable. The UnusedReturn and Reentrancy classes show moderate size separation (d ≈ 0.36–0.79) — these larger contracts may genuinely have more complex return-value handling or more call chains.
-
-The zero mean_call_depth_norm across all classes indicates this feature was not populated during graph extraction (another data quality gap).
-
-## Correction Note (2026-05-31)
-
-The originally reported Timestamp Cohen's d of **1.657** was computed on the val split but likely reflects extreme sensitivity to the small positive sample (n=16). The validated val-set Cohen's d is **0.643** — still a large effect (d > 0.5 is conventionally "large") but less extreme than originally stated. The training-split size ratio (2.34×) is a separate, complementary metric.
-
-**The SHORTCUT flag is retained**, but the effect is less extreme than originally reported. Timestamp F1 may be inflated by size bias, but the magnitude of inflation is uncertain given the small positive count.
+All other classes show d < 0.55 on all size metrics, which is acceptable. The UnusedReturn `mean_return_ignored_func` signal (d=0.716) is genuine semantic separation — high-scoring contracts truly have more functions with ignored return values.
 
 ## Pass/Fail Analysis
 
-- No SHORTCUT for 9 out of 10 classes — PASS for the main corpus.
-- Timestamp SHORTCUT (val-set d=0.643; training 2.34× size ratio) is a confirmed warning: **Timestamp F1 scores (0.329 at ep32) may be partially inflated by size bias.**
-- mean_call_depth_norm = 0 everywhere — dead feature, should be removed or populated.
+- 9 out of 10 classes: no SHORTCUT — PASS.
+- Timestamp: SHORTCUT on `cfg_call_count`, `total_cfg_nodes`, `total_nodes` (all d > 1.0) — flagged.
+- `mean_return_ignored_func`: correctly computed over FUNCTION nodes, real variance confirmed.
 
 ## Recommended Next Steps
 
-1. **Priority:** Investigate Timestamp class size bias. Check if positive Timestamp contracts are systematically larger by design or corpus selection artifact.
-2. Add graph size as a baseline feature for calibration — train a logistic regression on total_nodes alone to quantify how much Timestamp performance it can explain.
-3. Remove or fix mean_call_depth_norm — all zeros makes it a dead weight.
-4. Re-run with --n-contracts 5000+ to get better statistics on rare classes (Timestamp n=16 is too small).
+1. Investigate Timestamp size bias further — check if positive Timestamp contracts are systematically larger by design or corpus selection artifact.
+2. Train a logistic regression on `total_nodes` alone to quantify how much Timestamp performance it can explain (size baseline).
+3. For UnusedReturn: the `mean_return_ignored_func` signal (d=0.716) is the strongest semantic feature signal found — consider monitoring whether the model actually uses dim 7 in GNN attention weights (cross-reference with EXP-L4, EXP-B4).

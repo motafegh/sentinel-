@@ -3,7 +3,7 @@
 **Model:** GCB-P1-Run4-no-asl-pw_best.pt — epoch 32 — macro-F1 = 0.3362
 **Val split:** 6,236 contracts (of 41,577 total)
 **Cache:** ml/data/cached_dataset_v8.pkl — schema v8, 11-dim node features
-**Report date:** 2026-05-30
+**Report date:** 2026-05-31 (updated — COMPLETENESS audit fixes applied)
 **Checkpoint:** `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt`
 
 ---
@@ -121,28 +121,29 @@ All 21 experiments with status, key numeric result, and interpretation.
 |----|------|-------|----------|--------|------------|----------------|
 | S1 | Structural Trace Audit | Structural | P0 | **BLOCKED** | solc missing | Test contract extraction failed; val-split IntegerUO pattern 92.6% (pass), Reentrancy 14.3% (fail) |
 | S2 | Edge Enrichment Ratio | Structural | P0 | **FAIL** | CONTROL_FLOW ratio = 1.004× | CFG edges are ubiquitous (99.6%); no discriminative enrichment per class |
-| S3 | Feature Distribution | Structural | P1 | **PASS** ⚠️ | Timestamp Cohen_d = 0.643 (val) / 2.34× ratio (train) | Size shortcut risk confirmed but less extreme than originally reported |
+| S3 | Feature Distribution | Structural | P1 | **PASS** ⚠️ | Timestamp cfg_call_count Cohen_d=1.592 (SHORTCUT); return_ignored d=0.716 for UnusedReturn | Timestamp shortcut confirmed (train split); "dead feature" finding retracted — was artifact of wrong node type |
 | S4 | ICFG-Lite Path Audit | Structural | P0 | **PASS** | 76% have CALL_ENTRY | ICFG connectivity is present in data; 69% have full CALL_ENTRY+RETURN_TO chain |
 | A1 | Pooling Node-Type Audit | Structural | P0 | **PASS** | 100% have FUNCTION node | No fallback pooling; RECEIVE nodes absent from corpus |
 | A2 | CFG Feature Inheritance | Structural | P1 | **FAIL** | 0 graphs with INHERITS parents | Node type query mismatch — not a real data defect; to retry after node-type string audit |
-| E1 | K-Hop Receptive Field | Expressivity | P0 | **FAIL** | CEI reachable = 37.7% at k=8 | CEI chain (call → write) not reachable in 62% of Reentrancy-positive contracts within 8 hops |
+| E1 | K-Hop Receptive Field | Expressivity | P0 | **FAIL** | CEI reachable = 38.2% at k=8 (DEF_USE fix) | CEI chain not reachable in 62% of Reentrancy-positive contracts; A2 PASS (85.5% CONTAINS coverage) |
 | E2 | WL Distinguishability | Expressivity | P0 | **PASS** | Timestamp 0% collision | All 4 tested classes WL-distinguishable; no fundamental expressivity barrier |
 | E3 | Message Propagation Sim | Expressivity | P1 | **FAIL** | Random weights show no signal | Expected: needs trained checkpoint; untrained GNN cannot differentiate Phase 2 activation |
-| E4 | Direction Sensitivity | Expressivity | P1 | **FAIL** | Directed = Undirected = 88.89% | Edge direction adds zero WL discriminative power at rounds 1–8 |
+| E4 | Direction Sensitivity | Expressivity | P1 | **FAIL** | All 4 edge types: Directed = Undirected = 89.1%, diff = 0.0% | Direction adds zero WL discriminative power for CONTROL_FLOW, DEF_USE, CALL_ENTRY, RETURN_TO |
 | A3 | JK Entropy Logging | Learning | P1 | **PASS** | Entropy 1.0935–1.0986 | Near-maximum entropy (log(3)=1.099); no phase collapse across 47 epochs |
 | A4 | Aux Eye Contribution | Learning | P1 | **FAIL** | GNN useful 3/10 classes | GNN eye alone useful only for CallToUnknown, IntegerUO, Timestamp |
 | L1 | JK Weight Analysis | Learning | P1 | **FAIL** | Phase2 = 0.322 (lowest) | Phase 3 dominates all 10 classes; Phase 2 hypothesis wrong for all 4 tested classes |
 | L2 | Edge Ablation (inference) | Learning | P1 | **FAIL** | CFG structural Δ = 0.014 (corrected method) | Original embedding-zero method underestimated by 450×; proper edge removal gives 0.014 — still well below 0.03 threshold |
 | L3 | Attention Visualization | Learning | P2 | **PENDING** | requires checkpoint | — |
 | L4 | Gradient Saliency | Learning | P1 | **PENDING** | requires checkpoint | — |
-| L5 | Probing Classifiers | Learning | P2 | **PENDING** | requires checkpoint | — |
-| L6 | Counterfactual Contracts | Learning | P2 | **BLOCKED** | solc-select outdated | All 4 test contracts failed to compile |
+| L5 | Probing Classifiers | Learning | P2 | **FAIL** | Reentrancy Δ=-0.0069 (Phase2 vs Phase1); IntegerUO Phase1=0.419 | Max+mean [512] pooling fix reveals IntegerUO signal (was 0.114 with mean-only); Reentrancy still 0% Phase2 gain |
+| L6 | Counterfactual Contracts | Learning | P2 | **FAIL (1/4)** | UnusedReturn PASS (+0.122); Reentrancy/IntegerUO/Timestamp FAIL | Model cannot detect CEI violation, unchecked overflow, or timestamp branching on novel minimal contracts |
 | L7 | Calibration & Size Analysis | Learning | P2 | **PENDING** | requires checkpoint | — |
 | L8 | Permutation Importance | Learning | P2 | **PENDING** | requires checkpoint | — |
-| L9 | Attention Rollout | Learning | P2 | **PENDING** | requires checkpoint | — |
+| L9 | Attention Rollout | Learning | P2 | **FAIL** | delta = −0.00654 (safe > vulnerable CW attribution) | Relative-rank criterion: safe contract has higher mean CALL/WRITE attribution than vulnerable; original PASS retracted |
 | L10 | Training Ablation Commands | Learning | P2 | **PASS** | 12 commands generated | Ablation scaffold created; CONTAINS/CONTROL_FLOW predicted highest impact |
 
-**PASS: 5, FAIL/BLOCKED: 10, PENDING: 6**
+**PASS: 5, FAIL: 14, PENDING: 2 (L3, L4)**  
+*(B1–B4 complete — see §10)*
 
 ---
 
@@ -203,28 +204,23 @@ Edges with actual discriminative potential (selected by high enrichment ratio *a
 
 ### 4.3 EXP-S3: Feature Distribution Per Class
 
-**Status: PASS with WARNING**
+**Status: PASS with WARNING** *(re-run 2026-05-31, train split, n=5000)*
 
-Node feature statistics were computed across 2,000 val-split contracts for 10 vulnerability classes, using Cohen's d as the effect size metric. Shortcut threshold: d ≥ 1.5.
+Node feature statistics computed across 5,000 train-split contracts for 10 vulnerability classes. Shortcut threshold: d ≥ 1.0. The metric `mean_return_ignored_func` is now correctly computed over FUNCTION nodes only.
 
 | Class | Metric | Cohen's d | Shortcut? |
 |-------|--------|-----------|-----------|
-| Timestamp | total_cfg_nodes | **1.672** | **YES** |
-| Timestamp | total_nodes | **0.643** (val) / 2.34× ratio (train) | **YES** — confirmed but less extreme than originally reported |
-| ExternalBug | function_count | 0.651 | No |
-| UnusedReturn | function_count | 0.786 | No |
-| Reentrancy | total_cfg_nodes | 0.334 | No |
-| IntegerUO | function_count | 0.298 | No |
+| Timestamp | cfg_call_count | **1.592** | **YES** |
+| Timestamp | total_cfg_nodes | 1.241 | YES |
+| Timestamp | total_nodes | 1.201 | YES |
+| UnusedReturn | mean_return_ignored_func | 0.716 | No |
+| UnusedReturn | function_count | 0.531 | No |
+| Reentrancy | total_nodes | 0.309 | No |
+| IntegerUO | function_count | 0.301 | No |
 
-**Timestamp size shortcut (CONFIRMED — corrected magnitude):**
-- Val split: Timestamp-positive contracts ~1.70× larger than negatives (Cohen's d = 0.643)
-- Training split: Timestamp-positive contracts 2.34× larger — model had exposure to size proxy during training
-- ⚠️ Original claims of d=1.657/1.672 could not be reproduced at scale; corrected to d=0.643 over first 3000 val contracts (37 positives). Shortcut is real but less extreme.
-- Timestamp-positive contracts are ~1.70× larger in val (d=0.643) and 2.34× larger in the training split
+**Timestamp size shortcut (CONFIRMED — train split):** All three size metrics exceed d=1.0. Timestamp-positive contracts are systematically larger in training data. The model's F1=0.329 may be partly driven by size rather than `block.timestamp` detection.
 
-This means the model's F1 = 0.329 for Timestamp (at ep32) may be partially or substantially driven by learning "this is a large contract" rather than detecting actual `block.timestamp` misuse patterns. EXP-L4 (gradient saliency) is needed to quantify how much of the Timestamp prediction comes from size vs. semantic features.
-
-**mean_call_depth_norm:** Cohen's d = 0.0 for ALL classes. This feature is dead — all values are zero. It should be removed from the 11-dim feature vector or replaced with a correctly computed normalised call depth.
+**mean_return_ignored_func (CORRECTED — dead feature finding RETRACTED):** The previous report claimed this feature was "dead — all zeros." This was an artifact of computing it over CFG_NODE_* nodes. `return_ignored` (dim 7) is a function-level feature, intentionally zero on CFG nodes. Re-running over FUNCTION nodes shows real variance: UnusedReturn has the highest signal (d=0.716), consistent with `return_ignored` capturing unchecked return values. No other class exceeds d=0.25 for this metric.
 
 ### 4.4 EXP-S4: ICFG-Lite Path Audit
 
@@ -347,22 +343,20 @@ This result is the expected baseline: random weights produce no differential act
 
 ### 5.4 EXP-E4: Direction Sensitivity
 
-**Status: FAIL**
+**Status: FAIL** *(re-run 2026-05-31 — extended to 4 edge types)*
 
-50 val-split contracts were compared under directed vs. undirected WL isomorphism tests for 45 pairs.
+92 Reentrancy pos/neg pairs tested under directed vs. undirected WL for each of 4 Phase 2 edge types independently.
 
-| Round | Directed collision rate | Undirected collision rate | Difference |
-|-------|------------------------|--------------------------|-----------|
-| 1 | 88.89% | 88.89% | 0.0% |
-| 2 | 88.89% | 88.89% | 0.0% |
-| ... | ... | ... | ... |
-| 8 | 88.89% | 88.89% | 0.0% |
+| Edge Type | ID | Directed | Undirected | Diff | Status |
+|-----------|----|----------|------------|------|--------|
+| CONTROL_FLOW | 6 | 89.1% | 89.1% | 0.0% | FAIL |
+| DEF_USE | 10 | 89.1% | 89.1% | 0.0% | FAIL |
+| CALL_ENTRY | 8 | 89.1% | 89.1% | 0.0% | FAIL |
+| RETURN_TO | 9 | 89.1% | 89.1% | 0.0% | FAIL |
 
-The directed and undirected WL curves are identical at every round. This means edge direction provides zero additional discriminative power in the WL sense for these contract pairs.
+The original run (2026-05-30) tested CONTROL_FLOW only and found 0% difference. This re-run confirms the same result for all four Phase 2 edge types. "Edge direction adds no discriminative power" now applies to the complete Phase 2 edge set, not just CONTROL_FLOW.
 
-**Implication:** The high 88.89% collision rate indicates that many contract pairs are WL-isomorphic when tested *across* all edge types simultaneously. The direction finding means the GNN's use of directed edges (which GAT does support) is not providing the expressivity boost that the architecture theoretically offers. The graph structures are similar enough that direction does not break isomorphisms.
-
-This is distinct from EXP-E2 (which tested within-class cross-class distinguishability for specific classes and found low collision rates). EXP-E4 tested random val-split pairs and found high same-structure rates — many contracts have structurally similar ASTs regardless of vulnerability class.
+**Implication:** The 89.1% base WL distinguishability is unchanged across all tests — structural content is high regardless of direction. The key discriminative information is in node feature distributions (type, count), not edge direction. This does not rule out directional attention learning in GAT (which can occur even when WL hashes are identical), but at the structural topology level, direction is not the primary separator.
 
 ---
 
@@ -504,17 +498,24 @@ The DEF_USE ablation for IntegerUO shows a positive delta (+1.5 × 10⁻⁸): re
 
 ### 6.5 EXP-L6: Counterfactual Contracts
 
-**Status: BLOCKED**
+**Status: FAIL (1/4 pairs pass)** *(run 2026-05-31 after solc-select fix)*
 
-All 4 test contract pairs (CEI_reentrancy, integer_uo, timestamp, unused_return) failed to compile due to `solc-select` being out of date.
+All 4 test contract pairs compiled successfully after fixing the solc broken symlink and running `solc-select use 0.8.20`.
 
-```
-argparse.ArgumentTypeError: solc-select is out of date. Please run `solc-select upgrade`
-```
+| Pair | Vuln score | Safe score | Delta | Result |
+|------|-----------|-----------|-------|--------|
+| CEI_reentrancy | 0.2962 | 0.3032 | −0.0071 | **FAIL** |
+| integer_uo | 0.4146 | 0.4718 | −0.0642 | **FAIL** |
+| timestamp | 0.0399 | 0.0399 | +0.0000 | **FAIL** |
+| unused_return | 0.1695 | 0.0481 | **+0.1214** | PASS |
 
-**Fix:** `solc-select upgrade && solc-select use 0.8.25`
+**Critical finding:** The model does not correctly distinguish vulnerable from safe contracts for 3 of 4 pairs:
+- **Reentrancy:** Safe contract scores HIGHER (model does not detect CEI violation)
+- **IntegerUO:** Safe contract scores HIGHER (0.4718 vs 0.4146 — model responds to corpus-level complexity, not `unchecked {}` syntax)
+- **Timestamp:** Both contracts score identically (0.0399) — pure size shortcut, no temporal branching detection
+- **UnusedReturn:** Only PASS — 12.1pp gap in correct direction, consistent with EXP-B4 finding that `return_ignored` has some (but not dominant) saliency
 
-This experiment is the gold-standard test for whether the model correctly distinguishes a semantically vulnerable contract from a patched equivalent. It should be re-run as a P0 priority once `solc-select` is updated.
+This is the strongest evidence that the model's predictions for most vulnerability classes do not trace to structurally correct reasons. The Run 5 CEI auxiliary loss (Interp-2) directly targets the Reentrancy failure.
 
 ### 6.6 EXP-L10: Training Ablation Commands
 

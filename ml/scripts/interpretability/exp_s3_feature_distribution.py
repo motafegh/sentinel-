@@ -16,8 +16,12 @@ METRICS (7 per graph)
 4. def_use_edge_count     — edges with edge_attr == 10
 5. ext_call_count_sum     — sum of feature dim 10 (raw external_call_count)
                             across FUNCTION nodes (type_id==1)
-6. mean_call_depth_norm   — mean of feature dim 7 (call_depth_norm)
-                            across CFG nodes (type_id in {8,9,10,11,12})
+6. mean_return_ignored_func — mean of feature dim 7 (return_ignored)
+                              across FUNCTION nodes (type_id==1)
+                              NOTE: return_ignored is a function-level feature —
+                              it is intentionally 0.0 on CFG_NODE_* nodes.
+                              Prior runs that computed this over CFG nodes
+                              produced an artifactual "dead feature" finding.
 7. total_nodes            — total node count (graph size)
 
 LAYER / PRIORITY
@@ -92,7 +96,7 @@ METRIC_NAMES = [
     "function_count",
     "def_use_edge_count",
     "ext_call_count_sum",
-    "mean_call_depth_norm",
+    "mean_return_ignored_func",
     "total_nodes",
 ]
 
@@ -123,20 +127,23 @@ def _extract_metrics(graph) -> dict[str, float]:
     else:
         ext_call_sum = 0.0
 
-    # Mean call_depth_norm over CFG nodes (feature dim 7)
-    if cfg_mask.any():
-        mean_depth = float(x[cfg_mask, 7].mean().item())
+    # Mean return_ignored over FUNCTION nodes (feature dim 7).
+    # return_ignored is a function-level feature: non-Function nodes always have
+    # x[:,7]=0.0 by design (graph_extractor.py). Computing this over CFG nodes
+    # produces a misleading "dead feature" artifact — use FUNCTION nodes only.
+    if func_mask.any():
+        mean_return_ignored = float(x[func_mask, 7].mean().item())
     else:
-        mean_depth = 0.0
+        mean_return_ignored = 0.0
 
     return {
-        "total_cfg_nodes":       float(total_cfg),
-        "cfg_call_count":        float(cfg_calls),
-        "function_count":        float(func_cnt),
-        "def_use_edge_count":    float(def_use_cnt),
-        "ext_call_count_sum":    ext_call_sum,
-        "mean_call_depth_norm":  mean_depth,
-        "total_nodes":           float(N),
+        "total_cfg_nodes":          float(total_cfg),
+        "cfg_call_count":           float(cfg_calls),
+        "function_count":           float(func_cnt),
+        "def_use_edge_count":       float(def_use_cnt),
+        "ext_call_count_sum":       ext_call_sum,
+        "mean_return_ignored_func": mean_return_ignored,
+        "total_nodes":              float(N),
     }
 
 

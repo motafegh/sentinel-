@@ -3,7 +3,7 @@
 **Layer:** 2 — Expressivity
 **Priority:** P1
 **Status:** FAIL
-**Run date:** 2026-05-30
+**Run date:** 2026-05-31
 **Script:** `ml/scripts/interpretability/exp_e4_direction_sensitivity.py`
 **Output:** `ml/logs/interpretability/exp_e4_direction_sensitivity.json`
 
@@ -11,11 +11,13 @@
 
 ## Purpose
 
-This experiment tests whether using directed versus undirected graph edges improves the GNN's ability to distinguish reentrancy-positive from reentrancy-negative contracts via WL hashing. If directed edges provide strictly more discriminative information, the difference in WL collision rates (directed - undirected) should be positive and large. This validates the architectural choice to use directed GAT convolutions in SENTINEL.
+This experiment tests whether using directed versus undirected graph edges improves the GNN's ability to distinguish reentrancy-positive from reentrancy-negative contracts via WL hashing. This validates the architectural choice to use directed GAT convolutions in SENTINEL. The original run (2026-05-30) tested CONTROL_FLOW only; this re-run extends to all 4 Phase 2 edge types (COMPLETENESS audit fix).
 
 ## Method
 
-For 45 matched positive-negative contract pairs, the script runs two WL hash trajectories: (1) directed WL using the true edge directions, and (2) undirected WL using symmetrized edges (bidirectional). For each of 8 WL rounds, it computes the fraction of pairs that are WL-distinguishable under each setting. Pass criterion: directed distinguishability exceeds undirected by ≥10% at round 8.
+For 92 matched reentrancy positive-negative pairs, the script runs two WL hash trajectories: (1) directed WL using the true edge directions, and (2) undirected WL using symmetrized edges (bidirectional). The test is repeated for each of the 4 Phase 2 edge types independently. Pass criterion: directed distinguishability exceeds undirected by ≥10% at round 8 for at least one edge type.
+
+**Fix applied (COMPLETENESS audit):** The original run tested CONTROL_FLOW direction only. This re-run adds DEF_USE (id=10), CALL_ENTRY (id=8), and RETURN_TO (id=9).
 
 ## How to Run
 
@@ -25,38 +27,42 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. ml/.venv/bin/python ml/scripts/interpretabil
   --label-csv ml/data/processed/multilabel_index_cleaned.csv \
   --splits-dir ml/data/splits/deduped \
   --split val \
-  --n-contracts 50 \
+  --n-contracts 100 \
   --out ml/logs/interpretability/exp_e4_direction_sensitivity.json
 ```
 
 ## Results
 
-45 matched reentrancy positive-negative pairs analysed.
+92 matched reentrancy positive-negative pairs analysed.
 
-### Key Metrics
-| Metric | Value | Pass Threshold | Status |
-|--------|-------|---------------|--------|
-| Directed WL (all rounds) | 88.9% | — | — |
-| Undirected WL (all rounds) | 88.9% | — | — |
-| Directed - Undirected at r=8 | 0.0% | ≥10% | FAIL |
+### Key Metrics — Directed vs Undirected WL Distinguishability
 
-The WL curves are completely identical across all 8 rounds for both directed and undirected settings.
+| Edge Type | ID | Directed | Undirected | Diff | Status |
+|-----------|----|----------|------------|------|--------|
+| CONTROL_FLOW | 6 | 89.1% | 89.1% | 0.0% | FAIL |
+| DEF_USE | 10 | 89.1% | 89.1% | 0.0% | FAIL |
+| CALL_ENTRY | 8 | 89.1% | 89.1% | 0.0% | FAIL |
+| RETURN_TO | 9 | 89.1% | 89.1% | 0.0% | FAIL |
+
+The WL curves are completely identical across all 8 rounds for both directed and undirected settings, for all 4 edge types tested.
 
 ## Interpretation
 
-The zero difference between directed and undirected WL distinguishability is a significant finding. It means that reversing all edge directions (making the graph undirected) produces exactly the same WL hash behavior for reentrancy contracts. This could indicate: (1) the key structural features for reentrancy distinction are already in node features (type labels) rather than edge directions, (2) the graph is sufficiently symmetric that direction adds no new information, or (3) the CALL_ENTRY/RETURN_TO edges that encode directionality are absent in 24% of reentrancy positives (exp_s4 finding), diluting the directional signal.
+The original finding — "direction adds no discriminative power" — was based on CONTROL_FLOW only. This re-run confirms the same result for all four Phase 2 edge types: DEF_USE, CALL_ENTRY, and RETURN_TO each produce zero difference between directed and undirected WL distinguishability.
 
-The 88.9% base distinguishability (identical for both settings) is high, meaning WL can distinguish nearly all positive-negative pairs regardless of edge direction. The zero direction gain combined with the exp_s2 finding that REVERSE_CONTAINS edges are entirely absent from the corpus is a strong signal that edge direction is currently under-utilized in the SENTINEL architecture.
+The 89.1% base WL distinguishability is unchanged — structural content is high regardless of direction. This means the key discriminative information for reentrancy is carried in node feature distributions (types, counts) rather than in the specific direction of edges. Making any of the 4 Phase 2 edge types undirected does not reduce the ability to tell reentrancy positives from negatives.
+
+This does not mean directed edges are architecturally useless: GAT convolutions can learn directional attention weights even when WL structural hashes are equivalent. However, at the structural topology level, direction is not adding measurable signal.
 
 ## Pass/Fail Analysis
 
-- Failed: directed and undirected WL are identical (0% difference).
-- This challenges the architectural assumption that directed GAT convolutions are critical for reentrancy detection — at least at the WL structural level.
-- However, this does not mean directed edges are useless: the GAT architecture can learn directional attention weights even when WL structural hashes are equivalent.
+- All 4 edge types: directed and undirected WL are identical (0% difference).
+- Pass criterion (≥10% directed advantage at r=8 for any edge type): FAIL.
+- The finding generalises the original CONTROL_FLOW result to the full Phase 2 edge set.
 
 ## Recommended Next Steps
 
-1. After IMP-D1 re-extraction (adding REVERSE_CONTAINS and more ICFG edges), re-run to check if directionality gains increase.
-2. Cross-reference with attention rollout (exp_l9) to check whether the trained model's attention weights actually favor directed edges.
-3. Consider whether adding DELEGATECALL edge types (directional) would increase the directed-undirected gap.
-4. The 88.9% WL distinguishability (regardless of direction) is the key positive finding — the structural content is there, direction just doesn't add extra discriminative power at the WL level.
+1. After IMP-D1 re-extraction (adding more ICFG edges), re-run to check whether additional edge coverage changes the directed-undirected gap.
+2. Cross-reference with EXP-L9 attention rollout to check whether the trained model's GAT attention weights favour directed patterns even where WL does not distinguish them.
+3. Consider whether adding DELEGATECALL edge types (directional cross-contract calls) would increase the directed-undirected gap for reentrancy.
+4. The 89.1% WL distinguishability regardless of direction remains the key positive finding — structural content is sufficient for discrimination even without directional signal.

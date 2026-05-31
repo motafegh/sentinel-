@@ -42,8 +42,12 @@ A future extension could instrument GNNEncoder to return attention per layer.
 
 PASS CRITERIA
 ─────────────
-Qualitative: for reentrancy contracts, at least 2 of the top-10 contributing
-nodes are CFG_NODE_CALL (type 8) or CFG_NODE_WRITE (type 9).
+Relative-rank: for each vulnerable/safe pair, the mean attribution score of
+ALL CFG_NODE_CALL (type 8) and CFG_NODE_WRITE (type 9) nodes is higher in
+the vulnerable contract than in the matched safe contract.
+
+This replaces the previous "≥2 CALL/WRITE in top-10" criterion, which was
+satisfied by both vulnerable and safe contracts and therefore non-discriminative.
 
 HOW TO RUN
 ──────────
@@ -359,6 +363,11 @@ def compute_rollout_attribution(
         if int(t) in (_CALL_TYPE, _WRITE_TYPE)
     )
 
+    # Mean attribution score across ALL CALL/WRITE nodes (not just top-10).
+    # Used by the relative-rank criterion: vulnerable should score higher than safe.
+    cw_mask = np.isin(node_type_ids, [_CALL_TYPE, _WRITE_TYPE])
+    mean_cw_score = float(attribution[cw_mask].mean()) if cw_mask.any() else 0.0
+
     return {
         "attribution":             attribution.tolist(),
         "node_types":              node_type_ids.tolist(),
@@ -366,6 +375,7 @@ def compute_rollout_attribution(
         "top10_types":             top10_types,
         "top10_scores":            [round(float(attribution[i]), 5) for i in top10_idx],
         "n_call_write_in_top10":   n_call_write,
+        "mean_cw_attribution":     round(mean_cw_score, 6),
         "n_nodes":                 n,
         "n_pool_nodes":            len(pool_nodes),
     }
@@ -459,29 +469,60 @@ def main() -> int:
             text_lines.append(f"    #{rank+1:2d}  node={idx:4d}  type={typ:<20}  score={score:.5f}")
 
         n_cw = rollout_result["n_call_write_in_top10"]
+        mean_cw = rollout_result["mean_cw_attribution"]
         text_lines.append(
             f"  CFG_NODE_CALL/WRITE in top-10: {n_cw}/10  "
-            + ("PASS" if n_cw >= 2 else "FAIL (need >= 2)")
+            f"  mean CW attribution: {mean_cw:.5f}"
         )
-
-        # Track reentrancy pass/fail
-        if "reentrancy" in sol_file.lower():
-            reentrancy_pass_list.append(n_cw >= 2)
 
     text_lines.append("\n" + "=" * 70)
 
-    # Overall pass: all reentrancy contracts have >= 2 CALL/WRITE in top-10
-    if reentrancy_pass_list:
-        overall_pass = all(reentrancy_pass_list)
+    # ── Relative-rank criterion (replaces absolute count) ──────────────────
+    # For each vulnerable/safe pair, PASS = vulnerable's mean CALL/WRITE
+    # attribution is strictly higher than the paired safe contract's.
+    # Pairing: strip "_vulnerable" / "_safe" suffix to find matching base name.
+    result_by_file = {r["file"]: r for r in results if "error" not in r}
+    pair_results: list[dict] = []
+
+    for sol_file, r in result_by_file.items():
+        stem = sol_file.replace(".sol", "")
+        if "_vulnerable" not in stem:
+            continue
+        base   = stem.replace("_vulnerable", "")
+        safe_f = f"{base}_safe.sol"
+        if safe_f not in result_by_file:
+            continue
+        rs = result_by_file[safe_f]
+        vuln_score = r["mean_cw_attribution"]
+        safe_score = rs["mean_cw_attribution"]
+        pair_pass  = vuln_score > safe_score
+        pair_results.append({
+            "base":       base,
+            "vuln_file":  sol_file,
+            "safe_file":  safe_f,
+            "vuln_mean_cw": vuln_score,
+            "safe_mean_cw": safe_score,
+            "delta":      round(vuln_score - safe_score, 6),
+            "pair_pass":  pair_pass,
+        })
+        text_lines.append(
+            f"  Pair [{base}]: vuln_CW={vuln_score:.5f}  safe_CW={safe_score:.5f}"
+            f"  delta={vuln_score - safe_score:+.5f}  "
+            + ("PASS" if pair_pass else "FAIL")
+        )
+
+    if pair_results:
+        overall_pass = all(p["pair_pass"] for p in pair_results)
+        n_pass = sum(p["pair_pass"] for p in pair_results)
+        text_lines.append(
+            f"\nOVERALL PASS: {overall_pass}  "
+            f"({n_pass}/{len(pair_results)} vuln/safe pairs: vuln CW attribution > safe)"
+        )
     else:
         overall_pass = False
-        log.warning("No reentrancy contracts processed — cannot evaluate pass criteria.")
+        log.warning("No vulnerable/safe pairs processed — cannot evaluate relative-rank criterion.")
+        text_lines.append("OVERALL PASS: False  (no vuln/safe pairs found)")
 
-    text_lines.append(
-        f"OVERALL PASS: {overall_pass}  "
-        f"(reentrancy contracts with >= 2 CALL/WRITE in top-10: "
-        f"{sum(reentrancy_pass_list)}/{len(reentrancy_pass_list)})"
-    )
     text_lines.append("=" * 70)
 
     report_text = "\n".join(text_lines)
@@ -503,15 +544,16 @@ def main() -> int:
         "layer":        3,
         "priority":     2,
         "pass_criteria": (
-            "For reentrancy contracts: >= 2 of top-10 nodes are "
-            "CFG_NODE_CALL (type 8) or CFG_NODE_WRITE (type 9)"
+            "For each vulnerable/safe contract pair: mean attribution of CALL/WRITE nodes "
+            "is higher in the vulnerable contract than in the safe contract."
         ),
         "note": (
             "Phase 2 (conv3 CF-only) and Phase 3 (conv4 REVERSE_CONTAINS) only. "
             "Full 8-layer rollout requires model instrumentation."
         ),
-        "overall_pass": overall_pass,
-        "contracts":    json_results,
+        "overall_pass":  overall_pass,
+        "pair_results":  pair_results,
+        "contracts":     json_results,
     }
 
     if out_dir:
