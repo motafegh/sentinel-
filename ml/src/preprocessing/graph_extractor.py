@@ -1253,6 +1253,20 @@ def extract_contract_graph(
         "_build_control_flow_edges() must always append to both lists together."
     )
 
+    # ── E2 / Interp-3: Contract-size normalisation (Timestamp size shortcut fix) ──
+    # complexity (dim 5) is log1p(CFG block count)/log1p(100) — an absolute measure.
+    # Large contracts have many functions, each with moderate complexity, so the
+    # raw mean is size-correlated. Normalise by contract total node count to make
+    # complexity a relative (within-contract) signal.
+    # Formula: complexity_norm[i] = complexity[i] * (1 + log(x.shape[0])) / (1 + x.shape[0])
+    # This rescales: small contracts keep high relative complexity; large contracts
+    # get complexity scaled down proportional to their size.
+    _CONTRACT_SIZE = float(x.shape[0])
+    if _CONTRACT_SIZE > 1.0:
+        import math as _math
+        _size_factor = _math.log1p(_CONTRACT_SIZE) / _CONTRACT_SIZE
+        x[:, 5] = x[:, 5] * _size_factor
+
     # ── Declaration-level edges ────────────────────────────────────────────
     def _add_edge(src_key: str, dst_key: str, etype: int) -> None:
         si = node_map.get(src_key)

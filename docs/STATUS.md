@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-**Last updated:** 2026-05-30 (post Phase 1 A1–A5 + interpretability suite)
+**Last updated:** 2026-05-31 (all pre-Run-5 code implemented; label cleaning + calibration scripts ready)
 
 ---
 
@@ -173,6 +173,7 @@ START → ml_assessment → quick_screen → evidence_router
 - M6 Integration API (`POST /v1/audit`): does not exist
 - Phase 1 remaining: A6 (HIGH_VALUE_RAG_CLASSES routing distinction) — low priority, deferred to Phase 2 prep
 - Phase 2 work requires Run 5 data quality fixes first (see ROADMAP.md)
+- Pre-Run-5 scripts coded but not yet executed: `calibrate_temperature.py`, `clean_reentrancy_labels.py`, `clean_integeruo_labels.py`, `gate_timestamp_labels.py`, `inject_openzeppelin_negatives.py`
 
 ---
 

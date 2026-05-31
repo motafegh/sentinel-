@@ -342,6 +342,7 @@ class GNNEncoder(nn.Module):
         batch:                torch.Tensor,
         edge_attr:            torch.Tensor | None = None,
         return_intermediates: bool               = False,
+        return_phase2_embs:   bool               = False,
     ):
         """
         Three-phase forward pass.
@@ -352,14 +353,21 @@ class GNNEncoder(nn.Module):
             batch:                [N]
             edge_attr:            [E] int64 edge type IDs in [0, NUM_EDGE_TYPES).
                                   Required when use_edge_attr=True.
-            return_intermediates: When True, also return per-phase embeddings dict.
+            return_intermediates: When True, also return per-phase embeddings dict
+                                  (diagnostic only — detached tensors, no gradients).
+            return_phase2_embs:   When True, return Phase 2 output tensor WITH
+                                  gradients attached (for CEI auxiliary loss).
+                                  Cannot be combined with return_intermediates.
 
-        Returns (return_intermediates=False):
+        Returns (return_intermediates=False, return_phase2_embs=False):
             node_embeddings [N, hidden_dim], batch [N], jk_entropy (scalar)
         Returns (return_intermediates=True):
             node_embeddings [N, hidden_dim], batch [N], jk_entropy (scalar),
             {"after_phase1": ..., "after_phase2": ..., "after_phase3": ...}
             (intermediates dict is diagnostic only — detached tensors, not used for gradients)
+        Returns (return_phase2_embs=True):
+            node_embeddings [N, hidden_dim], batch [N], jk_entropy (scalar),
+            phase2_x [N, hidden_dim] — Phase 2 output WITH gradient (for aux loss)
         """
         # ── Guards ───────────────────────────────────────────────────────────
         if x.shape[1] != NODE_FEATURE_DIM:
@@ -545,6 +553,7 @@ class GNNEncoder(nn.Module):
 
         _live.append(x)
         _intermediates["after_phase2"] = x.detach().clone()
+        _phase2_x = x  # keep gradient-attached reference for aux loss (return_phase2_embs)
 
         # ── Phase 3: bidirectional CONTAINS (Layers 6+7+8) ──────────────────
         # Layer 6 (conv4):  CFG→FUNCTION up — Phase-2-enriched CFG signal rises
@@ -578,4 +587,6 @@ class GNNEncoder(nn.Module):
 
         if return_intermediates:
             return x, batch, _jk_entropy, _intermediates
+        if return_phase2_embs:
+            return x, batch, _jk_entropy, _phase2_x
         return x, batch, _jk_entropy
