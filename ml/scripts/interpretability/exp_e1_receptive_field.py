@@ -17,7 +17,7 @@ HOW IT WORKS
 Three analyses are run:
 
   Analysis 1 — CEI pattern reachability (Reentrancy)
-    Phase 2 edges (CONTROL_FLOW=6, CALL_ENTRY=8, RETURN_TO=9).
+    Phase 2 edges (CONTROL_FLOW=6, CALL_ENTRY=8, RETURN_TO=9, DEF_USE=10).
     For each reentrancy-positive contract: is there at least one
     CFG_NODE_WRITE (type 9) reachable from any CFG_NODE_CALL (type 8)?
     Reported at k=1..8.
@@ -103,7 +103,7 @@ log = logging.getLogger(__name__)
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 # Phase edge-type sets (v8 schema: CALLS=0, CONTAINS=5, CONTROL_FLOW=6,
-#   REVERSE_CONTAINS=7 runtime-only, CALL_ENTRY=8, RETURN_TO=9)
+#   REVERSE_CONTAINS=7 runtime-only, CALL_ENTRY=8, RETURN_TO=9, DEF_USE=10)
 PHASE1_EDGE_TYPES = {
     EDGE_TYPES["CALLS"],      # 0 — function → internally-called function
     EDGE_TYPES["READS"],      # 1
@@ -116,6 +116,7 @@ PHASE2_EDGE_TYPES = {
     EDGE_TYPES["CONTROL_FLOW"],  # 6
     EDGE_TYPES["CALL_ENTRY"],    # 8
     EDGE_TYPES["RETURN_TO"],     # 9
+    EDGE_TYPES["DEF_USE"],       # 10 — def→use data-flow (IntegerUO, UnusedReturn)
 }
 PHASE3_EDGE_TYPES = {
     EDGE_TYPES["REVERSE_CONTAINS"],  # 7 — runtime-only; never in stored .pt files

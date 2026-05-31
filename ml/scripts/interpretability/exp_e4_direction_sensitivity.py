@@ -92,37 +92,48 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
 
 _CONTROL_FLOW = EDGE_TYPES["CONTROL_FLOW"]  # 6
+_DEF_USE      = EDGE_TYPES["DEF_USE"]       # 10
+_CALL_ENTRY   = EDGE_TYPES["CALL_ENTRY"]    # 8
+_RETURN_TO    = EDGE_TYPES["RETURN_TO"]     # 9
 WL_ROUNDS     = 8
+
+# All edge types to test direction sensitivity for
+_DIRECTION_TEST_TYPES: list[tuple[int, str]] = [
+    (_CONTROL_FLOW, "CONTROL_FLOW"),
+    (_DEF_USE,      "DEF_USE"),
+    (_CALL_ENTRY,   "CALL_ENTRY"),
+    (_RETURN_TO,    "RETURN_TO"),
+]
 
 
 # ── Graph manipulation ────────────────────────────────────────────────────────
 
-def _make_cf_undirected(
-    edge_index: torch.Tensor,
-    edge_attr:  torch.Tensor,
+def _make_edges_undirected(
+    edge_type_id: int,
+    edge_index:   torch.Tensor,
+    edge_attr:    torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    Return a new (edge_index, edge_attr) where every CONTROL_FLOW edge A->B
-    has a reverse edge B->A with the same edge type added.
+    Return a new (edge_index, edge_attr) where every edge of `edge_type_id`
+    A->B also has a reverse edge B->A with the same edge type added.
 
-    Non-CONTROL_FLOW edges are left unchanged.
-    Duplicate reverse edges (already present) are NOT deduplicated — the WL
-    hash is order-invariant via sorted(), so duplicates only affect hash speed,
-    not correctness.
+    All other edge types are left unchanged. Duplicate reverse edges are NOT
+    deduplicated — the WL hash is order-invariant via sorted(), so duplicates
+    only affect hash speed, not correctness.
     """
     if edge_index.numel() == 0 or edge_attr is None:
         return edge_index, edge_attr
 
-    cf_mask = edge_attr == _CONTROL_FLOW
-    if not cf_mask.any():
+    mask = edge_attr == edge_type_id
+    if not mask.any():
         return edge_index, edge_attr
 
-    cf_ei   = edge_index[:, cf_mask]              # [2, E_cf]
-    cf_rev  = torch.stack([cf_ei[1], cf_ei[0]], dim=0)  # reversed
-    cf_ea   = edge_attr[cf_mask]
+    ei_typed  = edge_index[:, mask]                          # [2, E_t]
+    ei_rev    = torch.stack([ei_typed[1], ei_typed[0]], dim=0)  # reversed
+    ea_typed  = edge_attr[mask]
 
-    new_ei = torch.cat([edge_index, cf_rev], dim=1)
-    new_ea = torch.cat([edge_attr,  cf_ea],  dim=0)
+    new_ei = torch.cat([edge_index, ei_rev], dim=1)
+    new_ea = torch.cat([edge_attr,  ea_typed], dim=0)
     return new_ei, new_ea
 
 
@@ -162,7 +173,7 @@ def _pair_by_node_count(
 
 def _distinguishability_curve(
     pairs: list[tuple],
-    undirected: bool,
+    undirected_type_id: int | None = None,
     n_rounds: int = WL_ROUNDS,
 ) -> dict[int, float]:
     """
@@ -170,9 +181,10 @@ def _distinguishability_curve(
     round.
 
     Args:
-        pairs:      List of (pos_graph, neg_graph) pairs.
-        undirected: If True, make CONTROL_FLOW edges undirected before WL.
-        n_rounds:   Number of WL rounds.
+        pairs:              List of (pos_graph, neg_graph) pairs.
+        undirected_type_id: If not None, make edges of this type undirected
+                            before WL. None = fully directed (baseline).
+        n_rounds:           Number of WL rounds.
 
     Returns:
         {round: distinguishable_pct}
@@ -192,9 +204,9 @@ def _distinguishability_curve(
         n_ei = ng.edge_index
         n_ea = ng.edge_attr if ng.edge_attr is not None else torch.zeros(n_ei.shape[1], dtype=torch.long)
 
-        if undirected:
-            p_ei, p_ea = _make_cf_undirected(p_ei, p_ea)
-            n_ei, n_ea = _make_cf_undirected(n_ei, n_ea)
+        if undirected_type_id is not None:
+            p_ei, p_ea = _make_edges_undirected(undirected_type_id, p_ei, p_ea)
+            n_ei, n_ea = _make_edges_undirected(undirected_type_id, n_ei, n_ea)
 
         p_rounds = compute_wl_hashes(p_types, p_ei, p_ea, n_rounds)
         n_rounds_hashes = compute_wl_hashes(n_types, n_ei, n_ea, n_rounds)
@@ -213,6 +225,39 @@ def _distinguishability_curve(
 
 # ── Main analysis ─────────────────────────────────────────────────────────────
 
+def _run_single_edge_type(
+    pairs: list[tuple],
+    edge_type_id: int,
+    type_name: str,
+) -> dict:
+    """Run directed vs undirected WL test for a single edge type."""
+    directed_curve   = _distinguishability_curve(pairs, undirected_type_id=None)
+    undirected_curve = _distinguishability_curve(pairs, undirected_type_id=edge_type_id)
+
+    diff_curve = {
+        r: round(directed_curve[r] - undirected_curve[r], 2)
+        for r in range(1, WL_ROUNDS + 1)
+    }
+    final_diff = diff_curve[WL_ROUNDS]
+
+    return {
+        "edge_type":              type_name,
+        "edge_type_id":           edge_type_id,
+        "directed":               directed_curve,
+        "undirected":             undirected_curve,
+        "difference":             diff_curve,
+        "final_directed_pct":     directed_curve[WL_ROUNDS],
+        "final_undirected_pct":   undirected_curve[WL_ROUNDS],
+        "final_diff_pct":         final_diff,
+        "pass_criterion":         "directed >= undirected + 10% distinguishable at round 8",
+        "overall_pass":           final_diff >= 10.0,
+        "warning": (
+            f"Direction is NOT helping for {type_name}: within 5%"
+            if final_diff < 5.0 else None
+        ),
+    }
+
+
 def run_analysis(
     stems: list[str],
     df_split: pd.DataFrame,
@@ -220,7 +265,11 @@ def run_analysis(
     n_contracts: int,
     seed: int = 42,
 ) -> dict:
-    """Run directed vs undirected CFG WL distinguishability comparison."""
+    """
+    Run directed vs undirected WL distinguishability for each of:
+      CONTROL_FLOW, DEF_USE, CALL_ENTRY, RETURN_TO
+    using Reentrancy pos/neg pairs.
+    """
     rng = np.random.default_rng(seed)
     stem_to_row = {row["md5_stem"]: row for _, row in df_split.iterrows()}
 
@@ -255,43 +304,27 @@ def run_analysis(
 
     if not pairs:
         return {
-            "n_pairs":            0,
-            "directed":           {},
-            "undirected":         {},
-            "difference":         {},
-            "final_diff_pct":     None,
-            "overall_pass":       False,
-            "warning":            "no pairs formed",
+            "n_pairs":       0,
+            "per_edge_type": {},
+            "overall_pass":  False,
+            "warning":       "no pairs formed",
         }
 
-    log.info("Computing directed WL curves...")
-    directed_curve   = _distinguishability_curve(pairs, undirected=False)
+    per_edge_type: dict[str, dict] = {}
+    for etype_id, etype_name in _DIRECTION_TEST_TYPES:
+        log.info(f"Testing direction sensitivity for {etype_name}...")
+        per_edge_type[etype_name] = _run_single_edge_type(pairs, etype_id, etype_name)
 
-    log.info("Computing undirected CF WL curves...")
-    undirected_curve = _distinguishability_curve(pairs, undirected=True)
-
-    diff_curve = {
-        r: round(directed_curve[r] - undirected_curve[r], 2)
-        for r in range(1, WL_ROUNDS + 1)
-    }
-
-    final_diff = diff_curve[WL_ROUNDS]
-    passed = final_diff >= 10.0
-    warn   = final_diff < 5.0
+    cf_result   = per_edge_type["CONTROL_FLOW"]
+    overall_pass = cf_result["overall_pass"]
 
     return {
-        "n_pairs":        len(pairs),
-        "directed":       directed_curve,
-        "undirected":     undirected_curve,
-        "difference":     diff_curve,
-        "final_directed_pct":   directed_curve[WL_ROUNDS],
-        "final_undirected_pct": undirected_curve[WL_ROUNDS],
-        "final_diff_pct": final_diff,
-        "pass_criterion": "directed >= undirected + 10% distinguishable at round 8",
-        "overall_pass":   passed,
-        "warning": (
-            "Direction is NOT helping: directed and undirected CF curves within 5%"
-            if warn else None
+        "n_pairs":       len(pairs),
+        "per_edge_type": per_edge_type,
+        "overall_pass":  overall_pass,
+        "note": (
+            "overall_pass reflects CONTROL_FLOW only (original criterion). "
+            "DEF_USE/CALL_ENTRY/RETURN_TO are new measurements — no pass threshold applied."
         ),
     }
 
@@ -300,56 +333,55 @@ def run_analysis(
 
 def _print_report(results: dict) -> None:
     print(f"\n{'═'*72}")
-    print("  EXP-E4: Direction Sensitivity (Directed vs Undirected CFG)")
+    print("  EXP-E4: Direction Sensitivity (Directed vs Undirected — per edge type)")
     print(f"{'═'*72}")
     print(f"\n  Pairs: {results['n_pairs']}")
-    print(f"\n  {'Round':>6}  {'Directed':>12}  {'Undirected':>12}  {'Diff':>8}")
-    print(f"  {'------':>6}  {'------------':>12}  {'------------':>12}  {'--------':>8}")
-    for r in range(1, WL_ROUNDS + 1):
-        d  = results["directed"].get(r, 0.0)
-        u  = results["undirected"].get(r, 0.0)
-        di = results["difference"].get(r, 0.0)
-        print(f"  {r:>6}  {d:>11.1f}%  {u:>11.1f}%  {di:>7.1f}%")
 
-    print(f"\n  Pass criterion: directed - undirected >= 10% at round 8")
-    print(f"  Final diff: {results.get('final_diff_pct', 'N/A'):.1f}%"
-          if results.get("final_diff_pct") is not None else "  Final diff: N/A")
-    print(f"  Result: {'PASS' if results['overall_pass'] else 'FAIL'}")
+    for etype_name, er in results.get("per_edge_type", {}).items():
+        print(f"\n  ── {etype_name} (id={er['edge_type_id']}) ──")
+        print(f"  {'Round':>6}  {'Directed':>12}  {'Undirected':>12}  {'Diff':>8}")
+        print(f"  {'------':>6}  {'------------':>12}  {'------------':>12}  {'--------':>8}")
+        for r in range(1, WL_ROUNDS + 1):
+            d  = er["directed"].get(r, 0.0)
+            u  = er["undirected"].get(r, 0.0)
+            di = er["difference"].get(r, 0.0)
+            print(f"  {r:>6}  {d:>11.1f}%  {u:>11.1f}%  {di:>7.1f}%")
+        final = er.get("final_diff_pct")
+        flag  = "PASS" if er["overall_pass"] else ("WARN" if final is not None and final < 5.0 else "FAIL")
+        print(f"  Final diff at round {WL_ROUNDS}: {final:.1f}%  [{flag}]")
+        if er.get("warning"):
+            print(f"  WARNING: {er['warning']}")
 
-    if results.get("warning"):
-        print(f"\n  WARNING: {results['warning']}")
-
+    print(f"\n  Note: {results.get('note', '')}")
     print(f"\n{'─'*72}")
-    print(f"  EXP-E4 RESULT: {'PASS' if results['overall_pass'] else 'FAIL'}")
+    print(f"  EXP-E4 OVERALL (CONTROL_FLOW criterion): {'PASS' if results['overall_pass'] else 'FAIL'}")
     print(f"{'═'*72}\n")
 
 
 def _save_plot(results: dict, out_dir: Path) -> None:
+    per_edge = results.get("per_edge_type", {})
+    if not per_edge:
+        return
+
     rounds = list(range(1, WL_ROUNDS + 1))
-    dir_vals  = [results["directed"].get(r, 0.0)   for r in rounds]
-    undir_vals = [results["undirected"].get(r, 0.0) for r in rounds]
-    diff_vals  = [results["difference"].get(r, 0.0) for r in rounds]
+    n_types = len(per_edge)
+    fig, axes = plt.subplots(1, n_types, figsize=(5 * n_types, 5), sharey=True)
+    if n_types == 1:
+        axes = [axes]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    for ax, (etype_name, er) in zip(axes, per_edge.items()):
+        diff_vals = [er["difference"].get(r, 0.0) for r in rounds]
+        colors = ["green" if v >= 10 else "orange" if v >= 5 else "red" for v in diff_vals]
+        ax.bar(rounds, diff_vals, color=colors)
+        ax.axhline(10, color="green",  linestyle="--", linewidth=0.8, label="10% pass")
+        ax.axhline(5,  color="orange", linestyle=":",  linewidth=0.8, label="5% warn")
+        ax.set_xlabel("WL round")
+        ax.set_ylabel("Directed − Undirected (%)")
+        ax.set_title(f"{etype_name}\n(id={er['edge_type_id']})")
+        ax.legend(fontsize=7)
+        ax.grid(True, axis="y", alpha=0.3)
 
-    ax1.plot(rounds, dir_vals,   marker="o", label="Directed CFG")
-    ax1.plot(rounds, undir_vals, marker="s", label="Undirected CFG")
-    ax1.set_xlabel("WL round")
-    ax1.set_ylabel("% distinguishable pairs")
-    ax1.set_title("Distinguishability: Directed vs Undirected")
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-
-    ax2.bar(rounds, diff_vals, color=["green" if v >= 10 else "orange" if v >= 5 else "red" for v in diff_vals])
-    ax2.axhline(10, color="green", linestyle="--", linewidth=0.8, label="10% pass threshold")
-    ax2.axhline(5,  color="orange", linestyle=":", linewidth=0.8, label="5% warn threshold")
-    ax2.set_xlabel("WL round")
-    ax2.set_ylabel("Directed - Undirected (%)")
-    ax2.set_title("Direction Benefit (diff)")
-    ax2.legend(fontsize=8)
-    ax2.grid(True, axis="y", alpha=0.3)
-
-    fig.suptitle("E4: CFG Direction Sensitivity")
+    fig.suptitle("E4: Direction Sensitivity per Edge Type")
     plt.tight_layout()
     plot_path = out_dir / "e4_direction_sensitivity.png"
     plt.savefig(str(plot_path), dpi=150, bbox_inches="tight")
@@ -401,6 +433,7 @@ def main() -> int:
     _save_plot(results, out_path.parent)
 
     report = {
+        "experiment": "exp_e4_direction_sensitivity",
         "args": {
             "cache":       str(args.cache),
             "label_csv":   str(args.label_csv),
