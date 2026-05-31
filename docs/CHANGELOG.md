@@ -1226,7 +1226,15 @@ Scripts written but require manual validation before running. Reliability varies
 | `ml/scripts/clean_reentrancy_labels.py` | Sol-1 | **Low** | CFG BFS misses cross-function reentrancy and is only as complete as the extractor's `CFG_NODE_WRITE` coverage. Run `--dry-run` and cross-check a sample with `slither --detect reentrancy-eth` before committing. Alternative: skip and rely on E1 CEI aux loss instead. |
 | `ml/scripts/inject_openzeppelin_negatives.py` | IMP-D2 | **High** | OZ contracts are audited clean; adds genuine zero-label negatives |
 
-**Manual validation procedure (D1, D3):** run `--dry-run`, sample 20 stems from the removal list, verify against Slither output or source inspection. If error rate > 10%, do not run the script.
+**Execution results (2026-05-31 dry-runs):** All three label scripts produced results that make running them unsafe or redundant:
+
+| Script | Dry-run result | Decision |
+|--------|---------------|---------|
+| Sol-2 IntegerUO | 0 removals — BCCC dataset is 100% pre-0.8.0 Solidity (0.4.x/0.5.x) | SKIP — labels correct |
+| Sol-3 Timestamp | 380/380 (100%) removal rate — `uses_block_globals` (x[:,2]) is function-level only, never set on CFG_NODE_CHECK child nodes → false detection | SKIP — feature architecture incompatible |
+| Sol-1 Reentrancy | 2,606/3,887 (67%) removal rate — too aggressive for LOW-reliability BFS heuristic | SKIP — rely on E1 CEI aux loss instead |
+
+**Label CSV unchanged:** `ml/data/processed/multilabel_index_cleaned.csv` is the Run 5 input.
 
 ### Run 5 Training Changes (Phase E)
 

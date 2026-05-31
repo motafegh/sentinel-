@@ -1,0 +1,12 @@
+{
+  "CallToUnknown": 0.23844388127326965,
+  "DenialOfService": 0.10940267890691757,
+  "ExternalBug": 0.22140637040138245,
+  "GasException": 0.2186320275068283,
+  "IntegerUO": 0.4429316520690918,
+  "MishandledException": 0.20483696460723877,
+  "Reentrancy": 0.23047618567943573,
+  "Timestamp": 0.19788281619548798,
+  "TransactionOrderDependence": 0.21137477457523346,
+  "UnusedReturn": 0.1806783229112625
+}
