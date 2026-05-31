@@ -100,9 +100,10 @@ def measure_phase_gradient_norms(
     from torch_geometric.data import Batch
 
     gnn = model.gnn
-    ln_phase1 = gnn.ln_phase1
-    ln_phase2 = gnn.ln_phase2
-    ln_phase3 = gnn.ln_phase3
+    # GNNEncoder uses phase_norm ModuleList: [0]=after Phase1, [1]=after Phase2, [2]=after Phase3
+    ln_phase1 = gnn.phase_norm[0]
+    ln_phase2 = gnn.phase_norm[1]
+    ln_phase3 = gnn.phase_norm[2]
 
     stem_to_labels = {
         row["md5_stem"]: [int(row[c]) for c in CLASS_NAMES]
