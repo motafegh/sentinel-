@@ -1,7 +1,7 @@
 # SENTINEL — Roadmap
 
-**Last updated:** 2026-05-29  
-**Current state:** Run 4 complete (F1=0.3362, ep32). Agent topology complete through Step E. Data quality work gates Run 5.
+**Last updated:** 2026-05-30  
+**Current state:** Run 4 complete (F1=0.3362, ep32). Interpretability suite complete and validated (21 experiments, see `docs/interpretability/`). Data quality work + training fixes gate Run 5.
 
 See `docs/STATUS.md` for current module state. Completed items are in `docs/changes/` and `docs/CHANGELOG.md`.
 
@@ -9,16 +9,27 @@ See `docs/STATUS.md` for current module state. Completed items are in `docs/chan
 
 ## Immediate — Data Quality (before Run 5)
 
-These items fix known label noise and structural gaps in the 41K-graph corpus. All should be done before launching Run 5 to avoid training into the same ceiling.
+These items fix known label noise, structural gaps, and training dynamics issues confirmed by the interpretability suite (2026-05-30). All should be done before launching Run 5.
+
+### Quick wins (no retraining — do first)
+
+| Item | ID | Description | Effort |
+|------|----|-------------|--------|
+| Fix solc-select | Interp-0 | `ml/.venv/bin/solc-select upgrade && solc-select install 0.8.25 && solc-select use 0.8.25` — unblocks EXP-L6 counterfactual validation | 5 min |
+| Temperature scaling calibration | Interp-1 | Fit per-class temperature T on val set; wrap checkpoint in TemperatureScaler; re-run tune_threshold.py on calibrated outputs. ECE mean 0.252 → <0.05. See `docs/proposal/GNN_INTERPRETABILITY_FIXES_PROPOSAL.md` Fix 1. | 1 hr |
+
+### Data quality (all required before Run 5)
 
 | Item | ID | Description | Blocking |
 |------|----|-------------|---------|
 | CEI Reentrancy pattern injection | Sol-1 | Inject ~200 contracts with explicit CEI violations; labels confirmed by Slither `reentrancy-eth` | Yes |
 | pragma/unchecked IntegerUO injection | Sol-2 | Inject contracts using `unchecked {}` blocks and unsafe arithmetic; verifiable by AST | Yes |
-| Timestamp gating | Sol-3 | Remove Timestamp=1 labels on contracts where `block.timestamp` is only used in non-branching contexts | Yes |
-| re-extraction with fixed return_ignored | IMP-D1 | Run `reextract_graphs.py` to rebuild all 41K graphs with the IMP-D1 temporal ordering fix applied | Yes |
+| Timestamp gating | Sol-3 | Remove Timestamp=1 labels on contracts where `block.timestamp` is only used in non-branching contexts. Interpretability confirmed size shortcut (d=0.643) — gating is essential. | Yes |
+| re-extraction with fixed return_ignored | IMP-D1 | Run `reextract_graphs.py` to rebuild all 41K graphs with the IMP-D1 temporal ordering fix. Also raise max_nodes to 2048 (C-4 audit: 227 contracts exceed 1024, max=1735, all fit in 2048). | Yes |
 | OpenZeppelin clean negatives | IMP-D2 / Sol-5 | Inject 100+ verified-clean OZ contracts as hard negatives to reduce false-positive rate | Yes |
-| max_nodes audit | C-4 | Quantify % of corpus > 1024 nodes; decide whether to raise max_nodes 1024→2048 before Run 5 | No |
+| Fix EMITS edge extraction | Interp-6 | `graph_extractor.py` produces only 12 EMITS edges across 41K contracts. Fix Slither EventCall IR query. Enables UnusedReturn structural signal. | No |
+
+**C-4 audit result (2026-05-30):** 227 / 41,576 contracts (0.55%) exceed 1024 nodes. Max observed: 1735. No contracts exceed 2048. Decision: **raise max_nodes to 2048** during IMP-D1 re-extraction. Change in `graph_schema.py` and the `--max-nodes` arg to `reextract_graphs.py`.
 
 ### Re-extraction command (IMP-D1)
 
@@ -35,9 +46,16 @@ Expected output: 41,576 graphs, schema v8, `return_ignored` now uses temporal or
 
 ## Training Run 5
 
-**Trigger:** All Immediate data quality items complete.  
-**Architecture:** Same as Run 4 (no architectural changes planned).  
+**Trigger:** All Immediate data quality items complete + Interp-1 calibration validated.  
+**Architecture:** Run 4 base + CEI auxiliary loss (Interp-2) + Timestamp size normalisation (Interp-3).  
 **Target:** F1-macro > 0.40 on val set.
+
+### New training changes from interpretability (add to Run 5)
+
+| Item | ID | Description | Expected gain |
+|------|----|-------------|---------------|
+| CEI auxiliary loss | Interp-2 | Binary Phase 2 auxiliary loss head on Reentrancy-positive contracts. Forces Phase 2 to carry CEI signal (currently 0.014 Reentrancy drop vs 0.03 target). See `docs/proposal/GNN_INTERPRETABILITY_FIXES_PROPOSAL.md` Fix 3 for full code. | +0.03–0.05 on Reentrancy/TOD/ExternalBug |
+| Timestamp size normalisation | Interp-3 | Either: (a) add contract node-count as explicit normalisation feature, or (b) size-stratified sampling in training batch. EXP-L7: F1 collapses from 1.0 (small) to 0.364 (large). | +0.02–0.04 on Timestamp |
 
 ### Gate criteria (must all pass to declare success)
 

@@ -355,11 +355,11 @@ class GNNEncoder(nn.Module):
             return_intermediates: When True, also return per-phase embeddings dict.
 
         Returns (return_intermediates=False):
-            node_embeddings [N, hidden_dim], batch [N]
+            node_embeddings [N, hidden_dim], batch [N], jk_entropy (scalar)
         Returns (return_intermediates=True):
-            node_embeddings [N, hidden_dim], batch [N],
+            node_embeddings [N, hidden_dim], batch [N], jk_entropy (scalar),
             {"after_phase1": ..., "after_phase2": ..., "after_phase3": ...}
-            (diagnostic only — detached tensors, not used for gradients)
+            (intermediates dict is diagnostic only — detached tensors, not used for gradients)
         """
         # ── Guards ───────────────────────────────────────────────────────────
         if x.shape[1] != NODE_FEATURE_DIM:
