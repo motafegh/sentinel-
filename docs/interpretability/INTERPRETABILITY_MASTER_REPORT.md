@@ -265,11 +265,13 @@ The pooling step in the GNN (which aggregates over FUNCTION-type nodes) never fa
 
 ### 4.6 EXP-A2: CFG Feature Inheritance
 
-**Status: FAIL (tool artifact, not a data defect)**
+**Status: FAIL (code bug fixed 2026-05-31, data gap remains)**
 
-The experiment searched for INHERITS-linked parent/child node pairs and checked feature consistency. 0 graphs with INHERITS-linked parents were found across 470 audited contracts.
+The experiment searched for CONTAINS-linked (function→CFG_NODE) parent/child node pairs and checked feature consistency. 0 graphs with CFG parents were found across 470 audited contracts.
 
-This is not a data defect. The experiment used a node-type string query that did not match the actual node type strings stored in the graphs. The CRITICAL_FINDINGS.md confirms that CFG nodes are present in 99.5% of contracts via direct count. EXP-A2 must be rerun with the correct node type string after auditing the graph schema.
+**Root cause (identified 2026-05-31):** `_CONTAINS_EDGE = 0` was hardcoded, matching CALLS (type 0) instead of CONTAINS (type 5). The code was searching for CALLS edges between function nodes, not CONTAINS edges. This bug has been fixed: `_CONTAINS_EDGE = EDGE_TYPES["CONTAINS"]` (=5).
+
+After the fix, the underlying data question remains: do stored graphs have CONTAINS (type 5) edges between FUNCTION nodes and CFG_NODE children? EXP-A2 should be rerun to get a valid inheritance coverage rate.
 
 ---
 
@@ -293,26 +295,19 @@ Three analyses were run:
 
 The 37.7% rate is below the 50% pass threshold. This means for the majority of Reentrancy-positive contracts, the GNN's k=8 hop depth is insufficient to connect the call site to the state write through Phase 2 edges alone. The vulnerability pattern involves paths that are either longer than 8 hops or require traversing CONTAINS/REVERSE_CONTAINS edges (Phase 1/3) to reach the relevant nodes.
 
-**Analysis 2: Function Aggregation** — Can FUNCTION nodes aggregate ≥50% of CFG nodes within k=8 Phase 3 hops?
+**Analysis 2: Function Aggregation** — **(redesigned 2026-05-31)**
 
-| Metric | Result |
-|--------|--------|
-| FUNCTION nodes analysed | 7,692 |
-| Nodes that can aggregate ≥50% CFG within k=8 | 8 (0.1%) |
-| Pass criterion | ≥70% of FUNCTION nodes |
+Original question: "Can FUNCTION nodes reach ≥50% of ALL CFG nodes via Phase 3 edges?" used `REVERSE_CONTAINS` (type 7), which is **runtime-only** and never stored in .pt graph files. BFS found no REVERSE_CONTAINS edges → 0.1% was expected and uninformative.
 
-This is a near-total failure of Phase 3's upward-aggregation capacity for deep contracts. FUNCTION nodes can only see nearby CFG nodes within k=8 Phase 3 hops.
+Redesigned question: "What fraction of FUNCTION nodes have ≥1 CFG_NODE child via CONTAINS (type 5) within 1 hop?" This directly tests CFG extraction completeness. Rerun needed with redesigned script.
 
-**Analysis 3: Contract Coverage** — Can CONTRACT nodes reach FUNCTION children within 2 Phase 1 hops?
+**Analysis 3: Contract Coverage** — **(redesigned 2026-05-31)**
 
-| Metric | Result |
-|--------|--------|
-| CONTRACT nodes | 1,474 |
-| Nodes reaching FUNCTION within 2 hops | 0 (0.0%) |
+Original question: "Can CONTRACT nodes reach FUNCTION nodes within 2 Phase 1 hops?" No CONTRACT→FUNCTION edge type exists in v8 schema (CONTAINS=5 goes FUNCTION→CFG_NODE, not CONTRACT→FUNCTION). Zero result was guaranteed by design, not a data gap.
 
-This zero result is likely another node-type string mismatch similar to EXP-A2. CONTRACT→FUNCTION CONTAINS edges exist in 99.6% of graphs; the path should be trivially reachable.
+Redesigned question: "What fraction of FUNCTION nodes can reach ≥1 other FUNCTION node via CALLS within 2 hops?" Tests intra-contract call graph connectivity. Rerun needed with redesigned script.
 
-**Interpretation:** EXP-E1 Analysis 1 is valid and meaningful — the CEI chain is genuinely hard to connect in a single 8-hop pass. EXP-E1 Analyses 2 and 3 are likely query artifacts. The CEI reachability finding explains why the model struggles with Reentrancy: the most relevant structural evidence does not fit within the GNN's receptive field using Phase 2 edges alone.
+**Interpretation (updated):** Analysis 1 (CEI reachability 37.7%) is valid and meaningful. Analyses 2 and 3 had structural design bugs — redesigned (2026-05-31), rerun needed for meaningful results. The CEI reachability finding explains why the model struggles with Reentrancy: the relevant structural evidence does not fit within k=8 Phase 2 hops for 62% of contracts.
 
 ### 5.2 EXP-E2: WL Distinguishability
 
@@ -972,7 +967,35 @@ The model has learned the right structural priors (GNN AUC-ROC = 0.929) but cann
 
 ---
 
+## 10. Phase B — New Measurements (scripts added 2026-05-31, not yet run)
+
+Phase B scripts close the measurement gaps identified in the interpretability audit.  All require the trained checkpoint; none require data re-extraction.
+
+| ID | Script | Goal | Unblocks |
+|----|--------|------|---------|
+| B1 | `exp_b1_phase2_gradient_norm.py` | Gradient norm at each phase LayerNorm — does Phase 2 receive loss signal per class? | CEI aux loss design (Interp-2) |
+| B2 | `exp_b2_per_eye_ece.py` | Per-eye ECE (GNN / Transformer / Fused separately) | Temperature scaling design (Interp-1) |
+| B3 | `exp_b3_jk_weight_distribution.py` | JK weight std + per-class histogram — selective vs uniform Phase 2 use? | CEI aux loss need assessment |
+| B4 | `exp_b4_unusedreturn_saliency.py` | UnusedReturn top-scored contracts gradient saliency — structural signal or size shortcut? | Run 5 label strategy for UnusedReturn |
+
+**Run B2 before implementing temperature scaling.** Scaling the main head output without knowing which eye is miscalibrated risks making calibration worse for well-calibrated eyes.
+
+---
+
+## 11. Addendum — Script Fixes (2026-05-31)
+
+Four additional script bugs were identified and corrected after the initial interpretability suite:
+
+| Script | Bug | Fix Applied |
+|--------|-----|-------------|
+| `exp_l4_gradient_saliency.py` | Stale hardcoded FEATURE_NAMES (same as L8) — dims 3–9 mislabelled | Import from graph_schema |
+| `exp_a2_cfg_inheritance.py` | `_CONTAINS_EDGE = 0` matched CALLS (type 0) not CONTAINS (type 5) | `EDGE_TYPES["CONTAINS"]` |
+| `exp_e1_receptive_field.py` | Analysis 2: used REVERSE_CONTAINS (runtime-only) → always 0%; Analysis 3: no CONTRACT→FUNCTION edge in schema | Redesigned both analyses |
+| `exp_l3_attention_visualization.py` | Only hooked conv3 (CF-only) — missed conv3b (CALL_ENTRY+RETURN_TO) | Now hooks both in one forward pass |
+
+---
+
 *End of SENTINEL Interpretability Master Report*
-*Generated: 2026-05-30*
+*Generated: 2026-05-30  Updated: 2026-05-31*
 *Based on: GCB-P1-Run4-no-asl-pw_best.pt (ep32, F1=0.3362)*
-*Experiments: exp_a1 through exp_l10, exp_s1 through exp_s4, exp_e1 through exp_e4, exp_a3, exp_a4*
+*Experiments: exp_a1 through exp_l10, exp_s1 through exp_s4, exp_e1 through exp_e4, exp_a3, exp_a4, exp_b1 through exp_b4 (Phase B, not yet run)*

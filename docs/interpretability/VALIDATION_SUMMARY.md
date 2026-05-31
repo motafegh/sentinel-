@@ -24,6 +24,11 @@
 | `exp_l8_permutation_importance.py` | Stale hardcoded `FEATURE_NAMES` from pre-v8 schema — 9 of 11 features mislabelled | Replaced with `from ml.src.preprocessing.graph_schema import FEATURE_NAMES` |
 | `exp_l1_jk_weight_analysis.py` | `mean_entropy` field stored mean weight (0.333) not Shannon entropy (1.099) | Fixed to compute `H = -sum(p * log(p))` correctly |
 | `ml/src/models/gnn_encoder.py` | Docstring said 3-tuple return for `return_intermediates=True` | Corrected to 4-tuple: `(x, batch, jk_entropy, intermediates)` |
+| `exp_l4_gradient_saliency.py` | Same stale FEATURE_NAMES as L8 — dims 3–9 all wrong labels | Fixed to import from graph_schema (2026-05-31) |
+| `exp_a2_cfg_inheritance.py` | `_CONTAINS_EDGE = 0` hardcoded — was matching CALLS (type 0) not CONTAINS (type 5) | Fixed to `EDGE_TYPES["CONTAINS"]` + import (2026-05-31) |
+| `exp_e1_receptive_field.py` | Analysis 2 used REVERSE_CONTAINS (runtime-only, never stored) — always 0% | Rewritten to check FUNCTION→CFG via CONTAINS only (2026-05-31) |
+| `exp_e1_receptive_field.py` | Analysis 3 checked CONTRACT→FUNCTION — no such edge type in v8 schema | Rewritten to check FUNCTION→FUNCTION CALLS connectivity (2026-05-31) |
+| `exp_l3_attention_visualization.py` | Only hooked conv3 (CF edges) — missed conv3b (CALL_ENTRY+RETURN_TO) | Extended to hook both conv3 and conv3b in single forward pass (2026-05-31) |
 
 ---
 

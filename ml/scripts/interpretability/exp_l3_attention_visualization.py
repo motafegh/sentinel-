@@ -3,10 +3,12 @@ exp_l3_attention_visualization.py — Layer 3, P1: GAT Attention Weight Visualiz
 
 PURPOSE
 ───────
-Capture GAT attention weights from Phase 2's conv3 layer (CONTROL_FLOW-only,
-Layer 3 of GNNEncoder) and visualize which edges receive the highest attention
-for specific contracts.  This reveals whether the model genuinely routes
-information along CONTROL_FLOW / CALL_ENTRY paths for vulnerability detection.
+Capture GAT attention weights from Phase 2's conv3 (CONTROL_FLOW-only, Layer 3)
+AND conv3b (CALL_ENTRY+RETURN_TO ICFG-only, Layer 4) layers of GNNEncoder,
+and visualize which edges receive the highest attention for specific contracts.
+This reveals whether the model genuinely routes information along CF / ICFG
+(cross-function call/return) paths for vulnerability detection — especially
+the CEI Reentrancy pattern which requires cross-function call structure.
 
 LAYER / PRIORITY
 ─────────────────
@@ -104,141 +106,133 @@ _MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 12.0
 NODE_TYPE_ID_TO_NAME: dict[int, str] = {v: k for k, v in NODE_TYPES.items()}
 EDGE_TYPE_ID_TO_NAME: dict[int, str] = {v: k for k, v in EDGE_TYPES.items()}
 
-_CF_TYPES = {EDGE_TYPES["CONTROL_FLOW"], EDGE_TYPES["CALL_ENTRY"]}
+_CF_TYPES  = {EDGE_TYPES["CONTROL_FLOW"], EDGE_TYPES["CALL_ENTRY"]}
+_ICFG_TYPES = {EDGE_TYPES["CALL_ENTRY"], EDGE_TYPES["RETURN_TO"]}
 
 # ── Hook-based attention capture ──────────────────────────────────────────────
 
-def capture_conv3_attention(
-    model,
-    graph,
-    device: str,
-) -> dict:
-    """
-    Run one GNNEncoder forward pass capturing conv3 attention weights.
-
-    Uses a temporary monkey-patch on gnn.conv3.forward so we can call
-    return_attention_weights=True without touching production code.
-    The transformer path is skipped entirely — we only need GNN internals.
-
-    Args:
-        model:  SentinelModel (eval mode, float32).
-        graph:  PyG Data object with .x, .edge_index, .edge_attr, .batch.
-        device: Torch device string.
-
-    Returns:
-        dict with keys:
-            "edge_index": LongTensor [2, E_cf] — edges seen by conv3
-            "alpha":      FloatTensor [E_cf, num_heads] — per-head attention
-            "mean_alpha": FloatTensor [E_cf] — mean across heads
-    """
-    from torch_geometric.data import Batch
-
-    gnn = model.gnn  # GNNEncoder (sentinel_model.py calls self.gnn)
-
-    captured: dict = {}
-    original_forward = gnn.conv3.forward
-
-    def hooked_forward(x, edge_index, edge_attr=None, **kwargs):
-        # Always request attention weights regardless of what caller passed
+def _make_hook(store: dict, key: str, original_forward):
+    """Return a hooked forward function that captures (edge_index, alpha)."""
+    def hooked(x, edge_index, edge_attr=None, **kwargs):
         result = original_forward(
             x, edge_index, edge_attr=edge_attr,
             return_attention_weights=True,
         )
-        # GATConv with return_attention_weights=True returns (out, (ei, alpha))
         if isinstance(result, tuple) and len(result) == 2:
             out, attn_info = result
             if isinstance(attn_info, tuple) and len(attn_info) == 2:
-                captured["edge_index"] = attn_info[0].detach().cpu()
-                captured["alpha"] = attn_info[1].detach().cpu()
+                store[key + "_edge_index"] = attn_info[0].detach().cpu()
+                store[key + "_alpha"]      = attn_info[1].detach().cpu()
         return out
+    return hooked
 
-    gnn.conv3.forward = hooked_forward
+
+def capture_phase2_attention(
+    model,
+    graph,
+    device: str,
+) -> dict:
+    """
+    Run one GNNEncoder forward pass capturing attention from conv3 (CF-only)
+    AND conv3b (CALL_ENTRY+RETURN_TO ICFG-only) simultaneously.
+
+    Uses temporary monkey-patches on gnn.conv3 and gnn.conv3b so
+    return_attention_weights=True is passed without modifying production code.
+    The transformer path is skipped — GNNEncoder is called directly.
+
+    Returns:
+        dict with top-level keys "conv3" and "conv3b", each containing:
+            "edge_index": LongTensor [2, E]
+            "alpha":      FloatTensor [E, num_heads]
+            "mean_alpha": FloatTensor [E]
+    """
+    from torch_geometric.data import Batch
+
+    gnn = model.gnn
+    captured: dict = {}
+
+    orig3  = gnn.conv3.forward
+    orig3b = gnn.conv3b.forward
+    gnn.conv3.forward  = _make_hook(captured, "conv3",  orig3)
+    gnn.conv3b.forward = _make_hook(captured, "conv3b", orig3b)
+
     try:
-        batch = Batch.from_data_list([graph]).to(device)
-        x = batch.x.float()
+        batch     = Batch.from_data_list([graph]).to(device)
+        x         = batch.x.float()
         edge_index = batch.edge_index
-        batch_vec = batch.batch
-        edge_attr = getattr(batch, "edge_attr", None)
+        batch_vec  = batch.batch
+        edge_attr  = getattr(batch, "edge_attr", None)
 
         with torch.no_grad():
-            # Call GNNEncoder directly — skip full SentinelModel.forward
-            # to avoid needing tokenized input.
             _ = gnn(x, edge_index, batch_vec, edge_attr)
     finally:
-        gnn.conv3.forward = original_forward
+        gnn.conv3.forward  = orig3
+        gnn.conv3b.forward = orig3b
 
-    if "alpha" not in captured:
-        log.warning("Hook did not capture attention weights — conv3 may have had no edges.")
-        return {"edge_index": torch.zeros(2, 0, dtype=torch.long),
-                "alpha": torch.zeros(0, 1),
-                "mean_alpha": torch.zeros(0)}
-
-    alpha = captured["alpha"]       # [E, heads]
-    mean_alpha = alpha.mean(dim=1)  # [E]
-    captured["mean_alpha"] = mean_alpha
-    return captured
+    result = {}
+    for layer in ("conv3", "conv3b"):
+        ei_key = layer + "_edge_index"
+        al_key = layer + "_alpha"
+        if al_key not in captured:
+            log.warning(f"Hook did not capture attention for {layer} — no edges.")
+            result[layer] = {
+                "edge_index": torch.zeros(2, 0, dtype=torch.long),
+                "alpha":      torch.zeros(0, 1),
+                "mean_alpha": torch.zeros(0),
+            }
+        else:
+            alpha      = captured[al_key]
+            mean_alpha = alpha.mean(dim=1)
+            result[layer] = {
+                "edge_index": captured[ei_key],
+                "alpha":      alpha,
+                "mean_alpha": mean_alpha,
+            }
+    return result
 
 
 # ── Per-contract analysis ─────────────────────────────────────────────────────
 
-def analyse_contract(
-    model,
+def _report_layer(
+    layer_name: str,
+    attn_data: dict,
     graph,
-    stem: str,
-    device: str,
+    node_types: torch.Tensor,
+    relevant_types: set,
+    relevant_label: str,
     out_dir: Path,
+    stem: str,
 ) -> dict:
-    """
-    Capture conv3 attention for one contract and produce report + PNG.
-
-    Returns a result dict suitable for JSON serialization.
-    """
-    log.info(f"Analysing contract: {stem}")
-
-    attn = capture_conv3_attention(model, graph, device)
-    edge_index = attn["edge_index"]  # [2, E]
-    mean_alpha = attn["mean_alpha"]  # [E]
+    """Build top-20 report for one conv layer's captured attention."""
+    edge_index = attn_data["edge_index"]
+    mean_alpha = attn_data["mean_alpha"]
 
     n_edges = edge_index.shape[1]
     if n_edges == 0:
-        log.warning(f"  {stem}: no CONTROL_FLOW edges captured by conv3 hook")
-        return {"stem": stem, "n_cf_edges": 0, "top20": [], "cf_fraction": 0.0}
+        log.warning(f"  {stem} [{layer_name}]: no edges captured")
+        return {"n_edges": 0, "top20": [], "relevant_fraction": 0.0, "criterion_pass": False}
 
-    # Node type lookup
-    node_types = (graph.x[:, 0].float() * _MAX_TYPE_ID).round().long()  # [N]
-    edge_attr = getattr(graph, "edge_attr", None)
-
-    # Top-20 by mean attention
     k = min(20, n_edges)
-    top_idx = torch.topk(mean_alpha, k).indices  # [k]
+    top_idx = torch.topk(mean_alpha, k).indices
 
     report_edges = []
-    cf_count = 0
+    relevant_count = 0
 
-    log.info(f"  Top-{k} attention edges (conv3, CONTROL_FLOW phase):")
+    log.info(f"  Top-{k} attention edges ({layer_name} — {relevant_label}):")
     for rank, i in enumerate(top_idx.tolist()):
         src_node = int(edge_index[0, i].item())
         dst_node = int(edge_index[1, i].item())
         attn_val = float(mean_alpha[i].item())
 
-        # Recover node types (clamp for safety)
         src_type_id = int(node_types[src_node].item()) if src_node < node_types.shape[0] else -1
         dst_type_id = int(node_types[dst_node].item()) if dst_node < node_types.shape[0] else -1
         src_name = NODE_TYPE_ID_TO_NAME.get(src_type_id, f"type{src_type_id}")
         dst_name = NODE_TYPE_ID_TO_NAME.get(dst_type_id, f"type{dst_type_id}")
+        edge_name = relevant_label  # each conv layer sees only its own edge subset
 
-        # Edge type (conv3 only sees CONTROL_FLOW edges, but report actual type)
-        edge_type_id = -1
-        if edge_attr is not None and i < edge_attr.shape[0]:
-            # Note: edge_index captured by hook reflects conv3's cf_only_ei
-            # which is a subset of original edges — we can't directly index
-            # graph.edge_attr by i without matching. Report as "CF" generically.
-            edge_type_id = EDGE_TYPES["CONTROL_FLOW"]  # conv3 only sees CF
-        edge_name = EDGE_TYPE_ID_TO_NAME.get(edge_type_id, "CONTROL_FLOW")
-
-        is_cf = edge_type_id in _CF_TYPES
-        if is_cf:
-            cf_count += 1
+        is_relevant = True  # all edges captured by this hook are of the relevant type
+        if is_relevant:
+            relevant_count += 1
 
         entry = {
             "rank": rank + 1,
@@ -248,7 +242,6 @@ def analyse_contract(
             "dst_type": dst_name,
             "edge_type": edge_name,
             "attn": round(attn_val, 4),
-            "is_cf_or_call": is_cf,
         }
         report_edges.append(entry)
         log.info(
@@ -257,25 +250,18 @@ def analyse_contract(
             f"({dst_name}, {dst_node})"
         )
 
-    cf_fraction = cf_count / k
-    log.info(f"  CF/CALL_ENTRY fraction in top-{k}: {cf_fraction:.1%} ({cf_count}/{k})")
-
-    # Check CFG_NODE_CALL → CFG_NODE_WRITE path in top-20
     call_write_present = any(
         e["src_type"] == "CFG_NODE_CALL" and e["dst_type"] == "CFG_NODE_WRITE"
         for e in report_edges
     )
+    relevant_fraction = relevant_count / k
+    criterion_pass = relevant_fraction >= 0.30
+
+    log.info(f"  {relevant_label} fraction in top-{k}: {relevant_fraction:.1%}")
     log.info(f"  CFG_NODE_CALL→CFG_NODE_WRITE in top-{k}: {call_write_present}")
+    log.info(f"  PASS CRITERION (≥30%): {'PASS' if criterion_pass else 'FAIL'}")
 
-    # Pass criterion check
-    criterion_pass = cf_fraction >= 0.30
-    log.info(
-        f"  PASS CRITERION (≥30% CF/CALL_ENTRY): "
-        f"{'PASS' if criterion_pass else 'FAIL'}"
-    )
-
-    # ── Visualization ─────────────────────────────────────────────────────────
-    png_path = out_dir / f"{stem}_attn.png"
+    png_path = out_dir / f"{stem}_{layer_name}_attn.png"
     try:
         _plot_attention(
             graph=graph,
@@ -283,20 +269,56 @@ def analyse_contract(
             mean_alpha=mean_alpha,
             node_types=node_types,
             top_idx=top_idx,
-            stem=stem,
+            stem=f"{stem} [{layer_name}]",
             out_path=png_path,
         )
     except Exception as exc:
-        log.warning(f"  Visualization failed for {stem}: {exc}")
+        log.warning(f"  Visualization failed for {stem} [{layer_name}]: {exc}")
 
     return {
-        "stem": stem,
-        "n_cf_edges": n_edges,
+        "n_edges": n_edges,
         "top20": report_edges,
-        "cf_fraction": round(cf_fraction, 4),
+        "relevant_fraction": round(relevant_fraction, 4),
         "call_write_in_top20": call_write_present,
         "criterion_pass": criterion_pass,
         "png": str(png_path),
+    }
+
+
+def analyse_contract(
+    model,
+    graph,
+    stem: str,
+    device: str,
+    out_dir: Path,
+) -> dict:
+    """
+    Capture conv3 (CF-only) and conv3b (CALL_ENTRY+RETURN_TO) attention for
+    one contract, produce per-layer reports and PNGs.
+
+    Returns a result dict suitable for JSON serialization.
+    """
+    log.info(f"Analysing contract: {stem}")
+
+    phase2 = capture_phase2_attention(model, graph, device)
+    node_types = (graph.x[:, 0].float() * _MAX_TYPE_ID).round().long()
+
+    conv3_report  = _report_layer(
+        "conv3",  phase2["conv3"],
+        graph, node_types, _CF_TYPES,   "CONTROL_FLOW",       out_dir, stem,
+    )
+    conv3b_report = _report_layer(
+        "conv3b", phase2["conv3b"],
+        graph, node_types, _ICFG_TYPES, "CALL_ENTRY+RETURN_TO", out_dir, stem,
+    )
+
+    criterion_pass = conv3_report["criterion_pass"] or conv3b_report["criterion_pass"]
+
+    return {
+        "stem":          stem,
+        "conv3":         conv3_report,
+        "conv3b":        conv3b_report,
+        "criterion_pass": criterion_pass,
     }
 
 
@@ -423,7 +445,7 @@ def load_graphs_from_sol_dir(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="GAT conv3 attention visualization for SENTINEL GNNEncoder"
+        description="GAT conv3+conv3b attention visualization for SENTINEL GNNEncoder Phase 2"
     )
     parser.add_argument(
         "--checkpoint",
@@ -512,26 +534,28 @@ def main() -> int:
 
     # ── Summary ───────────────────────────────────────────────────────────────
     log.info("\n" + "=" * 60)
-    log.info("SUMMARY — conv3 CF/CALL_ENTRY top-20 attention fractions")
+    log.info("SUMMARY — conv3 (CF) + conv3b (ICFG) attention fractions")
     log.info("=" * 60)
     for r in all_results:
         verdict = "PASS" if r.get("criterion_pass") else "FAIL"
+        c3_frac  = r["conv3"].get("relevant_fraction", 0.0)
+        c3b_frac = r["conv3b"].get("relevant_fraction", 0.0)
         log.info(
-            f"  {r['stem']:40s} | CF frac={r['cf_fraction']:.2f} | {verdict}"
+            f"  {r['stem']:40s} | conv3_CF={c3_frac:.2f} | conv3b_ICFG={c3b_frac:.2f} | {verdict}"
         )
 
-    # Compare reentrancy vs others
+    # Compare reentrancy vs others on conv3b (ICFG — CEI-relevant)
     reent_results = [r for r in all_results if "reentranc" in r["stem"].lower()]
     safe_results  = [r for r in all_results if "reentranc" not in r["stem"].lower()]
     if reent_results and safe_results:
-        reent_cf = np.mean([r["cf_fraction"] for r in reent_results])
-        safe_cf  = np.mean([r["cf_fraction"] for r in safe_results])
-        log.info(f"\n  Mean CF frac — reentrancy contracts : {reent_cf:.2f}")
-        log.info(f"  Mean CF frac — other contracts      : {safe_cf:.2f}")
-        if reent_cf > safe_cf:
-            log.info("  Diagnostic: reentrancy contracts attract more CF attention (expected)")
+        reent_icfg = np.mean([r["conv3b"].get("relevant_fraction", 0.0) for r in reent_results])
+        safe_icfg  = np.mean([r["conv3b"].get("relevant_fraction", 0.0) for r in safe_results])
+        log.info(f"\n  Mean conv3b ICFG frac — reentrancy contracts : {reent_icfg:.2f}")
+        log.info(f"  Mean conv3b ICFG frac — other contracts      : {safe_icfg:.2f}")
+        if reent_icfg > safe_icfg:
+            log.info("  Diagnostic: reentrancy contracts attract more ICFG attention (expected)")
         else:
-            log.info("  Diagnostic: CF attention NOT higher for reentrancy — model may not be using CEI structure")
+            log.info("  Diagnostic: ICFG attention NOT higher for reentrancy — model may not be using CEI cross-function structure")
 
     # ── Write JSON ─────────────────────────────────────────────────────────────
     report = {
