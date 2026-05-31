@@ -1122,3 +1122,65 @@ Integration into `static_analysis`:
 | `test_ml_failure_still_produces_report` | Inference server down → still produces report with ML failure note |
 
 All MCP calls are mocked. Slither runs in-process on the Vault contract for the screen-escalated test (using `patch.object(slither_module, "Slither", ...)` to inject a mock instance). Aderyn subprocess is stubbed with `FileNotFoundError` to avoid CI dependency.
+
+---
+
+## 23. GNN Interpretability Suite (2026-05-30)
+
+**Period:** 2026-05-30
+**Commits:** pending
+**Checkpoint evaluated:** `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt` (ep32, F1=0.3362)
+
+### Overview
+
+A structured GNN interpretability and validation suite was designed, implemented, run, and documented against the Run 4 best checkpoint. The study spans three analysis layers: (1) structural data quality, (2) architectural expressivity, and (3) learned model behaviour. 21 experiments were designed; 22 scripts were written; 12 Solidity test contracts were written. Experiments running against the checkpoint were executed; those requiring `solc` were blocked by a toolchain gap.
+
+### Scripts and Experiments
+
+| Location | Count | Description |
+|----------|-------|-------------|
+| `ml/scripts/interpretability/` | 22 scripts | One per experiment plus `utils.py` and `__init__.py` |
+| `ml/scripts/interpretability/test_contracts/` | 12 files | Solidity contracts for EXP-L6 counterfactual testing |
+| `docs/interpretability/` | 24 files | One markdown report per experiment + master report + index |
+
+Experiments by layer:
+
+| Layer | Experiments | Scripts |
+|-------|-------------|---------|
+| 1 — Structural | EXP-S1, S2, S3, S4, A1, A2 | exp_s1 through exp_s4, exp_a1, exp_a2 |
+| 2 — Expressivity | EXP-E1, E2, E3, E4 | exp_e1 through exp_e4 |
+| 3 — Learning | EXP-A3, A4, L1–L10 | exp_a3, exp_a4, exp_l1 through exp_l10 |
+
+Additionally: 3 validation scripts (`val_finding1_jk_weights.py`, `val_finding2_proper_ablation.py`, `val_finding4_timestamp_size.py`) and a training ablation shell script (`run_training_ablation.sh`).
+
+### Key Findings (validated)
+
+| Finding | Experiment | Key Number | Status |
+|---------|-----------|-----------|--------|
+| Phase 3 (REVERSE_CONTAINS) marginally dominant in JK weights | EXP-L1, EXP-A3 | Phase 3 = 0.346–0.381, entropy 99.98% of max | Validated: all phases nearly equally weighted; regulariser prevents collapse but not Phase 2 suppression |
+| CFG edge ablation has near-zero effect | EXP-L2 | CONTROL_FLOW+CALL_ENTRY combined Δ = 1.08×10⁻⁶ | Validated: five orders below the 0.03 threshold |
+| GNN eye useful for only 3/10 classes | EXP-A4 | CallToUnknown, IntegerUO, Timestamp only | Validated: GNN F1=0 for 7 classes including Reentrancy |
+| All 4 tested classes WL-distinguishable | EXP-E2 | Timestamp 0% collision, Reentrancy 11.1% | Validated: expressivity is not the bottleneck |
+| All classes severely miscalibrated | EXP-L7 | ECE range 0.205–0.310, mean ≈ 0.252 | Validated: calibration required before deployment |
+| Timestamp size shortcut confirmed at prediction level | EXP-L7 | F1=1.0 (small/medium) vs F1=0.364 (large); gap=0.636 | Validated: Cohen's d=1.657 (EXP-S3) now confirmed in predictions |
+| `type_id_norm` dominates permutation importance by 3× | EXP-L8 | Mean importance 0.0786 vs next 0.0262 | Validated: `uses_block_globals` rank 10 (not last — stale feature names caused wrong earlier claim) |
+| CEI paths present in data but GNN doesn't traverse them | EXP-S4 + EXP-L2 | 76% of Reentrancy-pos have CALL_ENTRY; ablation effect = 5.3×10⁻⁷ | Validated: data gap is not the cause |
+| EMITS edges near-absent (12 total across 41K contracts) | EXP-S2 | 12 edges, baseline 0.051% | Validated: not extractable as signal |
+| CEI reachability only 37.7% at k=8 | EXP-E1 | 37.7% Reentrancy-positive vs 26.7% negative | Validated: GNN hop depth insufficient for most CEI paths |
+
+### Script Bugs Fixed
+
+| Script | Bug | Fix |
+|--------|-----|-----|
+| `exp_l8_permutation_importance.py` | Stale `FEATURE_NAMES` list from pre-v8 schema (11 entries in wrong order) | Now imports `FEATURE_NAMES` from `graph_schema.py` |
+| `exp_l1_jk_weight_analysis.py` | `mean_entropy` field stored mean JK weight (0.333) instead of Shannon entropy (1.099) | Fixed field extraction to compute entropy from per-phase weights |
+| `ml/src/models/gnn_encoder.py` | Docstring said forward returns 3-tuple; `return_intermediates=True` returns 4-tuple | Docstring updated to document both return shapes |
+
+### Output Files
+
+| Path | Description |
+|------|-------------|
+| `docs/interpretability/INTERPRETABILITY_MASTER_REPORT.md` | Full 970-line report with per-class analysis, root cause analysis, capacity ceiling analysis, and Run 5 recommendations |
+| `docs/interpretability/EXPERIMENT_INDEX.md` | Experiment table (22 rows), root cause analysis for failures, argparse bugs fixed |
+| `docs/interpretability/exp_*.md` | 22 individual experiment reports with method, results, pass/fail, and implications |
+| `docs/proposal/GNN_INTERPRETABILITY_FIXES_PROPOSAL.md` | Concrete fix proposals for Run 5 based on validated findings |

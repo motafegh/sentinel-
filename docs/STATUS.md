@@ -1,6 +1,6 @@
 # SENTINEL — Current Status
 
-**Last updated:** 2026-05-30 (post Phase 1 A1–A5)
+**Last updated:** 2026-05-30 (post Phase 1 A1–A5 + interpretability suite)
 
 ---
 
@@ -9,7 +9,8 @@
 | Module | Status | Notes |
 |--------|--------|-------|
 | M1 ML — models | ✅ DONE | v8 three-eye, 8L GNN, GraphCodeBERT+LoRA+prefix K=48 |
-| M1 ML — training | ✅ DONE | Run 4 complete; best checkpoint ep32 F1=0.3362 |
+| M1 ML — training | ✅ DONE | Run 4 complete; best checkpoint ep32 F1=0.3362; interpretability suite validated |
+| M1 ML — interpretability | ✅ DONE | 21 experiments run+validated; fix proposal at `docs/proposal/GNN_INTERPRETABILITY_FIXES_PROPOSAL.md` |
 | M1 ML — inference | ✅ DONE | Three-tier output schema; `/health` with model metadata |
 | M1 ML — data pipeline | ✅ DONE | 41,576 v8 graphs, 44,470 token files, v8 cache 2.2 GB |
 | M2 ZKML | ❌ NOT RUN | Source complete; awaiting stable checkpoint gate |
