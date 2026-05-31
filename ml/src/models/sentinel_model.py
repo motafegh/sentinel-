@@ -162,8 +162,10 @@ class SentinelModel(nn.Module):
         lora_dropout:         float               = 0.1,
         lora_target_modules:  Optional[List[str]] = None,
         # GNN prefix injection (Phase 1)
-        gnn_prefix_k:               int   = 0,   # 0 = disabled; 48 for Phase 1
-        gnn_prefix_warmup_epochs:   int   = 15,  # epochs prefix is suppressed
+        gnn_prefix_k:               int   = 0,    # 0 = disabled; 48 for Phase 1
+        gnn_prefix_warmup_epochs:   int   = 15,   # epochs prefix is suppressed
+        # CrossAttentionFusion node padding limit (IMP-D1: increase to 2048)
+        fusion_max_nodes:           int   = 1024,
     ) -> None:
         super().__init__()
 
@@ -199,6 +201,7 @@ class SentinelModel(nn.Module):
             num_heads=8,
             output_dim=fusion_output_dim,
             dropout=dropout,
+            max_nodes=fusion_max_nodes,
         )
 
         # ── GNN prefix injection modules (Phase 1; only when gnn_prefix_k > 0) ─
@@ -246,6 +249,16 @@ class SentinelModel(nn.Module):
         self.aux_gnn         = nn.Linear(eye_dim, num_classes)
         self.aux_transformer = nn.Linear(eye_dim, num_classes)
         self.aux_fused       = nn.Linear(eye_dim, num_classes)
+
+        # Phase 2 CEI auxiliary head (Interp-2): supervises Phase 2 node embeddings
+        # directly so the JK entropy regulariser alone does not starve Phase 2 of signal.
+        # Input: Phase 2 output pooled over function nodes [B, gnn_hidden_dim].
+        self.aux_phase2 = nn.Sequential(
+            nn.Linear(gnn_hidden_dim, gnn_hidden_dim // 2),  # 256 → 128
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(gnn_hidden_dim // 2, num_classes),     # 128 → 10
+        )
 
         logger.info(
             f"SentinelModel v8 (three-eye) initialised | "
@@ -368,7 +381,14 @@ class SentinelModel(nn.Module):
 
         # ── GNN path: node embeddings ─────────────────────────────────────
         edge_attr = getattr(graphs, "edge_attr", None) if self.use_edge_attr else None
-        node_embs, batch, _jk_entropy = self.gnn(graphs.x, graphs.edge_index, graphs.batch, edge_attr)
+        _gnn_out = self.gnn(
+            graphs.x, graphs.edge_index, graphs.batch, edge_attr,
+            return_phase2_embs=return_aux,  # gradient-carrying phase2 for CEI aux loss
+        )
+        if return_aux:
+            node_embs, batch, _jk_entropy, _phase2_x = _gnn_out
+        else:
+            node_embs, batch, _jk_entropy = _gnn_out
         # node_embs: [N, gnn_hidden_dim]  batch: [N]
 
         # ── GNN eye: function-level pool → project ───────────────────────
@@ -475,14 +495,21 @@ class SentinelModel(nn.Module):
         aux_gnn   = self.aux_gnn(gnn_eye)
         aux_tf    = self.aux_transformer(transformer_eye)
         aux_fused = self.aux_fused(fused_eye)
+
+        # Phase 2 CEI aux head: pool phase2 embeddings over function nodes
+        phase2_pooled    = global_mean_pool(_phase2_x[pool_mask], pool_batch, size=num_graphs)
+        aux_phase2_logits = self.aux_phase2(phase2_pooled)   # [B, num_classes]
+
         if self.num_classes == 1:
-            aux_gnn   = aux_gnn.squeeze(1)
-            aux_tf    = aux_tf.squeeze(1)
-            aux_fused = aux_fused.squeeze(1)
+            aux_gnn           = aux_gnn.squeeze(1)
+            aux_tf            = aux_tf.squeeze(1)
+            aux_fused         = aux_fused.squeeze(1)
+            aux_phase2_logits = aux_phase2_logits.squeeze(1)
         aux = {
-            "gnn":         aux_gnn,    # [B, num_classes] or [B] for binary
+            "gnn":         aux_gnn,           # [B, num_classes] or [B] for binary
             "transformer": aux_tf,
             "fused":       aux_fused,
+            "phase2":      aux_phase2_logits, # [B, num_classes] — CEI aux loss target
             "jk_entropy":  _jk_entropy,
         }
         return logits, aux

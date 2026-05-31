@@ -166,6 +166,9 @@ class TrainConfig:
     num_classes:       int   = NUM_CLASSES
     fusion_output_dim: int   = 128
     fusion_dropout:    float = 0.3
+    # IMP-D1: raise to 2048 after re-extraction with max_nodes=2048.
+    # At 1024 the 227 contracts >1024 nodes are truncated in fusion attention.
+    fusion_max_nodes:  int   = 1024
 
     # --- GNN architecture (v6) ---
     gnn_hidden_dim:   int   = 256
@@ -221,6 +224,10 @@ class TrainConfig:
     eval_threshold:      float = 0.35
     early_stop_patience: int   = 30         # v6: 30 epochs patience (was 10; 100-ep run needs room)
     aux_loss_weight:     float = 0.3
+    # Phase 2 CEI auxiliary loss (Interp-2): direct supervision on Phase 2 embeddings.
+    # CEI classes (Reentrancy, ExternalBug, TOD) get 3× weighting.
+    # Set to 0.0 to disable.
+    aux_phase2_loss_weight: float = 0.10
 
     # --- Aux loss warmup (Fix #33) ---
     # aux_loss_weight ramps from 0 → aux_loss_weight linearly over this many
@@ -513,6 +520,7 @@ def train_one_epoch(
     class_eps:                   "torch.Tensor | None" = None,  # [NUM_CLASSES] per-class smoothing (BUG-M9)
     dos_loss_weight:             float = 0.0,   # 0.0 = zero DoS gradient (BUG-H6)
     jk_entropy_reg_lambda:       float = 0.0,   # C-3: JK entropy regularizer weight
+    aux_phase2_loss_weight:      float = 0.0,   # Interp-2: CEI-weighted Phase 2 aux loss
 ) -> tuple[float, int, float]:
     """Returns (avg_loss, nan_batch_count, last_gnn_share)."""
     model.train()
@@ -527,11 +535,15 @@ def train_one_epoch(
     last_gnn_share = 0.0
 
     # Running sums for per-interval averaged loss logging (reset every log_interval).
-    _run_main  = 0.0
-    _run_gnn_a = 0.0
-    _run_tf_a  = 0.0
-    _run_fus_a = 0.0
-    _run_n     = 0
+    _run_main   = 0.0
+    _run_gnn_a  = 0.0
+    _run_tf_a   = 0.0
+    _run_fus_a  = 0.0
+    _run_ph2_a  = 0.0
+    _run_n      = 0
+
+    # CEI class indices — ExternalBug=2, Reentrancy=6, TOD=8
+    _CEI_INDICES = [2, 6, 8]
     _interval_t0 = time.perf_counter()   # wall-clock start of current log interval
 
     pbar = tqdm(loader, desc="Training", unit="batch", leave=False,
@@ -590,6 +602,20 @@ def train_one_epoch(
             loss_tf_a   = aux_loss_fn(_aux_masked["transformer"], labels)
             loss_fus_a  = aux_loss_fn(_aux_masked["fused"],       labels)
             aux_loss    = loss_gnn_a + loss_tf_a + loss_fus_a
+            # Interp-2: CEI-weighted Phase 2 auxiliary loss.
+            # ExternalBug/Reentrancy/TOD get 3× weight to force Phase 2 (control-flow)
+            # embeddings to encode CEI-pattern information directly.
+            # Only computed when aux_phase2_loss_weight > 0 and "phase2" key present.
+            loss_phase2_a = torch.tensor(0.0, device=labels.device)
+            if aux_phase2_loss_weight > 0.0 and "phase2" in _aux_masked:
+                _cei_weight = torch.ones(labels.shape[-1], device=labels.device)
+                _cei_weight[_CEI_INDICES] = 3.0
+                _raw = aux_loss_fn(_aux_masked["phase2"], labels)  # scalar BCE
+                # Recompute per-class BCE to apply CEI weighting.
+                _per_class = torch.nn.functional.binary_cross_entropy_with_logits(
+                    _aux_masked["phase2"], labels, reduction="none"
+                ).mean(0)  # [NUM_CLASSES]
+                loss_phase2_a = (_per_class * _cei_weight).mean()
             # Divide by actual window size, not the fixed accum_steps.
             # When len(loader) % accum_steps != 0 the last window has fewer
             # micro-batches; dividing by accum_steps under-scales that gradient
@@ -597,7 +623,11 @@ def train_one_epoch(
             # correctly normalised across all windows including the tail.
             _window_start      = (batch_idx // accum_steps) * accum_steps
             _actual_window     = min(accum_steps, len(loader) - _window_start)
-            loss = (main_loss + aux_loss_weight * aux_loss) / _actual_window
+            loss = (
+                main_loss
+                + aux_loss_weight * aux_loss
+                + aux_phase2_loss_weight * loss_phase2_a
+            ) / _actual_window
             # C-3: JK entropy regularizer — penalizes Phase 3 JK attention collapse.
             # Adds to loss: lambda * (log(K) - H) where H is the mean per-node entropy.
             # When one phase dominates (H≈0), penalty ≈ lambda*log(3)≈0.011; at uniform H=log(3), penalty=0.
@@ -614,6 +644,7 @@ def train_one_epoch(
         _run_gnn_a += loss_gnn_a.item()
         _run_tf_a  += loss_tf_a.item()
         _run_fus_a += loss_fus_a.item()
+        _run_ph2_a += loss_phase2_a.item()
         _run_n     += 1
 
         loss.backward()
@@ -640,17 +671,18 @@ def train_one_epoch(
                 _elapsed = time.perf_counter() - _interval_t0
                 _steps_in_interval = log_interval  # optimizer steps logged
                 _sps = _steps_in_interval / _elapsed if _elapsed > 0 else 0.0
+                _ph2_str = f" ph2={_run_ph2_a/n:.4f}" if aux_phase2_loss_weight > 0.0 else ""
                 logger.info(
                     f"  Step {optimizer_step}/{(len(loader) + accum_steps - 1) // accum_steps} "
                     f"(batch {batch_idx+1}/{len(loader)}) | "
                     f"loss={_run_main/n:.4f} "
-                    f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}] | "
+                    f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}{_ph2_str}] | "
                     f"grad: gnn={gnn_norm:.3f} gnn_enc={gnn_enc_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
                     f"GNN share={_gnn_share:.1%} | "
                     f"{_sps:.2f} step/s ({100/_sps/60:.1f} min/100steps)"
                 )
                 # Reset running sums and interval timer for next interval.
-                _run_main = _run_gnn_a = _run_tf_a = _run_fus_a = 0.0
+                _run_main = _run_gnn_a = _run_tf_a = _run_fus_a = _run_ph2_a = 0.0
                 _run_n = 0
                 _interval_t0 = time.perf_counter()
 
@@ -735,6 +767,28 @@ def _build_weighted_sampler(
         elif mode == "all-rare":
             n_pos = sum(float(row.get(cls, 0)) for cls in CLASS_NAMES)
             w = float(n_pos) if n_pos > 0 else 1.0
+        elif mode == "timestamp-size":
+            # E2 (Interp-3): Timestamp size shortcut mitigation.
+            # Timestamp-positive contracts with >150 nodes get 4× weight;
+            # large negatives get 0.5× weight. Encourages model to learn
+            # genuine block.timestamp-in-branch patterns on large contracts.
+            # Threshold 150 matches EXP-L7 "large" stratum boundary.
+            _TIMESTAMP_IDX = CLASS_NAMES.index("Timestamp")
+            _LARGE_THRESHOLD = 150
+            is_ts_pos = float(row.get("Timestamp", 0)) == 1.0
+            num_nodes = 0
+            if dataset.cached_data is not None and md5 in dataset.cached_data:
+                _entry = dataset.cached_data[md5]
+                if isinstance(_entry, tuple) and len(_entry) >= 1:
+                    _graph = _entry[0]
+                    num_nodes = int(getattr(_graph, "num_nodes", 0))
+            is_large = num_nodes > _LARGE_THRESHOLD
+            if is_ts_pos and is_large:
+                w = 4.0  # oversample hard Timestamp+ cases
+            elif not is_ts_pos and is_large:
+                w = 0.5  # undersample large negatives that model already predicts correctly
+            else:
+                w = 1.0
         else:
             w = 1.0
         weights.append(w)
@@ -905,6 +959,7 @@ def train(config: TrainConfig) -> dict:
         lora_target_modules=config.lora_target_modules,
         gnn_prefix_k=config.gnn_prefix_k,
         gnn_prefix_warmup_epochs=config.gnn_prefix_warmup_epochs,
+        fusion_max_nodes=config.fusion_max_nodes,
     ).to(device)
 
     # C-1: Verify GNN conv layers are float32 (BF16 global dtype pollution check).
@@ -1426,6 +1481,7 @@ def train(config: TrainConfig) -> dict:
                 class_eps=_class_eps,
                 dos_loss_weight=config.dos_loss_weight,
                 jk_entropy_reg_lambda=config.jk_entropy_reg_lambda,
+                aux_phase2_loss_weight=config.aux_phase2_loss_weight,
             )
 
             val_metrics = evaluate(
@@ -1518,6 +1574,7 @@ def train(config: TrainConfig) -> dict:
             mlflow.log_metric("val_f1_micro",       val_metrics["f1_micro"],       step=epoch)
             mlflow.log_metric("val_hamming",        val_metrics["hamming"],        step=epoch)
             mlflow.log_metric("aux_loss_weight_effective", effective_aux_weight,   step=epoch)
+            mlflow.log_metric("aux_phase2_loss_weight",    config.aux_phase2_loss_weight, step=epoch)
             # BUG-M8: log tuned macro F1 (per-class threshold sweep)
             if "f1_macro_tuned" in val_metrics:
                 mlflow.log_metric("val_f1_macro_tuned", val_metrics["f1_macro_tuned"], step=epoch)

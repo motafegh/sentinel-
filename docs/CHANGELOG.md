@@ -1,7 +1,7 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), and Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test).
-**Last updated:** 2026-05-30
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), and pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling).
+**Last updated:** 2026-05-31
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
 
@@ -1184,3 +1184,61 @@ Additionally: 3 validation scripts (`val_finding1_jk_weights.py`, `val_finding2_
 | `docs/interpretability/EXPERIMENT_INDEX.md` | Experiment table (22 rows), root cause analysis for failures, argparse bugs fixed |
 | `docs/interpretability/exp_*.md` | 22 individual experiment reports with method, results, pass/fail, and implications |
 | `docs/proposal/GNN_INTERPRETABILITY_FIXES_PROPOSAL.md` | Concrete fix proposals for Run 5 based on validated findings |
+
+
+---
+
+## 23. Pre-Run-5 Implementation — Label Cleaning + CEI Aux Loss + Calibration (2026-05-31)
+
+**Period:** 2026-05-31
+**What changed:** All code changes required before Run 5 training implemented.
+
+### Interpretability Script Fixes (Phase A)
+
+| Script | Fix |
+|--------|-----|
+| `exp_l4_gradient_saliency.py` | Import FEATURE_NAMES from graph_schema (stale pre-v8 list replaced) |
+| `exp_a2_cfg_inheritance.py` | `_CONTAINS_EDGE=0` → `EDGE_TYPES["CONTAINS"]` (was matching CALLS not CONTAINS) |
+| `exp_e1_receptive_field.py` | Analysis 2/3 redesigned: REVERSE_CONTAINS is runtime-only; redesigned as CONTAINS + CALLS checks |
+| `exp_l3_attention_visualization.py` | Extended to hook conv3b (CALL_ENTRY+RETURN_TO) alongside conv3 (CF) |
+
+### New Measurement Scripts (Phase B)
+
+| Script | Purpose |
+|--------|---------|
+| `exp_b1_phase2_gradient_norm.py` | Grad norm at each phase LayerNorm — measures Phase 2 gradient flow |
+| `exp_b2_per_eye_ece.py` | Per-eye (GNN/TF/Fused) ECE — prerequisite for temperature scaling |
+| `exp_b3_jk_weight_distribution.py` | JK weight distribution per class — tracks Phase 2 contribution |
+| `exp_b4_unusedreturn_saliency.py` | Gradient saliency for UnusedReturn top-scored contracts |
+
+### Calibration (Phase C)
+
+- `ml/scripts/calibrate_temperature.py` — fits per-class temperatures via LBFGS minimising BCE NLL on val set. Outputs `ml/calibration/temperatures.json`. Run after B2.
+
+### Data Quality Scripts (Phase D)
+
+Scripts written but require manual validation before running. Reliability varies:
+
+| Script | Sol ID | Reliability | Notes |
+|--------|--------|-------------|-------|
+| `ml/scripts/clean_integeruo_labels.py` | Sol-2 | **High** | Version detection is deterministic; skips contracts without source path |
+| `ml/scripts/gate_timestamp_labels.py` | Sol-3 | **Medium** | Catches direct timestamp-in-branch patterns; misses indirect propagation through state variables |
+| `ml/scripts/clean_reentrancy_labels.py` | Sol-1 | **Low** | CFG BFS misses cross-function reentrancy and is only as complete as the extractor's `CFG_NODE_WRITE` coverage. Run `--dry-run` and cross-check a sample with `slither --detect reentrancy-eth` before committing. Alternative: skip and rely on E1 CEI aux loss instead. |
+| `ml/scripts/inject_openzeppelin_negatives.py` | IMP-D2 | **High** | OZ contracts are audited clean; adds genuine zero-label negatives |
+
+**Manual validation procedure (D1, D3):** run `--dry-run`, sample 20 stems from the removal list, verify against Slither output or source inspection. If error rate > 10%, do not run the script.
+
+### Run 5 Training Changes (Phase E)
+
+**E1 — CEI auxiliary loss on Phase 2 embeddings:**
+- `gnn_encoder.py`: added `return_phase2_embs=True` mode returning gradient-attached Phase 2 tensor
+- `sentinel_model.py`: added `aux_phase2` head (256→128→10, GELU+Dropout)
+- `trainer.py`: `TrainConfig.aux_phase2_loss_weight=0.10`; CEI classes (ExternalBug/Reentrancy/TOD) get 3× weight
+
+**E2 — Timestamp size normalisation:**
+- `graph_extractor.py`: complexity (dim 5) normalised by contract total node count (E2 Interp-3 fix)
+- `trainer.py`: `use_weighted_sampler="timestamp-size"` mode — large Timestamp+ contracts get 4× weight
+
+**IMP-D1 readiness:**
+- `sentinel_model.py`: `fusion_max_nodes` parameter wired through to CrossAttentionFusion
+- `trainer.py`: `TrainConfig.fusion_max_nodes=1024`; raise to 2048 after re-extraction
