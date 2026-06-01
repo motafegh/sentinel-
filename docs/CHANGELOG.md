@@ -1,6 +1,6 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2 fixes, and Run 5 Training Log Specification.
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3 fixes, and Run 5 Training Log Specification.
 **Last updated:** 2026-06-02
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
@@ -1625,6 +1625,89 @@ All graph_extractor.py bugs fixed before Phase 7 re-extraction. Corrected graphs
 - `uses_block_globals` non-zero for ≥ 80% of Timestamp-positive contracts in val split — verified post-extraction
 
 **Last updated: 2026-06-02**
+
+---
+
+## 29. Run 5 Pre-Flight — Phase 3 Model Architecture Fixes (2026-06-02)
+
+**Files:** `ml/src/models/gnn_encoder.py`, `ml/src/models/transformer_encoder.py`, `ml/src/models/sentinel_model.py`
+**Plan ref:** Phase 3 of `SENTINEL-Run5-Actionable Implementation Plan.md`
+
+All fixes target correctness and performance of the model forward pass. No training dynamics change.
+
+### A27 — `num_layers` Enforcement + `SENTINEL_GNN_NUM_LAYERS` Constant
+
+**File:** `gnn_encoder.py`
+
+Added module-level `SENTINEL_GNN_NUM_LAYERS: int = 8`. `GNNEncoder.__init__` now raises `ValueError` if `num_layers != 8` — the three-phase architecture is fixed at 8 layers (2+3+3) and any other value produces a structurally incorrect model. Previously the parameter was stored but never validated.
+
+### A23 — `last_weight_stds` NaN for N=1
+
+**File:** `gnn_encoder.py` — `_JKAttention.forward()`
+
+Replaced `.std(0)` (uses `unbiased=True` by default — returns NaN when N=1, the single-sample diagnostic case) with `.std(0, unbiased=False).nan_to_num(0.0)`. The comment "0 if N=1" was wrong; this fix makes it true.
+
+### A25 — `edge_index.max()` O(E) Scan on Every Forward Pass
+
+**File:** `gnn_encoder.py`
+
+Added `validate_graph_integrity: bool = False` parameter to `GNNEncoder.__init__`. The `edge_index.max()` integrity check (O(E) scan) is now gated behind this flag. Default is `False` in production — enable during debugging or testing. The check should be moved to `DualPathDataset.__getitem__` or the collation function for production-grade validation without per-forward overhead.
+
+### A26 — `next(self.parameters())` Called Twice Per Forward Pass
+
+**File:** `gnn_encoder.py`
+
+Cached parameter dtype as `self._param_dtype` at the end of `__init__`. Both forward-pass dtype checks now use the cached value. Added `refresh_dtype_cache()` method — callers must invoke it after any runtime dtype cast (`.float()`, `.half()`, `.bfloat16()`) to keep the cache consistent.
+
+### NF-6 (DEFERRED) — Phase 2 Layers 3/4 Ignore `phase2_edge_types` Ablation
+
+Added inline code comment at the cf_only/icfg_only computation block explaining the bug and the fix. Implementation deferred to Run 6 per the Known Non-Fixes list — zero training impact in normal runs where `phase2_edge_types=None`.
+
+### A28 — `except (ImportError, ValueError)` Catches Real BERT Load Errors
+
+**File:** `transformer_encoder.py`
+
+Narrowed `except (ImportError, ValueError)` to `except ImportError` only. Flash Attention 2 not being installed → `ImportError` → SDPA fallback. A `ValueError` from a corrupted `config.json` or missing model file is a real error and must propagate — previously it was silently swallowed into the SDPA fallback.
+
+### A29 — Python Loop for Prefix Mask Construction (Two Occurrences)
+
+**File:** `transformer_encoder.py`
+
+Replaced `for b in range(B): prefix_mask[b, :gnn_prefix_counts[b]] = 1` (both single-window and multi-window paths) with a vectorised broadcast: `(torch.arange(K).unsqueeze(0) < gnn_prefix_counts.unsqueeze(1)).to(dtype)`. Eliminates the Python loop over batch dimension — zero output change, O(B×K) tensor op replaces O(B) Python iterations.
+
+### A30 — `_word_embeddings` Fragile Hardcoded PEFT Path
+
+**File:** `transformer_encoder.py`
+
+Replaced the single hardcoded path `bert.base_model.model.embeddings.word_embeddings` with a property that tries three known PEFT internal paths in order (PEFT ≥0.4, some variants, older ≤0.3). Raises `AttributeError` with a PEFT version compatibility message if none yield an `nn.Embedding`. Path is validated at `__init__` time (after `get_peft_model`) — failure surfaces at construction, not at the first forward pass that activates prefix injection.
+
+### A33 — `select_prefix_nodes` Python Loop Over Batch Dimension (Hybrid Vectorization)
+
+**File:** `sentinel_model.py`
+
+Pre-computed priority scores (`prio_scores`) and secondary sort scores (`sec_scores`) as tensors outside the per-graph loop using tensor operations over all N nodes at once. Inner loop now only does per-graph mask extraction and top-K selection (inherently variable-size, cannot vectorize without padding). Combined sort score = `prio * 1e3 + sec` (tensor sort, replaces Python `sort()` on tuple list).
+
+### A34 — Secondary Sort Uses Post-GAT Embedding, Not Raw Feature
+
+**File:** `sentinel_model.py` — `select_prefix_nodes`
+
+Added `raw_node_features: torch.Tensor` parameter (`graphs.x`). Replaced `g_embs[local_idx, _EXT_CALL_DIM]` (dimension 10 of the 256-dim post-GAT embedding, which has no relation to `external_call_count`) with `raw_node_features[node_idx, _EXT_CALL_DIM]` (the actual log1p-normalised `external_call_count` from the input graph). Both callers (`forward()` and `compute_prefix_attention_mean()`) now pass `graphs.x`.
+
+### A25b — `compute_prefix_attention_mean` Discards `node_counts`
+
+**File:** `sentinel_model.py`
+
+Removed the `isinstance(gnn_prefix, tuple): gnn_prefix, _ = gnn_prefix` workaround. Now properly unpacks `gnn_prefix, gnn_prefix_counts` and passes `gnn_prefix_counts` to `self.transformer()` so padded prefix positions are correctly masked when computing the diagnostic attention mean. Diagnostic-only fix — no training impact.
+
+### NF-8 — Empty Batch Guard Returns Inconsistent Aux Dict Keys
+
+**File:** `sentinel_model.py`
+
+Added `"phase2": torch.zeros(B, self.num_classes, device=dev)` and `"jk_entropy": torch.tensor(0.0, device=dev)` to `aux_zeros` in the empty-batch guard path. Previously the empty-batch dict had only 3 keys (`gnn`, `transformer`, `fused`) while the normal path has 5 — any trainer code accessing `aux["phase2"]` or `aux["jk_entropy"]` on an empty-batch epoch would raise `KeyError`.
+
+### Gate 3.1 — torch.compile Re-Validation
+
+- Pending: 2-epoch smoke test with `torch.compile(model, dynamic=True)` — blocks Run 5 launch.
 
 ---
 
