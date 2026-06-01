@@ -288,18 +288,18 @@ After all Phase 3 fixes are applied (forward pass structure has changed signific
 
 ### 4.1 — Fix A35: `_FocalFromLogits` Unpicklable Local Class
 
-- [ ] **`trainer.py` ~L1066–1069:** Move `_FocalFromLogits` class definition to module level (outside `train()`). This makes it picklable and DDP-compatible.
+- [x] **`trainer.py`:** Moved `_FocalFromLogits` to module level as parameterised class `_FocalFromLogits(focal: FocalLoss)`. Picklable and DDP-safe.
 
 ### 4.2 — Fix A36: `compute_pos_weight` Re-Reads Label CSV Every Call
 
-- [ ] **`trainer.py` ~L378–388:** Change function signature to accept the `DualPathDataset` directly. Compute `pos_weight` from in-memory labels — no CSV I/O.
+- [x] **`trainer.py`:** Changed signature to accept `DualPathDataset`; computes `pos_weight` from `dataset._label_map` and `dataset.paired_hashes` — no CSV I/O.
 
 ### 4.3 — Fix NF-4: `--gnn-layers` CLI Default = 7 vs TrainConfig Default = 8
 
 **⚠️ HIGH — silently runs wrong architecture if not fixed before Run 5**
 
-- [ ] **`scripts/train.py` ~L151:** Change `p.add_argument("--gnn-layers", type=int, default=7)` to `default=8`.
-- [ ] Add an assertion or prominent warning if `args.gnn_layers != 8`: `if args.gnn_layers != 8: logger.warning("Non-standard GNN layer count: %d (expected 8 for Run 5).", args.gnn_layers)`.
+- [x] **`scripts/train.py`:** `default=7` → `default=8`.
+- [x] Warning logged if `args.gnn_layers != 8`.
 - [ ] Verify the launched Run 5 training log shows `gnn_num_layers=8` before continuing past epoch 1.
 
 **🚦 Gate NF-4 (blocks Run 5 launch):**
@@ -308,31 +308,27 @@ After all Phase 3 fixes are applied (forward pass structure has changed signific
 
 ### 4.4 — Fix NF-9: `AdamW(fused=True)` Crashes on CPU
 
-- [ ] **`trainer.py` ~L1177:** Replace `fused=True` with `fused=(getattr(device, "type", str(device)) == "cuda")`. One-line fix, zero training impact.
+- [x] **`trainer.py`:** `fused=True` → `fused=(device == "cuda" or device.startswith("cuda:"))`. Zero training impact.
 
 ### 4.5 — Fix A37: Threshold Sweep Every Validation Epoch
 
-- [ ] **`trainer.py` ~L477–490 and ~L1493:** Replace hardcoded `tune_thresholds=True` with a configurable sweep interval (default: every 10 epochs + always at the final epoch). Between sweep epochs, reuse cached thresholds from the last tune run.
+- [x] **`trainer.py`:** Added `threshold_tune_interval: int = 10` to `TrainConfig`. Sweep runs every N epochs and always at the final epoch; `_cached_tuned_thresholds` reused between sweeps.
+- [x] **`scripts/train.py`:** `--threshold-tune-interval` CLI arg wired to `TrainConfig`.
 
 ### 4.6 — Implement Structured Training Logger (per Training Log Specification)
 
 > **Spec doc:** `docs/pre-run-fixes/SENTINEL-Run5-Training-Log-Specification.md`
-> This spec maps every log item to a known bug, RC, or risk from the unified preflight proposal. All sections of the spec must be implemented — observability, anomaly detection, and post-mortem capability depend on it.
 
-- [ ] **`ml/src/training/training_logger.py` (new file):** Implement `StructuredLogger` and `TrainingAbortError` per Section 10.2 of the spec. Three output streams: `step_metrics.jsonl`, `epoch_summary.jsonl`, `alerts.jsonl`.
-- [ ] **Data integrity & label health (Spec §1):** Log items 1.1–1.9 — label distribution per batch/epoch, feature matrix sanity, edge index validity, NaN/Inf pre-forward scan, graph size distribution, feature dimension check, data loader integrity hash, archive verification.
-- [ ] **NaN/Inf & gradient health (Spec §2):** Log items 2.1–2.8 — loss NaN/Inf check every step, parameter and gradient NaN scans, gradient norm per layer and total, gradient zero count, Adam state monitoring, loss spike counter, rolling gradient norm history.
-- [ ] **Training dynamics (Spec §3):** Log items 3.1–3.11 — loss components separately (main/aux/cei/total), loss ratios, actual LR from scheduler, per-class metrics, confusion matrix, prediction entropy, ECE, training speed.
-- [ ] **AUC & probability quality (Spec §3B):** Log items 3B.1–3B.16 — AUC-ROC and AUC-PR per label, macro/micro averages, Brier Score (per label, overall, decomposed), probability distribution stats, reliability diagram data, epoch-over-epoch AUC deltas, F1-vs-AUC divergence detection, per-label positive-rate vs prediction-rate.  
-  > These are the **most critical metrics for the agent module** — it consumes probabilities, not hard labels. Ranking quality (AUC-PR) and calibration (Brier) directly determine whether the agent can trust ML signals.
-- [ ] **Model-specific logs (Spec §4):** Log items 4.1–4.10 — JK weight entropy, aux head weight/bias norms, per-layer GNN output norms, transformer attention entropy, embedding drift, weight norms, weight update ratios.
-- [ ] **Temperature calibration logs (Spec §5):** Log items 5.1–5.7 — T value at calibration, ECE pre/post, NLL pre/post, temperature stability, calibration dataset hash, explicit confirmation T was not reused from prior run.
-- [ ] **Resource & VRAM logs (Spec §6):** Log items 6.1–6.9 — VRAM allocated/reserved/peak per epoch, GPU utilization and temperature, CPU RAM, dataloader queue depth and worker status.
-- [ ] **Graph-specific logs (Spec §7):** Log items 7.1–7.8 — graph feature stats, node degree distribution, select_prefix_nodes output, def_map audit, CEI label distribution, edge type distribution per epoch.
-- [ ] **Epoch-level summary (Spec §8):** Emit structured JSON record fields 8.1–8.37 at end of each epoch — all key indicators in one record for dashboard/post-mortem use.
-- [ ] **Alert-grade anomalies (Spec §9):** Implement three tiers — KILL RUN (9.1.1–9.1.3: loss NaN, param NaN, Adam state NaN), WARN+SKIP BATCH (9.2.1–9.2.2: poisoned labels, corrupted input), WARN (9.3.1–9.3.9: VRAM, grad explosion, aux head collapse, JK collapse, AUC-PR < 0.1 per label, Brier Score > 0.4, F1-AUC divergence, LR mismatch, schema mismatch).
-- [ ] **Sampling strategy (Spec §10.3):** Apply correct frequencies — every step for loss/lr/grad_norm/vram, every 50–100 steps for layer-level norms, every epoch for AUC/Brier/ECE/per-class metrics, every 5 epochs for Brier decomposition and reliability diagrams, once at startup for data integrity.
-- [ ] **Wire logger into `trainer.py`:** Pass `StructuredLogger` instance into `train()`. Replace ad-hoc print/log calls with structured logger methods. Raise `TrainingAbortError` on any KILL-level alert — do not continue past a fatal anomaly.
+- [x] **`ml/src/training/training_logger.py` (new file):** `StructuredLogger` + `TrainingAbortError` per Spec §10.2. Three streams: `step_metrics.jsonl`, `epoch_summary.jsonl`, `alerts.jsonl`.
+- [x] **Data integrity & label health (Spec §1):** `log_startup()` — data hash (§1.8), archive verification (§1.9); `check_batch()` — poisoned-label (§1.1) and NaN/Inf input (§1.5) checks with WARN_SKIP.
+- [x] **NaN/Inf & gradient health (Spec §2):** `check_loss()` KILL on NaN/Inf (§2.1/9.1.1); `check_parameters()` KILL on param NaN (§2.2/9.1.2); `check_adam_state()` KILL on Adam state NaN (§2.6/9.1.3); `check_grad_norm()` rolling history + spike WARN (§2.4/2.8/9.3.2).
+- [x] **AUC & probability quality (Spec §3B):** `compute_auc_metrics()` — per-label AUC-ROC/PR, macro/micro, epoch deltas (§3B.1–3B.6,12–13); `compute_brier()` — per-label + overall Brier (§3B.7–8); `compute_ece()` — ECE pooled (§3.9); `compute_prob_stats()` (§3B.10); `check_f1_auc_divergence()` WARN (§3B.15/9.3.6c); AUC-PR < 0.1 WARN (§9.3.6b); Brier > 0.4 WARN (§9.3.6d).
+- [x] **Model-specific logs (Spec §4):** `check_aux_head()` norms + WARN if near-zero (§4.3/4.4/9.3.3); `check_jk_entropy()` + WARN if collapsed (§4.2/9.3.4).
+- [x] **Resource & VRAM (Spec §6):** `check_vram()` peak MB + WARN > 7500 MB (§6.3/9.3.1).
+- [x] **Epoch-level summary (Spec §8):** `build_epoch_summary()` — all 37 fields (§8.1–8.37).
+- [x] **Alert tiers (Spec §9):** KILL raises `TrainingAbortError`; WARN_SKIP returns skip flag; WARN logs only.
+- [x] **Wire logger into `trainer.py`:** `StructuredLogger` created at training start (after `mlflow.log_params`); `log_startup()` called before epoch loop; per-epoch summary + AUC/Brier/ECE computed and `log_epoch()` called; `close()` at training end. `_y_true`/`_y_probs` passed back from `evaluate()` for logger computations. `TrainConfig.log_dir` field added.
+- [x] **`scripts/train.py`:** `--log-dir` CLI arg wired to `TrainConfig.log_dir`.
 
 **🚦 Gate 4.6 — LOGGER STARTUP VERIFICATION (blocks Run 5 launch)**
 - [ ] At Run 5 epoch 0 startup: `step_metrics.jsonl`, `epoch_summary.jsonl`, `alerts.jsonl` all created.

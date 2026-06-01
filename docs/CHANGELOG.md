@@ -1,6 +1,6 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3 fixes, and Run 5 Training Log Specification.
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3+4 fixes, Run 5 Training Log Specification, and Phase 4 training loop fixes (A35/A36/A37/NF-4/NF-9 + StructuredLogger).
 **Last updated:** 2026-06-02
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
@@ -1743,3 +1743,67 @@ The ML module outputs vulnerability **probabilities**, not hard classifications.
 ### Implementation Location
 
 Phase 4.6 of the plan specifies implementing `StructuredLogger` in `ml/src/training/training_logger.py` (new file) and wiring it into `trainer.py`. The logger must be active before epoch 0 completes — Gate 4.6 verifies this.
+
+---
+
+## 30. Run 5 Pre-Flight — Phase 4 Training Loop Fixes (2026-06-02)
+
+**Files:** `ml/src/training/trainer.py`, `ml/scripts/train.py`, `ml/src/training/training_logger.py` (new)
+**Plan ref:** Phase 4 of `SENTINEL-Run5-Actionable Implementation Plan.md`
+
+### 4.1 — A35: `_FocalFromLogits` Moved to Module Level
+
+`_FocalFromLogits` was defined as a closure inside `train()`, capturing `_focal` via closure. Closures are not picklable — incompatible with DDP and multiprocessing. Moved to module level as `_FocalFromLogits(focal: FocalLoss)` with stored state. Instantiated as `_FocalFromLogits(FocalLoss(...))` inside `train()`.
+
+### 4.2 — A36: `compute_pos_weight` No Longer Re-Reads CSV
+
+`compute_pos_weight` previously called `pd.read_csv(label_csv)` on every invocation, doing redundant I/O when the CSV was already loaded by `DualPathDataset`. Signature changed to accept `train_dataset: DualPathDataset` directly. Labels extracted from `dataset._label_map` (already in RAM) filtered to `dataset.paired_hashes` (training split only). No CSV reads at call time.
+
+### 4.3 — NF-4: `--gnn-layers` CLI Default Fixed to 8
+
+`scripts/train.py` had `default=7` for `--gnn-layers`. `TrainConfig.gnn_layers` defaults to 8. Any training launched without an explicit `--gnn-layers` flag silently built a 7-layer GNN — a different architecture from what Run 5 requires. Fixed to `default=8`. Warning logged if `args.gnn_layers != 8`.
+
+### 4.4 — NF-9: `AdamW(fused=True)` CPU Crash Fixed
+
+`AdamW(fused=True)` is CUDA-only — crashes immediately on CPU with a RuntimeError. Replaced with `fused=(device == "cuda" or device.startswith("cuda:"))`. Required for smoke tests, CI, and any CPU-only debugging session.
+
+### 4.5 — A37: Threshold Sweep Made Configurable
+
+Per-epoch threshold sweep (`tune_thresholds=True` hardcoded) was running 19 threshold evals per class per epoch — expensive on long runs. Added `threshold_tune_interval: int = 10` to `TrainConfig` and `--threshold-tune-interval` to `scripts/train.py`. Sweep runs every N epochs and always at the final epoch; `_cached_tuned_thresholds` is reused between sweeps so downstream code always sees tuned thresholds even on non-sweep epochs.
+
+### 4.6 — StructuredLogger Implemented (Phase 4.6, Gate 4.6)
+
+**New file:** `ml/src/training/training_logger.py`
+
+`StructuredLogger` and `TrainingAbortError` per Training Log Specification §10.2. Three JSONL streams created at init:
+- `step_metrics.jsonl` — per-step granular metrics
+- `epoch_summary.jsonl` — 37-field epoch summary (Spec §8)
+- `alerts.jsonl` — all three alert tiers with timestamps
+
+**Implemented:**
+- `log_startup()` — data integrity hash (§1.8) + archive verification (§1.9) once at startup
+- `check_batch()` — poisoned-label WARN_SKIP (§1.1/9.2.1), NaN/Inf input WARN_SKIP (§1.5/9.2.2)
+- `check_loss()` — loss NaN/Inf KILL → `TrainingAbortError` (§2.1/9.1.1)
+- `check_parameters()` — param NaN/Inf KILL (§2.2/9.1.2)
+- `check_adam_state()` — `exp_avg`/`exp_avg_sq` NaN KILL (§2.6/9.1.3)
+- `check_grad_norm()` — rolling 100-step history; spike WARN at >100× rolling mean (§2.4/2.8/9.3.2)
+- `compute_auc_metrics()` — per-label AUC-ROC/PR, macro/micro averages, epoch-over-epoch deltas; AUC-PR < 0.1 WARN (§3B.1–3B.6,12–13/9.3.6b)
+- `compute_brier()` — per-label + overall Brier Score; >0.4 WARN (§3B.7–8/9.3.6d)
+- `compute_ece()` — ECE pooled across all labels (§3.9)
+- `compute_prob_stats()` — min/max/mean/std/p5/p50/p95 per label (§3B.10)
+- `check_f1_auc_divergence()` — WARN when F1 improves but AUC-ROC degrades >0.02 (§3B.15/9.3.6c)
+- `check_aux_head()` — weight/bias norms; near-zero WARN (§4.3/4.4/9.3.3)
+- `check_jk_entropy()` — Shannon entropy of JK weights; collapse WARN (§4.2/9.3.4)
+- `check_vram()` — peak VRAM WARN > 7500 MB (§6.3/9.3.1)
+- `build_epoch_summary()` — assembles all 37 Spec §8 fields
+- `log_step()` / `log_epoch()` — writes to respective JSONL streams
+
+**Wired into `trainer.py`:**
+- `StructuredLogger` created immediately after `mlflow.log_params()`
+- `log_startup()` called with dataset paths and archive dir before first epoch
+- `evaluate()` now returns `_y_true` and `_y_probs` arrays for logger computations
+- Per-epoch block: AUC, Brier, ECE, prob stats, JK entropy, aux head norms, VRAM computed; `log_epoch()` called; `check_vram()` called; `close()` at training end
+- `TrainConfig.log_dir` field added (default: `ml/logs/<run_name>`)
+- `--log-dir` added to `scripts/train.py`
+
+**Gate 4.6:** Three JSONL files created at logger init. Data integrity hash and archive verification written before epoch 1. Both pending runtime verification at Run 5 launch.
