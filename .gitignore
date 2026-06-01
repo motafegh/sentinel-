@@ -33,7 +33,8 @@ ml/data/reports/
 ml/data/test_chunk_results.json
 ml/data/test_fixed_export.json
 ml/data/validation_report.json
-
+.agents/skills
+.claude/skills
 # ── MLflow ──────────────────────────────────────────────────────────────────
 mlruns.db
 mlruns/
