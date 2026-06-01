@@ -1,7 +1,7 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), and pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling).
-**Last updated:** 2026-05-31
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2 fixes, and Run 5 Training Log Specification.
+**Last updated:** 2026-06-02
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
 
@@ -1385,6 +1385,278 @@ Full Phase 2 root cause analysis documented in `docs/pre-run-fixes/phase2_root_c
 - Temperature calibration fitted
 - Run 5 config committed (aux_phase2_loss_weight=0.10, timestamp-size sampler)
 - Pre-run-fixes analysis docs in `docs/pre-run-fixes/`
-- **Next action: Launch Run 5**
+- **Next action: Implement Run 5 pre-flight fixes (Phase 0 through 5)**
 
-**Last updated: 2026-06-01**
+---
+
+## 25. Run 5 Pre-Flight — Phase 0 Critical Safety Fixes (2026-06-02)
+
+**Source:** `docs/pre-run-fixes/SENTINEL-Run5-Actionable Implementation Plan.md` — Phase 0
+
+These two fixes are mandatory blockers: either can permanently corrupt training data or optimizer state, making all downstream work meaningless if left unfixed.
+
+### A20 — `label=0` Hardcoded in Batch Extraction Fixed
+
+**File:** `ml/src/data_extraction/ast_extractor.py`
+
+**Problem:** The multiprocessing worker was constructed with `partial(self.contract_to_pyg, ..., label=0)`, hardcoding `label=0` in every extracted `graph.y` regardless of the true vulnerability label. Any code path loading graphs in binary mode (without label_csv) would receive all-zero labels, poisoning the data.
+
+**Fix:**
+- Added module-level `_labeled_pool_worker(path_label_pair, extractor, solc_binary, solc_version)` — picklable, receives `(contract_path, label)` tuples.
+- Added `_LABEL_COLUMNS` constant listing the 10 vulnerability class columns in order.
+- Added `label_csv: Optional[Path]` parameter to `extract_batch_with_checkpoint`.
+- Before the version-group loop: loads label CSV into `label_map: Dict[str, List[int]]` keyed by md5_stem (= `get_contract_hash(contract_path)`).
+- Per version group: builds `path_label_pairs = [(path, label_map.get(hash))]` and asserts all have labels (Gate 0.1 check).
+- `contract_to_pyg` signature updated from `label: int = 0` to `label: Union[List[int], int, None] = None`.
+  - `List[int]` → `float32` tensor `[NUM_CLASSES]` (multi-label, used by DualPathDataset multi-label mode).
+  - `int` → `long` tensor `[1]` (legacy binary mode).
+  - `None` → `long` zeros `[1]` with verbose warning.
+- CLI: `--label-csv` argument added (default: `ml/data/processed/multilabel_index_cleaned.csv`).
+
+**Gate 0.1 assertion:** `assert len(missing) == 0` fires before any `pool.imap` call if any contract is absent from the label_map, preventing silent label poisoning.
+
+### A38 — NaN Loss `backward()` Ran Before NaN Check Fixed
+
+**File:** `ml/src/training/trainer.py`
+
+**Problem:** `torch.isfinite(loss)` was checked on line 713, **after** `loss.backward()` on line 650. Any NaN/Inf loss caused corrupted gradients to flow through `optimizer.step()`, poisoning Adam's running mean/variance estimates (`m_t`, `v_t`). These estimates are never reset, so the corruption persists for the rest of training.
+
+**Fix:**
+- Moved `loss_for_log = loss.item() * accum_steps` and `isfinite` check to immediately after loss computation — before any backward/step.
+- On NaN/Inf: `optimizer.zero_grad(set_to_none=True)` zeros stale gradients from earlier micro-batches, then `continue` skips `backward()`, `optimizer.step()`, and `total_loss` accumulation.
+- **Post-clip guard:** After `clip_grad_norm_()`, checks all trainable params for non-finite gradients (`_has_bad_grads`). If found (BF16 overflow despite finite loss), zeroes grads and skips `optimizer.step()` without incrementing `optimizer_step` counter. Logs a WARNING.
+- `optimizer.step()` / `scheduler.step()` now only called in the `else` branch (clean gradients confirmed).
+- Epoch-end summary updated: reports `nan_loss_count/{n_batches}` as a rate; logs `logger.error` if rate exceeds Gate 0.2 threshold (0.5%), instructing operator to halt training and restart from the last clean checkpoint.
+
+### Gate Status After Phase 0
+
+| Gate | Condition | Status |
+|------|-----------|--------|
+| 0.1 (DATA POISONING BLOCK) | `label_map` populated before pool; assert covers all contracts | **Code complete — verify after test extraction** |
+| 0.2 (ADAM STATE CORRUPTION BLOCK) | NaN check precedes `backward()`; `nan_loss_count` logged per epoch | **Code complete — verify with smoke test (5 injected NaN steps)** |
+
+---
+
+## 26. Run 5 Pre-Flight — Phase 1 Data & Schema Layer Fixes (2026-06-02)
+
+**Source:** `docs/pre-run-fixes/SENTINEL-Run5-Actionable Implementation Plan.md` — Phase 1
+
+### A1 — Missing `max(NODE_TYPES)` Range Guard Fixed
+
+**File:** `ml/src/preprocessing/graph_schema.py`
+
+Added `assert max(NODE_TYPES.values()) == 12` after the existing `len(NODE_TYPES) == 13` check. The new guard fires at import time if a future schema addition changes the normalization divisor used throughout the pipeline, directing the developer to update every division-by-12 site before re-extracting.
+
+### A2 — Uppercase Hex Accepted in Hash Validation Fixed
+
+**File:** `ml/src/utils/hash_utils.py`
+
+- Added `import re`.
+- Replaced `int(hash_string, 16)` with `re.fullmatch(r'[0-9a-f]{32}', hash_string) is not None` in `validate_hash()`.
+- Added explicit type and length checks before the regex so error messages are specific.
+- Old behaviour silently accepted uppercase hex strings (e.g. `"ABCD..."`), which could allow two logically different identifiers to both pass validation.
+
+### A3 + A32 — Dynamic `_MAX_TYPE_ID` Assertions Added
+
+**Files:** `ml/src/preprocessing/graph_extractor.py`, `ml/src/models/sentinel_model.py`
+
+Both files already derived `_MAX_TYPE_ID = float(max(NODE_TYPES.values()))` dynamically. Added `assert _MAX_TYPE_ID == 12.0` in both, with a message pointing to every normalization site that must be updated if a new node type is ever appended. The assertion fires at import, making schema drift a hard failure rather than a silent misalignment.
+
+### NF-2 — Decode-Side Hardcoded `* 12` Fixed
+
+**File:** `ml/src/preprocessing/graph_extractor.py` (`_add_node` ~L1094)
+
+Replaced `int(round(x_list[-1][0] * 12))` with `int(round(x_list[-1][0] * _MAX_TYPE_ID))`. This is the mirror of A3/A32: the encode side used `_MAX_TYPE_ID` dynamically but the decode side was hardcoded to 12, creating a latent divergence bug if the schema ever gained a new node type.
+
+### A19 — Solc Binary Resolution Uses `get_project_root()` Instead of `Path.cwd()`
+
+**File:** `ml/src/data_extraction/ast_extractor.py`
+
+- Moved `get_project_root()` definition before `get_solc_binary()` (clear dependency order).
+- Replaced `Path.cwd() / ".venv" / ...` with `get_project_root() / ".venv" / ...` in `get_solc_binary()`.
+- Old behaviour: invoking the extractor from any directory other than the repo root silently produced a wrong (non-existent) binary path, causing all contracts to fall back to the system solc without a version warning.
+
+### A21 — Worker `print()` Under Concurrency Fixed
+
+**File:** `ml/src/data_extraction/ast_extractor.py`
+
+- Added `import logging` and `logger = logging.getLogger(__name__)`.
+- Replaced all `print()` calls inside exception handlers (`GraphExtractionError`, bare `Exception`, no-label warning) with `logger.warning(...)` / `logger.error(...)`.
+- `print()` is not concurrency-safe under multiprocessing — concurrent calls interleave on stdout. `logging.QueueHandler` (already used by workers) serialises output correctly.
+
+### A22 — `torch.save` Without Error Handling Fixed
+
+**File:** `ml/src/data_extraction/ast_extractor.py`
+
+- Wrapped `torch.save(result, graph_file)` in `try/except (OSError, IOError)`.
+- On failure: logs `logger.error(...)`, appends path to `failed_saves`, skips the `processed_hashes.add()` (contract is not marked done so it can be retried with `--resume`), and `continue`s the loop.
+- After the version-group batch: if `failed_saves` is non-empty, raises a `RuntimeError` listing all failed paths so the caller surface them.
+- Checkpoint verbose `print()` converted to `logger.info()` (A21 consistency).
+
+### Gate 1.1 — TOOLCHAIN CHECK: PASSED
+
+- `solc`: present in venv at `ml/.venv/bin/solc`, version 0.8.20
+- `solc-select`: present in venv, **97 versions** available (covers 0.4.0–0.8.35)
+
+---
+
+## 27. Run 5 Pre-Flight — Phase 2 Graph Extraction Layer Fixes (2026-06-02)
+
+**File:** `ml/src/preprocessing/graph_extractor.py` (all changes in this section)
+**Plan ref:** §6 of `SENTINEL_Run5_UNIFIED_PREFLIGHT_PROPOSAL.md`
+
+All graph_extractor.py bugs fixed before Phase 7 re-extraction. Corrected graphs will differ from the v8 dataset — re-extraction is required (Phase 7 covers this).
+
+### A4 — `assert` Used for Production Invariant (node_metadata alignment)
+
+- Replaced `assert len(node_metadata) == x.shape[0]` with `if … raise ValueError(…)`.
+- Python `-O` (optimised mode) strips `assert` statements; alignment violations would silently produce misindexed metadata in production extraction runs.
+
+### A5 — `except AttributeError` Scope Too Broad in `_compute_return_ignored`
+
+- Narrowed the `try` block to only the `func.nodes` Slither API access.
+- `from slither... import` moved to a separate `try/except ImportError` block.
+- All remaining logic (the ordered-IR scan) is now outside any try, so unexpected `AttributeError`s propagate instead of silently returning `-1.0`.
+
+### A6 — Bare `except Exception: pass` in `_compute_call_target_typed`
+
+- Added `logger.debug("[A6] ...")` and incremented module-level `_call_target_fail_count`.
+- Previously silent type-resolution failures masked Slither API drift.
+
+### A7 — Dead Code `_compute_in_unchecked`
+
+- Replaced the entire function body with `raise NotImplementedError(...)`.
+- `in_unchecked` was dropped from the v7 feature vector (BUG-L2). Any surviving call site is now a loud, immediate error rather than a silent wrong-feature calculation.
+
+### A8 — `is True` Identity Check in `_compute_has_loop`
+
+- `getattr(func, "is_loop_present", None) is True` → `bool(getattr(func, "is_loop_present", False))`.
+- `is True` rejects truthy non-bool values (e.g. integer `1`), silently returning `0.0` for loop-containing functions in some Slither versions.
+
+### A9 — String-Based Class Check for `SolidityVariableComposed`
+
+- Added module-level `from slither.core.declarations.solidity_variables import SolidityVariableComposed as _SolidityVariableComposed`.
+- Import path confirmed working: `slither.core.declarations.solidity_variables`.
+- Replaced `type(rv).__name__ == "SolidityVariableComposed"` with `isinstance(rv, _SolidityVariableComposed)`.
+- If the import fails at module load, a prominent `WARNING` is logged and `uses_block_globals` always returns `0.0` (Timestamp/TOD detection severely degraded).
+
+### A10 — Bare `except Exception: pass` in `_cfg_node_type`
+
+- Added `logger.warning("[A10] ...")` and incremented module-level `_cfg_type_fallback_count`.
+- High fallback counts in logs indicate Slither version mismatch (Gate 2.1 threshold: < 1% of CFG nodes).
+
+### A11 — Hardcoded Parent Feature Indices in `_build_cfg_node_features`
+
+- Added `_FEAT_IDX: dict[str, int] = {name: i for i, name in enumerate(FEATURE_NAMES)}` at module level.
+- Replaced raw magic numbers `p[1]`, `p[3]`, `p[4]`, `p[5]`, `p[9]` with named lookups (`_FEAT_IDX["visibility"]`, `_FEAT_IDX["view"]`, etc.).
+- Index drift on a future schema change no longer silently corrupts CFG node features.
+
+### A12 — `n.node_id` Without Fallback in Sort Key
+
+- `n.node_id` → `getattr(n, "node_id", 0)` in the `_build_control_flow_edges` sort key.
+- Synthetic Slither nodes (e.g. ENTRY_POINT) may lack `node_id`; the old code raised `AttributeError`, aborting CFG extraction for the entire function.
+
+### A13 — Dropped CONTROL_FLOW Edges Not Logged
+
+- Added `else` branch in Pass 2 of `_build_control_flow_edges`: increments `_dropped_cf_edges` counter and logs at `DEBUG`.
+- Per-function summary log at `DEBUG` level after the pass.
+
+### A14 — RETURN_TO Cartesian Product Includes Revert Paths
+
+- `_func_terminal_map` construction now filters out `THROW` and `RETURN` Slither node types before adding to the terminal set.
+- Only normal-exit terminals (fall-through with no successors) produce `RETURN_TO` edges — revert/unwind paths must not connect to call-site successors.
+
+### A16 — `assert` Used for Sentinel-Range Check in `_build_node_features`
+
+- Replaced both `assert return_ignored in (-1.0, 0.0, 1.0)` and `assert call_target_typed in (-1.0, 0.0, 1.0)` with `if … raise ValueError(…)`.
+
+### A17 — Exception Routing by String Keyword Matching
+
+- Added type-based check via `from slither.exceptions import SlitherError` before string keyword matching in the Slither instantiation `except Exception` block.
+- String matching falls back for CryticCompile errors; TODO comment added to replace with `isinstance` checks once `crytic_compile.errors` is confirmed stable.
+
+### A18 — `except Exception: pass` in ICFG Map Construction
+
+- Combined with A14 fix: replaced `except Exception: pass` with `except Exception as exc: _icfg_failure_count += 1; logger.error("[A18] ...")`.
+- `_icfg_failure_count` is a local variable summed per contract; Gate 2.1 (`== 0`) is checked via log output after Phase 7 re-extraction.
+
+### NF-1 — EMITS Edge Key Mismatch in Fallback Path
+
+- Built `_event_name_map: dict[str, str]` from `contract.events` before the function-edges loop: maps short name (e.g. `"Transfer"`) to canonical name (e.g. `"ERC20.Transfer(address,address,uint256)"`).
+- In the EventCall IR fallback, translated `ir.name` through `_event_name_map` before adding to `emitted` set.
+- For Solidity <0.4.21 contracts, this repairs the fallback path that previously produced only 12 EMITS edges across 41K contracts (NF-1 confirmed root cause).
+
+### NF-7 — Silent 0.0 Return on Failure
+
+- `_compute_external_call_count`: `except Exception: return 0.0` → `except Exception as exc: _ext_call_fail_count += 1; logger.debug("[NF-7] ...")`.
+- `_compute_uses_block_globals`: `except Exception: pass` → `except Exception as exc: _block_globals_fail_count += 1; logger.debug("[NF-7] ...")`.
+- Both counters are module-level; logged in per-contract extraction summary.
+
+### NF-10 — Duplicate Function Name
+
+- Changed `for func in contract.functions:` to `for func_index, func in enumerate(contract.functions):`.
+- `_add_node` signature extended with `override_key: str | None = None` parameter.
+- When `_add_node` returns `None` (duplicate), now re-attempts with synthetic key `"{canonical_name}__override__{func_index}"` instead of reusing the first function's node index.
+- Preserves overriding function's CFG (critical — overrides often introduce vulnerabilities).
+- If synthetic key also collides (degenerate case), logs a WARNING and skips.
+- `_duplicate_func_count` local counter logged per contract.
+
+### NF-11 — `_add_edge` Drops ALL Edge Types Silently
+
+- Added `_edge_drop_counts: dict[int, int] = {}` in outer scope before `_add_edge` definition.
+- `_add_edge` now increments `_edge_drop_counts[etype]` and logs at `DEBUG` when either endpoint is missing.
+- After INHERITS loop: per-type drop summary logged at `DEBUG` (e.g. `"CALLS: 3, READS: 1"`).
+- Note: CONTROL_FLOW drops are separately addressed by A13.
+
+### Module-Level Additions
+
+- Added `_FEAT_IDX` (A11), `_SolidityVariableComposed` (A9), and four fail counters (`_call_target_fail_count`, `_cfg_type_fallback_count`, `_ext_call_fail_count`, `_block_globals_fail_count`).
+- Import line extended to include `FEATURE_NAMES` from `graph_schema`.
+
+### Gate 2.1 — EXTRACTION HEALTH (checked at Phase 7 re-extraction)
+
+- `_icfg_failure_count == 0` — verified via log output after full re-extraction
+- `_cfg_type_fallback_count / total_cfg_nodes < 0.01` — verified via log output
+- CALL_ENTRY edge presence rate ≥ 64.2% — verified post-extraction
+- RETURN_TO edge presence rate ≥ 55.6% — verified post-extraction
+
+### Gate 2.2 — FEATURE VALIDATION (checked at Phase 7 re-extraction)
+
+- `uses_block_globals` non-zero for ≥ 80% of Timestamp-positive contracts in val split — verified post-extraction
+
+**Last updated: 2026-06-02**
+
+---
+
+## 28. Run 5 Training Log Specification (2026-06-02)
+
+**File:** `docs/pre-run-fixes/SENTINEL-Run5-Training-Log-Specification.md`
+**Plan ref:** Phase 4.6 of `SENTINEL-Run5-Actionable Implementation Plan.md`
+
+### Purpose
+
+Exhaustive specification for all logging that must occur during Run 5 training. Every log item maps to a known bug, RC, or risk from the unified preflight proposal. Required for full observability, anomaly detection, and post-mortem capability. Added to the implementation plan as Phase 4.6 with a mandatory Gate 4.6 (logger startup verification) that blocks Run 5 launch.
+
+### Specification Sections
+
+| § | Section | Items | Key rationale |
+|---|---------|-------|---------------|
+| 1 | Data Integrity & Label Health | 9 | Non-negotiable given A20 (label=0 poisoning) and archive/data-integrity requirement |
+| 2 | NaN/Inf & Gradient Health | 8 | Kill-run critical given A38 (NaN corrupts Adam state permanently) |
+| 3 | Training Dynamics | 11 | Loss components separately, LR confirmation (NF-4 style mismatch detection) |
+| 3B | AUC & Probability Quality | 16 | **Critical for agent module** — ML outputs probabilities not hard labels; AUC-PR and Brier Score directly measure agent-input quality |
+| 4 | Model-Specific Logs | 10 | JK weight entropy, aux head norms, per-layer GNN output norms |
+| 5 | Temperature Calibration | 7 | Must confirm T freshly computed, not reused from previous run |
+| 6 | Resource & VRAM | 9 | RTX 3070 8GB ceiling; supports Gate 5.3 (max_nodes=2048 VRAM test) |
+| 7 | Graph-Specific Logs | 8 | CEI label distribution, edge type distribution, def_map audit (NF-10) |
+| 8 | Epoch-Level Summary | 37 fields | Structured JSON record per epoch — 37 fields covering all key indicators |
+| 9 | Alert-Grade Anomalies | 3 tiers | KILL RUN (NaN), WARN+SKIP BATCH (poisoned labels), WARN (VRAM/JK/AUC-PR < 0.1/Brier > 0.4) |
+| 10 | Log Format & Infrastructure | — | `StructuredLogger` skeleton, 3 output streams, sampling strategy, 14-question post-run checklist |
+
+### Section 3B — Why AUC/Calibration Metrics Are Primary
+
+The ML module outputs vulnerability **probabilities**, not hard classifications. The agent module consumes these as input signals and reasons over the probability gradient. This makes threshold-independent metrics (AUC-ROC, AUC-PR) and calibration metrics (Brier Score, ECE) more important than threshold-dependent F1. AUC-PR is especially critical for imbalanced vulnerability labels — a model that ignores rare classes gets high AUC-ROC but near-zero AUC-PR. New alert thresholds: `AUC-PR < 0.1` per label → WARN, `Brier Score > 0.4` per label → WARN, `F1 improves but AUC-ROC degrades` → WARN.
+
+### Implementation Location
+
+Phase 4.6 of the plan specifies implementing `StructuredLogger` in `ml/src/training/training_logger.py` (new file) and wiring it into `trainer.py`. The logger must be active before epoch 0 completes — Gate 4.6 verifies this.

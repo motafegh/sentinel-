@@ -639,7 +639,20 @@ def train_one_epoch(
                     _jk_reg = jk_entropy_reg_lambda * (_H_max - _jk_ent.clamp(max=_H_max))
                     loss = loss + _jk_reg / _actual_window
 
-        # Accumulate per-eye loss for the upcoming log line.
+        # A38: NaN guard — check finiteness BEFORE backward() to prevent Adam state
+        # corruption from NaN/Inf gradients propagating into the optimizer's running
+        # mean/variance estimates.  Previously the check was AFTER backward(), so
+        # corrupted gradients had already updated optimizer state.
+        loss_for_log = loss.item() * accum_steps
+        if not torch.isfinite(loss).item():
+            nan_loss_count += 1
+            # Zero any stale gradients from earlier micro-batches in this accumulation
+            # window so the next window starts from a clean state.
+            optimizer.zero_grad(set_to_none=True)
+            pbar.set_postfix({"loss": f"{loss_for_log:.4f}", "nan": nan_loss_count})
+            continue
+
+        # Accumulate per-eye loss for the upcoming log line (finite batches only).
         _run_main  += main_loss.item()
         _run_gnn_a += loss_gnn_a.item()
         _run_tf_a  += loss_tf_a.item()
@@ -655,65 +668,75 @@ def train_one_epoch(
         if is_accum_step:
             torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=grad_clip)
 
-            # Fix #28: read grad norms after unscale_(), before zero_grad().
-            optimizer_step += 1
-            should_log = (optimizer_step % log_interval == 0)
-            if should_log:
-                gnn_norm     = _grad_norm(model.gnn_eye_proj)
-                gnn_enc_norm = _grad_norm(model.gnn)  # C1: full GNN encoder backbone
-                tf_norm      = _grad_norm(model.transformer_eye_proj)
-                fused_norm   = _grad_norm(model.fusion)
-                _total_norm  = (gnn_norm**2 + tf_norm**2 + fused_norm**2) ** 0.5
-                _gnn_share   = gnn_norm / _total_norm if _total_norm > 1e-8 else 0.0
-                last_gnn_share = _gnn_share
-
-                n = max(1, _run_n)
-                _elapsed = time.perf_counter() - _interval_t0
-                _steps_in_interval = log_interval  # optimizer steps logged
-                _sps = _steps_in_interval / _elapsed if _elapsed > 0 else 0.0
-                _ph2_str = f" ph2={_run_ph2_a/n:.4f}" if aux_phase2_loss_weight > 0.0 else ""
-                logger.info(
-                    f"  Step {optimizer_step}/{(len(loader) + accum_steps - 1) // accum_steps} "
-                    f"(batch {batch_idx+1}/{len(loader)}) | "
-                    f"loss={_run_main/n:.4f} "
-                    f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}{_ph2_str}] | "
-                    f"grad: gnn={gnn_norm:.3f} gnn_enc={gnn_enc_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
-                    f"GNN share={_gnn_share:.1%} | "
-                    f"{_sps:.2f} step/s ({100/_sps/60:.1f} min/100steps)"
+            # A38: Post-clip guard — BF16 overflow can produce non-finite gradients
+            # even from a finite loss value.  Detect and skip optimizer.step() so
+            # Adam's running statistics stay uncorrupted.
+            _has_bad_grads = any(
+                p.grad is not None and not torch.isfinite(p.grad).all()
+                for p in trainable_params
+            )
+            if _has_bad_grads:
+                logger.warning(
+                    "[A38] Non-finite gradients after grad-clip (likely BF16 overflow)"
+                    " — skipping optimizer.step() and zeroing gradients."
                 )
-                # Reset running sums and interval timer for next interval.
-                _run_main = _run_gnn_a = _run_tf_a = _run_fus_a = _run_ph2_a = 0.0
-                _run_n = 0
-                _interval_t0 = time.perf_counter()
+                optimizer.zero_grad(set_to_none=True)
+            else:
+                # Fix #28: read grad norms after unscale_(), before zero_grad().
+                optimizer_step += 1
+                should_log = (optimizer_step % log_interval == 0)
+                if should_log:
+                    gnn_norm     = _grad_norm(model.gnn_eye_proj)
+                    gnn_enc_norm = _grad_norm(model.gnn)  # C1: full GNN encoder backbone
+                    tf_norm      = _grad_norm(model.transformer_eye_proj)
+                    fused_norm   = _grad_norm(model.fusion)
+                    _total_norm  = (gnn_norm**2 + tf_norm**2 + fused_norm**2) ** 0.5
+                    _gnn_share   = gnn_norm / _total_norm if _total_norm > 1e-8 else 0.0
+                    last_gnn_share = _gnn_share
 
-                # Phase 2-C2: GNN collapse detection.
-                if _gnn_share < 0.10:
-                    _gnn_collapse_streak += 1
-                    if _gnn_collapse_streak >= 3:
-                        logger.warning(
-                            f"  ⚠ GNN collapse: share={_gnn_share:.1%} for "
-                            f"{_gnn_collapse_streak} consecutive intervals. "
-                            "Consider aborting and increasing gnn_lr_multiplier."
-                        )
+                    n = max(1, _run_n)
+                    _elapsed = time.perf_counter() - _interval_t0
+                    _steps_in_interval = log_interval  # optimizer steps logged
+                    _sps = _steps_in_interval / _elapsed if _elapsed > 0 else 0.0
+                    _ph2_str = f" ph2={_run_ph2_a/n:.4f}" if aux_phase2_loss_weight > 0.0 else ""
+                    logger.info(
+                        f"  Step {optimizer_step}/{(len(loader) + accum_steps - 1) // accum_steps} "
+                        f"(batch {batch_idx+1}/{len(loader)}) | "
+                        f"loss={_run_main/n:.4f} "
+                        f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}{_ph2_str}] | "
+                        f"grad: gnn={gnn_norm:.3f} gnn_enc={gnn_enc_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
+                        f"GNN share={_gnn_share:.1%} | "
+                        f"{_sps:.2f} step/s ({100/_sps/60:.1f} min/100steps)"
+                    )
+                    # Reset running sums and interval timer for next interval.
+                    _run_main = _run_gnn_a = _run_tf_a = _run_fus_a = _run_ph2_a = 0.0
+                    _run_n = 0
+                    _interval_t0 = time.perf_counter()
+
+                    # Phase 2-C2: GNN collapse detection.
+                    if _gnn_share < 0.10:
+                        _gnn_collapse_streak += 1
+                        if _gnn_collapse_streak >= 3:
+                            logger.warning(
+                                f"  ⚠ GNN collapse: share={_gnn_share:.1%} for "
+                                f"{_gnn_collapse_streak} consecutive intervals. "
+                                "Consider aborting and increasing gnn_lr_multiplier."
+                            )
+                        else:
+                            logger.info(f"  GNN share below 10%: {_gnn_share:.1%} [streak {_gnn_collapse_streak}/3]")
                     else:
-                        logger.info(f"  GNN share below 10%: {_gnn_share:.1%} [streak {_gnn_collapse_streak}/3]")
-                else:
-                    _gnn_collapse_streak = 0
+                        _gnn_collapse_streak = 0
 
-                if device == "cuda":
-                    vpct = _vram_pct()
-                    if vpct > 0.90:
-                        logger.info(f"  VRAM high: {_vram_str()} ({vpct:.1%} reserved)")
+                    if device == "cuda":
+                        vpct = _vram_pct()
+                        if vpct > 0.90:
+                            logger.info(f"  VRAM high: {_vram_str()} ({vpct:.1%} reserved)")
 
-            optimizer.step()
-            scheduler.step()
-            optimizer.zero_grad(set_to_none=True)
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad(set_to_none=True)
 
-        loss_for_log = loss.item() * accum_steps
-        if not torch.isfinite(loss).item():
-            nan_loss_count += 1
-        else:
-            total_loss += loss_for_log
+        total_loss += loss_for_log
         pbar.set_postfix({"loss": f"{loss_for_log:.4f}", "nan": nan_loss_count})
 
     n_batches = len(loader)
@@ -722,10 +745,18 @@ def train_one_epoch(
         return 0.0, 0, 0.0
 
     if nan_loss_count > 0:
+        _nan_rate = nan_loss_count / max(1, n_batches)
         logger.warning(
-            f"NaN/Inf loss in {nan_loss_count}/{n_batches} batches this epoch. "
-            f"If > 5% of batches, reduce lr or inspect inputs."
+            f"[A38] NaN/Inf loss or bad-grad skips: {nan_loss_count}/{n_batches} "
+            f"batches ({_nan_rate:.1%}) this epoch."
         )
+        if _nan_rate > 0.005:
+            logger.error(
+                f"[A38] NaN rate {_nan_rate:.1%} exceeds Gate 0.2 threshold (0.5%) — "
+                "HALT training immediately and investigate. "
+                "Check LR, BF16 overflow, and data quality. "
+                "Restart from the last clean checkpoint, NOT the current one."
+            )
 
     return total_loss / max(1, n_batches - nan_loss_count), nan_loss_count, last_gnn_share
 

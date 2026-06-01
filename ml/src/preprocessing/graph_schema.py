@@ -464,3 +464,13 @@ assert len(NODE_TYPES) == 13, (
     f"NODE_TYPES has {len(NODE_TYPES)} entries but expected 13 (ids 0-12). "
     "CFG subtypes 8-12 must all be present."
 )
+# A1: Guard the normalization divisor used in graph_extractor.py and
+# sentinel_model.py (_MAX_TYPE_ID = float(max(NODE_TYPES.values()))).
+# If a new node type is ever appended, this assert fires immediately at import,
+# forcing the developer to update every site that divides type_id by 12.
+assert max(NODE_TYPES.values()) == 12, (
+    "max(NODE_TYPES.values()) must equal 12. "
+    "If you added a new node type, update _MAX_TYPE_ID normalization in "
+    "graph_extractor.py (_MAX_TYPE_ID assert and decode-side NF-2 fix) and "
+    "sentinel_model.py (_MAX_TYPE_ID assert) before re-extracting graphs."
+)

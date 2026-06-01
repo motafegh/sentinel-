@@ -73,6 +73,14 @@ from ml.src.preprocessing.graph_schema import NODE_TYPES
 # node feature[0] is stored as float(type_id) / _MAX_TYPE_ID in the extractor;
 # multiply back by _MAX_TYPE_ID and round to recover the integer type_id.
 _MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 12.0 for v2 schema (ids 0–12)
+# A32: mirror of A3 assert in graph_extractor.py — both files must agree on the
+# normalization divisor.  Fires at import so any NODE_TYPES addition is caught
+# before it silently misaligns the model's type-id recovery with the stored graphs.
+assert _MAX_TYPE_ID == 12.0, (
+    f"_MAX_TYPE_ID is {_MAX_TYPE_ID} but expected 12.0. "
+    "A new node type was added — update normalization in graph_extractor.py "
+    "and sentinel_model.py (this file) before re-extracting graphs."
+)
 
 # Pooling target: function-declaration node types only.
 # After Phase 3 reverse-CONTAINS, these nodes carry aggregated CFG signal.
