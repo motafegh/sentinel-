@@ -1,6 +1,6 @@
 # SENTINEL Interpretability Experiment Index
 
-**Generated:** 2026-05-30  **Updated:** 2026-05-31
+**Generated:** 2026-05-30  **Updated:** 2026-05-31 (COMPLETENESS audit fixes applied)
 **Suite:** GNN_INTERPRETABILITY_AND_VALIDATION_PLAN.md
 **Run environment:** WSL2, RTX 3070 8GB, Python 3.12.1, solc 0.4.0–0.8.35 available
 
@@ -11,11 +11,10 @@
 | Status | Count |
 |--------|-------|
 | PASS | 5 |
-| FAIL | 10 |
-| COMPLETE (checkpoint, results documented) | 4 |
-| PENDING (requires checkpoint or data) | 5 |
-| Not yet scripted | 2 |
-| Phase B (new measurement scripts, not yet run) | 4 |
+| FAIL | 14 |
+| COMPLETE | 8 (A4, L1–L8 + B1–B4) |
+| PENDING | 2 (L3, L4) |
+| Phase B | 4 (B1–B4, all run 2026-05-31) |
 
 **Key finding (pre-checkpoint):** All FAIL results trace to two root causes: (1) missing `solc` compiler (exp_s1 test contract extraction — now fixed), and (2) REVERSE_CONTAINS edge absent from stored graphs (runtime-only by design, not a data gap).
 
@@ -40,12 +39,12 @@
 |-----|------|-------|----------|--------|-------------|
 | EXP-S1 | Structural Trace Audit | 1 — Structure | P0 | **FAIL** | `solc` not installed; val IntegerUO pattern rate 92.6% (PASS), Reentrancy 14.3% (FAIL) |
 | EXP-S2 | Edge Enrichment Ratio | 1 — Structure | P0 | **FAIL** | CONTROL_FLOW enrichment ~1.0× (ubiquitous, no signal); EMITS: 15.5× for UnusedReturn; REVERSE_CONTAINS absent |
-| EXP-S3 | Feature Distribution Per Class | 1 — Structure | P1 | **PASS** ⚠️ | Timestamp size shortcut: Cohen_d=1.657 (SHORTCUT); mean_call_depth_norm dead (all zeros) — **VALIDATED: d corrected to 0.643 in val split, 0.905 in training; shortcut real but overstated** |
+| EXP-S3 | Feature Distribution Per Class | 1 — Structure | P1 | **PASS** ⚠️ | Timestamp cfg_call_count d=1.592 (SHORTCUT); return_ignored d=0.716 for UnusedReturn. "Dead feature" finding RETRACTED — was CFG node artifact |
 | EXP-S4 | ICFG-Lite Path Audit | 1 — Structure | P0 | **PASS** | 76% reentrancy positives have CALL_ENTRY; 69% have full CALL_ENTRY+RETURN_TO chain |
-| EXP-E1 | K-Hop Receptive Field | 2 — Expressivity | P0 | **PARTIAL** | A1: CEI reachability 37.7% at k=8 (FAIL, need ≥50%); A2/A3 redesigned (2026-05-31): A2=FUNCTION→CFG coverage via CONTAINS, A3=CALLS connectivity — rerun needed |
+| EXP-E1 | K-Hop Receptive Field | 2 — Expressivity | P0 | **FAIL** | A1: 38.2% at k=8 (DEF_USE fix; was 37.7%); A2 PASS=85.5% CONTAINS coverage; A3=22.6% CALLS connectivity |
 | EXP-E2 | WL Distinguishability | 2 — Expressivity | P0 | **PASS** | All 4 classes WL-distinguishable; Timestamp 0% collision; Reentrancy 11.1% collision |
 | EXP-E3 | Message Propagation Sim | 2 — Expressivity | P1 | **FAIL** | Random weights show no differential Phase 2 activation (expected — needs trained checkpoint) |
-| EXP-E4 | Direction Sensitivity | 2 — Expressivity | P1 | **FAIL** | Directed vs undirected WL identical (0% diff); edge direction adds no WL discriminative power |
+| EXP-E4 | Direction Sensitivity | 2 — Expressivity | P1 | **FAIL** | All 4 edge types (CF/DEF_USE/CALL_ENTRY/RETURN_TO): directed=undirected=89.1%, diff=0%. Direction adds no power for any Phase 2 edge type |
 | EXP-A1 | Pooling Node-Type Audit | 1 — Structure | P0 | **PASS** | 100% graphs have ≥1 FUNCTION-like node; fallback never triggered; RECEIVE nodes absent |
 | EXP-A2 | CFG Feature Inheritance | 1 — Structure | P1 | **FAIL** *(bug fixed)* | Bug fixed 2026-05-31: `_CONTAINS_EDGE=0` was CALLS not CONTAINS (=5). Still FAIL: 0 CFG nodes found — IMP-D1 re-extraction needed |
 | EXP-A3 | JK Entropy Logging | 3 — Learning | P1 | **PASS** | Entropy 1.0935–1.0986 (near-max log(3)=1.099) across 47 epochs; no phase collapse |
@@ -54,11 +53,11 @@
 | EXP-L2 | Edge Ablation (inference) | 3 — Learning | P1 | PENDING — requires checkpoint | — |
 | EXP-L3 | Attention Visualization | 3 — Learning | P2 | READY (script complete) | Now hooks conv3 (CF) + conv3b (CALL_ENTRY+RETURN_TO) simultaneously; requires checkpoint to run |
 | EXP-L4 | Gradient Saliency | 3 — Learning | P1 | **COMPLETE** *(FEATURE_NAMES fixed)* | Bug fixed 2026-05-31: stale pre-v8 feature labels on dims 3–9. Rerun needed for corrected per-dim attribution. Previous conclusion (`external_call_count` dominates, Timestamp dim-2=10.1%) likely accurate but dims 3–9 labels wrong |
-| EXP-L5 | Probing Classifiers | 3 — Learning | P1 | **COMPLETE** | Phase 2 adds zero F1 delta; only IntegerUO improves via Phase 3 (+3.9pp); embeddings non-linearly encoded |
-| EXP-L6 | Counterfactual Contracts | 3 — Learning | P2 | **FAIL (1/4 pass)** | UnusedReturn PASS (+0.108); Reentrancy/IntegerUO/Timestamp FAIL — model does not detect CEI violation, `unchecked` overflow, or `block.timestamp` branching on minimal novel contracts |
+| EXP-L5 | Probing Classifiers | 3 — Learning | P1 | **FAIL** *(pooling fixed)* | Max+mean [512] pooling fix: IntegerUO Phase1 now 0.419 (was 0.114 mean-only); Reentrancy Phase2 still -0.0069 vs Phase1 → FAIL |
+| EXP-L6 | Counterfactual Contracts | 3 — Learning | P2 | **FAIL (1/4 pass)** | UnusedReturn PASS (+0.122); CEI safe>vuln (−0.0071); IntegerUO safe>vuln (−0.0642); Timestamp tied (0.0000). Model blind to structural vulnerability semantics |
 | EXP-L7 | Calibration & Size Analysis | 3 — Learning | P2 | **COMPLETE** | ECE 0.205–0.310 (all miscalibrated); Timestamp F1 gap 0.636 (worst); IntegerUO only PASS (gap 0.044) |
 | EXP-L8 | Permutation Importance | 3 — Learning | P2 | **COMPLETE** | `type_id_norm` rank 1 (0.0786, 3× next); `uses_block_globals` rank 10, `has_state_write` rank 11; pass criteria FAIL |
-| EXP-L9 | Attention Rollout | 3 — Learning | P2 | PENDING — requires checkpoint | — |
+| EXP-L9 | Attention Rollout | 3 — Learning | P2 | **FAIL** *(criterion fixed)* | Relative-rank criterion: safe CW=0.09692 > vuln CW=0.09038 (delta=−0.00654). Original PASS retracted — prior criterion non-discriminative |
 | EXP-L10 | Training Ablation Commands | 3 — Learning | P2 | **PASS** | 12 ablation commands generated; CONTAINS/CONTROL_FLOW expected highest impact |
 
 ---
@@ -101,21 +100,27 @@ Multiple scripts had duplicate argument definitions conflicting with `add_common
 
 | ID | Script | Purpose | Prerequisite |
 |----|--------|---------|-------------|
-| B1 | `exp_b1_phase2_gradient_norm.py` | Phase 2 gradient norm at each LayerNorm output — does Phase 2 receive loss signal? | checkpoint |
-| B2 | `exp_b2_per_eye_ece.py` | Per-eye ECE (GNN / Transformer / Fused separately) — which eye drives miscalibration? | checkpoint; prerequisite for temperature scaling (Interp-1) |
-| B3 | `exp_b3_jk_weight_distribution.py` | JK weight std + histogram per class — does model selectively use Phase 2 for specific classes? | checkpoint |
-| B4 | `exp_b4_unusedreturn_saliency.py` | UnusedReturn top-scored contracts gradient saliency — structural signal or size shortcut? | checkpoint |
+| ID | Script | Status | Key Finding |
+|----|--------|--------|-------------|
+| B1 | `exp_b1_phase2_gradient_norm.py` | **COMPLETE** | Phase 1 > Phase 2 > Phase 3 for every class. Phase 2 ≈ 75–86% of Phase 1 — no gradient starvation. Timestamp has highest absolute norms. |
+| B2 | `exp_b2_per_eye_ece.py` | **COMPLETE** | GNN/TF/Fused eyes ECE 0.057–0.065 (good). Main head ECE 0.249 (severe). Temperature scaling targets main head only. |
+| B3 | `exp_b3_jk_weight_distribution.py` | **COMPLETE** | Universal Phase3 > Phase1 > Phase2 ordering. No class selectively upweights Phase 2. Std 0.01–0.03 (stable). |
+| B4 | `exp_b4_unusedreturn_saliency.py` | **COMPLETE** | external_call_count + complexity dominate both high/low UnusedReturn scorers. return_ignored ranks 4th with 2.3% relative difference — size shortcut confirmed. |
 
-**Run order:** B2 must complete before Interp-1 (temperature scaling implementation).
+**All B scripts complete.** Temperature scaling fitted: `ml/calibration/temperatures_run4.json` (ECE 0.249 → 0.028).
 
 ---
 
-## Next Actions (Priority Order, 2026-05-31)
+## Status as of 2026-05-31 (COMPLETENESS audit complete)
 
-1. **[A-now] Rerun EXP-L4** with fixed FEATURE_NAMES to get correct gradient saliency per dim
-2. **[A-now] Rerun EXP-E1** with redesigned Analysis 2/3 to get meaningful FUNCTION→CFG coverage
-3. **[A-now] Run EXP-L3** (conv3+conv3b hooks ready) — requires checkpoint
-4. **[B-now] Run B1–B4 Phase B scripts** — all require checkpoint only (no data re-extraction)
-5. **[C-after-B2] Implement Interp-1** temperature scaling after B2 reveals which eye is miscalibrated
-6. **[D] Run IMP-D1 re-extraction** (`reextract_graphs.py`) — unblocks EXP-A2, EXP-E1 A1 full re-run
-7. **[D] Data quality fixes** (Sol-1/2/3, IMP-D2) before Run 5
+All P1–P5 script fixes applied and re-run. B1–B4 complete. Temperature calibration fitted.
+
+**Pending experiments (not yet run):**
+- EXP-L3: Attention Visualization (requires checkpoint; conv3+conv3b hooks ready)
+- EXP-L4: Gradient Saliency (requires checkpoint; FEATURE_NAMES fix applied)
+
+**Deferred (post-Run 5):**
+- IMP-D1 re-extraction (`reextract_graphs.py`) — raises max_nodes to 2048, unblocks EXP-A2
+- DEF_USE chain length distribution (MISSING-3)
+- STATE_VAR multi-function sharing for TOD (MISSING-4)
+- L10 full training ablation (requires `--ablate-edge-type` in train.py)

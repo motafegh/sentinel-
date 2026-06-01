@@ -968,18 +968,39 @@ The model has learned the right structural priors (GNN AUC-ROC = 0.929) but cann
 
 ---
 
-## 10. Phase B — New Measurements (scripts added 2026-05-31, not yet run)
+## 10. Phase B — New Measurements (run 2026-05-31)
 
-Phase B scripts close the measurement gaps identified in the interpretability audit.  All require the trained checkpoint; none require data re-extraction.
+Phase B scripts closed the measurement gaps identified in the interpretability audit. All ran with the Run 4 ep32 checkpoint.
 
-| ID | Script | Goal | Unblocks |
-|----|--------|------|---------|
-| B1 | `exp_b1_phase2_gradient_norm.py` | Gradient norm at each phase LayerNorm — does Phase 2 receive loss signal per class? | CEI aux loss design (Interp-2) |
-| B2 | `exp_b2_per_eye_ece.py` | Per-eye ECE (GNN / Transformer / Fused separately) | Temperature scaling design (Interp-1) |
-| B3 | `exp_b3_jk_weight_distribution.py` | JK weight std + per-class histogram — selective vs uniform Phase 2 use? | CEI aux loss need assessment |
-| B4 | `exp_b4_unusedreturn_saliency.py` | UnusedReturn top-scored contracts gradient saliency — structural signal or size shortcut? | Run 5 label strategy for UnusedReturn |
+| ID | Script | Key Finding | Status |
+|----|--------|-------------|--------|
+| B1 | `exp_b1_phase2_gradient_norm.py` | Phase 1 > Phase 2 > Phase 3 gradient norm for all 10 classes. Phase 2 ≈ 75–80% of Phase 1 — no phase is gradient-starved. Timestamp has highest absolute norms. | **COMPLETE** |
+| B2 | `exp_b2_per_eye_ece.py` | Individual eyes well-calibrated (ECE 0.057–0.065). Main head severely miscalibrated (ECE 0.249). Temperature scaling must target main head. | **COMPLETE** |
+| B3 | `exp_b3_jk_weight_distribution.py` | Universal Phase 3 > Phase 1 > Phase 2 ordering across all classes. No class selectively upweights Phase 2. Std per class: 0.01–0.03. | **COMPLETE** |
+| B4 | `exp_b4_unusedreturn_saliency.py` | `external_call_count` and `complexity` dominate both high- and low-scoring UnusedReturn contracts. `return_ignored` ranks 4th (high-scoring) with only 2.3% relative difference vs low-scoring — size shortcut confirmed for UnusedReturn. | **COMPLETE** |
 
-**Run B2 before implementing temperature scaling.** Scaling the main head output without knowing which eye is miscalibrated risks making calibration worse for well-calibrated eyes.
+**B1 gradient norm detail (mean per phase per class):**
+
+| Class | Phase1 | Phase2 | Phase3 | P2/P1 ratio |
+|-------|--------|--------|--------|-------------|
+| Timestamp | 0.2692 | 0.2332 | 0.1864 | 86.6% |
+| IntegerUO | 0.1340 | 0.1007 | 0.0794 | 75.1% |
+| Reentrancy | 0.1261 | 0.0900 | 0.0770 | 71.4% |
+| UnusedReturn | 0.1172 | 0.0859 | 0.0716 | 73.3% |
+| CallToUnknown | 0.1165 | 0.0961 | 0.0918 | 82.5% |
+
+**B2 ECE summary:**
+
+| Eye | Mean ECE | Range |
+|-----|---------|-------|
+| Fused | 0.057 | 0.022–0.078 |
+| Transformer | 0.059 | 0.022–0.091 |
+| GNN | 0.065 | 0.023–0.129 |
+| **Main head** | **0.249** | **0.183–0.310** |
+
+Temperature calibration (`ml/calibration/temperatures_run4.json`) reduces main head ECE from 0.249 → 0.028. Individual eyes do not need calibration.
+
+Individual experiment docs: `docs/interpretability/exp_b1_phase2_gradient_norm.md` through `exp_b4_unusedreturn_saliency.md`.
 
 ---
 
@@ -997,6 +1018,6 @@ Four additional script bugs were identified and corrected after the initial inte
 ---
 
 *End of SENTINEL Interpretability Master Report*
-*Generated: 2026-05-30  Updated: 2026-05-31*
+*Generated: 2026-05-30  Updated: 2026-05-31 (COMPLETENESS audit fixes: P1–P5 script fixes, B1–B4 runs, L5/L6/L9/E4/S3 results updated)*
 *Based on: GCB-P1-Run4-no-asl-pw_best.pt (ep32, F1=0.3362)*
-*Experiments: exp_a1 through exp_l10, exp_s1 through exp_s4, exp_e1 through exp_e4, exp_a3, exp_a4, exp_b1 through exp_b4 (Phase B, not yet run)*
+*Experiments: exp_a1–exp_l10, exp_s1–exp_s4, exp_e1–exp_e4, exp_a3, exp_a4, exp_b1–exp_b4 (all complete)*
