@@ -280,10 +280,11 @@ class SentinelModel(nn.Module):
 
     def select_prefix_nodes(
         self,
-        node_embs:    torch.Tensor,  # [N, gnn_hidden_dim]
-        batch:        torch.Tensor,  # [N] — graph index per node
-        node_type_ids: torch.Tensor, # [N] — integer type IDs
-        num_graphs:   int,
+        node_embs:         torch.Tensor,  # [N, gnn_hidden_dim] — post-GAT embeddings
+        batch:             torch.Tensor,  # [N] — graph index per node
+        node_type_ids:     torch.Tensor,  # [N] — integer type IDs
+        num_graphs:        int,
+        raw_node_features: torch.Tensor,  # [N, NODE_FEATURE_DIM] — graphs.x (A34: raw features for sort)
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Select up to K=gnn_prefix_k declaration-level nodes per graph, project
@@ -291,12 +292,17 @@ class SentinelModel(nn.Module):
 
         Selection priority (lower = selected first if K forces truncation):
             CONSTRUCTOR(6) > FALLBACK(4) > RECEIVE(5) > MODIFIER(2) > FUNCTION(1)
-        Within FUNCTION nodes, secondary sort by feature[10] (external_call_count)
-        descending — nodes with more external calls are selected first (IMP-M1).
+        Within FUNCTION nodes, secondary sort by raw feature[10] (external_call_count,
+        log1p-normalised) descending — nodes with more external calls are selected first
+        (IMP-M1). [A34] Uses raw input features, not post-GAT embeddings — dimension 10
+        of the 256-dim post-GAT tensor has no relation to external_call_count.
 
         Graphs with fewer than K eligible nodes are zero-padded on the right.
         IMP-M3: the actual node count per graph is returned so TransformerEncoder
         can mask padded positions (attention=0) instead of attending to zero vectors.
+
+        [A33] Pre-computes priority and secondary scores as tensors outside the per-graph
+        loop (hybrid approach: tensor scoring, looped topk for variable-size graphs).
 
         Returns:
             prefix:      [B, K, 768] — projected prefix embeddings.
@@ -305,43 +311,48 @@ class SentinelModel(nn.Module):
         K = self.gnn_prefix_k
         device = node_embs.device
         prefix      = torch.zeros(num_graphs, K, 768, device=device, dtype=node_embs.dtype)
-        node_counts = torch.zeros(num_graphs, dtype=torch.long, device=device)  # IMP-M3
+        node_counts = torch.zeros(num_graphs, dtype=torch.long, device=device)
 
-        _EXT_CALL_DIM = 10  # feature[10] = external_call_count (log1p-normalised)
+        _EXT_CALL_DIM = 10  # raw feature index: external_call_count (log1p-normalised)
         _FUNCTION_ID  = NODE_TYPES["FUNCTION"]
 
-        for g in range(num_graphs):
-            g_mask    = batch == g
-            g_types   = node_type_ids[g_mask]
-            g_embs    = node_embs[g_mask]
+        # [A33] Pre-compute per-node priority scores for all N nodes at once (tensor ops).
+        # Non-eligible nodes get 999 so they sort after all eligible nodes.
+        prio_scores = torch.full((node_embs.shape[0],), 999, dtype=torch.float32, device=device)
+        for t_id, prio in _PREFIX_NODE_PRIORITY.items():
+            prio_scores[node_type_ids == t_id] = float(prio)
 
-            # Indices of eligible nodes within this graph's node list
-            eligible_local = [
-                i for i, t in enumerate(g_types.tolist())
-                if t in _PREFIX_NODE_PRIORITY
-            ]
-            if not eligible_local:
+        # [A33 + A34] Pre-compute secondary sort scores from RAW input features.
+        # A34 fix: g_embs[idx, 10] accessed dim-10 of a 256-dim post-GAT embedding,
+        # which has no relation to external_call_count. raw_node_features[:, 10] does.
+        sec_scores = torch.zeros(node_embs.shape[0], dtype=torch.float32, device=device)
+        func_node_mask = (node_type_ids == _FUNCTION_ID)
+        if func_node_mask.any():
+            sec_scores[func_node_mask] = -raw_node_features[func_node_mask, _EXT_CALL_DIM].float()
+
+        for g in range(num_graphs):
+            g_mask  = batch == g
+            g_prio  = prio_scores[g_mask]    # [N_g]
+            g_sec   = sec_scores[g_mask]     # [N_g]
+            g_types = node_type_ids[g_mask]  # [N_g]
+            g_embs  = node_embs[g_mask]      # [N_g, gnn_hidden_dim]
+
+            eligible_local = torch.where(g_prio < 999)[0]   # indices into g_* arrays
+            if eligible_local.numel() == 0:
                 continue  # no declaration nodes; prefix stays zero
 
-            # IMP-M1: two-key sort — primary=type priority, secondary=−ext_call_count
-            # (FUNCTION nodes only; others use 0.0). Within each priority group,
-            # nodes with more external calls are selected first when K forces truncation.
-            sort_keys = []
-            g_types_list = g_types.tolist()
-            for local_idx in eligible_local:
-                t    = g_types_list[local_idx]
-                prio = _PREFIX_NODE_PRIORITY[t]
-                sec  = -g_embs[local_idx, _EXT_CALL_DIM].item() if t == _FUNCTION_ID else 0.0
-                sort_keys.append((prio, sec, local_idx))
-            sort_keys.sort()   # Python stable tuple sort
-            selected_local = [sk[2] for sk in sort_keys[:K]]
-            selected = torch.tensor(selected_local, device=device, dtype=torch.long)
+            # IMP-M1: primary sort by type priority, secondary by −ext_call_count.
+            # prio in [0,4] integer, sec in (−∞, 0]. Multiplier 1e3 keeps ranges separate.
+            combined = g_prio[eligible_local] * 1e3 + g_sec[eligible_local]
+            _, order      = combined.sort()               # ascending: lower = higher priority
+            top_in_elig   = order[:K]
+            selected_local = eligible_local[top_in_elig]  # [min(n_elig, K)] indices into g_*
 
-            proj = self.gnn_to_bert_proj(g_embs[selected])  # [n_sel, 768]
+            proj = self.gnn_to_bert_proj(g_embs[selected_local])  # [n_sel, 768]
 
             # Add type-specific embedding bias so transformer knows node roles
             type_indices = torch.tensor(
-                [_PREFIX_TYPE_IDX[g_types[i].item()] for i in selected.tolist()],
+                [_PREFIX_TYPE_IDX[g_types[i].item()] for i in selected_local.tolist()],
                 device=device, dtype=torch.long,
             )
             proj = proj + self.prefix_type_embedding(type_indices)  # [n_sel, 768]
@@ -431,6 +442,8 @@ class SentinelModel(nn.Module):
                 "gnn":         torch.zeros(B, self.num_classes, device=dev),
                 "transformer": torch.zeros(B, self.num_classes, device=dev),
                 "fused":       torch.zeros(B, self.num_classes, device=dev),
+                "phase2":      torch.zeros(B, self.num_classes, device=dev),  # [NF-8]
+                "jk_entropy":  torch.tensor(0.0, device=dev),                 # [NF-8]
             }
             return zeros, aux_zeros
         num_graphs = int(batch.max().item()) + 1
@@ -464,7 +477,7 @@ class SentinelModel(nn.Module):
         gnn_prefix_counts: Optional[torch.Tensor] = None
         if self.gnn_prefix_k > 0 and self._current_epoch >= self.gnn_prefix_warmup_epochs:
             gnn_prefix, gnn_prefix_counts = self.select_prefix_nodes(
-                node_embs, batch, node_type_ids, num_graphs
+                node_embs, batch, node_type_ids, num_graphs, graphs.x  # [A34] pass raw features
             )
             # gnn_prefix: [B, K, 768]  gnn_prefix_counts: [B]
 
@@ -549,14 +562,16 @@ class SentinelModel(nn.Module):
         if batch.numel() == 0:
             return None
         num_graphs = int(batch.max().item()) + 1
-        gnn_prefix = self.select_prefix_nodes(node_embs, batch, node_type_ids, num_graphs)
-        # After IMP-M3: select_prefix_nodes returns (prefix, counts); unpack accordingly.
-        if isinstance(gnn_prefix, tuple):
-            gnn_prefix, _ = gnn_prefix
+        # [A25b] Unpack and use gnn_prefix_counts — previously discarded with `_`, causing
+        # attention averaging to include zero-padded positions. Diagnostic-only fix.
+        gnn_prefix, gnn_prefix_counts = self.select_prefix_nodes(
+            node_embs, batch, node_type_ids, num_graphs, graphs.x  # [A34] raw features
+        )
 
         result = self.transformer(
             input_ids, attention_mask,
             gnn_prefix_nodes=gnn_prefix,
+            gnn_prefix_counts=gnn_prefix_counts,  # [A25b] pass counts so padding is masked
             output_attentions=True,
         )
         if isinstance(result, tuple):

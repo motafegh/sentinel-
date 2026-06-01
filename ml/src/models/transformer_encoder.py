@@ -139,7 +139,9 @@ class TransformerEncoder(nn.Module):
                 torch_dtype=torch.bfloat16,
             )
             logger.info("TransformerEncoder — Flash Attention 2 active")
-        except (ImportError, ValueError):
+        except ImportError:
+            # [A28] Narrow to ImportError only. ValueError means a corrupted config.json or
+            # missing model file — that is a real error and must propagate, not fall back silently.
             self.bert = AutoModel.from_pretrained(
                 "microsoft/graphcodebert-base",
                 attn_implementation="sdpa",
@@ -164,10 +166,43 @@ class TransformerEncoder(nn.Module):
             f"trainable: {trainable:,} | frozen: {frozen:,}"
         )
 
+        # [A30] Validate _word_embeddings path at construction time — surfaces PEFT layout
+        # changes immediately rather than crashing at the first forward pass using prefix injection.
+        try:
+            _ = self._word_embeddings
+        except AttributeError as _we_err:
+            raise RuntimeError(
+                f"TransformerEncoder: PEFT word embedding path validation failed. {_we_err}"
+            ) from _we_err
+
     @property
     def _word_embeddings(self) -> nn.Embedding:
-        """Word embedding layer of the underlying GraphCodeBERT model."""
-        return self.bert.base_model.model.embeddings.word_embeddings
+        """
+        Word embedding layer of the underlying GraphCodeBERT model.
+
+        [A30] Tries multiple known PEFT internal paths in precedence order so PEFT version
+        changes do not silently return a wrong object or crash mid-forward. Validated at
+        __init__ time — failures surface at construction, not at the first forward pass.
+        """
+        _paths = [
+            "base_model.model.embeddings.word_embeddings",   # PEFT ≥0.4 (LoraModel.model)
+            "model.embeddings.word_embeddings",               # some PEFT variants
+            "base_model.embeddings.word_embeddings",          # older PEFT ≤0.3
+        ]
+        for path in _paths:
+            obj = self.bert
+            try:
+                for attr in path.split("."):
+                    obj = getattr(obj, attr)
+                if isinstance(obj, nn.Embedding):
+                    return obj
+            except AttributeError:
+                continue
+        raise AttributeError(
+            f"[A30] _word_embeddings: could not locate word embedding nn.Embedding "
+            f"via any of {_paths}. PEFT version may have changed the internal layout. "
+            "Update candidate paths in transformer_encoder.py."
+        )
 
     def forward(
         self,
@@ -237,9 +272,9 @@ class TransformerEncoder(nn.Module):
             # IMP-M3: use actual node counts so zero-padded prefix positions are masked.
             # 95.5% of contracts fill all K slots (count==K) — this is a no-op for them.
             if gnn_prefix_counts is not None:
-                prefix_mask = torch.zeros(B, K, dtype=attention_mask.dtype, device=attention_mask.device)
-                for b in range(B):
-                    prefix_mask[b, :gnn_prefix_counts[b]] = 1
+                # [A29] Vectorised: broadcast arange [K] vs counts [B] — no Python loop over B.
+                _arange = torch.arange(K, device=attention_mask.device)
+                prefix_mask = (_arange.unsqueeze(0) < gnn_prefix_counts.unsqueeze(1)).to(attention_mask.dtype)
             else:
                 prefix_mask = torch.ones(B, K, dtype=attention_mask.dtype, device=attention_mask.device)
             full_mask    = torch.cat([prefix_mask, code_mask], dim=1)        # [B, L]
@@ -280,9 +315,9 @@ class TransformerEncoder(nn.Module):
 
         # IMP-M3: mask zero-padded prefix positions per-graph, expanded across windows
         if gnn_prefix_counts is not None:
-            prefix_mask = torch.zeros(B, K, dtype=flat_mask.dtype, device=flat_mask.device)
-            for b in range(B):
-                prefix_mask[b, :gnn_prefix_counts[b]] = 1
+            # [A29] Vectorised: broadcast arange [K] vs counts [B] — no Python loop over B.
+            _arange = torch.arange(K, device=flat_mask.device)
+            prefix_mask = (_arange.unsqueeze(0) < gnn_prefix_counts.unsqueeze(1)).to(flat_mask.dtype)
             prefix_mask = prefix_mask.unsqueeze(1).expand(-1, W, -1).reshape(B * W, K)
         else:
             prefix_mask = torch.ones(B * W, K, dtype=flat_mask.dtype, device=flat_mask.device)

@@ -68,6 +68,8 @@ from torch_geometric.nn import GATConv
 
 from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES, EDGE_TYPES
 
+# [A27] Architecture is fixed at 8 layers (2+3+3 phases). Enforced in GNNEncoder.__init__.
+SENTINEL_GNN_NUM_LAYERS: int = 8
 
 # ---------------------------------------------------------------------------
 # JK attention aggregator
@@ -120,7 +122,7 @@ class _JKAttention(nn.Module):
         w_nk    = weights.squeeze(-1)            # [N, K]
         # Update registered buffers in-place (preserves device + save/load).
         self.last_weights.copy_(w_nk.mean(0).detach())      # [K]
-        self.last_weight_stds.copy_(w_nk.std(0).detach())   # [K] — 0 if N=1
+        self.last_weight_stds.copy_(w_nk.std(0, unbiased=False).nan_to_num(0.0).detach())  # [A23] unbiased=False avoids NaN when N=1
         # Full per-node weights: only kept in eval mode (N varies, can't be a buffer).
         if not self.training:
             self.last_node_weights = w_nk.detach().cpu()
@@ -163,15 +165,16 @@ class GNNEncoder(nn.Module):
 
     def __init__(
         self,
-        hidden_dim:         int            = 256,
-        heads:              int            = 8,
-        dropout:            float          = 0.2,
-        use_edge_attr:      bool           = True,
-        edge_emb_dim:       int            = 64,
-        num_layers:         int            = 8,
-        use_jk:             bool           = True,
-        jk_mode:            str            = 'attention',
-        phase2_edge_types:  list[int]|None = None,
+        hidden_dim:               int            = 256,
+        heads:                    int            = 8,
+        dropout:                  float          = 0.2,
+        use_edge_attr:            bool           = True,
+        edge_emb_dim:             int            = 64,
+        num_layers:               int            = 8,
+        use_jk:                   bool           = True,
+        jk_mode:                  str            = 'attention',
+        phase2_edge_types:        list[int]|None = None,
+        validate_graph_integrity: bool           = False,  # [A25] off by default; O(E) scan gated here
     ) -> None:
         """
         Args:
@@ -193,13 +196,23 @@ class GNNEncoder(nn.Module):
         """
         super().__init__()
 
-        self.num_layers        = num_layers
-        self.hidden_dim        = hidden_dim
-        self.use_edge_attr     = use_edge_attr
-        self.dropout_p         = dropout
-        self.use_jk            = use_jk
-        self.jk_mode           = jk_mode
-        self.phase2_edge_types = phase2_edge_types
+        # [A27] Architecture is fixed at SENTINEL_GNN_NUM_LAYERS (8) layers.
+        if num_layers != SENTINEL_GNN_NUM_LAYERS:
+            raise ValueError(
+                f"GNNEncoder: num_layers={num_layers} but the three-phase architecture "
+                f"is fixed at {SENTINEL_GNN_NUM_LAYERS} layers (2+3+3). "
+                "Passing a different value produces a structurally incorrect model. "
+                f"Pass num_layers={SENTINEL_GNN_NUM_LAYERS} or omit it."
+            )
+
+        self.num_layers               = num_layers
+        self.hidden_dim               = hidden_dim
+        self.use_edge_attr            = use_edge_attr
+        self.dropout_p                = dropout
+        self.use_jk                   = use_jk
+        self.jk_mode                  = jk_mode
+        self.phase2_edge_types        = phase2_edge_types
+        self.validate_graph_integrity = validate_graph_integrity  # [A25]
 
         _head_dim = hidden_dim // heads  # 32 per head when hidden=256, heads=8
         if _head_dim * heads != hidden_dim:
@@ -335,6 +348,14 @@ class GNNEncoder(nn.Module):
         self.relu    = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
 
+        # [A26] Cache parameter dtype — avoids next(self.parameters()) on every forward pass.
+        # Call refresh_dtype_cache() after any runtime dtype cast (.float(), .half(), etc.).
+        self._param_dtype: torch.dtype = next(self.parameters()).dtype
+
+    def refresh_dtype_cache(self) -> None:
+        """[A26] Update cached dtype after a runtime cast (e.g., model.float(), model.bfloat16())."""
+        self._param_dtype = next(self.parameters()).dtype
+
     def forward(
         self,
         x:                    torch.Tensor,
@@ -386,7 +407,10 @@ class GNNEncoder(nn.Module):
             )
         # Bug #3: out-of-bounds node indices in edge_index produce silent wrong
         # GATConv attention or CUDA illegal-memory-access with no useful traceback.
-        if edge_index.numel() > 0 and edge_index.max() >= x.shape[0]:
+        # [A25] Gated by validate_graph_integrity (default False) — edge_index.max() is O(E)
+        # and runs on every forward pass. Enable for debugging/testing only; move the check
+        # to DualPathDataset.__getitem__ or the collation function for production validation.
+        if self.validate_graph_integrity and edge_index.numel() > 0 and edge_index.max() >= x.shape[0]:
             raise ValueError(
                 f"edge_index contains node index {edge_index.max().item()} "
                 f"but x has only {x.shape[0]} nodes. Graph .pt file is corrupted."
@@ -395,9 +419,9 @@ class GNNEncoder(nn.Module):
         # Normalise input dtype to match model parameters (float32).
         # BERT loads in BF16 and can set the global default dtype, causing test
         # tensors created with torch.randn to arrive as BF16.
-        _param_dtype = next(self.parameters()).dtype
-        if x.dtype != _param_dtype:
-            x = x.to(_param_dtype)
+        # [A26] Use cached _param_dtype — call refresh_dtype_cache() after any dtype cast.
+        if x.dtype != self._param_dtype:
+            x = x.to(self._param_dtype)
 
         # ── Edge embeddings ──────────────────────────────────────────────────
         e = None
@@ -472,6 +496,12 @@ class GNNEncoder(nn.Module):
         # Layer 5 (conv3c): joint CF+ICFG — integration layer
         # When phase2_edge_types ablation excludes a type, the subset becomes empty;
         # GATConv on empty edges returns zero which residual handles cleanly.
+        #
+        # NF-6 (DEFERRED to Run 6): cf_only_ei and icfg_only_ei are computed from raw
+        # edge_attr, not from the already-masked phase2_ei. When phase2_edge_types ablation
+        # excludes CF(6) or ICFG edges, layers 3/4 still process the full unablated set.
+        # Fix by re-applying sub-masks to phase2_ei instead of edge_index (zero training
+        # impact for normal runs where phase2_edge_types=None).
         if edge_attr is not None:
             _cf_mask   = (edge_attr == _CONTROL_FLOW)
             _icfg_mask = (edge_attr == _CALL_ENTRY) | (edge_attr == _RETURN_TO)
@@ -518,8 +548,7 @@ class GNNEncoder(nn.Module):
         # Layer 1: NODE_FEATURE_DIM→hidden_dim.
         # IMP-G2: add learned skip (input_proj) so raw features bypass the first
         # GAT layer — prevents feature loss when attention weights start near-uniform.
-        _proj_dtype = next(self.input_proj.parameters()).dtype
-        x_skip = self.input_proj(x_init.to(_proj_dtype)).to(x.dtype)  # dtype-safe (IMP-G2)
+        x_skip = self.input_proj(x_init.to(self._param_dtype)).to(x.dtype)  # dtype-safe (IMP-G2) [A26]
         x  = self.conv1(x_init, struct_ei, struct_ea)   # [N, NODE_FEATURE_DIM] → [N, hidden_dim]
         x  = self.relu(x + x_skip)                      # skip added before relu (IMP-G2)
         x  = self.dropout(x)

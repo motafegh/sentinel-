@@ -215,71 +215,60 @@ After Phase 7 re-extraction:
 
 ### 3.1 — Fix A25: `edge_index.max()` O(E) Scan on Every Forward Pass
 
-- [ ] **`gnn_encoder.py` ~L389–393:** Move the `edge_index.max()` integrity check to `DualPathDataset.__getitem__` or the collation function.
-- [ ] Add a `validate_graph_integrity` flag (default `False` in production) to gate the check at inference time.
+- [x] **`gnn_encoder.py` ~L389–393:** Move the `edge_index.max()` integrity check to `DualPathDataset.__getitem__` or the collation function.
+- [x] Add a `validate_graph_integrity` flag (default `False` in production) to gate the check at inference time.
 
 ### 3.2 — Fix A26: `next(self.parameters())` Called Twice Per Forward Pass
 
-- [ ] **`gnn_encoder.py` ~L398, L521:** Cache `self._param_dtype` in `__init__`. In forward, read from the cached value.
-- [ ] Add `refresh_dtype_cache()` method that callers must invoke after any runtime dtype cast (`.float()`, `.half()`, `.bfloat16()`).
+- [x] **`gnn_encoder.py` ~L398, L521:** Cache `self._param_dtype` in `__init__`. In forward, read from the cached value.
+- [x] Add `refresh_dtype_cache()` method that callers must invoke after any runtime dtype cast (`.float()`, `.half()`, `.bfloat16()`).
 
 ### 3.3 — Fix A27: `num_layers` Stored but Hardcoded to 8
 
-- [ ] **`gnn_encoder.py` ~L196:** Introduce `SENTINEL_GNN_NUM_LAYERS = 8`. If `num_layers != 8` is passed, raise `ValueError` with a message explaining the architecture is fixed at 8.
+- [x] **`gnn_encoder.py` ~L196:** Introduce `SENTINEL_GNN_NUM_LAYERS = 8`. If `num_layers != 8` is passed, raise `ValueError` with a message explaining the architecture is fixed at 8.
 
 ### 3.4 — Fix A23: `last_weight_stds` NaN for N=1
 
-- [ ] **`gnn_encoder.py` ~L123:** Replace `.std(0)` with `.std(0, unbiased=False)` followed by `.nan_to_num(0.0)`.
+- [x] **`gnn_encoder.py` ~L123:** Replace `.std(0)` with `.std(0, unbiased=False)` followed by `.nan_to_num(0.0)`.
 
 ### 3.5 — Fix A28: `except (ImportError, ValueError)` Catches Real BERT Load Errors
 
-- [ ] **`transformer_encoder.py` ~L142–147:** Narrow the except to `ImportError` only (flash_attention_2 not installed → fallback to SDPA). Let `ValueError` propagate — a corrupted `config.json` or missing model file is a real error that must surface.
+- [x] **`transformer_encoder.py` ~L142–147:** Narrow the except to `ImportError` only (flash_attention_2 not installed → fallback to SDPA). Let `ValueError` propagate — a corrupted `config.json` or missing model file is a real error that must surface.
 
 ### 3.6 — Fix A29: Python Loop for Prefix Mask Construction
 
-- [ ] **`transformer_encoder.py` ~L241–242 and ~L284–285 (two occurrences):** Replace the `for b in range(B)` loop with a vectorized broadcast comparison using `torch.arange` vs. `gnn_prefix_counts`.
+- [x] **`transformer_encoder.py` ~L241–242 and ~L284–285 (two occurrences):** Replace the `for b in range(B)` loop with a vectorized broadcast comparison using `torch.arange` vs. `gnn_prefix_counts`.
 
 ### 3.7 — Fix A30: `_word_embeddings` Fragile Hardcoded PEFT Path
 
-- [ ] **`transformer_encoder.py` ~L168–170:** Replace the five-level hardcoded path with a property that tries multiple known PEFT internal paths in order of precedence. If none yield an `nn.Embedding`, raise `AttributeError` with a PEFT version compatibility message.
-- [ ] Validate the path at `__init__` time (call the property, catch the error) so failures surface at construction, not at the first forward pass.
+- [x] **`transformer_encoder.py` ~L168–170:** Replace the five-level hardcoded path with a property that tries multiple known PEFT internal paths in order of precedence. If none yield an `nn.Embedding`, raise `AttributeError` with a PEFT version compatibility message.
+- [x] Validate the path at `__init__` time (call the property, catch the error) so failures surface at construction, not at the first forward pass.
 
 ### 3.8 — Fix A32: `_MAX_TYPE_ID` in `sentinel_model.py`
 
-- [ ] Already covered in Phase 1 step 1.3 — confirm the assertion is present in both files.
+- [x] Already covered in Phase 1 step 1.3 — confirm the assertion is present in both files.
 
 ### 3.9 — Fix A33: `select_prefix_nodes` Python Loop Over Batch Dimension
 
-- [ ] **`sentinel_model.py` ~L305:** Pre-compute priority scores for all nodes in a single tensor operation. Use `torch.topk` per-graph via the PyG batch vector. A hybrid approach (tensor scores + looped topk) is acceptable for Run 5.
+- [x] **`sentinel_model.py` ~L305:** Pre-compute priority scores for all nodes in a single tensor operation. Use `torch.topk` per-graph via the PyG batch vector. A hybrid approach (tensor scores + looped topk) is acceptable for Run 5.
 
 ### 3.10 — Fix A34: Secondary Sort Uses Post-GAT Embedding, Not Raw Feature
 
-- [ ] **`sentinel_model.py` ~L326:** Replace `g_embs[local_idx, _EXT_CALL_DIM]` (post-GAT 256-dim output) with `graphs.x[local_idx, _EXT_CALL_DIM]` (raw input feature) for the prefix selection secondary sort.
-- [ ] **Implementation note:** Raw features are available as `graphs.x` (the PyG Data object's node feature tensor). Update `select_prefix_nodes` function signature to accept both `g_embs` and `graphs` (or specifically `graphs.x`) so the secondary sort can access raw features.
-- [ ] ⚠️ This changes prefix node selection — re-run EXP-A4 (Aux Eye Contribution) after this fix to verify prefix quality improves.
+- [x] **`sentinel_model.py` ~L326:** Replace `g_embs[local_idx, _EXT_CALL_DIM]` (post-GAT 256-dim output) with `graphs.x[local_idx, _EXT_CALL_DIM]` (raw input feature) for the prefix selection secondary sort.
+- [x] **Implementation note:** Raw features are available as `graphs.x` (the PyG Data object's node feature tensor). Update `select_prefix_nodes` function signature to accept both `g_embs` and `graphs` (or specifically `graphs.x`) so the secondary sort can access raw features.
+- [x] ⚠️ This changes prefix node selection — re-run EXP-A4 (Aux Eye Contribution) after this fix to verify prefix quality improves.
 
 ### 3.11 — Fix A25b: `compute_prefix_attention_mean` Discards `node_counts`
 
-- [ ] **`sentinel_model.py` ~L544–546:** Unpack `gnn_prefix, node_counts = gnn_prefix` (do not discard with `_`). When averaging attention, average over only real node positions (indices 0 to `node_counts[g]`), not over all K=48 including padding. (Diagnostic-only fix — no training impact.)
+- [x] **`sentinel_model.py` ~L544–546:** Unpack `gnn_prefix, node_counts = gnn_prefix` (do not discard with `_`). When averaging attention, average over only real node positions (indices 0 to `node_counts[g]`), not over all K=48 including padding. (Diagnostic-only fix — no training impact.)
 
 ### 3.12 — Fix NF-6: Phase 2 Layers 3/4 Ignore `phase2_edge_types` Ablation
 
-- [ ] **`gnn_encoder.py` ~L475–484:** Move `cf_only_ei` and `icfg_only_ei` computation to derive from the already-masked `phase2_ei` (after `phase2_edge_types` filter) rather than from raw `edge_attr`.
-  - Specifically: after computing `phase2_ei = edge_index[:, cfg_mask]`, re-apply type-specific sub-masks to `phase2_ei` (not `edge_index`) for cf_only and icfg_only subsets.
-- [ ] Note: zero training impact — `phase2_edge_types` is not set in normal training runs. Required for correct ablation experiments post-Run-5.
+- [ ] **DEFERRED to Run 6** — per Known Non-Fixes list (zero training impact; NF-6 comment added to `gnn_encoder.py` to mark the location). Required for correct post-Run-5 ablation experiments only.
 
 ### 3.13 — Fix NF-8: Empty Batch Guard Returns Inconsistent Aux Dict Keys (ELEVATED TO MEDIUM)
 
-- [ ] **`sentinel_model.py` ~L422–426:** Update `aux_zeros` to include `"phase2"` and `"jk_entropy"` keys matching the normal-path dict:
-  ```python
-  aux_zeros = {
-      "gnn":         torch.zeros(B, self.num_classes, device=dev),
-      "transformer": torch.zeros(B, self.num_classes, device=dev),
-      "fused":       torch.zeros(B, self.num_classes, device=dev),
-      "phase2":      torch.zeros(B, self.num_classes, device=dev),
-      "jk_entropy":  torch.tensor(0.0, device=dev),
-  }
-  ```
+- [x] **`sentinel_model.py` ~L422–426:** Update `aux_zeros` to include `"phase2"` and `"jk_entropy"` keys matching the normal-path dict.
 - [ ] Verify the trainer uses a consistent key set from the aux dict — confirm it does not raise `KeyError` on empty-batch epochs.
 - [ ] Add a unit test: create a zero-size batch, run forward pass, verify no `KeyError` when trainer accesses `aux["phase2"]` and `aux["jk_entropy"]`.
 
