@@ -175,7 +175,13 @@ def measure_phase_gradient_norms(
 
                 model.train()
                 logits, _ = model(batch, input_ids, attn_mask, return_aux=True)
-                logits[0, class_idx].backward()
+                # Use BCEWithLogitsLoss on positive target so gradient magnitude
+                # matches training-time behavior (sigmoid + BCE), not raw logit.
+                loss = torch.nn.functional.binary_cross_entropy_with_logits(
+                    logits[0, class_idx].unsqueeze(0),
+                    torch.ones(1, device=logits.device),
+                )
+                loss.backward()
                 model.eval()
 
                 h1.remove(); h2.remove(); h3.remove()

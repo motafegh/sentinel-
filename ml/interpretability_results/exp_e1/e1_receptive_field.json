@@ -1,0 +1,58 @@
+{
+  "args": {
+    "cache": "ml/data/cached_dataset_v8.pkl",
+    "label_csv": "ml/data/processed/multilabel_index_cleaned.csv",
+    "splits_dir": "ml/data/splits/deduped",
+    "split": "val",
+    "n_contracts": 400,
+    "seed": 42
+  },
+  "results": {
+    "analysis1_cei_reachability": {
+      "description": "CFG_WRITE reachable from CFG_CALL via Phase2 edges",
+      "reentrancy_positive": {
+        "n_contracts": 398,
+        "rates_by_hop": {
+          "1": 21.11,
+          "2": 32.91,
+          "3": 34.17,
+          "4": 36.68,
+          "5": 37.44,
+          "6": 37.44,
+          "7": 37.69,
+          "8": 38.44
+        }
+      },
+      "reentrancy_negative": {
+        "n_contracts": 364,
+        "rates_by_hop": {
+          "1": 17.03,
+          "2": 23.08,
+          "3": 24.45,
+          "4": 26.1,
+          "5": 26.37,
+          "6": 26.92,
+          "7": 27.2,
+          "8": 27.47
+        }
+      },
+      "pass_criterion": ">=50% positive contracts have CFG_WRITE reachable at k<=8",
+      "pass": false
+    },
+    "analysis2_function_cfg_coverage": {
+      "description": "FUNCTION nodes with >=1 CFG child via CONTAINS (1-hop; REVERSE_CONTAINS excluded \u2014 runtime-only)",
+      "n_function_nodes": 14639,
+      "pass_count": 12506,
+      "pass_rate_pct": 85.43,
+      "pass_criterion": ">=80% of FUNCTION nodes have >=1 CFG child via CONTAINS",
+      "pass": true
+    },
+    "analysis3_calls_connectivity": {
+      "description": "FUNCTION nodes that can reach >=1 other FUNCTION via CALLS within 2 hops",
+      "n_function_nodes": 14635,
+      "pass_count": 3150,
+      "pass_rate_pct": 21.52
+    }
+  },
+  "overall_pass": false
+}

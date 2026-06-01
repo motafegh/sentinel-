@@ -1,6 +1,6 @@
 # SENTINEL Interpretability Experiment Index
 
-**Generated:** 2026-05-30  **Updated:** 2026-05-31 (COMPLETENESS audit fixes applied)
+**Generated:** 2026-05-30  **Updated:** 2026-06-01 (audit fixes: B1 gradient method, L2 structural ablation, L3 reclassified, L4 rerun)
 **Suite:** GNN_INTERPRETABILITY_AND_VALIDATION_PLAN.md
 **Run environment:** WSL2, RTX 3070 8GB, Python 3.12.1, solc 0.4.0–0.8.35 available
 
@@ -12,9 +12,9 @@
 |--------|-------|
 | PASS | 5 |
 | FAIL | 14 |
-| COMPLETE | 8 (A4, L1–L8 + B1–B4) |
-| PENDING | 2 (L3, L4) |
-| Phase B | 4 (B1–B4, all run 2026-05-31) |
+| COMPLETE | 10 (A4, L1–L8 + B1–B4, now including L3 ARCH-N/A and L4 rerun) |
+| PENDING | 0 |
+| Phase B | 4 (B1–B4, all run 2026-05-31/06-01) |
 
 **Key finding (pre-checkpoint):** All FAIL results trace to two root causes: (1) missing `solc` compiler (exp_s1 test contract extraction — now fixed), and (2) REVERSE_CONTAINS edge absent from stored graphs (runtime-only by design, not a data gap).
 
@@ -24,6 +24,12 @@
 - EXP-L8 feature labels were wrong (9/11 stale names) — `uses_block_globals` ranks 2nd for Timestamp, not last
 - EXP-L2 embedding-zero method understated ablation effect by 450× — proper removal gives max drop 0.014
 - EXP-L1 entropy context: Phase 2 gap is real but tiny (99.98% of max entropy); EXP-S3 Cohen's d corrected to 0.643
+
+**Audit fixes (2026-06-01):** Four additional corrections applied:
+- EXP-B1: gradient backward changed from raw logit to BCEWithLogitsLoss (matches training loss); P2/P1 ratios updated to 72–91%
+- EXP-L2: structural ablation added to measured results; embedding/structural ratio corrected from 450× to 10,944×; new finding: Phase 2 edges SUPPRESS Reentrancy predictions (positive delta on removal)
+- EXP-L3: false PASS retracted and reclassified ARCHITECTURAL N/A — 100% CF fraction was architecturally guaranteed; real finding is uniform attention (all weights = 1.0)
+- EXP-L4: FEATURE_NAMES fix applied (import from graph_schema); rerun 2026-06-01 with correct labels
 
 **Script fixes (2026-05-31):**
 - EXP-L4: FEATURE_NAMES was stale hardcoded pre-v8 labels (same bug as L8) — fixed to import from graph_schema
@@ -41,7 +47,7 @@
 | EXP-S2 | Edge Enrichment Ratio | 1 — Structure | P0 | **FAIL** | CONTROL_FLOW enrichment ~1.0× (ubiquitous, no signal); EMITS: 15.5× for UnusedReturn; REVERSE_CONTAINS absent |
 | EXP-S3 | Feature Distribution Per Class | 1 — Structure | P1 | **PASS** ⚠️ | Timestamp cfg_call_count d=1.592 (SHORTCUT); return_ignored d=0.716 for UnusedReturn. "Dead feature" finding RETRACTED — was CFG node artifact |
 | EXP-S4 | ICFG-Lite Path Audit | 1 — Structure | P0 | **PASS** | 76% reentrancy positives have CALL_ENTRY; 69% have full CALL_ENTRY+RETURN_TO chain |
-| EXP-E1 | K-Hop Receptive Field | 2 — Expressivity | P0 | **FAIL** | A1: 38.2% at k=8 (DEF_USE fix; was 37.7%); A2 PASS=85.5% CONTAINS coverage; A3=22.6% CALLS connectivity |
+| EXP-E1 | K-Hop Receptive Field | 2 — Expressivity | P0 | **FAIL** | A1: 38.2% at k=8 (DEF_USE added, was 37.7%); A2 PASS=85.5% CONTAINS coverage; A3=22.6% CALLS connectivity |
 | EXP-E2 | WL Distinguishability | 2 — Expressivity | P0 | **PASS** | All 4 classes WL-distinguishable; Timestamp 0% collision; Reentrancy 11.1% collision |
 | EXP-E3 | Message Propagation Sim | 2 — Expressivity | P1 | **FAIL** | Random weights show no differential Phase 2 activation (expected — needs trained checkpoint) |
 | EXP-E4 | Direction Sensitivity | 2 — Expressivity | P1 | **FAIL** | All 4 edge types (CF/DEF_USE/CALL_ENTRY/RETURN_TO): directed=undirected=89.1%, diff=0%. Direction adds no power for any Phase 2 edge type |
@@ -50,9 +56,9 @@
 | EXP-A3 | JK Entropy Logging | 3 — Learning | P1 | **PASS** | Entropy 1.0935–1.0986 (near-max log(3)=1.099) across 47 epochs; no phase collapse |
 | EXP-A4 | Aux Eye Contribution | 3 — Learning | P1 | PENDING — requires checkpoint | — |
 | EXP-L1 | JK Weight Analysis | 3 — Learning | P1 | PENDING — requires checkpoint | — |
-| EXP-L2 | Edge Ablation (inference) | 3 — Learning | P1 | PENDING — requires checkpoint | — |
-| EXP-L3 | Attention Visualization | 3 — Learning | P2 | READY (script complete) | Now hooks conv3 (CF) + conv3b (CALL_ENTRY+RETURN_TO) simultaneously; requires checkpoint to run |
-| EXP-L4 | Gradient Saliency | 3 — Learning | P1 | **COMPLETE** *(FEATURE_NAMES fixed)* | Bug fixed 2026-05-31: stale pre-v8 feature labels on dims 3–9. Rerun needed for corrected per-dim attribution. Previous conclusion (`external_call_count` dominates, Timestamp dim-2=10.1%) likely accurate but dims 3–9 labels wrong |
+| EXP-L2 | Edge Ablation (inference) | 3 — Learning | P1 | **COMPLETE** *(structural ablation added 2026-06-01)* | Embedding ablation: CFG combined drop=1.11e-6. Structural ablation: CFG combined drop=0.0121 (10,944× larger). Reentrancy structural deltas are POSITIVE (Phase 2 edges suppress Reentrancy). CONTROL_FLOW structural Δ Timestamp=+0.163 (very large suppression). |
+| EXP-L3 | Attention Visualization | 3 — Learning | P2 | **ARCHITECTURAL N/A** *(audit 2026-06-01)* | 100% CF fraction in top edges is architecturally guaranteed (conv3 wired to CF-only subgraph). Real finding: all GAT attention weights = 1.0 (uniform) — no selective attention learned within CFG. |
+| EXP-L4 | Gradient Saliency | 3 — Learning | P1 | **COMPLETE** *(rerun 2026-06-01, correct feature names)* | `external_call_count` dominates all 10 classes (21–24%); `complexity` rank 2 universally. Timestamp `uses_block_globals`=10.0% FAIL (threshold ≥20%). Reentrancy CFG_NODE_CALL+WRITE=8.9% FAIL. Global sensitivity artifact confirmed. |
 | EXP-L5 | Probing Classifiers | 3 — Learning | P1 | **FAIL** *(pooling fixed)* | Max+mean [512] pooling fix: IntegerUO Phase1 now 0.419 (was 0.114 mean-only); Reentrancy Phase2 still -0.0069 vs Phase1 → FAIL |
 | EXP-L6 | Counterfactual Contracts | 3 — Learning | P2 | **FAIL (1/4 pass)** | UnusedReturn PASS (+0.122); CEI safe>vuln (−0.0071); IntegerUO safe>vuln (−0.0642); Timestamp tied (0.0000). Model blind to structural vulnerability semantics |
 | EXP-L7 | Calibration & Size Analysis | 3 — Learning | P2 | **COMPLETE** | ECE 0.205–0.310 (all miscalibrated); Timestamp F1 gap 0.636 (worst); IntegerUO only PASS (gap 0.044) |
@@ -102,7 +108,7 @@ Multiple scripts had duplicate argument definitions conflicting with `add_common
 |----|--------|---------|-------------|
 | ID | Script | Status | Key Finding |
 |----|--------|--------|-------------|
-| B1 | `exp_b1_phase2_gradient_norm.py` | **COMPLETE** | Phase 1 > Phase 2 > Phase 3 for every class. Phase 2 ≈ 75–86% of Phase 1 — no gradient starvation. Timestamp has highest absolute norms. |
+| B1 | `exp_b1_phase2_gradient_norm.py` | **COMPLETE** *(method corrected 2026-06-01)* | Phase 1 > Phase 2 > Phase 3 for every class. Phase 2 = 72–91% of Phase 1 (corrected run using BCEWithLogitsLoss; was 75–86% with raw logit). Timestamp has highest absolute norms and highest P2/P1 ratio (91.3%). |
 | B2 | `exp_b2_per_eye_ece.py` | **COMPLETE** | GNN/TF/Fused eyes ECE 0.057–0.065 (good). Main head ECE 0.249 (severe). Temperature scaling targets main head only. |
 | B3 | `exp_b3_jk_weight_distribution.py` | **COMPLETE** | Universal Phase3 > Phase1 > Phase2 ordering. No class selectively upweights Phase 2. Std 0.01–0.03 (stable). |
 | B4 | `exp_b4_unusedreturn_saliency.py` | **COMPLETE** | external_call_count + complexity dominate both high/low UnusedReturn scorers. return_ignored ranks 4th with 2.3% relative difference — size shortcut confirmed. |
@@ -111,13 +117,11 @@ Multiple scripts had duplicate argument definitions conflicting with `add_common
 
 ---
 
-## Status as of 2026-05-31 (COMPLETENESS audit complete)
+## Status as of 2026-06-01 (audit fixes complete)
 
-All P1–P5 script fixes applied and re-run. B1–B4 complete. Temperature calibration fitted.
+All P1–P5 script fixes applied. B1–B4 complete. Temperature calibration fitted. Audit fixes (B1 gradient method, L2 structural ablation, L3 reclassification, L4 rerun) applied 2026-06-01.
 
-**Pending experiments (not yet run):**
-- EXP-L3: Attention Visualization (requires checkpoint; conv3+conv3b hooks ready)
-- EXP-L4: Gradient Saliency (requires checkpoint; FEATURE_NAMES fix applied)
+**No pending experiments.** All 21 experiments (+ B1–B4) resolved.
 
 **Deferred (post-Run 5):**
 - IMP-D1 re-extraction (`reextract_graphs.py`) — raises max_nodes to 2048, unblocks EXP-A2

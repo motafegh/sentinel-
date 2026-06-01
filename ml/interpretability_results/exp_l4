@@ -1,0 +1,683 @@
+{
+  "experiment": "exp_l4_gradient_saliency",
+  "checkpoint": "ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt",
+  "n_contracts_per_class": 500,
+  "split": "val",
+  "class_results": [
+    {
+      "class": "CallToUnknown",
+      "n_contracts_used": 419,
+      "methods_used": {
+        "backward": 419
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2175
+        ],
+        [
+          "complexity",
+          0.1097
+        ],
+        [
+          "call_target_typed",
+          0.0891
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.4994
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.2215
+        ],
+        [
+          "CFG_NODE_WRITE",
+          0.0457
+        ]
+      ],
+      "per_feature_norm": [
+        0.0821,
+        0.0844,
+        0.089,
+        0.0536,
+        0.0681,
+        0.1097,
+        0.0644,
+        0.0813,
+        0.0891,
+        0.0607,
+        0.2175
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0152,
+        "FUNCTION": 0.4994,
+        "MODIFIER": 0.0361,
+        "EVENT": 0.0024,
+        "FALLBACK": 0.0436,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0312,
+        "CONTRACT": 0.0063,
+        "CFG_NODE_CALL": 0.0376,
+        "CFG_NODE_WRITE": 0.0457,
+        "CFG_NODE_READ": 0.0362,
+        "CFG_NODE_CHECK": 0.0247,
+        "CFG_NODE_OTHER": 0.2215
+      },
+      "checks": {}
+    },
+    {
+      "class": "DenialOfService",
+      "n_contracts_used": 52,
+      "methods_used": {
+        "backward": 52
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2388
+        ],
+        [
+          "complexity",
+          0.1006
+        ],
+        [
+          "uses_block_globals",
+          0.0925
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.4257
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.2721
+        ],
+        [
+          "FALLBACK",
+          0.0646
+        ]
+      ],
+      "per_feature_norm": [
+        0.0799,
+        0.0887,
+        0.0925,
+        0.057,
+        0.0661,
+        0.1006,
+        0.0608,
+        0.0763,
+        0.0809,
+        0.0585,
+        0.2388
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0179,
+        "FUNCTION": 0.4257,
+        "MODIFIER": 0.0271,
+        "EVENT": 0.0033,
+        "FALLBACK": 0.0646,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.044,
+        "CONTRACT": 0.0071,
+        "CFG_NODE_CALL": 0.0464,
+        "CFG_NODE_WRITE": 0.0435,
+        "CFG_NODE_READ": 0.0327,
+        "CFG_NODE_CHECK": 0.0155,
+        "CFG_NODE_OTHER": 0.2721
+      },
+      "checks": {}
+    },
+    {
+      "class": "ExternalBug",
+      "n_contracts_used": 375,
+      "methods_used": {
+        "backward": 375
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2273
+        ],
+        [
+          "complexity",
+          0.1143
+        ],
+        [
+          "visibility",
+          0.0932
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.4539
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.26
+        ],
+        [
+          "CFG_NODE_READ",
+          0.0463
+        ]
+      ],
+      "per_feature_norm": [
+        0.079,
+        0.0932,
+        0.0865,
+        0.0546,
+        0.0644,
+        0.1143,
+        0.0569,
+        0.0794,
+        0.0841,
+        0.0604,
+        0.2273
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0147,
+        "FUNCTION": 0.4539,
+        "MODIFIER": 0.0312,
+        "EVENT": 0.0028,
+        "FALLBACK": 0.0389,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0347,
+        "CONTRACT": 0.0047,
+        "CFG_NODE_CALL": 0.0462,
+        "CFG_NODE_WRITE": 0.0419,
+        "CFG_NODE_READ": 0.0463,
+        "CFG_NODE_CHECK": 0.0246,
+        "CFG_NODE_OTHER": 0.26
+      },
+      "checks": {}
+    },
+    {
+      "class": "GasException",
+      "n_contracts_used": 495,
+      "methods_used": {
+        "backward": 495
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2341
+        ],
+        [
+          "complexity",
+          0.107
+        ],
+        [
+          "visibility",
+          0.0886
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.4525
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.2436
+        ],
+        [
+          "CONSTRUCTOR",
+          0.0495
+        ]
+      ],
+      "per_feature_norm": [
+        0.0797,
+        0.0886,
+        0.0882,
+        0.0557,
+        0.0656,
+        0.107,
+        0.06,
+        0.0777,
+        0.0813,
+        0.0621,
+        0.2341
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0144,
+        "FUNCTION": 0.4525,
+        "MODIFIER": 0.0336,
+        "EVENT": 0.0033,
+        "FALLBACK": 0.0431,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0495,
+        "CONTRACT": 0.0061,
+        "CFG_NODE_CALL": 0.0446,
+        "CFG_NODE_WRITE": 0.046,
+        "CFG_NODE_READ": 0.0419,
+        "CFG_NODE_CHECK": 0.0215,
+        "CFG_NODE_OTHER": 0.2436
+      },
+      "checks": {}
+    },
+    {
+      "class": "IntegerUO",
+      "n_contracts_used": 492,
+      "methods_used": {
+        "backward": 492
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2222
+        ],
+        [
+          "complexity",
+          0.1021
+        ],
+        [
+          "uses_block_globals",
+          0.0922
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.459
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.2436
+        ],
+        [
+          "CFG_NODE_CALL",
+          0.0443
+        ]
+      ],
+      "per_feature_norm": [
+        0.0786,
+        0.092,
+        0.0922,
+        0.0582,
+        0.0669,
+        0.1021,
+        0.0621,
+        0.0788,
+        0.085,
+        0.0618,
+        0.2222
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0256,
+        "FUNCTION": 0.459,
+        "MODIFIER": 0.0367,
+        "EVENT": 0.004,
+        "FALLBACK": 0.0382,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0384,
+        "CONTRACT": 0.0083,
+        "CFG_NODE_CALL": 0.0443,
+        "CFG_NODE_WRITE": 0.042,
+        "CFG_NODE_READ": 0.0408,
+        "CFG_NODE_CHECK": 0.0191,
+        "CFG_NODE_OTHER": 0.2436
+      },
+      "checks": {}
+    },
+    {
+      "class": "MishandledException",
+      "n_contracts_used": 494,
+      "methods_used": {
+        "backward": 494
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2392
+        ],
+        [
+          "complexity",
+          0.1055
+        ],
+        [
+          "visibility",
+          0.0876
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.4682
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.2368
+        ],
+        [
+          "FALLBACK",
+          0.0461
+        ]
+      ],
+      "per_feature_norm": [
+        0.0801,
+        0.0876,
+        0.0874,
+        0.053,
+        0.065,
+        0.1055,
+        0.0615,
+        0.0799,
+        0.0826,
+        0.0583,
+        0.2392
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0123,
+        "FUNCTION": 0.4682,
+        "MODIFIER": 0.0397,
+        "EVENT": 0.0021,
+        "FALLBACK": 0.0461,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0392,
+        "CONTRACT": 0.0039,
+        "CFG_NODE_CALL": 0.0454,
+        "CFG_NODE_WRITE": 0.0419,
+        "CFG_NODE_READ": 0.043,
+        "CFG_NODE_CHECK": 0.0216,
+        "CFG_NODE_OTHER": 0.2368
+      },
+      "checks": {}
+    },
+    {
+      "class": "Reentrancy",
+      "n_contracts_used": 497,
+      "methods_used": {
+        "backward": 497
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2303
+        ],
+        [
+          "complexity",
+          0.1086
+        ],
+        [
+          "visibility",
+          0.0878
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.4645
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.2537
+        ],
+        [
+          "CFG_NODE_CALL",
+          0.0451
+        ]
+      ],
+      "per_feature_norm": [
+        0.0802,
+        0.0878,
+        0.087,
+        0.054,
+        0.0655,
+        0.1086,
+        0.0588,
+        0.0819,
+        0.0863,
+        0.0596,
+        0.2303
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.017,
+        "FUNCTION": 0.4645,
+        "MODIFIER": 0.0321,
+        "EVENT": 0.0029,
+        "FALLBACK": 0.0421,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0283,
+        "CONTRACT": 0.0051,
+        "CFG_NODE_CALL": 0.0451,
+        "CFG_NODE_WRITE": 0.0438,
+        "CFG_NODE_READ": 0.0402,
+        "CFG_NODE_CHECK": 0.0252,
+        "CFG_NODE_OTHER": 0.2537
+      },
+      "checks": {
+        "reentrancy_cfg_fraction": 0.0888,
+        "reentrancy_cfg_pass": false,
+        "reentrancy_high_level_flag": false
+      }
+    },
+    {
+      "class": "Timestamp",
+      "n_contracts_used": 48,
+      "methods_used": {
+        "backward": 48
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2136
+        ],
+        [
+          "complexity",
+          0.1088
+        ],
+        [
+          "uses_block_globals",
+          0.1004
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.4863
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.2037
+        ],
+        [
+          "CFG_NODE_READ",
+          0.0625
+        ]
+      ],
+      "per_feature_norm": [
+        0.0748,
+        0.0822,
+        0.1004,
+        0.0584,
+        0.0657,
+        0.1088,
+        0.0592,
+        0.081,
+        0.0886,
+        0.0673,
+        0.2136
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0114,
+        "FUNCTION": 0.4863,
+        "MODIFIER": 0.0495,
+        "EVENT": 0.0026,
+        "FALLBACK": 0.0326,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0239,
+        "CONTRACT": 0.0036,
+        "CFG_NODE_CALL": 0.0539,
+        "CFG_NODE_WRITE": 0.0384,
+        "CFG_NODE_READ": 0.0625,
+        "CFG_NODE_CHECK": 0.0318,
+        "CFG_NODE_OTHER": 0.2037
+      },
+      "checks": {
+        "timestamp_dim2_fraction": 0.1004,
+        "timestamp_dim2_pass": false
+      }
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "n_contracts_used": 433,
+      "methods_used": {
+        "backward": 433
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2252
+        ],
+        [
+          "complexity",
+          0.1118
+        ],
+        [
+          "visibility",
+          0.0894
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.465
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.241
+        ],
+        [
+          "CFG_NODE_WRITE",
+          0.0472
+        ]
+      ],
+      "per_feature_norm": [
+        0.0833,
+        0.0894,
+        0.086,
+        0.055,
+        0.0678,
+        0.1118,
+        0.0615,
+        0.0779,
+        0.0833,
+        0.0587,
+        0.2252
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0134,
+        "FUNCTION": 0.465,
+        "MODIFIER": 0.0314,
+        "EVENT": 0.0031,
+        "FALLBACK": 0.0443,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0453,
+        "CONTRACT": 0.0049,
+        "CFG_NODE_CALL": 0.0417,
+        "CFG_NODE_WRITE": 0.0472,
+        "CFG_NODE_READ": 0.0428,
+        "CFG_NODE_CHECK": 0.0201,
+        "CFG_NODE_OTHER": 0.241
+      },
+      "checks": {}
+    },
+    {
+      "class": "UnusedReturn",
+      "n_contracts_used": 126,
+      "methods_used": {
+        "backward": 126
+      },
+      "top3_feature_dims": [
+        [
+          "external_call_count",
+          0.2129
+        ],
+        [
+          "complexity",
+          0.1075
+        ],
+        [
+          "visibility",
+          0.1004
+        ]
+      ],
+      "top3_node_types": [
+        [
+          "FUNCTION",
+          0.4679
+        ],
+        [
+          "CFG_NODE_OTHER",
+          0.2781
+        ],
+        [
+          "CFG_NODE_CALL",
+          0.0465
+        ]
+      ],
+      "per_feature_norm": [
+        0.0836,
+        0.1004,
+        0.089,
+        0.0548,
+        0.0635,
+        0.1075,
+        0.0566,
+        0.0839,
+        0.0889,
+        0.0589,
+        0.2129
+      ],
+      "per_node_type": {
+        "STATE_VAR": 0.0097,
+        "FUNCTION": 0.4679,
+        "MODIFIER": 0.0299,
+        "EVENT": 0.002,
+        "FALLBACK": 0.0298,
+        "RECEIVE": 0.0,
+        "CONSTRUCTOR": 0.0349,
+        "CONTRACT": 0.0028,
+        "CFG_NODE_CALL": 0.0465,
+        "CFG_NODE_WRITE": 0.0362,
+        "CFG_NODE_READ": 0.0372,
+        "CFG_NODE_CHECK": 0.025,
+        "CFG_NODE_OTHER": 0.2781
+      },
+      "checks": {}
+    }
+  ],
+  "feature_names": [
+    "type_id",
+    "visibility",
+    "uses_block_globals",
+    "view",
+    "payable",
+    "complexity",
+    "loc",
+    "return_ignored",
+    "call_target_typed",
+    "has_loop",
+    "external_call_count"
+  ],
+  "node_type_order": [
+    "STATE_VAR",
+    "FUNCTION",
+    "MODIFIER",
+    "EVENT",
+    "FALLBACK",
+    "RECEIVE",
+    "CONSTRUCTOR",
+    "CONTRACT",
+    "CFG_NODE_CALL",
+    "CFG_NODE_WRITE",
+    "CFG_NODE_READ",
+    "CFG_NODE_CHECK",
+    "CFG_NODE_OTHER"
+  ]
+}

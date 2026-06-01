@@ -1111,6 +1111,12 @@ def extract_contract_graph(
     for parent in (getattr(contract, "inheritance", None) or []):
         _add_node(parent, NODE_TYPES["CONTRACT"])
     for var   in contract.state_variables: _add_node(var,   NODE_TYPES["STATE_VAR"])
+    # BUG-H9: MODIFIER and EVENT nodes must be registered BEFORE edge creation runs.
+    # _add_edge() silently drops any edge whose destination isn't yet in node_map.
+    # Original code registered these after the edge loop, causing all EMITS edges
+    # (function→event) and any CALLS edges targeting modifiers to be dropped.
+    for mod   in contract.modifiers: _add_node(mod,   NODE_TYPES["MODIFIER"])
+    for event in contract.events:    _add_node(event, NODE_TYPES["EVENT"])
 
     # For functions: add function node first, then immediately add its CFG children
     # so CFG nodes follow their parent function in x_list (cleaner indexing).
@@ -1211,9 +1217,6 @@ def extract_contract_graph(
             failure_rate * 100,
             " — exceeds 5% threshold, investigate Slither version or source" if failure_rate > 0.05 else "",
         )
-
-    for mod   in contract.modifiers: _add_node(mod,   NODE_TYPES["MODIFIER"])
-    for event in contract.events:    _add_node(event, NODE_TYPES["EVENT"])
 
     if not x_list:
         raise EmptyGraphError(

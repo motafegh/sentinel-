@@ -518,7 +518,7 @@ def main() -> int:
         "results":       results,
         "overall_pass":  (
             results["analysis1_cei_reachability"]["pass"]
-            and results["analysis2_function_aggregation"]["pass"]
+            and results["analysis2_function_cfg_coverage"]["pass"]
         ),
     }
 

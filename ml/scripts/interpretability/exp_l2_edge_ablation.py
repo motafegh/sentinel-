@@ -75,19 +75,21 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# Edge type metadata
+# Edge type metadata — must match graph_schema.EDGE_TYPES exactly.
+# BUG-AUDIT: original had CONTAINS at 0 and CALLS at 5, which is inverted.
+# Schema: CALLS=0, READS=1, WRITES=2, EMITS=3, INHERITS=4, CONTAINS=5, CONTROL_FLOW=6...
 EDGE_TYPE_NAMES = [
-    "CONTAINS",       # 0
-    "READS",          # 1
-    "WRITES",         # 2
-    "EMITS",          # 3
-    "INHERITS",       # 4
-    "CALLS",          # 5
-    "CONTROL_FLOW",   # 6
+    "CALLS",           # 0
+    "READS",           # 1
+    "WRITES",          # 2
+    "EMITS",           # 3
+    "INHERITS",        # 4
+    "CONTAINS",        # 5
+    "CONTROL_FLOW",    # 6
     "REVERSE_CONTAINS",# 7
-    "CALL_ENTRY",     # 8
-    "RETURN_TO",      # 9
-    "DEF_USE",        # 10
+    "CALL_ENTRY",      # 8
+    "RETURN_TO",       # 9
+    "DEF_USE",         # 10
 ]
 NUM_EDGE_TYPES = 11
 
@@ -145,6 +147,23 @@ def _run_inference_on_sample(
     except Exception as exc:
         log.debug(f"Inference error for {stem}: {exc}")
         return None, None
+
+
+def _structural_ablate_graph(graph, edge_t: int):
+    """Return a clone of graph with all edges of type edge_t removed from edge_index/edge_attr.
+
+    This is a HARD ablation: the edges are physically absent from the graph, so they
+    cannot participate in message-passing at all (no node features, no attention).
+    Contrast with the soft embedding-zero ablation where the edge still exists in
+    edge_index but receives a zero embedding vector.
+    """
+    if not hasattr(graph, "edge_attr") or graph.edge_index.shape[1] == 0:
+        return graph
+    keep = graph.edge_attr != edge_t
+    new_g = graph.clone()
+    new_g.edge_index = graph.edge_index[:, keep]
+    new_g.edge_attr = graph.edge_attr[keep]
+    return new_g
 
 
 def run(args: argparse.Namespace) -> int:
@@ -326,6 +345,75 @@ def run(args: argparse.Namespace) -> int:
     print(f"Result: {n_pass}/{n_checkable} checks passed → {overall}")
     print("=" * 90 + "\n")
 
+    # ── Structural ablation (hard edge removal from edge_index) ─────────────────
+    # Runs only for Phase 2 CFG edge types. This is the methodologically correct
+    # ablation: edges are fully absent, so the model cannot attend to them at all.
+    # Embedding-zero (above) leaves edges in edge_index, understating the effect.
+    STRUCTURAL_EDGE_TYPES = [6, 8, 9, 10]  # CONTROL_FLOW, CALL_ENTRY, RETURN_TO, DEF_USE
+    struct_delta_pos = np.zeros((NUM_EDGE_TYPES, len(CLASS_NAMES)))
+    struct_n_pos     = np.zeros((NUM_EDGE_TYPES, len(CLASS_NAMES)), dtype=int)
+
+    log.info("Running structural ablation (hard edge removal) for Phase 2 edge types...")
+    for edge_t in STRUCTURAL_EDGE_TYPES:
+        edge_name = EDGE_TYPE_NAMES[edge_t] if edge_t < len(EDGE_TYPE_NAMES) else f"type_{edge_t}"
+        log.info(f"  Structural ablation: removing {edge_name} (type {edge_t}) from edge_index...")
+
+        ablated_struct: list[np.ndarray] = []
+
+        with torch.no_grad():
+            for stem in valid_stems:
+                if stem not in cache:
+                    ablated_struct.append(np.zeros(len(CLASS_NAMES)))
+                    continue
+                entry = cache[stem]
+                if not isinstance(entry, tuple) or len(entry) < 2:
+                    ablated_struct.append(np.zeros(len(CLASS_NAMES)))
+                    continue
+                graph_orig, token = entry
+                graph_mod = _structural_ablate_graph(graph_orig, edge_t)
+
+                from torch_geometric.data import Batch as _Batch
+                try:
+                    batch_g   = _Batch.from_data_list([graph_mod]).to(device)
+                    input_ids = token["input_ids"].unsqueeze(0).to(device)
+                    attn_mask = token["attention_mask"].unsqueeze(0).to(device)
+                    logits    = model(batch_g, input_ids, attn_mask, return_aux=False)
+                    probs     = torch.sigmoid(logits).squeeze(0).cpu().numpy()
+                    ablated_struct.append(probs)
+                except Exception as exc:
+                    log.debug(f"  Structural ablation inference error for {stem}: {exc}")
+                    ablated_struct.append(np.zeros(len(CLASS_NAMES)))
+
+        ablated_struct_arr = np.stack(ablated_struct, axis=0)
+        delta_struct_arr   = baseline_arr - ablated_struct_arr
+
+        for cls_idx in range(len(CLASS_NAMES)):
+            pos_mask = labels_arr[:, cls_idx] == 1
+            if pos_mask.sum() > 0:
+                struct_delta_pos[edge_t, cls_idx] = float(delta_struct_arr[pos_mask, cls_idx].mean())
+                struct_n_pos[edge_t, cls_idx]     = int(pos_mask.sum())
+
+    # Print structural ablation results
+    print("\n" + "=" * 130)
+    print("EXP-L2: STRUCTURAL Ablation (hard edge removal) — Phase 2 edge types only")
+    print("=" * 130)
+    col_header = "  ".join(f"{c[:8]:>8}" for c in CLASS_NAMES)
+    print(f"{'Edge Type':<22}  {col_header}")
+    print("-" * 130)
+    for edge_t in STRUCTURAL_EDGE_TYPES:
+        edge_name = EDGE_TYPE_NAMES[edge_t] if edge_t < len(EDGE_TYPE_NAMES) else f"type_{edge_t}"
+        row_vals  = "  ".join(f"{struct_delta_pos[edge_t, c]:>8.4f}" for c in range(len(CLASS_NAMES)))
+        print(f"{edge_name:<22}  {row_vals}")
+
+    # Combined Phase 2 structural drop
+    reentrancy_idx = CLASS_NAMES.index("Reentrancy")
+    combined_struct = float(np.mean([struct_delta_pos[t, reentrancy_idx] for t in STRUCTURAL_EDGE_TYPES]))
+    print(f"\nCombined Phase2 structural drop for Reentrancy: {combined_struct:.4f}")
+    if combined_struct < 0.01:
+        print("*** CRITICAL: structural removal of all Phase2 edges changes Reentrancy "
+              f"prediction by only {combined_struct:.4f}. Model is not using CFG structure. ***")
+    print("=" * 130 + "\n")
+
     # ── CSV output ───────────────────────────────────────────────────────────────
     rows = []
     for edge_t in range(n_edge_types):
@@ -343,18 +431,21 @@ def run(args: argparse.Namespace) -> int:
 
     # ── JSON output ──────────────────────────────────────────────────────────────
     json_data = {
-        "experiment":       "exp_l2_edge_ablation",
-        "n_samples":        len(valid_stems),
-        "n_edge_types":     n_edge_types,
-        "pass_criteria":    "CONTROL_FLOW and CALL_ENTRY ablation each >=0.03 for Reentrancy positives",
-        "n_pass":           n_pass,
-        "n_checkable":      n_checkable,
-        "overall":          overall,
-        "cfg_combined_drop":total_cfg_drop,
-        "checks":           check_results,
-        "delta_pos":        delta_pos.tolist(),
-        "edge_type_names":  EDGE_TYPE_NAMES[:n_edge_types],
-        "class_names":      CLASS_NAMES,
+        "experiment":                  "exp_l2_edge_ablation",
+        "n_samples":                   len(valid_stems),
+        "n_edge_types":                n_edge_types,
+        "pass_criteria":               "CONTROL_FLOW and CALL_ENTRY ablation each >=0.03 for Reentrancy positives",
+        "n_pass":                      n_pass,
+        "n_checkable":                 n_checkable,
+        "overall":                     overall,
+        "cfg_combined_drop_embedding": total_cfg_drop,
+        "cfg_combined_drop_structural":combined_struct,
+        "checks":                      check_results,
+        "delta_pos_embedding":         delta_pos.tolist(),
+        "delta_pos_structural":        struct_delta_pos.tolist(),
+        "structural_edge_types":       STRUCTURAL_EDGE_TYPES,
+        "edge_type_names":             EDGE_TYPE_NAMES[:n_edge_types],
+        "class_names":                 CLASS_NAMES,
     }
     json_path = out_dir / "exp_l2_ablation_delta.json"
     with open(json_path, "w") as f:
