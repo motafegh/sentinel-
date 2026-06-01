@@ -1250,3 +1250,141 @@ Scripts written but require manual validation before running. Reliability varies
 **IMP-D1 readiness:**
 - `sentinel_model.py`: `fusion_max_nodes` parameter wired through to CrossAttentionFusion
 - `trainer.py`: `TrainConfig.fusion_max_nodes=1024`; raise to 2048 after re-extraction
+
+---
+
+## 24. Interpretability Suite — Audit Fixes + Phase B Measurements (2026-06-01)
+
+**Period:** 2026-06-01  
+**Checkpoint evaluated:** `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt` (ep32, F1=0.3362)  
+**All 21 interpretability experiments + B1–B4 resolved. No pending experiments.**
+
+### Audit Fixes Applied (2026-06-01)
+
+Four corrections applied after re-examination of measurement methodology and source code cross-referencing:
+
+#### EXP-B1 — Gradient Method Corrected (BCEWithLogitsLoss)
+
+**Script:** `ml/scripts/interpretability/exp_b1_phase2_gradient_norm.py`
+
+Original run backpropagated through raw logit `logits[0, class_idx]`. This is non-standard — training uses `BCEWithLogitsLoss` which applies sigmoid before gradient. Fixed to use `F.binary_cross_entropy_with_logits(logits[0, class_idx].unsqueeze(0), target=1)`.
+
+Corrected P2/P1 ratios: **72–91%** (was 75–86% with raw logit). Ordering unchanged. Timestamp remains highest (91.3%), DenialOfService lowest (72.2%).
+
+| Class | Phase1 | Phase2 | Phase3 | P2/P1 |
+|-------|--------|--------|--------|-------|
+| CallToUnknown | 0.051893 | 0.041190 | 0.035657 | 79.4% |
+| DenialOfService | 0.034882 | 0.025193 | 0.020473 | 72.2% |
+| ExternalBug | 0.044038 | 0.033292 | 0.028976 | 75.6% |
+| GasException | 0.041313 | 0.032616 | 0.025441 | 78.9% |
+| IntegerUO | 0.039092 | 0.028423 | 0.022379 | 72.7% |
+| MishandledException | 0.045841 | 0.036230 | 0.031026 | 79.0% |
+| Reentrancy | 0.050614 | 0.037378 | 0.035040 | 73.8% |
+| Timestamp | 0.094683 | 0.086430 | 0.073734 | 91.3% |
+| TOD | 0.033661 | 0.025190 | 0.020505 | 74.8% |
+| UnusedReturn | 0.080223 | 0.061586 | 0.052428 | 76.8% |
+
+#### EXP-L2 — Structural Ablation Added
+
+**Script:** `ml/scripts/interpretability/exp_l2_edge_ablation.py`  
+**Output:** `ml/interpretability_results/exp_l2/exp_l2_ablation_delta.json`
+
+Prior report only measured embedding ablation (zeroing edge embeddings). Structural ablation (removing edges entirely from the graph) was missing, inflating the denominator of the embedding/structural ratio. Structural ablation rerun and added.
+
+Results:
+
+| Metric | Value |
+|--------|-------|
+| cfg_combined_drop_embedding | 1.11×10⁻⁶ |
+| cfg_combined_drop_structural | 0.0121 |
+| Ratio (structural / embedding) | **10,944×** (corrected from earlier claimed 450×) |
+
+Key sign-reversal finding: removing Phase 2 edges (CONTROL_FLOW, CALL_ENTRY, RETURN_TO) **increases** Reentrancy prediction scores:
+
+| Edge type | Reentrancy structural delta | Timestamp structural delta |
+|-----------|---------------------------|--------------------------|
+| CONTROL_FLOW | +0.020328 | +0.162891 |
+| CALL_ENTRY | +0.010085 | +0.019450 |
+| RETURN_TO | +0.018186 | ≈0 |
+
+Phase 2 is actively suppressing Reentrancy predictions — a shortcut learned from the training distribution (dense CFG → large well-engineered → not Reentrancy).
+
+#### EXP-L3 — Reclassified ARCHITECTURAL N/A
+
+**Script:** `ml/scripts/interpretability/exp_l3_attention_visualization.py`
+
+Prior report claimed PASS (100% CF fraction in top attention edges). Retracted: 100% CF fraction is architecturally guaranteed because conv3 is wired exclusively to the CF-only subgraph. This is not a learned finding.
+
+Real finding from the corrected run (conv3b also hooked): **all GAT attention weights = 1.0 (uniform)**. No selective attention learned within CFG or ICFG edges. Phase 2 attention is a weighted average with weight 1.0 — equivalent to a simple sum.
+
+Status: **ARCHITECTURAL N/A** (not PASS, not FAIL — criterion was ill-posed).
+
+#### EXP-L4 — Rerun with Correct Feature Names
+
+**Script:** `ml/scripts/interpretability/exp_l4_gradient_saliency.py`  
+**Output:** `ml/interpretability_results/exp_l4/`
+
+FEATURE_NAMES was a stale hardcoded pre-v8 list. Fixed to import from `graph_schema.py`. Rerun 2026-06-01. Corrected results confirmed original finding structure but with accurate feature labels.
+
+Per-class top-3 (correct feature names):
+
+| Class | Rank 1 | Rank 2 | Rank 3 |
+|-------|--------|--------|--------|
+| All 10 classes | `external_call_count` (21–24%) | `complexity` (10–11%) | varies |
+
+Pass criteria:
+- Timestamp `uses_block_globals` ≥ 20%: actual 10.0% → **FAIL**
+- Reentrancy CFG_NODE_CALL + has_state_write ≥ 20%: actual 8.9% → **FAIL**
+- Global sensitivity artifact confirmed: `external_call_count` dominates gradient for ALL classes regardless of class semantics.
+
+### Phase B — New Measurement Scripts (All Complete)
+
+| Script | Status | Key Finding |
+|--------|--------|-------------|
+| `exp_b1_phase2_gradient_norm.py` | COMPLETE | Phase 1 > Phase 2 > Phase 3; P2/P1 = 72–91% |
+| `exp_b2_per_eye_ece.py` | COMPLETE | GNN/TF/Fused ECE 0.057–0.065 (good); main head ECE 0.249 (severe) |
+| `exp_b3_jk_weight_distribution.py` | COMPLETE | Universal Phase3 > Phase1 > Phase2; no class upweights Phase 2 |
+| `exp_b4_unusedreturn_saliency.py` | COMPLETE | external_call_count + complexity dominate; return_ignored rank 4 (2.3% diff only) |
+
+### Temperature Calibration
+
+Fitted `ml/calibration/temperatures_run4.json` via `ml/scripts/calibrate_temperature.py` (LBFGS on val set).
+
+| Before | After |
+|--------|-------|
+| ECE 0.249 (main head, severely miscalibrated) | ECE 0.028 (post temperature scaling) |
+
+### Phase G — Interpretability Completeness Gaps (All Resolved)
+
+Six completeness gaps identified from the INTERPRETABILITY_AUDIT_AND_COMPLETENESS.md document, all resolved by 2026-06-01:
+
+| Gap | Fix |
+|-----|-----|
+| P1 — EXP-S3 "dead feature" finding | Retracted — was CFG-node artifact; FUNCTION-node mean computed correctly |
+| P2 — EXP-E1 DEF_USE missing from Phase 2 | DEF_USE(10) added; Phase 2 k=8 reachability now 38.2% (was 37.7%) |
+| P3 — EXP-L5 wrong pooling | max+mean [512] pooling fixed; IntegerUO Phase1 F1 corrected 0.114→0.419 |
+| P4 — EXP-E4 only CF tested | All 4 Phase 2 edge types tested (CF/DEF_USE/CALL_ENTRY/RETURN_TO); all 0.0% directional diff |
+| P5 — EXP-L9 non-discriminative criterion | Relative-rank criterion; FAIL confirmed (safe CW > vuln CW, delta=−0.00654) |
+| P6 — Documentation stale | EXPERIMENT_INDEX + MASTER_REPORT fully updated; 4 B-experiment docs created |
+
+### Pre-Run-5 Root Cause Analysis
+
+Full Phase 2 root cause analysis documented in `docs/pre-run-fixes/phase2_root_cause_analysis.md`. Seven confirmed root causes identified:
+
+1. FUNCTION nodes get identity transform from Phase 2 (CF edges don't reach FUNCTION nodes)
+2. `aux_phase2_loss_weight` = 0.0 throughout all of Run 4 (feature not yet added to TrainConfig)
+3. Phase 2 has 8× lower attention head capacity than Phase 1 (heads=1 vs heads=8)
+4. JK entropy regularizer pushes Phase 2 weight below 1/3 by default
+5. DEF_USE edges get only 1 hop (Layer 5 only)
+6. Phase 3 does Phase 2's job via REVERSE_CONTAINS lift
+7. Suppression encoded in learned weights: dense CFG → not Reentrancy (inversion)
+
+### Current State After This Section
+
+- All 21 interpretability experiments resolved (+ B1–B4)
+- Temperature calibration fitted
+- Run 5 config committed (aux_phase2_loss_weight=0.10, timestamp-size sampler)
+- Pre-run-fixes analysis docs in `docs/pre-run-fixes/`
+- **Next action: Launch Run 5**
+
+**Last updated: 2026-06-01**

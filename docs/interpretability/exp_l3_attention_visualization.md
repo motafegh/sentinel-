@@ -1,7 +1,9 @@
 # EXP-L3 — GAT conv3 Attention Visualization
 
-**Layer:** 3 — Behavioral Interpretability  **Priority:** P2  **Status:** PASS  
+**Layer:** 3 — Behavioral Interpretability  **Priority:** P2  **Status:** ARCHITECTURAL N/A (audit 2026-06-01)
 **Date run:** 2026-05-30  **Checkpoint:** GCB-P1-Run4 (ep32, F1=0.3362)
+
+> **Audit note (2026-06-01):** The original PASS status was retracted. The "100% CF fraction" result is mathematically guaranteed by architecture — conv3 receives only CONTROL_FLOW edges in its `edge_index` and physically cannot attend to any other edge type. Reporting this as a PASS is a false positive. The true finding, buried in the Caveats section, is the meaningful one: **all GAT attention weights = 1.0 (uniform)** — the model has learned no selective attention within the CFG. That is the headline finding for this experiment.
 
 ## Hypothesis
 
@@ -10,6 +12,8 @@ The conv3 layer (Phase 2, CONTROL_FLOW-only pass) should assign disproportionate
 ## Method
 
 11 hand-crafted test contracts (6 vulnerability types, paired vulnerable/safe where available) are extracted via Slither into graphs. The conv3 layer's GAT attention weights are extracted for Phase 2 (CONTROL_FLOW-only subgraph). The top-20 attention edges per contract are ranked, and the fraction that are CONTROL_FLOW or CALL_ENTRY edges is computed. Pass criterion: ≥30% of top-20 edges are CF/CALL_ENTRY. A diagnostic also checks whether CFG_NODE_CALL → CFG_NODE_WRITE appears in the top edges (the CEI pattern).
+
+> **Method note (audit 2026-06-01):** The pass criterion ("≥30% of top-20 edges are CF") is trivially satisfied when conv3 is wired to a CF-only subgraph. The criterion should have been formulated to test within-CF selectivity (e.g., "do attention weights concentrate on CEI-relevant CFG_CALL→CFG_WRITE transitions?"). The 100% result answers a question that the architecture already answers by construction.
 
 Note: integer_uo_vulnerable.sol was skipped (requires solc 0.7.x; installed is 0.8.0).
 
@@ -34,15 +38,17 @@ Mean CF fraction — all other contracts: **1.00**
 CFG_NODE_CALL → CFG_NODE_WRITE in top edges: **0/11 contracts**
 
 **Pass criteria:** ≥30% CF/CALL_ENTRY in top edges for ≥ most contracts  
-**Overall: PASS** — 11/11 contracts at 100% CF fraction.
+**Original verdict: PASS** — 11/11 contracts at 100% CF fraction.  
+**Revised verdict (audit 2026-06-01): ARCHITECTURAL N/A** — see audit note at top of doc.
 
 ## Key Findings
 
-- All top-attention edges in conv3 are CONTROL_FLOW edges (attn=1.0 for all), because conv3 operates on the CONTROL_FLOW-only Phase 2 subgraph — it physically cannot attend to non-CF edges.
-- The 100% CF fraction result is structurally guaranteed by the architecture: conv3 receives only CF edges in its edge_index. This is not a learned behavior but a hardcoded architectural constraint.
-- CFG_NODE_CALL → CFG_NODE_WRITE transitions (the CEI reentrancy pattern) do NOT appear in the top-attention edges for either reentrancy contract. This is the negative signal: even when CF edges are the only option, the GAT doesn't concentrate attention on the semantically critical call→write sequence.
-- Reentrancy-vulnerable and reentrancy-safe contracts show nearly identical attention patterns: both attend to CFG_NODE_OTHER→CFG_NODE_CALL and CFG_NODE_CALL→CFG_NODE_OTHER edges but not to the critical CALL→WRITE boundary.
-- The diagnostic notes: "CF attention NOT higher for reentrancy — model may not be using CEI structure."
+> **Real headline finding:** All GAT attention weights in conv3 = **1.0 (uniform)**. The model has learned no selective attention within the control-flow graph. Every CF edge receives identical attention regardless of semantic importance.
+
+- The 100% CF fraction in top-attention is mathematically guaranteed: conv3's `edge_index` contains only CONTROL_FLOW edges. The pass criterion tests something the architecture enforces by construction, not something the model learned.
+- **CEI pattern absent (0/11 contracts):** CFG_NODE_CALL → CFG_NODE_WRITE transitions do not appear in top-attention edges for any contract, including reentrancy-vulnerable ones. Even when CF edges are the only option, the model does not concentrate attention on the semantically critical call→write boundary.
+- Reentrancy-vulnerable and reentrancy-safe contracts produce identical attention patterns — both attend uniformly across all CF edges with no difference attributable to the vulnerability.
+- Uniform attention (all weights = 1.0) means conv3 is effectively performing mean aggregation over all CF neighbours, not a learned selective aggregation. Consistent with EXP-L2 (CFG structural ablation Δ ≈ 0) and EXP-L1 (Phase 2 JK weight lowest across all classes).
 
 ## Architecture Implications
 

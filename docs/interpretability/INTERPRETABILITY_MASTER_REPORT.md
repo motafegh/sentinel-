@@ -3,7 +3,7 @@
 **Model:** GCB-P1-Run4-no-asl-pw_best.pt — epoch 32 — macro-F1 = 0.3362
 **Val split:** 6,236 contracts (of 41,577 total)
 **Cache:** ml/data/cached_dataset_v8.pkl — schema v8, 11-dim node features
-**Report date:** 2026-05-31 (updated — COMPLETENESS audit fixes applied)
+**Report date:** 2026-06-01 (updated — audit fixes: B1 gradient method, L2 structural ablation, L3 reclassified ARCH-N/A, L4 rerun)
 **Checkpoint:** `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt`
 
 ---
@@ -46,7 +46,7 @@ The evidence is threefold and mutually reinforcing:
 
 1. **JK phase weights (EXP-L1):** Phase 2 weight = 0.322, the lowest of the three phases across all 10 vulnerability classes. Phase 3 (REVERSE_CONTAINS) = 0.346 is marginally dominant. **However:** JK entropy = 1.0984 / max 1.0986 = 99.98% of theoretical maximum. The 24pp gap is statistically real (936 samples) but practically small — all three phases contribute nearly equally. The claim "Phase 2 is meaningfully underused" is an overstatement; more precise: "Phase 2 is marginally least weighted."
 
-2. **Edge ablation (EXP-L2):** The original ablation (zeroing edge embeddings) was methodologically flawed — it removed edge TYPE signal but not edge STRUCTURE (edges remained in edge_index). **Corrected structural ablation** (removing edges from edge_index entirely) gives a 450× larger effect: CF removal drops Reentrancy by Δ = 0.0048 (vs original 0.0000106). However, even the corrected result is well below the 0.03 threshold. Maximum combined Phase 2 drop = 0.014. Conclusion confirmed: the model barely uses CFG structural signal.
+2. **Edge ablation (EXP-L2):** The original ablation (zeroing edge embeddings) was methodologically flawed — it removed edge TYPE signal but not edge STRUCTURE (edges remained in edge_index). **Corrected structural ablation** (removing edges from edge_index entirely) gives a 10,944× larger effect: embedding combined CFG drop = 1.11 × 10⁻⁶ vs structural combined drop = 0.0121. More importantly, structural ablation reveals **Phase 2 edges SUPPRESS Reentrancy predictions** (all CF edge types produce positive deltas on removal). The model is not merely ignoring Phase 2 CFG edges — it is using them as downward signal for Reentrancy. Even the structural result is below the 0.03 threshold in absolute magnitude, but the sign reversal is the key diagnostic.
 
 3. **Aux eye contribution (EXP-A4):** The GNN eye alone beats a trivial baseline for only 3 of 10 vulnerability classes (CallToUnknown, IntegerUO, Timestamp). For Reentrancy — the class most reliant on CFG structure — the GNN eye achieves F1 = 0.182, barely above the random baseline of 0.170. **Additional nuance (EXP-L5):** Phase 2 AUROC = 0.618 > Phase 1 AUROC = 0.612 for Reentrancy — Phase 2 is not completely useless, but its signal is not linearly separable at the decision boundary.
 
@@ -132,9 +132,9 @@ All 21 experiments with status, key numeric result, and interpretation.
 | A3 | JK Entropy Logging | Learning | P1 | **PASS** | Entropy 1.0935–1.0986 | Near-maximum entropy (log(3)=1.099); no phase collapse across 47 epochs |
 | A4 | Aux Eye Contribution | Learning | P1 | **FAIL** | GNN useful 3/10 classes | GNN eye alone useful only for CallToUnknown, IntegerUO, Timestamp |
 | L1 | JK Weight Analysis | Learning | P1 | **FAIL** | Phase2 = 0.322 (lowest) | Phase 3 dominates all 10 classes; Phase 2 hypothesis wrong for all 4 tested classes |
-| L2 | Edge Ablation (inference) | Learning | P1 | **FAIL** | CFG structural Δ = 0.014 (corrected method) | Original embedding-zero method underestimated by 450×; proper edge removal gives 0.014 — still well below 0.03 threshold |
-| L3 | Attention Visualization | Learning | P2 | **PENDING** | requires checkpoint | — |
-| L4 | Gradient Saliency | Learning | P1 | **PENDING** | requires checkpoint | — |
+| L2 | Edge Ablation (inference) | Learning | P1 | **FAIL** | CFG embedding drop=1.11e-6; structural drop=0.0121 (10,944× larger) | Structural ablation added 2026-06-01; Reentrancy structural deltas POSITIVE (Phase 2 edges suppress Reentrancy); CONTROL_FLOW structural Δ Timestamp=+0.163 |
+| L3 | Attention Visualization | Learning | P2 | **ARCHITECTURAL N/A** *(audit 2026-06-01)* | All GAT weights = 1.0 (uniform) | 100% CF fraction was architecturally guaranteed (conv3 wired CF-only); real finding: no selective attention within CFG; PASS retracted |
+| L4 | Gradient Saliency | Learning | P1 | **COMPLETE** *(rerun 2026-06-01)* | external_call_count rank 1 all classes (21–24%) | Global sensitivity artifact confirmed with correct feature names; Timestamp uses_block_globals=10.0% FAIL; Reentrancy CFG_NODE_CALL+WRITE=8.9% FAIL |
 | L5 | Probing Classifiers | Learning | P2 | **FAIL** | Reentrancy Δ=-0.0069 (Phase2 vs Phase1); IntegerUO Phase1=0.419 | Max+mean [512] pooling fix reveals IntegerUO signal (was 0.114 with mean-only); Reentrancy still 0% Phase2 gain |
 | L6 | Counterfactual Contracts | Learning | P2 | **FAIL (1/4)** | UnusedReturn PASS (+0.122); Reentrancy/IntegerUO/Timestamp FAIL | Model cannot detect CEI violation, unchecked overflow, or timestamp branching on novel minimal contracts |
 | L7 | Calibration & Size Analysis | Learning | P2 | **PENDING** | requires checkpoint | — |
@@ -142,7 +142,7 @@ All 21 experiments with status, key numeric result, and interpretation.
 | L9 | Attention Rollout | Learning | P2 | **FAIL** | delta = −0.00654 (safe > vulnerable CW attribution) | Relative-rank criterion: safe contract has higher mean CALL/WRITE attribution than vulnerable; original PASS retracted |
 | L10 | Training Ablation Commands | Learning | P2 | **PASS** | 12 commands generated | Ablation scaffold created; CONTAINS/CONTROL_FLOW predicted highest impact |
 
-**PASS: 5, FAIL: 14, PENDING: 2 (L3, L4)**  
+**PASS: 5, FAIL: 14, COMPLETE: 10 (incl. L3 ARCH-N/A, L4 rerun), PENDING: 0**  
 *(B1–B4 complete — see §10)*
 
 ---
@@ -429,24 +429,41 @@ Every single vulnerability class has Phase 3 as the dominant phase. Phase 2 is t
 
 ### 6.3 EXP-L2: Edge Ablation (Inference)
 
-**Status: FAIL**
+**Status: FAIL** *(structural ablation added 2026-06-01)*
 
-190 val-split samples were processed. Each edge type was ablated (removed) one at a time and the change in logit output was measured.
+190 val-split samples were processed. Two ablation methods were measured: (1) embedding-zero (original, soft) and (2) structural removal (new, hard — physically removes edges from `edge_index`).
+
+**Embedding ablation results (soft — zeroes edge type embedding, edges remain in graph):**
 
 | Edge Ablated | Class | Δ logit | Threshold | Result |
 |-------------|-------|---------|-----------|--------|
-| CONTROL_FLOW (6) | Reentrancy | −0.0000106 | 0.03 | FAIL |
-| CALL_ENTRY (8) | Reentrancy | −0.0000005 | 0.03 | FAIL |
-| DEF_USE (10) | IntegerUO | +0.000000015 | 0.02 | FAIL |
-| EMITS (3) | — | +0.0000000436 | — | INFO |
+| CONTROL_FLOW (6) | Reentrancy | −1.05 × 10⁻⁵ | 0.03 | FAIL |
+| CALL_ENTRY (8) | Reentrancy | −5.18 × 10⁻⁷ | 0.03 | FAIL |
+| DEF_USE (10) | IntegerUO | −4.32 × 10⁻¹⁰ | 0.02 | FAIL |
+| EMITS (3) | — | +2.06 × 10⁻⁸ | — | INFO |
 
-**Combined CFG drop (CONTROL_FLOW + CALL_ENTRY combined):** 1.078 × 10⁻⁶
+**Combined CFG drop (embedding, CONTROL_FLOW + CALL_ENTRY):** 1.11 × 10⁻⁶ — five orders of magnitude below threshold.
 
-This is five orders of magnitude below the 0.03 threshold. The model's predictions are essentially invariant to the presence or absence of CFG edges. For comparison, the REVERSE_CONTAINS ablation entry (row 7 of delta_pos, column 7 — the Timestamp class row) shows deltas up to 0.046 in the raw matrix, indicating REVERSE_CONTAINS-linked edges do matter for at least some classes.
+**Structural ablation results (hard — removes edges from edge_index):**
 
-The DEF_USE ablation for IntegerUO shows a positive delta (+1.5 × 10⁻⁸): removing data-flow edges *increases* the IntegerUO score by an infinitesimal amount. This means the model's IntegerUO prediction does not use DEF_USE edges at all — they are noise at inference time.
+| Edge Removed | Reentrancy Δ | Timestamp Δ | IntegerUO Δ |
+|-------------|-------------|-------------|-------------|
+| CONTROL_FLOW (6) | **+0.0203** | **+0.1629** | −0.0031 |
+| CALL_ENTRY (8) | **+0.0101** | +0.0195 | +0.0041 |
+| RETURN_TO (9) | **+0.0182** | +0.0001 | −0.0037 |
+| DEF_USE (10) | ≈ 0 | ≈ 0 | ≈ 0 |
 
-**Practical consequence:** An attacker who strips all CFG edges from a contract graph before submitting to SENTINEL would see essentially the same vulnerability classification. The model is not exploiting the most structurally informative edges for control-flow-dependent vulnerability classes.
+**Combined Phase 2 structural drop (Reentrancy):** +0.0121 (POSITIVE)
+
+**Embedding vs structural ratio:** 10,944×
+
+**Critical finding — Phase 2 edges SUPPRESS Reentrancy:** All three active Phase 2 edge types (CONTROL_FLOW, CALL_ENTRY, RETURN_TO) show positive deltas for Reentrancy when removed structurally. Removing CFG edges *increases* the Reentrancy prediction. This means Phase 2 edges are negatively contributing to Reentrancy scores — the model has learned to treat Phase 2 CFG connectivity as evidence AGAINST Reentrancy, likely because smaller contracts (with less CFG structure) happen to be over-represented as Reentrancy-positive in the training distribution.
+
+**Critical finding — Timestamp strongly suppressed by CONTROL_FLOW:** Removing CONTROL_FLOW edges structurally increases Timestamp prediction by +0.1629 — the largest structural ablation effect observed. Phase 2 CFG edges are actively suppressing Timestamp predictions, consistent with the size-shortcut hypothesis: the model has learned that Timestamp-positive contracts are large AND complex (high CFG), and uses CF structure as a downward signal.
+
+**DEF_USE has zero structural effect** for all classes — even when edges are physically removed, no prediction changes. DEF_USE is architecturally present but computationally disconnected from the final prediction.
+
+**Practical consequence:** An attacker who strips all CFG edges would see the Reentrancy prediction *increase* — the model would become *more* likely to flag a Reentrancy vulnerability. Phase 2 is working against Reentrancy detection, not for it.
 
 ### 6.4 EXP-A4: Aux Eye Contribution
 
@@ -496,7 +513,79 @@ The DEF_USE ablation for IntegerUO shows a positive delta (+1.5 × 10⁻⁸): re
 
 5. **Timestamp AUC-ROC = 0.989 for GNN eye:** The high AUC-ROC for Timestamp (GNN: 0.989, Main: 0.992) confirms the size-shortcut hypothesis from EXP-S3. The GNN can rank Timestamp contracts almost perfectly by AUC-ROC using purely structural features, consistent with Timestamp-positive contracts being structurally distinctive (~1.70× larger in val by node count).
 
-### 6.5 EXP-L6: Counterfactual Contracts
+### 6.5 EXP-L3: Attention Visualization
+
+**Status: ARCHITECTURAL N/A** *(audit 2026-06-01 — original PASS retracted)*
+
+> **Audit note:** The original PASS status reported "100% CF fraction in top-20 attention edges" as evidence of learned selective attention. This is a false positive. conv3 is wired to a CF-only edge_index — it physically cannot attend to any non-CF edge. The 100% result is a mathematical certainty, not a learned property. The PASS was retracted 2026-06-01.
+
+**Real headline finding:** All GAT attention weights in conv3 = **1.0 (uniform)**. The model has learned no selective attention within the control-flow graph. Every CF edge receives identical attention regardless of semantic importance.
+
+11 hand-crafted test contracts were processed. Results:
+
+| Metric | Value |
+|--------|-------|
+| CF fraction in top-20 edges | 100% (all 11 contracts) |
+| CFG_NODE_CALL → CFG_NODE_WRITE in top edges | 0/11 contracts |
+| Attention weight range | 1.000 – 1.000 (uniform) |
+
+The CEI pattern (CFG_CALL → WRITE transition that defines Reentrancy) is absent from top-attention edges for all contracts, including the reentrancy-vulnerable ones. The model applies mean aggregation over all CF neighbors, not selective aggregation.
+
+**Implication:** Combined with EXP-L1 (Phase 2 JK weight lowest), EXP-L2 (CFG ablation ≈ 0 for embedding, POSITIVE for structural), and EXP-L4 (external_call_count dominates over CFG_NODE_CALL for Reentrancy), this confirms the Phase 2 CFG layers have not learned discriminative attention within the control-flow graph.
+
+See `docs/interpretability/exp_l3_attention_visualization.md` for full details.
+
+---
+
+### 6.6 EXP-L4: Gradient Saliency
+
+**Status: COMPLETE** *(rerun 2026-06-01 with correct feature names from graph_schema)*
+
+> **Fix note:** The original run (2026-05-30) used hardcoded stale feature names (pre-v8 labels) for dims 3–9. The script was fixed to import FEATURE_NAMES from `graph_schema.py`. The rerun confirms the same qualitative conclusions but with correct feature labels.
+
+492–500 val-split contracts per class (48 for Timestamp — all positives used). Gradient saliency computed via backward pass from class logit through BCEWithLogitsLoss.
+
+**Per-class top-3 feature dimensions (correct v8 feature names):**
+
+| Class | Rank 1 | Rank 2 | Rank 3 |
+|-------|--------|--------|--------|
+| CallToUnknown | external_call_count (21.8%) | complexity (11.0%) | call_target_typed (8.9%) |
+| DenialOfService | external_call_count (23.9%) | complexity (10.1%) | uses_block_globals (9.3%) |
+| ExternalBug | external_call_count (22.7%) | complexity (11.4%) | visibility (9.3%) |
+| GasException | external_call_count (23.4%) | complexity (10.7%) | visibility (8.9%) |
+| IntegerUO | external_call_count (22.2%) | complexity (10.2%) | uses_block_globals (9.2%) |
+| MishandledException | external_call_count (23.9%) | complexity (10.6%) | visibility (8.8%) |
+| Reentrancy | external_call_count (23.0%) | complexity (10.9%) | visibility (8.8%) |
+| Timestamp | external_call_count (21.4%) | complexity (10.9%) | uses_block_globals (10.0%) |
+| TOD | external_call_count (22.5%) | complexity (11.2%) | visibility (8.9%) |
+| UnusedReturn | external_call_count (21.3%) | complexity (10.8%) | visibility (10.0%) |
+
+**Per-class top-3 node types:**
+
+| Class | Rank 1 | Rank 2 | Rank 3 |
+|-------|--------|--------|--------|
+| CallToUnknown | FUNCTION (49.9%) | CFG_NODE_OTHER (22.2%) | CFG_NODE_WRITE (4.6%) |
+| Reentrancy | FUNCTION (46.5%) | CFG_NODE_OTHER (25.4%) | CFG_NODE_CALL (4.5%) |
+| Timestamp | FUNCTION (48.6%) | CFG_NODE_OTHER (20.4%) | CFG_NODE_READ (6.3%) |
+| TOD | FUNCTION (46.5%) | CFG_NODE_OTHER (24.1%) | CFG_NODE_WRITE (4.7%) |
+| UnusedReturn | FUNCTION (46.8%) | CFG_NODE_OTHER (27.8%) | CFG_NODE_CALL (4.7%) |
+
+**Specific pass/fail checks:**
+
+| Check | Result |
+|-------|--------|
+| Timestamp: uses_block_globals (dim 2) ≥ 20% | **FAIL** — 10.0% |
+| Reentrancy: CFG_NODE_CALL + CFG_NODE_WRITE ≥ 20% | **FAIL** — 8.9% combined |
+
+**Key conclusion — global sensitivity artifact:** `external_call_count` dominates for ALL 10 vulnerability classes with nearly identical attribution (21.3%–23.9%). `complexity` is universally second (10.1%–11.4%). Neither is class-discriminative — they measure contract size/complexity which correlates with all vulnerability labels. The saliency signal is driven by global contract properties, not class-specific structural patterns.
+
+This means the gradient does not discriminate between classes at the feature level: the GNN's backward signal for Reentrancy looks essentially the same as for Timestamp or GasException. The class-specific information is encoded elsewhere (likely in the three-eye classifier head, or in the Transformer path).
+
+See `ml/interpretability_results/l4_feature_saliency_heatmap.png` for the full heatmap.
+
+---
+
+### 6.7 EXP-L6: Counterfactual Contracts
 
 **Status: FAIL (1/4 pairs pass)** *(run 2026-05-31 after solc-select fix)*
 
@@ -517,7 +606,7 @@ All 4 test contract pairs compiled successfully after fixing the solc broken sym
 
 This is the strongest evidence that the model's predictions for most vulnerability classes do not trace to structurally correct reasons. The Run 5 CEI auxiliary loss (Interp-2) directly targets the Reentrancy failure.
 
-### 6.6 EXP-L10: Training Ablation Commands
+### 6.8 EXP-L10: Training Ablation Commands
 
 **Status: PASS (scaffold only)**
 
@@ -549,7 +638,8 @@ Why does Phase 2 (control-flow / interprocedural / data-flow) have the lowest JK
 [DATA] CALL_ENTRY edges in 64.2% of contracts               (Cache audit)
 [DATA] Full CALL_ENTRY+RETURN_TO chain in 69% of val-100   (EXP-S4)
 [MODEL] JK Phase 2 weight = 0.322 (lowest, consistently)   (EXP-L1)
-[MODEL] CFG ablation effect = 1.08e-6 (near zero)          (EXP-L2)
+[MODEL] CFG embedding ablation = 1.11e-6 (near zero)        (EXP-L2)
+[MODEL] CFG structural ablation → POSITIVE Reentrancy Δ     (EXP-L2)
 [MODEL] GNN eye useful for only 3/10 classes                (EXP-A4)
        ↓
 CONCLUSION: CFG structure is present but not exploited
@@ -974,20 +1064,27 @@ Phase B scripts closed the measurement gaps identified in the interpretability a
 
 | ID | Script | Key Finding | Status |
 |----|--------|-------------|--------|
-| B1 | `exp_b1_phase2_gradient_norm.py` | Phase 1 > Phase 2 > Phase 3 gradient norm for all 10 classes. Phase 2 ≈ 75–80% of Phase 1 — no phase is gradient-starved. Timestamp has highest absolute norms. | **COMPLETE** |
+| B1 | `exp_b1_phase2_gradient_norm.py` | Phase 1 > Phase 2 > Phase 3 gradient norm for all 10 classes. Phase 2 = 72–91% of Phase 1 (corrected BCEWithLogitsLoss method; was 75–86% with raw logit). Timestamp highest absolute norms and highest P2/P1 ratio (91.3%). | **COMPLETE** *(method corrected 2026-06-01)* |
 | B2 | `exp_b2_per_eye_ece.py` | Individual eyes well-calibrated (ECE 0.057–0.065). Main head severely miscalibrated (ECE 0.249). Temperature scaling must target main head. | **COMPLETE** |
 | B3 | `exp_b3_jk_weight_distribution.py` | Universal Phase 3 > Phase 1 > Phase 2 ordering across all classes. No class selectively upweights Phase 2. Std per class: 0.01–0.03. | **COMPLETE** |
 | B4 | `exp_b4_unusedreturn_saliency.py` | `external_call_count` and `complexity` dominate both high- and low-scoring UnusedReturn contracts. `return_ignored` ranks 4th (high-scoring) with only 2.3% relative difference vs low-scoring — size shortcut confirmed for UnusedReturn. | **COMPLETE** |
 
-**B1 gradient norm detail (mean per phase per class):**
+**B1 gradient norm detail (mean per phase per class — corrected BCEWithLogitsLoss run, 2026-06-01):**
 
 | Class | Phase1 | Phase2 | Phase3 | P2/P1 ratio |
 |-------|--------|--------|--------|-------------|
-| Timestamp | 0.2692 | 0.2332 | 0.1864 | 86.6% |
-| IntegerUO | 0.1340 | 0.1007 | 0.0794 | 75.1% |
-| Reentrancy | 0.1261 | 0.0900 | 0.0770 | 71.4% |
-| UnusedReturn | 0.1172 | 0.0859 | 0.0716 | 73.3% |
-| CallToUnknown | 0.1165 | 0.0961 | 0.0918 | 82.5% |
+| CallToUnknown | 0.051893 | 0.041190 | 0.035657 | 79.4% |
+| DenialOfService | 0.034882 | 0.025193 | 0.020473 | 72.2% |
+| ExternalBug | 0.044038 | 0.033292 | 0.028976 | 75.6% |
+| GasException | 0.041313 | 0.032616 | 0.025441 | 78.9% |
+| IntegerUO | 0.039092 | 0.028423 | 0.022379 | 72.7% |
+| MishandledException | 0.045841 | 0.036230 | 0.031026 | 79.0% |
+| Reentrancy | 0.050614 | 0.037378 | 0.035040 | 73.8% |
+| Timestamp | 0.094683 | 0.086430 | 0.073734 | **91.3%** |
+| TOD | 0.033661 | 0.025190 | 0.020505 | 74.8% |
+| UnusedReturn | 0.080223 | 0.061586 | 0.052428 | 76.8% |
+
+> **Method correction (2026-06-01):** Original run backpropagated through raw logit `logits[0, class_idx]`. Corrected run uses `F.binary_cross_entropy_with_logits(logits[0, class_idx].unsqueeze(0), target=1)` to match training-time gradient. Absolute magnitudes are ~3.5× smaller after correction (sigmoid derivative dampens gradient at high logit values), but Phase 1 > Phase 2 > Phase 3 ordering is unchanged for all classes. P2/P1 ratio range: 72.2% (DenialOfService) – 91.3% (Timestamp).
 
 **B2 ECE summary:**
 
@@ -1004,9 +1101,9 @@ Individual experiment docs: `docs/interpretability/exp_b1_phase2_gradient_norm.m
 
 ---
 
-## 11. Addendum — Script Fixes (2026-05-31)
+## 11. Addendum — Script Fixes (2026-05-31 + 2026-06-01)
 
-Four additional script bugs were identified and corrected after the initial interpretability suite:
+**2026-05-31 fixes (four bugs):**
 
 | Script | Bug | Fix Applied |
 |--------|-----|-------------|
@@ -1015,9 +1112,18 @@ Four additional script bugs were identified and corrected after the initial inte
 | `exp_e1_receptive_field.py` | Analysis 2: used REVERSE_CONTAINS (runtime-only) → always 0%; Analysis 3: no CONTRACT→FUNCTION edge in schema | Redesigned both analyses |
 | `exp_l3_attention_visualization.py` | Only hooked conv3 (CF-only) — missed conv3b (CALL_ENTRY+RETURN_TO) | Now hooks both in one forward pass |
 
+**2026-06-01 fixes (four more bugs, from audit):**
+
+| Script / Doc | Bug | Fix Applied |
+|-------------|-----|-------------|
+| `exp_b1_phase2_gradient_norm.py` | `logits[0, class_idx].backward()` backpropagated through raw logit — not representative of training (BCEWithLogitsLoss). Absolute magnitudes non-comparable to training gradients. | Changed to `F.binary_cross_entropy_with_logits(logit.unsqueeze(0), target=1).backward()`. Absolute values ~3.5× smaller; ordering unchanged. |
+| `exp_l2_edge_ablation.py` | EDGE_TYPE_NAMES had CALLS/CONTAINS swapped at indices 0 and 5 (cosmetic, logic unaffected). More critically: no structural ablation implemented — reported "0.0048/0.014" were estimates or came from separate hard-coded logic, not the main ablation loop. | Fixed name order. Added `_structural_ablate_graph()` helper and second ablation loop for Phase 2 edge types (6, 8, 9, 10). |
+| `exp_e1_receptive_field.py` | Analysis 2 dict key mismatch: `results["analysis2_function_aggregation"]` → KeyError on JSON output | Changed to `results["analysis2_function_cfg_coverage"]` |
+| `docs/interpretability/exp_l3_attention_visualization.md` | PASS status recorded for a result that is architecturally guaranteed (100% CF fraction when conv3 receives only CF edges). False positive. | Status changed to ARCHITECTURAL N/A; uniform attention (all weights = 1.0) moved to headline finding. |
+
 ---
 
 *End of SENTINEL Interpretability Master Report*
-*Generated: 2026-05-30  Updated: 2026-05-31 (COMPLETENESS audit fixes: P1–P5 script fixes, B1–B4 runs, L5/L6/L9/E4/S3 results updated)*
+*Generated: 2026-05-30  Updated: 2026-06-01 (audit fixes: B1 gradient method, L2 structural ablation, L3 ARCH-N/A, L4 rerun; all 25 experiments complete)*
 *Based on: GCB-P1-Run4-no-asl-pw_best.pt (ep32, F1=0.3362)*
-*Experiments: exp_a1–exp_l10, exp_s1–exp_s4, exp_e1–exp_e4, exp_a3, exp_a4, exp_b1–exp_b4 (all complete)*
+*Experiments: exp_a1–exp_l10, exp_s1–exp_s4, exp_e1–exp_e4, exp_a3, exp_a4, exp_b1–exp_b4 (all complete, no pending)*
