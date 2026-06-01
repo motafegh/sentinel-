@@ -71,6 +71,12 @@ from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate
 from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.focalloss import FocalLoss
 from ml.src.training.losses import AsymmetricLoss
+from ml.src.training.training_logger import (
+    StructuredLogger,
+    TrainingAbortError,
+    compute_grad_stats,
+    label_dist_from_tensor,
+)
 
 # ---------------------------------------------------------------------------
 # Logging setup — module level only (handlers added per-run inside train())
@@ -105,6 +111,20 @@ ARCHITECTURE = "three_eye_v8"
 MODEL_VERSION = "v8.0"
 
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal", "asl"})
+
+
+# [A35] Module-level class — was a local class inside train(), making it
+# unpicklable and incompatible with DDP. Moved here so it can be pickled.
+class _FocalFromLogits(nn.Module):
+    """Wraps FocalLoss to accept logits (applies sigmoid internally)."""
+
+    def __init__(self, focal: "FocalLoss") -> None:
+        super().__init__()
+        self._focal = focal
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        return self._focal(torch.sigmoid(logits.float()), targets)
+
 
 # ---------------------------------------------------------------------------
 # VRAM helpers
@@ -321,6 +341,14 @@ class TrainConfig:
 
     # --- Logging ---
     log_interval: int = 100
+    # [A37] Threshold sweep is expensive (~19×num_classes evals). Sweep every N epochs
+    # and always on the final epoch; reuse cached thresholds in between.
+    threshold_tune_interval: int = 10
+
+    # --- Structured logging (Phase 4.6) ---
+    # Directory for step_metrics.jsonl / epoch_summary.jsonl / alerts.jsonl.
+    # Defaults to ml/logs/<run_name>. Gate 4.6: all three files must exist before ep 1.
+    log_dir: str | None = None
 
     # --- MLflow ---
     experiment_name: str = "sentinel-multilabel"
@@ -376,19 +404,23 @@ class TrainConfig:
 # pos_weight computation
 # ---------------------------------------------------------------------------
 def compute_pos_weight(
-    label_csv:            str,
-    train_indices:        np.ndarray,
-    num_classes:          int,
-    device:               str,
-    pos_weight_min_samples: int = 0,
-    pos_weight_cap: float = 20.0,
+    train_dataset:          "DualPathDataset",
+    num_classes:            int,
+    device:                 str,
+    pos_weight_min_samples: int   = 0,
+    pos_weight_cap:         float = 20.0,
 ) -> torch.Tensor:
-    import pandas as pd
-
-    df = pd.read_csv(label_csv)
-    class_cols   = CLASS_NAMES[:num_classes]
-    label_matrix = df[class_cols].values
-    train_labels = label_matrix[train_indices]
+    # [A36] Compute from in-memory label map — no CSV I/O on every call.
+    # train_dataset.paired_hashes is already filtered to training indices.
+    if train_dataset._label_map is None:
+        raise RuntimeError(
+            "compute_pos_weight requires a dataset in multi-label mode (label_csv must be set)."
+        )
+    train_labels = np.stack([
+        train_dataset._label_map[h].numpy()
+        for h in train_dataset.paired_hashes
+        if h in train_dataset._label_map
+    ])
 
     N = len(train_labels)
     pos_counts = train_labels.sum(axis=0)
@@ -473,6 +505,9 @@ def evaluate(
     metrics = {"f1_macro": f1_macro, "f1_micro": f1_micro, "hamming": hamming}
     for i, name in enumerate(CLASS_NAMES[:y_true.shape[1]]):
         metrics[f"f1_{name}"] = float(f1_per_class[i])
+    # [Phase 4.6] Pass raw arrays to caller for AUC/Brier/ECE computation.
+    metrics["_y_true"]  = y_true
+    metrics["_y_probs"] = y_probs
 
     if tune_thresholds:
         # BUG-M8: sweep 19 candidate thresholds per class; pick best per-class F1.
@@ -964,7 +999,8 @@ def train(config: TrainConfig) -> dict:
     )
 
     if label_csv_path is not None:
-        pos_weight = compute_pos_weight(str(label_csv_path), train_indices, config.num_classes, device,
+        # [A36] Use in-memory dataset labels — no redundant CSV read.
+        pos_weight = compute_pos_weight(train_dataset, config.num_classes, device,
                                         pos_weight_min_samples=config.pos_weight_min_samples,
                                         pos_weight_cap=config.pos_weight_cap)
     else:
@@ -1093,11 +1129,8 @@ def train(config: TrainConfig) -> dict:
     aux_loss_fn: nn.Module = nn.BCEWithLogitsLoss()
 
     if config.loss_fn == "focal":
-        _focal = FocalLoss(gamma=config.focal_gamma, alpha=config.focal_alpha)
-        class _FocalFromLogits(nn.Module):
-            def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-                return _focal(torch.sigmoid(logits.float()), targets)
-        loss_fn: nn.Module = _FocalFromLogits()
+        # [A35] _FocalFromLogits now defined at module level (picklable, DDP-safe).
+        loss_fn: nn.Module = _FocalFromLogits(FocalLoss(gamma=config.focal_gamma, alpha=config.focal_alpha))
         logger.info(f"Loss: FocalLoss(gamma={config.focal_gamma}, alpha={config.focal_alpha})")
     elif config.loss_fn == "asl":
         # pos_weight intentionally NOT passed to ASL. ASL handles class imbalance
@@ -1205,7 +1238,9 @@ def train(config: TrainConfig) -> dict:
         f"PrefixProj={len(_prefix_proj_params)} params (lr×{config.gnn_prefix_proj_lr_mult}) | "
         f"Other={len(_other_params)} params (lr×1.0)"
     )
-    optimizer = AdamW(_param_groups, weight_decay=config.weight_decay, fused=True)
+    # [NF-9] fused=True crashes on CPU; gate it to CUDA-only.
+    _use_fused = device == "cuda" or device.startswith("cuda:")
+    optimizer = AdamW(_param_groups, weight_decay=config.weight_decay, fused=_use_fused)
 
     # torch.compile is applied AFTER the optimizer so that param group name
     # matching ("gnn.", "lora_", "fusion.") uses the original uncompiled model
@@ -1414,6 +1449,20 @@ def train(config: TrainConfig) -> dict:
         checkpoint_path = _checkpoint_path   # already computed above
         final_epoch = start_epoch - 1
 
+        # [Phase 4.6] Create StructuredLogger — Gate 4.6 requires all three
+        # JSONL files to exist before epoch 1 begins.
+        _slog_dir = config.log_dir or f"ml/logs/{config.run_name}"
+        _slog = StructuredLogger(_slog_dir)
+        _slog.log_startup(
+            dataset_paths=[
+                Path(config.graphs_dir),
+                Path(config.tokens_dir),
+                Path(config.label_csv) if config.label_csv else Path("."),
+            ],
+            archive_dir=Path("ml/data/archive") if Path("ml/data/archive").exists() else None,
+        )
+        logger.info(f"[Phase 4.6] StructuredLogger active → {_slog_dir}")
+
         # Build per-class label smoothing tensor once (BUG-M9).
         _class_eps = torch.tensor(
             [config.class_label_smoothing.get(c, 0.05) for c in CLASS_NAMES[:config.num_classes]],
@@ -1424,6 +1473,9 @@ def train(config: TrainConfig) -> dict:
         _consecutive_allzeros  = 0
         _consecutive_gnn_coll  = 0
         _class_death_counter   = [0] * config.num_classes
+
+        # [A37] Cache per-class tuned thresholds between sweep epochs.
+        _cached_tuned_thresholds: list[float] | None = None
 
         for epoch in range(start_epoch, config.epochs + 1):
             final_epoch = epoch
@@ -1515,14 +1567,23 @@ def train(config: TrainConfig) -> dict:
                 aux_phase2_loss_weight=config.aux_phase2_loss_weight,
             )
 
+            # [A37] Threshold sweep every threshold_tune_interval epochs + always at the final epoch.
+            # Between sweeps, reuse cached thresholds to save the 19×C eval cost.
+            _is_final_epoch = (epoch == config.epochs) or (patience_counter + 1 >= config.early_stop_patience)
+            _should_tune = (epoch % config.threshold_tune_interval == 0) or _is_final_epoch or (_cached_tuned_thresholds is None)
             val_metrics = evaluate(
                 model=model,
                 loader=val_loader,
                 device=device,
                 threshold=config.eval_threshold,   # training-time threshold (lower = stable signal)
                 use_amp=config.use_amp,
-                tune_thresholds=True,              # BUG-M8: per-epoch threshold sweep
+                tune_thresholds=_should_tune,
             )
+            if _should_tune and "tuned_thresholds" in val_metrics:
+                _cached_tuned_thresholds = val_metrics["tuned_thresholds"]
+            elif not _should_tune and _cached_tuned_thresholds is not None:
+                # Re-inject cached thresholds so downstream code sees them every epoch.
+                val_metrics["tuned_thresholds"] = _cached_tuned_thresholds
 
             # Fix #27: release CUDA caching allocator free-blocks between epochs.
             gc.collect()
@@ -1672,6 +1733,84 @@ def train(config: TrainConfig) -> dict:
             else:
                 _consecutive_gnn_coll = 0
 
+            # ── [Phase 4.6] Structured epoch logging ─────────────────────────
+            try:
+                _y_true  = val_metrics.get("_y_true")
+                _y_probs = val_metrics.get("_y_probs")
+                _cn      = CLASS_NAMES[:config.num_classes]
+
+                _auc_metrics   = {}
+                _brier_metrics = {}
+                _ece_val       = 0.0
+                _prob_stats    = {}
+                _jk_ent        = 0.0
+                _f1_auc_div    = False
+
+                if _y_true is not None and _y_probs is not None:
+                    _auc_metrics   = _slog.compute_auc_metrics(_y_true, _y_probs, _cn)
+                    _brier_metrics = _slog.compute_brier(_y_true, _y_probs, _cn)
+                    _ece_val       = _slog.compute_ece(_y_true, _y_probs)
+                    _prob_stats    = _slog.compute_prob_stats(_y_probs, _cn)
+                    _per_f1        = {n: val_metrics.get(f"f1_{n}", 0.0) for n in _cn}
+                    _f1_auc_div    = _slog.check_f1_auc_divergence(
+                        _per_f1, _auc_metrics.get("auc_roc_per_label", {}),
+                        _auc_metrics.get("auc_roc_delta", {}), epoch,
+                    )
+
+                _jk_cache = getattr(getattr(model, "gnn", None), "jk", None)
+                _jk_w_list = (
+                    getattr(_jk_cache, "last_weights", None).cpu().tolist()
+                    if _jk_cache is not None and getattr(_jk_cache, "last_weights", None) is not None
+                    else []
+                )
+                _jk_ent = _slog.check_jk_entropy(_jk_w_list, epoch)
+
+                _aux_norms = _slog.check_aux_head(model, epoch)
+                _vram_peak = (torch.cuda.max_memory_allocated() / 1024**2) if torch.cuda.is_available() else 0.0
+                _vram_cur  = (torch.cuda.memory_allocated()     / 1024**2) if torch.cuda.is_available() else 0.0
+
+                _lr_now = optimizer.param_groups[0]["lr"]
+                _per_f1_all = {n: val_metrics.get(f"f1_{n}", 0.0) for n in _cn}
+
+                _summary = _slog.build_epoch_summary(
+                    epoch              = epoch,
+                    train_loss         = train_loss,
+                    val_loss           = None,
+                    main_loss          = train_loss,
+                    aux_loss           = 0.0,
+                    total_loss         = train_loss,
+                    lr                 = _lr_now,
+                    grad_norm_total    = last_gnn_share,
+                    grad_norm_max_layer = ("gnn", last_gnn_share),
+                    param_nan_count    = nan_batch_count,
+                    grad_nan_count     = 0,
+                    vram_peak_mb       = _vram_peak,
+                    vram_current_mb    = _vram_cur,
+                    label_dist_train   = {},
+                    label_dist_val     = {},
+                    aux_weight_norm    = _aux_norms.get("aux_weight_norm", 0.0),
+                    aux_bias_norm      = _aux_norms.get("aux_bias_norm",   0.0),
+                    jk_weight_entropy  = _jk_ent,
+                    prediction_entropy = 0.0,
+                    per_class_f1       = _per_f1_all,
+                    auc_metrics        = _auc_metrics,
+                    brier_metrics      = _brier_metrics,
+                    ece                = _ece_val,
+                    temperature        = 1.0,
+                    prob_dist_stats    = _prob_stats,
+                    f1_auc_divergence  = _f1_auc_div,
+                    epoch_duration_sec = _epoch_elapsed,
+                    steps_per_epoch    = steps_per_epoch,
+                    gpu_util_mean_pct  = 0.0,
+                    loss_spike_count   = 0,
+                    grad_zero_count    = 0,
+                )
+                _slog.log_epoch(_summary)
+                _slog.check_vram(step=0, epoch=epoch)
+            except Exception as _sl_err:
+                logger.warning(f"[Phase 4.6] StructuredLogger epoch logging failed: {_sl_err}")
+            # ─────────────────────────────────────────────────────────────────
+
             if val_metrics["f1_macro"] > best_f1:
                 best_f1 = val_metrics["f1_macro"]
                 patience_counter = 0
@@ -1719,6 +1858,7 @@ def train(config: TrainConfig) -> dict:
             mlflow.log_artifact(str(checkpoint_path))
 
         logger.info(f"\n✅ Training complete. Best val F1-macro: {best_f1:.4f}")
+        _slog.close()
 
     return {
         "best_f1_macro":  best_f1,

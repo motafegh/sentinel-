@@ -112,6 +112,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--checkpoint-name", default=None)
     p.add_argument("--cache-path",      default="ml/data/cached_dataset_v8.pkl",
                    help="RAM cache pickle (v8 — schema v8 graphs with CALL_ENTRY/RETURN_TO/DEF_USE).")
+    p.add_argument("--log-dir",         default=None,
+                   help="[Phase 4.6] Directory for structured JSONL logs. Default: ml/logs/<run-name>.")
 
     # --- Loss and regularisation ---
     p.add_argument("--loss-fn",              choices=["bce", "focal", "asl"], default="asl")
@@ -125,7 +127,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--compile",              action="store_true", default=True,
                    help="torch.compile(model, dynamic=True) — ~20-40%% speedup. Set TRITON_CACHE_DIR=/tmp/triton_cache to avoid WSL p9io crash.")
     p.add_argument("--no-compile",           dest="compile", action="store_false")
-    p.add_argument("--log-interval",         type=int, default=100)
+    p.add_argument("--log-interval",            type=int, default=100)
+    p.add_argument("--threshold-tune-interval", type=int, default=10,
+                   help="[A37] Run per-class threshold sweep every N validation epochs (also runs at final epoch). Default 10.")  # [A37]
     p.add_argument("--focal-gamma",          type=float, default=2.0)
     p.add_argument("--focal-alpha",          type=float, default=0.25)
     p.add_argument("--asl-gamma-neg",        type=float, default=2.0,
@@ -148,7 +152,7 @@ def parse_args() -> argparse.Namespace:
 
     # --- GNN architecture (v6) ---
     p.add_argument("--gnn-hidden-dim",   type=int,   default=256)
-    p.add_argument("--gnn-layers",       type=int,   default=7)
+    p.add_argument("--gnn-layers",       type=int,   default=8)  # [NF-4] was 7; Run 5 three-phase arch requires 8
     p.add_argument("--gnn-heads",        type=int,   default=8)
     p.add_argument("--gnn-dropout",      type=float, default=0.2)
     p.add_argument("--gnn-edge-emb-dim", type=int,   default=64)
@@ -219,6 +223,15 @@ def main() -> None:
     args = parse_args()
     label_csv = args.label_csv if args.label_csv else None
 
+    # [NF-4] Gate: warn loudly if non-standard GNN layer count is used.
+    if args.gnn_layers != 8:
+        import logging as _logging
+        _logging.warning(
+            "[NF-4] --gnn-layers=%d (expected 8 for Run 5 three-phase architecture). "
+            "Verify gnn_num_layers=8 in the epoch-0 config log before continuing.",
+            args.gnn_layers,
+        )
+
     config = TrainConfig(
         run_name              = args.run_name,
         experiment_name       = args.experiment_name,
@@ -279,6 +292,8 @@ def main() -> None:
         gnn_prefix_proj_reset_on_warmup = not args.no_prefix_proj_reset,
         jk_entropy_reg_lambda           = args.jk_entropy_reg_lambda,
         pos_weight_cap                  = args.pos_weight_cap,
+        threshold_tune_interval         = args.threshold_tune_interval,
+        log_dir                         = args.log_dir,
     )
 
     train(config)
