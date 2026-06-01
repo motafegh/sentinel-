@@ -104,13 +104,51 @@ from typing import Any
 import torch
 from torch_geometric.data import Data
 
-from .graph_schema import EDGE_TYPES, NODE_FEATURE_DIM, NODE_TYPES, NUM_EDGE_TYPES, VISIBILITY_MAP
+from .graph_schema import (
+    EDGE_TYPES, FEATURE_NAMES, NODE_FEATURE_DIM, NODE_TYPES, NUM_EDGE_TYPES, VISIBILITY_MAP,
+)
 
 logger = logging.getLogger(__name__)
 
-# Normalisation divisor for type_id → [0, 1].
+# A3: Normalisation divisor for type_id → [0, 1].
 # Derived from the schema so it tracks any future addition of new node types.
+# The assert (echoed from graph_schema.py A1 guard) fires at import if a new
+# node type is added without updating this file and sentinel_model.py.
 _MAX_TYPE_ID = float(max(NODE_TYPES.values()))
+assert _MAX_TYPE_ID == 12.0, (
+    f"_MAX_TYPE_ID is {_MAX_TYPE_ID} but expected 12.0. "
+    "A new node type was added to NODE_TYPES — update the normalization divisor "
+    "in graph_extractor.py (this file) and sentinel_model.py before re-extracting."
+)
+
+# A11: name→index map derived from FEATURE_NAMES so _build_cfg_node_features
+# uses named lookups instead of raw integers that silently drift on schema changes.
+_FEAT_IDX: dict[str, int] = {name: i for i, name in enumerate(FEATURE_NAMES)}
+
+# A6/A10/NF-7: module-level counters for silent-failure telemetry.
+# These accumulate across the process lifetime; each worker process (multiprocessing
+# fork) starts from 0. Gate 2.1 checks are per-run — interpret log output at batch end.
+_call_target_fail_count: int = 0    # A6: type-resolution failures in _compute_call_target_typed
+_cfg_type_fallback_count: int = 0   # A10: Slither-import failures in _cfg_node_type
+_ext_call_fail_count: int = 0       # NF-7: failures in _compute_external_call_count
+_block_globals_fail_count: int = 0  # NF-7: failures in _compute_uses_block_globals
+
+# A9: attempt to import SolidityVariableComposed for proper isinstance check.
+# The string-based type check (type(rv).__name__ == "SolidityVariableComposed") is
+# fragile under Python -O and fails if Slither reorganises its module hierarchy.
+# If the import fails, uses_block_globals will always be 0.0 (logged below).
+try:
+    from slither.core.declarations.solidity_variables import (
+        SolidityVariableComposed as _SolidityVariableComposed,
+    )
+except (ImportError, AttributeError):
+    _SolidityVariableComposed = None  # type: ignore[assignment,misc]
+    logger.warning(
+        "[A9] SolidityVariableComposed not importable from "
+        "slither.core.declarations.solidity_variables — "
+        "uses_block_globals will always be 0.0. "
+        "Timestamp and TOD detection severely degraded. Check Slither version."
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -235,49 +273,62 @@ def _compute_return_ignored(func: Any) -> float:
     to match an unrelated LocalVariable read anywhere in the function would
     incorrectly conclude the return was captured, mislabeling UnusedReturn and
     MishandledException samples. Slither's func.nodes is in CFG topological order.
+
+    A5 FIX: Narrow the try block to only the specific Slither API access that may
+    be absent in some versions (func.nodes). All remaining logic is outside the try
+    block so unexpected AttributeErrors propagate instead of being swallowed.
     """
     try:
         from slither.slithir.operations import LowLevelCall, HighLevelCall, Send
+    except ImportError:
+        logger.warning(
+            "return_ignored: Slither IR operations not importable for %s — using sentinel -1.0",
+            getattr(func, "canonical_name", "?"),
+        )
+        return -1.0
 
-        # Build flat ordered list of (node, op) pairs in CFG topological order.
-        # Use direct attribute access (not getattr) so that AttributeError raised
-        # inside a property (e.g. unavailable Slither IR) propagates to the outer
-        # except block instead of being silently swallowed by getattr's default.
-        nodes = func.nodes or []
-        all_ops_ordered = [
-            (node, op)
-            for node in nodes
-            for op in (node.irs or [])
-        ]
-
-        for call_idx, (_, op) in enumerate(all_ops_ordered):
-            if not isinstance(op, (LowLevelCall, HighLevelCall, Send)):
-                continue
-            lval = op.lvalue
-            if lval is None:
-                return 1.0
-            lval_name = getattr(lval, "name", None)
-            if lval_name is None:
-                return 1.0
-            # IMP-D1: check if lval_name appears in any read AFTER this call in IR order.
-            used_after = False
-            for _, later_op in all_ops_ordered[call_idx + 1:]:
-                for rv in (getattr(later_op, "read", None) or []):
-                    if getattr(rv, "name", None) == lval_name:
-                        used_after = True
-                        break
-                if used_after:
-                    break
-            if not used_after:
-                return 1.0  # lval never read after the call → return discarded
-
-        return 0.0
+    # A5: only the specific Slither IR property access that may raise AttributeError
+    # (func.nodes is a Slither property that can be absent in some API versions).
+    try:
+        nodes = func.nodes
     except AttributeError:
         logger.warning(
             "return_ignored: Slither IR unavailable for %s — using sentinel -1.0",
             getattr(func, "canonical_name", "?"),
         )
         return -1.0
+
+    # All remaining logic is outside the try block: unexpected AttributeErrors propagate.
+    # Build flat ordered list of (node, op) pairs in CFG topological order.
+    nodes = nodes or []
+    all_ops_ordered = [
+        (node, op)
+        for node in nodes
+        for op in (getattr(node, "irs", None) or [])
+    ]
+
+    for call_idx, (_, op) in enumerate(all_ops_ordered):
+        if not isinstance(op, (LowLevelCall, HighLevelCall, Send)):
+            continue
+        lval = op.lvalue
+        if lval is None:
+            return 1.0
+        lval_name = getattr(lval, "name", None)
+        if lval_name is None:
+            return 1.0
+        # IMP-D1: check if lval_name appears in any read AFTER this call in IR order.
+        used_after = False
+        for _, later_op in all_ops_ordered[call_idx + 1:]:
+            for rv in (getattr(later_op, "read", None) or []):
+                if getattr(rv, "name", None) == lval_name:
+                    used_after = True
+                    break
+            if used_after:
+                break
+        if not used_after:
+            return 1.0  # lval never read after the call → return discarded
+
+    return 0.0
 
 
 def _compute_call_target_typed(func: Any) -> float:
@@ -309,8 +360,15 @@ def _compute_call_target_typed(func: Any) -> float:
 
         return 1.0  # all calls typed, or no external calls
 
-    except Exception:
-        pass  # type resolution failed; fall through to source scan
+    except Exception as _ctt_exc:
+        # A6: log instead of silently discarding — helps diagnose Slither API drift.
+        global _call_target_fail_count
+        _call_target_fail_count += 1
+        logger.debug(
+            "[A6] call_target_typed: type-resolution failed for %s: %s — falling back to source scan.",
+            getattr(func, "canonical_name", "?"),
+            _ctt_exc,
+        )
 
     # Fallback: scan source when type resolution is unavailable
     sm = getattr(func, "source_mapping", None)
@@ -328,36 +386,17 @@ def _compute_call_target_typed(func: Any) -> float:
     return 1.0
 
 
-# DEPRECATED (v7 BUG-L2) — safe to delete after v8 extraction is complete.
-# in_unchecked was dropped from the v7 feature vector: dead signal for 87.9% of
-# the dataset (Solidity <0.8 contracts). Result is computed but never returned.
+# DEPRECATED (v7 BUG-L2) — in_unchecked was dropped from the v7 feature vector.
+# Dead signal for 87.9% of the dataset (Solidity <0.8 contracts where the
+# unchecked{} construct does not exist). Feature dim was removed; any call site
+# that was not updated is itself a bug.
+# A7: replaced body with NotImplementedError so call sites surface immediately.
 def _compute_in_unchecked(func: Any) -> float:
-    """1.0 if func body contains an unchecked{} arithmetic block.
-
-    Note: for Solidity <0.8, the unchecked{} construct does not exist, so this
-    feature is correctly 0.0 for pre-0.8 contracts. All arithmetic in <0.8 is
-    implicitly unchecked; that signal is carried by other features (complexity,
-    has_loop, etc.).
-    """
-    try:
-        from slither.core.cfg.node import NodeType
-        for node in (getattr(func, "nodes", None) or []):
-            # STARTUNCHECKED available in Slither >=0.9.3 (enforced at import in graph_schema.py)
-            if getattr(node, "type", None) == NodeType.STARTUNCHECKED:
-                return 1.0
-    except AttributeError:
-        pass  # NodeType.STARTUNCHECKED absent — fall through to regex
-
-    try:
-        sm = getattr(func, "source_mapping", None)
-        content = getattr(sm, "content", "") or ""
-        # Covers: "unchecked {", "unchecked{", "unchecked\n{" (all valid Solidity)
-        if re.search(r"\bunchecked\s*\{", content):
-            return 1.0
-    except Exception:
-        pass
-
-    return 0.0
+    raise NotImplementedError(
+        "_compute_in_unchecked is deprecated in v7 (BUG-L2). "
+        "in_unchecked was dropped from the feature vector — any call site was not updated. "
+        "Remove the call or replace it with a schema-correct alternative."
+    )
 
 
 def _compute_has_loop(func: Any) -> float:
@@ -371,9 +410,10 @@ def _compute_has_loop(func: Any) -> float:
     except Exception:
         pass
 
-    # Fallback: Slither convenience attribute (exists in some versions)
+    # Fallback: Slither convenience attribute (exists in some versions).
+    # A8: is True → bool() — `is True` rejects truthy non-bool values (e.g. 1).
     try:
-        if getattr(func, "is_loop_present", None) is True:
+        if bool(getattr(func, "is_loop_present", False)):
             return 1.0
     except Exception:
         pass
@@ -401,7 +441,14 @@ def _compute_external_call_count(func: Any) -> float:
                 if isinstance(op, (Transfer, Send)):
                     n += 1
         return min(math.log1p(n) / math.log1p(20), 1.0)
-    except Exception:
+    except Exception as exc:
+        # NF-7: log and count failures — silent 0.0 masked Slither API drift.
+        global _ext_call_fail_count
+        _ext_call_fail_count += 1
+        logger.debug(
+            "[NF-7] _compute_external_call_count failed for %s: %s",
+            getattr(func, "canonical_name", "?"), exc,
+        )
         return 0.0
 
 
@@ -421,14 +468,23 @@ def _compute_uses_block_globals(func: Any) -> float:
         for node in (getattr(func, "nodes", None) or []):
             for op in (getattr(node, "irs", None) or []):
                 for rv in (getattr(op, "read", None) or []):
-                    if type(rv).__name__ == "SolidityVariableComposed":
+                    # A9: use isinstance instead of string-based class name check.
+                    # _SolidityVariableComposed is set at module load (may be None if
+                    # Slither import failed — logged at module level as a WARNING).
+                    if _SolidityVariableComposed is not None and isinstance(rv, _SolidityVariableComposed):
                         name = getattr(rv, "name", "") or ""
                         # name is e.g. "block.timestamp" — split on '.'
                         part = name.split(".")[-1].lower()
                         if part in _BLOCK_GLOBALS:
                             return 1.0
-    except Exception:
-        pass
+    except Exception as exc:
+        # NF-7: log and count failures — silent 0.0 masked Slither API drift.
+        global _block_globals_fail_count
+        _block_globals_fail_count += 1
+        logger.debug(
+            "[NF-7] _compute_uses_block_globals failed for %s: %s",
+            getattr(func, "canonical_name", "?"), exc,
+        )
     return 0.0
 
 
@@ -490,8 +546,16 @@ def _cfg_node_type(slither_node: Any) -> int:
         if getattr(slither_node, "type", None) in check_types:
             return NODE_TYPES["CFG_NODE_CHECK"]
 
-    except Exception:
-        pass
+    except Exception as _ctn_exc:
+        # A10: log Slither-import/API failures — they silently fall through to CFG_NODE_OTHER.
+        # A high _cfg_type_fallback_count in logs indicates a Slither version mismatch.
+        global _cfg_type_fallback_count
+        _cfg_type_fallback_count += 1
+        logger.warning(
+            "[A10] _cfg_node_type failed for node %r: %s — falling back to CFG_NODE_OTHER.",
+            getattr(slither_node, "node_id", "?"),
+            _ctn_exc,
+        )
 
     return NODE_TYPES["CFG_NODE_OTHER"]
 
@@ -537,14 +601,19 @@ def _build_cfg_node_features(
     loc = min(math.log1p(loc_raw) / math.log1p(1000), 1.0)
 
     # Inherit function-scoped dims from the parent FUNCTION node feature vector.
-    # Dims [1,3,4,5,10] are properties of the function that apply to all its
-    # statements.  Falls back to 0.0 when parent_features is unavailable.
+    # A11: use _FEAT_IDX named lookups instead of raw magic numbers so the correct
+    # dim indices are always derived from FEATURE_NAMES (single source of truth).
     p = parent_features or []
-    visibility  = p[1] if len(p) > 1 else 0.0
-    view        = p[3] if len(p) > 3 else 0.0
-    payable     = p[4] if len(p) > 4 else 0.0
-    complexity  = p[5] if len(p) > 5 else 0.0
-    has_loop    = p[9] if len(p) > 9 else 0.0  # dim[9] in v7 (was [10] in v6)
+    _vi = _FEAT_IDX["visibility"]
+    _vw = _FEAT_IDX["view"]
+    _vp = _FEAT_IDX["payable"]
+    _vc = _FEAT_IDX["complexity"]
+    _vl = _FEAT_IDX["has_loop"]
+    visibility  = p[_vi] if len(p) > _vi else 0.0
+    view        = p[_vw] if len(p) > _vw else 0.0
+    payable     = p[_vp] if len(p) > _vp else 0.0
+    complexity  = p[_vc] if len(p) > _vc else 0.0
+    has_loop    = p[_vl] if len(p) > _vl else 0.0
 
     return [
         float(cfg_type) / _MAX_TYPE_ID,  # [0]  type_id normalised to [0,1]
@@ -608,7 +677,8 @@ def _build_control_flow_edges(
         key=lambda n: (
             n.source_mapping.lines[0]
             if n.source_mapping and n.source_mapping.lines else 0,
-            n.node_id,
+            # A12: getattr fallback — node_id may be absent on synthetic Slither nodes.
+            getattr(n, "node_id", 0),
         ),
     )
 
@@ -634,11 +704,31 @@ def _build_control_flow_edges(
         contains_edges.append((func_node_idx, graph_idx))
 
     # Pass 2: build CONTROL_FLOW edges (all CFG nodes indexed in pass 1)
+    _dropped_cf_edges = 0
     for slither_node in cfg_nodes:
         src_idx = node_index_map[slither_node]
         for successor in (getattr(slither_node, "sons", None) or []):
             if successor in node_index_map:
                 control_flow_edges.append((src_idx, node_index_map[successor]))
+            else:
+                # A13: log dropped edges instead of silently discarding.
+                # Sons outside node_index_map indicate cross-function successors or
+                # synthetic Slither nodes that were not included in cfg_nodes.
+                _dropped_cf_edges += 1
+                logger.debug(
+                    "[A13] Dropped CONTROL_FLOW edge: node %r → son %r not in cfg_node_map "
+                    "(function '%s').",
+                    getattr(slither_node, "node_id", "?"),
+                    getattr(successor, "node_id", "?"),
+                    getattr(func, "canonical_name", "?"),
+                )
+
+    if _dropped_cf_edges > 0:
+        logger.debug(
+            "[A13] %d CONTROL_FLOW edge(s) dropped for function '%s'.",
+            _dropped_cf_edges,
+            getattr(func, "canonical_name", "?"),
+        )
 
     return contains_edges, control_flow_edges
 
@@ -713,60 +803,83 @@ def _add_def_use_edges(
     edge_types: list,
 ) -> None:
     """
-    PLAN-1E — intra-function DEF_USE data-flow edges.
+    PLAN-1E — DEF_USE data-flow edges (intra- and inter-function for state variables).
 
-    For each function, tracks LocalVariable definitions (lval of any IR op)
-    and emits DEF_USE(10) edges from the defining CFG node to every CFG node
-    that reads the variable — provided they are distinct nodes.
+    Tracks variable definitions (lval of any IR op) and emits DEF_USE(10) edges
+    from the defining CFG node to every CFG node that reads the variable.
 
-    Only LocalVariable is tracked (not TemporaryVariable — those are intra-node
-    SSA temporaries — and not StateVariable — those are covered by READS/WRITES).
+    A15 FIX — two-tier scope key to prevent cross-function false edges:
+      Local variables  (LocalVariable): keyed by (func_canonical_name, var_name).
+                        A local variable named `balance` in function A must NOT
+                        create DEF_USE edges to a read of `balance` in function B.
+      State variables  (StateVariable): keyed by (contract_canonical_name, var_name).
+                        State variables ARE shared across functions — their DEF_USE
+                        edges correctly span function boundaries.
 
-    Deduplicates (def_node, use_node) pairs so multi-IR reads on the same node
-    produce one edge.
+    Deduplicates (def_node, use_node) pairs across all functions.
     """
     _DEF_USE = EDGE_TYPES["DEF_USE"]
 
     try:
         from slither.core.variables.local_variable import LocalVariable as _LV
+        from slither.core.variables.state_variable import StateVariable as _SV
     except ImportError:
         return
 
+    contract_key = getattr(contract, "canonical_name", None) or contract.name
+
+    # Build def_map in one pass over ALL functions using two-tier scope keys.
+    # This allows state-variable DEF_USE edges to cross function boundaries.
+    def_map: dict = {}
     for func in contract.functions:
         func_key = getattr(func, "canonical_name", None) or func.name
         local_map = func_cfg_maps.get(func_key)
         if local_map is None:
             continue
-
-        func_nodes = getattr(func, "nodes", None) or []
-
-        # Pass 1: build def_map — var_name → [graph_idx of defining nodes]
-        def_map: dict = {}
-        for node in func_nodes:
+        for node in (getattr(func, "nodes", None) or []):
             node_idx = local_map.get(node)
             if node_idx is None:
                 continue
             for ir in (getattr(node, "irs", None) or []):
                 lval = getattr(ir, "lvalue", None)
-                if isinstance(lval, _LV):
-                    def_map.setdefault(lval.name, []).append(node_idx)
+                if isinstance(lval, _SV):
+                    scope_key = (contract_key, getattr(lval, "name", None))
+                elif isinstance(lval, _LV):
+                    scope_key = (func_key, getattr(lval, "name", None))
+                else:
+                    continue
+                if scope_key[1] is None:
+                    continue
+                def_map.setdefault(scope_key, []).append(node_idx)
 
-        if not def_map:
+    if not def_map:
+        return
+
+    # Emit DEF_USE edges: for each function's CFG nodes, look up the correct scope key.
+    seen_pairs: set = set()
+    for func in contract.functions:
+        func_key = getattr(func, "canonical_name", None) or func.name
+        local_map = func_cfg_maps.get(func_key)
+        if local_map is None:
             continue
-
-        # Pass 2: emit DEF_USE edges for any node reading a defined variable
-        defined_names = set(def_map)
-        seen_pairs: set = set()
-        for node in func_nodes:
+        for node in (getattr(func, "nodes", None) or []):
             use_idx = local_map.get(node)
             if use_idx is None:
                 continue
             for ir in (getattr(node, "irs", None) or []):
                 for var in (getattr(ir, "read", None) or []):
                     vname = getattr(var, "name", None)
-                    if vname not in defined_names:
+                    if vname is None:
                         continue
-                    for def_idx in def_map[vname]:
+                    # Resolve to the same scope key used on the def side.
+                    if isinstance(var, _SV):
+                        scope_key = (contract_key, vname)
+                    else:
+                        scope_key = (func_key, vname)
+                    def_nodes = def_map.get(scope_key)
+                    if not def_nodes:
+                        continue
+                    for def_idx in def_nodes:
                         if def_idx == use_idx:
                             continue
                         pair = (def_idx, use_idx)
@@ -853,8 +966,19 @@ def _build_node_features(obj: Any, type_id: int) -> list:
         elif getattr(obj, "is_receive", False):
             type_id = NODE_TYPES["RECEIVE"]
 
-    assert return_ignored in (-1.0, 0.0, 1.0), f"return_ignored out of range: {return_ignored}"
-    assert call_target_typed in (-1.0, 0.0, 1.0), f"call_target_typed out of range: {call_target_typed}"
+    # A16: assert → raise ValueError — asserts are disabled by Python -O flag (production).
+    if return_ignored not in (-1.0, 0.0, 1.0):
+        raise ValueError(
+            f"return_ignored out of range: {return_ignored!r} for "
+            f"'{getattr(obj, 'canonical_name', '?')}'. "
+            "Bug in _compute_return_ignored() — must return -1.0, 0.0, or 1.0."
+        )
+    if call_target_typed not in (-1.0, 0.0, 1.0):
+        raise ValueError(
+            f"call_target_typed out of range: {call_target_typed!r} for "
+            f"'{getattr(obj, 'canonical_name', '?')}'. "
+            "Bug in _compute_call_target_typed() — must return -1.0, 0.0, or 1.0."
+        )
 
     return [
         float(type_id) / _MAX_TYPE_ID,  # [0]  normalised to [0,1]
@@ -1057,6 +1181,20 @@ def extract_contract_graph(
             slither_kwargs["solc"] = str(config.solc_binary)
         sl = Slither(str(sol_path), **slither_kwargs)
     except Exception as exc:
+        # A17: type-based routing first — avoids string keyword false positives.
+        # SlitherError is Slither's own base exception for internal parse failures.
+        try:
+            from slither.exceptions import SlitherError as _SlitherError
+            if isinstance(exc, _SlitherError):
+                raise SlitherParseError(
+                    f"Slither failed to parse '{sol_path.name}': {exc}"
+                ) from exc
+        except ImportError:
+            pass  # Slither exception hierarchy unavailable — fall through to string match
+
+        # Fallback: string keyword matching for CryticCompile and other bare Exceptions.
+        # TODO: replace with isinstance checks on CryticCompile's exception hierarchy
+        #       once crytic_compile.errors is confirmed stable across versions.
         exc_lower = str(exc).lower()
         if any(kw in exc_lower for kw in ("compil", "syntax", "invalid solidity", "parsing", "solc")):
             raise SolcCompilationError(
@@ -1080,9 +1218,14 @@ def extract_contract_graph(
 
     _type_name_map = {v: k for k, v in NODE_TYPES.items()}
 
-    def _add_node(obj: Any, initial_type_id: int) -> int | None:
-        """Add one declaration node. Returns the assigned index, or None if duplicate."""
-        key: str = getattr(obj, "canonical_name", None) or obj.name
+    def _add_node(obj: Any, initial_type_id: int, override_key: str | None = None) -> int | None:
+        """Add one declaration node. Returns the assigned index, or None if duplicate.
+
+        override_key: when provided, use this string as the node_map key instead of
+        obj.canonical_name. Used by the NF-10 synthetic-key path to preserve overriding
+        function nodes without mutating the Slither object.
+        """
+        key: str = override_key or getattr(obj, "canonical_name", None) or obj.name
         if key in node_map:
             return None
         idx = len(x_list)
@@ -1090,12 +1233,14 @@ def extract_contract_graph(
         x_list.append(_build_node_features(obj, initial_type_id))
 
         # Determine the actual type_id after _build_node_features may override it.
-        # x_list[-1][0] is normalised (float(type_id)/12.0), so reverse-normalise.
-        actual_type_id = int(round(x_list[-1][0] * 12))
+        # x_list[-1][0] is normalised (float(type_id)/_MAX_TYPE_ID), so reverse-normalise.
+        # NF-2: was hardcoded * 12 — now uses _MAX_TYPE_ID so it stays correct if
+        # the schema ever gains a new node type (mirrors the A3/A32 fix).
+        actual_type_id = int(round(x_list[-1][0] * _MAX_TYPE_ID))
         actual_type_name = _type_name_map.get(actual_type_id, "FUNCTION")
         sm = getattr(obj, "source_mapping", None)
         node_metadata.append({
-            "name":         getattr(obj, "canonical_name", None) or getattr(obj, "name", str(obj)),
+            "name":         override_key or getattr(obj, "canonical_name", None) or getattr(obj, "name", str(obj)),
             "type":         actual_type_name,
             "source_lines": list(sm.lines) if sm and getattr(sm, "lines", None) else [],
         })
@@ -1124,6 +1269,8 @@ def extract_contract_graph(
     edge_types: list = []
 
     _cfg_failure_count = 0
+    _icfg_failure_count = 0   # A18: counts ICFG map construction failures (Gate 2.1)
+    _duplicate_func_count = 0  # NF-10: counts duplicate functions given synthetic keys
     _func_total = len(contract.functions)
 
     # PLAN-1C: accumulated across functions — needed by _add_icfg_edges after the loop.
@@ -1131,13 +1278,28 @@ def extract_contract_graph(
     _func_terminal_map: dict = {}   # canonical_name → [graph_idx of terminal nodes]
     _func_cfg_maps:     dict = {}   # canonical_name → {slither_node → graph_idx}
 
-    for func in contract.functions:
+    for func_index, func in enumerate(contract.functions):
         fn_idx = _add_node(func, NODE_TYPES["FUNCTION"])
         if fn_idx is None:
-            # Duplicate function name — still need to find its index for CFG edges
+            # NF-10: duplicate canonical_name (overriding/overloaded function).
+            # Assign a synthetic key so the overriding function's CFG is preserved —
+            # overrides often introduce vulnerabilities and must not be silently merged
+            # into the original function's node.
             fn_key = getattr(func, "canonical_name", None) or func.name
-            fn_idx = node_map.get(fn_key)
-            if fn_idx is None:
+            synthetic_key = f"{fn_key}__override__{func_index}"
+            fn_idx = _add_node(func, NODE_TYPES["FUNCTION"], override_key=synthetic_key)
+            if fn_idx is not None:
+                _duplicate_func_count += 1
+                logger.debug(
+                    "[NF-10] Duplicate function '%s' in '%s' — synthetic key '%s' (idx %d).",
+                    fn_key, contract.name, synthetic_key, fn_idx,
+                )
+            else:
+                # Synthetic key also collides — degenerate case, skip this override.
+                logger.warning(
+                    "[NF-10] Synthetic key '%s' also duplicated in '%s' — skipping CFG.",
+                    synthetic_key, contract.name,
+                )
                 continue
 
         # CFG nodes for this function, appended immediately after it
@@ -1164,13 +1326,28 @@ def extract_contract_graph(
                     if _n.type == _SNT.ENTRYPOINT and _n in cfg_node_map:
                         _func_entry_map[func_key] = cfg_node_map[_n]
                         break
+                # A14: exclude THROW (revert/require-failure) and RETURN terminal nodes.
+                # Only normal-exit terminals (fall-through, no successors except due to
+                # revert) should generate RETURN_TO edges — THROW/RETURN unwind the stack
+                # and do NOT transfer control back to the call site.
+                _revert_types: frozenset = frozenset(filter(None, (
+                    getattr(_SNT, "THROW", None),
+                    getattr(_SNT, "RETURN", None),
+                )))
                 _func_terminal_map[func_key] = [
                     cfg_node_map[_n]
                     for _n in func_nodes
-                    if _n in cfg_node_map and not (getattr(_n, "sons", None) or [])
+                    if _n in cfg_node_map
+                    and not (getattr(_n, "sons", None) or [])
+                    and getattr(_n, "type", None) not in _revert_types
                 ]
-            except Exception:
-                pass
+            except Exception as exc:
+                # A18: log and count ICFG map failures — Gate 2.1 checks this count.
+                _icfg_failure_count += 1
+                logger.error(
+                    "[A18] ICFG map construction failed for '%s' in '%s': %s",
+                    func_key, contract.name, exc,
+                )
 
         except Exception as exc:
             _cfg_failure_count += 1
@@ -1249,12 +1426,14 @@ def extract_contract_graph(
             oor_dims.unique().tolist(),
         )
 
-    # node_metadata must stay index-aligned with x_list
-    assert len(node_metadata) == x.shape[0], (
-        f"node_metadata length {len(node_metadata)} ≠ x.shape[0] {x.shape[0]} "
-        f"for '{contract.name}'. This is a bug — _add_node() and "
-        "_build_control_flow_edges() must always append to both lists together."
-    )
+    # node_metadata must stay index-aligned with x_list.
+    # A4: assert → raise ValueError — asserts are stripped by Python -O (production).
+    if len(node_metadata) != x.shape[0]:
+        raise ValueError(
+            f"node_metadata length {len(node_metadata)} ≠ x.shape[0] {x.shape[0]} "
+            f"for '{contract.name}'. This is a bug — _add_node() and "
+            "_build_control_flow_edges() must always append to both lists together."
+        )
 
     # ── E2 / Interp-3: Contract-size normalisation (Timestamp size shortcut fix) ──
     # complexity (dim 5) is log1p(CFG block count)/log1p(100) — an absolute measure.
@@ -1271,12 +1450,36 @@ def extract_contract_graph(
         x[:, 5] = x[:, 5] * _size_factor
 
     # ── Declaration-level edges ────────────────────────────────────────────
+    # NF-1: build short_name → canonical_name map for EMITS fallback path.
+    # Slither's EventCall IR stores the short name (e.g. "Transfer") but node_map
+    # keys are canonical names (e.g. "ERC20.Transfer(address,address,uint256)").
+    # For Solidity <0.4.21 contracts (no `emit` keyword), the fallback path fires;
+    # without this translation, all EMITS edges from the fallback are silently dropped.
+    _event_name_map: dict[str, str] = {}
+    for _evt in (getattr(contract, "events", None) or []):
+        _short = getattr(_evt, "name", None)
+        _canon = getattr(_evt, "canonical_name", None) or _short
+        if _short and _canon:
+            _event_name_map[_short] = _canon
+
+    # NF-11: track dropped edge counts per edge type for the post-edge summary log.
+    _edge_drop_counts: dict[int, int] = {}
+
     def _add_edge(src_key: str, dst_key: str, etype: int) -> None:
         si = node_map.get(src_key)
         di = node_map.get(dst_key)
         if si is not None and di is not None:
             edges.append([si, di])
             edge_types.append(etype)
+        else:
+            # NF-11: count dropped edges by type instead of silently discarding.
+            _edge_drop_counts[etype] = _edge_drop_counts.get(etype, 0) + 1
+            logger.debug(
+                "[NF-11] Dropped edge type=%d: src '%s'%s dst '%s'%s",
+                etype,
+                src_key, "" if si is not None else " (missing)",
+                dst_key, "" if di is not None else " (missing)",
+            )
 
     for func in contract.functions:
         fn = getattr(func, "canonical_name", None) or func.name
@@ -1308,9 +1511,13 @@ def extract_contract_graph(
                 for node in (getattr(func, "nodes", None) or []):
                     for ir in (getattr(node, "irs", None) or []):
                         if isinstance(ir, _EventCall):
-                            key = getattr(ir, "name", None)
-                            if key:
-                                emitted.add(key)
+                            _short_key = getattr(ir, "name", None)
+                            if _short_key:
+                                # NF-1: translate short event name to canonical name so
+                                # the key matches node_map (keyed by canonical_name).
+                                # For pre-0.4.21 contracts, _short_key is e.g. "Transfer"
+                                # but node_map has "ERC20.Transfer(address,...)".
+                                emitted.add(_event_name_map.get(_short_key, _short_key))
             except Exception:
                 pass
         for key in emitted:
@@ -1324,6 +1531,31 @@ def extract_contract_graph(
             _add_edge(contract_key, parent_key, EDGE_TYPES["INHERITS"])
     except Exception:
         pass
+
+    # ── Per-contract extraction summary logs ──────────────────────────────
+    if _icfg_failure_count > 0:
+        logger.warning(
+            "[A18] ICFG map construction failed for %d function(s) in '%s' — "
+            "CALL_ENTRY/RETURN_TO edges may be incomplete.",
+            _icfg_failure_count, contract.name,
+        )
+    if _duplicate_func_count > 0:
+        logger.info(
+            "[NF-10] %d duplicate function(s) in '%s' given synthetic node keys — "
+            "CFG extracted for overriding functions.",
+            _duplicate_func_count, contract.name,
+        )
+    # NF-11: log per-type edge drop summary
+    if _edge_drop_counts:
+        _type_name_map_local = {v: k for k, v in EDGE_TYPES.items()}
+        _drop_summary = ", ".join(
+            f"{_type_name_map_local.get(et, str(et))}: {cnt}"
+            for et, cnt in sorted(_edge_drop_counts.items())
+        )
+        logger.debug(
+            "[NF-11] Edge drop summary for '%s': %s",
+            contract.name, _drop_summary,
+        )
 
     # ── Assemble PyG Data object ───────────────────────────────────────────
     if edges:

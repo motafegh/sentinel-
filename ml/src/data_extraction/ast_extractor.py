@@ -50,8 +50,9 @@ safe to load in the current training/inference pipeline.
 """
 
 import sys
+import logging
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Union
 from functools import partial
 import multiprocessing as mp
 import warnings
@@ -77,6 +78,8 @@ from src.preprocessing.graph_extractor import (
     extract_contract_graph,
 )
 from src.preprocessing.graph_schema import NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES  # re-exported for any external callers
+
+logger = logging.getLogger(__name__)
 
 try:
     from slither import Slither
@@ -125,6 +128,11 @@ def solc_supports_allow_paths(version: str) -> bool:
     return (major, minor) >= (0, 5)
 
 
+def get_project_root() -> Path:
+    """Return the repository root (three levels up from this script)."""
+    return Path(__file__).resolve().parent.parent.parent
+
+
 def get_solc_binary(version: str) -> Optional[str]:
     """
     Resolve the pinned solc binary path inside the Poetry virtualenv.
@@ -140,7 +148,11 @@ def get_solc_binary(version: str) -> Optional[str]:
     if not version:
         return None
 
-    venv_path = Path.cwd() / ".venv" / ".solc-select" / "artifacts" / f"solc-{version}"
+    # A19: use get_project_root() for deterministic resolution regardless of
+    # the working directory at launch time.  Path.cwd() silently produced the
+    # wrong path when the script was invoked from any directory other than the
+    # repo root.
+    venv_path = get_project_root() / ".venv" / ".solc-select" / "artifacts" / f"solc-{version}"
     candidates = [
         venv_path / f"solc-{version}",
         venv_path / "solc",
@@ -151,9 +163,38 @@ def get_solc_binary(version: str) -> Optional[str]:
     return None
 
 
-def get_project_root() -> Path:
-    """Return the repository root (three levels up from this script)."""
-    return Path(__file__).resolve().parent.parent.parent
+# ─────────────────────────────────────────────────────────────────────────────
+# Module-level multiprocessing worker
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The 10 vulnerability class columns in multilabel_index_cleaned.csv, in order.
+_LABEL_COLUMNS: List[str] = [
+    "CallToUnknown", "DenialOfService", "ExternalBug", "GasException",
+    "IntegerUO", "MishandledException", "Reentrancy", "Timestamp",
+    "TransactionOrderDependence", "UnusedReturn",
+]
+
+
+def _labeled_pool_worker(
+    path_label_pair: tuple,
+    extractor: "ASTExtractorV4",
+    solc_binary: Optional[str],
+    solc_version: str,
+) -> Optional["Data"]:
+    """Picklable multiprocessing worker.
+
+    Accepts a (contract_path, label) tuple from pool.imap and delegates to
+    ASTExtractorV4.contract_to_pyg.  Defined at module level (not as a lambda
+    or nested function) so Python's pickle can serialise it for subprocess IPC
+    on non-fork platforms.
+    """
+    contract_path, label = path_label_pair
+    return extractor.contract_to_pyg(
+        contract_path,
+        solc_binary=solc_binary,
+        solc_version=solc_version,
+        label=label,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -182,7 +223,7 @@ class ASTExtractorV4:
         contract_path: str,
         solc_binary:   Optional[str] = None,
         solc_version:  Optional[str] = None,
-        label:         int = 0,
+        label:         Union[List[int], int, None] = None,
     ) -> Optional[Data]:
         """
         Convert one Solidity file to a PyG Data object and return it.
@@ -194,13 +235,22 @@ class ASTExtractorV4:
         Attaches offline-specific metadata that the shared extractor does not set:
           data.contract_hash  — MD5 of the contract file path (matches tokenizer)
           data.contract_path  — original path string (for provenance tracking)
-          data.y              — vulnerability label tensor [label]
+          data.y              — vulnerability label tensor
+
+        Label storage:
+          • List/tuple of ints (multi-label, e.g. from label_csv):
+              stored as float32 tensor of shape [NUM_CLASSES].
+          • Single int (legacy binary mode, 0 or 1):
+              stored as long tensor of shape [1].
+          • None (no label provided):
+              stored as long zeros tensor of shape [1] (backward-compat default).
 
         Args:
             contract_path: Path to .sol file.
             solc_binary:   Pinned solc binary path, or None for system solc.
             solc_version:  Version string for --allow-paths gating, e.g. "0.8.19".
-            label:         Integer vulnerability label (0 = safe, 1 = vulnerable).
+            label:         Multi-hot label vector [NUM_CLASSES] from label_map,
+                           or a single int for legacy binary mode, or None.
 
         Returns:
             PyG Data on success, None on any graph extraction failure.
@@ -219,20 +269,36 @@ class ASTExtractorV4:
             # Slither not installed — fatal; surface immediately.
             raise
         except GraphExtractionError as exc:
-            if self.verbose:
-                print(f"  Skipped {Path(contract_path).name}: {exc}")
+            # A21: use logger instead of print() — workers run under QueueHandler/
+            # QueueListener so concurrent print() calls interleave on stdout.
+            logger.warning("Skipped %s: %s", Path(contract_path).name, exc)
             return None
         except Exception as exc:
             # Unexpected error — log and skip rather than crash the pool worker.
-            if self.verbose:
-                print(f"  Unexpected error for {Path(contract_path).name}: {exc}")
+            # A21: logger.warning is concurrency-safe; print() is not.
+            logger.warning(
+                "Unexpected error for %s: %s",
+                Path(contract_path).name, exc, exc_info=True,
+            )
             return None
 
-        # Attach offline-specific metadata
+        # Attach offline-specific metadata.
         contract_hash = get_contract_hash(contract_path)
         graph.contract_hash = contract_hash
         graph.contract_path = str(contract_path)
-        graph.y = torch.tensor([label], dtype=torch.long)
+
+        # A20: store ground-truth label supplied from label_map (not hardcoded 0).
+        # Multi-hot list  → float32 [NUM_CLASSES] (used by DualPathDataset multi-label mode).
+        # Single int      → long   [1]            (legacy binary mode fallback).
+        # None            → long   [1] = 0        (backward-compat; warns if verbose).
+        if isinstance(label, (list, tuple)):
+            graph.y = torch.tensor(label, dtype=torch.float32)
+        elif isinstance(label, int):
+            graph.y = torch.tensor([label], dtype=torch.long)
+        else:
+            # A21: logger is concurrency-safe; print() is not.
+            logger.warning("No label for %s — storing zero.", Path(contract_path).name)
+            graph.y = torch.zeros(1, dtype=torch.long)
 
         return graph
 
@@ -245,6 +311,7 @@ class ASTExtractorV4:
         chunksize:        int  = 50,
         output_dir:       Path = Path("ml/data/graphs"),
         checkpoint_every: int  = 500,
+        label_csv:        Optional[Path] = None,
     ) -> List[Data]:
         """
         Extract graphs for every contract in df, with parallel workers and resume.
@@ -259,6 +326,10 @@ class ASTExtractorV4:
             chunksize:        imap chunksize (batching reduces IPC overhead).
             output_dir:       Directory where <md5>.pt files are written.
             checkpoint_every: Checkpoint frequency in contracts processed.
+            label_csv:        Path to multilabel_index_cleaned.csv.  Each contract's
+                              md5 hash is looked up in this CSV and the 10-dim binary
+                              label vector is stored in graph.y.  If None, graph.y
+                              defaults to zeros (backward-compatible binary mode).
 
         Returns:
             List of Data objects extracted in this run (not counting resumed ones).
@@ -267,6 +338,22 @@ class ASTExtractorV4:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         checkpoint_file = output_dir / "checkpoint.json"
+
+        # ── A20: Build label_map from ground-truth CSV before any pool work ──
+        # Maps md5_stem → [10 binary ints] for every known contract.
+        # This must be loaded BEFORE pool.imap so all workers receive correct
+        # labels — the old code hardcoded label=0 for every contract.
+        label_map: Dict[str, List[int]] = {}
+        if label_csv is not None:
+            label_csv = Path(label_csv)
+            print(f"📋 Loading label map from {label_csv} ...")
+            _ldf = pd.read_csv(label_csv)
+            for _, _row in _ldf.iterrows():
+                _stem = str(_row["md5_stem"])
+                label_map[_stem] = [int(_row[col]) for col in _LABEL_COLUMNS]
+            print(f"   {len(label_map):,} label entries loaded.")
+        else:
+            print("⚠️  No label_csv provided — graph.y will default to zeros (binary mode).")
 
         # ── Load checkpoint ────────────────────────────────────────────────
         processed_hashes: set = set()
@@ -304,17 +391,40 @@ class ASTExtractorV4:
         for version, group in tqdm(groups, desc="Version groups"):
             solc_bin = group.iloc[0]["solc_binary"]
 
+            # A20: Build (contract_path, label) pairs for this version group.
+            # Look up each contract's md5 hash in label_map; None means unknown.
+            contract_paths = group["contract_path"].tolist()
+            path_label_pairs = [
+                (path, label_map.get(get_contract_hash(path)))
+                for path in contract_paths
+            ]
+
+            # Gate 0.1: assert every contract in this batch has a label entry.
+            # If label_csv was not provided, label_map is empty and all labels
+            # are None — this is accepted (backward-compat binary mode).
+            if label_map:
+                missing = [p for p, lbl in path_label_pairs if lbl is None]
+                assert len(missing) == 0, (
+                    f"[A20] label_map is missing {len(missing)} contract(s) "
+                    f"in version group {version}. "
+                    f"First missing: {missing[0] if missing else '—'}. "
+                    "Ensure label_csv covers all contracts before extraction."
+                )
+
             worker = partial(
-                self.contract_to_pyg,
+                _labeled_pool_worker,
+                extractor=self,
                 solc_binary=solc_bin,
                 solc_version=version,
-                label=0,
             )
+
+            # A22: track torch.save() failures per version group.
+            failed_saves: List[str] = []
 
             with mp.Pool(processes=n_workers) as pool:
                 results = []
                 for result in tqdm(
-                    pool.imap(worker, group["contract_path"].tolist(), chunksize=chunksize),
+                    pool.imap(worker, path_label_pairs, chunksize=chunksize),
                     total=len(group),
                     desc=f"  v{version}",
                     leave=False,
@@ -325,7 +435,18 @@ class ASTExtractorV4:
                     results.append(result)
                     filename   = get_filename_from_hash(result.contract_hash)
                     graph_file = output_dir / filename
-                    torch.save(result, graph_file)
+
+                    # A22: guard torch.save() so a single disk/permission error
+                    # doesn't crash the entire batch; failed paths are collected
+                    # and re-raised as a group after all contracts are processed.
+                    try:
+                        torch.save(result, graph_file)
+                    except (OSError, IOError) as save_err:
+                        logger.error(
+                            "torch.save failed for %s: %s", graph_file, save_err
+                        )
+                        failed_saves.append(str(graph_file))
+                        continue  # don't mark as processed — it wasn't written
 
                     processed_hashes.add(result.contract_hash)
                     total_processed += 1
@@ -342,10 +463,17 @@ class ASTExtractorV4:
                                 f,
                                 indent=2,
                             )
-                        if self.verbose:
-                            print(f"💾 Checkpoint: {total_processed:,} contracts")
+                        logger.info("Checkpoint: %d contracts processed.", total_processed)
 
                 all_data.extend(results)
+
+            # A22: after the batch, surface all save failures as a single exception.
+            if failed_saves:
+                raise RuntimeError(
+                    f"torch.save() failed for {len(failed_saves)} graph(s) "
+                    f"in version group {version}:\n"
+                    + "\n".join(f"  {p}" for p in failed_saves)
+                )
 
         # ── Final checkpoint ───────────────────────────────────────────────
         with open(checkpoint_file, "w") as f:
@@ -381,6 +509,14 @@ if __name__ == "__main__":
     parser.add_argument("--resume",    action="store_true", help="Skip already-processed contracts")
     parser.add_argument("--force",     action="store_true", help="Delete checkpoint and reprocess all contracts (full re-extraction with new schema)")
     parser.add_argument("--verbose",   action="store_true")
+    # A20: ground-truth label CSV; required for correct graph.y in re-extraction.
+    parser.add_argument(
+        "--label-csv",
+        default="ml/data/processed/multilabel_index_cleaned.csv",
+        help="Path to multilabel_index_cleaned.csv supplying per-contract labels "
+             "(default: ml/data/processed/multilabel_index_cleaned.csv). "
+             "Pass --label-csv '' to disable (backward-compat binary mode).",
+    )
     args = parser.parse_args()
 
     if args.force and args.resume:
@@ -389,9 +525,10 @@ if __name__ == "__main__":
     print("=" * 70)
     print("🚀 AST Extractor V4.3 — Offline Batch Pipeline (Thin Wrapper)")
     print("=" * 70)
-    print(f"📅 Date:    {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"📂 Output:  {args.output}")
-    print(f"⚙️  Workers: {args.workers}")
+    print(f"📅 Date:      {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"📂 Output:    {args.output}")
+    print(f"⚙️  Workers:  {args.workers}")
+    print(f"📋 Label CSV: {args.label_csv or '(none — binary mode)'}")
     print("=" * 70)
     print()
 
@@ -421,11 +558,13 @@ if __name__ == "__main__":
     print(f"💾 Checkpoints every {args.checkpoint_every} contracts  (Ctrl-C to stop safely)")
     print()
 
+    _label_csv = Path(args.label_csv) if args.label_csv else None
     graphs = extractor.extract_batch_with_checkpoint(
         df,
         n_workers=args.workers,
         output_dir=Path(args.output),
         checkpoint_every=args.checkpoint_every,
+        label_csv=_label_csv,
     )
 
     print()

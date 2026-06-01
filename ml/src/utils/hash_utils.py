@@ -14,6 +14,7 @@ dataset loading) MUST use these functions for file pairing.
 """
 
 import hashlib
+import re
 from pathlib import Path
 from typing import Union, Optional
 
@@ -107,19 +108,15 @@ def validate_hash(hash_string: str) -> bool:
         >>> validate_hash('a1b2c3d4')  # Too short
         False
     """
+    # A2: validate type and length before the regex so error messages are specific.
     if not isinstance(hash_string, str):
         return False
-    
-    # MD5 is always 32 hex characters
     if len(hash_string) != 32:
         return False
-    
-    # Try to parse as hexadecimal
-    try:
-        int(hash_string, 16)
-        return True
-    except ValueError:
-        return False
+    # A2: require strictly lowercase hex — int(x, 16) accepted uppercase (e.g. "ABCD...")
+    # which could allow two logically different strings to match the same hash ID.
+    # re.fullmatch is unambiguous: only [0-9a-f]{32} passes.
+    return re.fullmatch(r'[0-9a-f]{32}', hash_string) is not None
 
 
 def get_filename_from_hash(contract_hash: str) -> str:
