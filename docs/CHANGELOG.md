@@ -1,6 +1,6 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3+4 fixes, Run 5 Training Log Specification, and Phase 4 training loop fixes (A35/A36/A37/NF-4/NF-9 + StructuredLogger).
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3+4 fixes, Run 5 Training Log Specification, Phase 4 training loop fixes (A35/A36/A37/NF-4/NF-9 + StructuredLogger), v9 findings validation + code fixes (C-1/C-3/H-2/M-3/M-6/NF-6), Run 5 kill + v10 re-extraction launch, and v10 script defaults alignment.
 **Last updated:** 2026-06-02
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
@@ -31,6 +31,8 @@ This document is the single authoritative changelog. Session-level detail lives 
 20. [Agent Layer — Step E: cross_validator + Graph Topology (2026-05-29)](#20-agent-layer--step-e-cross_validator--graph-topology)
 21. [Agent Layer — Phase 1 A1/A2/A3: Hotspots + GNN Attention + quick_screen (2026-05-30)](#21-agent-layer--phase-1-a1a2a3-hotspots--gnn-attention--quick_screen)
 22. [Agent Layer — Phase 1 A4/A5: Aderyn deep-path + End-to-End Smoke Test (2026-05-30)](#22-agent-layer--phase-1-a4a5-aderyn-deep-path--end-to-end-smoke-test)
+33. [v9 Findings Validation + Code Fixes C-1/C-3/H-2/M-3/M-6/NF-6 + Run 5 Kill (2026-06-02)](#33-v9-findings-validation--code-fixes-c-1c-3h-2m-3m-6nf-6--run-5-kill)
+34. [v10 Re-Extraction Launch + Script Defaults Alignment (2026-06-02)](#34-v10-re-extraction-launch--script-defaults-alignment)
 
 ---
 
@@ -1908,3 +1910,115 @@ Audit of `SENTINEL-Run5-Training-Log-Specification.md` against the existing impl
 | `total_loss` | same as `main_loss` | `train_loss` (total including aux scaling) |
 
 **Gate 4.6:** Still pending runtime verification at Run 5 launch — three JSONL files created, data hash and archive verification written, no KILL alerts in epoch 0.
+
+---
+
+## 33. v9 Findings Validation + Code Fixes C-1/C-3/H-2/M-3/M-6/NF-6 + Run 5 Kill (2026-06-02)
+
+**Files:** `ml/src/preprocessing/graph_extractor.py`, `ml/src/training/trainer.py`, `ml/src/training/training_logger.py`, `ml/src/models/gnn_encoder.py`, `ml/scripts/train.py`
+**Commit:** `e205b5e`
+
+A set of code-audit findings from `docs/v9_findings.md` was validated against the current source and applied. Run 5 was killed at epoch 2 because the v9 training data lacked the graph-level fixes (C-1/H-2 require re-extraction; completing Run 5 on corrupt data would waste resources).
+
+### Validation summary
+
+| Finding | Verdict | Action |
+|---------|---------|--------|
+| C-1: per-statement CFG features always hardcoded | CONFIRMED | Fixed — requires v10 re-extraction |
+| C-3: `_raw` BCE forward pass never backpropagated | CONFIRMED | Deleted — immediate |
+| H-2: ReferenceVariable lvalues silently skipped in DEF_USE | CONFIRMED | Fixed — requires v10 re-extraction |
+| M-3: `loss_for_log` used `accum_steps` not `_actual_window` | CONFIRMED | Fixed — immediate |
+| M-6: ECE last bin used `< hi` excluding p=1.0 | CONFIRMED | Fixed — immediate |
+| NF-6: Phase 2 ablation sub-masks applied to unablated `edge_index` | CONFIRMED | Fixed — immediate |
+| EMITS edge bug (only 12 edges) | STALE/INVALID | BUG-H7 already fixed; actual count 216,699 |
+
+### C-1 — Per-statement CFG features (`graph_extractor.py`)
+
+Dims [2] (`uses_block_globals`), [7] (`return_ignored`), [8] (`call_target_typed`), [10] (`external_call_count`) were hardcoded to 0.0/1.0/0.0 at every CFG node regardless of the actual IR ops in that node. Four per-node helper functions added:
+
+- `_node_uses_block_globals(node)`: walks IR, checks `SolidityVariableComposed` reads for `timestamp/number/difficulty/etc.` (fixes Timestamp dark spot)
+- `_node_return_ignored(node)`: checks if any call's lvalue is used by later ops in the same node
+- `_node_call_target_typed(node)`: returns 0.0 for `LowLevelCall` or `address`-typed `HighLevelCall` receiver
+- `_node_external_call_count(node)`: counts `LowLevelCall + HighLevelCall + Transfer + Send` (fixes DoS dark spot — Transfer was previously invisible)
+
+**Impact:** Real signal for Timestamp and DoS vulnerability classes; requires full v10 re-extraction.
+
+### H-2 — ReferenceVariable DEF_USE edges (`graph_extractor.py`)
+
+`_add_def_use_edges` silently skipped writes where the lvalue was a `ReferenceVariable` (Slither uses this for mapping writes like `balances[msg.sender]`). Added `_resolve_lval()` closure with `points_to` / `points_to_origin` traversal to resolve `ReferenceVariable` back to the underlying `StateVariable` or `LocalVariable`.
+
+**Impact:** Missing DEF_USE edges for reentrancy state-write patterns (e.g. `balances[msg.sender] -= amount` before the external call). Requires full v10 re-extraction.
+
+### C-3 — Deleted wasted BCE (`trainer.py`)
+
+Line `_raw = aux_loss_fn(_aux_masked["phase2"], labels)` computed a full BCE forward pass whose result was never read or backpropagated. Deleted. Saves ~2–4 MB VRAM per micro-batch.
+
+### M-3 — `loss_for_log` window denominator (`trainer.py`)
+
+`loss_for_log = loss.item() * accum_steps` replaced with `loss_for_log = loss.item() * _actual_window`. The last partial gradient accumulation window has fewer micro-batches than `accum_steps`, so the old code produced a scaled-up loss value at epoch boundaries.
+
+### M-6 — ECE last bin boundary (`training_logger.py`)
+
+```python
+mask = (flat_p >= lo) & (flat_p < hi)          # old — excludes p=1.0
+mask = (flat_p >= lo) & (flat_p <= hi if is_last else flat_p < hi)  # new
+```
+Samples with predicted probability exactly 1.0 were dropped from calibration calculation.
+
+### NF-6 — Phase 2 ablation bypass (`gnn_encoder.py`)
+
+`cf_only_ei` and `icfg_only_ei` were computed by masking the full unablated `edge_index`/`edge_attr`, not the already-filtered `phase2_ei`/`phase2_ea`. This meant `--phase2-edge-types` ablation experiments had no effect on the CF/ICFG sub-masks within Phase 2 layers. Sub-masks now applied to `phase2_ei`/`phase2_ea`.
+
+### Run 5 killed
+
+Run 5 was at epoch 2 with v9 data (missing C-1 and H-2 fixes). No valid Run 5 checkpoint saved. v9 graphs archived to `ml/data/archive/graphs_v9_pre_run6/`. v10 re-extraction launched immediately.
+
+---
+
+## 34. v10 Re-Extraction Launch + Script Defaults Alignment (2026-06-02)
+
+**Files:** `ml/scripts/reextract_graphs.py`, `ml/scripts/train.py`, `ml/scripts/create_cache.py`, `ml/scripts/tune_threshold.py`, `ml/scripts/retokenize_windowed.py`, `ml/scripts/interpretability/utils.py`, `ml/src/training/trainer.py`
+**Commit:** `aaa4e93`
+
+### v10 Re-Extraction
+
+v9 graphs archived via `rsync --remove-source-files` to `ml/data/archive/graphs_v9_pre_run6/`. v10 re-extraction launched:
+
+```
+PYTHONPATH=. TRANSFORMERS_OFFLINE=1 python ml/scripts/reextract_graphs.py
+```
+
+v10 graphs extract to `ml/data/graphs/` with C-1 (per-statement CFG features) and H-2 (ReferenceVariable DEF_USE) fixes active. Tokens at `ml/data/tokens_windowed/` are unchanged and reused.
+
+### Script defaults aligned to v10
+
+All scripts updated from v9/deduped defaults to v10:
+
+| Script | Old default | New default |
+|--------|-------------|-------------|
+| `train.py` `--splits-dir` | `v9_deduped` | `v10_deduped` |
+| `train.py` `--cache-path` | `cached_dataset_v9.pkl` | `cached_dataset_v10.pkl` |
+| `train.py` `--weighted-sampler` | `positive` | `timestamp-size` |
+| `trainer.py` `TrainConfig.cache_path` | `cached_dataset_deduped.pkl` | `cached_dataset_v10.pkl` |
+| `create_cache.py` `--label-csv` | `multilabel_index_deduped.csv` | `multilabel_index.csv` |
+| `create_cache.py` `--output` | `cached_dataset_deduped.pkl` | `cached_dataset_v10.pkl` |
+| `tune_threshold.py` `--label-csv` | `multilabel_index_deduped.csv` | `multilabel_index.csv` |
+| `tune_threshold.py` `--splits-dir` | `splits/deduped` | `v10_deduped` |
+| `retokenize_windowed.py` `DEFAULT_INPUT` | `multilabel_index_deduped.csv` | `multilabel_index.csv` |
+| `interpretability/utils.py` `--cache` | `cached_dataset_v9.pkl` | `cached_dataset_v10.pkl` |
+| `interpretability/utils.py` `--splits-dir` | `v9_deduped` | `v10_deduped` |
+
+### Cache archived
+
+`ml/data/cached_dataset_v9.pkl` (2.2 GB) moved to `ml/data/archive/cached_dataset_v9.pkl`. No active training cache exists until `create_cache.py` is run post-extraction.
+
+### Post-extraction pipeline
+
+After v10 extraction completes (~41,576 graphs):
+```bash
+python ml/scripts/build_multilabel_index.py        # rebuild multilabel_index.csv from v10 graphs
+python ml/scripts/create_cache.py                  # produces cached_dataset_v10.pkl
+python ml/scripts/create_splits.py --splits-dir ml/data/splits/v10_deduped
+python ml/scripts/validate_graph_dataset.py --check-contains-edges --check-control-flow --check-block-globals
+# Launch Run 6
+```
