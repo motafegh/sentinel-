@@ -83,7 +83,7 @@ SOURCE_DIRS = [
     PROJECT_ROOT / "ml" / "data" / "augmented",
 ]
 
-DEFAULT_CSV        = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index_deduped.csv"
+DEFAULT_CSV        = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index.csv"
 DEFAULT_GRAPHS     = PROJECT_ROOT / "ml" / "data" / "graphs"  # [Phase 7] v9 output dir (v8 archived)
 DEFAULT_CHECKPOINT = DEFAULT_GRAPHS / "reextract_checkpoint.json"
 CHECKPOINT_EVERY   = 1000   # flush checkpoint to disk every N completions
