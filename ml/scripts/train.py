@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
 
     # --- Label source ---
     p.add_argument("--label-csv", default="ml/data/processed/multilabel_index.csv",
-                   help="v9 label CSV.")
+                   help="Label CSV (rebuilt from v10 graphs for Run 6).")
 
     # --- Training hyperparameters ---
     p.add_argument("--epochs",       type=int,   default=100)
@@ -108,13 +108,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--graphs-dir",      default="ml/data/graphs")
     p.add_argument("--tokens-dir",      default="ml/data/tokens_windowed",
                    help="Token .pt directory. Multi-window [W,512] tensors (v7 default).")
-    p.add_argument("--splits-dir",      default="ml/data/splits/v9_deduped",
-                   help="[Phase 7] v9 split directory. v8 splits archived to ml/data/archive/splits_v8_deduped/.")
+    p.add_argument("--splits-dir",      default="ml/data/splits/v10_deduped",
+                   help="[Run 6] v10 split directory. v9 splits at ml/data/splits/v9_deduped/.")
     p.add_argument("--checkpoint-dir",  default="ml/checkpoints")
     p.add_argument("--checkpoint-name", default=None)
-    p.add_argument("--cache-path",      default="ml/data/cached_dataset_v9.pkl",
-                   help="[Phase 7] RAM cache pickle (v9 — re-extracted with all Phase 2 fixes + CEI labeler). "
-                        "Use --cache-path ml/data/cached_dataset_v8.pkl for v8 reference runs.")
+    p.add_argument("--cache-path",      default="ml/data/cached_dataset_v10.pkl",
+                   help="[Run 6] RAM cache pickle (v10 — C-1 per-statement CFG features + H-2 ReferenceVariable DEF_USE). "
+                        "Use --cache-path ml/data/cached_dataset_v9.pkl for v9 reference runs.")
     p.add_argument("--log-dir",         default=None,
                    help="[Phase 4.6] Directory for structured JSONL logs. Default: ml/logs/<run-name>.")
 
@@ -223,12 +223,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--weighted-sampler",
         choices=["none", "positive", "DoS-only", "all-rare", "timestamp-size"],
-        default="positive",
+        default="timestamp-size",
         help=(
             "Weighted sampler strategy. "
             "'timestamp-size' (E2/Interp-3): 4× Timestamp+ large contracts, "
             "0.5× large negatives (threshold: 150 nodes). "
-            "Run 5 recommended: timestamp-size."
+            "Run 6 default: timestamp-size."
         ),
     )
 

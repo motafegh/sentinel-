@@ -14,14 +14,14 @@ Usage
     Optional flags:
       --graphs-dir   ml/data/graphs              (default)
       --tokens-dir   ml/data/tokens_windowed      (default)
-      --label-csv    ml/data/processed/multilabel_index_deduped.csv  (default)
-      --output       ml/data/cached_dataset_deduped.pkl  (default)
+      --label-csv    ml/data/processed/multilabel_index.csv  (default)
+      --output       ml/data/cached_dataset_v10.pkl  (default)
       --workers      8   parallel loaders        (default: 8)
 
 Output
 ──────
-ml/data/cached_dataset_deduped.pkl   dict  md5_stem → (graph, tokens)
-    Only stems present in multilabel_index_deduped.csv AND both graph/token dirs are cached.
+ml/data/cached_dataset_v10.pkl   dict  md5_stem → (graph, tokens)
+    Only stems present in multilabel_index.csv AND both graph/token dirs are cached.
     Orphan .pt files (no matching pair, not in label index) are skipped.
 
 Re-run after any re-extraction (ast_extractor.py --force).
@@ -135,15 +135,15 @@ def build_cache(
 
     size_gb = output.stat().st_size / 1e9
     log.info(f"✅ Cache written: {len(cached):,} pairs, {size_gb:.2f} GB")
-    log.info(f"   Pass --cache-path {output} to train.py (already the default)")
+    log.info(f"   Pass --cache-path {output} to train.py")
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build DualPathDataset RAM cache")
     p.add_argument("--graphs-dir", default="ml/data/graphs")
     p.add_argument("--tokens-dir", default="ml/data/tokens_windowed")
-    p.add_argument("--label-csv",  default="ml/data/processed/multilabel_index_deduped.csv")
-    p.add_argument("--output",     default="ml/data/cached_dataset_deduped.pkl")
+    p.add_argument("--label-csv",  default="ml/data/processed/multilabel_index.csv")
+    p.add_argument("--output",     default="ml/data/cached_dataset_v10.pkl")
     p.add_argument("--workers",    type=int, default=8)
     args = p.parse_args()
 

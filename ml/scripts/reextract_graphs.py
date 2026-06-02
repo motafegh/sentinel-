@@ -2,7 +2,7 @@
 """
 reextract_graphs.py — Parallel re-extraction of all graph .pt files (v7 Phase 1 — BUG-6 fix).
 
-Re-extracts every graph in multilabel_index_deduped.csv (44,420 contracts) using
+Re-extracts every graph in multilabel_index.csv (41,576 contracts) using
 multiprocessing.Pool, overwriting existing .pt files with v4 feature schema:
 - uses_block_globals replaces pure (feat[2])
 - loc log-normalized (feat[6])
