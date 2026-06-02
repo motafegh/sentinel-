@@ -96,6 +96,8 @@ class StructuredLogger:
 
         self._global_step: int = 0
         self._grad_norm_history: deque[float] = deque(maxlen=self.GRAD_NORM_HISTORY)
+        self._loss_history: deque[float] = deque(maxlen=100)
+        self._loss_spike_count: int = 0
 
         # AUC deltas — stored across epochs for Spec §3B.12/3B.13
         self._prev_auc_roc: dict[str, float] = {}
@@ -188,6 +190,33 @@ class StructuredLogger:
 
         return False
 
+    def check_inputs(
+        self,
+        graphs_x:   "torch.Tensor | None",
+        edge_index: "torch.Tensor | None",
+        step:       int,
+        epoch:      int,
+    ) -> bool:
+        """§1.3/1.7 — feature dim and edge_index sanity checks. Returns True if batch should be skipped."""
+        if graphs_x is not None:
+            if graphs_x.shape[-1] != 11:
+                self._write_alert(WARN,
+                    f"[1.3] graphs.x feature dim={graphs_x.shape[-1]} != 11 at step={step} epoch={epoch}.",
+                    {"step": step, "epoch": epoch, "feature_dim": int(graphs_x.shape[-1])},
+                )
+        if edge_index is not None and edge_index.numel() > 0:
+            if edge_index.min() < 0:
+                self._write_alert(WARN_SKIP,
+                    f"[1.7] Negative edge_index at step={step} epoch={epoch} — skipping.",
+                    {"step": step, "epoch": epoch},
+                )
+                return True
+        return False
+
+    def reset_epoch_counters(self) -> None:
+        """Reset per-epoch accumulators. Call at the start of each epoch."""
+        self._loss_spike_count = 0
+
     def check_loss(self, loss_val: float, step: int, epoch: int) -> None:
         """§2.1 + §9.1.1 — raise TrainingAbortError if loss is NaN/Inf."""
         if not math.isfinite(loss_val):
@@ -198,9 +227,17 @@ class StructuredLogger:
             )
             raise TrainingAbortError(f"[9.1.1] Loss={loss_val} — Adam state may be corrupted. Restart from last clean checkpoint.")
 
-        # §2.7 — loss spike detection
-        if self._grad_norm_history:
-            pass  # spike uses grad norm history; loss spikes logged in log_step
+        # §2.7 — loss spike detection (> 5× rolling mean)
+        if self._loss_history:
+            rolling_mean = sum(self._loss_history) / len(self._loss_history)
+            if rolling_mean > 1e-8 and loss_val > rolling_mean * 5.0:
+                self._loss_spike_count += 1
+                self._write_alert(WARN,
+                    f"[2.7] Loss spike: {loss_val:.4f} > 5×rolling_mean={rolling_mean:.4f} "
+                    f"at step={step} epoch={epoch} (spike #{self._loss_spike_count}).",
+                    {"step": step, "epoch": epoch, "loss": loss_val, "rolling_mean": rolling_mean},
+                )
+        self._loss_history.append(loss_val)
 
     def check_parameters(self, model: "SentinelModel", step: int, epoch: int) -> None:
         """§2.2 + §9.1.2 — scan all param.data for NaN/Inf; KILL if found."""
@@ -555,6 +592,42 @@ class StructuredLogger:
     # ------------------------------------------------------------------
     # Write helpers
     # ------------------------------------------------------------------
+
+    def log_calibration(
+        self,
+        temperatures: dict,
+        ece_pre:      float,
+        ece_post:     float,
+        epoch:        int,
+    ) -> None:
+        """§5 — log temperature scaling calibration result."""
+        entry = {
+            "type":         "calibration",
+            "epoch":        epoch,
+            "temperatures": temperatures,
+            "ece_pre":      round(ece_pre, 6),
+            "ece_post":     round(ece_post, 6),
+            "timestamp":    datetime.now(tz=timezone.utc).isoformat(),
+        }
+        self._epoch_file.write(json.dumps(entry, default=_json_default) + "\n")
+        self._epoch_file.flush()
+
+    def log_graph_stats(
+        self,
+        edge_type_counts: dict,
+        cei_label_dist:   dict,
+        epoch:            int,
+    ) -> None:
+        """§7 — log graph-level dataset statistics."""
+        entry = {
+            "type":             "graph_stats",
+            "epoch":            epoch,
+            "edge_type_counts": edge_type_counts,
+            "cei_label_dist":   cei_label_dist,
+            "timestamp":        datetime.now(tz=timezone.utc).isoformat(),
+        }
+        self._epoch_file.write(json.dumps(entry, default=_json_default) + "\n")
+        self._epoch_file.flush()
 
     def log_step(self, metrics: dict) -> None:
         """Write one step record to step_metrics.jsonl (Spec §10.1)."""
