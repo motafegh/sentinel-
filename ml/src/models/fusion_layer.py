@@ -123,7 +123,7 @@ class CrossAttentionFusion(nn.Module):
     CodeBERT token embeddings.
 
     Args:
-        node_dim:    GNNEncoder output dimension (default: 128 in v5)
+        node_dim:    GNNEncoder output dimension (default: 256)
         token_dim:   TransformerEncoder output dimension per token (default: 768)
         attn_dim:    Common projection dimension for attention (default: 256).
                      Must be divisible by num_heads.

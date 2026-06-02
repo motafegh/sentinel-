@@ -1,5 +1,5 @@
 """
-gnn_encoder.py — GNN Encoder for SENTINEL (v8 — three-phase, 7-layer architecture)
+gnn_encoder.py — GNN Encoder for SENTINEL (v8 — three-phase, 8-layer architecture)
 
 THREE-PHASE DESIGN (v8+IMP: 2+3+3 layers = 8 total)
 ──────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ Applied once after each complete phase (after both layers of that phase),
 before collecting for JK. Prevents Phase 1's higher norm (two conv layers)
 from dominating the JK attention softmax.
 
-PARAMETERS (v7 defaults)
+PARAMETERS (v8 defaults)
 ─────────────────────────
   in_channels   = NODE_FEATURE_DIM (11)
   hidden_dim    = 256    (was 128 — doubles capacity for complex vulnerability patterns)
@@ -56,7 +56,7 @@ PARAMETERS (v7 defaults)
   use_jk        = True
   jk_mode       = 'attention'
 
-Total trainable parameters (v7 defaults): ~2.4M GNN (was ~91K at hidden=128)
+Total trainable parameters (v8 defaults): ~2.4M GNN (was ~91K at hidden=128)
 """
 
 from __future__ import annotations

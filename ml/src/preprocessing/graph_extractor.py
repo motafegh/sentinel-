@@ -1,5 +1,5 @@
 """
-graph_extractor.py — Canonical Solidity-to-PyG graph extraction (v2 schema)
+graph_extractor.py — Canonical Solidity-to-PyG graph extraction (v8 schema)
 
 WHAT THIS MODULE DOES
 ─────────────────────
@@ -7,7 +7,7 @@ Provides the single, authoritative implementation of the AST-to-graph
 conversion used by both SENTINEL pipelines:
 
   Offline (batch)  ml/src/data_extraction/ast_extractor.py
-                     Processes ~68K training contracts in parallel.
+                     Processes ~44K training contracts in parallel.
                      Writes .pt files. Returns None on failure (skip and log).
 
   Online (inference)  ml/src/inference/preprocess.py
@@ -31,11 +31,11 @@ PUBLIC SURFACE
   Never returns None. Always raises GraphExtractionError on failure.
   Callers decide how to handle it (re-raise, translate, log+skip).
 
-SHAPE CONTRACT  (v7 schema — must match training data)
+SHAPE CONTRACT  (v8 schema — must match training data)
 ──────────────────────────────────────────────────────────────────────────────
   graph.x             [N, 11]  float32  node feature matrix (NODE_FEATURE_DIM=11)
   graph.edge_index    [2, E]   int64    edge connectivity in COO format
-  graph.edge_attr     [E]      int64    edge type IDs 0-7 (1-D per PyG convention)
+  graph.edge_attr     [E]      int64    edge type IDs 0–10 excl. 7 (runtime-only REVERSE_CONTAINS)
                                          (only attached when config.include_edge_attr)
   graph.node_metadata list     of dicts, one per node, index-aligned with graph.x
                                 Required: {"name", "type", "source_lines"} keys.
