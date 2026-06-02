@@ -360,8 +360,8 @@ After all Phase 3 fixes are applied (forward pass structure has changed signific
 
 > **IMPORTANT:** CEI path labeling must be computed on **re-extracted v9 graphs** (during Phase 7), not on the current buggy v8 graphs. The v8 graphs have incorrect RETURN_TO edges (A14), broken ICFG maps (A18), and other structural bugs that would produce wrong CEI labels. Implementation is integrated into Phase 7.
 
-- [ ] **`graph_extractor.py` (during Phase 7 re-extraction):** For each contract, compute and store `has_cei_path = 1` if a `CFG_NODE_CALL → (CONTROL_FLOW → CFG_NODE_WRITE)` path exists within 8 hops via Phase 2 edges. Store as a scalar in the graph `.pt` file.
-- [ ] **`sentinel_model.py`:** Expose Phase 2 CEI-pooled embedding.
+- [x] **`graph_extractor.py` (commit 1f23b2b):** `_compute_has_cei_path()` — BFS from CFG_NODE_CALL via CONTROL_FLOW edges; sets `graph.has_cei_path = 1` if CFG_NODE_WRITE reachable within 8 hops. Stored unconditionally on every extracted graph.
+- [ ] **`sentinel_model.py`:** Expose Phase 2 CEI-pooled embedding (after Gate 7.5 passes).
 - [ ] **`trainer.py`:** Add `aux_cei_loss_weight` parameter. Compute BCE loss on CEI logit vs `has_cei_path` label. Add weighted to total loss. *Only enable after Gate 7.5 passes.*
 
 **🚦 Gate 7.5 (was Gate 5.2 — now evaluated on v9 data after Phase 7):**
@@ -462,6 +462,9 @@ If Phase 2 JK weight < 0.33 **AND** Reentrancy F1 < 0.18 at epoch 10, **pause Ru
 
 Before running re-extraction, move **all** v8-era artifacts to clearly-labeled archive directories. Run 5 must train exclusively on v9 data.
 
+**Script (commit 1f23b2b):** `ml/scripts/archive_v8_data.py` — moves all v8 artifacts, writes manifest, confirms before moving.
+Run: `PYTHONPATH=. python ml/scripts/archive_v8_data.py [--dry-run]`
+
 - [ ] Archive v8 graph .pt files: `ml/data/graphs/` → `ml/data/archive/graphs_v8_pre_run5/`
 - [ ] Archive v8 cached dataset: `ml/data/cached_dataset_v8.pkl` → `ml/data/archive/cached_dataset_v8.pkl`
 - [ ] Archive v8 token files: `ml/data/tokens_windowed/` → `ml/data/archive/tokens_windowed_v8/`
@@ -480,13 +483,13 @@ Before running re-extraction, move **all** v8-era artifacts to clearly-labeled a
 
 ### 7.1 — Pre-Extraction Preparation
 
-- [ ] Confirm all Phase 2 fixes (A3–A18, NF-1, NF-2, NF-7, NF-10, NF-11) are applied to `graph_extractor.py`.
-- [ ] Confirm A15 two-tier scope key fix is applied (function scope for locals, contract scope for state vars).
-- [ ] Confirm NF-10 synthetic key approach is applied for duplicate functions.
-- [ ] Confirm `max_nodes=2048` is set (Intervention 4 from Phase 5).
-- [ ] Confirm A20 fix (Phase 0) is applied — labels will be correct in re-extracted graphs.
-- [ ] Confirm Gate 1.1 has passed (solc toolchain is functional).
-- [ ] Confirm CEI labeler is implemented and integrated into the extraction pipeline.
+- [x] Confirm all Phase 2 fixes (A3–A18, NF-1, NF-2, NF-7, NF-10, NF-11) are applied to `graph_extractor.py` (Phase 2 DONE).
+- [x] Confirm A15 two-tier scope key fix is applied (Phase 2 DONE).
+- [x] Confirm NF-10 synthetic key approach is applied for duplicate functions (Phase 2 DONE).
+- [ ] Confirm `--fusion-max-nodes 2048` passed to Run 5 training (after Gate 5.3 passes).
+- [x] Confirm A20 fix (Phase 0) is applied — labels will be correct in re-extracted graphs (Phase 0 DONE).
+- [ ] Confirm Gate 1.1 has passed (solc toolchain is functional — runtime check).
+- [x] Confirm CEI labeler is implemented and integrated into the extraction pipeline (commit 1f23b2b — `_compute_has_cei_path` + `graph.has_cei_path` in `graph_extractor.py`).
 
 ### 7.2 — Run Full Extraction
 
