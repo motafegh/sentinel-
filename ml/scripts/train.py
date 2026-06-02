@@ -169,11 +169,33 @@ def parse_args() -> argparse.Namespace:
                    help="GNN LR = lr × this (default 2.5 — counteracts GNN gradient collapse)")
     p.add_argument("--lora-lr-multiplier", type=float, default=0.3,
                    help="LoRA LR = lr × this (default 0.3 — v6: tighter than 0.5 with wider GNN)")
+    p.add_argument("--fusion-max-nodes", type=int, default=1024,  # [5.4/IMP-D1]
+                   dest="fusion_max_nodes",
+                   help=(
+                       "Max nodes per graph in CrossAttentionFusion dense pad (IMP-D1). "
+                       "Run 5 default: 1024. Raise to 2048 ONLY after Phase 7 re-extraction "
+                       "and Gate 5.3 VRAM test passes (worst-case: max_nodes=2048, batch=16, "
+                       "full backward+step < 7.5 GB on RTX 3070). "
+                       "0.55%% of contracts exceed 1024 nodes (max=1735)."
+                   ))
 
     # --- Auxiliary loss (v5 three-eye) ---
     p.add_argument("--aux-loss-weight", type=float, default=0.3)
     p.add_argument("--dos-loss-weight", type=float, default=0.5,
                    help="DoS gradient weight (0.0=no gradient, 0.5=half, 1.0=full; 243 training positives as of 2026-05-23)")
+    p.add_argument("--aux-phase2-loss-weight", type=float, default=0.10,  # [NF-5]
+                   dest="aux_phase2_loss_weight",
+                   help=(
+                       "Weight for CEI Phase 2 auxiliary loss (Interp-2). "
+                       "0.0=disabled; Run 5 default=0.10. "
+                       "Applied to Phase 2 embeddings to supervise CFG reachability."
+                   ))
+    p.add_argument("--aux-cei-loss-weight", type=float, default=0.0,  # [Phase 7 placeholder]
+                   dest="aux_cei_loss_weight",
+                   help=(
+                       "Weight for CEI path supervision auxiliary loss (RC1/RC7). "
+                       "0.0=disabled (default); activate only after Phase 7 re-extraction and Gate 7.5."
+                   ))
 
     # --- LoRA architecture (v5) ---
     p.add_argument("--lora-r",       type=int,   default=16)
@@ -197,8 +219,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--smoke-subsample-fraction", type=float, default=1.0)
     p.add_argument(
         "--weighted-sampler",
-        choices=["none", "positive", "DoS-only", "all-rare"],
+        choices=["none", "positive", "DoS-only", "all-rare", "timestamp-size"],
         default="positive",
+        help=(
+            "Weighted sampler strategy. "
+            "'timestamp-size' (E2/Interp-3): 4× Timestamp+ large contracts, "
+            "0.5× large negatives (threshold: 150 nodes). "
+            "Run 5 recommended: timestamp-size."
+        ),
     )
 
     # --- Resume ---
@@ -263,6 +291,8 @@ def main() -> None:
         label_smoothing       = args.label_smoothing,
         pos_weight_min_samples = args.pos_weight_min_samples,
         aux_loss_weight       = args.aux_loss_weight,
+        aux_phase2_loss_weight = args.aux_phase2_loss_weight,  # [NF-5]
+        fusion_max_nodes      = args.fusion_max_nodes,         # [5.4/IMP-D1]
         lora_r                = args.lora_r,
         lora_alpha            = args.lora_alpha,
         lora_dropout          = args.lora_dropout,

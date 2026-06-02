@@ -473,8 +473,9 @@ def evaluate(
     in metrics["tuned_thresholds"] (list[float] of length num_classes).
     """
     model.eval()
-    all_probs = []
-    all_true  = []
+    all_probs      = []
+    all_true       = []
+    all_num_nodes  = []  # [5.3] per-sample node counts for size-stratified Timestamp eval
 
     with torch.no_grad():
         for batch in tqdm(loader, desc="Evaluating", leave=False,
@@ -485,6 +486,10 @@ def evaluate(
             input_ids      = tokens["input_ids"].to(device)
             attention_mask = tokens["attention_mask"].to(device)
             labels         = labels.to(device).float()
+
+            # [5.3] Collect per-graph node counts before moving graphs to GPU output.
+            _nn = torch.bincount(graphs.batch, minlength=graphs.num_graphs).cpu().numpy()
+            all_num_nodes.append(_nn)
 
             with torch.amp.autocast(device, dtype=torch.bfloat16, enabled=use_amp):
                 logits = model(graphs, input_ids, attention_mask)
@@ -508,6 +513,23 @@ def evaluate(
     # [Phase 4.6] Pass raw arrays to caller for AUC/Brier/ECE computation.
     metrics["_y_true"]  = y_true
     metrics["_y_probs"] = y_probs
+
+    # [5.3] Size-stratified Timestamp F1 (EXP-L7 stratum boundaries: <100, 100–300, >300).
+    _ts_idx = CLASS_NAMES.index("Timestamp") if "Timestamp" in CLASS_NAMES else None
+    if _ts_idx is not None and _ts_idx < y_true.shape[1]:
+        _node_counts = np.concatenate(all_num_nodes)
+        _strata = {
+            "small":  _node_counts < 100,
+            "medium": (_node_counts >= 100) & (_node_counts <= 300),
+            "large":  _node_counts > 300,
+        }
+        for _stratum, _mask in _strata.items():
+            if _mask.sum() >= 2:
+                _f1 = f1_score(
+                    y_true[_mask, _ts_idx], y_pred[_mask, _ts_idx], zero_division=0
+                )
+                metrics[f"f1_Timestamp_{_stratum}"] = float(_f1)
+                metrics[f"n_Timestamp_{_stratum}"]  = int(_mask.sum())
 
     if tune_thresholds:
         # BUG-M8: sweep 19 candidate thresholds per class; pick best per-class F1.
