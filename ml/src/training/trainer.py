@@ -72,6 +72,7 @@ from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.focalloss import FocalLoss
 from ml.src.training.losses import AsymmetricLoss
 from ml.src.training.training_logger import (
+    KILL,
     StructuredLogger,
     TrainingAbortError,
     compute_grad_stats,
@@ -578,8 +579,12 @@ def train_one_epoch(
     dos_loss_weight:             float = 0.0,   # 0.0 = zero DoS gradient (BUG-H6)
     jk_entropy_reg_lambda:       float = 0.0,   # C-3: JK entropy regularizer weight
     aux_phase2_loss_weight:      float = 0.0,   # Interp-2: CEI-weighted Phase 2 aux loss
-) -> tuple[float, int, float]:
-    """Returns (avg_loss, nan_batch_count, last_gnn_share)."""
+    slog: "StructuredLogger | None" = None,     # Phase 4.6: structured logger
+    epoch: int = 0,                             # current epoch for structured logging
+) -> dict:
+    """Returns dict: avg_loss, nan_batch_count, last_gnn_share,
+    epoch_main_loss, epoch_aux_loss, epoch_ph2_loss,
+    last_grad_norm_total, grad_norm_max_layer, loss_spike_count, grad_zero_count."""
     model.train()
     total_loss = 0.0
 
@@ -590,6 +595,15 @@ def train_one_epoch(
     _gnn_collapse_streak = 0
     nan_loss_count = 0
     last_gnn_share = 0.0
+
+    # Epoch-level loss accumulators (not reset at log_interval; accumulate full epoch).
+    _epoch_main_sum = 0.0
+    _epoch_aux_sum  = 0.0
+    _epoch_ph2_sum  = 0.0
+    _epoch_n        = 0
+    _last_grad_norm_total: float = 0.0
+    _last_grad_max_layer: tuple[str, float] = ("", 0.0)
+    _last_grad_zero_count: int = 0
 
     # Running sums for per-interval averaged loss logging (reset every log_interval).
     _run_main   = 0.0
@@ -612,6 +626,13 @@ def train_one_epoch(
         input_ids      = tokens["input_ids"].to(device)
         attention_mask = tokens["attention_mask"].to(device)
         labels         = labels.to(device).float()
+
+        if slog is not None:
+            _skip = slog.check_batch(labels, graphs.x, batch_idx, epoch)
+            if not _skip:
+                _skip = slog.check_inputs(graphs.x, graphs.edge_index, batch_idx, epoch)
+            if _skip:
+                continue
 
         # Per-class label smoothing (BUG-M9): class_eps overrides uniform label_smoothing.
         if class_eps is not None:
@@ -709,6 +730,10 @@ def train_one_epoch(
             pbar.set_postfix({"loss": f"{loss_for_log:.4f}", "nan": nan_loss_count})
             continue
 
+        # §2.1/2.7 — check finite loss for spike detection (NaN already filtered above).
+        if slog is not None:
+            slog.check_loss(loss_for_log, batch_idx, epoch)
+
         # Accumulate per-eye loss for the upcoming log line (finite batches only).
         _run_main  += main_loss.item()
         _run_gnn_a += loss_gnn_a.item()
@@ -716,6 +741,12 @@ def train_one_epoch(
         _run_fus_a += loss_fus_a.item()
         _run_ph2_a += loss_phase2_a.item()
         _run_n     += 1
+
+        # Epoch-level accumulation for structured logger (full epoch averages).
+        _epoch_main_sum += main_loss.item()
+        _epoch_aux_sum  += (loss_gnn_a + loss_tf_a + loss_fus_a).item()
+        _epoch_ph2_sum  += loss_phase2_a.item()
+        _epoch_n        += 1
 
         loss.backward()
 
@@ -789,7 +820,32 @@ def train_one_epoch(
                         if vpct > 0.90:
                             logger.info(f"  VRAM high: {_vram_str()} ({vpct:.1%} reserved)")
 
+                    if slog is not None:
+                        _gs_total, _gs_max_layer, _gs_zeros = compute_grad_stats(model)
+                        _last_grad_norm_total = _gs_total
+                        _last_grad_max_layer  = _gs_max_layer
+                        _last_grad_zero_count = _gs_zeros
+                        slog.check_grad_norm(_gs_total, optimizer_step, epoch)
+                        slog.check_vram(optimizer_step, epoch)
+                        _lr_step   = optimizer.param_groups[0]["lr"]
+                        _vram_step = (torch.cuda.memory_allocated() / 1024**2) if device == "cuda" else 0.0
+                        slog.log_step({
+                            "step":            optimizer_step,
+                            "epoch":           epoch,
+                            "loss":            loss_for_log,
+                            "main_loss":       main_loss.item(),
+                            "aux_loss":        (loss_gnn_a + loss_tf_a + loss_fus_a).item(),
+                            "phase2_loss":     loss_phase2_a.item(),
+                            "grad_norm_total": _gs_total,
+                            "gnn_share":       last_gnn_share,
+                            "lr":              _lr_step,
+                            "vram_mb":         _vram_step,
+                        })
+
                 optimizer.step()
+                if slog is not None and optimizer_step % 50 == 0:
+                    slog.check_parameters(model, optimizer_step, epoch)
+                    slog.check_adam_state(optimizer, optimizer_step, epoch)
                 scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
@@ -799,7 +855,12 @@ def train_one_epoch(
     n_batches = len(loader)
     if n_batches == 0:
         logger.warning("Empty train loader — returning 0.0 loss")
-        return 0.0, 0, 0.0
+        return {
+            "avg_loss": 0.0, "nan_batch_count": 0, "last_gnn_share": 0.0,
+            "epoch_main_loss": 0.0, "epoch_aux_loss": 0.0, "epoch_ph2_loss": 0.0,
+            "last_grad_norm_total": 0.0, "grad_norm_max_layer": ("", 0.0),
+            "loss_spike_count": 0, "grad_zero_count": 0,
+        }
 
     if nan_loss_count > 0:
         _nan_rate = nan_loss_count / max(1, n_batches)
@@ -814,8 +875,26 @@ def train_one_epoch(
                 "Check LR, BF16 overflow, and data quality. "
                 "Restart from the last clean checkpoint, NOT the current one."
             )
+            if slog is not None:
+                slog.alert(KILL,
+                    f"[A38] NaN rate {_nan_rate:.1%} > 0.5% — aborting training.",
+                    {"nan_rate": _nan_rate, "nan_count": nan_loss_count, "n_batches": n_batches},
+                )
 
-    return total_loss / max(1, n_batches - nan_loss_count), nan_loss_count, last_gnn_share
+    _n_valid     = max(1, n_batches - nan_loss_count)
+    _loss_spikes = slog._loss_spike_count if slog is not None else 0
+    return {
+        "avg_loss":             total_loss / _n_valid,
+        "nan_batch_count":      nan_loss_count,
+        "last_gnn_share":       last_gnn_share,
+        "epoch_main_loss":      _epoch_main_sum / max(1, _epoch_n),
+        "epoch_aux_loss":       _epoch_aux_sum  / max(1, _epoch_n),
+        "epoch_ph2_loss":       _epoch_ph2_sum  / max(1, _epoch_n),
+        "last_grad_norm_total": _last_grad_norm_total,
+        "grad_norm_max_layer":  _last_grad_max_layer,
+        "loss_spike_count":     _loss_spikes,
+        "grad_zero_count":      _last_grad_zero_count,
+    }
 
 
 def _grad_norm(module: nn.Module) -> float:
@@ -1502,6 +1581,7 @@ def train(config: TrainConfig) -> dict:
         for epoch in range(start_epoch, config.epochs + 1):
             final_epoch = epoch
             logger.info(f"\n{'='*60}\nEpoch {epoch}/{config.epochs}\n{'='*60}")
+            _slog.reset_epoch_counters()
 
             # Inform the model of the current epoch so it can apply the prefix
             # warmup suppression (gnn_prefix_k > 0 only; no-op otherwise).
@@ -1569,25 +1649,34 @@ def train(config: TrainConfig) -> dict:
                         break
 
             _epoch_t0 = time.perf_counter()
-            train_loss, nan_batch_count, last_gnn_share = train_one_epoch(
-                model=model,
-                loader=train_loader,
-                optimizer=optimizer,
-                loss_fn=loss_fn,
-                aux_loss_fn=aux_loss_fn,
-                scheduler=scheduler,
-                device=device,
-                grad_clip=config.grad_clip,
-                log_interval=_auto_log_interval,
-                use_amp=config.use_amp,
-                aux_loss_weight=effective_aux_weight,
-                gradient_accumulation_steps=accum_steps,
-                label_smoothing=config.label_smoothing,
-                class_eps=_class_eps,
-                dos_loss_weight=config.dos_loss_weight,
-                jk_entropy_reg_lambda=config.jk_entropy_reg_lambda,
-                aux_phase2_loss_weight=config.aux_phase2_loss_weight,
-            )
+            try:
+                _epoch_stats = train_one_epoch(
+                    model=model,
+                    loader=train_loader,
+                    optimizer=optimizer,
+                    loss_fn=loss_fn,
+                    aux_loss_fn=aux_loss_fn,
+                    scheduler=scheduler,
+                    device=device,
+                    grad_clip=config.grad_clip,
+                    log_interval=_auto_log_interval,
+                    use_amp=config.use_amp,
+                    aux_loss_weight=effective_aux_weight,
+                    gradient_accumulation_steps=accum_steps,
+                    label_smoothing=config.label_smoothing,
+                    class_eps=_class_eps,
+                    dos_loss_weight=config.dos_loss_weight,
+                    jk_entropy_reg_lambda=config.jk_entropy_reg_lambda,
+                    aux_phase2_loss_weight=config.aux_phase2_loss_weight,
+                    slog=_slog,
+                    epoch=epoch,
+                )
+            except TrainingAbortError:
+                _slog.close()
+                raise
+            train_loss      = _epoch_stats["avg_loss"]
+            nan_batch_count = _epoch_stats["nan_batch_count"]
+            last_gnn_share  = _epoch_stats["last_gnn_share"]
 
             # [A37] Threshold sweep every threshold_tune_interval epochs + always at the final epoch.
             # Between sweeps, reuse cached thresholds to save the 19×C eval cost.
@@ -1794,26 +1883,38 @@ def train(config: TrainConfig) -> dict:
                 _lr_now = optimizer.param_groups[0]["lr"]
                 _per_f1_all = {n: val_metrics.get(f"f1_{n}", 0.0) for n in _cn}
 
+                # Compute prediction entropy from val probabilities (binary entropy).
+                _pred_entropy = 0.0
+                if _y_probs is not None:
+                    _p = np.clip(_y_probs, 1e-7, 1 - 1e-7)
+                    _pred_entropy = float(np.mean(-_p * np.log(_p) - (1 - _p) * np.log(1 - _p)))
+
+                # Compute val label distribution from y_true collected during evaluate().
+                _label_dist_val = (
+                    label_dist_from_tensor(torch.from_numpy(_y_true.astype(int)), _cn)
+                    if _y_true is not None else {}
+                )
+
                 _summary = _slog.build_epoch_summary(
                     epoch              = epoch,
                     train_loss         = train_loss,
                     val_loss           = None,
-                    main_loss          = train_loss,
-                    aux_loss           = 0.0,
+                    main_loss          = _epoch_stats["epoch_main_loss"],
+                    aux_loss           = _epoch_stats["epoch_aux_loss"],
                     total_loss         = train_loss,
                     lr                 = _lr_now,
-                    grad_norm_total    = last_gnn_share,
-                    grad_norm_max_layer = ("gnn", last_gnn_share),
+                    grad_norm_total    = _epoch_stats["last_grad_norm_total"],
+                    grad_norm_max_layer = _epoch_stats["grad_norm_max_layer"],
                     param_nan_count    = nan_batch_count,
                     grad_nan_count     = 0,
                     vram_peak_mb       = _vram_peak,
                     vram_current_mb    = _vram_cur,
                     label_dist_train   = {},
-                    label_dist_val     = {},
+                    label_dist_val     = _label_dist_val,
                     aux_weight_norm    = _aux_norms.get("aux_weight_norm", 0.0),
                     aux_bias_norm      = _aux_norms.get("aux_bias_norm",   0.0),
                     jk_weight_entropy  = _jk_ent,
-                    prediction_entropy = 0.0,
+                    prediction_entropy = _pred_entropy,
                     per_class_f1       = _per_f1_all,
                     auc_metrics        = _auc_metrics,
                     brier_metrics      = _brier_metrics,
@@ -1824,8 +1925,8 @@ def train(config: TrainConfig) -> dict:
                     epoch_duration_sec = _epoch_elapsed,
                     steps_per_epoch    = steps_per_epoch,
                     gpu_util_mean_pct  = 0.0,
-                    loss_spike_count   = 0,
-                    grad_zero_count    = 0,
+                    loss_spike_count   = _epoch_stats["loss_spike_count"],
+                    grad_zero_count    = _epoch_stats["grad_zero_count"],
                 )
                 _slog.log_epoch(_summary)
                 _slog.check_vram(step=0, epoch=epoch)
