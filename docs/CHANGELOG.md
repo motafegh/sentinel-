@@ -1807,3 +1807,43 @@ Per-epoch threshold sweep (`tune_thresholds=True` hardcoded) was running 19 thre
 - `--log-dir` added to `scripts/train.py`
 
 **Gate 4.6:** Three JSONL files created at logger init. Data integrity hash and archive verification written before epoch 1. Both pending runtime verification at Run 5 launch.
+
+## 31. Run 5 Pre-Flight — Phase 5 Training Interventions & CLI Hardening (2026-06-02)
+
+**Files:** `ml/scripts/train.py`, `ml/src/training/trainer.py`, `ml/scripts/vram_gate_test.py` (new)
+**Commit:** 4af3761
+**Plan ref:** Phase 5 of `SENTINEL-Run5-Actionable Implementation Plan.md`
+
+### 5.1 — Verified aux_phase2_loss_weight Propagation
+
+Confirmed end-to-end chain: `TrainConfig.aux_phase2_loss_weight = 0.10` → call site `trainer.py:1567` passes `aux_phase2_loss_weight=config.aux_phase2_loss_weight` → `train_one_epoch()` parameter (default 0.0 in signature, always overridden). Phase 2 embeddings flow through `aux_head_phase2` → weighted BCE → summed into total loss at `trainer.py:664`. No stuck 0.0 default at runtime.
+
+### 5.3 — Size-Stratified Timestamp F1 in evaluate()
+
+`evaluate()` now collects per-sample node counts during the validation loop via `torch.bincount(graphs.batch)`. After evaluation, computes Timestamp F1 separately for three strata (EXP-L7 boundaries):
+- `f1_Timestamp_small` — contracts with < 100 nodes
+- `f1_Timestamp_medium` — contracts with 100–300 nodes
+- `f1_Timestamp_large` — contracts with > 300 nodes
+- `n_Timestamp_{stratum}` — sample count per stratum (for context)
+
+Reports are logged to MLflow alongside standard per-class F1. Zero training code risk (evaluation path only). Option B (adversarial size regularizer) deferred to Run 6.
+
+### 5.4 — --fusion-max-nodes CLI Arg + VRAM Gate Script
+
+**`scripts/train.py`:** Added `--fusion-max-nodes` (default 1024; `dest="fusion_max_nodes"`) wired to `TrainConfig.fusion_max_nodes`. Raise to 2048 via CLI only after Gate 5.3 passes and Phase 7 re-extraction is complete. `--weighted-sampler` choices extended to include `"timestamp-size"` (was missing from argparse, causing argparse validation failure at CLI level).
+
+**`ml/scripts/vram_gate_test.py` (new file):** Realistic worst-case VRAM gate for IMP-D1 (`max_nodes=2048`). Builds full SENTINEL model, generates synthetic batch at `nodes_per_graph=max_nodes` (worst case), runs complete training step: forward + backward + `optimizer.step` + AMP scaler + grad clip. Decision thresholds for RTX 3070 8 GB:
+- PASS: peak < 7,500 MB → proceed with `max_nodes=2048`
+- WARN: 7,500–8,000 MB → reduce `batch_size` to 8
+- FAIL: > 8,000 MB → fall back to `max_nodes=1536`
+
+Usage: `TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/vram_gate_test.py [--max-nodes N] [--batch-size B]`
+
+**Gate 5.3:** Pending runtime execution before Phase 7.
+
+### 5.5 — NF-5: Auxiliary Loss CLI Args
+
+Three args added to `scripts/train.py`:
+- `--aux-phase2-loss-weight` (default 0.10) — wired to `TrainConfig.aux_phase2_loss_weight`; enables CEI Phase 2 auxiliary loss for Run 5
+- `--aux-cei-loss-weight` (default 0.0) — Phase 7 placeholder; inert until Gate 7.5 passes and `aux_cei_loss_weight` is wired into `trainer.py`
+- `--jk-entropy-reg-lambda` (default 0.005) — already existed from Phase 4; documented here for completeness
