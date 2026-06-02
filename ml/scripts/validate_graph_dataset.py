@@ -9,17 +9,15 @@ Checks performed (by default):
   4. x.shape[1] == NODE_FEATURE_DIM  (feature dimension matches schema)
 
 Additional checks enabled by flags (used after re-extraction):
-  --check-edge-types N   verify edge_attr max < N  (use 8 for v5/v6 schema — REVERSE_CONTAINS=7 added)
+  --check-edge-types N   verify edge_attr max < N  (default: NUM_EDGE_TYPES=11 for v8 schema)
   --check-contains-edges verify at least one CONTAINS (id=5) edge exists per file
   --check-control-flow   verify at least one CONTROL_FLOW (id=6) edge exists per file
   --check-block-globals  verify uses_block_globals (feat[2]) fires for at least some
                          Timestamp-labeled contracts (catches BUG-6 cascade failures)
 
 Usage:
-    # v7 validation after BUG-6 fix re-extraction (schema v5, 12 node features, 8 edge types)
+    # Gate 7.1 — v9 re-extraction validation (v8 schema: 11 node features, 11 edge types)
     python ml/scripts/validate_graph_dataset.py \\
-      --check-dim 12 \\
-      --check-edge-types 8 \\
       --check-contains-edges \\
       --check-control-flow \\
       --check-block-globals
@@ -241,7 +239,7 @@ def main() -> None:
         help=(
             f"Expected node feature dimension x.shape[1] "
             f"(default: {NODE_FEATURE_DIM} from graph_schema.NODE_FEATURE_DIM). "
-            "Pass 12 for v5 schema (was 8 in v4)."
+            "Rarely needed — default reads from graph_schema.NODE_FEATURE_DIM."
         ),
     )
     parser.add_argument(
@@ -252,7 +250,7 @@ def main() -> None:
         help=(
             f"Expected upper bound on edge type IDs; all IDs must be in [0, N). "
             f"(default: {NUM_EDGE_TYPES} from graph_schema.NUM_EDGE_TYPES). "
-            "Pass 7 after v5 re-extraction."
+            "Rarely needed — default reads from graph_schema.NUM_EDGE_TYPES."
         ),
     )
     parser.add_argument(
@@ -260,7 +258,7 @@ def main() -> None:
         action="store_true",
         help=(
             "Verify every file has at least one CONTAINS edge (id=5, "
-            "function→cfg_node). Requires v5 graph schema."
+            "function→cfg_node). Present in v8 schema."
         ),
     )
     parser.add_argument(
@@ -268,7 +266,7 @@ def main() -> None:
         action="store_true",
         help=(
             "Verify every file has at least one CONTROL_FLOW edge (id=6, "
-            "cfg_node→cfg_node). Requires v5 graph schema."
+            "cfg_node→cfg_node). Present in v8 schema."
         ),
     )
     parser.add_argument(

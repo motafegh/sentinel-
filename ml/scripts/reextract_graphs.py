@@ -47,9 +47,8 @@ USAGE
 
 AFTER THIS SCRIPT
 ─────────────────
-  python ml/scripts/validate_graph_dataset.py --check-dim 12 --check-edge-types 8
+  python ml/scripts/validate_graph_dataset.py --check-contains-edges --check-control-flow --check-block-globals
   python ml/scripts/create_cache.py
-  Then: run Timestamp label relabeling to fix any label drift from contract-selection change.
 """
 
 from __future__ import annotations
@@ -361,7 +360,7 @@ def main() -> None:
     gate_ok = ghost_pct < 1.0
     if gate_ok:
         logger.info(f"Gate PASS: ghost rate {ghost_pct:.1f}% < 1%")
-        logger.info("Next: python ml/scripts/validate_graph_dataset.py --check-dim 12 --check-edge-types 8")
+        logger.info("Next: python ml/scripts/validate_graph_dataset.py --check-contains-edges --check-control-flow --check-block-globals")
         logger.info("Then: python ml/scripts/create_cache.py")
         logger.info("Then: run Timestamp label relabeling to fix any label drift from contract-selection change")
     else:
@@ -372,7 +371,7 @@ def main() -> None:
         )
         logger.error(
             "Delete ghosts before training: "
-            "python ml/scripts/validate_graph_dataset.py --check-dim 12 --delete-ghosts"
+            "python ml/scripts/validate_graph_dataset.py --delete-ghosts"
         )
         sys.exit(1)
 
