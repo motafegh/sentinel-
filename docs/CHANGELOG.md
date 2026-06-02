@@ -1847,3 +1847,64 @@ Three args added to `scripts/train.py`:
 - `--aux-phase2-loss-weight` (default 0.10) — wired to `TrainConfig.aux_phase2_loss_weight`; enables CEI Phase 2 auxiliary loss for Run 5
 - `--aux-cei-loss-weight` (default 0.0) — Phase 7 placeholder; inert until Gate 7.5 passes and `aux_cei_loss_weight` is wired into `trainer.py`
 - `--jk-entropy-reg-lambda` (default 0.005) — already existed from Phase 4; documented here for completeness
+
+## 32. Run 5 Pre-Flight — Phase 4.6 Training Log Spec Gap Fixes (2026-06-02)
+
+**Files:** `ml/src/training/training_logger.py`, `ml/src/training/trainer.py`
+**Commits:** 9d9fc79, b0b37c1
+**Plan ref:** Phase 4.6 of `SENTINEL-Run5-Actionable Implementation Plan.md`
+
+Audit of `SENTINEL-Run5-Training-Log-Specification.md` against the existing implementation revealed ~60% of specified checks and calls were either stub (`pass`) or never wired into the training loop. All gaps fixed.
+
+### training_logger.py — New / Fixed
+
+- **`_loss_history` + `_loss_spike_count`** added to `__init__` — rolling deque (maxlen=100) and per-epoch spike counter required for §2.7 spike detection.
+- **`check_loss()` spike detection:** replaced `pass` stub with actual `>5× rolling_mean` logic. Appends to `_loss_history` on every finite loss; increments `_loss_spike_count` and emits WARN alert on spike.
+- **`check_inputs(graphs_x, edge_index, step, epoch)`** (new, §1.3/1.7): validates `graphs.x` feature dim == 11 (WARN), checks `edge_index.min() >= 0` (WARN_SKIP → skip batch).
+- **`reset_epoch_counters()`** (new): resets `_loss_spike_count`; must be called at the start of each epoch.
+- **`log_calibration(temperatures, ece_pre, ece_post, epoch)`** (new, §5): writes temperature scaling result to `epoch_summary.jsonl`.
+- **`log_graph_stats(edge_type_counts, cei_label_dist, epoch)`** (new, §7): writes graph-level dataset statistics to `epoch_summary.jsonl`.
+
+### trainer.py — Wiring Completed
+
+**`train_one_epoch` signature + return type:**
+- Added `slog: StructuredLogger | None = None` and `epoch: int = 0` params.
+- Return type changed from `tuple[float, int, float]` to `dict` with keys: `avg_loss`, `nan_batch_count`, `last_gnn_share`, `epoch_main_loss`, `epoch_aux_loss`, `epoch_ph2_loss`, `last_grad_norm_total`, `grad_norm_max_layer`, `loss_spike_count`, `grad_zero_count`.
+
+**Epoch-level accumulators added:** `_epoch_main_sum`, `_epoch_aux_sum`, `_epoch_ph2_sum`, `_epoch_n`, `_last_grad_norm_total`, `_last_grad_max_layer`, `_last_grad_zero_count`.
+
+**Per-batch (pre-forward):** `slog.check_batch()` + `slog.check_inputs()` → `continue` if either returns True.
+
+**Per-batch (finite loss path):**
+- `slog.check_loss()` called for spike detection.
+- `_epoch_main_sum`, `_epoch_aux_sum`, `_epoch_ph2_sum` accumulated from true loss components.
+
+**At `log_interval` (inside `should_log` block):**
+- `compute_grad_stats(model)` called — produces true total grad norm, (layer_name, norm) max, zero-grad count.
+- Stored in `_last_grad_norm_total`, `_last_grad_max_layer`, `_last_grad_zero_count`.
+- `slog.check_grad_norm()`, `slog.check_vram()`, `slog.log_step()` all called with real metrics.
+
+**Every 50 optimizer steps:** `slog.check_parameters()` + `slog.check_adam_state()` wired.
+
+**NaN-rate >0.5%:** `slog.alert(KILL, …)` raises `TrainingAbortError`. Epoch loop catches it, calls `_slog.close()`, re-raises.
+
+**Epoch loop (`train()`):**
+- `_slog.reset_epoch_counters()` called at start of every epoch.
+- `train_one_epoch` wrapped in `try/except TrainingAbortError`.
+- `slog=_slog, epoch=epoch` passed at call site.
+- Result dict unpacked: `train_loss`, `nan_batch_count`, `last_gnn_share` extracted; full dict stored as `_epoch_stats`.
+
+**`build_epoch_summary()` — 9 wrong fields corrected:**
+| Field | Was | Now |
+|-------|-----|-----|
+| `grad_norm_total` | `last_gnn_share` (ratio) | `_epoch_stats["last_grad_norm_total"]` (true norm) |
+| `grad_norm_max_layer` | `("gnn", last_gnn_share)` | `_epoch_stats["grad_norm_max_layer"]` (true layer) |
+| `main_loss` | `train_loss` (same as total) | `_epoch_stats["epoch_main_loss"]` |
+| `aux_loss` | `0.0` (hardcoded) | `_epoch_stats["epoch_aux_loss"]` |
+| `label_dist_val` | `{}` (empty) | computed from `_y_true` via `label_dist_from_tensor` |
+| `prediction_entropy` | `0.0` (hardcoded) | binary entropy of `_y_probs`: `mean(-p·log p-(1-p)·log(1-p))` |
+| `loss_spike_count` | `0` (hardcoded) | `_epoch_stats["loss_spike_count"]` |
+| `grad_zero_count` | `0` (hardcoded) | `_epoch_stats["grad_zero_count"]` |
+| `total_loss` | same as `main_loss` | `train_loss` (total including aux scaling) |
+
+**Gate 4.6:** Still pending runtime verification at Run 5 launch — three JSONL files created, data hash and archive verification written, no KILL alerts in epoch 0.
