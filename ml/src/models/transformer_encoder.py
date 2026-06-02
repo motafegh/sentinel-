@@ -139,14 +139,17 @@ class TransformerEncoder(nn.Module):
                 torch_dtype=torch.bfloat16,
             )
             logger.info("TransformerEncoder — Flash Attention 2 active")
-        except ImportError:
-            # [A28] Narrow to ImportError only. ValueError means a corrupted config.json or
-            # missing model file — that is a real error and must propagate, not fall back silently.
+        except (ImportError, ValueError) as e:
+            # [A28] Narrow fallback: re-raise ValueError unless it's the FA2 "not supported"
+            # message (transformers raises ValueError, not ImportError, for unsupported models).
+            # Corrupted config.json / missing model file produce different ValueError messages.
+            if isinstance(e, ValueError) and "flash attention" not in str(e).lower():
+                raise
             self.bert = AutoModel.from_pretrained(
                 "microsoft/graphcodebert-base",
                 attn_implementation="sdpa",
             )
-            logger.info("TransformerEncoder — SDPA active (flash-attn unavailable)")
+            logger.info("TransformerEncoder — SDPA active (flash-attn / FA2 unsupported)")
         finally:
             torch.set_default_dtype(_prev_default_dtype)
 
