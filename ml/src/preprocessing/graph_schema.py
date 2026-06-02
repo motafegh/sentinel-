@@ -146,7 +146,7 @@ try:
     if _version < (0, 9, 3):
         raise RuntimeError(
             f"slither-analyzer {_ver_str} is too old. "
-            "v5 requires >=0.9.3 for NodeType.STARTUNCHECKED support. "
+            "SENTINEL requires >=0.9.3 for NodeType.STARTUNCHECKED support. "
             "Upgrade: pip install 'slither-analyzer>=0.9.3,<0.11'"
         )
 except importlib.metadata.PackageNotFoundError:
@@ -214,7 +214,7 @@ are the v8 ICFG-Lite additions — stored on disk in v8 graphs.
 ID 7 (REVERSE_CONTAINS) is RUNTIME-ONLY — generated inside GNNEncoder Phase 3
 by reversing CONTAINS(5) edges; NEVER written to .pt files on disk.
 
-GNNEncoder embeds all 10 IDs via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim).
+GNNEncoder embeds all 11 IDs via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim).
 
 v2 additions (ids 5 and 6):
   CONTAINS     — function node → its CFG_NODE children (Phase 1).
@@ -402,7 +402,7 @@ into each GATConv layer.
 GNNEncoder uses three phases, each seeing a different subset of edge types:
   Phase 1 (Layers 1+2): types 0–5 (structural + CONTAINS forward)
   Phase 2 (Layers 3–5): types 6,8,9,10 (CONTROL_FLOW + CALL_ENTRY + RETURN_TO + DEF_USE; directed)
-  Phase 3 (Layers 6+7): type  7  REVERSE_CONTAINS (CFG_NODE → function; runtime-only)
+  Phase 3 (Layers 6+7+8): type 7  REVERSE_CONTAINS (CFG_NODE → function; runtime-only) + type 5 CONTAINS down (conv4c)
 
 Shape: graph.edge_attr must be a 1-D int64 tensor of shape [E] (PyG
 convention). Pre-refactor .pt files produced by the old ast_extractor.py
@@ -412,7 +412,7 @@ Re-extract with: python ml/src/data_extraction/ast_extractor.py --force
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Feature name registry (v2 — 12 dimensions)
+# Feature name registry (v8 — 11 dimensions)
 # ─────────────────────────────────────────────────────────────────────────────
 
 FEATURE_NAMES: tuple[str, ...] = (

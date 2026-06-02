@@ -31,6 +31,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM
+
 if TYPE_CHECKING:
     from ml.src.models.sentinel_model import SentinelModel
 
@@ -199,9 +201,9 @@ class StructuredLogger:
     ) -> bool:
         """§1.3/1.7 — feature dim and edge_index sanity checks. Returns True if batch should be skipped."""
         if graphs_x is not None:
-            if graphs_x.shape[-1] != 11:
+            if graphs_x.shape[-1] != NODE_FEATURE_DIM:
                 self._write_alert(WARN,
-                    f"[1.3] graphs.x feature dim={graphs_x.shape[-1]} != 11 at step={step} epoch={epoch}.",
+                    f"[1.3] graphs.x feature dim={graphs_x.shape[-1]} != {NODE_FEATURE_DIM} at step={step} epoch={epoch}.",
                     {"step": step, "epoch": epoch, "feature_dim": int(graphs_x.shape[-1])},
                 )
         if edge_index is not None and edge_index.numel() > 0:
@@ -294,18 +296,20 @@ class StructuredLogger:
     # ------------------------------------------------------------------
 
     def check_aux_head(self, model: "SentinelModel", epoch: int) -> dict[str, float]:
-        """§4.3/4.4 + §9.3.3 — aux_head_phase2 weight/bias norms."""
+        """§4.3/4.4 + §9.3.3 — aux_phase2 final-Linear weight/bias norms."""
         result: dict[str, float] = {}
-        head = getattr(model, "aux_head_phase2", None)
+        head = getattr(model, "aux_phase2", None)
         if head is None:
             return result
-        w_norm = head.weight.data.norm().item()
-        b_norm = head.bias.data.norm().item() if head.bias is not None else 0.0
+        # aux_phase2 is nn.Sequential — inspect the final Linear layer
+        final_linear = head[-1]
+        w_norm = final_linear.weight.data.norm().item()
+        b_norm = final_linear.bias.data.norm().item() if final_linear.bias is not None else 0.0
         result["aux_weight_norm"] = w_norm
         result["aux_bias_norm"]   = b_norm
         if w_norm < self.AUX_HEAD_NORM_MIN:
             self._write_alert(WARN,
-                f"[9.3.3] aux_head_phase2 weight norm={w_norm:.2e} < {self.AUX_HEAD_NORM_MIN:.0e} at epoch={epoch}. "
+                f"[9.3.3] aux_phase2 final-Linear weight norm={w_norm:.2e} < {self.AUX_HEAD_NORM_MIN:.0e} at epoch={epoch}. "
                 "Aux head may be disconnected from gradient flow.",
                 {"epoch": epoch, "aux_weight_norm": w_norm},
             )

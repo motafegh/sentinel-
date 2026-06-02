@@ -4,7 +4,7 @@ sentinel_model.py — SENTINEL Three-Eye Model (v8 architecture)
 v8 ARCHITECTURE
 ───────────────
 Three-eye classifier: three independent 128-dim vectors concatenated to [B, 384].
-GNN is a three-phase, 7-layer GAT (2+3+2) that encodes execution order via
+GNN is a three-phase, 8-layer GAT (2+3+3) that encodes execution order via
 CFG CONTROL_FLOW edges (3 hops: CEI + ENTRY pattern) plus CALL_ENTRY(8)/RETURN_TO(9)
 ICFG-Lite edges, and propagates back up via reversed CONTAINS edges (Phase 3).
 NODE_FEATURE_DIM=11, NUM_EDGE_TYPES=11.
@@ -72,7 +72,7 @@ from ml.src.preprocessing.graph_schema import NODE_TYPES
 # automatically propagates to the model's denormalisation without manual edits.
 # node feature[0] is stored as float(type_id) / _MAX_TYPE_ID in the extractor;
 # multiply back by _MAX_TYPE_ID and round to recover the integer type_id.
-_MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 12.0 for v2 schema (ids 0–12)
+_MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 12.0 for v8 schema (ids 0–12)
 # A32: mirror of A3 assert in graph_extractor.py — both files must agree on the
 # normalization divisor.  Fires at import so any NODE_TYPES addition is caught
 # before it silently misaligns the model's type-id recovery with the stored graphs.
@@ -134,7 +134,7 @@ class SentinelModel(nn.Module):
 
         --- GNN hyperparameters ---
         gnn_hidden_dim:       GNN node embedding width (default: 128).
-        gnn_num_layers:       Number of GAT layers (default: 7; 2+3+2 phases, v7).
+        gnn_num_layers:       Number of GAT layers (default: 8; 2+3+3 phases, v8).
         gnn_heads:            GAT attention heads for Phase 1 (default: 8).
         gnn_dropout:          GNN attention + node dropout (default: 0.2).
         use_edge_attr:        Feed edge type embeddings into GATConv (default: True).

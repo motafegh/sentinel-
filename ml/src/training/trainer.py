@@ -1,5 +1,5 @@
 """
-trainer.py — SENTINEL Training Loop (v7 — Three-Eye GNN+CodeBERT+LoRA)
+trainer.py — SENTINEL Training Loop (v8 — Three-Eye GNN+CodeBERT+LoRA)
 With tqdm progress bars, safe resume, offline mode, and EARLY STOPPING.
 
 SPEED OPTIMISATIONS APPLIED (vs original):
@@ -181,7 +181,7 @@ class TrainConfig:
     tokens_dir:      str = "ml/data/tokens_windowed"
     splits_dir:      str = "ml/data/splits/deduped"
     checkpoint_dir:  str = "ml/checkpoints"
-    checkpoint_name: str = "multilabel-v5-fresh_best.pt"
+    checkpoint_name: str = "sentinel_best.pt"
 
     # --- Model ---
     num_classes:       int   = NUM_CLASSES
@@ -191,7 +191,7 @@ class TrainConfig:
     # At 1024 the 227 contracts >1024 nodes are truncated in fusion attention.
     fusion_max_nodes:  int   = 1024
 
-    # --- GNN architecture (v6) ---
+    # --- GNN architecture (v8) ---
     gnn_hidden_dim:   int   = 256
     gnn_layers:       int   = 8
     gnn_heads:        int   = 8
@@ -204,7 +204,7 @@ class TrainConfig:
     # Phase 2 ablation: list of edge type IDs in Phase 2 cfg_mask; None = all v8 types
     gnn_phase2_edge_types: list[int]|None = None
 
-    # --- LoRA architecture (v5) ---
+    # --- LoRA architecture (v8) ---
     lora_r:               int        = 16
     lora_alpha:           int        = 32
     lora_dropout:         float      = 0.1
@@ -214,7 +214,7 @@ class TrainConfig:
     label_csv: str = "ml/data/processed/multilabel_index_cleaned.csv"
 
     # --- Training ---
-    epochs:              int   = 100         # v6: 100 epochs (was 60); more data + harder loss need more steps
+    epochs:              int   = 100         # 100 epochs; increased from v6's 60 for more data + harder ASL loss
     batch_size:          int   = 8           # Fix #28: 8 fits 8 GB GPU with MAX_WINDOWS=4 (16 saturated 7.9/8.0 GB)
     lr:                  float = 2e-4
     weight_decay:        float = 1e-2
@@ -277,9 +277,9 @@ class TrainConfig:
     use_compile:         bool = True
 
     # --- Loss function ---
-    # v4/v5 used BCE. ASL (Ridnik et al. ICCV 2021) is recommended for v6:
-    # gamma_neg=4 down-weights easy negatives (vast majority of 44K×10 cells),
-    # freeing gradient budget for rare positives like DoS (377 train samples).
+    # ASL (Ridnik et al. ICCV 2021): gamma_neg=4 down-weights easy negatives
+    # (vast majority of 44K×10 cells), freeing gradient budget for rare positives
+    # like DoS (377 train samples). Default since v6; BCE was used before that.
     loss_fn:        str   = "asl"
     focal_gamma:    float = 2.0
     focal_alpha:    float = 0.25
@@ -353,7 +353,7 @@ class TrainConfig:
 
     # --- MLflow ---
     experiment_name: str = "sentinel-multilabel"
-    run_name:        str = "multilabel-v5-fresh"
+    run_name:        str = "sentinel-run"
 
     # --- Device ---
     device: str = field(default_factory=lambda: "cuda" if torch.cuda.is_available() else "cpu")
