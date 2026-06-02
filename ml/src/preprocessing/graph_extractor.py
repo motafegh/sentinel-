@@ -890,6 +890,70 @@ def _add_def_use_edges(
                         edge_types.append(_DEF_USE)
 
 
+def _compute_has_cei_path(
+    node_metadata: list,
+    edge_index:    "torch.Tensor",
+    edge_attr:     "torch.Tensor",
+    max_hops:      int = 8,
+) -> int:
+    """CEI labeler (Phase 7 / Interp-2): detect CFG_NODE_CALL → CFG_NODE_WRITE within max_hops.
+
+    A Checks-Effects-Interactions violation exists when a state-variable write
+    (CFG_NODE_WRITE) is reachable from an external-call site (CFG_NODE_CALL)
+    by following CONTROL_FLOW edges only.  This is the structural prerequisite
+    for reentrancy: external call runs first, callback can trigger effects later.
+
+    Returns 1 if at least one CFG_NODE_CALL can reach a CFG_NODE_WRITE within
+    max_hops CONTROL_FLOW hops; 0 otherwise.  Only CONTROL_FLOW edges (type 6)
+    are traversed — CALL_ENTRY/RETURN_TO/DEF_USE are ignored so we stay
+    intra-function (not inter-procedural).
+
+    Called during graph assembly (Phase 7 re-extraction).  The result is
+    stored as graph.has_cei_path (int, 0 or 1) and used by aux_cei_loss
+    after Gate 7.5 validates label quality on v9 data.
+    """
+    from ml.src.preprocessing.graph_schema import EDGE_TYPES
+
+    _CF = EDGE_TYPES["CONTROL_FLOW"]  # 6
+
+    if edge_index.shape[1] == 0:
+        return 0
+
+    # Build adjacency list for CONTROL_FLOW edges only.
+    cf_mask   = (edge_attr == _CF)
+    cf_src    = edge_index[0][cf_mask].tolist()
+    cf_dst    = edge_index[1][cf_mask].tolist()
+    adj: dict[int, list[int]] = {}
+    for s, d in zip(cf_src, cf_dst):
+        adj.setdefault(s, []).append(d)
+
+    # Find CALL and WRITE node indices.
+    call_indices  = [i for i, m in enumerate(node_metadata) if m.get("type") == "CFG_NODE_CALL"]
+    write_set     = {i for i, m in enumerate(node_metadata) if m.get("type") == "CFG_NODE_WRITE"}
+
+    if not call_indices or not write_set:
+        return 0
+
+    # BFS from each CALL node; early-exit if a WRITE node is reached.
+    for start in call_indices:
+        frontier = [start]
+        visited  = {start}
+        for _ in range(max_hops):
+            next_frontier = []
+            for node in frontier:
+                for nb in adj.get(node, []):
+                    if nb in write_set:
+                        return 1
+                    if nb not in visited:
+                        visited.add(nb)
+                        next_frontier.append(nb)
+            frontier = next_frontier
+            if not frontier:
+                break
+
+    return 0
+
+
 def _build_node_features(obj: Any, type_id: int) -> list:
     """
     Compute the 11-dimensional feature vector (v7 schema) for one AST node.
@@ -1568,6 +1632,11 @@ def extract_contract_graph(
     graph = Data(x=x, edge_index=edge_index)
     if config.include_edge_attr:
         graph.edge_attr = edge_attr
+
+    # [Phase 7 / Interp-2] CEI path label — stored unconditionally so v9 cache
+    # always carries this field.  0 = no CEI violation detected; 1 = present.
+    # Activated in trainer.py only after Gate 7.5 passes (label quality check).
+    graph.has_cei_path = _compute_has_cei_path(node_metadata, edge_index, edge_attr)
 
     graph.node_metadata  = node_metadata
     graph.contract_name  = contract.name

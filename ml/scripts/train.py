@@ -72,7 +72,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--num-classes", type=int, default=10)
 
     # --- Label source ---
-    p.add_argument("--label-csv", default="ml/data/processed/multilabel_index_cleaned.csv")
+    p.add_argument("--label-csv", default="ml/data/processed/multilabel_index_cleaned_v9.csv",
+                   help="[Phase 7] v9-cleaned label CSV. Use multilabel_index_cleaned.csv for v8 reference runs.")
 
     # --- Training hyperparameters ---
     p.add_argument("--epochs",       type=int,   default=100)
@@ -107,11 +108,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--graphs-dir",      default="ml/data/graphs")
     p.add_argument("--tokens-dir",      default="ml/data/tokens_windowed",
                    help="Token .pt directory. Multi-window [W,512] tensors (v7 default).")
-    p.add_argument("--splits-dir",      default="ml/data/splits/deduped")
+    p.add_argument("--splits-dir",      default="ml/data/splits/v9_deduped",
+                   help="[Phase 7] v9 split directory. v8 splits archived to ml/data/archive/splits_v8_deduped/.")
     p.add_argument("--checkpoint-dir",  default="ml/checkpoints")
     p.add_argument("--checkpoint-name", default=None)
-    p.add_argument("--cache-path",      default="ml/data/cached_dataset_v8.pkl",
-                   help="RAM cache pickle (v8 — schema v8 graphs with CALL_ENTRY/RETURN_TO/DEF_USE).")
+    p.add_argument("--cache-path",      default="ml/data/cached_dataset_v9.pkl",
+                   help="[Phase 7] RAM cache pickle (v9 — re-extracted with all Phase 2 fixes + CEI labeler). "
+                        "Use --cache-path ml/data/cached_dataset_v8.pkl for v8 reference runs.")
     p.add_argument("--log-dir",         default=None,
                    help="[Phase 4.6] Directory for structured JSONL logs. Default: ml/logs/<run-name>.")
 

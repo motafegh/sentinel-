@@ -85,7 +85,7 @@ SOURCE_DIRS = [
 ]
 
 DEFAULT_CSV        = PROJECT_ROOT / "ml" / "data" / "processed" / "multilabel_index_deduped.csv"
-DEFAULT_GRAPHS     = PROJECT_ROOT / "ml" / "data" / "graphs"
+DEFAULT_GRAPHS     = PROJECT_ROOT / "ml" / "data" / "graphs"  # [Phase 7] v9 output dir (v8 archived)
 DEFAULT_CHECKPOINT = DEFAULT_GRAPHS / "reextract_checkpoint.json"
 CHECKPOINT_EVERY   = 1000   # flush checkpoint to disk every N completions
 
@@ -224,7 +224,12 @@ def _worker(args: Tuple[str, str, str]) -> Tuple[str, str, str]:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Parallel re-extraction of graph .pt files (v7 Phase 1 — BUG-6 fix re-extraction)",
+        description=(
+            "Parallel re-extraction of graph .pt files. "
+            "[Phase 7] Produces v9 graphs with all Phase 2 fixes (A3–A18, NF-1/2/7/10/11) "
+            "and CEI path labels (graph.has_cei_path) for reentrancy supervision. "
+            "Run archive_v8_data.py FIRST to preserve v8 artifacts."
+        ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument("--multilabel-csv",  type=Path,  default=DEFAULT_CSV)
