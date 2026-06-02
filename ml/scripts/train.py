@@ -72,8 +72,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--num-classes", type=int, default=10)
 
     # --- Label source ---
-    p.add_argument("--label-csv", default="ml/data/processed/multilabel_index_cleaned_v9.csv",
-                   help="[Phase 7] v9-cleaned label CSV. Use multilabel_index_cleaned.csv for v8 reference runs.")
+    p.add_argument("--label-csv", default="ml/data/processed/multilabel_index.csv",
+                   help="v9 label CSV.")
 
     # --- Training hyperparameters ---
     p.add_argument("--epochs",       type=int,   default=100)
