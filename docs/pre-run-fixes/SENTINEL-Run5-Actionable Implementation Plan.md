@@ -329,6 +329,18 @@ After all Phase 3 fixes are applied (forward pass structure has changed signific
 - [x] **Alert tiers (Spec §9):** KILL raises `TrainingAbortError`; WARN_SKIP returns skip flag; WARN logs only.
 - [x] **Wire logger into `trainer.py`:** `StructuredLogger` created at training start (after `mlflow.log_params`); `log_startup()` called before epoch loop; per-epoch summary + AUC/Brier/ECE computed and `log_epoch()` called; `close()` at training end. `_y_true`/`_y_probs` passed back from `evaluate()` for logger computations. `TrainConfig.log_dir` field added.
 - [x] **`scripts/train.py`:** `--log-dir` CLI arg wired to `TrainConfig.log_dir`.
+- [x] **Phase 4.6 spec gap fixes (2026-06-02, commit 9d9fc79):** All previously stub/unwired spec items implemented:
+  - `check_inputs()` added (§1.3 feature dim, §1.7 negative edge_index) — called per batch in `train_one_epoch`
+  - `reset_epoch_counters()` added — resets `_loss_spike_count`; called at epoch start in `train()` loop
+  - `check_loss()` spike detection: replaced `pass` stub with `>5× rolling_mean` logic using `_loss_history` deque
+  - `log_calibration()` + `log_graph_stats()` methods added (§5, §7) to epoch_summary stream
+  - `train_one_epoch` now passes `slog` + `epoch`; returns dict instead of 3-tuple
+  - Per-batch: `slog.check_batch()` + `slog.check_inputs()` skip logic wired
+  - Per-batch (finite path): `slog.check_loss()` called for spike detection
+  - At `log_interval`: `compute_grad_stats()` called for real grad norms; `slog.check_grad_norm()`, `slog.check_vram()`, `slog.log_step()` all wired
+  - Every 50 optimizer steps: `slog.check_parameters()` + `slog.check_adam_state()` wired
+  - NaN-rate >0.5%: `slog.alert(KILL, ...)` raises `TrainingAbortError`; epoch loop catches it, closes logger, re-raises
+  - `build_epoch_summary()`: 9 wrong fields fixed — real `grad_norm_total`, `grad_norm_max_layer`, `main_loss`, `aux_loss`, `label_dist_val` from y_true, `prediction_entropy` from binary entropy of y_probs, `loss_spike_count`, `grad_zero_count`
 
 **🚦 Gate 4.6 — LOGGER STARTUP VERIFICATION (blocks Run 5 launch)**
 - [ ] At Run 5 epoch 0 startup: `step_metrics.jsonl`, `epoch_summary.jsonl`, `alerts.jsonl` all created.
