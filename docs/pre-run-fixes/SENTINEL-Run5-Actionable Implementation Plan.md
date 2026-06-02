@@ -345,10 +345,10 @@ After all Phase 3 fixes are applied (forward pass structure has changed signific
 
 ### 5.1 — Intervention 1: Enable Phase 2 Auxiliary Loss (RC2)
 
-- [ ] **`TrainConfig`:** Confirm `aux_phase2_loss_weight = 0.10` is set (already in commit 9310046).
-- [ ] **`trainer.py` — `train_epoch()` signature:** Confirm `aux_phase2_loss_weight` is passed from `TrainConfig` to `train_epoch()`. The default value in `train_epoch()` must **not** remain at `0.0`.
-- [ ] Verify `aux_head_phase2` is connected: Phase 2 embeddings pass through `aux_head_phase2` → weighted BCE → summed into total loss.
-- [ ] Add per-epoch logging of `aux_head_phase2.weight.norm()` and `aux_head_phase2.bias.norm()` — if these stay at init values through ep5, the aux loss path has a connectivity bug.
+- [x] **`TrainConfig`:** Confirm `aux_phase2_loss_weight = 0.10` is set (already in commit 9310046).
+- [x] **`trainer.py` — `train_epoch()` signature:** Confirmed `aux_phase2_loss_weight=config.aux_phase2_loss_weight` at call site (line 1567) — default 0.0 in signature but always overridden by TrainConfig value.
+- [x] Verify `aux_head_phase2` connected: Phase 2 embeddings → `aux_head_phase2` → weighted BCE → summed into total loss at trainer.py:664.
+- [ ] Add per-epoch logging of `aux_head_phase2.weight.norm()` and `aux_head_phase2.bias.norm()` — handled by StructuredLogger `check_aux_head()` (Phase 4.6); verify at Run 5 epoch 1.
 
 **🚦 Gate 5.1 — AUX LOSS VERIFICATION (blocks Run 5 continuation)**
 - [ ] At Run 5 epoch 1: `aux_phase2_loss` is logged separately and is **non-zero**
@@ -372,27 +372,28 @@ After Phase 7 re-extraction, validate CEI labels on v9 data:
 
 ### 5.3 — Intervention 3: Timestamp Size Confound (Option A — Evaluation Only)
 
-- [ ] Implement **Option A** (zero code risk): size-stratified Timestamp evaluation — report Timestamp F1 separately for small (`total_nodes < 100`), medium (100–300), and large (`> 300`) contracts.
+- [x] **Option A implemented (commit 4af3761):** `evaluate()` collects `num_nodes` per sample via `bincount(graphs.batch)`; reports `f1_Timestamp_{small,medium,large}` and `n_Timestamp_{stratum}` in metrics dict using EXP-L7 boundaries (<100 / 100–300 / >300). Wired into val_metrics → MLflow logging. Zero training code risk.
 - [ ] Note: Option B (adversarial size regularizer) is deferred to Run 6.
 
 ### 5.4 — Intervention 4: Raise `max_nodes` to 2048 (IMP-D1)
 
-- [ ] **`graph_extractor.py`:** Increase `MAX_NODES` from 1024 to 2048.
-- [ ] **All dataset configuration files:** Update `max_nodes` parameter to match.
-- [ ] **`gnn_encoder.py` — fusion layer call:** Update `max_nodes` argument to 2048.
-- [ ] ⚠️ This must be done **before** Phase 7 (re-extraction) — previously truncated contracts will be re-extracted with the larger limit.
+- [x] **`--fusion-max-nodes` CLI arg added (commit 4af3761):** `scripts/train.py` — default 1024; wire to `TrainConfig.fusion_max_nodes`. Raise to 2048 after Gate 5.3 passes.
+- [ ] **Before Phase 7:** Pass `--fusion-max-nodes 2048` on re-extraction run so graphs with 1025–1735 nodes are NOT truncated.
+- [x] Verified: `fusion_max_nodes` already wires through `TrainConfig` → `SentinelModel` → `CrossAttentionFusion.max_nodes` (no code change needed in gnn_encoder.py).
+- [ ] ⚠️ Raise `fusion_max_nodes` to 2048 **only after Gate 5.3 passes** and Phase 7 re-extraction is complete.
 
 **🚦 Gate 5.3 — MEMORY GATE (blocks Run 5 with max_nodes=2048)**
-- [ ] Run a **realistic worst-case test**: `max_nodes=2048, batch_size=16, 8 GNN layers, full training step (forward + backward + optimizer.step)`. Measure peak VRAM including gradients and optimizer states. A forward-only test underestimates by ~3×.
+- [x] Script created: `ml/scripts/vram_gate_test.py` — synthetic worst-case (max_nodes×batch_size full training step, AMP, fused AdamW, BF16). PASS<7500MB / WARN<8000MB / FAIL>8000MB.
+- [ ] **Run before Phase 7:** `TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/vram_gate_test.py`
 - [ ] Also test at `batch_size=32` — if it fits, use it for speed.
-- [ ] If VRAM > 7.5 GB at batch_size=16: reduce `batch_size` to 8 or fall back to `max_nodes=1536`.
+- [ ] If VRAM > 7.5 GB at batch_size=16: reduce `batch_size` to 8 or run `--max-nodes 1536`.
 - [ ] Document the chosen configuration in the Run 5 log.
 
 ### 5.5 — Fix NF-5: Expose `aux_phase2_loss_weight` as CLI Arg
 
-- [ ] **`scripts/train.py`:** Add `p.add_argument("--aux-phase2-loss-weight", type=float, default=0.10)` and wire to `TrainConfig.aux_phase2_loss_weight`.
-- [ ] Also add `p.add_argument("--aux-cei-loss-weight", type=float, default=0.0)` (default 0.0 since it's conditional on Gate 7.5).
-- [ ] Also add `p.add_argument("--jk-entropy-reg-lambda", type=float, default=0.005)` for completeness.
+- [x] **`scripts/train.py` (commit 4af3761):** `--aux-phase2-loss-weight` (default 0.10) wired to `TrainConfig.aux_phase2_loss_weight`.
+- [x] `--aux-cei-loss-weight` (default 0.0, Phase 7 placeholder) added as inert arg.
+- [x] `--jk-entropy-reg-lambda` (default 0.005) already existed from Phase 4.
 
 ### 5.6 — Phase 2 Monitoring Configuration
 
