@@ -72,7 +72,7 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_l10_training_ablation.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
         --out ml/logs/interpretability/l10_training_ablation
 
 OUTPUT

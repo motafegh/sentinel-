@@ -36,12 +36,12 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_l6_counterfactual_contracts.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
         --out ml/logs/interpretability/l6_counterfactual.json
 
     # Optional: point to a different contracts directory
     PYTHONPATH=. python ml/scripts/interpretability/exp_l6_counterfactual_contracts.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
         --contracts-dir ml/scripts/interpretability/test_contracts \\
         --out ml/logs/interpretability/l6_counterfactual.json
 

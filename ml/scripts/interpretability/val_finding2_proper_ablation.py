@@ -26,13 +26,13 @@ device = torch.device('cpu')
 
 print("=== FINDING 2 VALIDATION: Proper Edge Ablation (remove edges from edge_index) ===\n")
 
-model = load_model('ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt', device='cpu')
+model = load_model('ml/checkpoints/sentinel_best.pt', device='cpu')
 model.eval()
 
 stems, df_split, cache = load_val_split(
-    'ml/data/cached_dataset_v8.pkl',
-    'ml/data/processed/multilabel_index_cleaned.csv',
-    'ml/data/splits/deduped'
+    'ml/data/cached_dataset_v9.pkl',
+    'ml/data/processed/multilabel_index.csv',
+    'ml/data/splits/v9_deduped'
 )
 
 # Edge type constants

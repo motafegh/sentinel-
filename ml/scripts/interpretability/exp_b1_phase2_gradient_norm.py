@@ -27,10 +27,10 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_b1_phase2_gradient_norm.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
-        --cache ml/data/cached_dataset_v8.pkl \\
-        --label-csv ml/data/processed/multilabel_index_cleaned.csv \\
-        --splits-dir ml/data/splits/deduped \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
+        --cache ml/data/cached_dataset_v9.pkl \\
+        --label-csv ml/data/processed/multilabel_index.csv \\
+        --splits-dir ml/data/splits/v9_deduped \\
         --out ml/logs/interpretability/b1_phase2_gradient_norm.json
 
 OUTPUT

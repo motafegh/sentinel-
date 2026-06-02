@@ -53,7 +53,7 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_l9_attention_rollout.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
         --contracts-dir ml/scripts/interpretability/test_contracts \\
         --out ml/logs/interpretability/l9_attention_rollout
 

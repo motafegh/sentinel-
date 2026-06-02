@@ -42,9 +42,9 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_s4_icfg_path_audit.py \\
-        --cache ml/data/cached_dataset_v8.pkl \\
-        --label-csv ml/data/processed/multilabel_index_cleaned.csv \\
-        --splits-dir ml/data/splits/deduped \\
+        --cache ml/data/cached_dataset_v9.pkl \\
+        --label-csv ml/data/processed/multilabel_index.csv \\
+        --splits-dir ml/data/splits/v9_deduped \\
         --split val \\
         --n-contracts 50 \\
         --out ml/logs/interpretability/s4_icfg_path_audit.json

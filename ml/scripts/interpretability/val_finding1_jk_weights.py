@@ -26,7 +26,7 @@ print("=== FINDING 1 VALIDATION: JK Weight Phase Ordering ===\n")
 
 # Load model
 model = load_model(
-    'ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt',
+    'ml/checkpoints/sentinel_best.pt',
     device='cpu'
 )
 model.eval()
@@ -46,9 +46,9 @@ print(f"\n[attn.weight] shape={attn_w.shape}: {attn_w.flatten()[:10]} ...")
 # 3. Fresh forward pass — do the weights update?
 print("\n=== Running fresh forward pass on 5 val contracts ===")
 stems, df_split, cache = load_val_split(
-    'ml/data/cached_dataset_v8.pkl',
-    'ml/data/processed/multilabel_index_cleaned.csv',
-    'ml/data/splits/deduped'
+    'ml/data/cached_dataset_v9.pkl',
+    'ml/data/processed/multilabel_index.csv',
+    'ml/data/splits/v9_deduped'
 )
 
 from torch_geometric.data import Batch

@@ -34,9 +34,9 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_s3_feature_distribution.py \\
-        --cache ml/data/cached_dataset_v8.pkl \\
-        --label-csv ml/data/processed/multilabel_index_cleaned.csv \\
-        --splits-dir ml/data/splits/deduped \\
+        --cache ml/data/cached_dataset_v9.pkl \\
+        --label-csv ml/data/processed/multilabel_index.csv \\
+        --splits-dir ml/data/splits/v9_deduped \\
         --split train \\
         --n-contracts 5000 \\
         --out ml/logs/interpretability/s3_feature_distribution.json

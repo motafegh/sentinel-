@@ -27,7 +27,7 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/interpretability/exp_l2_edge_ablation.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
         --out ml/interpretability_results/exp_l2 \\
         --n-contracts 200
 
