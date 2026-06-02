@@ -689,7 +689,6 @@ def train_one_epoch(
             if aux_phase2_loss_weight > 0.0 and "phase2" in _aux_masked:
                 _cei_weight = torch.ones(labels.shape[-1], device=labels.device)
                 _cei_weight[_CEI_INDICES] = 3.0
-                _raw = aux_loss_fn(_aux_masked["phase2"], labels)  # scalar BCE
                 # Recompute per-class BCE to apply CEI weighting.
                 _per_class = torch.nn.functional.binary_cross_entropy_with_logits(
                     _aux_masked["phase2"], labels, reduction="none"
@@ -722,7 +721,7 @@ def train_one_epoch(
         # corruption from NaN/Inf gradients propagating into the optimizer's running
         # mean/variance estimates.  Previously the check was AFTER backward(), so
         # corrupted gradients had already updated optimizer state.
-        loss_for_log = loss.item() * accum_steps
+        loss_for_log = loss.item() * _actual_window
         if not torch.isfinite(loss).item():
             nan_loss_count += 1
             # Zero any stale gradients from earlier micro-batches in this accumulation

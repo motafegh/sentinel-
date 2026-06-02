@@ -448,8 +448,9 @@ class StructuredLogger:
         ece    = 0.0
         flat_p = y_probs.ravel()
         flat_y = y_true.ravel()
-        for lo, hi in zip(bins[:-1], bins[1:]):
-            mask = (flat_p >= lo) & (flat_p < hi)
+        for i, (lo, hi) in enumerate(zip(bins[:-1], bins[1:])):
+            is_last = (i == n_bins - 1)
+            mask = (flat_p >= lo) & (flat_p <= hi if is_last else flat_p < hi)
             if mask.sum() == 0:
                 continue
             acc  = flat_y[mask].mean()
