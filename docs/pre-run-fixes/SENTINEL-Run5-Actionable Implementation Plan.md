@@ -274,10 +274,12 @@ After Phase 7 re-extraction:
 
 **🚦 Gate 3.1 — torch.compile RE-VALIDATION (blocks Run 5)**
 After all Phase 3 fixes are applied (forward pass structure has changed significantly):
-- [ ] Run a 2-epoch smoke test with `torch.compile(model, dynamic=True)` enabled
-- [ ] Verify no `RuntimeError` from compiled graph
-- [ ] Verify output is numerically correct (compare compiled vs eager on same input)
-- [ ] If compile fails: disable `torch.compile` for Run 5, file as Run 6 fix item
+- [ ] Run: `TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/compile_smoke_test.py`
+  - Check 1: compile succeeds on all targeted submodules (gnn/fusion/classifier/aux_*)
+  - Check 2: eager vs compiled max_abs_diff < 0.05 (BF16 tolerance)
+  - Check 3: 2-epoch stability, variable batch shapes, 0 compile errors, NaN rate < 10%
+- [ ] If PASS: keep `use_compile=True` (default in TrainConfig) for Run 5
+- [ ] If FAIL: set `use_compile=False` in TrainConfig, file Run 6 fix item
 
 ---
 
