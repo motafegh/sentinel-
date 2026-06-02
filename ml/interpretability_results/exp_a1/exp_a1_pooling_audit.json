@@ -1,0 +1,30 @@
+{
+  "experiment": "exp_a1_pooling_audit",
+  "n_audited": 2000,
+  "n_skipped": 0,
+  "pct_has_funclike_node": 100.0,
+  "pct_fallback": 0.0,
+  "mean_funclike_count": 20.29,
+  "mean_funclike_fraction": 0.17580621912356162,
+  "histogram": {
+    "0": 0,
+    "1": 15,
+    "2-5": 194,
+    "6-10": 375,
+    ">10": 1416
+  },
+  "type_breakdown": {
+    "FUNCTION": 33782,
+    "MODIFIER": 2894,
+    "FALLBACK": 887,
+    "RECEIVE": 0,
+    "CONSTRUCTOR": 3017
+  },
+  "criterion1_pass": true,
+  "criterion2_pass": true,
+  "overall": "PASS",
+  "pass_criteria": {
+    "pct_has_funclike_min": 95.0,
+    "pct_fallback_max": 5.0
+  }
+}
