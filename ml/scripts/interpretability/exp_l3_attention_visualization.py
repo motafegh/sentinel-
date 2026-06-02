@@ -40,12 +40,12 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_l3_attention_visualization.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
         --out ml/logs/interpretability/l3_attention_visualization.json
 
     # Optional: override contracts directory
     PYTHONPATH=. python ml/scripts/interpretability/exp_l3_attention_visualization.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
         --contracts-dir ml/scripts/test_contracts \\
         --out ml/logs/interpretability/l3_attention_visualization.json
 
@@ -450,7 +450,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--checkpoint",
         required=True,
-        help="Path to model checkpoint .pt (e.g. ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt)",
+        help="Path to model checkpoint .pt (e.g. ml/checkpoints/sentinel_best.pt)",
     )
     parser.add_argument(
         "--contracts-dir",

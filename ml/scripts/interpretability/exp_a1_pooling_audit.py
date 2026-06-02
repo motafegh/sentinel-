@@ -25,7 +25,7 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_a1_pooling_audit.py \\
-        --cache ml/data/cached_dataset_v8.pkl \\
+        --cache ml/data/cached_dataset_v9.pkl \\
         --out ml/interpretability_results/exp_a1 \\
         --n-contracts 2000
 

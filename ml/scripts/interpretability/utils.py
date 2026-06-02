@@ -5,7 +5,7 @@ PURPOSE
 ───────
 Centralises all common operations used across the interpretability experiment
 suite: checkpoint loading (with torch.compile key stripping), dataset loading
-from the v8 cache, node-type tensor extraction, batched inference collection,
+from the v9 cache, node-type tensor extraction, batched inference collection,
 and matplotlib heatmap plotting.
 
 All interpretability scripts (exp_s1 through exp_a4) import from this module
@@ -118,7 +118,7 @@ def load_model(
         raise FileNotFoundError(
             f"Checkpoint not found: {checkpoint_path}\n"
             "Provide a valid --checkpoint path, e.g.:\n"
-            "  ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt"
+            "  ml/checkpoints/sentinel_best.pt"
         )
 
     log.info(f"Loading checkpoint: {checkpoint_path}")
@@ -193,8 +193,8 @@ def load_val_split(
     Load the cache and return stems, label dataframe, and cache dict for a split.
 
     Args:
-        cache_path:  Path to cached_dataset_v8.pkl
-        label_csv:   Path to multilabel_index_cleaned.csv
+        cache_path:  Path to cached_dataset_v9.pkl
+        label_csv:   Path to multilabel_index.csv
         splits_dir:  Directory containing {split}_indices.npy
         split:       One of "train", "val", "test"
 
@@ -419,21 +419,21 @@ def add_common_args(parser: argparse.ArgumentParser, require_checkpoint: bool = 
         "--checkpoint",
         default=None,
         required=require_checkpoint,
-        help="Path to model checkpoint .pt (e.g. ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt)",
+        help="Path to model checkpoint .pt (e.g. ml/checkpoints/sentinel_best.pt)",
     )
     parser.add_argument(
         "--cache",
-        default="ml/data/cached_dataset_v8.pkl",
-        help="Path to cached_dataset_v8.pkl (default: ml/data/cached_dataset_v8.pkl)",
+        default="ml/data/cached_dataset_v9.pkl",
+        help="Path to cached_dataset_v9.pkl (default: ml/data/cached_dataset_v9.pkl)",
     )
     parser.add_argument(
         "--label-csv",
-        default="ml/data/processed/multilabel_index_cleaned.csv",
-        help="Path to multilabel_index_cleaned.csv",
+        default="ml/data/processed/multilabel_index.csv",
+        help="Path to multilabel_index.csv (v9, 41,576 rows, 10 classes)",
     )
     parser.add_argument(
         "--splits-dir",
-        default="ml/data/splits/deduped",
+        default="ml/data/splits/v9_deduped",
         help="Directory containing {train,val,test}_indices.npy",
     )
     parser.add_argument(

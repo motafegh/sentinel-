@@ -16,13 +16,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 print("=== FINDING 4 VALIDATION: Timestamp Size Shortcut (Train vs Val) ===\n")
 
 print("Loading cache...")
-with open('ml/data/cached_dataset_v8.pkl', 'rb') as f:
+with open('ml/data/cached_dataset_v9.pkl', 'rb') as f:
     cache = pickle.load(f)
 print(f"Cache loaded: {len(cache):,} entries")
 
-df = pd.read_csv('ml/data/processed/multilabel_index_cleaned.csv')
-train_idx = np.load('ml/data/splits/deduped/train_indices.npy')
-val_idx = np.load('ml/data/splits/deduped/val_indices.npy')
+df = pd.read_csv('ml/data/processed/multilabel_index.csv')
+train_idx = np.load('ml/data/splits/v9_deduped/train_indices.npy')
+val_idx = np.load('ml/data/splits/v9_deduped/val_indices.npy')
 
 stems_all = list(cache.keys())
 print(f"Total stems: {len(stems_all):,}")

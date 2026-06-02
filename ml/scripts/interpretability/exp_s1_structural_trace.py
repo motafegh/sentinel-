@@ -31,9 +31,9 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_s1_structural_trace.py \\
-        --cache ml/data/cached_dataset_v8.pkl \\
-        --label-csv ml/data/processed/multilabel_index_cleaned.csv \\
-        --splits-dir ml/data/splits/deduped \\
+        --cache ml/data/cached_dataset_v9.pkl \\
+        --label-csv ml/data/processed/multilabel_index.csv \\
+        --splits-dir ml/data/splits/v9_deduped \\
         --out ml/logs/interpretability/s1_structural_trace.json
 
     # No --checkpoint needed — this script does not load the model.
@@ -450,9 +450,9 @@ def _print_results(test_results: list[dict], val_results: dict) -> None:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="EXP-S1: CEI Structural Trace Audit")
-    p.add_argument("--cache",      default="ml/data/cached_dataset_v8.pkl")
-    p.add_argument("--label-csv",  default="ml/data/processed/multilabel_index_cleaned.csv")
-    p.add_argument("--splits-dir", default="ml/data/splits/deduped")
+    p.add_argument("--cache",      default="ml/data/cached_dataset_v9.pkl")
+    p.add_argument("--label-csv",  default="ml/data/processed/multilabel_index.csv")
+    p.add_argument("--splits-dir", default="ml/data/splits/v9_deduped")
     p.add_argument("--split",      default="val", choices=["train", "val", "test"])
     p.add_argument("--out",        default="ml/logs/interpretability/s1_structural_trace.json")
     p.add_argument("--n-contracts", type=int, default=500, dest="n_contracts")

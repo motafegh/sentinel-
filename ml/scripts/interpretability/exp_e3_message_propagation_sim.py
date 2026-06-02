@@ -36,9 +36,9 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_e3_message_propagation_sim.py \\
-        --cache ml/data/cached_dataset_v8.pkl \\
-        --label-csv ml/data/processed/multilabel_index_cleaned.csv \\
-        --splits-dir ml/data/splits/deduped \\
+        --cache ml/data/cached_dataset_v9.pkl \\
+        --label-csv ml/data/processed/multilabel_index.csv \\
+        --splits-dir ml/data/splits/v9_deduped \\
         --out ml/logs/interpretability/e3_message_propagation_sim.json \\
         --n-contracts 100
 

@@ -23,7 +23,7 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/interpretability/exp_l1_jk_weight_analysis.py \\
-        --checkpoint ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt \\
+        --checkpoint ml/checkpoints/sentinel_best.pt \\
         --out ml/interpretability_results/exp_l1 \\
         --n-contracts 1000
 

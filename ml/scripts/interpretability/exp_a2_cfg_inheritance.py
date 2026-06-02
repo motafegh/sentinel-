@@ -15,7 +15,7 @@ consistent with its parent.
 LAYER
 ─────
 Layer 1 (Structure) — testable without any trained model, purely from the
-graph features as stored in cached_dataset_v8.pkl.
+graph features as stored in cached_dataset_v9.pkl.
 
 WHAT IT TESTS
 ─────────────
@@ -42,9 +42,9 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_a2_cfg_inheritance.py \\
-        --cache ml/data/cached_dataset_v8.pkl \\
-        --label-csv ml/data/processed/multilabel_index_cleaned.csv \\
-        --splits-dir ml/data/splits/deduped \\
+        --cache ml/data/cached_dataset_v9.pkl \\
+        --label-csv ml/data/processed/multilabel_index.csv \\
+        --splits-dir ml/data/splits/v9_deduped \\
         --out ml/logs/interpretability/exp_a2_cfg_inheritance.json
 
 OUTPUT
