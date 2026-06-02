@@ -120,7 +120,7 @@ DEFAULT_WORKERS        = 11
 DEFAULT_CHUNK_SIZE     = 50
 CHECKPOINT_INTERVAL    = 500
 
-DEFAULT_INPUT  = "ml/data/processed/multilabel_index_deduped.csv"
+DEFAULT_INPUT  = "ml/data/processed/multilabel_index.csv"
 DEFAULT_OUTPUT = "ml/data/tokens_windowed"
 
 

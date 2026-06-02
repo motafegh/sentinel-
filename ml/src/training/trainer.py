@@ -338,7 +338,7 @@ class TrainConfig:
     jk_entropy_reg_lambda:         float = 0.005  # C-3: JK entropy regularizer weight (0=disabled); 0.01 forced uniform 33/33/33 in Run 3
 
     # --- Cache ---
-    cache_path: str | None = "ml/data/cached_dataset_deduped.pkl"
+    cache_path: str | None = "ml/data/cached_dataset_v10.pkl"
 
     # --- Logging ---
     log_interval: int = 100

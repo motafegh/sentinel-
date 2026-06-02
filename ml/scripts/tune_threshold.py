@@ -105,13 +105,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--label-csv",
         type=str,
-        default="ml/data/processed/multilabel_index_deduped.csv",
+        default="ml/data/processed/multilabel_index.csv",
         help="Path to the multi-label CSV index.",
     )
     parser.add_argument(
         "--splits-dir",
         type=str,
-        default="ml/data/splits/deduped",
+        default="ml/data/splits/v10_deduped",
         help="Directory containing train/val/test_indices.npy files.",
     )
     parser.add_argument(

@@ -423,17 +423,17 @@ def add_common_args(parser: argparse.ArgumentParser, require_checkpoint: bool = 
     )
     parser.add_argument(
         "--cache",
-        default="ml/data/cached_dataset_v9.pkl",
-        help="Path to cached_dataset_v9.pkl (default: ml/data/cached_dataset_v9.pkl)",
+        default="ml/data/cached_dataset_v10.pkl",
+        help="Path to cached dataset pickle (default: v10)",
     )
     parser.add_argument(
         "--label-csv",
         default="ml/data/processed/multilabel_index.csv",
-        help="Path to multilabel_index.csv (v9, 41,576 rows, 10 classes)",
+        help="Path to multilabel_index.csv (41,576 rows, 10 classes)",
     )
     parser.add_argument(
         "--splits-dir",
-        default="ml/data/splits/v9_deduped",
+        default="ml/data/splits/v10_deduped",
         help="Directory containing {train,val,test}_indices.npy",
     )
     parser.add_argument(
