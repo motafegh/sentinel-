@@ -492,6 +492,94 @@ def _compute_uses_block_globals(func: Any) -> float:
 # CFG node helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _node_return_ignored(node: Any) -> float:
+    """
+    C-1 fix: per-statement return_ignored for a single CFG node.
+    1.0 if any call in this node's IRs has its return value never read after
+    the call within the same node's IR sequence. 0.0 otherwise.
+    """
+    try:
+        from slither.slithir.operations import LowLevelCall, HighLevelCall, Send
+        irs = list(getattr(node, "irs", None) or [])
+        for i, op in enumerate(irs):
+            if not isinstance(op, (LowLevelCall, HighLevelCall, Send)):
+                continue
+            lval = op.lvalue
+            if lval is None:
+                return 1.0
+            lval_name = getattr(lval, "name", None)
+            if lval_name is None:
+                return 1.0
+            used_after = any(
+                getattr(rv, "name", None) == lval_name
+                for later_op in irs[i + 1:]
+                for rv in (getattr(later_op, "read", None) or [])
+            )
+            if not used_after:
+                return 1.0
+    except Exception:
+        pass
+    return 0.0
+
+
+def _node_call_target_typed(node: Any) -> float:
+    """
+    C-1 fix: per-statement call_target_typed for a single CFG node.
+    0.0 if this node makes a low-level or raw-address call. 1.0 otherwise.
+    """
+    try:
+        from slither.slithir.operations import LowLevelCall, HighLevelCall
+        from slither.core.solidity_types import ElementaryType
+        for op in (getattr(node, "irs", None) or []):
+            if isinstance(op, LowLevelCall):
+                return 0.0
+            if isinstance(op, HighLevelCall):
+                recv = getattr(op, "destination", None)
+                recv_type = getattr(recv, "type", None)
+                if (recv_type is not None
+                        and isinstance(recv_type, ElementaryType)
+                        and getattr(recv_type, "name", "") == "address"):
+                    return 0.0
+    except Exception:
+        pass
+    return 1.0
+
+
+def _node_uses_block_globals(node: Any) -> float:
+    """
+    C-1 fix: per-statement uses_block_globals for a single CFG node.
+    1.0 if any IR op in this node reads block.timestamp/number/difficulty/etc.
+    """
+    try:
+        _BLOCK_GLOBALS = {"timestamp", "number", "difficulty", "basefee", "prevrandao"}
+        for op in (getattr(node, "irs", None) or []):
+            for rv in (getattr(op, "read", None) or []):
+                if _SolidityVariableComposed is not None and isinstance(rv, _SolidityVariableComposed):
+                    part = (getattr(rv, "name", "") or "").split(".")[-1].lower()
+                    if part in _BLOCK_GLOBALS:
+                        return 1.0
+    except Exception:
+        pass
+    return 0.0
+
+
+def _node_external_call_count(node: Any) -> float:
+    """
+    C-1 fix: per-statement external_call_count for a single CFG node.
+    log1p(n)/log1p(20) of the number of external calls in this node's IRs.
+    """
+    try:
+        from slither.slithir.operations import LowLevelCall, HighLevelCall, Transfer, Send
+        n = sum(
+            1 for op in (getattr(node, "irs", None) or [])
+            if isinstance(op, (LowLevelCall, HighLevelCall, Transfer, Send))
+        )
+        return min(math.log1p(n) / math.log1p(20), 1.0)
+    except Exception:
+        pass
+    return 0.0
+
+
 def _cfg_node_type(slither_node: Any) -> int:
     """
     Map a Slither CFG node to a NODE_TYPES CFG subtype id.
@@ -615,19 +703,19 @@ def _build_cfg_node_features(
     complexity  = p[_vc] if len(p) > _vc else 0.0
     has_loop    = p[_vl] if len(p) > _vl else 0.0
 
+    # C-1 fix: compute per-statement signals from this node's IR ops directly.
     return [
-        float(cfg_type) / _MAX_TYPE_ID,  # [0]  type_id normalised to [0,1]
-        visibility,   # [1]  inherited from parent FUNCTION (BUG-C3)
-        0.0,          # [2]  uses_block_globals — not applicable per-statement
-        view,         # [3]  inherited from parent FUNCTION (BUG-C3)
-        payable,      # [4]  inherited from parent FUNCTION (BUG-C3)
-        complexity,   # [5]  inherited from parent FUNCTION (BUG-C3)
-        loc,          # [6]  loc — log-normalised lines of this statement's source span
-        0.0,          # [7]  return_ignored — not per-statement in v6
-        1.0,          # [8]  call_target_typed — default safe (not applicable)
-        # in_unchecked removed (BUG-L2 schema v7) — was dim[9], always 0.0 anyway
-        has_loop,     # [9]  inherited from parent FUNCTION (BUG-C3; was [10] in v6)
-        0.0,          # [10] external_call_count — not applicable per-statement
+        float(cfg_type) / _MAX_TYPE_ID,              # [0]  type_id normalised to [0,1]
+        visibility,                                   # [1]  inherited from parent FUNCTION (BUG-C3)
+        _node_uses_block_globals(slither_node),       # [2]  per-statement block.timestamp/number check
+        view,                                         # [3]  inherited from parent FUNCTION (BUG-C3)
+        payable,                                      # [4]  inherited from parent FUNCTION (BUG-C3)
+        complexity,                                   # [5]  inherited from parent FUNCTION (BUG-C3)
+        loc,                                          # [6]  loc — log-normalised
+        _node_return_ignored(slither_node),           # [7]  per-statement: call return discarded?
+        _node_call_target_typed(slither_node),        # [8]  per-statement: typed interface vs raw addr
+        has_loop,                                     # [9]  inherited from parent FUNCTION (BUG-C3)
+        _node_external_call_count(slither_node),      # [10] per-statement: external call count (log1p)
     ]
 
 
@@ -823,8 +911,27 @@ def _add_def_use_edges(
     try:
         from slither.core.variables.local_variable import LocalVariable as _LV
         from slither.core.variables.state_variable import StateVariable as _SV
+        from slither.core.variables.variable import Variable as _VAR
     except ImportError:
         return
+
+    # H-2 fix: helper to resolve ReferenceVariable to its underlying StateVariable.
+    # Slither uses ReferenceVariable for mapping/array lvalues (balances[msg.sender]).
+    # .points_to ultimately resolves to the StateVariable being written.
+    def _resolve_lval(lval: Any) -> tuple | None:
+        if isinstance(lval, _SV):
+            return (contract_key, getattr(lval, "name", None))
+        if isinstance(lval, _LV):
+            return (func_key, getattr(lval, "name", None))
+        # ReferenceVariable: follow .points_to chain to the underlying variable
+        pts = getattr(lval, "points_to", None)
+        if pts is not None and isinstance(pts, _SV):
+            return (contract_key, getattr(pts, "name", None))
+        # Some Slither versions store the root var in .points_to_origin
+        origin = getattr(lval, "points_to_origin", None)
+        if origin is not None and isinstance(origin, _SV):
+            return (contract_key, getattr(origin, "name", None))
+        return None
 
     contract_key = getattr(contract, "canonical_name", None) or contract.name
 
@@ -842,11 +949,11 @@ def _add_def_use_edges(
                 continue
             for ir in (getattr(node, "irs", None) or []):
                 lval = getattr(ir, "lvalue", None)
-                if isinstance(lval, _SV):
-                    scope_key = (contract_key, getattr(lval, "name", None))
-                elif isinstance(lval, _LV):
-                    scope_key = (func_key, getattr(lval, "name", None))
-                else:
+                if lval is None:
+                    continue
+                # H-2 fix: resolve ReferenceVariable in addition to SV/LV
+                scope_key = _resolve_lval(lval)
+                if scope_key is None:
                     continue
                 if scope_key[1] is None:
                     continue

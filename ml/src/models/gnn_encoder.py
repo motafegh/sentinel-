@@ -497,18 +497,16 @@ class GNNEncoder(nn.Module):
         # When phase2_edge_types ablation excludes a type, the subset becomes empty;
         # GATConv on empty edges returns zero which residual handles cleanly.
         #
-        # NF-6 (DEFERRED to Run 6): cf_only_ei and icfg_only_ei are computed from raw
-        # edge_attr, not from the already-masked phase2_ei. When phase2_edge_types ablation
-        # excludes CF(6) or ICFG edges, layers 3/4 still process the full unablated set.
-        # Fix by re-applying sub-masks to phase2_ei instead of edge_index (zero training
-        # impact for normal runs where phase2_edge_types=None).
-        if edge_attr is not None:
-            _cf_mask   = (edge_attr == _CONTROL_FLOW)
-            _icfg_mask = (edge_attr == _CALL_ENTRY) | (edge_attr == _RETURN_TO)
-            cf_only_ei   = edge_index[:, _cf_mask]
-            cf_only_ea   = e[_cf_mask]   if e is not None else None
-            icfg_only_ei = edge_index[:, _icfg_mask]
-            icfg_only_ea = e[_icfg_mask] if e is not None else None
+        # NF-6: sub-masks applied to the already-ablated phase2_ei so that
+        # --phase2-edge-types ablation correctly excludes CF or ICFG edges from
+        # layers 3 and 4 (previously they read from the full unablated edge_index).
+        if phase2_ea is not None:
+            _cf_mask   = (phase2_ea == _CONTROL_FLOW)
+            _icfg_mask = (phase2_ea == _CALL_ENTRY) | (phase2_ea == _RETURN_TO)
+            cf_only_ei   = phase2_ei[:, _cf_mask]
+            cf_only_ea   = phase2_ea[_cf_mask]
+            icfg_only_ei = phase2_ei[:, _icfg_mask]
+            icfg_only_ea = phase2_ea[_icfg_mask]
         else:
             cf_only_ei = icfg_only_ei = phase2_ei
             cf_only_ea = icfg_only_ea = phase2_ea
