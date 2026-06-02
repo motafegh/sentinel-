@@ -604,6 +604,7 @@ def train_one_epoch(
     _last_grad_norm_total: float = 0.0
     _last_grad_max_layer: tuple[str, float] = ("", 0.0)
     _last_grad_zero_count: int = 0
+    _last_ph2_ph1_ratio: float = 0.0
 
     # Running sums for per-interval averaged loss logging (reset every log_interval).
     _run_main   = 0.0
@@ -782,6 +783,28 @@ def train_one_epoch(
                     _gnn_share   = gnn_norm / _total_norm if _total_norm > 1e-8 else 0.0
                     last_gnn_share = _gnn_share
 
+                    # Phase 5.6: Phase 2 / Phase 1 gradient norm ratio.
+                    # Phase 1 = conv1+conv2 (structural); Phase 2 = conv3+conv3b+conv3c (CFG/ICFG).
+                    # Ratio near 0 → Phase 2 not receiving gradient signal (CEI patterns not learning).
+                    _gnn_mod = getattr(model, "gnn", None)
+                    if _gnn_mod is not None:
+                        _ph1_sq = sum(
+                            _grad_norm(getattr(_gnn_mod, _n)) ** 2
+                            for _n in ("conv1", "conv2")
+                            if hasattr(_gnn_mod, _n)
+                        )
+                        _ph2_sq = sum(
+                            _grad_norm(getattr(_gnn_mod, _n)) ** 2
+                            for _n in ("conv3", "conv3b", "conv3c")
+                            if hasattr(_gnn_mod, _n)
+                        )
+                        _ph1_n = _ph1_sq ** 0.5
+                        _ph2_n = _ph2_sq ** 0.5
+                        _last_ph2_ph1_ratio = _ph2_n / _ph1_n if _ph1_n > 1e-8 else 0.0
+                    else:
+                        _ph2_n = _ph1_n = 0.0
+                        _last_ph2_ph1_ratio = 0.0
+
                     n = max(1, _run_n)
                     _elapsed = time.perf_counter() - _interval_t0
                     _steps_in_interval = log_interval  # optimizer steps logged
@@ -793,7 +816,7 @@ def train_one_epoch(
                         f"loss={_run_main/n:.4f} "
                         f"[eyes: gnn={_run_gnn_a/n:.4f} tf={_run_tf_a/n:.4f} fused={_run_fus_a/n:.4f}{_ph2_str}] | "
                         f"grad: gnn={gnn_norm:.3f} gnn_enc={gnn_enc_norm:.3f} tf={tf_norm:.3f} fused={fused_norm:.3f} | "
-                        f"GNN share={_gnn_share:.1%} | "
+                        f"GNN share={_gnn_share:.1%} Ph2/Ph1={_last_ph2_ph1_ratio:.2f} | "
                         f"{_sps:.2f} step/s ({100/_sps/60:.1f} min/100steps)"
                     )
                     # Reset running sums and interval timer for next interval.
@@ -830,16 +853,17 @@ def train_one_epoch(
                         _lr_step   = optimizer.param_groups[0]["lr"]
                         _vram_step = (torch.cuda.memory_allocated() / 1024**2) if device == "cuda" else 0.0
                         slog.log_step({
-                            "step":            optimizer_step,
-                            "epoch":           epoch,
-                            "loss":            loss_for_log,
-                            "main_loss":       main_loss.item(),
-                            "aux_loss":        (loss_gnn_a + loss_tf_a + loss_fus_a).item(),
-                            "phase2_loss":     loss_phase2_a.item(),
-                            "grad_norm_total": _gs_total,
-                            "gnn_share":       last_gnn_share,
-                            "lr":              _lr_step,
-                            "vram_mb":         _vram_step,
+                            "step":              optimizer_step,
+                            "epoch":             epoch,
+                            "loss":              loss_for_log,
+                            "main_loss":         main_loss.item(),
+                            "aux_loss":          (loss_gnn_a + loss_tf_a + loss_fus_a).item(),
+                            "phase2_loss":       loss_phase2_a.item(),
+                            "grad_norm_total":   _gs_total,
+                            "gnn_share":         last_gnn_share,
+                            "ph2_ph1_grad_ratio": _last_ph2_ph1_ratio,
+                            "lr":                _lr_step,
+                            "vram_mb":           _vram_step,
                         })
 
                 optimizer.step()
@@ -859,7 +883,7 @@ def train_one_epoch(
             "avg_loss": 0.0, "nan_batch_count": 0, "last_gnn_share": 0.0,
             "epoch_main_loss": 0.0, "epoch_aux_loss": 0.0, "epoch_ph2_loss": 0.0,
             "last_grad_norm_total": 0.0, "grad_norm_max_layer": ("", 0.0),
-            "loss_spike_count": 0, "grad_zero_count": 0,
+            "loss_spike_count": 0, "grad_zero_count": 0, "ph2_ph1_grad_ratio": 0.0,
         }
 
     if nan_loss_count > 0:
@@ -894,6 +918,7 @@ def train_one_epoch(
         "grad_norm_max_layer":  _last_grad_max_layer,
         "loss_spike_count":     _loss_spikes,
         "grad_zero_count":      _last_grad_zero_count,
+        "ph2_ph1_grad_ratio":   _last_ph2_ph1_ratio,
     }
 
 
@@ -1700,9 +1725,10 @@ def train(config: TrainConfig) -> dict:
             gc.collect()
             torch.cuda.empty_cache()
 
-            mlflow.log_metric("train_loss",       train_loss,       step=epoch)
-            mlflow.log_metric("nan_batch_count",  nan_batch_count,  step=epoch)  # Phase 2-B3
-            mlflow.log_metric("gnn_grad_share",   last_gnn_share,   step=epoch)
+            mlflow.log_metric("train_loss",         train_loss,                              step=epoch)
+            mlflow.log_metric("nan_batch_count",    nan_batch_count,                         step=epoch)  # Phase 2-B3
+            mlflow.log_metric("gnn_grad_share",     last_gnn_share,                          step=epoch)
+            mlflow.log_metric("ph2_ph1_grad_ratio", _epoch_stats["ph2_ph1_grad_ratio"],      step=epoch)  # Phase 5.6
 
             # Phase 2-C1 (2026-05-14): JK attention weight logging.
             # Reads cached per-phase mean weights from the last training batch.

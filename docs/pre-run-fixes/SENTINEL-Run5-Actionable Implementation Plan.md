@@ -362,7 +362,8 @@ After all Phase 3 fixes are applied (forward pass structure has changed signific
 - [x] **`TrainConfig`:** Confirm `aux_phase2_loss_weight = 0.10` is set (already in commit 9310046).
 - [x] **`trainer.py` — `train_epoch()` signature:** Confirmed `aux_phase2_loss_weight=config.aux_phase2_loss_weight` at call site (line 1567) — default 0.0 in signature but always overridden by TrainConfig value.
 - [x] Verify `aux_head_phase2` connected: Phase 2 embeddings → `aux_head_phase2` → weighted BCE → summed into total loss at trainer.py:664.
-- [ ] Add per-epoch logging of `aux_head_phase2.weight.norm()` and `aux_head_phase2.bias.norm()` — handled by StructuredLogger `check_aux_head()` (Phase 4.6); verify at Run 5 epoch 1.
+- [x] Per-epoch logging of `aux_head_phase2.weight.norm()` and `aux_head_phase2.bias.norm()` — implemented via `slog.check_aux_head()` wired in trainer.py epoch loop (Phase 4.6).
+- [ ] Verify at Run 5 epoch 1: `aux_weight_norm` non-zero in `epoch_summary.jsonl`.
 
 **🚦 Gate 5.1 — AUX LOSS VERIFICATION (blocks Run 5 continuation)**
 - [ ] At Run 5 epoch 1: `aux_phase2_loss` is logged separately and is **non-zero**
@@ -413,7 +414,7 @@ After Phase 7 re-extraction, validate CEI labels on v9 data:
 
 > **Full monitoring requirements:** `docs/pre-run-fixes/SENTINEL-Run5-Training-Log-Specification.md` §4 (model-specific logs: JK weights, aux head norms, per-layer GNN output) and §3B (AUC/probability quality metrics, critical for agent module input). The table below is the Phase 2-specific subset — implement the full spec in Phase 4.6.
 
-Set up the following metrics to be logged **every epoch** of Run 5:
+All 6 metrics below are now wired (2026-06-02): JK p2 weight via mlflow, ph2_ph1_grad_ratio via mlflow (commit after plan review), aux_phase2_loss via `slog.log_step()`, aux_head norms via `slog.check_aux_head()`, Reentrancy/ExternalBug F1 via per-class mlflow. **No additional code needed — only runtime monitoring required.**
 
 | Metric | Epoch 10 Target | Alert Threshold | Action |
 |--------|----------------|-----------------|--------|
