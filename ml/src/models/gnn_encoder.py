@@ -501,8 +501,12 @@ class GNNEncoder(nn.Module):
         # --phase2-edge-types ablation correctly excludes CF or ICFG edges from
         # layers 3 and 4 (previously they read from the full unablated edge_index).
         if phase2_ea is not None:
-            _cf_mask   = (phase2_ea == _CONTROL_FLOW)
-            _icfg_mask = (phase2_ea == _CALL_ENTRY) | (phase2_ea == _RETURN_TO)
+            # Sub-masks must use raw integer edge_attr, not the embedded phase2_ea
+            # (phase2_ea has shape [E_cfg, edge_emb_dim] — comparing floats to ints
+            # would produce a 2D boolean mask that breaks column indexing on phase2_ei).
+            phase2_raw = edge_attr[cfg_mask]   # [E_cfg] raw integer type IDs
+            _cf_mask   = (phase2_raw == _CONTROL_FLOW)
+            _icfg_mask = (phase2_raw == _CALL_ENTRY) | (phase2_raw == _RETURN_TO)
             cf_only_ei   = phase2_ei[:, _cf_mask]
             cf_only_ea   = phase2_ea[_cf_mask]
             icfg_only_ei = phase2_ei[:, _icfg_mask]
