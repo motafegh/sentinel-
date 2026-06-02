@@ -105,8 +105,8 @@ _TEST_CONTRACTS_DIR = (
     Path(__file__).resolve().parents[0] / "test_contracts"
 )
 _REENTRANCY_TEST_FILES = [
-    "01_reentrancy_classic.sol",
-    "02_reentrancy_tricky.sol",
+    "reentrancy_vulnerable.sol",
+    "reentrancy_safe.sol",
 ]
 
 

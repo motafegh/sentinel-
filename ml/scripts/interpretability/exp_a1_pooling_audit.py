@@ -227,8 +227,8 @@ def run(args: argparse.Namespace) -> int:
             FUNC_TYPE_NAMES[t]: int(type_count[t])
             for t in FUNC_TYPE_IDS
         },
-        "criterion1_pass": crit1_pass,
-        "criterion2_pass": crit2_pass,
+        "criterion1_pass": bool(crit1_pass),
+        "criterion2_pass": bool(crit2_pass),
         "overall":         overall,
         "pass_criteria": {
             "pct_has_funclike_min":  95.0,

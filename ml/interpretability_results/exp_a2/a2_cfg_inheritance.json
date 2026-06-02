@@ -1,0 +1,47 @@
+{
+  "graphs_analysed": 500,
+  "graphs_with_parents": 499,
+  "inheritance_stats": {
+    "1": {
+      "dim": 1,
+      "name": "visibility_norm",
+      "consistency_rate": 1.0,
+      "match": 45949,
+      "total": 45949
+    },
+    "3": {
+      "dim": 3,
+      "name": "has_loop",
+      "consistency_rate": 1.0,
+      "match": 45949,
+      "total": 45949
+    },
+    "4": {
+      "dim": 4,
+      "name": "payable",
+      "consistency_rate": 1.0,
+      "match": 45949,
+      "total": 45949,
+      "payable_parent_count": 2961,
+      "payable_child_match": 2961,
+      "payable_inheritance_rate": 1.0
+    },
+    "5": {
+      "dim": 5,
+      "name": "is_modifier",
+      "consistency_rate": 1.0,
+      "match": 45949,
+      "total": 45949
+    },
+    "9": {
+      "dim": 9,
+      "name": "has_state_write",
+      "consistency_rate": 1.0,
+      "match": 45949,
+      "total": 45949
+    }
+  },
+  "pass_payable_specific": true,
+  "pass_overall_consistency": true,
+  "passed": true
+}

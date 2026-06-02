@@ -1,0 +1,739 @@
+{
+  "split": "val",
+  "cache": "ml/data/cached_dataset_v9.pkl",
+  "label_csv": "ml/data/processed/multilabel_index.csv",
+  "splits_dir": "ml/data/splits/v9_deduped",
+  "n_contracts_requested": 500,
+  "shortcut_threshold": 1.5,
+  "metrics": [
+    "total_cfg_nodes",
+    "cfg_call_count",
+    "function_count",
+    "def_use_edge_count",
+    "ext_call_count_sum",
+    "mean_return_ignored_func",
+    "total_nodes"
+  ],
+  "class_stats": {
+    "CallToUnknown": {
+      "total_cfg_nodes": {
+        "mean_pos": 101.0588,
+        "std_pos": 219.0459,
+        "n_pos": 34,
+        "mean_neg": 91.2296,
+        "std_neg": 122.6066,
+        "n_neg": 466,
+        "cohens_d": 0.0749,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 6.0882,
+        "std_pos": 11.2798,
+        "n_pos": 34,
+        "mean_neg": 7.9764,
+        "std_neg": 13.1444,
+        "n_neg": 466,
+        "cohens_d": -0.1449,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 17.2941,
+        "std_pos": 25.04,
+        "n_pos": 34,
+        "mean_neg": 17.0365,
+        "std_neg": 15.4484,
+        "n_neg": 466,
+        "cohens_d": 0.0158,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 69.8824,
+        "std_pos": 243.3036,
+        "n_pos": 34,
+        "mean_neg": 53.3476,
+        "std_neg": 137.9067,
+        "n_neg": 466,
+        "cohens_d": 0.1123,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 0.9422,
+        "std_pos": 1.7881,
+        "n_pos": 34,
+        "mean_neg": 1.1716,
+        "std_neg": 1.5713,
+        "n_neg": 466,
+        "cohens_d": -0.1446,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0272,
+        "std_pos": 0.0876,
+        "n_pos": 34,
+        "mean_neg": 0.0479,
+        "std_neg": 0.0893,
+        "n_neg": 466,
+        "cohens_d": -0.2321,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 136.6176,
+        "std_pos": 259.8358,
+        "n_pos": 34,
+        "mean_neg": 128.7403,
+        "std_neg": 146.5808,
+        "n_neg": 466,
+        "cohens_d": 0.0503,
+        "shortcut_flag": false
+      }
+    },
+    "DenialOfService": {
+      "total_cfg_nodes": {
+        "mean_pos": 51.8,
+        "std_pos": 18.6065,
+        "n_pos": 5,
+        "mean_neg": 92.303,
+        "std_neg": 131.6894,
+        "n_neg": 495,
+        "cohens_d": -0.3088,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 1.8,
+        "std_pos": 1.3038,
+        "n_pos": 5,
+        "mean_neg": 7.9091,
+        "std_neg": 13.0757,
+        "n_neg": 495,
+        "cohens_d": -0.4691,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 13.0,
+        "std_pos": 6.3246,
+        "n_pos": 5,
+        "mean_neg": 17.0949,
+        "std_neg": 16.3108,
+        "n_neg": 495,
+        "cohens_d": -0.2519,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 11.8,
+        "std_pos": 7.7589,
+        "n_pos": 5,
+        "mean_neg": 54.903,
+        "std_neg": 147.8332,
+        "n_neg": 495,
+        "cohens_d": -0.2927,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 0.4098,
+        "std_pos": 0.2968,
+        "n_pos": 5,
+        "mean_neg": 1.1635,
+        "std_neg": 1.5921,
+        "n_neg": 495,
+        "cohens_d": -0.4752,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0719,
+        "std_pos": 0.0788,
+        "n_pos": 5,
+        "mean_neg": 0.0462,
+        "std_neg": 0.0894,
+        "n_neg": 495,
+        "cohens_d": 0.2878,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 80.2,
+        "std_pos": 24.0562,
+        "n_pos": 5,
+        "mean_neg": 129.7717,
+        "std_neg": 157.1922,
+        "n_neg": 495,
+        "cohens_d": -0.3166,
+        "shortcut_flag": false
+      }
+    },
+    "ExternalBug": {
+      "total_cfg_nodes": {
+        "mean_pos": 90.1053,
+        "std_pos": 90.3359,
+        "n_pos": 38,
+        "mean_neg": 92.0455,
+        "std_neg": 133.9734,
+        "n_neg": 462,
+        "cohens_d": -0.0148,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 12.0789,
+        "std_pos": 22.7909,
+        "n_pos": 38,
+        "mean_neg": 7.5,
+        "std_neg": 11.8466,
+        "n_neg": 462,
+        "cohens_d": 0.3527,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 15.5526,
+        "std_pos": 10.9512,
+        "n_pos": 38,
+        "mean_neg": 17.1775,
+        "std_neg": 16.6068,
+        "n_neg": 462,
+        "cohens_d": -0.1,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 56.2632,
+        "std_pos": 84.715,
+        "n_pos": 38,
+        "mean_neg": 54.3247,
+        "std_neg": 151.2061,
+        "n_neg": 462,
+        "cohens_d": 0.0132,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 1.4177,
+        "std_pos": 2.0706,
+        "n_pos": 38,
+        "mean_neg": 1.1344,
+        "std_neg": 1.5404,
+        "n_neg": 462,
+        "cohens_d": 0.1786,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0428,
+        "std_pos": 0.0968,
+        "n_pos": 38,
+        "mean_neg": 0.0468,
+        "std_neg": 0.0887,
+        "n_neg": 462,
+        "cohens_d": -0.044,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 125.0789,
+        "std_pos": 112.8092,
+        "n_pos": 38,
+        "mean_neg": 129.6212,
+        "std_neg": 159.6453,
+        "n_neg": 462,
+        "cohens_d": -0.029,
+        "shortcut_flag": false
+      }
+    },
+    "GasException": {
+      "total_cfg_nodes": {
+        "mean_pos": 101.0196,
+        "std_pos": 155.8212,
+        "n_pos": 51,
+        "mean_neg": 90.8619,
+        "std_neg": 128.1545,
+        "n_neg": 449,
+        "cohens_d": 0.0774,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 9.4902,
+        "std_pos": 11.6763,
+        "n_pos": 51,
+        "mean_neg": 7.6615,
+        "std_neg": 13.1681,
+        "n_neg": 449,
+        "cohens_d": 0.1404,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 18.7451,
+        "std_pos": 20.1195,
+        "n_pos": 51,
+        "mean_neg": 16.8619,
+        "std_neg": 15.7595,
+        "n_neg": 449,
+        "cohens_d": 0.1159,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 59.8627,
+        "std_pos": 157.9661,
+        "n_pos": 51,
+        "mean_neg": 53.8597,
+        "std_neg": 146.0517,
+        "n_neg": 449,
+        "cohens_d": 0.0408,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 1.4582,
+        "std_pos": 1.8729,
+        "n_pos": 51,
+        "mean_neg": 1.1216,
+        "std_neg": 1.5488,
+        "n_neg": 449,
+        "cohens_d": 0.2124,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0439,
+        "std_pos": 0.0946,
+        "n_pos": 51,
+        "mean_neg": 0.0468,
+        "std_neg": 0.0887,
+        "n_neg": 449,
+        "cohens_d": -0.0322,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 140.6471,
+        "std_pos": 184.62,
+        "n_pos": 51,
+        "mean_neg": 127.9844,
+        "std_neg": 153.1612,
+        "n_neg": 449,
+        "cohens_d": 0.0809,
+        "shortcut_flag": false
+      }
+    },
+    "IntegerUO": {
+      "total_cfg_nodes": {
+        "mean_pos": 87.3558,
+        "std_pos": 69.4322,
+        "n_pos": 163,
+        "mean_neg": 94.095,
+        "std_neg": 152.2699,
+        "n_neg": 337,
+        "cohens_d": -0.0514,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 9.0429,
+        "std_pos": 13.6998,
+        "n_pos": 163,
+        "mean_neg": 7.27,
+        "std_neg": 12.6659,
+        "n_neg": 337,
+        "cohens_d": 0.1363,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 17.1227,
+        "std_pos": 11.0447,
+        "n_pos": 163,
+        "mean_neg": 17.0208,
+        "std_neg": 18.2497,
+        "n_neg": 337,
+        "cohens_d": 0.0063,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 43.8098,
+        "std_pos": 61.686,
+        "n_pos": 163,
+        "mean_neg": 59.6291,
+        "std_neg": 173.9057,
+        "n_neg": 337,
+        "cohens_d": -0.1075,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 1.3047,
+        "std_pos": 1.5864,
+        "n_pos": 163,
+        "mean_neg": 1.084,
+        "std_neg": 1.5832,
+        "n_neg": 337,
+        "cohens_d": 0.1393,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0374,
+        "std_pos": 0.0763,
+        "n_pos": 163,
+        "mean_neg": 0.0509,
+        "std_neg": 0.0947,
+        "n_neg": 337,
+        "cohens_d": -0.1514,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 124.7178,
+        "std_pos": 88.9722,
+        "n_pos": 163,
+        "mean_neg": 131.4807,
+        "std_neg": 180.3889,
+        "n_neg": 337,
+        "cohens_d": -0.0432,
+        "shortcut_flag": false
+      }
+    },
+    "MishandledException": {
+      "total_cfg_nodes": {
+        "mean_pos": 93.9608,
+        "std_pos": 77.6366,
+        "n_pos": 51,
+        "mean_neg": 91.6637,
+        "std_neg": 135.907,
+        "n_neg": 449,
+        "cohens_d": 0.0175,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 11.2353,
+        "std_pos": 17.8511,
+        "n_pos": 51,
+        "mean_neg": 7.4633,
+        "std_neg": 12.3263,
+        "n_neg": 449,
+        "cohens_d": 0.2904,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 17.5882,
+        "std_pos": 10.6436,
+        "n_pos": 51,
+        "mean_neg": 16.9933,
+        "std_neg": 16.7696,
+        "n_neg": 449,
+        "cohens_d": 0.0366,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 51.6471,
+        "std_pos": 73.1532,
+        "n_pos": 51,
+        "mean_neg": 54.7929,
+        "std_neg": 153.3671,
+        "n_neg": 449,
+        "cohens_d": -0.0214,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 1.5011,
+        "std_pos": 1.6937,
+        "n_pos": 51,
+        "mean_neg": 1.1168,
+        "std_neg": 1.5706,
+        "n_neg": 449,
+        "cohens_d": 0.2427,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.046,
+        "std_pos": 0.1015,
+        "n_pos": 51,
+        "mean_neg": 0.0465,
+        "std_neg": 0.0879,
+        "n_neg": 449,
+        "cohens_d": -0.0056,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 133.2549,
+        "std_pos": 96.0368,
+        "n_pos": 51,
+        "mean_neg": 128.8241,
+        "std_neg": 162.0107,
+        "n_neg": 449,
+        "cohens_d": 0.0283,
+        "shortcut_flag": false
+      }
+    },
+    "Reentrancy": {
+      "total_cfg_nodes": {
+        "mean_pos": 125.75,
+        "std_pos": 191.7897,
+        "n_pos": 56,
+        "mean_neg": 87.6284,
+        "std_neg": 120.9551,
+        "n_neg": 444,
+        "cohens_d": 0.2917,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 12.2857,
+        "std_pos": 23.4999,
+        "n_pos": 56,
+        "mean_neg": 7.2883,
+        "std_neg": 10.9418,
+        "n_neg": 444,
+        "cohens_d": 0.3861,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 21.2143,
+        "std_pos": 22.8017,
+        "n_pos": 56,
+        "mean_neg": 16.5293,
+        "std_neg": 15.1725,
+        "n_neg": 444,
+        "cohens_d": 0.2893,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 84.8929,
+        "std_pos": 218.7811,
+        "n_pos": 56,
+        "mean_neg": 50.6351,
+        "std_neg": 135.3425,
+        "n_neg": 444,
+        "cohens_d": 0.2332,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 1.5314,
+        "std_pos": 2.0925,
+        "n_pos": 56,
+        "mean_neg": 1.1086,
+        "std_neg": 1.5066,
+        "n_neg": 444,
+        "cohens_d": 0.2672,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0392,
+        "std_pos": 0.0855,
+        "n_pos": 56,
+        "mean_neg": 0.0474,
+        "std_neg": 0.0898,
+        "n_neg": 444,
+        "cohens_d": -0.0916,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 169.5714,
+        "std_pos": 226.5307,
+        "n_pos": 56,
+        "mean_neg": 124.1937,
+        "std_neg": 144.8602,
+        "n_neg": 444,
+        "cohens_d": 0.2909,
+        "shortcut_flag": false
+      }
+    },
+    "Timestamp": {
+      "total_cfg_nodes": {
+        "mean_pos": 84.3158,
+        "std_pos": 68.465,
+        "n_pos": 19,
+        "mean_neg": 92.1975,
+        "std_neg": 133.0021,
+        "n_neg": 481,
+        "cohens_d": -0.0601,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 8.1579,
+        "std_pos": 10.8641,
+        "n_pos": 19,
+        "mean_neg": 7.8358,
+        "std_neg": 13.1122,
+        "n_neg": 481,
+        "cohens_d": 0.0247,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 16.3158,
+        "std_pos": 11.6526,
+        "n_pos": 19,
+        "mean_neg": 17.0832,
+        "std_neg": 16.4071,
+        "n_neg": 481,
+        "cohens_d": -0.0472,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 49.6842,
+        "std_pos": 78.0328,
+        "n_pos": 19,
+        "mean_neg": 54.6611,
+        "std_neg": 149.2731,
+        "n_neg": 481,
+        "cohens_d": -0.0338,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 1.1209,
+        "std_pos": 1.3617,
+        "n_pos": 19,
+        "mean_neg": 1.1573,
+        "std_neg": 1.5955,
+        "n_neg": 481,
+        "cohens_d": -0.023,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0306,
+        "std_pos": 0.0587,
+        "n_pos": 19,
+        "mean_neg": 0.0471,
+        "std_neg": 0.0902,
+        "n_neg": 481,
+        "cohens_d": -0.1847,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 119.0,
+        "std_pos": 88.6886,
+        "n_pos": 19,
+        "mean_neg": 129.6819,
+        "std_neg": 158.622,
+        "n_neg": 481,
+        "cohens_d": -0.0682,
+        "shortcut_flag": false
+      }
+    },
+    "TransactionOrderDependence": {
+      "total_cfg_nodes": {
+        "mean_pos": 78.8889,
+        "std_pos": 61.6751,
+        "n_pos": 36,
+        "mean_neg": 92.9073,
+        "std_neg": 134.989,
+        "n_neg": 464,
+        "cohens_d": -0.1069,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 6.8056,
+        "std_pos": 7.7379,
+        "n_pos": 36,
+        "mean_neg": 7.9289,
+        "std_neg": 13.3498,
+        "n_neg": 464,
+        "cohens_d": -0.0862,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 16.0,
+        "std_pos": 14.6131,
+        "n_pos": 36,
+        "mean_neg": 17.1358,
+        "std_neg": 16.3751,
+        "n_neg": 464,
+        "cohens_d": -0.0699,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 38.3889,
+        "std_pos": 47.9549,
+        "n_pos": 36,
+        "mean_neg": 55.7198,
+        "std_neg": 152.1276,
+        "n_neg": 464,
+        "cohens_d": -0.1177,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 0.9619,
+        "std_pos": 1.0218,
+        "n_pos": 36,
+        "mean_neg": 1.171,
+        "std_neg": 1.6214,
+        "n_neg": 464,
+        "cohens_d": -0.1318,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0243,
+        "std_pos": 0.0481,
+        "n_pos": 36,
+        "mean_neg": 0.0482,
+        "std_neg": 0.0915,
+        "n_neg": 464,
+        "cohens_d": -0.2673,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 115.1111,
+        "std_pos": 84.9907,
+        "n_pos": 36,
+        "mean_neg": 130.375,
+        "std_neg": 160.724,
+        "n_neg": 464,
+        "cohens_d": -0.0975,
+        "shortcut_flag": false
+      }
+    },
+    "UnusedReturn": {
+      "total_cfg_nodes": {
+        "mean_pos": 135.3462,
+        "std_pos": 138.1211,
+        "n_pos": 26,
+        "mean_neg": 89.5148,
+        "std_neg": 130.4391,
+        "n_neg": 474,
+        "cohens_d": 0.3503,
+        "shortcut_flag": false
+      },
+      "cfg_call_count": {
+        "mean_pos": 20.1154,
+        "std_pos": 31.4456,
+        "n_pos": 26,
+        "mean_neg": 7.1751,
+        "std_neg": 10.8619,
+        "n_neg": 474,
+        "cohens_d": 1.0176,
+        "shortcut_flag": false
+      },
+      "function_count": {
+        "mean_pos": 20.0,
+        "std_pos": 17.559,
+        "n_pos": 26,
+        "mean_neg": 16.8924,
+        "std_neg": 16.1731,
+        "n_neg": 474,
+        "cohens_d": 0.1913,
+        "shortcut_flag": false
+      },
+      "def_use_edge_count": {
+        "mean_pos": 100.2692,
+        "std_pos": 167.5841,
+        "n_pos": 26,
+        "mean_neg": 51.9599,
+        "std_neg": 145.7358,
+        "n_neg": 474,
+        "cohens_d": 0.3288,
+        "shortcut_flag": false
+      },
+      "ext_call_count_sum": {
+        "mean_pos": 2.0443,
+        "std_pos": 2.2188,
+        "n_pos": 26,
+        "mean_neg": 1.1072,
+        "std_neg": 1.5323,
+        "n_neg": 474,
+        "cohens_d": 0.5954,
+        "shortcut_flag": false
+      },
+      "mean_return_ignored_func": {
+        "mean_pos": 0.0476,
+        "std_pos": 0.1099,
+        "n_pos": 26,
+        "mean_neg": 0.0464,
+        "std_neg": 0.0881,
+        "n_neg": 474,
+        "cohens_d": 0.0138,
+        "shortcut_flag": false
+      },
+      "total_nodes": {
+        "mean_pos": 179.0,
+        "std_pos": 164.2396,
+        "n_pos": 26,
+        "mean_neg": 126.5485,
+        "std_neg": 155.7817,
+        "n_neg": 474,
+        "cohens_d": 0.3358,
+        "shortcut_flag": false
+      }
+    }
+  }
+}

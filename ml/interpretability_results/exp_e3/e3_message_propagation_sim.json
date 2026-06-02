@@ -1,0 +1,65 @@
+{
+  "args": {
+    "cache": "ml/data/cached_dataset_v9.pkl",
+    "label_csv": "ml/data/processed/multilabel_index.csv",
+    "splits_dir": "ml/data/splits/v9_deduped",
+    "split": "val",
+    "n_contracts": 100,
+    "seed": 42,
+    "device": "cpu"
+  },
+  "results": {
+    "reentrancy_positive": {
+      "n_stems": 100,
+      "means": {
+        "phase1": {
+          "CALL_ENTRY": 0.810369,
+          "CALL_ENTRY_n_contracts": 61,
+          "CONTROL_FLOW": 0.99307,
+          "CONTROL_FLOW_n_contracts": 100
+        },
+        "phase2": {
+          "CALL_ENTRY": 0.679416,
+          "CALL_ENTRY_n_contracts": 61,
+          "CONTROL_FLOW": 0.927008,
+          "CONTROL_FLOW_n_contracts": 100
+        },
+        "phase3": {
+          "CALL_ENTRY": 0.674794,
+          "CALL_ENTRY_n_contracts": 61,
+          "CONTROL_FLOW": 0.949038,
+          "CONTROL_FLOW_n_contracts": 100
+        }
+      }
+    },
+    "reentrancy_negative": {
+      "n_stems": 100,
+      "means": {
+        "phase1": {
+          "CALL_ENTRY": 0.835659,
+          "CALL_ENTRY_n_contracts": 65,
+          "CONTROL_FLOW": 0.993558,
+          "CONTROL_FLOW_n_contracts": 100
+        },
+        "phase2": {
+          "CALL_ENTRY": 0.693158,
+          "CALL_ENTRY_n_contracts": 65,
+          "CONTROL_FLOW": 0.920814,
+          "CONTROL_FLOW_n_contracts": 100
+        },
+        "phase3": {
+          "CALL_ENTRY": 0.701534,
+          "CALL_ENTRY_n_contracts": 65,
+          "CONTROL_FLOW": 0.944957,
+          "CONTROL_FLOW_n_contracts": 100
+        }
+      }
+    },
+    "call_entry_phase2_minus_phase1_pos": -0.13095299999999999,
+    "pass_call_entry_criterion": false,
+    "pass_criterion_description": "CALL_ENTRY cosine(Phase2) - cosine(Phase1) >= 0.02 for reentrancy positives",
+    "warnings": [],
+    "overall_pass": false
+  },
+  "overall_pass": false
+}
