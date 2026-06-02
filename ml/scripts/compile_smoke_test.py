@@ -74,7 +74,7 @@ def _build_model(device: str, cfg: TrainConfig) -> SentinelModel:
     return SentinelModel(
         num_classes=10,
         gnn_hidden_dim=cfg.gnn_hidden_dim,
-        gnn_layers=cfg.gnn_layers,
+        gnn_num_layers=cfg.gnn_layers,
         gnn_heads=cfg.gnn_heads,
         gnn_dropout=cfg.gnn_dropout,
         gnn_edge_emb_dim=cfg.gnn_edge_emb_dim,
