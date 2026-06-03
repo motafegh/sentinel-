@@ -152,11 +152,30 @@ Phase 7  ⬜  inference/   (preprocess.py, predictor.py, cache.py,
 
 | File | Lines | Complexity | Teaching approach |
 |------|-------|------------|-------------------|
-| `gnn_encoder.py` | 623 | Very High | Chunked (5 chunks) — 3-phase 8-layer GAT, JK connections |
-| `sentinel_model.py` | 611 | Very High | Chunked (2 chunks) — three-eye classifier, aux heads |
+| `gnn_encoder.py` | ~623 | Very High | Chunked (5 chunks) — 3-phase 8-layer GAT, JK connections |
+| `sentinel_model.py` | ~611 | Very High | Chunked (2 chunks) — **four-eye** classifier, aux heads |
 | `transformer_encoder.py` | 388 | High | Chunked (2 chunks) — LoRA on CodeBERT, window pooler |
 | `fusion_layer.py` | 281 | High | Single chunk — CrossAttentionFusion, bidirectional attention |
 | `__init__.py` | 0 | Trivial | Skip |
+
+### v8.1 Architecture Changes (merged from main, 2026-06-03)
+
+Key changes that affect teaching — note these for every relevant chunk:
+
+**gnn_encoder.py (v8 → v8.1):**
+- **BUG-R7-2 fix:** Node features now have a prepended 16-dim learned type embedding.
+  Input dim: `NODE_FEATURE_DIM(11) + _TYPE_EMB_DIM(16) = _GNN_IN_DIM(27)`.
+  Previously type was encoded as `float(type_id)/12.0` (useless continuous scalar).
+- **IMP-R7-1:** Phase 2 now `heads=4, concat=True` (was `heads=1, concat=False`).
+  Output per layer still `hidden_dim=256` (4 heads × 64 dims).
+- `input_proj` skip is now `Linear(27, 256)` (was `Linear(11, 256)`).
+
+**sentinel_model.py (v8 → v8.1):**
+- **Three-eye → Four-eye classifier.** New **CFG eye** (IMP-R7-2 / BUG-R7-1 fix):
+  Pools Phase 2 embeddings over CFG_NODE types → `[B, 128]`.
+  Provides direct gradient path to Phase 2 conv layers.
+- Classifier: `cat([gnn, transformer, fused, cfg]) → [B, 512] → Linear(512,256) → Linear(256,C)`
+- New aux head: `aux_phase2 = MLP(256→128→C)` over CFG nodes.
 
 **Teaching order rationale:**
 `gnn_encoder.py` first — it produces the node embeddings that fusion_layer.py and
