@@ -116,7 +116,7 @@ Spec files are the persistent memory of this journey — uncommitted updates are
 
 - **Active phase:** Phase 5 — `ml/src/models/`
 - **Current chunk:** gnn_encoder.py Chunk 2 ✅ — ready for Chunk 3 (Phase 2 layers, IMP-R7-1)
-- **Preferences active:** P1 through P15
+- **Preferences active:** P1 through P15 (P10/P11/P13/P14 refined — learning mode framework added)
 - **Audit flags raised:** A1, A2
 - **Files taught so far:** `gnn_encoder.py` (Chunks 1–2 of 5)
 
