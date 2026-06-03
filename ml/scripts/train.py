@@ -186,11 +186,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--aux-loss-weight", type=float, default=0.3)
     p.add_argument("--dos-loss-weight", type=float, default=0.5,
                    help="DoS gradient weight (0.0=no gradient, 0.5=half, 1.0=full; 243 training positives as of 2026-05-23)")
-    p.add_argument("--aux-phase2-loss-weight", type=float, default=0.10,  # [NF-5]
+    p.add_argument("--aux-phase2-loss-weight", type=float, default=0.20,  # IMP-R7-3
                    dest="aux_phase2_loss_weight",
                    help=(
                        "Weight for CEI Phase 2 auxiliary loss (Interp-2). "
-                       "0.0=disabled; Run 5 default=0.10. "
+                       "0.0=disabled; Run 7 default=0.20 (doubled from 0.10; BUG-R7-1 fix makes gradient effective). "
                        "Applied to Phase 2 embeddings to supervise CFG reachability."
                    ))
     p.add_argument("--aux-cei-loss-weight", type=float, default=0.0,  # [Phase 7 placeholder]
