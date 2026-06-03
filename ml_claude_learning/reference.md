@@ -115,10 +115,10 @@ Spec files are the persistent memory of this journey — uncommitted updates are
 ## Current Status
 
 - **Active phase:** Phase 5 — `ml/src/models/`
-- **Current chunk:** gnn_encoder.py Chunk 1 ✅ — ready for Chunk 2 (Phase 1 layer implementation)
+- **Current chunk:** gnn_encoder.py Chunk 2 ✅ — ready for Chunk 3 (Phase 2 layers, IMP-R7-1)
 - **Preferences active:** P1 through P15
-- **Audit flags raised:** None yet
-- **Files taught so far:** `gnn_encoder.py` (Chunk 1 of 5)
+- **Audit flags raised:** A1, A2
+- **Files taught so far:** `gnn_encoder.py` (Chunks 1–2 of 5)
 
 ---
 
@@ -132,7 +132,7 @@ Phase 4  ⬜  datasets/                               (dual_path_dataset.py)
 Phase 5  🔄  models/                                 ← CURRENT FOCUS
               Chunk 1 ✅  gnn_encoder.py — module docstring, architecture overview,
                            edge type taxonomy, phase design rationale
-              Chunk 2 ⬜  gnn_encoder.py — Phase 1 layers (conv1, conv2, input_proj skip)
+              Chunk 2 ✅  gnn_encoder.py — _JKAttention, type_embedding, Phase 1 layers (conv1, conv2, input_proj)
               Chunk 3 ⬜  gnn_encoder.py — Phase 2 layers (conv3/3b/3c, CFG + ICFG)
               Chunk 4 ⬜  gnn_encoder.py — Phase 3 layers (conv4/4b/4c, reverse-CONTAINS)
               Chunk 5 ⬜  gnn_encoder.py — JK connections, LayerNorm, forward() assembly
