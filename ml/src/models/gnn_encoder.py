@@ -1,62 +1,45 @@
 """
-gnn_encoder.py — GNN Encoder for SENTINEL (v8 — three-phase, 8-layer architecture)
+gnn_encoder.py — GNN Encoder for SENTINEL (v8.1 — three-phase, 8-layer architecture)
 
-THREE-PHASE DESIGN (v8+IMP: 2+3+3 layers = 8 total)
-──────────────────────────────────────────────────────
+THREE-PHASE DESIGN (v8.1+IMP: 2+3+3 layers = 8 total)
+────────────────────────────────────────────────────────
 Phase 1 (Layers 1+2): Structural aggregation + input skip (IMP-G2)
   Edges: types 0–5 (CALLS, READS, WRITES, EMITS, INHERITS, CONTAINS)
   add_self_loops=True
-  Layer 1: NODE_FEATURE_DIM→hidden_dim (concat 8 heads) + input_proj skip (IMP-G2)
+  BUG-R7-2: type_embedding nn.Embedding(13,16) prepended → _GNN_IN_DIM=27 input.
+  Layer 1: _GNN_IN_DIM→hidden_dim (concat 8 heads) + input_proj skip (IMP-G2)
   Layer 2: hidden_dim→hidden_dim (concat 8 heads) + residual
-  Purpose: propagate function-level properties DOWN into CFG_NODE children
-  via CONTAINS edges, and aggregate inter-function structural context.
-  IMP-G2: input_proj skip = Linear(11, 256, bias=False) added before relu in Layer 1.
-  Prevents raw feature loss when GAT attention weights start near-uniform.
+  IMP-G2: input_proj skip = Linear(27, 256, bias=False). Prevents raw feature loss.
 
-Phase 2 (Layers 3+4+5): Layer-specific CFG + ICFG (IMP-G1)
+Phase 2 (Layers 3+4+5): Layer-specific CFG + ICFG (IMP-G1, IMP-R7-1)
   add_self_loops=False  ← CRITICAL — self-loops cancel directional signal
-  heads=1, concat=False → output stays hidden_dim
-  IMP-G1: each layer processes a DISTINCT edge subset (vs same cfg_mask before).
+  IMP-R7-1: heads=4, concat=True, out=64/head → output stays hidden_dim (256).
+  IMP-G1: each layer processes a DISTINCT edge subset.
   Layer 3 (conv3):  CONTROL_FLOW(6) only — intra-function execution ordering
   Layer 4 (conv3b): CALL_ENTRY(8) + RETURN_TO(9) only — cross-function call structure
   Layer 5 (conv3c): CF(6)+CALL_ENTRY(8)+RETURN_TO(9) joint — integration layer
 
 Phase 3 (Layers 6+7+8): Bidirectional CONTAINS (IMP-G3)
+  heads=1, concat=False. Upward and downward CONTAINS passes.
   Layer 6 (conv4):  REVERSE_CONTAINS up — CFG→FUNCTION (Phase 2 signal rises)
   Layer 7 (conv4b): REVERSE_CONTAINS up — second hop (multi-function patterns)
-  Layer 8 (conv4c): CONTAINS down (IMP-G3) — FUNCTION→CFG, distributes enriched
-    FUNCTION context back to CFG children. All nodes carry Phase 3 depth after this.
-  Phase 1-A3 (2026-05-14): type-7 embeddings for upward direction.
-  IMP-G3: type-5 (CONTAINS) embeddings for downward direction (conv4c).
+  Layer 8 (conv4c): CONTAINS down — FUNCTION→CFG (IMP-G3: distributes enriched context)
 
-  Zero-message behaviour (correct — do not "fix"):
-  FUNCTION nodes with no CFG children receive no upward Phase 3 messages.
-  conv returns zero; residual x = x + dropout(0) is a no-op.
+JK Connections (Phase 1-A1): learned attention aggregation over all three phase outputs.
+Per-Phase LayerNorm (Phase 1-A2): prevents Phase 1 norm from dominating JK softmax.
 
-JK Connections (Phase 1-A1, 2026-05-14)
-─────────────────────────────────────────
-Learned attention aggregation over all three phase outputs. Prevents Phase 1
-structural signal from being over-smoothed by phases 2 and 3.
-
-Per-Phase LayerNorm (Phase 1-A2, 2026-05-14)
-──────────────────────────────────────────────
-Applied once after each complete phase (after both layers of that phase),
-before collecting for JK. Prevents Phase 1's higher norm (two conv layers)
-from dominating the JK attention softmax.
-
-PARAMETERS (v8 defaults)
-─────────────────────────
-  in_channels   = NODE_FEATURE_DIM (11)
-  hidden_dim    = 256    (was 128 — doubles capacity for complex vulnerability patterns)
-  heads         = 8 (Phase 1 only; Phases 2+3 use heads=1)
+PARAMETERS (v8.1 defaults — Run 7+)
+─────────────────────────────────────
+  in_channels   = _GNN_IN_DIM (27 = NODE_FEATURE_DIM 11 + type_emb 16; model-internal)
+  hidden_dim    = 256
+  heads         = 8 (Phase 1); 4 (Phase 2, IMP-R7-1); 1 (Phase 3)
   dropout       = 0.2
   use_edge_attr = True
-  edge_emb_dim  = 64     (was 32 — 64/8 = 8 dims per edge type vs 4 previously)
-  num_layers    = 8      (2+3+3 phases; IMP-G3 added downward CONTAINS pass as conv4c)
-  use_jk        = True
-  jk_mode       = 'attention'
+  edge_emb_dim  = 64
+  num_layers    = 8 (2+3+3 phases)
+  use_jk        = True / jk_mode = 'attention'
 
-Total trainable parameters (v8 defaults): ~2.4M GNN (was ~91K at hidden=128)
+Total trainable parameters (v8.1 defaults): ~2.5M GNN
 """
 
 from __future__ import annotations
@@ -66,7 +49,14 @@ import torch.nn as nn
 from loguru import logger
 from torch_geometric.nn import GATConv
 
-from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES, EDGE_TYPES
+from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NODE_TYPES, NUM_EDGE_TYPES, EDGE_TYPES
+
+# BUG-R7-2: node type stored as float(type_id)/12.0 — GATConv cannot learn categorical
+# structure from a continuous scalar. Enrich input with a learned 16-dim embedding so
+# each of the 13 node types gets its own representation vector.
+_TYPE_EMB_DIM: int = 16
+_NUM_NODE_TYPES: int = int(max(NODE_TYPES.values())) + 1  # 13 for v8 schema (IDs 0–12)
+_GNN_IN_DIM:   int = NODE_FEATURE_DIM + _TYPE_EMB_DIM    # 11 + 16 = 27
 
 # [A27] Architecture is fixed at 8 layers (2+3+3 phases). Enforced in GNNEncoder.__init__.
 SENTINEL_GNN_NUM_LAYERS: int = 8
@@ -179,7 +169,7 @@ class GNNEncoder(nn.Module):
         """
         Args:
             hidden_dim:         Node embedding width (default 256).
-            heads:              Multi-head count for Phase 1 (Phases 2+3 always use 1).
+            heads:              Multi-head count for Phase 1 (Phase 3 uses 1; Phase 2 uses 4).
             dropout:            Dropout probability applied after each conv layer.
             use_edge_attr:      If True, embed edge types and feed to GATConv.
             edge_emb_dim:       Edge type embedding dimension (default 64).
@@ -230,17 +220,23 @@ class GNNEncoder(nn.Module):
         else:
             self.edge_embedding = None
 
+        # BUG-R7-2: categorical node-type embedding. Type ID is already in feat[0] as a
+        # normalised float — we recover the integer at runtime and embed it so GATConv
+        # sees a real representation space instead of a continuous scalar.
+        # No graph re-extraction needed; _GNN_IN_DIM is model-internal only.
+        self.type_embedding = nn.Embedding(_NUM_NODE_TYPES, _TYPE_EMB_DIM)
+
         # IMP-G2: learned skip connection from raw features to Phase 1 Layer 1 output.
-        # Prevents raw 11-dim feature information from being lost when GAT attention
-        # weights are poorly initialised. bias=False avoids double-counting the conv bias.
-        # 11 × 256 = 2,816 parameters — negligible.
-        self.input_proj = nn.Linear(NODE_FEATURE_DIM, hidden_dim, bias=False)
+        # Prevents raw feature information from being lost when GAT attention weights
+        # start near-uniform. bias=False avoids double-counting the conv bias.
+        # _GNN_IN_DIM (27) × 256 = 6,912 parameters — negligible.
+        self.input_proj = nn.Linear(_GNN_IN_DIM, hidden_dim, bias=False)
 
         # ── Phase 1 — structural + CONTAINS (Layers 1+2) ────────────────────
         # out_channels is PER HEAD in PyG GATConv. With heads=8 and concat=True:
         #   total output = 8 × _head_dim = 8 × 32 = 256 = hidden_dim.
         self.conv1 = GATConv(
-            in_channels=NODE_FEATURE_DIM,  # 11
+            in_channels=_GNN_IN_DIM,  # 27 (11 features + 16 type-embedding)
             out_channels=_head_dim,         # 32 per head
             heads=heads,                    # 8 → total 256
             concat=True,
@@ -259,23 +255,28 @@ class GNNEncoder(nn.Module):
         # ── Phase 2 — CFG + ICFG directed (Layers 3+4+5) ───────────────────
         # Edge types: CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9).
         # add_self_loops=False — CRITICAL: self-loops cancel directional CF signal.
-        # heads=1: one head with full hidden_dim capacity for execution-order encoding.
+        # IMP-R7-1: heads=4 (was 1). Each head specialises for a different CFG
+        # pattern (write-order, call-depth, CEI sequence, data-flow timing).
+        # concat=True + out_channels=hidden_dim//4 → 4*(hidden_dim//4) = hidden_dim.
+        # Parameter count per conv is unchanged — same FLOPS, split across 4 heads.
+        _p2_heads    = 4
+        _p2_head_dim = hidden_dim // _p2_heads   # 64 per head when hidden=256
         # Layer 3: first hop  (intra-function successors + cross-function CALL_ENTRY).
         # Layer 4: second hop (CEI/CEA pattern + callee body via ICFG).
         # Layer 5 (conv3c): third hop — ENTRY→CALL→TMP→WRITE full CEI sequence.
         self.conv3 = GATConv(
             in_channels=hidden_dim,
-            out_channels=hidden_dim,
-            heads=1,
-            concat=False,
+            out_channels=_p2_head_dim,
+            heads=_p2_heads,
+            concat=True,
             add_self_loops=False,     # CRITICAL
             edge_dim=_edge_dim,
         )
         self.conv3b = GATConv(
             in_channels=hidden_dim,
-            out_channels=hidden_dim,
-            heads=1,
-            concat=False,
+            out_channels=_p2_head_dim,
+            heads=_p2_heads,
+            concat=True,
             add_self_loops=False,     # CRITICAL
             edge_dim=_edge_dim,
         )
@@ -286,9 +287,9 @@ class GNNEncoder(nn.Module):
         # full CEI sequence from entry to write in one aggregation pass.
         self.conv3c = GATConv(
             in_channels=hidden_dim,
-            out_channels=hidden_dim,
-            heads=1,
-            concat=False,
+            out_channels=_p2_head_dim,
+            heads=_p2_heads,
+            concat=True,
             add_self_loops=False,     # CRITICAL
             edge_dim=_edge_dim,
         )
@@ -544,14 +545,18 @@ class GNNEncoder(nn.Module):
         _intermediates: dict      = {}
 
         # ── Phase 1: structural aggregation (Layers 1+2) ────────────────────
-        # IMP-G2: save raw features before any conv for the skip connection.
-        x_init = x  # [N, NODE_FEATURE_DIM]
+        # BUG-R7-2: enrich x with a 16-dim learned type embedding before conv1.
+        # type_id was stored as float(id)/12.0 in feat[0]; recover the integer here.
+        # Clamping guards against any float rounding that gives id=13 on edge cases.
+        _type_int = (x[:, 0].float() * _NUM_NODE_TYPES).round().long().clamp(0, _NUM_NODE_TYPES - 1)
+        x_init = torch.cat([x, self.type_embedding(_type_int).to(x.dtype)], dim=1)  # [N, 27]
 
-        # Layer 1: NODE_FEATURE_DIM→hidden_dim.
+        # IMP-G2: save enriched features for the skip connection.
+        # Layer 1: _GNN_IN_DIM→hidden_dim.
         # IMP-G2: add learned skip (input_proj) so raw features bypass the first
         # GAT layer — prevents feature loss when attention weights start near-uniform.
-        x_skip = self.input_proj(x_init.to(self._param_dtype)).to(x.dtype)  # dtype-safe (IMP-G2) [A26]
-        x  = self.conv1(x_init, struct_ei, struct_ea)   # [N, NODE_FEATURE_DIM] → [N, hidden_dim]
+        x_skip = self.input_proj(x_init.to(self._param_dtype)).to(x_init.dtype)  # dtype-safe (IMP-G2) [A26]
+        x  = self.conv1(x_init, struct_ei, struct_ea)   # [N, _GNN_IN_DIM] → [N, hidden_dim]
         x  = self.relu(x + x_skip)                      # skip added before relu (IMP-G2)
         x  = self.dropout(x)
         # Layer 2: hidden_dim→hidden_dim with residual from Layer 1.

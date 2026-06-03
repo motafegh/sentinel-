@@ -1,48 +1,44 @@
 """
-sentinel_model.py — SENTINEL Three-Eye Model (v8 architecture)
+sentinel_model.py — SENTINEL Four-Eye Model (v8.1 architecture, Run 7+)
 
-v8 ARCHITECTURE
-───────────────
-Three-eye classifier: three independent 128-dim vectors concatenated to [B, 384].
-GNN is a three-phase, 8-layer GAT (2+3+3) that encodes execution order via
-CFG CONTROL_FLOW edges (3 hops: CEI + ENTRY pattern) plus CALL_ENTRY(8)/RETURN_TO(9)
-ICFG-Lite edges, and propagates back up via reversed CONTAINS edges (Phase 3).
-NODE_FEATURE_DIM=11, NUM_EDGE_TYPES=11.
+v8.1 ARCHITECTURE (Run 7 fixes: BUG-R7-1, BUG-R7-2, IMP-R7-1, IMP-R7-2)
+──────────────────────────────────────────────────────────────────────────
+Four-eye classifier: four independent 128-dim vectors concatenated to [B, 512].
+GNN is a three-phase, 8-layer GAT (2+3+3) with:
+  - BUG-R7-2: type_embedding nn.Embedding(13,16) prepended to node features at
+    runtime (_GNN_IN_DIM=27). Categorical type representation vs. scalar.
+  - Phase 2 (L3+L4+L5): IMP-R7-1 heads=4 (was 1) for CFG attention diversity.
+  - Phase 3 (L6+L7+L8): REVERSE_CONTAINS up + CONTAINS down (IMP-G3). heads=1.
+NODE_FEATURE_DIM=11 (on disk), _GNN_IN_DIM=27 (model-internal after type emb).
+NUM_EDGE_TYPES=11.
 
-  GNN eye         (structural opinion):
-    Pool over FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes only.
-    After Phase 3 (reverse-CONTAINS), these nodes carry aggregated CFG signal.
-    Pooling over all nodes was dominated by CFG_RETURN (77% of CFG node mass),
-    drowning the CFG_CALL/WRITE/COND signal that encodes execution order.
-    Falls back to all-node pool if no function-level nodes exist (ghost graphs).
-    global_max_pool(func_embs, func_batch)  → [B, 128]
-    global_mean_pool(func_embs, func_batch) → [B, 128]
-    cat                                     → [B, 256]
-    gnn_eye_proj  Linear(256,128)+ReLU+Dropout → [B, 128]
+  GNN eye         (structural opinion — function nodes after Phase 3):
+    Pool over FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes.
+    global_max_pool + global_mean_pool → [B, 512] → gnn_eye_proj → [B, 128]
 
   Transformer eye (semantic opinion):
-    WindowAttentionPooler → learned-attention over W window-CLS tokens → [B, 768]
-    transformer_eye_proj  Linear(768,128)+ReLU+Dropout → [B, 128]
-    (single-window fallback: returns CLS at position 0 with zero overhead)
+    WindowAttentionPooler → [B, 768] → transformer_eye_proj → [B, 128]
 
   Fused eye       (joint structural+semantic opinion):
     CrossAttentionFusion(node_embs, token_embs) → [B, 128]
 
+  CFG eye         (Phase 2 direct — IMP-R7-2, BUG-R7-1 fix):
+    Pool _phase2_x over CFG_NODE types [8-12] — the nodes that actually receive
+    Phase 2 GATConv messages. Direct gradient path to conv3/conv3b/conv3c.
+    global_max_pool + global_mean_pool → [B, 512] → cfg_eye_proj → [B, 128]
+
   Classifier:
-    cat([gnn_eye, transformer_eye, fused_eye])  → [B, 384]
-    Linear(384, 192) → ReLU → Dropout → Linear(192, num_classes) → raw logits [B, num_classes]
+    cat([gnn_eye, transformer_eye, fused_eye, cfg_eye])  → [B, 512]
+    Linear(512, 256) → ReLU → Dropout → Linear(256, num_classes) → [B, num_classes]
 
 Auxiliary heads (training only — prevents eye dominance):
-  aux_gnn         = Linear(128, num_classes)(gnn_eye)         → [B, num_classes]
-  aux_transformer = Linear(128, num_classes)(transformer_eye) → [B, num_classes]
-  aux_fused       = Linear(128, num_classes)(fused_eye)       → [B, num_classes]
+  aux_gnn         = Linear(128, num_classes)(gnn_eye)
+  aux_transformer = Linear(128, num_classes)(transformer_eye)
+  aux_fused       = Linear(128, num_classes)(fused_eye)
+  aux_phase2      = MLP(256→128→num_classes) pooled over CFG nodes (BUG-R7-1 fix)
 
-  forward(..., return_aux=True)  returns (logits, {"gnn": ..., "transformer": ..., "fused": ...})
-  forward(..., return_aux=False) returns logits only [DEFAULT — zero inference overhead]
-
-  Trainer loss: main_loss + λ * (loss_gnn + loss_transformer + loss_fused)
-  λ=0.3 keeps each eye's gradient signal alive even if the main classifier
-  learns to weight one eye heavily.  Auxiliary heads add ~3.9K parameters.
+  forward(..., return_aux=True) → (logits, {"gnn", "transformer", "fused", "phase2", "jk_entropy"})
+  forward(..., return_aux=False) → logits only [zero inference overhead]
 
 WHAT DID NOT CHANGE
 ───────────────────
@@ -98,6 +94,19 @@ _FUNC_IDS_CPU: torch.Tensor = torch.tensor(sorted(_FUNC_TYPE_IDS), dtype=torch.l
 assert _FUNC_IDS_CPU.numel() == len(_FUNC_TYPE_IDS) and _FUNC_IDS_CPU.min() >= 0, (
     f"NC-2: _FUNC_IDS_CPU has unexpected shape or values: {_FUNC_IDS_CPU.tolist()}"
 )
+
+# BUG-R7-1: CFG node types for Phase 2 pooling.
+# Phase 2 GATConv (conv3/conv3b/conv3c) operates on edges that connect ONLY CFG_NODE
+# types (IDs 8–12). Function nodes receive zero Phase 2 messages, so pooling over them
+# for aux_phase2 sent gradient only through the residual path, never reaching conv3.
+_CFG_TYPE_IDS: frozenset[int] = frozenset({
+    NODE_TYPES["CFG_NODE_CALL"],
+    NODE_TYPES["CFG_NODE_WRITE"],
+    NODE_TYPES["CFG_NODE_READ"],
+    NODE_TYPES["CFG_NODE_CHECK"],
+    NODE_TYPES["CFG_NODE_OTHER"],
+})
+_CFG_IDS_CPU: torch.Tensor = torch.tensor(sorted(_CFG_TYPE_IDS), dtype=torch.long)
 
 # ── GNN prefix injection constants (Phase 1) ──────────────────────────────────
 # Selection priority for K-capped truncation: lower number = selected first.
@@ -238,13 +247,23 @@ class SentinelModel(nn.Module):
             nn.Dropout(dropout),
         )
 
+        # IMP-R7-2: CFG eye — pools Phase 2 embeddings over CFG nodes.
+        # Direct gradient path from the classifier to conv3/conv3b/conv3c without
+        # requiring Phase 2 signal to climb through Phase 3 reverse-CONTAINS first.
+        # max+mean over CFG_NODE types [8-12] → [B, 2*gnn_hidden_dim] → [B, eye_dim]
+        self.cfg_eye_proj = nn.Sequential(
+            nn.Linear(2 * gnn_hidden_dim, eye_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+        )
+
         # ── Main classifier ────────────────────────────────────────────────
-        # All three eyes concatenated: [B, 3*eye_dim] → hidden → [B, num_classes]
-        # Hidden layer at 192 adds capacity without overfitting on 44K contracts.
+        # Four eyes concatenated: [B, 4*eye_dim] → hidden → [B, num_classes]
+        # IMP-R7-2: widened from 3*eye_dim→192 to 4*eye_dim→256 (4th CFG eye added).
         # No Sigmoid — applied externally.
-        _cls_hidden = 192
+        _cls_hidden = 256
         self.classifier = nn.Sequential(
-            nn.Linear(3 * eye_dim, _cls_hidden),
+            nn.Linear(4 * eye_dim, _cls_hidden),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(_cls_hidden, num_classes),
@@ -269,9 +288,9 @@ class SentinelModel(nn.Module):
         )
 
         logger.info(
-            f"SentinelModel v8 (three-eye) initialised | "
+            f"SentinelModel v8 (four-eye) initialised | "
             f"num_classes={num_classes} | eye_dim={eye_dim} | "
-            f"classifier [{3 * eye_dim}→192→{num_classes}] | "
+            f"classifier [{4 * eye_dim}→256→{num_classes}] | "
             f"gnn_hidden={gnn_hidden_dim} heads={gnn_heads} layers={gnn_num_layers} "
             f"use_jk={gnn_use_jk} jk_mode={gnn_jk_mode} | "
             f"lora_r={lora_r} lora_alpha={lora_alpha} | "
@@ -400,15 +419,14 @@ class SentinelModel(nn.Module):
 
         # ── GNN path: node embeddings ─────────────────────────────────────
         edge_attr = getattr(graphs, "edge_attr", None) if self.use_edge_attr else None
+        # IMP-R7-2: return_phase2_embs=True unconditionally — the 4th CFG eye needs
+        # _phase2_x at both training and inference time.
         _gnn_out = self.gnn(
             graphs.x, graphs.edge_index, graphs.batch, edge_attr,
-            return_phase2_embs=return_aux,  # gradient-carrying phase2 for CEI aux loss
+            return_phase2_embs=True,
         )
-        if return_aux:
-            node_embs, batch, _jk_entropy, _phase2_x = _gnn_out
-        else:
-            node_embs, batch, _jk_entropy = _gnn_out
-        # node_embs: [N, gnn_hidden_dim]  batch: [N]
+        node_embs, batch, _jk_entropy, _phase2_x = _gnn_out
+        # node_embs: [N, gnn_hidden_dim]  batch: [N]  _phase2_x: [N, gnn_hidden_dim]
 
         # ── GNN eye: function-level pool → project ───────────────────────
         # Pool only over function-level nodes (FUNCTION/MODIFIER/FALLBACK/
@@ -423,7 +441,9 @@ class SentinelModel(nn.Module):
         # constant derived from NODE_TYPES so it tracks schema changes.
         # Use .float() before * to guard against AMP/BF16 round-trip precision loss.
         node_type_ids = (graphs.x[:, 0].float() * _MAX_TYPE_ID).round().long()
-        func_mask = torch.isin(node_type_ids, _FUNC_IDS_CPU.to(node_embs.device))
+        func_mask     = torch.isin(node_type_ids, _FUNC_IDS_CPU.to(node_embs.device))
+        # BUG-R7-1: separate CFG mask for Phase 2 pooling (aux head + CFG eye).
+        cfg_pool_mask = torch.isin(node_type_ids, _CFG_IDS_CPU.to(node_embs.device))
 
         # Per-graph fallback: a graph with NO function-level nodes (ghost graph
         # or interface-only contract) would produce zero rows for its batch index,
@@ -468,6 +488,18 @@ class SentinelModel(nn.Module):
             torch.cat([gnn_max, gnn_mean], dim=1)           # [B, 2*gnn_hidden_dim]
         )                                                    # [B, eye_dim]
 
+        # ── CFG eye: Phase 2 embeddings over CFG nodes → direct gradient to conv3 ─
+        # IMP-R7-2: pool _phase2_x over CFG_NODE types (8-12) — these are the nodes
+        # that actually receive Phase 2 GATConv messages. Direct path from classifier
+        # loss to conv3/conv3b/conv3c without requiring signal to climb Phase 3.
+        # global_max/mean_pool with size=num_graphs returns zeros for graphs with no
+        # CFG nodes (interface-only contracts) — same safe degenerate behaviour as GNN eye.
+        cfg_max  = global_max_pool(_phase2_x[cfg_pool_mask], batch[cfg_pool_mask], size=num_graphs)
+        cfg_mean = global_mean_pool(_phase2_x[cfg_pool_mask], batch[cfg_pool_mask], size=num_graphs)
+        cfg_eye  = self.cfg_eye_proj(
+            torch.cat([cfg_max, cfg_mean], dim=1)           # [B, 2*gnn_hidden_dim]
+        )                                                    # [B, eye_dim]
+
         # ── GNN prefix selection (suppressed during warmup and when disabled) ──
         # During warmup the prefix is None; gnn_to_bert_proj is untrained but the
         # GNN itself trains normally.  At epoch warmup+1 the projection starts from
@@ -503,7 +535,7 @@ class SentinelModel(nn.Module):
         # fused_eye: [B, eye_dim]
 
         # ── Main classifier ───────────────────────────────────────────────
-        combined = torch.cat([gnn_eye, transformer_eye, fused_eye], dim=1)  # [B, 3*eye_dim]
+        combined = torch.cat([gnn_eye, transformer_eye, fused_eye, cfg_eye], dim=1)  # [B, 4*eye_dim]
         logits   = self.classifier(combined)  # [B, num_classes]
 
         if self.num_classes == 1:
@@ -517,8 +549,9 @@ class SentinelModel(nn.Module):
         aux_tf    = self.aux_transformer(transformer_eye)
         aux_fused = self.aux_fused(fused_eye)
 
-        # Phase 2 CEI aux head: pool phase2 embeddings over function nodes
-        phase2_pooled    = global_mean_pool(_phase2_x[pool_mask], pool_batch, size=num_graphs)
+        # Phase 2 CEI aux head: pool phase2 embeddings over CFG nodes (BUG-R7-1 fix).
+        # CFG nodes are the ones that actually receive Phase 2 GATConv messages.
+        phase2_pooled    = global_mean_pool(_phase2_x[cfg_pool_mask], batch[cfg_pool_mask], size=num_graphs)
         aux_phase2_logits = self.aux_phase2(phase2_pooled)   # [B, num_classes]
 
         if self.num_classes == 1:
@@ -587,10 +620,12 @@ class SentinelModel(nn.Module):
             "CrossAttentionFusion":  self.fusion,
             "gnn_eye_proj":          self.gnn_eye_proj,
             "transformer_eye_proj":  self.transformer_eye_proj,
-            "Classifier (3×eye→C)":  self.classifier,
+            "cfg_eye_proj":          self.cfg_eye_proj,
+            "Classifier (4×eye→C)":  self.classifier,
             "aux_gnn":               self.aux_gnn,
             "aux_transformer":       self.aux_transformer,
             "aux_fused":             self.aux_fused,
+            "aux_phase2":            self.aux_phase2,
         }
         if self.gnn_prefix_k > 0:
             components["gnn_to_bert_proj"]     = self.gnn_to_bert_proj

@@ -1,5 +1,5 @@
 """
-trainer.py — SENTINEL Training Loop (v8 — Three-Eye GNN+CodeBERT+LoRA)
+trainer.py — SENTINEL Training Loop (v8.1 — Four-Eye GNN+CodeBERT+LoRA)
 With tqdm progress bars, safe resume, offline mode, and EARLY STOPPING.
 
 SPEED OPTIMISATIONS APPLIED (vs original):
@@ -107,9 +107,9 @@ CLASS_NAMES = [
 ]
 NUM_CLASSES = len(CLASS_NAMES)
 
-ARCHITECTURE = "three_eye_v8"
+ARCHITECTURE = "four_eye_v8"  # Run7+: 4-eye classifier + type embedding + Phase2 heads=4
 
-MODEL_VERSION = "v8.0"
+MODEL_VERSION = "v8.1"
 
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal", "asl"})
 
@@ -248,7 +248,7 @@ class TrainConfig:
     # Phase 2 CEI auxiliary loss (Interp-2): direct supervision on Phase 2 embeddings.
     # CEI classes (Reentrancy, ExternalBug, TOD) get 3× weighting.
     # Set to 0.0 to disable.
-    aux_phase2_loss_weight: float = 0.10
+    aux_phase2_loss_weight: float = 0.20  # IMP-R7-3: doubled (BUG-R7-1 fix makes gradient effective)
 
     # --- Aux loss warmup (Fix #33) ---
     # aux_loss_weight ramps from 0 → aux_loss_weight linearly over this many
@@ -1303,7 +1303,7 @@ def train(config: TrainConfig) -> dict:
         if not _p.requires_grad or id(_p) in _seen_param_ids:
             continue
         _seen_param_ids.add(id(_p))
-        if _pname.startswith("gnn.") or _pname.startswith("gnn_eye_proj."):
+        if _pname.startswith("gnn.") or _pname.startswith("gnn_eye_proj.") or _pname.startswith("cfg_eye_proj."):
             _gnn_params.append(_p)
         elif "lora_" in _pname:
             _lora_params.append(_p)
@@ -1385,8 +1385,8 @@ def train(config: TrainConfig) -> dict:
             # graph breaks contaminating the GNN/fusion compile context when the whole
             # model is compiled. Submodule compilation isolates those breaks.
             for name in ("gnn", "fusion", "classifier",
-                         "gnn_eye_proj", "transformer_eye_proj", "window_pooler",
-                         "aux_gnn", "aux_transformer", "aux_fused"):  # H5: aux_fused was missing
+                         "gnn_eye_proj", "cfg_eye_proj", "transformer_eye_proj", "window_pooler",
+                         "aux_gnn", "aux_transformer", "aux_fused", "aux_phase2"):
                 sub = getattr(model, name, None)
                 if sub is not None:
                     setattr(model, name, torch.compile(sub, dynamic=True))
