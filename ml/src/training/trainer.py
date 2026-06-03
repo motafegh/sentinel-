@@ -1303,7 +1303,7 @@ def train(config: TrainConfig) -> dict:
         if not _p.requires_grad or id(_p) in _seen_param_ids:
             continue
         _seen_param_ids.add(id(_p))
-        if _pname.startswith("gnn.") or _pname.startswith("gnn_eye_proj."):
+        if _pname.startswith("gnn.") or _pname.startswith("gnn_eye_proj.") or _pname.startswith("cfg_eye_proj."):
             _gnn_params.append(_p)
         elif "lora_" in _pname:
             _lora_params.append(_p)
@@ -1385,8 +1385,8 @@ def train(config: TrainConfig) -> dict:
             # graph breaks contaminating the GNN/fusion compile context when the whole
             # model is compiled. Submodule compilation isolates those breaks.
             for name in ("gnn", "fusion", "classifier",
-                         "gnn_eye_proj", "transformer_eye_proj", "window_pooler",
-                         "aux_gnn", "aux_transformer", "aux_fused"):  # H5: aux_fused was missing
+                         "gnn_eye_proj", "cfg_eye_proj", "transformer_eye_proj", "window_pooler",
+                         "aux_gnn", "aux_transformer", "aux_fused", "aux_phase2"):
                 sub = getattr(model, name, None)
                 if sub is not None:
                     setattr(model, name, torch.compile(sub, dynamic=True))
