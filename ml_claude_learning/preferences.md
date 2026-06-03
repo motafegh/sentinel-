@@ -101,11 +101,11 @@ Never reference code from an untaught file without either:
 ### P10 — Spaced Repetition and Active Recall
 Active recall (being tested) consolidates memory; re-reading does not.
 
-**A — Warm-up (every chunk):** 2–3 quick recall questions from the previous chunk before new material.
-**B — Spaced review (every 3–4 chunks):** 2–3 questions from older material at increasing intervals.
+**A — Warm-up (every chunk):** Recall questions from the previous chunk before new material. Minimum 3; scale up with how many distinct concepts that chunk covered. One question per major concept is the guide.
+**B — Spaced review (every 3–4 chunks):** Questions from older material at increasing intervals. Minimum 2; scale with how much older ground is due for review.
 **C — Lock-in summary:** After teaching, before challenge questions: "3 things to lock in." Key constants and invariants live here.
 **D — No re-reading:** Questions must require memory retrieval. If the user needs to look it up, reteach — don't re-read.
-**E — Question mode tags:** Every warm-up and challenge question is tagged:
+**E — Challenge questions (every chunk):** Minimum 3; scale up with chunk complexity. A chunk with 6 distinct mechanisms or portable concepts warrants 6 questions. Never cap at 3 if more is justified. Tag every question:
 - `[Pattern]` — purpose/effect, 1–2 sentence answer
 - `[Mechanism]` — shape tracing, "what breaks if X?"
 - `[Portable🔵]` — explain without Sentinel context / where else does this apply?
