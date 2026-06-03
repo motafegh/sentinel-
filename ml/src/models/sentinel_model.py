@@ -1,48 +1,44 @@
 """
-sentinel_model.py — SENTINEL Three-Eye Model (v8 architecture)
+sentinel_model.py — SENTINEL Four-Eye Model (v8.1 architecture, Run 7+)
 
-v8 ARCHITECTURE
-───────────────
-Three-eye classifier: three independent 128-dim vectors concatenated to [B, 384].
-GNN is a three-phase, 8-layer GAT (2+3+3) that encodes execution order via
-CFG CONTROL_FLOW edges (3 hops: CEI + ENTRY pattern) plus CALL_ENTRY(8)/RETURN_TO(9)
-ICFG-Lite edges, and propagates back up via reversed CONTAINS edges (Phase 3).
-NODE_FEATURE_DIM=11, NUM_EDGE_TYPES=11.
+v8.1 ARCHITECTURE (Run 7 fixes: BUG-R7-1, BUG-R7-2, IMP-R7-1, IMP-R7-2)
+──────────────────────────────────────────────────────────────────────────
+Four-eye classifier: four independent 128-dim vectors concatenated to [B, 512].
+GNN is a three-phase, 8-layer GAT (2+3+3) with:
+  - BUG-R7-2: type_embedding nn.Embedding(13,16) prepended to node features at
+    runtime (_GNN_IN_DIM=27). Categorical type representation vs. scalar.
+  - Phase 2 (L3+L4+L5): IMP-R7-1 heads=4 (was 1) for CFG attention diversity.
+  - Phase 3 (L6+L7+L8): REVERSE_CONTAINS up + CONTAINS down (IMP-G3). heads=1.
+NODE_FEATURE_DIM=11 (on disk), _GNN_IN_DIM=27 (model-internal after type emb).
+NUM_EDGE_TYPES=11.
 
-  GNN eye         (structural opinion):
-    Pool over FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes only.
-    After Phase 3 (reverse-CONTAINS), these nodes carry aggregated CFG signal.
-    Pooling over all nodes was dominated by CFG_RETURN (77% of CFG node mass),
-    drowning the CFG_CALL/WRITE/COND signal that encodes execution order.
-    Falls back to all-node pool if no function-level nodes exist (ghost graphs).
-    global_max_pool(func_embs, func_batch)  → [B, 128]
-    global_mean_pool(func_embs, func_batch) → [B, 128]
-    cat                                     → [B, 256]
-    gnn_eye_proj  Linear(256,128)+ReLU+Dropout → [B, 128]
+  GNN eye         (structural opinion — function nodes after Phase 3):
+    Pool over FUNCTION/MODIFIER/FALLBACK/RECEIVE/CONSTRUCTOR nodes.
+    global_max_pool + global_mean_pool → [B, 512] → gnn_eye_proj → [B, 128]
 
   Transformer eye (semantic opinion):
-    WindowAttentionPooler → learned-attention over W window-CLS tokens → [B, 768]
-    transformer_eye_proj  Linear(768,128)+ReLU+Dropout → [B, 128]
-    (single-window fallback: returns CLS at position 0 with zero overhead)
+    WindowAttentionPooler → [B, 768] → transformer_eye_proj → [B, 128]
 
   Fused eye       (joint structural+semantic opinion):
     CrossAttentionFusion(node_embs, token_embs) → [B, 128]
 
+  CFG eye         (Phase 2 direct — IMP-R7-2, BUG-R7-1 fix):
+    Pool _phase2_x over CFG_NODE types [8-12] — the nodes that actually receive
+    Phase 2 GATConv messages. Direct gradient path to conv3/conv3b/conv3c.
+    global_max_pool + global_mean_pool → [B, 512] → cfg_eye_proj → [B, 128]
+
   Classifier:
-    cat([gnn_eye, transformer_eye, fused_eye])  → [B, 384]
-    Linear(384, 192) → ReLU → Dropout → Linear(192, num_classes) → raw logits [B, num_classes]
+    cat([gnn_eye, transformer_eye, fused_eye, cfg_eye])  → [B, 512]
+    Linear(512, 256) → ReLU → Dropout → Linear(256, num_classes) → [B, num_classes]
 
 Auxiliary heads (training only — prevents eye dominance):
-  aux_gnn         = Linear(128, num_classes)(gnn_eye)         → [B, num_classes]
-  aux_transformer = Linear(128, num_classes)(transformer_eye) → [B, num_classes]
-  aux_fused       = Linear(128, num_classes)(fused_eye)       → [B, num_classes]
+  aux_gnn         = Linear(128, num_classes)(gnn_eye)
+  aux_transformer = Linear(128, num_classes)(transformer_eye)
+  aux_fused       = Linear(128, num_classes)(fused_eye)
+  aux_phase2      = MLP(256→128→num_classes) pooled over CFG nodes (BUG-R7-1 fix)
 
-  forward(..., return_aux=True)  returns (logits, {"gnn": ..., "transformer": ..., "fused": ...})
-  forward(..., return_aux=False) returns logits only [DEFAULT — zero inference overhead]
-
-  Trainer loss: main_loss + λ * (loss_gnn + loss_transformer + loss_fused)
-  λ=0.3 keeps each eye's gradient signal alive even if the main classifier
-  learns to weight one eye heavily.  Auxiliary heads add ~3.9K parameters.
+  forward(..., return_aux=True) → (logits, {"gnn", "transformer", "fused", "phase2", "jk_entropy"})
+  forward(..., return_aux=False) → logits only [zero inference overhead]
 
 WHAT DID NOT CHANGE
 ───────────────────
@@ -624,10 +620,12 @@ class SentinelModel(nn.Module):
             "CrossAttentionFusion":  self.fusion,
             "gnn_eye_proj":          self.gnn_eye_proj,
             "transformer_eye_proj":  self.transformer_eye_proj,
-            "Classifier (3×eye→C)":  self.classifier,
+            "cfg_eye_proj":          self.cfg_eye_proj,
+            "Classifier (4×eye→C)":  self.classifier,
             "aux_gnn":               self.aux_gnn,
             "aux_transformer":       self.aux_transformer,
             "aux_fused":             self.aux_fused,
+            "aux_phase2":            self.aux_phase2,
         }
         if self.gnn_prefix_k > 0:
             components["gnn_to_bert_proj"]     = self.gnn_to_bert_proj

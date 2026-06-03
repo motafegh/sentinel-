@@ -1,62 +1,45 @@
 """
-gnn_encoder.py — GNN Encoder for SENTINEL (v8 — three-phase, 8-layer architecture)
+gnn_encoder.py — GNN Encoder for SENTINEL (v8.1 — three-phase, 8-layer architecture)
 
-THREE-PHASE DESIGN (v8+IMP: 2+3+3 layers = 8 total)
-──────────────────────────────────────────────────────
+THREE-PHASE DESIGN (v8.1+IMP: 2+3+3 layers = 8 total)
+────────────────────────────────────────────────────────
 Phase 1 (Layers 1+2): Structural aggregation + input skip (IMP-G2)
   Edges: types 0–5 (CALLS, READS, WRITES, EMITS, INHERITS, CONTAINS)
   add_self_loops=True
-  Layer 1: NODE_FEATURE_DIM→hidden_dim (concat 8 heads) + input_proj skip (IMP-G2)
+  BUG-R7-2: type_embedding nn.Embedding(13,16) prepended → _GNN_IN_DIM=27 input.
+  Layer 1: _GNN_IN_DIM→hidden_dim (concat 8 heads) + input_proj skip (IMP-G2)
   Layer 2: hidden_dim→hidden_dim (concat 8 heads) + residual
-  Purpose: propagate function-level properties DOWN into CFG_NODE children
-  via CONTAINS edges, and aggregate inter-function structural context.
-  IMP-G2: input_proj skip = Linear(11, 256, bias=False) added before relu in Layer 1.
-  Prevents raw feature loss when GAT attention weights start near-uniform.
+  IMP-G2: input_proj skip = Linear(27, 256, bias=False). Prevents raw feature loss.
 
-Phase 2 (Layers 3+4+5): Layer-specific CFG + ICFG (IMP-G1)
+Phase 2 (Layers 3+4+5): Layer-specific CFG + ICFG (IMP-G1, IMP-R7-1)
   add_self_loops=False  ← CRITICAL — self-loops cancel directional signal
-  heads=1, concat=False → output stays hidden_dim
-  IMP-G1: each layer processes a DISTINCT edge subset (vs same cfg_mask before).
+  IMP-R7-1: heads=4, concat=True, out=64/head → output stays hidden_dim (256).
+  IMP-G1: each layer processes a DISTINCT edge subset.
   Layer 3 (conv3):  CONTROL_FLOW(6) only — intra-function execution ordering
   Layer 4 (conv3b): CALL_ENTRY(8) + RETURN_TO(9) only — cross-function call structure
   Layer 5 (conv3c): CF(6)+CALL_ENTRY(8)+RETURN_TO(9) joint — integration layer
 
 Phase 3 (Layers 6+7+8): Bidirectional CONTAINS (IMP-G3)
+  heads=1, concat=False. Upward and downward CONTAINS passes.
   Layer 6 (conv4):  REVERSE_CONTAINS up — CFG→FUNCTION (Phase 2 signal rises)
   Layer 7 (conv4b): REVERSE_CONTAINS up — second hop (multi-function patterns)
-  Layer 8 (conv4c): CONTAINS down (IMP-G3) — FUNCTION→CFG, distributes enriched
-    FUNCTION context back to CFG children. All nodes carry Phase 3 depth after this.
-  Phase 1-A3 (2026-05-14): type-7 embeddings for upward direction.
-  IMP-G3: type-5 (CONTAINS) embeddings for downward direction (conv4c).
+  Layer 8 (conv4c): CONTAINS down — FUNCTION→CFG (IMP-G3: distributes enriched context)
 
-  Zero-message behaviour (correct — do not "fix"):
-  FUNCTION nodes with no CFG children receive no upward Phase 3 messages.
-  conv returns zero; residual x = x + dropout(0) is a no-op.
+JK Connections (Phase 1-A1): learned attention aggregation over all three phase outputs.
+Per-Phase LayerNorm (Phase 1-A2): prevents Phase 1 norm from dominating JK softmax.
 
-JK Connections (Phase 1-A1, 2026-05-14)
-─────────────────────────────────────────
-Learned attention aggregation over all three phase outputs. Prevents Phase 1
-structural signal from being over-smoothed by phases 2 and 3.
-
-Per-Phase LayerNorm (Phase 1-A2, 2026-05-14)
-──────────────────────────────────────────────
-Applied once after each complete phase (after both layers of that phase),
-before collecting for JK. Prevents Phase 1's higher norm (two conv layers)
-from dominating the JK attention softmax.
-
-PARAMETERS (v8 defaults)
-─────────────────────────
-  in_channels   = NODE_FEATURE_DIM (11)
-  hidden_dim    = 256    (was 128 — doubles capacity for complex vulnerability patterns)
-  heads         = 8 (Phase 1 only; Phases 2+3 use heads=1)
+PARAMETERS (v8.1 defaults — Run 7+)
+─────────────────────────────────────
+  in_channels   = _GNN_IN_DIM (27 = NODE_FEATURE_DIM 11 + type_emb 16; model-internal)
+  hidden_dim    = 256
+  heads         = 8 (Phase 1); 4 (Phase 2, IMP-R7-1); 1 (Phase 3)
   dropout       = 0.2
   use_edge_attr = True
-  edge_emb_dim  = 64     (was 32 — 64/8 = 8 dims per edge type vs 4 previously)
-  num_layers    = 8      (2+3+3 phases; IMP-G3 added downward CONTAINS pass as conv4c)
-  use_jk        = True
-  jk_mode       = 'attention'
+  edge_emb_dim  = 64
+  num_layers    = 8 (2+3+3 phases)
+  use_jk        = True / jk_mode = 'attention'
 
-Total trainable parameters (v8 defaults): ~2.4M GNN (was ~91K at hidden=128)
+Total trainable parameters (v8.1 defaults): ~2.5M GNN
 """
 
 from __future__ import annotations

@@ -218,7 +218,7 @@ class TestTrainOneEpoch:
         loss_fn     = nn.BCEWithLogitsLoss()
         aux_loss_fn = nn.BCEWithLogitsLoss()
 
-        loss, nan_count, gnn_share = train_one_epoch(
+        metrics = train_one_epoch(
             model=model,
             loader=loader,
             optimizer=optimizer,
@@ -231,6 +231,7 @@ class TestTrainOneEpoch:
             log_interval=100,
             use_amp=False,
         )
+        loss = metrics["avg_loss"]
         assert isinstance(loss, float)
         assert loss >= 0.0
 
@@ -248,20 +249,20 @@ class TestTrainOneEpoch:
 
         losses = []
         for _ in range(3):
-            loss, _, _ = train_one_epoch(
+            metrics = train_one_epoch(
                 model=model,
                 loader=loader,
                 optimizer=optimizer,
                 loss_fn=loss_fn,
                 aux_loss_fn=aux_loss_fn,
                 scheduler=scheduler,
-    
+
                 device="cpu",
                 grad_clip=1.0,
                 log_interval=100,
                 use_amp=False,
             )
-            losses.append(loss)
+            losses.append(metrics["avg_loss"])
 
         # With lr=1e-2 on simple MLP + fixed synthetic data, loss must drop
         assert losses[-1] < losses[0], (

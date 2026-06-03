@@ -100,6 +100,7 @@ def _ensure_list(v: object) -> list:
 # Registry pattern: adding a new architecture = one dict entry, not an elif hunt.
 # Keys must match exactly what trainer.py writes into checkpoint["config"]["architecture"].
 _ARCH_TO_FUSION_DIM: dict[str, int] = {
+    "four_eye_v8":          128,   # Run7+ four-eye: GNN+TF+Fused+CFG, type embedding, Phase2 heads=4
     "three_eye_v8":         128,   # v8 three-eye classifier — 8-layer GNN, gnn_prefix_k support
     "three_eye_v7":         128,   # v7 three-eye classifier — 11-dim nodes, 7-layer GNN
     "three_eye_v5":         128,   # v5 three-eye classifier
@@ -111,6 +112,7 @@ _ARCH_TO_FUSION_DIM: dict[str, int] = {
 # Node feature dimension per architecture — used for warmup dummy graph.
 # Current architecture imports directly from graph_schema; legacy values are hardcoded.
 _ARCH_TO_NODE_DIM: dict[str, int] = {
+    "four_eye_v8":          NODE_FEATURE_DIM,  # Run7+ — same stored schema, type embedding is model-internal
     "three_eye_v8":         NODE_FEATURE_DIM,  # v8 — same schema as v7
     "three_eye_v7":         NODE_FEATURE_DIM,  # always in sync with schema
     "three_eye_v5":         NODE_FEATURE_DIM,  # always in sync with schema
@@ -465,7 +467,7 @@ class Predictor:
             "attention_source": "gnn_embedding_norm",
         }
 
-        if self.architecture not in ("three_eye_v8", "three_eye_v7", "three_eye_v5"):
+        if self.architecture not in ("four_eye_v8", "three_eye_v8", "three_eye_v7", "three_eye_v5"):
             # Legacy architectures don't have the GNN structure needed
             return result
 
