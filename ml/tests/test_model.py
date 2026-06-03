@@ -11,7 +11,7 @@ V5 CHANGES FROM V4 TESTS
 - Node features: 8 → 12 dims (NODE_FEATURE_DIM=12).
 - edge_attr [E] int64 required on every Data object (GNNEncoder phase masking).
 - return_aux=True: forward() now returns (logits, aux_dict) when requested.
-- Three-eye classifier: in_features = 3 * fusion_output_dim = 384.
+- Four-eye classifier (IMP-R7-2): in_features = 4 * fusion_output_dim = 512.
 - GNNEncoder return_intermediates=True: returns per-phase embedding dicts.
 """
 
@@ -175,10 +175,10 @@ def test_forward_return_aux_shapes():
     )
     logits, aux = result
     assert logits.shape == (4, 10), f"logits shape: {logits.shape}"
-    assert {"gnn", "transformer", "fused", "jk_entropy"} == set(aux.keys()), (
-        f"aux keys must be {{'gnn', 'transformer', 'fused', 'jk_entropy'}}, got {set(aux.keys())}"
+    assert {"gnn", "transformer", "fused", "phase2", "jk_entropy"} == set(aux.keys()), (
+        f"aux keys must be {{'gnn', 'transformer', 'fused', 'phase2', 'jk_entropy'}}, got {set(aux.keys())}"
     )
-    for key in ("gnn", "transformer", "fused"):
+    for key in ("gnn", "transformer", "fused", "phase2"):
         assert aux[key].shape == (4, 10), (
             f"aux['{key}'] shape: {aux[key].shape}, expected (4, 10)"
         )
@@ -197,16 +197,16 @@ def test_forward_return_aux_false_returns_tensor():
 
 
 # ---------------------------------------------------------------------------
-# Three-eye classifier architecture (v5)
+# Four-eye classifier architecture (IMP-R7-2)
 # ---------------------------------------------------------------------------
 
-def test_classifier_input_dim_is_384():
-    """Classifier first layer input must be 3 × eye_dim = 3 × 128 = 384."""
+def test_classifier_input_dim_is_512():
+    """Classifier first layer input must be 4 × eye_dim = 4 × 128 = 512."""
     model = _make_model(num_classes=10)
     first_linear = model.classifier[0]
-    assert first_linear.in_features == 384, (
-        f"classifier[0].in_features = {first_linear.in_features}, expected 384 "
-        "(3 × 128: gnn_eye + transformer_eye + fused_eye)."
+    assert first_linear.in_features == 512, (
+        f"classifier[0].in_features = {first_linear.in_features}, expected 512 "
+        "(4 × 128: gnn_eye + transformer_eye + fused_eye + cfg_eye)."
     )
 
 

@@ -248,7 +248,7 @@ class TrainConfig:
     # Phase 2 CEI auxiliary loss (Interp-2): direct supervision on Phase 2 embeddings.
     # CEI classes (Reentrancy, ExternalBug, TOD) get 3× weighting.
     # Set to 0.0 to disable.
-    aux_phase2_loss_weight: float = 0.10
+    aux_phase2_loss_weight: float = 0.20  # IMP-R7-3: doubled (BUG-R7-1 fix makes gradient effective)
 
     # --- Aux loss warmup (Fix #33) ---
     # aux_loss_weight ramps from 0 → aux_loss_weight linearly over this many
