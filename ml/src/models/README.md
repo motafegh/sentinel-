@@ -195,8 +195,9 @@ graphs (PyG Batch), input_ids [B, 4, 512], attention_mask [B, 4, 512]
 GNN eye:    max_pool + mean_pool over FUNCTION nodes → [B, 512] → Linear → [B, 128]
 TF eye:     pooled token emb → Linear(768, 128) → [B, 128]
 Fused eye:  CrossAttentionFusion → [B, 128]
+CFG eye:    max_pool + mean_pool over CFG_NODE types → [B, 512] → Linear → [B, 128]  (IMP-R7-2)
 
-Concat [B, 384] → Linear(384, 192) → GELU → Linear(192, 10) → [B, 10] logits
+Concat [B, 512] → Linear(512, 256) → GELU → Linear(256, 10) → [B, 10] logits  (IMP-R7-2)
 ```
 
 **Auxiliary heads** (training only): one `Linear(128, 10)` per eye for auxiliary loss. Disabled in `model.eval()` mode.

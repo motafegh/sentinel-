@@ -228,7 +228,7 @@ def parse_args() -> argparse.Namespace:
             "Weighted sampler strategy. "
             "'timestamp-size' (E2/Interp-3): 4× Timestamp+ large contracts, "
             "0.5× large negatives (threshold: 150 nodes). "
-            "Run 6 default: timestamp-size."
+            "Run 7 default: timestamp-size."
         ),
     )
 

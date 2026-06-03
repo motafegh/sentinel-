@@ -1,5 +1,5 @@
 """
-trainer.py — SENTINEL Training Loop (v8 — Three-Eye GNN+CodeBERT+LoRA)
+trainer.py — SENTINEL Training Loop (v8.1 — Four-Eye GNN+CodeBERT+LoRA)
 With tqdm progress bars, safe resume, offline mode, and EARLY STOPPING.
 
 SPEED OPTIMISATIONS APPLIED (vs original):
@@ -107,9 +107,9 @@ CLASS_NAMES = [
 ]
 NUM_CLASSES = len(CLASS_NAMES)
 
-ARCHITECTURE = "three_eye_v8"
+ARCHITECTURE = "four_eye_v8"  # Run7+: 4-eye classifier + type embedding + Phase2 heads=4
 
-MODEL_VERSION = "v8.0"
+MODEL_VERSION = "v8.1"
 
 _VALID_LOSS_FNS: frozenset[str] = frozenset({"bce", "focal", "asl"})
 
