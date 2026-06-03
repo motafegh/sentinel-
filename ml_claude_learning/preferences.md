@@ -186,3 +186,12 @@ When a code block contains:
 Do not assume the user knows Python, PyTorch, or PyTorch Geometric well enough to infer
 how a pattern works. This is not for all code — only code where understanding the steps
 matters for mastery.
+
+---
+
+### P15 — Learning Materials Folder
+The user manually saves teaching chunks to `ml_claude_learning/Learning_materials/` for later
+reference (by the user or by Claude in future sessions). This folder is user-managed — Claude
+does not write to it. When resuming a session, Claude should check if relevant chunk material
+has been saved there and reference it if helpful, but must still read all 4 spec files first
+to restore authoritative state (session_log.md is the canonical progress record).
