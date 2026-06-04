@@ -1,0 +1,177 @@
+{
+  "experiment": "exp_b3_jk_weight_distribution",
+  "checkpoint": "ml/checkpoints/GCB-P1-Run7-v10-20260603_best.pt",
+  "n_contracts_processed": 500,
+  "summary": {
+    "CallToUnknown": {
+      "phase1": {
+        "mean": 0.3158,
+        "std": 0.0117,
+        "n": 34
+      },
+      "phase2": {
+        "mean": 0.3164,
+        "std": 0.01,
+        "n": 34
+      },
+      "phase3": {
+        "mean": 0.3678,
+        "std": 0.0191,
+        "n": 34
+      }
+    },
+    "DenialOfService": {
+      "phase1": {
+        "mean": 0.3217,
+        "std": 0.0041,
+        "n": 5
+      },
+      "phase2": {
+        "mean": 0.3138,
+        "std": 0.0042,
+        "n": 5
+      },
+      "phase3": {
+        "mean": 0.3645,
+        "std": 0.0072,
+        "n": 5
+      }
+    },
+    "ExternalBug": {
+      "phase1": {
+        "mean": 0.3168,
+        "std": 0.0144,
+        "n": 38
+      },
+      "phase2": {
+        "mean": 0.3205,
+        "std": 0.0116,
+        "n": 38
+      },
+      "phase3": {
+        "mean": 0.3627,
+        "std": 0.0208,
+        "n": 38
+      }
+    },
+    "GasException": {
+      "phase1": {
+        "mean": 0.3157,
+        "std": 0.0135,
+        "n": 51
+      },
+      "phase2": {
+        "mean": 0.3186,
+        "std": 0.0104,
+        "n": 51
+      },
+      "phase3": {
+        "mean": 0.3657,
+        "std": 0.0185,
+        "n": 51
+      }
+    },
+    "IntegerUO": {
+      "phase1": {
+        "mean": 0.3166,
+        "std": 0.0146,
+        "n": 163
+      },
+      "phase2": {
+        "mean": 0.3174,
+        "std": 0.0142,
+        "n": 163
+      },
+      "phase3": {
+        "mean": 0.3659,
+        "std": 0.0256,
+        "n": 163
+      }
+    },
+    "MishandledException": {
+      "phase1": {
+        "mean": 0.3174,
+        "std": 0.0114,
+        "n": 51
+      },
+      "phase2": {
+        "mean": 0.3196,
+        "std": 0.0114,
+        "n": 51
+      },
+      "phase3": {
+        "mean": 0.363,
+        "std": 0.0184,
+        "n": 51
+      }
+    },
+    "Reentrancy": {
+      "phase1": {
+        "mean": 0.316,
+        "std": 0.0117,
+        "n": 56
+      },
+      "phase2": {
+        "mean": 0.3169,
+        "std": 0.0099,
+        "n": 56
+      },
+      "phase3": {
+        "mean": 0.3672,
+        "std": 0.0155,
+        "n": 56
+      }
+    },
+    "Timestamp": {
+      "phase1": {
+        "mean": 0.3175,
+        "std": 0.0129,
+        "n": 19
+      },
+      "phase2": {
+        "mean": 0.3235,
+        "std": 0.0089,
+        "n": 19
+      },
+      "phase3": {
+        "mean": 0.359,
+        "std": 0.0174,
+        "n": 19
+      }
+    },
+    "TransactionOrderDependence": {
+      "phase1": {
+        "mean": 0.3174,
+        "std": 0.0134,
+        "n": 36
+      },
+      "phase2": {
+        "mean": 0.3188,
+        "std": 0.01,
+        "n": 36
+      },
+      "phase3": {
+        "mean": 0.3638,
+        "std": 0.018,
+        "n": 36
+      }
+    },
+    "UnusedReturn": {
+      "phase1": {
+        "mean": 0.3127,
+        "std": 0.0138,
+        "n": 26
+      },
+      "phase2": {
+        "mean": 0.321,
+        "std": 0.0109,
+        "n": 26
+      },
+      "phase3": {
+        "mean": 0.3663,
+        "std": 0.0185,
+        "n": 26
+      }
+    }
+  }
+}

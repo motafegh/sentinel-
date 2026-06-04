@@ -584,27 +584,72 @@ Fused = 0.761 vs Main = 0.752. Similar to TOD but weaker effect. The CFG/GNN con
 
 ---
 
-### 6.4 B2 — Per-Eye ECE ⏳
+### 6.4 B2 — Per-Eye ECE ✅ COMPLETE
 
-**What it tests:** Expected Calibration Error for each of the four eyes independently — GNN eye, TF eye, Fused eye, CFG eye. A well-calibrated eye produces probabilities that match observed frequencies.
+**What it tests:** Expected Calibration Error (ECE) for each eye independently across all 6,236 val samples. Lower ECE = predicted probability matches empirical frequency.
 
-**Expected findings:** The TF eye (GraphCodeBERT) is likely best calibrated — pre-trained models tend to produce well-calibrated probabilities. The CFG eye may be over-confident (high probabilities for rare classes like DoS). The Run 4 calibration data showed ECE of 0.249 before calibration → 0.027 after.
+**Results:**
 
-**Broader context:** B2 results directly inform the calibration script parameters. If the CFG eye has ECE = 0.15 and the TF eye has ECE = 0.05, the ensemble should weight the TF eye more heavily for calibrated predictions.
+| Class | GNN | TF | Fused | Main | Best |
+|-------|-----|----|-------|------|------|
+| CallToUnknown | 0.0325 | **0.0272** | 0.0365 | 0.242 | TF |
+| DenialOfService | 0.0870 | **0.0772** | 0.0813 | 0.307 | TF |
+| ExternalBug | 0.0413 | **0.0295** | 0.0354 | 0.242 | TF |
+| GasException | 0.0448 | **0.0337** | 0.0405 | 0.232 | TF |
+| IntegerUO | **0.0165** | 0.0407 | 0.0273 | 0.132 | GNN |
+| MishandledException | 0.0453 | 0.0351 | **0.0331** | 0.236 | Fused |
+| Reentrancy | 0.0497 | **0.0401** | 0.0492 | 0.244 | TF |
+| Timestamp | 0.0597 | 0.0532 | **0.0323** | 0.212 | Fused |
+| TransactionOrderDependence | 0.0429 | 0.0351 | **0.0319** | 0.239 | Fused |
+| UnusedReturn | 0.0387 | **0.0305** | 0.0325 | 0.240 | TF |
+| **Mean** | 0.046 | 0.040 | 0.040 | **0.233** | — |
 
-**Results:** ⏳ running
+**CRITICAL finding — the ensemble is 5.8× worse calibrated than individual eyes:**  
+The three individual eyes (GNN=0.046, TF=0.040, Fused=0.040) are all well calibrated. But the 4-eye Main output has mean ECE = 0.233. The Linear(512,256) → Linear(256,10) final layers do not preserve the calibration of the individual eyes — the combined logits are systematically over-confident or under-confident.
+
+**Why this happens:** The individual eye outputs are 1-class logits that get calibrated by training signal over thousands of examples. When they're concatenated to [512] and passed through two more linear layers, the final layer's output scale is no longer aligned with the base rate of each class. The model has learned that "correct predictions" require the combined signal to be at a certain magnitude, but that magnitude doesn't map cleanly to calibrated probabilities.
+
+**DoS: worst ECE = 0.307.** With 1.04% val prevalence, even a small miscalibration in absolute probability terms (e.g. predicting 0.20 when the actual frequency at that confidence is 0.05) produces high ECE. This directly explains the +0.032 threshold gap: the optimal threshold for DoS is ~0.20, not 0.35, because the model's 0.20-prediction is "confident enough" for DoS given the class rarity.
+
+**IntegerUO: best Main ECE = 0.132** (30.9% prevalence). The most common positive class has the best-calibrated ensemble output, confirming prevalence drives calibration quality.
+
+**Fused eye best for Timestamp and TOD** (ECE 0.032, 0.032): Consistent with A4's finding that Fused is the best single eye for these classes. The cross-attention mechanism produces well-calibrated confidence for the cross-modal patterns it learns.
+
+**Implication for `temperatures_run7.json`:** Temperature scaling should be applied to the Main output logits (not individual eyes). Target ECE ~0.027 (matching Run 4's post-calibration level). The per-class temperature factors will be largest for DoS (highest ECE), smallest for IntegerUO.
+
+Compare to Run 4: pre-calibration ECE=0.249, post=0.027. Run 7 pre-calibration ECE=0.233 — already slightly better than Run 4's baseline, suggesting the 4-eye architecture produces marginally better raw calibration.
 
 ---
 
-### 6.5 B3 — JK Weight Distribution per Contract ⏳
+### 6.5 B3 — JK Weight Distribution per Contract ✅ COMPLETE
 
-**What it tests:** Runs inference on the full val set and collects the JK attention weights (phase1, phase2, phase3) per graph. Groups by predicted class (or true label) to find: which vulnerability types drive Phase 3 dominance?
+**What it tests:** JK attention weights (phase1, phase2, phase3) grouped by true label, on 500 val contracts with positive labels.
 
-**Expected findings:** If Phase 3 dominance is a "contract identity" shortcut, we'd expect:
-- Phase 3 weight high for classes with concentrated contract-to-label mapping (if most DoS examples come from a few contract families, Phase 3 learns to recognise the contract family)
-- Phase 3 weight lower for syntactically varied vulnerabilities (IntegerUO: arithmetic overflow can be anywhere)
+**Results:**
 
-**Results:** ⏳ running
+| Class | Ph1 mean±std | Ph2 mean±std | Ph3 mean±std | Ph3−Ph1 | n |
+|-------|-------------|-------------|-------------|---------|---|
+| CallToUnknown | 0.316±0.012 | 0.316±0.010 | **0.368±0.019** | +0.052 | 34 |
+| DenialOfService | 0.322±0.004 | 0.314±0.004 | 0.365±0.007 | +0.043 | 5 |
+| ExternalBug | 0.317±0.014 | 0.321±0.012 | 0.363±0.021 | +0.046 | 38 |
+| GasException | 0.316±0.013 | 0.319±0.010 | 0.366±0.019 | +0.050 | 51 |
+| IntegerUO | 0.317±0.015 | 0.317±0.014 | 0.366±0.026 | +0.049 | 163 |
+| MishandledException | 0.317±0.011 | 0.320±0.011 | 0.363±0.018 | +0.046 | 51 |
+| Reentrancy | 0.316±0.012 | 0.317±0.010 | 0.367±0.016 | +0.051 | 56 |
+| Timestamp | 0.318±0.013 | **0.324±0.009** | 0.359±0.017 | +0.041 | 19 |
+| TransactionOrderDependence | 0.317±0.013 | 0.319±0.010 | 0.364±0.018 | +0.046 | 36 |
+| UnusedReturn | 0.313±0.014 | 0.321±0.011 | 0.366±0.019 | +0.054 | 26 |
+
+Phase 3 range: 0.359–0.368. **Spread = only 0.009** — Phase 3 dominance is essentially uniform across all classes.
+
+**Key finding — Phase 3 drift is global, not class-selective:**  
+The per-class contract-identity shortcut hypothesis is *rejected*. Every class uses Phase 3 at roughly the same weight (~0.364). The Phase 3 drift seen during training (0.347→0.395) is a property of the whole model's representation, not of individual classes learning to "recognise contract families." This is actually good news — it means the Phase 3 attention is probably capturing a genuine structural prior (contract hierarchy is useful for all vulnerability types) rather than a per-class shortcut.
+
+**DoS low std (0.007):** DoS contracts have the most consistent JK weights — every DoS-positive contract uses Phase 3 at almost exactly 0.365 with almost no variance. Compare IntegerUO std = 0.026 (large per-contract variation). This homogeneity of DoS JK weights may reflect the homogeneity of DoS contract structure (DoS-prone contracts tend to be a specific type — auction contracts, games — so Phase 3's hierarchy awareness consistently applies).
+
+**Timestamp Phase 2 highest (0.324):** Timestamp-positive contracts have the highest Phase 2 weight of any class. This is the expected finding — Timestamp dependency requires reasoning about control flow (the `if (block.timestamp > deadline)` pattern lives in the ICFG), which Phase 2 captures.
+
+**Phase 1 ≈ Phase 2 for all classes:** Phase 1 and Phase 2 weights are nearly identical (both ~0.315–0.322). Only Phase 3 is elevated. This means the model treats structural features (Phase 1: within-function) and CFG/ICFG features (Phase 2: between-function) as equally valuable — a healthy balance.
 
 ---
 
@@ -631,7 +676,27 @@ Fused = 0.761 vs Main = 0.752. Similar to TOD but weaker effect. The CFG/GNN con
 
 ---
 
-## PART 7: Bugs Found During This Session (Not Previously Documented)
+## PART 7: Bugs and Warnings Found During This Session
+
+### BUG-C4 — Silent Node Truncation for Large Graphs
+
+**Warning observed during B1/B2 inference:**
+```
+WARNING: C-4: _scatter_to_dense: graphs exceeding max_nodes=1024 detected
+(first seen: 1286 nodes). Excess nodes silently truncated.
+```
+
+**Problem:** The `fusion_max_nodes=1024` parameter caps how many GNN node embeddings are passed to CrossAttentionFusion. Graphs with > 1024 nodes have their node list silently truncated. Nodes beyond index 1023 (sorted by... unknown order) are dropped from the fusion cross-attention.
+
+**Why it matters:** Large contracts (1286+ nodes) are likely complex multi-function contracts. Silently dropping ~262 nodes from the fusion means the cross-attention layer never sees those functions. If the vulnerable function happens to be in the truncated portion, the fused eye would miss it entirely and rely on the GNN eye and TF eye alone. The B2 ECE results would be biased for large contracts (their fused eye performance would be worse).
+
+**Scope:** The warning appeared in B1 (first seen at 1286 nodes) and B2 (first seen at 1161 nodes), suggesting at least some val graphs have > 1024 nodes. The fraction is unknown. Checkpoint config has `fusion_max_nodes=1024` (ISSUE-3 fix ensures this is read at inference). The actual count of affected graphs should be quantified before Run 8.
+
+**Fix options:** Increase `fusion_max_nodes` to 2048 (doubles VRAM for fusion), or implement smarter node selection (e.g., top-k by GNN attention score rather than first-k by index).
+
+**Status:** Known, not yet fixed.
+
+---
 
 ### BUG-SL-1 — StructuredLogger Subscript on OptimizedModule
 
