@@ -900,12 +900,36 @@ WARNING: C-4: _scatter_to_dense: graphs exceeding max_nodes=1024 detected
 
 ## PART 8: What To Do Next (Ordered)
 
-1. **[IMMEDIATE]** Run threshold calibration on ep39 checkpoint → `ml/calibration/temperatures_run7.json`
-2. **[BEFORE PHASE 2]** Fix BUG-SL-1 in `training_logger.py:305`
-3. **[PHASE 2]** Complete experiments A3, A4, B1–B4, E4, L1–L5, L8 (L6/L7/L9/L10 lower priority)
-4. **[AFTER PHASE 2]** Synthesise findings into Run 8 config (see analysis doc §14)
-5. **[RUN 8]** `fusion_lr_multiplier=0.3`, `--gnn-prefix-k 48`, `λ=0.0075`, fix BUG-SL-1
+**Phase 2 Tier 1+2 experiments are complete.** The picture is clear enough to plan Run 8.
+
+### Immediate (before Run 8)
+1. **Fix BUG-SL-1** — `ml/src/training/training_logger.py:305`. Add `head = getattr(head, "_orig_mod", head)` before `head[-1]`. This silently broke all structured per-epoch metrics for all 40 Run 7 epochs. Must fix before Run 8 or you'll have no calibration history again.
+2. **Run threshold calibration** — `ml/calibration/temperatures_run7.json` on ep39 checkpoint. The tuned F1 gap (+0.032 over fixed at ep40) shows this matters significantly.
+3. **Close MLflow ghost run** — `mlflow runs set-terminated --run-id 541345bab6864f738e484794122607bc --status KILLED`
+4. **Quantify BUG-C4 scope** — count how many val/train graphs have >1024 nodes. Decide whether to increase `fusion_max_nodes` to 2048 for Run 8.
+
+### Run 8 Config Changes (driven by Phase 2 findings)
+
+| Change | Why (experiment that motivated it) |
+|--------|-----------------------------------|
+| `--gnn-prefix-k 48` | L4/L2: model ignores graph topology; prefix may prime transformer with structural context |
+| Remove or normalise `complexity` feature | L4/B4: complexity proxy dominates all 10 classes; removing it forces model to find class-specific signals |
+| `fusion_lr_multiplier=0.3` (down from 0.5) | Run 7 observation: fusion spikes early, lower LR for stability |
+| `λ=0.0075` (up from 0.005) | A3/B3/L1: JK Phase3 drift; stronger entropy reg to force phase diversity |
+| Fix BUG-SL-1 | Run 7: all structured metrics empty for 40 epochs |
+| Consider auxiliary JK routing loss | L1: JK near-uniform; explicit routing supervision may force per-class specialisation |
+
+### Remaining Tier 2/3 Experiments (optional, lower priority)
+- **L5** (linear probing) — still valuable: quantifies how much class signal lives in GNN vs TF embeddings separately
+- **E4** (direction sensitivity) — lower value now that L2 confirmed edge topology largely ignored
+- **L8** (permutation importance) — largely answered by L4; `complexity` would dominate
+- L3, L7, L6, L9, L10 — low priority, see EXPERIMENT_INDEX.md for rationale
+
+### Full analysis reference
+- Training analysis: `docs/training/GCB-P1-Run7-analysis-2026-06-04.md`
+- Phase 2 results: `ml/interpretability_results/phase2_run7_ep39_v10_2026-06-04/`
+- Phase 1 archive: `ml/interpretability_results/archive_phase1_run5_v9_2026-06-02/`
 
 ---
 
-*This document is a living record. Update each Phase 2 experiment section (⏳) as results come in.*
+*Phase 2 Tier 1+2 complete as of 2026-06-04. Remaining experiments (E4, L5, L8, L3, L7, L6, L9, L10) are optional — the core findings are complete.*
