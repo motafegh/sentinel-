@@ -22,24 +22,34 @@
    5.6 `_select_contract` Heuristic
    5.7 ICFG Edge Failure Isolation
    5.8 CEI BFS Cross-Function Gap
-6. GNN Architecture Deep Dives
-   6.1 DEF_USE Routing in Phase 2
-   6.2 JK Entropy Regularization
-   6.3 GNN Prefix Injection
-   6.4 CFG Eye (IMP-R7-2)
-7. Training Pipeline Issues
-   7.1 StructuredLogger `torch.compile` Bug
-   7.2 `fusion_lr_multiplier` Calibration
-   7.3 `fusion_max_nodes` Truncation
-   7.4 DoS Loss Weight
-   7.5 Post-Training Calibration
-8. Priority Fix Plan
-9. Schema-Change Blueprints for v9
-   9.1 Multi-Value `uses_block_globals`
-   9.2 Modifier CFG Extraction
-   9.3 Cross-Contract Edges
-   9.4 `fusion_max_nodes` Upgrade
-10. Parked Topics
+6. CHANGELOG Cross-References — Interpretability Suite Validates Audit Findings
+   6.1 EXP-L2: CFG Ablation Near-Zero Effect → Validates A-1, A-2, A-5
+   6.2 EXP-A4: GNN Eye Useful for Only 3/10 Classes → Validates GNN Underperformance
+   6.3 EXP-E1: CEI Reachability Only 37.7% at k=8 → Validates Phase 2 Depth Gap
+   6.4 EXP-L4: `external_call_count` Dominates ALL Classes → Confounded Shortcut Confirmed
+   6.5 EXP-L8: `type_id_norm` Dominates 3× → Node Type Bias
+   6.6 C-1 Fix Already in v10 (Per-Statement CFG Features)
+   6.7 H-2 Fix Already in v10 (ReferenceVariable DEF_USE)
+7. Architectural Synthesis — Why the Ceiling Exists
+8. Update to Issue Inventory (Post-CHANGELOG)
+9. GNN Architecture Deep Dives
+   9.1 DEF_USE Routing in Phase 2
+   9.2 JK Entropy Regularization
+   9.3 GNN Prefix Injection
+   9.4 CFG Eye (IMP-R7-2)
+10. Training Pipeline Issues
+   10.1 StructuredLogger `torch.compile` Bug
+   10.2 `fusion_lr_multiplier` Calibration
+   10.3 `fusion_max_nodes` Truncation
+   10.4 DoS Loss Weight
+   10.5 Post-Training Calibration
+11. Priority Fix Plan
+12. Schema-Change Blueprints for v9
+   12.1 Multi-Value `uses_block_globals`
+   12.2 Modifier CFG Extraction
+   12.3 Cross-Contract Edges
+   12.4 `fusion_max_nodes` Upgrade
+13. Parked Topics
 
 ---
 
@@ -443,4 +453,354 @@ The CHANGELOG's interpretability suite (Run 4, F1=0.3362) and our preprocessing 
 | A-5 | return_ignored — C-1 fix already in v10 but only fixes CFG node defaults, not branch sensitivity | **Unchanged** — C-1 is orthogonal; the branch scan bug remains |
 | B-1 | DEF_USE 1 hop — CHANGELOG confirms EXP-E1: CEI reachability 37.7% at k=8 | **Elevated** — Hop depth confirmed as bottleneck |
 | B-5 | external_call_count dominance — CHANGELOG EXP-L4 confirms 21-24% across ALL classes | **New severity: HIGH** — Confounded shortcut is model's primary learning signal |
+
+---
+
+## 9. GNN Architecture Deep Dives
+
+### 9.1 DEF_USE Routing in Phase 2
+
+**File:** `ml/src/models/gnn_encoder.py`
+
+DEF_USE (edge type 10) is defined in `graph_schema.py:393` as `CFG_NODE defining a LocalVariable -> node reading it`. It is **included in Phase 2's default `cfg_mask`** (line 466-471) alongside CONTROL_FLOW(6), CALL_ENTRY(8), and RETURN_TO(9).
+
+**Layer-specific routing (lines 508-517):** DEF_USE is segregated by sub-masking:
+
+| Layer | GATConv | Edge subset | DEF_USE included? |
+|---|---|---|---|
+| Layer 3 (conv3) | `cf_only_ei` | CONTROL_FLOW only | No |
+| Layer 4 (conv3b) | `icfg_only_ei` | CALL_ENTRY + RETURN_TO only | No |
+| Layer 5 (conv3c) | `phase2_ei` | ALL Phase 2 (CF + ICFG + DEF_USE) | **Yes** |
+
+**Effective hops:** DEF_USE gets exactly **1 hop** in Layer 5 (conv3c). The source/target nodes have received 2 prior hops of CF + ICFG context via residual connections, but the DEF_USE-specific message propagates only once. This matches the CHANGELOG's EXP-E1 finding: even CEI paths with k=8 hops are only 37.7% reachable, and DEF_USE chains longer than 1 hop are invisible.
+
+**Ablation support (lines 161-164):** `phase2_edge_types` constructor parameter can exclude specific edge types, enabling the clean ablation studies seen in CHANGELOG's EXP-L2.
+
+### 9.2 JK Entropy Regularization
+
+**File:** `ml/src/models/gnn_encoder.py` (entropy computation), `ml/src/training/trainer.py` (loss application)
+
+**`_JKAttention` class (lines 68-123):** Computes per-node softmax weights over K=3 phases:
+
+```python
+jk_entropy = -(w_nk * (w_nk + 1e-8).log()).sum(dim=1).mean()  # line 122
+```
+
+Entropy range: `[0, log(3)] = [0, ~1.099]`. Low = one phase dominates. High = all 3 phases contribute uniformly.
+
+**Loss term (trainer.py lines 720-725):**
+
+```python
+_H_max = math.log(3)
+_jk_reg = jk_entropy_reg_lambda * (_H_max - _jk_ent.clamp(max=_H_max))
+```
+
+With `jk_entropy_reg_lambda=0.005` (trainer.py:346), max penalty is `0.005 * 1.099 ≈ 0.0055`. This pushes entropy toward `log(3)` — penalizing collapse to a single dominant phase.
+
+**Monitoring threshold (training_logger.py:86):**
+
+```python
+JK_ENTROPY_MIN = 0.5
+```
+
+A warning fires below 0.5, indicating JK attention has collapsed to one phase.
+
+**Assessment:** The regularization is correctly implemented and appropriately scaled. During Run 7, JK entropy remained above 0.5 throughout, confirming all 3 phases contribute. The concern is: if Phase 2 carries no useful signal (A-1, EXP-L2), JK will eventually learn to downweight it, but the regularization forces it to stay engaged — wasting representational capacity.
+
+### 9.3 GNN Prefix Injection
+
+**File:** `ml/src/models/sentinel_model.py`
+
+**Configuration:**
+
+- `gnn_prefix_k: int = 48` (line 182) — number of GNN node embeddings injected into each Transformer window
+- `gnn_prefix_warmup_epochs: int = 15` (line 183) — prefix suppressed for first 15 epochs
+
+**Projection (lines 225-231):**
+
+```python
+self.gnn_to_bert_proj = nn.Linear(gnn_hidden_dim, 768)            # [K, 256] -> [K, 768]
+self.prefix_type_embedding = nn.Embedding(_NUM_PREFIX_TYPES, 768)  # 5 types x 768
+```
+
+**Node selection priority (lines 114-120):**
+
+| Priority | Node type | Rationale |
+|---|---|---|
+| 0 | CONSTRUCTOR | Always relevant |
+| 1 | FALLBACK | Reentrancy-critical |
+| 2 | RECEIVE | Reentrancy-critical |
+| 3 | MODIFIER | Access control |
+| 4 | FUNCTION | General (sorted by external_call_count descending) |
+
+**Injection (transformer_encoder.py lines 272-302):**
+
+Prefix tokens replace the first K positions of each window. CLS moves from position 0 to position K. Position IDs for prefix tokens are set to 1 (RoBERTa padding slot — no positional bias), so the Transformer treats them as position-agnostic structural hints.
+
+**Warmup behavior (sentinel_model.py:510):**
+
+During warmup (epochs 0-14), `gnn_prefix is None` and the standard Transformer path runs. At epoch 15, the prefix projection starts from random init — causing a sharp gradient discontinuity. The CHANGELOG notes this instability at Run 7 ep15 validation metrics.
+
+**Assessment:** The prefix injection architecturally makes sense as a cross-modal bridge. Two concerns: (a) warmup creates a sharp discontinuity at epoch 15, and (b) if the GNN carries no discriminative signal for 7/10 classes (EXP-A4), the prefix injects noise into the Transformer's first 48 tokens for those classes.
+
+### 9.4 CFG Eye (IMP-R7-2)
+
+**File:** `ml/src/models/sentinel_model.py`
+
+**Purpose (lines 24-28):** Direct gradient path from classifier to Phase 2 conv layers, bypassing Phase 3 reverse-CONTAINS layers. Without it, Phase 2 signal must propagate through 3 CONTAINS layers to reach FUNCTION nodes for pooling, severely attenuating gradients to `conv3/conv3b/conv3c`.
+
+**Pooling target types (lines 98-108):** CFG_NODE_CALL(8), CFG_NODE_WRITE(9), CFG_NODE_READ(10), CFG_NODE_CHECK(11), CFG_NODE_OTHER(12) — the 5 CFG subtypes connected by Phase 2 edges.
+
+**Architecture (lines 254-258):**
+
+```python
+self.cfg_eye_proj = nn.Sequential(
+    nn.Linear(2 * gnn_hidden_dim, eye_dim),  # 512 -> 128
+    nn.ReLU(),
+    nn.Dropout(dropout),
+)
+```
+
+Pools `_phase2_x` (raw Phase 2 output, NOT JK-aggregated) via `global_max_pool || global_mean_pool`, projects to 128d. Combined with gnn_eye, transformer_eye, fused_eye → `4 * 128 = 512` input to classifier.
+
+**Auxiliary supervision (lines 282-288):** `aux_phase2` head pools Phase 2 over CFG nodes and produces independent logits, keeping the Phase 2 gradient alive even if the main classifier downweights the CFG eye.
+
+**Assessment:** The CFG eye is correctly structured and addresses BUG-R7-1. However, EXP-L2 shows that removing CFG edges changes predictions by ~1×10⁻⁶ — meaning even with a direct gradient path, Phase 2 has no useful signal to learn. The gradient highway exists but carries near-zero information.
+
+---
+
+## 10. Training Pipeline Issues
+
+### 10.1 StructuredLogger `torch.compile` Bug (B-6, HIGH)
+
+**File:** `ml/src/training/training_logger.py:298-306`, cause at `trainer.py:1410-1415`
+
+**Error:**
+
+`check_aux_head()` at training_logger.py:305 calls `head[-1]` on `model.aux_phase2`. After `torch.compile` wraps it in `OptimizedModule`, this raises `TypeError: 'OptimizedModule' object is not subscriptable`.
+
+**Root cause (trainer.py lines 1410-1415):**
+
+`torch.compile(dynamic=True)` is applied to submodules including `"aux_phase2"`. The resulting `OptimizedModule` wrapper does not forward `__getitem__`, so `head[-1]` on line 305 fails silently (caught by the method's try/except but returning empty dict).
+
+**Impact:** No `aux_phase2` weight/bias norm logging for the entire Run 7. This means Phase 2 convergence monitoring is blind — we cannot track whether conv3/conv3b/conv3c are learning or saturated.
+
+**Fix (3 options):**
+
+1. Change `head[-1]` to `head._orig_mod[-1]` — `OptimizedModule` stores original module in `_orig_mod`
+2. Exclude `"aux_phase2"` from compile list at trainer.py:1412 (negligible compile benefit for a single Linear layer)
+3. try/except with fallback to `_orig_mod`
+
+### 10.2 `fusion_lr_multiplier` Calibration
+
+**File:** `ml/src/training/trainer.py:241, 1333-1343, 1354`
+
+**Current value:** `fusion_lr_multiplier: float = 0.5` — fusion head + classifier + aux heads receive half the base learning rate.
+
+**Scope (lines 1333-1343):** Parameters matching `fusion.*`, `transformer_eye_proj.*`, `classifier.*`, `aux_*` — approximately 821K parameters.
+
+**Rationale (lines 1339-1342):**
+
+> "fusion + classifier at reduced LR to prevent CodeBERT's Reentrancy bias from overwhelming the GNN signal via high-gradient cross-attention"
+
+**Assessment:** The multiplier was set during RC1 when the fusion head had 821K params and was producing 4-5× the GNN gradient norm. With v10 data and v8.1 model, this ratio may have shifted. The appropriate value depends on the relative gradient norms of fusion vs GNN at initialization, which should be re-calibrated per run. The CHANGELOG's Run 7 entry notes this as a potential ceiling but does not override the default.
+
+### 10.3 `fusion_max_nodes=1024` Truncation (B-5, MEDIUM)
+
+**File:** `ml/src/training/trainer.py:199-200`, `ml/src/models/fusion_layer.py:68-117`
+
+**Current value:** `fusion_max_nodes: int = 1024`. Comment at trainer.py:199:
+
+```python
+# IMP-D1: raise to 2048 after re-extraction with max_nodes=2048.
+# At 1024 the 227 contracts >1024 nodes are truncated in fusion attention.
+```
+
+**Truncation mechanism (fusion_layer.py lines 96-117):**
+
+```python
+valid     = local_idx < max_nodes        # drop excess nodes
+local_idx = local_idx.clamp(max=max_nodes - 1)  # clamp survivors
+```
+
+The `valid` mask is computed BEFORE clamping. Nodes beyond `max_nodes-1` are silently dropped from both the dense tensor and the attention mask — 227 contracts affected.
+
+**Impact:** Truncated contracts lose CFG nodes in the cross-attention fusion, meaning the Transformer cannot attend to those nodes. The C-2 fix (computing `valid` before clamping) prevents last-write-wins corruption, but the data loss is still real.
+
+**Comment notes it should be raised to 2048,** but the docstring also says "affects <1% of the corpus." The 227 affected contracts may disproportionately be complex/fragmented contracts with more vulnerability surface area, introducing a systematic bias away from high-complexity contracts.
+
+### 10.4 DoS Loss Weight
+
+**File:** `ml/src/training/trainer.py:320-326, 660-666, 674-685`
+
+**Current value:** `dos_loss_weight: float = 0.5`
+
+**Mechanism (lines 660-666):**
+
+```python
+_logits_for_loss[:, dos_idx] = (
+    dos_loss_weight * logits[:, dos_idx]
+    + (1.0 - dos_loss_weight) * logits[:, dos_idx].detach()
+)
+```
+
+The `.detach()` portion contributes no gradient. Net effect: DoS gradient is 50% of full weight.
+
+**Rationale:** Historical — when DoS had only 3 training samples, `dos_loss_weight=0.0`. With ~243 positives now, `0.5` is a safe starting point. Comment recommends raising to 1.0 when DoS F1 plateaus below other classes.
+
+**Assessment:** At Run 7, DoS F1=0.0272 is by far the worst class. The half-gradient is appropriate as a guard against early-training instability with ~243 positives in 17,961 total. However, once DoS recall starts improving, the weight should be raised to 1.0 to close the gap with other classes.
+
+### 10.5 Post-Training Calibration
+
+**Status: Not implemented.**
+
+**What exists:**
+
+- `log_calibration()` method at training_logger.py:601-618 — full logging infrastructure, but never called
+- `temperature` field in epoch summary — hardcoded to `1.0` at trainer.py:1971
+- ECE computation at training_logger.py:439-459 — diagnostic only, no scaling loop
+- Brier score at training_logger.py:413-437 — diagnostic only
+
+**What does not exist:**
+
+- Temperature scaling training (optimizer, log-likelihood on held-out set)
+- Platt scaling
+- Any post-training calibration algorithm
+
+**Impact:** The model's probabilities are uncalibrated. ECE is logged but never acted upon. This means the model's confidence scores do not correspond to actual probabilities — a critical gap for an oracle contract, where clients need calibrated probability estimates for risk assessment.
+
+---
+
+## 11. Priority Fix Plan
+
+Ranked by expected F1 impact / implementation effort ratio, ordered highest-ROI first.
+
+### P1: Fix Complexity Normalization (A-1)
+
+**Effort:** Low (1 config change)
+**Expected impact:** Moderate (DoS, GasException)
+**Action:** Change normalization from `complexity / log1p(100)` to `log1p(complexity) / log1p(1000)` — preserving relative ordering while keeping complexity numeric scale stable. Alternatively, add complexity as a separate un-normalized feature.
+
+### P2: Fix StructuredLogger `torch.compile` Bug (B-6)
+
+**Effort:** Low (1-line fix)
+**Expected impact:** Indirect (enables Phase 2 convergence monitoring)
+**Action:** Change `head[-1]` to `head._orig_mod[-1]` at training_logger.py:305.
+
+### P3: Recalibrate `fusion_lr_multiplier`
+
+**Effort:** Low (config change)
+**Expected impact:** Moderate (balanced fusion training)
+**Action:** Measure GNN vs fusion gradient norms at ep0 for current model. Set multiplier to match scales. Default target: 0.2–0.3 for v8.1 with 4 eyes.
+
+### P4: Raise `fusion_max_nodes` to 2048
+
+**Effort:** Low (config change + data re-extraction)
+**Expected impact:** Low–Moderate
+**Action:** Re-extract graph data with `max_nodes=2048`, update config default.
+
+### P5: Implement Post-Training Calibration
+
+**Effort:** Medium (temperature scaling loop)
+**Expected impact:** Moderate (ECE reduction)
+**Action:** Implement temperature scaling on held-out 10% of training data. Optimize per-class temperature via log-likelihood. Log pre/post ECE.
+
+### P6: Add Modifier CFG Extraction (A-2)
+
+**Effort:** High (schema change + extraction pipeline + model retraining)
+**Expected impact:** High (reentrancy, access-control classes)
+**Action:** Add CFG subgraph extraction for MODIFIER nodes in `graph_extractor.py`. Add MODIFIER CFG nodes and CONTAINS edges. Requires schema version bump to v9.
+
+### P7: Cross-Contract ICFG Edges
+
+**Effort:** High (extraction + data representation)
+**Expected impact:** Moderate (cross-contract reentrancy)
+**Action:** Extend `_add_icfg_edges()` to follow CALLS edges across separate `.sol` files within each dataset sample. Requires cross-contract node registration and edge resolution.
+
+### P8: Raise DoS Loss Weight to 1.0
+
+**Effort:** Low (config change)
+**Expected impact:** Low–Moderate
+**Action:** Set `dos_loss_weight=1.0` after confirming DoS recall is improving.
+
+---
+
+## 12. Schema-Change Blueprints for v9
+
+### 12.1 Multi-Value `uses_block_globals`
+
+**What it is:** Currently `uses_block_globals` (feature[2]) is a single float per node — 1.0 if any block global is read, 0.0 otherwise. For CFG nodes, this is already per-statement (C-1 fix). For FUNCTION declaration nodes, it's a function-level aggregate.
+
+**Blueprint:** Replace the single float with a 5-dimensional multi-hot for CFG nodes:
+- `[2a] block.timestamp read`
+- `[2b] block.number read`
+- `[2c] block.difficulty read`
+- `[2d] block.basefee read`
+- `[2e] block.prevrandao read`
+
+**Why:** Timestamp vulnerability (Reentrancy sub-type) vs block.number (TOD) vs basefee (GasException) have different vulnerability implications. A single bool collapses all 5.
+
+**Effort:** Low — 5-dimensional expansion of existing scan at `_node_uses_block_globals()` (graph_extractor.py:643-665). Requires schema version bump.
+
+### 12.2 Modifier CFG Extraction
+
+**What it is:** Currently MODIFIER nodes are extracted as featureless declaration nodes with no CFG subgraph (graph_extractor.py:1434-1437). They are invisible to Phase 2 and contribute no structural signal.
+
+**Blueprint:**
+
+1. After the function CFG loop (graph_extractor.py:1449-1492), add a parallel loop for `contract.modifiers`:
+   - Call `_build_control_flow_edges()` for each modifier
+   - Append CFG_NODE children for each modifier statement
+   - Add CONTAINS(5) edges from MODIFIER → its CFG children
+
+2. Add CALLS(0) edges from FUNCTION → MODIFIER (instead of current edge-type silence)
+
+3. Add `_` modifier base to feature vector (how many modifiers a function applies)
+
+**Why:** `nonReentrant` guards, `onlyOwner` access controls, and modifier-modulated vulnerability patterns are completely invisible to the model. The CHANGELOG's EXP-A4 confirms GNN eye F1=0 for Reentrancy — adding modifier CFG is the single highest-ROI architectural change.
+
+**Effort:** High — extraction pipeline changes + model retraining + schema version v9. See §9.2 for detailed pseudocode.
+
+### 12.3 Cross-Contract Edges
+
+**What it is:** Currently all edges (CALLS, ICFG, DEF_USE) are intra-contract only. INHERITS(4) edges to parent contracts exist but only for declarations in the same `.sol` file.
+
+**Blueprint:**
+
+1. In `extract_contract_graph()`, after primary contract extraction, iterate the multi-contract's sibling contracts within the same file
+2. For sibling contracts: extract CFG, resolve CALLS edges to functions in other contracts
+3. Add a CROSS_CALLS edge type or use existing CALLS with cross-contract attribute
+
+**Why:** Flash-loan-style cross-contract reentrancy and multi-contract vulnerability patterns require cross-contract data flow. The A-4 `_select_contract` heuristic (8% wrong-contract) is a symptom of needing multi-contract graphs.
+
+**Effort:** High — extraction pipeline + schema change + increased graph sizes.
+
+### 12.4 `fusion_max_nodes` Upgrade
+
+**What it is:** Currently truncates 227 contracts at `max_nodes=1024`.
+
+**Blueprint:**
+
+1. Re-extract all graph data with `max_nodes=2048` (not just change config)
+2. Update the `_scatter_to_dense()` max_nodes parameter in fusion_layer.py
+3. Consider dynamic batch-dependent truncation (sort by node count, group similar sizes)
+
+**Why:** The 227 truncated contracts are disproportionately complex/high-risk. Truncation removes CFG nodes from cross-attention, systematically under-weighing high-complexity contracts.
+
+**Effort:** Low — primarily data re-extraction.
+
+---
+
+## 13. Parked Topics
+
+| Topic | Reason for Parking | Revisit Trigger |
+|---|---|---|
+| **GNN eye pooling strategy** — vs CFG eye, vs Phase 3 enrichment | Current 2-eye (GNN + CFG) split is adequate; root cause is input features, not pooling | When Phase 2 has useful signal (A-1, A-2 fixed) |
+| **Transformer Context window size** — 512 tokens per window | Validated in Run 5 (512 > 256, 512 vs 1024 not tested) | If prefix injection saturates (K > 48) |
+| **Cross-attention fusion alternatives** — MoE, adaptive pooling | Fusion model (CrossAttentionFusion) is working; no evidence of cross-attention bottleneck | If fusion eye F1 plateaus below transformer_eye or gnn_eye |
+| **DEF_USE to 2+ hops** — increasing conv3c depth | Phase 2 depth increase (more layers) needed, not just DEF_USE hops | When Phase 2 has discriminative signal |
+| **ZKML proxy MLP (10-output lock)** | Hard constraint from ZKML circuit deployment — cannot expand to 11 outputs | When ZKML circuit supports variable output count |
+| **per-class fusion_lr_multiplier** — separate LR for each eye's projection | Not a bottleneck currently; overall fusion_lr_multiplier is adequate | If one eye's F1 consistently lags others |
+| **Multi-label training** — contracts with multiple vulnerabilities | BCEWithLogitsLoss already supports multi-label; dataset has multi-label samples | If single-label evaluation is insufficient for deployment |
+| **Threshold calibration per class** — beyond global fixed threshold | Fixed threshold (0.261) is a deployment simplification; per-class thresholds add complexity | When deployment requirement emerges |
 </parameter>

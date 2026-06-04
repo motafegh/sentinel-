@@ -1,8 +1,8 @@
 # ml — SENTINEL Machine Learning Core
 
-Dual-path smart contract vulnerability detector. A three-phase 8-layer **Graph Attention Network** encodes AST/CFG structure with typed edge relations; a **LoRA-adapted GraphCodeBERT** encodes source text across sliding windows with optional GNN-prefix injection. A **three-eye CrossAttentionFusion** (GNN eye, Transformer eye, Fused eye) produces per-class probabilities across **10 vulnerability classes**.
+Dual-path smart contract vulnerability detector. An 8-layer **Graph Attention Network** encodes AST/CFG structure with typed edge relations across three phases; a **LoRA-adapted GraphCodeBERT** encodes source text across sliding windows with optional GNN-prefix injection. A **four-eye CrossAttentionFusion** (GNN eye, Transformer eye, Fused eye, CFG eye) produces per-class probabilities across **10 vulnerability classes**.
 
-**Current architecture: v8** — `FEATURE_SCHEMA_VERSION = "v8"`, `NODE_FEATURE_DIM = 11`, backbone: `microsoft/graphcodebert-base`
+**Current architecture: v8.1** — `FEATURE_SCHEMA_VERSION = "v8"`, `NODE_FEATURE_DIM = 11`, backbone: `microsoft/graphcodebert-base`, architecture tag: `"four_eye_v8"`
 
 ---
 
@@ -13,16 +13,17 @@ Dual-path smart contract vulnerability detector. A three-phase 8-layer **Graph A
 - [Data Pipeline](#data-pipeline)
 - [Dataset](#dataset)
 - [Model Architecture](#model-architecture)
-  - [GNN Encoder (7-layer, three-phase GAT)](#gnn-encoder)
+  - [GNN Encoder (8-layer, three-phase GAT)](#gnn-encoder)
   - [Transformer Encoder (GraphCodeBERT + LoRA + GNN Prefix)](#transformer-encoder)
   - [GNN Prefix Injection](#gnn-prefix-injection)
   - [CrossAttentionFusion](#crossattentionfusion)
-  - [Three-Eye Classifier](#three-eye-classifier)
+  - [Four-Eye Classifier](#four-eye-classifier)
   - [Node Feature Vector (v8 Schema, 11-dim)](#node-feature-vector)
   - [Edge Types](#edge-types)
 - [Output Classes](#output-classes)
 - [Training](#training)
 - [Inference](#inference)
+- [Interpretability Suite](#interpretability-suite)
 - [Tests](#tests)
 - [Repository Layout](#repository-layout)
 - [Key Invariants](#key-invariants)
@@ -61,15 +62,15 @@ Input: Solidity contract (.sol)
         │
         └─ retokenize_windowed.py ► .pt tokens ([4, 512] windows, stride=256)
                 │
-        DualPathDataset (cached_dataset_v8.pkl)
+        DualPathDataset (cached_dataset_v10.pkl)
                 │
         ┌───────┴────────────────────────────────────────────┐
         │                                                    │
    GNNEncoder                                    TransformerEncoder
    8-layer GAT, 3 phases (2+3+3)              GraphCodeBERT + LoRA r=16
    JK attention, hidden_dim=256                  12 layers, Q+V adapters
-   IMP-G2 input_proj skip, IMP-G1 edge subsets  frozen base, BF16
-   IMP-G3 bidirectional CONTAINS                Flash Attention 2
+   type_embedding(13,16), input_proj skip        frozen base, BF16
+   IMP-G1 edge subsets, IMP-G3 bidir CONTAINS   Flash Attention 2
         │                                        │
         │  [B, K, 256] prefix nodes (K=48)            │
         │  ──gnn_to_bert_proj(256→768)──►              │
@@ -84,9 +85,9 @@ Input: Solidity contract (.sol)
                      need_weights=False (Fix #26)
                      output_dim=128 LOCKED
                 │
-         Three-Eye Classifier
-         GNN eye [B,256] + TF eye [B,256] + Fused [B,128]
-         → [B,384] → Linear(384,192) → Linear(192,10)
+         Four-Eye Classifier
+         GNN eye [B,128] + TF eye [B,128] + Fused eye [B,128] + CFG eye [B,128]
+         → [B,512] → Linear(512,256) → Linear(256,10)
                 │
          [B, 10] logits → sigmoid → thresholded predictions
 ```
@@ -104,34 +105,28 @@ poetry run python ml/scripts/reextract_graphs.py
 # 2. Tokenize all contracts (windowed, [4,512], stride=256)
 poetry run python ml/scripts/retokenize_windowed.py
 
-# 3. Build + dedup label CSV
+# 3. Build label CSV
 poetry run python ml/scripts/build_multilabel_index.py
-poetry run python ml/scripts/dedup_multilabel_index.py --relabel-timestamp
 
-# 4. Inject DoS augmented pairs
-poetry run python ml/scripts/inject_augmented.py
+# 4. Generate splits
+poetry run python ml/scripts/create_splits.py
 
-# 5. Remove noisy labels (structural precondition heuristics)
-poetry run python ml/scripts/label_cleaner.py \
-    --graphs-dir ml/data/graphs \
-    --label-csv ml/data/processed/multilabel_index_deduped.csv
-
-# 6. Build paired cache
+# 5. Build paired cache
 poetry run python ml/scripts/create_cache.py
 
-# 7. Generate splits (only if needed — current splits are valid)
-poetry run python ml/scripts/create_splits.py
+# 6. Validate dataset integrity
+poetry run python ml/scripts/validate_graph_dataset.py
 ```
 
-**Current data state (v8):**
+**Current data state (v10):**
 
 | File | Count / Size | Contents |
 |------|-------------|----------|
-| `ml/data/graphs/` | 41,576 .pt | v8 graphs, 11-dim, FEATURE_SCHEMA_VERSION="v8" |
-| `ml/data/tokens_windowed/` | 44,470 .pt | windowed tokens [4,512], stride=256 |
-| `ml/data/cached_dataset_v8.pkl` | 2.2 GB | 41,576 paired (graph, tokens) |
-| `ml/data/processed/multilabel_index_cleaned.csv` | cleaned rows | −4,304 labels vs deduped |
-| `ml/data/splits/deduped/` | 3 .npy | train=29,103 / val=6,236 / test=6,237 |
+| `ml/data/graphs/` | ~41K .pt | v8 graphs, 11-dim, FEATURE_SCHEMA_VERSION="v8" |
+| `ml/data/tokens_windowed/` | ~41K .pt | windowed tokens [4,512], stride=256 |
+| `ml/data/cached_dataset_v10.pkl` | paired | (graph, tokens) pairs |
+| `ml/data/processed/multilabel_index.csv` | 68,523 rows | 10 classes |
+| `ml/data/splits/v10_deduped/` | 3 .npy | train / val / test indices |
 
 **Note on retokenization for K=48:** With stride=256 and code_budget=464 (K=48), overlap per window = 464−256 = 208 tokens. Since stride < code_budget there are no gaps — retokenization is not required unless K > 256.
 
@@ -141,7 +136,7 @@ poetry run python ml/scripts/create_splits.py
 
 `DualPathDataset` (`ml/src/datasets/dual_path_dataset.py`) loads pairs from the pre-built `.pkl` cache. `dual_path_collate_fn` batches graph data via PyG `Batch.from_data_list` and stacks token tensors.
 
-**Label distribution (cleaned v8 — training targets):**
+**Label distribution (training targets):**
 
 | Class | Total | Train |
 |-------|-------|-------|
@@ -169,9 +164,13 @@ poetry run python ml/scripts/create_splits.py
 8-layer Graph Attention Network, three phases (2+3+3), Jumping Knowledge (JK) attention aggregation:
 
 ```
+Type Embedding (BUG-R7-2)
+  Embedding(13, 16) → [N, 16]
+  Concatenated with raw features → [N, 27]
+
 Phase 1 — Structural + CONTAINS (layers 1+2)
   GAT over edge types 0–5, 8 heads, add_self_loops=True
-  IMP-G2: input_proj skip connection (Linear(11,256)) added before relu in Layer 1
+  IMP-G2: input_proj skip connection (Linear(27,256)) added before relu in Layer 1
          Prevents raw feature loss when GAT attention weights start near-uniform
   LayerNorm after phase
 
@@ -179,9 +178,9 @@ Phase 2 — CFG + ICFG directed (layers 3+4+5)
   IMP-G1: each layer processes a DISTINCT edge subset (vs same cfg_mask before)
   conv3:  CONTROL_FLOW(6) only — intra-function execution ordering
   conv3b: CALL_ENTRY(8) + RETURN_TO(9) only — cross-function call structure
-  conv3c: CF(6)+CALL_ENTRY(8)+RETURN_TO(9) joint — integration layer
+  conv3c: CF(6)+CALL_ENTRY(8)+RETURN_TO(9)+DEF_USE(10) joint — integration layer
   add_self_loops=False (CRITICAL — self-loops cancel directional signal)
-  heads=1, concat=False
+  heads=4 (IMP-R7-1), concat=False
   LayerNorm after phase
 
 Phase 3 — Bidirectional CONTAINS (layers 6+7+8)
@@ -196,9 +195,7 @@ JK attention aggregation over all 8 layer outputs → hidden_dim=256
 Edge type embedding: Embedding(11, 64) concatenated per message
 ```
 
-**Node types** are defined as `NodeType` IntEnum in `graph_schema.py` (13 types). Always use `NodeType.FUNCTION` etc., never raw integers.
-
-`STRUCTURAL_PREFIX_TYPES = frozenset({FUNCTION, MODIFIER, CONSTRUCTOR, FALLBACK, RECEIVE})` — used by `select_prefix_nodes()`.
+**Node types** are defined in `graph_schema.py` (13 types, IDs 0–12). Always use named constants, never raw integers.
 
 ### Transformer Encoder
 
@@ -279,17 +276,24 @@ Bidirectional cross-attention fusing graph and text modalities:
 - BUG-C2: `token_norm` LayerNorm before token projection prevents CodeBERT embeddings (L2 norm ~10-15) from dominating cross-attention dot products
 - Fix #26: `need_weights=False` on both MHA calls saves ~12.6 MB VRAM per forward pass by skipping attention weight matrix materialization
 
-### Three-Eye Classifier
+### Four-Eye Classifier
 
 **File:** `ml/src/models/sentinel_model.py`
 
 ```
-GNN eye:   max_pool + mean_pool over FUNCTION nodes → [B,512] → Linear → [B,128]
-TF eye:    pooled token embedding → Linear(768,128) → [B,128]
-Fused eye: CrossAttentionFusion → [B,128]
+GNN eye:    max_pool + mean_pool over FUNCTION+MODIFIER+FALLBACK+RECEIVE+CONSTRUCTOR nodes
+            → [B,512] → Linear → [B,128]
 
-Concat [B,384] → Linear(384,192) → GELU → Linear(192,10) → logits
-Aux heads: one Linear(128,10) per eye for auxiliary loss (training only)
+TF eye:     pooled token embedding → Linear(768,128) → [B,128]
+
+Fused eye:  CrossAttentionFusion → [B,128]
+
+CFG eye:    max_pool + mean_pool over CFG_NODE types [8-12]
+            (raw Phase 2 output, NOT JK-aggregated)
+            → [B,512] → Linear → [B,128]
+
+Concat [B,512] → Linear(512,256) → GELU → Linear(256,10) → logits
+Aux heads: one Linear(128,10) per eye + aux_phase2 MLP(256→128→10) for auxiliary loss
 ```
 
 ### Node Feature Vector
@@ -353,27 +357,26 @@ CFG nodes inherit dims [1,3,4,5,9] from their parent FUNCTION node.
 
 ## Training
 
-### Launch (v8 training)
+### Launch (v10 training)
 
 ```bash
 source ml/.venv/bin/activate
 TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup \
     python ml/scripts/train.py \
-    --run-name v8-$(date +%Y%m%d) \
-    --experiment-name sentinel-v8 \
+    --run-name v10-$(date +%Y%m%d) \
+    --experiment-name sentinel-v10 \
     --epochs 100 \
     --gradient-accumulation-steps 8 \
     --gnn-prefix-k 48 \
     --gnn-prefix-warmup-epochs 15 \
-    --gnn-prefix-proj-lr-mult 1.0 \
+    --gnn-prefix-proj-lr-mult 5.0 \
     --phase2-edge-types 6 8 9 10 \
     --weighted-sampler positive \
-    --cache-path ml/data/cached_dataset_v8.pkl \
-    > ml/logs/v8-$(date +%Y%m%d).log 2>&1 &
+    --cache-path ml/data/cached_dataset_v10.pkl \
+    > ml/logs/v10-$(date +%Y%m%d).log 2>&1 &
 
 # Monitor:
-bash ml/scripts/monitor.sh
-tail -f ml/logs/v8-$(date +%Y%m%d).log
+tail -f ml/logs/v10-$(date +%Y%m%d).log
 ```
 
 ### Key Training Milestones
@@ -385,7 +388,7 @@ tail -f ml/logs/v8-$(date +%Y%m%d).log
 | 20 | Check: GNN share trend and `prefix_proj_weight_norm` growth |
 | 40+ | Expected convergence region based on prior ablation runs |
 
-### TrainConfig Reference (v8)
+### TrainConfig Reference
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
@@ -400,24 +403,17 @@ tail -f ml/logs/v8-$(date +%Y%m%d).log
 | `use_weighted_sampler` | `"positive"` | 3× for any-vuln rows |
 | `lora_lr_mult` | `0.3` | LoRA adapter LR multiplier |
 | `gnn_lr_mult` | `2.5` | GNN LR multiplier |
-| `fusion_lr_mult` | `0.5` | Fusion LR multiplier |
+| `fusion_lr_multiplier` | `0.5` | Fusion LR multiplier |
+| `dos_loss_weight` | `0.5` | 50% DoS gradient (half-weight) |
+| `aux_loss_weight` | `0.3` | Main auxiliary loss weight |
+| `aux_phase2_loss_weight` | `0.20` | Phase 2 aux head loss weight |
+| `jk_entropy_reg_lambda` | `0.005` | JK entropy regularization |
 | `gnn_prefix_k` | `48` | Prefix token count (0 = disabled) |
 | `gnn_prefix_warmup_epochs` | `15` | Epochs before prefix activates |
-| `gnn_prefix_proj_lr_mult` | `1.0` | `gnn_to_bert_proj` LR multiplier |
-| `phase2_edge_types` | `[6, 8, 9, 10]` | CF + CALL_ENTRY + RETURN_TO + DEF_USE (v8) |
+| `gnn_prefix_proj_lr_mult` | `5.0` | `gnn_to_bert_proj` LR multiplier |
+| `phase2_edge_types` | `[6, 8, 9, 10]` | CF + CALL_ENTRY + RETURN_TO + DEF_USE |
 | `use_compile` | `True` | Submodule-level; transformer excluded |
 | `use_amp` | `True` | BF16; no GradScaler |
-
-### Training History
-
-| Run | Phase 2 edges | Best ep | Raw F1 | Tuned F1 | Notes |
-|-----|---------------|---------|--------|----------|-------|
-| v7.0 | CF only | 23 | 0.2651 | 0.2875 | CodeBERT baseline |
-| v8-AB (PLAN-3C) | CF+CE+RT+DU | 29 | 0.2621 | 0.2851 | DEF_USE degrades |
-| **PLAN-3A** | **CF+CE+RT** | **41** | **0.2790** | **0.2877** | **best v8 checkpoint** |
-| v8.0-B | PLAN-3A + label clean | ep10 | 0.2460 | killed | ceiling confirmed |
-
-**Ceiling conclusion:** All v7/v8 CodeBERT runs converge to ~0.287 tuned F1. Current v8 architecture with 8-layer GNN (2+3+3 phases) includes IMP-G1, IMP-G2, IMP-G3 improvements for better structural encoding.
 
 ### Per-epoch Prefix Logging
 
@@ -437,15 +433,15 @@ MLflow metrics: `prefix_active` (0/1), `prefix_proj_weight_norm`.
 ```bash
 # Threshold tuning
 poetry run python ml/scripts/tune_threshold.py \
-    --checkpoint ml/checkpoints/v8-<date>_best.pt
+    --checkpoint ml/checkpoints/v10-<date>_best.pt
 
 # Behavioral gate (≥80% detection, ≥80% specificity required)
 poetry run python ml/scripts/manual_test.py \
-    --checkpoint ml/checkpoints/v8-<date>_best.pt
+    --checkpoint ml/checkpoints/v10-<date>_best.pt
 
 # Promote to production
 poetry run python ml/scripts/promote_model.py \
-    --checkpoint ml/checkpoints/v8-<date>_best.pt
+    --checkpoint ml/checkpoints/v10-<date>_best.pt
 ```
 
 ---
@@ -461,7 +457,29 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. uvicorn ml.src.inference.api:app --port 8001
 - `GET /health` — liveness
 - `GET /metrics` — Prometheus
 
-`predictor.py` reads `gnn_prefix_k` and `gnn_prefix_warmup_epochs` from the checkpoint's saved config and sets `model._current_epoch = 9999` so the prefix is always active at inference time. Architecture detection via `_ARCH_TO_FUSION_DIM`: `"three_eye_v7"` → fusion_dim=128, node_dim=11.
+`predictor.py` reads `gnn_prefix_k` and `gnn_prefix_warmup_epochs` from the checkpoint's saved config and sets `model._current_epoch = 9999` so the prefix is always active at inference time. Architecture detection via `_ARCH_TO_FUSION_DIM`: `"four_eye_v8"` → fusion_dim=128, node_dim=11.
+
+---
+
+## Interpretability Suite
+
+**Directory:** `ml/scripts/interpretability/`
+
+21 experiment scripts for model behavior analysis. Run against any checkpoint.
+
+| Script | Experiment | What it measures |
+|--------|-----------|------------------|
+| `exp_l2_edge_ablation.py` | Edge type ablation | Impact of removing each edge type on per-class F1 |
+| `exp_a4_aux_contribution.py` | Auxiliary heads | Contribution of each eye to classification |
+| `exp_l4_gradient_saliency.py` | Gradient saliency | Per-feature importance via gradient × input |
+| `exp_l8_permutation_importance.py` | Permutation importance | Per-feature importance via shuffled prediction delta |
+| `exp_e1_receptive_field.py` | GNN receptive field | Effective hop distance for each Phase 2 layer |
+| `exp_l3_attention_visualization.py` | Cross-attention | Token-to-node attention weight patterns |
+| `exp_b1_phase2_gradient_norm.py` | Phase 2 gradients | Gradient magnitude through conv3/3b/3c |
+| `exp_l5_probing_classifiers.py` | Probing classifiers | Linear probes on intermediate GNN embeddings |
+| `exp_l10_training_ablation.py` | Training ablation | Impact of individual training components |
+
+See `ml/scripts/interpretability/README.md` for the full experiment catalog and interpretation guide.
 
 ---
 
@@ -473,13 +491,11 @@ cd ml && poetry run pytest tests/ -v
 
 | File | Coverage |
 |------|---------|
-| `test_preprocessing.py` | Schema (NODE_FEATURE_DIM=11, 13 types, NodeType IntEnum), feature builders, CFG inheritance |
+| `test_preprocessing.py` | Schema (NODE_FEATURE_DIM=11, 13 types), feature builders, CFG inheritance |
 | `test_model.py` | Forward pass shapes, aux output, [B,10] output, prefix path |
 | `test_training.py` | TrainConfig, ASL loss, gradient flow, prefix warmup suppression |
 | `test_cache.py` | Cache key, schema-version invalidation, atomic write |
 | `test_dataset.py` | DualPathDataset loading, collate, batch shapes |
-
-Behavioral smoke tests: `ml/scripts/manual_test.py` with 20 test contracts in `ml/scripts/test_contracts/` (19 expected detections).
 
 ---
 
@@ -488,43 +504,58 @@ Behavioral smoke tests: `ml/scripts/manual_test.py` with 20 test contracts in `m
 ```
 ml/
 ├── README.md                       ← this file
+├── DIAGRAMS.md                     ← Mermaid architecture diagrams
 ├── pyproject.toml
 ├── scripts/
 │   ├── train.py                    ← training entry point
-│   ├── label_cleaner.py
-│   ├── create_cache.py
-│   ├── reextract_graphs.py
-│   ├── retokenize_windowed.py
-│   ├── tune_threshold.py
-│   ├── manual_test.py
-│   ├── audit_prefix_node_counts.py ← K-coverage audit → logs/prefix_node_count_audit.json
-│   ├── monitor.sh
-│   └── archive/                    ← completed one-off scripts
+│   ├── reextract_graphs.py         ← graph extraction
+│   ├── retokenize_windowed.py      ← tokenization
+│   ├── build_multilabel_index.py   ← label CSV builder
+│   ├── create_cache.py             ← paired cache builder
+│   ├── create_splits.py            ← stratified splits
+│   ├── validate_graph_dataset.py   ← dataset integrity check
+│   ├── tune_threshold.py           ← per-class threshold tuning
+│   ├── calibrate_temperature.py    ← post-training temperature scaling
+│   ├── promote_model.py            ← MLflow staging promotion
+│   ├── vram_gate_test.py           ← VRAM usage validation
+│   ├── compile_smoke_test.py       ← torch.compile smoke test
+│   ├── archive_v8_data.py          ← v8 data archival
+│   ├── archive/                    ← completed one-off scripts
+│   ├── interpretability/           ← 21 experiment scripts
+│   └── test_contracts/             ← behavioral smoke test contracts
 ├── src/
 │   ├── models/
-│   │   ├── sentinel_model.py       ← SentinelModel v8, three-eye + GNN prefix
-│   │   ├── gnn_encoder.py          ← 8-layer three-phase GAT (2+3+3), Embedding(11,64)
-│   │   ├── transformer_encoder.py  ← GraphCodeBERT + LoRA + Flash Attention 2 + prefix inputs_embeds path
-│   │   └── fusion_layer.py         ← CrossAttentionFusion, compile-safe, token_norm (BUG-C2)
+│   │   ├── sentinel_model.py       ← SentinelModel v8.1, four-eye + GNN prefix
+│   │   ├── gnn_encoder.py          ← 8-layer three-phase GAT (2+3+3), type_embedding
+│   │   ├── transformer_encoder.py  ← GraphCodeBERT + LoRA + Flash Attention 2 + prefix
+│   │   └── fusion_layer.py         ← CrossAttentionFusion, compile-safe, token_norm
 │   ├── preprocessing/
-│   │   ├── graph_schema.py         ← NODE_FEATURE_DIM=11, FEATURE_SCHEMA_VERSION="v8",
-│   │   │                              NodeType IntEnum (13 types), STRUCTURAL_PREFIX_TYPES
+│   │   ├── graph_schema.py         ← NODE_FEATURE_DIM=11, FEATURE_SCHEMA_VERSION="v8"
 │   │   └── graph_extractor.py      ← Slither → v8 graph .pt files
 │   ├── datasets/
-│   │   └── dual_path_dataset.py
+│   │   └── dual_path_dataset.py    ← DualPathDataset + collate
 │   ├── training/
-│   │   ├── trainer.py              ← TrainConfig (prefix params), train(), BF16, submodule compile
-│   │   └── losses.py               ← AsymmetricLoss
-│   └── inference/
-│       ├── api.py                  ← FastAPI :8001
-│       ├── predictor.py            ← reads gnn_prefix_k from checkpoint; _current_epoch=9999
-│       └── preprocess.py
+│   │   ├── trainer.py              ← TrainConfig, train(), BF16, submodule compile
+│   │   ├── training_logger.py      ← StructuredLogger, MLflow integration
+│   │   ├── losses.py               ← AsymmetricLoss
+│   │   └── focalloss.py            ← FocalLoss (alternative)
+│   ├── inference/
+│   │   ├── api.py                  ← FastAPI :8001
+│   │   ├── predictor.py            ← reads gnn_prefix_k; _current_epoch=9999
+│   │   ├── cache.py                ← InferenceCache (content-addressed, TTL)
+│   │   ├── drift_detector.py       ← KS test drift detection
+│   │   └── preprocess.py           ← ContractPreprocessor
+│   ├── data/                       ← data loading helpers
+│   ├── tools/                      ← utility tools
+│   ├── utils/                      ← shared utilities
+│   └── validation/                 ← validation helpers
 ├── data/                           ← NOT committed (.gitignore)
-│   ├── graphs/                     ← 41,576 .pt graph files (v8, 11-dim)
-│   ├── tokens_windowed/            ← 44,470 .pt token files ([4,512], stride=256)
+│   ├── graphs/                     ← .pt graph files (v8, 11-dim)
+│   ├── tokens_windowed/            ← .pt token files ([4,512], stride=256)
 │   ├── processed/                  ← CSV label files
-│   ├── splits/deduped/             ← train/val/test .npy indices
-│   └── cached_dataset_v8.pkl       ← 2.2 GB paired cache
+│   ├── splits/v10_deduped/         ← train/val/test .npy indices
+│   ├── augmented/                  ← DoS and CEI augmented .sol files
+│   └── cached_dataset_v10.pkl      ← paired cache
 ├── checkpoints/                    ← NOT committed
 └── logs/                           ← NOT committed
 ```
@@ -535,12 +566,14 @@ ml/
 
 | Invariant | Value | Break condition |
 |-----------|-------|----------------|
-| `NODE_FEATURE_DIM` | **11** | Rebuild all 41,576 graph `.pt` files + retrain |
+| `NODE_FEATURE_DIM` | **11** | Rebuild all graph `.pt` files + retrain |
 | `FEATURE_SCHEMA_VERSION` | **`"v8"`** | Bump on any schema change; invalidates inference cache |
 | `NUM_CLASSES` | **10** | Locked — ZKML circuit and CLASS_NAMES order both depend on this |
 | `NUM_EDGE_TYPES` | **11** | GNNEncoder Embedding(11,64) + retrain |
 | `fusion_output_dim` | **128** | ZKML proxy MLP (M2) depends on this; never change |
 | `gnn_num_layers` | **8** | 2+3+3 phases (IMP-G3 added conv4c for downward CONTAINS) |
+| Classifier input | **512** (4 × 128) | Four-eye architecture; changing eye count breaks this |
+| Classifier hidden | **256** | Linear(512,256) → Linear(256,10) |
 | `gnn_to_bert_proj` at inference | always active | `predictor.py` sets `_current_epoch=9999` |
 | `weights_only` for graph `.pt` | `False` | PyG 2.7 metadata not safe-tensors serialisable |
 | `weights_only` for checkpoint `.pt` | `False` | LoRA PEFT objects not safe-tensors serialisable |
@@ -554,3 +587,5 @@ ml/
 | Prefix position IDs | prefix=1, code=3..466 | RoBERTa uses 0=BOS, 1=padding, 2=EOS slots |
 | `token_norm` in CrossAttentionFusion | Always active | BUG-C2 fix; prevents CodeBERT norm dominance |
 | `need_weights=False` in MHA | Always set | Fix #26; saves ~12.6 MB VRAM per forward pass |
+| `type_embedding` in GNNEncoder | Embedding(13, 16) | Concatenated with features → [N, 27] input |
+| Phase 2 attention heads | **4** | IMP-R7-1; was 1 before Run 7 |

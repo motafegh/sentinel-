@@ -1,264 +1,304 @@
-# M4 — Agents / MCP / RAG
+# Agents Module
 
-LangGraph orchestration, three MCP servers, a hybrid RAG retriever over DeFi exploit history, and a continuous ingestion pipeline that keeps the knowledge base fresh.
-
----
+LangGraph orchestration, four MCP servers, a hybrid RAG retriever over DeFi exploit history, an incremental ingestion pipeline, and an on-chain feedback loop.
 
 ## Overview
 
 ```
-LangGraph StateGraph (graph.py)
-  ml_assessment ──▶ inference MCP :8010 ──▶ M1 FastAPI :8001
-       │
-       ▼  max(prob) ≥ 0.70?
-       ├── deep ──▶ rag_research ──▶ audit_check ──▶ synthesizer
-       └── fast ──────────────────────────────────▶ synthesizer
+                    ┌──────────────────────────────────────────┐
+                    │         LangGraph StateGraph (9 nodes)   │
+                    │                                          │
+                    │  ml_assessment → quick_screen → evidence_router
+                    │       │                      ├─ deep ──────────▶ rag_research ──┐
+                    │       │                      │                  static_analysis ─┤→ audit_check → cross_validator → synthesizer
+                    │       │                      │                  graph_explain ──┘
+                    │       │                      └─ fast ──────────────────────────────▶ synthesizer
+                    └──────────────────────────────────────────┘
+                                        │
+                    ┌───────────────────┼───────────────────┐
+                    ▼                   ▼                   ▼
+              MCP :8010            MCP :8011           MCP :8012          MCP :8013
+           inference_server      rag_server          audit_server     graph_inspector
+              │                     │                    │                  │
+              ▼                     ▼                    ▼                  ▼
+         Module 1 FastAPI    HybridRetriever      AuditRegistry       GNN / Slither
+           (ML model)      (FAISS + BM25)         (Sepolia)         (hotspots)
 
-RAG pipeline (HybridRetriever)
-  FAISS semantic search  +  BM25 keyword search  →  RRF fusion  →  top-k chunks
-
-Ingestion pipeline
-  DeFiHackLabs GitHub  →  chunk  →  embed  →  atomic index write
-  AuditRegistry events →  feed findings back into RAG (feedback_loop.py)
+                    ┌──────────────────────────────────────────┐
+                    │         RAG Pipeline                      │
+                    │  DeFiHackLabs → chunk → embed → FAISS    │
+                    │  AuditRegistry → feedback → RAG           │
+                    └──────────────────────────────────────────┘
 ```
 
----
+## Module Map
 
-## LangGraph Orchestration
-
-### `AuditState` fields
-
-| Field | Type | Set by |
-|-------|------|--------|
-| `contract_code` | `str` | Caller |
-| `contract_address` | `str` | Caller |
-| `ml_result` | `dict \| None` | `ml_assessment` |
-| `rag_results` | `list \| None` | `rag_research` |
-| `audit_history` | `list \| None` | `audit_check` |
-| `static_findings` | `dict \| None` | `static_analysis` (M6) |
-| `final_report` | `dict \| None` | `synthesizer` |
-| `error` | `str \| None` | Any node on failure |
-
-### Risk routing
-
-```python
-def _is_high_risk(ml_result):
-    vulns = ml_result.get("vulnerabilities", [])
-    return max(v["probability"] for v in vulns) > 0.70 if vulns else False
-# True  → deep path: rag_research → audit_check → synthesizer
-# False → fast path: synthesizer directly
+```
+agents/
+├── src/
+│   ├── orchestration/       LangGraph workflow (9 nodes, conditional routing)
+│   │   ├── state.py         AuditState TypedDict (16 fields)
+│   │   ├── routing.py       Per-class thresholds, tool routing, verdict computation
+│   │   ├── nodes.py         9 node implementations (1415 lines)
+│   │   └── graph.py         StateGraph builder, SqliteSaver checkpointing
+│   │
+│   ├── rag/                 Hybrid FAISS + BM25 retriever
+│   │   ├── retriever.py     HybridRetriever with Reciprocal Rank Fusion
+│   │   ├── chunker.py       RecursiveCharacterTextSplitter (1536 chars)
+│   │   ├── embedder.py      Nomic-embed-text via LM Studio
+│   │   ├── build_index.py   Full rebuild with atomic writes + rollback
+│   │   └── fetchers/
+│   │       ├── base_fetcher.py     Abstract BaseFetcher + Document dataclass
+│   │       └── github_fetcher.py   DeFiHackLabs .sol parser (3 formats)
+│   │
+│   ├── ingestion/           Incremental pipeline + feedback loop
+│   │   ├── pipeline.py      Dedup → chunk → embed → atomic write
+│   │   ├── deduplicator.py  SHA256 hash-based deduplication
+│   │   ├── feedback_loop.py AuditRegistry event polling, on-chain → RAG bridge
+│   │   ├── scheduler_cron.py
+│   │   └── scheduler_dagster.py
+│   │
+│   ├── mcp/servers/         MCP SSE servers (Model Context Protocol)
+│   │   ├── inference_server.py       :8010 — predict, batch_predict
+│   │   ├── rag_server.py             :8011 — search
+│   │   ├── audit_server.py           :8012 — get_audit_history, check_audit_exists
+│   │   └── graph_inspector_server.py :8013 — get_graph_hotspots
+│   │
+│   └── llm/
+│       └── client.py        LM Studio connection, 4 model roles
+│
+├── scripts/                 Smoke tests
+├── tests/                   Unit + integration tests
+├── data/
+│   ├── index/               FAISS + BM25 + chunks + metadata
+│   ├── reports/             Final audit report JSON per contract_address
+│   ├── feedback_state.json  Last processed Sepolia block number
+│   └── checkpoints.db       LangGraph SqliteSaver checkpoint database
+├── pyproject.toml
+└── README.md                ← this file
 ```
 
-0.70 is intentionally higher than the per-class inference threshold (0.50): deep analysis only for high-confidence detections.
+## Quick Start
 
-### Final report schema
+### 1. Install Dependencies
 
-```json
-{
-  "overall_label": "vulnerable",
-  "risk_probability": 0.8943,
-  "top_vulnerability": "Reentrancy",
-  "vulnerabilities": [{"vulnerability_class": "Reentrancy", "probability": 0.8943}],
-  "rag_evidence": [...],
-  "audit_history": [...]
-}
+```bash
+cd agents
+poetry install
 ```
 
-There is **no** `confidence` field anywhere in this schema (removed in Track 3).
+### 2. Configure Environment
 
-### Usage
+```bash
+cp .env.example .env   # or create manually
+```
+
+Required variables:
+
+```bash
+# LM Studio (required for RAG embeddings + LLM synthesis)
+LM_STUDIO_BASE_URL=http://<wsl2-gateway-ip>:4567/v1
+LM_STUDIO_TIMEOUT=60
+
+# Sepolia RPC (required for audit_server.py + feedback_loop.py)
+SEPOLIA_RPC_URL=<your-rpc-url>
+AUDIT_REGISTRY_ADDRESS=0x14E5eFb6DE4cBb74896B45b4853fd14901E4CfAf
+
+# Module 1 inference (required for ml_assessment node)
+MODULE1_INFERENCE_URL=http://localhost:8001
+
+# MCP server ports (defaults work for local development)
+MCP_INFERENCE_PORT=8010
+MCP_RAG_PORT=8011
+MCP_AUDIT_PORT=8012
+MCP_GRAPH_INSPECTOR_PORT=8013
+```
+
+### 3. Build RAG Index
+
+```bash
+poetry run python -m src.rag.build_index
+# Fetches DeFiHackLabs, chunks, embeds, builds FAISS + BM25
+```
+
+### 4. Start MCP Servers
+
+```bash
+# Each in a separate terminal
+poetry run python -m src.mcp.servers.inference_server
+poetry run python -m src.mcp.servers.rag_server
+poetry run python -m src.mcp.servers.audit_server
+poetry run python -m src.mcp.servers.graph_inspector_server
+```
+
+### 5. Run an Audit
 
 ```python
 import asyncio
 from src.orchestration.graph import build_graph
 
-graph = build_graph()
-result = asyncio.run(graph.ainvoke(
-    {"contract_code": "<solidity>", "contract_address": "0x..."},
-    config={"configurable": {"thread_id": "audit-001"}},
-))
-print(result["final_report"])
+async def audit():
+    graph = build_graph(use_checkpointer=False)
+    result = await graph.ainvoke(
+        {
+            "contract_code": "<solidity source>",
+            "contract_address": "0x...",
+        },
+        config={"configurable": {"thread_id": "audit-001"}},
+    )
+    print(result["final_report"])
+
+asyncio.run(audit())
 ```
 
-Resume after crash (same `thread_id`, pass `None`):
+### 6. Smoke Tests
+
+```bash
+poetry run python scripts/smoke_langgraph.py          # mock — no services needed
+poetry run python scripts/smoke_langgraph.py --live    # live — all services must be up
+poetry run python scripts/smoke_inference_mcp.py
+poetry run python scripts/smoke_rag_mcp.py
+poetry run python scripts/smoke_audit_mcp.py
+```
+
+## Orchestration
+
+### Graph Topology
+
+```
+START → ml_assessment → quick_screen → evidence_router
+    ├─ [deep path]  → rag_research ──┐
+    │                static_analysis ─┤→ audit_check → cross_validator → synthesizer → END
+    │                graph_explain ───┘
+    └─ [fast path]  → synthesizer → END
+```
+
+**Two-signal fast-path gate:** Fast path requires BOTH:
+1. ML all class probabilities below `DEEP_THRESHOLDS`
+2. `quick_screen` zero High/Critical Slither/Aderyn hits
+
+If either signal flags risk, the contract goes to deep path.
+
+### AuditState Fields
+
+| Field | Type | Set By | Description |
+|-------|------|--------|-------------|
+| `contract_code` | `str` | Caller | Raw Solidity source |
+| `contract_address` | `str` | Caller | On-chain address |
+| `ml_result` | `dict` | `ml_assessment` | Full ML prediction response |
+| `ml_hotspots` | `list[dict]` | `graph_explain` | Function-level hotspot scores |
+| `routing_decisions` | `list[str]` | `evidence_router` | Per-class routing log (append-reducer) |
+| `quick_screen_hits` | `dict` | `quick_screen` | Slither + Aderyn Tier-0 findings |
+| `static_findings` | `list[dict]` | `static_analysis` | Slither + Aderyn deep findings |
+| `external_call_summary` | `list[dict]` | `static_analysis` | Inter-contract call graph |
+| `rag_results` | `list[dict]` | `rag_research` | Ranked exploit chunks |
+| `audit_history` | `list[dict]` | `audit_check` | Prior on-chain audit records |
+| `verdicts` | `dict[str, str]` | `cross_validator` | Per-class verdicts |
+| `confirmations` | `dict[str, list[str]]` | `cross_validator` | Evidence sources per class |
+| `contradictions` | `dict[str, list[str]]` | `cross_validator` | Conflicting evidence |
+| `final_report` | `dict` | `synthesizer` | Complete audit report |
+| `narrative` | `str \| None` | `synthesizer` | LLM-generated Markdown narrative |
+| `error` | `str \| None` | Any node | Non-fatal error |
+
+### Per-Class Routing
+
+`routing.py` defines three mappings:
+
+**DEEP_THRESHOLDS** — probability triggers deep analysis (deliberately below inference threshold):
+
+| Class | Threshold |
+|-------|-----------|
+| DenialOfService | 0.30 |
+| Reentrancy, IntegerUO, Timestamp, TOD | 0.35 |
+| GasException, ExternalBug, CallToUnknown, MishandledException | 0.40 |
+| UnusedReturn | 0.45 |
+
+**ROUTING_RULES** — which tools activate per class:
+
+| Classes | Tools |
+|---------|-------|
+| Reentrancy, IntegerUO, Timestamp, TOD, ExternalBug, CallToUnknown, DenialOfService | `static_analysis` + `rag_research` |
+| GasException, MishandledException, UnusedReturn | `static_analysis` only |
+
+**CLASS_TO_DETECTORS** — maps classes to Slither detector names for detector scoping.
+
+### Verdicts
+
+| Source | Scale |
+|--------|-------|
+| Rule-based (`compute_verdict`) | CONFIRMED / LIKELY / DISPUTED / SAFE |
+| LLM-adjudicated (`cross_validator`) | CONFIRMED / LIKELY / DISPUTED / WATCH / SAFE |
+
+**LLM-adjudicated verdicts** prompt the strong LLM (qwen3.5-9b-ud) with per-class evidence (ML tier + probability, Slither findings, RAG topics, prior audits). Falls back silently to rule-based on LLM failure.
+
+### Checkpointing
+
+`SqliteSaver` persists state to `data/checkpoints.db` after every node. Resume from crash with the same `thread_id`:
 
 ```python
-result = asyncio.run(graph.ainvoke(
-    None,
-    config={"configurable": {"thread_id": "audit-001"}},
-))
+result = await graph.ainvoke(None, config={"configurable": {"thread_id": "audit-001"}})
 ```
-
----
-
-## MCP Servers
-
-All three servers use **SSE transport** (HTTP, not stdio) — production-safe, multi-client, Docker-compatible.
-
-Start command pattern:
-```bash
-cd agents
-poetry run python -m src.mcp.servers.<server_module>
-```
-
-### inference_server.py — port 8010
-
-Wraps the M1 FastAPI `/predict` endpoint.
-
-**Tools:**
-
-| Tool | Inputs | Returns |
-|------|--------|---------|
-| `predict(contract_code, contract_address?)` | Solidity source | Track 3 `vulnerabilities[]` schema |
-| `batch_predict(contracts, max=20)` | List of `{contract_code, contract_address}` | List of results |
-
-Field mapping: MCP accepts `contract_code`, forwards as `source_code` to FastAPI (these are different names by design).
-
-Mock fallback: enabled when M1 is unreachable. Set `MODULE1_MOCK=true` to force in tests.
-
-### rag_server.py — port 8011
-
-Wraps `HybridRetriever.search()` over the DeFiHackLabs RAG index.
-
-**Tool: `search(query, k=5, filters={})`**
-
-Filter keys (all optional):
-
-| Key | Type | Example |
-|-----|------|---------|
-| `vuln_type` | string | `"Reentrancy"` |
-| `date_gte` | string | `"2023-01-01"` |
-| `loss_gte` | number | `1000000` |
-| `source` | string | `"DeFiHackLabs"` |
-| `has_summary` | boolean | `true` |
-
-Response shape per result:
-```json
-{
-  "chunk_id": "abc123-0",
-  "content": "...",
-  "doc_id": "abc123",
-  "chunk_index": 0,
-  "total_chunks": 3,
-  "metadata": {"vuln_type": "Reentrancy", "date": "2023-03-15", ...},
-  "score": 0.842
-}
-```
-
-The retriever is instantiated once at module level (not per-request) — ~400 ms load, ~5 MB RAM.
-
-### audit_server.py — port 8012
-
-Reads `AuditRegistry` on Sepolia. Mock mode auto-enabled when `SEPOLIA_RPC_URL` is absent.
-
-**Tools:**
-
-| Tool | Returns |
-|------|---------|
-| `get_latest_audit(contract_address)` | `{score, label, proof_hash, timestamp, agent}` |
-| `get_audit_history(contract_address, limit=10)` | List of `AuditResult`, newest first |
-| `check_audit_exists(contract_address)` | `{exists: bool, count: int}` |
-
-Score decoding: `score = field_element / 8192` (EZKL scale factor).
-`submit_audit` is deferred until ZKML + Track 3 proof semantics are finalised.
-
----
 
 ## RAG Pipeline
 
-### Knowledge base
+### Knowledge Base
 
 | Item | Value |
 |------|-------|
-| Source | DeFiHackLabs GitHub (`src/test/` and `past/` directories) |
-| `.sol` files | 726 |
-| Chunks | 752 |
-| Chunk size | 1 536 chars, overlap 128 |
-| Embedding model | `text-embedding-nomic-embed-text-v1.5` via LM Studio |
-| Vector index | FAISS `IndexFlatL2`, 768-dim |
+| Source | DeFiHackLabs GitHub (726 `.sol` exploit PoCs) |
+| Chunks | ~752 |
+| Chunk size | 1536 chars, 128 overlap |
+| Embedding | `text-embedding-nomic-embed-text-v1.5` (768-dim) via LM Studio |
+| Vector index | FAISS `IndexFlatL2` |
 | Keyword index | `BM25Okapi` |
-| Fusion | Reciprocal Rank Fusion, k=60 |
+| Fusion | Reciprocal Rank Fusion (RRF_K = 60) |
 
-### Retrieval algorithm
+### Retrieval
 
 ```
-FAISS: top-20 by L2 similarity
-BM25:  top-20 by BM25Okapi score
-RRF:   score[doc] = 1/(60 + rank_faiss) + 1/(60 + rank_bm25)
-Post-filter → return top-k
+FAISS: top-20 by L2 distance     ─┐
+                                    ├─ RRF fusion → metadata filter → top-k
+BM25: top-20 by keyword match    ─┘
 ```
 
-### Building / rebuilding the index
+### Index Build / Update
+
+| Command | Use case |
+|---------|----------|
+| `poetry run python -m src.rag.build_index` | Full rebuild from scratch |
+| `poetry run python -m src.ingestion.pipeline` | Incremental update (new docs only) |
+
+Write safety: `FileLock` + atomic `Path.replace()` + rollback snapshots + artifact SHA256 checksums.
+
+### Feedback Loop
+
+Polls `AuditSubmitted` events on Sepolia AuditRegistry. High-confidence findings (`score >= 0.70`) are ingested back into the RAG knowledge base. The synthesizer writes `data/reports/{address}.json` which the feedback loop reads to recover `vulnerability_class` (BRIDGE Issue #1).
 
 ```bash
-cd agents
-poetry run python -m src.rag.build_index
+SEPOLIA_RPC=<your-rpc> poetry run python -m src.ingestion.feedback_loop
 ```
 
-Write safety: `FileLock` + atomic `os.replace()` (temp file → real file) + rollback snapshot.
-Do not change `chunk_size` or `embedding model` without a full rebuild.
+## MCP Servers
 
----
+| Server | Port | Tools | Backend |
+|--------|------|-------|---------|
+| `inference_server` | 8010 | `predict`, `batch_predict` | Module 1 FastAPI (`:8001`) |
+| `rag_server` | 8011 | `search` | `HybridRetriever` |
+| `audit_server` | 8012 | `get_latest_audit`, `get_audit_history`, `check_audit_exists` | AuditRegistry (Sepolia Web3) |
+| `graph_inspector_server` | 8013 | `get_graph_hotspots` | GNN attention / Slither fallback |
 
-## Ingestion Pipeline
-
-### Daily scheduled ingestion (Dagster)
-
-```bash
-cd agents
-DAGSTER_HOME=agents/.dagster \
-poetry run dagster dev -f src/ingestion/scheduler_dagster.py
-# → http://localhost:3000  (Dagster UI)
-```
-
-Asset: `rag_index` — full pipeline: DeFiHackLabs fetch → deduplicate → chunk → embed → atomic index write.
-Schedule: `daily_ingestion_schedule` (cron `0 2 * * *`).
-
-### Feedback loop
-
-`src/ingestion/feedback_loop.py` polls `AuditRegistry` for new `AuditSubmitted` events, reads the corresponding final report from `agents/data/reports/{contract_address}.json` (written by `synthesizer`), and ingests the findings back into the RAG index.
-
-This closes the loop: on-chain verified findings inform future audits.
-
----
+All servers: SSE transport, `/health` endpoint, mock mode for dev/CI.
 
 ## LLM Client
 
-`src/llm/client.py` routes requests to LM Studio (OpenAI-compatible API).
+Routes to LM Studio (OpenAI-compatible API):
 
-```
-LM_STUDIO_BASE_URL   default: http://localhost:1234/v1
-LM_STUDIO_TIMEOUT    default: 120 s
-```
-
-Models are configurable via env vars:
-
-| Env var | Default use |
-|---------|------------|
-| `AGENT_MODEL_FAST` | Fast reasoning (ml_assessment) |
-| `AGENT_MODEL_STRONG` | Deep analysis (synthesizer) |
-| `AGENT_MODEL_CODER` | Static analysis context |
-| `AGENT_MODEL_EMBED` | RAG embeddings (nomic-embed-text) |
-
-On WSL2 the Windows host gateway IP changes on reboot. Set `LM_STUDIO_BASE_URL` explicitly rather than relying on the default.
-
----
-
-## Environment Variables
-
-```bash
-MCP_INFERENCE_URL=http://localhost:8010/sse
-MCP_RAG_URL=http://localhost:8011/sse
-MCP_AUDIT_URL=http://localhost:8012/sse
-AUDIT_RAG_K=5                      # RAG chunks retrieved for deep-path analysis
-MODULE1_MOCK=false                 # Force mock inference (tests/dev)
-AUDIT_MOCK=false                   # Force mock audit history (tests/dev)
-SEPOLIA_RPC_URL=<your-rpc>
-LM_STUDIO_BASE_URL=http://localhost:1234/v1
-DAGSTER_HOME=agents/.dagster
-```
-
----
+| Role | Model | Use |
+|------|-------|-----|
+| FAST | `gemma-4-e2b-it` | Simple tasks, API calls |
+| STRONG | `qwen3.5-9b-ud` | Reasoning, synthesis, reports |
+| CODER | `qwen2.5-coder-7b-instruct` | Solidity analysis |
+| EMBED | `nomic-embed-text-v1.5` | RAG embeddings |
 
 ## Testing
 
@@ -269,69 +309,56 @@ poetry run pytest tests/ -v
 
 | Test file | Coverage |
 |-----------|---------|
-| `test_graph_routing.py` | Routing logic, all node paths, graph compilation (41 tests) |
+| `test_graph_routing.py` | Routing logic, all node paths, graph compilation |
 | `test_inference_server.py` | MCP tool schemas, mock/live transport |
 | `test_audit_server.py` | On-chain history decoding, mock mode |
 | `test_github_fetcher.py` | DeFiHackLabs parsing (3 comment formats) |
 | `test_retriever_filters.py` | FAISS+BM25+RRF filter behaviour |
 | `test_deduplicator.py` | SHA256 hash deduplication |
 | `test_chunker.py` | Chunk size and overlap |
+| `test_routing_phase0.py` | Phase 0 routing edge cases |
+| `test_smoke_e2e.py` | End-to-end audit graph execution |
 
-### Smoke scripts
+## Environment Variables
 
 ```bash
-poetry run python scripts/smoke_langgraph.py          # mock — no services needed
-poetry run python scripts/smoke_langgraph.py --live   # live — all services must be up
-poetry run python scripts/smoke_inference_mcp.py
-poetry run python scripts/smoke_rag_mcp.py
-poetry run python scripts/smoke_audit_mcp.py
+# LM Studio
+LM_STUDIO_BASE_URL=http://localhost:4567/v1
+LM_STUDIO_API_KEY=lm-studio
+LM_STUDIO_TIMEOUT=60
+
+# Module 1 inference
+MODULE1_INFERENCE_URL=http://localhost:8001
+MODULE1_TIMEOUT=30.0
+MODULE1_MOCK=false
+
+# Sepolia / AuditRegistry
+SEPOLIA_RPC_URL=<your-rpc>
+AUDIT_REGISTRY_ADDRESS=0x14E5eFb6DE4cBb74896B45b4853fd14901E4CfAf
+AUDIT_MOCK=false
+
+# MCP servers
+MCP_INFERENCE_PORT=8010
+MCP_RAG_PORT=8011
+MCP_AUDIT_PORT=8012
+MCP_GRAPH_INSPECTOR_PORT=8013
+MCP_INFERENCE_URL=http://localhost:8010/sse
+MCP_RAG_URL=http://localhost:8011/sse
+MCP_AUDIT_URL=http://localhost:8012/sse
+MCP_GRAPH_INSPECTOR_URL=http://localhost:8013/sse
+
+# RAG
+AUDIT_RAG_K=5
+RAG_DEFAULT_K=5
+
+# Graph Inspector
+SENTINEL_ML_API_URL=http://localhost:8000
+GRAPH_INSPECTOR_HOTSPOTS_TIMEOUT=60
+GRAPH_INSPECTOR_MOCK=false
+
+# Dagster
+DAGSTER_HOME=agents/.dagster
 ```
-
-Loguru note: `capsys`/`caplog` do not capture loguru output. Tests that assert on log lines add a temporary list sink.
-
----
-
-## File Reference
-
-```
-agents/src/
-  orchestration/
-    state.py               AuditState TypedDict
-    nodes.py               Node functions (ml_assessment, rag_research, audit_check, synthesizer)
-    graph.py               StateGraph, conditional routing, MemorySaver
-  mcp/servers/
-    inference_server.py    Port 8010 — predict, batch_predict
-    rag_server.py          Port 8011 — search
-    audit_server.py        Port 8012 — get_audit_history, get_latest_audit, check_audit_exists
-  rag/
-    retriever.py           HybridRetriever: FAISS + BM25 + RRF
-    chunker.py             Text chunking (1536 chars, overlap 128)
-    embedder.py            Embedding via LM Studio nomic-embed-text
-    build_index.py         Full index rebuild with rollback
-    fetchers/
-      github_fetcher.py    DeFiHackLabs fetcher (3 comment format parsers)
-      base_fetcher.py      Abstract base
-  ingestion/
-    pipeline.py            Incremental update pipeline + REPORTS_DIR bridge
-    deduplicator.py        SHA256 seen_hashes.json deduplication
-    feedback_loop.py       AuditRegistry event polling, exp backoff
-    scheduler_cron.py      Cron scheduling
-    scheduler_dagster.py   Dagster asset + daily schedule
-  llm/
-    client.py              LM Studio client, AGENT_MODEL_MAP
-
-agents/data/
-  index/
-    faiss.index            FAISS IndexFlatL2, 752 × 768-dim
-    bm25.pkl               BM25Okapi model
-    chunks.pkl             752 Chunk dataclass instances
-    index_metadata.json    Build ID, config hash, artifact checksums
-    seen_hashes.json       726 source file hashes (deduplication)
-  reports/                 Final audit report JSON per contract_address
-  feedback_state.json      Last processed Sepolia block number
-```
-
----
 
 ## Do Not Change Without Wider Plan
 
