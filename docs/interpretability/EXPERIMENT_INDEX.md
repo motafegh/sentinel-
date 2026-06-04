@@ -1,85 +1,104 @@
-# SENTINEL Interpretability Experiment Index — Run 5
+# SENTINEL Interpretability Experiment Index — Run 7
 
-**Status:** Pending Run 5 checkpoint  
-**Data:** v9 (41,576 graphs, graphcodebert-base tokens, `cached_dataset_v9.pkl`)  
-**Splits:** `ml/data/splits/v9_deduped/` — train=29,103 / val=6,236 / test=6,237  
-**Checkpoint:** `ml/checkpoints/sentinel_best.pt` (populate after Run 5)
+**Status:** Phase 1 COMPLETE (v9 baseline) · Phase 2 IN PROGRESS (Run 7 ep39 checkpoint)  
+**Checkpoint:** `ml/checkpoints/GCB-P1-Run7-v10-20260603_best.pt` (ep39, F1=0.3074)  
+**Data:** v10, 41,576 graphs, `ml/data/cached_dataset_v10.pkl`  
+**Splits:** `ml/data/splits/v10_deduped/` — train=29,103 / val=6,236 / test=6,237  
+**Phase 2 results:** `ml/interpretability_results/phase2_run7_ep39_v10_2026-06-04/`
 
-> Previous Run 4 results archived at `docs/interpretability/archive_run4/`
+> Phase 1 results (v9 baseline, Run 5): `ml/interpretability_results/archive_phase1_run5_v9_2026-06-02/`  
+> Previous Run 4 results: `docs/interpretability/archive_run4/`  
+> Understanding doc: `docs/interpretability/SENTINEL-Understanding-Run7.md`
 
 ---
 
-## Experiment Suite (25 scripts)
+## Run Command Template
 
-All scripts in `ml/scripts/interpretability/`. Run from project root with:
 ```bash
 source ml/.venv/bin/activate
+CKPT=ml/checkpoints/GCB-P1-Run7-v10-20260603_best.pt
+OUT=ml/interpretability_results/phase2_run7_ep39_v10_2026-06-04
+
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/interpretability/<script>.py \
-  --checkpoint ml/checkpoints/sentinel_best.pt \
-  --out ml/interpretability_results/<exp_id>/
+  --checkpoint $CKPT \
+  --out $OUT/<exp_id>/
 ```
 
+---
+
+## Experiment Suite
+
 ### Group A — Architecture Validation
-| ID | Script | What it measures | Needs checkpoint |
-|---|---|---|---|
-| A1 | exp_a1_pooling_audit.py | GNN per-phase pooling correctness | No |
-| A2 | exp_a2_cfg_inheritance.py | CFG/inheritance edge coverage in v9 graphs | No |
-| A3 | exp_a3_jk_entropy_logging.py | JK attention entropy distribution | Yes |
-| A4 | exp_a4_aux_contribution.py | Aux head (Phase2 + CEI) contribution to loss | Yes |
+| ID | Script | Needs ckpt | Phase 1 (v9) | Phase 2 (Run7) |
+|---|---|---|---|---|
+| A1 | exp_a1_pooling_audit.py | No | ✅ PASS | — |
+| A2 | exp_a2_cfg_inheritance.py | No | ✅ PASS | — |
+| A3 | exp_a3_jk_entropy_logging.py | Yes | — | ⏳ |
+| A4 | exp_a4_aux_contribution.py | Yes | — | ⏳ |
 
 ### Group B — Training Diagnostics
-| ID | Script | What it measures | Needs checkpoint |
-|---|---|---|---|
-| B1 | exp_b1_phase2_gradient_norm.py | Phase2/Phase1 grad norm ratio per class | Yes |
-| B2 | exp_b2_per_eye_ece.py | Per-eye calibration (GNN / TF / Fused ECE) | Yes |
-| B3 | exp_b3_jk_weight_distribution.py | JK attention weight distribution per phase | Yes |
-| B4 | exp_b4_unusedreturn_saliency.py | UnusedReturn gradient saliency | Yes |
+| ID | Script | Needs ckpt | Phase 1 (v9) | Phase 2 (Run7) |
+|---|---|---|---|---|
+| B1 | exp_b1_phase2_gradient_norm.py | Yes | — | ⏳ |
+| B2 | exp_b2_per_eye_ece.py | Yes | — | ⏳ |
+| B3 | exp_b3_jk_weight_distribution.py | Yes | — | ⏳ |
+| B4 | exp_b4_unusedreturn_saliency.py | Yes | — | ⏳ |
 
 ### Group E — Graph Expressivity
-| ID | Script | What it measures | Needs checkpoint |
-|---|---|---|---|
-| E1 | exp_e1_receptive_field.py | k-hop reachability for Phase2 edge types | No |
-| E2 | exp_e2_wl_distinguishability.py | WL graph distinguishability | No |
-| E3 | exp_e3_message_propagation_sim.py | Message propagation simulation | No |
-| E4 | exp_e4_direction_sensitivity.py | Directional edge sensitivity | Yes |
+| ID | Script | Needs ckpt | Phase 1 (v9) | Phase 2 (Run7) |
+|---|---|---|---|---|
+| E1 | exp_e1_receptive_field.py | No | ⚠️ FAIL† | — |
+| E2 | exp_e2_wl_distinguishability.py | No | ✅ PASS | — |
+| E3 | exp_e3_message_propagation_sim.py | No | ⚠️ FAIL† | — |
+| E4 | exp_e4_direction_sensitivity.py | Yes | — | ⏳ |
 
 ### Group L — Model Behaviour
-| ID | Script | What it measures | Needs checkpoint |
-|---|---|---|---|
-| L1 | exp_l1_jk_weight_analysis.py | JK weight analysis per layer | Yes |
-| L2 | exp_l2_edge_ablation.py | Edge type ablation (F1 delta per edge type) | Yes |
-| L3 | exp_l3_attention_visualization.py | Cross-attention heatmaps | Yes |
-| L4 | exp_l4_gradient_saliency.py | Feature gradient saliency per class | Yes |
-| L5 | exp_l5_probing_classifiers.py | Linear probing on GNN/TF embeddings | Yes |
-| L6 | exp_l6_counterfactual_contracts.py | Counterfactual contract perturbations | Yes |
-| L7 | exp_l7_calibration_size_analysis.py | Calibration vs contract size (Timestamp strata) | Yes |
-| L8 | exp_l8_permutation_importance.py | Feature permutation importance | Yes |
-| L9 | exp_l9_attention_rollout.py | Attention rollout through layers | Yes |
-| L10 | exp_l10_training_ablation.py | Training ablation (edge types vs F1) | Yes |
+| ID | Script | Needs ckpt | Phase 1 (v9) | Phase 2 (Run7) |
+|---|---|---|---|---|
+| L1 | exp_l1_jk_weight_analysis.py | Yes | — | ⏳ |
+| L2 | exp_l2_edge_ablation.py | Yes | — | ⏳ |
+| L3 | exp_l3_attention_visualization.py | Yes | — | ⏳ |
+| L4 | exp_l4_gradient_saliency.py | Yes | — | ⏳ |
+| L5 | exp_l5_probing_classifiers.py | Yes | — | ⏳ |
+| L6 | exp_l6_counterfactual_contracts.py | Yes | — | ⏳ |
+| L7 | exp_l7_calibration_size_analysis.py | Yes | — | ⏳ |
+| L8 | exp_l8_permutation_importance.py | Yes | — | ⏳ |
+| L9 | exp_l9_attention_rollout.py | Yes | — | ⏳ |
+| L10 | exp_l10_training_ablation.py | Yes | — | ⏳ |
 
 ### Group S — Structural Analysis
-| ID | Script | What it measures | Needs checkpoint |
-|---|---|---|---|
-| S1 | exp_s1_structural_trace.py | Structural pattern tracing | No |
-| S2 | exp_s2_edge_enrichment.py | Edge type enrichment per vuln class | No |
-| S3 | exp_s3_feature_distribution.py | Node feature distribution across classes | No |
-| S4 | exp_s4_icfg_path_audit.py | ICFG path audit for CEI detection | No |
+| ID | Script | Needs ckpt | Phase 1 (v9) | Phase 2 (Run7) |
+|---|---|---|---|---|
+| S1 | exp_s1_structural_trace.py | No | ⚠️ FAIL† | — |
+| S2 | exp_s2_edge_enrichment.py | No | ⚠️ FAIL† | — |
+| S3 | exp_s3_feature_distribution.py | No | ✅ PASS | — |
+| S4 | exp_s4_icfg_path_audit.py | No | ⚠️ FAIL† | — |
+
+†FAIL = threshold calibrated on Run 4, not a data quality issue.
 
 ---
 
-## Validation Scripts
-| Script | Purpose |
-|---|---|
-| val_finding1_jk_weights.py | Validate JK weight findings |
-| val_finding2_proper_ablation.py | Validate edge ablation methodology |
-| val_finding4_timestamp_size.py | Validate Timestamp size stratification |
+## Priority Order for Phase 2
 
----
+**Tier 1 — Run first (validates architecture + training fixes):**
+- B1 (Ph2/Ph1 gradient ratio — confirms ISSUE-1 fix)
+- B3 (JK weight distribution — characterises Phase 3 drift)
+- L1 (JK weights per class)
+- A3 (JK entropy from logs)
+- A4 (aux head contribution)
+- B2 (per-eye ECE)
 
-## Priority Order for Run 5
+**Tier 2 — Run next (model behaviour analysis):**
+- L4 (gradient saliency)
+- L2 (edge ablation)
+- B4 (UnusedReturn saliency)
+- E4 (direction sensitivity)
+- L5 (probing classifiers)
+- L8 (permutation importance)
 
-Run graph-only scripts first (no checkpoint needed) to validate v9 data quality,
-then model-dependent scripts once Run 5 checkpoint is available.
-
-**Phase 1 — v9 data validation (run now):** A1, A2, E1, E2, E3, S1, S2, S3, S4  
-**Phase 2 — model diagnostics (post Run 5):** A3, A4, B1–B4, E4, L1–L10
+**Tier 3 — Lower priority (expensive or secondary):**
+- L3 (attention heatmaps)
+- L7 (calibration vs size)
+- L6 (counterfactual contracts)
+- L9 (attention rollout)
+- L10 (training ablation — generates commands, not results)

@@ -1,0 +1,157 @@
+{
+  "test_contracts": [
+    {
+      "file": "01_reentrancy_classic.sol",
+      "expected_class": "Reentrancy",
+      "found": true,
+      "n_nodes": 15,
+      "n_edges": 24,
+      "cfg_call_nodes": 1,
+      "cfg_write_nodes": 2
+    },
+    {
+      "file": "02_reentrancy_tricky.sol",
+      "expected_class": "Reentrancy",
+      "found": false,
+      "n_nodes": 20,
+      "n_edges": 43,
+      "cfg_call_nodes": 1,
+      "cfg_write_nodes": 4
+    },
+    {
+      "file": "03_integer_overflow.sol",
+      "expected_class": "IntegerUO",
+      "found": true,
+      "n_nodes": 21,
+      "n_edges": 37,
+      "cfg_call_nodes": 0,
+      "cfg_write_nodes": 7
+    },
+    {
+      "file": "04_timestamp_dependence.sol",
+      "expected_class": "Timestamp",
+      "found": true,
+      "n_nodes": 22,
+      "n_edges": 45,
+      "cfg_call_nodes": 1,
+      "cfg_write_nodes": 6
+    },
+    {
+      "file": "06_mishandled_exception.sol",
+      "expected_class": "MishandledException",
+      "found": true,
+      "n_nodes": 21,
+      "n_edges": 45,
+      "cfg_call_nodes": 1,
+      "cfg_write_nodes": 2
+    },
+    {
+      "file": "07_tx_order_dependence.sol",
+      "expected_class": "TransactionOrderDependence",
+      "found": true,
+      "n_nodes": 25,
+      "n_edges": 39,
+      "cfg_call_nodes": 0,
+      "cfg_write_nodes": 7
+    },
+    {
+      "file": "08_unused_return.sol",
+      "expected_class": "UnusedReturn",
+      "found": false,
+      "n_nodes": 26,
+      "n_edges": 48,
+      "cfg_call_nodes": 3,
+      "cfg_write_nodes": 2
+    },
+    {
+      "file": "reentrancy_vulnerable.sol",
+      "expected_class": "Reentrancy",
+      "found": true,
+      "n_nodes": 12,
+      "n_edges": 19,
+      "cfg_call_nodes": 1,
+      "cfg_write_nodes": 2
+    },
+    {
+      "file": "reentrancy_safe.sol",
+      "expected_class": "SAFE",
+      "found": null,
+      "n_nodes": 12,
+      "n_edges": 19,
+      "cfg_call_nodes": 1,
+      "cfg_write_nodes": 2
+    },
+    {
+      "file": "integer_uo_vulnerable.sol",
+      "expected_class": "IntegerUO",
+      "found": false,
+      "n_nodes": 12,
+      "n_edges": 15,
+      "cfg_call_nodes": 0,
+      "cfg_write_nodes": 3
+    },
+    {
+      "file": "timestamp_vulnerable.sol",
+      "expected_class": "Timestamp",
+      "found": true,
+      "n_nodes": 10,
+      "n_edges": 12,
+      "cfg_call_nodes": 0,
+      "cfg_write_nodes": 2
+    },
+    {
+      "file": "unused_return_vulnerable.sol",
+      "expected_class": "UnusedReturn",
+      "found": false,
+      "n_nodes": 8,
+      "n_edges": 9,
+      "cfg_call_nodes": 1,
+      "cfg_write_nodes": 1
+    }
+  ],
+  "val_split": {
+    "Reentrancy": {
+      "positive_contracts": 56,
+      "with_cfg_nodes": 56,
+      "pattern_found": 17,
+      "pattern_pct": 30.36,
+      "skipped": 0,
+      "pass": false
+    },
+    "IntegerUO": {
+      "positive_contracts": 163,
+      "with_cfg_nodes": 162,
+      "pattern_found": 158,
+      "pattern_pct": 97.53,
+      "skipped": 0,
+      "pass": true
+    },
+    "Timestamp": {
+      "positive_contracts": 19,
+      "with_cfg_nodes": 19,
+      "pattern_found": 5,
+      "pattern_pct": 26.32,
+      "skipped": 0,
+      "pass": false
+    },
+    "UnusedReturn": {
+      "positive_contracts": 26,
+      "with_cfg_nodes": 26,
+      "pattern_found": 0,
+      "pattern_pct": 0.0,
+      "skipped": 0,
+      "pass": false
+    },
+    "MishandledException": {
+      "positive_contracts": 51,
+      "with_cfg_nodes": 50,
+      "pattern_found": 16,
+      "pattern_pct": 32.0,
+      "skipped": 0,
+      "pass": false
+    }
+  },
+  "test_pass": true,
+  "val_pass": false,
+  "overall_pass": false
+}
