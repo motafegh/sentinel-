@@ -65,7 +65,7 @@
 - [ ] 6.7 E4: Directional edge sensitivity — does reversing edges hurt specific classes?
 - [x] 6.8 L1: JK weight per class — which vulnerability classes prefer which GNN phase?
 - [ ] 6.9 L2: Edge ablation — which edge types are most important by F1 delta?
-- [ ] 6.10 L4: Gradient saliency — which of the 11 node features drive each class?
+- [x] 6.10 L4: Gradient saliency — which of the 11 node features drive each class?
 - [ ] 6.11 L5: Linear probing — how much of the class signal lives in GNN vs Transformer embeddings?
 - [ ] 6.12 L8: Permutation importance — which features are truly used vs noise?
 
@@ -713,13 +713,77 @@ The per-class contract-identity shortcut hypothesis is *rejected*. Every class u
 
 ---
 
-### 6.7 / 6.9 / 6.10 / 6.11 / 6.12 — Remaining Experiments
+### 6.10 — L4: Gradient Saliency (Node Features & Node Types) ✅ COMPLETE
+
+**Experiment:** `exp_l4_gradient_saliency` · n=500 contracts/class (val split) · Results: `phase2_run7_ep39_v10_2026-06-04/l4/`
+
+**What L4 measures:** For each class, computes ∂(logit_class)/∂(node_feature_matrix) via backprop. Aggregates |gradient| per feature dimension and per node type. Answers: which of the 11 v8 node features does the model actually attend to?
+
+**Overall: FAIL** — Neither pass criterion met.
+- Timestamp: `uses_block_globals` (dim 2) fraction = **10.7%** (needs ≥20%) → FAIL
+- Reentrancy: CFG_NODE_CALL + CFG_NODE_WRITE combined = **13.2%** (needs ≥20%) → FAIL
+
+**Feature saliency — per-class top-3 (all nearly identical):**
+
+| Class | #1 Feature | #2 Feature | #3 Feature |
+|-------|-----------|-----------|-----------|
+| CallToUnknown | complexity 33.8% | visibility 10.5% | uses_block_globals 9.4% |
+| DenialOfService | complexity 34.7% | uses_block_globals 11.0% | visibility 10.0% |
+| ExternalBug | complexity 34.7% | visibility 10.7% | uses_block_globals 9.8% |
+| GasException | complexity 35.8% | visibility 10.4% | uses_block_globals 9.8% |
+| IntegerUO | complexity 36.4% | visibility 10.2% | uses_block_globals 9.9% |
+| MishandledException | complexity 35.9% | visibility 10.2% | uses_block_globals 9.7% |
+| Reentrancy | complexity 34.4% | visibility 10.2% | uses_block_globals 9.7% |
+| Timestamp | complexity 34.9% | **uses_block_globals 10.7%** | visibility 10.2% |
+| TOD | complexity 35.3% | visibility 10.5% | uses_block_globals 9.7% |
+| UnusedReturn | complexity 34.6% | visibility 10.5% | uses_block_globals 9.9% |
+
+**The class-specific signals designed into v8 schema — are they used?**
+
+| Feature | Designed for | UnusedReturn | Reentrancy | Timestamp | Min across 10 | Max across 10 |
+|---------|-------------|-------------|------------|-----------|--------------|--------------|
+| `return_ignored` [7] | UnusedReturn | 0.077 | 0.080 | 0.080 | 0.077 | 0.081 |
+| `external_call_count` [10] | Reentrancy | 0.078 | 0.075 | 0.074 | 0.073 | 0.079 |
+| `uses_block_globals` [2] | Timestamp | 0.099 | 0.097 | **0.107** | 0.094 | **0.110 (DoS)** |
+
+**Critical observation:** `return_ignored` (the UnusedReturn signal) has saliency 0.077 for UnusedReturn and 0.077–0.081 for ALL other classes. There is zero class-specific elevation. The model is not using it as a discriminative feature for UnusedReturn. Same for `external_call_count` for Reentrancy: 0.075 vs 0.073–0.079 range — completely flat.
+
+**Node-type saliency — also nearly uniform across all classes:**
+
+| Node type | Reentrancy | Timestamp | IntegerUO | UnusedReturn |
+|-----------|------------|-----------|-----------|-------------|
+| FUNCTION | 36.2% | 36.8% | 35.9% | 36.4% |
+| CFG_NODE_OTHER | 23.2% | 21.9% | 24.6% | 22.2% |
+| CFG_NODE_READ | 10.3% | **11.4%** | 9.4% | 10.3% |
+| CFG_NODE_CALL | 7.9% | 10.2% | 9.2% | 9.9% |
+| FALLBACK | 3.6% | 2.1% | 2.5% | 2.7% |
+
+Notable: DoS has elevated FALLBACK (8.5% vs 2–4% for others) — reflecting that DoS attacks often target fallback functions. Timestamp has elevated CFG_NODE_READ (11.4% vs ~9–10% for others) — slight but not strong.
+
+**Problem:** The model learned `complexity` as a universal proxy for "this contract might be vulnerable" (34–36% of all gradient signal). Every class has the same ranking: complexity → visibility → uses_block_globals. The v8 schema was carefully designed with class-specific features:
+- `return_ignored` to help UnusedReturn
+- `external_call_count` to help Reentrancy  
+- `uses_block_globals` to help Timestamp
+
+None of these are being used discriminatively. The model treats them as background noise (≤10% each) dominated by complexity.
+
+**Why this happened:** Complexity correlates with the prevalence of ALL vulnerability types — complex functions have more code paths, more state mutations, more external calls, and are statistically more likely to contain any bug. The model learned this correlation (which is real) and relies on it almost exclusively for the GNN path. The class-specific features require the model to make finer distinctions *within* the set of complex functions — and the current training hasn't pushed it there.
+
+**Why it matters for the structural ceilings:**
+- UnusedReturn flat at 0.234: the model isn't using `return_ignored` — it's pattern-matching on contract complexity instead. Without DEF_USE edges AND active use of `return_ignored`, the model can't distinguish "function called a method and ignored the return" from "function is complex."
+- Timestamp flat at 0.164: `uses_block_globals` barely elevated (10.7% vs 10.0% for others). The model sees complexity + block globals co-occurring but doesn't treat `uses_block_globals` as a Timestamp-specific signal.
+- Reentrancy: CFG_NODE_CALL at 7.9% — actually LOWER than Timestamp (10.2%) and GasException (9.3%). The model is not attending to call nodes specifically for Reentrancy.
+
+**Run 8 implication:** Consider adding a feature-attention auxiliary loss that penalises the model when class-specific feature gradients are not elevated above baseline. Alternatively, the `complexity` feature may be too dominant — consider normalising or removing it to force the model to use finer signals. The deeper fix is adding edge types (DEF_USE, CALL_ENTRY augmentation) that make the class-specific features meaningful in graph context rather than just node-level metadata.
+
+---
+
+### 6.7 / 6.9 / 6.11 / 6.12 — Remaining Experiments
 
 | ID | Status | Key Question |
 |----|--------|-------------|
 | E4 | ⏳ | Does reversing CF edges hurt Reentrancy more than other classes? |
 | L2 | ⏳ | Remove CALL_ENTRY edges — how much does Reentrancy F1 drop? |
-| L4 | ⏳ | Which of 11 node features drive each vulnerability class? |
 | L5 | ⏳ | Linear probing: how much class info in GNN vs TF embeddings? |
 | L8 | ⏳ | Permute feature X across all graphs — which feature matters most? |
 
