@@ -20,7 +20,8 @@ Entry format:
 
 | Phase | File | Chunks | Status |
 |-------|------|--------|--------|
-| Phase 5 | `gnn_encoder.py` | 5 planned | 🔄 Chunk 1 ✅ Chunk 2 ✅ Chunk 3 ✅ |
+| Phase 5 | `gnn_encoder.py` | 5 chunks | ✅ All 5 complete |
+| Phase 5 | `transformer_encoder.py` | 2 planned | 🔄 Chunk 6 in progress |
 | Phase 5 | `transformer_encoder.py` | 2 planned | ⬜ not started |
 | Phase 5 | `fusion_layer.py` | 1 planned | ⬜ not started |
 | Phase 5 | `sentinel_model.py` | 2 planned | ⬜ not started |
@@ -103,3 +104,43 @@ Entry format:
 - Q6 [Mechanism] What breaks if LayerNorm removed before JK: Correct — Phase 1 magnitude dominates JK softmax (2-layer vs 3-layer depth difference); attention weights driven by magnitude not learned routing
 
 **Audit flags raised:** A3 (_param_dtype cache not auto-invalidated on dtype cast)
+
+## Session 4 — Phase 5: gnn_encoder.py (Chunk 4)
+**Date:** 2026-06-04
+**File:** ml/src/models/gnn_encoder.py (lines 360–538 — forward() first half)
+**Concepts taught:**
+- forward() signature: x [N,11], edge_index [2,E], batch [N], edge_attr [E], return flags
+- `return_intermediates` vs `return_phase2_embs`: diagnostic (detached) vs gradient-attached for aux loss
+- Guard 1: schema version check — x.shape[1] != NODE_FEATURE_DIM
+- Guard 2: use_edge_attr=True + edge_attr=None → cfg_mask all-False → Phase 2 silently disabled
+- Guard 3: validate_graph_integrity flag — OOB node index check, gated for production cost
+- Dtype normalization: `_param_dtype` cache comparison, `x.to(_param_dtype)` early in forward
+- Edge embedding lookup: clamp OOB edge_attr before nn.Embedding to avoid CUDA illegal-memory-access
+- Edge mask split: struct_mask (types ≤5), cfg_mask (6,8,9,10), contains_mask (type 5 only)
+- phase2_edge_types ablation path vs default cfg_mask
+- IMP-G1 sub-masking: phase2_raw (raw integers, not embedded floats) → cf_only, icfg_only splits
+- Phase 3 reverse edge construction: fwd_contains_ei.flip(0), torch.full with type-7 IDs, embedding lookup
+- Why rev_contains_ea ≠ fwd_contains_ea (IMP-G3 directional distinction)
+**Warm-up recall:** W1–W5 from Chunk 3, all correct after gap-fill
+**Challenge questions:** Q1–Q6 answered; gaps closed on Guard 2 silent failure path, phase2_raw shape issue, .flip(0) mechanics, rev_contains_ea directional semantics
+**Audit flags raised:** none
+
+## Session 5 — Phase 5: gnn_encoder.py (Chunk 5)
+**Date:** 2026-06-04
+**File:** ml/src/models/gnn_encoder.py (lines 539–628 — forward() second half)
+**Concepts taught:**
+- `_live` (gradient-attached) vs `_intermediates` (detached) — never detach before JK
+- BUG-R7-2 runtime: `(x[:,0] * 13).round().long().clamp(0,12)` recovers type ID; cat → x_init [N,27]
+- IMP-G2: x_skip = input_proj(x_init); relu(conv1(x_init) + x_skip) — skip before relu
+- Residual pattern: `x = x + dropout(branch)` — dropout on branch only, never identity
+- Phase 1 LayerNorm → _live[0]
+- Phase 2 sequential enrichment: conv3 (CF) → conv3b (ICFG) → conv3c (joint) — why integration layer runs last
+- `_phase2_x = x` after phase_norm[1]: gradient-attached Phase 2 output for aux_phase2 head (BUG-R7-1 fix)
+- Phase 3: two upward passes (same edges, different node embeddings), downward broadcast (IMP-G3)
+- JK(_live): use_jk=False path for v5.0 checkpoint compatibility
+- Return paths: standard 3-tuple, intermediates (detached), phase2_embs (gradient-attached)
+- Why `batch` is returned: self-contained module contract, device-pairing safety
+- Magnitude bias without LayerNorm: Phase 1 dominates JK softmax by scale not content
+**Warm-up recall:** W1–W5 from Chunk 4, all correct
+**Challenge questions:** Q1–Q6 answered; gaps closed on type ID recovery clamp, residual dropout placement, integration layer ordering, two-up-pass mechanism, return_phase2_embs detach failure, LayerNorm magnitude bias
+**Audit flags raised:** none

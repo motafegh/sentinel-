@@ -115,10 +115,10 @@ Spec files are the persistent memory of this journey — uncommitted updates are
 ## Current Status
 
 - **Active phase:** Phase 5 — `ml/src/models/`
-- **Current chunk:** gnn_encoder.py Chunk 3 ✅ — ready for Chunk 4 (forward() first half: guards, type_emb runtime, edge masks)
+- **Current chunk:** transformer_encoder.py Chunk 6 (in progress) — CodeBERT, LoRA injection, _word_embeddings
 - **Preferences active:** P1 through P16 (P10/P11/P13/P14 refined — learning mode framework added)
 - **Audit flags raised:** A1, A2, A3
-- **Files taught so far:** `gnn_encoder.py` (Chunks 1–3 of 5)
+- **Files taught so far:** `gnn_encoder.py` (all 5 chunks ✅), `transformer_encoder.py` (Chunk 6 in progress)
 
 ---
 
@@ -134,9 +134,9 @@ Phase 5  🔄  models/                                 ← CURRENT FOCUS
                            edge type taxonomy, phase design rationale
               Chunk 2 ✅  gnn_encoder.py — _JKAttention, type_embedding, Phase 1 layers (conv1, conv2, input_proj)
               Chunk 3 ✅  gnn_encoder.py — Phase 2 layers (conv3/3b/3c, CFG + ICFG), Phase 3 layers, LayerNorm, dtype cache
-              Chunk 4 ⬜  gnn_encoder.py — forward() first half: input guards, type_emb construction, edge mask logic
-              Chunk 5 ⬜  gnn_encoder.py — JK connections, LayerNorm, forward() assembly
-              Chunk 6 ⬜  transformer_encoder.py — CodeBERT backbone, LoRA injection
+              Chunk 4 ✅  gnn_encoder.py — forward() first half: input guards, type_emb construction, edge mask logic
+              Chunk 5 ✅  gnn_encoder.py — forward() second half: 8-layer conv sequence, JK aggregation, return paths
+              Chunk 6 🔄  transformer_encoder.py — CodeBERT backbone, LoRA injection, _word_embeddings
               Chunk 7 ⬜  transformer_encoder.py — WindowAttentionPooler, forward()
               Chunk 8 ⬜  fusion_layer.py — CrossAttentionFusion, bidirectional attention
               Chunk 9 ⬜  sentinel_model.py — three-eye architecture, auxiliary heads
