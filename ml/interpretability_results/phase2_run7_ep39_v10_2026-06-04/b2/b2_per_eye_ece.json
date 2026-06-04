@@ -1,0 +1,62 @@
+{
+  "experiment": "exp_b2_per_eye_ece",
+  "checkpoint": "ml/checkpoints/GCB-P1-Run7-v10-20260603_best.pt",
+  "n_samples": 6236,
+  "n_bins": 15,
+  "ece_by_eye": {
+    "gnn": {
+      "CallToUnknown": 0.0325,
+      "DenialOfService": 0.087,
+      "ExternalBug": 0.0413,
+      "GasException": 0.0448,
+      "IntegerUO": 0.0165,
+      "MishandledException": 0.0453,
+      "Reentrancy": 0.0497,
+      "Timestamp": 0.0597,
+      "TransactionOrderDependence": 0.0429,
+      "UnusedReturn": 0.0387
+    },
+    "transformer": {
+      "CallToUnknown": 0.0272,
+      "DenialOfService": 0.0772,
+      "ExternalBug": 0.0295,
+      "GasException": 0.0337,
+      "IntegerUO": 0.0407,
+      "MishandledException": 0.0351,
+      "Reentrancy": 0.0401,
+      "Timestamp": 0.0532,
+      "TransactionOrderDependence": 0.0351,
+      "UnusedReturn": 0.0305
+    },
+    "fused": {
+      "CallToUnknown": 0.0365,
+      "DenialOfService": 0.0813,
+      "ExternalBug": 0.0354,
+      "GasException": 0.0405,
+      "IntegerUO": 0.0273,
+      "MishandledException": 0.0331,
+      "Reentrancy": 0.0492,
+      "Timestamp": 0.0323,
+      "TransactionOrderDependence": 0.0319,
+      "UnusedReturn": 0.0325
+    },
+    "main": {
+      "CallToUnknown": 0.242,
+      "DenialOfService": 0.3072,
+      "ExternalBug": 0.2424,
+      "GasException": 0.2323,
+      "IntegerUO": 0.1324,
+      "MishandledException": 0.2358,
+      "Reentrancy": 0.2442,
+      "Timestamp": 0.2118,
+      "TransactionOrderDependence": 0.2388,
+      "UnusedReturn": 0.2397
+    }
+  },
+  "mean_ece": {
+    "gnn": 0.0458,
+    "transformer": 0.0402,
+    "fused": 0.04,
+    "main": 0.2327
+  }
+}
