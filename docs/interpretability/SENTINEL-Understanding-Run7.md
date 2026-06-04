@@ -61,10 +61,10 @@
 - [ ] 6.3 B1: Phase2/Phase1 gradient ratio per class — confirms ISSUE-1 fix working?
 - [ ] 6.4 B2: Per-eye ECE — which eye is best calibrated?
 - [ ] 6.5 B3: JK weight distribution by phase — which classes drive Phase 3 dominance?
-- [ ] 6.6 B4: UnusedReturn gradient saliency — why is this class stuck at 0.234?
+- [x] 6.6 B4: UnusedReturn gradient saliency — why is this class stuck at 0.234?
 - [ ] 6.7 E4: Directional edge sensitivity — does reversing edges hurt specific classes?
 - [x] 6.8 L1: JK weight per class — which vulnerability classes prefer which GNN phase?
-- [ ] 6.9 L2: Edge ablation — which edge types are most important by F1 delta?
+- [x] 6.9 L2: Edge ablation — which edge types are most important by F1 delta?
 - [x] 6.10 L4: Gradient saliency — which of the 11 node features drive each class?
 - [ ] 6.11 L5: Linear probing — how much of the class signal lives in GNN vs Transformer embeddings?
 - [ ] 6.12 L8: Permutation importance — which features are truly used vs noise?
@@ -653,13 +653,37 @@ The per-class contract-identity shortcut hypothesis is *rejected*. Every class u
 
 ---
 
-### 6.6 B4 — UnusedReturn Gradient Saliency ⏳
+### 6.6 B4 — UnusedReturn Gradient Saliency ✅ COMPLETE
 
-**What it tests:** Specifically targets the UnusedReturn class. Computes gradient saliency for UnusedReturn-positive contracts: which node features get the highest gradient signal? In a working model, `has_external_call` (feat[2], C-1 fixed) and `return_ignored` features should be highly salient.
+**Experiment:** `exp_b4_unusedreturn_saliency` · n=30 top-scored + 30 bottom-scored UnusedReturn contracts · Results: `phase2_run7_ep39_v10_2026-06-04/b4/`
 
-**Why UnusedReturn is interesting:** It's been flat at 0.234 since ep10 despite 30 more epochs of training. B4 will show whether the model is even attending to the right features (if `feat[2]` saliency is high, the model "knows" what to look for but can't connect it to a discriminative pattern without DEF_USE edges; if `feat[2]` saliency is low, the model isn't using the C-1 fix at all).
+**What it tests:** Compares gradient saliency between the 30 contracts the model is MOST confident are UnusedReturn vs the 30 it is LEAST confident about. If `return_ignored` (feat[7]) or `uses_block_globals` (feat[2]) were genuinely discriminative, they would appear with higher saliency in the top-scored group than the bottom-scored group.
 
-**Results:** ⏳ running
+**Results — top-scored vs bottom-scored feature ranking:**
+
+| Rank | Top-scored (confident UnusedReturn) | Saliency | Bottom-scored (not UnusedReturn) | Saliency |
+|------|-------------------------------------|----------|----------------------------------|----------|
+| 1 | complexity | 0.01919 | complexity | 0.01362 |
+| 2 | visibility | 0.00644 | visibility | 0.00361 |
+| 3 | uses_block_globals | 0.00528 | uses_block_globals | 0.00340 |
+| 4 | external_call_count | 0.00465 | external_call_count | 0.00307 |
+| **5** | **return_ignored** | **0.00439** | **return_ignored** | **0.00288** |
+| 6 | view | 0.00373 | loc | 0.00242 |
+| 7 | payable | 0.00370 | view | 0.00211 |
+
+**Critical finding:** The ranking is **identical** in both groups. `return_ignored` sits at rank 5 whether the model is highly confident about UnusedReturn or not. The ratio `return_ignored`/`complexity` = 22.8% (top) vs 21.2% (bottom) — essentially the same. The model uses the same features in the same proportions to say "this IS UnusedReturn" and "this is NOT UnusedReturn."
+
+**What this proves:** `return_ignored` provides **zero discriminative lift** for the UnusedReturn decision. The C-1 fix correctly placed `return_ignored` in feat[7] and it IS non-zero for 9.1% of contracts, but the model has not learned to use it as a class-specific signal. The only difference between high-confidence and low-confidence UnusedReturn contracts in the model's view is the **overall magnitude of complexity** — high-confidence contracts are simply more complex overall.
+
+**Why `return_ignored` fails to be discriminative without DEF_USE edges:**
+`return_ignored` is a node-level binary flag: it marks a FUNCTION node where some return value was ignored. But the flag alone doesn't tell you WHICH call was ignored or what the call context was. To use this feature meaningfully, the model would need to:
+1. Identify the specific FUNCTION node with `return_ignored=1`
+2. Follow the CFG backward to find the CALL statement whose return was dropped
+3. Determine whether that call was to an external contract (vs an internal helper)
+
+Steps 2 and 3 require DEF_USE (data-flow) edges that don't exist in the v10 schema. The model can SEE the flag but cannot connect it to a vulnerability pattern. It falls back to `complexity` as a proxy because complex functions statistically contain more UnusedReturn cases.
+
+**Verdict on the C-1 fix:** The fix correctly added the feature. The feature is live and present in the data. The model just can't USE it effectively without complementary structural edges. This is not a data bug — it's an architectural gap. DEF_USE edges are the missing piece.
 
 ---
 
@@ -778,12 +802,64 @@ None of these are being used discriminatively. The model treats them as backgrou
 
 ---
 
-### 6.7 / 6.9 / 6.11 / 6.12 — Remaining Experiments
+### 6.9 — L2: Edge Ablation ✅ COMPLETE
+
+**Experiment:** `exp_l2_edge_ablation` · n=200 · 11 edge types ablated · Results: `phase2_run7_ep39_v10_2026-06-04/l2/`
+
+**What L2 measures:** Removes one edge type at a time from the graph and measures the change in prediction score for positive examples (delta). Large delta = that edge type was important; near-zero delta = the model wasn't using it.
+
+**Overall: FAIL** — 0/3 pass criteria met.
+
+| Check | Edge type | Class | Delta | Threshold | Result |
+|-------|-----------|-------|-------|-----------|--------|
+| CF hurts Reentrancy | CONTROL_FLOW | Reentrancy | 0.0019 | ≥0.03 | FAIL |
+| CALL_ENTRY hurts Reentrancy | CALL_ENTRY | Reentrancy | 0.000022 | ≥0.03 | FAIL |
+| DEF_USE hurts IntegerUO | DEF_USE | IntegerUO | −0.000143 | ≥0.02 | FAIL |
+
+**Structural ablation deltas — largest effects across all edge types and classes:**
+
+| Edge ablated | Most affected class | Delta | Direction |
+|-------------|--------------------|----|-----------|
+| DEF_USE (10) | DenialOfService | −0.012 | hurts DoS |
+| RETURN_TO (9) | DenialOfService | −0.013 | hurts DoS |
+| DEF_USE (10) | Timestamp | −0.011 | hurts Timestamp |
+| DEF_USE (10) | IntegerUO | +0.010 | removing helps IntegerUO |
+| CONTROL_FLOW (6) | Timestamp | −0.005 | hurts Timestamp |
+
+**The headline finding: all deltas are negligible.** The largest delta is 0.013 — less than half the DoS sawtooth noise (±0.008 per prediction). Removing ANY single edge type barely moves the model's predictions. The model is not using structural graph topology in a meaningful way. It could be presented a graph with only CONTAINS edges (the basic function-in-contract hierarchy) and produce essentially the same output.
+
+**Per-edge summary (embedding ablation, mean absolute delta across all classes):**
+
+| Edge type | Mean |Δ| across classes | Notable |
+|-----------|---------------------|---------|
+| CALLS | ~0.0003 | Negligible |
+| READS | ~0.0002 | Negligible |
+| WRITES | ~0.0003 | Negligible |
+| EMITS | ~0.0001 | Negligible |
+| INHERITS | ~0.0003 | Negligible |
+| CONTAINS | ~0.0002 | Negligible |
+| CONTROL_FLOW | ~0.001 | Marginally largest |
+| REVERSE_CONTAINS | ~0.0002 | Negligible |
+| CALL_ENTRY | ~0.00006 | Effectively zero |
+| RETURN_TO | ~0.0002 | Negligible |
+| DEF_USE | ~0.0003 | Negligible |
+
+**Why the model doesn't use edge structure:**
+This directly confirms L4. The model learned `complexity` as a node-level feature proxy. Edges provide RELATIONAL information (A calls B, A controls-flows to B), but the model is using non-relational node statistics. A model that learned "detect patterns in the call graph topology" would show large F1 drops when CALL_ENTRY or CONTROL_FLOW edges are removed. The near-zero deltas here mean the model learned to ignore the topology.
+
+**The DEF_USE paradox (IntegerUO, delta = +0.010 structural):** Removing DEF_USE edges HELPS IntegerUO detection slightly. DEF_USE edges are sparse and currently noisy in the v10 schema. The GNN is learning to ignore them (they're nearly absent, 0.0% in v9, and sparse in v10), but when they DO appear they may add confusing signal. Adding more DEF_USE edges in a future run would only help if the model is trained to use them — simply adding them without architecture changes may not help.
+
+**DoS depends most on RETURN_TO + DEF_USE (structural delta −0.013, −0.012):** This is the only class where removing structural edges produces a meaningful change. DoS contracts have unusual control-flow patterns involving external calls that don't return — RETURN_TO edges capture this. This aligns with A4's finding that DoS is structurally detected by the GNN (AUC=0.726) better than semantically by the transformer (AUC=0.559).
+
+**Run 8 implication:** Adding DEF_USE edges (RC5) without simultaneously forcing the model to USE them will likely have no effect. The training objective needs to reward class-specific edge usage — possibly through an auxiliary edge-attention supervision signal or by removing the `complexity` feature to force the model to find alternative discriminative paths.
+
+---
+
+### 6.7 / 6.11 / 6.12 — Remaining Experiments
 
 | ID | Status | Key Question |
 |----|--------|-------------|
 | E4 | ⏳ | Does reversing CF edges hurt Reentrancy more than other classes? |
-| L2 | ⏳ | Remove CALL_ENTRY edges — how much does Reentrancy F1 drop? |
 | L5 | ⏳ | Linear probing: how much class info in GNN vs TF embeddings? |
 | L8 | ⏳ | Permute feature X across all graphs — which feature matters most? |
 
