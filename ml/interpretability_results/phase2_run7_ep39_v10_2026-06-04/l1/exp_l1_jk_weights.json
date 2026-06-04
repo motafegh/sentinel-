@@ -1,0 +1,164 @@
+{
+  "experiment": "exp_l1_jk_weight_analysis",
+  "n_processed": 1000,
+  "n_skipped": 0,
+  "pass_criteria": ">=3 of 4 hypotheses correct",
+  "n_pass": 0,
+  "overall": "FAIL",
+  "per_class": [
+    {
+      "class": "CallToUnknown",
+      "n_positives": 82,
+      "phase1_mean": 0.3128705620765686,
+      "phase1_std": 0.01546457502990961,
+      "phase2_mean": 0.31563785672187805,
+      "phase2_std": 0.011380194686353207,
+      "phase3_mean": 0.37149155139923096,
+      "phase3_std": 0.023335350677371025,
+      "mean_entropy": 1.0940648433638782,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "DenialOfService",
+      "n_positives": 11,
+      "phase1_mean": 0.30938956141471863,
+      "phase1_std": 0.013886658474802971,
+      "phase2_mean": 0.3139914274215698,
+      "phase2_std": 0.010771377012133598,
+      "phase3_mean": 0.37661904096603394,
+      "phase3_std": 0.019013172015547752,
+      "mean_entropy": 1.0934903730045666,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "ExternalBug",
+      "n_positives": 59,
+      "phase1_mean": 0.31216293573379517,
+      "phase1_std": 0.021318314597010612,
+      "phase2_mean": 0.3195185363292694,
+      "phase2_std": 0.011565782129764557,
+      "phase3_mean": 0.3683185279369354,
+      "phase3_std": 0.02779567614197731,
+      "mean_entropy": 1.0938636933342885,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "GasException",
+      "n_positives": 115,
+      "phase1_mean": 0.3120657801628113,
+      "phase1_std": 0.01684972643852234,
+      "phase2_mean": 0.316821426153183,
+      "phase2_std": 0.01376202329993248,
+      "phase3_mean": 0.37111249566078186,
+      "phase3_std": 0.024583743885159492,
+      "mean_entropy": 1.0938726238582446,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "IntegerUO",
+      "n_positives": 309,
+      "phase1_mean": 0.31484314799308777,
+      "phase1_std": 0.0140029676258564,
+      "phase2_mean": 0.3183235824108124,
+      "phase2_std": 0.011856763623654842,
+      "phase3_mean": 0.36683347821235657,
+      "phase3_std": 0.02072354592382908,
+      "mean_entropy": 1.094997530616217,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "MishandledException",
+      "n_positives": 92,
+      "phase1_mean": 0.31266215443611145,
+      "phase1_std": 0.012907233089208603,
+      "phase2_mean": 0.31611737608909607,
+      "phase2_std": 0.01270544994622469,
+      "phase3_mean": 0.37122026085853577,
+      "phase3_std": 0.0212258230894804,
+      "mean_entropy": 1.094302130782086,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "Reentrancy",
+      "n_positives": 102,
+      "phase1_mean": 0.31489986181259155,
+      "phase1_std": 0.01676373928785324,
+      "phase2_mean": 0.31689924001693726,
+      "phase2_std": 0.01183906476944685,
+      "phase3_mean": 0.3682008385658264,
+      "phase3_std": 0.02418418973684311,
+      "mean_entropy": 1.094452607865427,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "Timestamp",
+      "n_positives": 35,
+      "phase1_mean": 0.3163856565952301,
+      "phase1_std": 0.011920454911887646,
+      "phase2_mean": 0.31685495376586914,
+      "phase2_std": 0.01071961224079132,
+      "phase3_mean": 0.366759330034256,
+      "phase3_std": 0.019447600468993187,
+      "mean_entropy": 1.0952161788940429,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "n_positives": 74,
+      "phase1_mean": 0.3130759298801422,
+      "phase1_std": 0.015063581988215446,
+      "phase2_mean": 0.3185756206512451,
+      "phase2_std": 0.01271422766149044,
+      "phase3_mean": 0.3683483302593231,
+      "phase3_std": 0.020388005301356316,
+      "mean_entropy": 1.0946887119396314,
+      "dominant_phase": "Phase3"
+    },
+    {
+      "class": "UnusedReturn",
+      "n_positives": 52,
+      "phase1_mean": 0.3105155825614929,
+      "phase1_std": 0.021979140117764473,
+      "phase2_mean": 0.31891295313835144,
+      "phase2_std": 0.012602990493178368,
+      "phase3_mean": 0.37057140469551086,
+      "phase3_std": 0.029490945860743523,
+      "mean_entropy": 1.093274203630594,
+      "dominant_phase": "Phase3"
+    }
+  ],
+  "hypothesis_check": [
+    {
+      "class": "Reentrancy",
+      "expected_phase": "Phase2",
+      "actual_phase": "Phase3",
+      "ph2_mean": 0.31689924001693726,
+      "entropy": 1.094452607865427,
+      "result": "FAIL"
+    },
+    {
+      "class": "IntegerUO",
+      "expected_phase": "Phase2",
+      "actual_phase": "Phase3",
+      "ph2_mean": 0.3183235824108124,
+      "entropy": 1.094997530616217,
+      "result": "FAIL"
+    },
+    {
+      "class": "Timestamp",
+      "expected_phase": "Phase1",
+      "actual_phase": "Phase3",
+      "ph2_mean": 0.31685495376586914,
+      "entropy": 1.0952161788940429,
+      "result": "FAIL"
+    },
+    {
+      "class": "UnusedReturn",
+      "expected_phase": "Phase1",
+      "actual_phase": "Phase3",
+      "ph2_mean": 0.31891295313835144,
+      "entropy": 1.093274203630594,
+      "result": "FAIL"
+    }
+  ]
+}
