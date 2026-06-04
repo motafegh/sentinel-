@@ -43,12 +43,20 @@ Fix #33 — Aux loss warmup: aux_loss_weight ramps linearly from 0 to its
            dominating gradients while the main classifier is still learning
            the basics (observed: aux loss 2-4× main loss early on).
 Fix #34 — VRAM usage logged every epoch so OOM risk is visible.
+Fix #35 — Safe resume: RNG states (torch/CUDA/numpy/python) and per-class
+           tuned threshold cache are now saved in every best-checkpoint and
+           restored on full resume (resume_model_only=False).  Default changed
+           from resume_model_only=True to False so --resume always does a full
+           resume unless explicitly overridden.  This eliminates the Adam
+           cold-start degradation (5–10 epoch regression) seen in prior runs
+           when optimizer momentum/variance were discarded on resume.
 """
 
 from __future__ import annotations
 import gc
 import json
 import os
+import random
 import time
 # ---------------------------------------------------------------------------
 import sys
@@ -360,7 +368,7 @@ class TrainConfig:
 
     # --- Resume ---
     resume_from:           str | None = None
-    resume_model_only:     bool       = True
+    resume_model_only:     bool       = False  # Fix #35: full resume by default (saves Adam state + RNG)
     force_optimizer_reset: bool       = False
 
     # --- Autoresearch harness knobs ---
@@ -1169,6 +1177,7 @@ def train(config: TrainConfig) -> dict:
     best_f1          = 0.0
     patience_counter = 0
     _ckpt_state: dict | None = None
+    _resume_tuned_thresholds: list[float] | None = None  # Fix #35: populated on full resume
 
     if config.resume_from:
         logger.info(f"Resuming from: {config.resume_from}")
@@ -1214,6 +1223,20 @@ def train(config: TrainConfig) -> dict:
                 f"Full resume from epoch {start_epoch-1} | "
                 f"best_f1={best_f1:.4f} | patience={patience_counter}/{config.early_stop_patience}"
             )
+
+            # Fix #35: restore RNG states so batch ordering resumes deterministically.
+            if "rng_state" in ckpt:
+                torch.set_rng_state(ckpt["rng_state"])
+                logger.info("Restored torch RNG state from checkpoint.")
+            if ckpt.get("cuda_rng_state") is not None and torch.cuda.is_available():
+                torch.cuda.set_rng_state(ckpt["cuda_rng_state"])
+                logger.info("Restored CUDA RNG state from checkpoint.")
+            if "numpy_rng_state" in ckpt:
+                np.random.set_state(ckpt["numpy_rng_state"])
+            if "python_rng_state" in ckpt:
+                random.setstate(ckpt["python_rng_state"])
+            # Threshold cache: restored below after _cached_tuned_thresholds is declared.
+            _resume_tuned_thresholds: list[float] | None = ckpt.get("tuned_thresholds")
 
         # Phase 1-A6: version gate — warn when resuming a pre-v5.2 checkpoint.
         # Pre-v5.2 checkpoints lack JK parameters (gnn.jk.*) and the new
@@ -1600,7 +1623,8 @@ def train(config: TrainConfig) -> dict:
         _class_death_counter   = [0] * config.num_classes
 
         # [A37] Cache per-class tuned thresholds between sweep epochs.
-        _cached_tuned_thresholds: list[float] | None = None
+        # Fix #35: seeded from checkpoint on full resume so the sweep isn't repeated.
+        _cached_tuned_thresholds: list[float] | None = _resume_tuned_thresholds
 
         for epoch in range(start_epoch, config.epochs + 1):
             final_epoch = epoch
@@ -1979,6 +2003,12 @@ def train(config: TrainConfig) -> dict:
                         # Phase 1-A6: model_version enables version-aware resume.
                         # _parse_version() converts this to a comparable tuple.
                         "model_version":    MODEL_VERSION,
+                        # Fix #35: RNG states for deterministic-equivalent resume.
+                        "rng_state":        torch.get_rng_state(),
+                        "cuda_rng_state":   torch.cuda.get_rng_state() if torch.cuda.is_available() else None,
+                        "numpy_rng_state":  np.random.get_state(),
+                        "python_rng_state": random.getstate(),
+                        "tuned_thresholds": _cached_tuned_thresholds,
                         "config": {
                             **dataclasses.asdict(config),
                             "num_classes":  config.num_classes,

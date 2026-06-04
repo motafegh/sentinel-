@@ -1,7 +1,7 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3+4 fixes, Run 5 Training Log Specification, Phase 4 training loop fixes (A35/A36/A37/NF-4/NF-9 + StructuredLogger), v9 findings validation + code fixes (C-1/C-3/H-2/M-3/M-6/NF-6), Run 5 kill + v10 re-extraction launch, and v10 script defaults alignment.
-**Last updated:** 2026-06-02
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3+4 fixes, Run 5 Training Log Specification, Phase 4 training loop fixes (A35/A36/A37/NF-4/NF-9 + StructuredLogger), v9 findings validation + code fixes (C-1/C-3/H-2/M-3/M-6/NF-6), Run 5 kill + v10 re-extraction launch, v10 script defaults alignment, Run 7 architecture (BUG-R7-1/2, IMP-R7-1/2/3, ISSUE-1–4), and Fix #35 safe resume.
+**Last updated:** 2026-06-04
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
 
@@ -33,6 +33,8 @@ This document is the single authoritative changelog. Session-level detail lives 
 22. [Agent Layer — Phase 1 A4/A5: Aderyn deep-path + End-to-End Smoke Test (2026-05-30)](#22-agent-layer--phase-1-a4a5-aderyn-deep-path--end-to-end-smoke-test)
 33. [v9 Findings Validation + Code Fixes C-1/C-3/H-2/M-3/M-6/NF-6 + Run 5 Kill (2026-06-02)](#33-v9-findings-validation--code-fixes-c-1c-3h-2m-3m-6nf-6--run-5-kill)
 34. [v10 Re-Extraction Launch + Script Defaults Alignment (2026-06-02)](#34-v10-re-extraction-launch--script-defaults-alignment)
+35. [Run 7 Architecture + ISSUE-1–4 Fixes (2026-06-03)](#35-run-7-architecture--issue-14-fixes)
+36. [Fix #35 — Safe Resume: RNG State + Full Optimizer Restore (2026-06-04)](#36-fix-35--safe-resume-rng-state--full-optimizer-restore)
 
 ---
 
@@ -2022,3 +2024,56 @@ python ml/scripts/create_splits.py --splits-dir ml/data/splits/v10_deduped
 python ml/scripts/validate_graph_dataset.py --check-contains-edges --check-control-flow --check-block-globals
 # Launch Run 6
 ```
+
+---
+
+## 35. Run 7 Architecture + ISSUE-1–4 Fixes
+
+**Period:** 2026-06-03
+**Commits:** `416d0e0`, `e2ad84e`, `139ebbc`
+
+### What changed
+
+**Architecture fixes (BUG-R7-1/2, IMP-R7-1/2/3):**
+- `gnn_encoder.py`: `nn.Embedding(13, 16)` type embedding; `_GNN_IN_DIM=27`; Phase 2 conv heads 1→4
+- `sentinel_model.py`: aux_phase2 + CFG eye pool over CFG_NODE types [8-12]; 4th CFG eye; classifier widened 3×128→4×128=512 input
+- `trainer.py` + `train.py`: `aux_phase2_loss_weight` 0.10→0.20; `ARCHITECTURE="four_eye_v8"`; `MODEL_VERSION="v8.1"`
+
+**ISSUE-1 through ISSUE-4 fixes:**
+- ISSUE-1: `cfg_eye_proj` moved to GNN param group (LR×2.5) — was in `_other_params` at base LR
+- ISSUE-2: `cfg_eye_proj` and `aux_phase2` added to torch.compile submodule list
+- ISSUE-3: predictor passes `fusion_max_nodes` from checkpoint config
+- ISSUE-4: predictor passes `gnn_phase2_edge_types` from checkpoint config
+
+### Run 7 launch
+
+`GCB-P1-Run7-v10-20260603` — 4-eye architecture, v10 data, `gnn_prefix_k=0`. Best ep39 F1=0.3074 (in progress at time of writing).
+
+---
+
+## 36. Fix #35 — Safe Resume: RNG State + Full Optimizer Restore
+
+**Period:** 2026-06-04
+**File:** `ml/src/training/trainer.py`
+
+### Problem
+
+Prior runs experienced 5–10 epoch F1 regression after stop/resume. Root cause: `resume_model_only=True` was the default, which discards the Adam optimizer's momentum and variance buffers on resume. The optimizer restarts "cold" — without any accumulated gradient history — causing noisy updates until momentum rebuilds (~5-10 epochs).
+
+A secondary issue: RNG states (torch/CUDA/numpy/python random) were not saved, so resumed training saw a different batch ordering than uninterrupted training would have.
+
+### Fix
+
+**`trainer.py` — Fix #35:**
+1. `resume_model_only` default changed `True → False` — full resume (optimizer + scheduler + patience + best_f1) is now the default when `--resume` is passed
+2. Checkpoint now saves: `rng_state`, `cuda_rng_state`, `numpy_rng_state`, `python_rng_state`, `tuned_thresholds`
+3. Full resume path restores all four RNG states and the per-class threshold cache
+4. `import random` added to imports
+
+### Remaining variance on resume
+
+CUDA non-deterministic ops (cuDNN, SDPA) mean results are not bit-for-bit identical to uninterrupted training. Statistically equivalent within normal seed variance. True bit-perfect determinism would require `torch.use_deterministic_algorithms(True)` (~30% throughput penalty) and is not implemented.
+
+### Backward compatibility
+
+Old checkpoints (pre-Fix #35) lacking the new keys resume gracefully — each key is read with `.get()` and silently skipped if absent. `resume_model_only=True` can still be passed explicitly on the CLI to force model-only loading when intentionally fine-tuning from a different run's weights.
