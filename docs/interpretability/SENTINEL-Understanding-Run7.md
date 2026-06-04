@@ -63,7 +63,7 @@
 - [ ] 6.5 B3: JK weight distribution by phase — which classes drive Phase 3 dominance?
 - [ ] 6.6 B4: UnusedReturn gradient saliency — why is this class stuck at 0.234?
 - [ ] 6.7 E4: Directional edge sensitivity — does reversing edges hurt specific classes?
-- [ ] 6.8 L1: JK weight per class — which vulnerability classes prefer which GNN phase?
+- [x] 6.8 L1: JK weight per class — which vulnerability classes prefer which GNN phase?
 - [ ] 6.9 L2: Edge ablation — which edge types are most important by F1 delta?
 - [ ] 6.10 L4: Gradient saliency — which of the 11 node features drive each class?
 - [ ] 6.11 L5: Linear probing — how much of the class signal lives in GNN vs Transformer embeddings?
@@ -663,12 +663,61 @@ The per-class contract-identity shortcut hypothesis is *rejected*. Every class u
 
 ---
 
-### 6.7–6.12 — Remaining Experiments
+### 6.8 — L1: JK Weight Distribution Per Vulnerability Class ✅ COMPLETE
+
+**Experiment:** `exp_l1_jk_weight_analysis` · n=1000 · Results: `phase2_run7_ep39_v10_2026-06-04/l1/`
+
+**What L1 measures:** During inference, the JK attention module computes a per-sample softmax weighting over [Phase1_embedding, Phase2_embedding, Phase3_embedding]. L1 collects these weights for every sample, groups them by which vulnerability class is present, and reports mean ± std per phase.
+
+**Hypothesis check (0/4 passed — FAIL):**
+
+| Hypothesis | Expected dominant | Actual | Reason it failed |
+|-----------|-----------------|--------|-----------------|
+| Reentrancy | Phase2 (CF+ICFG) | Phase3 | Phase3 uniform across ALL classes |
+| IntegerUO | Phase2 (CF-only) | Phase3 | Phase3 uniform across ALL classes |
+| Timestamp | Phase1 (structural) | Phase3 | Phase3 uniform across ALL classes |
+| UnusedReturn | Phase1 (structural) | Phase3 | Phase3 uniform across ALL classes |
+
+**Full per-class JK weights:**
+
+| Class | N | Ph1 mean | Ph2 mean | Ph3 mean | Entropy | Dominant |
+|-------|---|----------|----------|----------|---------|---------|
+| CallToUnknown | 82 | 0.313±0.015 | 0.316±0.011 | 0.371±0.023 | 1.094 | Phase3 |
+| DenialOfService | 11 | 0.309±0.014 | 0.314±0.011 | **0.377±0.019** | 1.093 | Phase3 |
+| ExternalBug | 59 | 0.312±0.021 | 0.320±0.012 | 0.368±0.028 | 1.094 | Phase3 |
+| GasException | 115 | 0.312±0.017 | 0.317±0.014 | 0.371±0.025 | 1.094 | Phase3 |
+| IntegerUO | 309 | 0.315±0.014 | 0.318±0.012 | 0.367±0.021 | 1.095 | Phase3 |
+| MishandledException | 92 | 0.313±0.013 | 0.316±0.013 | 0.371±0.021 | 1.094 | Phase3 |
+| Reentrancy | 102 | 0.315±0.017 | 0.317±0.012 | 0.368±0.024 | 1.095 | Phase3 |
+| Timestamp | 35 | **0.316±0.012** | 0.317±0.011 | 0.367±0.019 | **1.095** | Phase3 |
+| TOD | 74 | 0.313±0.015 | 0.319±0.013 | 0.368±0.020 | 1.095 | Phase3 |
+| UnusedReturn | 52 | 0.311±0.022 | 0.319±0.013 | 0.371±0.029 | 1.093 | Phase3 |
+
+**Key numbers to internalise:**
+- Maximum possible entropy for 3 phases = log(3) = **1.099**. Observed: **1.093–1.095**. The JK is operating at **99.5% of maximum entropy** — it's barely preferring Phase3 at all.
+- Phase3 mean ~0.370 vs expected 0.333 (uniform) — a lift of only **+0.037 above uniform**. This is a mild statistical drift, not strong routing.
+- Phase1 and Phase2 are nearly equal (~0.310–0.319), with Phase2 fractionally higher.
+- Cross-class spread: DoS Phase3=0.377, Timestamp Phase3=0.367, delta=0.010. Negligible.
+
+**Problem:** The JK attention mechanism was designed to give each sample the freedom to weight its 3 GNN phases differently based on what information is most discriminative for that contract. The theory was that Reentrancy (which needs control-flow cross-function tracing) should pull more from Phase2 (CF+ICFG), while Timestamp (which is a structural pattern at call sites) should pull more from Phase1. This did NOT happen.
+
+**Why it didn't happen:** Two explanations interact:
+1. **Phase3 drift (from B3 training dynamics):** Phase3 JK weights drifted upward from ep1 onward and were never corrected. The JK module learned a generically useful prior ("always weight Phase3 more") rather than a discriminative per-sample strategy.
+2. **Near-maximum entropy means JK is confused, not specialised:** With entropy at 1.094/1.099, the JK attention is nearly uniform. The model is taking roughly equal contributions from all three phases, which means the JK module is **not specialising the GNN path at all**. It's functioning more like simple averaging than learned routing.
+
+**Why it matters:** The hypothesis motivating the 3-phase GNN design was that different vulnerability types would use different structural representations. L1 falsifies this hypothesis at inference time — at least for this checkpoint, the model has not learned to route. This aligns with the flat F1 ceilings for structural classes (UnusedReturn, Timestamp, TOD): if the model isn't preferentially using the phase most useful for those classes, it's missing the architectural advantage of having 3 phases.
+
+**Connection to B3:** B3 showed the JK attention PARAMETERS have Phase3 mean=0.395 (trained weights). L1 shows per-sample ACTIVATIONS have Phase3 mean=0.370. The gap (0.395 vs 0.370) suggests some per-sample variation does exist, but it's small and not class-discriminative.
+
+**Run 8 implication:** Consider auxiliary JK routing loss — explicitly penalise uniform JK weights during training to force the model to use the phases differently. Alternatively, Phase3 drift prevention (stronger λ, or JK weight clipping) would force the model to explore Phase1/Phase2 representations more.
+
+---
+
+### 6.7 / 6.9 / 6.10 / 6.11 / 6.12 — Remaining Experiments
 
 | ID | Status | Key Question |
 |----|--------|-------------|
 | E4 | ⏳ | Does reversing CF edges hurt Reentrancy more than other classes? |
-| L1 | ⏳ | Which layer's embedding is most predictive per class? |
 | L2 | ⏳ | Remove CALL_ENTRY edges — how much does Reentrancy F1 drop? |
 | L4 | ⏳ | Which of 11 node features drive each vulnerability class? |
 | L5 | ⏳ | Linear probing: how much class info in GNN vs TF embeddings? |
