@@ -6,6 +6,7 @@
 
 # ── ML data (large / regeneratable) ─────────────────────────────────────────
 # Raw datasets (GBs — not tracked; obtain from original source)
+docs/archive
 BCCC-SCsVul-2024/
 ml/data/SolidiFI/
 ml/data/SolidiFI-benchmark/
