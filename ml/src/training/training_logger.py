@@ -301,7 +301,7 @@ class StructuredLogger:
         head = getattr(model, "aux_phase2", None)
         if head is None:
             return result
-        # aux_phase2 is nn.Sequential — inspect the final Linear layer
+        head = getattr(head, "_orig_mod", head)  # unwrap torch.compile OptimizedModule
         final_linear = head[-1]
         w_norm = final_linear.weight.data.norm().item()
         b_norm = final_linear.bias.data.norm().item() if final_linear.bias is not None else 0.0
