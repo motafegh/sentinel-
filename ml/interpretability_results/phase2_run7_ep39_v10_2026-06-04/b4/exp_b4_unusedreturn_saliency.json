@@ -1,0 +1,249 @@
+{
+  "experiment": "exp_b4_unusedreturn_saliency",
+  "checkpoint": "ml/checkpoints/GCB-P1-Run7-v10-20260603_best.pt",
+  "n_top": 30,
+  "n_bottom": 30,
+  "feature_names": [
+    "type_id",
+    "visibility",
+    "uses_block_globals",
+    "view",
+    "payable",
+    "complexity",
+    "loc",
+    "return_ignored",
+    "call_target_typed",
+    "has_loop",
+    "external_call_count"
+  ],
+  "top_scored": {
+    "stems": [
+      "6c5375615450fcf0b90d77af19ec5ee2",
+      "0472ec9fa34086cb211040517219c34f",
+      "7a6f79588c833ba722790feb5cb91e1f",
+      "72f8f3a9f59eaa7561fbcb589c05a171",
+      "07da50655f96a1cc18a67d93aa3c1cb5",
+      "c9ecba7e158269786df5ebf6e9788ab8",
+      "c601524e527946a22ce69b2d08180b84",
+      "52e7b4f06cf8e92cbf1dd166835bbcd4",
+      "15441ef76c4b1a27844adcbf299c9140",
+      "68f9168416536342525b24a7859f12da",
+      "2775812bf2d6819449db527bf3ccf179",
+      "00eafc352968571f0c62f478c75beacd",
+      "da5fa810ca9994ef7f6845a4fa666dc6",
+      "4cd6176df2cfc185f84f4f6febde8619",
+      "3b20be5e9ceed05ffba89c3c8959d4a8",
+      "3340c406fb82eed925836cfc401f947e",
+      "0d5fdae049db0ac51e6278ae819688b4",
+      "4ccc204faa2164071410868c3b2b2cf6",
+      "544ae5ce3e16fcf0f03463e200a70a54",
+      "2b67846a50fd44410704b2059fadc357",
+      "1148165b584589cca56287916e6e0200",
+      "38d83b671f6360e0ede40a9b4ac0a6cd",
+      "5109a767703ec9107d98c694075dd625",
+      "0f9b7537a6cc062a7984021572b79a90",
+      "41fe2ef18023dde5f40abd740bc667dc",
+      "62c4b544a2778d2d22a5aa12afa0eb50",
+      "5bcf22ca0f215d41df3a0d67932eb206",
+      "0b7008e596f3bb0e1610d9c6d260a69b",
+      "1ccbc550aa862d253532418f78e59f18",
+      "22ef56e54791eaa0024e362acc95ccb5"
+    ],
+    "mean_saliency_per_dim": [
+      0.0015324546257033944,
+      0.006437730975449085,
+      0.005279135424643755,
+      0.0037326435558497906,
+      0.0037040160968899727,
+      0.01918914169073105,
+      0.0034292242489755154,
+      0.00438485573977232,
+      0.002882407745346427,
+      0.003112933598458767,
+      0.00464576156809926
+    ],
+    "ranking": [
+      {
+        "rank": 1,
+        "dim": 5,
+        "feature": "complexity",
+        "mean_saliency": 0.019189
+      },
+      {
+        "rank": 2,
+        "dim": 1,
+        "feature": "visibility",
+        "mean_saliency": 0.006438
+      },
+      {
+        "rank": 3,
+        "dim": 2,
+        "feature": "uses_block_globals",
+        "mean_saliency": 0.005279
+      },
+      {
+        "rank": 4,
+        "dim": 10,
+        "feature": "external_call_count",
+        "mean_saliency": 0.004646
+      },
+      {
+        "rank": 5,
+        "dim": 7,
+        "feature": "return_ignored",
+        "mean_saliency": 0.004385
+      },
+      {
+        "rank": 6,
+        "dim": 3,
+        "feature": "view",
+        "mean_saliency": 0.003733
+      },
+      {
+        "rank": 7,
+        "dim": 4,
+        "feature": "payable",
+        "mean_saliency": 0.003704
+      },
+      {
+        "rank": 8,
+        "dim": 6,
+        "feature": "loc",
+        "mean_saliency": 0.003429
+      },
+      {
+        "rank": 9,
+        "dim": 9,
+        "feature": "has_loop",
+        "mean_saliency": 0.003113
+      },
+      {
+        "rank": 10,
+        "dim": 8,
+        "feature": "call_target_typed",
+        "mean_saliency": 0.002882
+      },
+      {
+        "rank": 11,
+        "dim": 0,
+        "feature": "type_id",
+        "mean_saliency": 0.001532
+      }
+    ]
+  },
+  "bottom_scored": {
+    "stems": [
+      "1535877099a54c377e7036b60405c9da",
+      "0fb154537b0337a2348fa7f6c0545bdb",
+      "0acf7e5fddab3b589aed076655a9deed",
+      "0dab035cb4c17ba277831b591d6605f1",
+      "09b5df848d6b8fde4eadb5bedfc28c17",
+      "1ad8c4e6a851f35c33e30be77cfbea96",
+      "0bf2d8893a8ab7fd75e81cce378e56b1",
+      "2eb4886254efe7d64184eb72aed89381",
+      "3728dc2cea4cb46c02b845213035a0e2",
+      "0437ac2b0aecebadb7de3a4d3cd35f64",
+      "0e38722fa5aee1134b5686fa29237ffc",
+      "016808742a50e7ed6fdb9f7c11f90493",
+      "106530ce4430bd198f56a8fb129f9e6c",
+      "5c16936f99d1e96f2a192d2e78d73a58",
+      "2921f77acde8ae776f5e9803fca8a5a7",
+      "3b35b719775825c80ca0d8151766c7ce",
+      "01a49342fb57dee388028901ca86e5e1",
+      "5c2cb958e0611b28e80d70fd4c29fbab",
+      "3bf25b4996cb40636732cddb0e1bea09",
+      "6d24184917ce37f5418d047aad3c9f98",
+      "507d9bb2007c39d93e2288f5eb00445e",
+      "173f04b9830c5967a9283e0bfb0b7e93",
+      "8bdf828b175934ab51eb20d76bb4258f",
+      "0ec47b52235e00cd7513d93f6d4972a9",
+      "1303a1ad4378c7694b8dbc877faa3a70",
+      "9386ecda3dd3e4fd25ace99f17ea109c",
+      "27e023a30f6c74acaaaae3ac67faf9ef",
+      "3ba52921d9114bed786b39158351c95d",
+      "4da260f0ad8c4abc98ed98260bb0d9cd",
+      "63286802e837401ed02b8022dc858ed7"
+    ],
+    "mean_saliency_per_dim": [
+      0.0008974721422418952,
+      0.0036133616231381893,
+      0.003402786562219262,
+      0.002108444692566991,
+      0.002105439780279994,
+      0.013618201948702335,
+      0.0024238652549684048,
+      0.0028843770269304514,
+      0.0017123904544860125,
+      0.0018770236056298018,
+      0.0030650293920189142
+    ],
+    "ranking": [
+      {
+        "rank": 1,
+        "dim": 5,
+        "feature": "complexity",
+        "mean_saliency": 0.013618
+      },
+      {
+        "rank": 2,
+        "dim": 1,
+        "feature": "visibility",
+        "mean_saliency": 0.003613
+      },
+      {
+        "rank": 3,
+        "dim": 2,
+        "feature": "uses_block_globals",
+        "mean_saliency": 0.003403
+      },
+      {
+        "rank": 4,
+        "dim": 10,
+        "feature": "external_call_count",
+        "mean_saliency": 0.003065
+      },
+      {
+        "rank": 5,
+        "dim": 7,
+        "feature": "return_ignored",
+        "mean_saliency": 0.002884
+      },
+      {
+        "rank": 6,
+        "dim": 6,
+        "feature": "loc",
+        "mean_saliency": 0.002424
+      },
+      {
+        "rank": 7,
+        "dim": 3,
+        "feature": "view",
+        "mean_saliency": 0.002108
+      },
+      {
+        "rank": 8,
+        "dim": 4,
+        "feature": "payable",
+        "mean_saliency": 0.002105
+      },
+      {
+        "rank": 9,
+        "dim": 9,
+        "feature": "has_loop",
+        "mean_saliency": 0.001877
+      },
+      {
+        "rank": 10,
+        "dim": 8,
+        "feature": "call_target_typed",
+        "mean_saliency": 0.001712
+      },
+      {
+        "rank": 11,
+        "dim": 0,
+        "feature": "type_id",
+        "mean_saliency": 0.000897
+      }
+    ]
+  }
+}
