@@ -31,7 +31,14 @@ Severity scale:
 **Status:** Open
 **Raised:** Session 2, Chunk 2
 
-## A2 — gnn_encoder.py — Phase 2 head count has no divisibility guard
+## A3 — gnn_encoder.py — _param_dtype cache not invalidated on dtype cast
+**File:** ml/src/models/gnn_encoder.py
+**Location:** `_param_dtype` field / `refresh_dtype_cache()` method (~line 352)
+**Issue:** `_param_dtype` is cached once at construction. If the caller does `model.half()` or `model.bfloat16()` and forgets to call `refresh_dtype_cache()`, the forward pass dtype guard compares input dtype against a stale cached value, silently skipping the cast. On CPU: mixed-dtype ops upcast to float32 (wastes half-precision). On CUDA: dtype mismatch runtime error.
+**Fix:** Override `.to()` / `.half()` / `.float()` / `.bfloat16()` to auto-invalidate the cache, or use a `@property` with a `_dtype_dirty` flag. Manual `refresh_dtype_cache()` call is error-prone.
+**Severity:** Medium
+**Status:** Open
+**Raised:** Session 3, Chunk 3
 **File:** ml/src/models/gnn_encoder.py
 **Location:** `GNNEncoder.__init__`, lines computing `_p2_heads` / `_p2_head_dim`
 **Issue:** Phase 1 validates `_head_dim * heads != hidden_dim` at construction time, but Phase 2 hardcodes `_p2_heads=4` and computes `_p2_head_dim = hidden_dim // _p2_heads` with no equivalent check. If `hidden_dim` is not divisible by 4, GATConv raises an unhelpful shape error at first forward pass rather than at model construction, making root cause hard to diagnose.

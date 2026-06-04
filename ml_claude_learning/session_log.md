@@ -20,7 +20,7 @@ Entry format:
 
 | Phase | File | Chunks | Status |
 |-------|------|--------|--------|
-| Phase 5 | `gnn_encoder.py` | 5 planned | 🔄 Chunk 1 ✅ Chunk 2 ✅ |
+| Phase 5 | `gnn_encoder.py` | 5 planned | 🔄 Chunk 1 ✅ Chunk 2 ✅ Chunk 3 ✅ |
 | Phase 5 | `transformer_encoder.py` | 2 planned | ⬜ not started |
 | Phase 5 | `fusion_layer.py` | 1 planned | ⬜ not started |
 | Phase 5 | `sentinel_model.py` | 2 planned | ⬜ not started |
@@ -71,3 +71,35 @@ Entry format:
 **Warm-up recall:** warm-up questions posed, answers pending from user
 **Challenge questions:** Q1 (conv1 output shape), Q2 (entropy +1e-8 and detach) — pending answers
 **Audit flags raised:** A1 (phase2_edge_types no bounds check), A2 (Phase 2 _p2_heads no divisibility guard)
+
+## Session 3 — Phase 5: gnn_encoder.py (Chunk 3)
+**Date:** 2026-06-04
+**File:** ml/src/models/gnn_encoder.py (~lines 200–360 — Phase 2 layers, Phase 3 layers, LayerNorm, dtype cache)
+**Concepts taught:**
+- Phase 2 `__init__`: `conv3`/`conv3b`/`conv3c` — GATConv(256→64, heads=4, concat=True, add_self_loops=False)
+- IMP-R7-1: heads 1→4 for Phase 2; how 4×64=256 maintains hidden_dim invariant
+- Why Phase 2 uses heads=4 (attention specialization: intra-CF, inter-CF, call structure, def-use)
+- Phase 3 `__init__`: `conv4`/`conv4b`/`conv4c` — GATConv(256→256, heads=1, concat=False)
+- Why Phase 3 uses heads=1 (CONTAINS is unambiguous containment; no specialization gain)
+- IMP-G3: directional embedding distinction between up (REVERSE_CONTAINS) and down (CONTAINS)
+- `phase_norm = nn.ModuleList([nn.LayerNorm(hidden_dim)] * 3)` — per-phase magnitude normalization
+- `_param_dtype` cache: `next(self.parameters()).dtype`, companion `refresh_dtype_cache()`
+- Why cache exists (performance: avoid `next(iter())` on every forward call)
+- A3 raised: cache not auto-invalidated on `.half()`/`.bfloat16()` calls
+
+**Warm-up recall:**
+- W1 (conv1 output shape 8×32=256): Correct
+- W2 (entropy +1e-8 and detach): Correct — guard prevents log(0); detach would kill regularizer gradient
+- W3 (register_buffer vs plain attr): Correct — buffer tracked by .to(device)/state_dict; plain attr is not
+- W4 (type_embedding always created): Correct — BUG-R7-2 fix always needed; no gate needed
+- W5 (input_proj bias=False): Correct — bias cancels in downstream normalization/residual path
+
+**Challenge questions answered:**
+- Q1 [Pattern] Phase 2 vs Phase 3 head counts: Correct — Phase 2 uses 4 heads for specialization; Phase 3 uses 1 (CONTAINS semantically unambiguous)
+- Q2 [Mechanism] `_p2_head_dim` shape derivation: Correct — 256 // 4 = 64; GATConv(256→64, heads=4, concat=True) → 4×64=256 output
+- Q3 [Portable🔵] GATConv concat vs avg: Correct — concat preserves head diversity; avg collapses to single view (loses specialization)
+- Q4 [Mechanism] Phase 3 zero-message no-op: Correct — REVERSE_CONTAINS on a function with no CFG children returns zero; residual adds zero = unchanged embedding
+- Q5 [Portable🔵] `_param_dtype` cache purpose: Correct — avoid per-call parameter scan; stale after dtype cast
+- Q6 [Mechanism] What breaks if LayerNorm removed before JK: Correct — Phase 1 magnitude dominates JK softmax (2-layer vs 3-layer depth difference); attention weights driven by magnitude not learned routing
+
+**Audit flags raised:** A3 (_param_dtype cache not auto-invalidated on dtype cast)
