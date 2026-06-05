@@ -30,7 +30,7 @@ Per-Phase LayerNorm (Phase 1-A2): prevents Phase 1 norm from dominating JK softm
 
 PARAMETERS (v8.1 defaults — Run 7+)
 ─────────────────────────────────────
-  in_channels   = _GNN_IN_DIM (27 = NODE_FEATURE_DIM 11 + type_emb 16; model-internal)
+  in_channels   = _GNN_IN_DIM (28 = NODE_FEATURE_DIM 12 + type_emb 16; model-internal v9)
   hidden_dim    = 256
   heads         = 8 (Phase 1); 4 (Phase 2, IMP-R7-1); 1 (Phase 3)
   dropout       = 0.2
@@ -55,8 +55,8 @@ from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NODE_TYPES, NUM_
 # structure from a continuous scalar. Enrich input with a learned 16-dim embedding so
 # each of the 13 node types gets its own representation vector.
 _TYPE_EMB_DIM: int = 16
-_NUM_NODE_TYPES: int = int(max(NODE_TYPES.values())) + 1  # 13 for v8 schema (IDs 0–12)
-_GNN_IN_DIM:   int = NODE_FEATURE_DIM + _TYPE_EMB_DIM    # 11 + 16 = 27
+_NUM_NODE_TYPES: int = int(max(NODE_TYPES.values())) + 1  # 14 for v9 schema (IDs 0–13)
+_GNN_IN_DIM:   int = NODE_FEATURE_DIM + _TYPE_EMB_DIM    # 12 + 16 = 28 (v9)
 
 # [A27] Architecture is fixed at 8 layers (2+3+3 phases). Enforced in GNNEncoder.__init__.
 SENTINEL_GNN_NUM_LAYERS: int = 8
@@ -398,7 +398,7 @@ class GNNEncoder(nn.Module):
         # ── Guards ───────────────────────────────────────────────────────────
         if x.shape[1] != NODE_FEATURE_DIM:
             raise ValueError(
-                f"GNNEncoder expects {NODE_FEATURE_DIM}-dim node features (schema v8) "
+                f"GNNEncoder expects {NODE_FEATURE_DIM}-dim node features (schema v9) "
                 f"but got {x.shape[1]}. Likely a stale v6 .pt file — re-run reextract_graphs.py."
             )
         # Bug #1: use_edge_attr=True with edge_attr=None silently disables
@@ -460,7 +460,8 @@ class GNNEncoder(nn.Module):
 
         # ── Edge masks — one per phase ───────────────────────────────────────
         # struct_mask:   types 0–CONTAINS (all structural + CONTAINS forward)
-        # cfg_mask:      CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9) — Phase 2
+        # cfg_mask:      CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10)
+        #                + EXTERNAL_CALL(11, v9 Fix #3) — Phase 2 (ICFG routing)
         # contains_mask: CONTAINS only; used to build Phase 3 reverse edges
         _CONTAINS         = EDGE_TYPES["CONTAINS"]          # 5
         _CONTROL_FLOW     = EDGE_TYPES["CONTROL_FLOW"]       # 6
@@ -468,6 +469,7 @@ class GNNEncoder(nn.Module):
         _CALL_ENTRY       = EDGE_TYPES["CALL_ENTRY"]         # 8 (v8 ICFG-Lite)
         _RETURN_TO        = EDGE_TYPES["RETURN_TO"]          # 9 (v8 ICFG-Lite)
         _DEF_USE          = EDGE_TYPES["DEF_USE"]            # 10 (v8 data-flow)
+        _EXTERNAL_CALL    = EDGE_TYPES.get("EXTERNAL_CALL", -1)  # 11 (v9 Fix #3)
         if edge_attr is not None:
             struct_mask   = edge_attr <= _CONTAINS
             if self.phase2_edge_types is not None:
@@ -479,7 +481,8 @@ class GNNEncoder(nn.Module):
                     (edge_attr == _CONTROL_FLOW) |
                     (edge_attr == _CALL_ENTRY)   |
                     (edge_attr == _RETURN_TO)    |
-                    (edge_attr == _DEF_USE)
+                    (edge_attr == _DEF_USE)      |
+                    (edge_attr == _EXTERNAL_CALL)  # v9 Fix #3
                 )
             contains_mask = edge_attr == _CONTAINS
         else:
@@ -519,7 +522,15 @@ class GNNEncoder(nn.Module):
             # would produce a 2D boolean mask that breaks column indexing on phase2_ei).
             phase2_raw = edge_attr[cfg_mask]   # [E_cfg] raw integer type IDs
             _cf_mask   = (phase2_raw == _CONTROL_FLOW)
-            _icfg_mask = (phase2_raw == _CALL_ENTRY) | (phase2_raw == _RETURN_TO)
+            # v9 Fix #3: EXTERNAL_CALL routed via icfg sub-layer (conv3b) since it
+            # represents a cross-function call site, semantically aligned with
+            # CALL_ENTRY/RETURN_TO. Without this routing, the new edge type would
+            # only be visible at conv3c (integration layer) with dilution.
+            _icfg_mask = (
+                (phase2_raw == _CALL_ENTRY) |
+                (phase2_raw == _RETURN_TO)  |
+                (phase2_raw == _EXTERNAL_CALL)
+            )
             cf_only_ei   = phase2_ei[:, _cf_mask]
             cf_only_ea   = phase2_ea[_cf_mask]
             icfg_only_ei = phase2_ei[:, _icfg_mask]

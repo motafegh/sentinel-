@@ -157,7 +157,7 @@ except importlib.metadata.PackageNotFoundError:
 # Schema version
 # ─────────────────────────────────────────────────────────────────────────────
 
-FEATURE_SCHEMA_VERSION: str = "v8"
+FEATURE_SCHEMA_VERSION: str = "v9"
 """
 Suffix appended to inference cache keys: "{content_md5}_{FEATURE_SCHEMA_VERSION}".
 
@@ -171,7 +171,7 @@ change — or whenever _build_node_features() logic changes in graph_extractor.p
 # Structural constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-NODE_FEATURE_DIM: int = 11
+NODE_FEATURE_DIM: int = 12
 """
 Number of scalar features per graph node (v8 schema — 11 dims).
 
@@ -202,10 +202,11 @@ is removed in v2 — keeping it gave the model a Slither-provided answer rather
 than forcing it to detect reentrancy from structural patterns.
 """
 
-NUM_NODE_TYPES: int = 13
-"""Number of distinct node types (ids 0–12). Used by GNNEncoder for the node type embedding."""
+NUM_NODE_TYPES: int = 14
+"""Number of distinct node types (ids 0–13). Used by GNNEncoder for the node type embedding.
+v9 (Fix #4) added CFG_NODE_ARITH(13)."""
 
-NUM_EDGE_TYPES: int = 11
+NUM_EDGE_TYPES: int = 12
 """
 Number of distinct edge-relation types (width of the EDGE_TYPES vocabulary).
 
@@ -252,6 +253,7 @@ NODE_TYPES: dict[str, int] = {
     "STATE_VAR":   0,
     "FUNCTION":    1,
     "MODIFIER":    2,
+    # v9 additions (Fix #4) appear after CFG_NODE_OTHER below (id 13)
     "EVENT":       3,
     "FALLBACK":    4,
     "RECEIVE":     5,
@@ -266,6 +268,11 @@ NODE_TYPES: dict[str, int] = {
     "CFG_NODE_READ":   10,  # statement reading a state variable
     "CFG_NODE_CHECK":  11,  # require / assert / if condition
     "CFG_NODE_OTHER":  12,  # all other statement types (synthetic nodes, etc.)
+    # v9 addition (Fix #4) — distinguish pure arithmetic ops from CFG_NODE_OTHER
+    # so IntegerUO has a structural signal. Only assigned to nodes whose only
+    # IR ops are Binary arithmetic (Add/Sub/Mul/Div/Mod/Pow/Shift). Nodes that
+    # ALSO write state stay as CFG_NODE_WRITE (priority preserved).
+    "CFG_NODE_ARITH":  13,  # statement whose IR ops are purely arithmetic Binary
 }
 """
 Maps each Slither declaration kind to an integer ID used as node feature[0].
@@ -391,10 +398,12 @@ EDGE_TYPES: dict[str, int] = {
     # Phase 1-A3 — runtime-only reverse edge, NEVER on disk
     "REVERSE_CONTAINS":  7,   # CFG_NODE → parent function (GNNEncoder Phase 3 only)
     # v8 additions — ICFG-Lite cross-function edges, stored on disk
-    "CALL_ENTRY":        8,   # calling CFG_NODE → ENTRYPOINT of callee function
+    "CALL_ENTRY":        8,   # calling CFG_NODE → ENTRYPOINT of callee function (INTERNAL only)
     "RETURN_TO":         9,   # terminal CFG_NODE of callee → call-site successor
     # v8 addition — intra-function data-flow edges, stored on disk
     "DEF_USE":           10,  # CFG_NODE defining a LocalVariable → node reading it
+    # v9 addition (Fix #3) — external call structural marker, stored on disk
+    "EXTERNAL_CALL":    11,   # self-loop on CFG_NODE that makes external HighLevel/LowLevel call
 }
 """
 Maps each semantic edge relation to an integer ID stored in graph.edge_attr.
@@ -420,7 +429,7 @@ Re-extract with: python ml/scripts/reextract_graphs.py
 # ─────────────────────────────────────────────────────────────────────────────
 
 FEATURE_NAMES: tuple[str, ...] = (
-    "type_id",              # [0]  float(NODE_TYPES[kind])/12.0           node category [0,1]
+    "type_id",              # [0]  float(NODE_TYPES[kind])/13.0           node category [0,1]
     "visibility",           # [1]  VISIBILITY_MAP ordinal 0-2             access control
     "uses_block_globals",   # [2]  1.0 if reads block.timestamp/number    Timestamp/TOD signal
     "view",                 # [3]  1.0 if Function.view                   read-only state
@@ -432,6 +441,12 @@ FEATURE_NAMES: tuple[str, ...] = (
     "has_loop",             # [9]  1.0 if function contains a loop        (was [10] in v6)
     "external_call_count",  # [10] log1p(n)/log1p(20), [0,1]; incl. Transfer/Send
                             #      (was [11] in v6)
+    "in_unchecked_block",   # [11] 1.0 if any CFG node in func is inside an unchecked{}
+                            #      scope (Solidity 0.8+). v9 Fix #4 — re-introduced
+                            #      (was dropped v7 BUG-L2). Uses node.scope.is_checked
+                            #      from Slither 0.10.0 (NOT op.in_unchecked_block; that
+                            #      attribute does not exist). For pre-0.8 contracts,
+                            #      stays 0.0 (all arithmetic was implicitly unchecked).
 )
 """
 Human-readable labels for each node feature dimension (v8 — 11 dims).
@@ -464,16 +479,16 @@ assert len(EDGE_TYPES) == NUM_EDGE_TYPES, (
     f"EDGE_TYPES has {len(EDGE_TYPES)} entries but NUM_EDGE_TYPES={NUM_EDGE_TYPES}. "
     "Update one to match the other."
 )
-assert len(NODE_TYPES) == 13, (
-    f"NODE_TYPES has {len(NODE_TYPES)} entries but expected 13 (ids 0-12). "
-    "CFG subtypes 8-12 must all be present."
+assert len(NODE_TYPES) == 14, (
+    f"NODE_TYPES has {len(NODE_TYPES)} entries but expected 14 (ids 0-13, v9 schema). "
+    "CFG subtypes 8-12 + CFG_NODE_ARITH(13) must all be present."
 )
 # A1: Guard the normalization divisor used in graph_extractor.py and
 # sentinel_model.py (_MAX_TYPE_ID = float(max(NODE_TYPES.values()))).
 # If a new node type is ever appended, this assert fires immediately at import,
-# forcing the developer to update every site that divides type_id by 12.
-assert max(NODE_TYPES.values()) == 12, (
-    "max(NODE_TYPES.values()) must equal 12. "
+# forcing the developer to update every site that divides type_id by 13 (v9).
+assert max(NODE_TYPES.values()) == 13, (
+    "max(NODE_TYPES.values()) must equal 13 (v9 schema). "
     "If you added a new node type, update _MAX_TYPE_ID normalization in "
     "graph_extractor.py (_MAX_TYPE_ID assert and decode-side NF-2 fix) and "
     "sentinel_model.py (_MAX_TYPE_ID assert) before re-extracting graphs."
