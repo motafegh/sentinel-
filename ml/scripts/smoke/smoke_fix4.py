@@ -130,16 +130,16 @@ def sample_in_unchecked() -> tuple[int, int]:
 
 @timed("fix4_check_model")
 def check_model_loads() -> bool:
-    """Verify SentinelModel loads with in_channels=12 (no shape mismatch)."""
+    """Verify SentinelModel loads without shape mismatch.
+
+    GNNEncoder reads NODE_FEATURE_DIM from graph_schema at import time —
+    it's NOT a SentinelModel constructor parameter. Just verify the model
+    constructs cleanly (any import-time shape error will surface here).
+    """
     sys.path.insert(0, str(SRC_DIR))
     try:
         from models.sentinel_model import SentinelModel
-        from preprocessing.graph_schema import NODE_FEATURE_DIM, NUM_EDGE_TYPES
-        SentinelModel(
-            in_channels=NODE_FEATURE_DIM,
-            num_edge_types=NUM_EDGE_TYPES,
-            num_classes=10,
-        )
+        SentinelModel(num_classes=10)
         return True
     except Exception as exc:
         raise AssertionError(f"G4.6 SentinelModel construction failed: {exc}") from exc
