@@ -36,7 +36,7 @@ as identical CFG_NODE_OTHER nodes.
 
 ### Where CFG node types are assigned
 
-`ml/src/preprocessing/graph_extractor.py:_cfg_node_type` (line ~580-640):
+`ml/src/preprocessing/graph_extractor.py:_cfg_node_type` (line 587-652):
 ```python
 def _cfg_node_type(slither_node: Any) -> int:
     # Priority 1: any IR op is an external call
@@ -53,7 +53,7 @@ def _cfg_node_type(slither_node: Any) -> int:
     # Priority 4: control-flow check node type
     if getattr(slither_node, "type", None) in check_types:
         return NODE_TYPES["CFG_NODE_CHECK"]
-    # Priority 5: everything else → CFG_NODE_OTHER (12)  ← ARITHMETIC OPS GO HERE
+    # Priority 5: everything else -> CFG_NODE_OTHER (12)  <- ARITHMETIC OPS GO HERE
     return NODE_TYPES["CFG_NODE_OTHER"]
 ```
 
@@ -68,7 +68,7 @@ NODE_TYPES: dict[str, int] = {
     "CFG_NODE_WRITE":  9,
     "CFG_NODE_READ":  10,
     "CFG_NODE_CHECK": 11,
-    "CFG_NODE_OTHER": 12,  # ← arithmetic ops fall here currently
+    "CFG_NODE_OTHER": 12,  # <- arithmetic ops fall here currently
 }
 ```
 
@@ -124,27 +124,30 @@ NODE_TYPES: dict[str, int] = {
 NUM_NODE_TYPES: int = 14
 
 # In graph_extractor.py:_cfg_node_type, add new priority between READ and CHECK:
-# Priority 3.5: any IR op is arithmetic (Add, Sub, Mul, Div, Mod, Exp, BitAnd, BitOr, BitXor, Shift)
-from slither.slithir.operations import (
-    Binary, BinaryType,  # base class for binary ops
+# Priority 3.5: any IR op is arithmetic (verified against Slither 0.10.0 source)
+from slither.slithir.operations import Binary
+from slither.slithir.operations.BinaryType import (
+    ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION, MODULO,
+    POWER, LEFT_SHIFT, RIGHT_SHIFT,
 )
-# Slither BinaryType has: ADD, SUB, MUL, DIV, MOD, EXP, BITAND, BITOR, BITXOR, SHL, SHR, SAR
 ARITH_OPS = {
-    BinaryType.ADD, BinaryType.SUB, BinaryType.MUL, BinaryType.DIV, BinaryType.MOD,
-    BinaryType.EXP, BinaryType.SHIFT_LEFT, BinaryType.SHIFT_RIGHT,
-    # unsigned variants in some Slither versions
-    getattr(BinaryType, "ADD_UNSAFE", None),
-    getattr(BinaryType, "SUB_UNSAFE", None),
-    getattr(BinaryType, "MUL_UNSAFE", None),
+    ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION, MODULO,
+    POWER, LEFT_SHIFT, RIGHT_SHIFT,
 }
 
 # In _cfg_node_type, BEFORE the "Priority 4" check:
 if any(
-    isinstance(op, Binary) and getattr(op, "type", None) in ARITH_OPS
+    isinstance(op, Binary) and op.type in ARITH_OPS
     for op in irs
 ):
     return NODE_TYPES["CFG_NODE_ARITH"]
 ```
+
+**IMPORTANT — verified against installed Slither 0.10.0:**
+- `BinaryType` is at `slither.slithir.operations.BinaryType` (NOT `slither.slithir.variables.binary`)
+- Correct member names: `ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION, MODULO, POWER, LEFT_SHIFT, RIGHT_SHIFT`
+- `Binary.type` is a property (accessed as `op.type` on an instance)
+- The doc previously proposed `BinaryType.ADD` etc. — these DO NOT EXIST and would raise `AttributeError` silently
 
 **Priority placement:** between READ (priority 3) and CHECK (priority 4). Rationale: a node
 that does `balances[msg.sender] += amount` is primarily a WRITE (state change), not an
@@ -169,20 +172,37 @@ def _compute_in_unchecked(func: Any) -> float:
     """
     try:
         for node in (getattr(func, "nodes", None) or []):
-            for op in (getattr(node, "irs", None) or []):
-                # Slither exposes the unchecked context via `in_unchecked` on IR ops
-                if getattr(op, "in_unchecked_block", False):
-                    return 1.0
-                # Fallback: scan expression for UncheckedBlock context
-                expr = getattr(op, "expression", None) or getattr(op, "lvalue", None)
-                if expr is not None and getattr(expr, "in_unchecked_block", False):
-                    return 1.0
+            scope = getattr(node, "scope", None)
+            if scope is not None and not getattr(scope, "is_checked", True):
+                return 1.0
     except Exception as exc:
         global _in_unchecked_fail_count
         _in_unchecked_fail_count += 1
-        logger.debug(...)
+        logger.debug(
+            "[NF-8] _compute_in_unchecked failed for %s: %s",
+            getattr(func, "canonical_name", "?"), exc,
+        )
     return 0.0
 ```
+
+**IMPORTANT — verified against installed Slither 0.10.0 source:**
+
+The doc previously proposed checking `getattr(op, "in_unchecked_block", False)` — this
+attribute does NOT exist on Slither's Operation class. The verified attributes of Operation
+are: `compilation_unit, context, expression, get_variable, lvalue, node, read,
+set_expression, set_node, type, type_str, used`. No `in_unchecked_block`.
+
+The CORRECT mechanism (verified via `slither/core/cfg/scope.py`):
+- `Scope.__init__` takes `is_checked: bool` parameter
+- `Scope.is_checked` is a regular instance attribute
+- Unchecked blocks in Solidity 0.8+ set `Scope(is_checked=False)`
+- Access path: `node.scope` -> `Scope` -> `scope.is_checked`
+- `node.scope` is typed as `Union[Scope, Function]` (see `Node.__init__` line 83)
+
+The doc also previously referenced `NodeType.STARTUNCHECKED` — this enum does NOT exist.
+NodeType members (verified): `ASSEMBLY, BREAK, CATCH, CONTINUE, ENDASSEMBLY, ENDIF,
+ENDLOOP, ENTRYPOINT, EXPRESSION, IF, IFLOOP, OTHER_ENTRYPOINT, PLACEHOLDER, RETURN,
+STARTLOOP, THROW, TRY, VARIABLE`. There is no `STARTUNCHECKED`.
 
 ```python
 # ml/src/preprocessing/graph_schema.py:422-435 (replace FEATURE_NAMES)
@@ -196,9 +216,9 @@ FEATURE_NAMES: tuple[str, ...] = (
     "loc",                  # [6]
     "return_ignored",       # [7]
     "call_target_typed",    # [8]
-    "has_loop",             # [9]  ← unchanged from v8
-    "external_call_count",  # [10] ← unchanged from v8
-    "in_unchecked_block",   # [11] ← NEW (was dropped in v7 BUG-L2; re-introduced for 0.8+)
+    "has_loop",             # [9]  <- unchanged from v8
+    "external_call_count",  # [10] <- unchanged from v8
+    "in_unchecked_block",   # [11] <- NEW (was dropped in v7 BUG-L2; re-introduced for 0.8+)
 )
 NODE_FEATURE_DIM: int = 12
 ```
@@ -219,9 +239,9 @@ return [
     loc,                               # [6]
     return_ignored,                    # [7]
     call_target_typed,                 # [8]
-    has_loop,                          # [9]  ← unchanged
-    external_call_count,               # [10] ← unchanged
-    uses_unchecked,                    # [11] ← NEW
+    has_loop,                          # [9]  <- unchanged
+    external_call_count,               # [10] <- unchanged
+    uses_unchecked,                    # [11] <- NEW
 ]
 ```
 
@@ -234,11 +254,11 @@ return [
 python -c "
 import torch
 g = torch.load('ml/data/graphs/<md5_of_17_integer_simple>.pt', weights_only=False)
-# feat[9] = in_unchecked_block
-unchecked_sum = float(g.x[:, 9].sum())
-print(f'feat[9] sum (in_unchecked_block): {unchecked_sum}')  # Expect > 0.5
-# type_id column = 13 means CFG_NODE_ARITH
-arith_count = int((g.x[:, 0] * 12 == 13).sum())  # type_id normalised
+# feat[11] = in_unchecked_block
+unchecked_sum = float(g.x[:, 11].sum())
+print(f'feat[11] sum (in_unchecked_block): {unchecked_sum}')  # Expect > 0.5
+# type_id normalised: CFG_NODE_ARITH (id 13) -> 13/_MAX_TYPE_ID(13) = 1.0
+arith_count = int((g.x[:, 0] >= 0.99).sum())
 print(f'CFG_NODE_ARITH nodes: {arith_count}')  # Expect > 0
 "
 
@@ -269,7 +289,7 @@ Fix #5 (re-derive from Slither detectors) is needed in parallel to fully fix Int
 
 **HIGH.** This is the most invasive change:
 1. New node type (13) requires reinitializing type_embedding
-2. New feature dimension (11→12) requires reinitializing input_proj
+2. New feature dimension (11->12) requires reinitializing input_proj
 3. Bumping FEATURE_SCHEMA_VERSION invalidates all v8 caches
 4. `_compute_in_unchecked` re-introduction breaks the BUG-L2 "dead signal" assumption — must
    document that the 87.9% pre-0.8 data will have feature=0.0 (not a bug, just a no-op)
@@ -287,9 +307,34 @@ saved as a snapshot before the change. Inference cache invalidates cleanly on ve
 | `ml/src/preprocessing/graph_schema.py:250-269` | Add `CFG_NODE_ARITH = 13` |
 | `ml/src/preprocessing/graph_schema.py:174` | Bump `NODE_FEATURE_DIM = 12` |
 | `ml/src/preprocessing/graph_schema.py:422-435` | Add `in_unchecked_block` to FEATURE_NAMES (at index 11) |
-| `ml/src/preprocessing/graph_extractor.py:393-403` | Re-implement `_compute_in_unchecked` (no longer raises) |
-| `ml/src/preprocessing/graph_extractor.py:587-652` | Add CFG_NODE_ARITH priority in `_cfg_node_type` |
+| `ml/src/preprocessing/graph_extractor.py:393-403` | Re-implement `_compute_in_unchecked` using node.scope.is_checked |
+| `ml/src/preprocessing/graph_extractor.py:587-652` | Add CFG_NODE_ARITH priority in `_cfg_node_type` (verify BinaryType import) |
 | `ml/src/preprocessing/graph_extractor.py:1078-1181` | Append new feature dim at index 11, update return list |
 | `ml/src/preprocessing/graph_schema.py:160` | Bump `FEATURE_SCHEMA_VERSION = "v9"` |
 | `ml/scripts/validate_graph_dataset.py` | Add `--check-arith-nodes` and `--check-unchecked-feature` |
 | `ml/src/models/gnn_encoder.py` | Update input projection to consume 12-dim features (was 11) |
+
+---
+
+## Appendix: Verified Slither 0.10.0 API
+
+```python
+# BinaryType location: slither.slithir.operations.BinaryType
+# Members:
+ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION, MODULO,
+POWER, LEFT_SHIFT, RIGHT_SHIFT, AND, OR, CARET, ANDAND, OROR,
+EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL
+
+# Binary operation attributes:
+compilation_unit, context, expression, get_variable, lvalue,
+node, read, set_expression, set_node, type, type_str, used,
+variable_left, variable_right
+
+# Scope (unchecked block detection):
+class Scope:
+    def __init__(self, is_checked: bool, is_yul: bool, parent_scope): ...
+    self.is_checked = is_checked  # bool attribute
+
+# Node attributes (relevant subset):
+scope, file_scope, irs, function, sons, fathers, type, ...
+```
