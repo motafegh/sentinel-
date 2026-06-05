@@ -41,14 +41,41 @@ p.add_argument("--relabel-timestamp", action="store_true",
 
 ### The label-loading path (where Timestamp is used)
 
-`ml/src/datasets/dual_path_dataset.py` — exists; loads `multilabel_index.csv` and exposes a
-labels tensor of shape `[N, 10]` (per the BCCC 10-class output convention). Index 7 corresponds
-to Timestamp in the alphabetical CLASS_NAMES list. (Exact column index order not re-verified
-during this audit — confirm before relying on the index.)
+`ml/src/datasets/dual_path_dataset.py:90-403` — `DualPathDataset(Dataset)` class.
+- Constructor signature: `__init__(self, graphs_dir, tokens_dir, indices=None, validate=True, label_csv=None, cache_path=None)` (lines 121-129).
+- When `label_csv` is supplied (line 127), the dataset reads `multilabel_index.csv` (line 138)
+  and builds `self._label_map: Dict[str, torch.Tensor]` mapping each `md5_stem` to a
+  `float32 [10]` tensor (lines 140-147).
+- Per-sample label shape: `float32 [10]` in multi-label mode (line 321-324). The shape
+  `[N, 10]` only appears after collation via `dual_path_collate_fn` (lines 396-401).
+- Class index layout (verified from docstring at lines 25-27):
+  - 0=CallToUnknown, 1=DenialOfService, 2=ExternalBug, 3=GasException
+  - 4=IntegerUO, 5=MishandledException, 6=Reentrancy, **7=Timestamp**
+  - 8=TransactionOrderDependence, 9=UnusedReturn
+- `__getitem__` returns `(graph, tokens, label)` (line 357).
+- RAM cache (line 202-278): if `cache_path` is passed, `__init__` loads the pickle and
+  validates the cached `__schema_version__` against `FEATURE_SCHEMA_VERSION` from
+  `ml/src/preprocessing/graph_schema.py:160` (lines 221-229). Stale cache → RuntimeError.
+  Schema-mismatched cache → recreate with `create_cache.py` after Fix #1 changes labels.
 
-`ml/src/training/losses.py` — exists; loss computation reads labels directly. The exact loss
-class (AsymmetricLoss vs FocalLoss) was not re-verified during this audit — confirm before
-modifying label-loading code.
+`ml/src/training/losses.py:49-126` — `AsymmetricLoss(nn.Module)` (Ridnik et al. ICCV 2021).
+- **No `FocalLoss` class exists in this file** — only `AsymmetricLoss` is defined. If a
+  secondary loss class is needed, it would be added here or in `ml/src/training/focalloss.py`
+  (which exists as a separate module per the directory listing).
+- Constructor: `__init__(gamma_neg=4.0, gamma_pos=1.0, clip=0.05, pos_weight=None, reduction="mean")` (lines 63-79).
+- Forward: takes `logits: [B, C]` raw logits and `labels: [B, C]` float32 {0.0, 1.0} targets
+  (lines 82-84).
+- Per-class focus: `gamma_neg`, `gamma_pos`, and `clip` accept either a scalar float or a
+  1-D tensor of shape [C=10] for per-class tuning (lines 65-68, BUG-M3 fix).
+- `pos_weight` is also a buffer for class-imbalance weighting (line 79).
+- AMP safety: explicit `.float()` casts keep the computation in float32 (lines 97-98) so
+  it works under `torch.cuda.amp.autocast()` (BF16/FP16).
+
+**Implication for Fix #1:** Relabeling Timestamp=1 → 0 changes the labels tensor values at
+index 7 only. AsymmetricLoss will treat this as a regular label change — no retraining
+required for the loss class itself. The new label distribution will affect `pos_weight`
+recommendations (lines 33, 79) and may warrant re-tuning `gamma_neg` for class 7
+specifically (now that fewer positives exist, harder focus may be needed).
 
 ### FEATURE_SCHEMA_VERSION interplay
 
