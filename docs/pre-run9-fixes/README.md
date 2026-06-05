@@ -8,7 +8,8 @@ target the root causes before launching Run 9.
 
 ## Reading Order
 
-1. **[00-overview.md](00-overview.md)** — priority matrix, audit findings A-J, decision flow
+1. **[TODO.md](TODO.md)** — actionable checklist with progress tracking (start here for execution)
+2. **[00-overview.md](00-overview.md)** — priority matrix, audit findings A-J, decision flow
 2. **[01-relabel-timestamp.md](01-relabel-timestamp.md)** — drop 50% of Timestamp noise (already
    applied; this is the spec for documentation + Run 9 integration)
 3. **[02-block-globals-extraction.md](02-block-globals-extraction.md)** — add `now` and library
