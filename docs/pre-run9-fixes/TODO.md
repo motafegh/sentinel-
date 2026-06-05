@@ -57,7 +57,7 @@
 - [ ] Edit `ml/src/models/gnn_encoder.py:471-483` (Phase 2 cfg_mask default): include 11
 
 ### Validation
-- [ ] Add `--check-external-call-edges` flag to `ml/scripts/validate_graph_dataset.py`
+- [x] `validate_graph_dataset.py`: `--check-external-call-edges` flag added (hardcoded edge IDs → EDGE_TYPES dict)
 - [ ] Run: `reextract_graphs.py` and `create_cache.py`
 - [ ] Confirm: >2,000/41,576 graphs have edge_attr == 11 (was 0)
 
@@ -93,7 +93,7 @@
   - [ ] Input projection must accept `NODE_FEATURE_DIM=12`
 
 ### Validation
-- [ ] Add `--check-arith-nodes` and `--check-unchecked-feature` flags to `validate_graph_dataset.py`
+- [x] `validate_graph_dataset.py`: `--check-arith-nodes` and `--check-unchecked-feature` flags added (bug: hardcoded `12` → `max(NODE_TYPES.values())`)
 - [ ] Spot-check: `17_integer_simple.sol` (uses `unchecked{}`) → feat[11] > 0.5
 - [ ] Run: `reextract_graphs.py` and `create_cache.py`
 - [ ] Confirm: CFG_NODE_ARITH (id 13) nodes present; feat[11] fires on 0.8+ contracts
@@ -186,6 +186,12 @@
 
 After fixes #2, #3, #4 are applied:
 
+- [x] **Validate script fixes:** `validate_graph_dataset.py` — 5 bugs fixed (hardcoded 12, edge IDs, empty graph, docstrings, feature index); 9 new validation flags added (--check-external-call-edges, --check-arith-nodes, --check-unchecked-feature, --check-icfg-edges, --check-edge-index-valid, --check-feature-dtypes, --check-node-type-range, --check-all)
+- [ ] **New validation scripts:**
+  - [ ] `validate_pipeline.py` — graph↔token↔CSV alignment (same MD5 stems, same row count)
+  - [ ] `validate_labels.py` — label integrity (no NaN, no all-zero rows, class distribution within bounds)
+  - [ ] `validate_features.py` — feature distributions (no NaN, value ranges, expected non-zero rates per feature)
+  - [ ] `validate_cache.py` — pkl cache loads correctly and matches current schema version
 - [ ] **Schema version bump:** `ml/src/preprocessing/graph_schema.py:160` → `FEATURE_SCHEMA_VERSION = "v9"`
 - [ ] **Delete stale cache:** `rm ml/data/cached_dataset_v10.pkl` (2.5 GB, v8 schema)
 - [ ] **Rebuild cache:** `python ml/scripts/create_cache.py --label-csv ml/data/processed/multilabel_index_deduped.csv --splits-dir ml/data/splits/deduped/ --output ml/data/cached_dataset_deduped.pkl`
@@ -267,9 +273,9 @@ poetry run python ml/scripts/smoke/run_all.py --phase 2  # entire phase
 - >100 .pt graphs in `ml/data/graphs/`
 - >0 checkpoints in `ml/checkpoints/`
 
-**Current test status** (verified this session):
-- Fix #1: PASS (51ms)
-- Fix #8: PASS (10ms)
+**Current test status** (verified this session — latest run):
+- Fix #1: PASS (38ms)
+- Fix #8: PASS (1ms)
 - Fix #6: FAIL (`peft` library not installed — real gate failure, not a test bug)
 - Fix #2: FAIL (expected — "now" alias not yet in `_compute_uses_block_globals`)
 - Fix #3: FAIL (expected — `NUM_EDGE_TYPES` still 11)
@@ -277,19 +283,27 @@ poetry run python ml/scripts/smoke/run_all.py --phase 2  # entire phase
 - Fix #5: FAIL (expected — `multilabel_index_slither.csv` doesn't exist yet)
 - Fix #7: FAIL (expected — `manual_test_smartbugs.py` doesn't exist yet)
 
+**validate_graph_dataset.py** (latest run):
+- 41,456/41,576 PASS (120 files have no edges — state-var-only contracts)
+- NaN/inf errors: 0
+- Dtype errors: 0 (x=float32, edge_attr=int64)
+- Edge index errors: 0
+- Node type errors: 0
+- Missing CONTAINS: 106, Missing CTRL_FLOW: 120
+
 ---
 
 ## File Organization Audit
 
-### Three split directories (confusing)
+### Three split directories (confusing) — ARCHIVED
 
 | Directory | Date | Row count | Notes |
 |-----------|------|-----------|-------|
 | `ml/data/splits/deduped/` | Jun 5 | 29,101 / 6,234 / 6,241 | **CURRENT CANONICAL** — produced by `--relabel-timestamp` |
-| `ml/data/splits/v10_deduped/` | Jun 2 | Different md5 | Pre-deduplication (stale) |
-| `ml/data/splits/v9_deduped/` | Jun 2 | Different md5 from both | Oldest (stale) |
+| `ml/data/archive/splits_stale/v10_deduped/` | Jun 2 | Different md5 | Pre-deduplication (stale, archived) |
+| `ml/data/archive/splits_stale/v9_deduped/` | Jun 2 | Different md5 from both | Oldest (stale, archived) |
 
-**Action:** Archive `v10_deduped/` and `v9_deduped/` to `ml/data/archive/` to prevent accidental use.
+**Action:** ✓ DONE — `v10_deduped/` and `v9_deduped/` moved to `ml/data/archive/splits_stale/`.
 
 ### Two CSVs (same row count, different content)
 
