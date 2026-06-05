@@ -130,11 +130,12 @@ class CrossAttentionFusion(nn.Module):
         num_heads:   Parallel attention heads (default: 8, attn_dim/num_heads=32)
         output_dim:  Final fused embedding dimension (default: 128)
         dropout:     Applied inside MultiheadAttention (default: 0.1)
+        max_nodes:   Max GNN nodes for compile-safe dense padding (default: 1024)
     """
 
     def __init__(
         self,
-        node_dim:   int   = 64,
+        node_dim:   int   = 256,
         token_dim:  int   = 768,
         attn_dim:   int   = 256,
         num_heads:  int   = 8,

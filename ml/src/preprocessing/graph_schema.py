@@ -3,8 +3,8 @@ graph_schema.py — SENTINEL graph feature schema (single source of truth)
 
 WHY THIS FILE EXISTS
 ────────────────────
-ml/src/data_extraction/ast_extractor.py (offline batch pipeline, ~68K training
-contracts) and ml/src/inference/preprocess.py (online inference, one contract
+ml/src/data_extraction/ast_extractor.py (offline batch pipeline, ~41K training
+graphs) and ml/src/inference/preprocess.py (online inference, one contract
 per API request) previously duplicated every constant below verbatim.
 
 Any divergence between the two files would silently corrupt inference: the
@@ -20,10 +20,10 @@ CHANGE POLICY
 Any modification to NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES, or the feature
 ordering in FEATURE_NAMES requires ALL of the following steps:
 
-  1. Rebuild all ~68K .pt graph files:
-       python ml/src/data_extraction/ast_extractor.py --force
+  1. Rebuild all ~41K .pt graph files:
+       python ml/scripts/reextract_graphs.py
   2. Rebuild all token .pt files (only if tokenizer logic changed):
-       python ml/scripts/tokenizer_v1_production.py --force
+       python ml/scripts/retokenize_windowed.py
   3. Retrain the model from scratch:
        python ml/scripts/train.py
        (GNNEncoder reads in_channels=NODE_FEATURE_DIM at construction time)
@@ -216,12 +216,19 @@ by reversing CONTAINS(5) edges; NEVER written to .pt files on disk.
 
 GNNEncoder embeds all 11 IDs via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim).
 
-v2 additions (ids 5 and 6):
+v1 structural edges (ids 0–4):
+  CALLS      — function → internally-called function
+  READS      — function → state variable it reads
+  WRITES     — function → state variable it writes
+  EMITS      — function → event it emits
+  INHERITS   — contract → parent contract (linearised MRO)
+
+v2 additions (ids 5–6) — intra-function control-flow structure:
   CONTAINS     — function node → its CFG_NODE children (Phase 1).
   CONTROL_FLOW — CFG_NODE → successor CFG_NODE, intra-function (Phase 2).
 
-Phase 1-A3 addition (id 7):
-  REVERSE_CONTAINS — runtime-only; CFG_NODE → parent function (Phase 3).
+Runtime-only (id 7):
+  REVERSE_CONTAINS — CFG_NODE → parent function (GNNEncoder Phase 3 only).
 
 v8 additions (ids 8–10) — ICFG-Lite and DEF_USE, stored on disk:
   CALL_ENTRY — calling CFG_NODE → ENTRYPOINT of the callee function.
@@ -322,7 +329,7 @@ STRUCTURAL_PREFIX_TYPES: frozenset[NodeType] = frozenset({
     NodeType.RECEIVE,
 })
 """
-Node types eligible for GNN prefix injection — Phase 1 (declaration-level only).
+Node types eligible for GNN prefix injection — declaration-level only.
 
 PRE-4 audit (41,576 training graphs, 2026-05-23):
   Declaration-level only: mean=20.3, P50=16, P95=47 → K=48 covers 95.5%.
@@ -333,9 +340,6 @@ Why declaration-level only:
   from their child CFG_NODE_* children.  The transformer gets structural context
   from function-level nodes; CrossAttentionFusion provides CFG-level detail.
   CFG nodes inflate the prefix budget for minimal additional signal in Phase 1.
-
-Phase 1B ablation (after Phase 1 results): add NodeType.CFG_NODE_CALL with K=64
-to isolate whether explicit call-site visibility helps Reentrancy.
 
 Priority ordering within eligible nodes (when contract has > K=48 eligible nodes):
   1. CONSTRUCTOR, FALLBACK, RECEIVE  — always first (≤ 3 per contract)
@@ -402,13 +406,13 @@ into each GATConv layer.
 GNNEncoder uses three phases, each seeing a different subset of edge types:
   Phase 1 (Layers 1+2): types 0–5 (structural + CONTAINS forward)
   Phase 2 (Layers 3–5): types 6,8,9,10 (CONTROL_FLOW + CALL_ENTRY + RETURN_TO + DEF_USE; directed)
-  Phase 3 (Layers 6+7+8): type 7  REVERSE_CONTAINS (CFG_NODE → function; runtime-only) + type 5 CONTAINS down (conv4c)
+  Phase 3 (Layers 6+7+8): type 7 REVERSE_CONTAINS up (CFG→function) + type 5 CONTAINS down (conv4c, IMP-G3)
 
 Shape: graph.edge_attr must be a 1-D int64 tensor of shape [E] (PyG
 convention). Pre-refactor .pt files produced by the old ast_extractor.py
 stored shape [E, 1] — nn.Embedding will crash on that shape. Always run
 validate_graph_dataset.py before training to confirm all files have [E] shape.
-Re-extract with: python ml/src/data_extraction/ast_extractor.py --force
+Re-extract with: python ml/scripts/reextract_graphs.py
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -433,7 +437,7 @@ FEATURE_NAMES: tuple[str, ...] = (
 Human-readable labels for each node feature dimension (v8 — 11 dims).
 
 Used by:
-  - drift detection baseline scripts (compute_drift_baseline.py)
+  - interpretability suite scripts (ml/scripts/interpretability/)
   - explainability / SHAP attribution tooling
   - test assertions in test_preprocessing.py
 

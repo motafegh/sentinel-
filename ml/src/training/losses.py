@@ -10,12 +10,12 @@ AsymmetricLoss (ASL):
     (ICCV 2021).  https://arxiv.org/abs/2009.14119
 
     Why for SENTINEL:
-        Standard BCE: equally weights all (class, sample) pairs — 44K×10 = 440K
+        Standard BCE: equally weights all (class, sample) pairs — ~41K×10 = ~410K
         cells, >85% negative (label=0).  The optimizer spends most gradient budget
         suppressing easy negatives (DoS=0 on most contracts) rather than lifting
-        rare positives (DoS=1 on only 377 train contracts).
+        rare positives (DoS=1 on only 243 train contracts).
 
-        ASL with gamma_neg=4, gamma_pos=1:
+        ASL with gamma_neg=2.0, gamma_pos=1.0:
         - Easy negatives (p≈0, y=0) get (1-p)^0 = near-zero weight after clip
         - Hard negatives (p≈0.5, y=0) get moderate weight
         - Positives (y=1) get full upweighted gradient (gamma_pos=1 is mild focus)

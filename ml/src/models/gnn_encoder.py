@@ -129,7 +129,7 @@ class _JKAttention(nn.Module):
 
 class GNNEncoder(nn.Module):
     """
-    Three-phase, four-layer GAT encoder for smart contract graphs.
+    Three-phase, 8-layer GAT encoder for smart contract graphs.
 
     Returns node-level embeddings (NOT pooled). SentinelModel pools them
     separately for the GNN eye and feeds them to CrossAttentionFusion.
@@ -165,6 +165,8 @@ class GNNEncoder(nn.Module):
         jk_mode:                  str            = 'attention',
         phase2_edge_types:        list[int]|None = None,
         validate_graph_integrity: bool           = False,  # [A25] off by default; O(E) scan gated here
+        drop_complexity:          bool           = False,  # Run 8: zero feat[5] to break complexity-proxy
+        appnp_alpha:              float          = 0.0,    # Run 8: APPNP teleport fraction (0=disabled)
     ) -> None:
         """
         Args:
@@ -203,6 +205,8 @@ class GNNEncoder(nn.Module):
         self.jk_mode                  = jk_mode
         self.phase2_edge_types        = phase2_edge_types
         self.validate_graph_integrity = validate_graph_integrity  # [A25]
+        self.drop_complexity          = drop_complexity  # Run 8: zero feat[5] to break complexity-proxy
+        self.appnp_alpha              = appnp_alpha      # Run 8: APPNP teleport fraction (0=disabled)
 
         _head_dim = hidden_dim // heads  # 32 per head when hidden=256, heads=8
         if _head_dim * heads != hidden_dim:
@@ -424,6 +428,14 @@ class GNNEncoder(nn.Module):
         if x.dtype != self._param_dtype:
             x = x.to(self._param_dtype)
 
+        # Run 8: zero out feat[5] (complexity = log1p(cfg_block_count)/log1p(100)) so the
+        # model cannot use the complexity-proxy shortcut identified by L4 experiment.
+        # .clone() is mandatory — .to() is a no-op when dtype already matches, so without
+        # clone we would corrupt the cached graph tensor for all future batches.
+        if self.drop_complexity:
+            x = x.clone()
+            x[:, 5] = 0.0
+
         # ── Edge embeddings ──────────────────────────────────────────────────
         e = None
         if self.edge_embedding is not None and edge_attr is not None:
@@ -576,15 +588,31 @@ class GNNEncoder(nn.Module):
         # Layer 4 (conv3b): CALL_ENTRY + RETURN_TO — cross-function call structure
         # Layer 5 (conv3c): CF + CALL_ENTRY + RETURN_TO joint — integration layer that
         #                   learns from nodes already enriched by layers 3 and 4.
+        #
+        # Run 8 APPNP teleport: at each Phase 2 layer, blend α of the Phase 1 output
+        # directly into the current representation. This prevents CEI signal dilution:
+        # without teleport, the CHECK signal reaching a WRITE node after 2 CF hops is
+        # <4% of its original magnitude (diluted by avg_degree^k ≈ 5^2). The teleport
+        # ensures Phase 1 structural signal is always ≥α present at every Phase 2 layer.
+        # detach() prevents a gradient shortcut from Phase 2 back to Phase 1 — Phase 1
+        # gradients should flow only through JK aggregation, not through teleport.
+        _phase1_anchor = x.detach() if self.appnp_alpha > 0.0 else None
+
         x2 = self.conv3(x, cf_only_ei, cf_only_ea)          # Layer 3: CF only
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)
+        if _phase1_anchor is not None:
+            x = self.appnp_alpha * _phase1_anchor + (1.0 - self.appnp_alpha) * x
         x2 = self.conv3b(x, icfg_only_ei, icfg_only_ea)     # Layer 4: ICFG only
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)
+        if _phase1_anchor is not None:
+            x = self.appnp_alpha * _phase1_anchor + (1.0 - self.appnp_alpha) * x
         x2 = self.conv3c(x, phase2_ei, phase2_ea)            # Layer 5: Phase 2 joint (CF+ICFG)
         x2 = self.relu(x2)
         x  = x + self.dropout(x2)
+        if _phase1_anchor is not None:
+            x = self.appnp_alpha * _phase1_anchor + (1.0 - self.appnp_alpha) * x
         x  = self.phase_norm[1](x)                          # LayerNorm after complete Phase 2
 
         _live.append(x)

@@ -2,9 +2,9 @@
 ml.src.preprocessing — Shared Solidity graph preprocessing package.
 
 Exports the canonical constants and extraction function used by both the
-offline batch pipeline (ast_extractor.py) and the online inference API
-(preprocess.py).  Importing from this package guarantees both pipelines
-use identical feature engineering.
+offline batch pipeline (reextract_graphs.py → ast_extractor.py) and the
+online inference API (preprocess.py).  Importing from this package
+guarantees both pipelines use identical feature engineering.
 """
 
 from .graph_schema import (

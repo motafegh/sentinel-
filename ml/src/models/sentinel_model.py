@@ -42,7 +42,7 @@ Auxiliary heads (training only — prevents eye dominance):
 
 WHAT DID NOT CHANGE
 ───────────────────
-- CrossAttentionFusion implementation (only its output is now one of three eyes)
+- CrossAttentionFusion implementation (only its output is now one of four eyes)
 - TransformerEncoder (CodeBERT frozen, LoRA adapters on Q+V)
 - No Sigmoid inside model — applied externally in predictor and BCEWithLogitsLoss
 - Checkpoint format: {"model", "optimizer", "epoch", "best_f1", "config"}
@@ -108,6 +108,18 @@ _CFG_TYPE_IDS: frozenset[int] = frozenset({
 })
 _CFG_IDS_CPU: torch.Tensor = torch.tensor(sorted(_CFG_TYPE_IDS), dtype=torch.long)
 
+# Run 8: CEI-relevant CFG node types for aux_phase2 pooling.
+# Pool only CALL+WRITE+CHECK (the 3 nodes in CHECK→CALL→WRITE pattern).
+# READ and OTHER are common but not part of the CEI violation signature —
+# including them in aux_phase2's mean pool dilutes the CEI signal.
+# The cfg_eye (4th classifier eye) still uses all 5 CFG types.
+_CEI_TYPE_IDS: frozenset[int] = frozenset({
+    NODE_TYPES["CFG_NODE_CALL"],
+    NODE_TYPES["CFG_NODE_WRITE"],
+    NODE_TYPES["CFG_NODE_CHECK"],
+})
+_CEI_IDS_CPU: torch.Tensor = torch.tensor(sorted(_CEI_TYPE_IDS), dtype=torch.long)
+
 # ── GNN prefix injection constants (Phase 1) ──────────────────────────────────
 # Selection priority for K-capped truncation: lower number = selected first.
 # Entry-point nodes carry the most vulnerability-relevant signal after Phase 3.
@@ -132,7 +144,7 @@ _NUM_PREFIX_TYPES: int = 5  # FUNCTION MODIFIER FALLBACK RECEIVE CONSTRUCTOR
 
 class SentinelModel(nn.Module):
     """
-    Three-eye smart contract vulnerability detection model (v8).
+    Four-eye smart contract vulnerability detection model (v8.1).
 
     See module docstring for the full architecture description.
 
@@ -142,15 +154,15 @@ class SentinelModel(nn.Module):
         dropout:              Dropout for eye projections and classifier (default: 0.3).
 
         --- GNN hyperparameters ---
-        gnn_hidden_dim:       GNN node embedding width (default: 128).
-        gnn_num_layers:       Number of GAT layers (default: 8; 2+3+3 phases, v8).
+        gnn_hidden_dim:       GNN node embedding width (default: 256).
+        gnn_num_layers:       Number of GAT layers (default: 8; 2+3+3 phases, v8.1).
         gnn_heads:            GAT attention heads for Phase 1 (default: 8).
         gnn_dropout:          GNN attention + node dropout (default: 0.2).
         use_edge_attr:        Feed edge type embeddings into GATConv (default: True).
-        gnn_edge_emb_dim:     Dimension of learned edge-type embedding (default: 32).
+        gnn_edge_emb_dim:     Dimension of learned edge-type embedding (default: 64).
 
         --- LoRA hyperparameters ---
-        lora_r:               LoRA rank (default: 16 in v5; was 8 in v4).
+        lora_r:               LoRA rank (default: 16).
         lora_alpha:           LoRA scale (default: 32; effective scale = alpha/r = 2.0).
         lora_dropout:         LoRA path dropout (default: 0.1).
         lora_target_modules:  Attention projections to adapt (default: ["query","value"]).
@@ -183,6 +195,10 @@ class SentinelModel(nn.Module):
         gnn_prefix_warmup_epochs:   int   = 15,   # epochs prefix is suppressed
         # CrossAttentionFusion node padding limit (IMP-D1: increase to 2048)
         fusion_max_nodes:           int   = 1024,
+        # Run 8: zero feat[5] at GNN input to break the complexity-proxy shortcut
+        drop_complexity_feature:    bool  = False,
+        # Run 8: APPNP Phase 1 teleport fraction (0.0 = disabled)
+        appnp_alpha:                float = 0.0,
     ) -> None:
         super().__init__()
 
@@ -191,7 +207,7 @@ class SentinelModel(nn.Module):
         self.gnn_prefix_k            = gnn_prefix_k
         self.gnn_prefix_warmup_epochs = gnn_prefix_warmup_epochs
         self._current_epoch: int     = 0
-        eye_dim = fusion_output_dim  # all three eyes output this width
+        eye_dim = fusion_output_dim  # all four eyes output this width
 
         # ── Sub-modules ────────────────────────────────────────────────────
         self.gnn = GNNEncoder(
@@ -204,6 +220,8 @@ class SentinelModel(nn.Module):
             use_jk=gnn_use_jk,
             jk_mode=gnn_jk_mode,
             phase2_edge_types=gnn_phase2_edge_types,
+            drop_complexity=drop_complexity_feature,
+            appnp_alpha=appnp_alpha,
         )
         self.transformer = TransformerEncoder(
             lora_r=lora_r,
@@ -390,7 +408,7 @@ class SentinelModel(nn.Module):
         return_aux:     bool = False,            # True during training only
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, Dict[str, torch.Tensor]]]:
         """
-        Three-eye forward pass.
+        Four-eye forward pass.
 
         Args:
             graphs:         Batched PyG graph (from DataLoader via Batch.from_data_list).
@@ -549,9 +567,12 @@ class SentinelModel(nn.Module):
         aux_tf    = self.aux_transformer(transformer_eye)
         aux_fused = self.aux_fused(fused_eye)
 
-        # Phase 2 CEI aux head: pool phase2 embeddings over CFG nodes (BUG-R7-1 fix).
-        # CFG nodes are the ones that actually receive Phase 2 GATConv messages.
-        phase2_pooled    = global_mean_pool(_phase2_x[cfg_pool_mask], batch[cfg_pool_mask], size=num_graphs)
+        # Phase 2 CEI aux head: pool phase2 embeddings over CEI-relevant nodes only.
+        # Run 8: narrow from all 5 CFG types to CALL+WRITE+CHECK (3 types) — the nodes
+        # directly involved in the CHECK→CALL→WRITE violation pattern. READ and OTHER
+        # dilute the gradient signal for the CEI aux loss.
+        cei_pool_mask     = torch.isin(node_type_ids, _CEI_IDS_CPU.to(node_embs.device))
+        phase2_pooled     = global_mean_pool(_phase2_x[cei_pool_mask], batch[cei_pool_mask], size=num_graphs)
         aux_phase2_logits = self.aux_phase2(phase2_pooled)   # [B, num_classes]
 
         if self.num_classes == 1:

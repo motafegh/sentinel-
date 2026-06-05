@@ -4,7 +4,7 @@ transformer_encoder.py — Transformer Encoder for SENTINEL (Cross-Attention Upg
 WHAT CHANGED FROM ORIGINAL:
     1. LoRA fine-tuning added (peft library)
        - All 125M CodeBERT weights remain frozen
-       - ~295K trainable LoRA matrices injected into query+value of all 12 layers
+       - ~590K trainable LoRA matrices injected into query+value of all 12 layers
        - CodeBERT now adapts to vulnerability semantics without catastrophic forgetting
        - Requires: pip install peft  ← hard requirement, missing peft raises RuntimeError
 
@@ -22,7 +22,7 @@ WHAT CHANGED FROM ORIGINAL:
        - Defaults updated from original: r=16, alpha=32, dropout=0.1, ["query","value"]
 
 WHY LoRA:
-    Full fine-tune: 125M params → OOM on 8GB VRAM, catastrophic forgetting on 68K contracts
+    Full fine-tune: 125M params → OOM on 8GB VRAM, catastrophic forgetting on 41K contracts
     Frozen:         0 trainable → CodeBERT never adapts to vulnerability semantics
     LoRA:           590K trainable (r=16) → adapts query+value attention to security patterns
                     without touching the 125M frozen weights
@@ -60,7 +60,7 @@ except ImportError:
 
 
 # ── Hard requirement check ──────────────────────────────────────────────────
-# Reviewed item #8: a silent warning-then-fallback means you can train 68K
+# Reviewed item #8: a silent warning-then-fallback means you can train 41K
 # contracts with 0 trainable transformer parameters and only discover it at
 # evaluation time. Raise immediately so the problem is impossible to miss.
 if not _PEFT_AVAILABLE:
@@ -297,7 +297,7 @@ class TransformerEncoder(nn.Module):
                 # attentions: tuple of 12 tensors, each [B, heads, L, L]
                 # Slice code→prefix: rows K:L (code positions) × cols :K (prefix positions)
                 attn = torch.stack(list(outputs.attentions), dim=0)  # [12, B, heads, L, L]
-                prefix_attn_mean = attn[:, :, :, K:, :K].mean().item()
+                prefix_attn_mean = attn[:, :, :, K:, :K].float().mean().item()
                 return outputs.last_hidden_state, prefix_attn_mean
             return outputs.last_hidden_state  # [B, L, 768]
 
@@ -339,7 +339,7 @@ class TransformerEncoder(nn.Module):
         )
         if output_attentions and outputs.attentions is not None:
             attn = torch.stack(list(outputs.attentions), dim=0)  # [12, B*W, heads, L, L]
-            prefix_attn_mean = attn[:, :, :, K:, :K].mean().item()
+            prefix_attn_mean = attn[:, :, :, K:, :K].float().mean().item()
             return outputs.last_hidden_state.view(B, W * L, 768), prefix_attn_mean
         return outputs.last_hidden_state.view(B, W * L, 768)
 
