@@ -24,29 +24,40 @@ but above the per-class tuned threshold. Run 8 manual test showed 14/19 hits but
 
 ### Source Code References
 
-- `ml/src/inference/predictor.py:150-151` — `TIER_CONFIRMED_THRESHOLD = 0.55` (hardcoded)
-- `ml/src/inference/predictor.py:712-715` — tier dispatch logic that ignores `self.thresholds`
+- `ml/src/inference/predictor.py:150` — `TIER_CONFIRMED_THRESHOLD: float = 0.55` (hardcoded)
+- `ml/src/inference/predictor.py:151` — `TIER_SUSPICIOUS_THRESHOLD: float = 0.25` (hardcoded)
+- `ml/src/inference/predictor.py:660-757` — `_format_result()` implementation
+- `ml/src/inference/predictor.py:710-715` — tier dispatch logic that ignores `self.thresholds`
+  (per-class tuned values from `_thresholds.json`)
 - `ml/checkpoints/*_thresholds.json` — per-class tuned thresholds (already saved by trainer)
+
+The actual system is THREE-tier, not two-tier. CONFIRMED (>= 0.55) | SUSPICIOUS (0.25 <= p < 0.55)
+| NOTEWORTHY (p < 0.25). The current `_format_result` only consults the two class-level tier
+thresholds, never the per-class tuned `self.thresholds`.
 
 ### Fix
 
-```python
-# ml/src/inference/predictor.py
-# Replace the hardcoded tier with per-class threshold comparison:
+The fix must preserve the three-tier output structure. Replace per-class-aware tier comparison:
 
-def _format_result(self, contract_name, logits):
-    probs = torch.sigmoid(logits).squeeze().tolist()
-    detections = []
-    for cls_idx, cls_prob in enumerate(probs):
-        tuned_thresh = self.thresholds.get(CLASS_NAMES[cls_idx], 0.5)
-        if cls_prob >= tuned_thresh:
-            detections.append({
-                "class": CLASS_NAMES[cls_idx],
-                "prob": cls_prob,
-                "threshold": tuned_thresh,
-                "tier": "confirmed" if cls_prob >= max(tuned_thresh + 0.2, 0.55) else "suspect",
-            })
-    return {"contract": contract_name, "detections": detections}
+```python
+# ml/src/inference/predictor.py:_format_result
+# Replace hardcoded tier thresholds with per-class tuned thresholds + 3-tier output.
+
+def _format_result(self, graph, probs, tokens, windows_used):
+    probs_cpu = probs.cpu().tolist()
+    confirmed:  list[dict] = []
+    suspicious: list[dict] = []
+    for cls_name, prob in zip(self._class_names, probs_cpu):
+        tuned = self.thresholds.get(cls_name, self.DEFAULT_THRESHOLD)
+        # Per-class tier offset: classes with a higher tuned threshold get a
+        # proportionally higher CONFIRMED cutoff.
+        confirmed_cutoff  = max(self.tier_confirmed_threshold,  tuned + 0.20)
+        suspicious_cutoff = max(self.tier_suspicious_threshold, tuned)
+        if prob >= confirmed_cutoff:
+            confirmed.append({"vulnerability_class": cls_name, "probability": prob, "tier": "CONFIRMED"})
+        elif prob >= suspicious_cutoff:
+            suspicious.append({"vulnerability_class": cls_name, "probability": prob, "tier": "SUSPICIOUS"})
+    # ... rest of method unchanged
 ```
 
 ### Validation
@@ -54,7 +65,7 @@ def _format_result(self, contract_name, logits):
 ```bash
 # Run manual_test.py on 12_safe_contract.sol and verify no detections above per-class threshold
 source ml/.venv/bin/activate
-PYTHONPATH=. python ml/scripts/manual_test.py \
+PYTHONPATH=. python ml/scripts/archive/manual_test.py \
   --checkpoint ml/checkpoints/GCB-P1-Run8-v10-20260605_best.pt \
   --contract ml/scripts/test_contracts/12_safe_contract.sol
 # Expected: 0 detections (was: 5+ classes > 0.55)
@@ -79,14 +90,17 @@ match the training distribution, not because the model is broken.
 
 ### Source Code References
 
-- `ml/scripts/test_contracts/20_*.sol` — synthetic benchmarks
-- `ml/data/smartbugs-curated/` — 143 real contracts, hand-labeled, pre-0.8 Solidity
-- `ml/scripts/manual_test.py` — current evaluator
+- `ml/scripts/test_contracts/` — 20 synthetic benchmarks (verified: `01_reentrancy_classic.sol`
+  through `20_unused_return_minimal.sol`)
+- `ml/data/smartbugs-curated/dataset/` — 143 real contracts, hand-labeled
+  (verified: 143 .sol files across 10 category subdirs)
+- `ml/scripts/archive/manual_test.py` — current evaluator (file does NOT exist at
+  `ml/scripts/manual_test.py` — only in `archive/`)
 
 ### Fix
 
-Create `ml/scripts/manual_test_smartbugs.py` that mirrors `manual_test.py` but iterates over
-`ml/data/smartbugs-curated/`:
+Create `ml/scripts/manual_test_smartbugs.py` that mirrors `archive/manual_test.py` but iterates
+over `ml/data/smartbugs-curated/`:
 
 ```python
 # ml/scripts/manual_test_smartbugs.py
@@ -149,21 +163,39 @@ large contracts fire higher probabilities across all classes regardless of true 
 
 ### Already Applied
 
-`ml/scripts/train.py:91-92` (current state) — Run 8 used:
+`ml/scripts/train.py:219-220` (CLI flag definition):
 ```python
---drop-complexity-feature   # in train.py / TrainConfig (need to verify exact flag name)
+p.add_argument("--drop-complexity-feature", action="store_true", default=False,
+               dest="drop_complexity_feature")
 ```
 
-This drops feat[5] from the GNN input during training. Run 8 also used `--appnp-alpha 0.2`
-to add APPNP-style smoothing.
+`ml/src/models/gnn_encoder.py:168` (model flag):
+```python
+drop_complexity:          bool           = False,  # Run 8: zero feat[5] to break complexity-proxy
+```
+
+`ml/src/models/gnn_encoder.py:435-437` (forward pass application):
+```python
+if self.drop_complexity:
+    x = x.clone()
+    x[:, 5] = 0.0
+```
+
+This drops feat[5] from the GNN input during training. Run 8 also used `--appnp-alpha`
+(train.py:227-228, default 0.0) to add APPNP-style smoothing — the actual Run 8 value is not
+recorded in any visible file, would need to grep the Run 8 launcher script.
 
 ### Documentation TODO
 
-Add a one-paragraph note to `docs/architecture-decisions.md` explaining:
+Add a one-paragraph note to a future architecture-decisions doc (does NOT exist yet at
+`docs/architecture-decisions.md`) explaining:
 1. Why complexity was dropped
 2. The hypothesis (feat[5] correlates with node count, model was using it as size proxy)
-3. What to do if Run 9 still shows size bias (try `gnn_jk_entropy_reg_lambda` increase or
-   additional size normalization in graph_extractor)
+3. What to do if Run 9 still shows size bias (try increasing `--appnp-alpha` or adding
+   size normalization in graph_extractor)
+
+Note: a previously proposed `gnn_jk_entropy_reg_lambda` flag does NOT exist in train.py,
+sentinel_model.py, or gnn_encoder.py. Do not reference it.
 
 ---
 

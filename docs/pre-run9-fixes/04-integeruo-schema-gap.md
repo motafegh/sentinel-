@@ -59,7 +59,7 @@ def _cfg_node_type(slither_node: Any) -> int:
 
 ### Node type vocabulary
 
-`ml/src/preprocessing/graph_schema.py:127-141` — NODE_TYPES:
+`ml/src/preprocessing/graph_schema.py:250-269` — NODE_TYPES:
 ```python
 NODE_TYPES: dict[str, int] = {
     "STATE_VAR":   0, "FUNCTION": 1, "MODIFIER": 2, "EVENT": 3,
@@ -72,23 +72,33 @@ NODE_TYPES: dict[str, int] = {
 }
 ```
 
-`ml/src/preprocessing/graph_schema.py:95` — `NUM_NODE_TYPES: int = 13` (must bump to 14).
+`ml/src/preprocessing/graph_schema.py:205` — `NUM_NODE_TYPES: int = 13` (must bump to 14).
 
-### Feature vector
+### Feature vector — slot re-use is NOT possible (critical correction)
 
-`ml/src/preprocessing/graph_schema.py:202-215` — FEATURE_NAMES (11 dims in v8). Must add new
-feature dimension. Options:
-- (a) Reuse dropped `in_unchecked` slot (index 9 in v6) and add new `in_unchecked_block` there
-- (b) Add as new dimension 11, bump NODE_FEATURE_DIM to 12
+`ml/src/preprocessing/graph_schema.py:174` — `NODE_FEATURE_DIM: int = 11` (v8).
+`ml/src/preprocessing/graph_schema.py:422-435` — FEATURE_NAMES (11 dims in v8):
 
-**Recommended: option (a) — re-use the dead slot.** The `in_unchecked` feature was dropped
-because it was dead for 87.9% of BCCC. But for our 0.8+ test contracts AND any future
-modern Solidity data, the signal IS useful. Re-introducing it as `in_unchecked_block` (different
-name, different semantics) keeps the schema clean.
+```
+[0]  type_id              [1]  visibility           [2]  uses_block_globals
+[3]  view                 [4]  payable              [5]  complexity
+[6]  loc                  [7]  return_ignored       [8]  call_target_typed
+[9]  has_loop             [10] external_call_count
+```
+
+**Common misconception to avoid:** "re-use the dropped in_unchecked slot at index 9." This
+was the case in v6 (BUG-L2 fix from 2026-05-18, see `graph_schema.py:119-129`), but in v7
+and v8 the in_unchecked feature was removed ENTIRELY and the indices shifted — `has_loop`
+now occupies index 9. There is no dead slot to re-use.
+
+**Correct approach: add a new dimension 11 and bump `NODE_FEATURE_DIM` to 12.** The 11-dim
+schema stays intact (no shifting of has_loop / external_call_count), the new
+`in_unchecked_block` slot is appended at index 11. Re-validates all graph .pt files
+under the v9 schema version.
 
 ### `_compute_in_unchecked` is currently `NotImplementedError`
 
-`ml/src/preprocessing/graph_extractor.py:392-399`:
+`ml/src/preprocessing/graph_extractor.py:393-403`:
 ```python
 def _compute_in_unchecked(func: Any) -> float:
     raise NotImplementedError(
@@ -175,7 +185,7 @@ def _compute_in_unchecked(func: Any) -> float:
 ```
 
 ```python
-# ml/src/preprocessing/graph_schema.py:202-215 (replace FEATURE_NAMES)
+# ml/src/preprocessing/graph_schema.py:422-435 (replace FEATURE_NAMES)
 FEATURE_NAMES: tuple[str, ...] = (
     "type_id",              # [0]
     "visibility",           # [1]
@@ -186,19 +196,19 @@ FEATURE_NAMES: tuple[str, ...] = (
     "loc",                  # [6]
     "return_ignored",       # [7]
     "call_target_typed",    # [8]
-    "in_unchecked_block",   # [9]  ← re-introduced with new semantics
-    "has_loop",             # [10]
-    "external_call_count",  # [11]
+    "has_loop",             # [9]  ← unchanged from v8
+    "external_call_count",  # [10] ← unchanged from v8
+    "in_unchecked_block",   # [11] ← NEW (was dropped in v7 BUG-L2; re-introduced for 0.8+)
 )
 NODE_FEATURE_DIM: int = 12
 ```
 
 ```python
-# ml/src/preprocessing/graph_extractor.py:_build_node_features (line ~1100)
+# ml/src/preprocessing/graph_extractor.py:_build_node_features (lines 1078-1181)
 # Replace the deprecated call with the new function:
 uses_unchecked = _compute_in_unchecked(obj)  # was: raise NotImplementedError
 
-# Insert into the returned feature list at index 9 (replacing the old slot):
+# Append at index 11 (KEEP has_loop at [9] and external_call_count at [10] intact):
 return [
     float(type_id) / _MAX_TYPE_ID,    # [0]
     visibility,                        # [1]
@@ -209,9 +219,9 @@ return [
     loc,                               # [6]
     return_ignored,                    # [7]
     call_target_typed,                 # [8]
-    uses_unchecked,                    # [9]  ← NEW
-    has_loop,                          # [10]
-    external_call_count,               # [11]
+    has_loop,                          # [9]  ← unchanged
+    external_call_count,               # [10] ← unchanged
+    uses_unchecked,                    # [11] ← NEW
 ]
 ```
 
@@ -273,13 +283,13 @@ saved as a snapshot before the change. Inference cache invalidates cleanly on ve
 
 | File | Change |
 |------|--------|
-| `ml/src/preprocessing/graph_schema.py:95` | Bump `NUM_NODE_TYPES = 14` |
-| `ml/src/preprocessing/graph_schema.py:127-141` | Add `CFG_NODE_ARITH = 13` |
-| `ml/src/preprocessing/graph_schema.py:160` | Bump `NODE_FEATURE_DIM = 12` |
-| `ml/src/preprocessing/graph_schema.py:202-215` | Add `in_unchecked_block` to FEATURE_NAMES |
-| `ml/src/preprocessing/graph_extractor.py:392-399` | Re-implement `_compute_in_unchecked` (no longer raises) |
-| `ml/src/preprocessing/graph_extractor.py:580-640` | Add CFG_NODE_ARITH priority in `_cfg_node_type` |
-| `ml/src/preprocessing/graph_extractor.py:1100-1150` | Insert new feature dim, update return list |
-| `ml/src/preprocessing/graph_schema.py:63` | Bump `FEATURE_SCHEMA_VERSION = "v9"` |
+| `ml/src/preprocessing/graph_schema.py:205` | Bump `NUM_NODE_TYPES = 14` |
+| `ml/src/preprocessing/graph_schema.py:250-269` | Add `CFG_NODE_ARITH = 13` |
+| `ml/src/preprocessing/graph_schema.py:174` | Bump `NODE_FEATURE_DIM = 12` |
+| `ml/src/preprocessing/graph_schema.py:422-435` | Add `in_unchecked_block` to FEATURE_NAMES (at index 11) |
+| `ml/src/preprocessing/graph_extractor.py:393-403` | Re-implement `_compute_in_unchecked` (no longer raises) |
+| `ml/src/preprocessing/graph_extractor.py:587-652` | Add CFG_NODE_ARITH priority in `_cfg_node_type` |
+| `ml/src/preprocessing/graph_extractor.py:1078-1181` | Append new feature dim at index 11, update return list |
+| `ml/src/preprocessing/graph_schema.py:160` | Bump `FEATURE_SCHEMA_VERSION = "v9"` |
 | `ml/scripts/validate_graph_dataset.py` | Add `--check-arith-nodes` and `--check-unchecked-feature` |
-| `ml/src/models/gnn_encoder.py` | Update `in_channels=12` in GAT input projection |
+| `ml/src/models/gnn_encoder.py` | Update input projection to consume 12-dim features (was 11) |

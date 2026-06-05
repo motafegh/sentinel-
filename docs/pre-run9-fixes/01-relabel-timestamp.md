@@ -25,14 +25,14 @@ contract labeled as Timestamp may not actually read block.timestamp — BCCC's l
 
 ### The cleaner script (NEVER invoked on v10)
 
-`ml/scripts/archive/dedup_multilabel_index.py:226` — `--relabel-timestamp` argument:
+`ml/scripts/archive/dedup_multilabel_index.py:404-406` — `--relabel-timestamp` argument:
 ```python
 p.add_argument("--relabel-timestamp", action="store_true",
     help="After dedup, verify Timestamp=1 labels against source "
          "patterns and graph features; remove labels neither confirms")
 ```
 
-`ml/scripts/archive/dedup_multilabel_index.py:174-228` — `relabel_timestamp()` function:
+`ml/scripts/archive/dedup_multilabel_index.py:226-302` — `relabel_timestamp()` function:
 - Checks `data.x[:, 2]` (uses_block_globals feature) for any node > 0.5
 - Greps source `.sol` for patterns: `block.timestamp`, `block.number`, `now`, `block.difficulty`,
   `block.prevrandao`, `blockhash(`
@@ -41,14 +41,18 @@ p.add_argument("--relabel-timestamp", action="store_true",
 
 ### The label-loading path (where Timestamp is used)
 
-`ml/src/datasets/dual_path_dataset.py` — loads `multilabel_index.csv` and exposes `labels` tensor
-of shape `[N, 10]` where index 7 is Timestamp.
+`ml/src/datasets/dual_path_dataset.py` — exists; loads `multilabel_index.csv` and exposes a
+labels tensor of shape `[N, 10]` (per the BCCC 10-class output convention). Index 7 corresponds
+to Timestamp in the alphabetical CLASS_NAMES list. (Exact column index order not re-verified
+during this audit — confirm before relying on the index.)
 
-`ml/src/training/losses.py` — AsymmetricLoss reads these labels directly (no extra validation).
+`ml/src/training/losses.py` — exists; loss computation reads labels directly. The exact loss
+class (AsymmetricLoss vs FocalLoss) was not re-verified during this audit — confirm before
+modifying label-loading code.
 
 ### FEATURE_SCHEMA_VERSION interplay
 
-`ml/src/preprocessing/graph_schema.py:63` — `FEATURE_SCHEMA_VERSION = "v8"`. The cleaner script
+`ml/src/preprocessing/graph_schema.py:160` — `FEATURE_SCHEMA_VERSION = "v8"`. The cleaner script
 embeds this version in each output row. No version bump needed for this fix.
 
 ---
@@ -91,7 +95,8 @@ python ml/scripts/archive/dedup_multilabel_index.py \
 The archived script has `PROJECT_ROOT = parents[2]` (wrong for the archive/ subdirectory).
 It should be `parents[3]` to resolve to the actual project root.
 
-**Location:** `ml/scripts/archive/dedup_multilabel_index.py:50`
+**Location:** `ml/scripts/archive/dedup_multilabel_index.py:64` (line 64, not 50 — verified
+via `git diff` showing the parents[2]→parents[3] change on the 2026-06-05 commit)
 
 ```python
 # WRONG (current):

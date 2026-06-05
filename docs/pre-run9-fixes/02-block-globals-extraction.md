@@ -58,19 +58,24 @@ def _compute_uses_block_globals(func: Any) -> float:
 
 ### `_SolidityVariableComposed` import
 
-`ml/src/preprocessing/graph_extractor.py:71-79` — module-level import:
+`ml/src/preprocessing/graph_extractor.py:144-155` — module-level import:
 ```python
 try:
     from slither.core.declarations.solidity_variables import (
         SolidityVariableComposed as _SolidityVariableComposed,
     )
-except ImportError:
+except (ImportError, AttributeError):
     _SolidityVariableComposed = None
+    logger.warning(
+        "[A9] SolidityVariableComposed not importable from "
+        "slither.core.declarations.solidity_variables — "
+        "uses_block_globals will always be 0.0. ..."
+    )
 ```
 
 ### Per-node variant (C-1 fix)
 
-`ml/src/preprocessing/graph_extractor.py:545-562` — `_node_uses_block_globals()` has the same
+`ml/src/preprocessing/graph_extractor.py:552-567` — `_node_uses_block_globals()` has the same
 bug. **Must be fixed in parallel with the function-level one.**
 
 ### Inherited by CFG nodes (BUG-C3)
@@ -82,8 +87,9 @@ must also fix the per-node variant.
 
 ### Where the feature is consumed
 
-`ml/src/models/sentinel_model.py:_PREFIX_NODE_PRIORITY` and `_select_prefix_nodes` — uses feat[2]
-implicitly through `gnn_to_bert_proj` for prefix injection. No code change needed there.
+`ml/src/models/sentinel_model.py:126` — `_PREFIX_NODE_PRIORITY: dict[int, int]` dict defines
+prefix-node selection priority. The model consumes feat[2] through `gnn_to_bert_proj` for
+prefix injection. No code change needed there for this fix.
 
 ---
 
@@ -190,9 +196,9 @@ is part of the v8 schema. Bump to `"v9"` after re-extract.
 
 | File | Change |
 |------|--------|
-| `ml/src/preprocessing/graph_extractor.py:459-491` | Add `now`/library fallback to `_compute_uses_block_globals` |
-| `ml/src/preprocessing/graph_extractor.py:545-562` | Add same fallback to `_node_uses_block_globals` |
-| `ml/src/preprocessing/graph_schema.py:63` | Bump `FEATURE_SCHEMA_VERSION = "v9"` (after re-extract) |
+| `ml/src/preprocessing/graph_extractor.py:459-492` | Add `now`/library fallback to `_compute_uses_block_globals` |
+| `ml/src/preprocessing/graph_extractor.py:552-567` | Add same fallback to `_node_uses_block_globals` |
+| `ml/src/preprocessing/graph_schema.py:160` | Bump `FEATURE_SCHEMA_VERSION = "v9"` (after re-extract) |
 | `ml/scripts/reextract_graphs.py` | (no change — uses GraphExtractionConfig defaults) |
 | `ml/data/cached_dataset_v10.pkl` | Rebuild with `create_cache.py` after re-extract |
 | `ml/data/processed/multilabel_index.csv` | Re-run `build_multilabel_index.py` after re-extract (contract_path may shift due to most_derived heuristic — already v8, no change needed unless heuristic changed) |
