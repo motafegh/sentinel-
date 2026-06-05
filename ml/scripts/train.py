@@ -165,8 +165,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--phase2-edge-types", type=int, nargs="+", default=None,
                    dest="gnn_phase2_edge_types",
                    help=(
-                       "Edge type IDs for Phase 2 cfg_mask. None=all v8 types (6,8,9,10). "
-                       "Ablation examples: ICFG-only=6 8 9  DFG-only=6 10"
+                       "Edge type IDs for Phase 2 cfg_mask. None=all v9 types (6,8,9,10,11). "
+                       "v9 adds EXTERNAL_CALL(11). "
+                       "Ablation examples: ICFG-only=6 8 9 11  DFG-only=6 10"
                    ))
     p.add_argument("--gnn-lr-multiplier",  type=float, default=2.5,
                    help="GNN LR = lr × this (default 2.5 — counteracts GNN gradient collapse)")

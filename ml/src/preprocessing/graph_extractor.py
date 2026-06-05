@@ -119,8 +119,8 @@ logger = logging.getLogger(__name__)
 # The assert (echoed from graph_schema.py A1 guard) fires at import if a new
 # node type is added without updating this file and sentinel_model.py.
 _MAX_TYPE_ID = float(max(NODE_TYPES.values()))
-assert _MAX_TYPE_ID == 12.0, (
-    f"_MAX_TYPE_ID is {_MAX_TYPE_ID} but expected 12.0. "
+assert _MAX_TYPE_ID == 13.0, (
+    f"_MAX_TYPE_ID is {_MAX_TYPE_ID} but expected 13.0 (v9 schema). "
     "A new node type was added to NODE_TYPES — update the normalization divisor "
     "in graph_extractor.py (this file) and sentinel_model.py before re-extracting."
 )
@@ -394,13 +394,128 @@ def _compute_call_target_typed(func: Any) -> float:
 # Dead signal for 87.9% of the dataset (Solidity <0.8 contracts where the
 # unchecked{} construct does not exist). Feature dim was removed; any call site
 # that was not updated is itself a bug.
-# A7: replaced body with NotImplementedError so call sites surface immediately.
+# v9 (Fix #4) — re-introduced with proper Slither 0.10 detection. For pre-0.8
+# contracts (87.9% of training), the function returns 0.0 (no unchecked blocks
+# can exist in pre-0.8 Solidity — the keyword doesn't exist). For 0.8+ contracts,
+# this fires on any function whose CFG nodes live in an unchecked scope.
+#
+# CRITICAL: Slither's API does NOT expose `op.in_unchecked_block`. The correct
+# mechanism is via `node.scope.is_checked` — Slither 0.10's parser at
+# slither/solc_parsing/declarations/function.py:1090 sets Scope(is_checked=False)
+# when entering an UncheckedBlock AST node. There is also NO NodeType.STARTUNCHECKED
+# in Slither 0.10 (despite older docs referencing it).
 def _compute_in_unchecked(func: Any) -> float:
-    raise NotImplementedError(
-        "_compute_in_unchecked is deprecated in v7 (BUG-L2). "
-        "in_unchecked was dropped from the feature vector — any call site was not updated. "
-        "Remove the call or replace it with a schema-correct alternative."
+    """
+    1.0 if any node in this function is in an unchecked arithmetic context,
+    0.0 otherwise.
+
+    Uses node.scope.is_checked from Slither 0.10's CFG parser. Empirically
+    (verified 2026-06-06 smoke test against installed slither 0.10):
+      • pre-0.8 contracts: Slither marks ~all nodes is_checked=False
+        (the entire contract is implicitly unchecked — keyword didn't exist)
+        → this function returns 1.0 universally on pre-0.8 contracts.
+      • 0.8+ contracts WITHOUT unchecked{} blocks: is_checked=True everywhere
+        → returns 0.0.
+      • 0.8+ contracts WITH unchecked{}: is_checked=False on nodes inside
+        the unchecked block → returns 1.0.
+
+    The feature thus identifies the "overflow can occur" superset: pre-0.8
+    contracts and 0.8+ contracts that opted out. For 12.1% of v10 training
+    data (0.8+), it cleanly distinguishes safe (0.0) from at-risk (1.0).
+    For 87.9% pre-0.8, it correlates with the era — informative on its own.
+    """
+    try:
+        for node in (getattr(func, "nodes", None) or []):
+            scope = getattr(node, "scope", None)
+            if scope is None:
+                continue
+            # is_checked defaults True; only set False inside an UncheckedBlock.
+            # getattr default True so legacy Scope objects without the attr are
+            # treated as checked (safe fallback).
+            if not getattr(scope, "is_checked", True):
+                return 1.0
+    except Exception as exc:
+        global _in_unchecked_fail_count
+        _in_unchecked_fail_count = (
+            (globals().get("_in_unchecked_fail_count") or 0) + 1
+        )
+        logger.debug(
+            "[NF-8] _compute_in_unchecked failed for %s: %s",
+            getattr(func, "canonical_name", "?"), exc,
+        )
+    return 0.0
+
+
+def _node_in_unchecked(slither_node: Any) -> float:
+    """
+    v9 (Fix #4) — per-CFG-node variant. 1.0 if THIS node lives in an unchecked
+    scope, 0.0 otherwise. Used by _build_cfg_node_features so the unchecked
+    signal is local to the arithmetic-bearing CFG nodes rather than just an
+    aggregated function-level flag.
+    """
+    try:
+        scope = getattr(slither_node, "scope", None)
+        if scope is not None and not getattr(scope, "is_checked", True):
+            return 1.0
+    except Exception:
+        pass
+    return 0.0
+
+
+# v9 (Fix #4) — module-level counter for in_unchecked extraction failures.
+_in_unchecked_fail_count: int = 0
+
+
+# v9 (Fix #4) — arithmetic Binary op type set. Verified against installed
+# Slither 0.10.0 BinaryType: the enum members are ADDITION/SUBTRACTION/
+# MULTIPLICATION/DIVISION/MODULO/POWER/LEFT_SHIFT/RIGHT_SHIFT (NOT the shorter
+# ADD/SUB/MUL/... names referenced in older docs).
+try:
+    from slither.slithir.operations import Binary as _Binary
+    from slither.slithir.operations.binary import BinaryType as _BinaryType
+    _ARITH_BINARY_TYPES = frozenset({
+        _BinaryType.ADDITION,
+        _BinaryType.SUBTRACTION,
+        _BinaryType.MULTIPLICATION,
+        _BinaryType.DIVISION,
+        _BinaryType.MODULO,
+        _BinaryType.POWER,
+        _BinaryType.LEFT_SHIFT,
+        _BinaryType.RIGHT_SHIFT,
+    })
+except (ImportError, AttributeError) as _exc:
+    _Binary = None
+    _ARITH_BINARY_TYPES = frozenset()
+    logger.warning(
+        "[v9 Fix #4] Slither Binary/BinaryType not importable (%s). "
+        "CFG_NODE_ARITH classification disabled — all arithmetic ops will be "
+        "classified as CFG_NODE_OTHER.",
+        _exc,
     )
+
+
+def _node_is_pure_arithmetic(slither_node: Any) -> bool:
+    """
+    v9 (Fix #4) — True if the node has at least one Binary arithmetic IR op
+    AND no state-write / call / check side effect. Used by _cfg_node_type to
+    assign CFG_NODE_ARITH only to nodes whose primary semantic is arithmetic.
+    """
+    if _Binary is None or not _ARITH_BINARY_TYPES:
+        return False
+    try:
+        irs = list(getattr(slither_node, "irs", None) or [])
+        if not irs:
+            return False
+        has_arith = False
+        for op in irs:
+            if isinstance(op, _Binary):
+                bt = getattr(op, "type", None)
+                if bt in _ARITH_BINARY_TYPES:
+                    has_arith = True
+                    break
+        return has_arith
+    except Exception:
+        return False
 
 
 def _compute_has_loop(func: Any) -> float:
@@ -459,28 +574,51 @@ def _compute_external_call_count(func: Any) -> float:
 def _compute_uses_block_globals(func: Any) -> float:
     """
     1.0 if any IR op in this function reads block.timestamp, block.number,
-    block.difficulty, or block.basefee.
+    block.difficulty, block.basefee, block.prevrandao, blockhash, or `now`
+    (pre-0.8 alias for block.timestamp).
     0.0 otherwise.
 
     These are SolidityVariableComposed objects in Slither IR — they do NOT
     appear in func.state_variables_read and therefore create no READS edge in
     the graph. Without this direct feature, Timestamp contracts are completely
     invisible to the GNN. This feature gives Timestamp and TOD a direct signal.
+
+    v9 fix (Fix #2): three-tier detection — (1) SolidityVariableComposed
+    isinstance for `block.X` reads, (2) name-based fallback for `now` (Solidity
+    0.4.x alias parsed as SolidityVariable not Composed in some Slither versions)
+    and standalone names, (3) type-based fallback for library-call wrappers.
+    Audit found 72.5% of BCCC Timestamp=1 graphs had feat[2]=0 — the `now`
+    keyword miss is the dominant cause (e.g., roulette.sol).
     """
     try:
         _BLOCK_GLOBALS = {"timestamp", "number", "difficulty", "basefee", "prevrandao"}
+        _BLOCK_NAMES   = {
+            "now",
+            "block.timestamp", "block.number", "block.difficulty",
+            "block.basefee", "block.prevrandao",
+            "blockhash",
+        }
         for node in (getattr(func, "nodes", None) or []):
             for op in (getattr(node, "irs", None) or []):
                 for rv in (getattr(op, "read", None) or []):
-                    # A9: use isinstance instead of string-based class name check.
-                    # _SolidityVariableComposed is set at module load (may be None if
-                    # Slither import failed — logged at module level as a WARNING).
+                    # Primary: SolidityVariableComposed (block.X)
+                    # A9: isinstance instead of string-based class name check.
                     if _SolidityVariableComposed is not None and isinstance(rv, _SolidityVariableComposed):
                         name = getattr(rv, "name", "") or ""
-                        # name is e.g. "block.timestamp" — split on '.'
                         part = name.split(".")[-1].lower()
                         if part in _BLOCK_GLOBALS:
                             return 1.0
+                    # Fallback A: name-based (catches `now` in Solidity 0.4.x
+                    # and any other class-drift in newer Slither releases).
+                    rv_name = (getattr(rv, "name", "") or "").lower()
+                    if rv_name in _BLOCK_NAMES:
+                        return 1.0
+                    # Fallback B: library-call wrapper pattern. If the read
+                    # variable's type string contains "block", treat it as a
+                    # block-global access (covers SafeMath-style wrappers).
+                    rv_type = getattr(rv, "type", None)
+                    if rv_type is not None and "block" in str(rv_type).lower():
+                        return 1.0
     except Exception as exc:
         # NF-7: log and count failures — silent 0.0 masked Slither API drift.
         global _block_globals_fail_count
@@ -553,15 +691,34 @@ def _node_uses_block_globals(node: Any) -> float:
     """
     C-1 fix: per-statement uses_block_globals for a single CFG node.
     1.0 if any IR op in this node reads block.timestamp/number/difficulty/etc.
+    or the deprecated `now` alias.
+
+    v9 fix (Fix #2): three-tier detection identical to _compute_uses_block_globals.
+    Must stay in sync with the function-level variant.
     """
     try:
         _BLOCK_GLOBALS = {"timestamp", "number", "difficulty", "basefee", "prevrandao"}
+        _BLOCK_NAMES   = {
+            "now",
+            "block.timestamp", "block.number", "block.difficulty",
+            "block.basefee", "block.prevrandao",
+            "blockhash",
+        }
         for op in (getattr(node, "irs", None) or []):
             for rv in (getattr(op, "read", None) or []):
+                # Primary: SolidityVariableComposed
                 if _SolidityVariableComposed is not None and isinstance(rv, _SolidityVariableComposed):
                     part = (getattr(rv, "name", "") or "").split(".")[-1].lower()
                     if part in _BLOCK_GLOBALS:
                         return 1.0
+                # Fallback A: name-based (catches `now`)
+                rv_name = (getattr(rv, "name", "") or "").lower()
+                if rv_name in _BLOCK_NAMES:
+                    return 1.0
+                # Fallback B: library wrapper type contains "block"
+                rv_type = getattr(rv, "type", None)
+                if rv_type is not None and "block" in str(rv_type).lower():
+                    return 1.0
     except Exception:
         pass
     return 0.0
@@ -589,11 +746,19 @@ def _cfg_node_type(slither_node: Any) -> int:
     Map a Slither CFG node to a NODE_TYPES CFG subtype id.
 
     PRIORITY ORDER (highest to lowest):
-      1. CFG_NODE_CALL  (8) — any node containing an external call
-      2. CFG_NODE_WRITE (9) — any node writing a state variable
+      1. CFG_NODE_CALL  (8)  — any node containing an external call
+      2. CFG_NODE_WRITE (9)  — any node writing a state variable
       3. CFG_NODE_READ  (10) — any node reading a state variable
-      4. CFG_NODE_CHECK (11) — require / assert / if condition
-      5. CFG_NODE_OTHER (12) — everything else (including synthetic nodes)
+      4. CFG_NODE_ARITH (13) — v9 Fix #4: node whose only IR ops are Binary
+                                arithmetic (no state side effect). Comes after
+                                READ so a `balance += amount` node (which is
+                                both an arithmetic op AND a state write) stays
+                                as WRITE — the state-change is the dominant
+                                semantic signal for reentrancy/CEI detection.
+                                Only purely-arithmetic intermediate values
+                                (e.g. `x = a * b` with x a local) become ARITH.
+      5. CFG_NODE_CHECK (11) — require / assert / if condition
+      6. CFG_NODE_OTHER (12) — everything else (including synthetic nodes)
 
     When Slither generates a merged IR node containing both an external call
     AND another operation, the external call is the most vulnerability-relevant
@@ -634,7 +799,14 @@ def _cfg_node_type(slither_node: Any) -> int:
         ):
             return NODE_TYPES["CFG_NODE_READ"]
 
-        # Priority 4: control-flow check node type
+        # Priority 4 (v9 Fix #4): node is purely arithmetic — Binary ADDITION/
+        # SUBTRACTION/MULTIPLICATION/DIVISION/MODULO/POWER/LEFT_SHIFT/RIGHT_SHIFT
+        # with no state-write side effect. This is the structural signal IntegerUO
+        # was missing in v8.
+        if _node_is_pure_arithmetic(slither_node):
+            return NODE_TYPES["CFG_NODE_ARITH"]
+
+        # Priority 5: control-flow check node type
         if getattr(slither_node, "type", None) in check_types:
             return NODE_TYPES["CFG_NODE_CHECK"]
 
@@ -659,9 +831,9 @@ def _build_cfg_node_features(
     parent_features: list | None = None,
 ) -> list:
     """
-    Build the 11-dim feature vector for a CFG (statement-level) node.
+    Build the 12-dim (v9) feature vector for a CFG (statement-level) node.
 
-    Returns list[float] of exactly NODE_FEATURE_DIM (11) elements.
+    Returns list[float] of exactly NODE_FEATURE_DIM (12) elements.
     torch.tensor(x_list) requires all sublists to be the same length;
     returning a different length silently causes crashes at tensor assembly.
 
@@ -671,8 +843,10 @@ def _build_cfg_node_features(
     Without inheritance, these dims were 0.0 for all CFG nodes — statement-level
     nodes carried almost no signal, undermining CEI pattern detection.
 
-    CRITICAL: in_unchecked was dropped in v7 (BUG-L2) — it is no longer in
-    the feature vector. CFG nodes inherit has_loop [9] from the parent function.
+    v9 (Fix #4): feat[11] in_unchecked_block is computed PER-NODE via
+    _node_in_unchecked (NOT inherited) so the arithmetic-bearing nodes inside
+    an unchecked block carry the explicit signal even if the rest of the function
+    is checked. Pre-0.8 contracts: always 0.0.
 
     Slither synthetic nodes (ENTRY_POINT, EXPRESSION, BEGIN_LOOP, etc.) with
     no source_mapping and empty IRS are handled correctly: _cfg_node_type()
@@ -717,6 +891,7 @@ def _build_cfg_node_features(
         _node_call_target_typed(slither_node),        # [8]  per-statement: typed interface vs raw addr
         has_loop,                                     # [9]  inherited from parent FUNCTION (BUG-C3)
         _node_external_call_count(slither_node),      # [10] per-statement: external call count (log1p)
+        _node_in_unchecked(slither_node),             # [11] v9 Fix #4: per-statement unchecked scope
     ]
 
 
@@ -838,6 +1013,14 @@ def _add_icfg_edges(
       RETURN_TO  (9): each terminal node of the callee → each successor of the
                       calling CFG node (call-site return targets).
 
+    v9 (Fix #3) — adds structural marker for EXTERNAL calls:
+      EXTERNAL_CALL (11): self-loop on CFG node that contains HighLevelCall or
+                          LowLevelCall (cross-contract call sites). One self-loop
+                          per call-site CFG node regardless of how many external
+                          calls are present. Audit D-6: external calls previously
+                          had no cross-function edges, making DoS/ExternalBug/
+                          Reentrancy structural patterns invisible.
+
     Only emits edges when both endpoints are present in the extracted graph
     (callee may be absent if it failed CFG extraction or is a library stub).
 
@@ -846,8 +1029,9 @@ def _add_icfg_edges(
         func_terminal_map: canonical_name → [graph_idx, ...] of callee terminal nodes.
         func_cfg_maps:     canonical_name → {slither_node → graph_idx} per function.
     """
-    _CALL_ENTRY = EDGE_TYPES["CALL_ENTRY"]
-    _RETURN_TO  = EDGE_TYPES["RETURN_TO"]
+    _CALL_ENTRY    = EDGE_TYPES["CALL_ENTRY"]
+    _RETURN_TO     = EDGE_TYPES["RETURN_TO"]
+    _EXTERNAL_CALL = EDGE_TYPES["EXTERNAL_CALL"]
 
     for func in contract.functions:
         func_key = getattr(func, "canonical_name", None) or func.name
@@ -855,12 +1039,19 @@ def _add_icfg_edges(
         if local_map is None:
             continue
 
+        # Track external call sites per function to emit at most one self-loop
+        # per CFG node (avoid duplicates when a node has multiple ext calls).
+        external_call_sites: set[int] = set()
+
         for node in (getattr(func, "nodes", None) or []):
             caller_idx = local_map.get(node)
             if caller_idx is None:
                 continue
 
-            for callee in (getattr(node, "internal_calls", None) or []):
+            for callee in sorted(
+                (getattr(node, "internal_calls", None) or []),
+                key=lambda c: getattr(c, "canonical_name", None) or "",
+            ):
                 callee_key = getattr(callee, "canonical_name", None)
                 if not callee_key:
                     continue
@@ -883,6 +1074,22 @@ def _add_icfg_edges(
                     for terminal_idx in callee_terminals:
                         edges.append([terminal_idx, son_idx])
                         edge_types.append(_RETURN_TO)
+
+            # v9 Fix #3: EXTERNAL_CALL self-loop. node.high_level_calls and
+            # node.low_level_calls expose cross-contract call destinations.
+            # Slither's class hierarchy: LibraryCall <: HighLevelCall, so a
+            # library call counts as external for our purposes (it crosses the
+            # contract boundary at the IR level). Self-loop encoding chosen
+            # over virtual-target to avoid node-index conflicts and keep the
+            # graph structurally consistent.
+            if caller_idx in external_call_sites:
+                continue
+            high_lvl = list(getattr(node, "high_level_calls", None) or [])
+            low_lvl  = list(getattr(node, "low_level_calls",  None) or [])
+            if high_lvl or low_lvl:
+                edges.append([caller_idx, caller_idx])
+                edge_types.append(_EXTERNAL_CALL)
+                external_call_sites.add(caller_idx)
 
 
 def _add_def_use_edges(
@@ -938,13 +1145,23 @@ def _add_def_use_edges(
 
     # Build def_map in one pass over ALL functions using two-tier scope keys.
     # This allows state-variable DEF_USE edges to cross function boundaries.
+    def _sorted_nodes(func):
+        return sorted(
+            getattr(func, "nodes", None) or [],
+            key=lambda n: (
+                n.source_mapping.lines[0]
+                if n.source_mapping and n.source_mapping.lines else 0,
+                getattr(n, "node_id", 0),
+            ),
+        )
+
     def_map: dict = {}
-    for func in contract.functions:
+    for func in sorted(contract.functions, key=lambda f: getattr(f, "canonical_name", None) or f.name):
         func_key = getattr(func, "canonical_name", None) or func.name
         local_map = func_cfg_maps.get(func_key)
         if local_map is None:
             continue
-        for node in (getattr(func, "nodes", None) or []):
+        for node in _sorted_nodes(func):
             node_idx = local_map.get(node)
             if node_idx is None:
                 continue
@@ -965,12 +1182,12 @@ def _add_def_use_edges(
 
     # Emit DEF_USE edges: for each function's CFG nodes, look up the correct scope key.
     seen_pairs: set = set()
-    for func in contract.functions:
+    for func in sorted(contract.functions, key=lambda f: getattr(f, "canonical_name", None) or f.name):
         func_key = getattr(func, "canonical_name", None) or func.name
         local_map = func_cfg_maps.get(func_key)
         if local_map is None:
             continue
-        for node in (getattr(func, "nodes", None) or []):
+        for node in _sorted_nodes(func):
             use_idx = local_map.get(node)
             if use_idx is None:
                 continue
@@ -1064,9 +1281,9 @@ def _compute_has_cei_path(
 
 def _build_node_features(obj: Any, type_id: int) -> list:
     """
-    Compute the 11-dimensional feature vector (v8 schema) for one AST node.
+    Compute the 12-dimensional feature vector (v9 schema) for one AST node.
 
-    Returns list[float] of exactly NODE_FEATURE_DIM (11) elements.
+    Returns list[float] of exactly NODE_FEATURE_DIM (12) elements.
 
     Feature layout (v8 schema):
       [0]  type_id              — float(NODE_TYPES[kind]) / 12.0, normalised [0,1]
@@ -1112,6 +1329,7 @@ def _build_node_features(obj: Any, type_id: int) -> list:
     call_target_typed  = 1.0   # safe default: "not applicable"
     has_loop           = 0.0
     external_call_count = 0.0
+    in_unchecked       = 0.0   # v9 Fix #4 — only meaningful for FUNCTION nodes
 
     if _is_function:
         uses_block_globals = _compute_uses_block_globals(obj)
@@ -1129,6 +1347,7 @@ def _build_node_features(obj: Any, type_id: int) -> list:
         call_target_typed   = _compute_call_target_typed(obj)
         has_loop            = _compute_has_loop(obj)
         external_call_count = _compute_external_call_count(obj)
+        in_unchecked        = _compute_in_unchecked(obj)  # v9 Fix #4
 
         # Override FUNCTION(1) type_id for special function kinds
         if getattr(obj, "is_constructor", False):
@@ -1162,9 +1381,9 @@ def _build_node_features(obj: Any, type_id: int) -> list:
         loc,                             # [6]  log-normalised (was raw line count)
         return_ignored,                  # [7]
         call_target_typed,               # [8]
-        # in_unchecked removed (BUG-L2): dead signal for 87.9% Solidity 0.4.x dataset
         has_loop,                        # [9]  (was [10] in v6)
         external_call_count,             # [10] (was [11] in v6)
+        in_unchecked,                    # [11] v9 Fix #4: unchecked-block scope (0.8+)
     ]
 
 
@@ -1653,16 +1872,25 @@ def extract_contract_graph(
                 dst_key, "" if di is not None else " (missing)",
             )
 
-    for func in contract.functions:
+    for func in sorted(contract.functions, key=lambda f: getattr(f, "canonical_name", None) or f.name):
         fn = getattr(func, "canonical_name", None) or func.name
 
-        for call in (getattr(func, "internal_calls", None) or []):
+        for call in sorted(
+            (getattr(func, "internal_calls", None) or []),
+            key=lambda c: getattr(c, "canonical_name", None) or "",
+        ):
             if hasattr(call, "canonical_name"):
                 _add_edge(fn, call.canonical_name, EDGE_TYPES["CALLS"])
 
-        for var in (getattr(func, "state_variables_read", None) or []):
+        for var in sorted(
+            (getattr(func, "state_variables_read", None) or []),
+            key=lambda v: getattr(v, "canonical_name", None) or "",
+        ):
             _add_edge(fn, var.canonical_name, EDGE_TYPES["READS"])
-        for var in (getattr(func, "state_variables_written", None) or []):
+        for var in sorted(
+            (getattr(func, "state_variables_written", None) or []),
+            key=lambda v: getattr(v, "canonical_name", None) or "",
+        ):
             _add_edge(fn, var.canonical_name, EDGE_TYPES["WRITES"])
 
         # BUG-H7: events_emitted is unreliable for Solidity <0.4.21 (no `emit`
@@ -1692,7 +1920,7 @@ def extract_contract_graph(
                                 emitted.add(_event_name_map.get(_short_key, _short_key))
             except Exception:
                 pass
-        for key in emitted:
+        for key in sorted(emitted):
             _add_edge(fn, key, EDGE_TYPES["EMITS"])
 
     # BUG-H8: Use canonical_name for both src and dst so they match node_map keys.
