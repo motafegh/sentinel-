@@ -1,0 +1,285 @@
+# Fix #4 — Add CFG_NODE_ARITH type + `in_unchecked` (Solidity 0.8+) feature
+
+**Effort:** 4 hours (re-extract needed)
+**Impact:** IntegerUO (the only real schema gap)
+**Risk:** High — adds new node type, bumps schema version, invalidates all checkpoints
+**Order:** Do this LAST of the data fixes; it's the most invasive.
+
+---
+
+## Problem (Finding F from audit + I context)
+
+**Finding F:** IntegerUO is structurally unlearnable from the current schema. All arithmetic IR
+ops (`Add`, `Sub`, `Mul`, `Div`, `Mod`, `Exp`, `BitAnd`, `BitOr`, etc.) collapse into
+`CFG_NODE_OTHER` (type 12) in `_cfg_node_type()`. The model sees `a + b` and `some_other_op`
+as identical CFG_NODE_OTHER nodes.
+
+**Finding I:** 87.9% of BCCC dataset is pre-0.8 Solidity (0.4-0.7) where:
+- `unchecked{}` keyword doesn't exist (introduced in Solidity 0.8.0)
+- Integer overflow was implicit (default wrapping behavior)
+- BCCC's IntegerUO labels were correct for that era
+
+**Modern Solidity (0.8+):**
+- `unchecked { a += b; }` block EXPLICITLY opts out of overflow checks
+- This is a true IntegerUO vulnerability pattern
+- But our 0.8+ test contracts (`17_integer_simple.sol`, `20_unused_return_minimal.sol`) all
+  use `unchecked{}` and the model can't detect them (no feature for it)
+
+**Two-pronged solution needed:**
+1. **CFG_NODE_ARITH type** — distinguish arithmetic CFG nodes from synthetic-other nodes
+2. **`in_unchecked_block` feature** — detect `unchecked { }` context (Solidity 0.8+ only;
+   feature=0.0 for pre-0.8 contracts which were always implicitly unchecked)
+
+---
+
+## Source Code References
+
+### Where CFG node types are assigned
+
+`ml/src/preprocessing/graph_extractor.py:_cfg_node_type` (line ~580-640):
+```python
+def _cfg_node_type(slither_node: Any) -> int:
+    # Priority 1: any IR op is an external call
+    if any(isinstance(op, (LowLevelCall, HighLevelCall, Transfer, Send)) for op in irs):
+        return NODE_TYPES["CFG_NODE_CALL"]
+    # Priority 2: node writes a state variable
+    sv_written = list(getattr(slither_node, "state_variables_written", None) or [])
+    if sv_written or ...:
+        return NODE_TYPES["CFG_NODE_WRITE"]
+    # Priority 3: node reads a state variable
+    sv_read = list(getattr(slither_node, "state_variables_read", None) or [])
+    if sv_read or ...:
+        return NODE_TYPES["CFG_NODE_READ"]
+    # Priority 4: control-flow check node type
+    if getattr(slither_node, "type", None) in check_types:
+        return NODE_TYPES["CFG_NODE_CHECK"]
+    # Priority 5: everything else → CFG_NODE_OTHER (12)  ← ARITHMETIC OPS GO HERE
+    return NODE_TYPES["CFG_NODE_OTHER"]
+```
+
+### Node type vocabulary
+
+`ml/src/preprocessing/graph_schema.py:127-141` — NODE_TYPES:
+```python
+NODE_TYPES: dict[str, int] = {
+    "STATE_VAR":   0, "FUNCTION": 1, "MODIFIER": 2, "EVENT": 3,
+    "FALLBACK":    4, "RECEIVE":  5, "CONSTRUCTOR": 6, "CONTRACT": 7,
+    "CFG_NODE_CALL":   8,
+    "CFG_NODE_WRITE":  9,
+    "CFG_NODE_READ":  10,
+    "CFG_NODE_CHECK": 11,
+    "CFG_NODE_OTHER": 12,  # ← arithmetic ops fall here currently
+}
+```
+
+`ml/src/preprocessing/graph_schema.py:95` — `NUM_NODE_TYPES: int = 13` (must bump to 14).
+
+### Feature vector
+
+`ml/src/preprocessing/graph_schema.py:202-215` — FEATURE_NAMES (11 dims in v8). Must add new
+feature dimension. Options:
+- (a) Reuse dropped `in_unchecked` slot (index 9 in v6) and add new `in_unchecked_block` there
+- (b) Add as new dimension 11, bump NODE_FEATURE_DIM to 12
+
+**Recommended: option (a) — re-use the dead slot.** The `in_unchecked` feature was dropped
+because it was dead for 87.9% of BCCC. But for our 0.8+ test contracts AND any future
+modern Solidity data, the signal IS useful. Re-introducing it as `in_unchecked_block` (different
+name, different semantics) keeps the schema clean.
+
+### `_compute_in_unchecked` is currently `NotImplementedError`
+
+`ml/src/preprocessing/graph_extractor.py:392-399`:
+```python
+def _compute_in_unchecked(func: Any) -> float:
+    raise NotImplementedError(
+        "_compute_in_unchecked is deprecated in v7 (BUG-L2). "
+        "in_unchecked was dropped from the feature vector — any call site was not updated. "
+        "Remove the call or replace it with a schema-correct alternative."
+    )
+```
+
+**Re-activate this function** with new semantics: detect `unchecked { }` block context.
+
+---
+
+## Fix — Part A: Add CFG_NODE_ARITH type
+
+```python
+# ml/src/preprocessing/graph_schema.py:127-141
+NODE_TYPES: dict[str, int] = {
+    ...
+    "CFG_NODE_OTHER": 12,
+    "CFG_NODE_ARITH": 13,  # NEW: any IR op is an arithmetic/overflow-prone operation
+}
+NUM_NODE_TYPES: int = 14
+
+# In graph_extractor.py:_cfg_node_type, add new priority between READ and CHECK:
+# Priority 3.5: any IR op is arithmetic (Add, Sub, Mul, Div, Mod, Exp, BitAnd, BitOr, BitXor, Shift)
+from slither.slithir.operations import (
+    Binary, BinaryType,  # base class for binary ops
+)
+# Slither BinaryType has: ADD, SUB, MUL, DIV, MOD, EXP, BITAND, BITOR, BITXOR, SHL, SHR, SAR
+ARITH_OPS = {
+    BinaryType.ADD, BinaryType.SUB, BinaryType.MUL, BinaryType.DIV, BinaryType.MOD,
+    BinaryType.EXP, BinaryType.SHIFT_LEFT, BinaryType.SHIFT_RIGHT,
+    # unsigned variants in some Slither versions
+    getattr(BinaryType, "ADD_UNSAFE", None),
+    getattr(BinaryType, "SUB_UNSAFE", None),
+    getattr(BinaryType, "MUL_UNSAFE", None),
+}
+
+# In _cfg_node_type, BEFORE the "Priority 4" check:
+if any(
+    isinstance(op, Binary) and getattr(op, "type", None) in ARITH_OPS
+    for op in irs
+):
+    return NODE_TYPES["CFG_NODE_ARITH"]
+```
+
+**Priority placement:** between READ (priority 3) and CHECK (priority 4). Rationale: a node
+that does `balances[msg.sender] += amount` is primarily a WRITE (state change), not an
+arithmetic op. Only assign CFG_NODE_ARITH when the node is PURELY arithmetic with no side
+effect — this avoids losing the WRITE signal which is critical for reentrancy detection.
+
+---
+
+## Fix — Part B: Add `in_unchecked_block` feature
+
+```python
+# ml/src/preprocessing/graph_extractor.py:392 (replace NotImplementedError)
+
+def _compute_in_unchecked(func: Any) -> float:
+    """
+    1.0 if any IR op in this function is inside an `unchecked { }` block (Solidity 0.8+).
+    0.0 otherwise.
+
+    For pre-0.8 contracts (BCCC 87.9%), all arithmetic was implicitly unchecked.
+    The model must learn this from the FEATURE_ABSENT signal — for 0.8+ contracts
+    that explicitly opt in, this feature fires.
+    """
+    try:
+        for node in (getattr(func, "nodes", None) or []):
+            for op in (getattr(node, "irs", None) or []):
+                # Slither exposes the unchecked context via `in_unchecked` on IR ops
+                if getattr(op, "in_unchecked_block", False):
+                    return 1.0
+                # Fallback: scan expression for UncheckedBlock context
+                expr = getattr(op, "expression", None) or getattr(op, "lvalue", None)
+                if expr is not None and getattr(expr, "in_unchecked_block", False):
+                    return 1.0
+    except Exception as exc:
+        global _in_unchecked_fail_count
+        _in_unchecked_fail_count += 1
+        logger.debug(...)
+    return 0.0
+```
+
+```python
+# ml/src/preprocessing/graph_schema.py:202-215 (replace FEATURE_NAMES)
+FEATURE_NAMES: tuple[str, ...] = (
+    "type_id",              # [0]
+    "visibility",           # [1]
+    "uses_block_globals",   # [2]
+    "view",                 # [3]
+    "payable",              # [4]
+    "complexity",           # [5]
+    "loc",                  # [6]
+    "return_ignored",       # [7]
+    "call_target_typed",    # [8]
+    "in_unchecked_block",   # [9]  ← re-introduced with new semantics
+    "has_loop",             # [10]
+    "external_call_count",  # [11]
+)
+NODE_FEATURE_DIM: int = 12
+```
+
+```python
+# ml/src/preprocessing/graph_extractor.py:_build_node_features (line ~1100)
+# Replace the deprecated call with the new function:
+uses_unchecked = _compute_in_unchecked(obj)  # was: raise NotImplementedError
+
+# Insert into the returned feature list at index 9 (replacing the old slot):
+return [
+    float(type_id) / _MAX_TYPE_ID,    # [0]
+    visibility,                        # [1]
+    uses_block_globals,                # [2]
+    view,                              # [3]
+    payable,                           # [4]
+    complexity,                        # [5]
+    loc,                               # [6]
+    return_ignored,                    # [7]
+    call_target_typed,                 # [8]
+    uses_unchecked,                    # [9]  ← NEW
+    has_loop,                          # [10]
+    external_call_count,               # [11]
+]
+```
+
+---
+
+## Validation Steps
+
+```bash
+# 1. Spot-check modern contract with unchecked block
+python -c "
+import torch
+g = torch.load('ml/data/graphs/<md5_of_17_integer_simple>.pt', weights_only=False)
+# feat[9] = in_unchecked_block
+unchecked_sum = float(g.x[:, 9].sum())
+print(f'feat[9] sum (in_unchecked_block): {unchecked_sum}')  # Expect > 0.5
+# type_id column = 13 means CFG_NODE_ARITH
+arith_count = int((g.x[:, 0] * 12 == 13).sum())  # type_id normalised
+print(f'CFG_NODE_ARITH nodes: {arith_count}')  # Expect > 0
+"
+
+# 2. Full re-extract
+source ml/.venv/bin/activate
+PYTHONPATH=. TRANSFORMERS_OFFLINE=1 python ml/scripts/reextract_graphs.py --workers 8
+
+# 3. Validate
+PYTHONPATH=. python ml/scripts/validate_graph_dataset.py --check-arith-nodes --check-unchecked-feature
+# New checks to add to validate_graph_dataset.py
+```
+
+---
+
+## Expected Impact
+
+| Class | Before | After |
+|-------|--------|-------|
+| IntegerUO | 0.598 F1 (test, lucky — only class with any signal) | 0.70+ F1 (real detection of `unchecked` blocks + arithmetic patterns) |
+| Manual test 17_integer_simple.sol | predicted Reentrancy 0.408 | predicted IntegerUO 0.6+ (if arith node type + unchecked feature fire) |
+
+**Caveat:** BCCC IntegerUO labels are themselves noisy (45%+ false positives per audit).
+Fix #5 (re-derive from Slither detectors) is needed in parallel to fully fix IntegerUO.
+
+---
+
+## Risk Assessment
+
+**HIGH.** This is the most invasive change:
+1. New node type (13) requires reinitializing type_embedding
+2. New feature dimension (11→12) requires reinitializing input_proj
+3. Bumping FEATURE_SCHEMA_VERSION invalidates all v8 caches
+4. `_compute_in_unchecked` re-introduction breaks the BUG-L2 "dead signal" assumption — must
+   document that the 87.9% pre-0.8 data will have feature=0.0 (not a bug, just a no-op)
+
+**Rollback plan:** git revert this commit. The graph schema has 13 node types and 11 dims
+saved as a snapshot before the change. Inference cache invalidates cleanly on version mismatch.
+
+---
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `ml/src/preprocessing/graph_schema.py:95` | Bump `NUM_NODE_TYPES = 14` |
+| `ml/src/preprocessing/graph_schema.py:127-141` | Add `CFG_NODE_ARITH = 13` |
+| `ml/src/preprocessing/graph_schema.py:160` | Bump `NODE_FEATURE_DIM = 12` |
+| `ml/src/preprocessing/graph_schema.py:202-215` | Add `in_unchecked_block` to FEATURE_NAMES |
+| `ml/src/preprocessing/graph_extractor.py:392-399` | Re-implement `_compute_in_unchecked` (no longer raises) |
+| `ml/src/preprocessing/graph_extractor.py:580-640` | Add CFG_NODE_ARITH priority in `_cfg_node_type` |
+| `ml/src/preprocessing/graph_extractor.py:1100-1150` | Insert new feature dim, update return list |
+| `ml/src/preprocessing/graph_schema.py:63` | Bump `FEATURE_SCHEMA_VERSION = "v9"` |
+| `ml/scripts/validate_graph_dataset.py` | Add `--check-arith-nodes` and `--check-unchecked-feature` |
+| `ml/src/models/gnn_encoder.py` | Update `in_channels=12` in GAT input projection |
