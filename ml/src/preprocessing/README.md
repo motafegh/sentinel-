@@ -1,6 +1,6 @@
 # preprocessing — SENTINEL Graph Feature Extraction Pipeline
 
-Solidity source → PyG `Data` object. The single authoritative AST-to-graph conversion used by both the **offline batch pipeline** (`ml/src/data_extraction/ast_extractor.py`, ~68K training contracts) and the **online inference API** (`ml/src/inference/preprocess.py`, one contract per request).
+Solidity source → PyG `Data` object. The single authoritative AST-to-graph conversion used by both the **offline batch pipeline** (`ml/scripts/reextract_graphs.py`, ~41K training graphs) and the **online inference API** (`ml/src/inference/preprocess.py`, one contract per request).
 
 ---
 
@@ -282,13 +282,13 @@ Two-tier scope prevents false edges:
 
 Any modification to `NODE_TYPES`, `VISIBILITY_MAP`, `EDGE_TYPES`, or `FEATURE_NAMES` requires **all** of the following steps:
 
-1. **Rebuild all ~68K .pt graph files:**
+1. **Rebuild all ~41K .pt graph files:**
    ```bash
-   python ml/src/data_extraction/ast_extractor.py --force
+   python ml/scripts/reextract_graphs.py
    ```
 2. **Rebuild token .pt files** (only if tokenizer logic changed):
    ```bash
-   python ml/scripts/tokenizer_v1_production.py --force
+   python ml/scripts/retokenize_windowed.py
    ```
 3. **Retrain the model from scratch:**
    ```bash
@@ -336,8 +336,8 @@ graph_schema.py ──→ (consumed by) ──→ gnn_encoder.py     (NODE_TYPES
 ```
 
 ```
-graph_extractor.py ──→ (called by) ──→ ml/src/data_extraction/ast_extractor.py  (offline batch)
-                                         ml/src/inference/preprocess.py         (online inference)
+graph_extractor.py ──→ (called by) ──→ ml/scripts/reextract_graphs.py     (offline batch)
+                                         ml/src/inference/preprocess.py    (online inference)
 ```
 
 No circular dependencies exist. `graph_schema.py` has no imports from `graph_extractor.py`. The dependency flows one way.

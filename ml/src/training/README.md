@@ -24,8 +24,8 @@ Single source of truth for all hyperparameters and paths. Serialized into each c
 @dataclass
 class TrainConfig:
     # Paths
-    cache_path:       str   = "ml/data/cached_dataset_v8.pkl"
-    splits_dir:       str   = "ml/data/splits/deduped"
+    cache_path:       str   = "ml/data/cached_dataset_v10.pkl"
+    splits_dir:       str   = "ml/data/splits/v10_deduped"
     checkpoint_dir:   str   = "ml/checkpoints"
     run_name:         str   = "gcb-run"
     experiment_name:  str   = "sentinel-gcb"
@@ -211,7 +211,8 @@ gnn_to_bert_proj weight norm: 16.0000    ← constant during warmup (zero gradie
 | v7.0 | CF | 23 | 0.2875 | CodeBERT baseline |
 | PLAN-3A | CF+CE+RT | 41 | **0.2877** | Best v8 checkpoint |
 | v8.0-B | PLAN-3A + labels | 10 | killed | ceiling confirmed at ~0.287 |
+| Run 7 | CF+CE+RT+DU | 39 | **0.3329** | Four-eye + type embedding + Phase2 heads=4 |
 
-**Ceiling conclusion:** All v7/v8 CodeBERT runs converge to ~0.287 tuned F1. Current v8 architecture with 8-layer GNN (2+3+3 phases) includes IMP-G1, IMP-G2, IMP-G3 improvements for better structural encoding.
+**Ceiling conclusion:** All v7/v8 CodeBERT runs converge to ~0.287 tuned F1. Run 7 with four-eye architecture (IMP-R7-2), type embedding (BUG-R7-2), and Phase 2 multi-head (IMP-R7-1) achieved 0.3329 tuned F1 — a 16% relative improvement.
 
 MLflow backend: `sqlite:///mlruns.db`. View: `poetry run mlflow ui --backend-store-uri sqlite:///mlruns.db`

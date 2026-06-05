@@ -1,8 +1,13 @@
 # Run 8 Ultracode — SENTINEL
-**Date:** 2026-06-04  
-**Based on:** Run 7 analysis + Phase 2 interpretability (all Tier 1+2 experiments complete)  
-**Run 7 best:** ep39, F1=0.3074 fixed / 0.3329 tuned  
+**Created:** 2026-06-04 | **Updated:** 2026-06-05 (all pre-run changes complete, ready to launch)
+**Based on:** Run 7 analysis + Phase 2 interpretability (all Tier 1+2 experiments complete)
+**Code investigation:** `docs/pre-run8-fixes/FINDINGS.md` — 15 findings across 5 source files
+**Run 7 best:** ep39, F1=0.3074 fixed / 0.3329 tuned
 **Goal:** Break the complexity-proxy ceiling and force class-specific structural learning
+
+> **STATUS 2026-06-05:** All code changes IMPLEMENTED. All pre-launch steps COMPLETE.
+> MLflow ghost run KILLED. Thresholds extracted to `ml/calibration/temperatures_run7.json`.
+> **Ready to launch.** Copy the command from Part 4.
 
 ---
 
@@ -53,138 +58,99 @@ The macro F1 "improved" from 0.2780 (ep10) to 0.3074 (ep39). But ~0.017 of that 
 
 | Problem | Severity | Evidence | Fix for Run 8 |
 |---------|----------|----------|---------------|
-| Complexity proxy dominates all classes | **Critical** | L4: 34-36% all classes, zero class-specific elevation | Remove or normalize `complexity` feature |
-| GNN ignores edge topology | **Critical** | L2: max delta 0.013 across all edge types | Enable gnn_prefix_k=48; remove complexity forces the model to find structure |
+| Complexity proxy dominates all classes | **Critical** | L4: 34-36% all classes, zero class-specific elevation | `--drop-complexity-feature` |
+| GNN ignores edge topology | **Critical** | L2: max delta 0.013 across all edge types | Remove complexity forces structural learning; `--appnp-alpha 0.2` preserves CEI signal |
 | JK near-uniform, no class routing | High | L1: entropy 99.5% max | λ=0.0075; optional JK routing loss |
 | DoS noise masks 9-class plateau | Medium | Run 7 training analysis §5 | Stratified sampler; DoS-aware patience |
 | BUG-SL-1 (silent structured logger failure) | High | analysis doc §10 | 1-line fix in training_logger.py |
-| gnn_prefix_k disabled | Medium | Run 7 config: gnn_prefix_k=0 | --gnn-prefix-k 48 |
+| gnn_prefix_k disabled | Medium | Run 7 config: gnn_prefix_k=0 | `--gnn-prefix-k 48` |
 | fusion_lr_multiplier too high | Low | Recurring spikes 0.09–0.165 at step 100–200 | 0.5 → 0.3 |
+| CEI signal dilution in Phase 2 (~1.5 effective CF hops) | High | PHASE2-RECEPTIVE-FIELD-ANALYSIS.md §2 | `--appnp-alpha 0.2` teleport |
+| aux_phase2 pools over READ+OTHER (CEI noise) | Medium | audit §2.2 A-8 | CEI-only pooling (CALL+WRITE+CHECK) |
+| compute_pos_weight wasted with ASL | Low | audit BUG-I2 | Guarded behind `loss_fn != "asl"` |
+| Shared cache bypasses integrity validation | Medium | audit BUG-P4 | Cache loaded via DualPathDataset init |
+| 227 graphs (0.55%) truncated at 1024 nodes | Low | audit BUG-C4 | `--fusion-max-nodes 2048` (default) |
 
 ---
 
-## Part 2 — Immediate Pre-Run 8 Actions (ordered)
+## Part 2 — Pre-Launch Checklist (ALL COMPLETE ✅)
 
-### Step 1: Fix BUG-SL-1 (5 minutes)
+### Step 1: ✅ BUG-SL-1 FIXED (2026-06-04)
 
-**File:** `ml/src/training/training_logger.py`, line 305
+`ml/src/training/training_logger.py:305` — `head = getattr(head, "_orig_mod", head)` unwraps torch.compile OptimizedModule before `head[-1]`. Structured epoch data (AUC/Brier/ECE) live in Run 8.
 
-**Current code:**
-```python
-head = getattr(model, "aux_phase2", None)
-if head is None:
-    return result
-# aux_phase2 is nn.Sequential — inspect the final Linear layer
-final_linear = head[-1]
-```
+### Step 2: ✅ Core code changes IMPLEMENTED (2026-06-05)
 
-**Fixed code:**
-```python
-head = getattr(model, "aux_phase2", None)
-if head is None:
-    return result
-head = getattr(head, "_orig_mod", head)   # unwrap torch.compile wrapper
-final_linear = head[-1]
-```
+See Part 7 for the full list. Key: `--drop-complexity-feature`, `--appnp-alpha`, CEI pooling, BUG-P4 fix.
 
-**Verify:** Run `python -c "import torch; seq = torch.nn.Sequential(torch.nn.Linear(10,5)); wrapped = torch._dynamo.eval_frame.OptimizedModule(seq, None); inner = getattr(wrapped, '_orig_mod', wrapped); print(inner[-1])"` — should print the Linear layer without error.
+### Step 3: ✅ BUG-C4 QUANTIFIED (2026-06-05)
 
-### Step 2: Run Threshold Calibration
+- >1024 nodes: 227 graphs (0.55%) — max=1,735
+- >2048 nodes: 0 graphs (0.00%)
+- Decision: `--fusion-max-nodes 2048` (now the default in TrainConfig and train.py)
 
-```bash
-source ml/.venv/bin/activate
-TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/calibration/calibrate_thresholds.py \
-  --checkpoint ml/checkpoints/GCB-P1-Run7-v10-20260603_best.pt \
-  --out ml/calibration/temperatures_run7.json \
-  --split val
-```
+### Step 4: ✅ Run 7 Thresholds Extracted (2026-06-05)
 
-Expected output: per-class optimal thresholds, should show DoS threshold ~0.20–0.24 (not 0.35), consistent with the +0.032 tuned/fixed F1 gap.
+Best checkpoint (ep39) did not have `tuned_thresholds` cached (ep39 is not a multiple of `threshold_tune_interval=10`). Computed via `ml/scripts/tune_threshold.py` on the full validation set (6,236 samples).
 
-### Step 3: Close MLflow Ghost Run
+Output: `ml/calibration/temperatures_run7.json`
 
-```bash
-source ml/.venv/bin/activate
-mlflow runs set-terminated \
-  --run-id 541345bab6864f738e484794122607bc \
-  --status KILLED
-```
+**Per-class tuned thresholds (F1-macro tuned = 0.3423):**
 
-### Step 4: Quantify BUG-C4 (node truncation scope)
+| Class | Threshold | F1 | Precision | Recall |
+|-------|-----------|-----|-----------|--------|
+| CallToUnknown | 0.35 | 0.266 | 0.164 | 0.713 |
+| **DenialOfService** | **0.45** | **0.457** | **0.600** | **0.369** |
+| ExternalBug | 0.35 | 0.270 | 0.164 | 0.757 |
+| GasException | 0.40 | 0.392 | 0.271 | 0.708 |
+| **IntegerUO** | **0.50** | **0.731** | **0.706** | **0.757** |
+| MishandledException | 0.35 | 0.324 | 0.206 | 0.757 |
+| Reentrancy | 0.40 | 0.322 | 0.228 | 0.548 |
+| Timestamp | 0.40 | 0.166 | 0.139 | 0.205 |
+| TransactionOrderDependence | 0.35 | 0.257 | 0.158 | 0.692 |
+| UnusedReturn | 0.35 | 0.239 | 0.147 | 0.624 |
 
-```bash
-source ml/.venv/bin/activate
-TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python - <<'EOF'
-import torch
-from pathlib import Path
+**Key observations:** DoS needs 0.45 (high-precision mode for rare class), IntegerUO needs 0.50 (well-calibrated). Most structural-ceiling classes sit at 0.35 with high recall / low precision — they fire broadly but hit correctly only ~16-20% of the time. Timestamp at F1=0.166 confirms the structural ceiling.
 
-graph_dir = Path("ml/data/graphs")
-splits = {
-    "train": open("ml/data/splits/v10_deduped/train.txt").read().splitlines(),
-    "val":   open("ml/data/splits/v10_deduped/val.txt").read().splitlines(),
-}
-threshold = 1024
+### Step 5: ✅ MLflow Ghost Run Closed (2026-06-05)
 
-for split_name, ids in splits.items():
-    over = 0
-    for cid in ids:
-        pt = graph_dir / f"{cid}.pt"
-        if not pt.exists():
-            continue
-        g = torch.load(pt, map_location="cpu", weights_only=True)
-        n = g.x.shape[0] if hasattr(g, "x") else 0
-        if n > threshold:
-            over += 1
-    print(f"{split_name}: {over}/{len(ids)} graphs > {threshold} nodes ({over/len(ids)*100:.2f}%)")
-EOF
-```
-
-**Decision rule:** If >1% of train graphs exceed 1024 nodes, increase `fusion_max_nodes=2048` for Run 8.
+Run `541345bab6864f738e484794122607bc` terminated with status KILLED via `mlflow.tracking.MlflowClient().set_terminated()`.
 
 ---
 
-## Part 3 — Run 8 Core Change: Remove `complexity` Feature
+## Part 3 — Run 8 Core Changes
 
-This is the most impactful change. The model cannot learn class-specific structural patterns while `complexity` provides a good-enough universal proxy.
+### 3.1 `--drop-complexity-feature` ✅
 
-### Option A (Recommended): Zero-out complexity at model input
-
-**Rationale:** Preserves the v8 schema on disk (no re-extraction), backward-compatible with all existing .pt graph files. Implemented in `GNNEncoder.forward()` by masking `feat[5]=0` before embedding.
-
-**File:** `ml/src/models/gnn_encoder.py`, in the `forward()` method, just before the type embedding is concatenated.
-
-Locate the section that builds the input tensor (around the `forward` method where `x` is the raw feature matrix). Add:
-
+Zeroes feat[5] at GNN input. Implemented in `GNNEncoder.forward()` after dtype normalization:
 ```python
-# Run 8: zero-out complexity (feat[5]) — universal proxy suppression (L4/B4)
-# complexity dominated all 10 class gradients at 34-36%; removing it forces
-# the model to use class-specific features (return_ignored, external_call_count, etc.)
-x = x.clone()
-x[:, 5] = 0.0
+if self.drop_complexity:
+    x = x.clone()   # clone is mandatory — .to() no-op if dtype matches
+    x[:, 5] = 0.0
 ```
+`.clone()` is critical: without it, in-place zeroing corrupts the cached graph tensor for all batches sharing the same sample.
 
-Place this **before** the skip-connection Linear and type embedding concatenation, at the top of `forward()` after input validation.
+**What to expect:** F1 drops for ep1–15 (shortcut gone). Recovery begins ep15–25 as `return_ignored`, `external_call_count`, `uses_block_globals` become discriminative.
 
-**Add a train.py flag to enable/disable:**
+### 3.2 `--appnp-alpha 0.2` ✅
 
-```bash
---drop-complexity-feature   # bool flag, default False for backward compat
+APPNP-style Phase 1 teleport applied at each of the 3 Phase 2 layers:
+```python
+x = 0.2 * phase1_output.detach() + 0.8 * x
 ```
+Prevents CEI signal dilution. Without teleport, CHECK signal reaching a WRITE node after 2 CF hops = <4% of original magnitude (diluted by avg_degree^k ≈ 5^2). Teleport keeps Phase 1 structural signal ≥20% at every Phase 2 layer.
 
-Pass to GNNEncoder constructor as `drop_complexity: bool = False` and implement the masking conditionally.
+`detach()` prevents gradient shortcut back to Phase 1 — Phase 1 gradients still flow only through JK aggregation.
 
-### Option B: Normalize complexity relative to batch
+### 3.3 CEI-Only aux_phase2 Pooling ✅
 
-Subtract the batch mean: `x[:, 5] = x[:, 5] - x[:, 5].mean()`. This removes the absolute scale information while preserving relative complexity within a batch. Less aggressive than full removal but also less likely to force the model to find alternative features.
+`aux_phase2` now pools over CFG_NODE_CALL + CFG_NODE_WRITE + CFG_NODE_CHECK only (types 8, 9, 11) instead of all 5 CFG types. READ and OTHER nodes dilute the CEI signal in the mean pool. The `cfg_eye` (4th classifier eye) still uses all 5 CFG types.
 
-**Recommendation:** Use Option A (zero-out) for Run 8. If it causes regression on IntegerUO (which legitimately uses complexity as one signal), fall back to Option B.
+New constant: `_CEI_IDS_CPU` in `sentinel_model.py`.
 
-### What to expect after removing complexity
+### 3.4 Option B (fallback, not active): Normalize complexity
 
-- First 5–10 epochs: F1 will drop below Run 7 ep1 levels. The model's easy shortcut is gone.
-- Epochs 10–20: The model should start learning `return_ignored`, `external_call_count`, `uses_block_globals` as discriminative signals — these are the features that were being suppressed.
-- If the model doesn't recover by ep25: the remaining 10 features are insufficient and we need to revisit the feature set, not add complexity back.
-- IntegerUO may temporarily regress (it was the class most appropriately using complexity-like signals for arithmetic overflow patterns).
+If `--drop-complexity-feature` causes catastrophic IntegerUO regression past ep25 with no recovery, batch-normalize feat[5]: `x[:, 5] = x[:, 5] - x[:, 5].mean()`. Preserves relative complexity but breaks the global-proxy shortcut. Use only as fallback.
 
 ---
 
@@ -196,9 +162,8 @@ source ml/.venv/bin/activate
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
   --run-name    GCB-P1-Run8-v10-20260605 \
   --experiment-name sentinel-multilabel \
-  --data-dir    ml/data \
-  --split-dir   ml/data/splits/v10_deduped \
-  --cache-file  ml/data/cached_dataset_v10.pkl \
+  --splits-dir  ml/data/splits/v10_deduped \
+  --cache-path  ml/data/cached_dataset_v10.pkl \
   --epochs      100 \
   --batch-size  8 \
   --gradient-accumulation-steps 8 \
@@ -209,63 +174,65 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
   --gnn-prefix-warmup-epochs 5 \
   --jk-entropy-reg-lambda  0.0075 \
   --aux-loss-weight       0.30 \
-  --aux-loss-warmup-epochs 8 \
-  --aux-phase2-weight     0.20 \
+  --aux-phase2-loss-weight 0.20 \
   --threshold-tune-interval 10 \
-  --patience 30 \
+  --early-stop-patience 30 \
   --drop-complexity-feature \
+  --appnp-alpha 0.2 \
   2>&1 | tee /tmp/run8_v10.log
 ```
+
+> All argument names verified against `train.py` argparse (2026-06-05). `--fusion-max-nodes` defaults to 2048 — no need to pass explicitly.
 
 ### Parameter delta from Run 7
 
 | Parameter | Run 7 | Run 8 | Reason |
 |-----------|-------|-------|--------|
-| `--gnn-prefix-k` | 0 (disabled) | **48** | L4/L2: structural priming was off; enables GNN→transformer early communication |
-| `--fusion-lr-multiplier` | 0.5 | **0.3** | Recurring early-epoch fusion spikes (0.09–0.165); 4-eye arch routes more loss through fusion |
-| `--jk-entropy-reg-lambda` | 0.005 | **0.0075** | A3/L1: Phase3 drifted to 0.395; stronger entropy reg to hold diversity |
 | `--drop-complexity-feature` | absent | **present** | L4/B4: complexity proxy suppression — the core change |
-
-Everything else unchanged (same data, same splits, same batch size, same aux warmup schedule).
+| `--appnp-alpha` | absent | **0.2** | CEI signal dilution fix: ~1.5 effective CF hops → guaranteed ≥20% Phase 1 anchor at every Phase 2 layer |
+| `--gnn-prefix-k` | 0 (disabled) | **48** | L4/L2: structural priming was off; enables GNN→transformer early communication |
+| `--fusion-lr-multiplier` | 0.5 | **0.3** | Recurring early-epoch fusion spikes (0.09–0.165) |
+| `--jk-entropy-reg-lambda` | 0.005 | **0.0075** | A3/L1: Phase3 drifted to 0.395; stronger entropy reg |
+| `--fusion-max-nodes` | 1024 | **2048 (default)** | BUG-C4: 227 graphs (0.55%) truncated |
+| CEI-only aux_phase2 pooling | all 5 CFG types | **CALL+WRITE+CHECK** | Reduces dilution by READ+OTHER in mean pool |
 
 ---
 
 ## Part 5 — Monitoring Checklist for Run 8
 
-After BUG-SL-1 is fixed, structured epoch data will be live again. Watch for:
+After BUG-SL-1 fix, structured epoch data is live again. Watch these signals:
 
 ### Green indicators
-- `ph2_ph1_grad_ratio` stays in 0.6–0.9 range (B1 confirmed healthy in Run 7; should stay)
-- `jk_phase3_weight` < 0.40 throughout (stronger λ=0.0075 should prevent hitting 0.395 again)
-- `val_f1_macro_tuned` > `val_f1_macro` gap begins closing after ep10 (calibration improving)
-- Per-class ECE in structured logger < 0.05 for individual eyes (B2 baseline was 0.040–0.046)
-- `return_ignored` gradient saliency rising above 0.10 for UnusedReturn (run L4 at ep15, ep30)
-- Reentrancy F1 > 0.33 by ep20 (was still improving in Run 7, this should continue)
+- `ph2_ph1_grad_ratio` stays 0.6–0.9 (B1 confirmed healthy in Run 7; should persist)
+- `jk_phase3_weight` < 0.40 throughout (λ=0.0075 should prevent hitting 0.395 again)
+- `val_f1_macro_tuned` > `val_f1_macro` gap narrowing after ep10
+- Per-class ECE < 0.05 for individual eyes (B2 baseline was 0.040–0.046)
+- `return_ignored` gradient saliency rising above 0.10 for UnusedReturn by ep15 (run L4-style probe)
+- Reentrancy F1 > 0.33 by ep20 (was still improving in Run 7)
 
 ### Red indicators (stop and investigate)
-- `jk_phase3_weight` > 0.42 for two consecutive epochs + `jk_phase1_weight` < 0.26 → JK collapse risk; raise λ further or add JK routing loss
-- Any class F1 drops below its Run 7 ep10 baseline for more than 5 consecutive epochs after ep15 → complexity removal may have broken that class; investigate feature saliency
-- `complexity` masking verification: run L4-style gradient saliency at ep5. If complexity still shows 30%+ saliency, the masking isn't working (check the x.clone() + zero-out code path is actually executing)
-- `gnn_grad_share` < 15% after ep10 → prefix injection may be destabilising the transformer; reduce `--gnn-prefix-k` to 24
-- `fusion_grad_norm` spikes > 0.12 still appearing despite multiplier=0.3 → reduce further to 0.2
+- `jk_phase3_weight` > 0.42 for two consecutive epochs + `jk_phase1_weight` < 0.26 → JK collapse risk; raise λ further
+- Any class F1 below Run 7 ep10 baseline for >5 consecutive epochs after ep15 → investigate feature saliency
+- L4-style probe at ep5: if `complexity` still shows 30%+ saliency, the `x.clone()` + zero-out path is not executing — check `drop_complexity=True` in model
+- `gnn_grad_share` < 15% after ep10 → prefix injection destabilising transformer; reduce `--gnn-prefix-k` to 24
+- `fusion_grad_norm` spikes > 0.12 still appearing → reduce `--fusion-lr-multiplier` to 0.2
 
 ### Epoch milestones
 
-| Milestone | When | What to check |
-|-----------|------|---------------|
-| Complexity masking live | ep1 | Verify via L4-style 1-batch gradient probe: `complexity` saliency should be ~0% |
+| Milestone | Epoch | What to check |
+|-----------|-------|---------------|
+| Complexity masking live | ep1 | L4-style 1-batch gradient probe: `complexity` saliency ≈ 0% |
 | Gradient share settling | ep5 | GNN share should be 80%+ early (LoRA cold), dropping by ep10 |
-| Feature learning begins | ep10 | `return_ignored` and `external_call_count` saliency should be visibly higher than in Run 7 |
-| Threshold tune 1 | ep10 | `val_f1_macro_tuned` gap should narrow vs Run 7 (better calibration from the start) |
+| Feature learning begins | ep10 | `return_ignored` and `external_call_count` saliency visibly higher than Run 7 |
+| Threshold tune 1 | ep10 | `val_f1_macro_tuned` gap narrowing vs Run 7 baseline |
 | JK entropy check | ep20 | Phase3 should be < 0.37 (vs Run 7's 0.379 at ep20) |
 | Break-even with Run 7 | ep25 | `val_f1_macro` should match Run 7 ep20 (0.287) or better |
-| First ceiling check | ep30 | Run B4-style UnusedReturn probe: is `return_ignored` rising in rank? |
+| First ceiling check | ep30 | B4-style UnusedReturn probe: is `return_ignored` rising in rank? |
+| APPNP effectiveness | ep30 | E1-style CEI reachability probe: is Reentrancy F1 > 0.35? |
 
 ---
 
 ## Part 6 — Optional Additions (Not Required for Run 8 to Start)
-
-These would improve Run 8 further but carry implementation risk. Add only if the core changes are implemented cleanly.
 
 ### 6.1 Auxiliary JK Routing Loss
 
@@ -275,79 +242,82 @@ These would improve Run 8 further but carry implementation risk. Add only if the
 ```python
 # In trainer.py, after the main loss is computed:
 jk_weights = model.gnn.jk_agg.last_weights  # [B, 3]
-# Target: maximize variance of JK weights across samples in the batch
-# Loss = -var(jk_weights, dim=0).mean()  → penalise uniform weights
 jk_routing_loss = -jk_weights.var(dim=0).mean()
 loss = loss + jk_routing_lambda * jk_routing_loss
 ```
-
-**Risk:** Could destabilise early training if λ is too high. Start with `jk_routing_lambda=0.001` and monitor `jk_phase1/2/3_std` in MLflow.
 
 **Status:** Optional. Implement only if Run 8 ep20 still shows JK entropy > 1.09.
 
 ### 6.2 DEF_USE Edges (RC5)
 
-**Motivation:** L2 showed even removing DEF_USE barely hurts predictions (delta 0.010 for IntegerUO) — but that's because the current model doesn't USE them. After removing complexity, the model will need structural paths to discriminate classes. DEF_USE edges are the ones designed specifically for UnusedReturn (trace return value consumption) and Reentrancy (track state mutations across call boundaries).
+**Motivation:** After removing complexity, the model will need structural paths to discriminate classes. DEF_USE edges are designed specifically for UnusedReturn (return value consumption trace) and Reentrancy (state mutations across call boundaries).
 
-**Status:** Deferred. RC5 requires graph re-extraction (new graph builder, new cache). Start Run 8 without it. If Run 8 shows the model finally using other edge types (L2 run at ep30), add DEF_USE for Run 9.
+**Status:** Deferred. RC5 requires graph re-extraction. Start Run 8 without it. If Run 8 ep30 L2 shows model finally using edge topology, add DEF_USE for Run 9.
 
 ### 6.3 Stratified DoS Sampler
 
-**Motivation:** DoS has 65 val positives and ~216 train positives (estimated). The DoS F1 noise floor (±0.008/epoch) makes it impossible to detect improvements in early stopping.
+**Motivation:** DoS has 65 val positives. The ±0.008/epoch F1 noise floor makes detecting improvements in early stopping unreliable.
 
-**Implementation:** Weight DoS-positive samples by `total_samples / (10 * dos_count)` in the training sampler. Already available infrastructure via `timestamp_sampler` in Run 5 — apply same pattern to DoS.
-
-**Status:** Optional. The 30-epoch patience handles the noise correctly. Add if Run 8's early stopping triggers prematurely on DoS crashes.
-
-### 6.4 fusion_max_nodes=2048
-
-**Motivation:** BUG-C4. Quantify first (Step 4 above). If >1% of graphs exceed 1024 nodes, the CrossAttentionFusion is silently dropping nodes from large contracts.
-
-**Cost:** Doubles VRAM for the fusion layer (~400MB on RTX 3070). Will it fit? Current peak VRAM in Run 7 was ~7.2GB on an 8GB card. 2048 fusion adds ~300–400MB. May require `--batch-size 6` or `--gradient-accumulation-steps 10` to compensate.
-
-**Status:** Decide after quantifying BUG-C4 scope.
+**Status:** Optional. 30-epoch patience handles it. Add only if early stopping triggers prematurely on DoS crashes.
 
 ---
 
 ## Part 7 — Code Change Summary
 
-### Required (must do before Run 8)
+### Core (Required) — ALL DONE ✅
 
-| File | Change | Lines |
-|------|--------|-------|
-| `ml/src/training/training_logger.py` | BUG-SL-1: add `head = getattr(head, "_orig_mod", head)` | ~305 |
-| `ml/src/models/gnn_encoder.py` | Add `drop_complexity: bool` constructor arg and masking in `forward()` | ~160, ~395 |
-| `ml/scripts/train.py` | Add `--drop-complexity-feature` flag, wire to GNNEncoder | ~217 |
+| File | Change | Status |
+|------|--------|--------|
+| `ml/src/training/training_logger.py:304` | BUG-SL-1: `head = getattr(head, "_orig_mod", head)` | ✅ 2026-06-04 |
+| `ml/src/models/gnn_encoder.py` | `drop_complexity` param + `x[:, 5]=0.0` in `forward()` | ✅ 2026-06-05 |
+| `ml/src/models/gnn_encoder.py` | `appnp_alpha` param + Phase 2 teleport at each of 3 layers | ✅ 2026-06-05 |
+| `ml/src/models/sentinel_model.py` | `drop_complexity_feature` + `appnp_alpha` → GNNEncoder | ✅ 2026-06-05 |
+| `ml/src/models/sentinel_model.py` | `_CEI_IDS_CPU` constant; `aux_phase2` pools CALL+WRITE+CHECK only | ✅ 2026-06-05 |
+| `ml/src/training/trainer.py` | `TrainConfig.drop_complexity_feature` + `appnp_alpha` + `fusion_max_nodes=2048` | ✅ 2026-06-05 |
+| `ml/src/training/trainer.py` | `compute_pos_weight` guarded behind `loss_fn != "asl"` (BUG-I2) | ✅ 2026-06-05 |
+| `ml/src/training/trainer.py` | Cache loaded via `DualPathDataset(cache_path=...)` — fixes BUG-P4 bypass | ✅ 2026-06-05 |
+| `ml/scripts/train.py` | `--drop-complexity-feature` + `--appnp-alpha` flags; `fusion_max_nodes` default=2048 | ✅ 2026-06-05 |
+| `ml/src/inference/predictor.py` | Reads `drop_complexity_feature` + `appnp_alpha` + `gnn_phase2_edge_types` from saved_cfg | ✅ 2026-06-05 |
+| `ml/scripts/tune_threshold.py` | `gnn_phase2_edge_types`, `fusion_max_nodes`, `drop_complexity_feature`, `appnp_alpha` in model load | ✅ 2026-06-05 |
 
-### Optional
+### Secondary Fixes — DONE ✅
+
+| File | Change | Finding |
+|------|--------|---------|
+| `ml/src/training/trainer.py` | `use_weighted_sampler` default: `"positive"` → `"timestamp-size"` | TrainConfig/CLI mismatch |
+| `ml/src/training/trainer.py` | `import math` moved to module level | F15 |
+| `ml/scripts/train.py` | `--aux-cei-loss-weight` help text updated (non-functional placeholder) | F3 |
+
+### Optional (Not blocking Run 8)
 
 | File | Change | Condition |
 |------|--------|-----------|
 | `ml/src/training/trainer.py` | JK routing loss term | Only if ep20 JK still near-uniform |
-| `ml/scripts/train.py` | `--jk-routing-lambda` arg | Same |
-| `ml/src/models/sentinel_model.py` | `fusion_max_nodes=2048` | Only if >1% graphs exceed 1024 nodes |
+| `ml/src/training/trainer.py` | `gnn_to_bert_proj`+`prefix_type_embedding` in torch.compile list | Performance only |
 
 ---
 
 ## Part 8 — Expectations for Run 8
 
 ### What should improve
-- **UnusedReturn**: Should rise from 0.234 toward 0.28–0.32 if `return_ignored` becomes discriminative after complexity removal
-- **Reentrancy**: Was still improving at +0.036 per 30 epochs; with better CFG priming (gnn_prefix_k=48) should accelerate
-- **GasException**: Structurally detectable class; should benefit from Phase2 having more stable gradient
-- **Timestamp**: Modest improvement possible if `uses_block_globals` rises in saliency; still bounded without data-flow provenance
+- **UnusedReturn**: 0.234 → 0.28–0.32. `return_ignored` should become discriminative after complexity removal.
+- **Reentrancy**: Was still improving at +0.036/30ep. With APPNP teleport (CEI signal preserved) + gnn_prefix_k=48 should accelerate.
+- **GasException**: Structurally detectable; benefits from stable Phase 2 gradient.
+- **Timestamp**: Modest (+0.02–0.04) if `uses_block_globals` rises in saliency; still bounded without per-CFG-node inheritance (Run 9).
 
 ### What won't change
 - **TransactionOrderDependence, ExternalBug**: Cross-contract reasoning ceiling. Same 0.245–0.250 expected.
-- **DoS noise floor**: 65 val positives, same prevalence. F1 will still oscillate ±0.008/epoch.
+- **DoS noise floor**: 65 val positives, same prevalence. F1 oscillates ±0.008/epoch regardless.
 
-### What could regress
-- **IntegerUO (first 10 epochs)**: Uses complexity legitimately for arithmetic-heavy functions. Will drop initially, should recover as the model finds alternative signals in `has_loop` + `external_call_count`.
-- **Macro F1 epochs 1–15**: Lower than Run 7 at the same epochs. The complexity proxy gave fast early F1; losing it means slower start. Don't panic until ep20.
+### What could regress (temporarily)
+- **IntegerUO (ep1–15)**: Uses complexity legitimately for arithmetic-heavy functions. Drops initially, recovers as `has_loop` + `external_call_count` substitute. If still below Run 7 ep10 at ep25, complexity removal may be net negative for this class.
+- **Macro F1 ep1–15**: Lower than Run 7 at same epochs. The complexity proxy gave fast early F1; the model now starts from scratch structurally.
 
 ### Target
-F1-macro (tuned) > 0.36 at ep30, > 0.38 at ep50. Run 7 tuned was 0.3329 at ep40. With complexity removed and class-specific features active, a 10–15% lift from the structural classes is realistic.
+- F1-macro (tuned) > 0.36 at ep30, > 0.38 at ep50
+- Run 7 tuned was 0.3329 at ep40. With complexity removed and class-specific features active, 10–15% lift from structural classes is realistic.
+- If F1-macro (fixed) < 0.25 at ep20 → abort, add back complexity as normalised (Option B)
 
 ---
 
-*Generated from Run 7 analysis (`docs/training/GCB-P1-Run7-analysis-2026-06-04.md`) and Phase 2 interpretability (`docs/interpretability/SENTINEL-Understanding-Run7.md`). All experiment references (L1, L2, L4, B1, B2, B3, B4) correspond to `docs/interpretability/EXPERIMENT_INDEX.md`.*
+*Based on Run 7 analysis (`docs/training/GCB-P1-Run7-analysis-2026-06-04.md`) and Phase 2 interpretability (`docs/interpretability/SENTINEL-Understanding-Run7.md`). Experiment references (L1, L2, L4, B1–B4, A3) correspond to `docs/interpretability/EXPERIMENT_INDEX.md`. Audit findings (A-2, A-3, A-8, D-5, D-6, BUG-P4 etc.) from `docs/pre-run8-fixes/OFFLINE-PIPELINE-AUDIT-VERIFIED.md`.*
