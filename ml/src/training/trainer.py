@@ -55,6 +55,7 @@ Fix #35 — Safe resume: RNG states (torch/CUDA/numpy/python) and per-class
 from __future__ import annotations
 import gc
 import json
+import math
 import os
 import random
 import time
@@ -195,9 +196,9 @@ class TrainConfig:
     num_classes:       int   = NUM_CLASSES
     fusion_output_dim: int   = 128
     fusion_dropout:    float = 0.3
-    # IMP-D1: raise to 2048 after re-extraction with max_nodes=2048.
-    # At 1024 the 227 contracts >1024 nodes are truncated in fusion attention.
-    fusion_max_nodes:  int   = 1024
+    # Run 8: raised to 2048. BUG-C4: 227 contracts (0.55%) exceed 1024 nodes (max=1735).
+    # No re-extraction needed — only affects CrossAttentionFusion dense padding.
+    fusion_max_nodes:  int   = 2048
 
     # --- GNN architecture (v8) ---
     gnn_hidden_dim:   int   = 256
@@ -285,9 +286,9 @@ class TrainConfig:
     use_compile:         bool = True
 
     # --- Loss function ---
-    # ASL (Ridnik et al. ICCV 2021): gamma_neg=4 down-weights easy negatives
-    # (vast majority of 44K×10 cells), freeing gradient budget for rare positives
-    # like DoS (377 train samples). Default since v6; BCE was used before that.
+    # ASL (Ridnik et al. ICCV 2021): gamma_neg=2.0 down-weights easy negatives
+    # (vast majority of ~41K×10 cells), freeing gradient budget for rare positives
+    # like DoS (243 train samples). Default since v6; BCE was used before that.
     loss_fn:        str   = "asl"
     focal_gamma:    float = 2.0
     focal_alpha:    float = 0.25
@@ -335,6 +336,17 @@ class TrainConfig:
     pos_weight_cap: float = 10.0  # M-1/H-4: cap on sqrt-scaled pos_weight; was 20.0
     pos_weight_min_samples: int = 3000  # classes with ≥3000 train positives get pos_weight=1.0 (BUG-H3: Reentrancy 2.82× amplification dominated gradient)
 
+    # --- Run 8: complexity-proxy suppression ---
+    # Zero feat[5] (complexity = log1p(cfg_block_count)/log1p(100)) at GNN input.
+    # L4 experiment: complexity dominates all 10 classes at 34-36% gradient share.
+    drop_complexity_feature: bool = False
+
+    # --- Run 8: APPNP Phase 1 teleport ---
+    # At each Phase 2 layer: x = α * phase1_output.detach() + (1-α) * x
+    # Prevents CEI signal dilution: CHECK→CALL→WRITE signal decays to <1% after 3 hops
+    # without teleport; teleport keeps Phase 1 structural signal ≥α at every layer.
+    appnp_alpha: float = 0.0  # 0.0 = disabled; 0.2 recommended for Run 8
+
     # --- GNN prefix injection (Phase 1) ---
     # gnn_prefix_k=0 disables prefix entirely — identical to original model.
     # During warmup epochs the prefix is suppressed (None path); projection trains
@@ -373,7 +385,7 @@ class TrainConfig:
 
     # --- Autoresearch harness knobs ---
     smoke_subsample_fraction: float = 1.0
-    use_weighted_sampler:     str   = "positive"  # "positive"=3× weight on any-vuln rows; "DoS-only"; "all-rare"; "none" (BUG-H10: 60% zero-label rows trained at natural frequency)
+    use_weighted_sampler:     str   = "timestamp-size"  # align with train.py CLI default (was "positive" — mismatch with argparse caused test/prod sampler divergence)
 
     def __post_init__(self) -> None:
         # Phase 0-A4 (2026-05-14): Relaxed hard raise to conditional guard.
@@ -720,8 +732,7 @@ def train_one_epoch(
             if jk_entropy_reg_lambda > 0.0:
                 _jk_ent = aux.get("jk_entropy") if isinstance(aux, dict) else None
                 if _jk_ent is not None:
-                    import math
-                    _H_max = math.log(3)
+                    _H_max = math.log(3)  # maximum entropy for K=3 JK phases
                     _jk_reg = jk_entropy_reg_lambda * (_H_max - _jk_ent.clamp(max=_H_max))
                     loss = loss + _jk_reg / _actual_window
 
@@ -1062,28 +1073,18 @@ def train(config: TrainConfig) -> dict:
         raise FileNotFoundError(f"label_csv not found: {label_csv_path}.")
     cache_path = Path(config.cache_path) if config.cache_path else None
 
-    # Load the cache once and share the dict between train and val datasets.
-    # Both datasets cover disjoint subsets of the same cache — there is no
-    # correctness reason to load it twice. Sharing halves cache RAM usage
-    # (2.28 GB → once instead of twice = saves ~2.28 GB in the main process).
-    _shared_cache: dict | None = None
-    if cache_path is not None and cache_path.exists():
-        import pickle
-        logger.info(f"Loading shared cache: {cache_path} ...")
-        with open(cache_path, "rb") as _f:
-            _shared_cache = pickle.load(_f)
-        logger.info(f"Shared cache loaded: {len(_shared_cache)} entries")
-
+    # Load the cache through DualPathDataset so schema-version and 10-hash integrity
+    # checks always run (BUG-P4 fix). The train dataset loads and validates the full
+    # cache dict; val dataset then shares the already-validated reference to avoid
+    # double RAM (2.5 GB saved) without bypassing any validation.
     logger.info("Creating training dataset...")
     train_dataset = DualPathDataset(
         graphs_dir=config.graphs_dir,
         tokens_dir=config.tokens_dir,
         indices=train_indices.tolist(),
         label_csv=label_csv_path,
-        cache_path=None,  # shared below
+        cache_path=cache_path,  # DualPathDataset runs schema + 10-hash integrity checks
     )
-    if _shared_cache is not None:
-        train_dataset.cached_data = _shared_cache
     logger.info(f"Train dataset cache loaded: {train_dataset.cached_data is not None}")
 
     logger.info("Creating validation dataset...")
@@ -1092,10 +1093,10 @@ def train(config: TrainConfig) -> dict:
         tokens_dir=config.tokens_dir,
         indices=val_indices.tolist(),
         label_csv=label_csv_path,
-        cache_path=None,  # shared below
+        cache_path=None,  # share validated dict from train_dataset — no double load
     )
-    if _shared_cache is not None:
-        val_dataset.cached_data = _shared_cache
+    if train_dataset.cached_data is not None:
+        val_dataset.cached_data = train_dataset.cached_data
 
     _use_workers = config.num_workers > 0
     _loader_kwargs: dict = dict(
@@ -1131,13 +1132,18 @@ def train(config: TrainConfig) -> dict:
         f"grad_accum: {accum_steps} | effective_batch: {effective_bs}"
     )
 
-    if label_csv_path is not None:
+    if label_csv_path is not None and config.loss_fn != "asl":
         # [A36] Use in-memory dataset labels — no redundant CSV read.
+        # ASL handles class imbalance internally via asymmetric gamma — adding pos_weight
+        # on top causes double-amplification (see comment at ASL constructor below).
         pos_weight = compute_pos_weight(train_dataset, config.num_classes, device,
                                         pos_weight_min_samples=config.pos_weight_min_samples,
                                         pos_weight_cap=config.pos_weight_cap)
     else:
-        logger.info("Binary mode (label_csv=None) — pos_weight not computed.")
+        if config.loss_fn == "asl":
+            logger.info("ASL loss — pos_weight not computed (ASL handles imbalance internally).")
+        else:
+            logger.info("Binary mode (label_csv=None) — pos_weight not computed.")
         pos_weight = None
 
     model = SentinelModel(
@@ -1160,6 +1166,8 @@ def train(config: TrainConfig) -> dict:
         gnn_prefix_k=config.gnn_prefix_k,
         gnn_prefix_warmup_epochs=config.gnn_prefix_warmup_epochs,
         fusion_max_nodes=config.fusion_max_nodes,
+        drop_complexity_feature=config.drop_complexity_feature,
+        appnp_alpha=config.appnp_alpha,
     ).to(device)
 
     # C-1: Verify GNN conv layers are float32 (BF16 global dtype pollution check).

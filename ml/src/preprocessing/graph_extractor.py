@@ -6,13 +6,13 @@ WHAT THIS MODULE DOES
 Provides the single, authoritative implementation of the AST-to-graph
 conversion used by both SENTINEL pipelines:
 
-  Offline (batch)  ml/src/data_extraction/ast_extractor.py
-                     Processes ~44K training contracts in parallel.
+  Offline (batch)  ml/scripts/reextract_graphs.py
+                     Processes ~41K training graphs in parallel.
                      Writes .pt files. Returns None on failure (skip and log).
 
   Online (inference)  ml/src/inference/preprocess.py
-                        Processes one contract per API request.
-                        Raises typed exceptions for HTTP error translation.
+                         Processes one contract per API request.
+                         Raises typed exceptions for HTTP error translation.
 
 Before this module existed, both files contained identical node/edge feature
 logic. Any change to one required a manual, error-prone update to the other.
@@ -48,8 +48,8 @@ SHAPE CONTRACT  (v8 schema — must match training data)
   Caller-specific metadata (.contract_hash, .contract_path, .y) is NOT set
   here; each caller attaches its own values after the call returns.
 
-V7 SCHEMA (current — 2026-05-18)
-─────────────────────────────────
+V8 SCHEMA (current — 2026-05-24)
+────────────────────────────────
   Node features: 11 dims (in_unchecked dropped — BUG-L2).
     [0]  type_id / 12.0          [1]  visibility (0=pub, 0.5=internal, 1=private)
     [2]  uses_block_globals       [3]  view        [4]  payable
@@ -57,10 +57,14 @@ V7 SCHEMA (current — 2026-05-18)
     [7]  return_ignored           [8]  call_target_typed
     [9]  has_loop                 [10] external_call_count (log1p)
 
-  Edge types: 8 (CALLS=0 READS=1 WRITES=2 EMITS=3 INHERITS=4 CONTAINS=5 CF=6 RC=7).
+  Edge types: 11 (CALLS=0 READS=1 WRITES=2 EMITS=3 INHERITS=4 CONTAINS=5 CF=6 RC=7
+    CALL_ENTRY=8 RETURN_TO=9 DEF_USE=10).
     - EMITS(3):            EventCall IR fallback (BUG-H7)
     - INHERITS(4):         parent nodes added (BUG-H8)
     - REVERSE_CONTAINS(7): runtime-only, flipped from CONTAINS at training time
+    - CALL_ENTRY(8):       v8 ICFG-Lite cross-function call edge
+    - RETURN_TO(9):        v8 ICFG-Lite cross-function return edge
+    - DEF_USE(10):         v8 intra-function data-flow edge
 
   Node types: 13 (ids 0–12, unchanged from v2).
 
@@ -663,15 +667,12 @@ def _build_cfg_node_features(
 
     BUG-C3 FIX: CFG nodes inherit function-level features from parent_features
     (the parent FUNCTION node's feature vector) for dims that are function-scoped:
-        [1] visibility, [3] view, [4] payable, [5] complexity, [10] has_loop.
-    Without inheritance, 9/12 dims were 0.0 for all CFG nodes — statement-level
+        [1] visibility, [3] view, [4] payable, [5] complexity, [9] has_loop.
+    Without inheritance, these dims were 0.0 for all CFG nodes — statement-level
     nodes carried almost no signal, undermining CEI pattern detection.
 
-    CRITICAL: in_unchecked [9] is ALWAYS 0.0 — never inherited from the parent
-    function's flag. If a function has any unchecked block, ALL its child CFG
-    nodes would get 1.0 including statements OUTSIDE the unchecked scope,
-    creating false positives for IntegerUO. The function-level node carries
-    this signal and the GNN propagates it via Phase 1 CONTAINS edges.
+    CRITICAL: in_unchecked was dropped in v7 (BUG-L2) — it is no longer in
+    the feature vector. CFG nodes inherit has_loop [9] from the parent function.
 
     Slither synthetic nodes (ENTRY_POINT, EXPRESSION, BEGIN_LOOP, etc.) with
     no source_mapping and empty IRS are handled correctly: _cfg_node_type()
@@ -1063,13 +1064,13 @@ def _compute_has_cei_path(
 
 def _build_node_features(obj: Any, type_id: int) -> list:
     """
-    Compute the 11-dimensional feature vector (v7 schema) for one AST node.
+    Compute the 11-dimensional feature vector (v8 schema) for one AST node.
 
     Returns list[float] of exactly NODE_FEATURE_DIM (11) elements.
 
-    Feature layout (v7 schema):
+    Feature layout (v8 schema):
       [0]  type_id              — float(NODE_TYPES[kind]) / 12.0, normalised [0,1]
-      [1]  visibility           — VISIBILITY_MAP ordinal 0-2
+      [1]  visibility           — VISIBILITY_MAP ordinal
       [2]  uses_block_globals   — 1.0 if func reads block.timestamp/number/etc.
       [3]  view                 — 1.0 if Function.view
       [4]  payable              — 1.0 if Function.payable

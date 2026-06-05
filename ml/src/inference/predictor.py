@@ -273,6 +273,8 @@ class Predictor:
             gnn_prefix_warmup_epochs=saved_cfg.get("gnn_prefix_warmup_epochs", 15),
             gnn_phase2_edge_types=saved_cfg.get("gnn_phase2_edge_types", None),  # ISSUE-4
             fusion_max_nodes=saved_cfg.get("fusion_max_nodes", 1024),             # ISSUE-3
+            drop_complexity_feature=saved_cfg.get("drop_complexity_feature", False),  # Run 8
+            appnp_alpha=saved_cfg.get("appnp_alpha", 0.0),                             # Run 8
         ).to(self.device)
         # Strip _orig_mod. prefix left by torch.compile when saving compiled checkpoints
         state_dict = {k.replace("._orig_mod.", "."): v for k, v in state_dict.items()}

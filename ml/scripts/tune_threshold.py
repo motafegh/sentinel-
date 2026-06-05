@@ -246,6 +246,10 @@ def load_model_from_checkpoint(
         ),
         gnn_prefix_k=ckpt_config.get("gnn_prefix_k", 0),
         gnn_prefix_warmup_epochs=ckpt_config.get("gnn_prefix_warmup_epochs", 15),
+        gnn_phase2_edge_types=ckpt_config.get("gnn_phase2_edge_types", None),
+        fusion_max_nodes=ckpt_config.get("fusion_max_nodes", 1024),
+        drop_complexity_feature=ckpt_config.get("drop_complexity_feature", False),
+        appnp_alpha=ckpt_config.get("appnp_alpha", 0.0),
     ).to(device)
 
     state_dict = raw["model"] if isinstance(raw, dict) and "model" in raw else raw

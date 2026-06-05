@@ -1,13 +1,13 @@
 """
-train.py — SENTINEL Training Entry Point (v7 three-eye + JK, 7-layer GNN, LoRA)
+train.py — SENTINEL Training Entry Point (v8.1 four-eye + JK, 8-layer GNN, LoRA)
 
 NAMING CONVENTION
 -----------------
 Always include the date in --run-name so checkpoints, log files, and MLflow
 runs are uniquely named and never overwrite each other:
 
-    --run-name v7.0-20260518
-    --run-name v7.0-smoke-20260518
+    --run-name v10-20260603
+    --run-name v10-smoke-20260603
 
 Each run produces:
     ml/checkpoints/<run-name>_best.pt          ← checkpoint
@@ -21,12 +21,12 @@ The resume command is printed at training startup. General form:
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
         --resume ml/checkpoints/<run-name>_best.pt \\
         --run-name <run-name>-resumed \\
-        --experiment-name sentinel-v7 \\
+        --experiment-name sentinel-v10 \\
         --epochs 100
 
 Usage examples:
 
-    # v7.0 smoke run (2 epochs, 10% data)
+    # v10 smoke run (2 epochs, 10% data)
     TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \\
         --run-name v7.0-smoke-20260518 \\
         --experiment-name sentinel-v7 \\
@@ -114,7 +114,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--checkpoint-name", default=None)
     p.add_argument("--cache-path",      default="ml/data/cached_dataset_v10.pkl",
                    help="[Run 6] RAM cache pickle (v10 — C-1 per-statement CFG features + H-2 ReferenceVariable DEF_USE). "
-                        "Use --cache-path ml/data/cached_dataset_v9.pkl for v9 reference runs.")
+                        "Use --cache-path ml/data/cached_dataset_v10.pkl for v10 reference runs.")
     p.add_argument("--log-dir",         default=None,
                    help="[Phase 4.6] Directory for structured JSONL logs. Default: ml/logs/<run-name>.")
 
@@ -172,17 +172,15 @@ def parse_args() -> argparse.Namespace:
                    help="GNN LR = lr × this (default 2.5 — counteracts GNN gradient collapse)")
     p.add_argument("--lora-lr-multiplier", type=float, default=0.3,
                    help="LoRA LR = lr × this (default 0.3 — v6: tighter than 0.5 with wider GNN)")
-    p.add_argument("--fusion-max-nodes", type=int, default=1024,  # [5.4/IMP-D1]
+    p.add_argument("--fusion-max-nodes", type=int, default=2048,  # Run 8: BUG-C4 — 0.55% exceed 1024, max=1735
                    dest="fusion_max_nodes",
                    help=(
                        "Max nodes per graph in CrossAttentionFusion dense pad (IMP-D1). "
-                       "Run 5 default: 1024. Raise to 2048 ONLY after Phase 7 re-extraction "
-                       "and Gate 5.3 VRAM test passes (worst-case: max_nodes=2048, batch=16, "
-                       "full backward+step < 7.5 GB on RTX 3070). "
-                       "0.55%% of contracts exceed 1024 nodes (max=1735)."
+                       "Run 8 default: 2048 (covers 100%% of v10 graphs; max=1735). "
+                       "0.55%% of contracts exceed 1024 nodes — prior 1024 cap silently truncated them."
                    ))
 
-    # --- Auxiliary loss (v5 three-eye) ---
+    # --- Auxiliary loss (v8.1 four-eye) ---
     p.add_argument("--aux-loss-weight", type=float, default=0.3)
     p.add_argument("--dos-loss-weight", type=float, default=0.5,
                    help="DoS gradient weight (0.0=no gradient, 0.5=half, 1.0=full; 243 training positives as of 2026-05-23)")
@@ -193,11 +191,13 @@ def parse_args() -> argparse.Namespace:
                        "0.0=disabled; Run 7 default=0.20 (doubled from 0.10; BUG-R7-1 fix makes gradient effective). "
                        "Applied to Phase 2 embeddings to supervise CFG reachability."
                    ))
-    p.add_argument("--aux-cei-loss-weight", type=float, default=0.0,  # [Phase 7 placeholder]
+    p.add_argument("--aux-cei-loss-weight", type=float, default=0.0,  # [Phase 7 placeholder — currently non-functional]
                    dest="aux_cei_loss_weight",
                    help=(
                        "Weight for CEI path supervision auxiliary loss (RC1/RC7). "
-                       "0.0=disabled (default); activate only after Phase 7 re-extraction and Gate 7.5."
+                       "0.0=disabled (default). "
+                       "WARNING: this argument is parsed but not yet wired to TrainConfig — "
+                       "it is a placeholder for Phase 7. Passing a non-zero value has no effect."
                    ))
 
     # --- LoRA architecture (v5) ---
@@ -216,6 +216,22 @@ def parse_args() -> argparse.Namespace:
                    help="Disable NC-1 Adam state reset for prefix_proj at warmup transition")
     p.add_argument("--jk-entropy-reg-lambda", type=float, default=0.005,
                    help="C-3: JK entropy regularizer weight (0=disabled; 0.005 default — 0.01 caused uniform 33/33/33 collapse in Run 3)")
+    p.add_argument("--drop-complexity-feature", action="store_true", default=False,
+                   dest="drop_complexity_feature",
+                   help=(
+                       "Run 8: zero feat[5] (complexity) at GNN input. "
+                       "L4 experiment: complexity dominates all 10 classes at 34-36%% gradient share — "
+                       "model learned complexity-proxy instead of structural reasoning. "
+                       "Must also be set at inference (predictor reads from checkpoint config)."
+                   ))
+    p.add_argument("--appnp-alpha", type=float, default=0.0,
+                   dest="appnp_alpha",
+                   help=(
+                       "Run 8: APPNP Phase 1 teleport fraction for Phase 2 layers. "
+                       "At each Phase 2 layer: x = alpha*phase1.detach() + (1-alpha)*x. "
+                       "Prevents CEI signal dilution (CHECK->CALL->WRITE signal decays to <1%% "
+                       "after 3 hops without teleport). 0.0=disabled; 0.2 recommended."
+                   ))
     p.add_argument("--pos-weight-cap", type=float, default=10.0,
                    help="M-1: cap on sqrt-scaled pos_weight per class (was 20.0)")
 
@@ -327,6 +343,8 @@ def main() -> None:
         pos_weight_cap                  = args.pos_weight_cap,
         threshold_tune_interval         = args.threshold_tune_interval,
         log_dir                         = args.log_dir,
+        drop_complexity_feature         = args.drop_complexity_feature,
+        appnp_alpha                     = args.appnp_alpha,
     )
 
     train(config)
