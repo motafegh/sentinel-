@@ -46,7 +46,7 @@ print(f"\n[attn.weight] shape={attn_w.shape}: {attn_w.flatten()[:10]} ...")
 # 3. Fresh forward pass — do the weights update?
 print("\n=== Running fresh forward pass on 5 val contracts ===")
 stems, df_split, cache = load_val_split(
-    'ml/data/cached_dataset_v9.pkl',
+    'ml/data/cached_dataset_v10.pkl',
     'ml/data/processed/multilabel_index.csv',
     'ml/data/splits/v9_deduped'
 )

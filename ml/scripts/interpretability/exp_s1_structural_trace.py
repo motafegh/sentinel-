@@ -31,7 +31,7 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_s1_structural_trace.py \\
-        --cache ml/data/cached_dataset_v9.pkl \\
+        --cache ml/data/cached_dataset_v10.pkl \\
         --label-csv ml/data/processed/multilabel_index.csv \\
         --splits-dir ml/data/splits/v9_deduped \\
         --out ml/logs/interpretability/s1_structural_trace.json
@@ -450,7 +450,7 @@ def _print_results(test_results: list[dict], val_results: dict) -> None:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="EXP-S1: CEI Structural Trace Audit")
-    p.add_argument("--cache",      default="ml/data/cached_dataset_v9.pkl")
+    p.add_argument("--cache",      default="ml/data/cached_dataset_v10.pkl")
     p.add_argument("--label-csv",  default="ml/data/processed/multilabel_index.csv")
     p.add_argument("--splits-dir", default="ml/data/splits/v9_deduped")
     p.add_argument("--split",      default="val", choices=["train", "val", "test"])

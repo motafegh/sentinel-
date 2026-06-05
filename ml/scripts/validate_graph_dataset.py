@@ -103,7 +103,7 @@ def validate(
             shape_errors.append((
                 path,
                 f"edge_attr.shape={tuple(ea.shape)} — expected 1-D [E], "
-                f"got {ea.dim()}-D. Regenerate with ast_extractor.py.",
+                f"got {ea.dim()}-D. Regenerate with reextract_graphs.py.",
             ))
             failed_this = True
             continue
@@ -207,7 +207,7 @@ def validate(
 
     if missing_attr or shape_errors or dim_errors:
         print(
-            "\nFIX: re-run ast_extractor.py --force to regenerate graphs with the "
+            "\nFIX: re-run reextract_graphs.py to regenerate graphs with the "
             "current graph_schema.py (NODE_FEATURE_DIM, NUM_EDGE_TYPES, EDGE_TYPES)."
         )
 

@@ -33,7 +33,7 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_s2_edge_enrichment.py \\
-        --cache ml/data/cached_dataset_v9.pkl \\
+        --cache ml/data/cached_dataset_v10.pkl \\
         --label-csv ml/data/processed/multilabel_index.csv \\
         --splits-dir ml/data/splits/v9_deduped \\
         --split train \\

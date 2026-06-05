@@ -24,7 +24,7 @@ ml/data/cached_dataset_v10.pkl   dict  md5_stem → (graph, tokens)
     Only stems present in multilabel_index.csv AND both graph/token dirs are cached.
     Orphan .pt files (no matching pair, not in label index) are skipped.
 
-Re-run after any re-extraction (ast_extractor.py --force).
+Re-run after any re-extraction (reextract_graphs.py).
 The trainer detects a stale cache automatically via a spot-check at dataset init.
 """
 
@@ -92,7 +92,7 @@ def build_cache(
         log.warning(f"  Skipped {skipped_no_graph} stems: token present, graph missing")
 
     # ── 3. Estimate memory ───────────────────────────────────────────────────
-    #  Rough: ~1.4 GB for 68K pairs (graph tensors 0.14 GB + token tensors 0.56 GB
+    #  Rough: ~1.4 GB for ~41K pairs (graph tensors 0.14 GB + token tensors 0.56 GB
     #  + pickle overhead). Check we have headroom.
     import shutil
     free_gb = shutil.disk_usage(output.parent).free / 1e9

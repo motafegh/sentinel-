@@ -36,7 +36,7 @@ HOW TO RUN
 ──────────
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_e4_direction_sensitivity.py \\
-        --cache ml/data/cached_dataset_v9.pkl \\
+        --cache ml/data/cached_dataset_v10.pkl \\
         --label-csv ml/data/processed/multilabel_index.csv \\
         --splits-dir ml/data/splits/v9_deduped \\
         --out ml/logs/interpretability/e4_direction_sensitivity.json \\
