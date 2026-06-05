@@ -211,7 +211,39 @@ already does the work — this fix just brings the GNN path to parity.
 1. Bumping `NUM_EDGE_TYPES` from 11 to 12
 2. Re-initializing `nn.Embedding(12, 64)` in GNNEncoder
 3. Phase 2 edge mask must now include type 11 — update `--phase2-edge-types` default in train.py
-4. All existing checkpoints are invalidated (v8 → v9)
+4. All existing checkpoints are invalidated (v8 -> v9)
+
+### Phase 2 mask update (concrete code)
+
+The GNNEncoder builds cfg_mask at `ml/src/models/gnn_encoder.py:471-483`. Currently:
+```python
+# Existing (v8): types 6, 8, 9, 10
+cfg_mask = (
+    (edge_attr == _CONTROL_FLOW) |
+    (edge_attr == _CALL_ENTRY)   |
+    (edge_attr == _RETURN_TO)    |
+    (edge_attr == _DEF_USE)
+)
+```
+
+After Fix #3, add type 11:
+```python
+# New (v9): types 6, 8, 9, 10, 11
+_EXTERNAL_CALL = EDGE_TYPES["EXTERNAL_CALL"]  # 11
+cfg_mask = (
+    (edge_attr == _CONTROL_FLOW) |
+    (edge_attr == _CALL_ENTRY)   |
+    (edge_attr == _RETURN_TO)    |
+    (edge_attr == _DEF_USE)      |
+    (edge_attr == _EXTERNAL_CALL)
+)
+```
+
+Also update the default in `ml/scripts/train.py:165-166`:
+```python
+# Current: --phase2-edge-types 6 8 9 10
+# New:     --phase2-edge-types 6 8 9 10 11
+```
 
 **Rollback plan:** if Run 9 results regress, revert `_add_icfg_edges` to only emit internal
 calls. The schema change (NUM_EDGE_TYPES=12) can stay — empty type-11 column in old data
@@ -228,5 +260,5 @@ won't hurt.
 | `ml/src/preprocessing/graph_extractor.py:_add_icfg_edges` (lines 825-888) | Emit type-11 self-loop for high_lvl/low_lvl call sites |
 | `ml/src/preprocessing/graph_schema.py:160` | Bump `FEATURE_SCHEMA_VERSION = "v9"` |
 | `ml/scripts/train.py:165-166` | Update `--phase2-edge-types` default to include 11 |
-| `ml/src/models/gnn_encoder.py:471-483` | Update Phase 2 mask to include 11 |
+| `ml/src/models/gnn_encoder.py:471-483` | Update Phase 2 mask to include type 11 (EXTERNAL_CALL) |
 | `ml/scripts/validate_graph_dataset.py` | Add `--check-external-call-edges` flag |

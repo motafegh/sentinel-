@@ -102,7 +102,7 @@ Add a fallback check by name (covers `now` and any future Slither class drift):
 def _compute_uses_block_globals(func: Any) -> float:
     """
     1.0 if any IR op in this function reads block.timestamp, block.number,
-    block.difficulty, block.basefee, block.prevrandao, or `now` (pre-0.8 alias).
+    block.difficulty, block.basefee, block.prevrandao, blockhash, or `now` (pre-0.8 alias).
     """
     try:
         _BLOCK_GLOBALS = {"timestamp", "number", "difficulty", "basefee", "prevrandao"}
@@ -115,9 +115,15 @@ def _compute_uses_block_globals(func: Any) -> float:
                         part = name.split(".")[-1].lower()
                         if part in _BLOCK_GLOBALS:
                             return 1.0
-                    # Fallback: name-based check (catches `now` in Solidity 0.4.x)
+                    # Fallback: name-based check (catches `now` in Solidity 0.4.x
+                    # and any other Slither class drift)
                     rv_name = (getattr(rv, "name", "") or "").lower()
-                    if rv_name in {"now", "block.timestamp", "block.number"}:
+                    if rv_name in {
+                        "now",
+                        "block.timestamp", "block.number", "block.difficulty",
+                        "block.basefee", "block.prevrandao",
+                        "blockhash",
+                    }:
                         return 1.0
                     # Library call pattern: SafeMath-style wrappers
                     rv_type = getattr(rv, "type", None)

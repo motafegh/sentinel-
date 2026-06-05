@@ -67,7 +67,7 @@
 
 **Order:** After #2, #3 (most invasive schema change). Required: 4 hr coding + ~45 min re-extract.
 
-### Schema changes
+### Code changes
 - [ ] Edit `ml/src/preprocessing/graph_schema.py:205`: `NUM_NODE_TYPES = 14`
 - [ ] Edit `ml/src/preprocessing/graph_schema.py:250-269` (NODE_TYPES): add `"CFG_NODE_ARITH": 13`
 - [ ] Edit `ml/src/preprocessing/graph_schema.py:174`: `NODE_FEATURE_DIM = 12`
@@ -76,11 +76,14 @@
 
 ### Code changes
 - [ ] Edit `ml/src/preprocessing/graph_extractor.py:393-403` (`_compute_in_unchecked`):
-  - [ ] Replace `NotImplementedError` body with real implementation (check `op.in_unchecked_block` and `expr.in_unchecked_block`)
-  - [ ] Add per-function aggregation (any node with `in_unchecked_block=True` → 1.0)
+  - [ ] Replace `NotImplementedError` body with real implementation using `node.scope.is_checked` (NOT `op.in_unchecked_block` — verified absent in Slither 0.10.0)
+  - [ ] Pattern: `scope = getattr(node, "scope", None); if scope is not None and not getattr(scope, "is_checked", True): return 1.0`
+  - [ ] Add per-function aggregation (any node with unchecked scope → 1.0)
 - [ ] Edit `ml/src/preprocessing/graph_extractor.py:587-652` (`_cfg_node_type`):
-  - [ ] Add Priority 3.5: any IR op is `Binary` with `type` in `BinaryType.{ADD,SUB,MUL,DIV,MOD,EXP,SHIFT_LEFT,SHIFT_RIGHT}` → return `CFG_NODE_ARITH` (id 13)
-  - [ ] Verify Slither BinaryType names against installed Slither version (`python -c "from slither.slithir.operations import BinaryType; print(dir(BinaryType))"`)
+  - [ ] Add Priority 3.5: `Binary` with `op.type` in `ARITH_OPS` → return `CFG_NODE_ARITH` (id 13)
+  - [ ] **CRITICAL:** import from `slither.slithir.operations.BinaryType` (NOT `slither.slithir.variables.binary`)
+  - [ ] Correct enum names: `ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION, MODULO, POWER, LEFT_SHIFT, RIGHT_SHIFT` (NOT `ADD, SUB, MUL, ...`)
+  - [ ] `Binary.type` is a property (access as `op.type`, not `BinaryType.ADD`)
 - [ ] Edit `ml/src/preprocessing/graph_extractor.py:1078-1181` (`_build_node_features`):
   - [ ] Append `uses_unchecked = _compute_in_unchecked(obj)` after existing features
   - [ ] Return 12-dim list with new feature at index 11
@@ -234,3 +237,105 @@ Phase 3 (post-validation):
 - This file should be updated as work progresses — toggle checkboxes to `[x]` when each item is verified done.
 - Each fix doc in this folder has the full spec; this TODO is the execution checklist.
 - Do NOT commit the v9 schema changes until ALL of Fix #2, #3, #4 are applied together (avoids leaving the repo in an intermediate broken state).
+
+---
+
+## Smoke Tests (per-fix)
+
+Each fix has a dedicated smoke test in `ml/scripts/smoke/`. Run via the master runner:
+
+```bash
+poetry run python ml/scripts/smoke/run_all.py           # all phases
+poetry run python ml/scripts/smoke/run_all.py --preflight  # system pre-flight only
+poetry run python ml/scripts/smoke/run_all.py --fix 1   # single fix
+poetry run python ml/scripts/smoke/run_all.py --phase 2  # entire phase
+```
+
+| Fix | Smoke Test | What It Checks | Run Before | Run After |
+|-----|-----------|---------------|------------|-----------|
+| #1 | `smoke_fix1.py` | deduped CSV exists, splits non-empty, Timestamp in window | Always | Always |
+| #2 | `smoke_fix2.py` | `now` alias in `_compute_uses_block_globals` source, feat[2] fires on 25+ of 100 sampled graphs | Before coding | After re-extract |
+| #3 | `smoke_fix3.py` | `NUM_EDGE_TYPES >= 12`, edge_attr == 11 in at least 1 graph | Before coding | After re-extract |
+| #4 | `smoke_fix4.py` | `NODE_FEATURE_DIM == 12`, `_compute_in_unchecked` not a stub, feat[11] fires, `SentinelModel` loads with 12 dims | Before coding | After re-extract |
+| #5 | `smoke_fix5.py` | `slither` on PATH, `multilabel_index_slither.csv` exists, ≥3 classes have ≥50 positives | Before coding | After relabel |
+| #6 | `smoke_fix6.py` | Predictor loads, 10 thresholds loaded, safe contract → 0 CONFIRMED | Before coding | After fix |
+| #7 | `smoke_fix7.py` | SmartBugs has ≥10 .sol files, benchmark script exits 0 on 5 files | Before coding | After script created |
+| #8 | `smoke_fix8.py` | doc references `drop_complexity`, mentions Run 7/8, discusses bias | Always | After doc written |
+
+**Pre-flight gate** (runs automatically before any fix test):
+- Python, torch, numpy, pandas available
+- >100 .pt graphs in `ml/data/graphs/`
+- >0 checkpoints in `ml/checkpoints/`
+
+**Current test status** (verified this session):
+- Fix #1: PASS (51ms)
+- Fix #8: PASS (10ms)
+- Fix #6: FAIL (`peft` library not installed — real gate failure, not a test bug)
+- Fix #2: FAIL (expected — "now" alias not yet in `_compute_uses_block_globals`)
+- Fix #3: FAIL (expected — `NUM_EDGE_TYPES` still 11)
+- Fix #4: FAIL (expected — `FEATURE_SCHEMA_VERSION` still "v8")
+- Fix #5: FAIL (expected — `multilabel_index_slither.csv` doesn't exist yet)
+- Fix #7: FAIL (expected — `manual_test_smartbugs.py` doesn't exist yet)
+
+---
+
+## File Organization Audit
+
+### Three split directories (confusing)
+
+| Directory | Date | Row count | Notes |
+|-----------|------|-----------|-------|
+| `ml/data/splits/deduped/` | Jun 5 | 29,101 / 6,234 / 6,241 | **CURRENT CANONICAL** — produced by `--relabel-timestamp` |
+| `ml/data/splits/v10_deduped/` | Jun 2 | Different md5 | Pre-deduplication (stale) |
+| `ml/data/splits/v9_deduped/` | Jun 2 | Different md5 from both | Oldest (stale) |
+
+**Action:** Archive `v10_deduped/` and `v9_deduped/` to `ml/data/archive/` to prevent accidental use.
+
+### Two CSVs (same row count, different content)
+
+| CSV | Rows | md5 | Notes |
+|-----|------|-----|-------|
+| `multilabel_index.csv` | 41,576 | `a213f...` | v10 raw (original BCCC labels) |
+| `multilabel_index_deduped.csv` | 41,576 | `987d6...` | Cleaned: Timestamp relabeled, 0 content-hash dups |
+
+**Action:** Keep both (raw for reference, deduped for training). Document the difference in README.
+
+### Scripts in wrong locations
+
+| Script | Current Location | Should Be | Reason |
+|--------|-----------------|-----------|--------|
+| `dedup_multilabel_index.py` | `ml/scripts/archive/` | `ml/scripts/` | Actively used (produces current deduped CSV) |
+| `manual_test.py` | `ml/scripts/archive/` | `ml/scripts/` or keep in archive with clear README | Main evaluator, referenced in doc 06 |
+| `archive_v8_data.py` | `ml/scripts/` | `ml/scripts/archive/` | One-time v8→v9 migration script (already done) |
+| `compile_smoke_test.py` | `ml/scripts/` | `ml/scripts/archive/` | One-time Gate 3.1 test (Run 5 era) |
+
+### `_cache/` directory (large audit artifacts)
+
+| File | Size | Notes |
+|------|------|-------|
+| `bccc_full_dataset_results.json` | 392 MB | BCCC audit results — archivable |
+| `bccc_v0426_only.json` | 286 MB | Versioned audit — archivable |
+| Multiple versioned JSONs | 45-61 MB each | Audit artifacts — archivable |
+
+**Action:** Move to `ml/data/archive/_cache/` to free ~900 MB.
+
+### Pre-existing Slither results (potentially useful for Fix #5)
+
+`ml/data/smartbugs-results-master/results/slither/` contains hundreds of pre-computed Slither JSON results for SmartBugs contracts. These could be parsed directly for Fix #5 validation instead of re-running Slither on the full dataset.
+
+**Action:** Check if these results cover the `smartbugs-curated/dataset/` contracts. If so, use them for Fix #7 benchmark evaluation.
+
+### Empty directories
+
+| Directory | Status | Notes |
+|-----------|--------|-------|
+| `ml/data/slither_results/` | Empty | Confusing — created but never populated |
+| `ml/data/archive/` | Has 12 items | Already used for v8 archival |
+
+**Action:** Add a README to `slither_results/` explaining it's populated by `derive_slither_labels.py`.
+
+### `test_contracts_offline/` (20 .pt files)
+
+Contains extracted graphs/tokens for the 20 OOD test contracts. Separate from main `ml/data/graphs/`.
+
+**Action:** Keep as-is (useful for offline testing without full re-extract).

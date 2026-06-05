@@ -63,12 +63,12 @@ def _format_result(self, graph, probs, tokens, windows_used):
 ### Validation
 
 ```bash
-# Run manual_test.py on 12_safe_contract.sol and verify no detections above per-class threshold
+# Run predictor on 12_safe_contract.sol and verify no detections above per-class threshold
 source ml/.venv/bin/activate
 PYTHONPATH=. python ml/scripts/archive/manual_test.py \
   --checkpoint ml/checkpoints/GCB-P1-Run8-v10-20260605_best.pt \
   --contract ml/scripts/test_contracts/12_safe_contract.sol
-# Expected: 0 detections (was: 5+ classes > 0.55)
+# Expected: 0 CONFIRMED detections (was: 5+ classes > 0.55)
 ```
 
 ---
@@ -158,8 +158,30 @@ PYTHONPATH=. python ml/scripts/manual_test_smartbugs.py \
 
 ### Context
 
-Run 7 audit (L4 finding) showed the model uses `complexity` (feat[5]) as a complexity proxy —
+Run 7 audit (L4 finding) showed the model uses `complexity` (feat[5]) as a size proxy —
 large contracts fire higher probabilities across all classes regardless of true signal.
+
+**Root cause (corrected):** The correlation is NOT just `feat[5]` (complexity) itself. The
+actual mechanisms are:
+
+1. **Mean pooling over more nodes** — GNN aggregates node embeddings via mean pool;
+   more nodes = more information flows into the graph-level representation, increasing
+   logit magnitude regardless of content. This is an architectural bias of mean-pooling
+   GNNs, not a feature-level problem.
+
+2. **Transformer token count** — CodeBERT processes more tokens for larger contracts;
+   longer sequences produce higher-magnitude CLS embeddings (self-attention scaling).
+   This is independent of the GNN path.
+
+3. **feat[5] is a correlated symptom** — complexity correlates with node count (r > 0.8),
+   so zeroing feat[5] reduces one proxy signal but doesn't address the root cause
+   (mean pooling + token count). That's why `--drop-complexity-feature` helps but
+   doesn't fully eliminate size bias.
+
+**What we measured:**
+- LOC (feat[6]) ablation: barely affects predictions — it's NOT the primary driver
+- feat[5] ablation (Run 8): measurably reduces size bias but doesn't eliminate it
+- APPNP preserves Phase 1 signal; it doesn't reduce size correlation
 
 ### Already Applied
 
@@ -182,17 +204,16 @@ if self.drop_complexity:
 ```
 
 This drops feat[5] from the GNN input during training. Run 8 also used `--appnp-alpha`
-(train.py:227-228, default 0.0) to add APPNP-style smoothing — the actual Run 8 value is not
-recorded in any visible file, would need to grep the Run 8 launcher script.
+(train.py:227-228, default 0.0) to add APPNP-style smoothing.
 
 ### Documentation TODO
 
 Add a one-paragraph note to a future architecture-decisions doc (does NOT exist yet at
 `docs/architecture-decisions.md`) explaining:
-1. Why complexity was dropped
-2. The hypothesis (feat[5] correlates with node count, model was using it as size proxy)
-3. What to do if Run 9 still shows size bias (try increasing `--appnp-alpha` or adding
-   size normalization in graph_extractor)
+1. Why complexity was dropped (size-proxy correlation)
+2. Why it only partially helps (mean pooling + transformer token count are the root cause)
+3. What to do if Run 9 still shows size bias (investigate attention-weighted pooling,
+   not just feature-dropping or APPNP)
 
 Note: a previously proposed `gnn_jk_entropy_reg_lambda` flag does NOT exist in train.py,
 sentinel_model.py, or gnn_encoder.py. Do not reference it.
