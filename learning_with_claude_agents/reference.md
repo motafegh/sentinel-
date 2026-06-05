@@ -157,13 +157,15 @@ Orchestration last — graph topology + all 9 nodes, where everything converges.
 
 ## Teaching Roadmap
 
+Legend: ✅ done · 🔄 in progress · ⬜ pending
+
 ```
 Phase 1  ⬜  llm/client.py                         (LM Studio client, 4 model roles)
 Phase 2  ⬜  orchestration/state.py                 (AuditState TypedDict, 16 fields, reducers)
              orchestration/routing.py               (DEEP_THRESHOLDS, ROUTING_RULES, verdict logic)
 Phase 3  ⬜  rag/                                   (RAG pipeline — fetch → chunk → embed → retrieve)
              rag/fetchers/base_fetcher.py           (abstract BaseFetcher, Document dataclass)
-             rag/fetchers/github_fetcher.py         (DeFiHackLabs, 3 comment formats, 478 lines → 2 chunks)
+             rag/fetchers/github_fetcher.py         (DeFiHackLabs, 3 comment formats → 2 chunks)
              rag/chunker.py                         (RecursiveCharacterTextSplitter)
              rag/embedder.py                        (nomic-embed-text, retry logic)
              rag/retriever.py                       (FAISS+BM25+RRF — HybridRetriever)
@@ -186,6 +188,49 @@ Phase 6  ⬜  orchestration/                         (9-node LangGraph brain)
                Chunk 3: audit_check, cross_validator
                Chunk 4: synthesizer, report persistence, end-to-end data flow
 ```
+
+---
+
+## Extended Capability Proposal
+
+**Source:** `docs/agent_proposal/2026-06-04-agent-extended-capability-proposal.md`
+**Status:** Design proposal — pending review
+
+### Three missing analysis paradigms (not in current V3 graph)
+
+| Paradigm | What's absent | Proposed agent |
+|---|---|---|
+| Execution-based | No symbolic execution | `symbolic_exec` — Mythril on hot functions |
+| Proof-of-concept | No exploit generation | `poc_generator` — coder LLM + `forge test` |
+| Economic | No fork simulation | `economic_sim` — Anvil fork, flash loan / oracle attacks |
+
+### Other proposed additions
+- **`reflection` node** — LLM self-critique pass after synthesizer (low effort, high value)
+- **Multi-LLM debate** — upgrade `cross_validator` to prosecutor + defender + judge
+- **RAG expansion** — Code4rena, Sherlock, Solodit sources (currently only 726 DeFiHackLabs)
+- **FastAPI gateway** — entry point for external contract submission (currently none)
+- **Pipeline evaluation** — end-to-end benchmark, not just ML training metrics
+- **Prompt injection guards** — comment stripping before LLM prompts (security gap)
+
+### Revised graph (proposal)
+```
+ml_assessment → quick_screen → evidence_router
+  └─ FAST PATH → synthesizer → reflection → END
+  └─ DEEP PATH:
+       rag_research ─┐
+       static_analysis ─┤ (parallel)
+       graph_explain ─┤
+       symbolic_exec ─┘ (NEW — Tier 2)
+       ↓
+       audit_check → cross_validator (debate) → poc_generator (NEW)
+       → economic_sim (NEW, DeFi only) → synthesizer → reflection (NEW) → END
+```
+
+### Teaching integration
+When we reach the relevant chunk, each proposed addition is taught as:
+- What gap it closes (the *problem* the current node doesn't solve)
+- How it would be designed (the *solution* — tool choice, trigger conditions, state additions)
+- What new concepts it introduces (the *learning exposure*)
 
 ---
 
