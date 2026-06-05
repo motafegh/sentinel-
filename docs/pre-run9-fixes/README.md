@@ -46,7 +46,7 @@ target the root causes before launching Run 9.
 - **Splits:** Re-use `ml/data/splits/deduped/` from Fix #1 (41,576 rows, 0.7/0.15/0.15 split,
   stratified on 10 classes).
 - **Schema version bump:** Bump `FEATURE_SCHEMA_VERSION = v8` to `v9` in
-  `ml/src/preprocessing/graph_schema.py:63` after applying #2, #3, #4.
+  `ml/src/preprocessing/graph_schema.py:160` after applying #2, #3, #4.
 - **Checkpoints:** All v8 checkpoints invalid after schema change. Run 9 starts from
   `ml/checkpoints/GCB-P1-Run8-v10-20260605_best.pt` as a cold start, not a resume.
 
@@ -84,7 +84,7 @@ PYTHONPATH=. python ml/scripts/manual_test_smartbugs.py \
 |------|-----|
 | `ml/src/preprocessing/graph_extractor.py` | #2 (feat[2]), #3 (edge type 11), #4 (arith + unchecked) |
 | `ml/src/preprocessing/graph_schema.py` | #3 (edge type 11), #4 (node type 13, feature dim 12) |
-| `ml/scripts/archive/dedup_multilabel_index.py` | #1 (already done — line 50 parents[3]) |
+| `ml/scripts/archive/dedup_multilabel_index.py` | #1 (already done — line 64 parents[3]) |
 | `ml/scripts/derive_slither_labels.py` | NEW for #5 |
 | `ml/scripts/validate_graph_dataset.py` | New check flags for #3, #4 |
 | `ml/src/inference/predictor.py` | #6 (tier display) |

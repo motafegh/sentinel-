@@ -42,15 +42,15 @@ explored 4 architectures (baseline, no-complexity, APPNP, prefix-warmup) on the 
 
 | Letter | Finding | Source |
 |--------|---------|--------|
-| A | --relabel-timestamp NEVER applied to v10 CSV | ml/scripts/archive/dedup_multilabel_index.py:226 (never invoked) |
+| A | --relabel-timestamp NEVER applied to v10 CSV | ml/scripts/archive/dedup_multilabel_index.py:404-406 (arg), :226-302 (function); never invoked on v10 CSV |
 | B | Only 27.5% of Timestamp=1 graphs fire uses_block_globals (feat[2]) | Audit sample n=200 Timestamp=1 vs 8% baseline |
-| C | Test-set precision degenerate for 9/10 classes (only IntegerUO passes) | ml/checkpoints/GCB-P1-Run8-v10-20260605_best_thresholds.json |
+| C | Test-set precision degenerate for 9/10 classes (only IntegerUO passes) | ml/checkpoints/GCB-P1-Run8-v10-20260605_best_thresholds.json (3461 bytes) |
 | D | CALL_ENTRY (edge type 8) only iterates node.internal_calls -- external calls get nothing | ml/src/preprocessing/graph_extractor.py:858-863 (_add_icfg_edges) |
-| E | _compute_uses_block_globals misses now keyword (Solidity 0.4.x alias) | ml/src/preprocessing/graph_extractor.py:459 |
-| F | IntegerUO unlearnable: arithmetic IR ops collapse into CFG_NODE_OTHER(12) bucket | ml/src/preprocessing/graph_extractor.py:_cfg_node_type |
+| E | _compute_uses_block_globals misses now keyword (Solidity 0.4.x alias) | ml/src/preprocessing/graph_extractor.py:459-492 |
+| F | IntegerUO unlearnable: arithmetic IR ops collapse into CFG_NODE_OTHER(12) bucket | ml/src/preprocessing/graph_extractor.py:587-652 (_cfg_node_type) |
 | G | Manual test contracts are OOD (bottom 1st-7th percentile by size, all 0.8+ syntax) | ml/scripts/test_contracts/ vs training median |
-| H | Predictor _format_result() ignores per-class tuned thresholds (hardcoded 0.55) | ml/src/inference/predictor.py:150-151, :712-715 |
-| I | 87.9% of BCCC dataset is pre-0.8 Solidity (0.4-0.7) -- in_unchecked rightly dropped | ml/src/preprocessing/graph_schema.py:119-120 |
+| H | Predictor _format_result() ignores per-class tuned thresholds (hardcoded 0.55) | ml/src/inference/predictor.py:150-151 (tier consts), :710-715 (tier dispatch) |
+| I | 87.9% of BCCC dataset is pre-0.8 Solidity (0.4-0.7) -- in_unchecked rightly dropped | ml/src/preprocessing/graph_schema.py:119-129 (v7 changelog) |
 | J | Model fires near-constant ~0.30-0.45 baseline on safe contracts (Run 7 + Run 8) | Run 7 audit L4 + Run 8 manual test |
 
 ---

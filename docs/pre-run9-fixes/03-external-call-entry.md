@@ -69,7 +69,7 @@ for func in contract.functions:
 
 ### Edge type vocabulary
 
-`ml/src/preprocessing/graph_schema.py:178-191` — EDGE_TYPES dict:
+`ml/src/preprocessing/graph_schema.py:382-398` — EDGE_TYPES dict:
 ```python
 "CALL_ENTRY":        8,   # calling CFG_NODE → ENTRYPOINT of callee function
 "RETURN_TO":         9,   # terminal CFG_NODE of callee → call-site successor
@@ -77,17 +77,17 @@ for func in contract.functions:
 ```
 
 The 11 edge types (ids 0-10) are fixed by `NUM_EDGE_TYPES = 11` in
-`ml/src/preprocessing/graph_schema.py:95`. Adding `EXTERNAL_CALL` would require bumping to
+`ml/src/preprocessing/graph_schema.py:208`. Adding `EXTERNAL_CALL` would require bumping to
 12 edge types.
 
 ### GNN encoder edge-type usage
 
-`ml/src/models/gnn_encoder.py` — GNNEncoder uses `nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim)`
-and feeds the embedding to GATConv. Phase 2 (layers 3-5) processes types
-`[6, 8, 9, 10]` (CONTROL_FLOW + CALL_ENTRY + RETURN_TO + DEF_USE).
-
-After Fix #3, Phase 2 will see external-call edges as well — must re-validate that the
-3-layer phase still has enough receptive field.
+`ml/src/models/gnn_encoder.py:218-220` — GNNEncoder constructs
+`nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)` and feeds the embedding to GATConv.
+`ml/src/models/gnn_encoder.py:471-483` — Phase 2 default `cfg_mask` includes types
+`[6, 8, 9, 10]` (CONTROL_FLOW + CALL_ENTRY + RETURN_TO + DEF_USE); docstring at lines 182-188
+documents the same. After Fix #3, Phase 2 will see external-call edges as well — must
+re-validate that the 3-layer phase still has enough receptive field.
 
 ---
 
@@ -98,14 +98,14 @@ call discovered:
 
 ```python
 # ml/src/preprocessing/graph_extractor.py
-# 1. Add to schema (line 178-191):
+# 1. Add to schema (graph_schema.py:382-398):
 EDGE_TYPES: dict[str, int] = {
     ...
     "DEF_USE":               10,
     "EXTERNAL_CALL":         11,  # calling CFG_NODE → external call site marker
 }
 
-# 2. Update count (line 95):
+# 2. Update count (graph_schema.py:208):
 NUM_EDGE_TYPES: int = 12
 
 # 3. In _add_icfg_edges, after internal_calls loop:
@@ -223,10 +223,10 @@ won't hurt.
 
 | File | Change |
 |------|--------|
-| `ml/src/preprocessing/graph_schema.py:95` | Bump `NUM_EDGE_TYPES = 12` |
-| `ml/src/preprocessing/graph_schema.py:178-191` | Add `EXTERNAL_CALL = 11` |
-| `ml/src/preprocessing/graph_extractor.py:_add_icfg_edges` | Emit type-11 self-loop for high_lvl/low_lvl call sites |
-| `ml/src/preprocessing/graph_extractor.py:63` | Bump `FEATURE_SCHEMA_VERSION = "v9"` |
-| `ml/scripts/train.py` | Update `--phase2-edge-types` default to include 11 |
-| `ml/src/models/gnn_encoder.py` | Update Phase 2 mask to include 11 |
+| `ml/src/preprocessing/graph_schema.py:208` | Bump `NUM_EDGE_TYPES = 12` |
+| `ml/src/preprocessing/graph_schema.py:382-398` | Add `EXTERNAL_CALL = 11` |
+| `ml/src/preprocessing/graph_extractor.py:_add_icfg_edges` (lines 825-888) | Emit type-11 self-loop for high_lvl/low_lvl call sites |
+| `ml/src/preprocessing/graph_schema.py:160` | Bump `FEATURE_SCHEMA_VERSION = "v9"` |
+| `ml/scripts/train.py:165-166` | Update `--phase2-edge-types` default to include 11 |
+| `ml/src/models/gnn_encoder.py:471-483` | Update Phase 2 mask to include 11 |
 | `ml/scripts/validate_graph_dataset.py` | Add `--check-external-call-edges` flag |
