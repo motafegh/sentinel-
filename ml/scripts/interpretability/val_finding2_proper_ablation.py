@@ -30,7 +30,7 @@ model = load_model('ml/checkpoints/sentinel_best.pt', device='cpu')
 model.eval()
 
 stems, df_split, cache = load_val_split(
-    'ml/data/cached_dataset_v9.pkl',
+    'ml/data/cached_dataset_v10.pkl',
     'ml/data/processed/multilabel_index.csv',
     'ml/data/splits/v9_deduped'
 )

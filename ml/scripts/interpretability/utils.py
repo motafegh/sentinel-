@@ -193,7 +193,7 @@ def load_val_split(
     Load the cache and return stems, label dataframe, and cache dict for a split.
 
     Args:
-        cache_path:  Path to cached_dataset_v9.pkl
+        cache_path:  Path to cached_dataset_v10.pkl
         label_csv:   Path to multilabel_index.csv
         splits_dir:  Directory containing {split}_indices.npy
         split:       One of "train", "val", "test"

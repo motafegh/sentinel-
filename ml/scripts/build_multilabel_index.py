@@ -31,7 +31,7 @@ Output: ml/data/processed/multilabel_index.csv
   Columns: md5_stem, CallToUnknown, DenialOfService, ExternalBug, GasException,
            IntegerUO, MishandledException, Reentrancy, Timestamp,
            TransactionOrderDependence, UnusedReturn
-  Rows: ~68K  (one per .pt file in ml/data/graphs/)
+  Rows: ~41K  (one per .pt file in ml/data/graphs/)
 
 Usage:
     cd ~/projects/sentinel

@@ -43,7 +43,7 @@ HOW TO RUN
     source ml/.venv/bin/activate
     PYTHONPATH=. python ml/scripts/interpretability/exp_l7_calibration_size_analysis.py \\
         --checkpoint ml/checkpoints/sentinel_best.pt \\
-        --cache ml/data/cached_dataset_v9.pkl \\
+        --cache ml/data/cached_dataset_v10.pkl \\
         --label-csv ml/data/processed/multilabel_index.csv \\
         --splits-dir ml/data/splits/v9_deduped \\
         --n-contracts 2000 \\
