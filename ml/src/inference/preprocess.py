@@ -64,10 +64,13 @@ from __future__ import annotations
 
 import atexit
 import glob
+import math
 import os
 import re as _re
 import tempfile
 from pathlib import Path
+
+import numpy as np
 
 import torch
 from loguru import logger
@@ -317,7 +320,7 @@ class ContractPreprocessor:
         source_code: str,
         name:        str = "contract",
         stride:      int = 256,
-        max_windows: int = 8,
+        max_windows: int = 4,
     ) -> tuple[Data, list[dict]]:
         """
         Sliding-window variant of process_source() for long contracts (T1-C).
@@ -527,96 +530,68 @@ class ContractPreprocessor:
         source_code:    str,
         contract_hash:  str,
         stride:         int = 256,
-        max_windows:    int = 8,
+        max_windows:    int = 4,
     ) -> list[dict]:
         """
         Tokenize source_code into overlapping 512-token windows (T1-C).
 
-        Short contracts (≤ 512 tokens) return a list of exactly one dict —
-        identical to _tokenize() output plus a "window_index" key. There is
-        no overhead compared to the single-window path.
+        Matches the offline training pipeline (retokenize_windowed.py) exactly:
+          1. Encode content tokens (no special tokens).
+          2. Compute ALL window start positions with advance = content_cap − stride.
+          3. If more windows than max_windows, subsample via np.linspace so that
+             beginning, middle, and end of the contract are all covered — identical
+             to _select_windows() in retokenize_windowed.py.
+          4. Wrap each selected window with [CLS] … [SEP] and pad to 512.
 
-        Algorithm:
-          1. Encode without truncation to get the full token ID sequence.
-          2. Slide a window of MAX_TOKEN_LENGTH tokens with the given stride.
-          3. Pad each window to MAX_TOKEN_LENGTH.
-          4. Cap at max_windows to bound latency (contracts rarely need > 4).
-
-        Args:
-            source_code:   Raw Solidity source.
-            contract_hash: Shared hash attached to every window dict.
-            stride:        Tokens to advance per window (256 = 50% overlap).
-            max_windows:   Hard cap on window count.
-
-        Returns:
-            List of dicts; each has the same keys as _tokenize() plus
-            "window_index" (int, 0-based).
+        Short contracts (≤ 510 content tokens) return one dict — fast path.
         """
-        # Fix E1 (C4): encode content tokens only (no special tokens) so we can
-        # reconstruct proper [CLS]…[SEP] framing for EVERY window, not just the first.
-        #
-        # Bug in original code: tokenizer.encode(src, add_special_tokens=True) gave
-        #   [CLS] c1 c2 … cN [SEP]
-        # Slicing full_ids[256:768] for window 2 produced c257…c767 — a bare token
-        # sequence with no [CLS] at position 0 and no [SEP] at the end.
-        # CodeBERT was pre-trained to always see [CLS]…[SEP]; the CLS embedding at
-        # position 0 is used by the TransformerEncoder "tf eye" for contract-level
-        # representation. Non-first windows in the old code gave a random mid-contract
-        # token in the CLS slot, making those windows nearly useless for prediction.
-        #
-        # Fix: encode without special tokens → slide over pure content → prepend [CLS]
-        # and append [SEP] to each window individually.  Content window capacity is
-        # MAX_TOKEN_LENGTH - 2 (512 - 2 = 510) to leave room for the two special tokens.
         full_content_ids = self.tokenizer.encode(source_code, add_special_tokens=False)
-        _CONTENT_CAP     = self.MAX_TOKEN_LENGTH - 2  # 510 content tokens per window
-        total_content    = len(full_content_ids)
+        _CONTENT_CAP = self.MAX_TOKEN_LENGTH - 2  # 510 content tokens per window
+        total_content = len(full_content_ids)
 
         if total_content <= _CONTENT_CAP:
-            # Fast path: whole source fits in one window. Delegate to _tokenize()
-            # which produces the standard [CLS] c1…c510 [SEP] [PAD]… encoding.
             single = self._tokenize(source_code, contract_hash)
             single["window_index"] = 0
             return [single]
+
+        # Compute all window start positions (same advance as HF overflow tokenizer).
+        # advance = content_cap − stride = 510 − 256 = 254
+        advance = _CONTENT_CAP - stride
+        all_starts: list[int] = []
+        start = 0
+        while start < total_content:
+            all_starts.append(start)
+            if start + _CONTENT_CAP >= total_content:
+                break
+            start += advance
+
+        # Linspace subsample when more windows than the cap.
+        # Mirrors retokenize_windowed._select_windows() exactly:
+        #   indices = [round(i) for i in np.linspace(0, W-1, max_windows)]
+        if len(all_starts) > max_windows:
+            indices = [round(i) for i in np.linspace(0, len(all_starts) - 1, max_windows)]
+            all_starts = [all_starts[i] for i in indices]
 
         cls_id = self.tokenizer.cls_token_id
         sep_id = self.tokenizer.sep_token_id
 
         windows: list[dict] = []
-        start = 0
-        while start < total_content and len(windows) < max_windows:
+        for win_idx, start in enumerate(all_starts):
             content_chunk = full_content_ids[start : start + _CONTENT_CAP]
-            # Wrap each window with [CLS] … [SEP] so every window is a
-            # self-contained sequence CodeBERT was trained to handle.
             chunk   = [cls_id] + content_chunk + [sep_id]
             pad_len = self.MAX_TOKEN_LENGTH - len(chunk)
 
             input_ids      = torch.tensor([chunk + [self.tokenizer.pad_token_id] * pad_len], dtype=torch.long)
             attention_mask = torch.tensor([[1] * len(chunk) + [0] * pad_len],               dtype=torch.long)
 
-            end_content = start + _CONTENT_CAP
             windows.append({
                 "input_ids":      input_ids,
                 "attention_mask": attention_mask,
                 "contract_hash":  contract_hash,
                 "num_tokens":     len(chunk),
-                "truncated":      (end_content < total_content),
-                "window_index":   len(windows),
+                "truncated":      (start + _CONTENT_CAP < total_content),
+                "window_index":   win_idx,
             })
-
-            if end_content >= total_content:
-                break
-
-            # Advance by (content_cap − stride) to match HuggingFace overflow semantics.
-            #
-            # HF tokenizer with return_overflowing_tokens=True, stride=S, max_length=L uses:
-            #   advance = (L − 2) − S  =  content_cap − stride  =  510 − 256 = 254
-            # so consecutive windows share exactly S=256 content tokens as overlap.
-            #
-            # The original code used `start += stride` (advance=256, overlap=254) which put
-            # window 1+ at different source positions than the offline training tokenizer,
-            # creating a 2-token offset that caused W1 DIFF in compare_pipelines.py.
-            # Aligning to 254 advance makes online window coverage identical to offline.
-            start += _CONTENT_CAP - stride   # was: start += stride
 
         return windows
 
