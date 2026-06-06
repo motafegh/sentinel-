@@ -28,7 +28,7 @@ ordering in FEATURE_NAMES requires ALL of the following steps:
        python ml/scripts/train.py
        (GNNEncoder reads in_channels=NODE_FEATURE_DIM at construction time)
   4. Increment FEATURE_SCHEMA_VERSION to invalidate all inference caches:
-       FEATURE_SCHEMA_VERSION = "v9"  (next increment — currently v8)
+       FEATURE_SCHEMA_VERSION = "v10"  (next increment — currently v9)
 
 Skipping any of these steps will cause silent accuracy regression.
 
