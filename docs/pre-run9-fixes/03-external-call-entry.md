@@ -1,5 +1,7 @@
 # Fix #3 — Add CALL_ENTRY/RETURN_TO for external calls
 
+**Status:** ✓ **APPLIED** (commit `eec9323`, 2026-06-06). v9 graphs re-extracted. EXTERNAL_CALL edge type 11 added; sub-routing in conv3b.
+
 **Effort:** 2 hours (re-extract needed)
 **Impact:** DoS, ExternalBug, Reentrancy
 **Risk:** High — adds new edges to the graph, must re-validate all GAT message-passing paths
