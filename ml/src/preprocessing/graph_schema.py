@@ -173,15 +173,16 @@ change — or whenever _build_node_features() logic changes in graph_extractor.p
 
 NODE_FEATURE_DIM: int = 12
 """
-Number of scalar features per graph node (v8 schema — 11 dims).
+Number of scalar features per graph node (v9 schema — 12 dims).
 
 GNNEncoder is constructed with in_channels=NODE_FEATURE_DIM. Changing this
 number requires a full graph re-extraction and model retrain.
 
-Feature layout (v8 — 11 dims; dropped in_unchecked [was dim 9] from v6):
-  [0]  type_id              — NODE_TYPES int (range 0–12), normalised /12.0
+Feature layout (v9 — 12 dims):
+  [0]  type_id              — NODE_TYPES int (range 0–13), normalised /13.0
   [1]  visibility           — VISIBILITY_MAP ordinal
-  [2]  uses_block_globals   — 1.0 if func reads block.timestamp/number/difficulty/basefee
+  [2]  uses_block_globals   — 1.0 if func reads block.timestamp/number/difficulty/basefee/prevrandao/blockhash
+                              or the deprecated `now` alias (Fix #2)
   [3]  view                 — bool
   [4]  payable              — bool
   [5]  complexity           — log1p(CFG block count)/log1p(100), normalised [0,1]
@@ -191,11 +192,18 @@ Feature layout (v8 — 11 dims; dropped in_unchecked [was dim 9] from v6):
   [9]  has_loop             — bool  (was dim [10] in v6)
   [10] external_call_count  — float, log-normalized; includes Transfer/Send ops
                               (was dim [11] in v6)
+  [11] in_unchecked_block   — 1.0 if any CFG node in func is inside an unchecked{}
+                              scope (Solidity 0.8+). v9 Fix #4 — RE-INTRODUCED
+                              (was dropped in v7 as BUG-L2 because 87.9% of BCCC is
+                              pre-0.8 Solidity). Uses node.scope.is_checked from
+                              Slither 0.10.0; for pre-0.8 contracts stays 0.0
+                              (all arithmetic was implicitly unchecked).
 
-Removed from v6:
-  [9]  in_unchecked         — DEAD signal. 87.9% of BCCC dataset is Solidity 0.4.x
-                              which predates the unchecked{} keyword (0.8.0+). Feature
-                              was 0.0 for nearly all training samples. BUG-L2.
+v8 history (11 dims; in_unchecked absent):
+  Was 11 dims with no in_unchecked_block. IntegerUO detection was unlearnable
+  because the model had no signal for which arithmetic ops were guarded by
+  Solidity 0.8+ bounds checks vs. which were bare. Re-introduced as dim [11]
+  in v9 (Fix #4).
 
 Note: `reentrant` (Slither's own is_reentrant flag) was feature[5] in v1 and
 is removed in v2 — keeping it gave the model a Slither-provided answer rather
@@ -215,7 +223,7 @@ are the v8 ICFG-Lite additions — stored on disk in v8 graphs.
 ID 7 (REVERSE_CONTAINS) is RUNTIME-ONLY — generated inside GNNEncoder Phase 3
 by reversing CONTAINS(5) edges; NEVER written to .pt files on disk.
 
-GNNEncoder embeds all 11 IDs via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim).
+GNNEncoder embeds all 12 IDs via nn.Embedding(NUM_EDGE_TYPES, gnn_edge_emb_dim).
 
 v1 structural edges (ids 0–4):
   CALLS      — function → internally-called function
@@ -449,7 +457,7 @@ FEATURE_NAMES: tuple[str, ...] = (
                             #      stays 0.0 (all arithmetic was implicitly unchecked).
 )
 """
-Human-readable labels for each node feature dimension (v8 — 11 dims).
+Human-readable labels for each node feature dimension (v9 — 12 dims).
 
 Used by:
   - interpretability suite scripts (ml/scripts/interpretability/)
