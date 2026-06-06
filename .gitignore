@@ -38,7 +38,7 @@ ml/data/validation_report.json
 # ── MLflow ──────────────────────────────────────────────────────────────────
 mlruns.db
 mlruns/
-
+.claude/
 # ── ZKML large binaries ──────────────────────────────────────────────────────
 zkml/ezkl/proving_key.pk
 zkml/ezkl/srs.params

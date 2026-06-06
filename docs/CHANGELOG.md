@@ -1,40 +1,162 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3+4 fixes, Run 5 Training Log Specification, Phase 4 training loop fixes (A35/A36/A37/NF-4/NF-9 + StructuredLogger), v9 findings validation + code fixes (C-1/C-3/H-2/M-3/M-6/NF-6), Run 5 kill + v10 re-extraction launch, v10 script defaults alignment, Run 7 architecture (BUG-R7-1/2, IMP-R7-1/2/3, ISSUE-1–4), and Fix #35 safe resume.
-**Last updated:** 2026-06-04
+**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3+4 fixes, Run 5 Training Log Specification, Phase 4 training loop fixes (A35/A36/A37/NF-4/NF-9 + StructuredLogger), v9 findings validation + code fixes (C-1/C-3/H-2/M-3/M-6/NF-6), Run 5 kill + v10 re-extraction launch, v10 script defaults alignment, Run 7 architecture (BUG-R7-1/2, IMP-R7-1/2/3, ISSUE-1–4), Fix #35 safe resume, **Pre-Run 9 Audit Findings (A–J, 2026-06-05)**, **Pre-Run 9 Fixes #1–#8 (applied 2026-06-06)**, **v9 Schema Upgrades (FEATURE_SCHEMA_VERSION v8→v9, 2026-06-06)**, **Run 9 Launch + Watcher (GCB-P1-Run9-v11-20260606, in flight)**, and **6 Tier 1 ADRs (0001–0006, 2026-06-06)**.
+**Last updated:** 2026-06-06
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
 
 ---
 
-## Table of Contents
+## Topical Reference Table
 
-1. [Project Foundation (2026-04-26 – 2026-04-29)](#1-project-foundation)
-2. [v4 Baseline (pre-2026-05-09)](#2-v4-baseline)
-3. [v5.0 — Three-Eye Architecture (2026-05-11 – 2026-05-12)](#3-v50--three-eye-architecture)
-4. [v5.1 — Dataset Deduplication (2026-05-12)](#4-v51--dataset-deduplication)
-5. [v5.2 — JK + LoRA + Three-Phase GNN (2026-05-14 – 2026-05-16)](#5-v52--jk--lora--three-phase-gnn)
-6. [v5.3 — ASL Loss Experiment (2026-05-16, killed)](#6-v53--asl-loss-experiment)
-7. [v6 — Graph Feature Schema Patch (2026-05-17)](#7-v6--graph-feature-schema-patch)
-8. [v7 — Full Architecture Overhaul (2026-05-18 – 2026-05-19)](#8-v7--full-architecture-overhaul)
-9. [v8 — Cross-Function Graph Extension (2026-05-19 – 2026-05-21)](#9-v8--cross-function-graph-extension)
-10. [v8-AB — Joint ICFG+DEF_USE Ablation (2026-05-20)](#10-v8-ab--joint-icfgdef_use-ablation)
-11. [PLAN-3A — ICFG-Only Ablation (2026-05-21 – 2026-05-23)](#11-plan-3a--icfg-only-ablation)
-12. [Phase 3.5 — Data Quality Fixes (2026-05-23)](#12-phase-35--data-quality-fixes)
-13. [Phase 3.6 — GraphCodeBERT + GNN Prefix Injection (2026-05-23 – 2026-05-24)](#13-phase-36--graphcodebert--gnn-prefix-injection)
-14. [IMP-* Architectural Fixes + P1-TRAIN Run 2 (2026-05-24)](#14-imp--architectural-fixes--p1-train-run-2)
-15. [P1-TRAIN Runs 3 and 4 (2026-05-25 – 2026-05-26)](#15-p1-train-runs-3-and-4)
-16. [Three-Tier ML Output (2026-05-27)](#16-three-tier-ml-output)
-17. [MLOps — Model Registry + Drift Detector (2026-05-27)](#17-mlops--model-registry--drift-detector)
-18. [Agent Layer — Three-Tier Schema Integration (2026-05-27 – 2026-05-28)](#18-agent-layer--three-tier-schema-integration)
-19. [Agent Layer — Step D: Graph Inspector (2026-05-29)](#19-agent-layer--step-d-graph-inspector)
-20. [Agent Layer — Step E: cross_validator + Graph Topology (2026-05-29)](#20-agent-layer--step-e-cross_validator--graph-topology)
-21. [Agent Layer — Phase 1 A1/A2/A3: Hotspots + GNN Attention + quick_screen (2026-05-30)](#21-agent-layer--phase-1-a1a2a3-hotspots--gnn-attention--quick_screen)
-22. [Agent Layer — Phase 1 A4/A5: Aderyn deep-path + End-to-End Smoke Test (2026-05-30)](#22-agent-layer--phase-1-a4a5-aderyn-deep-path--end-to-end-smoke-test)
-33. [v9 Findings Validation + Code Fixes C-1/C-3/H-2/M-3/M-6/NF-6 + Run 5 Kill (2026-06-02)](#33-v9-findings-validation--code-fixes-c-1c-3h-2m-3m-6nf-6--run-5-kill)
-34. [v10 Re-Extraction Launch + Script Defaults Alignment (2026-06-02)](#34-v10-re-extraction-launch--script-defaults-alignment)
-35. [Run 7 Architecture + ISSUE-1–4 Fixes (2026-06-03)](#35-run-7-architecture--issue-14-fixes)
-36. [Fix #35 — Safe Resume: RNG State + Full Optimizer Restore (2026-06-04)](#36-fix-35--safe-resume-rng-state--full-optimizer-restore)
+Quick-jump to any topic. Each row links to the section anchor. For chronological per-day entries (one-line summaries), see [`docs/changes/INDEX.md`](changes/INDEX.md). For the *why* behind current architecture, see [`docs/ml/adr/INDEX.md`](ml/adr/INDEX.md).
+
+### 1. Project Foundation
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| [1](#1-project-foundation) | 2026-04-26 → 04-29 | Project Foundation | Dual-path GNN+CodeBERT concept; EZKL/Groth16 ZKML; LangGraph 5-agent topology; Foundry contracts |
+
+### 2. Schema Evolution
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| [2](#2-v4-baseline) | pre-2026-05-09 | v4 Baseline | Pre-v5 schema (legacy `NODE_FEATURE_DIM`); 68K rows; 34.9% cross-split leakage |
+| [7](#7-v6--graph-feature-schema-patch) | 2026-05-17 | v6 — Graph Feature Schema Patch | BUG-1/2/3 in-place patch on 44,470 graphs; `VISIBILITY_MAP` int→float; `FEATURE_SCHEMA_VERSION` v5→v6 |
+| [8](#8-v7--full-architecture-overhaul) | 2026-05-18 – 05-19 | v7 — Full Architecture Overhaul | All 27 bugs fixed; 41,522 graphs re-extracted; 41,577 pairs cached (2.28 GB); 12 config/default misalignments |
+| [9](#9-v8--cross-function-graph-extension) | 2026-05-19 – 05-21 | v8 — Cross-Function Graph Extension | ICFG-Lite (`CALL_ENTRY`+`RETURN_TO`) + `DEF_USE` edges; schema v8 (`NUM_EDGE_TYPES=11`); 41,576 graphs |
+| [39](#39-v9-schema-upgrades) | 2026-06-06 | v9 Schema Upgrades | Adds `CFG_NODE_ARITH=13`, `EXTERNAL_CALL=11`, `in_unchecked_block` feat[11], `uses_block_globals` extension; v8→v9 |
+
+### 3. Architecture, Loss & Model Design
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| [3](#3-v50--three-eye-architecture) | 2026-05-11 – 05-12 | v5.0 — Three-Eye Architecture | GNN+CFG+TF three-eye design with aux loss (F1=0.27 plateau; complexity proxy) |
+| [5](#5-v52--jk--lora--three-phase-gnn) | 2026-05-14 – 05-16 | v5.2 — JK + LoRA + Three-Phase GNN | JK attention, per-phase LayerNorm, `REVERSE_CONTAINS` type-7, separate LR groups, NaN counter |
+| [6](#6-v53--asl-loss-experiment) | 2026-05-16, killed | v5.3 — ASL Loss Experiment | `pos_weight_min_samples=3000` over-corrected; killed ep47 F1=0.2559; decision: fix schema first |
+| [13](#13-phase-36--graphcodebert--gnn-prefix-injection) | 2026-05-23 – 05-24 | Phase 3.6 — GraphCodeBERT + GNN Prefix Injection | 124M GraphCodeBERT + LoRA r=16 α=32 on Q+V; `gnn_prefix_k=0` in Run 7 (disabled) |
+| [16](#16-three-tier-ml-output) | 2026-05-27 | Three-Tier ML Output | CONFIRMED/SUSPICIOUS/NOTEWORTHY schema; predictor + API integration |
+| [28](#28-run-5-training-log-specification) | 2026-06-02 | Run 5 Training Log Specification | 7-section log spec: 3A core, 3B AUC/calibration, 4 system, 5 interventions |
+| [35](#35-run-7-architecture--issue-14-fixes) | 2026-06-03 | Run 7 Architecture + ISSUE-1–4 Fixes | 4-eye (BUG-R7-1/2, IMP-R7-1/2/3), type emb, Ph2 heads=4, aux warmup 8ep, 0.005 entropy reg |
+| [ADR-0002](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0002 — Multi-label formulation | 10-class sigmoid multi-hot; class_9 reserved (SENTINEL phase 2) |
+| [ADR-0003](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0003 — Dual-path Four-Eye architecture | GNN + LoRA-CodeBERT cross-attend; 4 eyes (GNN/TF/Fused/CFG) summed for final logits |
+| [ADR-0004](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0004 — Three-phase GAT routing | 8-layer GAT split Ph1/Ph2/Ph3; Ph2 sub-routing for `EXTERNAL_CALL` |
+| [ADR-0006](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0006 — Loss formulation | ASL γ⁻=2 γ⁺=1 per-eye + aux BCE pathway (0→0.30 over 8ep) + 0.005 JK entropy |
+
+### 4. Training Runs
+
+| § | Date | Run | Outcome |
+|---|------|-----|---------|
+| [2](#2-v4-baseline) | pre-2026-05-09 | v4 Baseline | tuned F1=0.5422 (leakage-inflated, not reliable) |
+| [5](#5-v52--jk--lora--three-phase-gnn) | 2026-05-14 – 05-16 | v5.2-jk-20260515c-r2 | Killed at 0-byte log; restarted; aux-loss issue identified |
+| [6](#6-v53--asl-loss-experiment) | 2026-05-16 | v5.3 | Killed ep47 F1=0.2559 (pos_weight over-correction) |
+| [10](#10-v8-ab--joint-icfgdef_use-ablation) | 2026-05-20 | v8-AB | ep26 F1 plateau 0.236–0.259; killed at ep37 (patience 8/30); H1/H5 confirmed |
+| [11](#11-plan-3a--icfg-only-ablation) | 2026-05-21 – 05-23 | PLAN-3A — ICFG-Only | F1=0.2877 (better than v8-AB) but still below Run 4 |
+| [14](#14-imp--architectural-fixes--p1-train-run-2) | 2026-05-24 | P1-TRAIN Run 2 | 8-layer GNN, IMP-G1/G2/G3/M1/M2T2/M3/D1; 134/134 tests pass; launched PID 80610 |
+| [15](#15-p1-train-runs-3-and-4) | 2026-05-25 – 05-26 | P1-TRAIN Runs 3+4 | Run 3 ep16 F1=0.17 (double-amp bug); **Run 4 ep32 F1=0.3362** (best, capacity ceiling ep44) |
+| [36](#36-fix-35--safe-resume-rng-state--full-optimizer-restore) | 2026-06-04 | Run 7 (`GCB-P1-Run7-v10-20260603`) | ep39 F1=0.3074 fixed / **0.3423 tuned** (target to beat) |
+| (run record) | 2026-06-04 | Run 8 (`GCB-P1-Run8-v10-20260605`) | Killed ep29 KeyboardInterrupt; best ep27 val F1=0.2814; test tuned F1=**0.2307** (regression); see [§37](#37-pre-run-9-audit-findings) |
+| [40](#40-run-9-launch--watcher) | 2026-06-06 | **Run 9** (`GCB-P1-Run9-v11-20260606`) | In flight, ep14 at last check; best F1=0.2476 at ep12; top3 IntegerUO/GasException/MishandledException |
+
+### 5. Data Pipeline & Quality
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| [4](#4-v51--dataset-deduplication) | 2026-05-12 | v5.1 — Dataset Deduplication | 68K→44K rows; 34.9% cross-split leakage eliminated; clean splits in `splits/deduped/` |
+| [12](#12-phase-35--data-quality-fixes) | 2026-05-23 | Phase 3.5 — Data Quality Fixes | DQ-1 stricter label cleaning, DQ-2 DoS gradient re-enabled, DQ-3 complexity diagnostic, H5 refutation |
+| [23 (line 1195)](#23-pre-run-5-implementation--label-cleaning--cei-aux-loss--calibration) | 2026-05-31 | Pre-Run-5 Implementation | Label cleaning scripts, CEI aux loss, temperature scaling |
+| [34](#34-v10-re-extraction-launch--script-defaults-alignment) | 2026-06-02 | v10 Re-Extraction Launch | 41,576 graphs re-extracted; cache 2.5 GB; 0 overlap splits 29,103/6,236/6,237 |
+| [38](#38-pre-run-9-fixes) | 2026-06-06 | Pre-Run 9 Fixes | #1 relabel-timestamp, #2 block-globals, #3 external CALL_ENTRY, #4 IntegerUO schema gap (all applied); #5/#6/#7 pending |
+
+### 6. Pre-Flight Fixes (Pre-Run 5/7/8/9) & Audit
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| [23 (line 1132)](#23-gnn-interpretability-suite) | 2026-05-30 | GNN Interpretability Suite | A1–A5, S1–S3 interpretability experiments |
+| [24](#24-interpretability-suite--audit-fixes--phase-b-measurements) | 2026-06-01 | Interpretability — Audit Fixes + Phase B | EXP-L1–L4 reclassification; temperature calibration; 3 new scripts |
+| [25](#25-run-5-pre-flight--phase-0-critical-safety-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 0 | A20 (label=0 hardcoded), A38 (NaN loss backward order) |
+| [26](#26-run-5-pre-flight--phase-1-data--schema-layer-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 1 | A1–A3, NF-2, A19, A21, A22 (data + schema layer) |
+| [27](#27-run-5-pre-flight--phase-2-graph-extraction-layer-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 2 | A4–A18, NF-1/7/10/11 (graph extraction layer) |
+| [29](#29-run-5-pre-flight--phase-3-model-architecture-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 3 | A23, A25–A30, A33, A34, NF-6/8 (model architecture) |
+| [30](#30-run-5-pre-flight--phase-4-training-loop-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 4 | A35–A37, NF-4, NF-9, StructuredLogger (training loop) |
+| [31](#31-run-5-pre-flight--phase-5-training-interventions--cli-hardening) | 2026-06-02 | Run 5 Pre-Flight — Phase 5 | `aux_phase2_loss_weight` propagation, size-stratified F1, `--fusion-max-nodes` CLI |
+| [32](#32-run-5-pre-flight--phase-46-training-log-spec-gap-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 4.6 | `training_logger.py` new/fixed; trainer wiring (StructuredLogger, gate metrics) |
+| [33](#33-v9-findings-validation--code-fixes-c-1c-3h-2m-3m-6nf-6--run-5-kill) | 2026-06-02 | v9 Findings Validation + Code Fixes | C-1, C-3, H-2, M-3, M-6, NF-6 fixed; Run 5 killed |
+| [36](#36-fix-35--safe-resume-rng-state--full-optimizer-restore) | 2026-06-04 | Fix #35 — Safe Resume | `resume_model_only` default False; 4 RNG streams + `tuned_thresholds` saved/restored |
+| [37](#37-pre-run-9-audit-findings) | 2026-06-05 | Pre-Run 9 Audit Findings | 10 findings A–J; Run 8 test F1=0.2307; test contracts OOD; predictor hardcoded 0.55 tier |
+| [38](#38-pre-run-9-fixes) | 2026-06-06 | Pre-Run 9 Fixes (also in §5) | #1–#8 fixes applied/pending; schema bump v8→v9 |
+
+### 7. ADRs (Architectural Decisions)
+
+| § | Date | ADR | One-line summary |
+|---|------|-----|------------------|
+| [ADR-0001](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0001 — Schema versioning | `FEATURE_SCHEMA_VERSION` string, cache key suffix, module-level asserts |
+| [ADR-0002](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0002 — Multi-label formulation | (also in §3) 10-class sigmoid multi-hot |
+| [ADR-0003](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0003 — Dual-path Four-Eye architecture | (also in §3) GNN + LoRA-CodeBERT + 4 eyes |
+| [ADR-0004](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0004 — Three-phase GAT routing | (also in §3) 8-layer, Ph1/Ph2/Ph3, sub-routing |
+| [ADR-0005](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0005 — BCCC-SCsVul-2024 dataset | 41,576 contracts; SmartBugs held out as OOD; 87.9% pre-0.8 |
+| [ADR-0006](#41-tier-1-architectural-decision-records) | 2026-06-06 | ADR-0006 — Loss formulation | (also in §3) ASL γ⁻=2 γ⁺=1 + aux BCE + JK entropy |
+
+### 8. Agent Layer & MLOps
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| [16](#16-three-tier-ml-output) | 2026-05-27 | Three-Tier ML Output | (also in §3) CONFIRMED/SUSPICIOUS/NOTEWORTHY schema |
+| [17](#17-mlops--model-registry--drift-detector) | 2026-05-27 | MLOps — Model Registry + Drift Detector | `promote_model.py` gates; `exercise_drift_detector.py` CI test |
+| [18](#18-agent-layer--three-tier-schema-integration) | 2026-05-27 – 05-28 | Agent Layer — Three-Tier Schema Integration | 78 tests pass; routing.py, nodes.py, inference_server.py, test_graph_routing.py |
+| [19](#19-agent-layer--step-d-graph-inspector) | 2026-05-29 | Agent Layer — Step D: Graph Inspector | Phase 1 graph inspector implementation |
+| [20](#20-agent-layer--step-e-cross_validator--graph-topology) | 2026-05-29 | Agent Layer — Step E: cross_validator + Graph Topology | Cross-validator + graph topology checks |
+| [21](#21-agent-layer--phase-1-a1a2a3-hotspots--gnn-attention--quick_screen) | 2026-05-30 | Agent Layer — Phase 1 A1/A2/A3 | Hotspots, GNN attention, quick_screen |
+| [22](#22-agent-layer--phase-1-a4a5-aderyn-deep-path--end-to-end-smoke-test) | 2026-05-30 | Agent Layer — Phase 1 A4/A5 | Aderyn deep-path, end-to-end smoke test |
+
+### Sequential Section Index (chronological)
+
+| # | Date | Title |
+|---|------|-------|
+| [1](#1-project-foundation) | 2026-04-26 → 04-29 | Project Foundation |
+| [2](#2-v4-baseline) | pre-2026-05-09 | v4 Baseline |
+| [3](#3-v50--three-eye-architecture) | 2026-05-11 – 05-12 | v5.0 — Three-Eye Architecture |
+| [4](#4-v51--dataset-deduplication) | 2026-05-12 | v5.1 — Dataset Deduplication |
+| [5](#5-v52--jk--lora--three-phase-gnn) | 2026-05-14 – 05-16 | v5.2 — JK + LoRA + Three-Phase GNN |
+| [6](#6-v53--asl-loss-experiment) | 2026-05-16, killed | v5.3 — ASL Loss Experiment |
+| [7](#7-v6--graph-feature-schema-patch) | 2026-05-17 | v6 — Graph Feature Schema Patch |
+| [8](#8-v7--full-architecture-overhaul) | 2026-05-18 – 05-19 | v7 — Full Architecture Overhaul |
+| [9](#9-v8--cross-function-graph-extension) | 2026-05-19 – 05-21 | v8 — Cross-Function Graph Extension |
+| [10](#10-v8-ab--joint-icfgdef_use-ablation) | 2026-05-20 | v8-AB — Joint ICFG+DEF_USE Ablation |
+| [11](#11-plan-3a--icfg-only-ablation) | 2026-05-21 – 05-23 | PLAN-3A — ICFG-Only Ablation |
+| [12](#12-phase-35--data-quality-fixes) | 2026-05-23 | Phase 3.5 — Data Quality Fixes |
+| [13](#13-phase-36--graphcodebert--gnn-prefix-injection) | 2026-05-23 – 05-24 | Phase 3.6 — GraphCodeBERT + GNN Prefix Injection |
+| [14](#14-imp--architectural-fixes--p1-train-run-2) | 2026-05-24 | IMP-* Architectural Fixes + P1-TRAIN Run 2 |
+| [15](#15-p1-train-runs-3-and-4) | 2026-05-25 – 05-26 | P1-TRAIN Runs 3 and 4 |
+| [16](#16-three-tier-ml-output) | 2026-05-27 | Three-Tier ML Output |
+| [17](#17-mlops--model-registry--drift-detector) | 2026-05-27 | MLOps — Model Registry + Drift Detector |
+| [18](#18-agent-layer--three-tier-schema-integration) | 2026-05-27 – 05-28 | Agent Layer — Three-Tier Schema Integration |
+| [19](#19-agent-layer--step-d-graph-inspector) | 2026-05-29 | Agent Layer — Step D: Graph Inspector |
+| [20](#20-agent-layer--step-e-cross_validator--graph-topology) | 2026-05-29 | Agent Layer — Step E: cross_validator + Graph Topology |
+| [21](#21-agent-layer--phase-1-a1a2a3-hotspots--gnn-attention--quick_screen) | 2026-05-30 | Agent Layer — Phase 1 A1/A2/A3 |
+| [22](#22-agent-layer--phase-1-a4a5-aderyn-deep-path--end-to-end-smoke-test) | 2026-05-30 | Agent Layer — Phase 1 A4/A5 |
+| [23](#23-gnn-interpretability-suite) | 2026-05-30 | GNN Interpretability Suite |
+| [23](#23-pre-run-5-implementation--label-cleaning--cei-aux-loss--calibration) | 2026-05-31 | Pre-Run-5 Implementation (label cleaning + CEI aux loss + calibration) |
+| [24](#24-interpretability-suite--audit-fixes--phase-b-measurements) | 2026-06-01 | Interpretability Suite — Audit Fixes + Phase B Measurements |
+| [25](#25-run-5-pre-flight--phase-0-critical-safety-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 0 |
+| [26](#26-run-5-pre-flight--phase-1-data--schema-layer-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 1 |
+| [27](#27-run-5-pre-flight--phase-2-graph-extraction-layer-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 2 |
+| [28](#28-run-5-training-log-specification) | 2026-06-02 | Run 5 Training Log Specification |
+| [29](#29-run-5-pre-flight--phase-3-model-architecture-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 3 |
+| [30](#30-run-5-pre-flight--phase-4-training-loop-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 4 |
+| [31](#31-run-5-pre-flight--phase-5-training-interventions--cli-hardening) | 2026-06-02 | Run 5 Pre-Flight — Phase 5 |
+| [32](#32-run-5-pre-flight--phase-46-training-log-spec-gap-fixes) | 2026-06-02 | Run 5 Pre-Flight — Phase 4.6 |
+| [33](#33-v9-findings-validation--code-fixes-c-1c-3h-2m-3m-6nf-6--run-5-kill) | 2026-06-02 | v9 Findings Validation + Code Fixes + Run 5 Kill |
+| [34](#34-v10-re-extraction-launch--script-defaults-alignment) | 2026-06-02 | v10 Re-Extraction Launch + Script Defaults Alignment |
+| [35](#35-run-7-architecture--issue-14-fixes) | 2026-06-03 | Run 7 Architecture + ISSUE-1–4 Fixes |
+| [36](#36-fix-35--safe-resume-rng-state--full-optimizer-restore) | 2026-06-04 | Fix #35 — Safe Resume |
+| [37](#37-pre-run-9-audit-findings) | 2026-06-05 | Pre-Run 9 Audit Findings |
+| [38](#38-pre-run-9-fixes) | 2026-06-06 | Pre-Run 9 Fixes |
+| [39](#39-v9-schema-upgrades) | 2026-06-06 | v9 Schema Upgrades |
+| [40](#40-run-9-launch--watcher) | 2026-06-06 | Run 9 Launch + Watcher |
+| [41](#41-tier-1-architectural-decision-records) | 2026-06-06 | Tier 1 Architectural Decision Records |
+
+**Known numbering note (preserved, not renumbered):** §23 is duplicated in source (GNN Interpretability Suite at L1132 + Pre-Run-5 Implementation at L1195), and §28/§29 are physically out of order in source. Both preserved as-is to keep existing anchors stable.
 
 ---
 
@@ -2077,3 +2199,237 @@ CUDA non-deterministic ops (cuDNN, SDPA) mean results are not bit-for-bit identi
 ### Backward compatibility
 
 Old checkpoints (pre-Fix #35) lacking the new keys resume gracefully — each key is read with `.get()` and silently skipped if absent. `resume_model_only=True` can still be passed explicitly on the CLI to force model-only loading when intentionally fine-tuning from a different run's weights.
+
+---
+
+## 37. Pre-Run 9 Audit Findings
+
+**Period:** 2026-06-05
+**Owner:** Ali (verified by friend audit + manual test inference)
+**Source:** [`project_run8_audit_findings.md`](../../home/motafeq/.claude/projects/-home-motafeq-projects-sentinel/memory/project_run8_audit_findings.md) (full report)
+
+### Context
+
+Run 8 (`GCB-P1-Run8-v10-20260605`) was killed at ep29 step 100 (KeyboardInterrupt). Best checkpoint at **ep27, val F1=0.2814** (fixed) / 0.2764 (tuned). Test-set tuned F1=**0.2307** — a regression vs Run 7's 0.3423. Friend's audit + manual test inference surfaced **10 verified findings (A–J)** that explain the regression. Pure architecture iteration without fixing these will not beat Run 7.
+
+### Verified findings (summary)
+
+| # | Finding | Impact |
+|---|---------|--------|
+| **A** | `--relabel-timestamp` NEVER applied to v10 CSV | Timestamp class is 72.5% noise (only 27.5% of Timestamp=1 graphs fire feat[2]) |
+| **B** | Test-set precision degenerate for 9/10 classes | DoS predicts positive for 76.8% of all test rows (4,789/6,237) |
+| **C** | Manual inference: model fires near-constant ~0.30-0.45 baseline | Both Run 7 and Run 8 fire "everything" on safe contracts; no clean class |
+| **D** | `CALL_ENTRY` (edge type 8) only iterates `node.internal_calls` | External calls get nothing; 0% of training graphs have an `EXTERNAL CALL_ENTRY` edge |
+| **E** | `_compute_uses_block_globals` misses `now` keyword (Solidity 0.4.x alias) | 27.5% of Timestamp=1 contracts don't fire feat[2] — invisible to model |
+| **F** | IntegerUO unlearnable: arithmetic IR ops collapse into `CFG_NODE_OTHER(12)` | Schema has no `arithmetic-op` node type; 87.9% pre-0.8 → no `unchecked{}` to learn from |
+| **G** | Manual test contracts massively OOD by size | Median 20 nodes vs training 90 nodes; bottom 1st-7th percentile |
+| **H** | Predictor `_format_result()` ignores per-class tuned thresholds | Hardcoded 0.55 tier; manual eval display only |
+| **I** | 87.9% of BCCC dataset is pre-0.8 Solidity (0.4–0.7) | `in_unchecked` was rightly dropped in v7 (no signal) |
+| **J** | Model fires near-constant 0.30-0.45 baseline on safe contracts | Run 7 L4 + Run 8 manual test confirm — flag for ALL 10 classes |
+
+### Test contract problem
+
+The 20 manual test contracts in `ml/scripts/test_contracts/` are **not** a reliable primary benchmark:
+- **Size OOD:** median 20 nodes / 40 edges (bottom 1st-7th percentile of training distribution)
+- **Era OOD:** 100% use `pragma solidity ^0.8.0` with explicit `unchecked{}` blocks
+- Training is **87.9% pre-0.8 Solidity** (0.4–0.7) where overflow was implicit
+
+The model rightly cannot learn the `unchecked{}` vulnerability pattern that the test contracts trigger. **Use `ml/data/smartbugs-curated/` (143 real contracts, 100% pre-0.8) as the primary OOD benchmark instead.**
+
+### Decision flow
+
+1. Apply data + schema fixes (§38 below) → re-extract → retrain (Run 9)
+2. Pure architecture iteration is paused until #1 is done
+3. SmartBugs Curated becomes the primary OOD benchmark; test_contracts/ is documented as OOD
+
+---
+
+## 38. Pre-Run 9 Fixes
+
+**Period:** 2026-06-06
+**Commits:** `eec9323`, `1df0f68`, `a80a148` (and Run 9 launch follow-ups)
+**Source:** [`docs/pre-run9-fixes/`](pre-run9-fixes/) (8 fix proposals + PIPELINE + TODO + README)
+**Progress:** 5/8 fixes complete (Fixes #1, #2, #3, #4, #8 applied); #5, #6, #7 pending (post-training eval)
+
+### Status table
+
+| # | Fix | Status | Commit | Files | Re-extract? |
+|---|-----|--------|--------|-------|-------------|
+| **#1** | Timestamp relabel (`parents[2]` → `parents[3]`) | **DONE** | `eec9323` | `ml/scripts/archive/dedup_multilabel_index.py:64` | No |
+| **#2** | Block-globals extraction (catch `now` + library wrappers) | **DONE** | `eec9323` | `ml/src/preprocessing/graph_extractor.py:574-636, 690-742` | Yes (v9) |
+| **#3** | External CALL_ENTRY edge for `HighLevelCall`/`LowLevelCall` | **DONE** | `eec9323` | `ml/src/preprocessing/graph_schema.py:217, 406`; `graph_extractor.py` | Yes (v9) |
+| **#4** | IntegerUO schema gap (`CFG_NODE_ARITH=13` + `in_unchecked_block` feat[11]) | **DONE** | `eec9323` + `1df0f68` | `graph_schema.py:160-178, 386-403`; `graph_extractor.py:393-403` | Yes (v9) |
+| **#5** | Re-derive labels from Slither detectors (10 classes) | PENDING | — | new `ml/scripts/derive_slither_labels.py` | Partial |
+| **#6** | Fix predictor tier-threshold bug (hardcoded 0.55 vs per-class tuned) | PENDING | — | `ml/src/inference/predictor.py:150-151, 710-715` | No |
+| **#7** | Add `manual_test_smartbugs.py` benchmark | PENDING | — | new `ml/scripts/manual_test_smartbugs.py` | No |
+| **#8** | Document `complexity` complexity-proxy bias | **DONE** | `4c45f97` | `docs/interpretability/SENTINEL-Understanding-Run7.md` | No |
+
+### Smoke verification (all pass)
+
+- `roulette.sol` (pre-0.8, uses `now`): feat[2]=**4.0** (was 0.0 in v8) ✓
+- `simple_dao.sol`: EXTERNAL_CALL=**1**, +1 CFG_NODE_ARITH ✓
+- `03_integer_overflow.sol` (0.8.x unchecked): feat[11]=**8.0** ✓
+- `12_safe_contract.sol` (0.8.x safe): feat[11]=**0.0**, EXTERNAL_CALL=1 ✓
+- 100-graph v9 sample: 85% have EXTERNAL_CALL, 31% have CFG_NODE_ARITH, all feat_dim=12 ✓
+
+### Schema bump trigger
+
+The re-extract was triggered by 3 schema changes (Fix #2 + #3 + #4), all bumping `FEATURE_SCHEMA_VERSION` from `v8` to `v9`. All v8 checkpoints are now invalid; Run 9 starts from a cold start (not a Run 8 resume). See [§39](#39-v9-schema-upgrades) for the full schema diff.
+
+### Cross-cutting concerns (all applied)
+
+- **Fresh build:** all graphs, tokens, splits, cache rebuilt from scratch
+- **Schema version bump:** `FEATURE_SCHEMA_VERSION = "v9"` in `ml/src/preprocessing/graph_schema.py:160`
+- **DOC APPLIED banners:** 02-block-globals-extraction.md, 03-external-call-entry.md, 04-integeruo-schema-gap.md, README.md all updated in commit `4c45f97`
+- **Run 9 gating:** see [§40](#40-run-9-launch--watcher)
+
+### Run 9 gating criteria (post-fix)
+
+1. Re-derive IntegerUO labels from Slither `integer-overflow` detector + structural guard (post-eval)
+2. Re-validate Timestamp labels via `--relabel-timestamp` + `now`/library extraction fix
+3. Re-validate `CALL_ENTRY`/`RETURN_TO` coverage: at least 5% of training graphs should now have an `EXTERNAL CALL_ENTRY` edge
+4. SmartBugs Curated baseline: per-class precision > 0.3 on 6/10 classes (currently 1/10)
+5. Manual safe contracts: no class above 0.50 (currently 5/10 classes fire > 0.50 on `12_safe_contract.sol`)
+
+---
+
+## 39. v9 Schema Upgrades
+
+**Period:** 2026-06-06
+**Commits:** `eec9323`, `1df0f68`
+**Authoritative source:** [`docs/ml/adr/0001-schema-versioning.md`](ml/adr/0001-schema-versioning.md) (ADR-0001)
+**Bumped:** `FEATURE_SCHEMA_VERSION = "v8"` → `"v9"` in `ml/src/preprocessing/graph_schema.py:160`
+
+### Schema diff (v8 → v9)
+
+| Constant | v8 | v9 | Reason |
+|----------|----|----|--------|
+| `FEATURE_SCHEMA_VERSION` | `"v8"` | `"v9"` | Marks the cache invalidation boundary |
+| `NODE_FEATURE_DIM` | 11 | **12** | New feat[11] = `in_unchecked_block` (Slither 0.10 `node.scope.is_checked`) |
+| `NUM_NODE_TYPES` | 13 | **14** | New `CFG_NODE_ARITH=13` for pure Binary arithmetic ops |
+| `NUM_EDGE_TYPES` | 11 | **12** | New `EXTERNAL_CALL=11` self-loop on CFG nodes that make cross-contract calls |
+| `_MAX_TYPE_ID` (sentinel_model.py) | 12.0 | **13.0** | Mirrors `max(NODE_TYPES.values())`; module-level assert enforces |
+| `feat[2]` `uses_block_globals` | 8% fires | **9.1% fires** | Extended to catch `now` keyword, `block.timestamp`/`block.number`/`block.prevrandao`/`basefee`/`difficulty`/`blockhash`, library wrappers |
+
+### Cache + dataset impact
+
+- `ml/data/graphs/` — 41,576 .pt files re-extracted (v9 schema); v8 graphs moved to `ml/data/archive/graphs_v8_pre_run6/` for reference
+- `ml/data/cached_dataset_v9.pkl` — 2.6 GB, all features in v9 shape
+- All v8 checkpoints **invalid** for v9 (mismatched feature dim, edge type vocab, type embedding)
+- Run 9 starts from a cold start (Run 8 checkpoint not used; see [§40](#40-run-9-launch--watcher))
+
+### Slither API discoveries (avoid future schema-doc drift)
+
+- `op.in_unchecked_block` does **NOT** exist on `Operation`. Use `node.scope.is_checked` (Slither 0.10, `slither/solc_parsing/declarations/function.py:1090`).
+- `NodeType.STARTUNCHECKED` does **NOT** exist in installed Slither 0.10 — the v6 docstring was wrong.
+- `BinaryType` member names are full words: `ADDITION`/`SUBTRACTION`/`MULTIPLICATION`/`DIVISION`/`MODULO`/`POWER`/`LEFT_SHIFT`/`RIGHT_SHIFT` (NOT the shorter `ADD`/`SUB`/`MUL` referenced in earlier docs).
+- Empirically: pre-0.8 Solidity → ALL nodes have `is_checked=False` → feat[11]=1.0 universally. `feat[11]` becomes a **Solidity-era proxy** for the 87.9% pre-0.8 training subset, not a fault. (See [§38 finding I](#38-pre-run-9-fixes) — not a regression, was deliberately dropped in v7 BUG-L2.)
+
+### Authoritative schema decisions
+
+See [`docs/ml/adr/`](ml/adr/) for the *why* behind the schema versioning and class formulation:
+- **ADR-0001** — Schema versioning (`FEATURE_SCHEMA_VERSION` string, cache key suffix, module-level asserts)
+- **ADR-0002** — Multi-label formulation (10-class sigmoid multi-hot, `class_9` reserved)
+
+---
+
+## 40. Run 9 Launch + Watcher
+
+**Period:** 2026-06-06 (in flight)
+**Commits:** `a80a148` (Run 9 launch + watcher)
+**Source scripts:** `ml/scripts/run9_launch.sh`, `ml/scripts/run9_watcher.sh`
+**Log:** `/tmp/run9_v11.log` (also Windows toasts via watcher)
+
+### Run configuration
+
+| Field | Value |
+|-------|-------|
+| Run name | `GCB-P1-Run9-v11-20260606` |
+| Schema | v9 (`FEATURE_SCHEMA_VERSION="v9"`) |
+| Checkpoint (cold start) | None (Run 8 checkpoint invalid for v9) |
+| Launched | 2026-06-06 ~03:30 UTC |
+| Watcher PID | 2845414 |
+| Speed | ~35 min/epoch on RTX 3070 8GB |
+
+### Live status (as of 2026-06-06 ~14:00 UTC)
+
+- **Epoch:** ~ep14 (in flight)
+- **Best F1-macro:** 0.2476 at ep12
+- **Loss:** 0.1265
+
+**Top 3 classes (best F1):** IntegerUO=0.595, GasException=0.316, MishandledException=0.268
+**Bottom 3 classes:** DenialOfService=0.015, Timestamp=0.145, UnusedReturn=0.201
+
+### Gate criteria
+
+Run 9 must beat both of:
+- **Run 7 tuned F1-macro = 0.3423** (target)
+- **Run 8 plateau F1-macro = 0.2307** (regression floor — must improve at minimum)
+
+### Known unknowns
+
+- **DoS:** bottom class with F1=0.015. The 98.6% co-occurrence with Reentrancy (BCCC label noise) means the model has only 14 DoS-only examples. Per-class F1 ceiling expected to stay at 0.15–0.30. See [ADR-0005](ml/adr/0005-bccc-dataset-choice.md) (Consequences: DoS/Reentrancy inseparability).
+- **Timestamp:** relabeled (`--relabel-timestamp` applied) but feat[2] extension only helps pre-0.8 contracts; SmartBugs Curated (100% pre-0.8) is the OOD test.
+- **SmartBugs Curated benchmark:** not yet measured (Fix #7 pending — `manual_test_smartbugs.py` script).
+
+### Related
+
+- [§38 Pre-Run 9 Fixes](#38-pre-run-9-fixes) — the 5 fixes that preceded this run
+- [§39 v9 Schema Upgrades](#39-v9-schema-upgrades) — the schema Run 9 trains on
+- [`docs/training/GCB-P1-Run7-analysis-2026-06-04.md`](training/GCB-P1-Run7-analysis-2026-06-04.md) — the analysis Run 9 must beat
+
+---
+
+## 41. Tier 1 Architectural Decision Records
+
+**Period:** 2026-06-06
+**Source:** [`docs/ml/adr/`](ml/adr/) (6 ADRs + INDEX + README + template)
+**Format:** MADR-lite (~80–150 lines each), 4-digit zero-padded naming
+**Status:** All 6 Tier 1 ADRs Accepted. Tier 2 (0007–0012) deferred to a future session.
+
+### ADRs authored
+
+| # | Title | One-line summary |
+|---|-------|------------------|
+| [ADR-0001](ml/adr/0001-schema-versioning.md) | Schema versioning | `FEATURE_SCHEMA_VERSION` string constant, cache key suffix, module-level asserts |
+| [ADR-0002](ml/adr/0002-multi-label-formulation.md) | Multi-label formulation | 10-class sigmoid multi-hot; `class_9` reserved (SENTINEL phase 2, off by default) |
+| [ADR-0003](ml/adr/0003-dual-path-four-eye-architecture.md) | Dual-path GNN+CodeBERT Four-Eye architecture | GNN + LoRA-CodeBERT cross-attend; 4 eyes (GNN/TF/Fused/CFG) summed for final logits |
+| [ADR-0004](ml/adr/0004-three-phase-gat-routing.md) | Three-phase GAT routing | 8-layer GAT split Ph1/Ph2/Ph3; Ph2 sub-routing for `EXTERNAL_CALL`; JK attention aggregation |
+| [ADR-0005](ml/adr/0005-bccc-dataset-choice.md) | BCCC-SCsVul-2024 as primary dataset | 41,576 deduped contracts; SmartBugs-curated held out as OOD benchmark; 87.9% pre-0.8 |
+| [ADR-0006](ml/adr/0006-loss-formulation.md) | Loss formulation | ASL γ⁻=2 γ⁺=1 per-eye + aux BCE pathway (0→0.30 over 8ep) + 0.005 JK entropy |
+
+### Tier structure
+
+| Tier | Status | Scope |
+|------|--------|-------|
+| **Tier 1** | **Done** (this section) | Foundational design choices. Locks the architecture. |
+| **Tier 2** | Deferred to future session | Implementation details, sub-system design |
+| **Tier 3** | Backlog | Hyperparameters, training recipes, calibration thresholds |
+
+### Tier 2 backlog (deferred)
+
+- **0007:** Slither IR as the canonical extraction source (vs hand-rolled AST walk)
+- **0008:** Windowed tokenization strategy (linspace subsample, stride 256, max 4 windows)
+- **0009:** Cache architecture (`.pkl` vs `.parquet` vs LMDB, invalidation by schema version)
+- **0010:** Pre-flight gate methodology (smoke tests 1–8, gate criteria for new runs)
+- **0011:** Sampling strategy (WeightedRandomSampler, BCCC class imbalance mitigation)
+- **0012:** Training kill criteria (F1-macro regression, aux BCE explosion, JK collapse)
+
+### Code cross-links (one-line comments)
+
+To make the ADRs discoverable from the source code, single-line `# See ADR-NNNN` comments were added in:
+- `ml/src/preprocessing/graph_schema.py:158` → ADR-0001
+- `ml/src/preprocessing/graph_extractor.py:3` → ADR-0001
+- `ml/src/models/sentinel_model.py:145-146` → ADR-0003, ADR-0004
+- `ml/src/training/losses.py:49` → ADR-0006
+
+### Memory cross-link
+
+`~/.claude/projects/-home-motafeq-projects-sentinel/memory/MEMORY.md:185` now references `docs/ml/adr/INDEX.md` as the authoritative source for the *why* behind SENTINEL's current architecture.
+
+### Related
+
+- [`docs/ml/adr/INDEX.md`](ml/adr/INDEX.md) — the ADR index (with status, date, one-line summary for each)
+- [`docs/ml/adr/README.md`](ml/adr/README.md) — ADR lifecycle and tier structure
+- [`docs/ml/adr/_template.md`](ml/adr/_template.md) — MADR-lite template for new ADRs
+
