@@ -1,5 +1,7 @@
 # Fix #4 — Add CFG_NODE_ARITH type + `in_unchecked` (Solidity 0.8+) feature
 
+**Status:** ✓ **APPLIED** (commit `eec9323`, 2026-06-06). v9 schema live: `NODE_FEATURE_DIM=12`, `NUM_NODE_TYPES=14`, `FEATURE_SCHEMA_VERSION="v9"`. _compute_in_unchecked uses `node.scope.is_checked`. CFG_NODE_ARITH via `Binary.type` ∈ ARITH_OPS.
+
 **Effort:** 4 hours (re-extract needed)
 **Impact:** IntegerUO (the only real schema gap)
 **Risk:** High — adds new node type, bumps schema version, invalidates all checkpoints

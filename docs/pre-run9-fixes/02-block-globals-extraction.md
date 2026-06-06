@@ -1,5 +1,7 @@
 # Fix #2 — Fix _compute_uses_block_globals extraction
 
+**Status:** ✓ **APPLIED** (commit `eec9323`, 2026-06-06). v9 graphs re-extracted.
+
 **Effort:** 30 minutes (re-extract needed)
 **Impact:** Timestamp, TOD
 **Risk:** Medium — changes feature values, requires full re-extract

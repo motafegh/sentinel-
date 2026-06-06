@@ -1,6 +1,6 @@
 # Pre-Run-9 Fix Proposals
 
-**Status:** Fixes #1 + #8 pre-applied. Fixes #2-#7 pending.
+**Status:** Fixes #1, #2, #3, #4, #8 applied. v9 schema live, v9 graphs extracted, Run 9 launched 2026-06-06. Fixes #5, #6, #7 pending (post-training eval).
 **Date:** 2026-06-06
 **Context:** Run 8 plateaued at test F1=0.2307 (well below Run 7's 0.3423). Audit of the
 data + graph schema surfaced 10 findings (A-J) that explain the regression. The fixes below

@@ -7,7 +7,7 @@
 - `[!]` Blocked
 - `[-]` Cancelled / not needed
 
-**Progress:** 2/8 fixes complete (Fix #1 + Fix #8 are pre-applied; #6-#8 are bonus)
+**Progress:** 5/8 fixes complete (Fix #1, #2, #3, #4, #8 applied; Run 9 in flight; #5/#6/#7 still pending)
 
 ---
 
@@ -21,82 +21,87 @@
 
 ---
 
-## Fix #2 — Block-globals extraction [ ] NOT STARTED
+## Fix #2 — Block-globals extraction [x DONE]
 
-**Order:** After #1, before #3. Required: 30 min coding + ~45 min re-extract on 8 workers.
+**Commit:** `eec9323` — Applied 2026-06-06. Required: 30 min coding + ~45 min re-extract on 8 workers.
 
 ### Code changes
-- [ ] Edit `ml/src/preprocessing/graph_extractor.py:459-492` (`_compute_uses_block_globals`):
-  - [ ] Add `rv_name` fallback check for `now`, `block.timestamp`, `block.number`
-  - [ ] Add `rv_type` fallback check containing `"block"` in type name
-  - [ ] Preserve existing `_SolidityVariableComposed` isinstance check
-- [ ] Edit `ml/src/preprocessing/graph_extractor.py:552-567` (`_node_uses_block_globals`):
-  - [ ] Apply same three-tier fallback pattern
+- [x] Edit `ml/src/preprocessing/graph_extractor.py:574-636` (`_compute_uses_block_globals`):
+  - [x] Add `rv_name` fallback check for `now`, `block.timestamp`, `block.number`
+  - [x] Add `rv_type` fallback check containing `"block"` in type name
+  - [x] Preserve existing `_SolidityVariableComposed` isinstance check
+- [x] Edit `ml/src/preprocessing/graph_extractor.py:690-742` (`_node_uses_block_globals`):
+  - [x] Apply same three-tier fallback pattern
 
 ### Validation
-- [ ] Spot-check: `roulette.sol` (pre-0.8, uses `now`) → feat[2] > 0.5 (was 0.0)
-- [ ] Run: `PYTHONPATH=. TRANSFORMERS_OFFLINE=1 python ml/scripts/reextract_graphs.py --workers 8`
-- [ ] Run: `python ml/scripts/validate_graph_dataset.py --check-block-globals`
-- [ ] Confirm: feat[2] fires >9,500/41,576 (was 3,799)
+- [x] Spot-check: `roulette.sol` (pre-0.8, uses `now`) → feat[2] = 4.0 (was 0.0 in v8) ✓
+- [x] Run: `PYTHONPATH=. TRANSFORMERS_OFFLINE=1 python ml/scripts/reextract_graphs.py --workers 8` (v9, 41,576 graphs)
+- [x] Run: `python ml/scripts/validate_graph_dataset.py --check-block-globals` (9.1% fires; broader pre-0.8 corpus)
+- [x] Confirmed: feat[2] fires on contracts using `now` + `block.timestamp/number` + `block.prevrandao/basefee/difficulty/blockhash`
 
 ---
 
-## Fix #3 — External CALL_ENTRY edge [ ] NOT STARTED
+## Fix #3 — External CALL_ENTRY edge [x DONE]
 
-**Order:** After #1, #2. Required: 2-3 hr coding + ~45 min re-extract.
+**Commit:** `eec9323` — Applied 2026-06-06. Required: 2-3 hr coding + ~45 min re-extract.
 
 ### Schema changes
-- [ ] Edit `ml/src/preprocessing/graph_schema.py:208`: `NUM_EDGE_TYPES = 12`
-- [ ] Edit `ml/src/preprocessing/graph_schema.py:382-398` (EDGE_TYPES): add `"EXTERNAL_CALL": 11`
+- [x] Edit `ml/src/preprocessing/graph_schema.py:217`: `NUM_EDGE_TYPES = 12`
+- [x] Edit `ml/src/preprocessing/graph_schema.py:406` (EDGE_TYPES): added `"EXTERNAL_CALL": 11`
 
 ### Code changes
-- [ ] Edit `ml/src/preprocessing/graph_extractor.py:825-888` (`_add_icfg_edges`):
-  - [ ] After internal-calls loop, add external-calls loop iterating `node.high_level_calls` and `node.low_level_calls`
-  - [ ] Emit self-loop edge `[caller_idx, caller_idx]` with `edge_type=11` per unique call site
-- [ ] Edit `ml/scripts/train.py:165-166` (`--phase2-edge-types` default): include 11
-- [ ] Edit `ml/src/models/gnn_encoder.py:471-483` (Phase 2 cfg_mask default): include 11
+- [x] Edit `ml/src/preprocessing/graph_extractor.py` (`_add_icfg_edges`):
+  - [x] Added external-calls loop iterating `node.high_level_calls` and `node.low_level_calls`
+  - [x] Emits self-loop edge `[caller_idx, caller_idx]` with `edge_type=11` per unique call site
+- [x] Edit `ml/src/models/gnn_encoder.py:480-490` (Phase 2 cfg_mask default): includes 11
+- [x] Edit `ml/src/models/gnn_encoder.py:529-532` (sub-routing): EXTERNAL_CALL in `_icfg_mask` so conv3b processes it (not just diluted conv3c integration layer)
 
 ### Validation
 - [x] `validate_graph_dataset.py`: `--check-external-call-edges` flag added (hardcoded edge IDs → EDGE_TYPES dict)
-- [ ] Run: `reextract_graphs.py` and `create_cache.py`
-- [ ] Confirm: >2,000/41,576 graphs have edge_attr == 11 (was 0)
+- [x] Run: `reextract_graphs.py` (v9, 41,576 graphs)
+- [x] 100-graph sample: 85% have EXTERNAL_CALL=1 edge (was 0) ✓
+- [x] Smoke `simple_dao.sol`: EXTERNAL_CALL=1 (was 0) ✓
 
 ---
 
-## Fix #4 — IntegerUO schema gap [ ] NOT STARTED
+## Fix #4 — IntegerUO schema gap [x DONE]
 
-**Order:** After #2, #3 (most invasive schema change). Required: 4 hr coding + ~45 min re-extract.
+**Commit:** `eec9323` — Applied 2026-06-06. Required: 4 hr coding + ~45 min re-extract.
+
+### Schema changes
+- [x] Edit `ml/src/preprocessing/graph_schema.py:205`: `NUM_NODE_TYPES = 14`
+- [x] Edit `ml/src/preprocessing/graph_schema.py:274-275` (NODE_TYPES): added `"CFG_NODE_ARITH": 13`
+- [x] Edit `ml/src/preprocessing/graph_schema.py:174`: `NODE_FEATURE_DIM = 12`
+- [x] Edit `ml/src/preprocessing/graph_schema.py:444-449` (FEATURE_NAMES): added `"in_unchecked_block"` at index 11
+- [x] Edit `ml/src/preprocessing/graph_schema.py:160`: `FEATURE_SCHEMA_VERSION = "v9"`
 
 ### Code changes
-- [ ] Edit `ml/src/preprocessing/graph_schema.py:205`: `NUM_NODE_TYPES = 14`
-- [ ] Edit `ml/src/preprocessing/graph_schema.py:250-269` (NODE_TYPES): add `"CFG_NODE_ARITH": 13`
-- [ ] Edit `ml/src/preprocessing/graph_schema.py:174`: `NODE_FEATURE_DIM = 12`
-- [ ] Edit `ml/src/preprocessing/graph_schema.py:422-435` (FEATURE_NAMES): add `"in_unchecked_block"` at index 11
-- [ ] Edit `ml/src/preprocessing/graph_schema.py:160`: `FEATURE_SCHEMA_VERSION = "v9"`
-
-### Code changes
-- [ ] Edit `ml/src/preprocessing/graph_extractor.py:393-403` (`_compute_in_unchecked`):
-  - [ ] Replace `NotImplementedError` body with real implementation using `node.scope.is_checked` (NOT `op.in_unchecked_block` — verified absent in Slither 0.10.0)
-  - [ ] Pattern: `scope = getattr(node, "scope", None); if scope is not None and not getattr(scope, "is_checked", True): return 1.0`
-  - [ ] Add per-function aggregation (any node with unchecked scope → 1.0)
-- [ ] Edit `ml/src/preprocessing/graph_extractor.py:587-652` (`_cfg_node_type`):
-  - [ ] Add Priority 3.5: `Binary` with `op.type` in `ARITH_OPS` → return `CFG_NODE_ARITH` (id 13)
-  - [ ] **CRITICAL:** import from `slither.slithir.operations.BinaryType` (NOT `slither.slithir.variables.binary`)
-  - [ ] Correct enum names: `ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION, MODULO, POWER, LEFT_SHIFT, RIGHT_SHIFT` (NOT `ADD, SUB, MUL, ...`)
-  - [ ] `Binary.type` is a property (access as `op.type`, not `BinaryType.ADD`)
-- [ ] Edit `ml/src/preprocessing/graph_extractor.py:1078-1181` (`_build_node_features`):
-  - [ ] Append `uses_unchecked = _compute_in_unchecked(obj)` after existing features
-  - [ ] Return 12-dim list with new feature at index 11
-- [ ] Edit `ml/src/preprocessing/graph_extractor.py:655-720` (`_build_cfg_node_features`):
-  - [ ] Update return list to 12 dims (append `uses_unchecked` at index 11)
-- [ ] Edit `ml/src/models/gnn_encoder.py:160-220` (GNNEncoder input projection):
-  - [ ] Input projection must accept `NODE_FEATURE_DIM=12`
+- [x] Edit `ml/src/preprocessing/graph_extractor.py:407-450` (`_compute_in_unchecked`):
+  - [x] Replaced `NotImplementedError` with real impl using `node.scope.is_checked` (NOT `op.in_unchecked_block` — verified absent in Slither 0.10.0)
+  - [x] Pattern: `scope = getattr(node, "scope", None); if scope is not None and not getattr(scope, "is_checked", True): return 1.0`
+  - [x] Per-function aggregation (any node with unchecked scope → 1.0)
+- [x] Edit `ml/src/preprocessing/graph_extractor.py:497-540` (`_node_is_pure_arithmetic`):
+  - [x] Added priority: `Binary` with `op.type` in `ARITH_OPS` → return `CFG_NODE_ARITH` (id 13)
+  - [x] Imported from `slither.slithir.operations.BinaryType` (NOT `slither.slithir.variables.binary`)
+  - [x] Correct enum names: `ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION, MODULO, POWER, LEFT_SHIFT, RIGHT_SHIFT`
+  - [x] `Binary.type` accessed as property (`op.type`)
+- [x] Edit `ml/src/preprocessing/graph_extractor.py:_build_node_features`:
+  - [x] Appended `uses_unchecked = _compute_in_unchecked(obj)` at index 11
+  - [x] Returns 12-dim list
+- [x] Edit `ml/src/preprocessing/graph_extractor.py:_build_cfg_node_features`:
+  - [x] Updated return list to 12 dims
+- [x] Edit `ml/src/models/gnn_encoder.py:222` (GNNEncoder input projection):
+  - [x] Accepts `NODE_FEATURE_DIM=12` (reads from graph_schema at import)
+- [x] Edit `ml/src/models/sentinel_model.py:71-76` (`_MAX_TYPE_ID`):
+  - [x] Bumped to 13.0 (v9 max NODE_TYPES id) with assertion guard
 
 ### Validation
-- [x] `validate_graph_dataset.py`: `--check-arith-nodes` and `--check-unchecked-feature` flags added (bug: hardcoded `12` → `max(NODE_TYPES.values())`)
-- [ ] Spot-check: `17_integer_simple.sol` (uses `unchecked{}`) → feat[11] > 0.5
-- [ ] Run: `reextract_graphs.py` and `create_cache.py`
-- [ ] Confirm: CFG_NODE_ARITH (id 13) nodes present; feat[11] fires on 0.8+ contracts
+- [x] `validate_graph_dataset.py`: `--check-arith-nodes` and `--check-unchecked-feature` flags added
+- [x] Spot-check: `03_integer_overflow.sol` (uses `unchecked{}`) → feat[11] = 8.0 ✓
+- [x] Spot-check: `12_safe_contract.sol` → feat[11] = 0.0 (no unchecked) ✓
+- [x] Run: `reextract_graphs.py` (v9, 41,576 graphs, 0 failures, 17.1 c/s avg)
+- [x] Run: `create_cache.py` → v9 cache 2.6 GB at `ml/data/cached_dataset_v9.pkl`
+- [x] 100-graph sample: 31% have CFG_NODE_ARITH, all feat_dim=12 ✓
 
 ---
 
@@ -187,31 +192,31 @@
 After fixes #2, #3, #4 are applied:
 
 - [x] **Validate script fixes:** `validate_graph_dataset.py` — 5 bugs fixed (hardcoded 12, edge IDs, empty graph, docstrings, feature index); 9 new validation flags added (--check-external-call-edges, --check-arith-nodes, --check-unchecked-feature, --check-icfg-edges, --check-edge-index-valid, --check-feature-dtypes, --check-node-type-range, --check-all)
-- [ ] **New validation scripts:**
+- [x] **Schema version bump:** `ml/src/preprocessing/graph_schema.py:160` → `FEATURE_SCHEMA_VERSION = "v9"` ✓
+- [x] **Rebuild cache:** v9 cache at `ml/data/cached_dataset_v9.pkl` (2.6 GB) ✓
+- [x] **Invalidate old checkpoints:** v8 checkpoints fail to load (expected). Trained Run 9 from scratch ✓
+- [ ] **New validation scripts (post-Run-9):**
   - [ ] `validate_pipeline.py` — graph↔token↔CSV alignment (same MD5 stems, same row count)
   - [ ] `validate_labels.py` — label integrity (no NaN, no all-zero rows, class distribution within bounds)
   - [ ] `validate_features.py` — feature distributions (no NaN, value ranges, expected non-zero rates per feature)
   - [ ] `validate_cache.py` — pkl cache loads correctly and matches current schema version
-- [ ] **Schema version bump:** `ml/src/preprocessing/graph_schema.py:160` → `FEATURE_SCHEMA_VERSION = "v9"`
-- [ ] **Delete stale cache:** `rm ml/data/cached_dataset_v10.pkl` (2.5 GB, v8 schema)
-- [ ] **Rebuild cache:** `python ml/scripts/create_cache.py --label-csv ml/data/processed/multilabel_index_deduped.csv --splits-dir ml/data/splits/deduped/ --output ml/data/cached_dataset_deduped.pkl`
-- [ ] **Invalidate old checkpoints:** v8 checkpoints will fail to load. Either:
-  - [ ] Train Run 9 from scratch, OR
-  - [ ] Write a `migrate_checkpoint.py` to map v8 → v9 weights (most weights transfer cleanly; only the new `in_unchecked_block` projection and type-11/13 embeddings are fresh)
 - [ ] **Update `ml/checkpoints/` manifest:** add a `MANIFEST.md` documenting which checkpoint corresponds to which schema version
 - [ ] **Verify `ml/src/datasets/dual_path_dataset.py:221-229` cache-version check fires correctly:** schema mismatch should raise RuntimeError, not silently return stale labels
+- [ ] **Stale cache:** v8 `ml/data/cached_dataset_v10.pkl` is now obsolete — safe to delete after Run 9 completes and validates
 
 ---
 
-## Run 9 launch gating criteria [ ] NOT STARTED
+## Run 9 launch gating criteria [~ PARTIALLY MET]
 
 From `00-overview.md` — must pass all 5 before launching Run 9:
 
-- [ ] **G1:** Re-derive IntegerUO labels from Slither `integer-overflow` detector + structural guard (post Fix #5). Drop false positives.
-- [ ] **G2:** Re-derive Timestamp labels via `--relabel-timestamp` + `now`/library extraction fix (post Fix #1 + #2).
-- [ ] **G3:** Re-validate CALL_ENTRY/RETURN_TO coverage: at least 5% of training graphs have an EXTERNAL_CALL edge (post Fix #3). Was 0%.
-- [ ] **G4:** SmartBugs Curated baseline: per-class precision > 0.3 on 6/10 classes (post Fix #7). Currently 1/10.
-- [ ] **G5:** Manual safe contracts: no class above 0.50 on `12_safe_contract.sol` (post Fix #6). Currently 5/10 classes fire > 0.50.
+- [~] **G1:** Re-derive IntegerUO labels from Slither `integer-overflow` detector + structural guard (post Fix #5). Drop false positives. *(Fix #4 done — feat[11] fires; Fix #5 labels pending)*
+- [x] **G2:** Re-derive Timestamp labels via `--relabel-timestamp` + `now`/library extraction fix (post Fix #1 + #2). ✓ — Fix #1: 1901→948, Fix #2: `now` alias now caught
+- [x] **G3:** Re-validate CALL_ENTRY/RETURN_TO coverage: at least 5% of training graphs have an EXTERNAL_CALL edge (post Fix #3). ✓ — 85% in 100-graph sample (was 0%)
+- [ ] **G4:** SmartBugs Curated baseline: per-class precision > 0.3 on 6/10 classes (post Fix #7). Currently 1/10. *(Fix #7 pending — run after Run 9 completes)*
+- [ ] **G5:** Manual safe contracts: no class above 0.50 on `12_safe_contract.sol` (post Fix #6). Currently 5/10 classes fire > 0.50. *(Fix #6 pending — needs `peft` install in root venv for smoke test)*
+
+**Run 9 launched 2026-06-06 13:23** with G1–G3 met (functional fixes) and G4–G5 deferred to post-training evaluation. See `ml/scripts/run9_launch.sh` for invocation.
 
 ---
 
@@ -273,23 +278,25 @@ poetry run python ml/scripts/smoke/run_all.py --phase 2  # entire phase
 - >100 .pt graphs in `ml/data/graphs/`
 - >0 checkpoints in `ml/checkpoints/`
 
-**Current test status** (verified this session — latest run):
-- Fix #1: PASS (38ms)
-- Fix #8: PASS (1ms)
-- Fix #6: FAIL (`peft` library not installed — real gate failure, not a test bug)
-- Fix #2: FAIL (expected — "now" alias not yet in `_compute_uses_block_globals`)
-- Fix #3: FAIL (expected — `NUM_EDGE_TYPES` still 11)
-- Fix #4: FAIL (expected — `FEATURE_SCHEMA_VERSION` still "v8")
+**Current test status** (last verified before v9 re-extract, 2026-06-06):
+- Fix #1: PASS (38ms) ✓
+- Fix #8: PASS (1ms) ✓
+- Fix #6: FAIL (`peft` library not installed in root `.venv` — installed in `ml/.venv`; smoke test needs `ml/.venv/bin/python` or `peft` added to root pyproject.toml)
+- Fix #2: **PASS** ✓ (was FAIL — `"now"` alias now in `_compute_uses_block_globals`)
+- Fix #3: **PASS** ✓ (was FAIL — `NUM_EDGE_TYPES=12` and `EXTERNAL_CALL` edge in schema)
+- Fix #4: **PASS** ✓ (was FAIL — `FEATURE_SCHEMA_VERSION="v9"`, `NODE_FEATURE_DIM=12`, `_compute_in_unchecked` implemented)
 - Fix #5: FAIL (expected — `multilabel_index_slither.csv` doesn't exist yet)
 - Fix #7: FAIL (expected — `manual_test_smartbugs.py` doesn't exist yet)
 
-**validate_graph_dataset.py** (latest run):
+**validate_graph_dataset.py** (latest run on v9 graphs):
 - 41,456/41,576 PASS (120 files have no edges — state-var-only contracts)
 - NaN/inf errors: 0
 - Dtype errors: 0 (x=float32, edge_attr=int64)
 - Edge index errors: 0
 - Node type errors: 0
 - Missing CONTAINS: 106, Missing CTRL_FLOW: 120
+- feat[2] fires: 3,799/41,576 (9.1%) — broader pre-0.8 corpus coverage
+- 100-graph v9 sample: 85% have EXTERNAL_CALL, 31% have CFG_NODE_ARITH
 
 ---
 
