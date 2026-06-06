@@ -46,7 +46,7 @@ import torch
 import torch.nn as nn
 
 
-class AsymmetricLoss(nn.Module):
+class AsymmetricLoss(nn.Module):  # See ADR-0006 (docs/ml/adr/0006-loss-formulation.md)
     """
     Asymmetric Loss for multi-label classification (Ridnik et al., ICCV 2021).
 

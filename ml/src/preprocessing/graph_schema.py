@@ -155,6 +155,7 @@ except importlib.metadata.PackageNotFoundError:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Schema version
+# See ADR-0001 (docs/ml/adr/0001-schema-versioning.md)
 # ─────────────────────────────────────────────────────────────────────────────
 
 FEATURE_SCHEMA_VERSION: str = "v9"

@@ -1,5 +1,6 @@
 """
 graph_extractor.py — Canonical Solidity-to-PyG graph extraction (v8 schema)
+# See ADR-0001 (docs/ml/adr/0001-schema-versioning.md) — feature shape contract.
 
 WHAT THIS MODULE DOES
 ─────────────────────

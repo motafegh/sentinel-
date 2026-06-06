@@ -142,6 +142,9 @@ _PREFIX_TYPE_IDX: dict[int, int] = {
 _NUM_PREFIX_TYPES: int = 5  # FUNCTION MODIFIER FALLBACK RECEIVE CONSTRUCTOR
 
 
+# See ADR-0003 (docs/ml/adr/0003-dual-path-four-eye-architecture.md) and
+# ADR-0004 (docs/ml/adr/0004-three-phase-gat-routing.md) for the architecture
+# decisions implemented below.
 class SentinelModel(nn.Module):
     """
     Four-eye smart contract vulnerability detection model (v8.1).
