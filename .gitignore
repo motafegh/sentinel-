@@ -4,6 +4,16 @@
 # Process ID files
 *.pid
 
+# ── Deep Dive research temp / checkpoint files ───────────────────────────────
+# Slither/Aderyn run checkpoints (large, regeneratable)
+*checkpoint*.jsonl
+# Root-level temp files from analysis runs
+report.json
+tmp_aderyn_fix.py
+test
+# Phase 3 solc binary downloads (regeneratable)
+Phase3_DeepAnalysis_2026-06-06/solc-binaries/
+
 # ── ML data (large / regeneratable) ─────────────────────────────────────────
 # Raw datasets (GBs — not tracked; obtain from original source)
 docs/archive
