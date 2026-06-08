@@ -4,8 +4,27 @@ Smart contracts are immutable once deployed — a single vulnerability can resul
 
 ---
 
+## Data Engineering Module
+
+The `sentinel-data` package builds a verified, multi-source, multi-label Solidity contract dataset from 17 curated sources and exports it to `sentinel-ml` as versioned shards. It exists because the BCCC corpus used in Runs 1–9 had 89.4% Reentrancy false-positives — the model was learning label noise.
+
+- Full documentation: [Data/README.md](Data/README.md)
+- Integration proposal: [docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md](docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md)
+- Legacy BCCC deep-dive: [Data/docs/legacy/bccc_deep_dive/](Data/docs/legacy/bccc_deep_dive/)
+- Build window: Jun 9 – Aug 17, 2026 → Run 11 launch Aug 18, 2026
+
+```bash
+# Install sentinel-data (no GPU required)
+cd Data/ && poetry install
+poetry run sentinel-data --help
+poetry run sentinel-data run --dry-run
+```
+
+---
+
 ## Table of Contents
 
+- [Data Engineering Module](#data-engineering-module)
 - [How It Works](#how-it-works)
 - [Modules](#modules)
 - [Current Model](#current-model)
