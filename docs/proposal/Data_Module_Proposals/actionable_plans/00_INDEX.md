@@ -67,6 +67,12 @@ Per `~/.claude/projects/.../memory/MEMORY.md` and CLAUDE.md global rules:
 
 ---
 
+## Learning docs (incremental teaching)
+
+**Before reading or executing any plan in this folder, start with [`learning_docs/stage_0_skeleton.md`](learning_docs/stage_0_skeleton.md).** It teaches you the *why* of the v2 build (the BCCC failure pattern, the 3 branches considered, why full package split won) and the *what* (the design decisions, the 8 already-fixed bugs, the 22 sources, the v9 schema). The [LEARNING_CHECKLIST.md](learning_docs/LEARNING_CHECKLIST.md) tracks your comprehension.
+
+The workflow is: for each stage, I post the learning doc → you read it + ask questions → I run the exit-criteria tests → you confirm the code matches what you understood → only then we move to the next stage. See [learning_docs/README.md](learning_docs/README.md) for the full workflow.
+
 ## Purpose
 
 This folder contains the per-stage actionable plans that execute the integration proposal. Each plan is a design + intent document — what to build, why, and how to verify it. They are **not** code; code lives in `Data/sentinel_data/` and is produced by executing these plans.
