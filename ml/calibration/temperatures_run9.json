@@ -1,0 +1,19 @@
+{
+  "CallToUnknown": 0.3667,
+  "DenialOfService": 0.3667,
+  "ExternalBug": 0.3667,
+  "GasException": 0.4111,
+  "IntegerUO": 0.4556,
+  "MishandledException": 0.3667,
+  "Reentrancy": 0.4111,
+  "Timestamp": 0.4111,
+  "TransactionOrderDependence": 0.3667,
+  "UnusedReturn": 0.3667,
+  "_meta": {
+    "run": "GCB-P1-Run9-v11-20260606",
+    "epoch": 52,
+    "best_f1_fixed": 0.2965,
+    "best_f1_tuned": 0.3081,
+    "tuned_at_epoch": 60
+  }
+}

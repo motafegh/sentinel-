@@ -1,7 +1,7 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 3.6 (GraphCodeBERT + GNN Prefix Injection, IMP-* architectural fixes), agent Step E (cross_validator + graph topology), Phase 1 A1–A5 (hotspots, graph_inspector Phase 2, quick_screen, Aderyn deep-path, end-to-end smoke test), pre-Run-5 implementation (interpretability fixes, label cleaning scripts, CEI aux loss, temperature scaling), Run 5 pre-flight Phase 0+1+2+3+4 fixes, Run 5 Training Log Specification, Phase 4 training loop fixes (A35/A36/A37/NF-4/NF-9 + StructuredLogger), v9 findings validation + code fixes (C-1/C-3/H-2/M-3/M-6/NF-6), Run 5 kill + v10 re-extraction launch, v10 script defaults alignment, Run 7 architecture (BUG-R7-1/2, IMP-R7-1/2/3, ISSUE-1–4), Fix #35 safe resume, **Pre-Run 9 Audit Findings (A–J, 2026-06-05)**, **Pre-Run 9 Fixes #1–#8 (applied 2026-06-06)**, **v9 Schema Upgrades (FEATURE_SCHEMA_VERSION v8→v9, 2026-06-06)**, **Run 9 Launch + Watcher (GCB-P1-Run9-v11-20260606, in flight)**, and **6 Tier 1 ADRs (0001–0006, 2026-06-06)**.
-**Last updated:** 2026-06-06
+**Scope:** Full project history from initial commit through Phase 5 (Label Verification — 46,977 BCCC labels dropped, v1.3/v1.4 verified dataset produced).
+**Last updated:** 2026-06-08
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
 
@@ -57,6 +57,7 @@ Quick-jump to any topic. Each row links to the section anchor. For chronological
 | [36](#36-fix-35--safe-resume-rng-state--full-optimizer-restore) | 2026-06-04 | Run 7 (`GCB-P1-Run7-v10-20260603`) | ep39 F1=0.3074 fixed / **0.3423 tuned** (target to beat) |
 | (run record) | 2026-06-04 | Run 8 (`GCB-P1-Run8-v10-20260605`) | Killed ep29 KeyboardInterrupt; best ep27 val F1=0.2814; test tuned F1=**0.2307** (regression); see [§37](#37-pre-run-9-audit-findings) |
 | [40](#40-run-9-launch--watcher) | 2026-06-06 | **Run 9** (`GCB-P1-Run9-v11-20260606`) | In flight, ep14 at last check; best F1=0.2476 at ep12; top3 IntegerUO/GasException/MishandledException |
+| [42](#42-run-9-v11--crash--resume--lambda-typo) | 2026-06-06 | **Run 9 v11** crash + resume + lambda typo | ep16 crash (VS Code close 15:49); 1st resume had JK lambda typo (0.0075 vs 0.005); ep14 best (F1=0.2586) lost as .pt; 2nd resume (lambda 0.005) in flight ~17:23 |
 
 ### 5. Data Pipeline & Quality
 
@@ -67,6 +68,9 @@ Quick-jump to any topic. Each row links to the section anchor. For chronological
 | [23 (line 1195)](#23-pre-run-5-implementation--label-cleaning--cei-aux-loss--calibration) | 2026-05-31 | Pre-Run-5 Implementation | Label cleaning scripts, CEI aux loss, temperature scaling |
 | [34](#34-v10-re-extraction-launch--script-defaults-alignment) | 2026-06-02 | v10 Re-Extraction Launch | 41,576 graphs re-extracted; cache 2.5 GB; 0 overlap splits 29,103/6,236/6,237 |
 | [38](#38-pre-run-9-fixes) | 2026-06-06 | Pre-Run 9 Fixes | #1 relabel-timestamp, #2 block-globals, #3 external CALL_ENTRY, #4 IntegerUO schema gap (all applied); #5/#6/#7 pending |
+| [43](#43-bccc-scsvul-2024-deep-dive-phase-1) | 2026-06-06 | BCCC-SCsVul-2024 Deep Dive — Phase 1 | 68,433 unique contracts (38.8% file dup), 41% multi-label, 12 classes (2 not in SENTINEL's 10), 92% pre-0.6 Solidity, CSV md5 verified |
+| [44](#44-bccc-scsvul-2024-deep-dive-phase-2--final-cleaned-dataset) | 2026-06-06 | BCCC-SCsVul-2024 Deep Dive — Phase 2 | 8 workstreams complete; 67,311 contracts in 10-class SENTINEL v9 schema; 70/15/15 stratified split; 73% compile rate; 0 overlap with SmartBugs |
+| [46](#46-bccc-deep-dive-phase-5--label-verification) | 2026-06-08 | **BCCC Deep Dive — Phase 5 (Label Verification)** | 46,977 labels dropped; 7,403 kept; 18,751 reclassified NonVulnerable; `contracts_clean_v1.3.csv` + `v1.4.csv` produced |
 
 ### 6. Pre-Flight Fixes (Pre-Run 5/7/8/9) & Audit
 
@@ -85,6 +89,7 @@ Quick-jump to any topic. Each row links to the section anchor. For chronological
 | [36](#36-fix-35--safe-resume-rng-state--full-optimizer-restore) | 2026-06-04 | Fix #35 — Safe Resume | `resume_model_only` default False; 4 RNG streams + `tuned_thresholds` saved/restored |
 | [37](#37-pre-run-9-audit-findings) | 2026-06-05 | Pre-Run 9 Audit Findings | 10 findings A–J; Run 8 test F1=0.2307; test contracts OOD; predictor hardcoded 0.55 tier |
 | [38](#38-pre-run-9-fixes) | 2026-06-06 | Pre-Run 9 Fixes (also in §5) | #1–#8 fixes applied/pending; schema bump v8→v9 |
+| [§45](#45-model-evaluation-dashboard-v2-spec-rewrite) | 2026-06-06 | Model Evaluation Dashboard v2 spec | v1 (2026-06-04) was 60-70% aligned; v2 rewrite addresses 14 gaps + 9 improvements; 39 reqs / 10 components / 27 properties / 7 phases / ~60 tasks |
 
 ### 7. ADRs (Architectural Decisions)
 
@@ -108,6 +113,12 @@ Quick-jump to any topic. Each row links to the section anchor. For chronological
 | [20](#20-agent-layer--step-e-cross_validator--graph-topology) | 2026-05-29 | Agent Layer — Step E: cross_validator + Graph Topology | Cross-validator + graph topology checks |
 | [21](#21-agent-layer--phase-1-a1a2a3-hotspots--gnn-attention--quick_screen) | 2026-05-30 | Agent Layer — Phase 1 A1/A2/A3 | Hotspots, GNN attention, quick_screen |
 | [22](#22-agent-layer--phase-1-a4a5-aderyn-deep-path--end-to-end-smoke-test) | 2026-05-30 | Agent Layer — Phase 1 A4/A5 | Aderyn deep-path, end-to-end smoke test |
+
+### 9. Feature Specs & API Design
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| [§45](#45-model-evaluation-dashboard-v2-spec-rewrite) | 2026-06-06 | Model Evaluation Dashboard v2 spec | v1 (2026-06-04) was 60-70% aligned; v2 rewrite: 39 reqs / 10 components / 27 properties / 7 phases / ~60 tasks; new `ml/src/api/` module |
 
 ### Sequential Section Index (chronological)
 
@@ -155,6 +166,10 @@ Quick-jump to any topic. Each row links to the section anchor. For chronological
 | [39](#39-v9-schema-upgrades) | 2026-06-06 | v9 Schema Upgrades |
 | [40](#40-run-9-launch--watcher) | 2026-06-06 | Run 9 Launch + Watcher |
 | [41](#41-tier-1-architectural-decision-records) | 2026-06-06 | Tier 1 Architectural Decision Records |
+| [42](#42-run-9-v11--crash--resume--lambda-typo) | 2026-06-06 | Run 9 v11 — Crash + Resume + Lambda Typo |
+| [43](#43-bccc-scsvul-2024-deep-dive-phase-1) | 2026-06-06 | BCCC-SCsVul-2024 Deep Dive — Phase 1 |
+| [44](#44-bccc-scsvul-2024-deep-dive-phase-2--final-cleaned-dataset) | 2026-06-06 | BCCC-SCsVul-2024 Deep Dive — Phase 2 — Final Cleaned Dataset |
+| [45](#45-model-evaluation-dashboard-v2-spec-rewrite) | 2026-06-06 | Model Evaluation Dashboard — v2 Spec Rewrite |
 
 **Known numbering note (preserved, not renumbered):** §23 is duplicated in source (GNN Interpretability Suite at L1132 + Pre-Run-5 Implementation at L1195), and §28/§29 are physically out of order in source. Both preserved as-is to keep existing anchors stable.
 
@@ -2432,4 +2447,454 @@ To make the ADRs discoverable from the source code, single-line `# See ADR-NNNN`
 - [`docs/ml/adr/INDEX.md`](ml/adr/INDEX.md) — the ADR index (with status, date, one-line summary for each)
 - [`docs/ml/adr/README.md`](ml/adr/README.md) — ADR lifecycle and tier structure
 - [`docs/ml/adr/_template.md`](ml/adr/_template.md) — MADR-lite template for new ADRs
+
+---
+
+## 42. Run 9 v11 — Crash + Resume + Lambda Typo Incident (2026-06-06)
+
+### Summary
+
+Run 9 v11 reached its best result so far (F1-macro=**0.2586** at ep14) before crashing at ep16 step 300/455 when the VS Code terminal session was terminated at 15:49 UTC. A resume command was issued, but it contained a hyperparameter typo (`--jk-entropy-reg-lambda 0.0075` instead of the original `0.005`, a 50% increase). The new ep1 result (F1=0.2395) was saved as a "new best" and **overwrote the ep14 .pt file**. The metric 0.2586 survives in the structured log only; the weights are unrecoverable.
+
+A second resume was issued with the correct lambda 0.005, starting from the F1=0.2395 checkpoint (preserved as `/tmp/run9_v11_ep1_2395.pt`). New training started at 16:46:23 UTC. ep1 validation expected at ~17:23 UTC.
+
+### Timeline
+
+| Time (UTC) | Event |
+|---|---|
+| 14:42 (≈) | ep14 best — F1=0.2586, checkpoint saved |
+| 15:00 (≈) | ep15 — F1=0.2540, no improvement, patience=1/30 |
+| 15:49 | **ep16 CRASHED** — VS Code terminal close → step 300/455 killed mid-epoch |
+| 15:56 | First resume — `--jk-entropy-reg-lambda 0.0075` (TYPO, should be 0.005); `--resume-model-only` defaulted to True; best_f1 reset to 0.0; fresh optimizer/scheduler |
+| 16:37 | ep1 result (typo'd lambda) — F1=0.2395; saved as new best; ep14 best .pt **GONE** |
+| 16:42 | Damage assessment — Confirmed: trainer.py:1198-1200 + 2000 explain the overwrite; ep14 best (F1=0.2586) only in structured log |
+| 16:46 | Second resume — Correct lambda 0.005; backup saved at `/tmp/run9_v11_ep1_2395.pt`; new training PID 3362523 |
+| 17:23 (est) | ep1 result (correct lambda) — Awaiting |
+
+### What Was Lost
+
+| Asset | Before resume | After resume | Recoverable? |
+|---|---|---|---|
+| `GCB-P1-Run9-v11-20260606_best.pt` (F1=0.2586) | 281 MB, ep14 weights | OVERWRITTEN with ep1 (F1=0.2395, lambda 0.0075) | NO (in-memory only via structured log) |
+| `GCB-P1-Run9-v11-20260606_best.state.json` | `{epoch:15, patience:1, best_f1:0.2586}` | `{epoch:1, patience:0, best_f1:0.2395}` | NO |
+| Structured log | All historical metrics | Appended with new ep1 metrics | YES (F1=0.2586 still in log) |
+| MLflow artifacts | None for Run 9 v11 | None for Run 9 v11 | N/A |
+| Backup of F1=0.2395 (typo'd lambda) | N/A | `/tmp/run9_v11_ep1_2395.pt` (MD5 `26be38a4...`) | YES |
+
+**Critical loss:** F1=0.2586 as a recoverable .pt file. The new run must re-discover this trajectory.
+
+### Why the Overwrite Happened
+
+Two compounding factors in `ml/src/training/trainer.py` and `ml/scripts/train.py`:
+
+1. **`--resume-model-only` defaults to `True`** (`ml/scripts/train.py:255-258` — `default=True`). The user's resume command did not pass `--no-resume-model-only`, so the trainer took the model-only path. **It loads model weights, but initializes `best_f1 = 0.0` and `patience_counter = 0` from scratch** (`trainer.py:1198-1200`).
+2. **The save condition uses the (reset) `best_f1`** (`trainer.py:2000`): `if val_metrics["f1_macro"] > best_f1:`. With `best_f1=0.0`, ANY positive F1 triggers a save. The new ep1 (F1=0.2395) was saved as a "new best", overwriting the loaded ep14 weights.
+
+This is a **design choice** in the trainer. The `--resume-model-only` mode is intended for fine-tuning from a pretrained model — it explicitly does NOT carry over the old best_f1, because the new fine-tuning regime has its own metrics. But it is also the most common resume mode, and users may not realize the consequence.
+
+### The Typo
+
+The first resume command was issued with `--jk-entropy-reg-lambda 0.0075`. The original Run 9 launch config used `--jk-entropy-reg-lambda 0.005`. The 0.005 value was chosen because it balanced JK attention diversity without forcing unnatural uniformity (per Run 7/8 experience). A 50% increase has unknown effects on the attention distribution across phases 1/2/3.
+
+**Root cause:** the resume command was typed by hand instead of being extracted from `ml/scripts/run9_launch.sh`. Cross-checking all hyperparameters line-by-line against the original launch config would have caught this.
+
+### Mitigation Taken
+
+1. ✅ **Backed up** ep1 with the typo'd lambda at `/tmp/run9_v11_ep1_2395.pt` (MD5 `26be38a4...`).
+2. ✅ **Restarted training** with correct lambda 0.005 from the F1=0.2395 checkpoint (new training PID 3362523, started 16:46:23).
+3. ✅ **Watcher** left running (PID 3094712) — tails `/tmp/run9_v11.log` for both runs.
+
+### Future Safety Nets (deferred — see [project_run9_resume.md](../../../../home/motafeq/.claude/projects/-home-motafeq-projects-sentinel/memory/project_run9_resume.md) for details)
+
+1. **Hyperparameter diff in resume:** add a check in `trainer.py` that compares CLI args to the checkpoint's saved config and warns on mismatch. The checkpoint already saves `config` (see `trainer.py:2020-2030`).
+2. **Default `--resume-model-only=False`:** change the default in `ml/scripts/train.py:255-258` to `False` so that full resume (with optimizer state, best_f1, patience) is the default. Users opt in to model-only resume.
+3. **Best checkpoint versioning:** save checkpoints with epoch number in the filename (e.g., `GCB-P1-Run9-v11-20260606_ep14_F1-0.2586.pt`) and keep `best.pt` as a symlink. Old weights are never truly overwritten.
+4. **Launch script as the resume source of truth:** write a `ml/scripts/resume_run9.sh` that reads the launch config and issues a resume command. Single source of truth.
+5. **VS Code terminal close recovery:** add a `trap` to the training script that catches SIGTERM/SIGHUP and gracefully exits, saving the in-progress checkpoint. Currently killed mid-epoch with no save.
+
+### Recovery Target
+
+Ep1 with lambda 0.005 should land in 0.23-0.25 range. Ep2+ must climb back above 0.2586 to re-establish the best. The original trajectory took 14 epochs from random init to reach 0.2586. The new run starts from F1=0.2395 with fresh optim, so recovery is plausible within another 10-15 epochs (~6-9 hours).
+
+### Related
+
+- [`project_run9_resume.md`](../../../../home/motafeq/.claude/projects/-home-motafeq-projects-sentinel/memory/project_run9_resume.md) — full incident narrative
+- MEMORY.md "Current State" section — current Run 9 v11 status
+- `ml/scripts/train.py:255-258` — `--resume-model-only` default
+- `ml/src/training/trainer.py:1198-1200, 2000` — best_f1 init at training start + save condition
+- `ml/logs/GCB-P1-Run9-v11-20260606.log` — append-only structured log (F1=0.2586 historical record)
+- `/tmp/run9_v11_ep1_2395.pt` — backup of F1=0.2395 weights (typo'd lambda)
+- §40 — Run 9 launch (where the lambda was originally set to 0.005)
+- ADR-0006 — Loss formulation, including the 0.005 JK entropy value
+
+---
+
+## 43. BCCC-SCsVul-2024 Deep Dive — Phase 1 (2026-06-06)
+
+### Summary
+
+A structured deep-dive into the BCCC-SCsVul-2024 dataset, motivated by ADR-0005's reliance on it. Phase 1 (exploration) is complete. Phase 2 (validation + clean) is planned but not started. **No source files were modified; the dataset is treated as read-only.**
+
+### Phase 1 Findings (Top 10)
+
+1. **68,433 unique contracts, not 111,897.** 38.8% of files are exact byte-identical copies placed in multiple "candidate" folders.
+2. **Multi-label, not single-class.** 41% of contracts have ≥2 simultaneous vulnerability labels. Matches SENTINEL's 12-binary-head design (ADR-0002).
+3. **12 BCCC classes vs SENTINEL's 10.** `TransactionOrderDependence` (5.2%) and `WeakAccessMod` (2.8%) are NOT in SENTINEL. **D-F1 decision pending** (recommendation: drop 2 from training, keep 12 columns in `contracts_clean.csv` for future v2).
+4. **766 contracts are `NonVulnerable` + have vulnerabilities.** Likely a meta-label semantic ("not audited") or label noise. Needs Phase 2 manual inspection.
+5. **Top co-occurrence: `DenialOfService + Reentrancy` = 12,381 contracts (18% of corpus).** Massive head correlation; SENTINEL's ASL loss alone doesn't decouple this.
+6. **CSV md5 verified** (`e38a2aa1c2b8a93c6cf8b23d2d7b870a`); per-file content integrity **NOT verifiable** (`Sourcecodes.md5` validates a missing ZIP). Trust assumption required.
+7. **92% pre-0.6 Solidity** (mostly 0.4.x and 0.5.x). SENTINEL must compile these old solc versions; modern features (receive/fallback) won't exist.
+8. **0% SPDX license headers** across 1,200-file sample. Pre-dates SPDX adoption.
+9. **Multi-folder distribution:** 40,267 unique contents in 1 folder, 19,068 in 2, ..., 2 in 9 folders. Top contracts are famous templates (SafeMath, OpenZeppelin ERC20) flagged by 9 separate vulnerability detectors.
+10. **CSV "ID" is a 64-hex hash but NOT sha256(file_content)** (95.5% mismatch). Likely keccak-256 of bytecode. Treated as opaque handle for dedup.
+
+### Phase 1 Artifacts
+
+| File | Lines | Size | Purpose |
+|---|---:|---:|---|
+| `Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/01_exploration_inventory.md` | 435 | 27 KB | Full inventory: 8 sections, 10 findings, scorecard |
+| `Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/02_validation_deep_dive_plan.md` | 342 | 22 KB | Phase 2 plan: 8 workstreams, ~27 h, 9 risk register |
+| `Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/scripts/bccc_phase1_explore{1,2,3,4}.py` | 639 | 23 KB | 4 read-only reproducible scripts |
+
+Total: 1,416 lines of artifacts.
+
+### Phase 2 Plan (8 Workstreams)
+
+| WS | Title | Est. (h) | Depends on |
+|---|---|---:|---|
+| A | Integrity & Dedup | 2.0 | — |
+| B | Label Validation (paper lookup, manual inspections) | 8.0 | A |
+| C | Compilation Probing (solc 0.4.x/0.5.x toolchain) | 3.25 | B |
+| D | Cross-Corpus Overlap (BCCC vs SmartBugs-curated) | 2.5 | A |
+| E | Per-Class Complexity Profile | 3.0 | A |
+| F | Class Reconciliation (D-F1: 10 vs 12 classes) | 2.0 | B |
+| G | Stratified Split Design (multi-label) | 2.5 | A, F |
+| H | Final Cleaned Dataset (manifest, parquet, metadata) | 3.5 | A-G |
+| **Total** | | **26.75 h** | **8-10 sessions** |
+
+### Blocking Decision: D-F1
+
+Before WS-G and WS-H can finish, user must approve one of:
+- **(A)** Drop the 2 BCCC classes (TOD, WeakAccessMod) from SENTINEL training — keep SENTINEL's 10-class plan stable.
+- **(B)** Add the 2 classes to SENTINEL — 12 binary heads, 12-fold output, ADR-0005 update.
+- **(C)** Train on all 12, mask 2 at inference — hybrid; slight compute waste.
+
+**Recommendation: (A)** — keeps SENTINEL v1 stable, can revisit in v2.
+
+### Related
+
+- [`Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/01_exploration_inventory.md`](../../Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/01_exploration_inventory.md) — Phase 1 full inventory
+- [`Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/02_validation_deep_dive_plan.md`](../../Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/02_validation_deep_dive_plan.md) — Phase 2 plan
+- MEMORY.md L186 — cross-link to deep dive
+- ADR-0005 — BCCC-SCsVul-2024 dataset choice (relied on by this deep dive)
+- `ml/data/BCCC-SCsVul-2024_README.md` — legacy weak-hint doc (claims "11 vulns" + 111,897 contracts — both misleading per Phase 1)
+
+---
+
+## 44. BCCC-SCsVul-2024 Deep Dive — Phase 2 — Final Cleaned Dataset (2026-06-06)
+
+### Summary
+
+Phase 2 of the BCCC-SCsVul-2024 deep dive is complete. All 8 workstreams (WS-A through WS-H) finished in a single ~2.5-hour session. Output: a production-ready cleaned dataset (`contracts_clean.csv` + `.parquet`, 67,311 contracts × 24 columns) that aligns BCCC's 12-class labels with SENTINEL's 10-class v9 schema, with 70/15/15 stratified splits and 766 review-pending contracts flagged for manual review.
+
+This dataset is the **primary candidate to replace the v10 cached_dataset_v9.pkl** in future SENTINEL training (currently the Run 9 in-flight training uses the v10 cache, NOT this new dataset).
+
+### Key Findings
+
+1. **CSV is in LONG format** (not wide): 111,897 rows = 68,433 unique IDs × avg 1.635 classes/contract. Each row has exactly 1 positive class; the same ID appears multiple times with different single classes. After collapsing to one row per ID, the dataset is correctly multi-label.
+2. **100% MATCH** between folder membership and CSV positive classes — the dataset is internally consistent.
+3. **0 byte-identical overlap** with SmartBugs-curated (143 contracts) — confirms SmartBugs is clean OOD test data per ADR-0005.
+4. **Compilation success rate: 73%** on a 100-contract stratified sample across 5 solc versions. Top error: PRAGMA mismatch (17/100), solvable by installing more solc versions.
+5. **Class co-occurrence: heavy head correlation** — `DoS+Reentrancy` = 12,381 contracts (18% of corpus). ASL loss alone doesn't decouple this; consider a contrastive auxiliary loss in Run 10+.
+
+### Decisions Applied
+
+| Decision | Choice | Effect |
+|---|---|---|
+| **D-F1** | Drop WeakAccessMod (Class07) and TransactionOrderDependence (Class05) — no SENTINEL v9 equivalent | 1,122 contracts dropped; 67,311 kept |
+| **D-B2** | Manual review of 766 NV+vuln contradictions | 766 flagged `review_pending=1`; held out from initial training |
+| **D-D (auto)** | No overlap with SmartBugs-curated → use SmartBugs as OOD test set | Confirmed ADR-0005's OOD strategy |
+
+### Workstreams Complete
+
+| WS | Title | Status | Output |
+|---|---|---|---|
+| A | Integrity & Dedup | ✅ | `integrity/sha256_all_files.tsv` (16 MB), `dedup_map.csv` (68,433 rows) |
+| B | Label Validation | ✅ | `labels/label_consistency.csv` (68,433), `class_cooccurrence.csv`, 3 sample files |
+| C | Compilation Probing | ✅ | `compile/compile_results.csv` (100 rows), `compilation_report.md` (73% success) |
+| D | Cross-Corpus Overlap | ✅ | `cross_corpus/overlap_report.md` (0 overlap) |
+| E | Per-Class Complexity | ✅ | `complexity/per_contract_stats.csv` (68,433), `complexity_report.md` |
+| F | Class Reconciliation | ✅ | `labels/contracts_filtered.csv` (67,311), `dropped_contracts.csv` (1,122), `review_pending_ids.csv` (766) |
+| G | Stratified Split | ✅ | `splits/{train,val,test}.csv` (46,581 / 9,982 / 9,982) |
+| H | Final Cleaned Dataset | ✅ | `outputs/contracts_clean.{csv,parquet}`, `split_assignments.csv`, `metadata.json`, `README.md` |
+
+### Final Dataset Schema (24 columns)
+
+- `id` — 64-hex keccak-256 of bytecode (BCCC's original ID)
+- 10 class label columns (Class01..Class11 vulns + Class12 NV) — SENTINEL v9-aligned
+- `primary_class` — first positive vuln class (single-label quick view)
+- `n_pos` — number of positive classes (1-8)
+- `is_pure_nv` — 1 if NV-only contract
+- `review_pending` — 1 if D-B2 flagged (NV+vuln contradiction)
+- `bccc_folder`, `bccc_file_path` — original source location
+- `loc`, `n_functions`, `n_events`, `n_modifiers` — complexity stats
+- `has_pragma`, `pragma`, `spdx` — header metadata
+
+### Splits
+
+| Split | n | % |
+|---|---:|---:|
+| Train | 46,581 | 70.0% |
+| Val | 9,982 | 15.0% |
+| Test | 9,982 | 15.0% |
+| Held out (review_pending) | 766 | — |
+
+Stratification: 2-stage on `(has_vuln, primary_vuln_class)`. **Approximation of iterative stratification** — pip install of `iterative-stratification` hung (network issue); when network is fixed, re-run WS-G for stricter stratification.
+
+### File Hashes (for provenance)
+
+| File | sha256 | Size |
+|---|---|---:|
+| `contracts_clean.csv` | `53b7b884c3ae38446bd3f1f0460c916d01e5a2b5ef96ee972eed7d8628f59e7a` | 17.3 MB |
+| `contracts_clean.parquet` | `a60b43087d30f855c19864263c5d59978e2259920c40f8c9389d818f36630af6` | 9.2 MB |
+
+### Bugs Discovered + Fixed Mid-Run
+
+1. **WS-E:** `agg` variable shadowed `aggregate()` builtin → renamed to `agg_v`.
+2. **WS-C:** `solc-select` not in subprocess PATH → hardcoded `ml/.venv/bin/solc-select` and `ml/.venv/bin/solc`.
+3. **WS-C, WS-H:** pandas column-name mismatches (`Class01:ExternalBug` not `has_Class01:ExternalBug`; `loc_total` not `loc`).
+
+### Phase 2 Artifacts (Total ~100 MB)
+
+```
+Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase2_Validation_2026-06-06/
+├── 00_session_log.md               (timeline + decisions log)
+├── README.md                        (orientation)
+├── scripts/                         (8 reproducible scripts, ~120 KB)
+│   ├── a_integrity_dedup.py
+│   ├── b_label_validation.py
+│   ├── c_compile_probe.py
+│   ├── d_cross_corpus.py
+│   ├── e_complexity_profile.py
+│   ├── f_class_reconciliation.py
+│   ├── g_stratified_split.py
+│   └── h_final_dataset.py
+├── integrity/                       (31 MB)
+├── labels/                          (21 MB)
+├── complexity/                      (14 MB)
+├── splits/                          (5.6 MB)
+├── cross_corpus/                    (36 KB)
+├── compile/                         (32 KB)
+└── outputs/                         (30 MB; main deliverable)
+    ├── contracts_clean.csv
+    ├── contracts_clean.parquet
+    ├── split_assignments.csv
+    ├── metadata.json
+    └── README.md
+```
+
+### Related
+
+- [`Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase2_Validation_2026-06-06/outputs/README.md`](../../Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase2_Validation_2026-06-06/outputs/README.md) — final dataset usage guide
+- [`Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase2_Validation_2026-06-06/00_session_log.md`](../../Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase2_Validation_2026-06-06/00_session_log.md) — full timeline
+- [§43](#43-bccc-scsvul-2024-deep-dive-phase-1) — Phase 1 inventory
+- [§41 ADR-0005](#41-tier-1-architectural-decision-records) — BCCC dataset choice (relied on by this deep dive)
+- MEMORY.md L186 — cross-link to deep dive
+- MEMORY.md L187 — key findings (updated)
+- [§42](#42-run-9-v11--crash--resume--lambda-typo) — Run 9 v11 incident (parallel work, not blocking Phase 2)
+
+---
+
+## 45. Model Evaluation Dashboard — v2 Spec Rewrite (2026-06-06)
+
+### Summary
+
+The `.kiro/specs/model-evaluation-dashboard/` spec (v1, dated 2026-06-04) was 60-70% aligned with current SENTINEL state. Per the alignment audit (`gap_analysis_2026-06-06.md`, 257 lines), 14 gaps and 9 improvements were identified. **A full v2 rewrite was completed in one session**, producing three new spec documents that supersede v1.
+
+**Stack:** Python 3.12, FastAPI, Pydantic v2, sklearn, hypothesis (PBT). **New module:** `ml/src/api/` (separate from existing `ml/src/inference/api.py` 402-line production endpoint).
+
+### Artifacts
+
+| File | Lines | Contents |
+|---|---:|---|
+| `requirements.md` v2 | 532 | 39 requirements (21 updated from v1 + 18 new) |
+| `design.md` v2 | 1185 | 10 components (6 updated from v1 + 4 new); 27 properties (15 original + 12 new) |
+| `tasks.md` v2 | ~430 | 7 phases; ~60 tasks; 1 task-to-requirement traceability matrix |
+| `gap_analysis_2026-06-06.md` | 257 | Audit (now marked DEPRECATED; all findings incorporated into v2) |
+| `.config.kiro` | 1 | Updated to v2 with `version`, `supersedes`, `gapAnalysisRef` keys |
+
+### 14 Gaps Addressed (from gap_analysis_2026-06-06.md)
+
+| # | Gap | Resolution in v2 |
+|---|---|---|
+| 1 | Schema version mismatch (v8.1 vs v9) | Req 2 — hard requirement `EXPECTED_SCHEMA_VERSION = "v9"`; refuse non-v9 unless `--allow-legacy-schema` |
+| 2 | `ml/src/api/` vs existing `ml/src/inference/api.py` | Decision: separate module (Phase 0.1); production = contract→verdict, eval dashboard = checkpoint→metrics |
+| 3 | No schema version validation in checkpoint loading | Property 2 — refuses non-v9; warn + proceed if no version |
+| 5 | Default threshold 0.50 is wrong | Req 1.6 — load `*_thresholds.json` sidecar if present; default 0.50 only if absent |
+| 6 | Missing drift detection integration | Req 27 + new `DriftIntegrator` component (KS p<0.01 OR PSI>0.25) |
+| 7 | Missing 3-tier output (CONFIRMED/SUSPICIOUS/NOTEWORTHY) | Req 26 + `compute_tier_counts()` in MetricsEngine |
+| 8 | BCCC D-F1/D-B2 decisions not reflected | Req 24 — `review_pending=1` filter (excluded by default, `--include-review-pending` flag) |
+| 9 | Missing SmartBugs-curated OOD benchmark | Req 25 + `evaluate_smartbugs()`; OOD excluded from cache |
+| 10 | Missing ZK-circuit integration | Req 28 + new `ZKProvenanceProvider` (EZKL opt-in, 501 if not installed) |
+| 11 | No data source guidance | Req 29 + new `DataSourceRegistry` (4 sources: bccc_cleaned_v1, legacy_v10, smartbugs_curated, custom) |
+| 12 | `tuned_thresholds` is in sidecar (not embedded) | Req 1.6, 6.7 — load from `{stem}_thresholds.json` sidecar; pass to ThresholdTuner |
+| 13 | test_contracts (ml/scripts/test_contracts/) not flagged as legacy | Req 30 — refuse unless `--allow-legacy-test-contracts` |
+| 14 | Run 9 v11 incident not reflected | Req 23 — full `DataLineage` (train_run, epoch, commit_sha, seed, schema_version) for reproducibility |
+
+### 9 Improvements Incorporated
+
+| # | Improvement | v2 Component |
+|---|---|---|
+| 1 | Run Comparison view (Run 7 vs Run 8 vs Run 9) | Req 31 + `CheckpointManager.compare_runs()` (2-5 paths, per-class deltas + likely-cause hints) |
+| 2 | BCCC source code context in error analysis | Req 32 + `ErrorAnalyzer.get_source_context()` (via `bccc_file_path` in `contracts_clean.csv`) |
+| 3 | Complexity stratification (LOC, n_functions) | Req 33 + new `ComplexityStratifier` helper (Q1-Q4 per-class F1, flag bias if delta>0.10) |
+| 4 | Multi-label-specific metrics | Req 34 + new `MultiLabelMetrics` helper (subset_accuracy, LRAP, coverage error — match sklearn) |
+| 5 | Per-eye logging hooks | Req 35 + Evaluator saves GNN/TF/Fused/CFG/Main logits (≤5x cache overhead) |
+| 6 | Single fix-priority output | Req 36 + new `DiagnosticsAggregator` (ranked by estimated F1 impact; static mapping 0.01-0.05) |
+| 7 | Data lineage tracking | Req 23 + new `DataLineageTracker` (auto-detect commit_sha via `git rev-parse HEAD`) |
+| 8 | CLI alternative | Req 37 + Phase 6 — `python -m ml.src.api.cli {eval,metrics,errors,diagnostics,...}` |
+| 9 | Performance tracing | Req 38 + loguru INFO timings per phase; `performance` field in EvaluationResult |
+
+### 10 Components (6 updated from v1 + 4 NEW in v2)
+
+| # | Component | Status | New in v2? |
+|---|---|---|---|
+| 1 | CheckpointManager | Updated | (now incl. `compare_runs`, schema validation, threshold loading) |
+| 2 | Evaluator | Updated | (now incl. data_source, review_pending filter, per-eye logging, ZK) |
+| 3 | MetricsEngine | Updated | (now incl. multi-label, 3-tier, complexity stratification, edge ablation 12 v9) |
+| 4 | ErrorAnalyzer | Updated | (now incl. 3-tier labels, BCCC `bccc_file_path` source lookup) |
+| 5 | ThresholdTuner | Updated | (now starts from checkpoint sidecar) |
+| 6 | CacheManager | Updated | (now data_source in cache key, OOD excluded) |
+| 7 | **DataLineageTracker** | NEW | Full v2 |
+| 8 | **DriftIntegrator** | NEW | Full v2 |
+| 9 | **ZKProvenanceProvider** | NEW | Full v2 |
+| 10 | **DiagnosticsAggregator** | NEW | Full v2 |
+| Helper A | **MultiLabelMetrics** | NEW helper | subset_accuracy, LRAP, coverage error |
+| Helper B | **ComplexityStratifier** | NEW helper | LOC + n_functions quartiles |
+| Helper C | **DataSourceRegistry** | NEW helper | 4 sources + BCCC SHA-256 validation |
+
+### 7 Phases / ~60 Tasks
+
+| Phase | Title | Tasks |
+|---|---|---:|
+| 0 | Decisions | 3 |
+| 1 | Schema upgrade + project skeleton | 5 |
+| 2 | Core 6 components | 14 |
+| 3 | New 4 v2 components | 5 |
+| 4 | Data integration (BCCC/SmartBugs/multi-label/complexity) | 8 |
+| 5 | Tests (27 properties + unit + integration) | 9 |
+| 6 | CLI alternative | 4 |
+| 7 | Documentation + release | 5 |
+| **Total** | | **~60** |
+
+### Key Module Placement Decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Module location | `ml/src/api/` (NEW) | Separate from `ml/src/inference/api.py` (402L, production contract→verdict endpoint, 3-tier output, low latency) |
+| FastAPI instance | New instance in `ml/src/api/main.py` | Different audiences, different SLOs, different deployment cycles |
+| CLI tool name | `python -m ml.src.api.cli` | Reuses Manager classes; no duplicate logic |
+| ZK provenance policy | Opt-in via `--zk-prove` | EZKL not installed by default; clear 501 if requested without EZKL |
+| BCCC data source default | `bccc_cleaned_v1` | Newest, SENTINEL v9 schema-aligned (D-F1 applied) |
+| SmartBugs OOD | `data_source=smartbugs_curated` | 143 contracts, 0 byte-overlap with BCCC; `exclude_cache=True` |
+
+### Out of Scope for v2 (Deferred to v3+)
+
+- Live training monitoring (training has its own logger; eval dashboard reads outputs post-hoc)
+- ZK-prove every eval by default (kept opt-in)
+- Multi-GPU inference (single-GPU sufficient for 67K contracts in research mode)
+- Auto-scaling of `fusion_max_nodes` (flag for v3)
+
+### Related
+
+- [`.kiro/specs/model-evaluation-dashboard/requirements.md`](../../.kiro/specs/model-evaluation-dashboard/requirements.md) v2 (532L, 39 reqs)
+- [`.kiro/specs/model-evaluation-dashboard/design.md`](../../.kiro/specs/model-evaluation-dashboard/design.md) v2 (1185L, 10 components, 27 properties)
+- [`.kiro/specs/model-evaluation-dashboard/tasks.md`](../../.kiro/specs/model-evaluation-dashboard/tasks.md) v2 (~430L, 7 phases, ~60 tasks)
+- [`.kiro/specs/model-evaluation-dashboard/gap_analysis_2026-06-06.md`](../../.kiro/specs/model-evaluation-dashboard/gap_analysis_2026-06-06.md) — original audit (now DEPRECATED banner)
+- [.config.kiro](../../.kiro/specs/model-evaluation-dashboard/.config.kiro) — updated with v2 metadata
+- MEMORY.md L189 (new) — v2 spec status
+- [§44](#44-bccc-scsvul-2024-deep-dive-phase-2--final-cleaned-dataset) — BCCC Phase 2 (this spec references its `contracts_clean.csv` as the new `bccc_cleaned_v1` data source)
+- [ADR-0001](#41-tier-1-architectural-decision-records) — Schema versioning (the spec implements this)
+
+---
+
+## §46 — BCCC Deep Dive Phase 5: Label Verification
+
+**Date:** 2026-06-08
+**Goal:** Verify ALL 67,311 BCCC labels using multi-method, gated approach before training SENTINEL.
+
+### Background
+
+Phase 4 Stage 1 revealed catastrophic label noise:
+- Reentrancy: 89.4% false positives (BCCC flagged any external call + state change)
+- CallToUnknown: 91% had no external calls at all
+- ExternalBug: 100% FP in manual sample
+- 3-way tool agreement F1 = 0.000
+
+Training on these labels would teach the model to detect label noise, not vulnerabilities.
+
+### Method (6 Stages)
+
+| Stage | What | Gate |
+|-------|------|------|
+| 5.0 | Ground truth definitions for all 9 classes | — |
+| 5.1 | Evidence integration (67,311 × 58 evidence table) | 3 clean classes verified manually (IntegerUO, UnusedReturn, MishandledException) |
+| 5.2 | Automated verification on 6 noisy classes | Disputes identified per class |
+| 5.3 | Discrepancy resolution (structural rules + manual review) | Residual CSVs produced |
+| 5.4 | Manual extrapolation + per-contract verdicts | Gate results per class |
+| 5.5 | GraphCodeBERT embedding + HDBSCAN propagation | **DEFERRED** — Run 9 GPU blocked |
+| 5.6 | Synthesis → `contracts_clean_v1.3.csv` | ✅ Complete |
+
+### Per-Class Results
+
+| Class | Before | After | Retained | Gate | Method |
+|-------|--------|-------|----------|------|--------|
+| Reentrancy | 17,698 | 1,699 | 9.6% | VERIFIED ✅ | Regex `.call.value()` (99.8% high-conf) |
+| CallToUnknown | 11,131 | 239 | 2.1% | PROVISIONAL → 5.5 | Regex `.call()` (87.9% high-conf) |
+| Timestamp | 2,674 | 1,075 | 40.2% | BEST-EFFORT | Regex `block.timestamp` (52.6% conf) |
+| ExternalBug | 3,604 | 344 | 9.5% | PROVISIONAL → 5.5 | Regex `selfdestruct`/`tx.origin` (93.1% conf) |
+| GasException | 6,879 | 2,794 | 40.6% | PROVISIONAL → 5.5 | Slither `costly-loop` (80.8% conf) |
+| DenialOfService | 12,394 | 1,252 | 10.1% | BEST-EFFORT | Slither `calls-loop` (64.5% conf) |
+| IntegerUO | 16,740 | 16,740 | 100% | VERIFIED (clean) | Manual review 39/39 |
+| UnusedReturn | 3,229 | 3,229 | 100% | VERIFIED (clean) | Manual review 10/10 |
+| MishandledException | 5,154 | 5,154 | 100% | VERIFIED (clean) | Manual review 20/20 |
+| NonVulnerable | 26,148 | 44,899 | +18,751 | — | Reclassified from noisy classes |
+
+### Key Findings
+
+1. **BCCC folder assignments were near-random for CallToUnknown** — 86.9% of 11,131 contracts had NO low-level call at all
+2. **Reentrancy definition was too broad** — only `.call.value()` (10.6% of BCCC's Reentrancy) is true reentrancy
+3. **Tool "LOW confidence" on clean classes = tool recall gap**, not label noise
+4. **Timestamp and DoS have structural ambiguity** — best-effort, would benefit from Stage 5.5
+
+### Outputs
+
+- `contracts_clean_v1.3.csv` — 67,311 × 36 cols with verified labels
+- `contracts_clean_v1.4.csv` — newer version with gap fixes
+- `p5_s6_verification_report.md` — per-class gate results
+- `p5_s6_class_size_comparison.csv` — before/after counts
+- `review_batches/` — ~40 contracts per class for manual QA
+
+### Impact on Training
+
+**Run 9** (in flight) uses OLD noisy labels → will be "before" baseline.
+**Run 10** (planned) will use `contracts_clean_v1.3.csv` → should show F1 improvement, especially on Reentrancy.
+
+### Decisions
+
+| ID | Decision | Rationale |
+|----|----------|-----------|
+| D-P5-1 | Clean classes verified at Stage 5.1 (manual path) | Tool agreement F1=0.000 proves tools unreliable; manual review is ground truth |
+| D-P5-2 | Timestamp reclassified as "moderate noisy" | 50% FP in sample, NOT clean as originally thought |
+| D-P5-3 | ExternalBug in "Hard Noisy" only | 100% FP in sample, definition ambiguous |
+| D-P5-4 | Per-class verification, not dataset-wide | Different classes verified at different stages |
+| D-P5-5 | Stage 5.5 deferred | Run 9 GPU blocked; v1.3 usable without it |
+
+### Related
+
+- `Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase5_LabelVerification_2026-06-08/` — all Phase 5 files
+- `Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase5_LabelVerification_2026-06-08/05_phase5_plan.md` — plan (612L)
+- `Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase5_LabelVerification_2026-06-08/06_handover_p1_to_p4.md` — handover doc
+- MEMORY.md (Phase 5 section)
+
 

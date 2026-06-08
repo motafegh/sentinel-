@@ -96,9 +96,13 @@ Classifier head: `cat [B, 384]` → `Linear(384,192)` → `GELU` → `Linear(192
 | PLAN-3A | CF+CALL_ENTRY+RETURN_TO | 41 | **0.2877** | **Best checkpoint** |
 | v8.0-B | PLAN-3A + label clean | 10 | killed | Confirmed ~0.287 ceiling |
 | GCB-P0 | GraphCodeBERT 5-ep gate | 3 | 0.2178 raw | Gate passed |
-| **GCB-P1** | CF+CE+RT, K=48, warmup=15 | running | — | **Overnight run** |
+| GCB-P1 | CF+CE+RT, K=48, warmup=15 | running | — | **Overnight run** |
+| **Run 9** | v9 schema + pre-Run-9 fixes | ep14 | 0.2586 | **In flight** — uses old noisy labels |
+| **Run 10** | v1.3 verified labels | — | — | **Planned** — pending Run 9 completion |
 
-Ceiling conclusion: all CodeBERT-backbone runs converge to ~0.287 tuned F1. GraphCodeBERT (GCB-P0 ep1–3) already shows ExternalBug and TOD non-zero — these were 0.000 in all CodeBERT runs. GCB-P1 is the active architectural intervention.
+**Ceiling conclusion:** all CodeBERT-backbone runs converge to ~0.287 tuned F1. GraphCodeBERT (GCB-P0 ep1–3) already shows ExternalBug and TOD non-zero — these were 0.000 in all CodeBERT runs. GCB-P1 is the active architectural intervention.
+
+**⚠️ Label quality note:** BCCC labels had 69.8% false positive rate across 9 vulnerability classes. Phase 5 (2026-06-08) produced verified dataset `contracts_clean_v1.3.csv` with 46,977 labels dropped. Run 10 will use these verified labels.
 
 **Active fallback checkpoint:** `ml/checkpoints/multilabel-v4-finetune-lr1e4_best.pt`
 Trained on deduplicated BCCC corpus · tuned F1-macro 0.5422.
