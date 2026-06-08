@@ -74,7 +74,7 @@ PHASE_NAMES: list[str] = [
     "Phase3 (rev-CONTAINS)",
 ]
 
-_MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 12.0
+_MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 13.0 in v9 schema
 
 
 # ── Checkpoint loading ────────────────────────────────────────────────────────
@@ -158,6 +158,9 @@ def load_model(
         ),
         gnn_prefix_k             = int(ckpt_cfg.get("gnn_prefix_k", 48)),
         gnn_prefix_warmup_epochs = int(ckpt_cfg.get("gnn_prefix_warmup_epochs", 15)),
+        fusion_max_nodes         = int(ckpt_cfg.get("fusion_max_nodes", 2048)),
+        drop_complexity_feature  = bool(ckpt_cfg.get("drop_complexity_feature", False)),
+        appnp_alpha              = float(ckpt_cfg.get("appnp_alpha", 0.0)),
     ).to(device)
 
     # Resize edge embedding if needed
@@ -193,8 +196,8 @@ def load_val_split(
     Load the cache and return stems, label dataframe, and cache dict for a split.
 
     Args:
-        cache_path:  Path to cached_dataset_v10.pkl
-        label_csv:   Path to multilabel_index.csv
+        cache_path:  Path to cached_dataset_v9.pkl (v9 schema, current)
+        label_csv:   Path to multilabel_index_deduped.csv
         splits_dir:  Directory containing {split}_indices.npy
         split:       One of "train", "val", "test"
 
@@ -423,17 +426,17 @@ def add_common_args(parser: argparse.ArgumentParser, require_checkpoint: bool = 
     )
     parser.add_argument(
         "--cache",
-        default="ml/data/cached_dataset_v10.pkl",
-        help="Path to cached dataset pickle (default: v10)",
+        default="ml/data/cached_dataset_v9.pkl",
+        help="Path to cached dataset pickle (v9 schema, current)",
     )
     parser.add_argument(
         "--label-csv",
-        default="ml/data/processed/multilabel_index.csv",
-        help="Path to multilabel_index.csv (41,576 rows, 10 classes)",
+        default="ml/data/processed/multilabel_index_deduped.csv",
+        help="Path to multilabel_index_deduped.csv (41,576 rows, 10 classes)",
     )
     parser.add_argument(
         "--splits-dir",
-        default="ml/data/splits/v10_deduped",
+        default="ml/data/splits/deduped",
         help="Directory containing {train,val,test}_indices.npy",
     )
     parser.add_argument(

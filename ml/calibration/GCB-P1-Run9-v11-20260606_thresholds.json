@@ -1,0 +1,166 @@
+{
+  "checkpoint": "ml/checkpoints/GCB-P1-Run9-v11-20260606_best.pt",
+  "architecture": "four_eye_v8",
+  "num_classes": 10,
+  "class_names": [
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "GasException",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+    "UnusedReturn"
+  ],
+  "threshold_grid": [
+    0.05,
+    0.075,
+    0.1,
+    0.125,
+    0.15,
+    0.175,
+    0.2,
+    0.225,
+    0.25,
+    0.275,
+    0.3,
+    0.325,
+    0.35,
+    0.375,
+    0.4,
+    0.425,
+    0.45,
+    0.475,
+    0.5,
+    0.525,
+    0.55,
+    0.575,
+    0.6,
+    0.625,
+    0.65,
+    0.675,
+    0.7,
+    0.725,
+    0.75,
+    0.775,
+    0.8,
+    0.825,
+    0.85,
+    0.875,
+    0.9,
+    0.925,
+    0.95
+  ],
+  "thresholds": {
+    "CallToUnknown": 0.325,
+    "DenialOfService": 0.375,
+    "ExternalBug": 0.325,
+    "GasException": 0.325,
+    "IntegerUO": 0.325,
+    "MishandledException": 0.325,
+    "Reentrancy": 0.35,
+    "Timestamp": 0.325,
+    "TransactionOrderDependence": 0.3,
+    "UnusedReturn": 0.325
+  },
+  "per_class": [
+    {
+      "class_name": "CallToUnknown",
+      "threshold": 0.325,
+      "f1": 0.24503005085529359,
+      "precision": 0.15643447461629278,
+      "recall": 0.5650319829424307,
+      "support": 469,
+      "predicted_positives": 1694
+    },
+    {
+      "class_name": "DenialOfService",
+      "threshold": 0.375,
+      "f1": 0.2127659574468085,
+      "precision": 0.2631578947368421,
+      "recall": 0.17857142857142858,
+      "support": 56,
+      "predicted_positives": 38
+    },
+    {
+      "class_name": "ExternalBug",
+      "threshold": 0.325,
+      "f1": 0.2488986784140969,
+      "precision": 0.168530947054437,
+      "recall": 0.47578947368421054,
+      "support": 475,
+      "predicted_positives": 1341
+    },
+    {
+      "class_name": "GasException",
+      "threshold": 0.325,
+      "f1": 0.34713855421686746,
+      "precision": 0.2413612565445026,
+      "recall": 0.6179624664879356,
+      "support": 746,
+      "predicted_positives": 1910
+    },
+    {
+      "class_name": "IntegerUO",
+      "threshold": 0.325,
+      "f1": 0.6276618627661863,
+      "precision": 0.5560213414634146,
+      "recall": 0.7204938271604938,
+      "support": 2025,
+      "predicted_positives": 2624
+    },
+    {
+      "class_name": "MishandledException",
+      "threshold": 0.325,
+      "f1": 0.2864363942712721,
+      "precision": 0.192090395480226,
+      "recall": 0.5629139072847682,
+      "support": 604,
+      "predicted_positives": 1770
+    },
+    {
+      "class_name": "Reentrancy",
+      "threshold": 0.35,
+      "f1": 0.3018707482993197,
+      "precision": 0.21105826397146255,
+      "recall": 0.5298507462686567,
+      "support": 670,
+      "predicted_positives": 1682
+    },
+    {
+      "class_name": "Timestamp",
+      "threshold": 0.325,
+      "f1": 0.2222222222222222,
+      "precision": 0.17054263565891473,
+      "recall": 0.3188405797101449,
+      "support": 138,
+      "predicted_positives": 258
+    },
+    {
+      "class_name": "TransactionOrderDependence",
+      "threshold": 0.3,
+      "f1": 0.22842851187994997,
+      "precision": 0.14123711340206185,
+      "recall": 0.5969498910675382,
+      "support": 459,
+      "predicted_positives": 1940
+    },
+    {
+      "class_name": "UnusedReturn",
+      "threshold": 0.325,
+      "f1": 0.22476190476190477,
+      "precision": 0.1511528608027327,
+      "recall": 0.4381188118811881,
+      "support": 404,
+      "predicted_positives": 1171
+    }
+  ],
+  "overall_metrics": {
+    "f1_macro": 0.29452148851339216,
+    "f1_micro": 0.35274006056461854,
+    "hamming_loss": 0.21257619505935194,
+    "exact_match_accuracy": 0.4157844080846968
+  }
+}

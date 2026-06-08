@@ -105,13 +105,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--label-csv",
         type=str,
-        default="ml/data/processed/multilabel_index.csv",
+        default="ml/data/processed/multilabel_index_deduped.csv",
         help="Path to the multi-label CSV index.",
     )
     parser.add_argument(
         "--splits-dir",
         type=str,
-        default="ml/data/splits/v10_deduped",
+        default="ml/data/splits/deduped",
         help="Directory containing train/val/test_indices.npy files.",
     )
     parser.add_argument(
@@ -135,7 +135,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cache",
         type=str,
-        default=None,
+        default="ml/data/cached_dataset_v9.pkl",
         help="Path to a pre-built cached dataset .pkl (overrides TrainConfig cache_path).",
     )
     parser.add_argument(
@@ -247,9 +247,9 @@ def load_model_from_checkpoint(
         gnn_prefix_k=ckpt_config.get("gnn_prefix_k", 0),
         gnn_prefix_warmup_epochs=ckpt_config.get("gnn_prefix_warmup_epochs", 15),
         gnn_phase2_edge_types=ckpt_config.get("gnn_phase2_edge_types", None),
-        fusion_max_nodes=ckpt_config.get("fusion_max_nodes", 1024),
-        drop_complexity_feature=ckpt_config.get("drop_complexity_feature", False),
-        appnp_alpha=ckpt_config.get("appnp_alpha", 0.0),
+        fusion_max_nodes=ckpt_config.get("fusion_max_nodes", 2048),
+        drop_complexity_feature=bool(ckpt_config.get("drop_complexity_feature", False)),
+        appnp_alpha=float(ckpt_config.get("appnp_alpha", 0.0)),
     ).to(device)
 
     state_dict = raw["model"] if isinstance(raw, dict) and "model" in raw else raw

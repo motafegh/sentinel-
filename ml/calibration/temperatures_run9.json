@@ -1,19 +1,12 @@
 {
-  "CallToUnknown": 0.3667,
-  "DenialOfService": 0.3667,
-  "ExternalBug": 0.3667,
-  "GasException": 0.4111,
-  "IntegerUO": 0.4556,
-  "MishandledException": 0.3667,
-  "Reentrancy": 0.4111,
-  "Timestamp": 0.4111,
-  "TransactionOrderDependence": 0.3667,
-  "UnusedReturn": 0.3667,
-  "_meta": {
-    "run": "GCB-P1-Run9-v11-20260606",
-    "epoch": 52,
-    "best_f1_fixed": 0.2965,
-    "best_f1_tuned": 0.3081,
-    "tuned_at_epoch": 60
-  }
+  "CallToUnknown": 0.26965877413749695,
+  "DenialOfService": 0.14811423420906067,
+  "ExternalBug": 0.2702966034412384,
+  "GasException": 0.28233981132507324,
+  "IntegerUO": 0.521358847618103,
+  "MishandledException": 0.26552364230155945,
+  "Reentrancy": 0.26745471358299255,
+  "Timestamp": 0.3512434959411621,
+  "TransactionOrderDependence": 0.2662125825881958,
+  "UnusedReturn": 0.2666001319885254
 }
