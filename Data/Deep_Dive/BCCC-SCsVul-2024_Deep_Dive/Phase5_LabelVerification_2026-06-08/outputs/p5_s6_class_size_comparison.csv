@@ -1,0 +1,11 @@
+class,before_phase5,after_phase5,dropped,pct_retained,verification_stage
+Class01:ExternalBug,3604,344,3260,9.5,Stage 5.4 automated
+Class02:GasException,6879,2794,4085,40.6,Stage 5.4 automated
+Class03:MishandledException,5154,5154,0,100.0,Stage 5.1 manual (clean)
+Class04:Timestamp,2674,1075,1599,40.2,Stage 5.4 automated
+Class06:UnusedReturn,3229,3229,0,100.0,Stage 5.1 manual (clean)
+Class08:CallToUnknown,11131,239,10892,2.1,Stage 5.4 automated
+Class09:DenialOfService,12394,1252,11142,10.1,Stage 5.4 automated
+Class10:IntegerUO,16740,16740,0,100.0,Stage 5.1 manual (clean)
+Class11:Reentrancy,17698,1699,15999,9.6,Stage 5.4 automated
+Class12:NonVulnerable,26148,44899,-18751,171.7,D-I-11/12 (no change)

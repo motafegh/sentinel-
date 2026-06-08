@@ -1,0 +1,7 @@
+class,n_total,n_keep,pct_keep,n_drop,pct_drop,n_uncertain,pct_uncertain,n_no_src,pct_high_conf,gate
+Class11:Reentrancy,17698,101,0.6,15999,90.4,1598,9.0,0,91.0,PROVISIONAL — edge cases to 5.3
+Class08:CallToUnknown,11131,120,1.1,9678,86.9,1333,12.0,0,87.9,PROVISIONAL — edge cases to 5.3
+Class04:Timestamp,2674,1018,38.1,1261,47.2,395,14.8,0,50.4,UNVERIFIED → Stage 5.3
+Class01:ExternalBug,3604,29,0.8,3260,90.5,315,8.7,0,88.9,PROVISIONAL — edge cases to 5.3
+Class02:GasException,6879,1048,15.2,3863,56.2,1968,28.6,0,54.6,UNVERIFIED → Stage 5.3
+Class09:DenialOfService,12394,373,3.0,7540,60.8,4481,36.2,0,0.0,UNVERIFIED → Stage 5.3

@@ -1,0 +1,13 @@
+,Class01:ExternalBug,Class02:GasException,Class03:MishandledException,Class04:Timestamp,Class05:TransactionOrderDependence,Class06:UnusedReturn,Class07:WeakAccessMod,Class08:CallToUnknown,Class09:DenialOfService,Class10:IntegerUO,Class11:Reentrancy,Class12:NonVulnerable
+Class01:ExternalBug,3604,636,854,304,761,1474,0,456,2,2408,1705,1
+Class02:GasException,636,6879,1826,951,1550,1094,0,1021,1125,4551,2691,5
+Class03:MishandledException,854,1826,5154,637,1248,922,0,523,186,4775,1180,5
+Class04:Timestamp,304,951,637,2674,629,464,0,277,1,1720,789,14
+Class05:TransactionOrderDependence,761,1550,1248,629,3562,611,0,478,1,3089,966,0
+Class06:UnusedReturn,1474,1094,922,464,611,3229,0,345,1,2024,2254,0
+Class07:WeakAccessMod,0,0,0,0,0,0,1918,959,0,0,0,0
+Class08:CallToUnknown,456,1021,523,277,478,345,959,11131,6,2666,1747,703
+Class09:DenialOfService,2,1125,186,1,1,1,0,6,12394,4,12381,7
+Class10:IntegerUO,2408,4551,4775,1720,3089,2024,0,2666,4,16740,2820,42
+Class11:Reentrancy,1705,2691,1180,789,966,2254,0,1747,12381,2820,17698,711
+Class12:NonVulnerable,1,5,5,14,0,0,0,703,7,42,711,26914

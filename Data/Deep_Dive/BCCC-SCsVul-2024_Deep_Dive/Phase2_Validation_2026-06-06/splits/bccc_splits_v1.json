@@ -1,0 +1,55 @@
+{
+  "version": "v1",
+  "created": "2026-06-06",
+  "method": "Stratified split on (has_vuln, primary_vuln_class) using sklearn train_test_split",
+  "approximation_note": "Simple approximation of iterative stratification; uses rare-positive-class as primary. For best results, install iterative-stratification and re-run.",
+  "splits": {
+    "train": 46581,
+    "val": 9982,
+    "test": 9982,
+    "held_out_review_pending": 766
+  },
+  "class_prevalence": {
+    "train": {
+      "Class01:ExternalBug": 2542,
+      "Class02:GasException": 4822,
+      "Class03:MishandledException": 3625,
+      "Class04:Timestamp": 1862,
+      "Class06:UnusedReturn": 2253,
+      "Class08:CallToUnknown": 7300,
+      "Class09:DenialOfService": 8683,
+      "Class10:IntegerUO": 11693,
+      "Class11:Reentrancy": 11913,
+      "Class12:NonVulnerable": 18303
+    },
+    "val": {
+      "Class01:ExternalBug": 527,
+      "Class02:GasException": 1029,
+      "Class03:MishandledException": 748,
+      "Class04:Timestamp": 399,
+      "Class06:UnusedReturn": 478,
+      "Class08:CallToUnknown": 1546,
+      "Class09:DenialOfService": 1845,
+      "Class10:IntegerUO": 2524,
+      "Class11:Reentrancy": 2501,
+      "Class12:NonVulnerable": 3923
+    },
+    "test": {
+      "Class01:ExternalBug": 534,
+      "Class02:GasException": 1023,
+      "Class03:MishandledException": 776,
+      "Class04:Timestamp": 399,
+      "Class06:UnusedReturn": 498,
+      "Class08:CallToUnknown": 1582,
+      "Class09:DenialOfService": 1859,
+      "Class10:IntegerUO": 2481,
+      "Class11:Reentrancy": 2573,
+      "Class12:NonVulnerable": 3922
+    }
+  },
+  "decisions_applied": {
+    "D-F1": "drop Class05, Class07 (1,122 contracts dropped)",
+    "D-B2": "766 review_pending held out for manual review"
+  },
+  "random_seed": 42
+}

@@ -1,0 +1,2979 @@
+id,verdict_s4,confidence,notes,file,source_snippet
+34ed294bab157b27abfbb52ac286d0ba3a84c3753b78a0dbf4622c3d2196e7b3,KEEP,0.65,s4:tx_origin_present,BCCC-SCsVul-2024/Source Codes/CallToUnknown/34ed294bab157b27abfbb52ac286d0ba3a84c3753b78a0dbf4622c3d2196e7b3.sol,"pragma solidity 0.4.25;
+
+library SafeMath256 {
+
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) {
+            return 0;
+        }
+        uint256 c = a * b;
+        assert(c / a == b);
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a / b;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        assert(b <= a);
+        return a - b;
+    }
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        assert(c >= a);
+        return c;
+    }
+
+    function pow(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) return 0;
+        if (b == 0) return 1;
+
+        uint256 c = a ** b;
+        assert(c / (a ** (b - 1)) == a);
+        return c;
+    }
+}
+
+contract Ownable {
+    address public owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    function _validateAddress(address _addr) internal pure {
+        require(_addr != address(0), ""invalid address"");
+    }
+
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, ""not a contract owner"");
+        _;
+    }
+
+    function transferOwnership(address newOwner) public onlyOwner {
+        _validateAddress(newOwner);
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
+}
+
+contract Controllable is Ownable {
+    mapping(address => bool) controllers;
+
+    modifier onlyController {
+        require(_isController(msg.sender), ""no controller rights"");
+        _;
+    }
+
+    function _isController(address _controller) internal view returns (bool) {
+        return controllers[_controller];
+    }
+
+    function _setControllers(address[] _controllers) internal {
+        for (uint256 i = 0; i < _controllers.length; i++) {
+            _validateAddress(_controllers[i]);
+            controllers[_controllers[i]] = true;"
+a1bc3ec3c5a3b0665715d1eb0e8d3e5a5f2d529dfab6bc9f5985b2b7a48158b4,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/a1bc3ec3c5a3b0665715d1eb0e8d3e5a5f2d529dfab6bc9f5985b2b7a48158b4.sol,"pragma solidity ^0.4.11;
+
+//Creadit sikuma@github
+
+
+/**
+ * @title SafeMath
+    * @dev Math operations with safety checks that throw on error
+       */
+library SafeMath {
+  function mul(uint256 a, uint256 b) internal returns (uint256) {
+    uint256 c = a * b;
+    assert(a == 0 || c / a == b);
+    return c;
+  }
+
+  function div(uint256 a, uint256 b) internal returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
+    uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+    return c;
+  }
+
+  function sub(uint256 a, uint256 b) internal returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  function add(uint256 a, uint256 b) internal returns (uint256) {
+    uint256 c = a + b;
+    assert(c >= a);
+    return c;
+  }
+}
+
+/**
+ * @title Ownable
+    * @dev The Ownable contract has an owner address, and provides basic authorization control 
+       * functions, this simplifies the implementation of ""user permissions"". 
+          */
+contract Ownable {
+  address public owner;
+
+
+  /** 
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+        * account.
+             */
+  function Ownable() {
+    owner = msg.sender;
+  }
+
+
+  /**
+   * @dev Throws if called by any account other than the owner. 
+        */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+        * @param newOwner The address to transfer ownership to. 
+             */
+  function transferOwnership(address newOwner) onlyOwner {
+    if (newOwner != address(0)) {
+      owner = newOwner;
+    }
+  }
+
+}
+
+
+/**
+ * @title ERC20Basic
+    * @dev Simpler version of ERC20 interface
+       * @dev see https://github.com/ethereum/EIPs/issues/179
+          */"
+a670714a1686938a79a04f1facb1a84e28bafd43e3566423567591c723eef741,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/a670714a1686938a79a04f1facb1a84e28bafd43e3566423567591c723eef741.sol,"pragma solidity ^0.4.16;
+
+// copyright contact@Etheremon.com
+
+contract SafeMath {
+
+    /* function assert(bool assertion) internal { */
+    /*   if (!assertion) { */
+    /*     throw; */
+    /*   } */
+    /* }      // assert no longer needed once solidity is on 0.4.10 */
+
+    function safeAdd(uint256 x, uint256 y) pure internal returns(uint256) {
+      uint256 z = x + y;
+      assert((z >= x) && (z >= y));
+      return z;
+    }
+
+    function safeSubtract(uint256 x, uint256 y) pure internal returns(uint256) {
+      assert(x >= y);
+      uint256 z = x - y;
+      return z;
+    }
+
+    function safeMult(uint256 x, uint256 y) pure internal returns(uint256) {
+      uint256 z = x * y;
+      assert((x == 0)||(z/x == y));
+      return z;
+    }
+
+}
+
+contract BasicAccessControl {
+    address public owner;
+    address[] public moderators;
+
+    function BasicAccessControl() public {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner {
+        require(msg.sender == owner);
+        _;
+    }
+
+    modifier onlyModerators() {
+        if (msg.sender != owner) {
+            bool found = false;
+            for (uint index = 0; index < moderators.length; index++) {
+                if (moderators[index] == msg.sender) {
+                    found = true;
+                    break;
+                }
+            }
+            require(found);
+        }
+        _;
+    }
+
+    function ChangeOwner(address _newOwner) onlyOwner public {
+        if (_newOwner != address(0)) {
+            owner = _newOwner;
+        }
+    }
+
+    function Kill() onlyOwner public {
+        selfdestruct(owner);
+    }
+
+    function AddModerator(address _newModerator) onlyOwner public {
+        if (_newModerator != address(0)) {
+            for (uint index = 0; index < moderators.length; index++) {
+                if (moderators[index] == _newModerator) {
+                    return;
+                }
+            }
+            moderators.push(_newModerator);
+        }
+    }
+    "
+9e7f6a4d9db95242677e9c7f86d2d8240dda0602d0551c91366d5d7a2de163de,KEEP,0.65,s3:delegatecall_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/9e7f6a4d9db95242677e9c7f86d2d8240dda0602d0551c91366d5d7a2de163de.sol,"
+// File: contracts/ComptrollerInterface.sol
+
+pragma solidity ^0.5.8;
+
+interface ComptrollerInterface {
+    /**
+     * @notice Marker function used for light validation when updating the comptroller of a market
+     * @dev Implementations should simply return true.
+     * @return true
+     */
+    function isComptroller() external view returns (bool);
+
+    /*** Assets You Are In ***/
+
+    function enterMarkets(address[] calldata cTokens) external returns (uint[] memory);
+    function exitMarket(address cToken) external returns (uint);
+
+    /*** Policy Hooks ***/
+
+    function mintAllowed(address cToken, address minter, uint mintAmount) external returns (uint);
+    function mintVerify(address cToken, address minter, uint mintAmount, uint mintTokens) external;
+
+    function redeemAllowed(address cToken, address redeemer, uint redeemTokens) external returns (uint);
+    function redeemVerify(address cToken, address redeemer, uint redeemAmount, uint redeemTokens) external;
+
+    function borrowAllowed(address cToken, address borrower, uint borrowAmount) external returns (uint);
+    function borrowVerify(address cToken, address borrower, uint borrowAmount) external;
+
+    function repayBorrowAllowed(
+        address cToken,
+        address payer,
+        address borrower,
+        uint repayAmount) external returns (uint);
+    function repayBorrowVerify(
+        address cToken,
+        address payer,
+        address borrower,
+        uint repayAmount,
+        uint borrowerIndex) external;
+
+    function liquidateBorrowAllowed(
+        address cTokenBorrowed,
+        address cTokenCollateral,
+        address liquidator,
+        address borrower,
+        uint repayAmount) external returns (uint);
+    function liquidateBorrowVerify(
+        address cTokenBorrowed,
+        address cTokenCollateral,
+        address liquidator,
+        address borrower,
+        uint repayAmount,
+        uint seizeTokens) external;
+
+    function seizeAllowed(
+        address cTokenCollateral,
+        address cTokenBorrowed,
+        address liquidator,
+        address borrower,
+        uint seizeTokens) external returns (uint);
+    function seizeVerify(
+        address cTokenCollateral,
+        address cTokenBorrowed,
+        address liquidator,
+        address borrower,
+        uint seizeTokens) external;
+
+    function transferAllowed(address cToken, address src, address dst, uint transferTokens) external returns (uint);
+    function transferVerify(address cToken, address src, address dst, uint transferTokens) external;
+
+    /*** Liquidity/Liquidation Calculations ***/
+
+    function liquidateCalculateSeizeTokens(
+        address cTokenBorrowed,
+        address cTokenCollateral,
+        uint repayAmount) external view returns (uint, uint);
+}
+
+// File: contracts/ErrorReporter.sol"
+d38361b1566d55c19e81b672e43b96715924336ae67f90642fdf475f27ef9bd8,KEEP,0.65,s4:tx_origin_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/d38361b1566d55c19e81b672e43b96715924336ae67f90642fdf475f27ef9bd8.sol,"pragma solidity ^0.5.0;
+//p3Dank.io
+//A never ending free for all strategy game
+//send 0.2 ETH to contract to play
+//you get 3 lives/plants/houses(it can be anything, you get 3)
+//you cant rebuy till your out
+//each life has a type
+//BLOCK smashes fork
+//FORK forks the chain
+//CHAIN adds the block
+//plants automatically grow over time 
+//the older the plants get a bigger % bonus for selling
+//choose to sell 1 plant or attack at random every 7 hours 
+//if your random attack wins the rock paper scissors...
+//you sell the targets plant for 50% its base value(no bonus)
+//sucessful attacks raise the value of every other plant, >>DONT MISS ATTACKS<<
+//sold plants have a bonus and reduce the value of every other plant. 
+//Sell bonus is 2x after 42000 blocks, Max bonus of 4x after 69420 blocks
+//sell price = (total eth in contract) * (growth of plant being sold) / (total growth in game) + (big plant bonus)
+//1% dev cut 99% back to players.
+//If this works as intended the game expands and contracts to any amount of players and never ends
+
+library SafeMath {
+    function add(uint a, uint b) internal pure returns (uint c) {
+        c = a + b;
+        require(c >= a);
+    }
+    function sub(uint a, uint b) internal pure returns (uint c) {
+        require(b <= a);
+        c = a - b;
+    }
+    function mul(uint a, uint b) internal pure returns (uint c) {
+        c = a * b;
+        require(a == 0 || c / a == b);
+    }
+    function div(uint a, uint b) internal pure returns (uint c) {
+        require(b > 0);
+        c = a / b;
+        }
+    }
+
+
+
+//import ""browser/safemath.sol"";
+
+contract p3Dank  {
+    using SafeMath for uint;
+    uint256 public _totalhouses; // total number of houses in the game, used to calc divs
+    uint256 public blocksbeforeaction = 1680;// blocks between player action. 7 hours / 420 minutes / 3 moves per day
+    uint256 public nextFormation;// next spot in formation
+    mapping(address => uint256)public _playerhouses; // number of houses owned by player
+    mapping(address => uint256)public lastmove;//blocknumber lastMove
+    mapping(address => uint256) buyblock;// block that houses were purchased by a player
+    address payable happydev = 0xDC6dfe8040fc162Ab318De99c63Ec2cd0e203010; // dev cut
+
+   struct house { //houses for the battlefield
+       address owner; //who owns the house
+       uint8 rpstype; //what type of house is it 1=roc 2=pap 3=sis
+   }
+
+    mapping(uint256 => house)public formation;// the playing field
+
+    //modifiers
+
+    modifier ishuman() {//""real"" players only
+        address _addr = msg.sender;
+        uint256 _codeLength;
+        assembly {_codeLength := extcodesize(_addr)}
+        require(_codeLength == 0, ""sorry humans only"");
+        _;
+    }
+
+    modifier canmove() {
+          address sender = msg.sender;
+          require(_playerhouses[sender] > 0);
+          require(canimoveyet());
+          _;
+    }
+
+    //events"
+f9a90831c9a08895010c65be42fd8a33e7ba59ccdba82e7ee62227e36708cb56,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/f9a90831c9a08895010c65be42fd8a33e7ba59ccdba82e7ee62227e36708cb56.sol,"pragma solidity ^0.4.18;
+
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+library SafeMath {
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) {
+            return 0;
+        }
+        uint256 c = a * b;
+        assert(c / a == b);
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        // assert(b > 0); // Solidity automatically throws when dividing by 0
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        assert(b <= a);
+        return a - b;
+    }
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        assert(c >= a);
+        return c;
+    }
+}
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of ""user permissions"".
+ */
+contract Ownable {
+    address public owner;
+
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+
+    /**
+     * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+     * account.
+     */
+    function Ownable() public {
+        owner = msg.sender;
+    }
+
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+
+    /**
+     * @dev Allows the current owner to transfer control of the contract to a newOwner.
+     * @param newOwner The address to transfer ownership to.
+     */
+    function transferOwnership(address newOwner) public onlyOwner {
+        require(newOwner != address(0));
+        OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
+}
+
+/**
+ * @title Destructible
+ * @dev Base contract that can be destroyed by owner. All funds in contract will be sent to the owner."
+8793523fa40ae76b0bc0ca948064b6f3fd1008b49e8b0be8865aafa941e57d3b,KEEP,0.65,s4:tx_origin_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/8793523fa40ae76b0bc0ca948064b6f3fd1008b49e8b0be8865aafa941e57d3b.sol,"pragma solidity > 0.4.99 <0.6.0;
+
+interface IAssetSplitContracts {
+ function addContract(address payable _contractAddress, address payable _creatorAddress, uint256 _contractType) external returns (bool success);
+}
+
+interface IERC20Token {
+    function balanceOf(address owner) external returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function burn(uint256 _value) external returns (bool);
+    function decimals() external returns (uint256);
+    function approve(address _spender, uint256 _value) external returns (bool success);
+    function transferFrom(address _from, address _to, uint256 _value) external returns (bool success);
+}
+
+contract Ownable {
+  address payable public _owner;
+
+  event OwnershipTransferred(
+    address indexed previousOwner,
+    address indexed newOwner
+  );
+
+  /**
+  * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+  * account.
+  */
+  constructor() internal {
+    _owner = tx.origin;
+    emit OwnershipTransferred(address(0), _owner);
+  }
+
+  /**
+  * @return the address of the owner.
+  */
+  function owner() public view returns(address) {
+    return _owner;
+  }
+
+  /**
+  * @dev Throws if called by any account other than the owner.
+  */
+  modifier onlyOwner() {
+    require(isOwner());
+    _;
+  }
+
+  /**
+  * @return true if `msg.sender` is the owner of the contract.
+  */
+  function isOwner() public view returns(bool) {
+    return msg.sender == _owner;
+  }
+
+  /**
+  * @dev Allows the current owner to relinquish control of the contract.
+  * @notice Renouncing to ownership will leave the contract without an owner.
+  * It will not be possible to call the functions with the `onlyOwner`
+  * modifier anymore.
+  */
+  function renounceOwnership() public onlyOwner {
+    emit OwnershipTransferred(_owner, address(0));
+    _owner = address(0);
+  }
+
+  /**
+  * @dev Allows the current owner to transfer control of the contract to a newOwner.
+  * @param newOwner The address to transfer ownership to.
+  */
+  function transferOwnership(address payable newOwner) public onlyOwner {
+    _transferOwnership(newOwner);
+  }
+
+  /**
+  * @dev Transfers control of the contract to a newOwner.
+  * @param newOwner The address to transfer ownership to.
+  */
+  function _transferOwnership(address payable newOwner) internal {
+    require(newOwner != address(0));
+    emit OwnershipTransferred(_owner, newOwner);"
+3c6cd4ffd6086b486d3221b9a42f352f8bf1e8c432bcf919044999221461cadd,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/3c6cd4ffd6086b486d3221b9a42f352f8bf1e8c432bcf919044999221461cadd.sol,"// <ORACLIZE_API>
+/*
+Copyright (c) 2015-2016 Oraclize SRL
+Copyright (c) 2016 Oraclize LTD
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the ""Software""), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+
+
+THE SOFTWARE IS PROVIDED ""AS IS"", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
+pragma solidity ^0.4.0;//please import oraclizeAPI_pre0.4.sol when solidity < 0.4.0
+
+contract OraclizeI {
+    address public cbAddress;
+    function query(uint _timestamp, string _datasource, string _arg) payable returns (bytes32 _id);
+    function query_withGasLimit(uint _timestamp, string _datasource, string _arg, uint _gaslimit) payable returns (bytes32 _id);
+    function query2(uint _timestamp, string _datasource, string _arg1, string _arg2) payable returns (bytes32 _id);
+    function query2_withGasLimit(uint _timestamp, string _datasource, string _arg1, string _arg2, uint _gaslimit) payable returns (bytes32 _id);
+    function queryN(uint _timestamp, string _datasource, bytes _argN) payable returns (bytes32 _id);
+    function queryN_withGasLimit(uint _timestamp, string _datasource, bytes _argN, uint _gaslimit) payable returns (bytes32 _id);
+    function getPrice(string _datasource) returns (uint _dsprice);
+    function getPrice(string _datasource, uint gaslimit) returns (uint _dsprice);
+    function useCoupon(string _coupon);
+    function setProofType(byte _proofType);
+    function setConfig(bytes32 _config);
+    function setCustomGasPrice(uint _gasPrice);
+    function randomDS_getSessionPubKeyHash() returns(bytes32);
+}
+
+contract OraclizeAddrResolverI {
+    function getAddress() returns (address _addr);
+}
+
+/*
+Begin solidity-cborutils
+
+https://github.com/smartcontractkit/solidity-cborutils
+
+MIT License
+
+Copyright (c) 2018 SmartContract ChainLink, Ltd.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the ""Software""), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so,"
+45e67113326c79a41ea5f196c508c93237d87e0c7475b8fee6dc74dad47b0afd,KEEP,0.65,s3:delegatecall_present,BCCC-SCsVul-2024/Source Codes/CallToUnknown/45e67113326c79a41ea5f196c508c93237d87e0c7475b8fee6dc74dad47b0afd.sol,"/**
+ * Copyright (c) 2018-present, Leap DAO (leapdao.org)
+ *
+ * This source code is licensed under the Mozilla Public License, version 2,
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
+pragma solidity 0.5.2;
+
+
+/**
+ * @title Proxy
+ * @dev Implements delegation of calls to other contracts, with proper
+ * forwarding of return values and bubbling of failures.
+ * It defines a fallback function that delegates all calls to the address
+ * returned by the abstract _implementation() internal function.
+ */
+contract Proxy {
+  /**
+   * @dev Fallback function.
+   * Implemented entirely in `_fallback`.
+   */
+  function () external payable {
+    _fallback();
+  }
+
+  /**
+   * @return The Address of the implementation.
+   */
+  function _implementation() internal view returns (address);
+
+  /**
+   * @dev Delegates execution to an implementation contract.
+   * This is a low level function that doesn't return to its internal call site.
+   * It will return to the external caller whatever the implementation returns.
+   * @param implementation Address to delegate.
+   */
+  function _delegate(address implementation) internal {
+    assembly {
+      // Copy msg.data. We take full control of memory in this inline assembly
+      // block because it will not return to Solidity code. We overwrite the
+      // Solidity scratch pad at memory position 0.
+      calldatacopy(0, 0, calldatasize)
+
+      // Call the implementation.
+      // out and outsize are 0 because we don't know the size yet.
+      let result := delegatecall(gas, implementation, 0, calldatasize, 0, 0)
+
+      // Copy the returned data.
+      returndatacopy(0, 0, returndatasize)
+
+      switch result
+      // delegatecall returns 0 on error.
+      case 0 { revert(0, returndatasize) }
+      default { return(0, returndatasize) }
+    }
+  }
+
+  /**
+   * @dev Function that is run as the first thing in the fallback function.
+   * Can be redefined in derived contracts to add functionality.
+   * Redefinitions must call super._willFallback().
+   */
+  function _willFallback() internal {
+  }
+
+  /**
+   * @dev fallback implementation.
+   * Extracted to enable manual triggering.
+   */
+  function _fallback() internal {
+    _willFallback();
+    _delegate(_implementation());
+  }
+}
+
+/**
+ * Utility library of inline functions on addresses
+ */
+library Address {"
+4413df29432b60951d3dd92e1fd471607ceab0acf8e3c1780a51ce882b14e320,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/4413df29432b60951d3dd92e1fd471607ceab0acf8e3c1780a51ce882b14e320.sol,"pragma solidity ^0.4.2;
+
+// <ORACLIZE_API>
+/*
+Copyright (c) 2015-2016 Oraclize SRL
+Copyright (c) 2016 Oraclize LTD
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the ""Software""), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+
+
+THE SOFTWARE IS PROVIDED ""AS IS"", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
+contract OraclizeI {
+    address public cbAddress;
+    function query(uint _timestamp, string _datasource, string _arg) payable returns (bytes32 _id);
+    function query_withGasLimit(uint _timestamp, string _datasource, string _arg, uint _gaslimit) payable returns (bytes32 _id);
+    function query2(uint _timestamp, string _datasource, string _arg1, string _arg2) payable returns (bytes32 _id);
+    function query2_withGasLimit(uint _timestamp, string _datasource, string _arg1, string _arg2, uint _gaslimit) payable returns (bytes32 _id);
+    function queryN(uint _timestamp, string _datasource, bytes _argN) payable returns (bytes32 _id);
+    function queryN_withGasLimit(uint _timestamp, string _datasource, bytes _argN, uint _gaslimit) payable returns (bytes32 _id);
+    function getPrice(string _datasource) returns (uint _dsprice);
+    function getPrice(string _datasource, uint gaslimit) returns (uint _dsprice);
+    function useCoupon(string _coupon);
+    function setProofType(byte _proofType);
+    function setConfig(bytes32 _config);
+    function setCustomGasPrice(uint _gasPrice);
+}
+contract OraclizeAddrResolverI {
+    function getAddress() returns (address _addr);
+}
+contract usingOraclize {
+    uint constant day = 60*60*24;
+    uint constant week = 60*60*24*7;
+    uint constant month = 60*60*24*30;
+    byte constant proofType_NONE = 0x00;
+    byte constant proofType_TLSNotary = 0x10;
+    byte constant proofStorage_IPFS = 0x01;
+    uint8 constant networkID_auto = 0;
+    uint8 constant networkID_mainnet = 1;
+    uint8 constant networkID_testnet = 2;
+    uint8 constant networkID_morden = 2;
+    uint8 constant networkID_consensys = 161;
+
+    OraclizeAddrResolverI OAR;
+
+    OraclizeI oraclize;
+    modifier oraclizeAPI {
+        if((address(OAR)==0)||(getCodeSize(address(OAR))==0)) oraclize_setNetwork(networkID_auto);
+        o"
+dc17db91f71ba47364227db5800e72fe5588e23fed61bc6ce8621acb463215f8,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/dc17db91f71ba47364227db5800e72fe5588e23fed61bc6ce8621acb463215f8.sol,"//sol Wallet
+// Multi-sig, daily-limited account proxy/wallet.
+// @authors:
+// Gav Wood <g@ethdev.com>
+// inheritable ""property"" contract that enables methods to be protected by requiring the acquiescence of either a
+// single, or, crucially, each of a number of, designated owners.
+// usage:
+// use modifiers onlyowner (just own owned) or onlymanyowners(hash), whereby the same hash must be provided by
+// some number (specified in constructor) of the set of owners (specified in the constructor, modifiable) before the
+// interior is executed.
+pragma solidity ^0.4.6;
+
+contract multiowned {
+
+    // TYPES
+
+    // struct for the status of a pending operation.
+    struct PendingState {
+        uint yetNeeded;
+        uint ownersDone;
+        uint index;
+    }
+
+    // EVENTS
+
+    // this contract only has six types of events: it can accept a confirmation, in which case
+    // we record owner and operation (hash) alongside it.
+    event Confirmation(address owner, bytes32 operation);
+    event Revoke(address owner, bytes32 operation);
+    // some others are in the case of an owner changing.
+    event OwnerChanged(address oldOwner, address newOwner);
+    event OwnerAdded(address newOwner);
+    event OwnerRemoved(address oldOwner);
+    // the last one is emitted if the required signatures change
+    event RequirementChanged(uint newRequirement);
+
+    // MODIFIERS
+
+    // simple single-sig function modifier.
+    modifier onlyowner {
+        if (isOwner(msg.sender))
+            _;
+    }
+    // multi-sig function modifier: the operation must have an intrinsic hash in order
+    // that later attempts can be realised as the same underlying operation and
+    // thus count as confirmations.
+    modifier onlymanyowners(bytes32 _operation) {
+        if (confirmAndCheck(_operation))
+            _;
+    }
+
+    // METHODS
+
+    // constructor is given number of sigs required to do protected ""onlymanyowners"" transactions
+    // as well as the selection of addresses capable of confirming them.
+    function multiowned(address[] _owners, uint _required) {
+        m_numOwners = _owners.length + 1;
+        m_owners[1] = uint(msg.sender);
+        m_ownerIndex[uint(msg.sender)] = 1;
+        for (uint i = 0; i < _owners.length; ++i)
+        {
+            m_owners[2 + i] = uint(_owners[i]);
+            m_ownerIndex[uint(_owners[i])] = 2 + i;
+        }
+        m_required = _required;
+    }
+
+    // Revokes a prior confirmation of the given operation
+    function revoke(bytes32 _operation) external {
+        uint ownerIndex = m_ownerIndex[uint(msg.sender)];
+        // make sure they're an owner
+        if (ownerIndex == 0) return;
+        uint ownerIndexBit = 2**ownerIndex;
+        var pending = m_pending[_operation];
+        if (pending.ownersDone & ownerIndexBit > 0) {
+            pending.yetNeeded++;
+            pending.ownersDone -= ownerIndexBit;
+            Revoke(msg.sender, _operation);
+        }
+    }"
+8aa0966dd33b11d41b59626509c14be3c612329ec7f5cdc86445daedfd9e4f4b,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/8aa0966dd33b11d41b59626509c14be3c612329ec7f5cdc86445daedfd9e4f4b.sol,"pragma solidity ^0.4.23;
+
+// File: zeppelin-solidity/contracts/ownership/Ownable.sol
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of ""user permissions"".
+ */
+contract Ownable {
+  address public owner;
+
+
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+
+  /**
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  function Ownable() public {
+    owner = msg.sender;
+  }
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address newOwner) public onlyOwner {
+    require(newOwner != address(0));
+    emit OwnershipTransferred(owner, newOwner);
+    owner = newOwner;
+  }
+
+}
+
+// File: zeppelin-solidity/contracts/lifecycle/Pausable.sol
+
+/**
+ * @title Pausable
+ * @dev Base contract which allows children to implement an emergency stop mechanism.
+ */
+contract Pausable is Ownable {
+  event Pause();
+  event Unpause();
+
+  bool public paused = false;
+
+
+  /**
+   * @dev Modifier to make a function callable only when the contract is not paused.
+   */
+  modifier whenNotPaused() {
+    require(!paused);
+    _;
+  }
+
+  /**
+   * @dev Modifier to make a function callable only when the contract is paused.
+   */
+  modifier whenPaused() {
+    require(paused);
+    _;
+  }
+
+  /**
+   * @dev called by the owner to pause, triggers stopped state
+   */
+  function pause() onlyOwner whenNotPaused public {
+    paused = true;
+    emit Pause();
+  }"
+8bd0b0663dfe775633b7cfd7e440694e66f5945a14ebae8b4e02a210f4c11e4f,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/8bd0b0663dfe775633b7cfd7e440694e66f5945a14ebae8b4e02a210f4c11e4f.sol,"contract ERC20Token {
+    /* This is a slight change to the ERC20 base standard.
+    function totalSupply() constant returns (uint256 supply);
+    is replaced with:
+    uint256 public totalSupply;
+    This automatically creates a getter function for the totalSupply.
+    This is moved to the base contract since public getter functions are not
+    currently recognised as an implementation of the matching abstract
+    function by the compiler.
+    */
+    /// total amount of tokens
+    uint256 public totalSupply;
+
+    /// @param _owner The address from which the balance will be retrieved
+    /// @return The balance
+    function balanceOf(address _owner) constant returns (uint256 balance);
+
+    /// @notice send `_value` token to `_to` from `msg.sender`
+    /// @param _to The address of the recipient
+    /// @param _value The amount of token to be transferred
+    /// @return Whether the transfer was successful or not
+    function transfer(address _to, uint256 _value) returns (bool success);
+
+    /// @notice send `_value` token to `_to` from `_from` on the condition it is approved by `_from`
+    /// @param _from The address of the sender
+    /// @param _to The address of the recipient
+    /// @param _value The amount of token to be transferred
+    /// @return Whether the transfer was successful or not
+    function transferFrom(address _from, address _to, uint256 _value) returns (bool success);
+
+    /// @notice `msg.sender` approves `_spender` to spend `_value` tokens
+    /// @param _spender The address of the account able to transfer the tokens
+    /// @param _value The amount of tokens to be approved for transfer
+    /// @return Whether the approval was successful or not
+    function approve(address _spender, uint256 _value) returns (bool success);
+
+    /// @param _owner The address of the account owning tokens
+    /// @param _spender The address of the account able to transfer the tokens
+    /// @return Amount of remaining tokens allowed to spent
+    function allowance(address _owner, address _spender) constant returns (uint256 remaining);
+
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+}
+
+contract Owned {
+    /// @dev `owner` is the only address that can call a function with this
+    /// modifier
+    modifier onlyOwner() {
+        require(msg.sender == owner) ;
+        _;
+    }
+
+    address public owner;
+
+    /// @notice The Constructor assigns the message sender to be `owner`
+    function Owned() {
+        owner = msg.sender;
+    }
+
+    address public newOwner;
+
+    /// @notice `owner` can step down and assign some other address to this role
+    /// @param _newOwner The address of the new owner. 0x0 can be used to create
+    ///  an unowned neutral vault, however that cannot be undone
+    function changeOwner(address _newOwner) onlyOwner {
+        newOwner = _newOwner;
+    }
+
+    function acceptOwnership() {
+        if (msg.sender ="
+2a7a64b76e352b28a65490192d8a74c9e4056771f3b62ef2f4287fc680760d97,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/2a7a64b76e352b28a65490192d8a74c9e4056771f3b62ef2f4287fc680760d97.sol,"pragma solidity ^0.4.24;
+
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+library SafeMath {
+
+    /**
+    * @dev Multiplies two numbers, throws on overflow.
+    */
+    function mul(uint a, uint b) internal pure returns (uint) {
+        if (a == 0) {
+            return 0;
+        }
+        uint c = a * b;
+        assert(c / a == b);
+        return c;
+    }
+
+    /**
+    * @dev Integer division of two numbers, truncating the quotient.
+    */
+    function div(uint a, uint b) internal pure returns (uint) {
+        // assert(b > 0); // Solidity automatically throws when dividing by 0
+        uint c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+        return c;
+    }
+
+    /**
+    * @dev Subtracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
+    */
+    function sub(uint a, uint b) internal pure returns (uint) {
+        assert(b <= a);
+        return a - b;
+    }
+
+    /**
+    * @dev Adds two numbers, throws on overflow.
+    */
+    function add(uint a, uint b) internal pure returns (uint) {
+        uint c = a + b;
+        assert(c >= a);
+        return c;
+    }
+}
+
+
+/**
+ * @title ERC20Basic
+ * @dev Simpler version of ERC20 interface
+ * @dev see https://github.com/ethereum/EIPs/issues/179
+ */
+contract ERC20Basic {
+  uint256 public totalSupply;
+  function balanceOf(address who) public constant returns (uint256);
+  function transfer(address to, uint256 value) public returns (bool);
+  event Transfer(address indexed from, address indexed to, uint256 value);
+}
+
+
+contract BasicToken is ERC20Basic {
+  using SafeMath for uint256;
+
+  mapping(address => uint256) balances;
+
+  /**
+  * @dev transfer token for a specified address
+  * @param _to The address to transfer to.
+  * @param _value The amount to be transferred.
+  */
+  function transfer(address _to, uint256 _value) public returns (bool) {
+    require(_to != address(0));
+
+    // SafeMath.sub will throw if there is not enough balance."
+7af3ce5c086bd05eb753d9ef25a63e2e061c6fac48bba2c770a413f6b277510c,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/7af3ce5c086bd05eb753d9ef25a63e2e061c6fac48bba2c770a413f6b277510c.sol,"pragma solidity ^0.4.15;
+
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of ""user permissions"".
+ */
+contract Ownable {
+  address public owner;
+
+
+  /**
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  function Ownable() {
+    owner = msg.sender;
+  }
+
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address newOwner) onlyOwner {
+    require(newOwner != address(0));      
+    owner = newOwner;
+  }
+
+}
+
+interface OraclizeI {
+    // address public cbAddress;
+    function cbAddress() constant returns (address); // Reads public variable cbAddress
+    function query(uint _timestamp, string _datasource, string _arg) payable returns (bytes32 _id);
+    function query_withGasLimit(uint _timestamp, string _datasource, string _arg, uint _gaslimit) payable returns (bytes32 _id);
+    function query2(uint _timestamp, string _datasource, string _arg1, string _arg2) payable returns (bytes32 _id);
+    function query2_withGasLimit(uint _timestamp, string _datasource, string _arg1, string _arg2, uint _gaslimit) payable returns (bytes32 _id);
+    function queryN(uint _timestamp, string _datasource, bytes _argN) payable returns (bytes32 _id);
+    function queryN_withGasLimit(uint _timestamp, string _datasource, bytes _argN, uint _gaslimit) payable returns (bytes32 _id);
+    function getPrice(string _datasoaurce) returns (uint _dsprice);
+    function getPrice(string _datasource, uint gaslimit) returns (uint _dsprice);
+    function useCoupon(string _coupon);
+    function setProofType(byte _proofType);
+    function setConfig(bytes32 _config);
+    function setCustomGasPrice(uint _gasPrice);
+    function randomDS_getSessionPubKeyHash() returns(bytes32);
+}
+
+interface OraclizeAddrResolverI {
+    function getAddress() returns (address _addr);
+}
+
+// this is a reduced and optimize version of the usingOraclize contract in https://github.com/oraclize/ethereum-api/blob/master/oraclizeAPI_0.4.sol
+contract myUsingOraclize is Ownable {
+    OraclizeAddrResolverI OAR;
+    OraclizeI public oraclize;
+    uint public oraclize_gaslimit = 120000;
+
+    function myUsingOraclize() {
+        oraclize_setNetwork();
+        update_oraclize();
+    }
+
+    function update_oraclize() onlyOwner public {
+        oraclize = OraclizeI(OAR.getAddress());
+    }
+
+    function oraclize_query(string datasource, string arg1, string arg2) internal returns (bytes32 id) {
+        uint price = oraclize.getPrice(datasource, oraclize_gaslimit);"
+5a74948ee54b58f91665b21361fa18fd5b2054c4d228e5083982d6542bbd74a2,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/CallToUnknown/5a74948ee54b58f91665b21361fa18fd5b2054c4d228e5083982d6542bbd74a2.sol,"pragma solidity ^0.4.24;
+
+// File: node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol
+
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+library SafeMath {
+
+  /**
+  * @dev Multiplies two numbers, throws on overflow.
+  */
+  function mul(uint256 _a, uint256 _b) internal pure returns (uint256 c) {
+    // Gas optimization: this is cheaper than asserting 'a' not being zero, but the
+    // benefit is lost if 'b' is also tested.
+    // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
+    if (_a == 0) {
+      return 0;
+    }
+
+    c = _a * _b;
+    assert(c / _a == _b);
+    return c;
+  }
+
+  /**
+  * @dev Integer division of two numbers, truncating the quotient.
+  */
+  function div(uint256 _a, uint256 _b) internal pure returns (uint256) {
+    // assert(_b > 0); // Solidity automatically throws when dividing by 0
+    // uint256 c = _a / _b;
+    // assert(_a == _b * c + _a % _b); // There is no case in which this doesn't hold
+    return _a / _b;
+  }
+
+  /**
+  * @dev Subtracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
+  */
+  function sub(uint256 _a, uint256 _b) internal pure returns (uint256) {
+    assert(_b <= _a);
+    return _a - _b;
+  }
+
+  /**
+  * @dev Adds two numbers, throws on overflow.
+  */
+  function add(uint256 _a, uint256 _b) internal pure returns (uint256 c) {
+    c = _a + _b;
+    assert(c >= _a);
+    return c;
+  }
+}
+
+// File: node_modules/openzeppelin-solidity/contracts/token/ERC20/ERC20Basic.sol
+
+/**
+ * @title ERC20Basic
+ * @dev Simpler version of ERC20 interface
+ * See https://github.com/ethereum/EIPs/issues/179
+ */
+contract ERC20Basic {
+  function totalSupply() public view returns (uint256);
+  function balanceOf(address _who) public view returns (uint256);
+  function transfer(address _to, uint256 _value) public returns (bool);
+  event Transfer(address indexed from, address indexed to, uint256 value);
+}
+
+// File: node_modules/openzeppelin-solidity/contracts/token/ERC20/ERC20.sol
+
+/**
+ * @title ERC20 interface
+ * @dev see https://github.com/ethereum/EIPs/issues/20
+ */
+contract ERC20 is ERC20Basic {
+  function allowance(address _owner, address _spender)
+    public view returns (uint256);
+
+  function transferFrom(address _from, address _to, uint256 _value)
+    public returns (bool);"
+e4c1f70eeaf9cc78cdf77861fa7f07d6a2cf2ca40a2e0e6dfcf85fdbf9dd7b26,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/e4c1f70eeaf9cc78cdf77861fa7f07d6a2cf2ca40a2e0e6dfcf85fdbf9dd7b26.sol,"pragma solidity ^0.4.18;
+library SafeMath {
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a * b;
+        assert(a == 0 || c / a == b);
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        // assert(b > 0); // Solidity automatically throws when dividing by 0
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        assert(b <= a);
+        return a - b;
+    }
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        assert(c >= a);
+        return c;
+    }
+
+    function max64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a >= b ? a : b;
+    }
+
+    function min64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a < b ? a : b;
+    }
+
+    function max256(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a >= b ? a : b;
+    }
+
+    function min256(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
+}
+contract Ownable {
+    address public owner;
+    function Ownable() public {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) {
+            revert();
+        }
+        _;
+    }
+
+    function transferOwnership(address newOwner) public onlyOwner {
+        if (newOwner != address(0)) {
+            owner = newOwner;
+        }
+    }
+
+    function destruct() public onlyOwner {
+        selfdestruct(owner);
+    }
+}
+contract ERC20Basic {
+    function balanceOf(address who) public constant returns (uint256);
+    function transfer(address to, uint256 value) public;
+    event Transfer(address indexed from, address indexed to, uint256 value);
+}
+contract ERC20 is ERC20Basic {
+    function allowance(address owner, address spender) public constant returns (uint256);
+    function transferFrom(address from, address to, uint256 value) public;
+    function approve(address spender, uint256 value) public;
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+contract BasicToken is ERC20Basic {
+    using SafeMath for uint256;
+"
+61270bd6b44ac878002363811c4128bca92fe7a738270c9a6f750112972a5237,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/61270bd6b44ac878002363811c4128bca92fe7a738270c9a6f750112972a5237.sol,"pragma solidity ^0.4.18;
+
+/**
+ * DocTailor: https://www.doctailor.com
+ */
+
+// ==== Open Zeppelin library ===
+
+/**
+ * @title ERC20Basic
+ * @dev Simpler version of ERC20 interface
+ * @dev see https://github.com/ethereum/EIPs/issues/179
+ */
+contract ERC20Basic {
+  function totalSupply() public view returns (uint256);
+  function balanceOf(address who) public view returns (uint256);
+  function transfer(address to, uint256 value) public returns (bool);
+  event Transfer(address indexed from, address indexed to, uint256 value);
+}
+
+/**
+ * @title ERC20 interface
+ * @dev see https://github.com/ethereum/EIPs/issues/20
+ */
+contract ERC20 is ERC20Basic {
+  function allowance(address owner, address spender) public view returns (uint256);
+  function transferFrom(address from, address to, uint256 value) public returns (bool);
+  function approve(address spender, uint256 value) public returns (bool);
+  event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+
+/**
+   @title ERC827 interface, an extension of ERC20 token standard
+
+   Interface of a ERC827 token, following the ERC20 standard with extra
+   methods to transfer value and data and execute calls in transfers and
+   approvals.
+ */
+contract ERC827 is ERC20 {
+
+  function approve( address _spender, uint256 _value, bytes _data ) public returns (bool);
+  function transfer( address _to, uint256 _value, bytes _data ) public returns (bool);
+  function transferFrom( address _from, address _to, uint256 _value, bytes _data ) public returns (bool);
+
+}
+
+/**
+ * @title SafeERC20
+ * @dev Wrappers around ERC20 operations that throw on failure.
+ * To use this library you can add a `using SafeERC20 for ERC20;` statement to your contract,
+ * which allows you to call the safe operations as `token.safeTransfer(...)`, etc.
+ */
+library SafeERC20 {
+  function safeTransfer(ERC20Basic token, address to, uint256 value) internal {
+    assert(token.transfer(to, value));
+  }
+
+  function safeTransferFrom(ERC20 token, address from, address to, uint256 value) internal {
+    assert(token.transferFrom(from, to, value));
+  }
+
+  function safeApprove(ERC20 token, address spender, uint256 value) internal {
+    assert(token.approve(spender, value));
+  }
+}
+
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+library SafeMath {
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+    if (a == 0) {
+      return 0;
+    }
+    uint256 c = a * b;
+    assert(c / a == b);
+    return c;
+  }
+"
+9f6a05e34be6476a16ddb84c66800a8684da0abc56953c7ccbe966ed6ff99f57,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/9f6a05e34be6476a16ddb84c66800a8684da0abc56953c7ccbe966ed6ff99f57.sol,"pragma solidity ^0.4.18;
+
+// File: zeppelin-solidity/contracts/math/SafeMath.sol
+
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+library SafeMath {
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+    if (a == 0) {
+      return 0;
+    }
+    uint256 c = a * b;
+    assert(c / a == b);
+    return c;
+  }
+
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
+    uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+    return c;
+  }
+
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  function add(uint256 a, uint256 b) internal pure returns (uint256) {
+    uint256 c = a + b;
+    assert(c >= a);
+    return c;
+  }
+}
+
+// File: zeppelin-solidity/contracts/ownership/Ownable.sol
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of ""user permissions"".
+ */
+contract Ownable {
+  address public owner;
+
+
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+
+  /**
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  function Ownable() public {
+    owner = msg.sender;
+  }
+
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address newOwner) public onlyOwner {
+    require(newOwner != address(0));
+    OwnershipTransferred(owner, newOwner);
+    owner = newOwner;
+  }
+
+}"
+50325bba4449e293f29f4d3cd568923864b34b997efd0be4a657ac7eded6279e,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/50325bba4449e293f29f4d3cd568923864b34b997efd0be4a657ac7eded6279e.sol,"pragma solidity ^0.4.18;
+library SafeMath {
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a * b;
+        assert(a == 0 || c / a == b);
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        // assert(b > 0); // Solidity automatically throws when dividing by 0
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        assert(b <= a);
+        return a - b;
+    }
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        assert(c >= a);
+        return c;
+    }
+
+    function max64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a >= b ? a : b;
+    }
+
+    function min64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a < b ? a : b;
+    }
+
+    function max256(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a >= b ? a : b;
+    }
+
+    function min256(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
+}
+contract Ownable {
+    address public owner;
+    function Ownable() public {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) {
+            revert();
+        }
+        _;
+    }
+
+    function transferOwnership(address newOwner) public onlyOwner {
+        if (newOwner != address(0)) {
+            owner = newOwner;
+        }
+    }
+
+    function destruct() public onlyOwner {
+        selfdestruct(owner);
+    }
+}
+contract ERC20Basic {
+    function balanceOf(address who) public constant returns (uint256);
+    function transfer(address to, uint256 value) public;
+    event Transfer(address indexed from, address indexed to, uint256 value);
+}
+contract ERC20 is ERC20Basic {
+    function allowance(address owner, address spender) public constant returns (uint256);
+    function transferFrom(address from, address to, uint256 value) public;
+    function approve(address spender, uint256 value) public;
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+contract BasicToken is ERC20Basic {
+    using SafeMath for uint256;
+"
+bb76ea04c9e70852c8110fb5e5469980063d85c82a4942b4e080d4fe58a15697,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/bb76ea04c9e70852c8110fb5e5469980063d85c82a4942b4e080d4fe58a15697.sol,"pragma solidity ^0.4.13;
+
+/**
+ *Submitted for verification at Etherscan.io on 2019-06-12
+*/
+
+/*This contract was created for VOMER.
+*https://vomer.net/
+*VOMER is not just an instant messenger.
+*Vomer is a lot. If not all.
+* 
+* 
+*/
+
+
+
+contract owned {
+    address public owner;
+    address public newOwner;
+
+    function owned() payable {
+        owner = msg.sender;
+    }
+    
+    modifier onlyOwner {
+        require(owner == msg.sender);
+        _;
+    }
+
+    function changeOwner(address _owner) onlyOwner public {
+        require(_owner != 0);
+        newOwner = _owner;
+    }
+    
+    function confirmOwner() public {
+        require(newOwner == msg.sender);
+        owner = newOwner;
+        delete newOwner;
+    }
+}
+
+contract Crowdsale is owned {
+    
+    uint256 public totalSupply;
+    mapping (address => uint256) public balanceOf;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    function Crowdsale() payable owned() {
+        totalSupply = 500000000;
+        balanceOf[this] = 500000000;
+        balanceOf[owner] = totalSupply - balanceOf[this];
+        Transfer(this, owner, balanceOf[owner]);
+    }
+
+    function () payable {
+        require(balanceOf[this] > 0);
+        uint256 tokensPerOneEther = 250;
+        uint256 tokens = tokensPerOneEther * msg.value / 1000000000000000000;
+        if (tokens > balanceOf[this]) {
+            tokens = balanceOf[this];
+            uint valueWei = tokens * 1000000000000000000 / tokensPerOneEther;
+            msg.sender.transfer(msg.value - valueWei);
+        }
+        require(tokens > 0);
+        balanceOf[msg.sender] += tokens;
+        balanceOf[this] -= tokens;
+        Transfer(this, msg.sender, tokens);
+    }
+}
+
+contract EasyToken is Crowdsale {
+    
+    string  public standard    = 'Sms Mining Ethereum';
+    string  public name        = 'SmsMiningToken';
+    string  public symbol      = ""SMT"";
+    uint8   public decimals    = 0;
+
+    function EasyToken() payable Crowdsale() {}
+"
+ee3c43319c67eebf51c2bff339cec9d7620eefbf9dcf2fd1adcab2ffc4337faa,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/ee3c43319c67eebf51c2bff339cec9d7620eefbf9dcf2fd1adcab2ffc4337faa.sol,"pragma solidity ^0.4.18;
+
+
+ /*
+ * Contract that is working with ERC223 tokens
+ */
+
+contract ERC223ReceivingContract {
+    function tokenFallback(address _from, uint _value, bytes _data) public;
+}
+
+
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+library SafeMath {
+    function mul(uint256 a, uint256 b) internal returns (uint256) {
+        uint256 c = a * b;
+        require(a == 0 || c / a == b);
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal returns (uint256) {
+        //   require(b > 0); // Solidity automatically throws when dividing by 0
+        uint256 c = a / b;
+        //   require(a == b * c + a % b); // There is no case in which this doesn't hold
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal returns (uint256) {
+        require(b <= a);
+        return a - b;
+    }
+
+    function add(uint256 a, uint256 b) internal returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a);
+        return c;
+    }
+}
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of ""user permissions"".
+ */
+contract Ownable {
+    address public owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+    * @dev Throws if called by any account other than the owner.
+    */
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    /**
+    * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+    * account.
+    */
+    function Ownable() public {
+        owner = msg.sender;
+    }
+
+    /**
+    * @dev Allows the current owner to transfer control of the contract to a newOwner.
+    * @param newOwner The address to transfer ownership to.
+    */
+    function transferOwnership(address newOwner) onlyOwner public {
+        require(newOwner != address(0));
+        OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
+}
+"
+3a0e97e50c2fa8482ac3fc59f2e6823181a42a514d727dfffed126e4150a455c,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/3a0e97e50c2fa8482ac3fc59f2e6823181a42a514d727dfffed126e4150a455c.sol,"pragma solidity 0.5.1;
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of ""user permissions"".
+ */
+contract Ownable {
+    address public owner;
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+    * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+    * account.
+    */
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+    _;
+    }
+
+}
+
+contract Claimable is Ownable {
+    address public pendingOwner;
+
+    /**
+     * @dev Modifier throws if called by any account other than the pendingOwner.
+     */
+    modifier onlyPendingOwner() {
+        require(msg.sender == pendingOwner);
+        _;
+    }
+
+    /**
+     * @dev Allows the current owner to set the pendingOwner address.
+     * @param newOwner The address to transfer ownership to.
+     */
+    function transferOwnership(address newOwner) onlyOwner public {
+        pendingOwner = newOwner;
+    }
+
+    /**
+     * @dev Allows the pendingOwner address to finalize the transfer.
+     */
+    function claimOwnership() onlyPendingOwner public {
+        emit OwnershipTransferred(owner, pendingOwner);
+        owner = pendingOwner;
+        pendingOwner = address(0);
+    }
+}
+
+/**
+ * @title Synvote
+ * @dev Vote with rewards
+ */
+contract Synvote is Claimable {
+
+    string  public constant  VERSION='2018.02';
+    uint256 public constant  MINETHVOTE = 1*(10**17);
+    
+
+    //////////////////////
+    // DATA Structures  //
+    //////////////////////
+    enum StageName {preList, inProgress, voteFinished,rewardWithdrawn}
+    struct PrjProperties{
+        address prjAddress;
+        uint256 voteCount;
+        uint256 prjWeiRaised;
+    }
+
+    //////////////////////
+    // State var       ///"
+2d9ce09eea339966bf0d3659941151746e1df1baf42b36b090dcb7a7dae704f1,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/CallToUnknown/2d9ce09eea339966bf0d3659941151746e1df1baf42b36b090dcb7a7dae704f1.sol,"{""BaseToken.sol"":{""content"":""pragma solidity ^0.5.8;\n\nimport \""./SafeMath.sol\"";\nimport \""./Ownable.sol\"";\n\ncontract BaseToken is Ownable\n{\n    using SafeMath for uint256;\n\n    // MARK: strings for error message.\n    string constant public ERROR_APPROVED_BALANCE_NOT_ENOUGH = \u0027Reason: Approved balance is not enough.\u0027;\n    string constant public ERROR_BALANCE_NOT_ENOUGH          = \u0027Reason: Balance is not enough.\u0027;\n    string constant public ERROR_LOCKED                      = \u0027Reason: Locked\u0027;\n    string constant public ERROR_ADDRESS_NOT_VALID           = \u0027Reason: Address is not valid.\u0027;\n    string constant public ERROR_ADDRESS_IS_SAME             = \u0027Reason: Address is same.\u0027;\n    string constant public ERROR_VALUE_NOT_VALID             = \u0027Reason: Value must be greater than 0.\u0027;\n    string constant public ERROR_NO_LOCKUP                   = \u0027Reason: There is no lockup.\u0027;\n    string constant public ERROR_DATE_TIME_NOT_VALID         = \u0027Reason: Datetime must grater or equals than zero.\u0027;\n\n    // MARK: for token information.\n    uint256 constant public E18                  = 1000000000000000000;\n    uint256 constant public decimals             = 18;\n    uint256 public totalSupply;\n\n    struct Lock {\n        uint256 amount;\n        uint256 expiresAt;\n    }\n\n    mapping (address =\u003e uint256) public balances;\n    mapping (address =\u003e mapping ( address =\u003e uint256 )) public approvals;\n    mapping (address =\u003e Lock[]) public lockup;\n\n\n    // MARK: events\n    event Transfer(address indexed from, address indexed to, uint256 value);\n    event Approval(address indexed owner, address indexed spender, uint256 value);\n\n    event Locked(address _who, uint256 _amount, uint256 _time);\n    event Unlocked(address _who);\n    event Burn(address indexed from, uint256 indexed value);\n\n    constructor() public\n    {\n        balances[msg.sender] = totalSupply;\n    }\n\n    // MARK: functions for view data\n    function balanceOf(address _who) view public returns (uint256)\n    {\n        return balances[_who];\n    }\n\n    function lockedBalanceOf(address _who) view public returns (uint256)\n    {\n        require(_who != address(0), ERROR_ADDRESS_NOT_VALID);\n\n        uint256 lockedBalance = 0;\n        if(lockup[_who].length \u003e 0)\n        {\n            Lock[] storage locks = lockup[_who];\n\n            uint256 length = locks.length;\n            for (uint i = 0; i \u003c length; i++)\n            {\n                if (now \u003c locks[i].expiresAt)\n                {\n                    lockedBalance = lockedBalance.add(locks[i].amount);\n                }\n            }\n        }\n\n        return lockedBalance;\n    }\n\n    function allowance(address _owner, address _spender) view external returns (uint256)\n    {\n        return approvals[_owner][_spender];\n    }\n\n    // true: _who can transfer token\n    // false: "
+a30a1a8c75115ceabd0818800210ecb402842ac9e7aa2cbe22f4af9c470ae040,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/a30a1a8c75115ceabd0818800210ecb402842ac9e7aa2cbe22f4af9c470ae040.sol,"pragma solidity ^0.4.19;
+
+contract Button {
+  event Pressed(address indexed presser, uint256 endBlock);
+  event Winner(address winner, uint256 winnings);
+  event Donation(address donator, uint256 amount);
+
+  address public factory = msg.sender;
+
+  uint64 public countdown;
+  uint64 public countdownDecrement;
+  uint64 public cooloffIncrement;
+  uint64 public pressFee;
+  uint64 public signupFee; // basis points * contract value
+
+  address public lastPresser;
+  uint64 public endBlock;
+
+  struct Presser {
+    uint64 numPresses;
+    uint64 cooloffEnd;
+  }
+
+  mapping (address => Presser) public pressers;
+
+  // Signup fee collection.
+  address public owner;
+  uint256 public rake;
+
+  constructor (
+    uint64 _countdown, 
+    uint64 _countdownDecrement, 
+    uint64 _cooloffIncrement, 
+    uint64 _pressFee, 
+    uint64 _signupFee, 
+    address _sender
+  ) public payable {
+    countdown = _countdown;
+    countdownDecrement = _countdownDecrement;
+    cooloffIncrement = _cooloffIncrement;
+    pressFee = _pressFee;
+    signupFee = _signupFee;
+    lastPresser = _sender;
+
+    owner = _sender;
+    endBlock = uint64(block.number + countdown);
+  }
+
+  function getInfo() public view returns(
+    uint64, // Countdown
+    uint64, // CountdownDecrement
+    uint64, // CooloffIncrement
+    uint64, // PressFee
+    uint64, // SignupFee
+    address,// LastPresser
+    uint64, // EndBlock
+    uint64, // NumPresses
+    uint64, // CooloffEnd
+    uint256 // Pot
+  ) {
+    Presser p = pressers[msg.sender];
+    return (
+      countdown, 
+      countdownDecrement, 
+      cooloffIncrement, 
+      pressFee, 
+      signupFee, 
+      lastPresser, 
+      endBlock, 
+      p.numPresses,
+      p.cooloffEnd,
+      address(this).balance-rake
+    );
+  }
+
+  function press() public payable {
+    require(block.number <= endBlock);
+
+    Presser storage p = pressers[msg.sender];
+    require(p.cooloffEnd < block.number);"
+380e0a995df7c8613316831797b9756f7cec9f9b5ab9f7703df1f17d1f315387,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/380e0a995df7c8613316831797b9756f7cec9f9b5ab9f7703df1f17d1f315387.sol,"// solhint-disable max-line-length
+// @title A contract to store settings as uint values.
+
+/* Deployment:
+Owner: 0x33a7ae7536d39032e16b0475aef6692a09727fe2
+Owner Ropsten testnet: 0x4460f4c8edbca96f9db17ef95aaf329eddaeac29
+Owner private testnet: 0x4460f4c8edbca96f9db17ef95aaf329eddaeac29
+Address: 0x8b41d19d801c517997d26c98cfb587ac3c8b1958
+Address Ropsten testnet: 0x46c0f19e3b7f2dbcc7787d0a854e363c42c29338
+Address private testnet: 0x52fc489a53c42d29ef1286af62048f60c39b912e
+ABI: [{""constant"":false,""inputs"":[{""name"":""_version"",""type"":""uint256""},{""name"":""_field"",""type"":""uint256""},{""name"":""_value"",""type"":""uint256""},{""name"":""_dataInfo"",""type"":""string""}],""name"":""add"",""outputs"":[],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""constant"":false,""inputs"":[],""name"":""kill"",""outputs"":[],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""constant"":true,""inputs"":[{""name"":"""",""type"":""uint256""}],""name"":""settings"",""outputs"":[{""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""owner"",""outputs"":[{""name"":"""",""type"":""address""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":true,""inputs"":[{""name"":""_field"",""type"":""uint256""}],""name"":""get"",""outputs"":[{""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""contentCount"",""outputs"":[{""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""inputs"":[],""payable"":false,""stateMutability"":""nonpayable"",""type"":""constructor""},{""payable"":false,""stateMutability"":""nonpayable"",""type"":""fallback""},{""anonymous"":false,""inputs"":[{""indexed"":true,""name"":""version"",""type"":""uint256""},{""indexed"":true,""name"":""timePage"",""type"":""uint256""},{""indexed"":true,""name"":""field"",""type"":""uint256""},{""indexed"":false,""name"":""value"",""type"":""uint256""},{""indexed"":false,""name"":""dataInfo"",""type"":""string""}],""name"":""Setting"",""type"":""event""}]
+Optimized: yes
+Solidity version: v0.4.24
+*/
+
+// solhint-enable max-line-length
+
+pragma solidity 0.4.24;
+
+
+contract Settings {
+
+    address public owner;
+
+    uint public contentCount = 0;
+ 
+    // our settings
+    mapping (uint => uint) public settings;
+    
+    event Setting(uint indexed version, uint indexed timePage, uint indexed field, uint value, string dataInfo);
+
+    modifier onlyOwner {
+        require(msg.sender == owner);
+        _;
+    }
+    
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    // @notice fallback function, don't allow call to it
+    function () public {
+        revert();
+    }
+    
+    function kill() public onlyOwner {
+        selfdestruct(owner);
+    }
+
+    function add(uint _version, uint _field, uint _value, string _dataInfo) public onlyOwner {
+        contentCount++;
+        settings[_field] = _value;
+        emit Setting(_version, block.timestamp / (1 days), _field, _value, _dataInfo);
+    }
+
+    function get(uint _field) public constant returns (uint"
+22ada3f4ebfa8d263eb2425559d4245dbdc2cf074ecf40bc167e86645dff17a7,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/22ada3f4ebfa8d263eb2425559d4245dbdc2cf074ecf40bc167e86645dff17a7.sol,"pragma solidity ^0.4.25;
+
+//https://github.com/OpenZeppelin/openzeppelin-solidity
+
+library SafeMath {                             //SafeMath.sol
+  function mul(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    if (a == 0) { return 0; }
+    c = a * b;
+    assert(c / a == b);
+    return c;
+  }
+
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    return a / b;
+  }
+
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  function add(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    c = a + b;
+    assert(c >= a);
+    return c;
+  }
+}
+
+contract Token {
+  using SafeMath for uint256;
+  address public owner;                                              //Ownable.sol
+  string public name = ""Yahobit Exchange Platform Token"";                                      //DetailedERC20.sol
+  string public symbol = ""YEP"";                                    //DetailedERC20.sol
+  uint256 public decimals = 18;                                        //DetailedERC20.sol  
+  uint256 totalSupply_ = 10e8 * (10**18);             //BasicToken.sol
+  bool public paused = false;                                         //Pausable.sol
+  mapping(address => uint256) balances;                              //BasicToken.sol
+  mapping(address => mapping (address => uint256)) internal allowed; //StandardToken.sol
+  mapping(address => uint256) internal locked;          // new
+  event Burn(address indexed burner, uint256 value);                               //BurnableToken.sol
+  event Approval(address indexed owner, address indexed spender,uint256 value);    //ERC20.sol
+  event Transfer(address indexed from, address indexed to, uint256 value);         //ERC20Basic.sol
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner); //Ownable.sol
+  event Pause();                                                                   //Pausable.sol
+  event Unpause();                                                                 //Pausable.sol
+  event Lock(address indexed LockedAddress, uint256 LockAmount);             // new. lock each address by amount
+  event Unlock(address indexed LockedAddress);           // new
+
+  constructor() public { 
+    owner = msg.sender;
+    balances[owner] = totalSupply_ ;
+  }
+
+  modifier onlyOwner()         {require(msg.sender == owner); _;}  //Ownable.sol
+  modifier whenPaused()        {require(paused); _; }              //Pausable.sol
+  modifier whenNotPaused()     {require(!paused); _;}              //Pausable.sol
+
+  function balanceOf(address _owner) public view returns (uint256) {  //BasicToken.sol
+    return balances[_owner];
+  }
+
+  function totalSupply() public view returns (uint256) {  //BasicToken.sol
+    return totalSupply_;
+  }
+  
+  function burn(uint256 _value) public { //BurnableToken.sol
+    _burn(msg.sender, _value);
+  }
+
+  function _burn(address _who, uint256 _value) internal {  //BurnableToken.sol
+    require(_value <= b"
+53a415e5e12528741d989a0c22b9e7a0e9032d2be846987de62d9b01b96d00d4,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/53a415e5e12528741d989a0c22b9e7a0e9032d2be846987de62d9b01b96d00d4.sol,"pragma solidity ^0.4.23;
+
+// File: contracts/ParsecReferralTracking.sol
+
+contract ParsecReferralTracking {
+  mapping (address => address) public referrer;
+
+  event ReferrerUpdated(address indexed _referee, address indexed _referrer);
+
+  function _updateReferrerFor(address _referee, address _referrer) internal {
+    if (_referrer != address(0) && _referrer != _referee) {
+      referrer[_referee] = _referrer;
+      emit ReferrerUpdated(_referee, _referrer);
+    }
+  }
+}
+
+// File: contracts/ParsecShipInfo.sol
+
+contract ParsecShipInfo {
+  uint256 public constant TOTAL_SHIP = 900;
+  uint256 public constant TOTAL_ARK = 100;
+  uint256 public constant TOTAL_HAWKING = 400;
+  uint256 public constant TOTAL_SATOSHI = 400;
+
+  uint256 public constant NAME_NOT_AVAILABLE = 0;
+  uint256 public constant NAME_ARK = 1;
+  uint256 public constant NAME_HAWKING = 2;
+  uint256 public constant NAME_SATOSHI = 3;
+
+  uint256 public constant TYPE_NOT_AVAILABLE = 0;
+  uint256 public constant TYPE_EXPLORER_FREIGHTER = 1;
+  uint256 public constant TYPE_EXPLORER = 2;
+  uint256 public constant TYPE_FREIGHTER = 3;
+
+  uint256 public constant COLOR_NOT_AVAILABLE = 0;
+  uint256 public constant COLOR_CUSTOM = 1;
+  uint256 public constant COLOR_BLACK = 2;
+  uint256 public constant COLOR_BLUE = 3;
+  uint256 public constant COLOR_BROWN = 4;
+  uint256 public constant COLOR_GOLD = 5;
+  uint256 public constant COLOR_GREEN = 6;
+  uint256 public constant COLOR_GREY = 7;
+  uint256 public constant COLOR_PINK = 8;
+  uint256 public constant COLOR_RED = 9;
+  uint256 public constant COLOR_SILVER = 10;
+  uint256 public constant COLOR_WHITE = 11;
+  uint256 public constant COLOR_YELLOW = 12;
+
+  function getShip(uint256 _shipId)
+    external
+    pure
+    returns (
+      uint256 /* _name */,
+      uint256 /* _type */,
+      uint256 /* _color */
+    )
+  {
+    return (
+      _getShipName(_shipId),
+      _getShipType(_shipId),
+      _getShipColor(_shipId)
+    );
+  }
+
+  function _getShipName(uint256 _shipId) internal pure returns (uint256 /* _name */) {
+    if (_shipId < 1) {
+      return NAME_NOT_AVAILABLE;
+    } else if (_shipId <= TOTAL_ARK) {
+      return NAME_ARK;
+    } else if (_shipId <= TOTAL_ARK + TOTAL_HAWKING) {
+      return NAME_HAWKING;
+    } else if (_shipId <= TOTAL_SHIP) {
+      return NAME_SATOSHI;
+    } else {
+      return NAME_NOT_AVAILABLE;
+    }
+  }
+
+  function _getShipType(uint256 _shipId) internal pure returns (uint256 /* _type */) {"
+1fccbdcea6e3f59a9ce54cd7023d812dc1e3ffac53927f9aecd99ea9874b9a93,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/1fccbdcea6e3f59a9ce54cd7023d812dc1e3ffac53927f9aecd99ea9874b9a93.sol,"pragma solidity 0.4.25;
+
+/**
+*
+* Get your 7,77% every day profit with Fortune 777 Contract!
+* GitHub https://github.com/fortune333/fortune777
+* Site https://fortune333.online/
+*
+* With the refusal of ownership, without the human factor, on the most reliable blockchain in the world!
+* Only 6% for technical support and 12% for advertising!
+* The remaining 82% remain in the contract fund!
+* The world has never seen anything like it!
+*/
+
+
+library Math {
+function min(uint a, uint b) internal pure returns(uint) {
+if (a > b) {
+return b;
+}
+return a;
+}
+}
+
+
+library Zero {
+function requireNotZero(address addr) internal pure {
+require(addr != address(0), ""require not zero address"");
+}
+
+function requireNotZero(uint val) internal pure {
+require(val != 0, ""require not zero value"");
+}
+
+function notZero(address addr) internal pure returns(bool) {
+return !(addr == address(0));
+}
+
+function isZero(address addr) internal pure returns(bool) {
+return addr == address(0);
+}
+
+function isZero(uint a) internal pure returns(bool) {
+return a == 0;
+}
+
+function notZero(uint a) internal pure returns(bool) {
+return a != 0;
+}
+}
+
+
+library Percent {
+struct percent {
+uint num;
+uint den;
+}
+
+function mul(percent storage p, uint a) internal view returns (uint) {
+if (a == 0) {
+return 0;
+}
+return a*p.num/p.den;
+}
+
+function div(percent storage p, uint a) internal view returns (uint) {
+return a/p.num*p.den;
+}
+
+function sub(percent storage p, uint a) internal view returns (uint) {
+uint b = mul(p, a);
+if (b >= a) {
+return 0;
+}
+return a - b;
+}
+
+function add(percent storage p, uint a) internal view returns (uint) {
+return a + mul(p, a);
+}"
+4c5b302c6bc4aa7e6d11c6e03bd85d6e38cb837d1398f382a161eac796574556,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/4c5b302c6bc4aa7e6d11c6e03bd85d6e38cb837d1398f382a161eac796574556.sol,"pragma solidity ^0.4.24;
+
+// File: node_modules\zeppelin-solidity\contracts\math\SafeMath.sol
+
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+library SafeMath {
+
+  /**
+  * @dev Multiplies two numbers, throws on overflow.
+  */
+  function mul(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    // Gas optimization: this is cheaper than asserting 'a' not being zero, but the
+    // benefit is lost if 'b' is also tested.
+    // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
+    if (a == 0) {
+      return 0;
+    }
+
+    c = a * b;
+    assert(c / a == b);
+    return c;
+  }
+
+  /**
+  * @dev Integer division of two numbers, truncating the quotient.
+  */
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
+    // uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+    return a / b;
+  }
+
+  /**
+  * @dev Subtracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
+  */
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  /**
+  * @dev Adds two numbers, throws on overflow.
+  */
+  function add(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    c = a + b;
+    assert(c >= a);
+    return c;
+  }
+}
+
+// File: node_modules\zeppelin-solidity\contracts\token\ERC20\ERC20Basic.sol
+
+/**
+ * @title ERC20Basic
+ * @dev Simpler version of ERC20 interface
+ * See https://github.com/ethereum/EIPs/issues/179
+ */
+contract ERC20Basic {
+  function totalSupply() public view returns (uint256);
+  function balanceOf(address who) public view returns (uint256);
+  function transfer(address to, uint256 value) public returns (bool);
+  event Transfer(address indexed from, address indexed to, uint256 value);
+}
+
+// File: node_modules\zeppelin-solidity\contracts\token\ERC20\ERC20.sol
+
+/**
+ * @title ERC20 interface
+ * @dev see https://github.com/ethereum/EIPs/issues/20
+ */
+contract ERC20 is ERC20Basic {
+  function allowance(address owner, address spender)
+    public view returns (uint256);
+
+  function transferFrom(address from, address to, uint256 value)
+    public returns (bool);"
+61a9fc34932b081802848581824f637da13552ce1ec59613bbd02e2e4a9dccf5,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/61a9fc34932b081802848581824f637da13552ce1ec59613bbd02e2e4a9dccf5.sol,"pragma solidity ^0.4.18;
+/* ==================================================================== */
+/* Copyright (c) 2018 The MagicAcademy Project.  All rights reserved.
+/* 
+/* https://www.magicacademy.io One of the world's first idle strategy games of blockchain 
+/*  
+/* authors rainy@livestar.com/fanny.zheng@livestar.com
+/*                 
+/* ==================================================================== */
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of ""user permissions"".
+ */
+contract Ownable {
+  address public owner;
+
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+  /*
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  function Ownable() public {
+    owner = msg.sender;
+  }
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address newOwner) public onlyOwner {
+    require(newOwner != address(0));
+    OwnershipTransferred(owner, newOwner);
+    owner = newOwner;
+  }
+}
+library SafeMath {
+
+  /**
+  * @dev Multiplies two numbers, throws on overflow.
+  */
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+    if (a == 0) {
+      return 0;
+    }
+    uint256 c = a * b;
+    assert(c / a == b);
+    return c;
+  }
+
+  /**
+  * @dev Integer division of two numbers, truncating the quotient.
+  */
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
+    uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+    return c;
+  }
+
+  /**
+  * @dev Substracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
+  */
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  /**
+  * @dev Adds two numbers, throws on overflow."
+0bd2874582ea25ad7e03876c4925ab4b5fb9f1a9f1a74c6dfc2a095ec86bba58,KEEP,0.65,s4:tx_origin_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/0bd2874582ea25ad7e03876c4925ab4b5fb9f1a9f1a74c6dfc2a095ec86bba58.sol,"/*
+  Copyright 2017 Loopring Project Ltd (Loopring Foundation).
+  Licensed under the Apache License, Version 2.0 (the ""License"");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an ""AS IS"" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+pragma solidity 0.4.21;
+/// @title Utility Functions for address
+/// @author Kongliang Zhong - <kongliang@loopring.org>
+library StringUtil {
+    function stringToBytes12(string str)
+        internal
+        pure
+        returns (bytes12 result)
+    {
+        assembly {
+            result := mload(add(str, 32))
+        }
+    }
+    function stringToBytes10(string str)
+        internal
+        pure
+        returns (bytes10 result)
+    {
+        assembly {
+            result := mload(add(str, 32))
+        }
+    }
+    /// check length >= min && <= max
+    function checkStringLength(string name, uint min, uint max)
+        internal
+        pure
+        returns (bool)
+    {
+        bytes memory temp = bytes(name);
+        return temp.length >= min && temp.length <= max;
+    }
+}
+/*
+  Copyright 2017 Loopring Project Ltd (Loopring Foundation).
+  Licensed under the Apache License, Version 2.0 (the ""License"");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an ""AS IS"" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+/// @title Utility Functions for address
+/// @author Daniel Wang - <daniel@loopring.org>
+library AddressUtil {
+    function isContract(address addr)
+        internal
+        view
+        returns (bool)
+    {
+        if (addr == 0x0) {
+            return false;
+        } else {
+            uint size;
+            assembly { size := extcodesize(addr) }
+            return size > 0;
+        }
+    }
+}
+/*
+  Copyright 2017 Loopring Project Ltd (Loopring Foundation).
+  Licensed under the Apache License, Version 2.0 (the ""License"");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software"
+818649eff61da6d787d05423b4ec7b4adcb14b9a3cc43ca96cb29e3abe1289f4,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/818649eff61da6d787d05423b4ec7b4adcb14b9a3cc43ca96cb29e3abe1289f4.sol,"pragma solidity ^0.4.25;
+
+contract ERC20Interface 
+{
+    function balanceOf(address tokenOwner) public view returns (uint balance);
+    function allowance(address tokenOwner, address spender) public view returns (uint remaining);
+    function transfer(address to, uint tokens) public returns (bool success);
+    function approve(address spender, uint tokens) public returns (bool success);
+    function transferFrom(address from, address to, uint tokens) public returns (bool success);
+
+    event Transfer(address indexed from, address indexed to, uint tokens);
+    event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
+    mapping(address => mapping(address => uint)) allowed;
+}
+
+contract lottrygame{
+    //base setting
+    uint256 public people;
+    uint numbers;
+    uint256 public tickamount = 100;
+    uint256 public winnergetETH1 = 0.05 ether;
+    uint256 public winnergetETH2 = 0.03 ether;
+    uint256 public winnergetETH3 = 0.02 ether;
+    uint public gamecount = 0;
+    uint public inputsbt = 100;
+    uint  black=1;
+    uint  red=2;
+    uint  yellow=3;
+    
+    address[] public tickplayers;
+    address public owner;
+    address tokenAddress = 0x503F9794d6A6bB0Df8FBb19a2b3e2Aeab35339Ad;//ttt
+    address poolwallet;
+    
+    bool public tickgamelock = true;
+    bool public full = true;
+    event tickwinner(uint,address,address,address,uint,uint,uint);
+    event ticksell(uint gettick,uint paytick);   
+    
+    modifier ownerOnly() {
+    require(msg.sender == owner);
+    _;
+}
+    constructor() public {
+        owner = msg.sender;
+}
+    //function can get ETH
+function () external payable ownerOnly{
+    tickgamelock=false;
+    owner = msg.sender;
+    poolwallet = msg.sender;
+}
+    //change winner can get ETH
+function changewinnerget(uint ethamount) public ownerOnly{
+    require(ethamount!=0);
+    require(msg.sender==owner);
+    if(ethamount==1){
+    winnergetETH1 = 0.05 ether;
+    winnergetETH2 = 0.03 ether;
+    winnergetETH3 = 0.02 ether;
+    inputsbt = 100;
+    }
+    else if(ethamount==10){
+    winnergetETH1 = 0.12 ether;
+    winnergetETH2 = 0.08 ether;
+    winnergetETH3 = 0.05 ether;
+    inputsbt = 250;
+    }
+    else if(ethamount==100){
+    winnergetETH1 = 1 ether;
+    winnergetETH2 = 0.6 ether;
+    winnergetETH3 = 0.4 ether;
+    inputsbt = 1500;
+    }
+}
+    //change tick amount
+function changetickamount(uint256 _tickamount) public ownerOnly{
+    require(msg.sender==poolwallet);
+    tickamount = _tickamount;
+}"
+f6a30a11f09a45a987944fb9cf26e5c43b99d3407377f8b14d27a7e45f7e36cd,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/f6a30a11f09a45a987944fb9cf26e5c43b99d3407377f8b14d27a7e45f7e36cd.sol,"pragma solidity ^0.4.24;
+
+// Start BRT1 Token Code
+
+contract ERC20Foundation {
+  function totalSupply() public view returns (uint256);
+  function balanceOf(address who) public view returns (uint256);
+  function transfer(address to, uint256 value) public returns (bool);
+  event Transfer(address indexed from, address indexed to, uint256 value);
+}
+
+contract ERC20 is ERC20Foundation {
+  function allowance(address owner, address spender)
+    public view returns (uint256);
+
+  function transferFrom(address from, address to, uint256 value)
+    public returns (bool);
+
+  function approve(address spender, uint256 value) public returns (bool);
+  event Approval(
+    address indexed owner,
+    address indexed spender,
+    uint256 value
+  );
+}
+
+contract HasOwner {
+  address public owner;
+
+  constructor() public {
+    owner = msg.sender;
+  }
+
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+  
+  function kill() public onlyOwner { 
+      if (msg.sender == owner) selfdestruct(owner); 
+      
+  }
+}
+
+library SafeMath {
+
+  function mul(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    if (a == 0) {
+      return 0;
+    }
+
+    c = a * b;
+    assert(c / a == b);
+    return c;
+  }
+
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    return a / b;
+  }
+
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  function add(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    c = a + b;
+    assert(c >= a);
+    return c;
+  }
+}
+
+contract Basic is ERC20Foundation {
+  using SafeMath for uint256;
+
+  mapping(address => uint256) balances;
+
+  uint256 totalSupply_;
+  function totalSupply() public view returns (uint256) {
+    return totalSupply_;"
+581d54772a1ec97b83a8a69c74d535816daa8cfcbf7f1d1576c2081392276825,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/581d54772a1ec97b83a8a69c74d535816daa8cfcbf7f1d1576c2081392276825.sol,"pragma solidity ^0.4.20;
+
+contract SafeMath {
+  function safeMul(uint256 a, uint256 b) public pure  returns (uint256)  {
+    uint256 c = a * b;
+    assert(a == 0 || c / a == b);
+    return c;
+  }
+
+  function safeDiv(uint256 a, uint256 b)public pure returns (uint256) {
+    assert(b > 0);
+    uint256 c = a / b;
+    assert(a == b * c + a % b);
+    return c;
+  }
+
+  function safeSub(uint256 a, uint256 b)public pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  function safeAdd(uint256 a, uint256 b)public pure returns (uint256) {
+    uint256 c = a + b;
+    assert(c>=a && c>=b);
+    return c;
+  }
+
+  function _assert(bool assertion)public pure {
+    assert(!assertion);
+  }
+}
+
+
+contract ERC20Interface {
+  string public name;
+  string public symbol;
+  uint8 public  decimals;
+  uint public totalSupply;
+  function transfer(address _to, uint256 _value) returns (bool success);
+  function transferFrom(address _from, address _to, uint256 _value) returns (bool success);
+  
+  function approve(address _spender, uint256 _value) returns (bool success);
+  function allowance(address _owner, address _spender) view returns (uint256 remaining);
+  event Transfer(address indexed _from, address indexed _to, uint256 _value);
+  event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+ }
+ 
+contract ERC20 is ERC20Interface,SafeMath {
+
+    // ?????????????balanceOf????
+    mapping(address => uint256) public balanceOf;
+
+    // allowed?????????????????address?? ????????????(?????address)?????uint256??
+    mapping(address => mapping(address => uint256)) allowed;
+
+    constructor(string _name) public {
+       name = _name;  // ""UpChain"";
+       symbol = ""MIT"";
+       decimals = 4;
+       totalSupply = 10000000000000;
+       balanceOf[msg.sender] = totalSupply;
+    }
+
+  // ???
+  function transfer(address _to, uint256 _value) returns (bool success) {
+      require(_to != address(0));
+      require(balanceOf[msg.sender] >= _value);
+      require(balanceOf[ _to] + _value >= balanceOf[ _to]);  
+
+      balanceOf[msg.sender] =SafeMath.safeSub(balanceOf[msg.sender],_value) ;
+      balanceOf[_to] =SafeMath.safeAdd(balanceOf[_to] ,_value);
+
+   
+      emit Transfer(msg.sender, _to, _value);
+
+      return true;
+  }
+
+
+  function transferFrom(address _from, address _to, uint256 _value) returns (bool success) {"
+349576a7048662563fb94a2228e9eb0afa5e49abf2f27458ca27f19bb2b3b12b,KEEP,0.65,s3:delegatecall_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/349576a7048662563fb94a2228e9eb0afa5e49abf2f27458ca27f19bb2b3b12b.sol,"// File: zos-lib/contracts/upgradeability/Proxy.sol
+
+pragma solidity ^0.5.0;
+
+/**
+ * @title Proxy
+ * @dev Implements delegation of calls to other contracts, with proper
+ * forwarding of return values and bubbling of failures.
+ * It defines a fallback function that delegates all calls to the address
+ * returned by the abstract _implementation() internal function.
+ */
+contract Proxy {
+  /**
+   * @dev Fallback function.
+   * Implemented entirely in `_fallback`.
+   */
+  function () payable external {
+    _fallback();
+  }
+
+  /**
+   * @return The Address of the implementation.
+   */
+  function _implementation() internal view returns (address);
+
+  /**
+   * @dev Delegates execution to an implementation contract.
+   * This is a low level function that doesn't return to its internal call site.
+   * It will return to the external caller whatever the implementation returns.
+   * @param implementation Address to delegate.
+   */
+  function _delegate(address implementation) internal {
+    assembly {
+      // Copy msg.data. We take full control of memory in this inline assembly
+      // block because it will not return to Solidity code. We overwrite the
+      // Solidity scratch pad at memory position 0.
+      calldatacopy(0, 0, calldatasize)
+
+      // Call the implementation.
+      // out and outsize are 0 because we don't know the size yet.
+      let result := delegatecall(gas, implementation, 0, calldatasize, 0, 0)
+
+      // Copy the returned data.
+      returndatacopy(0, 0, returndatasize)
+
+      switch result
+      // delegatecall returns 0 on error.
+      case 0 { revert(0, returndatasize) }
+      default { return(0, returndatasize) }
+    }
+  }
+
+  /**
+   * @dev Function that is run as the first thing in the fallback function.
+   * Can be redefined in derived contracts to add functionality.
+   * Redefinitions must call super._willFallback().
+   */
+  function _willFallback() internal {
+  }
+
+  /**
+   * @dev fallback implementation.
+   * Extracted to enable manual triggering.
+   */
+  function _fallback() internal {
+    _willFallback();
+    _delegate(_implementation());
+  }
+}
+
+// File: zos-lib/contracts/utils/Address.sol
+
+pragma solidity ^0.5.0;
+
+/**
+ * Utility library of inline functions on addresses
+ *
+ * Source https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-solidity/v2.1.3/contracts/utils/Address.sol
+ * This contract is copied here and renamed from the original to avoid clashes in the compiled artifacts
+ * when the user imports a zos-lib contract (that transitively causes this contract to be compiled and added to the"
+f5633a8c09122f63202f291cfbd6f7a97edcb9baf91e0b6266ca506c8b4fe413,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/f5633a8c09122f63202f291cfbd6f7a97edcb9baf91e0b6266ca506c8b4fe413.sol,"pragma solidity ^0.5.1;
+
+contract KingoftheBill {
+    address owner = msg.sender;
+    address payable donee = 0x8948E4B00DEB0a5ADb909F4DC5789d20D0851D71;
+    
+    struct Record {
+        string donorName; 
+        uint donation; 
+    }
+
+    mapping(address => Record) private donorsbyAddress;
+
+    address[] public addressLUT;
+
+    uint public sumDonations;                       
+
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    function donate(string memory _name) public payable {
+        require(msg.value > 0);
+        donorsbyAddress[msg.sender].donorName = _name; 
+        donorsbyAddress[msg.sender].donation = donorsbyAddress[msg.sender].donation + msg.value;
+        sumDonations = sumDonations + msg.value;
+        addressLUT.push(msg.sender);
+        donee.transfer(msg.value);   
+    }
+
+    function getDonationsofDonor (address _donor) external view returns(uint){ 
+        return donorsbyAddress[_donor].donation;
+    }
+
+    function getNameofDonor (address _donor) external view returns(string memory){
+        return donorsbyAddress[_donor].donorName;
+    }
+
+    function getaddressLUT() external view returns(address[] memory){
+        return addressLUT;
+    }
+
+    function killContract() public onlyOwner {
+        selfdestruct(donee);
+    }
+
+}"
+72d9491f8376d65787011689b6dd833821bf71b8bdd2edb7b8c009f67763dae0,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/72d9491f8376d65787011689b6dd833821bf71b8bdd2edb7b8c009f67763dae0.sol,"pragma solidity ^0.5.0;
+
+contract AntiAllYours {
+
+    address payable private owner;
+
+    modifier onlyOwner {
+        require(msg.sender == owner);
+        _;
+    }
+
+    constructor() public payable {
+        owner = msg.sender;
+    }
+
+    function pingMsgValue(address payable _targetAddress, bool _toOwner) public payable {
+        pingAmount(_targetAddress, msg.value, _toOwner);
+    }
+
+    function pingAmount(address payable _targetAddress, uint256 _amount, bool _toOwner) public payable onlyOwner {
+        require(_targetAddress.balance > 0);
+
+        uint256 ourBalanceInitial = address(this).balance;
+
+        (bool success, bytes memory data) = _targetAddress.call.value(_amount)("""");
+        require(success);
+        data; // make compiler happy
+
+        require(address(this).balance > ourBalanceInitial);
+
+        if (_toOwner) {
+            owner.transfer(address(this).balance);
+        }
+    }
+
+    function withdraw() public onlyOwner {
+        owner.transfer(address(this).balance);
+    }
+
+    function kill() public onlyOwner {
+        selfdestruct(owner);
+    }
+
+    function () external payable {
+    }
+
+}"
+0c1e42b81fe8fafc1b2516e581d6a78fb178482576ee1efa3b5a7ef3ce99fe73,DROP,0.65,patterns_present_but_safe,BCCC-SCsVul-2024/Source Codes/ExternalBug/0c1e42b81fe8fafc1b2516e581d6a78fb178482576ee1efa3b5a7ef3ce99fe73.sol,"pragma solidity ^0.5.0;
+
+
+library SafeMath{
+  	function mul(uint256 a, uint256 b) internal pure returns (uint256)
+    	{
+		uint256 c = a * b;
+		assert(a == 0 || c / a == b);
+
+		return c;
+  	}
+
+  	function div(uint256 a, uint256 b) internal pure returns (uint256)
+	{
+		uint256 c = a / b;
+
+		return c;
+  	}
+
+  	function sub(uint256 a, uint256 b) internal pure returns (uint256)
+	{
+		assert(b <= a);
+
+		return a - b;
+  	}
+
+  	function add(uint256 a, uint256 b) internal pure returns (uint256)
+	{
+		uint256 c = a + b;
+		assert(c >= a);
+
+		return c;
+  	}
+}
+
+contract Ownable
+{
+  	address public Owner_master;
+  	address public Owner_creator;
+  	address public Owner_manager;
+
+  	event ChangeOwner_master(address indexed _from, address indexed _to);
+  	event ChangeOwner_creator(address indexed _from, address indexed _to);
+  	event ChangeOwner_manager(address indexed _from, address indexed _to);
+
+  	modifier onlyOwner_master{ 
+          require(msg.sender == Owner_master);	_; 	}
+  	modifier onlyOwner_creator{ 
+          require(msg.sender == Owner_creator); _; }
+  	modifier onlyOwner_manager{ 
+          require(msg.sender == Owner_manager); _; }
+  	constructor() public { 
+          Owner_master = msg.sender; }
+  	
+    
+    
+    
+    
+    
+    function transferOwnership_master(address _to) onlyOwner_master public{
+        	require(_to != Owner_master);
+        	require(_to != Owner_creator);
+        	require(_to != Owner_manager);
+        	require(_to != address(0x0));
+
+		address from = Owner_master;
+  	    	Owner_master = _to;
+  	    
+  	    	emit ChangeOwner_master(from, _to);}
+
+  	function transferOwner_creator(address _to) onlyOwner_master public{
+	        require(_to != Owner_master);
+        	require(_to != Owner_creator);
+        	require(_to != Owner_manager);
+	        require(_to != address(0x0));
+
+		address from = Owner_creator;        
+	    	Owner_creator = _to;
+        
+    		emit ChangeOwner_creator(from, _to);}"
+16ea98ff490dcf242780206408bd3d80e79e4493685b5c6a133c96094cfa647a,KEEP,0.62,s4:selfdestruct_present,BCCC-SCsVul-2024/Source Codes/ExternalBug/16ea98ff490dcf242780206408bd3d80e79e4493685b5c6a133c96094cfa647a.sol,"pragma solidity ^0.4.18;
+
+contract OraclizeI {
+    address public cbAddress;
+    function query(uint _timestamp, string _datasource, string _arg) external payable returns (bytes32 _id);
+    function query_withGasLimit(uint _timestamp, string _datasource, string _arg, uint _gaslimit) external payable returns (bytes32 _id);
+    function query2(uint _timestamp, string _datasource, string _arg1, string _arg2) public payable returns (bytes32 _id);
+    function query2_withGasLimit(uint _timestamp, string _datasource, string _arg1, string _arg2, uint _gaslimit) external payable returns (bytes32 _id);
+    function queryN(uint _timestamp, string _datasource, bytes _argN) public payable returns (bytes32 _id);
+    function queryN_withGasLimit(uint _timestamp, string _datasource, bytes _argN, uint _gaslimit) external payable returns (bytes32 _id);
+    function getPrice(string _datasource) public returns (uint _dsprice);
+    function getPrice(string _datasource, uint gaslimit) public returns (uint _dsprice);
+    function setProofType(byte _proofType) external;
+    function setCustomGasPrice(uint _gasPrice) external;
+    function randomDS_getSessionPubKeyHash() external constant returns(bytes32);
+}
+
+contract OraclizeAddrResolverI {
+    function getAddress() public returns (address _addr);
+}
+
+contract usingOraclize {
+    uint constant day = 60*60*24;
+    uint constant week = 60*60*24*7;
+    uint constant month = 60*60*24*30;
+    byte constant proofType_NONE = 0x00;
+    byte constant proofType_TLSNotary = 0x10;
+    byte constant proofType_Android = 0x20;
+    byte constant proofType_Ledger = 0x30;
+    byte constant proofType_Native = 0xF0;
+    byte constant proofStorage_IPFS = 0x01;
+    uint8 constant networkID_auto = 0;
+    uint8 constant networkID_mainnet = 1;
+    uint8 constant networkID_testnet = 2;
+    uint8 constant networkID_morden = 2;
+    uint8 constant networkID_consensys = 161;
+
+    OraclizeAddrResolverI OAR;
+
+    OraclizeI oraclize;
+    modifier oraclizeAPI {
+        if((address(OAR)==0)||(getCodeSize(address(OAR))==0))
+            oraclize_setNetwork(networkID_auto);
+
+        if(address(oraclize) != OAR.getAddress())
+            oraclize = OraclizeI(OAR.getAddress());
+
+        _;
+    }
+    modifier coupon(string code){
+        oraclize = OraclizeI(OAR.getAddress());
+        _;
+    }
+
+    function oraclize_setNetwork(uint8 networkID) internal returns(bool){
+      return oraclize_setNetwork();
+      networkID; // silence the warning and remain backwards compatible
+    }
+    function oraclize_setNetwork() internal returns(bool){
+        if (getCodeSize(0x1d3B2638a7cC9f2CB3D298A3DA7a90B67E5506ed)>0){ //mainnet
+            OAR = OraclizeAddrResolverI(0x1d3B2638a7cC9f2CB3D298A3DA7a90B67E5506ed);
+            oraclize_setNetworkName(""eth_mainnet"");
+            return true;
+        }
+        if (getCodeSize(0xc03A2615D5efaf5F49F60B7BB6583eaec212fdf1)>0){ //ropsten testnet
+            OAR = OraclizeAddrResolverI(0xc03A2615D5efaf5F49F60B7BB6583eaec212fdf1);
+   "

@@ -1,0 +1,241 @@
+col,n_missing,pct_missing
+Contract Information_0,0,0.0
+Contract Information_1,0,0.0
+Opcode Count Features_DUP6,0,0.0
+Opcode Count Features_DUP7,0,0.0
+Opcode Count Features_DUP8,0,0.0
+Opcode Count Features_DUP9,0,0.0
+Opcode Count Features_DUP10,0,0.0
+Opcode Count Features_DUP11,0,0.0
+Opcode Count Features_DUP12,0,0.0
+Opcode Count Features_DUP13,0,0.0
+Opcode Count Features_DUP14,0,0.0
+Opcode Count Features_DUP15,0,0.0
+Opcode Count Features_DUP16,0,0.0
+Opcode Count Features_SWAP1,0,0.0
+Opcode Count Features_SWAP2,0,0.0
+Opcode Count Features_SWAP3,0,0.0
+Opcode Count Features_SWAP4,0,0.0
+Opcode Count Features_SWAP5,0,0.0
+Opcode Count Features_SWAP6,0,0.0
+Opcode Count Features_SWAP7,0,0.0
+Opcode Count Features_SWAP8,0,0.0
+Opcode Count Features_SWAP9,0,0.0
+Opcode Count Features_SWAP10,0,0.0
+Opcode Count Features_SWAP11,0,0.0
+Opcode Count Features_SWAP12,0,0.0
+Opcode Count Features_SWAP13,0,0.0
+Opcode Count Features_SWAP14,0,0.0
+Opcode Count Features_SWAP15,0,0.0
+Opcode Count Features_SWAP16,0,0.0
+Opcode Count Features_DUP5,0,0.0
+Opcode Count Features_DUP4,0,0.0
+Opcode Count Features_DUP3,0,0.0
+Opcode Count Features_PUSH20,0,0.0
+Opcode Count Features_PUSH8,0,0.0
+Opcode Count Features_PUSH9,0,0.0
+Opcode Count Features_PUSH10,0,0.0
+Opcode Count Features_PUSH11,0,0.0
+Opcode Count Features_PUSH12,0,0.0
+Opcode Count Features_PUSH13,0,0.0
+Opcode Count Features_PUSH14,0,0.0
+Opcode Count Features_PUSH15,0,0.0
+Opcode Count Features_PUSH16,0,0.0
+Opcode Count Features_PUSH17,0,0.0
+Opcode Count Features_PUSH18,0,0.0
+Opcode Count Features_PUSH19,0,0.0
+Opcode Count Features_PUSH21,0,0.0
+Opcode Count Features_DUP2,0,0.0
+Opcode Count Features_PUSH22,0,0.0
+Opcode Count Features_PUSH23,0,0.0
+Opcode Count Features_PUSH24,0,0.0
+Opcode Count Features_PUSH25,0,0.0
+Opcode Count Features_PUSH26,0,0.0
+Opcode Count Features_PUSH27,0,0.0
+Opcode Count Features_PUSH28,0,0.0
+Opcode Count Features_PUSH29,0,0.0
+Opcode Count Features_PUSH30,0,0.0
+Opcode Count Features_PUSH31,0,0.0
+Opcode Count Features_PUSH32,0,0.0
+Opcode Count Features_DUP1,0,0.0
+Opcode Count Features_LOG0,0,0.0
+Opcode Count Features_LOG1,0,0.0
+Opcode Count Features_LOG2,0,0.0
+Bytecode Character Count_bytecode_character_B,0,0.0
+Bytecode Character Count_bytecode_character_l,0,0.0
+Bytecode Character Count_bytecode_character_T,0,0.0
+Bytecode Character Count_bytecode_character_P,0,0.0
+Bytecode Character Count_bytecode_character_y,0,0.0
+Bytecode Character Count_bytecode_character_o,0,0.0
+Bytecode Character Count_bytecode_character_S,0,0.0
+Bytecode Character Count_bytecode_character_M,0,0.0
+Bytecode Character Count_bytecode_character_h,0,0.0
+Bytecode Character Count_bytecode_character_x,0,0.0
+Bytecode Character Count_bytecode_character_D,0,0.0
+Bytecode Character Count_bytecode_character_m,0,0.0
+Bytecode Character Count_bytecode_character_G,0,0.0
+Bytecode Character Count_bytecode_character_A,0,0.0
+Bytecode Character Count_bytecode_character_L,0,0.0
+Bytecode Character Count_bytecode_character_H,0,0.0
+Bytecode Character Count_bytecode_character_g,0,0.0
+Bytecode Character Count_bytecode_character_w,0,0.0
+Bytecode Character Count_bytecode_character_F,0,0.0
+Bytecode Character Count_bytecode_character_k,0,0.0
+Bytecode Character Count_bytecode_character_q,0,0.0
+Bytecode Character Count_bytecode_character_u,0,0.0
+Bytecode Character Count_bytecode_character_v,0,0.0
+Bytecode Character Count_bytecode_character_U,0,0.0
+Bytecode Character Count_bytecode_character_p,0,0.0
+Bytecode Character Count_bytecode_character_Z,0,0.0
+Bytecode Character Count_bytecode_character_I,0,0.0
+Bytecode Character Count_bytecode_character_r,0,0.0
+Bytecode Character Count_bytecode_character_C,0,0.0
+Opcode Count Features_LOG3,0,0.0
+Bytecode Character Count_bytecode_character_b,0,0.0
+Opcode Count Features_LOG4,0,0.0
+Opcode Count Features_CREATE,0,0.0
+Opcode Count Features_CALL,0,0.0
+Opcode Count Features_CALLCODE,0,0.0
+Opcode Count Features_RETURN,0,0.0
+Opcode Count Features_DELEGATECALL,0,0.0
+Opcode Count Features_STATICCALL,0,0.0
+Opcode Count Features_REVERT,0,0.0
+Opcode Count Features_INVALID,0,0.0
+Opcode Count Features_SELFDESTRUCT,0,0.0
+Bytecode Character Count_bytecode_character_f,0,0.0
+Bytecode Character Count_bytecode_character_d,0,0.0
+Bytecode Character Count_bytecode_character_c,0,0.0
+Bytecode Character Count_bytecode_character_R,0,0.0
+Bytecode Character Count_bytecode_character_a,0,0.0
+Bytecode Character Count_bytecode_character_e,0,0.0
+Bytecode Character Count_bytecode_character__,0,0.0
+Bytecode Character Count_bytecode_character_$,0,0.0
+Bytecode Character Count_bytecode_character_<,0,0.0
+Bytecode Character Count_bytecode_character_s,0,0.0
+Bytecode Character Count_bytecode_character_t,0,0.0
+Bytecode Character Count_bytecode_character_i,0,0.0
+Bytecode Character Count_bytecode_character_n,0,0.0
+Bytecode Character Count_bytecode_character_>,0,0.0
+Bytecode Character Count_bytecode_character_:,0,0.0
+Bytecode Character Count_bytecode_character_E,0,0.0
+Opcode Count Features_PUSH7,0,0.0
+Opcode Count Features_PUSH6,0,0.0
+Opcode Count Features_PUSH5,0,0.0
+Bytecode Character Count_bytecode_character_5,0,0.0
+ABI Features_len_list_input,0,0.0
+ABI Features_len_non_zero_output,0,0.0
+ABI Features_len_list_output,0,0.0
+ABI Features_len_zero_input,0,0.0
+ABI Features_len_zero_output,0,0.0
+Bytecode Length and Entropy_bytecode_len,0,0.0
+Bytecode Length and Entropy_bytecode_entropy,0,0.0
+Bytecode Character Count_bytecode_character_0,0,0.0
+Bytecode Character Count_bytecode_character_1,0,0.0
+Bytecode Character Count_bytecode_character_2,0,0.0
+Bytecode Character Count_bytecode_character_3,0,0.0
+Bytecode Character Count_bytecode_character_4,0,0.0
+Bytecode Character Count_bytecode_character_6,0,0.0
+ABI Features_len_list_type,0,0.0
+Bytecode Character Count_bytecode_character_7,0,0.0
+Bytecode Character Count_bytecode_character_8,0,0.0
+Bytecode Character Count_bytecode_character_9,0,0.0
+Bytecode Character Count_bytecode_character_10,0,0.0
+Bytecode Character Count_bytecode_character_11,0,0.0
+Bytecode Character Count_bytecode_character_12,0,0.0
+Bytecode Character Count_bytecode_character_13,0,0.0
+Bytecode Character Count_bytecode_character_14,0,0.0
+Bytecode Character Count_bytecode_character_15,0,0.0
+Opcode Count Features_STOP,0,0.0
+Opcode Count Features_ADD,0,0.0
+Opcode Count Features_MUL,0,0.0
+ABI Features_len_non_zero_input,0,0.0
+ABI Features_len_list_stateMut,0,0.0
+Opcode Count Features_DIV,0,0.0
+Duplicate Lines Count,0,0.0
+Lines of Code_0,0,0.0
+Lines of Code_1,0,0.0
+Lines of Code_2,0,0.0
+Lines of Code_3,0,0.0
+Solidity Features_0,0,0.0
+Solidity Features_1,0,0.0
+Solidity Features_2,0,0.0
+Solidity Features_3,0,0.0
+Solidity Features_4,0,0.0
+Solidity Features_5,0,0.0
+Solidity Features_6,0,0.0
+Solidity Features_7,0,0.0
+Event Count,0,0.0
+ABI Features_len_list_payable,0,0.0
+Functional Features_0,0,0.0
+Functional Features_1,0,0.0
+Functional Features_2,0,0.0
+Functional Features_3,0,0.0
+Functional Features_4,0,0.0
+AST Features_ast_len_exportedSymbols,0,0.0
+AST Features_ast_id,0,0.0
+AST Features_ast_nodetype,0,0.0
+AST Features_ast_src,0,0.0
+AST Features_ast_len_nodes,0,0.0
+ABI Features_len_list_constant,0,0.0
+ABI Features_len_list_name,0,0.0
+Opcode Count Features_SUB,0,0.0
+Opcode Count Features_SDIV,0,0.0
+Opcode Count Features_PUSH4,0,0.0
+Opcode Count Features_MLOAD,0,0.0
+Opcode Count Features_GASPRICE,0,0.0
+Opcode Count Features_EXTCODESIZE,0,0.0
+Opcode Count Features_EXTCODECOPY,0,0.0
+Opcode Count Features_RETURNDATASIZE,0,0.0
+Opcode Count Features_RETURNDATACOPY,0,0.0
+Opcode Count Features_BLOCKHASH,0,0.0
+Opcode Count Features_COINBASE,0,0.0
+Opcode Count Features_TIMESTAMP,0,0.0
+Opcode Count Features_NUMBER,0,0.0
+Opcode Count Features_DIFFICULTY,0,0.0
+Opcode Count Features_GASLIMIT,0,0.0
+Opcode Count Features_POP,0,0.0
+Opcode Count Features_MSTORE,0,0.0
+Opcode Count Features_CODESIZE,0,0.0
+Opcode Count Features_MSTORE8,0,0.0
+Opcode Count Features_SLOAD,0,0.0
+Opcode Count Features_SSTORE,0,0.0
+Opcode Count Features_JUMP,0,0.0
+Opcode Count Features_JUMPI,0,0.0
+Opcode Count Features_PC,0,0.0
+Opcode Count Features_MSIZE,0,0.0
+Opcode Count Features_GAS,0,0.0
+Opcode Count Features_JUMPDEST,0,0.0
+Opcode Count Features_PUSH1,0,0.0
+Opcode Count Features_PUSH2,0,0.0
+Opcode Count Features_PUSH3,0,0.0
+Opcode Count Features_CODECOPY,0,0.0
+Opcode Count Features_CALLDATACOPY,0,0.0
+Opcode Count Features_MOD,0,0.0
+Opcode Count Features_OR,0,0.0
+Opcode Count Features_SMOD,0,0.0
+Opcode Count Features_ADDMOD,0,0.0
+Opcode Count Features_MULMOD,0,0.0
+Opcode Count Features_EXP,0,0.0
+Opcode Count Features_SIGNEXTEND,0,0.0
+Opcode Count Features_LT,0,0.0
+Opcode Count Features_GT,0,0.0
+Opcode Count Features_SLT,0,0.0
+Opcode Count Features_SGT,0,0.0
+Opcode Count Features_EQ,0,0.0
+Opcode Count Features_ISZERO,0,0.0
+Opcode Count Features_AND,0,0.0
+Opcode Count Features_XOR,0,0.0
+Opcode Count Features_CALLDATASIZE,0,0.0
+Opcode Count Features_NOT,0,0.0
+Opcode Count Features_BYTE,0,0.0
+Opcode Count Features_SHL,0,0.0
+Opcode Count Features_SHR,0,0.0
+Opcode Count Features_SAR,0,0.0
+Opcode Count Features_SHA3,0,0.0
+Opcode Count Features_ADDRESS,0,0.0
+Opcode Count Features_BALANCE,0,0.0
+Opcode Count Features_ORIGIN,0,0.0
+Opcode Count Features_CALLER,0,0.0
+Opcode Count Features_CALLVALUE,0,0.0
+Opcode Count Features_CALLDATALOAD,0,0.0
+Bytecode Character Count_bytecode_character_K,0,0.0
