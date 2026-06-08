@@ -1,12 +1,12 @@
 {
-  "CallToUnknown": 0.26965877413749695,
-  "DenialOfService": 0.14811423420906067,
-  "ExternalBug": 0.2702966034412384,
-  "GasException": 0.28233981132507324,
-  "IntegerUO": 0.521358847618103,
-  "MishandledException": 0.26552364230155945,
-  "Reentrancy": 0.26745471358299255,
-  "Timestamp": 0.3512434959411621,
-  "TransactionOrderDependence": 0.2662125825881958,
-  "UnusedReturn": 0.2666001319885254
+  "CallToUnknown": 0.26960745453834534,
+  "DenialOfService": 0.1483030468225479,
+  "ExternalBug": 0.2704412043094635,
+  "GasException": 0.28203222155570984,
+  "IntegerUO": 0.5216582417488098,
+  "MishandledException": 0.2652203440666199,
+  "Reentrancy": 0.2670838236808777,
+  "Timestamp": 0.3522137999534607,
+  "TransactionOrderDependence": 0.26620903611183167,
+  "UnusedReturn": 0.2669677436351776
 }
