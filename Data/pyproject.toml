@@ -1,0 +1,60 @@
+[tool.poetry]
+name = "sentinel-data"
+version = "0.1.0"
+description = "SENTINEL data engineering module — verified multi-source Solidity contract pipeline"
+authors = ["Ali Motafegh <ali.rajabi9700@gmail.com>"]
+readme = "README.md"
+packages = [{include = "sentinel_data"}]
+
+# ── Core (Stage 0) — only what the CLI + tests need right now ─────────────────
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+pyyaml = ">=6.0"
+
+# ── Stage 1 — ingestion + preprocessing (heavy solidity tooling) ──────────────
+# Install with: poetry install --with pipeline
+[tool.poetry.group.pipeline]
+optional = true
+
+[tool.poetry.group.pipeline.dependencies]
+loguru          = ">=0.7"
+networkx        = ">=3.0"
+pandas          = ">=2.0"
+tqdm            = ">=4.0"
+requests        = ">=2.28"
+packaging       = ">=23.0"
+dvc             = ">=3.0"
+huggingface-hub = ">=0.20"
+slither-analyzer = ">=0.10"
+solc-select     = ">=1.0"
+
+# ── Stage 2+ — graph/token extraction (GPU optional) ─────────────────────────
+# Install with: poetry install --with ml
+[tool.poetry.group.ml]
+optional = true
+
+[tool.poetry.group.ml.dependencies]
+torch           = ">=2.0"
+torch-geometric = ">=2.4"
+transformers    = ">=4.30"
+tokenizers      = ">=0.13"
+
+# ── Development tooling ───────────────────────────────────────────────────────
+[tool.poetry.group.dev.dependencies]
+pytest     = ">=7.0"
+pytest-cov = ">=4.0"
+black      = ">=23.0"
+ruff       = ">=0.1"
+
+# ── CLI entry point ─────────────────────────────────────────────────────────────
+[tool.poetry.scripts]
+sentinel-data = "sentinel_data.cli:main"
+
+[[tool.poetry.source]]
+name = "pypi-tuna"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+priority = "primary"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

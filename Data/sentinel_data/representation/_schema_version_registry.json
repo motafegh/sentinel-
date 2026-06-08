@@ -1,0 +1,37 @@
+{
+  "active": "v9",
+  "history": [
+    {
+      "version": "v9",
+      "date": "2026-06-06",
+      "NODE_FEATURE_DIM": 12,
+      "NUM_NODE_TYPES": 14,
+      "NUM_EDGE_TYPES": 12,
+      "_MAX_TYPE_ID": 13.0,
+      "NUM_CLASSES": 10,
+      "changes": [
+        "feat[11] in_unchecked_block added (via node.scope.is_checked)",
+        "CFG_NODE_ARITH=13 added for pure Binary arithmetic op nodes",
+        "EXTERNAL_CALL=11 self-loop added for cross-contract call nodes",
+        "feat[2] uses_block_globals extended: catches now keyword + library wrappers + blockhash"
+      ],
+      "checkpoints": [
+        "ml/checkpoints/GCB-P1-Run9-v11-20260606_best.pt"
+      ]
+    },
+    {
+      "version": "v8",
+      "date": "2026-05-12",
+      "NODE_FEATURE_DIM": 11,
+      "NUM_NODE_TYPES": 13,
+      "NUM_EDGE_TYPES": 11,
+      "_MAX_TYPE_ID": 12.0,
+      "NUM_CLASSES": 10,
+      "changes": ["return_ignored fix (id() check)", "now-keyword miss still present"],
+      "checkpoints": [
+        "ml/checkpoints/GCB-P1-Run7-v10-20260603_best.pt",
+        "ml/checkpoints/GCB-P1-Run8-v10-20260605_best.pt"
+      ]
+    }
+  ]
+}
