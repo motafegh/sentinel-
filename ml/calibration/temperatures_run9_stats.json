@@ -1,0 +1,40 @@
+{
+  "ece_before": {
+    "CallToUnknown": 0.25459993753270305,
+    "DenialOfService": 0.3153902633109076,
+    "ExternalBug": 0.24265549331186367,
+    "GasException": 0.23121590353966825,
+    "IntegerUO": 0.1182623221767534,
+    "MishandledException": 0.2417283239590651,
+    "Reentrancy": 0.25371562521026264,
+    "Timestamp": 0.21820977605092895,
+    "TransactionOrderDependence": 0.24782855357923378,
+    "UnusedReturn": 0.2479739194836875
+  },
+  "ece_after": {
+    "CallToUnknown": 0.03564132939316607,
+    "DenialOfService": 0.0009933994269673168,
+    "ExternalBug": 0.01599196214581439,
+    "GasException": 0.036607922931172765,
+    "IntegerUO": 0.05359735758661422,
+    "MishandledException": 0.025401472587605726,
+    "Reentrancy": 0.04662014189707207,
+    "Timestamp": 0.03715977795723256,
+    "TransactionOrderDependence": 0.02540175161178931,
+    "UnusedReturn": 0.012688950752916532
+  },
+  "mean_ece_before": 0.23715801181550736,
+  "mean_ece_after": 0.029010406629035097,
+  "temperatures": {
+    "CallToUnknown": 0.26965877413749695,
+    "DenialOfService": 0.14811423420906067,
+    "ExternalBug": 0.2702966034412384,
+    "GasException": 0.28233981132507324,
+    "IntegerUO": 0.521358847618103,
+    "MishandledException": 0.26552364230155945,
+    "Reentrancy": 0.26745471358299255,
+    "Timestamp": 0.3512434959411621,
+    "TransactionOrderDependence": 0.2662125825881958,
+    "UnusedReturn": 0.2666001319885254
+  }
+}
