@@ -1,0 +1,57 @@
+# sentinel-data — Solidity contract processing image
+#
+# Base: python:3.12.1-bookworm (NOT slim — slither-analyzer needs build-essential + libpq-dev
+#       for the psycopg2-binary transitive dependency; slim image breaks the install).
+#
+# Solc strategy: 6 baseline versions pre-installed here; the other 92 (0.4.0–0.8.35)
+# are installed on-demand by the Stage 1 preprocessor via `solc-select install <ver>`.
+# The dev machine already has all 98 in ~/.solc-select/artifacts/ (reference_solc.md).
+#
+# Build: docker build -f docker/Dockerfile.data -t sentinel-data:0.1.0 .
+# Run:   docker run --rm sentinel-data:0.1.0 sentinel-data --help
+
+FROM python:3.12.1-bookworm
+
+# ── System deps (needed by slither-analyzer + solc-select) ────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
+        git \
+        curl \
+        wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Poetry ────────────────────────────────────────────────────────────────────
+ENV POETRY_VERSION=1.8.2 \
+    POETRY_HOME=/opt/poetry \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1
+
+RUN curl -sSL https://install.python-poetry.org | python3 -
+ENV PATH="$POETRY_HOME/bin:$PATH"
+
+# ── Install sentinel-data (core deps only, no ml group) ───────────────────────
+WORKDIR /app
+COPY pyproject.toml poetry.lock* ./
+RUN poetry install --without ml,dev --no-root
+
+COPY sentinel_data/ ./sentinel_data/
+COPY config.yaml ./
+RUN poetry install --without ml,dev
+
+# ── Solc baseline versions (6 most common Solidity eras) ─────────────────────
+ENV PATH="/app/.venv/bin:$PATH"
+RUN solc-select install 0.4.26 && \
+    solc-select install 0.5.17 && \
+    solc-select install 0.6.12 && \
+    solc-select install 0.7.6  && \
+    solc-select install 0.8.20 && \
+    solc-select install 0.8.24 && \
+    solc-select use 0.8.24
+
+# ── Runtime env ───────────────────────────────────────────────────────────────
+ENV TRANSFORMERS_OFFLINE=1
+ENV TRITON_CACHE_DIR=/tmp/triton_cache
+
+ENTRYPOINT ["sentinel-data"]
+CMD ["--help"]

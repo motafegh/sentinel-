@@ -1,0 +1,82 @@
+stages:
+
+  ingest:
+    cmd: sentinel-data ingest --config config.yaml
+    deps:
+      - sentinel_data/ingestion/
+      - config.yaml
+    outs:
+      - data/raw/.gitkeep
+
+  preprocess:
+    cmd: sentinel-data preprocess --config config.yaml
+    deps:
+      - sentinel_data/preprocessing/
+      - config.yaml
+      - data/raw/.gitkeep
+    outs:
+      - data/preprocessed/.gitkeep
+
+  represent:
+    cmd: sentinel-data represent --config config.yaml
+    deps:
+      - sentinel_data/representation/
+      - config.yaml
+      - data/preprocessed/.gitkeep
+    outs:
+      - data/representations/.gitkeep
+
+  label:
+    cmd: sentinel-data label --config config.yaml
+    deps:
+      - sentinel_data/labeling/
+      - config.yaml
+      - data/representations/.gitkeep
+    outs:
+      - data/labels/.gitkeep
+
+  verify:
+    cmd: sentinel-data verify --config config.yaml
+    deps:
+      - sentinel_data/verification/
+      - config.yaml
+      - data/labels/.gitkeep
+    outs:
+      - data/verification/.gitkeep
+
+  split:
+    cmd: sentinel-data split --config config.yaml
+    deps:
+      - sentinel_data/splitting/
+      - config.yaml
+      - data/verification/.gitkeep
+    outs:
+      - data/splits/.gitkeep
+
+  register:
+    cmd: sentinel-data register --config config.yaml
+    deps:
+      - sentinel_data/registry/
+      - config.yaml
+      - data/splits/.gitkeep
+    outs:
+      - data/registry/.gitkeep
+
+  analyze:
+    cmd: sentinel-data analyze --config config.yaml
+    deps:
+      - sentinel_data/analysis/
+      - config.yaml
+      - data/registry/.gitkeep
+    outs:
+      - data/analysis/.gitkeep
+
+  export:
+    cmd: sentinel-data export --config config.yaml
+    deps:
+      - sentinel_data/export/
+      - config.yaml
+      - data/analysis/.gitkeep
+      - data/registry/.gitkeep
+    outs:
+      - data/exports/.gitkeep

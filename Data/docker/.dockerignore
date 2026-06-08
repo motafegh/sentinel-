@@ -1,0 +1,11 @@
+.venv/
+data/
+.dvc/cache/
+.dvc/tmp/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+htmlcov/
+docs/legacy/
+tests/
