@@ -1,0 +1,7 @@
+class,n_total,n_keep,pct_keep,n_drop,pct_drop,n_uncertain,pct_uncertain,pct_high_conf,gate
+Class11:Reentrancy,17698,1699,9.6,15999,90.4,0,0.0,91.0,PROVISIONAL — residual UNCERTAIN to Stage 5.4
+Class08:CallToUnknown,11131,212,1.9,9679,87.0,1240,11.1,87.9,PROVISIONAL — residual UNCERTAIN to Stage 5.4
+Class04:Timestamp,2674,1023,38.3,1268,47.4,383,14.3,50.6,UNVERIFIED → Stage 5.4
+Class01:ExternalBug,3604,273,7.6,3260,90.5,71,2.0,88.9,PROVISIONAL — residual UNCERTAIN to Stage 5.4
+Class02:GasException,6879,2741,39.8,3863,56.2,275,4.0,54.6,UNVERIFIED → Stage 5.4
+Class09:DenialOfService,12394,948,7.6,7639,61.6,3807,30.7,2.7,UNVERIFIED → Stage 5.4

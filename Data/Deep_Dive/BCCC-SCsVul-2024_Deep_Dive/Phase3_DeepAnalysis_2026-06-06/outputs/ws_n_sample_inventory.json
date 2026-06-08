@@ -1,0 +1,111 @@
+{
+  "review_pending_samples": [
+    {
+      "id": "8c2ebbd677b0c26a28542fd756b153a267b34dc7bd7c9624e03dce0d614f7eeb",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/CallToUnknown/8c2ebbd677b0c26a28542fd756b153a267b34dc7bd7c9624e03dce0d614f7eeb.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_review_pending_samples/rp_8c2ebbd677b0c26a.sol",
+      "primary_class": "CallToUnknown",
+      "n_pos": 3,
+      "loc": 380,
+      "n_functions": 34
+    },
+    {
+      "id": "dbaa15bfebf4d781787c48fddfc1d041cc903f5137fdbfcb4cb62cc57ebc0070",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/CallToUnknown/dbaa15bfebf4d781787c48fddfc1d041cc903f5137fdbfcb4cb62cc57ebc0070.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_review_pending_samples/rp_dbaa15bfebf4d781.sol",
+      "primary_class": "CallToUnknown",
+      "n_pos": 3,
+      "loc": 137,
+      "n_functions": 13
+    },
+    {
+      "id": "73a0a5897f3f1d57e0de1f9ee60d21047423ba95134ffcc1f1cda8ea513a43f1",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/CallToUnknown/73a0a5897f3f1d57e0de1f9ee60d21047423ba95134ffcc1f1cda8ea513a43f1.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_review_pending_samples/rp_73a0a5897f3f1d57.sol",
+      "primary_class": "CallToUnknown",
+      "n_pos": 3,
+      "loc": 137,
+      "n_functions": 13
+    },
+    {
+      "id": "bbc3760511ef6867c552c289c8f61b82939df46945ddfe4c5bc36e9f90647c90",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/CallToUnknown/bbc3760511ef6867c552c289c8f61b82939df46945ddfe4c5bc36e9f90647c90.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_review_pending_samples/rp_bbc3760511ef6867.sol",
+      "primary_class": "CallToUnknown",
+      "n_pos": 3,
+      "loc": 77,
+      "n_functions": 13
+    },
+    {
+      "id": "6d4b2d0a9a1eeacf0f4f3a3096c14b3d60bf74c74d4d5cd92a6688c4102d7abb",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/NonVulnerable/6d4b2d0a9a1eeacf0f4f3a3096c14b3d60bf74c74d4d5cd92a6688c4102d7abb.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_review_pending_samples/rp_6d4b2d0a9a1eeacf.sol",
+      "primary_class": "Timestamp",
+      "n_pos": 2,
+      "loc": 59,
+      "n_functions": 6
+    }
+  ],
+  "dropped_samples": [
+    {
+      "id": "3c52a89c85547fafee335c81664c47c125049f453e3f5e9654b8bff78de0fc2b",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/TransactionOrderDependence/3c52a89c85547fafee335c81664c47c125049f453e3f5e9654b8bff78de0fc2b.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_tod_3c52a89c85547faf.sol",
+      "class": "TransactionOrderDependence"
+    },
+    {
+      "id": "b08ad9004a66112a050fa863d1f6c5fa5e83c39faeb63cea53b4eda8544112d7",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/TransactionOrderDependence/b08ad9004a66112a050fa863d1f6c5fa5e83c39faeb63cea53b4eda8544112d7.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_tod_b08ad9004a66112a.sol",
+      "class": "TransactionOrderDependence"
+    },
+    {
+      "id": "42d2affff12d3aa25cc33a5a85d0e85be3213746c6e1e0531936d74a724ec704",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/TransactionOrderDependence/42d2affff12d3aa25cc33a5a85d0e85be3213746c6e1e0531936d74a724ec704.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_tod_42d2affff12d3aa2.sol",
+      "class": "TransactionOrderDependence"
+    },
+    {
+      "id": "c30bcbf20c4e9a85b8f47e00ca917d71754cda79d1b73432a3979ce4bda5c9c3",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/TransactionOrderDependence/c30bcbf20c4e9a85b8f47e00ca917d71754cda79d1b73432a3979ce4bda5c9c3.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_tod_c30bcbf20c4e9a85.sol",
+      "class": "TransactionOrderDependence"
+    },
+    {
+      "id": "4245f98bdd498ad6c5de54a7eb601cc5ac78e1f4cd474980b6f85bde10e980bf",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/TransactionOrderDependence/4245f98bdd498ad6c5de54a7eb601cc5ac78e1f4cd474980b6f85bde10e980bf.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_tod_4245f98bdd498ad6.sol",
+      "class": "TransactionOrderDependence"
+    },
+    {
+      "id": "0a2d643bfd24a028cd236e76575d828424ccffbfa47392bd09d8ca9dc85e2f8d",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/WeakAccessMod/0a2d643bfd24a028cd236e76575d828424ccffbfa47392bd09d8ca9dc85e2f8d.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_wam_0a2d643bfd24a028.sol",
+      "class": "WeakAccessMod"
+    },
+    {
+      "id": "fc47b34e36f4032acd1ca2192a7b9b097011ccbfe3d8e27b04bb6999e000578d",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/WeakAccessMod/fc47b34e36f4032acd1ca2192a7b9b097011ccbfe3d8e27b04bb6999e000578d.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_wam_fc47b34e36f4032a.sol",
+      "class": "WeakAccessMod"
+    },
+    {
+      "id": "ddfe0e8d462af661f81db36589c39882dc0f2330785b5d80cd34f2f520ad618f",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/WeakAccessMod/ddfe0e8d462af661f81db36589c39882dc0f2330785b5d80cd34f2f520ad618f.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_wam_ddfe0e8d462af661.sol",
+      "class": "WeakAccessMod"
+    },
+    {
+      "id": "ffd560d182369b08a8b3ed35cfa5ee3cc50b5b5f093ece3139181709813896c3",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/WeakAccessMod/ffd560d182369b08a8b3ed35cfa5ee3cc50b5b5f093ece3139181709813896c3.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_wam_ffd560d182369b08.sol",
+      "class": "WeakAccessMod"
+    },
+    {
+      "id": "5f2703a5211db19a9020f7443f6a440fbc95cda90b7c2d53912f5ce47d050056",
+      "src_relative": "BCCC-SCsVul-2024/Source Codes/WeakAccessMod/5f2703a5211db19a9020f7443f6a440fbc95cda90b7c2d53912f5ce47d050056.sol",
+      "dest": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase3_DeepAnalysis_2026-06-06/outputs/ws_n_dropped_samples/dropped_wam_5f2703a5211db19a.sol",
+      "class": "WeakAccessMod"
+    }
+  ]
+}

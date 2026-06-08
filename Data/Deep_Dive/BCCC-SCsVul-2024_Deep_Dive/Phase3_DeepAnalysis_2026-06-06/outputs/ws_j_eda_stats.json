@@ -1,0 +1,68 @@
+{
+  "bccc_raw": {
+    "n_rows_long_format": 111897,
+    "n_unique_ids": 68433,
+    "n_cols_total": 254,
+    "n_feature_cols": 240,
+    "n_class_cols": 12,
+    "per_class_prevalence": {
+      "Class01:ExternalBug": 3604,
+      "Class02:GasException": 6879,
+      "Class03:MishandledException": 5154,
+      "Class04:Timestamp": 2674,
+      "Class05:TransactionOrderDependence": 3562,
+      "Class06:UnusedReturn": 3229,
+      "Class07:WeakAccessMod": 1918,
+      "Class08:CallToUnknown": 11131,
+      "Class09:DenialOfService": 12394,
+      "Class10:IntegerUO": 16740,
+      "Class11:Reentrancy": 17698,
+      "Class12:NonVulnerable": 26914
+    },
+    "n_pos_distribution": {
+      "1": 40267,
+      "2": 19068,
+      "3": 5473,
+      "4": 1871,
+      "5": 1138,
+      "6": 446,
+      "7": 137,
+      "8": 31,
+      "9": 2
+    }
+  },
+  "cleaned_v9": {
+    "n_contracts": 67311,
+    "n_review_pending": 766,
+    "n_pure_nv": 26148,
+    "n_pos_distribution": {
+      "1": 40787,
+      "2": 18499,
+      "3": 5073,
+      "4": 1740,
+      "5": 879,
+      "6": 278,
+      "7": 50,
+      "8": 5
+    }
+  },
+  "dropped_class05_07": {
+    "n_dropped": 1122,
+    "n_only_class05": 163,
+    "n_only_class07": 959,
+    "n_both_class05_class07": 0
+  },
+  "feature_missingness": {
+    "n_cols_zero_missing": 240,
+    "n_cols_gt50_missing": 0,
+    "n_cols_100_missing": 0,
+    "n_numeric_cols": 238
+  },
+  "opcode_features": {
+    "n_opcode_count_cols": 138,
+    "n_bytecode_char_count_cols": 63,
+    "n_bytecode_len_entropy_cols": 2,
+    "n_abi_feature_cols": 11,
+    "n_ast_feature_cols": 5
+  }
+}

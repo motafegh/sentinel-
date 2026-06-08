@@ -1,0 +1,227 @@
+{
+  "metadata": {
+    "workstream": "WS-S",
+    "date": "2026-06-06",
+    "purpose": "BCCC-SCsVul-2024 (12 classes) ↔ SmartBugs Wild (DASP 10) ↔ SWC Registry semantic mapping",
+    "sources": [
+      "BCCC paper: HajiHosseinKhani et al., Blockchain: Research and Applications, Dec 2024",
+      "SmartBugs paper: Durieux et al., ICSE 2020",
+      "SWC Registry (EIP-1470): https://swcregistry.io/",
+      "DASP 10: https://dasp.co/",
+      "OWASP SCWE: https://scs.owasp.org/SCWE/"
+    ]
+  },
+  "bccc_to_dasp_swc": {
+    "Class01:ExternalBug": {
+      "dasp_category": "Unchecked Low Level Calls",
+      "swc_id": "SWC-104",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": "Class01:ExternalBug",
+      "kept_in_sentinel": true,
+      "description": "Generic external call bugs (low-level call, send, transfer failures)"
+    },
+    "Class02:GasException": {
+      "dasp_category": "Other",
+      "swc_id": "SWC-123",
+      "dasp_confidence": "LOW",
+      "swc_confidence": "MEDIUM",
+      "sentinel_v9": "Class02:GasException",
+      "kept_in_sentinel": true,
+      "description": "Out-of-gas / gas exhaustion (closest to DASP 'Other' since DASP has no gas class)"
+    },
+    "Class03:MishandledException": {
+      "dasp_category": "Unchecked Low Level Calls",
+      "swc_id": "SWC-104",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": "Class03:MishandledException",
+      "kept_in_sentinel": true,
+      "description": "Improper exception handling (missing require, silent failure)"
+    },
+    "Class04:Timestamp": {
+      "dasp_category": "Time Manipulation",
+      "swc_id": "SWC-116",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": "Class04:Timestamp",
+      "kept_in_sentinel": true,
+      "description": "Block timestamp dependence (now, block.timestamp)"
+    },
+    "Class05:TransactionOrderDependence": {
+      "dasp_category": "Front Running",
+      "swc_id": "SWC-114",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": null,
+      "kept_in_sentinel": false,
+      "dropped_reason": "D-F1: no SENTINEL v9 equivalent; closest is Reentrancy which is broader",
+      "description": "TOCTOU bugs (race conditions in approve/transfer)"
+    },
+    "Class06:UnusedReturn": {
+      "dasp_category": "Unchecked Low Level Calls",
+      "swc_id": "SWC-104",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": "Class06:UnusedReturn",
+      "kept_in_sentinel": true,
+      "description": "Ignoring return values of low-level calls"
+    },
+    "Class07:WeakAccessMod": {
+      "dasp_category": "Access Control",
+      "swc_id": "SWC-100",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": null,
+      "kept_in_sentinel": false,
+      "dropped_reason": "D-F1: state visibility is more code quality than security; SENTINEL focuses on execution behavior",
+      "description": "State visibility issues (public where private needed)"
+    },
+    "Class08:CallToUnknown": {
+      "dasp_category": "Unchecked Low Level Calls",
+      "swc_id": "SWC-112",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": "Class08:CallToUnknown",
+      "kept_in_sentinel": true,
+      "description": "Calls to unknown/untrusted addresses (arbitrary send)"
+    },
+    "Class09:DenialOfService": {
+      "dasp_category": "Denial of Service",
+      "swc_id": "SWC-113",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": "Class09:DenialOfService",
+      "kept_in_sentinel": true,
+      "description": "DoS via revert, gas exhaustion, or external dependency"
+    },
+    "Class10:IntegerUO": {
+      "dasp_category": "Arithmetic",
+      "swc_id": "SWC-101",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": "Class10:IntegerUO",
+      "kept_in_sentinel": true,
+      "description": "Integer underflow/overflow"
+    },
+    "Class11:Reentrancy": {
+      "dasp_category": "Reentrancy",
+      "swc_id": "SWC-107",
+      "dasp_confidence": "HIGH",
+      "swc_confidence": "HIGH",
+      "sentinel_v9": "Class11:Reentrancy",
+      "kept_in_sentinel": true,
+      "description": "Reentrant calls (external call before state update)"
+    },
+    "Class12:NonVulnerable": {
+      "dasp_category": null,
+      "swc_id": null,
+      "dasp_confidence": "N/A",
+      "swc_confidence": "N/A",
+      "sentinel_v9": "Class12:NonVulnerable",
+      "kept_in_sentinel": true,
+      "description": "Control class: secure baseline (no known vulnerabilities)"
+    }
+  },
+  "dasp_to_bccc": {
+    "Reentrancy": ["Class11:Reentrancy"],
+    "Access Control": ["Class07:WeakAccessMod"],
+    "Arithmetic": ["Class10:IntegerUO"],
+    "Unchecked Low Level Calls": [
+      "Class01:ExternalBug",
+      "Class03:MishandledException",
+      "Class06:UnusedReturn",
+      "Class08:CallToUnknown"
+    ],
+    "Denial of Service": ["Class09:DenialOfService"],
+    "Bad Randomness": [],
+    "Front Running": ["Class05:TransactionOrderDependence"],
+    "Time Manipulation": ["Class04:Timestamp"],
+    "Short Addresses": [],
+    "Other": ["Class02:GasException"]
+  },
+  "sentinel_to_slither_detectors": {
+    "Class01:ExternalBug": [
+      "low-level-calls",
+      "arbitrary-send-eth",
+      "arbitrary-send-erc20",
+      "controlled-delegatecall",
+      "msg-value-loop"
+    ],
+    "Class02:GasException": [
+      "gas-limit",
+      "gasless-send",
+      "unchecked-transfer",
+      "locked-ether",
+      "constable-states"
+    ],
+    "Class03:MishandledException": [
+      "unchecked-send",
+      "unchecked-lowlevel",
+      "tautology",
+      "incorrect-equality",
+      "boolean-cst",
+      "calls-loop",
+      "codedeploy-loop",
+      "codex-loop",
+      "domain-separator-collision",
+      "encode-packed-collision",
+      "enum-conversion"
+    ],
+    "Class04:Timestamp": [
+      "timestamp",
+      "block-number"
+    ],
+    "Class06:UnusedReturn": [
+      "unchecked-return",
+      "unchecked-send",
+      "unchecked-lowlevel",
+      "unchecked-transfer"
+    ],
+    "Class08:CallToUnknown": [
+      "arbitrary-send-eth",
+      "arbitrary-send-erc20",
+      "arbitrary-send-erc20-permit",
+      "controlled-delegatecall"
+    ],
+    "Class09:DenialOfService": [
+      "calls-loop",
+      "locked-ether",
+      "codex-loop"
+    ],
+    "Class10:IntegerUO": [
+      "divide-by-zero",
+      "divide-by-storage",
+      "incorrect-shift",
+      "tautological-compare",
+      "tautology",
+      "void-cst",
+      "incorrect-unary",
+      "incorrect-exp",
+      "incorrect-return",
+      "incorrect-modifier",
+      "incorrect-user-defined-logic"
+    ],
+    "Class11:Reentrancy": [
+      "reentrancy-eth",
+      "reentrancy-no-eth",
+      "reentrancy-benign",
+      "reentrancy-events",
+      "reentrancy-unlimited-gas",
+      "reentrancy-no-eth-no-side-effect"
+    ]
+  },
+  "summary": {
+    "n_bccc_classes": 12,
+    "n_dasp_categories": 10,
+    "n_bccc_kept_in_sentinel_v9": 10,
+    "n_bccc_dropped": 2,
+    "n_dasp_categories_with_bccc_match": 8,
+    "n_dasp_categories_with_no_bccc_match": 2,
+    "n_dasp_categories_collapsed_to_one_bccc": 1,
+    "n_dasp_categories_expanded_to_many_bccc": 1,
+    "high_confidence_mappings": 10,
+    "medium_confidence_mappings": 1,
+    "low_confidence_mappings": 1
+  }
+}

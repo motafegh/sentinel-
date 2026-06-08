@@ -1,0 +1,88 @@
+[
+  {
+    "path": "BCCC-SCsVul-2024/SourceCodes/CallToUnknown/00333aa3376bcd06c4dbab0b5ae3a5b5ca46c8f64c297e119fa63f29455969a3.sol",
+    "status": "OK",
+    "hits": [],
+    "hit_counts": {},
+    "elapsed_sec": 1.027754306793213,
+    "err": null,
+    "solc_version": "0.4.26",
+    "n_detectors": 101,
+    "id": "00333aa3376bcd06c4dbab0b5ae3a5b5ca46c8f64c297e119fa63f29455969a3",
+    "sample_reason": "review_pending",
+    "bccc_classes": [
+      "Class08:CallToUnknown",
+      "Class11:Reentrancy",
+      "Class12:NonVulnerable"
+    ]
+  },
+  {
+    "path": "BCCC-SCsVul-2024/SourceCodes/CallToUnknown/007ccde4ee5b3120fbaf87ac4f979bee1defb9365b49d60bdd5216d7da11ebad.sol",
+    "status": "OK",
+    "hits": [],
+    "hit_counts": {},
+    "elapsed_sec": 1.1164779663085938,
+    "err": null,
+    "solc_version": "0.4.26",
+    "n_detectors": 101,
+    "id": "007ccde4ee5b3120fbaf87ac4f979bee1defb9365b49d60bdd5216d7da11ebad",
+    "sample_reason": "review_pending",
+    "bccc_classes": [
+      "Class08:CallToUnknown",
+      "Class11:Reentrancy",
+      "Class12:NonVulnerable"
+    ]
+  },
+  {
+    "path": "BCCC-SCsVul-2024/SourceCodes/CallToUnknown/59fc8354a7a8494062431d452afab72192f117b4cff709591a722512e14bce7a.sol",
+    "status": "EXCEPTION",
+    "hits": [],
+    "hit_counts": {},
+    "elapsed_sec": 0.618797779083252,
+    "err": "Traceback (most recent call last):\n  File \"/home/motafeq/projects/sentinel/.venv/lib/python3.12/site-packages/crytic_compile/platform/solc.py\", line 581, in _run_solc\n    ret: Dict = json.loads(stdout)\n                ^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/json/__init__.py\", line 346, in loads\n    return _default_decoder.decode(s)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/json/decoder.py\", line 337, in decode\n    obj, end = self.raw_decode(s, idx=_w(s, 0).end())\n ",
+    "solc_version": "0.6.12",
+    "id": "59fc8354a7a8494062431d452afab72192f117b4cff709591a722512e14bce7a",
+    "sample_reason": "multi_positive",
+    "bccc_classes": [
+      "Class08:CallToUnknown",
+      "Class11:Reentrancy"
+    ]
+  },
+  {
+    "path": "BCCC-SCsVul-2024/SourceCodes/CallToUnknown/d416cec871e648c3cd64899cb7d49fef4efe864c97db33dc0843a33c2e88afe6.sol",
+    "status": "EXCEPTION",
+    "hits": [],
+    "hit_counts": {},
+    "elapsed_sec": 3.9313080310821533,
+    "err": "Traceback (most recent call last):\n  File \"/home/motafeq/projects/sentinel/.venv/lib/python3.12/site-packages/crytic_compile/platform/solc.py\", line 581, in _run_solc\n    ret: Dict = json.loads(stdout)\n                ^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/json/__init__.py\", line 346, in loads\n    return _default_decoder.decode(s)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/json/decoder.py\", line 337, in decode\n    obj, end = self.raw_decode(s, idx=_w(s, 0).end())\n ",
+    "solc_version": "0.5.17",
+    "id": "d416cec871e648c3cd64899cb7d49fef4efe864c97db33dc0843a33c2e88afe6",
+    "sample_reason": "multi_positive",
+    "bccc_classes": [
+      "Class08:CallToUnknown",
+      "Class11:Reentrancy"
+    ]
+  },
+  {
+    "path": "BCCC-SCsVul-2024/SourceCodes/CallToUnknown/147725c17af042280cfb4a4b2b709e133fe0d38020057498052dc60bcf0edbb8.sol",
+    "status": "OK",
+    "hits": [],
+    "hit_counts": {},
+    "elapsed_sec": 0.714630126953125,
+    "err": null,
+    "solc_version": "0.4.24",
+    "n_detectors": 101,
+    "id": "147725c17af042280cfb4a4b2b709e133fe0d38020057498052dc60bcf0edbb8",
+    "sample_reason": "nine_folder_maxing",
+    "bccc_classes": [
+      "Class01:ExternalBug",
+      "Class02:GasException",
+      "Class03:MishandledException",
+      "Class04:Timestamp",
+      "Class06:UnusedReturn",
+      "Class08:CallToUnknown",
+      "Class10:IntegerUO",
+      "Class11:Reentrancy"
+    ]
+  }
+]

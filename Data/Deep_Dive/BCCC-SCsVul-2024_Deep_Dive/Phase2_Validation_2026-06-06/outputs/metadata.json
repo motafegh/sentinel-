@@ -1,0 +1,55 @@
+{
+  "dataset_name": "BCCC-SCsVul-2024 (cleaned for SENTINEL v9)",
+  "version": "v1.0",
+  "created": "2026-06-06",
+  "schema": "SENTINEL v9 (10 classes)",
+  "class_order": [
+    "Class01:ExternalBug",
+    "Class02:GasException",
+    "Class03:MishandledException",
+    "Class04:Timestamp",
+    "Class06:UnusedReturn",
+    "Class08:CallToUnknown",
+    "Class09:DenialOfService",
+    "Class10:IntegerUO",
+    "Class11:Reentrancy",
+    "Class12:NonVulnerable"
+  ],
+  "n_contracts": 67311,
+  "n_train": 46581,
+  "n_val": 9982,
+  "n_test": 9982,
+  "n_review_pending": 766,
+  "n_pure_nv": 26148,
+  "decisions_applied": {
+    "D-F1": "Dropped 1,122 contracts that had only Class05/Class07 (no SENTINEL v9 equivalent).",
+    "D-B2": "Held out 766 NV+vuln contradictions as review_pending (manual review needed)."
+  },
+  "files": {
+    "contracts_clean.csv": {
+      "sha256": "53b7b884c3ae38446bd3f1f0460c916d01e5a2b5ef96ee972eed7d8628f59e7a",
+      "rows": 67311,
+      "cols": 24
+    },
+    "contracts_clean.parquet": {
+      "sha256": "a60b43087d30f855c19864263c5d59978e2259920c40f8c9389d818f36630af6",
+      "rows": 67311,
+      "cols": 24
+    },
+    "split_assignments.csv": {
+      "rows": 67311
+    }
+  },
+  "source_provenance": {
+    "original_zip": "/mnt/e/Project/Foundry_Advanced/Section4 Foundry Cross Chain Rebase Token/BCCC-SCsVul-2024.zip",
+    "original_csv": "BCCC-SCsVul-2024/BCCC-SCsVul-2024.csv",
+    "csv_md5": "e38a2aa1c2b8a93c6cf8b23d2d7b870a",
+    "phase2_dir": "Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/Phase2_Validation_2026-06-06/"
+  },
+  "schema_mapping": {
+    "BCCC_csv_columns": "Class01..Class12 (long format, one class per row)",
+    "BCCC_csv_encoding": "long format: each row is (ID, single_class) with class 0/1; same ID appears for multiple classes \u2192 multi-label",
+    "SENTINEL_v9_schema": "10 classes in fixed order: Class01:ExternalBug, Class02:GasException, Class03:MishandledException, Class04:Timestamp, Class06:UnusedReturn, Class08:CallToUnknown, Class09:DenialOfService, Class10:IntegerUO, Class11:Reentrancy, Class12:NonVulnerable"
+  },
+  "random_seed": 42
+}

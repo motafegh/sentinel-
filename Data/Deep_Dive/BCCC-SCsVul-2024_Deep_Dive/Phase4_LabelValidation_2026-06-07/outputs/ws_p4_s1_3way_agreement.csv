@@ -1,0 +1,11 @@
+class,slither_tp,slither_fp,slither_f1,aderyn_tp,aderyn_fp,aderyn_f1,majority_tp,majority_fp,majority_f1,support
+Class11:Reentrancy,434,2332,0.2287,199,1275,0.1690,189,1245,0.1647,1030
+Class10:IntegerUO,415,493,0.2359,0,0,0.0000,0,0,0.0000,2611
+Class06:UnusedReturn,78,442,0.1182,0,0,0.0000,0,0,0.0000,800
+Class01:ExternalBug,105,1475,0.1006,381,4396,0.1452,73,717,0.1170,508
+Class08:CallToUnknown,200,837,0.2451,364,4377,0.1395,63,220,0.1676,595
+Class03:MishandledException,305,2844,0.1580,270,2204,0.1731,154,1540,0.1329,712
+Class02:GasException,83,338,0.1305,0,0,0.0000,0,0,0.0000,851
+Class09:DenialOfService,11,1678,0.0126,0,0,0.0000,0,0,0.0000,60
+Class04:Timestamp,150,1825,0.1289,0,0,0.0000,0,0,0.0000,352
+Class12:NonVulnerable,0,0,0.0000,0,0,0.0000,0,0,0.0000,3686
