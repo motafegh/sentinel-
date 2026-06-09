@@ -348,10 +348,14 @@ This is the **hard contract** between the two packages. The `format_schema/v1.ya
 
 ```yaml
 # sentinel_data/export/format_schema/v1.yaml
+# Field dimensions are Pinned to the live v9 schema constants; do NOT edit
+# without bumping export_format_schema_version and adding a migration test.
+# Source of truth: sentinel_data/representation/graph_schema.py
+#   FEATURE_SCHEMA_VERSION="v9", NODE_FEATURE_DIM=12, NUM_EDGE_TYPES=12, NUM_CLASSES=10
 version: "1.0"
 graphs_shard:
   type: torch_geometric.data.Batch
-  fields: {x: float32[11], edge_index: int64[2,E], edge_attr: int64[E], y: int64[1]}
+  fields: {x: float32[12], edge_index: int64[2,E], edge_attr: int64[E], y: int64[1]}
 tokens_shard:
   type: torch.Tensor
   shape: [N, 4, 512]
@@ -370,6 +374,8 @@ manifest:
 ```
 
 The ML module's `SentinelDataset` (in `ml/src/datasets/sentinel_dataset.py`, replacing `dual_path_dataset.py`) takes a `SentinelDatasetExport` and yields `(graph, tokens, y, contract_id, confidence_tier)` per `__getitem__`. The collate function is identical to the existing `dual_path_collate_fn` modulo the new `confidence_tier` field.
+
+**Schema-dim gate test (v2-readiness gate, added 2026-06-09 post-friend-review):** the `SentinelDatasetExport` schema's `x.shape[-1]` MUST equal `sentinel_data.representation.NODE_FEATURE_DIM` (12, not 11). This test runs in Stage 7's CI: if a future schema bump changes the dim, the test fails loud and the loader refuses the export. Prevents the silent shape mismatch that would have occurred if the v1 spec (`x: float32[11]`) propagated into code.
 
 ### 3.9 Analysis
 
@@ -417,18 +423,20 @@ The ML module keeps a `from sentinel_data.export import SentinelDatasetExport` i
 
 ---
 
-## 5. Build order — ~10 weeks (extended for friend's 5 new sources)
+## 5. Build order — ~10 weeks (revised 2026-06-09 with critical-path corpus)
+
+> **🚨 POST-FRIEND-REVIEW (2026-06-09):** The build order is updated to reflect the **5 critical-path + 12 additive** source split (§6.1–6.2). The 3-week Stage 3 budget is now realistic (5 critical-path crosswalks × 1-2 days = 5-10 days; the 12 additive are v2.1 work). New Stage 3 exit criteria include the **Go/No-Go minimum-viable-corpus gate** (§6.5). New Stage 4 task: **SmartBugs Curated recall test** (≥90%). New Stage 5 task: **NonVulnerable 3:1 cap**. New Stage 7 task: **slither transitive dep test** (per §8).
 
 | Week | Stage | Deliverable | Exit criteria |
 |---|---|---|---|
-| **1** (Jun 9–15) | **0. Skeleton + Data/ restructure** | `Data/pyproject.toml`, `Data/sentinel_data/__init__.py`, `Data/dvc.yaml`, `Data/Dockerfile.data`, move `Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/` to `Data/docs/legacy/bccc_deep_dive/`, write `Data/README.md` and `Data/docs/architecture.md`. **Config lists 17 sources (12 original + 5 new from friend).** | `poetry install` works in `Data/.venv/`; `sentinel-data --help` runs; DVC initialized; config.yaml lists 17 sources |
-| **2** (Jun 16–22) | **1. Ingestion + Preprocessing** | All 5 original connectors + 4 new connectors (AuditReportConnector, AuditReportScraper, RektScraper, EtherscanConnector); flattener, two-pass compiler, deduplicator (threshold 0.85), normalizer, segmenter, version_bucketer (with `has_unchecked_block`); first test on ScaBench clone | `sentinel-data ingest --source scabench` clones at pinned commit; SHA-256 verified; 30 raw .sol files pass preprocessing |
-| **3** (Jun 23–29) | **2. Representation (port from ml/)** | Move `ml/src/data_extraction/*` and `ml/src/preprocessing/graph_extractor.py` + `graph_schema.py` to `sentinel_data/representation/` (v9 schema); **36-issue pre-Run-8 audit regression test**; CFG builder only (PDG/call-graph/opcode DEFERRED to v3.1); representation cache + versioner (invalidates on Slither version) | `sentinel-data represent --source scabench` produces 30 .pt files; existing Run 9 graphs re-loadable through the new path with byte-identical output; all 13 critical A1-A38 fixes preserved |
-| **4-6** (Jun 30–Jul 20) | **3. Labeling (3 weeks for 17 crosswalks + parsers)** | `taxonomy.yaml` (10-class v1-checkpoint order), **17 crosswalk YAMLs (10 original + 5 new + 2 from friend)**, 17 parsers, merger (with 99% DoS↔Reentrancy de-duplication), confidence.py (T0-T4) | `sentinel-data label --source scabench` produces 30 per-contract `.labels.json` files; merged labels for 30 contracts match a hand-checked reference; 99% co-occurrence regression test passes |
-| **7** (Jul 21–27) | **4. Verification (the BCCC-failure catcher)** | `semantic_checker.py` (with CEI ordering for Reentrancy, library-call detection), `tool_validator.py`, `fp_estimator.py` (stratified by source+tier), `class_auditor.py` (with co-occurrence matrix), `negative_checker.py` (5% threshold), `probe_dataset.py` (40 per class + trivial pos/neg), `report_generator.py`; per-stage p5_s1→p5_s6 regression | Re-run the Phase 5 verification logic on BCCC through the new module; output matches Phase 5 report to within 0.5% per-class |
-| **8** (Jul 28–Aug 3) | **5. Splitting + Registry** | `dedup_enforcer.py`, `project_splitter.py`, `stratified_splitter.py` (with project-level fallback for tool sources), `temporal_splitter.py`, `leakage_auditor.py`, `split_manifest.py`, `catalog.yaml` + SQLite catalog (with schema_migrations + dataset_version_retirements tables), `lineage_tracker.py`, `artifact_hasher.py` (shared with inference cache), `dataset_diff.py` (with per-class metric projection) | `sentinel-data split --config split-config.yaml` produces `splits/v1/{train,val,test}.parquet` with manifest; `sentinel_data.registry.load_artifact("sentinel-v2-dryrun-2026-08")` returns the artifact; 0 leakage; v1.4 BCCC labels preserved in retirement chain |
+| **1** (Jun 9–15) | **0. Skeleton + Data/ restructure** | `Data/pyproject.toml`, `Data/sentinel_data/__init__.py`, `Data/dvc.yaml` (no remote; local-only per §10 item 3), `Data/Dockerfile.data` (bookworm), move `Data/Deep_Dive/BCCC-SCsVul-2024_Deep_Dive/` to `Data/docs/legacy/bccc_deep_dive/`, write `Data/README.md` and `Data/docs/architecture.md`. **Config lists 5 critical-path + 12 additive sources + 1 critical-path negative (DISL) + 2 deferred (BCCC, ReentrancyStudy) per §6.1–6.2.** | `poetry install` works in `Data/.venv/`; `sentinel-data --help` runs; DVC initialized; config.yaml lists sources with `critical_path`/`additive` flags |
+| **2** (Jun 16–22) | **1. Ingestion + Preprocessing** | All 5 original connectors + 3 new connectors (AuditReportConnector for FORGE, RektScraper for DeFi Hacks, EtherscanConnector for DISL); flattener, two-pass compiler, deduplicator (threshold 0.85), normalizer, segmenter, version_bucketer (with `has_unchecked_block`); first test on DeFiHackLabs clone (critical-path #1) | `sentinel-data ingest --source defihacklabs` clones at pinned commit; SHA-256 verified; 30 raw .sol files pass preprocessing |
+| **3** (Jun 23–29) | **2. Representation (port from ml/)** | Move `ml/src/data_extraction/*` and `ml/src/preprocessing/graph_extractor.py` + `graph_schema.py` to `sentinel_data/representation/` (v9 schema); **36-issue pre-Run-8 audit regression test**; **schema-dim gate test** (x.shape[-1] == 12 per §3.8); CFG builder only (PDG/call-graph/opcode DEFERRED to v3.1); representation cache + versioner (invalidates on Slither version) | `sentinel-data represent --source defihacklabs` produces 30 .pt files; existing Run 9 graphs re-loadable through the new path with byte-identical output; all 13 critical A1-A38 fixes preserved |
+| **4-6** (Jun 30–Jul 20) | **3. Labeling (3 weeks for 5 critical-path + up to 12 additive crosswalks + parsers)** | `taxonomy.yaml` (10-class v1-checkpoint order), **5 critical-path crosswalk YAMLs (DeFiHackLabs, SolidiFI, DIVE, SmartBugs Curated, Web3Bugs)** + DIVE "bad randomness" dropped (§6.3.3) + DIVE class mapping documented (§6.4); 5 critical-path parsers; merger (with 99% DoS↔Reentrancy de-duplication); **CallToUnknown merge rule** (§6.3.2, human-checked); **FORGE 50-entry agreement test** (§6.5); confidence.py (T0-T4); **Go/No-Go minimum-viable-corpus gate** (§6.5) | `sentinel-data label --source defihacklabs` produces 30 per-contract `.labels.json` files; merged labels for 30 contracts match a hand-checked reference; 99% co-occurrence regression test passes; **minimum-viable-corpus gate returns 0** (or decision to defer Run 11 documented) |
+| **7** (Jul 21–27) | **4. Verification (the BCCC-failure catcher)** | `semantic_checker.py` (with CEI ordering for Reentrancy, library-call detection), `tool_validator.py`, `fp_estimator.py` (stratified by source+tier), `class_auditor.py` (with co-occurrence matrix), `negative_checker.py` (5% threshold), `probe_dataset.py` (40 per class + trivial pos/neg), `report_generator.py`; per-stage p5_s1→p5_s6 regression; **SmartBugs Curated recall test** (≥90% on the 143 hand-labeled contracts per friend review) | Re-run the Phase 5 verification logic on BCCC through the new module; output matches Phase 5 report to within 0.5% per-class; **semantic_checker retains ≥90% of SmartBugs Curated positives** |
+| **8** (Jul 28–Aug 3) | **5. Splitting + Registry** | `dedup_enforcer.py`, `project_splitter.py`, `stratified_splitter.py` (with **NonVulnerable 3:1 cap per §6.3.1**), `temporal_splitter.py`, `leakage_auditor.py`, `split_manifest.py`, `catalog.yaml` + SQLite catalog (with schema_migrations + dataset_version_retirements tables), `lineage_tracker.py`, `artifact_hasher.py` (shared with inference cache), `dataset_diff.py` (with per-class metric projection) | `sentinel-data split --config split-config.yaml` produces `splits/v1/{train,val,test}.parquet` with manifest; **NonVulnerable class count ≤ 3× total positive count**; `sentinel_data.registry.load_artifact("sentinel-v2-dryrun-2026-08")` returns the artifact; 0 leakage; v1.4 BCCC labels preserved in retirement chain |
 | **9** (Aug 4–5) | **6. Analysis** | `balance_viz.py`, `feature_dist.py` (with **label-conditional distribution** catching L4 complexity-proxy on data side), `cooccurrence.py` (directed + conditional), `overlap_detector.py`, `drift_monitor.py` (with label distribution KS test), `probe_dataset.py` re-export; DVC-tracked outputs | `feature_dist` flags synthetic complexity skew; `complexity_proxy_risk.md` GREEN; 99% DoS↔Reentrancy directed co-occurrence visible |
-| **10** (Aug 6–17) | **7. Export + Seam Swap + Predictor fix + EMITS fix** | Export writers + SentinelDatasetExport; new `sentinel-ml/src/datasets/sentinel_dataset.py` (with v9 schema gate + tier field + threshold warning); **predictor.py tier-threshold fix (F8/F10)**; **EMITS edge fix (Interp-6)**; archive deleted scripts to `ml/scripts/_legacy_data_pipeline/`; bookworm Docker base | Export→import round-trip byte-identical; 8 fixed bugs preserved; 7 v2-readiness gates GREEN; Docker build succeeds |
+| **10** (Aug 6–17) | **7. Export + Seam Swap + Predictor fix + EMITS fix** | Export writers + SentinelDatasetExport; new `sentinel-ml/src/datasets/sentinel_dataset.py` (with v9 schema gate + tier field + threshold warning + **slither transitive dep test** per §8); **predictor.py tier-threshold fix (F8/F10)**; **EMITS edge fix (Interp-6)**; archive deleted scripts to `ml/scripts/_legacy_data_pipeline/`; bookworm Docker base | Export→import round-trip byte-identical; 8 fixed bugs preserved; 7 v2-readiness gates GREEN; Docker build succeeds; **`pip install sentinel-data` brings slither-analyzer transitively** |
 | **+1 day** (Aug 18) | **8. Run 11 launch ("v2-baseline")** | `ml/scripts/train.py --run-name v2-baseline-$(date +%Y%m%d-%H%M%S) --dataset-version sentinel-v2-gold-2026-08` (sqlite MLflow, gnn-prefix-warmup=5, lambda=0.005, per-class P/R report, watcher copy of run8 with F1>0.1 floor) | Training starts cleanly; first epoch val F1 logged; per-class P/R documented; 12-condition pre-launch checklist verified |
 
 **Risk register for the build:**
@@ -441,11 +449,154 @@ The ML module keeps a `from sentinel_data.export import SentinelDatasetExport` i
 | Schema version bump (v8 → v10) will invalidate the 41K .pt graphs in `ml/data/graphs/` | They get re-extracted in Week 7 as part of the end-to-end run; old graphs are archived in `Data/data/archive/graphs_v8_pre_run11/` |
 | The 41K BCCC graphs on disk are referenced from `ml/src/datasets/dual_path_dataset.py` (path constants) — moving the loader breaks every active run script | The `ml/data/` directory stays in place physically; only the *loader* changes; existing graphs are re-homed into `Data/data/exports/sentinel-v1-bcc-2026-06/` and the old path is deprecated |
 
+**Friend-review risks (added 2026-06-09):**
+
+| Risk | Mitigation |
+|---|---|
+| 5 critical-path crosswalks still take 5-10 working days (1-2 days each); if 1 source's crosswalk reveals a structural issue (e.g. SolidiFI's injection patterns don't generalize), the source may be removed from critical-path, falling below 5 sources | The Go/No-Go gate (§6.5) catches this; if 1 critical source is removed, the gate decision is documented and the v2.1 launch is accepted as Run 12 |
+| DISL URL is TBD; if no download mirror is found, NonVulnerable 3:1 cap cannot be filled | The 3:1 cap is a ceiling, not a floor; if DISL is unavailable, the cap is filled from OZ Contracts (deferred to v2.1) at a lower scale |
+| FORGE 50-entry agreement test may return <85%; if so, FORGE is deferred to v2.2 | The 5-source critical path is independent of FORGE; if FORGE is deferred, Run 11 ships without it (per §6.5 gate) |
+| CallToUnknown < 300 verified (per Phase 5 having 245); if all 5 critical-path sources still leave us below 300, the merge rule triggers | The merge rule (§6.3.2) is a 1-line config change; the merger pauses and asks Ali before applying; the merge is reversible in v2.1 |
+| BCCC 1.4 verified labels may be re-introduced as a gold supplement in v2.1; if the v1.4 labels are themselves noisy (Phase 5 had its own limitations), the v2.1 re-introduction may reproduce a smaller version of the BCCC failure | The v1.4 labels are used as **negative cross-validation** only in v2.1 (run a Stage 4 verification on them; if they fail semantic_checker at >30%, they are not re-introduced) |
+
 ---
 
-## 6. The dataset sources — what's in and what's out (updated with friend's suggestions, 2026-06-08)
+## 6. The dataset sources — what's in and what's out (updated 2026-06-09 with friend-review critical-path corpus)
 
-The original 12 sources from `Sentinel_v2_Dataset_Proposal.md` plus **5 new sources from `datasources_suggestions.md`** (applied 2026-06-08) = **17 total sources** + Zenodo 16910242. Each gets a custom connector and a custom crosswalk YAML (per your decision that every source is included regardless of integration cost). The table below updates the v1 proposal with build-priority, integration-cost estimates, and the friend's tier recommendations.
+> **🚨 POST-FRIEND-REVIEW (2026-06-09):** The 2026-06-08 design treated all 17 sources as equally load-bearing for Run 11. Friend-review identified this as the **single biggest timeline risk** (Stage 3's 17 crosswalks × 1-3 days each = 3-6 weeks, not the budgeted 3 weeks). This section is rewritten with:
+>
+> 1. **Critical-path corpus** — 5 sources that Run 11 ships with (Stage 3 budget: 5-15 working days, realistic)
+> 2. **Additive sources** — 12 sources deferred to v2.1 (post-Run-11); included in v2 build only if Stage 3 finishes early
+> 3. **Negative-pool source** — DISL added for NonVulnerable scale, capped at 3:1 ratio
+> 4. **Code4rena → Bastet substitution** — Bastet (curated C4 dataset) replaces the C4 scraper (legal risk + redundant work)
+> 5. **ReentrancyStudy dropped entirely** — 230K single-class labels recreates the BCCC imbalance pattern; URL was TBD anyway
+> 6. **DIVE "bad randomness" dropped from DIVE labels** — no equivalent in 10-class taxonomy
+> 7. **CallToUnknown < 300 verified → merge into ExternalBug** — human-checked decision rule, not silent auto-merge
+>
+> See [`actionable_plans/learning_docs/friend_review_2026-06-09.md`](actionable_plans/learning_docs/friend_review_2026-06-09.md) for the per-idea analysis + verdicts. (If file doesn't exist, see the conversation history from 2026-06-09 where the analysis was performed.)
+
+### 6.1 Critical-path corpus (Run 11 ships with these 5 + DISL negatives)
+
+**5 critical-path sources (Run 11 baseline):**
+
+| # | Source | Tier | Why critical | Crosswalk difficulty |
+|---|---|---|---|---|
+| 1 | **DeFiHackLabs** | T1 Gold | Exploit-PoC `_exp.sol` files are self-documenting; folder name = exploit type → class is direct. **T0 confidence** on real exploits. | LOW (1 day) |
+| 2 | **SolidiFI** | T1 Gold (promoted) | 9,369 injected bugs, **100% ground-truth certainty** (mathematically guaranteed by injection). 7 types map to 7 of our 10. | MEDIUM (1-2 days) |
+| 3 | **DIVE** | T1 Gold (promoted) | 22,330 contracts, **peer-reviewed** (Nature Scientific Data 2025), 8 DASP classes, multi-label. The only source that addresses the "one folder = one vuln" BCCC fiction. | MEDIUM (1-2 days) |
+| 4 | **SmartBugs Curated** | T3 Structural | **143 hand-labeled contracts** (already on disk at `ml/data/smartbugs-curated/`); DASP → 10 classes direct. Critical because it's the **ground-truth probe for the semantic_checker recall test** (Stage 4.11). | LOW (0.5 day) |
+| 5 | **Web3Bugs** | T1 Gold | Contest-verified real exploits (C4/Sherlock/Immunefi); O/L/S severity filter. | MEDIUM (1-2 days) |
+
+**DISL as negative-pool source (3:1 cap, per §6.3 below):**
+- DISL = 514,506 unlabeled Solidity files; used for **NonVulnerable class only**
+- Capped at 3× the total positive count (subsample in Stage 5)
+- **No crosswalk needed** (no labels)
+- **Defer to v2.1 if 5-source positive volume already hits NonVulnerable target**
+
+**Total critical-path volume estimate:** ~1,200 positive contracts + 3,600 DISL negatives (3:1 cap, conservative) = **~4,800 contracts for Run 11 v2-baseline**. This is **explicitly smaller than Run 9's BCCC corpus** (60K+) — Run 11 is a *cleaner* baseline, not a *bigger* one. The bigger Run 12 (post-this-launch) will add the 12 deferred sources for scale.
+
+### 6.2 Additive sources (deferred to v2.1, post-Run-11)
+
+These 12 sources are **not gating Run 11**. They are added to the v2.1 build *if* Stage 3 finishes the 5 critical-path crosswalks + 1-2 more within the 3-week budget. The order below is the recommended v2.1 priority (highest-impact first):
+
+| # | Source | Tier | Why deferred | Re-introduction gate |
+|---|---|---|---|---|
+| 1 | **Bastet** (replaces C4 scraper) | T1 Gold | 849 findings from 394 C4 reports; HIGH-effort crosswalk (46 tags → 10 classes). Friend: Code4rena scraper has legal risk + Bastet covers the same ground. | v2.1 (W11) |
+| 2 | **FORGE** | T1 Gold | ICSE 2026, CWE-classified audit reports. **50-entry agreement test required** before shipping; if <85% LLM agreement, defer to v2.2. | v2.1 (gated on 50-entry test) |
+| 3 | **ScrawlD** | T2 Silver | 6,780 mainnet contracts, 5-tool majority voting. Useful scale. | v2.1 (W12) |
+| 4 | **DeFi Hacks REKT** | T2 Gold (T0) | Real-exploit scale (3,216 incidents); needs `RektScraper` connector. | v2.1 (W12) |
+| 5 | **Ethernaut** | T2 Clean | 30 pedagogical CTF levels. Easy to add (LOW effort). | v2.1 (W12) |
+| 6 | **OpenZeppelin Contracts** | T2 Clean | Multi-audit-verified negatives. Easy to add (VERY LOW effort). | v2.1 (W12) |
+| 7 | **SolidiFI** *(if not already in critical-path)* | T1 | Already in critical-path #2. | (no-op) |
+| 8 | **solidity_defi_vulns** (HF) | T1 Gold | 270 bridge examples. LOW effort. | v2.1 (W12) |
+| 9 | **DeFiVulnLabs** | T3 Structural | 48 vuln types, Foundry-style. MEDIUM effort. | v2.1 (W13) |
+| 10 | **SC-Bench** | T3 Structural | Two sub-parsers (audited + err-inj). MEDIUM effort. | v2.2 |
+| 11 | **SmartBugs Wild** | T3 Bronze | 47K contracts, friend warns 97% FP. Use for **pretraining only**, not as labeled data. | v2.2 (pretraining) |
+| 12 | **slither-audited (HF)** | T3 Bronze | 467K Slither-labeled, friend confirms corroborative-not-authoritative. Down-weight in loss. | v2.2 (corroboration) |
+| 13 | **Messi-Q** | T4 Bronze | 40K raw + 12K labeled, older Solidity era. | v2.2 (backup) |
+| 14 | **Zenodo 16910242 (CLEAR)** | T4 Bronze | 88.3 MB, Yizhou Chen's ICSE 2025 dataset. | v2.1 (W12) |
+| 15 | **ReentrancyStudy-Data** | DROPPED | 230K single-class reentrancy labels recreates BCCC imbalance. URL TBD. **NOT in v2 build.** | NEVER (use DeFiHackLabs + DIVE reentrancy examples) |
+| 16 | **DISL** *(as NonVulnerable scale)* | T4 Bronze | 514K unlabeled; 3:1 cap subsample. | v2.1 (W12, after critical-path stabilizes) |
+| 17 | **BCCC-SCsVul-2024** | DEFERRED | 89% Reentrancy FP, 86.9% CallToUnknown FP. v1.4 verified labels preserved at `Data/docs/legacy/bccc_deep_dive/.../contracts_clean_v1.4.csv`; may re-introduce as gold supplement in v2.1. | v2.1 (decision pending v2 baseline) |
+
+**Total 5 critical + 12 additive = 17 sources** matches the 2026-06-08 source count. The framing change is: critical-path **gates** Run 11; additive **gates** v2.1.
+
+### 6.3 Class-distribution rules (NEW — friend review)
+
+#### 6.3.1 NonVulnerable 3:1 cap (prevents BCCC-style class imbalance)
+
+**Rule:** in the final train split, the NonVulnerable class count is capped at **3× the total positive count across all 10 classes**.
+
+**Why 3:1, not higher:** the BCCC failure had a 51:1 negative:positive ratio (515K DISL-style negatives vs ~10K positives). A 3:1 ratio forces the model to learn positive patterns (because it can't default to "predict negative" and be right 97%+ of the time) while still providing enough negative signal for the NonVulnerable class.
+
+**Implementation:** in `Stage 5 (Splitting)`, the `stratified_splitter.py` enforces `pipeline.negative.positive_ratio_max: 3.0` from `config.yaml`. The subsample is stratified by source so the OZ clean contract distribution is preserved within the cap.
+
+**Default override:** the 3:1 cap is the v2 default. If a class needs more negatives (e.g. NegativeVulnerable is the dominant signal for a class), the ratio is per-class overridable in `config.yaml`.
+
+#### 6.3.2 CallToUnknown < 300 verified → merge into ExternalBug (human-checked)
+
+**Rule:** if Stage 3 verification produces **fewer than 300 verified CallToUnknown positives** across all enabled sources, the merger de-duplicates CallToUnknown → ExternalBug. **This is a human-checked decision, not a silent auto-merge.**
+
+**Why:** Phase 5 had 245 CallToUnknown positives; <300 in v2 is the same statistical-unlearnable problem. A 10-class softmax with 1 class at <500 samples forces the loss to be dominated by the larger classes (same BCCC failure pattern at smaller scale).
+
+**Why merge, not keep-10-classes:** "Call to an address whose code we couldn't resolve" and "interaction with an untrusted external contract" are semantically adjacent. The merge is **reversible** in v2.1: if we accumulate 1000+ verified CallToUnknown, split them back.
+
+**Why human-checked, not silent:** the Stage 3 plan adds a per-class count check after verification. If CallToUnknown < 300, the merger **pauses and asks Ali** before applying the merge. The merge is a 1-line config change (`labels.class_map: {CallToUnknown: ExternalBug}`); it's cheap to do at the last minute but irreversible without retraining.
+
+**Decision rule, formalized in `config.yaml`:**
+```yaml
+pipeline:
+  class:
+    merge_rules:
+      - trigger: if CallToUnknown_verified_count < 300
+        action: pause_and_ask_human
+        apply: labels.class_map.CallToUnknown = ExternalBug
+        reversible: true
+```
+
+#### 6.3.3 DIVE "bad randomness" → drop from DIVE labels
+
+DIVE has 8 DASP classes. The 10-class Sentinel taxonomy maps cleanly for 7 of them (reentrancy, access control, arithmetic, unchecked low-level calls, DoS, time manipulation, front-running). The 8th — "bad randomness" — has **no equivalent in the 10-class taxonomy** (it's not Timestamp, not CallToUnknown, not DoS).
+
+**Decision:** drop "bad randomness" from DIVE labels (loses ~80 contracts of data). Alternatives considered and rejected: (a) merge into ExternalBug (semantically wrong), (b) add 11th class (breaks taxonomy lock). Documented in the DIVE crosswalk YAML as a comment for v2.1 to consider.
+
+#### 6.3.4 ReentrancyStudy → dropped (no 5K cap, full drop)
+
+Friend suggested a 5K cap. Decision: **drop entirely** (not cap). Reasons: (a) URL is TBD anyway, (b) 230K single-class recreates the 99% co-occurrence pattern at larger scale, (c) DeFiHackLabs + DIVE + SolidiFI already give plenty of reentrancy examples. A 5K cap is a band-aid; the underlying imbalance is structural.
+
+### 6.4 DIVE class mapping (per-class decisions, pre-Stage 3)
+
+Per the friend review and §6.3.3 above, the DIVE → Sentinel 10-class crosswalk is:
+
+| DIVE DASP class | Maps to | Notes |
+|---|---|---|
+| reentrancy | Reentrancy | Direct |
+| access_control | ExternalBug | Sub-tier note: "may include UnusedReturn edge cases" |
+| arithmetic | IntegerUO | Direct |
+| unchecked_low_level_calls | CallToUnknown | Direct (subject to merge rule §6.3.2) |
+| denial_of_service | DoS | Direct |
+| **bad_randomness** | **DROPPED** | No equivalent — see §6.3.3 |
+| front_running | TOD | Direct |
+| time_manipulation | Timestamp | Direct |
+
+### 6.5 Critical-path minimum viable corpus gate (NEW — friend review)
+
+**Definition:** the "minimum viable corpus" (MVC) is the set of criteria that, if not met, **Run 11 is deferred to v2.1 (Run 12)** rather than training on a broken corpus.
+
+| Criterion | Threshold | If below |
+|---|---|---|
+| Total contracts (5 critical-path + DISL negatives) | ≥ 4,000 | Defer Run 11 |
+| Per-class positive count (Reentrancy, DoS, IntegerUO) | ≥ 300 each | Defer Run 11 |
+| Per-class positive count (other 7 classes) | ≥ 100 each | Defer Run 11 OR apply merge rule §6.3.2 |
+| Total verified CallToUnknown | ≥ 300 | Apply merge rule §6.3.2 (NOT a defer trigger) |
+| Tool agreement on SmartBugs Curated (143 contracts) | ≥ 80% recall | Defer Run 11 (semantic_checker is broken) |
+| FORGE LLM agreement (50-entry test, if FORGE included) | ≥ 85% | Defer FORGE to v2.1 (not Run 11) |
+
+**Go/No-Go gate location:** end of Stage 3 (after all 5 critical-path crosswalks + parsers + merger + confidence tiers are applied). The gate is automated: `sentinel-data verify --min-viable-corpus` exits 0 if all 6 criteria are met, non-zero otherwise. The Stage 3 plan adds this gate.
+
+**If the gate fails:** the 12 additive sources are evaluated for fast re-introduction (deferring the affected source rather than the whole run). If no fast re-introduction is possible, the Run 11 launch slips to Run 12 and the 10-week timeline is re-baselined.
+
+### 6.6 Original source table (preserved for reference, see v1.1 below)
 
 **Friend's key contributions** (see `datasources_suggestions.md` for full context):
 - **DIVE promoted from Tier 4 → Tier 1** (Nature Scientific Data 2025, peer-reviewed, multi-label, 22,330 contracts)
@@ -457,6 +608,16 @@ The original 12 sources from `Sentinel_v2_Dataset_Proposal.md` plus **5 new sour
 - **DISL + ReentrancyStudy-Data + DeFiVulnLabs added Tier 3-4** (volume/structural sources)
 - **Friend's 3-tool ensemble warning** validates the existing tool-validator design (D-4.3): tool agreement is corroborative, NOT authoritative
 - **Friend's 97% SmartBugs Wild FP rate** confirms the existing Tier 3 conservative design for `smartbugs_wild` is correct — no change needed
+
+| Tier | Source | Connector | Custom work | Build week | Notes |
+|---|---|---|---|---|---|
+| **Critical-path (Run 11)** | DeFiHackLabs · SolidiFI · DIVE · SmartBugs Curated · Web3Bugs | (5 sources) | See §6.1 | W3 | Run 11 ships with these 5 |
+| **Critical-path (neg)** | DISL (3:1 cap) | (1 source) | See §6.1 | W2 (no crosswalk) | NonVulnerable pool |
+| **Additive (v2.1, deferred)** | Bastet · FORGE · ScrawlD · DeFi Hacks REKT · Ethernaut · OZ Contracts · solidity_defi_vulns · DeFiVulnLabs · SC-Bench · SmartBugs Wild · slither-audited · Messi-Q · Zenodo 16910242 | (12 sources) | See §6.2 | v2.1 (W11–13) | Deferred to v2.1 |
+| **DROPPED** | ReentrancyStudy · DIVE bad_randomness | — | — | — | See §6.3.3–6.3.4 |
+| **DEFERRED** | BCCC-SCsVul-2024 | — | — | — | v2.1 (decision pending) |
+
+**v1.1 (2026-06-08) original 17-source table — preserved for audit trail:**
 
 | Tier | Source | Connector | Custom work | Build week | Notes |
 |---|---|---|---|---|---|
@@ -499,6 +660,11 @@ These 4 new connectors join the 5 in the original proposal (Git, HF, Zenodo, Eth
 - **76.78% detection for 3-tool ensemble (Conkas + Slither + Smartcheck)** → confirms tool_validator is corroborative, not authoritative
 - **51.97% Slither precision on reentrancy** → Slither-Audited crosswalk has the "confidence > 0.8 + canonical detector" rule, drops low-precision hits
 
+**v1.1 → v1.2 changelog (2026-06-09, post-friend-review):**
+- 5 new connectors from 2026-06-08 design (`AuditReportConnector` for FORGE, `AuditReportScraper` for Code4rena, `RektScraper` for DeFi Hacks, `EtherscanConnector` for DISL/ReentrancyStudy) → **Code4rena scraper REMOVED (use Bastet instead); ReentrancyStudy DROPPED entirely; FORGE conditional on 50-entry agreement test; DISL remains**
+- Original 17 active sources → **5 critical-path + 12 additive (v2.1) + 1 critical-path negative (DISL)**
+- New §6.3 (class-distribution rules) + §6.5 (Go/No-Go gate) added
+
 ---
 
 ## 7. Schema decisions (deferred to post-Build)
@@ -537,6 +703,17 @@ ml/pyproject.toml             ← ADDS: sentinel-data = "^0.1.0" (path or PyPI d
 ml/data/                      ← FROZEN at its current state; the active data moves to Data/data/exports/sentinel-v2-gold-2026-08/; old paths kept as symlinks for 1 release, then removed
 ```
 
+**Slither transitive dependency (NEW 2026-06-09, friend review):** `ml/src/inference/preprocess.py` calls `sentinel_data.representation.extract_single(source_text)` for single-contract inference (per Stage 7's seam swap). The new `sentinel_data.representation` uses Slither to extract the graph. **The inference path therefore depends on `slither-analyzer` transitively, via `sentinel-data`.** The two valid options are:
+
+| Option | Mechanism | Trade-off |
+|---|---|---|
+| **(A) `sentinel-data` declares `slither-analyzer` as a runtime dep** | `pip install sentinel-data` pulls in slither-analyzer automatically | ✅ Works out of the box. (B) becomes redundant. The inference path has no extra install step. |
+| **(B) `sentinel-ml`'s inference Docker image inherits from the `sentinel-data` Docker image** | Layer caching; slither comes from the parent image | ✅ Cleanest Docker topology. ❌ Tighter coupling — if the data Docker image is updated, the inference image is implicitly updated. |
+
+**Default: option (A).** `sentinel-data`'s `pyproject.toml` keeps `slither-analyzer` as a runtime dep (it was always going to be a data-side dep for graph extraction). `sentinel-ml`'s `pyproject.toml` only needs `sentinel-data = "^0.1.0"` — no need to list slither-analyzer, solc-select, etc. directly. The transitive resolution gives the inference path everything it needs.
+
+**Verification:** Stage 7 includes a test that runs `pip install sentinel-data` in a clean `sentinel-ml`-style venv and asserts `pip show slither-analyzer` returns a version. If slither is not transitively available, the test fails loud before any inference path is exercised.
+
 **Net effect:** `sentinel-ml` loses ~5,000 lines of data-pipeline code and ~5 GB of data artifacts; gains a single `sentinel-data` dependency. The `ml/` README's "Data Pipeline" section becomes a single line: "all data produced by `sentinel-data`; see Data/README.md for the pipeline."
 
 ---
@@ -562,11 +739,14 @@ When all 6 pass, the v2-baseline catalog entry is registered as `sentinel-v2-gol
 |---|---|---|---|
 | 1 | Choose the path of the `sentinel-data` distribution (path dep, PyPI, or git tag) for `sentinel-ml`'s `pyproject.toml` | Ali | W1 |
 | 2 | Confirm Data/docker/Dockerfile.data base image (recommend `python:3.12-slim` + `solc-select install` + `pip install slither-analyzer`) | Ali | W1 |
-| 3 | Decide whether to host the DVC remote on S3, GCS, or local-only for v2 (recommend local for build, S3 for production) | Ali | W1 |
+| 3 | **RESOLVED 2026-06-09 (friend review):** DVC remote is **local-only for v2 build**; S3/GCS deferred to v2.1 (post-Run-11). Single-developer WSL2 doesn't need a remote. | ✅ Done | (no longer blocks) |
 | 4 | Confirm the taxonomy YAML's 10 classes are exactly the v1 taxonomy (no changes) | Ali | W4 |
-| 5 | Pre-commit the canonical `taxonomy.yaml` + 11 crosswalk YAMLs once they're drafted | Ali | W4 |
+| 5 | Pre-commit the canonical `taxonomy.yaml` + 5 critical-path crosswalk YAMLs once they're drafted (revised: 5 not 11 per §6.1) | Ali | W4 |
 | 6 | Decide the export shard size default (recommend 5,000 contracts/shard) | Ali | W7 |
 | 7 | Approve Run 11 launch date (recommend 2026-08-18, after friend's 5 new sources expand Stage 3 to 3 weeks) | Ali | W10 |
+| 8 | **NEW (friend review):** Decide whether to apply CallToUnknown → ExternalBug merge if <300 verified (per §6.3.2). Decision is **human-checked, not auto-merge**; reviewed at Stage 3 gate. | Ali (Stage 3 gate) | W4–5 |
+| 9 | **NEW (friend review):** Decide whether to defer FORGE based on 50-entry agreement test (per §6.5). Test is part of Stage 3. | Ali (Stage 3 gate) | W4–5 |
+| 10 | **NEW (friend review):** Decide whether to defer Run 11 to Run 12 if minimum viable corpus gate (§6.5) fails. | Ali (Stage 3 gate) | W4–5 |
 
 ---
 

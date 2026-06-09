@@ -85,17 +85,17 @@ The plans are ordered. Each stage's exit criteria are the precondition for the n
 
 | # | Stage | Plan file | Dates | Days | Key gate |
 |---|---|---|---|---|---|
-| 0 | Skeleton + Data/ restructure | [`01_stage_0_skeleton.md`](01_stage_0_skeleton.md) | Jun 9–15 | 4–5 | `poetry install` works; `sentinel-data --help` runs; config.yaml lists 17 sources |
-| 1 | Ingestion + Preprocessing | [`02_stage_1_ingest_preprocess.md`](02_stage_1_ingest_preprocess.md) | Jun 16–22 | 5 | 30 ScaBench files preprocess end-to-end |
-| 2 | Representation (port from ml/) | [`03_stage_2_representation.md`](03_stage_2_representation.md) | Jun 23–29 | 5 | Byte-identical regression test passes for all 9 source files (A1–A38 preserved) |
-| 3 | Labeling (parsers + crosswalks) | [`04_stage_3_labeling.md`](04_stage_3_labeling.md) | Jun 30–Jul 20 | 15–20 | 17 crosswalk YAMLs + 17 parsers; 99% DoS↔Reentrancy co-occurrence de-duplicated by merger |
-| 4 | Verification (BCCC-failure catcher) | [`05_stage_4_verification.md`](05_stage_4_verification.md) | Jul 21–27 | 5 | Phase 5 BCCC regression test passes (±0.5% per-class) |
-| 5 | Splitting + Registry | [`06_stage_5_splitting_registry.md`](06_stage_5_splitting_registry.md) | Jul 28–Aug 3 | 5 | `load_artifact("sentinel-v2-dryrun-2026-08")` works; leakage auditor = 0 |
+| 0 | Skeleton + Data/ restructure | [`01_stage_0_skeleton.md`](01_stage_0_skeleton.md) | Jun 9–15 | 4–5 | `poetry install` works; `sentinel-data --help` runs; config.yaml lists 5 critical-path + 12 additive sources (DVC local-only) |
+| 1 | Ingestion + Preprocessing | [`02_stage_1_ingest_preprocess.md`](02_stage_1_ingest_preprocess.md) | Jun 16–22 | 5 | 30 DeFiHackLabs files preprocess end-to-end (critical-path #1) |
+| 2 | Representation (port from ml/) | [`03_stage_2_representation.md`](03_stage_2_representation.md) | Jun 23–29 | 5 | Byte-identical regression test passes for all 9 source files (A1–A38 preserved); schema-dim gate test (x.shape[-1] == 12) |
+| 3 | Labeling (parsers + crosswalks) | [`04_stage_3_labeling.md`](04_stage_3_labeling.md) | Jun 30–Jul 20 | 10–15 | **5 critical-path crosswalks + 5 parsers**; 99% DoS↔Reentrancy co-occurrence de-duplicated; **CallToUnknown < 300 merge rule pauses and asks human**; **Go/No-Go minimum-viable-corpus gate returns 0** |
+| 4 | Verification (BCCC-failure catcher) | [`05_stage_4_verification.md`](05_stage_4_verification.md) | Jul 21–27 | 5 | Phase 5 BCCC regression test passes (±0.5% per-class); **SmartBugs Curated 143-contract recall ≥ 90%** |
+| 5 | Splitting + Registry | [`06_stage_5_splitting_registry.md`](06_stage_5_splitting_registry.md) | Jul 28–Aug 3 | 5 | `load_artifact("sentinel-v2-dryrun-2026-08")` works; leakage auditor = 0; **NonVulnerable 3:1 cap enforced** |
 | 6 | Analysis | [`07_stage_6_analysis.md`](07_stage_6_analysis.md) | Aug 4–5 | 2 | `feature_dist` flags synthetic complexity skew; `complexity_proxy_risk.md` GREEN |
-| 7 | Export + Seam Swap | [`08_stage_7_export_seam.md`](08_stage_7_export_seam.md) | Aug 6–17 | 8–10 | All **7** v2-readiness gates GREEN; predictor.py tier bug fixed; Docker build succeeds |
+| 7 | Export + Seam Swap | [`08_stage_7_export_seam.md`](08_stage_7_export_seam.md) | Aug 6–17 | 8–10 | All **7** v2-readiness gates GREEN; predictor.py tier bug fixed; EMITS edge fixed; **slither transitive dep test** passes; Docker build succeeds |
 | 8 | Run 11 launch | [`09_stage_8_run11_launch.md`](09_stage_8_run11_launch.md) | Aug 18 | 1 | Run 11 starts cleanly; first-epoch val F1 logged; per-class P/R reported separately |
 
-**Total: 50–58 working days over ~10 weeks.** (Stage 3 budget grew to 3 weeks because of the 5 new sources from friend: 17 crosswalks × 1 day avg, harder ones 2-3 days. Stages 4-8 shifted to Aug; Run 11 launches Aug 18.)
+**Total: 45–53 working days over ~10 weeks.** (Stage 3 budget is 2-3 weeks for **5 critical-path crosswalks** × 1-2 days each = 5-10 days, with 1-2 additive crosswalks if budget allows. The 12 additive are v2.1 work. Stages 4-8 shifted to Aug; Run 11 launches Aug 18.)
 
 ---
 
@@ -166,15 +166,21 @@ The 36-issue regression test + the byte-identical regression test together are t
 |---|---|---|---|
 | 1 | How is `sentinel-data` distributed to `sentinel-ml`? (path dep / PyPI / git tag) | 0 | Stage 7's `pyproject.toml` change |
 | 2 | Confirm the Dockerfile base image (`python:3.12.1-bookworm` per F14, NOT slim) and solc versions | 0 | Stage 7's Docker build |
-| 3 | DVC remote backend (S3 / GCS / local-only) | 0 | Stage 5's catalog (no impact on local builds) |
+| 3 | ~~DVC remote backend (S3 / GCS / local-only)~~ | 0 | ✅ **RESOLVED 2026-06-09: local-only for v2 build** |
 | 4 | Confirm the 10-class taxonomy class order matches the v1 checkpoint's class order | 3 | The v1 checkpoint may need a remap layer if order differs |
 | 5 | **Schema version** — confirmed v9 (per F1) | 2 | The stub from Stage 0 must use v9; affects the regression test |
 | 6 | Export shard size default (5,000 per `config.yaml` proposed) | 7 | Minor; tunable |
-| 7 | Run 11 launch date (2026-08-05 proposed) | 8 | The whole build schedule |
+| 7 | Run 11 launch date (2026-08-18) | 8 | The whole build schedule |
 | 8 | Should `_add_icfg_edges` cross-function external calls be added in Stage 2 (port) or post-Run-11 (v2.1)? | 2 | Affects the regression test scope; current plan = preserve partial fix |
 | 9 | Should `pdg_builder.py` be shipped in v2 or deferred to v3.1? | 2 | Per AUDIT_PATCHES 2-P9, the plan defers to v3.1; confirm |
+| 10 | **NEW (friend review):** Critical-path corpus = 5 sources (DeFiHackLabs, SolidiFI, DIVE, SmartBugs Curated, Web3Bugs) + DISL negatives. Confirm? | 3 | Stage 3 budget relies on this; if expanded, schedule slips |
+| 11 | **NEW (friend review):** NonVulnerable 3:1 cap (default) — confirm? | 5 | Stage 5's stratified_splitter enforces this; per-class overrides available |
+| 12 | **NEW (friend review):** CallToUnknown < 300 verified → merge into ExternalBug (human-checked) — confirm? | 3 | Stage 3's merger pauses and asks; reversible in v2.1 |
+| 13 | **NEW (friend review):** Go/No-Go minimum-viable-corpus gate — if corpus doesn't hit minimums, defer Run 11 to v2.1 (Run 12). Confirm? | 3 | Stage 3 exit criteria |
+| 14 | **NEW (friend review):** DIVE "bad randomness" dropped from DIVE labels (no 10-class equivalent) — confirm? | 3 | DIVE crosswalk documents the drop |
+| 15 | **NEW (friend review):** FORGE 50-entry agreement test (≥85%) — if <85%, defer FORGE to v2.2 — confirm? | 3 | Conditional on FORGE being added to additive list |
 
-**Q5 (schema) is now confirmed v9** — the stub from Stage 0 must be updated to v9 constants before any code is written. Q8 and Q9 are recommendations from the audit that need your nod.
+**Q5 (schema) is now confirmed v9** — the stub from Stage 0 must be updated to v9 constants before any code is written. Q8 and Q9 are recommendations from the audit that need your nod. Q3 is resolved (DVC local-only). Q10-Q15 are new from the friend review and need your nod before Stage 3 starts.
 
 ---
 

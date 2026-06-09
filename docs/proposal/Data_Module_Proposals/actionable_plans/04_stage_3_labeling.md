@@ -1,20 +1,29 @@
 # Actionable Plan — Stage 3: Labeling (parsers, crosswalks, merger, confidence)
 
-**Date:** 2026-06-30
-**Stage:** 3 of 8 (Week 4–5: Jun 30–Jul 13 — extended from 1 week to 2 per AUDIT_PATCHES §3)
+**Date:** 2026-06-30 (revised 2026-06-09 post-friend-review)
+**Stage:** 3 of 8 (Week 4–6: Jun 30–Jul 20 — 3 weeks, critical-path budget)
 **Owner:** SENTINEL data engineering
-**Source proposal:** `docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md` §3.4, §5 (Week 4), §6
+**Source proposal:** `docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md` §3.4, §5 (Week 4–6), §6
 **Audit ref:** [`../archive/AUDIT_PATCHES_applied_2026-06-08.md`](../archive/AUDIT_PATCHES_applied_2026-06-08.md) §0 (F25, F27, F29), §1 (3-P1 through 3-P10), §2 (C-10)
 **Friend suggestions applied:** [`../datasources_suggestions.md`](../datasources_suggestions.md) (DIVE promoted to Tier 1, FORGE added Tier 1, SolidiFI promoted, ScrawlD + Code4rena + DeFi Hacks REKT added Tier 2, DISL + ReentrancyStudy + EVMbench + DeFiVulnLabs added Tier 4)
-**Exit criteria:** `sentinel-data label --source scabench` produces 30 per-contract `.labels.json` files for the ScaBench fixture; the merged labels match a hand-checked reference; the canonical 10-class taxonomy is committed to `taxonomy.yaml` and uses the v1 checkpoint's class order; **the 99% DoS↔Reentrancy co-occurrence regression test passes** (a fixture contract with the BCCC-style co-occurrence pattern is de-duplicated by the merger, not preserved); **17 source crosswalks + 17 parsers exist** (12 original + 5 new from friend's suggestions).
-
----
+**Friend-review revisions (2026-06-09):**
+- **Source list: 17 → 5 critical-path + 12 additive** (Run 11 ships with the 5; the 12 are v2.1)
+- **5 critical-path:** DeFiHackLabs, SolidiFI, DIVE, SmartBugs Curated, Web3Bugs (+ DISL as NonVulnerable source, no crosswalk)
+- **DIVE "bad randomness" dropped** (no 10-class equivalent; per proposal §6.3.3)
+- **Code4rena scraper dropped** (Bastet replaces it; per proposal §6.2)
+- **ReentrancyStudy dropped entirely** (per proposal §6.3.4)
+- **CallToUnknown merge rule added** (human-checked, not auto-merge; per proposal §6.3.2)
+- **FORGE 50-entry agreement test added** (if <85%, defer FORGE to v2.2; per proposal §6.5)
+- **Go/No-Go minimum-viable-corpus gate added** (if corpus doesn't meet thresholds, defer Run 11; per proposal §6.5)
+**Exit criteria:** `sentinel-data label --source defihacklabs` produces 30 per-contract `.labels.json` files for the DeFiHackLabs fixture; the merged labels match a hand-checked reference; the canonical 10-class taxonomy is committed to `taxonomy.yaml` and uses the v1 checkpoint's class order; **the 99% DoS↔Reentrancy co-occurrence regression test passes** (a fixture contract with the BCCC-style co-occurrence pattern is de-duplicated by the merger, not preserved); **5 critical-path crosswalks + 5 critical-path parsers exist**; **DIVE crosswalk drops "bad randomness" with comment**; **FORGE 50-entry agreement test passes (or FORGE is deferred to v2.2)**; **CallToUnknown < 300 verified → merger pauses and asks Ali** (config rule); **Go/No-Go minimum-viable-corpus gate returns 0** (or Run 11 is deferred to v2.1 with documented decision).
 
 ## Goal
 
-Implement the **Labeling** submodule: the canonical 10-class taxonomy, 12 source-specific crosswalk YAMLs, 12 source-specific parsers, the multi-source merger with conflict resolution, and the T0–T4 confidence tier system. After this stage, every preprocessed contract can be assigned a per-class label with a confidence tier and provenance, regardless of which source dataset it came from.
+Implement the **Labeling** submodule: the canonical 10-class taxonomy, **5 critical-path source-specific crosswalk YAMLs** (DeFiHackLabs, SolidiFI, DIVE, SmartBugs Curated, Web3Bugs) + DISL as NonVulnerable source (no crosswalk), **5 critical-path source-specific parsers**, the multi-source merger with conflict resolution, the **CallToUnknown < 300 merge rule** (human-checked), the **FORGE 50-entry agreement test** (if FORGE is added), the T0–T4 confidence tier system, and the **Go/No-Go minimum-viable-corpus gate**. After this stage, every preprocessed contract can be assigned a per-class label with a confidence tier and provenance, regardless of which source dataset it came from.
 
-This stage is what fixes the BCCC failure. The 10 classes are the same as the v1 schema (per the deferred-schema decision). The 12 crosswalks are the highest-leverage artifact in the entire module — they encode the human decisions that map each source's idiosyncratic taxonomy into the canonical one.
+The 12 additive sources (Bastet, FORGE, ScrawlD, DeFi Hacks REKT, Ethernaut, OZ Contracts, solidity_defi_vulns, DeFiVulnLabs, SC-Bench, SmartBugs Wild, slither-audited, Zenodo 16910242 + Messi-Q + ScaBench) are **deferred to v2.1**. The Stage 3 plan authorises 1-2 additional crosswalks beyond the 5 critical-path if the 3-week budget permits (Bastet is the first candidate; Code4rena scraper is removed entirely — Bastet replaces it).
+
+This stage is what fixes the BCCC failure. The 10 classes are the same as the v1 schema (per the deferred-schema decision). The 5 critical-path crosswalks are the highest-leverage artifact in the entire module — they encode the human decisions that map each source's idiosyncratic taxonomy into the canonical one.
 
 ---
 
@@ -22,7 +31,7 @@ This stage is what fixes the BCCC failure. The 10 classes are the same as the v1
 
 Stage 1 produced source code. Stage 2 produced model-consumable representations. Stage 3 is the first stage that attaches semantic meaning (the vulnerability label) to a contract. Doing labeling *after* representation (rather than alongside it) is the design decision that lets the same representation be re-labeled without re-extracting the graph (e.g. when a crosswalk YAML is updated).
 
-The hand-curated crosswalk YAMLs are the bottleneck. Authoring 12 crosswalks is more work than authoring 12 parsers, and the crosswalks must be reviewed by a human (Ali) before being committed. Stage 3 dedicates time to this review.
+The hand-curated crosswalk YAMLs are the bottleneck. Authoring 5 critical-path crosswalks is more work than 5 parsers, and the crosswalks must be reviewed by a human (Ali) before being committed. Stage 3 dedicates time to this review. The 12 additive crosswalks are out of scope for v2 — they are v2.1 work.
 
 ---
 
@@ -134,48 +143,31 @@ DeFiHackLabs' `_exp.sol` files are exploit PoCs. Each file has a folder name (e.
 
 ---
 
-### 3.4 — Author the remaining 15 crosswalks (10 original + 5 from friend, with per-source specifics)
+### 3.4 — Author the 4 remaining critical-path crosswalks (DeFiHackLabs done in 3.3)
 
-For each source, author the crosswalk YAML. The work is in decreasing order of difficulty. Per the proposal §6 + AUDIT_PATCHES §3 + friend's suggestions, the build time estimate is: **Bastet 2-3 days, FORGE 2-3 days, Code4rena 2-3 days, DIVE 1-2 days, SC-Bench/Messi-Q/SmartBugs-Wild/ReentrancyStudy 1-2 days, the rest 0.5-1 day**. Total: **15-20 days for 15 crosswalks** (per AUDIT_PATCHES §3 — the plan's "1 day per crosswalk average" underestimates the hard ones; the budget is now 3 weeks total for Stage 3, not 2).
+The ScaBench and DeFiHackLabs crosswalks are done in 3.2 and 3.3. The remaining 3 critical-path crosswalks are SolidiFI, DIVE, Web3Bugs. (SmartBugs Curated's crosswalk is a one-liner — DASP → 10 classes direct, see §6.4 / config.yaml `smartbugs_curated` — and is committed in this same task.)
 
-**Original 10 per-source specifics (per AUDIT_PATCHES 3-P3, 3-P4, 3-P7, 3-P8, 3-P9):**
+For each source, author the crosswalk YAML. The work is in decreasing order of difficulty. Per the proposal §6.1 + AUDIT_PATCHES §3 + friend's suggestions, the build time estimate for the 5 critical-path crosswalks is: **DeFiHackLabs 1 day, SolidiFI 1-2 days, DIVE 1-2 days, SmartBugs Curated 0.5 day, Web3Bugs 1-2 days**. Total: **5-8 days for 5 critical-path crosswalks** (within the 3-week Stage 3 budget; the remaining 1.5 weeks are for parsers + merger + tests + agreement test + gate).
+
+**Critical-path 5 per-source specifics (per AUDIT_PATCHES 3-P3, 3-P4, 3-P7, 3-P8, 3-P9 + friend review):**
 
 | Source | Difficulty | Specific guidance |
 |---|---|---|
-| **Bastet** | HIGH (2-3 days) | 46 finding tags → 10 classes. Needs audit-report parser to map `dataset.csv` findings → `.sol` source locations via `reports/<id>.md` mapping. Partial crosswalk in Bastet's README; we extend it. |
+| **DeFiHackLabs** (DONE in 3.3) | LOW (1 day) | Exploit-PoC `_exp.sol` files; folder name = exploit type → class is direct. T0 confidence. |
+| **SolidiFI** | MEDIUM (1-2 days) | **9,369 injected bugs, 100% ground-truth certainty** (mathematically guaranteed by the injection methodology). 7 types map to our 10 (Reentrancy, Timestamp, UnhandledExceptions, UncheckedSend, TOD, IntegerUO, TxOrigin). Crosswalk: per-bug-injection metadata → positive label. **Already in `ml/data/SolidiFI-benchmark/`** — easy connector. **Promoted from "supporting" to Tier 1** per friend. |
+| **DIVE** | MEDIUM (1-2 days) | 22,330 contracts, 8 DASP classes, **multi-label** (avoids BCCC's "one folder = one vuln" fiction). **DIVE class mapping per proposal §6.4 (and config.yaml `dive_class_mapping`):** reentrancy → Reentrancy, access_control → ExternalBug, arithmetic → IntegerUO, unchecked_low_level_calls → CallToUnknown, denial_of_service → DoS, front_running → TOD, time_manipulation → Timestamp. **"bad_randomness" is DROPPED** (no 10-class equivalent; per proposal §6.3.3 + friend review). Crosswalk YAML has a comment documenting the drop decision for v2.1. |
+| **SmartBugs Curated** | LOW (0.5 day) | DASP categories → 10 classes. DASP categories map: reentrancy → Reentrancy, access_control → ExternalBug, arithmetic → IntegerUO, unchecked_low_level_calls → CallToUnknown, denial_of_service → DoS, front_running → TOD, time_manipulation → Timestamp, bad_randomness → DROPPED. Line-level annotations are an extra metadata field. The 143 contracts are the **ground-truth probe for the semantic_checker recall test in Stage 4.11** (per friend review). |
 | **Web3Bugs** | MEDIUM-HIGH (1-2 days) | `bugs.csv` + `contests.csv` + report text. **O/L/S severity**: only O (Optimistic) and L (Low) map to positive; S (Speculative) is too uncertain — defaults to negative. Needs report-text → class mapper (LLM-assist). |
-| **solidity_defi_vulns** | LOW (0.5 day) | HF row schema is structured; `is_real` flag + `attack_title` → class is mostly direct. |
-| **smartbugs_curated** | LOW (0.5 day) | DASP categories → 10 classes. **DASP has 10 categories — one (front_running) maps to TOD; the crosswalk must be explicit about which DASP category doesn't have a Sentinel class equivalent.** Line-level annotations are an extra metadata field. |
-| **smartbugs_wild** | MEDIUM (1 day) | 47K contracts, no labels; needs Slither run to derive T3 labels. Mostly a Slither-detector → class crosswalk. |
-| **openzeppelin** | VERY LOW (0.5 day) | **Clean negative source**: every OZ contract is `T1_clean` for `NonVulnerable`; the parser NEVER produces a positive label even if Slither flags something. Per AUDIT_PATCHES 3-P8, the crosswalk is explicit: "OZ contracts are clean, no exceptions." |
-| **ethernaut** | VERY LOW (0.5 day) | 30 challenges; each is a known vulnerability pattern → positive label. |
-| **slither_audited** | MEDIUM-HIGH (1-2 days) | **Highest-risk parser** per AUDIT_PATCHES 3-P9. Crosswalk must be **explicitly conservative** — only map to a class if Slither's confidence is > 0.8 AND the detector is in the canonical CLASS_TO_DETECTORS list (from `project_agents.md`). The tier is T3 (tool-generated), not T1. |
-| **messi_q** | MEDIUM (1 day) | Multiple subfolders with different schemas; per-folder sub-parser needed. Older Solidity era. |
-| **zenodo_16910242** | LOW (0.5 day) | 88.3 MB zip; `contracts.zip` with `labels.csv`; per-contract `is_vulnerable_*` columns. Yizhou Chen's CLEAR ICSE 2025 dataset. |
 
-**NEW 5 from friend's suggestions (`datasources_suggestions.md`, 2026-06-08):**
-
-| Source | Difficulty | Specific guidance |
-|---|---|---|
-| **DIVE** (Tier 1, peer-reviewed) | MEDIUM (1-2 days) | 22,330 contracts, 8 DASP classes, **multi-label** (avoids BCCC's "one folder = one vuln" fiction). DIVE's 8 DASP classes map cleanly to our 10 classes (with 2 extras: bad randomness, time manipulation). Crosswalk: per-contract multi-hot label, one row per DASP class. **Tier 1 because peer-reviewed in Nature Scientific Data.** |
-| **FORGE** (Tier 1, ICSE 2026) | HIGH (2-3 days) | **LLM-driven extraction from real audit reports**. Crosswalk: CWE → 10 classes (CWE is the industry standard). 46 CWE IDs → 10 classes is a research-quality mapping; needs careful review. **Requires an `audit_report_connector`** that ingests audit reports (PDF, Markdown) — the connector is new work. Tier 1 because labels are from professional human auditors. |
-| **SolidiFI Benchmark** (Tier 1, ISSTA 2020) | MEDIUM (1-2 days) | **9,369 injected bugs, 100% ground-truth certainty** (mathematically guaranteed by the injection methodology). 7 types map to our 10 (Reentrancy, Timestamp, UnhandledExceptions, UncheckedSend, TOD, IntegerUO, TxOrigin). Crosswalk: per-bug-injection metadata → positive label. **Already in `ml/data/SolidiFI-benchmark/`** — easy connector. **Promoted from "supporting" to Tier 1** per friend. |
-| **ScrawlD** (Tier 2, MSR 2022) | MEDIUM (1-2 days) | 6,780 mainnet contracts, **5-tool majority voting (3/5 agreement)**. The 5 tools are Slither, Mythril, Manticore, Securify, Smartcheck. Crosswalk: per-tool detector → 10 classes; require 3/5 agreement for positive label (otherwise drop). Tier 2 silver because tool-based, but with consensus. |
-| **Code4rena Audit Reports** (Tier 2 gold) | HIGH (2-3 days) | **Human expert auditors under financial incentive** — highest possible label quality. 6,454 contracts, 1,361 high-risk findings, 499 confirmed high-severity. **Requires a new `audit_report_scraper` connector** that ingests the C4 reports (Markdown from code4rena.com). Crosswalk: finding severity + description → 10 classes. Tier 2 because scale is smaller, but gold-quality labels. **The "EVMbench" subset (120 vulns from 40 audits) is included in Code4rena — no separate connector needed.** |
-| **DeFi Hacks REKT Database** (Tier 2 gold, T0) | MEDIUM (1-2 days) | 3,216 hacked DeFi incidents + 181 curated high-impact. **Verified real exploits** (T0 tier). Requires a `rekt_scraper` connector that ingests the REKT database (Markdown posts). Crosswalk: incident type → 10 classes (T0 override per D-3.3). |
-| **DISL** (Tier 4 bronze) | LOW (0.5 day) | 514,506 unique Solidity files, **unlabeled**. Used for NonVulnerable class + pretraining. No crosswalk needed (no labels). |
-| **ReentrancyStudy-Data** (Tier 4 bronze) | MEDIUM (1 day) | 230,548 Etherscan contracts, reentrancy-labeled (single class, tool-based). Crosswalk: per-tool label → Reentrancy class only. Tier 4 because single-class + tool-based, but massive scale. |
-| **DeFiVulnLabs** (Tier 3 structural) | MEDIUM (1-2 days) | 48 vulnerability types, Foundry-style exploits. Already in DeFiHackLabs family (same org). Crosswalk: per-folder → 10 classes. |
-
-**Friend's 3-tool ensemble warning** (per datasources_suggestions.md Part 1): Conkas + Slither + Smartcheck only detects 76.78% of actual vulnerabilities; Slither reentrancy precision is 51.97%. **This validates** the Stage 4 `tool_validator` design (D-4.3): tool agreement is corroborative, NOT authoritative. The Slither-Audited crosswalk (3-P9) has the "confidence > 0.8 AND canonical detector" rule precisely to filter out the low-precision tool hits.
-
-**Friend's 97% SmartBugs Wild FP rate warning** (per Part 4): SmartBugs Wild as labeled data is a "97% FP" trap. The existing Tier 3 (T3 tool-generated, conservative) design for `smartbugs_wild` in the merger is correct. **No change needed** — the friend confirms the existing crosswalk design.
+**Friend's 3-tool ensemble warning** (per datasources_suggestions.md Part 1): Conkas + Slither + Smartcheck only detects 76.78% of actual vulnerabilities; Slither reentrancy precision is 51.97%. **This validates** the Stage 4 `tool_validator` design (D-4.3): tool agreement is corroborative, NOT authoritative. The 12 additive crosswalks (deferred to v2.1) include Slither-Audited; the conservative "confidence > 0.8 AND canonical detector" rule is preserved for that future work.
 
 **Why batch:** the crosswalk work is the bottleneck; batching it lets the reviewer focus on crosswalk review without context-switching to code.
 
-**Exit condition:** all 15 crosswalk YAMLs exist (10 original + 5 new from friend); each is reviewed and committed; the catalog `_total_sources_in_crosswalks` count is 17 (ScaBench + DeFiHackLabs + 15); the OZ crosswalk has the "clean, no exceptions" rule; the Slither-Audited crosswalk has the confidence > 0.8 + canonical-detector rule; the DIVE crosswalk handles multi-label; the FORGE crosswalk handles CWE; the Code4rena connector ingests Markdown reports.
+**Exit condition:** all 5 critical-path crosswalk YAMLs exist (DeFiHackLabs, SolidiFI, DIVE, SmartBugs Curated, Web3Bugs); each is reviewed and committed; the catalog `_total_sources_in_critical_path_crosswalks` count is 5; the DIVE crosswalk has the "bad_randomness: DROPPED" comment with v2.1 migration note; the Web3Bugs crosswalk has the O/L/S severity filter.
 
-**Commit:** 15 separate commits, one per crosswalk, each `feat(data-labeling): add <source> crosswalk.yaml`
+**Commit:** 5 separate commits, one per crosswalk, each `feat(data-labeling): add <source> crosswalk.yaml`
+
+**12 additive crosswalks (v2.1, not in this plan):** Bastet, FORGE, ScrawlD, DeFi Hacks REKT, Ethernaut, OZ Contracts, solidity_defi_vulns, DeFiVulnLabs, SC-Bench, SmartBugs Wild, slither-audited, Zenodo 16910242, Messi-Q, ScaBench. See [`actionable_plans/v2_1_additive_labeling.md`](v2_1_additive_labeling.md) (TODO: create when v2.1 starts).
 
 ---
 
@@ -217,9 +209,35 @@ Author `sentinel_data/labeling/merger.py` and `sentinel_data/labeling/confidence
 
 The merger writes a per-contract `labels.merged.json` that supersedes the per-source `.labels.json` for downstream consumption. The catalog records the merge lineage (which source labels were combined).
 
-**Why after the parsers:** the merger needs at least 2 sources' label output to test against; with 12 parsers, the merger is well-exercised.
+**NEW 2026-06-09 (friend review §6.3.2):** the merger **runs the CallToUnknown < 300 verified → ExternalBug merge rule** as a per-class count check after all parsers have run. The rule:
 
-**Exit condition:** merger correctly combines labels for a fixture where one contract appears in 3 sources; confidence tiers are assigned per (contract, class); conflict resolution follows the precedence rules.
+```python
+# In merger.py
+def check_call_to_unknown_merge_rule(merged_labels: dict) -> dict:
+    """Returns a status dict; pauses and asks human if trigger met."""
+    call_to_unknown_count = sum(
+        1 for lbl in merged_labels.values()
+        if lbl.get('classes', {}).get('CallToUnknown', {}).get('value') == 1
+    )
+    trigger_threshold = 300  # from config.yaml pipeline.class.merge_rules
+    if call_to_unknown_count < trigger_threshold:
+        return {
+            "trigger": True,
+            "action": "pause_and_ask_human",
+            "current_count": call_to_unknown_count,
+            "threshold": trigger_threshold,
+            "proposed_change": "labels.class_map.CallToUnknown = ExternalBug",
+            "reversible": True,
+            "decision": None,  # filled in by human approval
+        }
+    return {"trigger": False, "current_count": call_to_unknown_count}
+```
+
+**The rule pauses, not auto-merges.** Ali's explicit approval is required before the merger applies the merge. The decision is recorded in the catalog's `merge_decisions` table. The merge is reversible in v2.1: if we accumulate 1000+ verified CallToUnknown, split them back.
+
+**Why after the parsers:** the merger needs at least 2 sources' label output to test against; with 5 critical-path parsers, the merger is well-exercised.
+
+**Exit condition:** merger correctly combines labels for a fixture where one contract appears in 3 sources; confidence tiers are assigned per (contract, class); conflict resolution follows the precedence rules; **CallToUnknown < 300 rule pauses and asks human (not auto-merge)**.
 
 **Commit:** `feat(data-labeling): add merger + confidence module`
 
@@ -263,6 +281,56 @@ Document the key design decisions: frozen taxonomy (D-3.1), human-reviewed cross
 
 ---
 
+### 3.12 — NEW 2026-06-09 (friend review): FORGE 50-entry agreement test (IF FORGE is added)
+
+If the additive list includes FORGE (i.e. Stage 3 has budget for 1-2 additive crosswalks beyond the 5 critical-path), run a 50-entry agreement test on FORGE's LLM-driven label extraction. The test:
+
+1. **Sample 50 entries** from FORGE's raw label file (stratified by CWE class).
+2. **Manually extract** the code location + Sentinel class for each (by Ali, with the 46-CWE → 10-class crosswalk as a reference).
+3. **Compare** the LLM-extracted label to the manual extraction. Agreement = (matches) / 50.
+4. **Threshold:** if agreement ≥ 85% (per `pipeline.min_viable_corpus.forge_agreement_min` in config.yaml), FORGE is added to the additive list and ships in Run 11.
+5. **If < 85%:** FORGE is **deferred to v2.2** (per proposal §6.5). The 5 critical-path sources ship without it. The decision is documented in `data/registry/decisions/forge_50_entry_test.md`.
+
+**Why 85%:** the friend recommendation. A 100% LLM extraction is unrealistic (LLMs are noisy on long technical documents); 85% is the "good enough" bar where LLM errors are within human-reviewable range. Below 85%, the LLM extraction path is not production-ready.
+
+**Why 50 entries:** stratified by CWE class covers the 46 CWE IDs; 50 is statistically significant at the 85% threshold (95% CI of ±10%). Larger samples are incremental precision.
+
+**Why this is conditional:** if Stage 3 has time for FORGE, it ships. If not, the 5 critical-path sources ship without it, and FORGE is v2.1.
+
+**Exit condition:** if FORGE is added: 50-entry test passes ≥85% agreement; test result is committed to `data/verification/forge_50_entry_test/agreement.json`. If FORGE is not added: decision is documented in `data/registry/decisions/forge_deferred_to_v2_2.md`.
+
+**Commit:** `test(data-labeling): add FORGE 50-entry agreement test (or document deferral)`
+
+---
+
+### 3.13 — NEW 2026-06-09 (friend review): Go/No-Go minimum-viable-corpus gate
+
+At the end of Stage 3, run the **minimum-viable-corpus gate** (per proposal §6.5) before transitioning to Stage 4. The gate validates that the 5 critical-path sources + DISL negatives hit the minimum thresholds:
+
+| # | Criterion | Threshold (from config.yaml `pipeline.min_viable_corpus.*`) | If below |
+|---|---|---|---|
+| 1 | Total contracts (5 critical-path + DISL negatives) | ≥ 4,000 (`total_contracts_min`) | Defer Run 11 to v2.1 (Run 12) |
+| 2 | Reentrancy, DoS, IntegerUO positive count | ≥ 300 each (`per_class_positive_min_major`) | Defer Run 11 |
+| 3 | Other 7 classes positive count | ≥ 100 each (`per_class_positive_min_minor`) | Defer Run 11 OR apply CallToUnknown merge rule |
+| 4 | CallToUnknown verified count | ≥ 300 (`call_to_unknown_min`) | Apply merge rule (3.8) — NOT a defer trigger |
+| 5 | SmartBugs Curated semantic_checker recall | ≥ 90% (`smartbugs_curated_recall_min`) | Defer Run 11 (semantic_checker is broken) |
+| 6 | FORGE agreement (if FORGE added) | ≥ 85% (`forge_agreement_min`) | Defer FORGE to v2.2 — NOT a defer trigger for Run 11 |
+
+**The gate is automated:** `sentinel-data verify --min-viable-corpus` exits 0 if all 6 criteria are met, non-zero otherwise. The gate output is a per-criterion pass/fail with the actual count vs threshold.
+
+**If the gate fails (criteria 1-3 or 5):**
+- **The decision is documented, not auto-deferred.** Ali reviews the gate output and decides: (a) defer Run 11 to v2.1 (Run 12), OR (b) attempt fast re-introduction of 1-2 additive sources to fill the gap (e.g. add Bastet if Reentrancy < 300; add OZ Contracts if NonVulnerable is below 3:1 cap).
+- The decision is committed to `data/registry/decisions/stage3_min_viable_corpus_gate.md`.
+- The whole 10-week timeline is re-baselined if Run 11 is deferred.
+
+**If the gate passes:** Stage 3 is complete; proceed to Stage 4.
+
+**Exit condition:** the gate command runs cleanly; the gate output is committed; Ali's decision is recorded; **Run 11 launch is either confirmed or deferred to v2.1 (Run 12) with documented reason**.
+
+**Commit:** `feat(data-labeling): add min_viable_corpus gate (Stage 3 exit criterion)`
+
+---
+
 ## What NOT to fix (preservation list)
 
 | Bug | Status | File:line | Stage 3 action |
@@ -281,17 +349,19 @@ Document the key design decisions: frozen taxonomy (D-3.1), human-reviewed cross
 | # | Check |
 |---|---|
 | 1 | `sentinel_data/labeling/schema/taxonomy.yaml` exists with 10 classes in the v1 order |
-| 2 | All 12 source crosswalks exist (`bastet`, `scabench`, `web3bugs`, `defihacklabs`, `solidity_defi_vulns`, `smartbugs_curated`, `smartbugs_wild`, `openzeppelin`, `ethernaut`, `slither_audited`, `messi_q`, `zenodo_16910242`) |
-| 3 | All 12 source parsers exist and run against their fixtures |
-| 4 | The merger correctly combines labels for a multi-source fixture; conflict resolution follows D-3.3 |
-| 5 | `sentinel-data label --source scabench` produces 30 `.labels.json` files for the ScaBench fixture |
-| 6 | Labels match a hand-checked reference for 5 of the 30 ScaBench files |
+| 2 | All 5 critical-path source crosswalks exist (`defihacklabs`, `solidifi`, `dive`, `smartbugs_curated`, `web3bugs`); the DIVE crosswalk has the "bad_randomness: DROPPED" comment with v2.1 migration note |
+| 3 | All 5 critical-path source parsers exist and run against their fixtures |
+| 4 | The merger correctly combines labels for a multi-source fixture; conflict resolution follows D-3.3; **CallToUnknown < 300 merge rule pauses and asks human (not auto-merge)** |
+| 5 | `sentinel-data label --source defihacklabs` produces 30 `.labels.json` files for the DeFiHackLabs fixture |
+| 6 | Labels match a hand-checked reference for 5 of the 30 DeFiHackLabs files |
 | 7 | Confidence tiers are assigned per (contract, class) per D-3.4 |
 | 8 | `dvc repro label` runs end-to-end |
 | 9 | `poetry run pytest tests/test_labeling -v` passes with > 80% coverage; **99% DoS↔Reentrancy co-occurrence regression test passes** |
-| 10 | `ADR-0004-labeling-design.md` is committed; **references the 99% co-occurrence as the motivation for the merger's de-duplication rule** |
+| 10 | `ADR-0004-labeling-design.md` is committed; references the 99% co-occurrence as the motivation for the merger's de-duplication rule |
+| 11 | **(NEW) FORGE 50-entry agreement test** (if FORGE added): ≥85% agreement OR FORGE deferred to v2.2 with documented decision |
+| 12 | **(NEW) Go/No-Go minimum-viable-corpus gate**: all 6 criteria met OR Run 11 deferred to v2.1 with documented decision |
 
-All 10 pass → **Stage 3 complete**. Tag `data-stage-3`, proceed to Stage 4.
+All 12 pass → **Stage 3 complete**. Tag `data-stage-3`, proceed to Stage 4.
 
 ---
 
@@ -308,4 +378,4 @@ All 10 pass → **Stage 3 complete**. Tag `data-stage-3`, proceed to Stage 4.
 
 ---
 
-**End of Stage 3 actionable plan. Total estimated time: 5–7 working days (Jun 30–Jul 8), with Jul 9–10 as buffer. Note: this stage may extend to 2 weeks if crosswalk authoring is slower than estimated.**
+**End of Stage 3 actionable plan. Total estimated time: 5–8 working days for the 5 critical-path crosswalks + 5–7 days for parsers + merger + tests + agreement test + gate = 10–15 working days (Jun 30–Jul 18), with Jul 19–20 as buffer for the gate decision. Note: this stage may extend to the full 3 weeks if 1-2 additive crosswalks are added (e.g. Bastet for scale).**

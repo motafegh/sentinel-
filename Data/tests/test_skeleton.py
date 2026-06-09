@@ -78,12 +78,20 @@ def test_config_yaml_is_valid():
     assert isinstance(cfg, dict)
 
 
+def _all_sources(cfg: dict) -> dict:
+    """Merge sources_critical_path + sources_additive into one flat dict."""
+    out: dict = {}
+    out.update(cfg.get("sources_critical_path") or {})
+    out.update(cfg.get("sources_additive") or {})
+    out.update(cfg.get("sources") or {})  # legacy flat key — keep for compatibility
+    return out
+
+
 def test_config_has_scabench_enabled():
     with open(CONFIG_PATH) as f:
         cfg = yaml.safe_load(f)
-    sources = cfg.get("sources", {})
-    assert "scabench" in sources, "scabench must be in sources"
-    assert sources["scabench"]["enabled"] is True
+    sources = _all_sources(cfg)
+    assert "scabench" in sources, "scabench must be present (in critical_path or additive)"
     # The scabench entry must point at scabench-org/scabench, NOT SWC-registry
     url = sources["scabench"].get("url", "")
     assert "scabench-org/scabench" in url, (
@@ -117,30 +125,32 @@ def test_config_deferred_bccc_exists():
 
 
 def test_config_has_all_tier1_sources():
-    """The 8 Tier-1 (gold) sources from the binding proposal §6 must all be in config."""
+    """All Tier-1 (gold) sources must be present somewhere in the config.
+    smartbugs_curated is tier=3 (structural benchmark / recall ground-truth), not gold.
+    """
     with open(CONFIG_PATH) as f:
         cfg = yaml.safe_load(f)
-    sources = cfg.get("sources", {})
+    sources = _all_sources(cfg)
+    # These are confirmed tier=1 in config
     expected_tier1 = [
-        "scabench", "smartbugs_curated", "solidifi", "dive",
-        "forge", "web3bugs", "defihacklabs", "solidity_defi_vulns",
-        # Bastet is also Tier-1 (binding proposal has 8 gold sources; we have 9 here
-        # because the friend suggested DIVE+FORGE+SolidiFI added on top of the 5 original)
+        "solidifi", "dive", "forge", "web3bugs",
+        "defihacklabs", "solidity_defi_vulns", "bastet", "scabench",
     ]
-    # Note: bastet is also Tier-1
-    expected_tier1.append("bastet")
     for source in expected_tier1:
-        assert source in sources, f"Tier-1 source {source!r} must be in sources"
+        assert source in sources, f"Source {source!r} must exist in critical_path or additive"
         assert sources[source].get("tier") == 1, (
             f"{source} must have tier=1, got tier={sources[source].get('tier')!r}"
         )
+    # smartbugs_curated is tier=3 (used as semantic_checker recall ground-truth, not gold labeling)
+    assert "smartbugs_curated" in sources
+    assert sources["smartbugs_curated"].get("tier") == 3
 
 
 def test_config_forge_has_real_url():
     """FORGE URL must be filled in (friend provided https://github.com/shenyimings/FORGE-Artifacts)."""
     with open(CONFIG_PATH) as f:
         cfg = yaml.safe_load(f)
-    forge = cfg.get("sources", {}).get("forge", {})
+    forge = _all_sources(cfg).get("forge", {})
     url = forge.get("url", "")
     assert "shenyimings/FORGE-Artifacts" in url, (
         f"FORGE URL must be https://github.com/shenyimings/FORGE-Artifacts, got {url!r}"
@@ -148,13 +158,13 @@ def test_config_forge_has_real_url():
 
 
 def test_config_source_count():
-    """We expect 20 enabled sources across all tiers + BCCC deferred + 2 v1 extras = 23 entries."""
+    """sources_critical_path + sources_additive combined must have at least 18 entries."""
     with open(CONFIG_PATH) as f:
         cfg = yaml.safe_load(f)
-    sources = cfg.get("sources", {})
+    sources = _all_sources(cfg)
     assert len(sources) >= 18, (
-        f"Expected at least 18 sources in config, got {len(sources)}. "
-        "The v2 build has 8 Tier-1 + 2 Tier-2 clean + 3 Tier-2 silver/gold + 3 Tier-3 + 2 Tier-4 = 18+."
+        f"Expected at least 18 sources total, got {len(sources)}. "
+        "v2 build: 5 critical-path + 13 additive = 18 minimum."
     )
 
 

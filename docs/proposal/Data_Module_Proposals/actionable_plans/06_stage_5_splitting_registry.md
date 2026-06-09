@@ -1,11 +1,14 @@
 # Actionable Plan — Stage 5: Splitting + Registry
 
-**Date:** 2026-07-14
-**Stage:** 5 of 8 (Week 6: Jul 14–20)
+**Date:** 2026-07-14 (revised 2026-06-09 post-friend-review)
+**Stage:** 5 of 8 (Week 8: Jul 28–Aug 3)
 **Owner:** SENTINEL data engineering
-**Source proposal:** `docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md` §3.6, §3.7, §5 (Week 6)
+**Source proposal:** `docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md` §3.6, §3.7, §5 (Week 8)
 **Audit ref:** [`AUDIT_PATCHES.md`](AUDIT_PATCHES.md) §1 (5-P1 through 5-P7)
-**Exit criteria:** `sentinel-data split --config split-config.yaml` produces `splits/v1/{train,val,test}.parquet` with a versioned manifest; `sentinel_data.registry.load_artifact("sentinel-v2-dryrun-2026-07")` returns the artifact; the leakage auditor reports 0 near-duplicates across split boundaries; the catalog has at least one named dataset version; **the catalog has a schema migrations table + a dataset version retirement chain (preserving the v1.4 BCCC labels, v8 BCCC graphs, etc.)**.
+**Friend-review revisions (2026-06-09):**
+- **NEW: NonVulnerable 3:1 cap** in `stratified_splitter.py` — friend identified that DISL's 514K unlabeled contracts would create a 51:1 negative:positive ratio (same BCCC failure pattern at larger scale). The cap is `pipeline.negative.positive_ratio_max: 3.0` (from config.yaml); subsample is stratified by source. Per-class overrides available.
+- The 4 splitter strategies, dedup_enforcer, leakage_auditor, split_manifest, catalog, lineage_tracker, artifact_hasher, dataset_diff, changelog, and the schema_migrations + dataset_version_retirements tables are all preserved.
+**Exit criteria:** `sentinel-data split --config split-config.yaml` produces `splits/v1/{train,val,test}.parquet` with a versioned manifest; `sentinel_data.registry.load_artifact("sentinel-v2-dryrun-2026-08")` returns the artifact; the leakage auditor reports 0 near-duplicates across split boundaries; the catalog has at least one named dataset version; **the catalog has a schema migrations table + a dataset version retirement chain (preserving the v1.4 BCCC labels, v8 BCCC graphs, etc.)**; **NonVulnerable class count ≤ 3× total positive count across all 10 classes (per config.yaml `pipeline.negative.positive_ratio_max`)**.
 
 ---
 
@@ -198,11 +201,57 @@ Author `Data/tests/test_splitting/` and `Data/tests/test_registry/` with:
 
 ### 5.10 — Author `ADR-0006-splitting-and-registry-design.md`
 
-Document the key design decisions: 3 strategies (D-5.1), two-pass splitting (D-5.2), leakage auditor as safety net (D-5.3), SQLite + YAML catalog (D-5.4), lineage as graph (D-5.5), load-time hash verification (D-5.6), append-only dataset versions (D-5.7).
+Document the key design decisions: 3 strategies (D-5.1), two-pass splitting (D-5.2), leakage auditor as safety net (D-5.3), SQLite + YAML catalog (D-5.4), lineage as graph (D-5.5), load-time hash verification (D-5.6), append-only dataset versions (D-5.7), **NonVulnerable 3:1 cap (D-5.8, NEW 2026-06-09)**.
 
 **Exit condition:** file exists; references the BCCC duplication failure as motivation; cites the leakage auditor as the safety net.
 
 **Commit:** `docs(data): add ADR-0006 for splitting + registry design`
+
+---
+
+### 5.11 — NEW 2026-06-09 (friend review): NonVulnerable 3:1 cap in stratified_splitter
+
+**Friend's insight (paraphrased):** the proposal adds DISL (514,506 unlabeled contracts) as the primary NonVulnerable source. With ~1,200 positives from the 5 critical-path sources, the default ratio is 514K:1,200 = 428:1. This is the **same BCCC failure pattern at larger scale** — a model that defaults to "predict negative" and is right 99%+ of the time never learns positive patterns. The BCCC failure had 99% DoS↔Reentrancy co-occurrence partly because of class imbalance at training time.
+
+**Solution:** enforce a NonVulnerable class size cap in `stratified_splitter.py`. The cap is `pipeline.negative.positive_ratio_max: 3.0` from config.yaml. Implementation:
+
+```python
+# In stratified_splitter.py
+def apply_nonvulnerable_cap(splits: dict, total_positive_count: int, cap: float) -> dict:
+    """Subsample NonVulnerable to at most cap * total_positive_count contracts.
+    Stratified by source to preserve the per-source distribution."""
+    max_nonvuln = int(cap * total_positive_count)
+    for split_name in ['train', 'val', 'test']:
+        nonvuln_contracts = [c for c in splits[split_name] if c['primary_class'] == 'NonVulnerable']
+        if len(nonvuln_contracts) > max_nonvuln:
+            # Stratified subsample by source
+            sources = {}
+            for c in nonvuln_contracts:
+                sources.setdefault(c['source'], []).append(c)
+            # Compute per-source cap proportional to original distribution
+            total = len(nonvuln_contracts)
+            subsample = []
+            for src, contracts in sources.items():
+                src_cap = int(max_nonvuln * len(contracts) / total)
+                subsample.extend(random.sample(contracts, min(src_cap, len(contracts))))
+            # Replace the NonVulnerable set in this split
+            splits[split_name] = [c for c in splits[split_name] if c['primary_class'] != 'NonVulnerable'] + subsample
+    return splits
+```
+
+**Default 3:1, not higher:** a higher cap (e.g. 5:1 or 10:1) reproduces the BCCC problem; a lower cap (e.g. 1:1) starves the NonVulnerable signal and the model may over-predict positive. 3:1 is the empirical sweet spot.
+
+**Per-class override:** `pipeline.negative.per_class_ratio_max.<ClassName>: 5.0` allows per-class tuning. The default is 3:1; a class that needs more negatives (e.g. if it's the dominant signal for some real-world scenarios) can be raised to 5:1. The per-class ratio is checked separately from the global ratio.
+
+**Stratification by source:** the subsample is stratified by source so the OZ Contracts / DISL / Ethernaut distribution is preserved. Without stratification, the subsample could be 100% DISL (largest source), biasing the model toward "DISL is the typical clean contract" (a non-issue, since clean contracts are all clean, but the principle is consistent with the per-source stratification in D-5.1).
+
+**Audit log:** every subsample is recorded in the `split_manifest.json` with the original count, the capped count, the per-source breakdown, and the cap value. The audit log lets Stage 6's drift_monitor and Run 12's dataset_diff see exactly how the cap affected the splits.
+
+**Exit condition:** the cap is enforced; `split_manifest.json` records the cap value, original count, and capped count; the final train split has `len(NonVulnerable) <= 3 * sum(len(other_classes))`; the per-class distribution is preserved within ±2% of the original.
+
+**Commit:** `feat(data-split): add NonVulnerable 3:1 cap to stratified_splitter (per friend review §6.3.1)`
+
+---
 
 ---
 
@@ -224,14 +273,15 @@ Document the key design decisions: 3 strategies (D-5.1), two-pass splitting (D-5
 | 3 | `leakage_auditor` reports 0 leaks on a clean split; reports known leaks on a contaminated fixture |
 | 4 | `split_manifest.json` is written with all fields populated |
 | 5 | SQLite catalog is created with 4 tables; YAML mirror is generated and matches DB |
-| 6 | `sentinel_data.registry.load_artifact("sentinel-v2-dryrun-2026-07")` returns the fixture artifact |
+| 6 | `sentinel_data.registry.load_artifact("sentinel-v2-dryrun-2026-08")` returns the fixture artifact |
 | 7 | `verify_artifact_hash()` returns True for a valid file; False for a tampered file |
 | 8 | `dataset_diff` reports a clean diff for two fixture versions |
 | 9 | `dvc repro split register` runs end-to-end |
 | 10 | `poetry run pytest tests/test_splitting tests/test_registry -v` passes with > 80% coverage |
 | 11 | `ADR-0006-splitting-and-registry-design.md` is committed |
+| 12 | **(NEW) NonVulnerable 3:1 cap enforced**; `len(NonVulnerable) <= 3 * total_positive`; subsample stratified by source; cap value recorded in `split_manifest.json` |
 
-All 11 pass → **Stage 5 complete**. Tag `data-stage-5`, proceed to Stage 6.
+All 12 pass → **Stage 5 complete**. Tag `data-stage-5`, proceed to Stage 6.
 
 ---
 

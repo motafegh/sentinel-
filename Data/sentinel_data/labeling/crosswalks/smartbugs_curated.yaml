@@ -1,0 +1,32 @@
+# SmartBugs Curated crosswalk — map dataset/ category folders → SENTINEL 10-class labels
+# Source: https://github.com/smartbugs/smartbugs-curated
+# Connector: git  |  Tier: 3 (structural benchmark)  |  Stage: critical-path
+#
+# Structure: dataset/<category>/<contract>.sol
+# The 143 hand-labeled contracts serve as the semantic_checker recall ground-truth in Stage 4.
+# The ≥90% recall gate (pipeline.min_viable_corpus.smartbugs_curated_recall_min) is enforced
+# by Stage 4's verification module.
+#
+# DASP → SENTINEL 10-class mapping (direct, per proposal §6.4):
+
+schema_version: "1"
+source: smartbugs_curated
+label_field: directory_name
+fallback_label: NonVulnerable
+
+class_map:
+  reentrancy:               Reentrancy
+  arithmetic:               IntegerUO
+  denial_of_service:        DenialOfService
+  time_manipulation:        Timestamp
+  unchecked_low_level_calls: CallToUnknown
+  access_control:           ExternalBug
+  bad_randomness:           Timestamp        # closest class; flagged for review in Stage 3
+  front_running:            Timestamp        # TOD → Timestamp (closest available class)
+  short_addresses:          NonVulnerable    # not in 10-class taxonomy
+  other:                    NonVulnerable
+
+open_questions:
+  - "bad_randomness → Timestamp is a lossy mapping (no dedicated class). Flag in Stage 3."
+  - "front_running (TOD) → Timestamp is approximation. Acceptable given DIVE has front_running label."
+  - "The 143 contracts are the recall gate for Stage 4 — ensure semantic_checker retains ≥90%."
