@@ -1,0 +1,37 @@
+# DeFiHackLabs crosswalk — map exploit folder names → SENTINEL 10-class labels
+# Source: https://github.com/SunWeb3Sec/DeFiHackLabs
+# Connector: git  |  Tier: 1 (Gold, T0 confidence)  |  Stage: critical-path
+#
+# Structure: src/test/<ExploitName>_exp.sol
+# Labels come from the exploit name + folder conventions (no separate label file).
+#
+# PLACEHOLDER — Stage 3 fills in the full class_map with all 400+ exploit entries.
+# The mapping below covers the major categories seen in DeFiHackLabs.
+
+schema_version: "1"
+source: defihacklabs
+label_field: folder_name          # folder name is the primary label signal
+fallback_label: NonVulnerable      # if no mapping found
+
+class_map:
+  # Reentrancy exploits
+  Reentrancy:    Reentrancy
+  reentrancy:    Reentrancy
+  # Flash loan / price manipulation → ExternalBug
+  FlashLoan:     ExternalBug
+  flashloan:     ExternalBug
+  Oracle:        ExternalBug
+  PriceManip:    ExternalBug
+  # Access control / privilege → ExternalBug
+  AccessControl: ExternalBug
+  Privilege:     ExternalBug
+  # Integer overflow
+  Overflow:      IntegerUO
+  overflow:      IntegerUO
+  # Logic bugs / business logic → ExternalBug (closest class)
+  Logic:         ExternalBug
+
+open_questions:
+  - "How do we map DeFiHackLabs free-text exploit descriptions to the 10 classes?"
+  - "Some exploits span multiple classes (e.g. reentrancy + integer overflow) — multi-label?"
+  - "Stage 3: use LLM-assist on exploit description or manual review of 400+ entries?"

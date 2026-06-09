@@ -44,7 +44,7 @@ docs/proposal/Data_Module_Proposals/
 
 | Item | Status |
 |---|---|
-| Binding proposal | ✅ v1.1 (2026-06-08) — 17 sources (12 original + 5 new from friend); 10-week build |
+| Binding proposal | ✅ v1.2 (2026-06-09) — 5 critical-path + 12 additive (v2.1) sources, post-friend-review; 10-week build |
 | Audit patches | ✅ All applied; archived for reference |
 | Stage 0 (skeleton) | ⏳ Pending — start 2026-06-09 |
 | Stage 1–7 (build) | ⏳ Pending — Jun 16 – Aug 17 |
@@ -60,23 +60,26 @@ docs/proposal/Data_Module_Proposals/
 
 **What's being built:** a new `sentinel-data` package at `~/projects/sentinel/Data/` (which already contains the BCCC deep-dive outputs from Phases 1-5) that owns the entire data pipeline from raw contract ingestion through verified, versioned, multi-source, multi-label dataset export. The ML module (`sentinel-ml`) consumes the registry-versioned artifacts; it never sees a raw contract.
 
-**The 9 submodules** (per the binding proposal §2):
-- **Ingestion** — per-source connectors (Git, HF, Zenodo, AuditReport, AuditScraper, Rekt, Etherscan)
+**The 9 submodules** (per the binding proposal §2, **revised 2026-06-09 post-friend-review**):
+- **Ingestion** — per-source connectors (Git, HF, Zenodo, AuditReport, Rekt, Etherscan); **5 critical-path sources + DISL (3:1 cap negative pool)** are enabled for Run 11; 12 additive deferred to v2.1
 - **Preprocessing** — flatten, two-pass compile, dedup (0.85 threshold), normalize, segment, version-bucket
-- **Representation** — graphs (v9 schema: 12-dim features, 14 node types, 12 edge types), tokens, with the active 36-issue pre-Run-8 audit regression test guarding the port from `ml/`
-- **Labeling** — 17 crosswalk YAMLs + 17 parsers + merger with 99% DoS↔Reentrancy de-duplication
-- **Verification** — the BCCC-failure catcher; AST-level semantic checks + tool corroboration + per-stage p5_s1→p5_s6 regression test
-- **Splitting + Registry** — versioned train/val/test splits + SQLite catalog with schema migrations + dataset version retirement chain
+- **Representation** — graphs (v9 schema: 12-dim features, 14 node types, 12 edge types), tokens, with the active 36-issue pre-Run-8 audit regression test guarding the port from `ml/`; **schema-dim gate test** (x.shape[-1] == 12)
+- **Labeling** — **5 critical-path crosswalk YAMLs + 5 critical-path parsers** + merger with 99% DoS↔Reentrancy de-duplication + **CallToUnknown < 300 verified → merge into ExternalBug (human-checked)** + **FORGE 50-entry agreement test** + **Go/No-Go minimum-viable-corpus gate**
+- **Verification** — the BCCC-failure catcher; AST-level semantic checks + tool corroboration + per-stage p5_s1→p5_s6 regression test + **SmartBugs Curated 143-contract recall test (≥90%)**
+- **Splitting + Registry** — versioned train/val/test splits + SQLite catalog with schema migrations + dataset version retirement chain + **NonVulnerable 3:1 cap** (stratified subsample)
 - **Analysis** — `complexity_proxy_risk.md` is the data-side L4 finding catcher; co-occurrence matrix flags the 99% BCCC pattern
-- **Export + Seam Swap** — sharded export to `sentinel-ml`; predictor.py tier-threshold fix + EMITS edge fix
-- **Run 11 launch** — first training run on the v2 corpus, 2026-08-18
+- **Export + Seam Swap** — sharded export to `sentinel-ml`; predictor.py tier-threshold fix + EMITS edge fix + **slither transitive dep test**
+- **Run 11 launch** — first training run on the v2 corpus (5 critical-path sources + DISL negatives, ~4,800 contracts), 2026-08-18
 
-**The 5 most important tests** (the structural defense against the BCCC class of failure):
+**The 8 most important tests** (the structural defense against the BCCC class of failure):
 1. 36-issue pre-Run-8 audit regression test (Stage 2) — every A1–A38 fix is preserved through the port
-2. Byte-identical regression test (Stage 2) — new path output = old `ml/` path output
+2. **Schema-dim gate test** (Stage 2/7) — `x.shape[-1] == NODE_FEATURE_DIM` (12, not 11)
 3. BCCC Phase 5 regression test (Stage 4) — new module's verification matches the 5-phase deep-dive report to within ±0.5%
-4. Dual-path seam swap test (Stage 7) — old `dual_path_dataset.py` = new `sentinel_dataset.py` byte-identical
-5. 7 v2-readiness gates (Stage 7) — schema + Phase 5 + round-trip + complexity + per-class + leakage + 36-issue
+4. **SmartBugs Curated 143-contract recall test** (Stage 4) — semantic_checker retains ≥90% of confirmed positives (independent falsification)
+5. **Go/No-Go minimum-viable-corpus gate** (Stage 3) — all 6 criteria met OR Run 11 deferred to v2.1 (Run 12)
+6. Dual-path seam swap test (Stage 7) — old `dual_path_dataset.py` = new `sentinel_dataset.py` byte-identical
+7. **Slither transitive dep test** (Stage 7) — `pip install sentinel-data` brings slither-analyzer for the inference path
+8. 7 v2-readiness gates (Stage 7) — schema + Phase 5 + round-trip + complexity + per-class + leakage + 36-issue
 
 ---
 
@@ -110,10 +113,13 @@ See `actionable_plans/00_INDEX.md` §"Open questions" for the full list. The mos
 
 1. How is `sentinel-data` distributed to `sentinel-ml`? (path dep / PyPI / git tag)
 2. Dockerfile base image (recommend `python:3.12.1-bookworm`)
-3. DVC remote backend (S3 / GCS / local-only)
+3. ~~DVC remote backend (S3 / GCS / local-only)~~ ✅ **RESOLVED 2026-06-09: local-only for v2 build**
 4. Run 11 launch date (recommend 2026-08-18)
 5. Should `pdg_builder.py` ship in v2 or defer to v3.1? (current plan: defer)
 6. Should `_add_icfg_edges` cross-function external calls be added in Stage 2 (port) or post-Run-11 (v2.1)? (current plan: preserve partial fix)
+7. **NEW (friend review):** Critical-path corpus definition (5 sources + DISL negatives) — Run 11 ships with this
+8. **NEW (friend review):** NonVulnerable 3:1 cap (default) and CallToUnknown < 300 merge rule (human-checked) — both are config-driven
+9. **NEW (friend review):** If minimum-viable-corpus gate fails, defer Run 11 to v2.1 (Run 12) — decision is human-checked at Stage 3 exit
 
 ---
 

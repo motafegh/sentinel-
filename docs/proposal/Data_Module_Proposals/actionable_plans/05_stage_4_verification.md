@@ -1,11 +1,14 @@
 # Actionable Plan — Stage 4: Verification (the BCCC-failure catcher)
 
-**Date:** 2026-07-07
-**Stage:** 4 of 8 (Week 5: Jul 7–13)
+**Date:** 2026-07-07 (revised 2026-06-09 post-friend-review)
+**Stage:** 4 of 8 (Week 7: Jul 21–27)
 **Owner:** SENTINEL data engineering
-**Source proposal:** `docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md` §3.5, §5 (Week 5)
+**Source proposal:** `docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md` §3.5, §5 (Week 7)
 **Audit ref:** [`AUDIT_PATCHES.md`](AUDIT_PATCHES.md) §0 (F9, F25, F27, F28, F29, F30), §1 (4-P1 through 4-P10)
-**Exit criteria:** re-running the new `verification/` stage on the legacy BCCC corpus produces a `verification_report.md` that matches `Data/docs/legacy/bccc_deep_dive/Phase5_LabelVerification_2026-06-08/outputs/p5_s6_verification_report.md` to within ±0.5% per-class drop counts; the 6 verification components are independently testable; **probe dataset is 40 per class (matching BCCC seed, not 50)**; **negative-checker threshold is 5% (not 10%)**; **co-occurrence matrix is a primary class_auditor output (catches 99% DoS↔Reentrancy)**; **CEI ordering check is the Reentrancy pattern**.
+**Friend-review revisions (2026-06-09):**
+- **NEW task 4.11: SmartBugs Curated recall test** — semantic_checker must retain ≥90% of the 143 hand-labeled positives; this is the independent falsification test the friend recommended (the BCCC Phase 5 regression test is necessary but not sufficient — it tests agreement with Phase 5 ad-hoc scripts, not the checker's own FN rate)
+- The Phase 5 BCCC regression test is preserved (per-stage p5_s1 → p5_s6).
+**Exit criteria:** re-running the new `verification/` stage on the legacy BCCC corpus produces a `verification_report.md` that matches `Data/docs/legacy/bccc_deep_dive/Phase5_LabelVerification_2026-06-08/outputs/p5_s6_verification_report.md` to within ±0.5% per-class drop counts; the 6 verification components are independently testable; **probe dataset is 40 per class (matching BCCC seed, not 50)**; **negative-checker threshold is 5% (not 10%)**; **co-occurrence matrix is a primary class_auditor output (catches 99% DoS↔Reentrancy)**; **CEI ordering check is the Reentrancy pattern**; **semantic_checker retains ≥90% of SmartBugs Curated 143 hand-labeled positives (independent falsification test per friend review)**.
 
 ---
 
@@ -227,11 +230,37 @@ Author `Data/tests/test_verification/` with:
 
 ### 4.10 — Author `ADR-0005-verification-design.md`
 
-Document the key design decisions: per-class verification (D-4.1), AST patterns (D-4.2), tool corroboration (D-4.3), sampling-based FP estimation (D-4.4), hard/soft gate (D-4.5), negative checker (D-4.6), probe dataset (D-4.7), Phase 5 regression test (D-4.8).
+Document the key design decisions: per-class verification (D-4.1), AST patterns (D-4.2), tool corroboration (D-4.3), sampling-based FP estimation (D-4.4), hard/soft gate (D-4.5), negative checker (D-4.6), probe dataset (D-4.7), Phase 5 regression test (D-4.8), **SmartBugs Curated recall test (D-4.9, NEW 2026-06-09)**.
 
 **Exit condition:** file exists; cites the BCCC failure as the motivation; references the regression test as the gate.
 
 **Commit:** `docs(data): add ADR-0005 for verification design`
+
+---
+
+### 4.11 — NEW 2026-06-09 (friend review): SmartBugs Curated recall test (independent falsification)
+
+**Friend's insight (paraphrased):** the existing Phase 5 BCCC regression test (4.7) is necessary but not sufficient. It tests that the new `semantic_checker` agrees with Phase 5's ad-hoc scripts to within ±0.5% per class. A degenerate checker that always returns "no vulnerability" would have 100% agreement with Phase 5 on NegativeVulnerable contracts but 0% recall on positives. The Phase 5 regression test doesn't catch this.
+
+**Solution:** use the 143 SmartBugs Curated hand-labeled contracts as a **ground-truth probe** for the checker's independent false-negative rate. The 143 contracts are already on disk at `ml/data/smartbugs-curated/`; each has a known DASP category (the crosswalk maps DASP → Sentinel class). The test:
+
+1. **Load** all 143 SmartBugs Curated contracts + their DASP labels.
+2. **Run** the `semantic_checker` on each, asserting the positive classes from the crosswalk (per the SmartBugs Curated crosswalk from Stage 3.4).
+3. **Compute** per-class recall: of N known positives for class X, how many does the semantic_checker correctly retain?
+4. **Aggregate** to per-source recall: SmartBugs Curated as a whole should have ≥ 90% recall.
+5. **Threshold (per config.yaml `pipeline.min_viable_corpus.smartbugs_curated_recall_min`):** if recall ≥ 90%, the semantic_checker is validated; if < 90%, **the checker pattern is too strict** (false-negatives are too high) and the Stage 3 minimum-viable-corpus gate §6.5 will defer Run 11 to v2.1.
+
+**Why 90%, not 100%:** some valid reentrancies use intermediate state (not strict CEI ordering); the checker's CEI pattern is intentionally strict (per D-4.2) to drop BCCC-style FPs, but this may also drop some valid positives. 90% is the empirical sweet spot — high enough to retain most true positives, low enough to drop the noisy BCCC positives.
+
+**Why SmartBugs Curated specifically:** it's the **only** Tier-1 / Tier-3 source with hand-labeled contracts that are also small enough (143) to be a tractable ground-truth probe. DeFiHackLabs exploits are too large and complex; DIVE is too large; Web3Bugs is contest-scale. SmartBugs Curated is the canonical 143-contract benchmark in the field.
+
+**Why this is a Stage 4 task, not Stage 3:** the semantic_checker is built in Stage 4.1-4.3. The 143 SmartBugs Curated contracts are labeled in Stage 3.4 (one of the 5 critical-path crosswalks). Stage 4.11 uses both artifacts.
+
+**Exit condition:** the test runs; per-class recall is reported in `data/verification/smartbugs_curated_recall_test/report.json`; aggregate recall is ≥ 90% (or Stage 3's minimum-viable-corpus gate §6.5 is documented to defer Run 11).
+
+**Commit:** `test(data-verify): add SmartBugs Curated 143-contract recall test (≥90% threshold per friend review)`
+
+---
 
 ---
 
@@ -262,8 +291,9 @@ Document the key design decisions: per-class verification (D-4.1), AST patterns 
 | 9 | `dvc repro verify` runs end-to-end |
 | 10 | `poetry run pytest tests/test_verification -v` passes with > 80% coverage |
 | 11 | `ADR-0005-verification-design.md` is committed |
+| 12 | **(NEW) SmartBugs Curated 143-contract recall test passes** (semantic_checker retains ≥90% of confirmed positives) |
 
-All 11 pass → **Stage 4 complete**. Tag `data-stage-4`, proceed to Stage 5.
+All 12 pass → **Stage 4 complete**. Tag `data-stage-4`, proceed to Stage 5.
 
 ---
 

@@ -67,23 +67,39 @@ def _default_config() -> str:
 # ── Stage dispatch table (Stage 0: all placeholder) ──────────────────────────
 
 def _run_ingest(args: argparse.Namespace) -> None:
+    from sentinel_data.ingestion.ingest import ingest_all, ingest_source
+    cfg = _load_config(args.config)
+    data_dir = Path(args.config).parent / "data"
+
     print(f"[ingest] {STAGE_DESCRIPTIONS['ingest']}")
     print(f"  config : {args.config}")
-    if getattr(args, "source", None):
-        print(f"  source : {args.source}")
-    if args.dry_run:
-        print("  (dry-run — no files written)")
-        return
-    print("  NOT IMPLEMENTED — implement in Stage 1")
+
+    source = getattr(args, "source", None)
+    if source:
+        print(f"  source : {source}")
+        if args.dry_run:
+            print("  (dry-run — no files written)")
+        ingest_source(source, cfg, data_dir, dry_run=args.dry_run)
+    else:
+        if args.dry_run:
+            print("  (dry-run — no files written)")
+        ingest_all(cfg, data_dir, dry_run=args.dry_run)
 
 
 def _run_preprocess(args: argparse.Namespace) -> None:
+    from sentinel_data.preprocessing.preprocess import preprocess_all, preprocess_source
+    cfg = _load_config(args.config)
+    data_dir = Path(args.config).parent / "data"
+
     print(f"[preprocess] {STAGE_DESCRIPTIONS['preprocess']}")
     print(f"  config : {args.config}")
-    if args.dry_run:
-        print("  (dry-run — no files written)")
-        return
-    print("  NOT IMPLEMENTED — implement in Stage 1")
+
+    source = getattr(args, "source", None)
+    if source:
+        print(f"  source : {source}")
+        preprocess_source(source, cfg, data_dir, dry_run=args.dry_run)
+    else:
+        preprocess_all(cfg, data_dir, dry_run=args.dry_run)
 
 
 def _run_represent(args: argparse.Namespace) -> None:
@@ -149,6 +165,15 @@ def _run_export(args: argparse.Namespace) -> None:
     print("  NOT IMPLEMENTED — implement in Stage 7")
 
 
+def _run_freshness(args: argparse.Namespace) -> None:
+    from sentinel_data.ingestion.freshness import run_freshness_check
+    cfg = _load_config(args.config)
+    data_dir = Path(args.config).parent / "data"
+    print("[freshness] Checking source pins vs upstream HEAD + slither-analyzer version...")
+    report = run_freshness_check(cfg, data_dir)
+    print(report)
+
+
 _STAGE_FN = {
     "ingest":     _run_ingest,
     "preprocess": _run_preprocess,
@@ -159,6 +184,7 @@ _STAGE_FN = {
     "register":   _run_register,
     "analyze":    _run_analyze,
     "export":     _run_export,
+    "freshness":  _run_freshness,
 }
 
 
@@ -202,6 +228,13 @@ def _build_parser() -> argparse.ArgumentParser:
                 metavar="NAME",
                 help="Limit to a single source (default: all enabled sources)",
             )
+
+    # ── utility subcommands ───────────────────────────────────────────────────
+    fresh_p = subparsers.add_parser(
+        "freshness",
+        help="Check source pin staleness + slither-analyzer version",
+    )
+    fresh_p.add_argument("--config", default=_default_config(), help="Path to config.yaml")
 
     return parser
 

@@ -2,14 +2,32 @@
 # Single source of truth for: which sources are enabled, pins, thresholds, and pipeline settings.
 # Bump pipeline.schema_version when graph_schema.py changes.
 #
-# v2 source list (per Sentinel_v2_Data_Module_Integration_Proposal.md §6 + datasources_suggestions.md):
-#   Tier 1 (gold):       8 sources — human-audited, peer-reviewed, or mathematically certain labels
-#   Tier 2 clean/silver: 5 sources — expert auditors + tool consensus + verified real exploits
-#   Tier 3 structural:   3 sources — well-known benchmarks
-#   Tier 3 bronze:       2 sources — tool-derived (T3 conservative, per friend 97% FP warning)
-#   Tier 4 bronze:       2 sources — unlabeled/single-class pretraining
-#   Deferred:            BCCC-SCsVul-2024 (preserved at legacy path, NOT consumed by v2)
-#   Plus 2 v1 extras:    Zenodo 16910242 (CLEAR), Messi-Q
+# v2 source list (per Sentinel_v2_Data_Module_Integration_Proposal.md §6 — REVISED 2026-06-09):
+#   CRITICAL-PATH (Run 11 ships with these 5 + DISL negatives):
+#     - DeFiHackLabs (T1 Gold)    — exploit PoC, T0 confidence
+#     - SolidiFI (T1 Gold)        — 100% ground truth via injection
+#     - DIVE (T1 Gold)            — peer-reviewed, multi-label
+#     - SmartBugs Curated (T3)    — 143 hand-labeled contracts
+#     - Web3Bugs (T1 Gold)        — contest-verified
+#     - DISL (T4 Bronze)          — 514K unlabeled, NonVulnerable pool only (3:1 cap)
+#   ADDITIVE (v2.1, deferred — included if Stage 3 finishes early):
+#     - Bastet (T1 Gold)          — REPLACES Code4rena scraper (legal risk)
+#     - FORGE (T1 Gold)           — 50-entry agreement test required
+#     - ScrawlD (T2 Silver)       — 5-tool majority voting
+#     - DeFi Hacks REKT (T2 Gold) — verified real exploits
+#     - Ethernaut (T2 Clean)      — 30 pedagogical CTF levels
+#     - OpenZeppelin Contracts (T2 Clean) — multi-audit-verified negatives
+#     - solidity_defi_vulns (T1)  — 270 bridge examples
+#     - DeFiVulnLabs (T3)         — 48 vuln types
+#     - SC-Bench (T3)             — audited + err-inj subsets
+#     - SmartBugs Wild (T3)       — 47K contracts (pretraining only, friend warns 97% FP)
+#     - slither-audited (T3)      — 467K Slither-labeled
+#     - Messi-Q (T4)              — older Solidity era
+#     - Zenodo 16910242 (T4)      — Yizhou Chen's CLEAR ICSE 2025
+#   DROPPED: ReentrancyStudy (230K single-class recreates BCCC imbalance, URL TBD anyway)
+#   DEFERRED: BCCC-SCsVul-2024 (v2.1 decision pending v2 baseline results)
+#
+# Friend-review analysis archived in friend_review_applied_2026-06-09.md
 
 pipeline:
   schema_version: "v9"                # must match FEATURE_SCHEMA_VERSION in graph_schema.py
@@ -30,115 +48,125 @@ pipeline:
     fail_threshold: 0.30             # drop label if tool confidence < this
     tool_corroboration_min: 1        # minimum number of tools that must agree to keep label
     negative_tool_hit_threshold: 0.05  # >5% of NonVulnerable flagged by tools = warning; >10% = FAIL
+  # NEW 2026-06-09 (friend review §6.3.1): NonVulnerable class size cap to prevent BCCC-style imbalance
+  negative:
+    positive_ratio_max: 3.0          # NonVulnerable class count ≤ 3× total positive count across all 10 classes
+    # The cap is enforced in Stage 5 stratified_splitter; subsample is stratified by source.
+    # Per-class override available: pipeline.negative.per_class_ratio_max.<ClassName>: 5.0
+  # NEW 2026-06-09 (friend review §6.3.2): CallToUnknown merge rule, human-checked
+  class:
+    merge_rules:
+      - trigger: if CallToUnknown_verified_count < 300
+        action: pause_and_ask_human   # not silent auto-merge
+        apply:
+          labels.class_map.CallToUnknown: ExternalBug
+        reversible: true               # split back in v2.1 if 1000+ verified
+        reason: "10-class softmax with 1 class <500 samples is statistically unlearnable (BCCC failure pattern at smaller scale)"
+  # NEW 2026-06-09 (friend review §6.5): minimum-viable-corpus gate
+  min_viable_corpus:
+    total_contracts_min: 4000         # if below, defer Run 11
+    per_class_positive_min_major: 300 # Reentrancy, DoS, IntegerUO
+    per_class_positive_min_minor: 100 # other 7 classes
+    call_to_unknown_min: 300          # below this, the merge rule triggers
+    smartbugs_curated_recall_min: 0.90  # semantic_checker must retain ≥90% of the 143 hand-labeled positives
+    forge_agreement_min: 0.85         # FORGE 50-entry agreement test; if <85%, defer FORGE to v2.2
 
-# ── Tier-1 (gold) sources — human-curated or mathematically certain labels ────
-sources:
-
-  scabench:
-    enabled: true
-    tier: 1
-    connector: git
-    url: "https://github.com/scabench-org/scabench"
-    pin: ""                          # set before Stage 1 starts
-    post_clone_cmd: "python checkout_sources.py"
-    crosswalk: sentinel_data/labeling/crosswalks/scabench.yaml
-    description: "31 projects, 555 vulns from real audit ecosystems (C4/Cantina/Sherlock)"
-
-  smartbugs_curated:
-    enabled: true
-    tier: 1
-    connector: git
-    url: "https://github.com/smartbugs/smartbugs-curated"
-    pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/smartbugs_curated.yaml
-    description: "143 hand-labeled real-world contracts (DASP categories → 10 Sentinel classes)"
-
-  solidifi:
-    enabled: false
-    tier: 1
-    connector: git
-    url: "https://github.com/DependableSystemsLab/SolidiFI-benchmark"
-    pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/solidifi.yaml
-    description: "ISSTA 2020 — 9,369 injected bugs, 100% ground-truth certainty; 7 vuln types"
-
-  dive:
-    enabled: false
-    tier: 1
-    connector: huggingface
-    hf_dataset: ""                   # fill in HF dataset id (DIVE_Labels.zip downloaded manually)
-    pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/dive.yaml
-    description: "Nature Scientific Data 2025 — 22,330 contracts, 8 DASP classes, multi-label (T1 per friend)"
-
-  forge:
-    enabled: false
-    tier: 1
-    connector: git
-    url: "https://github.com/shenyimings/FORGE-Artifacts"
-    pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/forge.yaml
-    description: "ICSE 2026 — LLM-extracted from real audit reports; CWE classification; no tool-induced FPs"
-
-  web3bugs:
-    enabled: false
-    tier: 1
-    connector: git
-    url: "https://github.com/ZhangZhuoSJTU/Web3Bugs"
-    pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/web3bugs.yaml
-    description: "~3,500 contest-verified bugs from Code4rena/Sherlock/Immunefi (O/L/S severity filter)"
+# ── CRITICAL-PATH (Run 11 ships with these 5) ───────────────────────────────
+sources_critical_path:
 
   defihacklabs:
     enabled: true
     tier: 1
+    tier_subtype: gold
     connector: git
     url: "https://github.com/SunWeb3Sec/DeFiHackLabs"
     pin: ""
     crosswalk: sentinel_data/labeling/crosswalks/defihacklabs.yaml
-    description: "400+ real exploit PoCs from DeFi Hack Labs — T0 tier assignment per D-3.3"
+    description: "CRITICAL #1 — 400+ real exploit PoCs from DeFi Hack Labs; folder name = exploit type; T0 confidence"
 
-  solidity_defi_vulns:
-    enabled: false
+  solidifi:
+    enabled: true
     tier: 1
-    connector: huggingface
-    hf_dataset: "seyyedaliayati/solidity-defi-vulnerabilities"
+    tier_subtype: gold
+    connector: git
+    url: "https://github.com/DependableSystemsLab/SolidiFI-benchmark"
     pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/solidity_defi_vulns.yaml
-    description: "270 bridge examples with is_real flag + attack_title → class"
+    crosswalk: sentinel_data/labeling/crosswalks/solidifi.yaml
+    description: "CRITICAL #2 — ISSTA 2020, 9,369 injected bugs with 100% ground-truth certainty (mathematically guaranteed)"
+
+  dive:
+    enabled: true
+    tier: 1
+    tier_subtype: gold
+    connector: manual
+    url: ""                           # Nature Sci. Data download URL; filled in Stage 1
+    pin: ""
+    crosswalk: sentinel_data/labeling/crosswalks/dive.yaml
+    dive_class_mapping:                # per proposal §6.4
+      reentrancy: Reentrancy
+      access_control: ExternalBug       # sub-tier note: "may include UnusedReturn edge cases"
+      arithmetic: IntegerUO
+      unchecked_low_level_calls: CallToUnknown  # subject to merge rule
+      denial_of_service: DoS
+      front_running: TOD
+      time_manipulation: Timestamp
+      # bad_randomness: DROPPED (no 10-class equivalent; see proposal §6.3.3)
+    description: "CRITICAL #3 — Nature Sci. Data 2025, 22,330 contracts, 8 DASP classes, multi-label, peer-reviewed; 'bad randomness' dropped"
+
+  smartbugs_curated:
+    enabled: true
+    tier: 3
+    tier_subtype: structural
+    connector: git
+    url: "https://github.com/smartbugs/smartbugs-curated"
+    pin: ""
+    crosswalk: sentinel_data/labeling/crosswalks/smartbugs_curated.yaml
+    description: "CRITICAL #4 — 143 hand-labeled contracts (DASP → 10 classes direct); also serves as semantic_checker recall ground-truth"
+
+  web3bugs:
+    enabled: true
+    tier: 1
+    tier_subtype: gold
+    connector: git
+    url: "https://github.com/ZhangZhuoSJTU/Web3Bugs"
+    pin: ""
+    crosswalk: sentinel_data/labeling/crosswalks/web3bugs.yaml
+    description: "CRITICAL #5 — ~3,500 contest-verified bugs from Code4rena/Sherlock/Immunefi (O/L/S severity filter)"
+
+  disl:
+    enabled: true
+    tier: 4
+    tier_subtype: bronze
+    connector: etherscan               # NEW connector (was a stub)
+    url: ""                           # URL TBD — friend's report didn't give one
+    pin: ""
+    crosswalk: null
+    use_for: non_vulnerable_only       # NEW 2026-06-09: 3:1 cap subsample
+    description: "CRITICAL-PATH NEGATIVE — 514,506 unlabeled Solidity files; NonVulnerable pool only; capped at 3× total positive count per §6.3.1"
+
+# ── ADDITIVE (v2.1 deferred — only included if Stage 3 finishes early) ──────
+sources_additive:
 
   bastet:
     enabled: false
     tier: 1
+    tier_subtype: gold
     connector: git
     url: "https://github.com/OneSavieLabs/Bastet"
     pin: ""
     crosswalk: sentinel_data/labeling/crosswalks/bastet.yaml
-    description: "849 fully annotated findings from 394 C4 reports (46 tags → 10 classes; HIGH-effort crosswalk)"
+    description: "ADDITIVE #1 — REPLACES Code4rena scraper (legal risk). 849 findings from 394 C4 reports; 46 tags → 10 classes"
 
-# ── Tier-2 clean (negatives) ────────────────────────────────────────────────
-
-  openzeppelin_contracts:
+  forge:
     enabled: false
-    tier: 2
-    tier_subtype: clean
-    connector: git
-    url: "https://github.com/OpenZeppelin/openzeppelin-contracts"
+    tier: 1
+    tier_subtype: gold
+    connector: audit_report            # NEW connector (LLM extraction from PDFs)
+    url: "https://github.com/shenyimings/FORGE-Artifacts"
     pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/openzeppelin_contracts.yaml
-    description: "Clean negative source — OZ reference contracts; T1_clean tier; never positive labels"
-
-  openzeppelin_ethernaut:
-    enabled: false
-    tier: 2
-    tier_subtype: clean
-    connector: git
-    url: "https://github.com/OpenZeppelin/ethernaut"
-    pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/openzeppelin_ethernaut.yaml
-    description: "30 Ethernaut CTF challenges — known-vulnerable educational contracts"
-
-# ── Tier-2 silver (tool consensus + expert audits) ─────────────────────────
+    crosswalk: sentinel_data/labeling/crosswalks/forge.yaml
+    gate: forge_50_entry_agreement_test  # if <85% agreement, defer to v2.2
+    description: "ADDITIVE #2 — ICSE 2026, CWE-classified audit reports; 50-entry agreement test required"
 
   scrawld:
     enabled: false
@@ -148,39 +176,47 @@ sources:
     url: "https://github.com/sujeetc/ScrawlD"
     pin: ""
     crosswalk: sentinel_data/labeling/crosswalks/scrawld.yaml
-    description: "MSR 2022 — 5-tool majority voting (3/5 agreement); 6,780 mainnet contracts"
-
-  code4rena:
-    enabled: false
-    tier: 2
-    tier_subtype: gold
-    connector: manual
-    url: "https://code4rena.com/reports"
-    pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/code4rena.yaml
-    description: "Human expert auditors under financial incentive (102 projects, 499 confirmed high-severity)"
+    description: "ADDITIVE #3 — MSR 2022, 5-tool majority voting (3/5 agreement); 6,780 mainnet contracts"
 
   defi_hacks_rekt:
     enabled: false
     tier: 2
     tier_subtype: gold
-    connector: manual
+    connector: rekt_scraper            # NEW connector
     url: "https://rekt.news"
     pin: ""
     crosswalk: sentinel_data/labeling/crosswalks/defi_hacks_rekt.yaml
-    description: "Verified real exploits from REKT database (3,216 incidents + 181 curated)"
+    description: "ADDITIVE #4 — verified real exploits from REKT database (3,216 incidents + 181 curated)"
 
-# ── Tier-3 structural (well-known benchmarks) ──────────────────────────────
-
-  sc_bench:
+  openzeppelin_ethernaut:
     enabled: false
-    tier: 3
-    tier_subtype: structural
+    tier: 2
+    tier_subtype: clean
     connector: git
-    url: "https://github.com/charlesxsh/scbench"
+    url: "https://github.com/OpenZeppelin/ethernaut"
     pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/sc_bench.yaml
-    description: "5,347 original + 15,836 injected — audited and err-inj subsets with different semantics"
+    crosswalk: sentinel_data/labeling/crosswalks/openzeppelin_ethernaut.yaml
+    description: "ADDITIVE #5 — 30 Ethernaut CTF challenges (pedagogical)"
+
+  openzeppelin_contracts:
+    enabled: false
+    tier: 2
+    tier_subtype: clean
+    connector: git
+    url: "https://github.com/OpenZeppelin/openzeppelin-contracts"
+    pin: ""
+    crosswalk: sentinel_data/labeling/crosswalks/openzeppelin_contracts.yaml
+    description: "ADDITIVE #6 — clean negatives (fallback if DISL is unavailable for the 3:1 cap)"
+
+  solidity_defi_vulns:
+    enabled: false
+    tier: 1
+    tier_subtype: gold
+    connector: huggingface
+    hf_dataset: "seyyedaliayati/solidity-defi-vulnerabilities"
+    pin: ""
+    crosswalk: sentinel_data/labeling/crosswalks/solidity_defi_vulns.yaml
+    description: "ADDITIVE #7 — 270 bridge examples with is_real flag + attack_title → class"
 
   defivulnlabs:
     enabled: false
@@ -190,9 +226,17 @@ sources:
     url: "https://github.com/SunWeb3Sec/DeFiVulnLabs"
     pin: ""
     crosswalk: sentinel_data/labeling/crosswalks/defivulnlabs.yaml
-    description: "48 vulnerability types with PoC contracts (DeFi-focused)"
+    description: "ADDITIVE #8 — 48 vulnerability types with PoC contracts"
 
-# ── Tier-3 bronze (tool-derived — conservative, friend warns 97% FP) ─────────
+  sc_bench:
+    enabled: false
+    tier: 3
+    tier_subtype: structural
+    connector: git
+    url: "https://github.com/charlesxsh/scbench"
+    pin: ""
+    crosswalk: sentinel_data/labeling/crosswalks/sc_bench.yaml
+    description: "ADDITIVE #9 — audited + err-inj subsets with different semantics"
 
   smartbugs_wild:
     enabled: false
@@ -202,7 +246,7 @@ sources:
     url: "https://github.com/smartbugs/smartbugs-wild"
     pin: ""
     crosswalk: sentinel_data/labeling/crosswalks/smartbugs_wild.yaml
-    description: "47K mainnet contracts — friend warns 97% FP rate as labeled data; pretraining only"
+    description: "ADDITIVE #10 — 47K mainnet contracts; pretraining only (friend warns 97% FP as labeled data)"
 
   slither_audited:
     enabled: false
@@ -212,41 +256,7 @@ sources:
     hf_dataset: "mwritescode/slither-audited-smart-contracts"
     pin: ""
     crosswalk: sentinel_data/labeling/crosswalks/slither_audited.yaml
-    description: "467K Slither-labeled HF dataset — confidence>0.8 + canonical detector rule"
-
-# ── Tier-4 bronze (unlabeled/single-class pretraining) ──────────────────────
-
-  disl:
-    enabled: false
-    tier: 4
-    tier_subtype: bronze
-    connector: manual
-    url: ""                          # URL TBD — friend's report didn't give one
-    pin: ""
-    crosswalk: null
-    description: "514,506 unique Solidity files (unlabeled pretraining) — DEFERRED until URL found"
-
-  reentrancy_study:
-    enabled: false
-    tier: 4
-    tier_subtype: bronze
-    connector: manual
-    url: ""                          # URL TBD — friend's report didn't give one
-    pin: ""
-    crosswalk: null
-    description: "230,548 reentrancy-labeled contracts (single class, tool-based) — DEFERRED until URL found"
-
-# ── v1 extras (originally listed in Sentinel_v2_Dataset_Proposal.md §6) ─────
-
-  messi_q:
-    enabled: false
-    tier: 4
-    tier_subtype: bronze
-    connector: git
-    url: "https://github.com/Messi-Q/Smart-Contract-Dataset"
-    pin: ""
-    crosswalk: sentinel_data/labeling/crosswalks/messi_q.yaml
-    description: "40K raw + 12K labeled (4 types) — older Solidity era; treat as backup"
+    description: "ADDITIVE #11 — 467K Slither-labeled; confidence>0.8 + canonical detector rule"
 
   zenodo_clear:
     enabled: false
@@ -256,12 +266,47 @@ sources:
     zenodo_record: "16910242"
     pin: ""
     crosswalk: sentinel_data/labeling/crosswalks/zenodo_clear.yaml
-    description: "CLEAR dataset (Yizhou Chen, ICSE 2025) — 88.3 MB contracts.zip; multi-vuln"
+    description: "ADDITIVE #12 — Yizhou Chen's CLEAR ICSE 2025, 88.3 MB contracts.zip"
 
-# ── BCCC deferred (not part of v2 corpus — replaced by verified v1.4 labels) ─
+  messi_q:
+    enabled: false
+    tier: 4
+    tier_subtype: bronze
+    connector: git
+    url: "https://github.com/Messi-Q/Smart-Contract-Dataset"
+    pin: ""
+    crosswalk: sentinel_data/labeling/crosswalks/messi_q.yaml
+    description: "ADDITIVE #13 — 40K raw + 12K labeled (older Solidity era)"
+
+  scabench:
+    enabled: false
+    tier: 1
+    tier_subtype: gold
+    connector: git
+    url: "https://github.com/scabench-org/scabench"
+    pin: ""
+    post_clone_cmd: "python checkout_sources.py"
+    crosswalk: sentinel_data/labeling/crosswalks/scabench.yaml
+    description: "ADDITIVE #14 — 31 projects, 555 vulns from real audit ecosystems (C4/Cantina/Sherlock)"
+
+# ── DROPPED (not in v2 build) ───────────────────────────────────────────────
+sources_dropped:
+  reentrancy_study:
+    reason: "230K single-class reentrancy labels recreates BCCC imbalance pattern; URL is TBD anyway; DeFiHackLabs + DIVE + SolidiFI provide sufficient reentrancy examples"
+    v2_reintroduction: false
+  code4rena_scraper:
+    reason: "Bastet (curated C4 dataset) provides the same labels without legal risk; scraping C4 ToS may prohibit automated access"
+    v2_reintroduction: false
+
+# ── DEFERRED (v2.1 decision pending v2 baseline results) ─────────────────────
 deferred_sources:
   bccc:
     reason: "89.4% Reentrancy FP, 86.9% CallToUnknown FP per Phase 5 verification (2026-06-08)"
     legacy_outputs: "Data/docs/legacy/bccc_deep_dive/Phase5_LabelVerification_2026-06-08/outputs/"
     verified_labels: "contracts_clean_v1.4.csv"
-    note: "v1.4 verified labels (24,021 contracts) may be re-introduced as a gold supplement in v2.1"
+    v2_1_decision: "pending v2 baseline; if v1.4 labels pass Stage 4 semantic_checker at ≥70% recall, re-introduce as gold supplement"
+
+# v1 extras reference (commented out from active list):
+#   - solidity_defi_vulns: moved to sources_additive (was Tier 1)
+#   - zenodo_clear: moved to sources_additive (was Tier 4)
+#   - messi_q: moved to sources_additive (was Tier 4)
