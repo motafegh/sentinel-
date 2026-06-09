@@ -29,7 +29,23 @@
 
 ## Stage 1 — Ingestion + Preprocessing
 
-(Will be filled in when we start Stage 1)
+| # | Concept | Test yourself | Tick |
+|---|---|---|---|
+| 1.1 | **5-step pipeline order** | Why is the order flatten → compile → dedup → normalize → segment+bucket? What breaks if you reorder? | [ ] |
+| 1.2 | **Two-pass compile** | What does Pass 1 try, what does Pass 2 try, and which Phase 5 contracts does this recover? | [ ] |
+| 1.3 | **Pragma tolerance** | Why does the compiler strip whitespace from the pragma before regex? What's `^ 0.4 .9` vs `^0.4.9`? | [ ] |
+| 1.4 | **3-level dedup** | What does each level catch (exact SHA / address / AST), and why is the AST level stubbed for Stage 2? | [ ] |
+| 1.5 | **`ast_similarity_threshold=0.85`** | Why not 0.92? What's the BCCC near-dup range, and what's the friend-research sweet spot? | [ ] |
+| 1.6 | **Drop-not-fix for compile failures** | Why is a compile-failed file dropped (not passed through with a warning)? What's the BCCC precedent? | [ ] |
+| 1.7 | **Sidecar `meta.json`** | Name 5 of the 18 fields in the `ContractMeta` schema. Which downstream stages read which fields? | [ ] |
+| 1.8 | **Ingestion manifest + SHA-256** | What does the manifest record, and what does `verify_manifest` do? Why is "silent file change" the failure mode this prevents? | [ ] |
+| 1.9 | **One connector per family** | Why are there 5 connector classes (Git, HF, Zenodo, Etherscan, Manual) and not 17 (one per source)? | [ ] |
+| 1.10 | **Pinned versions** | Why is the pin currently empty for the 5 critical-path sources in `config.yaml`? What's the stage prerequisite for filling it in? | [ ] |
+| 1.11 | **A9 regression test** | What bug does the `now` keyword survival test prevent? Where was the fix, and what was the failure rate before the fix? | [ ] |
+| 1.12 | **`freshness` subcommand** | What 2 things does it check? Why is the report informational, not blocking? | [ ] |
+| 1.13 | **`version_bucket` + `has_unchecked_block`** | Why is the 0.6–0.7 era called "transitional"? Why does `has_unchecked_block` matter for Stage 4's IntegerUO checker? | [ ] |
+| 1.14 | **Friend-review impact on Stage 1** | What 3 friend-review changes affected Stage 1? (Critical-path corpus, ReentrancyStudy drop, DIVE bad_randomness) | [ ] |
+| 1.15 | **Stage 1 partial vs pass** | Which 4 of the 14 exit criteria are PARTIAL (not fully PASS), and why are they deferred? | [ ] |
 
 ---
 
