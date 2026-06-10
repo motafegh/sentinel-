@@ -115,12 +115,30 @@ def _detect_solc_version(sol_path: Path) -> str:
     Detect solc version from pragma. Returns the LATEST PATCH of the declared
     minor series so that forward syntax (emit, constructor(), etc.) compiles.
     E.g. '^0.4.18' → '0.4.26', '^0.5.0' → '0.5.17'. Defaults to 0.8.31.
+
+    For range pragmas like '>=0.4.22 <0.6.0', detects the upper exclusive bound
+    and picks the highest valid minor (0.5.17 for <0.6.0) rather than the lower
+    bound minor (0.4.26), which may be unable to compile injected 0.5.x syntax.
     """
+    import re as _re
     try:
         txt = sol_path.read_text(encoding="utf-8", errors="replace")
         m = _PRAGMA_RE.search(txt)
         if m:
             minor = ".".join(m.group(1).split(".")[:2])
+            pragma_line = _re.search(r'pragma\s+solidity\s+([^;]+);', txt)
+            if pragma_line:
+                upper = _re.search(r'<\s*(\d+)\.(\d+)\.(\d+)', pragma_line.group(1))
+                if upper:
+                    up_major = int(upper.group(1))
+                    up_minor = int(upper.group(2))
+                    up_patch = int(upper.group(3))
+                    best_minor = (
+                        f"{up_major}.{up_minor - 1}" if up_patch == 0 and up_minor > 0
+                        else f"{up_major}.{up_minor}"
+                    )
+                    if best_minor in _LATEST_PATCH and best_minor != minor:
+                        return _LATEST_PATCH[best_minor]
             return _LATEST_PATCH.get(minor, m.group(1))
     except OSError:
         pass

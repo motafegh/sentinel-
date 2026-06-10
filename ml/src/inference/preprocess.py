@@ -103,10 +103,30 @@ _SOLC_ARTIFACTS = Path(__file__).resolve().parents[3] / "ml" / ".venv" / ".solc-
 
 def _detect_solc_version(source: str) -> str:
     m = _PRAGMA_RE.search(source)
-    if m:
-        minor = ".".join(m.group(1).split(".")[:2])
-        return _LATEST_PATCH.get(minor, m.group(1))
-    return "0.8.31"
+    if not m:
+        return "0.8.31"
+
+    minor = ".".join(m.group(1).split(".")[:2])
+
+    # For range pragmas like `>=0.4.22 <0.6.0`, the lower-bound minor (0.4) can
+    # be wrong when injected code uses a newer minor's syntax (e.g. `address payable`
+    # introduced in 0.5.0).  Detect an explicit upper-exclusive bound and back off
+    # one minor so we compile with the highest valid series.
+    pragma_line = _re.search(r'pragma\s+solidity\s+([^;]+);', source)
+    if pragma_line:
+        upper = _re.search(r'<\s*(\d+)\.(\d+)\.(\d+)', pragma_line.group(1))
+        if upper:
+            up_major, up_minor, up_patch = (
+                int(upper.group(1)), int(upper.group(2)), int(upper.group(3))
+            )
+            best_minor = (
+                f"{up_major}.{up_minor - 1}" if up_patch == 0 and up_minor > 0
+                else f"{up_major}.{up_minor}"
+            )
+            if best_minor in _LATEST_PATCH and best_minor != minor:
+                return _LATEST_PATCH[best_minor]
+
+    return _LATEST_PATCH.get(minor, m.group(1))
 
 
 def _solc_binary(version: str) -> Path | None:
