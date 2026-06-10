@@ -43,6 +43,11 @@ def compile_contract(sol_path: Path) -> CompileResult:
 
     Returns CompileResult with success=True/False and the version used.
     Does NOT raise — all errors are captured in CompileResult.error.
+
+    On failure, CompileResult.error contains the LAST version's stderr
+    (the most recent attempted version is usually the most informative —
+    the candidates are tried newest-first so the last one tried is the
+    most likely to match the file's pragma).
     """
     source = sol_path.read_text(errors="replace")
     pragma_raw = _extract_pragma(source)
@@ -58,6 +63,7 @@ def compile_contract(sol_path: Path) -> CompileResult:
     # Pass 1: try exact requested version
     requested = _parse_version(pragma_raw)
     attempted: list[str] = []
+    last_err = ""
 
     if requested:
         bin_path = _solc_binary(requested)
@@ -66,6 +72,7 @@ def compile_contract(sol_path: Path) -> CompileResult:
             ok, err = _run_solc(bin_path, sol_path)
             if ok:
                 return CompileResult(True, requested, pragma_raw, attempted_versions=attempted)
+            last_err = err
 
     # Pass 2: try nearest available version that satisfies the constraint
     available = _available_versions()
@@ -81,12 +88,13 @@ def compile_contract(sol_path: Path) -> CompileResult:
         ok, err = _run_solc(bin_path, sol_path)
         if ok:
             return CompileResult(True, ver, pragma_raw, attempted_versions=attempted)
+        last_err = err
 
     return CompileResult(
         success=False,
         solc_version="",
         pragma_raw=pragma_raw,
-        error=f"all versions failed: {attempted}",
+        error=f"all versions failed; last error: {last_err[:300]}",
         attempted_versions=attempted,
     )
 
@@ -157,8 +165,17 @@ def _solc_binary(version: str) -> Path | None:
 
 
 def _run_solc(bin_path: Path, sol_path: Path) -> tuple[bool, str]:
+    # Pass --allow-paths so relative imports like `../interface.sol` from files
+    # in deep subdirs (e.g. DeFiHackLabs' 2018-04/ -> ../interface.sol) resolve
+    # without solc 0.8.x's "File outside of allowed directories" security check
+    # blocking. The default allowed scope is the source file's directory and
+    # below; we expand it to the entire source repo (sol_path's parent's parent
+    # is a reasonable upper bound — going beyond the cloned repo is a sign
+    # of misconfiguration, not a legitimate need).
+    allow_root = sol_path.parent.parent
     result = subprocess.run(
-        [str(bin_path), "--bin", str(sol_path)],
+        [str(bin_path), "--bin", str(sol_path),
+         "--allow-paths", str(allow_root)],
         capture_output=True, text=True, timeout=30,
     )
     if result.returncode == 0:

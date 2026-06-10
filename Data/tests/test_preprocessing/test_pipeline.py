@@ -1,7 +1,9 @@
 """Tests for sentinel_data.preprocessing pipeline modules.
 
 Covers: compiler (two-pass + pragma tolerance), normalizer, deduplicator,
-segmenter (version buckets + unchecked detection), and pipeline (meta.json schema).
+segmenter (version buckets + unchecked detection), flattener (incl. the
+unresolved-import strip fallback added for DeFiHackLabs on 2026-06-10),
+and pipeline (meta.json schema).
 Also includes the A20 regression guard: feat[2] fires when `now` keyword present.
 """
 
@@ -15,6 +17,7 @@ import pytest
 
 from sentinel_data.preprocessing.normalizer import normalize
 from sentinel_data.preprocessing.deduplicator import Deduplicator
+from sentinel_data.preprocessing.flattener import flatten_contract
 from sentinel_data.preprocessing.segmenter import segment_and_bucket
 
 
@@ -193,3 +196,120 @@ class TestPipelineMeta:
         json_str = json.dumps(d)
         loaded = json.loads(json_str)
         assert loaded["sha256"] == "a" * 64
+
+
+# ── Flattener: unresolved-import strip fallback (added 2026-06-10 for DeFiHackLabs) ──
+
+class TestFlattenerStripUnresolvedImports:
+    """Regression for the DeFiHackLabs integration test (2026-06-10).
+
+    717/738 DeFiHackLabs PoCs import `forge-std/Test.sol` which is NOT
+    present in the cloned repo (forge submodule not pulled). The flattener's
+    solc --flatten path fails for these, and the compile step then chokes
+    on the unresolvable import. The strip fallback removes only the
+    unresolvable non-relative imports, allowing the compile step to succeed.
+    """
+
+    def test_strips_unresolvable_absolute_imports(self, tmp_path):
+        """`import "forge-std/Test.sol";` is stripped when forge-std/ is absent."""
+        sol = tmp_path / "exp.sol"
+        sol.write_text(
+            'pragma solidity ^0.8.0;\n'
+            'import "forge-std/Test.sol";\n'
+            'contract Exp {}\n'
+        )
+        r = flatten_contract(sol)
+        assert r.flatten_status == "stripped_unresolved_imports"
+        assert "forge-std/Test.sol" not in r.content
+        assert "contract Exp" in r.content
+
+    def test_keeps_resolvable_imports(self, tmp_path):
+        """`import "./helper.sol";` is kept (relative + present on disk)."""
+        helper = tmp_path / "helper.sol"
+        helper.write_text("pragma solidity ^0.8.0;\n")
+        sol = tmp_path / "exp.sol"
+        sol.write_text(
+            'pragma solidity ^0.8.0;\n'
+            'import "./helper.sol";\n'
+            'contract Exp {}\n'
+        )
+        # solc --flatten may or may not succeed; either way, the relative
+        # import must NOT be stripped.
+        r = flatten_contract(sol)
+        assert "./helper.sol" in r.content, f"relative import was stripped: {r.content}"
+
+    def test_keeps_relative_dotdot_imports(self, tmp_path):
+        """`import "../shared/x.sol";` is kept (relative, even if absent in this test)."""
+        sol = tmp_path / "exp.sol"
+        sol.write_text(
+            'pragma solidity ^0.8.0;\n'
+            'import "../shared/x.sol";\n'
+            'contract Exp {}\n'
+        )
+        r = flatten_contract(sol)
+        # Relative import is never stripped, even if the target is missing —
+        # that's a compile step concern, not a flatten step concern.
+        assert "../shared/x.sol" in r.content
+
+    def test_no_imports_returns_skipped_no_imports(self, tmp_path):
+        sol = tmp_path / "exp.sol"
+        sol.write_text("pragma solidity ^0.8.0;\ncontract Exp {}\n")
+        r = flatten_contract(sol)
+        assert r.flatten_status == "skipped_no_imports"
+
+    def test_strip_preserves_vulnerable_code(self, tmp_path):
+        """The whole point: keep the vulnerable test function body intact."""
+        sol = tmp_path / "exp.sol"
+        sol.write_text(
+            'pragma solidity ^0.8.0;\n'
+            'import "forge-std/Test.sol";\n'
+            'contract Exp is Test {\n'
+            '    function pwn() public {\n'
+            '        unchecked { uint x = 1 - 2; }\n'
+            '    }\n'
+            '}\n'
+        )
+        r = flatten_contract(sol)
+        assert "unchecked" in r.content
+        assert "function pwn" in r.content
+        assert "forge-std/Test.sol" not in r.content
+
+    def test_strip_removes_test_inheritance(self, tmp_path):
+        """When `Test` is brought in via stripped forge-std import, `is Test` is also stripped.
+
+        This is the DeFiHackLabs pattern: 656/738 PoCs are `contract Foo is Test {}`
+        where `Test` is the forge-std base contract. After stripping the import,
+        the `is Test` clause must also be removed or the file won't compile.
+        """
+        sol = tmp_path / "exp.sol"
+        sol.write_text(
+            'pragma solidity ^0.8.0;\n'
+            'import "forge-std/Test.sol";\n'
+            'contract Exp is Test {\n'
+            '    function pwn() public {}\n'
+            '}\n'
+        )
+        r = flatten_contract(sol)
+        assert r.flatten_status == "stripped_unresolved_imports"
+        assert "is Test" not in r.content
+        assert "contract Exp" in r.content
+        assert "contract Exp {" in r.content  # `is` clause removed, not "is "
+
+    def test_strip_keeps_resolvable_inheritance(self, tmp_path):
+        """When all parents are resolvable (relative imports), the strip is a no-op."""
+        # Create a real base contract
+        base = tmp_path / "base.sol"
+        base.write_text("pragma solidity ^0.8.0;\ncontract Base {}\n")
+        sol = tmp_path / "exp.sol"
+        sol.write_text(
+            'pragma solidity ^0.8.0;\n'
+            'import "./base.sol";\n'
+            'import "forge-std/Test.sol";\n'  # This one gets stripped
+            'contract Exp is Base, Test {\n'
+            '    function pwn() public {}\n'
+            '}\n'
+        )
+        r = flatten_contract(sol)
+        # `is Base` should be kept (resolvable), `is Test` should be stripped
+        assert "Base" in r.content
+        assert "Test" not in r.content.split("contract Exp")[1].split("{")[0]
