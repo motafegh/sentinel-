@@ -19,6 +19,8 @@ class SourceConfig:
     hf_dataset: str = ""
     zenodo_record: str = ""
     description: str = ""
+    include_subdirs: list[str] = field(default_factory=list)
+    exclude_subdirs: list[str] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -59,5 +61,34 @@ class BaseConnector(ABC):
         """Subclass implements the actual pull logic."""
 
     @staticmethod
-    def find_sol_files(root: Path) -> list[Path]:
-        return sorted(root.rglob("*.sol"))
+    def find_sol_files(
+        root: Path,
+        include_subdirs: list[str] | None = None,
+        exclude_subdirs: list[str] | None = None,
+    ) -> list[Path]:
+        """Find .sol files under `root`.
+
+        - `include_subdirs` (allowlist): if non-empty, only descend into these
+          top-level subdirs of `root`. Use for repos whose root mixes source
+          contracts with analysis-tool output (e.g. SolidiFI's `results/`
+          containing Mythril/Slither/Smartcheck analyses).
+        - `exclude_subdirs` (blocklist): skip these top-level subdirs of
+          `root`. Applied after `include_subdirs`.
+        """
+        if include_subdirs:
+            roots = [root / s for s in include_subdirs]
+        else:
+            roots = [root]
+
+        out: list[Path] = []
+        for r in roots:
+            if not r.exists():
+                continue
+            for p in r.rglob("*.sol"):
+                if exclude_subdirs:
+                    rel = p.relative_to(root)
+                    top = rel.parts[0] if rel.parts else ""
+                    if top in exclude_subdirs:
+                        continue
+                out.append(p)
+        return sorted(out)

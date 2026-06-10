@@ -75,14 +75,25 @@ pipeline:
 sources_critical_path:
 
   defihacklabs:
-    enabled: true
+    enabled: false
     tier: 1
     tier_subtype: gold
     connector: git
     url: "https://github.com/SunWeb3Sec/DeFiHackLabs"
-    pin: ""
+    pin: "b3bc4a4af3ff2cc40d504c47538a44b9b0a9f0c6"
+    # DEFERRED 2026-06-10 — DeFiHackLabs is a Foundry project. Every PoC
+    # imports `forge-std/Test.sol` and uses forge cheatcodes (vm.expectRevert,
+    # vm.prank, console.log) in the test body. Standalone solc can't compile
+    # these. We built a recursive import-strip fallback (flattener.py +
+    # _transitive_strip.py) that handles the `Test` base contract, but the
+    # forge cheatcodes in the test body are forge-only and cannot be stripped
+    # without losing the actual exploit code. Result: 23/738 processed, 715
+    # dropped. Re-enable in v2.1 when we add forge-std clone to the git
+    # connector or add a `compile_required: false` per-source flag.
+    # See docs/integration_test_defihacklabs_2026-06-10.md for full analysis.
+    include_subdirs: [src/test]
     crosswalk: sentinel_data/labeling/crosswalks/defihacklabs.yaml
-    description: "CRITICAL #1 — 400+ real exploit PoCs from DeFi Hack Labs; folder name = exploit type; T0 confidence"
+    description: "DEFERRED to v2.1 — 400+ real exploit PoCs (Foundry project, requires forge-std clone to compile). See integration report."
 
   solidifi:
     enabled: true
@@ -90,7 +101,10 @@ sources_critical_path:
     tier_subtype: gold
     connector: git
     url: "https://github.com/DependableSystemsLab/SolidiFI-benchmark"
-    pin: ""
+    pin: "4b0573e1b3f7031396de6f48f7f3e7380222ad3a"
+    # SolidiFI repo contains analysis-tool output under results/{Mythril,Slither,Smartcheck}/
+    # (3x copies of every source contract). Only ingest the source contracts.
+    include_subdirs: [buggy_contracts]
     crosswalk: sentinel_data/labeling/crosswalks/solidifi.yaml
     description: "CRITICAL #2 — ISSTA 2020, 9,369 injected bugs with 100% ground-truth certainty (mathematically guaranteed)"
 
@@ -99,8 +113,42 @@ sources_critical_path:
     tier: 1
     tier_subtype: gold
     connector: manual
-    url: ""                           # Nature Sci. Data download URL; filled in Stage 1
-    pin: ""
+    url: ""                           # Nature Sci. Data download URL; manual
+    pin: "2025-10-02"                 # file mtime in the zip (latest revision)
+    # Manual download path. Two ways to populate:
+    #   1. Extract DIVE_Raw_Data.zip/Raw/PRE/Source codes/*.sol into a dir,
+    #      set staging_path to that dir.
+    #   2. Point staging_path directly at the .zip — the manual connector
+    #      extracts it and strips macOS __MACOSX/ noise.
+    # Symlink mode (default) means data/raw/dive/repo/ is a symlink to the
+    # staging path. Use materialize: copy for Docker or cross-filesystem setups.
+    staging_path: "/home/motafeq/projects/sentinel/Data/data/raw_staging/dive"
+    materialize: symlink
+    # After folderize, repo/ contains:
+    #   __source__/<id>.sol          ← canonical (22,330 real files)
+    #   <Class>/<id>.sol             ← symlinks (54,919 total)
+    # To avoid processing the same source file multiple times (once per
+    # class folder it appears in), restrict the preprocess to the canonical
+    # __source__/ directory. Downstream Stage 3/4/5 can use the per-class
+    # symlinks for class-balanced sampling.
+    include_subdirs: [__source__]
+    # Label-aware folderization: DIVE distributes labels in a separate CSV.
+    # The preprocess stage MOVES the flat .sol files into repo/__source__/
+    # and creates per-class symlinks under repo/<class>/<contractID>.sol →
+    # ../../__source__/<contractID>.sol. Multi-label contracts appear in
+    # multiple folders.
+    labels_csv: "/home/motafeq/projects/sentinel/Data/data/raw_staging/dive_labels/DIVE_Labels.csv"
+    label_id_column: "contractID"
+    label_source_subdir: "__source__"
+    class_columns:
+      - "Reentrancy"
+      - "Access Control"
+      - "Arithmetic"
+      - "Unchecked Return Values"
+      - "DoS"
+      - "Bad Randomness"
+      - "Front Running"
+      - "Time manipulation"
     crosswalk: sentinel_data/labeling/crosswalks/dive.yaml
     dive_class_mapping:                # per proposal §6.4
       reentrancy: Reentrancy
