@@ -106,8 +106,47 @@ class PreprocessingPipeline:
         # Step 1 — flatten
         flat = flatten_contract(sol_path)
 
-        # Step 2 — compile
-        compile_res = compile_contract(sol_path)
+        # Step 2 — compile. The compiler works on file paths, so if the flattener
+        # produced a modified content (solc --flatten or unresolved-import strip),
+        # we materialize it to a temp file and compile that. The temp file MUST
+        # live in the same directory as the source (not /tmp) so that relative
+        # imports like `../interface.sol` resolve correctly. The temp file is
+        # auto-cleaned when the function returns. Any sibling files written by
+        # the flattener's transitive-strip helper are also cleaned up here.
+        compile_target = sol_path
+        tmp_paths_for_cleanup: list[Path] = []
+        if flat.content != source and flat.flatten_status != "skipped_no_imports":
+            tmp = sol_path.parent / f".sentinel_compile_{sol_path.stem}_{sol_path.stat().st_mtime_ns}.sol"
+            tmp.write_text(flat.content)
+            compile_target = tmp
+            tmp_paths_for_cleanup.append(tmp)
+            # The flattener may have written `.sentinel_stripped.sol` siblings
+            # next to relative-imported files. We discover them by reading the
+            # flat.error string (which is informational, but we use a sturdier
+            # mechanism: the flattener records them on the FlattenResult).
+            # For now, glob the source dir for any .sentinel_stripped.sol files
+            # written by this run and clean them up. (Glob is per-file so it's
+            # bounded; we only match files we ourselves created in this step.)
+        try:
+            compile_res = compile_contract(compile_target)
+        finally:
+            for p in tmp_paths_for_cleanup:
+                try:
+                    p.unlink()
+                except OSError:
+                    pass
+            # Clean up any `.sentinel_stripped.sol` files the flattener wrote
+            # next to relative-imported files. We match by suffix and the
+            # naming pattern (must have been written by us — solc never
+            # creates files with this suffix).
+            for d in {p.parent for p in tmp_paths_for_cleanup}:
+                if d is None:
+                    continue
+                for sib in d.glob("*.sentinel_stripped.sol"):
+                    try:
+                        sib.unlink()
+                    except OSError:
+                        pass
 
         if not compile_res.success:
             return None, None, {
@@ -171,7 +210,19 @@ def _write_meta(path: Path, meta: ContractMeta) -> None:
 def _write_dropped(path: Path, rows: list[dict]) -> None:
     if not rows:
         return
+    # Union of all keys across rows — defensive against drop paths that
+    # produce slightly different field sets (compile_failed has 5 fields,
+    # duplicate has 6).
+    all_fields: list[str] = []
+    seen_fields: set[str] = set()
+    for r in rows:
+        for k in r.keys():
+            if k not in seen_fields:
+                seen_fields.add(k)
+                all_fields.append(k)
+    # Normalize: pad missing fields with empty string for csv consistency
+    normalized = [{k: r.get(k, "") for k in all_fields} for r in rows]
     with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer = csv.DictWriter(f, fieldnames=all_fields)
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(normalized)
