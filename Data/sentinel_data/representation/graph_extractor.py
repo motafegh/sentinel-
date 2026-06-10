@@ -1,56 +1,77 @@
-"""Graph extractor stub — real implementation ported from ml/ in Stage 2.
+"""Graph extractor — thin adapter over `ml/src/preprocessing/graph_extractor.py`.
 
-Stage 0 role: provide importable symbols so the package installs and tests pass.
-Stage 2 role: full port from ml/src/preprocessing/graph_extractor.py with a
-              byte-identical regression test gating every line.
-Stage 7 role: seam swap — sentinel-ml switches its import to this path; ml/ copy deleted.
+Stage 2 (2026-06-10) thin-adapter port.
 
-IMPORTANT — 8 bugs that are already fixed in ml/ and must be preserved in Stage 2:
-  A9  — now keyword miss in _compute_uses_block_globals (graph_extractor.py:587-605)
-  A15 — def_map keyed by name instead of id() (graph_extractor.py:1147-1179)
-  A20 — label=0 hardcode in ast_extractor.py batch extraction (ast_extractor.py:290)
-  A34 — prefix sort uses wrong dimension (sentinel_model.py:356)
-  A38 — NaN check ran after backward() instead of before (trainer.py)
-  resume_overwrite — resume defaulted to model-only (trainer.py:383)
-  return_ignored — always returned 0.0 due to lvalue identity check (graph_extractor.py)
-  EMITS — edge bug (open, fix in Stage 7)
+The real implementation lives at `ml/src/preprocessing/graph_extractor.py`.
+This file re-exports every public symbol from there. Stage 7 deletes this
+file and rebinds the active training pipeline to import from
+`sentinel_data.representation.graph_extractor` directly.
 
-DO NOT re-fix any of the above — the Stage 2 regression test guards them.
+Why thin-adapter:
+  - Zero code duplication. Bug fixes in `ml/` propagate to the new path
+    automatically.
+  - The Stage 7 seam swap is a 1-line change (delete this file) instead
+    of a multi-file refactor.
+  - The byte-identical-output guarantee is trivially true — same object,
+    different import name.
+
+What's NOT here (deferred):
+  - The v1 `ast_extractor.py` parquet-orchestrator is NOT ported. The v2
+    orchestrator is a NEW file (`sentinel_data/representation/orchestrator.py`,
+    task 2.4 in the Stage 2 plan) that reads Stage 1's preprocessed output.
+  - The CFG / PDG / call-graph / opcode builders are NOT here. Only the
+    CFG builder ships in Stage 2 (task 2.7); the others are v3.1.
+
+Lazy import support: `__getattr__` falls back to lazy import if `ml/` is
+not on the Python path. This lets `sentinel-data` be installed as a
+standalone PyPI package in the future.
 """
+
+from __future__ import annotations
 
 from typing import Any
 
+_LIVE_EXTRACTOR_MODULE = "ml.src.preprocessing.graph_extractor"
+_LIVE_EXTRACTOR_ATTRS = (
+    # Public functions
+    "extract_contract_graph",
+    # Configuration / error types
+    "GraphExtractionConfig",
+    "GraphExtractionError",
+    "SolcCompilationError",
+    "SlitherParseError",
+    "EmptyGraphError",
+)
 
-class GraphExtractionError(Exception):
-    """Raised when contract graph extraction fails."""
 
-
-def extract_contract_graph(
-    sol_path: str,
-    label_vec: list[int] | None = None,
-    schema_version: str = "v9",
-    **kwargs: Any,
-) -> Any:
-    """Extract a PyG Data object from a Solidity source file.
-
-    NOT IMPLEMENTED in Stage 0 — raises NotImplementedError.
-    Real implementation is ported from ml/src/preprocessing/graph_extractor.py in Stage 2.
-
-    Args:
-        sol_path: Absolute path to the .sol file.
-        label_vec: 10-element binary label vector (class order per CLASS_NAMES in graph_schema.py).
-        schema_version: Must be "v9" — other values are rejected.
-        **kwargs: Reserved for Stage 2 extractor options.
-
-    Returns:
-        torch_geometric.data.Data with x, edge_index, edge_attr, y, contract_path attributes.
-
-    Raises:
-        NotImplementedError: Always — implement in Stage 2.
-        GraphExtractionError: For malformed inputs (raised in Stage 2+).
-    """
-    raise NotImplementedError(
-        "extract_contract_graph() is a Stage 0 stub. "
-        "The real implementation is ported from ml/src/preprocessing/graph_extractor.py "
-        "in Stage 2 (docs/proposal/Data_Module_Proposals/actionable_plans/03_stage_2_representation.md)."
+def __getattr__(name: str) -> Any:
+    """Lazy re-export for sentinel-data standalone install support."""
+    if name in _LIVE_EXTRACTOR_ATTRS:
+        try:
+            import importlib
+            mod = importlib.import_module(_LIVE_EXTRACTOR_MODULE)
+        except ImportError as e:
+            raise ImportError(
+                f"sentinel_data.representation.graph_extractor.{name} requires the "
+                f"`ml` package (from SENTINEL's `ml/` directory). Install it or "
+                f"add it to PYTHONPATH. Original error: {e}"
+            ) from e
+        return getattr(mod, name)
+    raise AttributeError(
+        f"module {__name__!r} has no attribute {name!r}. "
+        f"Available: {sorted(_LIVE_EXTRACTOR_ATTRS)}"
     )
+
+
+# Eager re-export — see graph_schema.py for the rationale.
+from ml.src.preprocessing.graph_extractor import (  # noqa: E402
+    extract_contract_graph,
+    GraphExtractionConfig,
+    GraphExtractionError,
+    SolcCompilationError,
+    SlitherParseError,
+    EmptyGraphError,
+)
+
+
+__all__ = list(_LIVE_EXTRACTOR_ATTRS)
