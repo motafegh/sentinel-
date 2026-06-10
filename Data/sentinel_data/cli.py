@@ -93,13 +93,26 @@ def _run_preprocess(args: argparse.Namespace) -> None:
 
     print(f"[preprocess] {STAGE_DESCRIPTIONS['preprocess']}")
     print(f"  config : {args.config}")
+    n_workers = getattr(args, "workers", 1)
+    sample = getattr(args, "sample", None)
+    retry_failed = getattr(args, "retry_failed", False)
+    if n_workers > 1:
+        print(f"  workers : {n_workers}")
+    if sample:
+        print(f"  sample  : {sample} files (--sample)")
+    if retry_failed:
+        print(f"  mode    : retry-failed (re-run only files in dropped.csv)")
 
     source = getattr(args, "source", None)
     if source:
         print(f"  source : {source}")
-        preprocess_source(source, cfg, data_dir, dry_run=args.dry_run)
+        preprocess_source(source, cfg, data_dir, dry_run=args.dry_run,
+                          n_workers=n_workers, sample=sample,
+                          retry_failed=retry_failed)
     else:
-        preprocess_all(cfg, data_dir, dry_run=args.dry_run)
+        preprocess_all(cfg, data_dir, dry_run=args.dry_run,
+                       n_workers=n_workers, sample=sample,
+                       retry_failed=retry_failed)
 
 
 def _run_represent(args: argparse.Namespace) -> None:
@@ -228,6 +241,29 @@ def _build_parser() -> argparse.ArgumentParser:
                 metavar="NAME",
                 help="Limit to a single source (default: all enabled sources)",
             )
+        if stage == "preprocess":
+            sp.add_argument(
+                "--workers",
+                type=int,
+                default=1,
+                metavar="N",
+                help="Multiprocessing pool size (default: 1 = serial)",
+            )
+            sp.add_argument(
+                "--sample",
+                type=int,
+                default=None,
+                metavar="N",
+                help="Process only the first N files (for fast iteration)",
+            )
+            sp.add_argument(
+                "--retry-failed",
+                action="store_true",
+                help="Re-run only the files listed in the previous dropped.csv "
+                     "(merge results — files that now succeed get preprocessed, "
+                     "files that still fail stay in dropped.csv with updated errors). "
+                     "Use after installing a missing solc version or fixing a config bug.",
+            )
 
     # ── utility subcommands ───────────────────────────────────────────────────
     fresh_p = subparsers.add_parser(
@@ -254,7 +290,10 @@ def _handle_run(args: argparse.Namespace) -> None:
     for stage in stages_to_run:
         fn = _STAGE_FN[stage]
         # inject dry_run=False and default source=None for the run dispatcher
-        stage_args = argparse.Namespace(config=args.config, dry_run=False, source=None)
+        stage_args = argparse.Namespace(
+            config=args.config, dry_run=False, source=None,
+            workers=1, sample=None, retry_failed=False,
+        )
         fn(stage_args)
 
 

@@ -38,7 +38,11 @@ class GitConnector(BaseConnector):
             _run(post_cmd.split(), cwd=repo_dir)
             (dest / ".post_clone_done").touch()
 
-        sol_files = self.find_sol_files(repo_dir)
+        sol_files = self.find_sol_files(
+            repo_dir,
+            include_subdirs=cfg.include_subdirs or None,
+            exclude_subdirs=cfg.exclude_subdirs or None,
+        )
         return PullResult(
             source=cfg.name,
             local_dir=repo_dir,

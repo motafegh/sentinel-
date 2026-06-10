@@ -34,10 +34,13 @@ def _source_config(name: str, entry: dict) -> SourceConfig:
         hf_dataset=entry.get("hf_dataset", ""),
         zenodo_record=entry.get("zenodo_record", ""),
         description=entry.get("description", ""),
+        include_subdirs=list(entry.get("include_subdirs") or []),
+        exclude_subdirs=list(entry.get("exclude_subdirs") or []),
         extra={k: v for k, v in entry.items()
                if k not in ("enabled", "tier", "tier_subtype", "connector",
-                            "url", "pin", "hf_dataset", "zenodo_record",
-                            "description", "crosswalk")},
+                             "url", "pin", "hf_dataset", "zenodo_record",
+                             "description", "crosswalk",
+                             "include_subdirs", "exclude_subdirs")},
     )
 
 
