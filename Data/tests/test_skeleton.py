@@ -46,22 +46,57 @@ def test_schema_version_is_v9():
 
 
 def test_schema_dimensions_v9():
-    from sentinel_data.representation import NODE_FEATURE_DIM, NUM_EDGE_TYPES, NUM_NODE_TYPES, _MAX_TYPE_ID
+    from sentinel_data.representation import NODE_FEATURE_DIM, NUM_EDGE_TYPES, NUM_NODE_TYPES
     assert NODE_FEATURE_DIM == 12
     assert NUM_NODE_TYPES == 14
     assert NUM_EDGE_TYPES == 12
+    # _MAX_TYPE_ID is derived (float(max(NODE_TYPES.values()))) — verify it
+    from sentinel_data.representation import NODE_TYPES, _MAX_TYPE_ID
     assert _MAX_TYPE_ID == 13.0
+    assert _MAX_TYPE_ID == float(max(NODE_TYPES.values()))
 
 
-def test_stub_flag_is_true():
-    from sentinel_data.representation import STUB
-    assert STUB is True, "STUB must be True in Stage 0 — removed only after Stage 7 seam swap"
+def test_no_stub_flag_in_stage_2():
+    """Stage 0 used STUB=True; Stage 2 (2026-06-10) replaced it with a thin adapter.
+
+    The replacement is verified by the byte-identical smoke test (smoke_extractor.py)
+    and the new thin-adapter tests in test_representation/.
+    """
+    # The new path exposes the same symbols as the live schema, no STUB flag.
+    from sentinel_data.representation import (
+        FEATURE_SCHEMA_VERSION, NODE_TYPES, EDGE_TYPES,
+    )
+    assert FEATURE_SCHEMA_VERSION == "v9"
+    assert isinstance(NODE_TYPES, dict)
+    assert isinstance(EDGE_TYPES, dict)
+    # The dict direction is name→id (the live convention), not id→name (the old stub bug)
+    assert NODE_TYPES["STATE_VAR"] == 0
+    assert EDGE_TYPES["CALLS"] == 0
 
 
-def test_graph_extractor_raises_not_implemented():
-    from sentinel_data.representation.graph_extractor import extract_contract_graph
-    with pytest.raises(NotImplementedError):
-        extract_contract_graph("dummy.sol")
+def test_graph_extractor_thin_adapter_routes_to_ml():
+    """Stage 0 raised NotImplementedError; Stage 2 uses a thin adapter that
+    calls into ml.src.preprocessing.graph_extractor.
+
+    Verifying the thin adapter:
+    - The function is importable
+    - It routes to the SAME function object as the old path (is-equal)
+    - It has the SAME config dataclass
+    """
+    from sentinel_data.representation.graph_extractor import (
+        extract_contract_graph as new_extract,
+        GraphExtractionConfig as NewConfig,
+        GraphExtractionError as NewError,
+    )
+    from ml.src.preprocessing.graph_extractor import (
+        extract_contract_graph as old_extract,
+        GraphExtractionConfig as OldConfig,
+        GraphExtractionError as OldError,
+    )
+    # Thin adapter re-exports the same function object
+    assert new_extract is old_extract
+    assert NewConfig is OldConfig
+    assert NewError is OldError
 
 
 def test_graph_extraction_error_importable():
