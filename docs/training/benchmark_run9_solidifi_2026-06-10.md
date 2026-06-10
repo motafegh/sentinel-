@@ -45,34 +45,61 @@ Does the model at least *rank* the correct vulnerability class highest?
 | Unchecked-Send | CallToUnknown | 41 | 0% | 0% | 5% | 0.3887 | **0.4166** |
 | Unhandled-Exceptions | MishandledException | 50 | 0% | 6% | 20% | 0.4124 | 0.4015 |
 
+## Training data (from checkpoint config)
+
+Run 9 was trained on the **original BCCC labels** — NOT Phase 5 cleaned data. Phase 5
+was a retrospective audit done after Run 9 completed to explain its performance.
+
+Actual files used (verified from checkpoint config):
+- `ml/data/processed/multilabel_index_deduped.csv` — original BCCC labels, deduplicated
+- `ml/data/splits/deduped/` — train=29,101 / val=6,234 / test=6,241
+- `ml/data/cached_dataset_v9.pkl` — v9 schema graphs
+
+Actual train-split label counts:
+| Class | Train positives |
+|---|---|
+| IntegerUO | 9,486 |
+| Reentrancy | 3,100 |
+| CallToUnknown | 2,237 |
+| MishandledException | 2,874 |
+| GasException | 3,392 |
+| Timestamp | 678 |
+| TransactionOrderDep. | 2,048 |
+
+Phase 5 retrospectively estimated ~89% FP rate for Reentrancy and ~87% for CallToUnknown
+in the full raw BCCC corpus — the same underlying issues affect `multilabel_index_deduped.csv`,
+but the Phase 5 percentages were computed on a larger, different slice of the data.
+
 ## Interpretation
 
 **Genuinely learned:**
-- **IntegerUO** (100% Top-1): Perfect discrimination. BCCC Phase 5 confirmed IntegerUO
-  labels were `VERIFIED (clean)` — this translates directly to strong OOD performance.
+- **IntegerUO** (100% Top-1): IntegerUO had 9,486 training examples — the largest class
+  — and the token-level text patterns (arithmetic keywords, ERC-20 SafeMath) are strong
+  and consistent. The Transformer + Fused eyes avg P=0.81/0.82 on SolidiFI contracts.
 
 **Partially learned:**
-- **Timestamp** (48% Top-1, 74% Top-2): Model assigns meaningfully higher probability
-  to the correct class (0.70 vs 0.52). BCCC had 40.2% label retention at BEST-EFFORT gate.
-- **Reentrancy** (36% Top-1, 90% Top-2): Weak discrimination in top slot but correct
-  class almost always top-2. Despite 89% FP rate in BCCC training, the 11% clean
-  signal carried through.
+- **Timestamp** (48% Top-1, 74% Top-2): 678 training examples (smallest positive class).
+  Sparse but relatively clean signal; Fused eye avg P=0.76.
+- **Reentrancy** (36% Top-1, 90% Top-2): 3,100 training examples but heavily noisy (Phase 5
+  estimates ~89% of full BCCC Reentrancy labels are FP). The ~11% genuine signal carried
+  through — Fused eye avg P=0.55.
 
 **Not learned (noise-level discrimination):**
-- **TOD**: AvgP(correct)=0.3875 ≈ AvgP(other)=0.3925 — random.
-- **CallToUnknown**: AvgP(correct) *lower* than AvgP(other) — BCCC 86.9% FP confirmed.
-- **MishandledException**: Marginally above noise (6% Top-2 — likely random).
+- **TOD**: All four eyes below 0.18. Noisy labels + vulnerability requires multi-tx reasoning.
+- **CallToUnknown**: All eyes below 0.18. Noisy labels + category mismatch with SolidiFI.
+- **MishandledException**: All eyes below 0.33. 2,874 training examples but syntax era
+  mismatch (Solidity 0.5 `.call.value()` vs 0.8 `(bool,) = .call{value:}("")` in training).
 
 ## Key takeaway for v2 dataset
 
-This benchmark directly validates the Phase 5 BCCC label-quality audit predictions:
-- Classes with verified/clean BCCC labels → model learned them (IntegerUO)
-- Classes with moderate label quality → partial learning (Timestamp, Reentrancy)  
-- Classes with near-random BCCC labels → zero learning (TOD, CallToUnknown)
+Label quality in training directly impacts OOD detection:
+- High training volume + consistent text signal → learned (IntegerUO)
+- Sparse but relatively clean labels → partial learning (Timestamp)
+- Noisy labels → zero or near-zero learning (TOD, CallToUnknown)
+- Clean labels but syntax era mismatch → zero learning (MishandledException)
 
-Improving label quality in v2 (multi-source verified pipeline) is the primary lever
-for performance improvement. Run 9 is hitting the label-quality ceiling, not an
-architectural ceiling.
+Improving label quality AND including Solidity 0.5 examples in v2 are both required
+levers for performance improvement.
 
 ## Run configuration
 - Checkpoint: `ml/checkpoints/GCB-P1-Run9-v11-20260606_best.pt` (ep52)
