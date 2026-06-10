@@ -146,17 +146,27 @@ Input: one .sol contract
   Classifier: Linear(512→256) → GELU → Linear(256→10) → sigmoid
 ```
 
-**Training data quality (BCCC Phase 5 label audit):**
+**Actual training data (verified from checkpoint config + label files):**
 
-| Class | Labels retained | Gate | What this means |
-|---|---|---|---|
-| IntegerUO | 100% (16,740) | VERIFIED ✓ | Clean labels, high confidence |
-| UnusedReturn | 100% (3,229) | VERIFIED ✓ | Clean |
-| MishandledException | 100% (5,154) | VERIFIED ✓ | Clean |
-| Reentrancy | 9.6% (1,699/17,698) | VERIFIED ✓ | 89.4% FP in BCCC — training was mostly noise |
-| CallToUnknown | 2.1% (239/11,131) | PROVISIONAL | 86.9% FP — near-random labels |
-| Timestamp | 40.2% (1,075/2,674) | BEST-EFFORT | Partial signal |
-| DenialOfService | 10.1% (1,252/12,394) | BEST-EFFORT | Partial |
+Checkpoint config records: `label_csv: ml/data/processed/multilabel_index_deduped.csv`, `splits_dir: ml/data/splits/deduped`, `cache_path: ml/data/cached_dataset_v9.pkl`. These are the original BCCC labels, deduplicated but **not** Phase 5 cleaned.
+
+| Class | Train positives | Val positives | Test positives | Total (41,576) |
+|---|---|---|---|---|
+| IntegerUO | 9,486 | 2,025 | 2,048 | 13,559 |
+| Reentrancy | 3,100 | 670 | 658 | 4,428 |
+| CallToUnknown | 2,237 | 469 | 503 | 3,209 |
+| MishandledException | 2,874 | 604 | 638 | 4,116 |
+| GasException | 3,392 | 746 | 737 | 4,875 |
+| TransactionOrderDep. | 2,048 | 459 | 469 | 2,976 |
+| ExternalBug | 2,048 | 475 | 443 | 2,966 |
+| UnusedReturn | 1,837 | 404 | 422 | 2,663 |
+| Timestamp | 678 | 303 | 259 | 948 (deduped CSV) |
+| DenialOfService | 246 | 56 | 42 | 344 |
+| **Non-vulnerable** | **16,863** | **3,607** | **3,612** | **24,082** |
+| **Total** | **29,101** | **6,234** | **6,241** | **41,576** |
+
+**Label quality note (retrospective — Phase 5 analysis of full BCCC, not training data):**
+Phase 5 was a separate audit of the complete BCCC-SCsVul-2024 dataset done *after* Run 9 was already trained. It estimated that in the full raw BCCC corpus: Reentrancy was ~89% FP, CallToUnknown ~87% FP, IntegerUO clean. These percentages do not directly apply to `multilabel_index_deduped.csv` (which is a different, pre-filtered subset), but they do indicate the same underlying data quality issues exist in the training labels used here.
 
 ---
 
@@ -244,15 +254,15 @@ For each `.sol` contract, the pipeline does:
 
 ## 4. Category Mapping
 
-| SolidiFI category | SENTINEL class | Training label quality |
-|---|---|---|
-| Overflow-Underflow | IntegerUO | VERIFIED (100% clean) |
-| Re-entrancy | Reentrancy | VERIFIED but 89.4% FP in raw BCCC |
-| Timestamp-Dependency | Timestamp | BEST-EFFORT (40.2% retained) |
-| TOD | TransactionOrderDependence | Very sparse / noisy |
-| Unchecked-Send | CallToUnknown | PROVISIONAL (86.9% FP in raw BCCC) |
-| Unhandled-Exceptions | MishandledException | VERIFIED (100% clean) |
-| tx.origin | (no SENTINEL class — FP probe only) | — |
+| SolidiFI category | SENTINEL class | Train positives | Label quality (Phase 5 estimate on full BCCC) |
+|---|---|---|---|
+| Overflow-Underflow | IntegerUO | 9,486 | High confidence — dominant clean class |
+| Re-entrancy | Reentrancy | 3,100 | Noisy — Phase 5 estimated ~89% FP in full BCCC |
+| Timestamp-Dependency | Timestamp | 678 | Sparse — smallest positive class in training |
+| TOD | TransactionOrderDependence | 2,048 | Noisy — Phase 5 estimated high FP rate |
+| Unchecked-Send | CallToUnknown | 2,237 | Noisy — Phase 5 estimated ~87% FP in full BCCC |
+| Unhandled-Exceptions | MishandledException | 2,874 | Moderate confidence |
+| tx.origin | (no SENTINEL class — FP probe only) | — | — |
 
 ---
 
@@ -316,7 +326,7 @@ This is the real picture. Only IntegerUO is genuinely learned. The rest ranges f
 
 **Key finding:** Detection is driven by the **text-level patterns** in GraphCodeBERT (Transformer + Fused eyes), NOT the graph structure. The CFG/Phase2 eye scores **below 0.5 (below random)**, meaning the CFG structure of arithmetic-vulnerable nodes does not distinguish them from normal arithmetic. The GNN is only marginally useful.
 
-GraphCodeBERT learned to associate token patterns like `uint8`, `vundflw`, `intou`, `balances_intou`, `lockTime_intou` (the SolidiFI injection naming convention) with IntegerUO. Because BCCC training included 16,740 verified IntegerUO examples from similar ERC-20 contracts, the transformer built strong text-level priors.
+GraphCodeBERT learned to associate token patterns like `uint8`, `vundflw`, `intou`, `balances_intou`, `lockTime_intou` (the SolidiFI injection naming convention) with IntegerUO. The training data had 9,486 IntegerUO positives in the train split — the largest class by far — from similar ERC-20 contracts in BCCC, building strong text-level priors.
 
 ### What the vulnerability looks like in source
 
@@ -351,7 +361,7 @@ These are simple `uint8` arithmetic operations without SafeMath. The base contra
 IntegerUO is predicted as the top class on nearly every SolidiFI contract, including those injected with other vulnerability types. Root cause:
 
 1. **All SolidiFI contracts use EIP20/HotDollarsToken or similar ERC-20 bases** — these are full of arithmetic (token balances, allowances)
-2. **BCCC trained IntegerUO on 16,740 verified ERC-20 contracts with arithmetic patterns** — the transformer learns "ERC-20 arithmetic ≈ IntegerUO"
+2. **Training had 9,486 IntegerUO positives (largest class) from BCCC ERC-20 contracts with arithmetic patterns** — the transformer learns "ERC-20 arithmetic ≈ IntegerUO"
 3. **Every SolidiFI contract activates this prior** regardless of which injection it contains
 
 This is "base contract bias": the ERC-20 base is classified as IntegerUO, and the other injected vulnerability sits on top.
@@ -478,7 +488,7 @@ Note: buggy_16 and buggy_29 show the CFG eye detecting the Timestamp signal but 
 | Phase2/CFG | 0.2668 | **Well below random** |
 | Combined | 0.5673 | Weak overall |
 
-**Key finding:** Reentrancy is the weakest of the "partially learned" classes. No eye clearly drives detection. Fused at 0.55 is the best but barely above random. The Transformer at 0.44 is below random — GraphCodeBERT's text model doesn't reliably associate reentrancy source patterns with the Reentrancy class. This reflects the BCCC training reality: **89.4% of raw BCCC Reentrancy labels were false positives**. The model trained mostly on noise.
+**Key finding:** Reentrancy is the weakest of the "partially learned" classes. No eye clearly drives detection. Fused at 0.55 is the best but barely above random. The Transformer at 0.44 is below random — GraphCodeBERT's text model doesn't reliably associate reentrancy source patterns with the Reentrancy class. The training data had 3,100 Reentrancy positives in the train split, but Phase 5's retrospective audit of the full BCCC corpus estimated ~89% of Reentrancy labels are false positives — meaning the model trained mostly on noise.
 
 ### Top-1 hits vs misses
 
@@ -509,7 +519,7 @@ function withdraw_re_ent1() public {
 }
 ```
 
-This is exactly the pattern the model was trained to detect. But with only 9.6% of BCCC labels retained (1,699 genuine examples out of 17,698), the signal is weak.
+This is exactly the pattern the model was trained to detect. The training data had 3,100 Reentrancy positives, but Phase 5's retrospective analysis estimates ~89% of those are false positives in the underlying BCCC corpus — leaving an estimated ~340 genuinely informative examples, which explains the weak and inconsistent signal.
 
 ### Notable contracts
 
@@ -636,7 +646,7 @@ A miner can see a `play_TOD9()` transaction in the mempool and front-run it by m
 | Phase2/CFG | 0.1458 | Well below random |
 | Combined | 0.4124 | Near-random |
 
-**Surprising: BCCC had 5,154 VERIFIED 100% clean labels for MishandledException, yet 0% Top-1 here.** This is the strongest contradiction of the "label quality → detection quality" thesis.
+**Surprising: training had 2,874 MishandledException positives — the third largest class — yet 0% Top-1 here.** Phase 5 did not flag MishandledException as noisy, suggesting these labels are relatively clean. This makes the 0% Top-1 result the strongest evidence that label quality alone does not determine OOD performance.
 
 ### Root cause analysis: syntax era mismatch
 
@@ -766,7 +776,7 @@ This section synthesises all findings from sections 7–13 into a unified causal
 
 ### Root cause 1: Base contract bias (IntegerUO false positives everywhere)
 
-All 350 SolidiFI contracts are built on variants of EIP20/HotDollarsToken or similar ERC-20 base contracts. BCCC trained IntegerUO on 16,740 verified ERC-20 contracts with arithmetic patterns. The transformer learned "ERC-20 SafeMath arithmetic ≈ IntegerUO". Every SolidiFI contract activates this prior, making IntegerUO rank #1 for every non-IntegerUO category (verified: IntegerUO is the top-wrong prediction for 40–45 out of 50 contracts in TOD, Unchecked-Send, and Unhandled-Exceptions).
+All 350 SolidiFI contracts are built on variants of EIP20/HotDollarsToken or similar ERC-20 base contracts. Training had 9,486 IntegerUO positives in the train split (the largest class) from BCCC ERC-20 contracts with arithmetic patterns. The transformer learned "ERC-20 SafeMath arithmetic ≈ IntegerUO". Every SolidiFI contract activates this prior, making IntegerUO rank #1 for every non-IntegerUO category (verified: IntegerUO is the top-wrong prediction for 40–45 out of 50 contracts in TOD, Unchecked-Send, and Unhandled-Exceptions).
 
 **Fix for v2:** Include diverse non-ERC-20 contracts in training. For IntegerUO specifically, include contracts without ERC-20 patterns. For other classes, include ERC-20 contracts as *negative* training examples.
 
@@ -828,9 +838,9 @@ TOD (Transaction Order Dependence) is a vulnerability about **miner reordering o
 |---|---|---|---|
 | IntegerUO | 100% Top-1 | TF + Fused | VERIFIED clean labels + strong text signal. Works. |
 | Timestamp | 48% Top-1 | Fused | Partial text signal; misses when interface injection or non-ERC-20 host |
-| Reentrancy | 36% Top-1 | Fused | 89.4% FP in BCCC → weak signal; also misses interface injections |
+| Reentrancy | 36% Top-1 | Fused | 3,100 train positives, ~89% estimated FP (Phase 5 on full BCCC) → weak signal; also misses interface injections |
 | MishandledException | 0% Top-1 | None | VERIFIED labels but 0.5 vs 0.8 syntax mismatch; base contract bias |
-| CallToUnknown | 0% Top-1 | None | 86.9% FP in BCCC + category mapping mismatch with SolidiFI |
+| CallToUnknown | 0% Top-1 | None | 2,237 train positives, ~87% estimated FP (Phase 5 on full BCCC) + category mapping mismatch with SolidiFI |
 | TOD | 0% Top-1 | None | Transaction-level vulnerability; structurally undetectable by single-contract model |
 
 ---
