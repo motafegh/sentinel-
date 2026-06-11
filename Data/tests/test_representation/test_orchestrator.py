@@ -47,7 +47,7 @@ class TestOrchestrator:
         assert result.tokens_written == 5
         assert result.tokens_failed == 0
         assert result.schema_version == "v9"
-        assert "thin-adapter" in result.extractor_version
+        assert result.extractor_version.startswith("v2.")
 
         # Verify token shape: [4, 512] (windowed graphcodebert, not (512,) codebert)
         out_dir = temp_data_dir / "representations" / "solidifi"

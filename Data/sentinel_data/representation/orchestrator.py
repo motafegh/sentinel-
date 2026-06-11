@@ -83,7 +83,7 @@ class RepresentResult:
 # invalidates existing .pt files (e.g. sidecar schema change). With
 # FEATURE_SCHEMA_VERSION, this gives 2 independent cache-invalidation
 # triggers: schema drift OR extractor drift.
-EXTRACTOR_VERSION = "v2.0-thin-adapter"
+EXTRACTOR_VERSION = "v2.1-windowed-gcb"  # bump: tokenizer → graphcodebert-base [4,512]
 
 
 def _load_meta(meta_path: Path) -> dict[str, Any] | None:
