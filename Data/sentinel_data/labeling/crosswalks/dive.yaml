@@ -1,0 +1,92 @@
+# DIVE crosswalk — map folder membership → SENTINEL 10-class labels
+#
+# Source:   DIVE dataset (manual connector, pin 2025-10-02)
+# Tier:     T2 — curated, folder-based multi-label (tool-assisted curation)
+# Reviewed: 2026-06-11
+#
+# Label mechanism:
+#   DIVE stores contracts in `repo/__source__/<N>.sol`.
+#   The same file also appears in one or more vulnerability folders
+#   (e.g. repo/Reentrancy/<N>.sol, repo/Arithmetic/<N>.sol).
+#   Presence in a folder = positive label for that class.
+#   Absence from all folders = NonVulnerable.
+#
+#   The parser resolves labels by:
+#     1. Extract filename from original_path in .meta.json:
+#        "repo/__source__/12727.sol" → "12727.sol"
+#     2. Look up which folders contain that filename in the raw repo.
+#     3. Map each folder to a canonical class using class_map below.
+#
+# Multi-label: a contract may appear in up to 8 folders simultaneously.
+#   Distribution: 1 label: 4221, 2: 4882, 3: 4598, 4: 3206,
+#                 5: 2152, 6: 542, 7: 40, 8: 3 (of 19644 labeled files)
+#
+# NonVulnerable: 2686 files in __source__ that appear in no folder.
+#
+# Corpus (preprocessed): 22073 meta.json files (22330 raw − 257 compile failures)
+
+schema_version: "1"
+source: dive
+taxonomy_version: "1"
+label_field: original_path    # parser extracts filename, then looks up folder membership
+confidence_tier: T2
+
+class_map:
+  # DIVE folder name → canonical class name
+  #
+  # Direct mappings:
+  Reentrancy:               Reentrancy
+  DoS:                      DenialOfService
+  Arithmetic:               IntegerUO
+  "Time manipulation":      Timestamp
+  "Front Running":          TransactionOrderDependence
+
+  # Access Control → ExternalBug
+  # DIVE's "Access Control" covers contracts where ownership, role checks,
+  # or privilege enforcement are missing or bypassable by external callers.
+  # This maps to ExternalBug (id=2), which is the canonical class for
+  # access control violations and external interaction flaws.
+  "Access Control":         ExternalBug
+
+  # Unchecked Return Values → UnusedReturn
+  # DIVE explicitly names this as a return-value concern (any ignored return),
+  # not specifically low-level send() return. Maps to UnusedReturn (id=9),
+  # not CallToUnknown (id=0). CallToUnknown is reserved for raw low-level
+  # call/send/delegatecall patterns where the callee is unverified.
+  "Unchecked Return Values": UnusedReturn
+
+  # Bad Randomness → DROPPED
+  # DIVE's "Bad Randomness" class covers on-chain randomness derived from
+  # block.timestamp, blockhash, or other miner-influenceable values.
+  # The canonical 10-class taxonomy has no BadRandomness class.
+  # Timestamp (id=7) partially overlaps but is specifically about timestamp
+  # dependency in logic (e.g. time-locked functions), not randomness misuse.
+  # Merging the two would inflate Timestamp with a structurally different pattern.
+  #
+  # Decision: DROP Bad Randomness from DIVE labels. These contracts will be
+  # represented in the graph (Stage 2) but will have no positive label in
+  # Stage 3. They may become NonVulnerable in the final corpus.
+  #
+  # v2.1 note: if a BadRandomness class is added to the taxonomy in a future
+  # schema version, these contracts are already represented and can be
+  # re-labeled without re-extraction.
+  #
+  # "Bad Randomness": DROPPED
+
+notes:
+  - "Bad Randomness is DROPPED — no canonical class equivalent. 634 files
+    in the Bad Randomness folder; if a file has no other folder membership
+    after dropping this class, it becomes NonVulnerable."
+  - "2686 files in __source__ with no folder membership → NonVulnerable.
+    After dropping Bad Randomness, this count increases for files that
+    were exclusively in the Bad Randomness folder."
+  - "The label lookup requires a scan of the raw repo folder structure at
+    parse time. The parser builds a filename→frozenset[folder] index once
+    and reuses it across all contracts."
+  - "Confidence tier T2 (not T0/T1): DIVE is curated but folder membership
+    is not exploit-verified. Treat as strong heuristic signal, not ground truth."
+  - "GasException (id=3) has no DIVE folder equivalent. These contracts will
+    come from SmartBugs Curated."
+  - "MishandledException (id=5) and CallToUnknown (id=0) have no direct DIVE
+    folder equivalent. Unchecked Return Values maps to UnusedReturn (id=9),
+    not to either of those two classes."
