@@ -1,0 +1,166 @@
+# SENTINEL v2 — Canonical 10-class vulnerability taxonomy
+#
+# LOCKED: The class order (index 0-9) matches CLASS_NAMES in
+# ml/src/training/trainer.py and the column order in
+# ml/data/processed/multilabel_index.csv.
+# DO NOT reorder. Every existing checkpoint uses this positional mapping.
+# Adding a new class requires a new ADR, a schema version bump, and retraining.
+#
+# Source of truth for the class order:
+#   ml/src/training/trainer.py:CLASS_NAMES (verified 2026-06-11 against
+#   GCB-P1-Run9-v11-20260606_best.pt)
+#
+# References:
+#   - ADR-0002 (multi-label formulation)
+#   - docs/proposal/Data_Module_Proposals/actionable_plans/04_stage_3_labeling.md D-3.1
+
+schema_version: "1"
+locked: true
+num_classes: 10
+
+classes:
+  - id: 0
+    name: CallToUnknown
+    dasp: "DASP-7 (Bad Randomness / Unchecked Low-Level Calls)"
+    severity: high
+    description: >
+      Low-level calls (call/delegatecall/send) whose return value is not
+      checked, or calls to unverified external addresses. Includes send()
+      without revert on failure and raw address.call() patterns.
+    crosswalk_notes: >
+      DIVE maps unchecked_low_level_calls here.
+      SmartBugs Curated maps unchecked_low_level_calls here.
+      BCCC had 86.9% FP rate for this class (per Phase 5 verification).
+      If verified count < 300 post-merger, the merger pauses and asks human.
+
+  - id: 1
+    name: DenialOfService
+    dasp: "DASP-5 (Denial of Service)"
+    severity: high
+    description: >
+      Contracts that can be rendered permanently non-functional by an attacker.
+      Includes unbounded loops over attacker-controlled arrays, push-over-pull
+      failures, and blocking-by-revert patterns in loops.
+    crosswalk_notes: >
+      DIVE maps denial_of_service here.
+      SmartBugs Curated maps denial_of_service here.
+      99% DoS↔Reentrancy co-occurrence in BCCC was label noise — the merger
+      must de-duplicate same-source DoS+Reentrancy unless independently attested.
+
+  - id: 2
+    name: ExternalBug
+    dasp: "DASP-2 (Access Control) / DASP-10 (Unknown Unknowns)"
+    severity: critical
+    description: >
+      Exploits originating from external contract interactions beyond simple
+      reentrancy: flash loan price manipulation, oracle manipulation, access
+      control violations, delegatecall injection, and protocol-level logic
+      bugs. DeFiHackLabs T0 evidence maps here for most DeFi exploits.
+    crosswalk_notes: >
+      DIVE maps access_control here.
+      DeFiHackLabs: FlashLoan / Oracle / PriceManip / AccessControl / Privilege
+      all map here (T0).
+      Broad catch-all for DeFi-specific exploits with no narrower class.
+
+  - id: 3
+    name: GasException
+    dasp: "DASP-5 (Denial of Service / Gas Limit)"
+    severity: medium
+    description: >
+      Transactions that fail or behave incorrectly due to out-of-gas errors.
+      Includes loops with dynamic iteration counts, large calldata, and
+      patterns that hit the block gas limit in unexpected ways.
+    crosswalk_notes: >
+      No direct DASP equivalent in most sources; often mapped from Slither's
+      `costly-loop` or `calls-loop` detectors. SolidiFI has no injection for
+      this class — GasException contracts will come from DIVE/SmartBugs.
+
+  - id: 4
+    name: IntegerUO
+    dasp: "DASP-3 (Arithmetic Issues)"
+    severity: high
+    description: >
+      Integer overflow and underflow vulnerabilities. Relevant primarily for
+      Solidity < 0.8.0 (pre-SafeMath-by-default). In 0.8+ contracts, unchecked{}
+      blocks can still trigger these.
+    crosswalk_notes: >
+      SolidiFI: integer_overflow_underflow injection type maps here directly (T0).
+      DIVE maps arithmetic here.
+      SmartBugs Curated maps arithmetic here.
+      feat[11] (in_unchecked_block) in the v9 schema is the primary structural
+      signal for this class.
+
+  - id: 5
+    name: MishandledException
+    dasp: "DASP-4 (Unchecked Return Values)"
+    severity: medium
+    description: >
+      External call return values are ignored or exceptions are swallowed.
+      The contract proceeds as if the call succeeded even when it failed.
+      Distinct from CallToUnknown: this class is about exception handling,
+      not about whether the callee is trustworthy.
+    crosswalk_notes: >
+      SolidiFI: unhandled_exceptions injection type maps here directly (T0).
+      Distinct from CallToUnknown (id=0): CallToUnknown is about unchecked
+      low-level calls; MishandledException is about swallowed try/catch or
+      ignored send() return values in higher-level patterns.
+
+  - id: 6
+    name: Reentrancy
+    dasp: "DASP-1 (Reentrancy)"
+    severity: critical
+    description: >
+      An external call is made before state is updated (checks-effects-
+      interactions violation), allowing the callee to re-enter and manipulate
+      the contract's state. The canonical DeFi vulnerability class.
+    crosswalk_notes: >
+      SolidiFI: reentrancy injection type maps here directly (T0).
+      DIVE maps reentrancy here.
+      SmartBugs Curated maps reentrancy here.
+      DeFiHackLabs: Reentrancy folder maps here (T0).
+      BCCC had 89.4% FP rate — most BCCC Reentrancy contracts had no
+      cross-contract call at all (per Phase 5 verification).
+      feat[8] (has_reentrancy_guard) in v9 schema is the structural counter-signal.
+
+  - id: 7
+    name: Timestamp
+    dasp: "DASP-8 (Time Manipulation)"
+    severity: low
+    description: >
+      Contract logic depends on block.timestamp (or the now keyword) in ways
+      that a miner can manipulate within the ~15-second tolerance window.
+      Includes time-locked functions and timestamp-based randomness.
+    crosswalk_notes: >
+      SolidiFI: timestamp_dependency injection type maps here directly (T0).
+      DIVE maps time_manipulation here.
+      SmartBugs Curated maps time_manipulation here.
+      feat[2] (uses_block_globals) in v9 schema fires for block.timestamp,
+      now keyword, and blockhash — primary structural signal for this class.
+
+  - id: 8
+    name: TransactionOrderDependence
+    dasp: "DASP-7 (Front-Running)"
+    severity: medium
+    description: >
+      Contract outcome depends on transaction ordering. An attacker watching
+      the mempool can front-run a victim transaction to change the contract
+      state before the victim's transaction executes (e.g. approve/transferFrom
+      race, sandwich attacks).
+    crosswalk_notes: >
+      SolidiFI: TOD (transaction order dependence) injection type maps here (T0).
+      DIVE maps front_running here.
+      SmartBugs Curated maps front_running here.
+
+  - id: 9
+    name: UnusedReturn
+    dasp: "DASP-4 (Unchecked Return Values)"
+    severity: low
+    description: >
+      Return values of function calls are discarded without checking. Broader
+      than MishandledException (id=5): includes internal calls and any ignored
+      return, not just failed external calls.
+    crosswalk_notes: >
+      Distinct from MishandledException (id=5): UnusedReturn covers ANY
+      discarded return value (internal or external); MishandledException covers
+      swallowed exceptions from external calls specifically.
+      Slither's unused-return detector is a reliable signal for this class.
