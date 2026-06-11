@@ -1,0 +1,38 @@
+class: Reentrancy
+description: >
+  External call before state update (CEI violation). An attacker's fallback
+  function can re-enter the vulnerable function before state is updated.
+
+v9_signal:
+  method: graph_attribute
+  field: has_cei_path
+  positive_value: 1
+  note: >
+    Computed by _compute_has_cei_path() in graph_extractor.py. Detects
+    CFG_NODE_CALL reachable to CFG_NODE_WRITE within 8 CONTROL_FLOW hops.
+    Strict CEI enforcement: external call MUST come before state write.
+
+false_positive_risk:
+  level: HIGH
+  bccc_fp_rate: "89%"
+  bccc_root_cause: >
+    BCCC matched any external call + state write regardless of ordering.
+    The correct pattern REQUIRES the external call to come BEFORE the state
+    write. CEI ordering enforcement is the key discriminator.
+
+positive_example: |
+  function withdraw(uint amount) public {
+      require(balances[msg.sender] >= amount);
+      msg.sender.call{value: amount}("");
+      balances[msg.sender] -= amount;
+  }
+
+negative_example: |
+  function withdraw(uint amount) public {
+      require(balances[msg.sender] >= amount);
+      balances[msg.sender] -= amount;
+      msg.sender.call{value: amount}("");
+  }
+
+dasp_id: 1
+tier_for_solidifi: T0

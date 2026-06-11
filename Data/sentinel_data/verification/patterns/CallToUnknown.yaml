@@ -1,0 +1,42 @@
+class: CallToUnknown
+description: >
+  Low-level call to an unknown/dynamic address. Includes .call{}, .delegatecall{},
+  .send(), raw call with address-type lvalue. NOT in OZ SafeERC20 wrappers.
+
+v9_signal:
+  method: graph_edge
+  edge_type: EXTERNAL_CALL
+  edge_id: 11
+  note: >
+    EXTERNAL_CALL edge (type 11, added in v9 schema) is a self-loop on the
+    call-site node for cross-contract calls detected during graph extraction.
+    Presence of any EXTERNAL_CALL edge is a positive signal.
+
+false_positive_risk:
+  level: VERY_HIGH
+  bccc_fp_rate: "86.9%"
+  bccc_root_cause: >
+    86.9% of BCCC CallToUnknown positives had NO low-level call at all.
+    The BCCC labels were folder-assigned without code verification.
+    A single Slither detector check would have caught this.
+
+library_call_exclusion: >
+  SafeERC20.safeTransfer(), OZ AccessControl, and other library calls are
+  classified as HighLevelCall by Slither but are NOT cross-contract.
+  A call to a Contract or Library declaration in the same source file is
+  a library call, not CallToUnknown.
+
+positive_example: |
+  function execute(address target, bytes calldata data) public {
+      (bool ok,) = target.call(data);
+      require(ok, "call failed");
+  }
+
+negative_example: |
+  using SafeERC20 for IERC20;
+  function safeTransfer(IERC20 token, address to, uint256 amount) internal {
+      token.safeTransfer(to, amount);
+  }
+
+dasp_id: 7
+tier_for_solidifi: T0

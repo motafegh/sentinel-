@@ -1,0 +1,26 @@
+class: GasException
+description: >
+  Unchecked send/transfer that fails silently or out-of-gas exception
+  in a fallback that corrupts state. Includes: .send() without return check,
+  .transfer() when recipient is a contract with expensive fallback.
+
+v9_signal:
+  method: NOT_EXTRACTABLE
+  note: >
+    v9 schema has no "unchecked-send" feature. Feat[7] (return_ignored) is
+    related but covers all call types. Full verification requires Slither
+    suicidal / locked-ether detectors. Deferred to tool_validator.
+
+positive_example: |
+  function payout(address payable recipient) public {
+      recipient.send(amount);  // return bool ignored — GasException if recipient is contract
+  }
+
+negative_example: |
+  function payout(address payable recipient) public {
+      bool ok = recipient.send(amount);
+      require(ok, "payout failed");
+  }
+
+dasp_id: 4
+tier_for_solidifi: null
