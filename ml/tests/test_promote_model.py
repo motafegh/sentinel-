@@ -71,12 +71,13 @@ def test_dry_run_does_not_register(ckpt, capsys):
         from ml.scripts.promote_model import promote
 
         rc = promote(
-            checkpoint    = ckpt,
-            stage         = "Staging",
-            val_f1_macro  = 0.4679,
-            note          = "test note",
+            checkpoint      = ckpt,
+            stage           = "Staging",
+            val_f1_macro    = 0.4679,
+            note            = "test note",
             experiment_name = "test-exp",
-            dry_run       = True,
+            dry_run         = True,
+            require_baseline = None,
         )
 
     assert rc == 0
@@ -110,12 +111,13 @@ def test_mlflow_tags_are_written(ckpt):
         from ml.scripts.promote_model import promote
 
         rc = promote(
-            checkpoint    = ckpt,
-            stage         = "Staging",
-            val_f1_macro  = 0.4679,
-            note          = "integration test",
+            checkpoint      = ckpt,
+            stage           = "Staging",
+            val_f1_macro    = 0.4679,
+            note            = "integration test",
             experiment_name = "sentinel-retrain-v2",
-            dry_run       = False,
+            dry_run         = False,
+            require_baseline = None,
         )
 
     assert rc == 0

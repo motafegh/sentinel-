@@ -1984,6 +1984,7 @@ def train(config: TrainConfig) -> dict:
                     gpu_util_mean_pct  = 0.0,
                     loss_spike_count   = _epoch_stats["loss_spike_count"],
                     grad_zero_count    = _epoch_stats["grad_zero_count"],
+                    f1_macro_tuned     = val_metrics.get("f1_macro_tuned"),
                 )
                 _slog.log_epoch(_summary)
                 _slog.check_vram(step=0, epoch=epoch)

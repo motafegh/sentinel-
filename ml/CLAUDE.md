@@ -37,16 +37,12 @@ Do not use values from memory or prior conversation.**
 
 ---
 
-
-
----
-
 ## Before Modifying Any Source File
 
 1. Check `MEMORY.md` for open bugs relevant to the file you are editing
 2. If editing `graph_schema.py`: schema changes have broad downstream impact —
    read `ml/testing_specs/J_schema_migration.md` before making any change
-4. If editing `trainer.py` or `training_logger.py`: run the smoke suite
+3. If editing `trainer.py` or `training_logger.py`: run the smoke suite
    (`ml/scripts/smoke/run_all.py`) after your change
 
 

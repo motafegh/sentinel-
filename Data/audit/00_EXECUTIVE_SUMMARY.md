@@ -2,8 +2,8 @@
 
 **Audit Date:** 2026-06-16
 **Auditor:** opencode (automated deep audit)
-**Scope:** Stages 0–2 implementation (root files + ingestion + preprocessing + representation)
-**Reference Plans:** `01_stage_0_skeleton.md`, `02_stage_1_ingest_preprocess.md`, `03_stage_2_representation.md`
+**Scope:** Stages 0–3 implementation (root files + ingestion + preprocessing + representation + labeling)
+**Reference Plans:** `01_stage_0_skeleton.md`, `02_stage_1_ingest_preprocess.md`, `03_stage_2_representation.md`, `04_stage_3_labeling.md`
 
 ---
 
@@ -15,8 +15,9 @@
 | `ingestion/` | 5 | 7 | 1 | **WARN** |
 | `preprocessing/` | 61 | 15 | 3 | **WARN** |
 | `representation/` | ~40 | 4 | 1 | **PASS** (with critical fix needed) |
+| `labeling/` (Stage 3) | 28 | 6 | 2 | **WARN** |
 | Tests & Config | ~30 | 5 | 2 | **WARN** |
-| **TOTAL** | **~167** | **40** | **9** | **WARN** |
+| **TOTAL** | **~195** | **46** | **11** | **WARN** |
 
 ---
 
@@ -33,6 +34,8 @@
 | **F7** | representation | `cache_manager.py:95` — `stale_entries()` returns wrong sha256, stale cache never evicted | HIGH | D-2.5 |
 | **F8** | tests | No two-pass compile test (plan exit criterion #9) | HIGH | Task 1.8 |
 | **F9** | tests | No pragma tolerance test (plan exit criterion #9) | HIGH | Task 1.8 |
+| **F-3.1** | labeling | `defihacklabs.yaml` missing `confidence_tier: T0` field | MEDIUM | D-3.1 |
+| **F-3.2** | labeling | `smartbugs_curated.yaml` missing `confidence_tier: T2` field | MEDIUM | D-3.1 |
 
 ---
 
@@ -52,6 +55,10 @@
 | W10 | representation | `cfg_builder.py:243` bypasses thin adapter, imports from `ml.src` directly | D-2.7 |
 | W11 | representation | `orchestrator.py:251` dead `cfg: dict` parameter | — |
 | W12 | tests | Hardcoded absolute paths in test_orchestrator.py | — |
+| W13 | labeling | DeFiHackLabs parser not implemented (only crosswalk exists) | Task 3.7 |
+| W14 | labeling | SmartBugs Curated parser not implemented (only crosswalk exists) | Task 3.8 |
+| W15 | labeling | Relative paths in test_parser_solidifi.py | — |
+| W16 | labeling | Missing conftest.py for shared test fixtures | — |
 
 ---
 
@@ -84,6 +91,10 @@
 | D-2.6 Sidecar rep.json | ✅ PASS | All fields present |
 | D-2.7 Thin-adapter pattern | ✅ PASS | Correct implementation |
 | D-2.8 SHA-256 from Stage 1 | ✅ PASS | No MD5 usage |
+| D-3.1 10-class taxonomy locked | ✅ PASS | Verified against trainer.py |
+| D-3.3 Conflict resolution T0 > T1 > T2 > T3 > T4 | ✅ PASS | Implemented in _tier_rank() |
+| D-3.3 DoS+Reentrancy co-occurrence rule | ✅ PASS | Implemented in _check_co_occurrence_flag() |
+| D-3.5 Merged labels = canonical record | ✅ PASS | merger.py writes to data/labels/merged/ |
 
 ---
 
@@ -99,6 +110,10 @@
 8. **8 bug regression tests** — A9, A15, A20, A34, A38, resume, def_use, return_ignored all covered
 9. **SolidiFI fixes** — A-1 (comment stripping), A-2 (RETURN_TO), A-3 (interface injection) tested
 10. **Parallel preprocessing** — multiprocessing with proper worker isolation
+11. **Taxonomy lock** — class order verified against trainer.py and multilabel_index.csv
+12. **Crosswalk documentation** — SolidiFI/DIVE crosswalks thoroughly documented with v2.1 notes
+13. **Co-occurrence detection** — DoS+Reentrancy noise flagging implemented per plan D-3.3
+14. **Gate implementation** — Go/No-Go gate correctly validates per-class thresholds
 
 ---
 
@@ -111,29 +126,36 @@
 3. Fix `compiler.py:34` mutable default — 1 line
 4. Replace hardcoded paths in `config.yaml` — 2 lines
 5. Enable `defihacklabs` in config.yaml — 1 line
+6. Add `confidence_tier: T0` to `defihacklabs.yaml` — 1 line
+7. Add `confidence_tier: T2` to `smartbugs_curated.yaml` — 1 line
 
 ### P1 — Fix Before Stage 7 (seam swap)
 
-6. Implement AST near-dup dedup (Level 3) or document the stub clearly
-7. Add missing sidecar fields (`inheritance_root`, `n_imports`, `contract_count`)
-8. Add manifest versioning (append-only)
-9. Add two-pass compile test
-10. Add pragma tolerance test
+8. Implement AST near-dup dedup (Level 3) or document the stub clearly
+9. Add missing sidecar fields (`inheritance_root`, `n_imports`, `contract_count`)
+10. Add manifest versioning (append-only)
+11. Add two-pass compile test
+12. Add pragma tolerance test
+13. Implement DeFiHackLabs parser (critical-path source)
+14. Implement SmartBugs Curated parser (Stage 4 recall gate)
 
 ### P2 — Fix Before Run 11 Launch
 
-11. Replace `datetime.utcnow()` with `datetime.now(timezone.utc)`
-12. Fix `freshness.py` pin comparison logic
-13. Add subprocess timeout to git connector
-14. Use `shlex.split()` for `post_clone_cmd`
-15. Fix `_CONTRACT_RE` to match `abstract contract`
-16. Fix `_handle_run` to pass stage-specific args
-17. Replace hardcoded paths in test files
+15. Replace `datetime.utcnow()` with `datetime.now(timezone.utc)`
+16. Fix `freshness.py` pin comparison logic
+17. Add subprocess timeout to git connector
+18. Use `shlex.split()` for `post_clone_cmd`
+19. Fix `_CONTRACT_RE` to match `abstract contract`
+20. Fix `_handle_run` to pass stage-specific args
+21. Replace hardcoded paths in test files
+22. Add conftest.py for test_labeling/ shared fixtures
+23. Convert relative paths in test_parser_solidifi.py to absolute
 
 ### P3 — Nice to Have
 
-18. Remove unused imports in `manual_connector.py`
-19. Extract shared `_IMPORT_LINE_RE` to common module
-20. Add `__all__` to `ingestion/__init__.py`
-21. Use `mp.get_context("spawn")` for parallel preprocessing
-22. Add `test_representation/__init__.py`
+24. Remove unused imports in `manual_connector.py`
+25. Extract shared `_IMPORT_LINE_RE` to common module
+26. Add `__all__` to `ingestion/__init__.py`
+27. Use `mp.get_context("spawn")` for parallel preprocessing
+28. Add `test_representation/__init__.py`
+29. Add merger edge case tests (empty inputs, all-Negative, tier precedence)

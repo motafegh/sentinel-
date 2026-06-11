@@ -116,7 +116,7 @@ automatic backup. Archive or DVC-snapshot the existing token files
 before running if they may be needed for reproducibility.
 
 After re-tokenization, the token cache used by the DataLoader must also be
-invalidated. Read `ml/src/data/dual_path_dataset.py` to confirm the cache
+invalidated. Read `ml/src/datasets/dual_path_dataset.py` to confirm the cache
 key format and which files must be deleted or regenerated.
 
 ---
@@ -145,7 +145,7 @@ After re-extraction:
 
 ## E.7 — DataLoader Cache Validation
 
-Read `ml/src/data/dual_path_dataset.py` before verifying the DataLoader cache:
+Read `ml/src/datasets/dual_path_dataset.py` before verifying the DataLoader cache:
 
 - Confirm the cache key format (what fields constitute a cache hit)
 - Confirm the cache version recorded in the current split files matches

@@ -1,0 +1,5 @@
+{
+  "source": "warmup",
+  "status": "PLACEHOLDER",
+  "note": "Run compute_drift_baseline.py --source warmup after the API has collected production warmup traffic. Replace this file with the real output before any Production promotion."
+}
