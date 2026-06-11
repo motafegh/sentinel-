@@ -60,16 +60,16 @@ class TestGateReport:
         assert result.gate_passed is False
 
     def test_gate_result_for_current_corpus(self):
-        """Report current corpus status — expected to FAIL with only 2 sources."""
+        """Gate PASSES with SolidiFI (283) + DIVE full (22,073) — 2026-06-11."""
         _skip_if_no_merged()
         cfg = _load_config()
         result = run_gate(_DATA_DIR, cfg)
-        # With only SolidiFI (283) + DIVE (500 sample), total << 4000 → gate fails
-        # This is expected and correct — documents the gap before more sources added
+        # With full DIVE (22,073) + SolidiFI (283), all blocking criteria pass.
+        # Remaining gaps: GasException=0, MishandledException≈39, CallToUnknown≈39
+        # (non-blocking minor classes — need SmartBugs Curated for coverage)
         total_criterion = next(c for c in result.criteria if c.name == "total_contracts")
         print(f"\nCurrent corpus: {total_criterion.actual} contracts "
               f"(threshold={total_criterion.threshold})")
         print(str(result))
-        # We don't assert gate_passed — it SHOULD fail with 2 sources
-        # The test just confirms the gate runs and produces a coherent report
-        assert total_criterion.actual > 0
+        assert total_criterion.actual >= 22000
+        assert result.gate_passed is True

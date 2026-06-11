@@ -2,6 +2,26 @@
 
 **Date:** 2026-06-30 (revised 2026-06-09 post-friend-review; scope note added 2026-06-11)
 
+> **✅ STAGE 3 COMPLETE (2026-06-11) — Go/No-Go gate PASSED**
+>
+> Build summary (2 active sources: SolidiFI + DIVE full corpus):
+> - `taxonomy.yaml` locked (10 classes, v9 order) ✅
+> - `crosswalks/solidifi.yaml` (T0, 7 folders, single-label) ✅
+> - `crosswalks/dive.yaml` (T2, 7 folders, multi-label, Bad Randomness dropped) ✅
+> - `parsers/solidifi.py` (283 contracts, 100% labeled) ✅
+> - `parsers/dive.py` (22,073 contracts, 0 failures, 2,604 NonVulnerable) ✅
+> - `merger.py` (22,356 merged, 0 co-occurrence flags, all single-source as expected) ✅
+> - `gate.py` → **PASS ✓** (22,356 total; Reentrancy 11,369, IntegerUO 9,437, DoS 3,750 — all blocking criteria met)
+> - `Data/tests/test_labeling/` → **80/80 tests passing**
+>
+> **Persistent minor-class gaps (non-blocking):**
+> - GasException = 0 (no coverage in SolidiFI or DIVE — needs SmartBugs Curated)
+> - MishandledException = 39 (SolidiFI only — needs SmartBugs Curated)
+> - CallToUnknown = 39 → human review flag raised (non-blocking; under 100 threshold)
+>
+> **Deferred for future ingestion pass:** SmartBugs Curated, Web3Bugs, DeFiHackLabs (import failures), ScaBench.
+> The 3 minor-class gaps will close once SmartBugs Curated is ingested.
+
 > **⚠ SCOPE REVISION (2026-06-11):** This plan was authored for 5 critical-path sources.
 > At build time only **SolidiFI** and **DIVE** are preprocessed in the v2 module.
 > **DeFiHackLabs** is deferred: 9/23 contracts fail because flat preprocessing breaks
@@ -189,25 +209,21 @@ For each source, author the crosswalk YAML. The work is in decreasing order of d
 
 ---
 
-### 3.5 — Author the ScaBench parser
+### 3.5 — Author the ScaBench parser ⏭ DEFERRED (ScaBench not ingested)
 
-Author `sentinel_data/labeling/parsers/scabench.py`. The parser reads the ScaBench source data (raw audit JSON, project metadata, and per-finding descriptions) and the crosswalk YAML, and produces per-contract `.labels.json` files. The parser handles the "checkout_sources.py" post-clone step (called from the connector) and reads the resulting JSON metadata.
+### 3.5b — Author the SolidiFI parser ✅ DONE (2026-06-11)
 
-**Why ScaBench first:** Stage-1 placeholder is in place; the crosswalk is real; the parser is the next layer.
-
-**Exit condition:** parser runs against the 30-file ScaBench fixture; produces 30 `.labels.json` files; the labels match a hand-checked reference for 5 of the 30 files.
+`sentinel_data/labeling/parsers/solidifi.py` — reads `preprocessed/solidifi/*.meta.json`, extracts folder from `original_path` parts[2], maps via solidifi crosswalk, writes single-label T0 `.labels.json`. 283 contracts, 100% labeled, 8 parser tests passing.
 
 **Commit:** `feat(data-labeling): add scabench parser`
 
 ---
 
-### 3.6 — Author the DeFiHackLabs parser
+### 3.6 — Author the DeFiHackLabs parser ⏭ DEFERRED (import failures, source not ready)
 
-Author `sentinel_data/labeling/parsers/defihacklabs.py`. The parser walks the per-incident folder structure, reads the `_exp.sol` file metadata (PoC), and assigns T0 labels based on the incident type from the crosswalk.
+### 3.6b — Author the DIVE parser ✅ DONE (2026-06-11)
 
-**Exit condition:** parser runs against a 5-incident DeFiHackLabs fixture; produces 5 `.labels.json` files; all labels are T0.
-
-**Commit:** `feat(data-labeling): add defihacklabs parser`
+`sentinel_data/labeling/parsers/dive.py` — builds filename→frozenset[class] index from raw DIVE repo folder structure, reads `preprocessed/dive/*.meta.json`, writes multi-label T2 `.labels.json`. 22,073 contracts, 0 failures, 2,604 NonVulnerable. 8 parser tests + 4 folder-index tests passing.
 
 ---
 
@@ -221,7 +237,7 @@ For each source, author the parser. Each parser is specific to the source's data
 
 ---
 
-### 3.8 — Implement `merger.py` and `confidence.py`
+### 3.8 — Implement `merger.py` and `confidence.py` ✅ DONE (2026-06-11)
 
 Author `sentinel_data/labeling/merger.py` and `sentinel_data/labeling/confidence.py`. The merger takes multiple `.labels.json` files for the same `contract_id` (from different sources) and produces a merged label set with explicit conflict resolution per D-3.3. The confidence module assigns the T0–T4 tier per (contract, class) pair per D-3.4.
 
@@ -273,7 +289,7 @@ Update `dvc.yaml` stage `label` to call `sentinel-data label`.
 
 ---
 
-### 3.10 — Add tests for the labeling stage
+### 3.10 — Add tests for the labeling stage ✅ DONE (80/80 passing, 2026-06-11)
 
 Author `Data/tests/test_labeling/` with:
 - **Taxonomy test** — 10 classes in the expected order; class IDs match the v1 checkpoint's class order (loads `ml/checkpoints/GCB-P1-Run9-v11-20260606_best.pt` and asserts the prediction index matches the expected index)
@@ -289,7 +305,7 @@ Author `Data/tests/test_labeling/` with:
 
 ---
 
-### 3.11 — Author `ADR-0004-labeling-design.md`
+### 3.11 — Author `ADR-0004-labeling-design.md` ⏭ DEFERRED (optional — gate passed, moving to Stage 4)
 
 Document the key design decisions: frozen taxonomy (D-3.1), human-reviewed crosswalks (D-3.2), merger precedence rules (D-3.3), per-class confidence (D-3.4), labels JSON contract (D-3.5), representation-label independence (D-3.6).
 
