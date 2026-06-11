@@ -1,0 +1,227 @@
+# F — New Run Checklist
+
+> Always load `00_rules.md` before following this procedure.
+> Apply Rule 2 (gate assertions + completion attestation) at every step.
+> This file has three sequential sections: F.1 pre-launch, F.2 promotion, F.3 post-run.
+> Do not skip to F.2 or F.3 without completing the preceding section.
+
+---
+
+## When This File Applies
+
+- Before launching any new training run (F.1)
+- Before promoting a checkpoint to Staging or Production (F.2)
+- After a run completes, before the session closes (F.3)
+
+Always load alongside: `D_smoke_preflight.md` and `E_preprocessing_consistency.md`
+
+---
+
+## F.1 — Pre-Launch Gates
+
+Complete every gate before running `train.py`. A gate that is skipped without
+a documented reason is treated as a gap (Rule 2, Layer 3).
+
+### F.1.1 — Label File and Data Integrity
+
+- Confirm the label CSV path and which label version it represents
+  (read from `MEMORY.md` Current State — do not assume)
+- Confirm the label file has a corresponding verification status:
+  VERIFIED / PROVISIONAL / BEST-EFFORT (read from the v2 data module docs)
+- Confirm split zero-overlap: train, val, test sets must have no contract hash
+  in common. Read `ml/scripts/create_splits.py` to understand the split
+  generation method if overlap is suspected
+- Confirm the splits directory matches what `train.py --splits-dir` points to.
+  Default as of Run 6: `ml/data/splits/v10_deduped`. Read `train.py` to verify
+  the current default before using it
+
+### F.1.2 — Cache Version Alignment
+
+- Read `train.py --cache-path` default and confirm the referenced cache file exists
+- Confirm the cache file version (embedded in the filename and/or internal header)
+  matches the current schema version and label version
+- Confirm the token cache (`--tokens-dir`) contains files built with the
+  current `windowed_tokenizer.TOKENIZER_MODEL`, `WINDOW_SIZE`, and `STRIDE`.
+  If re-tokenization was run since the last run, confirm the cache key
+  timestamp was updated (see E.7 for the v10 `--relabel-timestamp` trap)
+- Confirm the inference cache is not serving stale graphs: if schema version
+  changed since the cache was built, delete or invalidate the cache
+  (it keys on `{content_hash}_{FEATURE_SCHEMA_VERSION}` — schema change
+  makes all old entries unreachable but does not delete them automatically)
+
+### F.1.3 — Schema Verification
+
+- Read `ml/src/preprocessing/graph_schema.py` and record:
+  `FEATURE_SCHEMA_VERSION`, `NODE_FEATURE_DIM`, `NUM_EDGE_TYPES`,
+  `NUM_NODE_TYPES`
+- Confirm the graph `.pt` files in `ml/data/graphs/` were built with this
+  schema version (read the schema version recorded in a sample graph or
+  from the most recent re-extraction log)
+- If the schema in the source file does not match the graph files, stop —
+  this requires `J_schema_migration.md` before proceeding
+
+### F.1.4 — Checkpoint / Resume Verification
+
+If starting a fresh run (no `--resume`):
+- Confirm the `--run-name` includes the date: format `v<N>-YYYYMMDD`
+  (read `train.py` docstring for the naming convention)
+- Confirm the run name does not match any existing checkpoint in
+  `ml/checkpoints/` — a collision overwrites the existing checkpoint
+
+If resuming (`--resume <checkpoint>`):
+- Read `ml/src/training/trainer.py` resume logic to understand what is
+  restored: model weights, optimizer state, epoch counter, patience counter
+- Confirm the checkpoint file exists at the path listed in `MEMORY.md`
+- Confirm the checkpoint was built with the same schema version as the
+  current `graph_schema.py` (schema mismatch at resume produces a
+  silent shape error on first forward pass)
+- Confirm `--resume-reset-optimizer` intent: if the optimizer state should
+  be discarded (e.g., LR schedule restart), pass the flag explicitly and
+  document the reason. If not passed, the optimizer state from the
+  checkpoint is restored — read `trainer.py` to confirm this is correct
+- Check for stale run names: if the checkpoint name contains a prior run date,
+  the resumed run name must differ. Reusing the same `--run-name` as the
+  original run will overwrite the original checkpoint on the next improvement
+
+### F.1.5 — Loss Function Confirmation
+
+- Read `train.py` and confirm the `--loss-fn` default. Current default: `asl`
+- Confirm `--asl-gamma-neg`, `--asl-gamma-pos`, `--asl-clip` values being used
+  are intentional — read `train.py` arg comments for the documented rationale
+  per value (e.g., `asl_gamma_neg=4.0` caused all-zeros collapse in Run 3;
+  `asl_clip=0.05` caused oscillation)
+- If using `--loss-fn focal` or `bce`, confirm the switch is intentional
+  and document the reason in the pre-flight log
+- Read `ml/src/training/trainer.py` and confirm the loss function is
+  instantiated from `TrainConfig.loss_fn` — never infer this from memory
+
+### F.1.6 — Pre-Flight Gates (D + E)
+
+Run and pass all of the following before launching. Write gate assertions
+for each (Rule 2, Layer 1):
+
+1. **VRAM gate** — `python ml/scripts/vram_gate_test.py` (see D.3)
+2. **Smoke suite** — `python ml/scripts/smoke/run_all.py` (see D.1 – D.2)
+3. **Preprocessing consistency check** — confirm E.2 through E.7 (see Section E)
+4. **Open issues scan** — read `MEMORY.md` Open Issues / Known Bugs section;
+   confirm no open issue blocks this run. If a known blocker exists, document
+   why it does not apply or pause the run
+5. **`drop_complexity_feature` consistency** — if `--drop-complexity-feature`
+   was used in the run being resumed or compared against, confirm it is
+   set consistently. Read `train.py` arg comment: this must also be set
+   at inference via `predictor.py` checkpoint config read
+
+---
+
+## F.2 — Promotion Gate
+
+Read `ml/scripts/promote_model.py` before running promotion. The script
+enforces automated gates — this section describes what to verify manually
+before invoking it.
+
+### F.2.1 — Pre-Conditions for Staging Promotion
+
+- Contamination check completed: `python ml/scripts/check_contamination.py`
+  (see `A_benchmark_runs.md` A.1). Do not promote without this
+- Post-run diagnostic checks completed (Section C): training logs analysed,
+  model behaviour verified on SmartBugs Curated smoke inference
+- Calibration files in place:
+  - Temperature scaling: `ml/scripts/calibrate_temperature.py` run and output saved
+  - Per-class thresholds: `ml/scripts/tune_threshold.py` run; companion
+    `<checkpoint_stem>_thresholds.json` exists alongside the checkpoint
+  - `promote_model.py` will warn (not fail) if thresholds JSON is missing,
+    but the deployed model will use uniform 0.5 threshold — read the warning
+    in `promote_model.py` before accepting this
+
+### F.2.2 — Production-Only Additional Gates
+
+- `val_f1_macro` must exceed the current Production model's F1
+  (`promote_model.py` enforces this automatically; confirm the value you
+  pass with `--val-f1-macro` comes from two independent sources — see
+  Rule 2, Layer 2)
+- `--require-baseline` must point to a drift baseline file with
+  `"source": "warmup"` — not `"source": "training"`. Read
+  `_check_baseline()` in `promote_model.py` to understand why:
+  a training-data baseline will fire KS alerts on almost every real
+  production contract
+- Dry-run first: `python ml/scripts/promote_model.py ... --dry-run`
+  and confirm all fields before the live promotion
+
+### F.2.3 — Post-Promotion Documentation
+
+After successful promotion, write to `MEMORY.md`:
+- Promoted checkpoint path and MLflow version number
+- Stage (Staging / Production)
+- `val_f1_macro` and the run it came from
+- Date and git commit SHA
+- Whether thresholds JSON was included
+
+---
+
+## F.3 — Post-Run Checklist
+
+Complete before the session ends. Apply Rule 3 (no floating findings).
+
+### F.3.1 — Diagnostic Checks
+
+Run the diagnostic checks from `C_diagnostic_checks.md`:
+- Training log analysis (C.1): JK entropy, gnn_share, per-class F1 convergence
+- Model behaviour verification (C.2): smoke inference, FP probe,
+  threshold verification
+
+### F.3.2 — Contamination Check Before Any Benchmark
+
+If benchmarking this run against an external dataset:
+- Run `python ml/scripts/check_contamination.py` first
+- Do not present benchmark results before contamination status is known
+
+### F.3.3 — MEMORY.md Training History Update
+
+Append a row to the Training History table in `MEMORY.md`:
+
+```
+| <run-name> | <date> | <best val F1-macro> | <best epoch> | <loss-fn> |
+| <schema version> | <label version> | <key findings> |
+```
+
+Read `MEMORY.md` to find the current table format before writing —
+do not invent a new format.
+
+### F.3.4 — Findings Externalisation
+
+Before the session closes, confirm:
+- All new findings written to the current audit doc (path in `MEMORY.md`)
+- Any new open bug written as an issue entry with: description, reproduction
+  steps, affected run(s), severity
+- Any architecture or data decision written as an ADR entry
+- Any open question added to `## Open Questions` in the relevant doc
+- No finding, decision, or plan exists only in this conversation
+
+---
+
+## F.4 — Completion Attestation
+
+After completing this procedure, append to the run pre-flight / post-run doc:
+
+```
+## Procedure Attestation — F_new_run_checklist — <ISO date>
+Section completed: F.1 pre-launch | F.2 promotion | F.3 post-run (circle applied)
+Steps completed:
+  F.1.1 label file + data integrity:      PASS/FAIL/UNVERIFIED
+  F.1.2 cache version alignment:          PASS/FAIL/UNVERIFIED
+  F.1.3 schema verification:              PASS/FAIL/UNVERIFIED
+  F.1.4 checkpoint/resume verification:  PASS/FAIL/UNVERIFIED
+  F.1.5 loss function confirmation:       PASS/FAIL/UNVERIFIED
+  F.1.6 pre-flight gates (D+E):           PASS/FAIL/UNVERIFIED
+  F.2.1 pre-conditions for staging:       PASS/FAIL/N/A
+  F.2.2 production gates:                 PASS/FAIL/N/A
+  F.2.3 post-promotion docs:              DONE/N/A
+  F.3.1 diagnostic checks:               PASS/FAIL/UNVERIFIED
+  F.3.2 contamination check:             PASS/FAIL/N/A
+  F.3.3 MEMORY.md updated:               DONE/NOT DONE
+  F.3.4 findings externalised:           DONE/NOT DONE
+Steps skipped:     [any skipped + explicit reason]
+Unverified items:  [anything not confirmable]
+New findings:      [link to audit doc entry, or "none"]
+Written to:        [path of this attestation]
+```
