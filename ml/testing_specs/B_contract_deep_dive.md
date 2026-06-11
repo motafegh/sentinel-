@@ -45,8 +45,10 @@ PYTHONPATH=. python ml/scripts/validate_graph_dataset.py \
 ```
 
 Read the script before running — it checks: node feature dim consistency
-(against `graph_schema.NODE_FEATURE_DIM`), edge type range, graph
-connectivity, and `graph.contract_path` existence. If the dataset-level
+(against `graph_schema.NODE_FEATURE_DIM`), edge type range (values in
+`[0, NUM_EDGE_TYPES)`), NaN/inf in features, and feature value ranges.
+Optional flags (`--check-contains-edges`, `--check-control-flow`,
+`--check-all`) add connectivity and edge-subtype checks. If the dataset-level
 check reports failures, fix those before proceeding to per-contract diagnosis.
 A dataset-level failure means multiple contracts are affected — per-contract
 work before this step is premature.
@@ -83,24 +85,41 @@ For the specific contract under investigation:
 Only run this step if BD.3 found shape mismatches, unexpected node counts,
 or missing edges that don't match the source contract size.
 
-```bash
-PYTHONPATH=. python ml/scripts/ast_extractor.py \
-    --contract <path-to-.sol> --debug
+**Inspect what the extractor would produce for this contract** (no file write):
+
+```python
+# Run from project root with `source ml/.venv/bin/activate`
+import sys; sys.path.insert(0, ".")
+from ml.src.data_extraction.ast_extractor import ASTExtractorV4
+extractor = ASTExtractorV4(verbose=True)
+g = extractor.contract_to_pyg("<path-to-.sol>")
+if g is not None:
+    print("nodes:", g.x.shape[0], "  edges:", g.edge_index.shape[1])
+    print("x.shape:", g.x.shape, "  edge_attr.shape:", g.edge_attr.shape)
 ```
 
-Read `ast_extractor.py` docstring before running — the `--debug` flag
-prints node and edge counts without writing a `.pt` file. If the node count
-from `ast_extractor.py` differs significantly from `g.x.shape[0]` in the
-existing `.pt`, the graph is stale and was built from a different source.
-Re-extract this contract:
+Read `ASTExtractorV4.contract_to_pyg()` docstring in
+`ml/src/data_extraction/ast_extractor.py` before running — the method
+returns `None` if Slither fails (log line will show the reason).
+
+If the node count differs significantly from `g.x.shape[0]` in the existing
+`.pt`, the stored graph is stale and was built from a different source or
+schema version. Re-extract this contract:
 
 ```bash
+# reextract_graphs.py reads target MD5 stems from a CSV.
+# To re-extract one contract, create a minimal CSV with its md5_stem row,
+# then run:
 PYTHONPATH=. python ml/scripts/reextract_graphs.py \
-    --contract-list <path-to-.sol>
+    --multilabel-csv <path-to-single-row-csv> \
+    --graphs-dir ml/data/graphs/
 ```
 
-Read `reextract_graphs.py` docstring first — it overwrites the existing
-`.pt` file. After re-extraction, re-run BD.3 before proceeding.
+Read `reextract_graphs.py` docstring before running — it **overwrites the
+existing `.pt` file** for any MD5 stem listed in the CSV. The single-row
+CSV must have a header (`md5_stem,...`) and one data row containing the
+MD5 stem of the suspect contract (same stem as its `.pt` filename).
+After re-extraction, re-run BD.3 before proceeding.
 
 ---
 
@@ -112,18 +131,21 @@ eye-to-output relationship before interpreting the numbers.
 
 ```python
 from ml.src.inference.predictor import Predictor
-predictor = Predictor.from_checkpoint('<checkpoint path from MEMORY.md>')
-result = predictor.predict_single(contract_path='<path>', return_aux=True)
+predictor = Predictor('<checkpoint path from MEMORY.md>')
+result = predictor.predict('<path-to-.sol>')   # combined output
 print(result)
 ```
 
-The `return_aux=True` flag exposes per-eye logits alongside the fused output.
+For per-eye logit breakdown, `Predictor.predict()` does not expose `return_aux`.
+Call the model directly — reference `ml/scripts/diag_per_eye_solidifi.py`
+as the canonical implementation. Read that script before writing any per-eye call.
+
 Read `sentinel_model.py` forward method to understand:
 - Which output indices correspond to which vulnerability class
 - How GNN and CodeBERT eye outputs are fused in the final layer
 - What `aux_phase2` contributes vs. the primary head
 
-Reference `ml/scripts/interpretability/diag_per_eye_solidifi.py` as the
+Reference `ml/scripts/diag_per_eye_solidifi.py` as the
 canonical implementation of per-eye breakdown — read it for the expected
 output format and the interpretation pattern used in prior diagnoses.
 
@@ -147,7 +169,7 @@ After the model-side breakdown, read the contract source directly:
    - Vulnerability location — if the known vulnerability is in a function that
      appears after the tokenization window cutoff, CodeBERT cannot see it;
      check window coverage (read `windowed_tokenizer.WINDOW_SIZE` and `STRIDE`
-     from `ml/src/preprocessing/windowed_tokenizer.py`)
+     from `ml/src/data_extraction/windowed_tokenizer.py`)
 
 ---
 

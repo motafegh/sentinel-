@@ -540,8 +540,9 @@ class StructuredLogger:
         gpu_util_mean_pct:  float,
         loss_spike_count:   int,
         grad_zero_count:    int,
+        f1_macro_tuned:     float | None = None,
     ) -> dict:
-        """Assemble the 37-field epoch summary dict (Spec §8)."""
+        """Assemble the epoch summary dict (Spec §8). f1_macro_tuned is None on non-tuning epochs."""
         summary = {
             # §8.1–8.7
             "epoch":                epoch,
@@ -591,6 +592,7 @@ class StructuredLogger:
             "gpu_util_mean_pct":    round(gpu_util_mean_pct, 1),
             "loss_spike_count":     loss_spike_count,
             "grad_zero_count":      grad_zero_count,
+            "f1_macro_tuned":       f1_macro_tuned,
         }
         return summary
 
