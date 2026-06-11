@@ -45,6 +45,8 @@ ml/data/test_chunk_results.json
 ml/data/test_fixed_export.json
 ml/data/validation_report.json
 .kiro/
+.mimocode/
+
 # ── MLflow ──────────────────────────────────────────────────────────────────
 mlruns.db
 mlruns/

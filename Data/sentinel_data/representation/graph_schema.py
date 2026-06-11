@@ -42,12 +42,14 @@ _LIVE_SCHEMA_ATTRS = (
     "NUM_NODE_TYPES",
     "NUM_EDGE_TYPES",
     "NUM_CLASSES",
+    # Derived scalar (not in live schema, computed from NODE_TYPES)
+    "_MAX_TYPE_ID",
     # Vocabularies
     "VISIBILITY_MAP",
     "NODE_TYPES",
     "EDGE_TYPES",
     "FEATURE_NAMES",
-    # Class order (LOCKED)
+    # Class order (LOCKED; defined locally since not in graph_schema.py)
     "CLASS_NAMES",
     # Typed aliases
     "NodeType",
@@ -84,15 +86,24 @@ NUM_CLASSES: int = len(CLASS_NAMES)
 
 
 
+_LOCAL_ATTRS = frozenset(("_MAX_TYPE_ID", "CLASS_NAMES", "NUM_CLASSES"))
+
+
 def __getattr__(name: str) -> Any:
     """Lazy re-export for sentinel-data standalone install support.
 
-    When this module is imported, the symbols are re-exported at the top
-    of the file via `from X import Y` (eager). This `__getattr__` is the
-    fallback for the case where `ml/` isn't on the Python path (e.g. when
-    `sentinel-data` is installed as a PyPI package with `ml/` as a separate
-    optional dep).
+    _LOCAL_ATTRS are defined in this module and never fetched from ml/.
+    The rest of _LIVE_SCHEMA_ATTRS are lazily imported from ml/ if the
+    eager import block at the bottom of this file hasn't run (e.g. when
+    ml/ is not on PYTHONPATH in a standalone install).
     """
+    if name in _LOCAL_ATTRS:
+        # These are in __dict__ already (defined above); __getattr__ is only
+        # called when normal lookup fails, so this branch is a safety net.
+        raise AttributeError(
+            f"module {__name__!r} has no attribute {name!r} "
+            f"(local constant not yet initialised — import order issue)"
+        )
     if name in _LIVE_SCHEMA_ATTRS:
         try:
             import importlib

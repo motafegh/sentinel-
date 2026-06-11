@@ -116,6 +116,7 @@ def _extract_one(
     output_dir: Path,
     extractor_cfg: dict[str, Any] | None = None,
     force: bool = False,
+    emit_cfg: bool = False,
 ) -> tuple[bool, bool, bool, bool]:
     """Extract graph + tokens for one contract.
 
@@ -171,15 +172,10 @@ def _extract_one(
         log.warning(f"Graph extraction failed for {sol_path.name}: {e}")
         return False, graph_cached, False, token_cached
 
-    # ── Tokenization (thin adapter) ────────────────────────────────────
-    from sentinel_data.representation.tokenizer import (
-        tokenize_single_contract,
-        init_worker,
-    )
+    # ── Tokenization (thin adapter — windowed, graphcodebert-base) ────────
+    from sentinel_data.representation.tokenizer import tokenize_windowed_contract
 
-    init_worker()
-
-    token_data = tokenize_single_contract(str(sol_path))
+    token_data = tokenize_windowed_contract(str(sol_path))
     if token_data is None:
         return True, graph_cached, False, token_cached
 
@@ -188,12 +184,15 @@ def _extract_one(
 
     torch.save(data, graph_path)
     torch.save({
-        "input_ids": token_data["input_ids"],
-        "attention_mask": token_data["attention_mask"],
-        "sha256": sha256,
-        "contract_path": str(sol_path),
-        "num_tokens": token_data["num_tokens"],
-        "truncated": token_data["truncated"],
+        "input_ids":      token_data["input_ids"],       # [max_windows, 512]
+        "attention_mask": token_data["attention_mask"],  # [max_windows, 512]
+        "sha256":         sha256,
+        "source":         source,
+        "num_windows":    token_data["num_windows"],
+        "stride":         token_data["stride"],
+        "num_tokens":     token_data["num_tokens"],
+        "tokenizer_name": token_data["tokenizer_name"],
+        "max_length":     token_data["max_length"],
     }, tokens_path)
 
     compute_time_ms = (time.monotonic() - compute_t0) * 1000
@@ -207,13 +206,29 @@ def _extract_one(
         "extractor_version": EXTRACTOR_VERSION,
         "node_count": int(data.num_nodes),
         "edge_count": int(data.num_edges),
-        "window_count": 1,
+        "window_count": int(token_data["num_windows"]),
         "compute_time_ms": compute_time_ms,
         "cache_hit": False,
         "pragma": meta.get("pragma", ""),
         "solc_version": meta.get("solc_version", ""),
     }
     rep_path.write_text(json.dumps(sidecar, indent=2))
+
+    # ── Optional: standalone CFG artifact (--emit-cfg) ───────────────────
+    if emit_cfg:
+        try:
+            from sentinel_data.representation.cfg_builder import build_cfg
+            from sentinel_data.representation.graph_extractor import GraphExtractionConfig
+            cfg_kwargs: dict[str, Any] = {"allow_paths": [str(sol_path.parent.parent.parent.parent)]}
+            if solc_binary is not None:
+                cfg_kwargs["solc_binary"] = solc_binary
+                cfg_kwargs["solc_version"] = meta.get("solc_version", "")
+            cfg_artifact = build_cfg(sol_path, GraphExtractionConfig(**cfg_kwargs),
+                                     sha256=sha256, source=source)
+            cfg_path = output_dir / f"{sha256}.cfg.json"
+            cfg_path.write_text(json.dumps(cfg_artifact.to_dict(), indent=2))
+        except Exception as e:
+            log.warning(f"CFG build failed for {sol_path.name}: {e}")
 
     return True, graph_cached, True, token_cached
 
@@ -240,6 +255,7 @@ def represent_source(
     force: bool = False,
     limit: int | None = None,
     output_dir: Path | None = None,
+    emit_cfg: bool = False,
 ) -> RepresentResult:
     """Run the representation pipeline for one source.
 
@@ -303,6 +319,7 @@ def represent_source(
 
         g_written, g_cached, t_written, t_cached = _extract_one(
             source, sol_path, meta["sha256"], out_dir, force=force,
+            emit_cfg=emit_cfg,
         )
         if g_written:
             result.graphs_written += 1

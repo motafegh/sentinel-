@@ -39,6 +39,7 @@ class TestOrchestrator:
 
     def test_represent_source_works(self, test_config, temp_data_dir):
         """Smoke test: orchestrator runs on 5 contracts without errors in a fresh dir."""
+        import torch
         result = represent_source("solidifi", test_config, temp_data_dir, limit=5)
         assert result.contracts_seen == 5
         assert result.graphs_written == 5
@@ -47,6 +48,18 @@ class TestOrchestrator:
         assert result.tokens_failed == 0
         assert result.schema_version == "v9"
         assert "thin-adapter" in result.extractor_version
+
+        # Verify token shape: [4, 512] (windowed graphcodebert, not (512,) codebert)
+        out_dir = temp_data_dir / "representations" / "solidifi"
+        token_files = list(out_dir.glob("*.tokens.pt"))
+        assert len(token_files) >= 1
+        tok = torch.load(token_files[0], weights_only=False)
+        assert tok["input_ids"].shape == (4, 512), (
+            f"Expected [4, 512] windowed tokens, got {tok['input_ids'].shape}"
+        )
+        assert tok["attention_mask"].shape == (4, 512)
+        assert "sha256" in tok
+        assert "num_windows" in tok
 
     def test_represent_source_cache_hit(self, test_config, data_dir, temp_output_dir):
         """Second run should be cache hit (0 written, all cached)."""
@@ -69,12 +82,12 @@ class TestOrchestrator:
         assert r2.graphs_written == 2
         assert r2.graphs_cached == 0
 
-    def test_idempotency(self, test_config, data_dir):
+    def test_idempotency(self, test_config, data_dir, tmp_path):
         """Multiple runs produce identical output files."""
-        r1 = represent_source("solidifi", test_config, data_dir, limit=2)
-        r2 = represent_source("solidifi", test_config, data_dir, limit=2)
+        out_dir = tmp_path / "idempotency_out"
+        r1 = represent_source("solidifi", test_config, data_dir, limit=2, output_dir=out_dir)
+        r2 = represent_source("solidifi", test_config, data_dir, limit=2, output_dir=out_dir)
 
-        out_dir = data_dir / "representations" / "solidifi"
         rep_files = sorted(out_dir.glob("*.rep.json"))
         assert len(rep_files) >= 2
 
@@ -143,11 +156,11 @@ class TestOutputFiles:
                 assert p.exists(), f"Missing {p.name}"
                 assert p.stat().st_size > 0, f"Empty {p.name}"
 
-    def test_rep_json_structure(self, test_config, data_dir):
+    def test_rep_json_structure(self, test_config, data_dir, tmp_path):
         """Verify .rep.json has expected structure."""
-        result = represent_source("solidifi", test_config, data_dir, limit=1)
+        out_dir = tmp_path / "rep_json_out"
+        result = represent_source("solidifi", test_config, data_dir, limit=1, output_dir=out_dir)
 
-        out_dir = data_dir / "representations" / "solidifi"
         rep_files = list(out_dir.glob("*.rep.json"))
         assert len(rep_files) >= 1
 
@@ -166,3 +179,5 @@ class TestOutputFiles:
         assert "compute_time_ms" in rep
         assert "pragma" in rep
         assert "solc_version" in rep
+        assert "window_count" in rep
+        assert 1 <= rep["window_count"] <= 4  # windowed tokenizer: 1–4 real windows

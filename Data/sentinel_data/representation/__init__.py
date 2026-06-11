@@ -53,7 +53,6 @@ __all__ = [
     "FEATURE_NAMES",
     "CLASS_NAMES",
     "NodeType",
-    "EdgeType",
     "STRUCTURAL_PREFIX_TYPES",
     # Extractor
     "extract_contract_graph",

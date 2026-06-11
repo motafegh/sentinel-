@@ -20,15 +20,23 @@ You read it. You ask questions. You say "got it" or "explain X more." We then ru
 | File | What it is | Status |
 |---|---|---|
 | [`LEARNING_CHECKLIST.md`](LEARNING_CHECKLIST.md) | Running checklist of all concepts you should understand across all 9 stages. Tick off as you go. | 🔵 Active |
-| [`stage_0_skeleton.md`](stage_0_skeleton.md) | Stage 0: skeleton + package split | ⏳ Pending your review |
-| [`stage_1_ingest_preprocess.md`](stage_1_ingest_preprocess.md) | Stage 1: ingestion + preprocessing | ⏸ Blocked on Stage 0 |
-| [`stage_2_representation.md`](stage_2_representation.md) | Stage 2: representation port (the byte-identical regression test gate) | ⏸ |
-| [`stage_3_labeling.md`](stage_3_labeling.md) | Stage 3: 17 crosswalks + parsers + 99% co-occurrence merger | ⏸ |
-| [`stage_4_verification.md`](stage_4_verification.md) | Stage 4: BCCC-failure catcher (the per-stage p5_s1→p5_s6 regression) | ⏸ |
-| [`stage_5_splitting_registry.md`](stage_5_splitting_registry.md) | Stage 5: SQLite catalog + migrations + retirement chain | ⏸ |
-| [`stage_6_analysis.md`](stage_6_analysis.md) | Stage 6: complexity_proxy_risk (the L4 data-side catcher) | ⏸ |
-| [`stage_7_export_seam.md`](stage_7_export_seam.md) | Stage 7: predictor fix + EMITS fix + archive + sharded export | ⏸ |
-| [`stage_8_run11_launch.md`](stage_8_run11_launch.md) | Stage 8: 12-condition pre-launch checklist + Run 11 launch | ⏸ |
+| [`stage_0_skeleton.md`](stage_0_skeleton.md) | Stage 0: skeleton + package split (BCCC failure, 3 branches, v9 schema, 8 bugs) | ✅ Complete |
+| [`stage_1_ingest_preprocess.md`](stage_1_ingest_preprocess.md) | Stage 1: ingestion + preprocessing (5-step pipeline, two-pass compile, dedup@0.85) | ✅ Complete |
+| [`stage_2_representation.md`](stage_2_representation.md) | Stage 2: representation port (thin adapter, byte-identical regression, 13-issue preservation) | ✅ Complete |
+| [`stage_3_labeling.md`](stage_3_labeling.md) | Stage 3: crosswalks + parsers + merger (5 critical-path sources, 99% co-occurrence prevention) | ✅ Complete |
+| [`stage_4_verification.md`](stage_4_verification.md) | Stage 4: BCCC-failure catcher (6 components, Phase 5 regression, SmartBugs 90% recall) | ✅ Complete |
+| [`stage_5_splitting_registry.md`](stage_5_splitting_registry.md) | Stage 5: splitting + registry (4 strategies, NonVulnerable 3:1 cap, SQLite catalog) | ✅ Complete |
+| [`stage_6_analysis.md`](stage_6_analysis.md) | Stage 6: analysis (complexity_proxy_risk, co-occurrence, drift monitor) | ✅ Complete |
+| [`stage_7_export_seam.md`](stage_7_export_seam.md) | Stage 7: export + seam swap (7 gates, predictor fix, EMITS fix, Docker) | ✅ Complete |
+| [`stage_8_run11_launch.md`](stage_8_run11_launch.md) | Stage 8: Run 11 launch (12-condition checklist, timestamped run, watcher) | ✅ Complete |
+
+## Current build state (2026-06-11)
+
+**Stages 0–1: CODE-COMPLETE.** 126 tests pass. 22,546 real contracts preprocessed (SolidiFI 283 + DIVE 22,263). Thin adapters for Stage 2 built (graph_schema, graph_extractor, tokenizer, orchestrator). Learning docs for all 9 stages written.
+
+**Stage 2: IN PROGRESS.** Thin adapters + orchestrator built. Byte-identical regression test partially done. Remaining: CFG builder, cache_manager, versioner, CLI wiring, full 13-issue regression test suite.
+
+**Stages 3–8: NOT STARTED.** Learning docs are pre-written to teach the design before code is written.
 
 ## Workflow
 
