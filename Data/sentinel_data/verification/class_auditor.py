@@ -117,8 +117,7 @@ def run_audit(data_dir: Path) -> AuditResult:
     count_any = [0] * _N
 
     total = 0
-    files = list(merged_dir.glob("*.labels.json"))
-    for lf in files:
+    for lf in merged_dir.glob("*.labels.json"):
         try:
             lj: dict[str, Any] = json.loads(lf.read_text())
         except (json.JSONDecodeError, OSError) as e:

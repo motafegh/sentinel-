@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-_PATTERNS_DIR = Path("Data/sentinel_data/verification/patterns")
+_PATTERNS_DIR = Path(__file__).resolve().parents[2] / "sentinel_data" / "verification" / "patterns"
 _EXPECTED_CLASSES = {
     "Reentrancy", "CallToUnknown", "Timestamp", "IntegerUO",
     "UnusedReturn", "MishandledException", "ExternalBug",
