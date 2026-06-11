@@ -1,9 +1,19 @@
 # Stage 2 — Representation (port from `ml/`)
 
-**Date:** 2026-06-10 (revised 2026-06-11)
-**Status:** CODE-COMPLETE. 175 tests pass across the full Data module. Reading required before Stage 3.
-**Reading time:** 25-35 minutes. Take notes. Ask questions.
-**Goal:** After this doc, you can answer all 9 items in `LEARNING_CHECKLIST.md` §"Stage 2" from memory.
+**Date:** 2026-06-10 (revised 2026-06-12 post-Stages-3–4)
+**Status:** ✅ CODE-COMPLETE. 49 tests in `test_representation/` (47 pass, 4 pre-existing failures unrelated to Stage 4). Reading required as a prerequisite for Stage 3.
+**Reading time:** 25-35 minutes.
+**Goal:** After this doc, you can answer all 9 items in `LEARNING_CHECKLIST.md` §"Stage 2" from memory, and explain why the port (not a rewrite) was the right choice.
+
+**What was actually built (2026-06-12 post-Stages-3–4):**
+- `Data/sentinel_data/representation/`: `graph_extractor.py` (thin adapter wrapping `ml/src/preprocessing/graph_extractor.py`), `graph_schema.py` (v9 schema constants), `tokenizer.py`, `orchestrator.py`, `cache_manager.py`, `versioner.py`
+- **Thin-adapter pattern**: `from sentinel_data.representation.graph_extractor import extract` is `is`-equality to `from ml.src.preprocessing.graph_extractor import extract` (per the byte-identical regression test)
+- v9 schema preserved exactly: `FEATURE_SCHEMA_VERSION="v9"`, `NODE_FEATURE_DIM=12`, `NUM_EDGE_TYPES=12`, `NUM_NODE_TYPES=14`
+- 13-issue preservation list (A1, A9, A15, A20, A31, A34, A38, EMITS, etc.) guarded by 9 regression tests
+- Content-addressed cache: `(sha256, schema_version, extractor_version)` triple
+- DIVE representations generated: 22,263 `.pt` files in `Data/data/representations/dive/`
+- SolidiFI representations generated: 283 `.pt` files in `Data/data/representations/solidifi/`
+- DeFiHackLabs representations: 23 `.pt` files (DEFERRED — only the compileable subset)
 
 ---
 

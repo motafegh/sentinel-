@@ -1,11 +1,21 @@
 # Stage 1 — Ingestion + Preprocessing
 
-**Date:** 2026-06-09
-**Status:** Code is built, tested (65/65 pass), and committed (`d88d2d5`). Reading is required before we move to Stage 2.
-**Reading time:** 25-35 minutes. Take notes. Ask questions.
-**Goal:** After this doc, you can answer all 15 items in `LEARNING_CHECKLIST.md` §"Stage 1" from memory, and you can explain why every design decision in Stage 1 was made.
+**Date:** 2026-06-09 (revised 2026-06-12 post-implementation)
+**Status:** ✅ Code is built, tested (78 tests pass across `test_ingestion/` and `test_preprocessing/`), and committed. Reading required as a prerequisite for Stage 2.
+**Reading time:** 25-35 minutes.
+**Goal:** After this doc, you can answer all 25 items in `LEARNING_CHECKLIST.md` §"Stage 1" from memory, and explain why every design decision was made.
 
 This doc is the **§2 deep-dive** for the v2 data module build. Stage 0 (the skeleton + schema) is the **§1 deep-dive** — read `stage_0_skeleton.md` first if you haven't yet.
+
+**What was actually built (2026-06-12 post-Stages-2–4):**
+- `Data/sentinel_data/ingestion/`: 5 connector classes (git, huggingface, zenodo, etherscan, manual), `manifest.py`, `freshness.py`, `label_folderize.py` (DIVE label-aware folderize)
+- `Data/sentinel_data/preprocessing/`: `flatten.py` + `_transitive_strip.py` (recursive import-strip), `compile.py` (two-pass compile, 98 solc versions), `deduplicator.py` (3-level dedup @ 0.85), `normalize.py`, `segmenter.py` + `parallel.py` (multiprocessing pool), `pipeline.py`
+- **Real-source integration on disk**:
+  - SolidiFI: 283 contracts (T0 injection-verified)
+  - DIVE: 22,263 contracts (T2 peer-reviewed, multi-label)
+  - DeFiHackLabs: 23 contracts (DEFERRED — Foundry/forge-std, 715 dropped)
+- Sidecar `meta.json` per contract (18 fields, content-addressed by SHA-256)
+- 78 tests pass: 42 in `test_ingestion/`, 36 in `test_preprocessing/`
 
 ---
 

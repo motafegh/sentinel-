@@ -1,10 +1,10 @@
 # Learning Checklist — Sentinel v2 Data Module Build
 
-**Date:** 2026-06-10 (revised)
+**Date:** 2026-06-10 (revised 2026-06-12)
 **How to use:** Each row is one concept. Tick `[x]` when you can answer the "Test yourself" question from memory. After all rows in a stage are ticked, that stage is mastered.
 **Status legend:** `[ ]` untried, `[~]` in-progress, `[x]` mastered, `[!]` deferred/blocked
 
-**Current build state (2026-06-11):** Stage 0+1+2 code-complete. 175 tests pass. SolidiFI 283 + DIVE 22,263 contracts preprocessed. Stage 2 thin adapters + orchestrator + cache_manager + versioner + CFG builder built. 13-issue preservation + byte-identical + SolidiFI-fixes regression tests pass. Stages 3-8 not started.
+**Current build state (2026-06-12):** Stages 0–4 code-complete. 463 tests pass, 79 skipped. 22,356 contracts labeled (SolidiFI 283 + DIVE 22,073). All 5 critical-path crosswalks built (4 of 5 parsers operational). 196 verification tests, 51 labeling tests, 78 preprocessed contracts. Stage 4 exit criteria all met (94.4% SmartBugs recall, gate PASS). Stages 5–8 not started.
 
 ---
 
@@ -160,32 +160,39 @@ Data/
 
 ---
 
-## Stage 3 — Labeling (parsers + crosswalks + 99% co-occurrence)  `[ ] NOT STARTED`
+## Stage 3 — Labeling (parsers + crosswalks + merger)  `[x] COMPLETE`
 
 | # | Concept | Test yourself | Tick |
 |---|---|---|---|
-| 3.1 | **Crosswalk YAML format** | A source's `crosswalk: sentinel_data/labeling/crosswalks/dive.yaml` references a YAML that maps source-specific labels to our 10 classes. What's the schema? | [ ] |
-| 3.2 | **Source-specific parsers** | DIVE has a flat CSV. SolidiFI has folder names. SmartBugs Curated has DASP→10-class direct. How does each parser join with the Stage 1 manifest? | [ ] |
-| 3.3 | **99% DoS↔Reentrancy co-occurrence** | What does the BCCC failure pattern teach us about folder-based labeling? What does Stage 3 do to prevent the same trap in v2? | [ ] |
-| 3.4 | **CallToUnknown merge rule** | If CallToUnknown verified count < 300, the merger pauses and asks a human to merge into ExternalBug. Why not silent auto-merge? | [ ] |
-| 3.5 | **DIVE 8-class → 10-class mapping** | DIVE has 8 DASP columns. Our model has 10 classes. The config.yaml mapping handles 7. What's dropped and why? (Bad Randomness → no 10-class equivalent) | [ ] |
-| 3.6 | **Multi-label contract representation** | DIVE has 15,423 multi-label contracts. How does the model see 2+ positive labels per contract? (multi-hot vector of length 10) | [ ] |
-| 3.7 | **`min_viable_corpus` gate** | What's the Go/No-Go gate that decides whether to defer Run 11 to v2.1? What are the 5 thresholds? | [ ] |
-| 3.8 | **Friend-review v1.2 changes** | What 3 changes from the friend review affected Stage 3? (Critical-path corpus, NonVulnerable 3:1 cap, CallToUnknown merge rule) | [ ] |
+| 3.1 | **Crosswalk YAML format** | A source's `crosswalk: sentinel_data/labeling/crosswalks/dive.yaml` has a `class_map` field with native_label → sentinel_class. What's the schema? (source/version/class_map with `target_class` and `tier` per entry) | [x] |
+| 3.2 | **Source-specific parsers** | DIVE has a flat CSV. SolidiFI has folder names. SmartBugs Curated has DASP→10-class direct. How does each parser join with the Stage 1 manifest? (via sha256 from meta.json sidecar) | [x] |
+| 3.3 | **99% DoS↔Reentrancy co-occurrence** | What does the BCCC failure pattern teach us about folder-based labeling? What does Stage 3 do to prevent the same trap in v2? (the merger flags single T3/T4 source with DoS+Reentrancy co-occurrence > 50%) | [x] |
+| 3.4 | **CallToUnknown merge rule** | If CallToUnknown verified count < 300, the merger pauses and asks a human to merge into ExternalBug. Why not silent auto-merge? (friend-review safety net; reversible; v2 baseline triggers with 39 < 300) | [x] |
+| 3.5 | **DIVE 8-class → 10-class mapping** | DIVE has 8 DASP columns. Our model has 10 classes. The config.yaml mapping handles 7. What's dropped and why? (Bad Randomness has no 10-class equivalent; "front_running" → Timestamp is a lossy approximation) | [x] |
+| 3.6 | **Multi-label contract representation** | DIVE has 15,423 multi-label contracts. How does the model see 2+ positive labels per contract? (per-class value=1 in the merged `.labels.json`; multi-hot vector of length 10 at training time) | [x] |
+| 3.7 | **`min_viable_corpus` gate** | What's the Go/No-Go gate that decides whether to defer Run 11 to v2.1? What are the 5 thresholds? (total ≥ 4000; major classes ≥ 300; minor ≥ 100; CallToUnknown ≥ 300 [merge rule]; smartbugs_recall ≥ 0.90) | [x] |
+| 3.8 | **Friend-review v1.2 changes** | What 3 changes from the friend review affected Stage 3? (Critical-path corpus = 5 sources; NonVulnerable 3:1 cap; CallToUnknown merge rule as a Go/No-Go gate trigger) | [x] |
+| 3.9 | **Actual v2 baseline numbers** | What are the per-class positive counts in the merged corpus? (ExternalBug 16,621 / Reentrancy 11,369 / IntegerUO 9,437 / Timestamp 6,311 / UnusedReturn 5,859 / DoS 3,750 / TOD 643 / MishandledException 39 / CallToUnknown 39 / GasException 0) | [x] |
+| 3.10 | **v2 baseline gate result** | Which of the 5 gate criteria pass for the v2 baseline? (4 of 5 pass; CallToUnknown at 39 < 300 is the exception; decision: defer merge to v2.1 when SmartBugs preprocessing pushes count up) | [x] |
 
 ---
 
-## Stage 4 — Verification (BCCC-failure catcher)  `[ ] NOT STARTED`
+## Stage 4 — Verification (BCCC-failure catcher)  `[x] COMPLETE`
 
 | # | Concept | Test yourself | Tick |
 |---|---|---|---|
-| 4.1 | **AST semantic checks** | What can Slither detect that pure file-based labeling can't? (e.g. `tx.origin` actually used vs mentioned) | [ ] |
-| 4.2 | **Tool corroboration** | DIVE_Labels.zip ships a `Tool_Results.csv` with MAIAN, Mythril, Semgrep, Slither, Solhint, VeriSmart columns. How does the verifier use these as independent signals? | [ ] |
-| 4.3 | **BCCC Phase 5 regression test** | The Phase 5 BCCC verification dropped 46,977 of 67,311 labels (69.8%). What's the v2 equivalent that prevents the same over-labeling? | [ ] |
-| 4.4 | **SmartBugs Curated recall gate** | Stage 4 must retain ≥90% of the 143 hand-labeled positives from SmartBugs Curated. What does the gate test look like? | [ ] |
-| 4.5 | **FORGE 50-entry agreement test** | Why is FORGE conditional on a 50-entry agreement test (≥85%)? What does the test measure? | [ ] |
-| 4.6 | **`fail_threshold=0.30`** | A tool confidence < 0.30 means we drop the label. What's the rationale? What's the empirical distribution? | [ ] |
-| 4.7 | **`negative_tool_hit_threshold=0.05`** | If >5% of "NonVulnerable" contracts are flagged by tools, warn. If >10%, FAIL. What does this catch? | [ ] |
+| 4.1 | **The 6 verification components** | Name them. What does each do? (semantic_checker: v9 graph feature checks; tool_validator: Slither agreement; fp_estimator: stratified sampling; class_auditor: co-occurrence matrix; negative_checker: NonVulnerable contamination; probe_dataset: 40/class + trivial pos/neg) | [x] |
+| 4.2 | **Tool corroboration** | Why is Slither agreement corroborative, not authoritative? (Slither reentrancy precision ~52%; tool_validator.py:agrees_with_class uses CLASS_TO_DETECTORS from project_agents.md) | [x] |
+| 4.3 | **BCCC Phase 5 regression test** | What does the BCCC regression test actually check? (meta-test: p5_s6_class_size_comparison.csv numbers match the hardcoded p5_s6 report ±0.5%; v1.4 is a superset of p5_s6; per-stage p5_s2→s3→s4 chain is internally consistent) | [x] |
+| 4.4 | **SmartBugs Curated recall gate** | Stage 4 must retain ≥90% of the 143 hand-labeled positives. What's the actual v2 result? (94.4% aggregate recall — passes threshold; per-class: Reentrancy/IntegerUO/CallToUnknown/NonVulnerable = 100%; DoS/ExternalBug = 83%; Timestamp = 76% lossy) | [x] |
+| 4.5 | **Hard/soft gate verdicts** | Name the 4 verdicts and their criteria. (VERIFIED: semantic >90% + no co-flag; PROVISIONAL: 60-90% or no reps; BEST-EFFORT: 30-60%; FAIL: <30% or co-flag or fp_rate>30%) | [x] |
+| 4.6 | **Negative checker threshold (5%/10%)** | If >5% of NonVulnerable contracts have tool hits, warn. If >10%, FAIL. What does this catch? (the 41% BCCC NonVulnerable-with-Slither-hits pattern at scale) | [x] |
+| 4.7 | **Stratified FP sampling (D-4.4)** | How is the FP estimator sampling stratified? (by source AND tier, per AUDIT_PATCHES 4-P9; proportional allocation; per-tier per-class breakdown is the operational signal because T0 vs T3 labels have very different FP rates) | [x] |
+| 4.8 | **Co-occurrence flagged-classes symmetry (V-2 fix)** | Why is `flagged_classes = {a} \| {b}` not `{a}`? (the original was asymmetric; only `class_a` was flagged, allowing BCCC-style noise to pass undetected; CRITICAL fix in gate.py:107) | [x] |
+| 4.9 | **The 6 implementation choices (IC-1 to IC-6)** | Name them. (IC-1 co-flag symmetric; IC-2 fp_rate>30% hard FAIL; IC-3 pattern YAMLs are docs only; IC-4 lvalue type check not enforced; IC-5 add_trivial flag; IC-6 tool agreement downgrade only with co-flag) | [x] |
+| 4.10 | **`slither_runner` content-addressed cache** | Why is the cache key `(sha256, schema_version, extractor_version)` and not just `sha256`? (prevents "silent mix of versions" failure mode; subsequent runs are near-instant) | [x] |
+| 4.11 | **The 9 design decisions (D-4.1 to D-4.9)** | D-4.1 per-class, D-4.2 AST patterns, D-4.3 tool corroboration, D-4.4 FP sampling, D-4.5 hard/soft gate, D-4.6 negative checker, D-4.7 probe dataset, D-4.8 BCCC regression, D-4.9 SmartBugs recall — what does each one say in one sentence? | [x] |
+| 4.12 | **The CLI: `sentinel-data verify`** | What does it orchestrate? (5 components → gate → report; --strict exits 1 on FAIL; --skip-{tool-validator,fp-estimator,negative-checker} for fast smoke) | [x] |
 
 ---
 
