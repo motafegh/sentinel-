@@ -1,9 +1,17 @@
 # Stage 0 — Skeleton + Data/ Restructure
 
-**Date:** 2026-06-09
-**Status:** Code is built and committed. Reading is required before we move to Stage 1.
-**Reading time:** 20-30 minutes. Take notes. Ask questions.
-**Goal:** After this doc, you can answer all 15 items in `LEARNING_CHECKLIST.md` §"Stage 0" from memory.
+**Date:** 2026-06-09 (revised 2026-06-12 post-implementation)
+**Status:** ✅ Code is built, committed, and preserved. Stage 0 was the structural decision; it is the foundation that Stages 1–4 built on top of. Reading required as a prerequisite.
+**Reading time:** 20-30 minutes.
+**Goal:** After this doc, you can answer all 15 items in `LEARNING_CHECKLIST.md` §"Stage 0" from memory, and explain why the structural decision (Branch B — full package split) was binding.
+
+**What was actually built (2026-06-12 post-Stages-1–4):**
+- `Data/sentinel_data/` is the full Python package; `Data/pyproject.toml` declares `sentinel-data` as a Poetry project
+- 9 submodules: `ingestion/`, `preprocessing/`, `representation/`, `labeling/`, `verification/`, `splitting/`, `registry/`, `analysis/`, `export/`
+- One-way dependency: `sentinel-ml → sentinel-data` (never the reverse), enforced by `Data/tests/conftest.py` and the package layout
+- `Data/config.yaml`: 22 sources (5 critical-path + 12 additive v2.1 + 2 v1 extras + 3 dropped/deferred), BCCC in `deferred_sources:`
+- v9 schema stub in `Data/sentinel_data/representation/graph_schema.py`: `FEATURE_SCHEMA_VERSION="v9"`, `NODE_FEATURE_DIM=12`, `NUM_EDGE_TYPES=12`, `NUM_NODE_TYPES=14`, `_MAX_TYPE_ID=13.0`
+- 5 v2-readiness ADR documents (in `docs/decisions/`); ADR-0005 documents the Stage 4 verification design
 
 ---
 
