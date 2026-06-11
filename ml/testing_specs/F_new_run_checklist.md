@@ -32,8 +32,9 @@ a documented reason is treated as a gap (Rule 2, Layer 3).
   in common. Read `ml/scripts/create_splits.py` to understand the split
   generation method if overlap is suspected
 - Confirm the splits directory matches what `train.py --splits-dir` points to.
-  Default as of Run 6: `ml/data/splits/v10_deduped`. Read `train.py` to verify
-  the current default before using it
+  Read `MEMORY.md` Current State for the active splits directory, then read
+  `train.py` to confirm its current default — do not assume the default
+  matches the active splits directory without checking both
 
 ### F.1.2 — Cache Version Alignment
 
@@ -85,7 +86,7 @@ If resuming (`--resume <checkpoint>`):
 
 ### F.1.5 — Loss Function Confirmation
 
-- Read `train.py` and confirm the `--loss-fn` default. Current default: `asl`
+- Read `train.py` and confirm the `--loss-fn` default
 - Confirm `--asl-gamma-neg`, `--asl-gamma-pos`, `--asl-clip` values being used
   are intentional — read `train.py` arg comments for the documented rationale
   per value (e.g., `asl_gamma_neg=4.0` caused all-zeros collapse in Run 3;

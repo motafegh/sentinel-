@@ -84,8 +84,7 @@ PYTHONPATH=. python ml/scripts/build_multilabel_index.py
 The script prints a per-class positive count table on completion — read
 this before proceeding. The `pos_weight` values shown are diagnostic;
 the actual training `pos_weight` is computed in `trainer.py` and may be
-capped by `--pos-weight-min-samples` (default 3000; Reentrancy at 4498
-positives is capped at 1.0×).
+capped by `--pos-weight-min-samples` (read default from `train.py` args).
 
 ### B.2.4 — BUG-6 `contract_path` Correction
 
@@ -141,7 +140,7 @@ use `--freeze-val-test`:
 
 ```bash
 PYTHONPATH=. python ml/scripts/create_splits.py \
-    --splits-dir ml/data/splits/v10_deduped \
+    --splits-dir <splits-dir from MEMORY.md> \
     --freeze-val-test
 ```
 
@@ -160,19 +159,22 @@ change when graphs are re-extracted, making old `.npy` index files invalid.
 ```bash
 # Standard full split
 PYTHONPATH=. python ml/scripts/create_splits.py \
-    --splits-dir ml/data/splits/v10_deduped \
+    --splits-dir <splits-dir from MEMORY.md> \
     --multilabel-csv ml/data/processed/multilabel_index.csv
 
 # Freeze val/test (augmentation run)
 PYTHONPATH=. python ml/scripts/create_splits.py \
-    --splits-dir ml/data/splits/v10_deduped \
+    --splits-dir <splits-dir from MEMORY.md> \
     --freeze-val-test
 
 # Different seed (ablation — document the reason)
 PYTHONPATH=. python ml/scripts/create_splits.py \
-    --splits-dir ml/data/splits/v10_seed99 \
-    --seed 99
+    --splits-dir <splits-dir from MEMORY.md>_seed<N> \
+    --seed <N>
 ```
+
+Read `MEMORY.md` Current State for the active splits directory path before
+filling in `<splits-dir from MEMORY.md>`.
 
 ---
 
@@ -197,10 +199,13 @@ Archive or DVC-snapshot before running if prior versions must be preserved.
 
 ## B.5 — Label Quality Checks
 
-After rebuilding the label CSV, verify:
+After rebuilding the label CSV, verify by reading the count table printed
+by `build_multilabel_index.py` on completion:
 
-- **Reentrancy positive count** should be ~4,498 (the largest single class)
-  If it differs by more than 5%, the graph extraction or CSV grouping changed
+- **Reentrancy positive count** — read the current expected count from
+  `MEMORY.md` (recorded after the most recent verified build). If the
+  rebuilt count differs from the MEMORY.md value by more than 5%, the
+  graph extraction or CSV grouping changed — investigate before proceeding
 - **WeakAccessMod** must not appear as a column — if it does, the exclusion
   in `build_multilabel_index.py` was overridden
 - **All-zero rows** (safe contracts) should be present; if `safe_rows = 0`
@@ -227,7 +232,9 @@ Steps completed:
     B.3.3 freeze mode used:                        YES/NO
   B.4 full pipeline rebuild order followed:        YES/NO/PARTIAL
   B.5 label quality checks:                        PASS/FAIL
-    Reentrancy positive count:                     N (expected ~4498)
+    Reentrancy positive count (from script):       N
+    Expected count (from MEMORY.md):               N
+    Delta within 5%:                               YES/NO
     Unknown count:                                 N (expected < 0.5%)
     WeakAccessMod absent:                          YES/NO
 Steps skipped:     [any skipped + explicit reason]

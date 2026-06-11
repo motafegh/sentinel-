@@ -26,18 +26,18 @@ your current task.
 |---|---|
 | `00_rules.md` | Universal invariants — always loaded |
 | `A_benchmark_runs.md` | External benchmark evaluation procedures |
+| `B_data_pipeline.md` | Label CSV construction, split generation, data rebuild pipeline |
 | `B_contract_deep_dive.md` | Diagnosing individual mispredicted contracts |
 | `C_diagnostic_checks.md` | Training log analysis and post-run model behaviour |
 | `D_smoke_preflight.md` | Smoke tests, VRAM gate, compile validation |
 | `E_preprocessing_consistency.md` | Confirming train/eval preprocessing alignment |
 | `F_new_run_checklist.md` | Pre-launch, promotion, and post-run gates |
-| `G_drift_detection.md` | Responding to inference drift signals |
-| `H_api_validation.md` | Validating `api.py` response correctness |
-| `I_interpretability.md` | Running and recording interpretability experiments |
+| `G_ablation_protocol.md` | Controlled ablation experiment design and execution |
+| `H_issue_triage.md` | Alert triage, guardrail response, bug filing |
+| `I_regression_guard.md` | Promotion gate and regression prevention |
 | `J_schema_migration.md` | Safe schema version change protocol |
-| `K_label_validation.md` | Validating a label file before it enters training |
-| `L_reproducibility.md` | Confirming results are genuinely reproducible |
-| `M_session_handoff.md` | Session close and handoff checklist |
+| `K_inference_api.md` | Validating `api.py` endpoint correctness |
+| `L_release_readiness.md` | Reproducibility protocol, release gate, session handoff |
 
 ---
 
@@ -46,40 +46,35 @@ your current task.
 | I need to... | Load these files |
 |---|---|
 | Run a benchmark on a dataset | `00_rules` + `A` |
-| Investigate a mispredicted contract | `00_rules` + `B` + `C` |
+| Rebuild the label CSV or splits | `00_rules` + `B_data_pipeline` |
+| Investigate a mispredicted contract | `00_rules` + `B_contract_deep_dive` + `C` |
 | Analyse training logs after a run | `00_rules` + `C` |
 | Run smoke tests or VRAM check | `00_rules` + `D` |
 | Verify train/eval preprocessing match | `00_rules` + `E` |
 | Launch a new training run | `00_rules` + `D` + `E` + `F` |
-| Promote a checkpoint | `00_rules` + `C` + `F` (section F.2) |
-| Investigate a drift alert | `00_rules` + `G` + `B` |
-| Validate the API endpoint | `00_rules` + `H` + `C` |
-| Run interpretability experiments | `00_rules` + `I` + `C` |
+| Promote a checkpoint | `00_rules` + `C` + `F` (section F.2) + `I` |
+| Investigate a drift alert | `00_rules` + `H` + `B_contract_deep_dive` |
+| Run a controlled ablation | `00_rules` + `G` |
+| Triage a training alert or guardrail | `00_rules` + `H` |
+| Validate the API endpoint | `00_rules` + `K` + `C` |
 | Change the graph schema | `00_rules` + `J` + `E` + `F` |
-| Validate a new label file | `00_rules` + `K` |
 | Verify a result is reproducible | `00_rules` + `L` + `C` |
-| Close a session / hand off | `00_rules` + `M` |
+| Close a session / hand off | `00_rules` + `L` (section L.5) |
 | Unsure what applies | Read this README, then `00_rules` |
 
 ---
 
 ## Integration with CLAUDE.md
 
-Reference this suite in `CLAUDE.md` with a single pointer:
-
-```
-For all ml/ validation and testing procedures, read:
-ml/testing_specs/README.md
-```
-
-Do not inline individual spec sections into `CLAUDE.md`. The routing table
-above is the interface — everything else is loaded on demand.
+This suite is referenced from `ml/CLAUDE.md`. The spec files are for
+validation, audit, and training procedures only — not for coding tasks.
+Read `ml/CLAUDE.md` for the full scope note.
 
 ---
 
 ## Adding a New Spec File
 
-1. Name it with the next letter prefix: `N_<scope>.md`
+1. Name it with the next letter prefix: `M_<scope>.md`
 2. Write it according to the four guiding principles in the proposal:
    no hardcoding, no dictating outcomes, procedures not knowledge, dynamic
 3. Add it to the File Descriptions table and the routing table above
