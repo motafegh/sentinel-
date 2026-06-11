@@ -11,7 +11,7 @@ Usage:
 Stages (in pipeline order):
   ingest      Pull raw .sol contracts from all enabled sources
   preprocess  Flatten + compile + dedup + normalize + segment + version-bucket
-  represent   Extract graph (.pt) and token files (Stage 2 — currently stub)
+  represent   Extract graph (.pt) and windowed token files
   label       Apply crosswalk YAMLs to assign class labels
   verify      AST-level semantic checks + tool corroboration
   split       Deterministic train/val/test splits with leakage audit
@@ -24,6 +24,19 @@ import argparse
 import sys
 import textwrap
 from pathlib import Path
+
+# Add the SENTINEL repo root and ml/ to sys.path so that thin-adapter imports
+# from ml.src.preprocessing.* and ml.src.data_extraction.* resolve correctly.
+# The canonical source of truth for the v9 schema lives in ml/; sentinel_data
+# re-exports it via thin adapters. Without this, the CLI fails when invoked
+# from outside the repo root (e.g. via installed entry-point).
+_HERE = Path(__file__).resolve()
+_DATA_DIR = _HERE.parent.parent          # sentinel/Data/
+_REPO_ROOT = _DATA_DIR.parent            # sentinel/
+_ML_ROOT   = _REPO_ROOT / "ml"
+for _p in (_REPO_ROOT, _ML_ROOT):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 
 STAGES: list[str] = [
@@ -41,7 +54,7 @@ STAGES: list[str] = [
 STAGE_DESCRIPTIONS: dict[str, str] = {
     "ingest":     "Pull raw .sol contracts from all enabled sources with SHA-256 manifests",
     "preprocess": "Flatten + two-pass compile + dedup@0.85 + normalize + segment + version-bucket",
-    "represent":  "Extract v9 graph (.pt) and token files [STUB — Stage 2]",
+    "represent":  "Extract v9 graph (.pt) + windowed token files (GraphCodeBERT, [4,512])",
     "label":      "Apply crosswalk YAMLs; merge labels; flag 99%% co-occurrence pairs",
     "verify":     "AST semantic checks + tool corroboration + BCCC Phase 5 regression test",
     "split":      "Deterministic train/val/test splits; leakage auditor = 0",
@@ -116,12 +129,66 @@ def _run_preprocess(args: argparse.Namespace) -> None:
 
 
 def _run_represent(args: argparse.Namespace) -> None:
+    from sentinel_data.representation.orchestrator import represent_source
+    from sentinel_data.representation.versioner import check_and_evict, write_registry, current_versions
+
+    cfg = _load_config(args.config)
+    data_dir = Path(args.config).parent / "data"
+    representations_root = data_dir / "representations"
+
     print(f"[represent] {STAGE_DESCRIPTIONS['represent']}")
-    print(f"  config : {args.config}")
-    if args.dry_run:
-        print("  (dry-run — no files written)")
+    print(f"  config  : {args.config}")
+
+    schema_v, extractor_v = current_versions()
+    print(f"  schema  : {schema_v}  extractor : {extractor_v}")
+
+    sources = [args.source] if getattr(args, "source", None) else list(
+        (cfg.get("sources") or {}).keys()
+    )
+    if not sources:
+        print("  No sources configured in config.yaml — nothing to do.")
         return
-    print("  NOT IMPLEMENTED — implement in Stage 2 (port from ml/src/preprocessing/)")
+
+    limit    = getattr(args, "limit",    None)
+    force    = getattr(args, "force",    False)
+    emit_cfg = getattr(args, "emit_cfg", False)
+
+    if args.dry_run:
+        print(f"  (dry-run) Would represent {len(sources)} source(s): {', '.join(sources)}")
+        if limit:
+            print(f"  limit   : {limit} contracts per source")
+        if force:
+            print("  force   : True (cache bypassed)")
+        if emit_cfg:
+            print("  emit_cfg: True (standalone CFG artifacts will be written)")
+        return
+
+    for source in sources:
+        print(f"\n  → source: {source}")
+        evicted = check_and_evict(representations_root, source, schema_v, extractor_v)
+        if evicted:
+            print(f"    evicted {evicted} stale cache entries")
+
+        result = represent_source(
+            source,
+            cfg,
+            data_dir,
+            limit=limit,
+            force=force,
+            emit_cfg=emit_cfg,
+        )
+        print(
+            f"    contracts_seen={result.contracts_seen}  "
+            f"graphs_written={result.graphs_written}  graphs_cached={result.graphs_cached}  "
+            f"graphs_failed={result.graphs_failed}"
+        )
+        print(
+            f"    tokens_written={result.tokens_written}  tokens_cached={result.tokens_cached}  "
+            f"tokens_failed={result.tokens_failed}  "
+            f"duration={result.duration_s:.1f}s"
+        )
+
+    write_registry(representations_root, schema_v, extractor_v)
 
 
 def _run_label(args: argparse.Namespace) -> None:
@@ -234,12 +301,38 @@ def _build_parser() -> argparse.ArgumentParser:
         sp = subparsers.add_parser(stage, help=STAGE_DESCRIPTIONS[stage])
         sp.add_argument("--config", default=_default_config(), help="Path to config.yaml")
         sp.add_argument("--dry-run", action="store_true", help="Print planned action without executing")
-        if stage in ("ingest", "preprocess"):
+        if stage in ("ingest", "preprocess", "represent"):
             sp.add_argument(
                 "--source",
                 default=None,
                 metavar="NAME",
                 help="Limit to a single source (default: all enabled sources)",
+            )
+        if stage == "represent":
+            sp.add_argument(
+                "--workers",
+                type=int,
+                default=1,
+                metavar="N",
+                help="Multiprocessing pool size (default: 1 = serial)",
+            )
+            sp.add_argument(
+                "--limit",
+                type=int,
+                default=None,
+                metavar="N",
+                help="Process only the first N contracts (for fast iteration)",
+            )
+            sp.add_argument(
+                "--force",
+                action="store_true",
+                help="Recompute even for cache-hit contracts",
+            )
+            sp.add_argument(
+                "--emit-cfg",
+                action="store_true",
+                dest="emit_cfg",
+                help="Write standalone CFG artifact (<sha256>.cfg.json) for each contract",
             )
         if stage == "preprocess":
             sp.add_argument(

@@ -5,7 +5,7 @@
 **Owner:** SENTINEL data engineering
 **Source proposal:** `docs/proposal/Data_Module_Proposals/Sentinel_v2_Data_Module_Integration_Proposal.md` §3.3, §5 (Week 3)
 **Audit ref:** [`AUDIT_PATCHES.md`](AUDIT_PATCHES.md) §0 (F1, F2, F3, F4, F5, F6, F7, F8, F11, F23), §1 (2-P1 through 2-P12), §2 (C-7 performance budget, C-9 complexity proxy)
-**Exit criteria:** `sentinel-data represent --source solidifi` produces 283 graph `.pt` + 283 token `.pt` + 283 sidecar `.rep.json` files for the SolidiFI preprocessed output; a **byte-identical regression test** proves the new path produces the same PyG graphs as the existing `ml/src/preprocessing/` path; a **13-issue preservation test** confirms all 13 critical bug fixes are preserved; **performance budget: 100-file extraction in < 1 min on 8 cores** (within ±10% of the old `ml/` path per 2-P11).
+**Exit criteria:** `sentinel-data represent --source solidifi` produces 283 graph `.pt` + 283 token `.pt` + 283 sidecar `.rep.json` files for the SolidiFI preprocessed output; a **byte-identical regression test** proves the new path produces the same PyG graphs as the existing `ml/src/preprocessing/` path; a **13-issue preservation test** confirms all 13 critical bug fixes are preserved; **3 SolidiFI-fix tests** confirm A-1 (comment stripping), A-2 (RETURN_TO edges), A-3 (interface injection) are fixed; **performance budget: 100-file extraction in < 1 min on 8 cores** (within ±10% of the old `ml/` path per 2-P11).
 
 ---
 
@@ -203,9 +203,15 @@ from ml.src.preprocessing.graph_extractor import (
 )
 ```
 
-**Step 2:** Update internal imports inside the thin adapter file (e.g. if it imports `graph_schema`, route through `sentinel_data.representation.graph_schema` for consistency). The `ml/` source code itself is unchanged.
+**Step 2:** Update internal imports inside the thin adapter file (e.g. if it imports `graph_schema`, route through `sentinel_data.representation.graph_schema` for consistency).
 
-**Step 3:** Add a behavioral smoke test that calls `extract_contract_graph` on one of the SolidiFI preprocessed contracts and verifies the output has `x.shape[-1] == NODE_FEATURE_DIM` (schema-dim gate test).
+**Step 3 (AMENDED per solidifi_analysis_issues_for_v2.md):** The following fixes must be applied to the underlying `ml/src/preprocessing/graph_extractor.py` BEFORE the thin adapter is created, because the thin adapter re-exports the live code. These are bug fixes that improve the active training pipeline (Run 9) and are required for the v2 baseline:
+
+- **A-2: RETURN_TO edges** — In `_build_icfg_edges()`, after adding CALL_ENTRY edges (type 8) for internal calls, add paired RETURN_TO edges (type 9) from callee terminal nodes (END_IF/RETURN/last CFG node) back to the call-site's successor node. Without this, the ICFG is one-directional across function boundaries.
+
+- **A-3: Interface injection / concrete contract enumeration** — When processing a `.sol` file, enumerate ALL contracts with implemented function bodies (`len(func.nodes) > 0`), not just the "main" contract (last-defined). Build CFG nodes from all concrete contracts. This catches vulnerability code injected into interface/abstract contract bodies in SolidiFI benchmarks.
+
+**Step 4:** Add a behavioral smoke test that calls `extract_contract_graph` on one of the SolidiFI preprocessed contracts and verifies the output has `x.shape[-1] == NODE_FEATURE_DIM` (schema-dim gate test). Also verify RETURN_TO edge count > 0 for contracts with internal calls.
 
 **Why next:** the schema is the data; the extractor is the function that produces it. Testing the extractor against the schema catches import errors and any subtle differences in how the schema constants are used internally.
 
@@ -213,8 +219,10 @@ from ml.src.preprocessing.graph_extractor import (
 - `from sentinel_data.representation.graph_extractor import extract_contract_graph, GraphExtractionConfig, GraphExtractionError` works
 - Calling `extract_contract_graph(sol_path)` on a known-input contract produces a PyG `Data` object with `x.shape == (N, 12)` (matches `NODE_FEATURE_DIM = 12`)
 - The `Data` object's `edge_attr` (if present) has values in range `[0, NUM_EDGE_TYPES - 1]` = `[0, 11]`
+- **NEW:** For a contract with internal calls, `edge_attr` contains RETURN_TO (type 9) edges paired with CALL_ENTRY edges
+- **NEW:** For a contract with vulnerability code in interface bodies, CFG nodes for those functions are extracted
 
-**Commit:** `feat(data-rep): port graph_extractor.py via thin adapter (ml/src is source of truth)`
+**Commit:** `feat(data-rep): port graph_extractor.py via thin adapter + A-2/A-3 fixes (ml/src is source of truth)`
 
 ---
 
@@ -267,7 +275,22 @@ def represent_source(
 
 The per-file tokenization function (`tokenize(source, version) -> input_ids, attention_mask`) is the **value** of v1's tokenizer. The parquet-orchestrator is the v1-specific part. We extract the per-file function via thin adapter:
 
-**Author `sentinel_data/representation/tokenizer.py`** that re-exports the per-file tokenization function. The v1 `ast_extractor.py`'s batching logic is **not** ported (the v2 orchestrator from 2.4 handles batching).
+**Step 1:** Author `sentinel_data/representation/tokenizer.py` that re-exports the per-file tokenization function. The v1 `ast_extractor.py`'s batching logic is **not** ported (the v2 orchestrator from 2.4 handles batching).
+
+**Step 2 (AMENDED per solidifi_analysis_issues_for_v2.md):** The following fix must be applied to the underlying `ml/src/data_extraction/tokenizer.py` BEFORE the thin adapter is created:
+
+- **A-1: Comment stripping** — Add a `_strip_comments(source: str) -> str` helper that removes single-line (`//`) and multi-line (`/* */`) comments from source before tokenization. Do NOT strip NatSpec tags (`@param`, `@notice`) — only free-form comment text. Add a `strip_comments: bool = True` flag to the tokenizer config so it can be disabled for debugging. **Regenerate all token files when this is applied — cache invalidation required.**
+
+```python
+import re
+
+def _strip_comments(source: str) -> str:
+    # Remove /* ... */ blocks (including multi-line)
+    source = re.sub(r'/\*.*?\*/', '', source, flags=re.DOTALL)
+    # Remove // ... to end of line
+    source = re.sub(r'//[^\n]*', '', source)
+    return source
+```
 
 ```python
 # sentinel_data/representation/tokenizer.py (thin adapter)
@@ -281,9 +304,10 @@ from ml.src.data_extraction.tokenizer import (
 **Exit condition:**
 - `from sentinel_data.representation.tokenizer import tokenize` works
 - Tokenizing a known input produces the same `input_ids` and `attention_mask` arrays whether called via the old or new import path (verified by byte-identical test in 2.6)
+- **NEW:** Tokenizing a contract with verbose comments (e.g. OpenZeppelin SafeMath docstrings) does NOT produce comment tokens in the output
 - The thin adapter adds no new logic (just re-exports)
 
-**Commit:** `feat(data-rep): port tokenizer.py via thin adapter (per-file function only)`
+**Commit:** `feat(data-rep): port tokenizer.py via thin adapter + A-1 comment stripping (per-file function only)`
 
 ---
 
@@ -319,13 +343,21 @@ The 13 critical tests (per 2-P3 through 2-P6):
 | **A18 ICFG map** | Fixture: contract with internal calls; assert CALL_ENTRY/RETURN_TO edges exist |
 | **A10 _cfg_node_type** | Fixture: contract with diverse CFG ops; assert node types are not silently OTHER |
 
-**Why per-issue test functions (not one big test):** when a regression happens, the failing test name points to the specific issue. Debug time is minutes, not hours.
+**Test File 3 (NEW per solidifi_analysis_issues_for_v2.md): `Data/tests/test_representation/test_solidifi_fixes.py`**
+
+Three new regression tests for the SolidiFI-specific fixes applied in Tasks 2.3 and 2.5:
+
+| Test | Fixture | Assert |
+|---|---|---|
+| **A-2: RETURN_TO edges** | Contract with internal calls (e.g. `buggy_4.sol`) | `edge_attr` contains RETURN_TO (type 9) edges; count > 0 |
+| **A-3: Interface injection** | Contract with vulnerability code in interface/abstract body (e.g. `buggy_29.sol`) | CFG nodes for injected functions ARE extracted; graph is not empty stub |
+| **A-1: Comment stripping** | Contract with verbose OpenZeppelin SafeMath docstrings | Tokenized `input_ids` do NOT contain tokens for comment text; `strip_comments=True` default |
 
 **Performance regression test (2-P11, REVISED):** the test asserts that extracting 100 contracts via the new path takes within ±10% of the time of the old `ml/src/preprocessing/` path. **Budget revised: 100 files in < 1 min on 8 cores** (1s/file, was 5 min — 3s/file is unrealistic for solc + Slither per file).
 
-**Exit condition:** all byte-identical tests pass for the 10-file fixture; all 13-issue tests pass; the performance regression test passes; covered in CI from this stage forward.
+**Exit condition:** all byte-identical tests pass for the 10-file fixture; all 13-issue tests pass; all 3 SolidiFI-fix tests pass; the performance regression test passes; covered in CI from this stage forward.
 
-**Commit:** `test(data-rep): add byte-identical regression + 13-issue preservation suite`
+**Commit:** `test(data-rep): add byte-identical regression + 13-issue preservation + SolidiFI-fixes suite`
 
 ---
 
@@ -421,6 +453,9 @@ Document the key design decisions: thin-adapter (D-2.7), v9 schema freeze (D-2.2
 | **v8 schema** (in old proposal §2) | ❌ WRONG | (proposal §2 only) | **CORRECTED**: the active schema is v9. Stage 0 stub and Stage 2 port use v9 throughout. Per F1, this is now verified live. |
 | **🔴 Stage 0 stub dict direction** | ❌ WRONG | `Data/sentinel_data/representation/graph_schema.py:42-73` | **FIXED in 2.1**: NODE_TYPES and EDGE_TYPES were `dict[int, str]` (id→name); should be `dict[str, int]` (name→id). FEATURE_NAMES was `list[str]`; should be `tuple[str, ...]`. |
 | **Stage 0 stub sys.path hack** | ❌ WRONG | `ml/src/data_extraction/ast_extractor.py:71-72` | **NOT PORTED** — the v2 orchestrator (2.4) doesn't need it. We do the refactor inline in 2.4. |
+| **A-1: Comment stripping** | ❌ NOT covered | `ml/src/data_extraction/tokenizer.py` | **NOW IN SCOPE (per solidifi_analysis_issues_for_v2.md)**: Task 2.5 adds `_strip_comments()` helper with `strip_comments=True` default. Applied to underlying ml/ code before thin adapter is created. |
+| **A-2: RETURN_TO edges** | ⚠ OPEN | `ml/src/preprocessing/graph_extractor.py` | **NOW IN SCOPE (per solidifi_analysis_issues_for_v2.md)**: Task 2.3 adds RETURN_TO edge construction paired with CALL_ENTRY. Applied to underlying ml/ code before thin adapter is created. |
+| **A-3: Interface injection** | ❌ NOT covered | `ml/src/preprocessing/graph_extractor.py` | **NOW IN SCOPE (per solidifi_analysis_issues_for_v2.md)**: Task 2.3 adds concrete-contract enumeration (process all contracts with implemented function bodies, not just main contract). Applied to underlying ml/ code before thin adapter is created. |
 
 ---
 
@@ -439,8 +474,11 @@ Document the key design decisions: thin-adapter (D-2.7), v9 schema freeze (D-2.2
 | 9 | `dvc repro represent` runs end-to-end | **DEFERRED to Stage 7** (DVC setup happens with the seam swap, not here) |
 | 10 | `pytest tests/test_representation -v` passes with > 80% coverage | UNCHANGED |
 | 11 | `ADR-0003-representation-port-design.md` is committed; **references the 13-issue audit, the Stage 0 stub bug fix, and the thin-adapter decision** | **EXPANDED** |
+| 12 | **A-1 (comment stripping):** tokenizing a contract with verbose comments does NOT produce comment tokens in `input_ids`; `strip_comments=True` default is active | **NEW** (per solidifi_analysis_issues_for_v2.md) |
+| 13 | **A-2 (RETURN_TO edges):** contracts with internal calls have RETURN_TO (type 9) edges paired with CALL_ENTRY edges; count > 0 | **NEW** (per solidifi_analysis_issues_for_v2.md) |
+| 14 | **A-3 (interface injection):** contracts with vulnerability code in interface/abstract bodies have CFG nodes for those functions extracted; graph is not empty stub | **NEW** (per solidifi_analysis_issues_for_v2.md) |
 
-All 11 pass → **Stage 2 complete**. Tag `data-stage-2`, proceed to Stage 3.
+All 14 pass → **Stage 2 complete**. Tag `data-stage-2`, proceed to Stage 3.
 
 ---
 
@@ -459,17 +497,19 @@ All 11 pass → **Stage 2 complete**. Tag `data-stage-2`, proceed to Stage 3.
 
 ---
 
-## Schedule (5 working days, Jun 23–27 with Jun 28–29 as buffer)
+## Schedule (7 working days, revised per solidifi_analysis_issues_for_v2.md)
 
 | Day | Tasks | Output |
 |---|---|---|
 | Day 1 | 2.1 (fix stub), 2.2 (port schema), 2.3 (port graph_extractor) | 3 commits, byte-identical smoke test passes |
 | Day 2 | 2.4 (v2 orchestrator), 2.5 (port tokenizer) | 2 commits, full pipeline runs on SolidiFI 283 contracts |
-| Day 3 | 2.6 (regression tests) | 1 commit, byte-identical + 13-issue tests pass for all 13 issues |
-| Day 4 | 2.7 (CFG builder), 2.8 (cache + versioner) | 2 commits, full re-run hits cache instantly |
-| Day 5 | 2.9 (CLI), 2.10 (orchestrator tests), 2.11 (ADR) | 3 commits, end-to-end `sentinel-data represent --source solidifi` works |
+| Day 3 | **A-2 + A-3 fixes** applied to `ml/src/preprocessing/graph_extractor.py` (RETURN_TO edges, concrete-contract enumeration); thin adapter re-exports updated code | 1 commit, RETURN_TO edges present in graphs with internal calls; interface injection graphs are not empty stubs |
+| Day 4 | **A-1 fix** applied to `ml/src/data_extraction/tokenizer.py` (comment stripping with `strip_comments=True` default); thin adapter re-exports updated code; regenerate all token files (cache invalidation) | 1 commit, comment tokens absent from tokenized output |
+| Day 5 | 2.6 (regression tests) | 1 commit, byte-identical + 13-issue + SolidiFI-fixes tests pass for all 13+3 issues |
+| Day 6 | 2.7 (CFG builder), 2.8 (cache + versioner) | 2 commits, full re-run hits cache instantly |
+| Day 7 | 2.9 (CLI), 2.10 (orchestrator tests), 2.11 (ADR) | 3 commits, end-to-end `sentinel-data represent --source solidifi` works |
 
-Total: 11 commits, ~1,500 LoC of new code (mostly thin adapters + tests), 0 changes to `ml/`.
+Total: 13 commits, ~2,000 LoC of new code (mostly thin adapters + tests + fixes), changes to `ml/src/preprocessing/graph_extractor.py` and `ml/src/data_extraction/tokenizer.py` for A-1, A-2, A-3 fixes.
 
 ---
 

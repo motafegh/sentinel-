@@ -26,12 +26,13 @@ Each ADR is locked once accepted. Superseding decisions are recorded in the
 | 0004 | [Three-phase GAT routing](0004-three-phase-gat-routing.md) | Accepted | 2026-06-06 | 8-layer GAT split Ph1 structural+CONTAINS, Ph2 CF+ICFG+EXTERNAL_CALL sub-routed, Ph3 REVERSE_CONTAINS round-trip. |
 | 0005 | [BCCC-SCsVul-2024 as primary dataset](0005-bccc-dataset-choice.md) | Accepted | 2026-06-06 | 41,576 deduped contracts. SmartBugs-curated held out as OOD benchmark. 87.9% pre-0.8 Solidity. |
 | 0006 | [Loss formulation](0006-loss-formulation.md) | Accepted | 2026-06-06 | ASL γ⁻=2 γ⁺=1 per-eye + aux BCE pathway (0→0.30 over 8ep) + 0.005 JK entropy. |
+| 0007 | [Representation port design (Stage 2)](0007-representation-port-design.md) | Accepted | 2026-06-11 | Thin-adapter re-export from ml/; v9 schema frozen; content-addressed cache; CFG only, PDG/callgraph deferred to v3.1. |
 
 ## Deferred (Tier 2 backlog)
 
 These were identified during Tier 1 writing but are deferred to a future session:
 
-- **0007:** Slither IR as the canonical extraction source (vs hand-rolled AST walk)
+- **0008:** Slither IR as the canonical extraction source (vs hand-rolled AST walk, now documented in ADR-0007 context)
 - **0008:** Windowed tokenization strategy (linspace subsample, stride 256, max 4 windows)
 - **0009:** Cache architecture (`.pkl` vs `.parquet` vs LMDB, invalidation by schema version)
 - **0010:** Pre-flight gate methodology (smoke tests 1-8, gate criteria for new runs)

@@ -4,7 +4,7 @@
 **How to use:** Each row is one concept. Tick `[x]` when you can answer the "Test yourself" question from memory. After all rows in a stage are ticked, that stage is mastered.
 **Status legend:** `[ ]` untried, `[~]` in-progress, `[x]` mastered, `[!]` deferred/blocked
 
-**Current build state (2026-06-10):** Stage 0+1 code-complete, tested on real data (SolidiFI 19% drop, DIVE 0.3% drop, DeFiHackLabs deferred to v2.1). **126/126 tests pass.** Stage 2+ not started.
+**Current build state (2026-06-11):** Stage 0+1+2 code-complete. 175 tests pass. SolidiFI 283 + DIVE 22,263 contracts preprocessed. Stage 2 thin adapters + orchestrator + cache_manager + versioner + CFG builder built. 13-issue preservation + byte-identical + SolidiFI-fixes regression tests pass. Stages 3-8 not started.
 
 ---
 
@@ -144,19 +144,19 @@ Data/
 
 ---
 
-## Stage 2 — Representation (port from `ml/`)  `[!] DEFERRED — next planned stage`
+## Stage 2 — Representation (port from `ml/`)  `[x] COMPLETE`
 
 | # | Concept | Test yourself | Tick |
 |---|---|---|---|
-| 2.1 | **What representation extracts** | Given a `meta.json` from Stage 1, what does Stage 2 produce? (graph `.pt` + tokens `.pt` + sidecar `.rep.json`) | [ ] |
-| 2.2 | **Why a port, not a rewrite** | What's the "no logic change" rule? Why is the byte-identical regression test the gate? | [ ] |
-| 2.3 | **v9 schema freeze** | Name the 5 v9 constants (`FEATURE_SCHEMA_VERSION`, `NODE_FEATURE_DIM`, `NUM_NODE_TYPES`, `NUM_EDGE_TYPES`, `_MAX_TYPE_ID`). Why is the proposal §2 wrong? | [ ] |
-| 2.4 | **The 8 already-fixed bugs** | Name the 8 bugs already fixed in `ml/src/` and what file:line they're at. Which test guards each? | [ ] |
-| 2.5 | **`include_subdirs` as fixture source** | The SolidiFI integration test has 283 preprocessed contracts. Why is this a good Stage 2 byte-identical fixture (vs synthetic 10-file)? | [ ] |
-| 2.6 | **3 new builders, only 1 ships** | What's the CFG builder? Why are PDG / call-graph / opcode DEFERRED to v3.1? What schema does the CFG builder need? | [ ] |
-| 2.7 | **Content-addressed cache key** | Why is the cache key `(sha256, schema_version, extractor_version)` and not just `sha256`? What's the "silent-mix-of-versions" failure mode this prevents? | [ ] |
-| 2.8 | **Sidecar `rep.json` provenance** | What 5 fields does each sidecar carry? How does `analysis/feature_dist.py` (Stage 6) consume it? | [ ] |
-| 2.9 | **Parallel import paths during Stage 2-7** | From Stage 2 through Stage 7, both `ml/src/...` and `sentinel_data/...` import paths work. Why? When does Stage 7 delete the old path? | [ ] |
+| 2.1 | **What representation extracts** | Given a `meta.json` from Stage 1, what does Stage 2 produce? (graph `.pt` + tokens `.pt` + sidecar `.rep.json`) | [x] |
+| 2.2 | **Why a port, not a rewrite** | What's the "no logic change" rule? Why is the byte-identical regression test the gate? | [x] |
+| 2.3 | **v9 schema freeze** | Name the 5 v9 constants (`FEATURE_SCHEMA_VERSION`, `NODE_FEATURE_DIM`, `NUM_NODE_TYPES`, `NUM_EDGE_TYPES`, `_MAX_TYPE_ID`). Why is the proposal §2 wrong? | [x] |
+| 2.4 | **The 13 already-fixed bugs** | Name 5 of the 13 bugs preserved through the port (A9, A15, A20, A34, A38, EMITS, CALL_ENTRY, A31, A18, A10, resume, return_ignored, LibraryCall). What test guards each? | [x] |
+| 2.5 | **Thin adapter pattern** | What is `is` equality and why does it prove byte-identicality? Why not copy-paste? | [x] |
+| 2.6 | **3 new builders, only 1 ships** | What's the CFG builder? Why are PDG / call-graph / opcode DEFERRED to v3.1? | [x] |
+| 2.7 | **Content-addressed cache key** | Why is the cache key `(sha256, schema_version, extractor_version)` and not just `sha256`? What's the "silent-mix-of-versions" failure mode this prevents? | [x] |
+| 2.8 | **Sidecar `rep.json` provenance** | What 5 fields does each sidecar carry? How does `analysis/feature_dist.py` (Stage 6) consume it? | [x] |
+| 2.9 | **Parallel import paths during Stage 2-7** | From Stage 2 through Stage 7, both `ml/src/...` and `sentinel_data/...` import paths work. Why? When does Stage 7 delete the old path? | [x] |
 
 ---
 

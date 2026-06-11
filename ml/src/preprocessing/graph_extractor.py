@@ -1663,14 +1663,30 @@ def extract_contract_graph(
     _cfg_failure_count = 0
     _icfg_failure_count = 0   # A18: counts ICFG map construction failures (Gate 2.1)
     _duplicate_func_count = 0  # NF-10: counts duplicate functions given synthetic keys
-    _func_total = len(contract.functions)
+    
+    # A-3 fix: include concrete functions from parent contracts that Slither does
+    # not surface in contract.functions (e.g. functions in intermediate abstract
+    # contracts or interface bodies with injected vulnerability code in SolidiFI).
+    # id()-based dedup prevents double-processing when Slither already includes
+    # inherited functions in contract.functions (the common case).
+    all_functions = list(contract.functions)
+    _seen_func_ids: set[int] = {id(f) for f in all_functions}
+    for parent in (getattr(contract, "inheritance", None) or []):
+        for parent_func in getattr(parent, "functions", []):
+            if (id(parent_func) not in _seen_func_ids
+                    and getattr(parent_func, "nodes", None)
+                    and len(parent_func.nodes) > 0):
+                all_functions.append(parent_func)
+                _seen_func_ids.add(id(parent_func))
+    
+    _func_total = len(all_functions)
 
     # PLAN-1C: accumulated across functions — needed by _add_icfg_edges after the loop.
     _func_entry_map:    dict = {}   # canonical_name → graph_idx of ENTRYPOINT node
     _func_terminal_map: dict = {}   # canonical_name → [graph_idx of terminal nodes]
     _func_cfg_maps:     dict = {}   # canonical_name → {slither_node → graph_idx}
 
-    for func_index, func in enumerate(contract.functions):
+    for func_index, func in enumerate(all_functions):
         fn_idx = _add_node(func, NODE_TYPES["FUNCTION"])
         if fn_idx is None:
             # NF-10: duplicate canonical_name (overriding/overloaded function).
@@ -1718,13 +1734,12 @@ def extract_contract_graph(
                     if _n.type == _SNT.ENTRYPOINT and _n in cfg_node_map:
                         _func_entry_map[func_key] = cfg_node_map[_n]
                         break
-                # A14: exclude THROW (revert/require-failure) and RETURN terminal nodes.
-                # Only normal-exit terminals (fall-through, no successors except due to
-                # revert) should generate RETURN_TO edges — THROW/RETURN unwind the stack
-                # and do NOT transfer control back to the call site.
+                # A14: exclude THROW (revert/require-failure) terminal nodes.
+                # A-2 fix: include RETURN nodes in terminal map since they transfer
+                # control back to the call site (that's the whole point of return).
+                # Only THROW nodes should be excluded since they unwind the stack.
                 _revert_types: frozenset = frozenset(filter(None, (
                     getattr(_SNT, "THROW", None),
-                    getattr(_SNT, "RETURN", None),
                 )))
                 _func_terminal_map[func_key] = [
                     cfg_node_map[_n]

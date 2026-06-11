@@ -1,46 +1,41 @@
-"""Tokenizer — thin adapter over `ml/src/data_extraction/tokenizer.py`.
+"""Tokenizer — thin adapter over `ml/src/data_extraction/windowed_tokenizer.py`.
 
-Stage 2 (2026-06-10) Day 2 thin-adapter port (Task 2.5).
+Stage 2 (2026-06-10) thin-adapter port (Task 2.5).
+Corrected (2026-06-11): previous version pointed at the wrong module.
 
-The per-file tokenization function lives at
-`ml/src/data_extraction/tokenizer.py`. This file re-exports the
-function-level surface (constants, init_worker, tokenize_single_contract,
-save_token_file). The v1 parquet-orchestrator (process_batch_with_checkpoint)
-is NOT ported — the v2 orchestrator (`sentinel_data/representation/orchestrator.py`)
-handles batching using Stage 1's preprocessed output.
+The v2 tokenizer uses GraphCodeBERT (microsoft/graphcodebert-base) with a
+sliding-window approach (stride=256, up to 4 windows of 512 tokens each),
+producing [max_windows, 512] tensors. This matches the existing v1 training
+data in ml/data/tokens_windowed/ and the model's dual_path_dataset.py, which
+expects either [512] (single-window legacy) or [W, 512] (multi-window).
+
+The WRONG module (ml/src/data_extraction/tokenizer.py) was previously used.
+That module uses microsoft/codebert-base and outputs (512,) single-window
+tensors — wrong model, wrong shape. It is kept for v1 batch-script use only.
+
+The CORRECT module (ml/src/data_extraction/windowed_tokenizer.py) exports:
+  - tokenize_windowed_contract(contract_path, max_windows) → dict | None
+  - init_worker()
+  - TOKENIZER_MODEL, WINDOW_SIZE, STRIDE, MAX_WINDOWS
 
 Why thin-adapter:
-  - The v1 tokenizer uses `get_contract_hash` from `ml/src/utils/hash_utils.py`
-    which is MD5. The v2 build drops MD5 in favor of SHA-256 from Stage 1.
-    The thin adapter preserves the function unchanged; the v2 orchestrator
-    computes SHA-256 separately and overwrites the `contract_hash` field.
   - Zero code duplication. Bug fixes in ml/ propagate to the new path.
-  - The byte-identical tokenization guarantee is trivially true (same
-    CodeBERT model + same params).
-
-For the FULL set of symbols exported here, see `_LIVE_TOKENIZER_ATTRS`
-below. The lazy __getattr__ falls back to lazy import if ml/ is not on
-the Python path (e.g. when sentinel-data is installed as a standalone
-PyPI package).
+  - The Stage 7 seam swap becomes a 1-line change.
+  - The byte-identical guarantee: same graphcodebert-base model + same params.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-_LIVE_TOKENIZER_MODULE = "ml.src.data_extraction.tokenizer"
+_LIVE_TOKENIZER_MODULE = "ml.src.data_extraction.windowed_tokenizer"
 _LIVE_TOKENIZER_ATTRS = (
-    # Per-file function (the value of the v1 tokenizer)
-    "tokenize_single_contract",
-    # Worker init (must be called per-process)
+    "tokenize_windowed_contract",
     "init_worker",
-    # Save function (per-file)
-    "save_token_file",
-    # Module-level constants
     "TOKENIZER_MODEL",
-    "MAX_LENGTH",
-    "PADDING",
-    "TRUNCATION",
+    "WINDOW_SIZE",
+    "STRIDE",
+    "MAX_WINDOWS",
 )
 
 
@@ -64,14 +59,13 @@ def __getattr__(name: str) -> Any:
 
 
 # Eager re-export — see graph_schema.py for the rationale.
-from ml.src.data_extraction.tokenizer import (  # noqa: E402
-    tokenize_single_contract,
+from ml.src.data_extraction.windowed_tokenizer import (  # noqa: E402
+    tokenize_windowed_contract,
     init_worker,
-    save_token_file,
     TOKENIZER_MODEL,
-    MAX_LENGTH,
-    PADDING,
-    TRUNCATION,
+    WINDOW_SIZE,
+    STRIDE,
+    MAX_WINDOWS,
 )
 
 
