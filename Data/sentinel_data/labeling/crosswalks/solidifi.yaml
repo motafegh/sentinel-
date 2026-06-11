@@ -1,0 +1,76 @@
+# SolidiFI crosswalk — map injection folder names → SENTINEL 10-class labels
+#
+# Source:   https://github.com/DependableSystemsLab/SolidiFI-benchmark
+# Pin:      4b0573e1b3f7031396de6f48f7f3e7380222ad3a (fetched 2026-06-10)
+# Tier:     T0 — injection-verified (mathematically guaranteed ground truth)
+# Reviewed: 2026-06-11
+#
+# Label source: `original_path` field in each contract's .meta.json sidecar,
+# specifically the folder name at path[2] in
+# repo/buggy_contracts/<FOLDER>/buggy_N.sol.
+# The parser reads this field directly — no external file needed.
+#
+# Corpus: 7 folders × ~39–49 contracts each = 283 preprocessed contracts.
+# (7 fail with lone '/' injection artifact in buggy_35.sol — upstream dataset bug,
+# not a pipeline issue.)
+#
+# Confidence: T0 for all mappings — SolidiFI injects bugs programmatically,
+# so every contract in a folder is guaranteed to contain that bug type.
+# There are NO false positives by construction.
+
+schema_version: "1"
+source: solidifi
+taxonomy_version: "1"
+label_field: original_path   # parser extracts folder name from this meta field
+confidence_tier: T0
+
+class_map:
+  # Folder name → canonical class name (from taxonomy.yaml)
+  #
+  # Direct 1-to-1 mappings (unambiguous):
+  Re-entrancy:          Reentrancy
+  Timestamp-Dependency: Timestamp
+  Unhandled-Exceptions: MishandledException
+  TOD:                  TransactionOrderDependence
+  Overflow-Underflow:   IntegerUO
+
+  # Unchecked-Send → CallToUnknown
+  # SolidiFI's "unchecked send" injects send() calls without checking the
+  # return value. In the canonical taxonomy, CallToUnknown covers low-level
+  # calls (send/call/delegatecall) whose return is not checked. This is the
+  # closest class. It is NOT MishandledException (id=5) — that class covers
+  # swallowed try/catch and higher-level exception patterns; Unchecked-Send
+  # is specifically about the low-level send() return value.
+  Unchecked-Send:       CallToUnknown
+
+  # tx.origin → ExternalBug
+  # SolidiFI's "tx.origin" injection adds authentication that relies on
+  # tx.origin instead of msg.sender, allowing any contract in the call
+  # chain to impersonate the original EOA. The canonical taxonomy has no
+  # dedicated tx.origin class. The closest match is ExternalBug (id=2),
+  # which covers access control violations and external interaction flaws.
+  #
+  # Decision (2026-06-11): map to ExternalBug rather than creating a new
+  # class. tx.origin misuse is an access control flaw — the attacker exploits
+  # external call context, which is the defining pattern of ExternalBug.
+  # A dedicated class (e.g. TxOriginAbuse) would require retraining from
+  # scratch (locked class order). Deferred to v2.1 if signal is insufficient.
+  #
+  # v2.1 note: if tx.origin contracts cluster separately in the feature space
+  # (analysis in Stage 6), consider splitting ExternalBug → ExternalBug +
+  # TxOriginAbuse in the next schema version.
+  tx.origin:            ExternalBug
+
+notes:
+  - "All 283 preprocessed contracts are single-label — each contract is in
+    exactly one injection folder. Multi-label is not applicable here."
+  - "Overflow-Underflow has 49 contracts vs 39 for all other folders because
+    one buggy_35.sol failed preprocessing in every other folder (lone '/'
+    injection artifact). Overflow-Underflow's buggy_35.sol happened to pass."
+  - "GasException (id=3) has no SolidiFI injection type. SolidiFI does not
+    inject gas-related bugs. GasException contracts will come from DIVE
+    and SmartBugs Curated."
+  - "UnusedReturn (id=9) has no direct SolidiFI injection type. Unhandled-
+    Exceptions (→ MishandledException) is the closest, but they are distinct:
+    MishandledException = swallowed exceptions; UnusedReturn = ignored return
+    values broadly. No mapping for UnusedReturn from SolidiFI."
