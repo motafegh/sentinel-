@@ -30,7 +30,6 @@ trained on labelled Solidity contracts, deployed via FastAPI inference server.
 | Audit findings | `ml/audit_docs/` |
 | Run logs (JSONL) | `ml/logs/<run_name>/` |
 | Interpretability results | `ml/interpretability_results/` |
-| Current state + checkpoint paths | `MEMORY.md` (repo root) |
 | Architecture decisions | `docs/ml/adr/INDEX.md` |
 
 **Read the source file before asserting any constant, field name, or path.
@@ -38,27 +37,18 @@ Do not use values from memory or prior conversation.**
 
 ---
 
-## Dependency and Environment
 
-- This module has its own `ml/pyproject.toml` and `ml/poetry.lock` — separate
-  from the root `pyproject.toml`. Always run `poetry install` from inside `ml/`.
-- Python environment: activate with `cd ml && poetry shell`
-- Data files are DVC-tracked. Run `dvc pull ml/data/` before any data operation.
-- Set `TRANSFORMERS_OFFLINE=1` before any training or evaluation run.
-- RTX 3070 8 GB VRAM constraint applies. Run `vram_gate_test.py` before
-  launching any training run. VRAM budget: 7500 MB safe / 7900 MB abort threshold.
 
 ---
 
 ## Before Modifying Any Source File
 
 1. Check `MEMORY.md` for open bugs relevant to the file you are editing
-2. Check `ml/audit_docs/` for known failure modes in that component
-3. If editing `graph_schema.py`: schema changes have broad downstream impact —
+2. If editing `graph_schema.py`: schema changes have broad downstream impact —
    read `ml/testing_specs/J_schema_migration.md` before making any change
 4. If editing `trainer.py` or `training_logger.py`: run the smoke suite
    (`ml/scripts/smoke/run_all.py`) after your change
-5. Do not edit files listed in `ml/locked_files.sha256` without explicit instruction
+
 
 ---
 
