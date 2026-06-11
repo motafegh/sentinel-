@@ -120,3 +120,141 @@ class TestGateIntegration:
         assert len(result.hard_fails) == 0, (
             f"Unexpected FAIL classes: {result.hard_fails}"
         )
+
+
+class TestGateWithToolValidation:
+    def _build_audit_semantic(self, cls="CallToUnknown", fail_count=2, pass_count=8):
+        from sentinel_data.verification.class_auditor import ClassStats
+        from sentinel_data.verification.semantic_checker import ClassCheckSummary
+        audit = AuditResult(
+            per_class={
+                cls: ClassStats(
+                    class_name=cls, total_positives=10, total_contracts=20,
+                    by_tier={"T3": 10}, by_source={"bccc": 10},
+                ),
+                **{c: ClassStats(class_name=c) for c in class_names() if c != cls}
+            }
+        )
+        sem = SemanticCheckResult(by_class={
+            cls: ClassCheckSummary(class_name=cls, pass_count=pass_count, fail_count=fail_count),
+            **{c: ClassCheckSummary(class_name=c) for c in class_names() if c != cls}
+        })
+        return audit, sem
+
+    def test_tool_agreement_low_downgrades_with_coflag(self):
+        from sentinel_data.verification.tool_validator import (
+            ToolValidationResult, ClassAgreementStats,
+        )
+        audit, sem = self._build_audit_semantic(pass_count=10, fail_count=0)
+        # Add a co-occurrence flag for CallToUnknown
+        from sentinel_data.verification.class_auditor import CoOccurrencePair
+        audit.flagged_pairs = [CoOccurrencePair(
+            class_a="CallToUnknown", class_b="DoS", count=5, count_a=10,
+            rate=0.5, flagged=True,
+        )]
+        # Tool agreement is very low (10%) — should downgrade
+        tv = ToolValidationResult(by_class={
+            "CallToUnknown": ClassAgreementStats(
+                class_name="CallToUnknown", positives_total=10,
+                agree=1, disagree=9, checkable=10,
+            ),
+            **{c: ClassAgreementStats(class_name=c) for c in class_names() if c != "CallToUnknown"}
+        })
+        result = run_gate(audit, sem, tool_validation=tv)
+        assert result.verdicts["CallToUnknown"].verdict.value in ("PROVISIONAL", "BEST-EFFORT")
+        # Without co-flag, low tool agreement alone should NOT downgrade
+        audit.flagged_pairs = []
+        result2 = run_gate(audit, sem, tool_validation=tv)
+        assert result2.verdicts["CallToUnknown"].verdict.value == "VERIFIED"
+
+
+class TestGateWithFPEstimation:
+    def test_fp_rate_above_threshold_fails(self):
+        from sentinel_data.verification.class_auditor import ClassStats
+        from sentinel_data.verification.semantic_checker import ClassCheckSummary
+        from sentinel_data.verification.fp_estimator import (
+            FPEstimationResult, ClassFPStats,
+        )
+        audit = AuditResult(per_class={
+            "Reentrancy": ClassStats(class_name="Reentrancy", total_positives=50,
+                                     total_contracts=100, by_tier={"T3": 50},
+                                     by_source={"bccc": 50}),
+            **{c: ClassStats(class_name=c) for c in class_names() if c != "Reentrancy"}
+        })
+        sem = SemanticCheckResult(by_class={
+            "Reentrancy": ClassCheckSummary(class_name="Reentrancy", pass_count=45, fail_count=5),
+            **{c: ClassCheckSummary(class_name=c) for c in class_names() if c != "Reentrancy"}
+        })
+        # High semantic pass rate (90%) — but FP rate is 50% → FAIL wins
+        fp = FPEstimationResult(by_class={
+            "Reentrancy": ClassFPStats(class_name="Reentrancy", sampled=10,
+                                      likely_fp=5, errored=0),
+            **{c: ClassFPStats(class_name=c) for c in class_names() if c != "Reentrancy"}
+        })
+        result = run_gate(audit, sem, fp_estimation=fp)
+        assert result.verdicts["Reentrancy"].verdict.value == "FAIL"
+        assert "FP rate" in result.verdicts["Reentrancy"].reason
+
+    def test_fp_rate_below_threshold_does_not_fail(self):
+        from sentinel_data.verification.class_auditor import ClassStats
+        from sentinel_data.verification.semantic_checker import ClassCheckSummary
+        from sentinel_data.verification.fp_estimator import (
+            FPEstimationResult, ClassFPStats,
+        )
+        audit = AuditResult(per_class={
+            "Reentrancy": ClassStats(class_name="Reentrancy", total_positives=50,
+                                     total_contracts=100, by_tier={"T3": 50},
+                                     by_source={"bccc": 50}),
+            **{c: ClassStats(class_name=c) for c in class_names() if c != "Reentrancy"}
+        })
+        sem = SemanticCheckResult(by_class={
+            "Reentrancy": ClassCheckSummary(class_name="Reentrancy", pass_count=45, fail_count=5),
+            **{c: ClassCheckSummary(class_name=c) for c in class_names() if c != "Reentrancy"}
+        })
+        # Low FP rate (20%) — should NOT trigger FAIL
+        fp = FPEstimationResult(by_class={
+            "Reentrancy": ClassFPStats(class_name="Reentrancy", sampled=10,
+                                      likely_fp=2, errored=0),
+            **{c: ClassFPStats(class_name=c) for c in class_names() if c != "Reentrancy"}
+        })
+        result = run_gate(audit, sem, fp_estimation=fp)
+        assert result.verdicts["Reentrancy"].verdict.value == "VERIFIED"
+
+
+class TestGateWithNegativeCheck:
+    def test_neg_check_fail_blocks_export(self):
+        from sentinel_data.verification.negative_checker import NonVulnResult
+        result = run_gate(
+            self._empty_audit(), self._empty_semantic(),
+            negative_check=NonVulnResult(total_checked=100, total_hits=20, total_errored=0),
+        )
+        assert result.negative_check_status == "FAIL"
+        assert "__neg_check__" in result.hard_fails
+        assert result.gate_passed is False
+
+    def test_neg_check_warn_does_not_block(self):
+        from sentinel_data.verification.negative_checker import NonVulnResult
+        result = run_gate(
+            self._empty_audit(), self._empty_semantic(),
+            negative_check=NonVulnResult(total_checked=100, total_hits=7, total_errored=0),
+        )
+        assert result.negative_check_status == "WARN"
+        assert "__neg_check__" not in result.hard_fails
+        assert result.gate_passed is True
+
+    def test_neg_check_ok_does_not_block(self):
+        from sentinel_data.verification.negative_checker import NonVulnResult
+        result = run_gate(
+            self._empty_audit(), self._empty_semantic(),
+            negative_check=NonVulnResult(total_checked=100, total_hits=3, total_errored=0),
+        )
+        assert result.negative_check_status == "OK"
+        assert result.gate_passed is True
+
+    def _empty_audit(self):
+        from sentinel_data.verification.class_auditor import ClassStats
+        return AuditResult(per_class={c: ClassStats(class_name=c) for c in class_names()})
+
+    def _empty_semantic(self):
+        from sentinel_data.verification.semantic_checker import ClassCheckSummary
+        return SemanticCheckResult(by_class={c: ClassCheckSummary(class_name=c) for c in class_names()})

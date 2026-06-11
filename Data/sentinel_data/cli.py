@@ -201,12 +201,116 @@ def _run_label(args: argparse.Namespace) -> None:
 
 
 def _run_verify(args: argparse.Namespace) -> None:
+    """Stage 4 — Verification (the BCCC-failure catcher)."""
+    from sentinel_data.verification.class_auditor import run_audit
+    from sentinel_data.verification.semantic_checker import run_semantic_check
+    from sentinel_data.verification.tool_validator import run_tool_validation
+    from sentinel_data.verification.fp_estimator import run_fp_estimation
+    from sentinel_data.verification.negative_checker import run_negative_check
+    from sentinel_data.verification.gate import run_gate
+    from sentinel_data.verification.report_generator import generate_report
+    from datetime import datetime
+
+    cfg = _load_config(args.config)
+    data_dir = Path(args.config).parent / "data"
+
     print(f"[verify] {STAGE_DESCRIPTIONS['verify']}")
     print(f"  config : {args.config}")
+    print(f"  data   : {data_dir}")
+
     if args.dry_run:
-        print("  (dry-run — no files written)")
+        print("  (dry-run — no Slither runs, no report written)")
         return
-    print("  NOT IMPLEMENTED — implement in Stage 4")
+
+    # Configurable thresholds (from config.yaml pipeline.verification)
+    verify_cfg = (cfg or {}).get("pipeline", {}).get("verification", {})
+    fp_sample = int(verify_cfg.get("fp_sample_size", 50))
+    neg_warn = float(verify_cfg.get("negative_tool_hit_warn", 0.05))
+    neg_fail = float(verify_cfg.get("negative_tool_hit_threshold", 0.10))
+    skip_tool = bool(args.skip_tool_validator)
+    skip_fp = bool(args.skip_fp_estimator)
+    skip_neg = bool(args.skip_negative_checker)
+
+    corpus_tag = " + ".join(
+        (cfg.get("sources_critical_path") or {}).keys()
+    ) or "manual"
+
+    # 1) Class audit (per-class counts + co-occurrence matrix)
+    print("\n  [1/5] class_auditor")
+    audit = run_audit(data_dir)
+    print(f"    contracts={audit.total_contracts}, flagged_pairs={len(audit.flagged_pairs)}")
+
+    # 2) Semantic check (graph-feature-based)
+    print("\n  [2/5] semantic_checker")
+    sem_limit = int(args.semantic_limit_per_class) if args.semantic_limit_per_class else None
+    semantic = run_semantic_check(data_dir, limit_per_class=sem_limit)
+    print(f"    checked={semantic.total_checked}, skipped={semantic.total_skipped}")
+
+    # 3) Tool validation (Slither agreement) — optional
+    tool_validation = None
+    if not skip_tool:
+        print("\n  [3/5] tool_validator (Slither, may be slow on first run)")
+        tool_limit = int(args.tool_limit_per_class) if args.tool_limit_per_class else None
+        tool_validation = run_tool_validation(
+            data_dir, limit_per_class=tool_limit, force=bool(args.force_slither),
+        )
+        print(f"    total_checked={tool_validation.total_checkable}, "
+              f"agrees={tool_validation.total_agrees}")
+    else:
+        print("\n  [3/5] tool_validator SKIPPED (--skip-tool-validator)")
+
+    # 4) FP estimator (stratified sampling)
+    fp_estimation = None
+    if not skip_fp:
+        print(f"\n  [4/5] fp_estimator (stratified, N={fp_sample}/class)")
+        fp_estimation = run_fp_estimation(data_dir, sample_size=fp_sample)
+        print(f"    total_sampled={fp_estimation.total_sampled}, "
+              f"likely_fp={fp_estimation.total_likely_fp}")
+    else:
+        print("\n  [4/5] fp_estimator SKIPPED (--skip-fp-estimator)")
+
+    # 5) Negative checker (NonVulnerable contamination)
+    negative_check = None
+    if not skip_neg:
+        print(f"\n  [5/5] negative_checker (warn>{neg_warn:.0%}, fail>{neg_fail:.0%})")
+        neg_limit = int(args.negative_limit) if args.negative_limit else None
+        negative_check = run_negative_check(
+            data_dir, warn_threshold=neg_warn, fail_threshold=neg_fail, limit=neg_limit,
+        )
+        print(f"    hit_rate={negative_check.hit_rate}, status={negative_check.status}"
+              if negative_check.hit_rate is not None
+              else f"    hit_rate=—, status={negative_check.status}")
+    else:
+        print("\n  [5/5] negative_checker SKIPPED (--skip-negative-checker)")
+
+    # Gate
+    print("\n  ── Gate ──")
+    gate = run_gate(
+        audit, semantic,
+        tool_validation=tool_validation,
+        fp_estimation=fp_estimation,
+        negative_check=negative_check,
+    )
+    print(gate)
+
+    # Report
+    out_path = data_dir / "verification" / f"verification_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+    generate_report(
+        audit, semantic, gate,
+        tool_validation=tool_validation,
+        fp_estimation=fp_estimation,
+        negative_check=negative_check,
+        corpus_tag=corpus_tag,
+        output_path=out_path,
+    )
+    print(f"\n  Wrote report: {out_path}")
+
+    # Exit code: 0 if gate passes, 1 if any FAIL (unless --strict-off)
+    if gate.gate_passed:
+        return 0
+    if not args.strict:
+        return 0   # soft fail — soft gate warns
+    return 1
 
 
 def _run_split(args: argparse.Namespace) -> None:
@@ -357,6 +461,53 @@ def _build_parser() -> argparse.ArgumentParser:
                      "files that still fail stay in dropped.csv with updated errors). "
                      "Use after installing a missing solc version or fixing a config bug.",
             )
+        if stage == "verify":
+            sp.add_argument(
+                "--strict",
+                action="store_true",
+                help="Exit non-zero on any FAIL (default: warn only, exit 0)",
+            )
+            sp.add_argument(
+                "--semantic-limit-per-class",
+                type=int,
+                default=None,
+                metavar="N",
+                help="Semantic check at most N positives per class (fast smoke)",
+            )
+            sp.add_argument(
+                "--tool-limit-per-class",
+                type=int,
+                default=None,
+                metavar="N",
+                help="Tool validation at most N checkable positives per class",
+            )
+            sp.add_argument(
+                "--negative-limit",
+                type=int,
+                default=None,
+                metavar="N",
+                help="Negative checker at most N NonVulnerable contracts",
+            )
+            sp.add_argument(
+                "--force-slither",
+                action="store_true",
+                help="Bypass Slither cache and re-run on every contract",
+            )
+            sp.add_argument(
+                "--skip-tool-validator",
+                action="store_true",
+                help="Skip tool_validator (use only audit + semantic + gate)",
+            )
+            sp.add_argument(
+                "--skip-fp-estimator",
+                action="store_true",
+                help="Skip fp_estimator (no Slither sampling for FP rate)",
+            )
+            sp.add_argument(
+                "--skip-negative-checker",
+                action="store_true",
+                help="Skip negative_checker (no Slither run on NonVulnerable)",
+            )
 
     # ── utility subcommands ───────────────────────────────────────────────────
     fresh_p = subparsers.add_parser(
@@ -380,14 +531,28 @@ def _handle_run(args: argparse.Namespace) -> None:
             print(f"  {s:<12}  {STAGE_DESCRIPTIONS[s]}")
         return
 
+    failed = False
     for stage in stages_to_run:
         fn = _STAGE_FN[stage]
-        # inject dry_run=False and default source=None for the run dispatcher
+        # inject defaults that aren't stage-specific; per-stage subcommand parsers
+        # define their own --config, --dry-run, etc.
         stage_args = argparse.Namespace(
             config=args.config, dry_run=False, source=None,
             workers=1, sample=None, retry_failed=False,
+            # verify-stage defaults
+            strict=False, semantic_limit_per_class=None, tool_limit_per_class=None,
+            negative_limit=None, force_slither=False,
+            skip_tool_validator=False, skip_fp_estimator=False,
+            skip_negative_checker=False,
         )
-        fn(stage_args)
+        result = fn(stage_args)
+        # Stages may return an int exit code (currently only verify does this).
+        if isinstance(result, int) and result != 0:
+            failed = True
+            print(f"  Stage '{stage}' returned exit code {result}; aborting run.")
+            break
+    if failed:
+        sys.exit(1)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -406,7 +571,10 @@ def main() -> None:
         fn = _STAGE_FN.get(args.command)
         if fn is None:
             parser.error(f"Unknown command: {args.command}")
-        fn(args)
+        result = fn(args)
+        # Per-stage commands can return an int exit code (currently only verify).
+        if isinstance(result, int):
+            sys.exit(result)
 
 
 if __name__ == "__main__":
