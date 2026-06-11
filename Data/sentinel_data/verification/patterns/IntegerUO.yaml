@@ -1,0 +1,39 @@
+class: IntegerUO
+description: >
+  Integer overflow or underflow. In Solidity < 0.8, arithmetic wraps silently.
+  In 0.8+, reverts by default; only vulnerable in explicit unchecked{} blocks.
+
+v9_signal:
+  method: composite
+  signals:
+    - method: graph_feature
+      feature_index: 11
+      feature_name: in_unchecked_block
+      positive_value: 1.0
+      note: >
+        feat[11] fires for nodes inside unchecked{} blocks (Solidity 0.8+).
+        Uses node.scope.is_checked (Slither 0.10). Pre-0.8: ALL nodes have
+        feat[11]=1.0 universally (is_checked is always False for pre-0.8).
+    - method: rep_metadata
+      field: solc_version
+      condition: "major==0 and minor<8"
+      note: >
+        Pre-0.8 Solidity contracts have wraparound arithmetic by default.
+        Check rep.json solc_version.
+
+positive_example: |
+  // pre-0.8 style — wraps silently
+  uint256 public total;
+  function add(uint256 a) public {
+      total += a;  // can overflow if total > 2**256 - a
+  }
+
+negative_example: |
+  // 0.8+ with checked arithmetic — reverts on overflow
+  uint256 public total;
+  function add(uint256 a) public {
+      total += a;  // safe — reverts on overflow
+  }
+
+dasp_id: 3
+tier_for_solidifi: T0

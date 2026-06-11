@@ -1,0 +1,37 @@
+class: DenialOfService
+description: >
+  Contract can be made unresponsive. Classic pattern: loop with external call
+  or push payment to multiple addresses (any failure blocks the whole loop).
+  Also includes: unbounded arrays, gas-griefing via returndata bombing.
+
+v9_signal:
+  method: NOT_EXTRACTABLE
+  note: >
+    v9 graph schema has no dedicated "loop-with-external-call" feature.
+    DoS verification requires Slither-based AST analysis (deferred to
+    tool_validator in Stage 4 v2). The v9 EXTERNAL_CALL edge is a necessary
+    but not sufficient condition (need to also verify loop context).
+
+false_positive_note: >
+  DIVE co-occurrence: ~12% of Reentrancy positives also have DoS. This is
+  legitimate multi-label signal at T2 (not noise). See merger co-occurrence
+  analysis — DIVE is below the 50% noise threshold.
+
+positive_example: |
+  address[] public investors;
+  function distribute() public {
+      for (uint i = 0; i < investors.length; i++) {
+          // if any investor is a contract that reverts, whole loop fails
+          payable(investors[i]).transfer(shares[investors[i]]);
+      }
+  }
+
+negative_example: |
+  function withdraw() public {
+      uint amount = balances[msg.sender];
+      balances[msg.sender] = 0;
+      payable(msg.sender).transfer(amount);  // pull pattern — no loop
+  }
+
+dasp_id: 5
+tier_for_solidifi: null

@@ -1,0 +1,29 @@
+class: UnusedReturn
+description: >
+  Return value of a function call is discarded without checking. The called
+  function may return an error indicator that the caller silently ignores.
+
+v9_signal:
+  method: graph_feature
+  feature_index: 7
+  feature_name: return_ignored
+  positive_value: 1.0
+  note: >
+    feat[7] fires for CFG nodes where a LowLevelCall, HighLevelCall, or Send
+    has a non-void return that is not assigned to any variable.
+    Computed by _compute_return_ignored() in graph_extractor.py.
+    Fix A15 ensures correct computation for all call types.
+
+positive_example: |
+  function pay(address payable to, uint256 amount) public {
+      to.send(amount);  // return value (bool) ignored
+  }
+
+negative_example: |
+  function pay(address payable to, uint256 amount) public {
+      bool ok = to.send(amount);
+      require(ok, "transfer failed");
+  }
+
+dasp_id: 9
+tier_for_solidifi: T0

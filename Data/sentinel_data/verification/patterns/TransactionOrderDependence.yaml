@@ -1,0 +1,30 @@
+class: TransactionOrderDependence
+description: >
+  Contract behaviour depends on transaction ordering (front-running).
+  tx.origin authentication or state that changes between tx submission
+  and execution. Also called Front Running or TOD.
+
+v9_signal:
+  method: NOT_EXTRACTABLE
+  note: >
+    v9 schema has no tx.origin feature. The EXTERNAL_CALL edge is too broad.
+    Full verification requires Slither tx-origin detector or AST walk
+    for StateVariable writes in conditions. Deferred to tool_validator.
+    SolidiFI maps TOD folder → TransactionOrderDependence (T0).
+    DIVE maps Front Running folder → TransactionOrderDependence (T2).
+
+positive_example: |
+  function claimReward(uint256 solution) public {
+      require(msg.sender == tx.origin, "no contracts");  // tx.origin bypass
+      require(solution == answer, "wrong answer");
+      payable(msg.sender).transfer(reward);
+  }
+
+negative_example: |
+  function claimReward(uint256 solution) public {
+      require(solution == answer, "wrong answer");  // no tx.origin
+      payable(msg.sender).transfer(reward);
+  }
+
+dasp_id: 7
+tier_for_solidifi: T0

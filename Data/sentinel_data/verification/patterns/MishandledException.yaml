@@ -1,0 +1,30 @@
+class: MishandledException
+description: >
+  Exceptions from low-level calls (.call, .send, .delegatecall) are swallowed
+  without propagation. The return bool is not checked, allowing silent failures.
+
+v9_signal:
+  method: graph_feature
+  feature_index: 7
+  feature_name: return_ignored
+  positive_value: 1.0
+  note: >
+    Shares the same feature as UnusedReturn (feat[7]). The distinction is
+    whether the ignored return comes from a low-level call (MishandledException)
+    or an internal/high-level call (UnusedReturn). v9 does not distinguish the
+    two at feature level — both fire feat[7]. Full Slither analysis can separate
+    them via call type.
+
+positive_example: |
+  function execute(address target, bytes memory data) public {
+      target.call(data);  // return (bool ok, bytes memory) silently ignored
+  }
+
+negative_example: |
+  function execute(address target, bytes memory data) public {
+      (bool ok,) = target.call(data);
+      require(ok, "call failed");
+  }
+
+dasp_id: 9
+tier_for_solidifi: T0

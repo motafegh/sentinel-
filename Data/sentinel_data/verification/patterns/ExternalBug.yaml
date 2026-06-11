@@ -1,0 +1,34 @@
+class: ExternalBug
+description: >
+  Vulnerability resulting from interaction with an external contract. Includes
+  tx.origin authentication bypass, delegate-call to unknown contract, and
+  access control failures across trust boundaries.
+
+v9_signal:
+  method: graph_edge
+  edge_type: EXTERNAL_CALL
+  edge_id: 11
+  note: >
+    Same edge type as CallToUnknown. ExternalBug is a broader category:
+    any cross-contract call where the impact is a security vulnerability
+    (auth bypass, state corruption). The distinction from CallToUnknown
+    is semantic (impact type), not structural.
+
+    SolidiFI maps tx.origin-based contracts → ExternalBug (T0).
+    DIVE maps Access Control folder → ExternalBug (T2).
+
+positive_example: |
+  // tx.origin authentication bypass
+  modifier onlyOwner {
+      require(tx.origin == owner, "not owner");  // WRONG: use msg.sender
+      _;
+  }
+
+negative_example: |
+  modifier onlyOwner {
+      require(msg.sender == owner, "not owner");  // SAFE: msg.sender
+      _;
+  }
+
+dasp_id: 2
+tier_for_solidifi: T0

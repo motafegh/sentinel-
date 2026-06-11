@@ -1,0 +1,30 @@
+class: Timestamp
+description: >
+  Block timestamp used in a security-sensitive conditional (e.g. deadline,
+  unlock time, randomness seed). block.timestamp / now.
+
+v9_signal:
+  method: graph_feature
+  feature_index: 2
+  feature_name: uses_block_globals
+  positive_value: 1.0
+  note: >
+    feat[2] fires when any node in the CFG references block.timestamp, now,
+    block.number, or block.coinbase. Set by _compute_uses_block_globals().
+    The 'now' keyword fix (A9) is already applied in v9 — pre-0.8 contracts
+    using 'now' are correctly detected.
+
+positive_example: |
+  function transfer() public {
+      require(block.timestamp >= unlockTime, "too early");
+      payable(msg.sender).transfer(amount);
+  }
+
+negative_example: |
+  function transfer() public {
+      require(msg.sender == owner, "not owner");
+      payable(msg.sender).transfer(amount);
+  }
+
+dasp_id: 8
+tier_for_solidifi: T0
