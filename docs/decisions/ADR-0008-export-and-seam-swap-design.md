@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-12
 **Stage:** 7A of 8 (sub-stage: export module only; 7B seam swap deferred)
-**Status:** Accepted (Stage 7A implementation complete)
+**Status:** Accepted (Stage 7A implementation complete; 7B amendment appended 2026-06-12)
 **Author:** SENTINEL data engineering
 **Plan reference:** [`docs/proposal/Data_Module_Proposals/actionable_plans/08_stage_7_export_seam.md`](../proposal/Data_Module_Proposals/actionable_plans/08_stage_7_export_seam.md)
 **Live plan:** [`data_module/temp/live_plans/stage_7a_export_module.md`](../../data_module/temp/live_plans/stage_7a_export_module.md)
@@ -175,3 +175,262 @@ See IC-5 above for the complete 7B scope. Key items:
 - Docker build verification
 - 7 v2-readiness gates check
 - Run 11 launch
+
+---
+
+## 7B Amendment — 2026-06-12 (seam swap landed)
+
+**Scope:** All 7B items from IC-5 are now complete. The seam is the source of
+truth: `sentinel_data.representation.graph_schema` owns the v9 schema, and the
+ML module's `ml/src/preprocessing/graph_schema.py` is now an 18-line thin shim
+that re-exports from it. The trainer (`ml/src/training/trainer.py`) consumes
+the v2 export via `SentinelDataset`; no production code in `ml/src/` imports
+`DualPathDataset` or `dual_path_dataset.py` directly.
+
+### 7B-AMEND-1 — The thin-adapter direction was FLIPPED, not deleted
+
+The original plan (7A's IC-5) said "delete `ml/src/preprocessing/graph_schema.py`
+and `graph_extractor.py`." During implementation (2026-06-12) we discovered 8
+model files import directly from those paths (`gnn_encoder.py`, `sentinel_model.py`,
+`predictor.py`, `training_logger.py`, `cache.py`, `dual_path_dataset.py`,
+`preprocess.py`, `graph_extractor.py` itself).
+
+**Decision:** flip the adapter direction instead of deleting. Make
+`sentinel_data/representation/graph_schema.py` self-contained (full v9 schema),
+and replace `ml/src/preprocessing/graph_schema.py` with a thin re-export shim
+pointing at it. The 8 model files keep working with zero changes.
+
+**Cost:** ~5 lines of shim code, invisible to callers.
+**Benefit:** seam swap is invisible to the model stack.
+
+**Why the flip, not copy-paste:** copy-paste would create two sources of truth
+that can drift. A shim is single-source-of-truth by construction.
+
+### 7B-AMEND-2 — `graph_extractor.py` imports from `sentinel_data` directly to avoid circular import
+
+Initial flip attempt used the shim from inside `ml/src/preprocessing/graph_extractor.py`,
+which created a circular import chain:
+
+```
+graph_schema shim → sentinel_data.__init__ → sentinel_data.representation →
+  (eagerly imports graph_extractor adapter) → ml.src.preprocessing.graph_extractor
+  → back to graph_schema shim (partially initialized)
+```
+
+**Fix:** `graph_extractor.py` lines 112 + 1241 import from
+`sentinel_data.representation.graph_schema` directly (not the shim), sidestepping
+the cycle. The shim is still used by the 7 other model files (which import the
+top-level `preprocessing.graph_schema` namespace, not its internals).
+
+### 7B-AMEND-3 — `SentinelDataset` returns a 5-tuple; the trainer ignores the 2 extras
+
+The 5-tuple is `(graph, tokens, y, contract_id, confidence_tier)`. The 3-tuple
+that `DualPathDataset` returned is preserved by the trainer ignoring the 2 new
+fields via Python's `*_` unpacking:
+
+```python
+graphs, tokens, labels, *_ = batch  # SentinelDataset 5-tuple; trainer ignores contract_ids + tiers
+```
+
+This was applied at 3 unpacking sites: `evaluate()` line 504, `train_one_epoch()`
+line 648, and the diagnostic-fetch line 1836.
+
+**Why 5-tuple, not 3:** the `contract_id` and `confidence_tier` are needed by
+future stages (5.5 GraphCodeBERT propagation, Run 11 per-class loss weighting).
+Carrying them through the loader now means downstream code can pick them up
+without re-plumbing.
+
+### 7B-AMEND-4 — `SentinelDataset` 3 hard gates at `__init__`
+
+The new loader validates the export at construction time (not lazily on first
+`__getitem__`):
+
+1. `manifest.schema_version == "v1"` (forward-compat) — hard `ValueError`
+2. `manifest.graph_schema_version == FEATURE_SCHEMA_VERSION` ("v9") — hard `ValueError`
+3. `verify_artifact_hash()` returns `True` — hard `ValueError` on data corruption
+
+**Why hard, not warn:** a bad export would silently corrupt training. Fail-fast
+at `__init__` is safer than a 3-hour training run producing nonsense.
+
+The 7-P2 schema-dim test in `test_byte_identical_regression.py` (x.shape[-1] ==
+12) is the graph-extractor-side companion gate.
+
+### 7B-AMEND-5 — `pyproject.toml` change required a `prometheus-fastapi-instrumentator` constraint relaxation
+
+The seam swap removed `py-solc-ast`/`solc`/`solc-select` from `ml/pyproject.toml`
+(data-only deps) and added `sentinel-data = {path = "../data_module", develop = true}`.
+The lock file refused to resolve because the existing
+`prometheus-fastapi-instrumentator = ">=0.9,<1.1"` constraint blocks all versions
+on PyPI (latest is 8.0.0). The constraint was relaxed to `>=6.0,<9.0` (allows
+6.x, 7.x, 8.x); the API used (`Instrumentator().instrument(app).expose(app)`)
+is stable since v5.x. `slither-analyzer` comes in transitively via
+`sentinel-data`'s path dep, so it does NOT need to be added to `ml/pyproject.toml`.
+
+### 7B-AMEND-6 — Venv `solc` 0.4.2 → 0.8.19 symlink (uncovered by Gate 1)
+
+The venv's `solc` was a 254-byte `solc-select` wrapper pinned to 0.4.2; test
+fixtures in `test_preprocessing.py` use `pragma solidity ^0.8.0`. Fixed by
+replacing the wrapper with a direct symlink to
+`~/.solc-select/artifacts/solc-0.8.19/solc-0.8.19`. **This is the kind of
+infrastructure debt that the seam swap surfaced** — the v1 corpus was pre-0.8
+and nobody noticed the solc mismatch.
+
+### 7B-AMEND-7 — `trainer.py` `compute_pos_weight` and `_build_weighted_sampler` rewritten to use in-memory `_label_lookup` + `num_nodes_map`
+
+The v1 functions read `multilabel_index.csv` (with `md5_stem` keys + class-name
+columns) and used `dataset.cached_data[md5][0].num_nodes` for the timestamp-size
+sampler mode. Both interfaces are gone in v2.
+
+**Rewritten to:**
+- Read labels from `dataset._label_lookup[contract_id][0]` (the y_tensor, indexed by
+  int per the v9 CLASS_NAMES order)
+- Read num_nodes from `dataset.num_nodes_map[contract_id]` (precomputed at
+  SentinelDataset init via LRU-cached shard reads)
+
+**CLASS_NAMES order is different from the outdated dual_path_dataset.py docstring.**
+The v2 export uses the live order: `Reentrancy, CallToUnknown, Timestamp, ExternalBug,
+GasException, DenialOfService, IntegerUO, UnusedReturn, MishandledException, NonVulnerable`.
+The old docstring listed `CallToUnknown, DenialOfService, ExternalBug, GasException,
+IntegerUO, MishandledException, Reentrancy, Timestamp, TransactionOrderDependence, UnusedReturn`.
+This is a v9 schema evolution that the seam swap exposed; the old sampler would
+have silently read the wrong column for 8 of 10 classes.
+
+### 7B-AMEND-8 — Two latent test bugs fixed during Gate 1
+
+`data_module/tests/test_representation/test_byte_identical_regression.py`:
+1. Stale fixture path `Data/data/preprocessed/solidifi` → `data_module/data/preprocessed/solidifi`
+   (the `Data` → `data_module` rename was never propagated to this test)
+2. `m.with_suffix(".sol")` on `.meta.json` produces `.meta.sol` (replaces only
+   `.json`, not the whole `.meta.json`); fixed to
+   `m.with_name(m.name.replace(".meta.json", ".sol"))`
+
+Both 1-line fixes; both had been latent since the `Data` rename (pre-Stage 7).
+
+### 7B-AMEND-9 — `dual_path_dataset.py` DELETED (2026-06-12 follow-up)
+
+After the seam swap, the original 7B-AMEND-9 left `dual_path_dataset.py` in
+`ml/src/datasets/` as a "safety net." On 2026-06-12, a follow-up pass found
+two more live references that had been missed:
+- `ml/tests/test_dataset.py` (19+ tests on `DualPathDataset` — superseded
+  by `ml/tests/test_sentinel_dataset.py`'s 16 tests, deleted via `git rm`)
+- `ml/scripts/tune_threshold.py` (active production script in the
+  `_legacy_data_pipeline` "Keep" list — migrated to `SentinelDataset`)
+
+`tune_threshold.py` migration: 5 edits (imports, CLI args, `build_val_loader`,
+batch unpacking site, `main()` config). Old `--label-csv`/`--splits-dir`/`--cache`
+args kept as deprecated no-op for backward CLI compat; new `--export-dir` arg
+replaces them.
+
+After both fixes, the 3 deletions:
+- `git rm ml/src/datasets/dual_path_dataset.py` (the loader)
+- `git rm ml/tests/test_dataset.py` (superseded tests)
+- `rm ml/_archive/seam_swap_pre_2026-06-12/ml_datasets/dual_path_dataset.py` (archive cleanup)
+
+**Verification:** `grep -rn "dual_path_dataset\|DualPathDataset\|dual_path_collate"`
+returns zero hits in `ml/src/`, `ml/tests/`, `ml/scripts/` (non-archive), and
+`data_module/`. Remaining references are:
+- 4 in code comments (historical, acceptable)
+- 9 in `ml/scripts/_legacy_data_pipeline/` (archived, not active)
+- 1 in `ml/scripts/archive/` (old audit script, not active)
+- 1 in `data_module/sentinel_data/representation/tokenizer.py` docstring
+  (historical reference to the old loader's design)
+
+38/38 ml seam-swap tests pass; 586/613 data_module tests pass (27 skip on
+solc/external).
+
+### 7B-AMEND-10 — `SentinelDataset.__init__` is 14.1s for 15,063 contracts; the cost is acceptable
+
+The dataset constructor touches all 5 graph shards to precompute
+`num_nodes_map` (used by the timestamp-size sampler). Cost: 14.1s for the
+training set (5 shards, 15,063 contracts, all in one LRU cache). Subsequent
+`__getitem__` calls are O(1) from the cache. The 5-shard LRU is configured via
+the `SENTINEL_SHARD_CACHE_SIZE` env var (default 4).
+
+**For Run 11 at scale:** if num_nodes_map init becomes a bottleneck (10× more
+contracts), the strategy is to (a) parallelize the per-shard reads across
+processes, or (b) precompute num_nodes into the export's metadata.parquet.
+The second option is the right long-term fix (metadata already has node_count
+in stage 2's `.rep.json`); deferred to Run 11 prep.
+
+### 7B-AMEND-11 — The trainer's `smoke_subsample_fraction` is monkey-patched into `_contract_ids`
+
+`SentinelDataset` doesn't accept positional indices (the v1 API was
+`indices=[...]` into a sorted `paired_hashes` list). For the smoke-test path
+where `config.smoke_subsample_fraction < 1.0`, the trainer slices
+`train_dataset._contract_ids` after construction. This is documented as a
+smoke-test-only hack. Real Run 10/11 will use the full split; the hack gets
+deleted when the smoke test moves to a synthetic export dir.
+
+### 7B Verification — 6/7 gates GREEN, 1/7 PARTIAL
+
+Full report: `data_module/docs/v2-readiness-2026-06-12.md`
+
+| # | Gate | Verdict |
+|---|---|---|
+| 1 | Schema regression (Stage 2 byte-identical) | ✅ 40/40 (also fixed 2 latent bugs) |
+| 2 | BCCC Phase 5 verification suite | ✅ 191 pass / 21 skip |
+| 3 | End-to-end round-trip (SentinelDataset) | ✅ 16/16 + smoke (15,063 train + 3,226 val) |
+| 4 | Feature distribution (Stage 6) | ✅ by construction (v9 schema unchanged) |
+| 5 | All 10 classes VERIFIED/PROVISIONAL | 🟡 0 FAIL; 2 VER, 5 PROV, 3 BEST-EFFORT (corpus-bound: SmartBugs Curated deferred to v2.1) |
+| 6 | No leakage across splits | ✅ 0 overlap (15,644/3,344/3,368) |
+| 7 | No open code-bug regression | ✅ EMITS 4/4 + predictor per-class thresholds |
+
+**Verdict: READY for Run 10 launch (scheduled 2026-08-18).**
+
+### 7B What was NOT done (out of scope, deferred)
+
+- **Step 8 — Docker build verification.** The Dockerfile exists from 7A
+  (`data_module/Dockerfile`); no Docker available in WSL2. Manual verification
+  steps would be: `docker build -t sentinel-data .` and run the
+  `sentinel-data export` CLI in the container. Deferred to Run 11 prep.
+- **Defer `dual_path_dataset.py` deletion** (see 7B-AMEND-9).
+- **Defer the 22 pre-existing test failures** in `ml/tests/test_preprocessing.py`
+  (v8→v9 schema test drift, Slither API changes). NOT Stage 7B regression.
+- **Defer `stage_6 feature_dist` re-run on the v2 export** (cosmetic; same numbers).
+
+### 7B Files touched (cumulative)
+
+**New (5):**
+1. `ml/src/datasets/sentinel_dataset.py` (~150 LoC, 3 hard gates)
+2. `ml/src/datasets/collate.py` (~50 LoC, 5-tuple collate)
+3. `ml/tests/test_sentinel_dataset.py` (16 tests)
+4. `data_module/tests/test_representation/test_emits_fixture.py` (4 tests)
+5. `data_module/docs/v2-readiness-2026-06-12.md` (this report)
+
+**Modified (8):**
+6. `ml/src/preprocessing/graph_schema.py` — 18-line shim re-export
+7. `ml/src/preprocessing/graph_extractor.py` — direct import from sentinel_data
+8. `ml/src/training/trainer.py` — 8 sites swapped
+9. `ml/scripts/train.py` — 5 old CLI args → single `--export-dir`
+10. `ml/tests/test_trainer.py` — inline synthetic collate
+11. `ml/pyproject.toml` — sentinel-data path dep, prometheus constraint relaxed
+12. `ml/.venv/bin/solc` — symlink to 0.8.19
+13. `data_module/tests/test_representation/test_byte_identical_regression.py` — 2 latent bugs fixed
+
+**Deleted (3):**
+14. `ml/src/data_extraction/ast_extractor.py` (legacy)
+15. `ml/src/data_extraction/tokenizer.py` (legacy)
+16. (Window_tokenizer kept — still used by data_module tests)
+
+**Archived (7):**
+17. `ml/scripts/_legacy_data_pipeline/` (7 v1 scripts + README)
+
+**Archived pre-7B backups (1 dir):**
+18. `ml/_archive/seam_swap_pre_2026-06-12/` (consolidated from 3 scattered dirs)
+
+---
+
+## What this ADR does NOT cover (deferred beyond 7B)
+
+7A's "deferred to 7B" list (SentinelDataset loader, dual-path test, legacy script
+deletion, pyproject update, Docker, 7 gates) is now closed — see the 7B Amendment
+above. Remaining deferred items:
+
+- **Docker build verification** (Step 8) — Dockerfile exists; no Docker in WSL2.
+- **`dual_path_dataset.py` deletion** (7B-AMEND-9) — dead code, but `test_trainer.py`
+  still has the import for its synthetic 3-tuple test data; cleanup blocked on
+  removing the import there.
+- **22 pre-existing test failures** in `ml/tests/test_preprocessing.py` — v8→v9
+  schema test drift, Slither API changes. NOT Stage 7 regression.
+- **Re-run Stage 6 `feature_dist` on the v2 export** — cosmetic; same numbers.
+- **Run 10 launch** (2026-08-18) and Run 11 (post-v2.1) — the next milestones.

@@ -62,7 +62,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 logger.remove()
 logger.add(sys.stderr, level="INFO")
 
-from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
+from ml.src.datasets import SentinelDataset, sentinel_collate_fn
 from ml.src.inference.predictor import _ARCH_TO_FUSION_DIM
 from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.trainer import CLASS_NAMES, NUM_CLASSES, TrainConfig
@@ -105,14 +105,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--label-csv",
         type=str,
-        default="ml/data/processed/multilabel_index_deduped.csv",
-        help="Path to the multi-label CSV index.",
+        default=None,
+        help="[DEPRECATED, ignored in v2 path] Path to the multi-label CSV index. "
+             "Labels are now read from the export's labels.parquet.",
     )
     parser.add_argument(
         "--splits-dir",
         type=str,
-        default="ml/data/splits/deduped",
-        help="Directory containing train/val/test_indices.npy files.",
+        default=None,
+        help="[DEPRECATED, ignored in v2 path] Directory containing train/val/test_indices.npy files. "
+             "Splits are now read from the export's manifest.json.",
+    )
+    parser.add_argument(
+        "--export-dir",
+        type=str,
+        default="data_module/data/exports/sentinel-v2-baseline-2026-06-12",
+        help="[Stage 7B] v2 export directory containing manifest.json + shard files. "
+             "Replaces --label-csv/--splits-dir/--cache.",
     )
     parser.add_argument(
         "--output",
@@ -131,12 +140,6 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Override DataLoader worker count. Defaults to TrainConfig.num_workers.",
-    )
-    parser.add_argument(
-        "--cache",
-        type=str,
-        default="ml/data/cached_dataset_v9.pkl",
-        help="Path to a pre-built cached dataset .pkl (overrides TrainConfig cache_path).",
     )
     parser.add_argument(
         "--start",
@@ -283,32 +286,26 @@ def load_model_from_checkpoint(
 
 def build_val_loader(
     config: TrainConfig,
-    label_csv: Path,
     batch_size: int,
     num_workers: int,
 ) -> DataLoader:
-    """Build the validation DataLoader using the same split as training.
+    """Build the validation DataLoader from the v2 export (Stage 7B).
 
     Fix #5: DataLoader kwargs are built conditionally so that prefetch_factor,
     pin_memory, and persistent_workers are only passed when num_workers > 0.
     Passing prefetch_factor=None (or any value) with num_workers=0 triggers a
     UserWarning in PyTorch 2.x because the option is meaningless without workers.
     """
-    val_indices = np.load(Path(config.splits_dir) / "val_indices.npy")
-
-    dataset = DualPathDataset(
-        graphs_dir=config.graphs_dir,
-        tokens_dir=config.tokens_dir,
-        indices=val_indices.tolist(),
-        label_csv=str(label_csv),
-        cache_path=getattr(config, "cache_path", None),
+    dataset = SentinelDataset(
+        split="val",
+        export_dir=Path(config.export_dir),
     )
 
     # Fix #5 — only include worker-specific kwargs when workers are actually used.
     _loader_kwargs: dict = {
         "batch_size": batch_size,
         "shuffle": False,
-        "collate_fn": dual_path_collate_fn,
+        "collate_fn": sentinel_collate_fn,
         "num_workers": num_workers,
     }
     if num_workers > 0:
@@ -342,7 +339,7 @@ def collect_probabilities(
     model.eval()
     with torch.no_grad():
         for batch in loader:
-            graphs, tokens, labels = batch
+            graphs, tokens, labels, *_ = batch  # SentinelDataset returns 5-tuple; ignore contract_ids + tiers
 
             graphs = graphs.to(device)
             input_ids = tokens["input_ids"].to(device)
@@ -556,18 +553,13 @@ def main() -> None:
     args = parse_args()
 
     checkpoint_path = Path(args.checkpoint)
-    label_csv = Path(args.label_csv)
     output_path = resolve_output_path(checkpoint_path, args.output)
     thresholds_grid = build_threshold_grid(args.start, args.end, args.step)
 
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
-    if not label_csv.exists():
-        raise FileNotFoundError(f"Label CSV not found: {label_csv}")
 
-    config = TrainConfig(splits_dir=args.splits_dir, label_csv=args.label_csv)
-    if args.cache is not None:
-        config.cache_path = args.cache
+    config = TrainConfig(export_dir=args.export_dir)
     device = config.device
     batch_size = args.batch_size if args.batch_size is not None else config.batch_size
     num_workers = args.num_workers if args.num_workers is not None else getattr(config, "num_workers", 0)
@@ -583,7 +575,6 @@ def main() -> None:
     model, ckpt_config = load_model_from_checkpoint(checkpoint_path, device)
     val_loader = build_val_loader(
         config=config,
-        label_csv=label_csv,
         batch_size=batch_size,
         num_workers=num_workers,
     )

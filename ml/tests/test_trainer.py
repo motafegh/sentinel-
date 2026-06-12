@@ -157,12 +157,27 @@ def _make_loader(n_batches: int = 3, batch_size: int = 4, num_classes: int = 10)
             labels = torch.zeros(num_classes, dtype=torch.float32)
             return graph, tokens, labels
 
-    from ml.src.datasets.dual_path_dataset import dual_path_collate_fn
+    # Stage 7B: _SyntheticDataset returns 3-tuples (graph, tokens, labels).
+    # Use an inline collate that handles 3-tuple batches — no need to import
+    # the v2 sentinel_collate_fn (which expects 5-tuples) for these unit tests.
+    def _synthetic_collate(batch):
+        graphs = [b[0] for b in batch]
+        tokens = [b[1] for b in batch]
+        labels = [b[2] for b in batch]
+        return (
+            Batch.from_data_list(graphs, exclude_keys=["contract_hash", "contract_path", "contract_name", "node_metadata", "num_edges", "num_nodes", "y"]),
+            {
+                "input_ids":      torch.stack([t["input_ids"] for t in tokens]),
+                "attention_mask": torch.stack([t["attention_mask"] for t in tokens]),
+            },
+            torch.stack(labels),
+        )
+
     return DataLoader(
         _SyntheticDataset(),
         batch_size=batch_size,
         shuffle=False,
-        collate_fn=dual_path_collate_fn,
+        collate_fn=_synthetic_collate,
     )
 
 

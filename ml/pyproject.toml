@@ -49,10 +49,8 @@ unzip = "^1.0.0"
 pyarrow = ">=4.0.0,<23"
 joblib = "^1.5.3"
 polars = "^1.38.1"
-py-solc-ast = "^1.2.10"
-solc = "^0.0.0a0"
-solc-select = "^1.2.0"
 dvc = "^3.66.1"
+sentinel-data = {path = "../data_module", develop = true}
 
 # ZKML (Module 2 — EZKL proof pipeline)
 ezkl = "^23.0.5"
@@ -69,7 +67,7 @@ httpx = "^0.27.0"
 # Drift detection
 scipy = "^1.13.0"
 
-prometheus-fastapi-instrumentator = ">=0.9,<1.1"
+prometheus-fastapi-instrumentator = ">=6.0,<9.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
