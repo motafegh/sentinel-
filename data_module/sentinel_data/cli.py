@@ -171,9 +171,10 @@ def _run_represent(args: argparse.Namespace) -> None:
     schema_v, extractor_v = current_versions()
     print(f"  schema  : {schema_v}  extractor : {extractor_v}")
 
-    sources = [args.source] if getattr(args, "source", None) else list(
-        (cfg.get("sources") or {}).keys()
-    )
+    sources = [args.source] if getattr(args, "source", None) else [
+        k for k, v in (cfg.get("sources_critical_path") or {}).items()
+        if isinstance(v, dict) and v.get("enabled", False)
+    ]
     if not sources:
         print("  No sources configured in config.yaml — nothing to do.")
         return
@@ -193,6 +194,10 @@ def _run_represent(args: argparse.Namespace) -> None:
         return
 
     for source in sources:
+        prep_dir = data_dir / "preprocessed" / source
+        if not prep_dir.exists():
+            print(f"\n  → source: {source}  (skip — no preprocessed dir)")
+            continue
         print(f"\n  → source: {source}")
         evicted = check_and_evict(representations_root, source, schema_v, extractor_v)
         if evicted:
@@ -659,12 +664,73 @@ def _run_analyze(args: argparse.Namespace) -> None:
 
 
 def _run_export(args: argparse.Namespace) -> None:
+    from sentinel_data.export import chunk_export
+
+    cfg = _load_config(args.config)
+    config_path = Path(args.config)
+    data_dir = config_path.parent / "data"
+    split_version = getattr(args, "split_version", 1) or 1
+    _shard_size_arg = getattr(args, "shard_size", None)
+    shard_size = _shard_size_arg if _shard_size_arg is not None else int(
+        (cfg.get("pipeline") or {}).get("export_shard_size", 5000)
+    )
+    dataset_version = getattr(args, "dataset_version", None) or "current-build"
+    output_dir = Path(getattr(args, "output_dir", None) or
+                      data_dir / "exports" / dataset_version)
+
     print(f"[export] {STAGE_DESCRIPTIONS['export']}")
-    print(f"  config : {args.config}")
+    print(f"  config          : {args.config}")
+    print(f"  dataset_version : {dataset_version}")
+    print(f"  split_version   : v{split_version}")
+    print(f"  shard_size      : {shard_size}")
+    print(f"  output_dir      : {output_dir}")
+
+    # Resolve enabled sources (same filter as represent/preprocess).
+    all_sources = [
+        k for k, v in (cfg.get("sources_critical_path") or {}).items()
+        if isinstance(v, dict) and v.get("enabled", False)
+    ]
+    ready_sources, skipped_sources = [], []
+    for s in all_sources:
+        if (data_dir / "preprocessed" / s).exists():
+            ready_sources.append(s)
+        else:
+            skipped_sources.append({"name": s, "reason": "preprocessed dir not found"})
+            print(f"  WARNING: skipping source {s!r} — preprocessed dir not found")
+
+    if not ready_sources:
+        print("  ERROR: no sources ready to export")
+        return
+
+    print(f"  sources         : {ready_sources}")
+    if skipped_sources:
+        print(f"  skipped_sources : {[s['name'] for s in skipped_sources]}")
+
     if args.dry_run:
         print("  (dry-run — no files written)")
         return
-    print("  NOT IMPLEMENTED — implement in Stage 7")
+
+    splits_dir = data_dir / "splits" / f"v{split_version}"
+    rep_root = data_dir / "representations"
+    preproc_root = data_dir / "preprocessed"
+
+    manifest = chunk_export(
+        rep_root=rep_root,
+        preproc_root=preproc_root,
+        splits_dir=splits_dir,
+        output_dir=output_dir,
+        config_path=config_path,
+        shard_size=shard_size,
+        source_set=ready_sources,
+        skipped_sources=skipped_sources,
+    )
+
+    print(f"\n  ✓ Export complete.")
+    print(f"    n_contracts     : {manifest.n_contracts}")
+    print(f"    n_with_reps     : {manifest.n_contracts_with_reps}")
+    print(f"    n_shards        : {manifest.n_shards}")
+    print(f"    artifact_hash   : {manifest.artifact_hash[:16]}…")
+    print(f"    output_dir      : {output_dir}")
 
 
 def _run_freshness(args: argparse.Namespace) -> None:
@@ -879,6 +945,24 @@ def _build_parser() -> argparse.ArgumentParser:
                 "--baseline-version", default=None, metavar="VERSION",
                 help="For drift_monitor: compare against this registered "
                      "dataset version (e.g. v1.4-bccc).",
+            )
+        if stage == "export":
+            sp.add_argument(
+                "--dataset-version", default=None, metavar="NAME",
+                help="Dataset version name for the export directory "
+                     "(default: 'current-build'). E.g. 'sentinel-v2-gold-2026-08'.",
+            )
+            sp.add_argument(
+                "--split-version", type=int, default=1, metavar="N",
+                help="Split version to export (default 1 = v1).",
+            )
+            sp.add_argument(
+                "--output-dir", default=None, metavar="PATH",
+                help="Override output directory (default: data/exports/<dataset-version>/).",
+            )
+            sp.add_argument(
+                "--shard-size", type=int, default=None, metavar="N",
+                help="Contracts per shard (default from config: export_shard_size, or 5000).",
             )
 
     # ── utility subcommands ───────────────────────────────────────────────────
