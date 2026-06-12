@@ -146,6 +146,8 @@ def _stratified_sample(
     positives: list[tuple[str, dict]],  # (sha, merged_label) for the class
     n: int,
     seed: int,
+    *,
+    cls_name: str,  # the specific class being sampled — used for per-class tier lookup
 ) -> list[tuple[str, dict]]:
     """Stratified sample of N from the positive set, one per (source, tier) cell.
 
@@ -163,18 +165,11 @@ def _stratified_sample(
     # Group by (source, tier)
     cells: dict[tuple[str, str], list[tuple[str, dict]]] = defaultdict(list)
     for sha, lj in positives:
-        cls_entry = lj.get("classes", {})
-        # Find the source from the merged-level 'sources' list (Stage 3
-        # sets this to the source that contributed the positive for this class)
         sources = lj.get("sources") or [None]
         source = sources[0] or "unknown"
-        # Find the tier: prefer the per-class entry's tier, fall back to None
-        # Iterate classes to find which one is positive
-        tier = None
-        for c_name, entry in cls_entry.items():
-            if entry.get("value") == 1 and c_name in lj.get("classes", {}):
-                tier = entry.get("tier") or "none"
-                break
+        # Use the tier for the specific class being sampled (not the first positive
+        # class found — that would be wrong for multi-label contracts).
+        tier = lj.get("classes", {}).get(cls_name, {}).get("tier") or "none"
         cells[(source, tier)].append((sha, lj))
 
     total = sum(len(v) for v in cells.values())
@@ -291,7 +286,7 @@ def run_fp_estimation(
             continue
 
         # Sample
-        sample = _stratified_sample(positives, sample_size, seed + hash(cls) % 10000)
+        sample = _stratified_sample(positives, sample_size, seed + hash(cls) % 10000, cls_name=cls)
         stats.sampled = len(sample)
 
         # Run Slither on each sampled positive

@@ -170,6 +170,9 @@ def run_tool_validation(
         merged_classes = lj.get("classes", {})
 
         for cls in classes:
+            # Skip classes that already hit the per-class limit — avoid redundant processing.
+            if limit_per_class is not None and result.by_class[cls].checkable >= limit_per_class:
+                continue
             entry = merged_classes.get(cls, {})
             if entry.get("value") != 1:
                 continue
@@ -242,10 +245,7 @@ def run_tool_validation(
                     detectors_fired=sorted(findings.checks_fired),
                 ))
 
-            if limit_per_class is not None and stats.checkable >= limit_per_class:
-                continue
-
-        # If we just want to early-exit the outer loop, break when ALL classes hit the limit
+        # Break outer loop when ALL checkable classes have hit the limit.
         if limit_per_class is not None and all(
             result.by_class[c].checkable >= limit_per_class for c in classes
             if CLASS_TO_DETECTORS.get(c)  # only count classes that can be checked

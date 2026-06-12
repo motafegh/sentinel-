@@ -47,11 +47,11 @@ def _make_findings(sha, source, agreed: bool):
 
 class TestStratifiedSample:
     def test_empty(self):
-        assert _stratified_sample([], 10, seed=0) == []
+        assert _stratified_sample([], 10, seed=0, cls_name="X") == []
 
     def test_n_zero(self):
         positives = [("a", {"classes": {"X": {"value": 1}}})]
-        assert _stratified_sample(positives, 0, seed=0) == []
+        assert _stratified_sample(positives, 0, seed=0, cls_name="X") == []
 
     def test_proportional_allocation(self):
         # 60 from (src_a, T0), 40 from (src_b, T0); sample 10
@@ -60,7 +60,7 @@ class TestStratifiedSample:
             positives.append((f"a_{i}", {"sources": ["src_a"], "classes": {"X": {"value": 1, "tier": "T0"}}}))
         for i in range(40):
             positives.append((f"b_{i}", {"sources": ["src_b"], "classes": {"X": {"value": 1, "tier": "T0"}}}))
-        sample = _stratified_sample(positives, 10, seed=42)
+        sample = _stratified_sample(positives, 10, seed=42, cls_name="X")
         assert len(sample) == 10
         a_count = sum(1 for s, _ in sample if s.startswith("a_"))
         b_count = sum(1 for s, _ in sample if s.startswith("b_"))
@@ -73,8 +73,8 @@ class TestStratifiedSample:
             (f"x_{i}", {"sources": ["src"], "classes": {"X": {"value": 1, "tier": "T0"}}})
             for i in range(20)
         ]
-        s1 = _stratified_sample(positives, 5, seed=42)
-        s2 = _stratified_sample(positives, 5, seed=42)
+        s1 = _stratified_sample(positives, 5, seed=42, cls_name="X")
+        s2 = _stratified_sample(positives, 5, seed=42, cls_name="X")
         assert [s for s, _ in s1] == [s for s, _ in s2]
 
     def test_no_replacement_within_sample(self):
@@ -82,7 +82,7 @@ class TestStratifiedSample:
             (f"x_{i}", {"sources": ["src"], "classes": {"X": {"value": 1, "tier": "T0"}}})
             for i in range(20)
         ]
-        sample = _stratified_sample(positives, 5, seed=42)
+        sample = _stratified_sample(positives, 5, seed=42, cls_name="X")
         shas = [s for s, _ in sample]
         assert len(shas) == len(set(shas))  # all unique
 

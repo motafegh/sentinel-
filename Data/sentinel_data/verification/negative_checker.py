@@ -196,17 +196,16 @@ def run_negative_check(
             result.total_skipped += 1
             continue
 
+        findings = run_on_contract(sha, source, data_dir, force=force, detectors=detectors)
+        if findings is None:
+            result.total_skipped += 1
+            continue
+
         result.total_checked += 1
         src_stats = result.by_source.setdefault(
             source, NonVulnSourceStats(source=source)
         )
         src_stats.total += 1
-
-        findings = run_on_contract(sha, source, data_dir, force=force, detectors=detectors)
-        if findings is None:
-            result.total_skipped += 1
-            src_stats.total -= 1   # don't count un-checked contracts
-            continue
         if findings.error:
             result.total_errored += 1
             src_stats.errored += 1
