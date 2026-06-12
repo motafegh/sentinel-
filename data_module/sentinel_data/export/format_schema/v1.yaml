@@ -1,0 +1,494 @@
+# SENTINEL v2 Export — Format Schema v1
+#
+# The contract between `sentinel_data.export` (the writer) and
+# `sentinel-ml.src.datasets.sentinel_dataset` (the reader, built in 7B).
+#
+# LOCKING POLICY:
+#   - Any change to column names, dtypes, file naming patterns, or shard layout
+#     is a BREAKING change → requires a new file: v2.yaml (or v1.1.yaml for
+#     additive changes that are still backward-compatible).
+#   - The SentinelDataset refuses to load an export whose
+#     `manifest.schema_version` is older than the consumer's pinned version.
+#   - The SentinelDataset does NOT refuse an export with a NEWER schema
+#     version (forward-compat) — it logs a warning and proceeds with the
+#     fields it knows about.
+#
+# CURRENT VERSION: v1
+#   - Authored: 2026-06-12 (Stage 7A Step 1)
+#   - Plan:      docs/proposal/Data_Module_Proposals/actionable_plans/08_stage_7_export_seam.md
+#   - Plan D-7.1: "Sharded export is the consumable format" — this file is the spec.
+#
+# COMPANION FILES:
+#   - writer side:    data_module/sentinel_data/export/{label,metadata,graph,token}_writer.py
+#   - orchestrator:   data_module/sentinel_data/export/chunker.py
+#   - consumer API:   data_module/sentinel_data/export/export.py  (SentinelDatasetExport)
+#   - consumer:       sentinel-ml/src/datasets/sentinel_dataset.py  (built in 7B)
+
+schema_version: "v1"
+authored: "2026-06-12"
+authored_by: "Stage 7A Step 1"
+plan_reference: "docs/proposal/Data_Module_Proposals/actionable_plans/08_stage_7_export_seam.md D-7.1"
+
+# ---------------------------------------------------------------------------
+# Top-level export directory layout
+# ---------------------------------------------------------------------------
+#
+# data/exports/<dataset_version>/
+# ├── manifest.json                       # the manifest (EXCLUDED from artifact_hash — see fix A)
+# ├── labels.parquet                      # one row per labeled contract
+# ├── metadata.parquet                    # one row per labeled contract (enriched)
+# ├── graphs/                             # PyG Batch objects
+# │   ├── graphs-{shard:05d}.pt
+# │   ├── ...
+# │   └── _shard_index.json                # {contract_id: shard_number, pos_in_shard: int}
+# └── tokens/                             # torch.Tensor stacks
+#     ├── tokens-{shard:05d}.pt
+#     ├── ...
+#     └── _shard_index.json                # same structure as graphs/_shard_index.json
+#
+# Shard size: 5,000 contracts per shard (configurable via pipeline.export_shard_size).
+# Source set: derived from sources_critical_path filtered by enabled: true.
+# Skipped sources (enabled but no preprocessed dir): recorded in manifest.skipped_sources.
+#
+# Hash scope (Fix A — avoids circular hash):
+#   artifact_hash is computed over the FOUR data file types ONLY:
+#     - labels.parquet
+#     - metadata.parquet
+#     - graphs/graphs-{shard:05d}.pt (all shards)
+#     - tokens/tokens-{shard:05d}.pt (all shards)
+#     - graphs/_shard_index.json
+#     - tokens/_shard_index.json
+#   manifest.json is EXCLUDED from the hash input. This avoids the
+#   chicken-and-egg: manifest.json contains artifact_hash, so it cannot
+#   be part of the file set whose hash it stores.
+#   The hash is written into manifest.json LAST, after all data files exist.
+
+directory_layout:
+  manifest: "manifest.json"
+  labels: "labels.parquet"
+  metadata: "metadata.parquet"
+  graphs_dir: "graphs"
+  tokens_dir: "tokens"
+  graph_shard_pattern: "graphs-{shard:05d}.pt"
+  token_shard_pattern: "tokens-{shard:05d}.pt"
+  graph_shard_index: "graphs/_shard_index.json"
+  token_shard_index: "tokens/_shard_index.json"
+  shard_size_default: 5000
+
+# ---------------------------------------------------------------------------
+# Manifest fields
+# ---------------------------------------------------------------------------
+#
+# Written to <export_dir>/manifest.json AFTER all data files are written.
+# The schema_version field here is the consumer's version gate (per 7-P2).
+
+manifest:
+  schema_version:
+    type: str
+    example: "v1"
+    description: |
+      The format schema version this export conforms to. The SentinelDataset
+      refuses to load an export whose schema_version is older than the
+      consumer's pinned version. Schema bumps: v1 → v1.1 (additive,
+      backward-compatible) or v1 → v2 (breaking).
+  graph_schema_version:
+    type: str
+    example: "v9"
+    description: |
+      The graph feature schema version the graphs were extracted with.
+      Comes from `data/representations/<source>/<sha>.rep.json.schema_version`.
+      The 7-P2 gate: SentinelDataset checks this against
+      `ml/src/preprocessing/graph_schema.FEATURE_SCHEMA_VERSION`.
+  artifact_hash:
+    type: str
+    example: "a3f5e9c1..."
+    description: |
+      SHA-256 of the FOUR data file types (excludes manifest.json per Fix A).
+      Verified by SentinelDataset.verify_artifact_hash() on load.
+  hash_algorithm:
+    type: str
+    example: "sha256"
+    description: "Hash algorithm. Currently only sha256 is supported."
+  shard_size:
+    type: int
+    example: 5000
+    description: "Number of contracts per shard."
+  n_contracts:
+    type: int
+    example: 22356
+    description: "Total contracts in the export (sum of train+val+test)."
+  n_contracts_with_reps:
+    type: int
+    example: 22356
+    description: |
+      Number of contracts that have a corresponding .pt shard. May be less
+      than n_contracts if some contracts lack representations (the
+      labels.parquet and metadata.parquet still include them, but the
+      graph/token shards only contain contracts with reps).
+  n_shards:
+    type: int
+    example: 5
+    description: "ceil(n_contracts_with_reps / shard_size)."
+  splits:
+    type: "dict[str, list[str]]"
+    example:
+      train: ["0001abc...", "0002def...", ...]
+      val:   ["..."]
+      test:  ["..."]
+    description: |
+      Per-split list of contract_ids. The SentinelDataset filters to one
+      split at construction time (split='train'|'val'|'test').
+  shard_index:
+    type: "dict[str, dict]"
+    example:
+      "0001abc...": {shard: 0, pos_in_shard: 0}
+      "0002def...": {shard: 0, pos_in_shard: 1}
+    description: |
+      Per-contract (sha256) → {shard: int, pos_in_shard: int}. The
+      SentinelDataset uses this for O(1) lazy shard lookup in __getitem__.
+      Stored in BOTH graphs/_shard_index.json and tokens/_shard_index.json
+      (same content; two files for the consumer's convenience).
+  source_set:
+    type: "list[str]"
+    example: ["dive", "solidifi"]
+    description: |
+      The sources actually exported. Derived from sources_critical_path
+      filtered by enabled: true AND with a preprocessed dir on disk.
+  skipped_sources:
+    type: "list[dict]"
+    example:
+      - {name: "defihacklabs", reason: "preprocessed dir not found"}
+    description: |
+      Sources that were enabled in config but had no preprocessed dir on
+      disk; recorded for reproducibility (per 2026-06-12 user note).
+  preprocessing_config_hash:
+    type: str
+    example: "b1c4d7e2..."
+    description: "SHA-256 of the config.yaml used to produce this export."
+  label_class_columns:
+    type: "list[str]"
+    example: ["CallToUnknown", "DenialOfService", "ExternalBug", "GasException",
+              "IntegerUO", "MishandledException", "Reentrancy", "Timestamp",
+              "TransactionOrderDependence", "UnusedReturn"]
+    description: |
+      The 10 class names in locked order. class_0..class_9 columns in
+      labels.parquet map to these names. The order is locked per
+      data_module/sentinel_data/labeling/schema/taxonomy.yaml and must
+      match the training pipeline's expectation.
+  created_at:
+    type: str
+    example: "2026-06-12T17:30:00+00:00"
+    description: "ISO 8601 UTC timestamp of when the export was created."
+
+# ---------------------------------------------------------------------------
+# labels.parquet schema
+# ---------------------------------------------------------------------------
+#
+# One row per labeled contract (across all 3 splits). All 22,356 labeled
+# contracts appear here, even if they lack a representation (the .pt
+# shards only contain contracts with reps; the parquet is the full set).
+#
+# Reading source: data_module/data/splits/v{N}/{train,val,test}.jsonl
+# (one asdict-serialized Contract dataclass per line).
+#
+# Per 7A Fix #2: confidence_tier is the split's tier field when n_pos > 0,
+# else None (pyarrow null). The splitter defaults tier='T0' for NonVulnerable
+# contracts; we override to None at the parquet level so the consumer
+# can filter on `confidence_tier.is_null()` to skip tier-based weighting.
+
+labels_parquet:
+  filename: "labels.parquet"
+  compression: "snappy"
+  one_row_per: "labeled contract (split-aware)"
+  columns:
+    - name: contract_id
+      type: string
+      nullable: false
+      description: "sha256 hex (64 chars)."
+    - name: source
+      type: string
+      nullable: false
+      description: "The contract's source name (e.g. 'dive', 'solidifi')."
+    - name: split
+      type: string
+      nullable: false
+      enum: ["train", "val", "test"]
+      description: "Which split the contract belongs to."
+    - name: class_0
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "CallToUnknown binary value (locked at column 0 per taxonomy.yaml)."
+    - name: class_1
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "DenialOfService binary value."
+    - name: class_2
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "ExternalBug binary value."
+    - name: class_3
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "GasException binary value."
+    - name: class_4
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "IntegerUO binary value."
+    - name: class_5
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "MishandledException binary value."
+    - name: class_6
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "Reentrancy binary value."
+    - name: class_7
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "Timestamp binary value."
+    - name: class_8
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "TransactionOrderDependence binary value."
+    - name: class_9
+      type: int8
+      nullable: false
+      enum: [0, 1]
+      description: "UnusedReturn binary value."
+    - name: confidence_tier
+      type: string
+      nullable: true
+      enum: ["T0", "T1", "T2", "T3", "untiered", null]
+      description: |
+        Per 7A Fix #2: split's `tier` field when n_pos > 0, else None
+        (pyarrow null). Note: the splitter defaults tier='T0' for
+        NonVulnerable contracts; we override to None at the parquet
+        level so the model code can filter on null vs. tier values.
+
+# ---------------------------------------------------------------------------
+# metadata.parquet schema
+# ---------------------------------------------------------------------------
+#
+# One row per labeled contract (across all 3 splits). All 22,356 contracts
+# appear here. The metadata is enriched from .rep.json + .meta.json + .sol
+# sidecars; per 7A Fix #3, `loc` and `n_functions` are COMPUTED from .sol
+# (the split JSONL's loc=0 is a default, not the real LoC).
+
+metadata_parquet:
+  filename: "metadata.parquet"
+  compression: "snappy"
+  one_row_per: "labeled contract (split-aware)"
+  columns:
+    - name: contract_id
+      type: string
+      nullable: false
+      description: "sha256 hex."
+    - name: source
+      type: string
+      nullable: false
+    - name: split
+      type: string
+      nullable: false
+      enum: ["train", "val", "test"]
+    - name: solc_version
+      type: string
+      nullable: true
+      description: "From .rep.json. Null if no representation."
+    - name: version_bucket
+      type: string
+      nullable: true
+      enum: ["modern", "transitional", "ancient", null]
+      description: "From .meta.json.version_bucket. Null if no preprocessed sidecar."
+    - name: loc
+      type: int32
+      nullable: true
+      description: |
+        Per 7A Fix #3: COMPUTED from .sol source via _loc() from
+        data_module/sentinel_data/analysis/feature_dist.py. Null if
+        no .sol sidecar. Note: the split JSONL's loc=0 is a default
+        and is NOT the real LoC.
+    - name: n_functions
+      type: int32
+      nullable: true
+      description: |
+        COMPUTED from .sol source via _function_count() (same regex as
+        feature_dist.py). Null if no .sol sidecar.
+    - name: n_pos
+      type: int8
+      nullable: false
+      description: "Number of positive classes (0-10). From the split row."
+    - name: primary_class
+      type: string
+      nullable: false
+      description: |
+        The class with value=1, or 'NonVulnerable' if all 10 are 0. From
+        the split row's primary_class field.
+    - name: node_count
+      type: int32
+      nullable: true
+      description: "From .rep.json. Null if no representation."
+    - name: edge_count
+      type: int32
+      nullable: true
+      description: "From .rep.json. Null if no representation."
+    - name: has_unchecked_block
+      type: bool
+      nullable: true
+      description: "From .meta.json.has_unchecked_block. Null if no meta sidecar."
+    - name: dedup_group_id
+      type: string
+      nullable: true
+      description: "From .meta.json.dedup_group_id. Null if no meta sidecar."
+    - name: confidence_tier
+      type: string
+      nullable: true
+      enum: ["T0", "T1", "T2", "T3", "untiered", null]
+      description: "Same logic as labels.parquet: tier if n_pos > 0 else None."
+
+# ---------------------------------------------------------------------------
+# Graph shard layout
+# ---------------------------------------------------------------------------
+#
+# One PyG Batch object per shard, containing N <= shard_size contract
+# graphs. Each contract in the batch is a torch_geometric.data.Data object
+# (12-dim node features per the v9 schema, edge_index in COO format,
+# edge_attr with edge type indices).
+#
+# The writer walks the split JSONL in order (not the representations dir)
+# to guarantee ordering consistency with labels.parquet and metadata.parquet.
+# See 7A Fix #7.
+
+graph_shards:
+  directory: "graphs/"
+  filename_pattern: "graphs-{shard:05d}.pt"
+  shard_index_filename: "_shard_index.json"
+  per_shard_format:
+    content: "torch_geometric.data.Batch"
+    shape: "N graph Data objects, where N <= shard_size"
+    fields_per_graph:
+      - name: x
+        type: float32 tensor
+        shape: "[num_nodes, 12]"
+        description: "12-dim node features per the v9 schema (FEATURE_NAMES)."
+      - name: edge_index
+        type: int64 tensor
+        shape: "[2, num_edges]"
+        description: "Directed edges in COO format."
+      - name: edge_attr
+        type: int64 tensor
+        shape: "[num_edges]"
+        description: "Edge type indices (0-11 per EDGE_TYPES in graph_schema.py)."
+      - name: contract_hash
+        type: str
+        description: "Contract sha256 (matches labels.parquet.contract_id)."
+  shard_index_format:
+    description: |
+      Per-contract (sha256) → {shard: int, pos_in_shard: int}. Written as
+      a JSON file. The consumer reads it once at construction time.
+    example:
+      "0001abc...": {shard: 0, pos_in_shard: 0}
+      "0002def...": {shard: 0, pos_in_shard: 1}
+      "1234xyz...": {shard: 1, pos_in_shard: 0}
+
+# ---------------------------------------------------------------------------
+# Token shard layout
+# ---------------------------------------------------------------------------
+#
+# One torch.Tensor per shard, shape [N, 4, 512] where N <= shard_size.
+# 4 sliding windows of 512 GraphCodeBERT tokens; stride=256.
+#
+# Same shard_index.json structure as graphs.
+
+token_shards:
+  directory: "tokens/"
+  filename_pattern: "tokens-{shard:05d}.pt"
+  shard_index_filename: "_shard_index.json"
+  per_shard_format:
+    content: "torch.Tensor"
+    shape: "[N, 4, 512]"
+    dtype: "int64"
+    description: |
+      4 sliding windows of 512 GraphCodeBERT tokens. N is the number of
+      contracts in this shard. The tensor's row N corresponds to the
+      contract at position N in the shard (aligned with the graphs
+      shard's row N).
+
+# ---------------------------------------------------------------------------
+# What the consumer (SentinelDataset, built in 7B) does
+# ---------------------------------------------------------------------------
+#
+# On load, the SentinelDataset:
+#  1. Reads manifest.json; checks schema_version >= consumer's pinned version
+#     (raises ValueError if older per 7-P2).
+#  2. Checks manifest.graph_schema_version against FEATURE_SCHEMA_VERSION
+#     (raises ValueError on mismatch).
+#  3. Calls verify_artifact_hash() — recomputes SHA-256 over the four data
+#     file types and compares to manifest.artifact_hash (raises ValueError
+#     on mismatch).
+#  4. Warns if manifest has a run_name field that doesn't match the
+#     caller's run_name (7-P3 threshold-mismatch warning).
+#  5. Loads the shard_index for lazy __getitem__.
+#  6. Returns 5-tuples: (graph, tokens, y, contract_id, confidence_tier)
+#     per 7-P4 — the new field that the dual_path_dataset.py didn't have.
+
+consumer_contract:
+  load_step_1_schema_version: "raise on older"
+  load_step_2_graph_schema_version: "raise on mismatch"
+  load_step_3_artifact_hash: "raise on mismatch"
+  load_step_4_threshold_warning: "warn on run_name mismatch"
+  load_step_5_shard_index: "in-memory dict"
+  load_step_6_return: "5-tuple (graph, tokens, y, contract_id, confidence_tier)"
+
+# ---------------------------------------------------------------------------
+# Hash computation (Fix A — avoids circular hash)
+# ---------------------------------------------------------------------------
+#
+# artifact_hash covers:
+#   - labels.parquet (file bytes)
+#   - metadata.parquet (file bytes)
+#   - graphs/graphs-{shard:05d}.pt (all shards, file bytes)
+#   - tokens/tokens-{shard:05d}.pt (all shards, file bytes)
+#   - graphs/_shard_index.json
+#   - tokens/_shard_index.json
+#   - manifest.json (EXCLUDED — it contains artifact_hash)
+#
+# The hash is computed BEFORE manifest.json is written, then the manifest
+# is written last with the hash field populated.
+#
+# Algorithm:
+#   1. Walk the four data file types; for each, prepend the relative path
+#      to the SHA-256 of the file bytes.
+#   2. Concatenate all (path, hash) pairs in sorted order.
+#   3. SHA-256 the concatenation → artifact_hash.
+#
+# The consumer recomputes the same way and compares.
+
+hash_computation:
+  scope: "labels.parquet + metadata.parquet + graphs/ + tokens/ (shards + index files)"
+  excluded: "manifest.json"
+  algorithm: "sha256"
+  file_order: "sorted by relative path"
+  per_file_step: "SHA-256 of file bytes"
+  final_step: "SHA-256 of concatenation of (relative_path || per_file_hash) pairs"
+  write_order: "compute hash BEFORE writing manifest.json; manifest.json is the LAST file written"
+
+# ---------------------------------------------------------------------------
+# What changed in each version (changelog)
+# ---------------------------------------------------------------------------
+#
+# Future versions append here. Breaking changes go to a new file
+# (v2.yaml), additive to v1.1.yaml (if you decide to make one).
+
+changelog:
+  - version: "v1"
+    date: "2026-06-12"
+    summary: "Initial release. 4 file types (graphs_shard, tokens_shard, labels_parquet, metadata_parquet). LRU shard cache. 5-tuple consumer output with confidence_tier."
