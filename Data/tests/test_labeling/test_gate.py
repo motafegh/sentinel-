@@ -8,8 +8,9 @@ import yaml
 from sentinel_data.labeling.gate import run_gate, GateResult
 from sentinel_data.labeling.schema import class_names
 
-_DATA_DIR = Path("Data/data")
-_CONFIG_PATH = Path("Data/config.yaml")
+_HERE = Path(__file__).resolve()
+_DATA_DIR = _HERE.parents[2] / "data"
+_CONFIG_PATH = _HERE.parents[2] / "config.yaml"
 
 
 def _load_config():
