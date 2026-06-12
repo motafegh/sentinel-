@@ -695,7 +695,6 @@ class Predictor:
         if isinstance(probs_list, float):
             probs_list = [probs_list]
 
-        conf_thr = self.tier_confirmed_threshold
         susp_thr = self.tier_suspicious_threshold
 
         # Full probability vector — always present, no filtering.
@@ -705,10 +704,14 @@ class Predictor:
         }
 
         # Tiered lists — sorted descending by probability within each tier.
+        # Per F8/F10 fix: confirmed threshold is per-class (self.thresholds[i]),
+        # not the scalar self.tier_confirmed_threshold. The per-class thresholds
+        # are tuned via tune_threshold.py and loaded from the companion JSON.
         confirmed: list[dict] = []
         suspicious: list[dict] = []
-        for cls_name, prob in zip(self._class_names, probs_list):
+        for cls_idx, (cls_name, prob) in enumerate(zip(self._class_names, probs_list)):
             p = round(prob, 4)
+            conf_thr = self.thresholds[cls_idx].item()
             if prob >= conf_thr:
                 confirmed.append({"vulnerability_class": cls_name, "probability": p, "tier": "CONFIRMED"})
             elif prob >= susp_thr:
@@ -745,7 +748,7 @@ class Predictor:
             "suspicious":       suspicious,
             "vulnerabilities":  vulnerabilities,   # legacy
             "tier_thresholds":  {
-                "confirmed":  conf_thr,
+                "confirmed":  self.thresholds.cpu().tolist(),  # per-class list (F8/F10 fix)
                 "suspicious": susp_thr,
                 "noteworthy": 0.10,
             },
