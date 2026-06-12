@@ -452,6 +452,41 @@ def _run_verify(args: argparse.Namespace) -> None:
     return 1
 
 
+def _resolve_corpus_paths(args: argparse.Namespace, data_dir: Path) -> tuple[Path, Path, Path, Path]:
+    """Resolve the (labels_root, rep_root, preproc_root, merged_dir) for analysis.
+
+    By default uses the current build's data dir. With `--corpus <name>`, looks
+    up the registered version's `artifact_path` and uses the labels +
+    representations + preprocessed subdirs from there. Returns None entries
+    (empty Path) if the corpus lookup fails, so callers can degrade gracefully.
+    """
+    if not args.corpus:
+        # Current build
+        return (
+            data_dir / "labels",
+            data_dir / "representations",
+            data_dir / "preprocessed",
+            data_dir / "labels" / "merged",
+        )
+    from sentinel_data.registry import Catalog
+    cat = Catalog(data_dir / "registry" / "catalog.db",
+                  data_dir / "registry" / "catalog.yaml")
+    v = cat.get_dataset_version(args.corpus)
+    if v is None:
+        print(f"  ERROR: corpus version {args.corpus} not found in catalog")
+        return Path(), Path(), Path(), Path()
+    artifact = Path(v.artifact_path)
+    if not artifact.exists():
+        print(f"  ERROR: corpus artifact path does not exist: {artifact}")
+        return Path(), Path(), Path(), Path()
+    return (
+        artifact / "labels",
+        artifact / "representations",
+        artifact / "preprocessed",
+        artifact / "labels" / "merged",
+    )
+
+
 def _run_analyze(args: argparse.Namespace) -> None:
     """Stage 6 — Analysis (the Run-9-failure catcher).
 
@@ -479,7 +514,7 @@ def _run_analyze(args: argparse.Namespace) -> None:
     print(f"  run-id : {run_id}")
     print(f"  out    : {output_dir}")
     if args.corpus:
-        print(f"  corpus : {args.corpus}")
+        print(f"  corpus : {args.corpus}  (analyzing a registered version, not the current build)")
     if args.baseline_version:
         print(f"  baseline : {args.baseline_version}")
 
@@ -495,15 +530,12 @@ def _run_analyze(args: argparse.Namespace) -> None:
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Inputs
-    rep_root = data_dir / "representations"
-    preproc_root = data_dir / "preprocessed"
-    labels_root = data_dir / "labels"
-    merged_dir = labels_root / "merged"
-
-    if not merged_dir.exists():
-        print(f"  ERROR: merged labels not found at {merged_dir}")
-        print("  Run the labeling stage first: sentinel-data label")
+    # Inputs — resolve from --corpus if given, else current build
+    labels_root, rep_root, preproc_root, merged_dir = _resolve_corpus_paths(args, data_dir)
+    if not merged_dir or not merged_dir.exists():
+        if not args.corpus:
+            print(f"  ERROR: merged labels not found at {merged_dir}")
+            print("  Run the labeling stage first: sentinel-data label")
         return
 
     # ── 1. balance_viz ─────────────────────────────────────────────────────
@@ -560,9 +592,9 @@ def _run_analyze(args: argparse.Namespace) -> None:
         print("\n  [5/5] drift_monitor (KS test for features + labels)")
         from sentinel_data.analysis.drift_monitor import run_drift_monitor
         if args.baseline_version:
-            # Look up the baseline's labels + representations from the registry
+            # Look up the baseline's labels + representations + preprocessed
+            # from the registry.
             from sentinel_data.registry import Catalog
-            from sentinel_data.registry.catalog import compute_hash
             try:
                 cat = Catalog(data_dir / "registry" / "catalog.db",
                               data_dir / "registry" / "catalog.yaml")
@@ -570,19 +602,24 @@ def _run_analyze(args: argparse.Namespace) -> None:
                 if baseline_v is None:
                     print(f"    ERROR: baseline version {args.baseline_version} not found in catalog")
                 else:
-                    baseline_labels = Path(baseline_v.artifact_path) / "labels" / "merged"
-                    baseline_rep = Path(baseline_v.artifact_path) / "representations"
-                    summary = run_drift_monitor(
-                        baseline_labels, baseline_rep,
-                        merged_dir, rep_root,
-                        output_dir, pvalue_warn=pvalue_warn, min_sample=min_sample,
-                    )
-                    print(f"    overall_warning={summary['overall_warning']}")
-                    if summary["feature_warnings"]:
-                        print(f"    feature warnings: {summary['feature_warnings']}")
-                    if summary["label_warnings"]:
-                        print(f"    label warnings:   {summary['label_warnings']}")
-                    print(f"    report: {summary['report']}")
+                    baseline_artifact = Path(baseline_v.artifact_path)
+                    if not baseline_artifact.exists():
+                        print(f"    ERROR: baseline artifact path does not exist: {baseline_artifact}")
+                    else:
+                        baseline_labels = baseline_artifact / "labels" / "merged"
+                        baseline_rep = baseline_artifact / "representations"
+                        baseline_preproc = baseline_artifact / "preprocessed"
+                        summary = run_drift_monitor(
+                            baseline_labels, baseline_rep, baseline_preproc,
+                            merged_dir, rep_root, preproc_root,
+                            output_dir, pvalue_warn=pvalue_warn, min_sample=min_sample,
+                        )
+                        print(f"    overall_warning={summary['overall_warning']}")
+                        if summary["feature_warnings"]:
+                            print(f"    feature warnings: {summary['feature_warnings']}")
+                        if summary["label_warnings"]:
+                            print(f"    label warnings:   {summary['label_warnings']}")
+                        print(f"    report: {summary['report']}")
             except Exception as e:
                 print(f"    ERROR loading baseline: {e}")
         else:

@@ -382,8 +382,6 @@ def write_complexity_proxy_risk(
     ]
     for cls in sorted(by_class.keys()):
         lc = by_class[cls].label_conditional
-        for feat in ("node_count", "edge_count", "loc"):
-            pass  # noqa: keep structure for future expansion
         p_nc = lc.get("node_count", {})
         p_ec = lc.get("edge_count", {})
         p_loc = lc.get("loc", {})
