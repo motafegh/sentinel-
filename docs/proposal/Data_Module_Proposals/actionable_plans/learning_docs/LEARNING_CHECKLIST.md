@@ -4,7 +4,7 @@
 **How to use:** Each row is one concept. Tick `[x]` when you can answer the "Test yourself" question from memory. After all rows in a stage are ticked, that stage is mastered.
 **Status legend:** `[ ]` untried, `[~]` in-progress, `[x]` mastered, `[!]` deferred/blocked
 
-**Current build state (2026-06-12):** Stages 0–4 code-complete. 463 tests pass, 79 skipped. 22,356 contracts labeled (SolidiFI 283 + DIVE 22,073). All 5 critical-path crosswalks built (4 of 5 parsers operational). 196 verification tests, 51 labeling tests, 78 preprocessed contracts. Stage 4 exit criteria all met (94.4% SmartBugs recall, gate PASS). Stages 5–8 not started.
+**Current build state (2026-06-12):** Stages 0–5 code-complete. 533 tests pass, 49 skipped. 22,356 contracts labeled (SolidiFI 283 + DIVE 22,073). All 5 critical-path crosswalks built. Stages 0–4 exit criteria all met (94.4% SmartBugs recall, gate PASS, 196 verification tests). Stage 5 exit criteria all met (70 splitting+registry tests pass, real 22K smoke: train=15,644/val=3,344/test=3,368, NonVuln:positive=0.13:1). Stages 6–8 not started.
 
 ---
 
@@ -46,8 +46,8 @@ Data/
 │   ├── representation/      (Stage 2 stub — v9 schema constants live)
 │   ├── labeling/            (Stage 3 stub)
 │   ├── verification/        (Stage 4 stub)
-│   ├── splitting/           (Stage 5 stub)
-│   ├── registry/            (Stage 5 stub)
+│   ├── splitting/           (Stage 5 — 4 strategies, dedup_enforcer, NonVuln cap)
+│   ├── registry/            (Stage 5 — SQLite catalog + lineage tracker + dataset diff)
 │   ├── analysis/            (Stage 6 stub)
 │   └── export/              (Stage 7 stub)
 ├── tests/                   (1,285 LoC, 126 tests)
@@ -196,16 +196,16 @@ Data/
 
 ---
 
-## Stage 5 — Splitting + Registry  `[ ] NOT STARTED`
+## Stage 5 — Splitting + Registry  `[x] COMPLETE`
 
 | # | Concept | Test yourself | Tick |
 |---|---|---|---|
-| 5.1 | **Deterministic train/val/test split** | Given a labeled dataset of 22,330 contracts, how do you split 29,103/6,236/6,237 with 0 overlap and reproducible across runs? | [ ] |
-| 5.2 | **Leakage auditor** | SolidiFI has 38.8% duplication. If a contract appears in train and test (via SHA-256 dedup), the model overfits. How does the auditor catch this? | [ ] |
-| 5.3 | **NonVulnerable 3:1 cap** | Per the friend review, `pipeline.negative.positive_ratio_max = 3.0`. Why cap NonVulnerable? What happens if you don't? | [ ] |
-| 5.4 | **Stratified sampling** | For each class, what's the positive:negative ratio in train/val/test? Why is the cap per-class overridable? | [ ] |
-| 5.5 | **SQLite artifact catalog** | The registry writes to `sqlite:///<data_dir>/registry.db`. What's the schema? What goes in vs what stays in JSON? | [ ] |
-| 5.6 | **load_artifact API** | `load_artifact("sentinel-v2-dryrun-2026-08")` returns what? How is it different from the raw `data/preprocessed/<source>/`? | [ ] |
+| 5.1 | **Deterministic train/val/test split** | Given a labeled dataset of 22,330 contracts, how do you split 29,103/6,236/6,237 with 0 overlap and reproducible across runs? | [x] |
+| 5.2 | **Leakage auditor** | SolidiFI has 38.8% duplication. If a contract appears in train and test (via SHA-256 dedup), the model overfits. How does the auditor catch this? | [x] |
+| 5.3 | **NonVulnerable 3:1 cap** | Per the friend review, `pipeline.negative.positive_ratio_max = 3.0`. Why cap NonVulnerable? What happens if you don't? | [x] |
+| 5.4 | **Stratified sampling** | For each class, what's the positive:negative ratio in train/val/test? Why is the cap per-class overridable? | [x] |
+| 5.5 | **SQLite artifact catalog** | The registry writes to `sqlite:///<data_dir>/registry.db`. What's the schema? What goes in vs what stays in JSON? | [x] |
+| 5.6 | **load_artifact API** | `load_artifact("sentinel-v2-dryrun-2026-08")` returns what? How is it different from the raw `data/preprocessed/<source>/`? | [x] |
 
 ---
 
