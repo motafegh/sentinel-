@@ -91,8 +91,14 @@ def _ks_test_2samp(values_a: list[float], values_b: list[float]) -> tuple[float,
         return max_diff, float("nan")
 
 
-def _iter_label_features(labels_dir: Path, rep_root: Path) -> Iterable[tuple[dict, dict]]:
-    """Yield (label_dict, features_dict) for each contract with both available."""
+def _iter_label_features(
+    labels_dir: Path, rep_root: Path, preproc_root: Path,
+) -> Iterable[tuple[dict, dict]]:
+    """Yield (label_dict, features_dict) for each contract with both available.
+
+    Single pass: reads each label file once and computes all features per
+    contract (the 2 node/edge counts from .rep.json + the 4 .sol proxies).
+    """
     from sentinel_data.analysis.feature_dist import _features_for_contract
 
     if not labels_dir.exists():
@@ -105,43 +111,44 @@ def _iter_label_features(labels_dir: Path, rep_root: Path) -> Iterable[tuple[dic
         sha = lj.get("sha256", "")
         sources = lj.get("sources") or ["unknown"]
         source = sources[0] if sources else "unknown"
-        feats = _features_for_contract(sha, source, rep_root, Path(""))  # preproc may be missing
+        feats = _features_for_contract(sha, source, rep_root, preproc_root)
         if feats:
             yield lj, feats
 
 
 def compute_feature_drift(
-    baseline_labels: Path, baseline_rep: Path,
-    new_labels: Path, new_rep: Path,
+    baseline_labels: Path, baseline_rep: Path, baseline_preproc: Path,
+    new_labels: Path, new_rep: Path, new_preproc: Path,
     features: list[str] | None = None,
     pvalue_warn: float = 0.01,
     min_sample: int = 30,
 ) -> list[FeatureKSResult]:
-    from sentinel_data.analysis.feature_dist import _features_for_contract
+    """Per-feature KS test (2-sample, independent) between baseline and new.
 
-    feats = features or ["node_count", "edge_count", "loc", "function_count"]
+    Single pass: for each (label_dir, rep_root, preproc_root) we read every
+    label file once, compute ALL 6 features per contract, and bucket by
+    feature. Avoids the O(F * N) trap of re-scanning labels for each feature.
+    """
+    feats = features or ["node_count", "edge_count", "loc", "function_count",
+                          "cyclomatic_complexity", "call_depth"]
 
-    def _values(labels_dir: Path, rep_root: Path, feat: str) -> list[float]:
-        out = []
-        if not labels_dir.exists():
-            return out
-        for p in sorted(Path(labels_dir).glob("*.labels.json")):
-            try:
-                lj = json.loads(p.read_text())
-            except (json.JSONDecodeError, OSError):
-                continue
-            sha = lj.get("sha256", "")
-            sources = lj.get("sources") or ["unknown"]
-            source = sources[0] if sources else "unknown"
-            f = _features_for_contract(sha, source, rep_root, Path(""))
-            if feat in f:
-                out.append(f[feat])
+    def _bucket_by_feature(
+        labels_dir: Path, rep_root: Path, preproc_root: Path,
+    ) -> dict[str, list[float]]:
+        out: dict[str, list[float]] = {f: [] for f in feats}
+        for _, feature_dict in _iter_label_features(labels_dir, rep_root, preproc_root):
+            for f in feats:
+                if f in feature_dict:
+                    out[f].append(feature_dict[f])
         return out
+
+    base_buckets = _bucket_by_feature(baseline_labels, baseline_rep, baseline_preproc)
+    new_buckets = _bucket_by_feature(new_labels, new_rep, new_preproc)
 
     results = []
     for feat in feats:
-        v_base = _values(baseline_labels, baseline_rep, feat)
-        v_new = _values(new_labels, new_rep, feat)
+        v_base = base_buckets[feat]
+        v_new = new_buckets[feat]
         if len(v_base) < min_sample or len(v_new) < min_sample:
             results.append(FeatureKSResult(
                 feature=feat, n_baseline=len(v_base), n_new=len(v_new),
@@ -265,14 +272,17 @@ def write_drift_report(report: DriftReport, output_path: Path) -> Path:
 
 
 def run_drift_monitor(
-    baseline_labels: Path, baseline_rep: Path,
-    new_labels: Path, new_rep: Path,
+    baseline_labels: Path, baseline_rep: Path, baseline_preproc: Path,
+    new_labels: Path, new_rep: Path, new_preproc: Path,
     output_dir: Path,
     pvalue_warn: float = 0.01,
     min_sample: int = 30,
 ) -> dict:
-    feat = compute_feature_drift(baseline_labels, baseline_rep, new_labels, new_rep,
-                                 pvalue_warn=pvalue_warn, min_sample=min_sample)
+    feat = compute_feature_drift(
+        baseline_labels, baseline_rep, baseline_preproc,
+        new_labels, new_rep, new_preproc,
+        pvalue_warn=pvalue_warn, min_sample=min_sample,
+    )
     lbl = compute_label_drift(baseline_labels, new_labels,
                               pvalue_warn=pvalue_warn, min_sample=min_sample)
     report = DriftReport(

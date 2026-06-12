@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from sentinel_data.analysis.feature_dist import DEFAULT_FEATURES
+
 
 # ─────────────────────────────────────────────────────────────────────
 # Synthetic fixtures (in-memory, no real corpus)
@@ -359,8 +361,8 @@ class TestDriftMonitor:
                 "schema_version": "v9",
             }))
         results = compute_feature_drift(
-            baseline_labels, baseline_rep,
-            new_labels, new_rep,
+            baseline_labels, baseline_rep, tmp_path / "base" / "preproc",
+            new_labels, new_rep, tmp_path / "new" / "preproc",
             features=["node_count"], min_sample=30,
         )
         assert len(results) == 1
@@ -368,6 +370,51 @@ class TestDriftMonitor:
         assert r.feature == "node_count"
         assert r.warning, f"Expected drift WARNING, got p={r.pvalue}, stat={r.statistic}, n={r.n_baseline}/{r.n_new}"
         assert r.pvalue < 0.01
+
+    def test_sol_proxies_compute_when_preproc_root_provided(self, tmp_path: Path):
+        """Regression test for IC: preproc_root must reach _features_for_contract.
+
+        With the real preproc_root passed, the 4 .sol-derived features
+        (loc, function_count, cyclomatic_complexity, call_depth) must compute
+        alongside the 2 .rep.json features. Previously `preproc_root=Path("")`
+        hardcoded in _values() skipped them all.
+        """
+        from sentinel_data.analysis.drift_monitor import compute_feature_drift
+        labels = tmp_path / "labels" / "merged"
+        rep = tmp_path / "rep"
+        preproc = tmp_path / "preproc"
+        labels.mkdir(parents=True)
+        rep.mkdir(parents=True)
+        preproc.mkdir(parents=True)
+        # 40 contracts with all 6 features present
+        for i in range(40):
+            sha = f"c{i:060d}"
+            (labels / f"{sha}.labels.json").write_text(json.dumps(
+                {"sha256": sha, "sources": ["synth"], "classes": {}}
+            ))
+            (rep / "synth" / f"{sha}.rep.json").parent.mkdir(parents=True, exist_ok=True)
+            (rep / "synth" / f"{sha}.rep.json").write_text(json.dumps({
+                "sha256": sha, "source": "synth",
+                "node_count": 100, "edge_count": 200, "schema_version": "v9",
+            }))
+            (preproc / "synth" / f"{sha}.sol").parent.mkdir(parents=True, exist_ok=True)
+            (preproc / "synth" / f"{sha}.sol").write_text(
+                "pragma solidity ^0.8.0;\n"
+                "contract C {\n"
+                "  function f() public { if (x) { g(); } }\n"
+                "  function g() public {}\n"
+                "}\n"
+            )
+        results = compute_feature_drift(
+            labels, rep, preproc,
+            labels, rep, preproc,  # same on both sides — no drift
+            features=DEFAULT_FEATURES,
+        )
+        # All 6 features should have n=40 (no drift between identical inputs)
+        for r in results:
+            assert r.n_baseline == 40, f"{r.feature}: expected 40 samples, got {r.n_baseline}"
+            assert r.n_new == 40, f"{r.feature}: expected 40 samples, got {r.n_new}"
+            assert not r.warning, f"{r.feature}: should not flag identical inputs as drift"
 
     def test_label_drift_flags_intentional_drift(self, tmp_path: Path):
         from sentinel_data.analysis.drift_monitor import compute_label_drift
@@ -426,7 +473,11 @@ class TestDriftMonitor:
                 "sha256": sha, "source": "synth",
                 "node_count": 500, "edge_count": 1000, "schema_version": "v9",
             }))
-        results = compute_feature_drift(base, base_rep, new, new_rep, features=["node_count"])
+        results = compute_feature_drift(
+            base, base_rep, tmp_path / "base" / "preproc",
+            new, new_rep, tmp_path / "new" / "preproc",
+            features=["node_count"],
+        )
         assert results[0].insufficient_sample is True
         assert results[0].warning is False
 
