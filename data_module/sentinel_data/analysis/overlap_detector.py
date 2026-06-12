@@ -203,9 +203,19 @@ def write_heatmap(matrix: OverlapMatrix, output_path: Path) -> Path:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    import numpy as np
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     n = len(matrix.sources)
+    if n == 0:
+        # No sources — write a placeholder figure
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.text(0.5, 0.5, "No sources found", ha="center", va="center", fontsize=14)
+        ax.set_axis_off()
+        fig.tight_layout()
+        fig.savefig(output_path, dpi=120)
+        plt.close(fig)
+        return output_path
     M_exact = [[matrix.exact_jaccard[a][b] for b in matrix.sources] for a in matrix.sources]
     M_near = [[matrix.near_jaccard[a][b] for b in matrix.sources] for a in matrix.sources]
 
@@ -214,7 +224,10 @@ def write_heatmap(matrix: OverlapMatrix, output_path: Path) -> Path:
         (axes[0], M_exact, "Exact overlap (same sha256)"),
         (axes[1], M_near, "Near overlap (shared dedup_group)"),
     ]:
-        im = ax.imshow(M, cmap="Reds", vmin=0, vmax=max(0.01, max(max(row) for row in M)))
+        # Compute vmax robustly for empty/missing rows
+        flat_max = max((max(row) for row in M), default=0.0)
+        vmax = max(0.01, flat_max)
+        im = ax.imshow(M, cmap="Reds", vmin=0, vmax=vmax)
         ax.set_xticks(range(n))
         ax.set_yticks(range(n))
         ax.set_xticklabels(matrix.sources, rotation=45, ha="right", fontsize=8)
