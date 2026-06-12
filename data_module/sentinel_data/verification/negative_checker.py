@@ -71,6 +71,8 @@ class NonVulnSourceStats:
 
 @dataclass
 class NonVulnResult:
+    """Top-level result container for the NonVulnerable contamination check."""
+
     total_checked: int = 0            # NonVulnerable contracts found
     total_hits: int = 0               # had at least one detector fire
     total_errored: int = 0

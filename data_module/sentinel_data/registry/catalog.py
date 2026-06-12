@@ -63,6 +63,10 @@ def compute_dict_hash(d: dict) -> str:
 
 @dataclass
 class Source:
+    """A data source in the SENTINEL pipeline (e.g. DeFiHackLabs, SolidiFI).
+
+    Tracks provenance, confidence tier, and last-known contract count.
+    """
     name: str
     pin: str = ""                # git commit hash, version string, etc.
     last_fetched: str = ""       # ISO timestamp
@@ -74,6 +78,11 @@ class Source:
 
 @dataclass
 class Artifact:
+    """A content-addressed file tracked by the registry.
+
+    Each artifact is identified by its SHA-256 hash. Lineage is a DAG
+    of transformations that produced this artifact (see lineage_tracker).
+    """
     name: str                    # unique name (e.g., "preprocessed/dive/sha_abc.sol")
     sha256: str                  # content hash
     size_bytes: int = 0
@@ -85,6 +94,11 @@ class Artifact:
 
 @dataclass
 class SplitRecord:
+    """Records a train/val/test split configuration.
+
+    The seed and strategy ensure reproducibility. contract_counts maps
+    split names to the number of contracts in each.
+    """
     version: str                 # "v1", "v2", etc.
     seed: int = 42
     strategy: str = "stratified"
@@ -97,6 +111,13 @@ class SplitRecord:
 
 @dataclass
 class DatasetVersion:
+    """A named, immutable snapshot of a complete dataset.
+
+    Encapsulates the full provenance chain: which sources, which config,
+    which split, which label schema, and the content hash of the export
+    bundle. Dataset versions are append-only; retirement is tracked
+    separately via the Retirements table.
+    """
     name: str                    # "sentinel-v2-gold-2026-08"
     source_set: list[str] = field(default_factory=list)  # list of source names
     preprocessing_config_hash: str = ""   # hash of config.yaml
@@ -114,6 +135,12 @@ class DatasetVersion:
 
 @dataclass
 class Migration:
+    """A schema migration applied to the catalog database.
+
+    Used for forward-only schema evolution. Each migration is recorded
+    exactly once; the Catalog checks at init whether it has already been
+    applied.
+    """
     version: int
     description: str
     applied_at: str = field(
@@ -123,6 +150,11 @@ class Migration:
 
 @dataclass
 class Retirement:
+    """Records that a dataset version has been superseded.
+
+    Retired versions are excluded from `list_dataset_versions` by
+    default and blocked from `load_artifact`.
+    """
     name: str                    # the retired dataset version
     superseded_by: str           # the new version that replaced it
     retired_at: str = field(
@@ -145,6 +177,13 @@ class Catalog:
     SCHEMA_VERSION = 1
 
     def __init__(self, db_path: Path, yaml_mirror_path: Optional[Path] = None):
+        """Open or create the catalog database.
+
+        Args:
+            db_path: Path to the SQLite database file.
+            yaml_mirror_path: Optional path for the YAML mirror export.
+                CI checks that DB and YAML stay in sync.
+        """
         self.db_path = Path(db_path)
         self.yaml_mirror_path = Path(yaml_mirror_path) if yaml_mirror_path else None
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -158,6 +197,7 @@ class Catalog:
 
     @contextmanager
     def _conn(self):
+        """Context manager for SQLite connections with auto-commit and foreign keys."""
         c = sqlite3.connect(self.db_path)
         c.row_factory = sqlite3.Row
         c.execute("PRAGMA foreign_keys = ON")
@@ -168,6 +208,7 @@ class Catalog:
             c.close()
 
     def _init_schema(self) -> None:
+        """Create all tables if they don't exist and record the initial migration."""
         with self._conn() as c:
             # Schema migrations table
             c.execute("""

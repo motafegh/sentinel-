@@ -22,6 +22,8 @@ _UNCHECKED_RE = re.compile(r'\bunchecked\s*\{')
 
 @dataclass
 class Segment:
+    """Segmentation result: contract names, version bucket, and unchecked-block flag."""
+
     contract_name: str
     source: str              # the full file source (we keep the whole file per contract unit)
     version_bucket: str      # "legacy" | "transitional" | "modern"
@@ -53,6 +55,8 @@ def segment_and_bucket(source: str, pragma_raw: str) -> Segment:
 
 
 def _bucket(pragma_raw: str) -> str:
+    """Map a pragma version string to a Solidity era bucket."""
+
     m = _PRAGMA_VER.search(pragma_raw)
     if not m:
         return "legacy"

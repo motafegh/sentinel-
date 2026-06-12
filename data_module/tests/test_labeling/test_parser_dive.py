@@ -7,7 +7,7 @@ import pytest
 from sentinel_data.labeling.parsers.dive import label_source, _build_folder_index, _load_crosswalk
 from sentinel_data.labeling.schema import class_names
 
-_DATA_DIR = Path("Data/data")
+_DATA_DIR = Path("data_module/data")
 _RAW_REPO = _DATA_DIR / "raw" / "dive" / "repo"
 _PREP_DIR = _DATA_DIR / "preprocessed" / "dive"
 

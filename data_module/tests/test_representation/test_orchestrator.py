@@ -9,10 +9,13 @@ import yaml
 from sentinel_data.representation.orchestrator import _extract_one, represent_source
 
 
+_MODULE_ROOT = Path(__file__).resolve().parents[2]  # data_module/
+
+
 @pytest.fixture(scope="module")
 def test_config():
     """Load test config pointing to solidifi preprocessed data."""
-    with open("/home/motafeq/projects/sentinel/Data/config.yaml") as f:
+    with open(_MODULE_ROOT / "config.yaml") as f:
         return yaml.safe_load(f)
 
 
@@ -20,7 +23,7 @@ def test_config():
 def temp_data_dir(tmp_path: Path):
     """Create a temporary data directory with symlinked preprocessed solidifi."""
     data_dir = tmp_path / "data"
-    preproc_src = Path("/home/motafeq/projects/sentinel/Data/data/preprocessed/solidifi")
+    preproc_src = _MODULE_ROOT / "data" / "preprocessed" / "solidifi"
     preproc_dest = data_dir / "preprocessed" / "solidifi"
     preproc_dest.parent.mkdir(parents=True, exist_ok=True)
     preproc_dest.symlink_to(preproc_src, target_is_directory=True)

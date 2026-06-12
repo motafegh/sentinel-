@@ -31,6 +31,8 @@ _VERDICT_ICON = {
 
 @dataclass
 class VerificationReport:
+    """Human-readable verification report aggregating all Stage 4 outputs."""
+
     audit: AuditResult
     semantic: SemanticCheckResult
     gate: GateResult

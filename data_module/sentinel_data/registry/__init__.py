@@ -14,7 +14,7 @@ from sentinel_data.registry.catalog import (
 )
 from sentinel_data.registry.lineage_tracker import (
     hash_artifact, hash_lineage, lineage_to_dot, record_lineage_step,
-    verify_artifact,
+    record_training_run, verify_artifact,
 )
 from sentinel_data.registry.dataset_diff import (
     DatasetDiff, PerClassMetric, diff_dataset_versions, update_changelog,

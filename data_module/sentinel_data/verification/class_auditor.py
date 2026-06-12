@@ -46,6 +46,8 @@ class ClassStats:
 
 @dataclass
 class CoOccurrencePair:
+    """One directional co-occurrence pair (P(B=1 | A=1))."""
+
     class_a: str
     class_b: str
     count: int           # contracts where both are positive
@@ -56,6 +58,8 @@ class CoOccurrencePair:
 
 @dataclass
 class AuditResult:
+    """Top-level result container for the class audit run."""
+
     per_class: dict[str, ClassStats] = field(default_factory=dict)
     co_occurrence: list[CoOccurrencePair] = field(default_factory=list)
     flagged_pairs: list[CoOccurrencePair] = field(default_factory=list)

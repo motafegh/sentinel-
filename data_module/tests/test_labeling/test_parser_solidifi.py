@@ -8,8 +8,8 @@ import pytest
 from sentinel_data.labeling.parsers.solidifi import label_source, _extract_folder
 from sentinel_data.labeling.schema import class_names
 
-_PREP_DIR = Path("Data/data/preprocessed/solidifi")
-_DATA_DIR = Path("Data/data")
+_PREP_DIR = Path("data_module/data/preprocessed/solidifi")
+_DATA_DIR = Path("data_module/data")
 
 
 def _skip_if_no_data():

@@ -27,6 +27,7 @@ Each ADR is locked once accepted. Superseding decisions are recorded in the
 | 0005 | [BCCC-SCsVul-2024 as primary dataset](0005-bccc-dataset-choice.md) | Accepted | 2026-06-06 | 41,576 deduped contracts. SmartBugs-curated held out as OOD benchmark. 87.9% pre-0.8 Solidity. |
 | 0006 | [Loss formulation](0006-loss-formulation.md) | Accepted | 2026-06-06 | ASL γ⁻=2 γ⁺=1 per-eye + aux BCE pathway (0→0.30 over 8ep) + 0.005 JK entropy. |
 | 0007 | [Representation port design (Stage 2)](0007-representation-port-design.md) | Accepted | 2026-06-11 | Thin-adapter re-export from ml/; v9 schema frozen; content-addressed cache; CFG only, PDG/callgraph deferred to v3.1. |
+| 0008 | [Splitting and registry design (Stage 5)](0008-splitting-and-registry-design.md) | Accepted | 2026-06-12 | 4 split strategies (stratified default); 2-pass dedup enforcer; NonVulnerable 3:1 cap; SQLite+YAML catalog; lineage DAG with training-run links. |
 
 ## Deferred (Tier 2 backlog)
 

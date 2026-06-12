@@ -29,6 +29,8 @@ _CROSSWALK_PATH = Path(__file__).parents[1] / "crosswalks" / "solidifi.yaml"
 
 @dataclass
 class LabelResult:
+    """Aggregated statistics from a SolidiFI labeling run."""
+
     source: str = "solidifi"
     contracts_seen: int = 0
     labels_written: int = 0
@@ -38,6 +40,7 @@ class LabelResult:
 
 
 def _load_crosswalk() -> dict:
+    """Load the SolidiFI crosswalk YAML mapping injection folders to canonical classes."""
     with open(_CROSSWALK_PATH) as f:
         return yaml.safe_load(f)
 
@@ -55,6 +58,7 @@ def _extract_folder(original_path: str) -> str | None:
 
 
 def _make_labels_entry(value: int, tier: str | None) -> dict:
+    """Create a single class entry dict with value and confidence tier."""
     return {"value": value, "tier": tier}
 
 

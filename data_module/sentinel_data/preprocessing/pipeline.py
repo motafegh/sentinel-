@@ -32,6 +32,13 @@ META_SCHEMA_VERSION = "1"
 
 @dataclass
 class ContractMeta:
+    """Sidecar metadata written alongside each preprocessed .sol file.
+
+    Encodes the full audit trail of the 5-step pipeline: which compiler
+    version succeeded, whether the file was flattened/deduped, and
+    version-bucket classification for downstream ML stages.
+    """
+
     sha256: str
     source_name: str          # which dataset source (e.g. "defihacklabs")
     original_path: str        # relative path inside raw/source/repo/
@@ -55,6 +62,8 @@ class ContractMeta:
 
 @dataclass
 class PipelineResult:
+    """Aggregated result from a preprocessing pipeline run."""
+
     processed: list[Path]     # output .sol paths written
     dropped: list[dict]       # rows for dropped.csv
     duration_s: float
@@ -69,6 +78,11 @@ class PreprocessingPipeline:
         self._dedup = Deduplicator()
 
     def run(self, sol_files: list[Path], raw_base: Path) -> PipelineResult:
+        """Process all sol_files through the 5-step pipeline.
+
+        Writes .sol + .meta.json for successful files, dropped.csv for failures.
+        """
+
         self.out_dir.mkdir(parents=True, exist_ok=True)
         t0 = time.monotonic()
 
@@ -203,11 +217,15 @@ class PreprocessingPipeline:
 
 
 def _write_meta(path: Path, meta: ContractMeta) -> None:
+    """Serialize ContractMeta to a JSON sidecar file."""
+
     with open(path, "w") as f:
         json.dump(asdict(meta), f, indent=2)
 
 
 def _write_dropped(path: Path, rows: list[dict]) -> None:
+    """Write dropped files to a CSV with a union of all field names."""
+
     if not rows:
         return
     # Union of all keys across rows — defensive against drop paths that

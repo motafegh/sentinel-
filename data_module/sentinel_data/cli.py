@@ -1,23 +1,52 @@
 """sentinel-data CLI — top-level entry point for the data pipeline.
 
-Stage 0: all stage implementations are placeholders that print what they would do.
-Stages 1-7: each stage fills in its real implementation.
+This module is the **single user-facing surface** for the SENTINEL v2 data
+pipeline. Every stage (ingest, preprocess, represent, label, verify, split,
+register, analyze, export) is exposed as a subcommand, and a higher-level
+``run`` subcommand walks multiple stages in sequence.
 
-Usage:
-  sentinel-data --help
-  sentinel-data run [--from-stage STAGE] [--config CONFIG] [--dry-run]
-  sentinel-data <stage> [--config CONFIG] [--dry-run] [--source SOURCE]
+Why a CLI (and not just a Python library):
 
-Stages (in pipeline order):
-  ingest      Pull raw .sol contracts from all enabled sources
-  preprocess  Flatten + compile + dedup + normalize + segment + version-bucket
-  represent   Extract graph (.pt) and windowed token files
-  label       Apply crosswalk YAMLs to assign class labels
-  verify      AST-level semantic checks + tool corroboration
-  split       Deterministic train/val/test splits with leakage audit
-  register    Write to SQLite artifact catalog
-  analyze     Feature distribution + complexity proxy risk report
-  export      Shard export to sentinel-ml seam
+* **Operations**: users running the pipeline don't want to write Python;
+  they want ``sentinel-data run --stage represent``.
+* **Configuration loading**: the CLI centralises config loading, path
+  resolution, dry-run mode, and argument validation in one place.
+* **Future DVC integration**: DVC will call the CLI, not the Python API,
+  for clean separation of concerns.
+
+Usage::
+
+    sentinel-data --help
+    sentinel-data run [--from-stage STAGE] [--config CONFIG] [--dry-run]
+    sentinel-data <stage> [--config CONFIG] [--dry-run] [--source SOURCE]
+
+Stages (in pipeline order)::
+
+    ingest      Pull raw .sol contracts from all enabled sources
+    preprocess  Flatten + compile + dedup + normalize + segment + version-bucket
+    represent   Extract graph (.pt) and windowed token files
+    label       Apply crosswalk YAMLs to assign class labels
+    verify      AST-level semantic checks + tool corroboration
+    split       Deterministic train/val/test splits with leakage audit
+    register    Write to SQLite artifact catalog
+    analyze     Feature distribution + complexity proxy risk report
+    export      Shard export to sentinel-ml seam
+
+sys.path bootstrap
+------------------
+The first non-comment code in this module adds the SENTINEL repo root and
+``ml/`` to ``sys.path``. This is required because the ``representation``
+subpackage uses a **thin-adapter** pattern: ``sentinel_data.representation``
+re-exports the graph and tokenizer code from ``ml/src/preprocessing/`` and
+``ml/src/data_extraction/``. Without these paths on ``sys.path``, the
+re-exports fail with ``ModuleNotFoundError`` whenever the CLI is invoked
+from outside the repo root (e.g. via an installed entry-point, a Docker
+container with a different CWD, or a CI runner).
+
+This is the **only** place in the production code where ``sys.path`` is
+manipulated; tests use ``conftest.py`` instead. The two strategies are
+intentionally parallel: the CLI must work without pytest, the test suite
+must work without the CLI.
 """
 
 import argparse

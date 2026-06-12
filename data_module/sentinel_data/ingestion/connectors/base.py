@@ -26,6 +26,7 @@ class SourceConfig:
 
 @dataclass
 class PullResult:
+    """Outcome of a connector pull — file list, resolved pin, and timing."""
     source: str
     local_dir: Path
     resolved_pin: str

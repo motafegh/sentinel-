@@ -109,6 +109,7 @@ def _installed_slither_version() -> str:
 
 
 def _latest_pypi_version(package: str) -> str:
+    """Fetch the latest version string for *package* from PyPI's JSON API."""
     try:
         import urllib.request, json as _json
         url = f"https://pypi.org/pypi/{package}/json"

@@ -54,6 +54,8 @@ _SOURCE_TIER = {
 
 @dataclass
 class MergeResult:
+    """Aggregated statistics from a merger run."""
+
     contracts_merged: int = 0       # unique sha256s written
     single_source: int = 0          # contracts from exactly one source
     multi_source: int = 0           # contracts from 2+ sources

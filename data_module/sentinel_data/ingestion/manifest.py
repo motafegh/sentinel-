@@ -17,6 +17,7 @@ from typing import Any
 
 @dataclass
 class FileRecord:
+    """SHA-256 fingerprint for a single .sol file within an ingested source."""
     path: str           # relative to the source raw dir
     sha256: str
     size_bytes: int
@@ -24,6 +25,12 @@ class FileRecord:
 
 @dataclass
 class IngestionManifest:
+    """Per-source pull record capturing what was fetched and verified.
+
+    One manifest is written per ``sentinel-data ingest --source <name>``
+    invocation. Manifests are append-only; re-ingests re-validate every
+    SHA-256 and fail loudly on any changed file.
+    """
     source: str
     connector: str
     url: str
@@ -38,12 +45,14 @@ class IngestionManifest:
     # ── Serialisation ─────────────────────────────────────────────────────────
 
     def save(self, path: Path) -> None:
+        """Serialise the manifest to JSON, creating parent dirs as needed."""
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             json.dump(asdict(self), f, indent=2)
 
     @classmethod
     def load(cls, path: Path) -> "IngestionManifest":
+        """Deserialise a manifest from its JSON file."""
         with open(path) as f:
             raw = json.load(f)
         files = [FileRecord(**r) for r in raw.pop("files", [])]
@@ -71,6 +80,7 @@ class IngestionManifest:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _sha256(path: Path) -> str:
+    """Compute the SHA-256 hex digest of a file, reading in 64 KiB chunks."""
     h = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
@@ -79,6 +89,7 @@ def _sha256(path: Path) -> str:
 
 
 def build_file_records(sol_files: list[Path], base_dir: Path) -> list[FileRecord]:
+    """Create FileRecord entries with SHA-256 for each .sol file under base_dir."""
     records = []
     for p in sol_files:
         records.append(FileRecord(
@@ -90,9 +101,11 @@ def build_file_records(sol_files: list[Path], base_dir: Path) -> list[FileRecord
 
 
 def load_manifest(raw_dir: Path, source: str) -> IngestionManifest:
+    """Load the ingestion manifest for *source* from the standard location."""
     return IngestionManifest.load(raw_dir / source / "ingestion_manifest.json")
 
 
 def verify_manifest(raw_dir: Path, source: str) -> tuple[bool, list[str]]:
+    """Load and verify a source's manifest against files on disk."""
     m = load_manifest(raw_dir, source)
     return m.verify(raw_dir / source)

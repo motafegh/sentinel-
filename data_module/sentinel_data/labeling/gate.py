@@ -30,6 +30,8 @@ _MAJOR_CLASSES = {"Reentrancy", "DenialOfService", "IntegerUO"}
 
 @dataclass
 class GateCriterion:
+    """Single pass/fail criterion with actual vs threshold values."""
+
     name: str
     actual: int | float
     threshold: int | float
@@ -39,6 +41,8 @@ class GateCriterion:
 
 @dataclass
 class GateResult:
+    """Result of the minimum-viable-corpus gate check."""
+
     criteria: list[GateCriterion] = field(default_factory=list)
     gate_passed: bool = False
     call_to_unknown_review_needed: bool = False

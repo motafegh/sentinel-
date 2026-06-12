@@ -35,6 +35,12 @@ def preprocess_source(
     sample: int | None = None,
     retry_failed: bool = False,
 ) -> None:
+    """Run the 5-step pipeline for a single source.
+
+    Supports full mode, --sample N for fast iteration, and --retry-failed
+    to reprocess only previously-dropped files (incremental build).
+    """
+
     sources = _enabled_sources(cfg)
     if name not in sources:
         raise ValueError(f"Source '{name}' not found or not enabled in config.yaml")
@@ -246,6 +252,8 @@ def preprocess_all(
     sample: int | None = None,
     retry_failed: bool = False,
 ) -> None:
+    """Run the preprocessing pipeline for every enabled source in config."""
+
     for name in _enabled_sources(cfg):
         print(f"\n[preprocess] {name}")
         try:

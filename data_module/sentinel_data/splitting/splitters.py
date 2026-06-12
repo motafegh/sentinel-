@@ -46,6 +46,7 @@ DEFAULT_RATIOS = (0.70, 0.15, 0.15)
 
 
 class SplitName(str, Enum):
+    """Canonical split names used throughout the splitting pipeline."""
     TRAIN = "train"
     VAL = "val"
     TEST = "test"
@@ -107,14 +108,17 @@ class Splits:
     ))
 
     def total(self) -> int:
+        """Return the total number of contracts across all splits."""
         return len(self.train) + len(self.val) + len(self.test)
 
     def get(self, split) -> list[Contract]:
+        """Get contracts for a given split by name or SplitName enum."""
         if isinstance(split, SplitName):
             split = split.value
         return {"train": self.train, "val": self.val, "test": self.test}[split]
 
     def update_counts(self) -> None:
+        """Update the contract_counts field in metadata with current split sizes."""
         self.metadata.contract_counts = {
             "train": len(self.train), "val": len(self.val), "test": len(self.test),
         }

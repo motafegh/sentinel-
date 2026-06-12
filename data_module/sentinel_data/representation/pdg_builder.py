@@ -22,6 +22,11 @@ already built by ``graph_extractor.py`` as the skeleton.
 
 
 def build_pdg(*_args, **_kwargs):
+    """Build a Program Dependence Graph for a Solidity contract.
+
+    Raises:
+        NotImplementedError: Always — PDG builder is deferred to v3.1.
+    """
     raise NotImplementedError(
         "PDG builder is DEFERRED to v3.1.  "
         "See docs/proposal/Data_Module_Proposals/actionable_plans/03_stage_2_representation.md §D-2.4 "

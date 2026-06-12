@@ -40,6 +40,8 @@ log = logging.getLogger("sentinel_data.verification.tool_validator")
 
 
 class AgreementVerdict(str, Enum):
+    """Verdict for whether Slither agrees with a single labeled positive."""
+
     AGREE = "AGREE"             # at least one detector for this class fired
     DISAGREE = "DISAGREE"       # Slither ran cleanly; no class detectors fired
     NO_DETECTOR = "NO_DETECTOR" # class has no Slither detector in v0.10
@@ -49,6 +51,8 @@ class AgreementVerdict(str, Enum):
 
 @dataclass
 class ContractAgreement:
+    """Slither agreement result for one (class, contract) pair."""
+
     sha256: str
     class_name: str
     source: Optional[str]      # source the label came from (drives .sol lookup)
@@ -59,6 +63,8 @@ class ContractAgreement:
 
 @dataclass
 class ClassAgreementStats:
+    """Per-class Slither agreement statistics."""
+
     class_name: str
     positives_total: int = 0          # labeled positives seen
     agree: int = 0                    # Slither agreed
@@ -85,6 +91,8 @@ class ClassAgreementStats:
 
 @dataclass
 class ToolValidationResult:
+    """Top-level result container for the full tool validation run."""
+
     by_class: dict[str, ClassAgreementStats] = field(default_factory=dict)
     total_positives: int = 0
     total_agrees: int = 0

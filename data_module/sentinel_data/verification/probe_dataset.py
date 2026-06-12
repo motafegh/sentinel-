@@ -73,6 +73,8 @@ class ProbeEntry:
 
 @dataclass
 class ClassProbeBucket:
+    """One class's worth of probe contracts (real + trivial pos/neg)."""
+
     class_name: str
     real_entries: list[ProbeEntry] = field(default_factory=list)
     trivial_positive: Optional[ProbeEntry] = None
@@ -132,7 +134,7 @@ class ProbeDataset:
 
 
 def _read_bccc_review(review_csv: Path) -> list[dict]:
-    """Read a BCCC review_batch CSV. Returns list of KEEP rows."""
+    """Read a BCCC review_batch CSV and return only rows with verdict_s4 == KEEP."""
     if not review_csv.exists():
         return []
     with review_csv.open() as f:
@@ -210,7 +212,9 @@ def build_probe_dataset(
     """
     if output_dir is None:
         if data_dir is not None:
-            output_dir = data_dir / "probe_dataset"
+            # Resolve data_dir first so the child path is always absolute,
+            # regardless of CWD at call time.
+            output_dir = Path(data_dir).resolve() / "probe_dataset"
         else:
             output_dir = Path("data/probe_dataset")
     output_dir = output_dir.resolve()
@@ -348,6 +352,7 @@ def build_probe_dataset(
 
 
 def _safe_float(s) -> Optional[float]:
+    """Convert a value to float, returning None on failure."""
     if s is None or s == "":
         return None
     try:

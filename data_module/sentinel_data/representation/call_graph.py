@@ -23,6 +23,11 @@ A CallGraph captures:
 
 
 def build_call_graph(*_args, **_kwargs):
+    """Build a call-graph artifact for a Solidity contract.
+
+    Raises:
+        NotImplementedError: Always — call-graph builder is deferred to v3.1.
+    """
     raise NotImplementedError(
         "Call-graph builder is DEFERRED to v3.1.  "
         "See docs/proposal/Data_Module_Proposals/actionable_plans/03_stage_2_representation.md §D-2.4 "

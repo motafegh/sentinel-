@@ -20,8 +20,10 @@ from sentinel_data.ingestion.connectors.base import (
 
 
 class GitConnector(BaseConnector):
+    """Clone a Git repository at a pinned commit and collect .sol files."""
 
     def _pull(self, cfg: SourceConfig, dest: Path) -> PullResult:
+        """Clone (or re-use existing clone), run post-clone hooks, find .sol files."""
         if not cfg.url:
             raise ConnectorError(f"[{cfg.name}] git connector requires a url")
 
@@ -55,6 +57,7 @@ class GitConnector(BaseConnector):
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _clone(self, cfg: SourceConfig, repo_dir: Path) -> str:
+        """Clone the repo (shallow if no pin, full if pinned) and return the resolved SHA."""
         if cfg.pin:
             # Full clone so we can checkout an arbitrary commit
             _run(["git", "clone", "--quiet", cfg.url, str(repo_dir)])
@@ -67,6 +70,7 @@ class GitConnector(BaseConnector):
 
     @staticmethod
     def _current_commit(repo_dir: Path) -> str:
+        """Return the HEAD commit SHA of the local repo."""
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=repo_dir, capture_output=True, text=True, check=True,
@@ -75,6 +79,7 @@ class GitConnector(BaseConnector):
 
 
 def _run(cmd: list[str], cwd: Path | None = None) -> None:
+    """Run a subprocess, raising ConnectorError on non-zero exit."""
     result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if result.returncode != 0:
         raise ConnectorError(

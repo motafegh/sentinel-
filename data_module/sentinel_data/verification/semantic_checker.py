@@ -37,6 +37,8 @@ _MAX_TYPE_ID = 13.0
 
 
 class CheckVerdict(str, Enum):
+    """Verdict for a single (class, contract) semantic check."""
+
     PASS = "PASS"           # semantic evidence present
     FAIL = "FAIL"           # labeled positive but no semantic evidence
     SKIP = "SKIP"           # no representation exists — cannot check
@@ -45,6 +47,8 @@ class CheckVerdict(str, Enum):
 
 @dataclass
 class ContractCheckResult:
+    """Result of a semantic check on one (class, contract) pair."""
+
     sha256: str
     class_name: str
     verdict: CheckVerdict
@@ -53,6 +57,8 @@ class ContractCheckResult:
 
 @dataclass
 class ClassCheckSummary:
+    """Aggregate semantic check results for a single vulnerability class."""
+
     class_name: str
     positives_checked: int = 0      # labeled positives with graph rep
     positives_skipped: int = 0      # labeled positives without graph rep
@@ -74,6 +80,8 @@ class ClassCheckSummary:
 
 @dataclass
 class SemanticCheckResult:
+    """Top-level result container for the full semantic check run."""
+
     by_class: dict[str, ClassCheckSummary] = field(default_factory=dict)
     total_positives: int = 0
     total_checked: int = 0

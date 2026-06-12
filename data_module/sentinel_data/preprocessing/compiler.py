@@ -27,6 +27,8 @@ _PRAGMA_RE = re.compile(
 
 @dataclass
 class CompileResult:
+    """Result of a two-pass solc compilation attempt."""
+
     success: bool
     solc_version: str        # version actually used
     pragma_raw: str          # original pragma string from file
@@ -102,6 +104,8 @@ def compile_contract(sol_path: Path) -> CompileResult:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _extract_pragma(source: str) -> str:
+    """Extract the pragma solidity version constraint, stripping internal whitespace."""
+
     m = _PRAGMA_RE.search(source)
     if not m:
         return ""
@@ -160,11 +164,15 @@ def _available_versions() -> list[str]:
 
 
 def _solc_binary(version: str) -> Path | None:
+    """Return the path to a solc-select-installed binary for the given version, or None."""
+
     p = _SOLC_ARTIFACTS / f"solc-{version}" / f"solc-{version}"
     return p if p.exists() else None
 
 
 def _run_solc(bin_path: Path, sol_path: Path) -> tuple[bool, str]:
+    """Invoke solc --bin on sol_path and return (success, stderr tail)."""
+
     # Pass --allow-paths so relative imports like `../interface.sol` from files
     # in deep subdirs (e.g. DeFiHackLabs' 2018-04/ -> ../interface.sol) resolve
     # without solc 0.8.x's "File outside of allowed directories" security check
