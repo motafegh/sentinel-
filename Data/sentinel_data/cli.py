@@ -57,8 +57,8 @@ STAGE_DESCRIPTIONS: dict[str, str] = {
     "represent":  "Extract v9 graph (.pt) + windowed token files (GraphCodeBERT, [4,512])",
     "label":      "Apply crosswalk YAMLs; merge labels; flag 99%% co-occurrence pairs",
     "verify":     "AST semantic checks + tool corroboration + BCCC Phase 5 regression test",
-    "split":      "Deterministic train/val/test splits; leakage auditor = 0",
-    "register":   "Write versioned artifact catalog to SQLite",
+    "split":      "Deterministic train/val/test splits (4 strategies, 2-pass with dedup_enforcer, NonVulnerable 3:1 cap)",
+    "register":   "Register a dataset version in the SQLite catalog (4 base + 2 system tables, YAML mirror)",
     "analyze":    "Feature distribution + complexity proxy risk + co-occurrence matrix",
     "export":     "Shard export to sentinel-ml; predictor tier-threshold fix; EMITS edge fix",
 }
@@ -200,8 +200,156 @@ def _run_label(args: argparse.Namespace) -> None:
     print("  NOT IMPLEMENTED — implement in Stage 3")
 
 
+def _run_split(args: argparse.Namespace) -> None:
+    """Stage 5 — Splitting (the train/val/test boundary)."""
+    from sentinel_data.splitting import (
+        Contract, apply_dedup_enforcer, apply_nonvulnerable_cap,
+        apply_strategy, stratified_split, write_manifest, write_splits,
+    )
+    import json
+
+    cfg = _load_config(args.config)
+    data_dir = Path(args.config).parent / "data"
+
+    print(f"[split] {STAGE_DESCRIPTIONS['split']}")
+    print(f"  config : {args.config}")
+    print(f"  data   : {data_dir}")
+
+    if args.dry_run:
+        print("  (dry-run — no splits written)")
+        return
+
+    # Read merged labels and build Contract objects
+    merged_dir = data_dir / "labels" / "merged"
+    if not merged_dir.exists():
+        print(f"  ERROR: merged labels dir not found: {merged_dir}")
+        print("  Run the labeling stage first: sentinel-data label")
+        return
+
+    print(f"\n  Loading contracts from {merged_dir}...")
+    contracts = []
+    for p in sorted(merged_dir.glob("*.labels.json")):
+        try:
+            lj = json.loads(p.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        sha = lj["sha256"]
+        sources = lj.get("sources") or ["unknown"]
+        source = sources[0] if sources else "unknown"
+        tier = "T0"
+        for cls, entry in lj.get("classes", {}).items():
+            if entry.get("value") == 1:
+                tier = entry.get("tier") or "T0"
+                break
+        classes = {cls: entry.get("value", 0) for cls, entry in lj.get("classes", {}).items()}
+        primary = next((c for c, e in lj.get("classes", {}).items() if e.get("value") == 1),
+                       "NonVulnerable")
+        n_pos = sum(1 for e in lj.get("classes", {}).values() if e.get("value") == 1)
+        contracts.append(Contract(
+            sha256=sha, source=source, tier=tier,
+            classes=classes, primary_class=primary, n_pos=n_pos,
+        ))
+    print(f"  Loaded {len(contracts)} contracts")
+
+    # Run splitter (default: stratified)
+    print(f"\n  Splitting (strategy=stratified, seed={args.seed})...")
+    splits = stratified_split(contracts, seed=args.seed)
+
+    # Apply dedup_enforcer
+    print("  Applying dedup_enforcer (BCCC-failure pattern fix)...")
+    apply_dedup_enforcer(splits)
+
+    # Apply NonVulnerable cap
+    print(f"  Applying NonVulnerable {args.nonvuln_cap}:1 cap...")
+    apply_nonvulnerable_cap(splits, cap=args.nonvuln_cap, seed=args.seed)
+
+    # Write
+    out_dir = data_dir / "splits" / f"v{args.version}"
+    print(f"\n  Writing splits to {out_dir}...")
+    write_splits(splits, out_dir)
+    write_manifest(splits, out_dir)
+
+    # Summary
+    print(f"\n  ✓ Splitting complete:")
+    print(f"    train={len(splits.train)} val={len(splits.val)} test={len(splits.test)}")
+    print(f"    dedup_groups_resolved={splits.metadata.dedup_groups_resolved}")
+    nv = sum(1 for s in [splits.train, splits.val, splits.test] for c in s if c.is_nonvulnerable)
+    pos = sum(1 for s in [splits.train, splits.val, splits.test] for c in s if not c.is_nonvulnerable)
+    if pos > 0:
+        print(f"    NonVulnerable:positive ratio = {nv/pos:.2f}:1 (cap={args.nonvuln_cap})")
+    print(f"    Manifest: {out_dir}/split_manifest.json")
+
+
+def _run_register(args: argparse.Namespace) -> None:
+    """Stage 5 — Registry (register a dataset version in the catalog)."""
+    from sentinel_data.registry import (
+        Catalog, DatasetVersion, compute_hash,
+    )
+    cfg = _load_config(args.config)
+    data_dir = Path(args.config).parent / "data"
+
+    print(f"[register] {STAGE_DESCRIPTIONS['register']}")
+    print(f"  config : {args.config}")
+    print(f"  data   : {data_dir}")
+
+    if args.dry_run:
+        print("  (dry-run — no catalog write)")
+        return
+
+    # Locate the split manifest
+    split_dir = data_dir / "splits" / f"v{args.version}"
+    manifest_path = split_dir / "split_manifest.json"
+    if not manifest_path.exists():
+        print(f"  ERROR: split manifest not found: {manifest_path}")
+        print("  Run the splitting stage first: sentinel-data split")
+        return
+
+    # Compute the artifact hash (over all train/val/test files in the split)
+    print(f"\n  Computing artifact hash over {split_dir}/...")
+    h = compute_hash(manifest_path)
+    print(f"  Artifact hash: {h[:16]}...")
+
+    # Open the catalog
+    db_path = data_dir / "registry" / "catalog.db"
+    yaml_path = data_dir / "registry" / "catalog.yaml"
+    print(f"\n  Opening catalog at {db_path}...")
+    cat = Catalog(db_path, yaml_path)
+
+    # Register the dataset version
+    version = DatasetVersion(
+        name=args.name,
+        source_set=args.sources or [],
+        split_version=f"v{args.version}",
+        preprocessing_config_hash="",  # TODO: hash of config.yaml in Stage 7
+        artifact_hash=h,
+        artifact_path=str(split_dir),
+        verification_report_path=str(data_dir / "verification" / args.verification_report)
+            if args.verification_report else "",
+    )
+    cat.add_dataset_version(version)
+    print(f"  Registered: {args.name}")
+
+    # If the previous version was retired, retire it
+    if args.retire_previous:
+        try:
+            cat.retire_dataset_version(args.retire_previous, superseded_by=args.name,
+                                       reason=f"Superseded by {args.name}")
+            print(f"  Retired: {args.retire_previous}")
+        except Exception as e:
+            print(f"  Warning: could not retire {args.retire_previous}: {e}")
+
+    # Write YAML mirror
+    cat.write_yaml_mirror()
+    print(f"  Wrote YAML mirror: {yaml_path}")
+
+    # Summary
+    active = [v for v in cat.list_dataset_versions() if v is not None]
+    print(f"\n  ✓ Registration complete. Active dataset versions:")
+    for v in active:
+        print(f"    - {v.name}  (split_version={v.split_version}, generated_at={v.generated_at})")
+
+
 def _run_verify(args: argparse.Namespace) -> None:
-    """Stage 4 — Verification (the BCCC-failure catcher)."""
     from sentinel_data.verification.class_auditor import run_audit
     from sentinel_data.verification.semantic_checker import run_semantic_check
     from sentinel_data.verification.tool_validator import run_tool_validation
@@ -222,7 +370,6 @@ def _run_verify(args: argparse.Namespace) -> None:
         print("  (dry-run — no Slither runs, no report written)")
         return
 
-    # Configurable thresholds (from config.yaml pipeline.verification)
     verify_cfg = (cfg or {}).get("pipeline", {}).get("verification", {})
     fp_sample = int(verify_cfg.get("fp_sample_size", 50))
     neg_warn = float(verify_cfg.get("negative_tool_hit_warn", 0.05))
@@ -235,18 +382,15 @@ def _run_verify(args: argparse.Namespace) -> None:
         (cfg.get("sources_critical_path") or {}).keys()
     ) or "manual"
 
-    # 1) Class audit (per-class counts + co-occurrence matrix)
     print("\n  [1/5] class_auditor")
     audit = run_audit(data_dir)
     print(f"    contracts={audit.total_contracts}, flagged_pairs={len(audit.flagged_pairs)}")
 
-    # 2) Semantic check (graph-feature-based)
     print("\n  [2/5] semantic_checker")
     sem_limit = int(args.semantic_limit_per_class) if args.semantic_limit_per_class else None
     semantic = run_semantic_check(data_dir, limit_per_class=sem_limit)
     print(f"    checked={semantic.total_checked}, skipped={semantic.total_skipped}")
 
-    # 3) Tool validation (Slither agreement) — optional
     tool_validation = None
     if not skip_tool:
         print("\n  [3/5] tool_validator (Slither, may be slow on first run)")
@@ -259,7 +403,6 @@ def _run_verify(args: argparse.Namespace) -> None:
     else:
         print("\n  [3/5] tool_validator SKIPPED (--skip-tool-validator)")
 
-    # 4) FP estimator (stratified sampling)
     fp_estimation = None
     if not skip_fp:
         print(f"\n  [4/5] fp_estimator (stratified, N={fp_sample}/class)")
@@ -269,7 +412,6 @@ def _run_verify(args: argparse.Namespace) -> None:
     else:
         print("\n  [4/5] fp_estimator SKIPPED (--skip-fp-estimator)")
 
-    # 5) Negative checker (NonVulnerable contamination)
     negative_check = None
     if not skip_neg:
         print(f"\n  [5/5] negative_checker (warn>{neg_warn:.0%}, fail>{neg_fail:.0%})")
@@ -283,8 +425,7 @@ def _run_verify(args: argparse.Namespace) -> None:
     else:
         print("\n  [5/5] negative_checker SKIPPED (--skip-negative-checker)")
 
-    # Gate
-    print("\n  ── Gate ──")
+    print("\n  \u2500\u2500 Gate \u2500\u2500")
     gate = run_gate(
         audit, semantic,
         tool_validation=tool_validation,
@@ -293,7 +434,6 @@ def _run_verify(args: argparse.Namespace) -> None:
     )
     print(gate)
 
-    # Report
     out_path = data_dir / "verification" / f"verification_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
     generate_report(
         audit, semantic, gate,
@@ -305,30 +445,11 @@ def _run_verify(args: argparse.Namespace) -> None:
     )
     print(f"\n  Wrote report: {out_path}")
 
-    # Exit code: 0 if gate passes, 1 if any FAIL (unless --strict-off)
     if gate.gate_passed:
         return 0
     if not args.strict:
-        return 0   # soft fail — soft gate warns
+        return 0
     return 1
-
-
-def _run_split(args: argparse.Namespace) -> None:
-    print(f"[split] {STAGE_DESCRIPTIONS['split']}")
-    print(f"  config : {args.config}")
-    if args.dry_run:
-        print("  (dry-run — no files written)")
-        return
-    print("  NOT IMPLEMENTED — implement in Stage 5")
-
-
-def _run_register(args: argparse.Namespace) -> None:
-    print(f"[register] {STAGE_DESCRIPTIONS['register']}")
-    print(f"  config : {args.config}")
-    if args.dry_run:
-        print("  (dry-run — no files written)")
-        return
-    print("  NOT IMPLEMENTED — implement in Stage 5")
 
 
 def _run_analyze(args: argparse.Namespace) -> None:
@@ -507,6 +628,40 @@ def _build_parser() -> argparse.ArgumentParser:
                 "--skip-negative-checker",
                 action="store_true",
                 help="Skip negative_checker (no Slither run on NonVulnerable)",
+            )
+        if stage == "split":
+            sp.add_argument(
+                "--version", type=int, default=1, metavar="N",
+                help="Split version number (default 1 = v1)",
+            )
+            sp.add_argument(
+                "--seed", type=int, default=42, metavar="N",
+                help="RNG seed for reproducibility (default 42)",
+            )
+            sp.add_argument(
+                "--nonvuln-cap", type=float, default=3.0, metavar="RATIO",
+                help="NonVulnerable : positive cap (default 3.0, per friend review §6.3.1)",
+            )
+        if stage == "register":
+            sp.add_argument(
+                "--name", required=True, metavar="NAME",
+                help="Dataset version name (e.g. sentinel-v2-gold-2026-08)",
+            )
+            sp.add_argument(
+                "--version", type=int, default=1, metavar="N",
+                help="Split version to register (default 1 = v1)",
+            )
+            sp.add_argument(
+                "--sources", nargs="+", default=[], metavar="SRC",
+                help="Source names that contributed to this version",
+            )
+            sp.add_argument(
+                "--verification-report", default=None, metavar="PATH",
+                help="Path to verification_report.md to link",
+            )
+            sp.add_argument(
+                "--retire-previous", default=None, metavar="NAME",
+                help="Retire this previous version (marks as superseded)",
             )
 
     # ── utility subcommands ───────────────────────────────────────────────────
