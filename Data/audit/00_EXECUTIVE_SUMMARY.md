@@ -2,8 +2,8 @@
 
 **Audit Date:** 2026-06-16
 **Auditor:** opencode (automated deep audit)
-**Scope:** Stages 0–3 implementation (root files + ingestion + preprocessing + representation + labeling)
-**Reference Plans:** `01_stage_0_skeleton.md`, `02_stage_1_ingest_preprocess.md`, `03_stage_2_representation.md`, `04_stage_3_labeling.md`
+**Scope:** Stages 0–4 implementation + deep source code review of Stages 0–2
+**Reference Plans:** `01_stage_0_skeleton.md`, `02_stage_1_ingest_preprocess.md`, `03_stage_2_representation.md`, `04_stage_3_labeling.md`, `05_stage_4_verification.md`
 
 ---
 
@@ -11,13 +11,14 @@
 
 | Module | PASS | WARN | FAIL | Verdict |
 |--------|------|------|------|---------|
-| Root files (cli, config, pyproject, etc.) | 31 | 9 | 2 | **WARN** |
-| `ingestion/` | 5 | 7 | 1 | **WARN** |
-| `preprocessing/` | 61 | 15 | 3 | **WARN** |
-| `representation/` | ~40 | 4 | 1 | **PASS** (with critical fix needed) |
+| Root files (cli, config, pyproject, etc.) | 8 | 3 | 2 | **WARN** |
+| `ingestion/` (deep) | 14 | 6 | 4 | **WARN** |
+| `preprocessing/` (deep) | 22 | 8 | 5 | **WARN** |
+| `representation/` (deep) | 16 | 5 | 3 | **WARN** |
 | `labeling/` (Stage 3) | 28 | 6 | 2 | **WARN** |
+| `verification/` (Stage 4) | 18 | 9 | 5 | **WARN** |
 | Tests & Config | ~30 | 5 | 2 | **WARN** |
-| **TOTAL** | **~195** | **46** | **11** | **WARN** |
+| **TOTAL** | **~136** | **42** | **23** | **WARN** |
 
 ---
 
@@ -36,6 +37,12 @@
 | **F9** | tests | No pragma tolerance test (plan exit criterion #9) | HIGH | Task 1.8 |
 | **F-3.1** | labeling | `defihacklabs.yaml` missing `confidence_tier: T0` field | MEDIUM | D-3.1 |
 | **F-3.2** | labeling | `smartbugs_curated.yaml` missing `confidence_tier: T2` field | MEDIUM | D-3.1 |
+| **V-1** | verification | `test_patterns.py:7` relative path bug — fails when CWD is `Data/` | HIGH | — |
+| **V-2** | verification | `gate.py:107` `flagged_classes` asymmetry — only `class_a` flagged, not `class_b` | HIGH | D-4.5 |
+| **V-3** | verification | `gate.py:143-145` dead code in T0 branch (inner `if` unreachable) | MEDIUM | — |
+| **REP-2** | representation | **CRITICAL: `graph_schema.py:73-84` `CLASS_NAMES` order MISMATCHES Stage 3 `taxonomy.yaml`** — different class indices will break training | CRITICAL | D-2.2 |
+| **REP-7** | representation | `cache_manager.py:95` `stale_entries()` returns wrong sha256 — stale cache never evicted | HIGH | D-2.5 |
+| **PRE-4** | preprocessing | Dedup Level 3 (AST near-dup @ 0.85) entirely stubbed | HIGH | D-1.6 |
 
 ---
 
@@ -59,6 +66,16 @@
 | W14 | labeling | SmartBugs Curated parser not implemented (only crosswalk exists) | Task 3.8 |
 | W15 | labeling | Relative paths in test_parser_solidifi.py | — |
 | W16 | labeling | Missing conftest.py for shared test fixtures | — |
+| W17 | verification | `tool_validator.py` not implemented (Slither integration) | Task 4.4 |
+| W18 | verification | `fp_estimator.py` not implemented (sampling-based FP rate) | Task 4.5 |
+| W19 | verification | `negative_checker.py` not implemented (5% threshold check) | Task 4.5 |
+| W20 | verification | `probe_dataset.py` not implemented (40-per-class seed) | Task 4.6 |
+| W21 | verification | CLI `sentinel-data verify` not wired | Task 4.8 |
+| W22 | verification | CallToUnknown/ExternalBug indistinguishable in semantic_checker | D-4.2 |
+| W23 | verification | UnusedReturn/MishandledException indistinguishable in semantic_checker | D-4.2 |
+| W24 | cli | `_handle_run:385-390` hardcodes `workers=1, sample=None, retry_failed=False` | D-0.7 |
+| W25 | representation | `orchestrator.py:162-169` 4-levels-up `allow_paths` heuristic is fragile | — |
+| W26 | representation | `cfg_builder.py:265` mixes modifiers with functions in single CFG | — |
 
 ---
 
@@ -95,6 +112,15 @@
 | D-3.3 Conflict resolution T0 > T1 > T2 > T3 > T4 | ✅ PASS | Implemented in _tier_rank() |
 | D-3.3 DoS+Reentrancy co-occurrence rule | ✅ PASS | Implemented in _check_co_occurrence_flag() |
 | D-3.5 Merged labels = canonical record | ✅ PASS | merger.py writes to data/labels/merged/ |
+| D-4.1 Per-class verification | ✅ PASS | Gate operates per-class, not per-source |
+| D-4.2 Semantic checks | ⚠️ PARTIAL | Uses graph features, not AST patterns |
+| D-4.3 Tool validation corroborative | ❌ FAIL | tool_validator.py not implemented |
+| D-4.4 FP estimator sampling | ❌ FAIL | fp_estimator.py not implemented |
+| D-4.5 Hard/soft gate | ⚠️ PARTIAL | Implemented but flagged_classes bug (V-2) |
+| D-4.6 Negative checker 5% threshold | ❌ FAIL | negative_checker.py not implemented |
+| D-4.7 Probe dataset | ❌ FAIL | probe_dataset.py not implemented |
+| D-4.8 Phase 5 regression test | ❌ FAIL | Not implemented |
+| D-4.9 SmartBugs Curated recall | ❌ FAIL | Not implemented |
 
 ---
 
@@ -114,6 +140,10 @@
 12. **Crosswalk documentation** — SolidiFI/DIVE crosswalks thoroughly documented with v2.1 notes
 13. **Co-occurrence detection** — DoS+Reentrancy noise flagging implemented per plan D-3.3
 14. **Gate implementation** — Go/No-Go gate correctly validates per-class thresholds
+15. **Co-occurrence matrix** — class_auditor correctly computes 10×10 conditional probabilities
+16. **BCCC pattern detection** — 50% threshold would catch the 99% DoS↔Reentrancy pattern
+17. **Pattern YAMLs** — All 10 exist with positive/negative examples and BCCC FP rates
+18. **v9 schema awareness** — semantic_checker correctly uses feat[2], feat[7], feat[11], edge type 11
 
 ---
 
@@ -128,6 +158,9 @@
 5. Enable `defihacklabs` in config.yaml — 1 line
 6. Add `confidence_tier: T0` to `defihacklabs.yaml` — 1 line
 7. Add `confidence_tier: T2` to `smartbugs_curated.yaml` — 1 line
+8. Fix `test_patterns.py:7` relative path — 1 line
+9. Fix `gate.py:107` flagged_classes asymmetry — 1 line
+10. Remove dead code in `gate.py:143-145` — 3 lines
 
 ### P1 — Fix Before Stage 7 (seam swap)
 
@@ -138,6 +171,13 @@
 12. Add pragma tolerance test
 13. Implement DeFiHackLabs parser (critical-path source)
 14. Implement SmartBugs Curated parser (Stage 4 recall gate)
+15. Implement `tool_validator.py` (Slither integration)
+16. Implement `fp_estimator.py` (sampling-based FP rate)
+17. Implement `negative_checker.py` (5% threshold check)
+18. Implement `probe_dataset.py` (40-per-class seed)
+19. Wire CLI `sentinel-data verify` subcommand
+20. Write BCCC regression test (Phase 5 reproduce ±0.5%)
+21. Write SmartBugs Curated 143-contract recall test (≥90% threshold)
 
 ### P2 — Fix Before Run 11 Launch
 
@@ -150,6 +190,11 @@
 21. Replace hardcoded paths in test files
 22. Add conftest.py for test_labeling/ shared fixtures
 23. Convert relative paths in test_parser_solidifi.py to absolute
+24. Document CallToUnknown/ExternalBug indistinguishability in semantic_checker
+25. Document UnusedReturn/MishandledException indistinguishability in semantic_checker
+26. Remove unused `total` variable in `report_generator.py:114`
+27. Use iterator instead of `list()` in `class_auditor.py:120`
+28. Write ADR-0005 for verification design decisions
 
 ### P3 — Nice to Have
 
@@ -159,3 +204,6 @@
 27. Use `mp.get_context("spawn")` for parallel preprocessing
 28. Add `test_representation/__init__.py`
 29. Add merger edge case tests (empty inputs, all-Negative, tier precedence)
+30. Add ExternalBug test to test_semantic_checker.py
+31. Wire pattern YAMLs to semantic_checker (load from YAML, dispatch to checks)
+32. Add `test_report_generator.py` integration tests that don't require data

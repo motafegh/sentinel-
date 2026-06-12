@@ -1,4 +1,4 @@
-# B_contract_deep_dive — Per-Contract Diagnosis
+# B_contract_deep_dive — Individual Contract Deep Dive
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
