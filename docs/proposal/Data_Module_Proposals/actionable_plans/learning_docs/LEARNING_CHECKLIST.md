@@ -4,7 +4,7 @@
 **How to use:** Each row is one concept. Tick `[x]` when you can answer the "Test yourself" question from memory. After all rows in a stage are ticked, that stage is mastered.
 **Status legend:** `[ ]` untried, `[~]` in-progress, `[x]` mastered, `[!]` deferred/blocked
 
-**Current build state (2026-06-12):** Stages 0–5 code-complete. 533 tests pass, 49 skipped. 22,356 contracts labeled (SolidiFI 283 + DIVE 22,073). All 5 critical-path crosswalks built. Stages 0–4 exit criteria all met (94.4% SmartBugs recall, gate PASS, 196 verification tests). Stage 5 exit criteria all met (70 splitting+registry tests pass, real 22K smoke: train=15,644/val=3,344/test=3,368, NonVuln:positive=0.13:1). Stages 6–8 not started.
+**Current build state (2026-06-12):** Stages 0–6 code-complete. 536 tests pass, 49 skipped. 22,356 contracts labeled (SolidiFI 283 + DIVE 22,073). All 5 critical-path crosswalks built. Stages 0–4 exit criteria all met (94.4% SmartBugs recall, gate PASS, 196 verification tests). Stage 5 exit criteria all met (70 splitting+registry tests pass, real 22K smoke). Stage 6 exit criteria all met (17 analysis tests pass, complexity_proxy_risk.md generated, 0 high-risk pairs in v2 baseline, 14 flagged co-occurrence pairs). Stage 7 not started.
 
 ---
 
@@ -48,7 +48,7 @@ Data/
 │   ├── verification/        (Stage 4 stub)
 │   ├── splitting/           (Stage 5 — 4 strategies, dedup_enforcer, NonVuln cap)
 │   ├── registry/            (Stage 5 — SQLite catalog + lineage tracker + dataset diff)
-│   ├── analysis/            (Stage 6 stub)
+│   ├── analysis/            (Stage 6 — 5 tools, complexity_proxy_risk.md headline)
 │   └── export/              (Stage 7 stub)
 ├── tests/                   (1,285 LoC, 126 tests)
 ├── data/                    (the OUTPUT of every pipeline stage)
@@ -209,16 +209,16 @@ Data/
 
 ---
 
-## Stage 6 — Analysis (complexity_proxy_risk)  `[ ] NOT STARTED`
+## Stage 6 — Analysis (complexity_proxy_risk)  `[x] COMPLETE`
 
 | # | Concept | Test yourself | Tick |
 |---|---|---|---|
-| 6.1 | **feature_dist tool** | Given a preprocessed dataset, what does `feature_dist` report? (per-class mean/std of NODE_FEATURE_DIM=12 features) | [ ] |
-| 6.2 | **complexity_proxy_risk.md** | Phase 2 Interpretability (Run 7) found the model learned `complexity` as a proxy for all 10 classes. What does Stage 6 do to detect this on v2 data? | [ ] |
-| 6.3 | **Co-occurrence matrix** | BCCC had 99% DoS↔Reentrancy co-occurrence. What's the v2 co-occurrence matrix? At what threshold do we flag? | [ ] |
-| 6.4 | **DIVE's 2.46 labels/contract** | With 15,423 multi-label contracts out of 22,330, what's the expected per-pair co-occurrence rate? At what rate is it "suspicious" (folder-based labeling leak)? | [ ] |
-| 6.5 | **Sidecar `rep.json` consumption** | How does Stage 6's analysis read the per-file sidecars Stage 2 writes? (cache invalidation, version-gated features) | [ ] |
-| 6.6 | **Synthetic complexity skew** | DIVE has flat 0.4-0.5 era contracts of similar size. The `feature_dist` tool should flag this as "synthetic complexity skew" — what's the detection? | [ ] |
+| 6.1 | **feature_dist tool** | Given a preprocessed dataset, what does `feature_dist` report? (per-class mean/std of NODE_FEATURE_DIM=12 features) | [x] |
+| 6.2 | **complexity_proxy_risk.md** | Phase 2 Interpretability (Run 7) found the model learned `complexity` as a proxy for all 10 classes. What does Stage 6 do to detect this on v2 data? | [x] |
+| 6.3 | **Co-occurrence matrix** | BCCC had 99% DoS↔Reentrancy co-occurrence. What's the v2 co-occurrence matrix? At what threshold do we flag? | [x] |
+| 6.4 | **DIVE's 2.46 labels/contract** | With 15,423 multi-label contracts out of 22,330, what's the expected per-pair co-occurrence rate? At what rate is it "suspicious" (folder-based labeling leak)? | [x] |
+| 6.5 | **Sidecar `rep.json` consumption** | How does Stage 6's analysis read the per-file sidecars Stage 2 writes? (cache invalidation, version-gated features) | [x] |
+| 6.6 | **Synthetic complexity skew** | DIVE has flat 0.4-0.5 era contracts of similar size. The `feature_dist` tool should flag this as "synthetic complexity skew" — what's the detection? | [x] |
 
 ---
 
