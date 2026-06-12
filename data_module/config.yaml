@@ -146,7 +146,7 @@ sources_critical_path:
     #      extracts it and strips macOS __MACOSX/ noise.
     # Symlink mode (default) means data/raw/dive/repo/ is a symlink to the
     # staging path. Use materialize: copy for Docker or cross-filesystem setups.
-    staging_path: "/home/motafeq/projects/sentinel/Data/data/raw_staging/dive"
+    staging_path: "/home/motafeq/projects/sentinel/data_module/data/raw_staging/dive"
     materialize: symlink
     # After folderize, repo/ contains:
     #   __source__/<id>.sol          ← canonical (22,330 real files)
@@ -161,7 +161,7 @@ sources_critical_path:
     # and creates per-class symlinks under repo/<class>/<contractID>.sol →
     # ../../__source__/<contractID>.sol. Multi-label contracts appear in
     # multiple folders.
-    labels_csv: "/home/motafeq/projects/sentinel/Data/data/raw_staging/dive_labels/DIVE_Labels.csv"
+    labels_csv: "/home/motafeq/projects/sentinel/data_module/data/raw_staging/dive_labels/DIVE_Labels.csv"
     label_id_column: "contractID"
     label_source_subdir: "__source__"
     class_columns:

@@ -1,93 +1,345 @@
-# `sentinel_data.analysis` — Understanding Your Data Before Training
+# `sentinel_data.analysis` — Stage 6: Understanding Your Data Before Training
 
-## What This Module Does
+> **Status: ✅ Fully implemented (6 modules, 1,350+ lines).** All 5 analysis tools + probe_dataset re-export. Runs as 5 of the 9 sub-stages in `sentinel-data analyze` (`cli.py:519-659`).
 
-The analysis module is Stage 8 of the SENTINEL data pipeline. It runs 6 read-only exploratory tools that surface dataset properties **before and after** pipeline runs. The headline output is the `complexity_proxy_risk.md` report — the single most important analysis artifact that catches the Run 9 failure mode (model learning complexity as a proxy for vulnerability) before training.
+## 1. Purpose
 
-## Why This Matters
+This is **the Run-9-failure catcher.** It runs read-only exploratory tools that surface dataset properties before and after pipeline runs. The headline output is the **`complexity_proxy_risk.md` report** — the single most important analysis artifact that catches the model-learning-complexity-as-a-proxy-for-vulnerability failure mode before training.
 
 Run 9 trained for 9 runs before discovering that the model was learning complexity (node count, edge count) as a proxy for vulnerability, not the actual vulnerability patterns. The analysis module would have caught this **before the first epoch** by computing per-class feature distributions and flagging any class-pair where the complexity features differ by > 1.5σ.
 
-The L4 interpretability finding was: "complexity dominates all 10 classes at 34-36%." The data-side `complexity_proxy_risk.md` is the **same diagnosis from the data side** — run before training, not after.
+The L4 interpretability finding was: *"complexity dominates all 10 classes at 34-36%."* The data-side `complexity_proxy_risk.md` is the **same diagnosis from the data side** — run before training, not after.
 
-## The 6 Analysis Tools
+## 2. Source map
 
-| Tool | Output | What It Catches |
-|------|--------|-----------------|
-| `balance_viz` | Per-class/source/tier counts + bar plot | Class imbalance |
-| `feature_dist` | Per-class feature distributions + `complexity_proxy_risk.md` | **Run 9 failure mode** |
-| `cooccurrence` | Directed + conditional co-occurrence matrices | 99% DoS↔Reentrancy pattern |
-| `overlap_detector` | Pairwise Jaccard similarity between sources | Source redundancy |
-| `drift_monitor` | Per-feature KS test between dataset versions | Label/feature drift |
-| `probe_dataset` | Re-export from verification | Model interpretability input |
+| File | Lines | Role |
+|------|-------|------|
+| `__init__.py` | 26 | Module docstring + re-exports for the 6 sub-modules. |
+| `balance_viz.py` | 134 | `run_balance_viz(labels_dir, output_dir)` — per-class / per-source / per-tier counts + CSV + bar plot. |
+| `cooccurrence.py` | 187 | `run_cooccurrence(labels_dir, output_dir, flag_threshold=0.5)` — directed + conditional co-occurrence matrices + CSV + heatmap. |
+| `drift_monitor.py` | 298 | `run_drift_monitor(baseline_labels, baseline_rep, baseline_preproc, new_labels, new_rep, new_preproc, output_dir, ...)` — KS test for feature + label distribution drift. |
+| `feature_dist.py` | 436 | `run_feature_dist(labels_dir, rep_root, preproc_root, output_dir, sigma_threshold=1.5)` — per-class feature distributions + the **headline `complexity_proxy_risk.md`** report. |
+| `overlap_detector.py` | 267 | `run_overlap_detector(labels_root, preproc_root, output_dir)` — pairwise Jaccard (exact + near) between source datasets. |
+| `probe_dataset.py` | (DEFERRED) | Placeholder — probe_dataset lives in `sentinel_data.verification.probe_dataset`. Re-exported for namespace convenience. |
 
-## The `complexity_proxy_risk.md` Report
+**Sub-total: ~1,350 lines** across 6 Python files.
 
-This is the headline output. It computes, for each pair of classes, the difference in mean (and std) of:
-- Node count
-- Edge count
-- Cyclomatic complexity
-- Call depth
-- Function count
-- LOC
+> **Note:** The previous README said "6 analysis tools" — the actual implementation has **5 active tools** (balance_viz, cooccurrence, drift_monitor, feature_dist, overlap_detector). The 6th (`probe_dataset`) is a re-export from `verification.probe_dataset` (the actual implementation lives there). The `cli.py` orchestrator runs the 5 active tools.
+
+## 3. Key concepts
+
+### The 5 active tools
+
+| Tool | Module | Output | What it catches |
+|------|--------|--------|-----------------|
+| `balance_viz` | `balance_viz.py` | `balance_table.csv` + `balance_plot.png` | Class imbalance |
+| `feature_dist` | `feature_dist.py` | `feature_dist_table.csv` + `feature_dist_plot.png` + **`complexity_proxy_risk.md`** (the headline) | Run 9 failure mode |
+| `cooccurrence` | `cooccurrence.py` | `cooccurrence_matrix.csv` + `cooccurrence_heatmap.png` | 99% DoS↔Reentrancy pattern |
+| `overlap_detector` | `overlap_detector.py` | `overlap_matrix.csv` + `overlap_heatmap.png` | Source redundancy |
+| `drift_monitor` | `drift_monitor.py` | `drift_report.md` | Label/feature drift between dataset versions |
+
+### The `complexity_proxy_risk.md` headline (`feature_dist.py:313-411`)
+
+The **most important analysis artifact**. For each pair of classes, computes the σ-difference of mean (and std) of 6 features:
+
+- `node_count`, `edge_count` (from `.rep.json`)
+- `cyclomatic_complexity`, `call_depth`, `function_count`, `loc` (from `.sol` source)
 
 If any pair differs by > 1.5σ, the pair is flagged as **HIGH-RISK** for the model to learn a complexity proxy instead of a class-specific pattern.
 
-Example output:
 ```markdown
-## Complexity Proxy Risk Report
+# Complexity Proxy Risk Report
 
-### HIGH-RISK Pairs (σ-difference > 1.5)
+**Generated by:** `sentinel_data.analysis.feature_dist` (Stage 6 — D-6.2).
+**Motivation:** the L4 interpretability finding
+("complexity dominates all 10 classes at 34-36%") is the model-side
+observation. This report is the *data-side complement* — run before
+training, it would have caught the Run 9 failure mode (model learning
+complexity as a proxy) automatically.
 
-| Class A | Class B | Feature | σ-difference | Risk |
-|---------|---------|---------|--------------|------|
-| Reentrancy | Timestamp | node_count | 2.3 | HIGH |
-| IntegerUO | ExternalBug | edge_count | 1.8 | HIGH |
+**Threshold:** σ-difference > **1.5** → HIGH-RISK pair.
 
-### Recommendation
-Reentrancy positives are 2.3σ more complex than Timestamp positives.
-Consider stratified sampling or class-weight adjustment in the loss.
+## HIGH-RISK Pairs (σ-difference > threshold)
+
+| Class A | Class B | Feature | σ-difference | n_A | n_B |
+|---------|---------|---------|--------------|-----|-----|
+| Reentrancy | Timestamp | node_count | 2.3 | 4622 | 1197 |
+
+## Per-Class Feature Stats (positive contracts)
+
+| Class | node_count | edge_count | cyclomatic | call_depth | functions | LOC |
+|-------|-----------:|-----------:|-----------:|-----------:|----------:|----:|
+| Reentrancy | 45.2±12.1 (n=4622) | 87.3±18.2 (n=4622) | ...
+
+## Label-Conditional Feature Distribution (per 6-P2)
+
+| Class | node_count (pos / neg) | edge_count (pos / neg) | LOC (pos / neg) |
+|-------|------------------------|------------------------|------------------|
+| Reentrancy | 45.2 / 22.1 | 87.3 / 41.5 | 320 / 150 |
 ```
 
-## The Co-occurrence Matrix
+**Operational gate**: Run 11 checks this report before launching. If any pair is HIGH-RISK, the launch is deferred pending model-team review.
 
-The `cooccurrence` tool produces **two matrices** (directed + conditional):
+**Per AUDIT_PATCHES 6-P1**: per-class rank correlation between feature and precision.
+**Per AUDIT_PATCHES 6-P2**: label-conditional feature distribution (the pos/neg split shown above).
 
-- **Directed:** X→Y means "if class X is positive, class Y is also positive with probability p"
-- **Conditional:** P(Y=1 | X=1) — the conditional probability
+The σ-difference computation (`feature_dist.py:210-218`) uses pooled std (Cohen's d-style):
 
-The BCCC 99% DoS→Reentrancy co-occurrence is visible as a very high entry in both matrices. The conditional matrix is what the multi-label loss design consumes.
+```python
+def _sigma_difference(mean_a, std_a, n_a, mean_b, std_b, n_b) -> float:
+    pooled_var = (std_a**2 * (n_a-1) + std_b**2 * (n_b-1)) / max(1, n_a+n_b-2)
+    pooled_std = math.sqrt(pooled_var) if pooled_var > 0 else 1.0
+    if pooled_std == 0:
+        return 0.0
+    return abs(mean_a - mean_b) / pooled_std
+```
 
-## How to Use
+### The 6 features (`feature_dist.py:33-36`)
 
+```python
+DEFAULT_FEATURES = [
+    "node_count", "edge_count", "cyclomatic_complexity",
+    "call_depth", "function_count", "loc",
+]
+```
+
+| Feature | Source | Computation |
+|---------|--------|-------------|
+| `node_count` | `.rep.json` | `data.num_nodes` |
+| `edge_count` | `.rep.json` | `data.num_edges` |
+| `cyclomatic_complexity` | `.sol` | 1 + count of `if\|else if\|for\|while\|do\|catch\|&&\|\|` keywords |
+| `call_depth` | `.sol` | Max `{` nesting in any line |
+| `function_count` | `.sol` | Count of `function\|constructor\|fallback\|receive\|modifier` definitions |
+| `loc` | `.sol` | Non-empty, non-comment lines |
+
+> ⚠ The `cyclomatic_complexity` and `call_depth` computations are **v1 proxies** (`feature_dist.py:82-94`, `feature_dist.py:97-112`). The full v8 schema is computed by `cfg_builder.py`. Stage 6 ships the proxies because the v2 corpus has no `.cfg.json` files (CFG is opt-in via `--emit-cfg`).
+
+### The co-occurrence matrix (`cooccurrence.py:56-105`)
+
+Two matrices per AUDIT_PATCHES 6-P4, C-10:
+
+- **Directed**: `directed[a][b]` = count of contracts where both class a and class b are positive. (Joint probability × N.)
+- **Conditional**: `conditional[a][b]` = `P(b=1 | a=1)` = `directed[a][b] / counts_positive[a]`.
+
+The BCCC 99% DoS↔Reentrancy co-occurrence is visible as a high entry in both. The conditional matrix is what the multi-label loss design consumes.
+
+**Flagged pairs**: P(b|a) or P(a|b) > 50% (default threshold). Sorted by `p_max` descending.
+
+### The drift monitor (`drift_monitor.py`)
+
+The version-update gate. Catches **two distinct drift patterns** (per AUDIT_PATCHES 6-P3):
+
+1. **Feature drift**: the contracts themselves got bigger/smaller (KS test on numerical features)
+2. **Label drift**: the class balance shifted even if the contracts look the same (KS test on binary label arrays)
+
+KS test uses `scipy.stats.ks_2samp` if available, else a manual CDF-difference fallback (`drift_monitor.py:68-91`).
+
+Single-pass optimization: for each (label_dir, rep_root, preproc_root), reads every label file once, computes ALL 6 features per contract, and buckets by feature. Avoids the O(F * N) trap of re-scanning labels for each feature (`drift_monitor.py:135-143`).
+
+A WARNING (p < 0.01) in either table is "drift detected" and the ML training pipeline can opt to require explicit acknowledgement before training.
+
+Inputs come from the registry: the CLI's `--baseline-version` flag looks up the baseline's `artifact_path` from the catalog, then passes `baseline_labels`/`baseline_rep`/`baseline_preproc` to `run_drift_monitor`.
+
+### The overlap detector (`overlap_detector.py:40-165`)
+
+Per AUDIT_PATCHES 6-P5: distinguish **EXACT** overlap (same sha256) from **NEAR** overlap (AST-similar but different sha256, identified by shared `dedup_group`).
+
+The exact overlap is more pernicious — the same contract in two sources means double-counting in the loss. The near overlap is a softer signal.
+
+Builds a 4-quadrant matrix:
+- `exact_jaccard[a][b]` = |A ∩ B| / |A ∪ B| (Jaccard on sha256s)
+- `near_jaccard[a][b]` ≈ |groups spanning (a,b)| / |groups involving either source| (Jaccard on dedup_groups)
+
+For the v2 corpus using sha256 as the contract identifier (computed during Stage 1 preprocessing), exact overlap is the **operational signal**.
+
+### The CLI orchestrator (`cli.py:519-659`)
+
+```python
+def _run_analyze(args):
+    # Inputs — resolve from --corpus if given, else current build
+    labels_root, rep_root, preproc_root, merged_dir = _resolve_corpus_paths(args, data_dir)
+    
+    # ── 1. balance_viz ─────────────────────────────────────────────────────
+    # ── 2. feature_dist (the headline) ─────────────────────────────────────
+    # ── 3. cooccurrence ────────────────────────────────────────────────────
+    # ── 4. overlap_detector ────────────────────────────────────────────────
+    # ── 5. drift_monitor (only if --baseline-version given) ───────────────
+```
+
+Per-source analysis run independently. Outputs to `data/analysis/<run_id>/`. Default `run_id` is `datetime.now().strftime("%Y%m%d_%H%M%S")`.
+
+CLI flags:
+- `--only TOOL` — run only one tool (one of `balance_viz`, `feature_dist`, `cooccurrence`, `overlap_detector`, `drift_monitor`)
+- `--run-id ID` — analysis run identifier (default timestamp)
+- `--corpus VERSION` — analyze a specific registered dataset version (e.g. `sentinel-v2-dryrun-2026-08`)
+- `--baseline-version VERSION` — for `drift_monitor`: compare against this registered dataset version
+
+Configurable thresholds (from `config.yaml`):
+- `pipeline.analysis.complexity_proxy_risk.sigma_threshold` (default 1.5) → feature_dist
+- `pipeline.analysis.cooccurrence.flag_threshold` (default 0.5) → cooccurrence
+- `pipeline.analysis.drift.ks_pvalue_warn` (default 0.01) → drift_monitor
+- `pipeline.analysis.drift.min_sample_size` (default 30) → drift_monitor
+
+## 4. Public API
+
+### `run_balance_viz(labels_dir, output_dir) -> dict` — `balance_viz.py:122-134`
+
+```python
+@dataclass
+class BalanceTable:
+    per_class: dict[str, int]                    # class -> positive count
+    per_source: dict[str, int]                   # source -> contract count
+    per_tier: dict[str, dict[str, int]]          # tier -> {class -> count}
+    per_class_source: dict[str, dict[str, int]]  # class -> {source -> count}
+    total_contracts: int = 0
+    multi_label_count: int = 0
+```
+
+Returns `{"csv": ..., "plot": ..., "total_contracts": ..., "multi_label_count": ..., "per_class": ..., "per_source": ...}`.
+
+### `run_cooccurrence(labels_dir, output_dir, flag_threshold=0.5) -> dict` — `cooccurrence.py:175-186`
+
+```python
+@dataclass
+class CooccurrenceMatrices:
+    classes: list[str]
+    counts_positive: dict[str, int]
+    directed: dict[str, dict[str, int]]    # joint counts
+    conditional: dict[str, dict[str, float]]  # P(b|a)
+    flagged_pairs: list[dict]
+    multi_label_count: int
+    total_contracts: int
+```
+
+### `run_feature_dist(labels_dir, rep_root, preproc_root, output_dir, sigma_threshold=1.5) -> dict` — `feature_dist.py:414-436`
+
+```python
+@dataclass
+class PerClassStats:
+    class_name: str
+    feature_stats: dict[str, dict[str, float]]   # feature -> {mean, std, min, max, median, n}
+    label_conditional: dict[str, dict[str, dict[str, float]]]   # feature -> {positive: {...}, negative: {...}}
+
+@dataclass
+class HighRiskPair:
+    class_a: str
+    class_b: str
+    feature: str
+    sigma_diff: float
+    n_a: int
+    n_b: int
+```
+
+Returns `{"csv": ..., "plot": ..., "report": ..., "high_risk_count": ..., "high_risk_pairs": [...]}`.
+
+### `run_drift_monitor(baseline_labels, baseline_rep, baseline_preproc, new_labels, new_rep, new_preproc, output_dir, pvalue_warn=0.01, min_sample=30) -> dict` — `drift_monitor.py:274-298`
+
+```python
+@dataclass
+class FeatureKSResult:
+    feature: str
+    n_baseline: int
+    n_new: int
+    statistic: float
+    pvalue: float
+    warning: bool
+    insufficient_sample: bool = False
+
+@dataclass
+class LabelKSResult:
+    class_name: str
+    n_baseline_pos: int
+    n_new_pos: int
+    n_baseline_total: int
+    n_new_total: int
+    rate_baseline: float
+    rate_new: float
+    statistic: float
+    pvalue: float
+    warning: bool
+    insufficient_sample: bool = False
+
+@dataclass
+class DriftReport:
+    feature_results: list[FeatureKSResult]
+    label_results: list[LabelKSResult]
+    overall_warning: bool
+```
+
+Returns `{"report": ..., "overall_warning": ..., "feature_warnings": [...], "label_warnings": [...]}`.
+
+### `run_overlap_detector(labels_root, preproc_root, output_dir) -> dict` — `overlap_detector.py:248-267`
+
+```python
+@dataclass
+class OverlapMatrix:
+    sources: list[str]
+    exact_jaccard: dict[str, dict[str, float]]
+    near_jaccard: dict[str, dict[str, float]]
+    exact_intersection: dict[str, dict[str, int]]
+    near_intersection: dict[str, dict[str, int]]
+    source_sizes: dict[str, int]
+```
+
+Returns `{"csv": ..., "plot": ..., "sources": [...], "source_sizes": {...}, "top_overlapping_pairs": [...]}`.
+
+## 5. Inputs → outputs
+
+| Input | Where | What |
+|-------|-------|------|
+| `data/labels/merged/*.labels.json` | Stage 3 | For balance_viz, cooccurrence, feature_dist |
+| `data/labels/` (per-source) + `data/labels/merged/` | Stage 3 | For overlap_detector (exact via merged, near via dedup_group from meta) |
+| `data/representations/<source>/<sha256>.rep.json` | Stage 2 | For feature_dist + drift_monitor (node/edge counts) |
+| `data/preprocessed/<source>/<sha256>.sol` | Stage 1b | For feature_dist + drift_monitor (4 .sol-based features) |
+| `data/preprocessed/<source>/<sha256>.meta.json` | Stage 1b | For overlap_detector (dedup_group) |
+| Baseline dataset version (via `--baseline-version`) | Registry | For drift_monitor's KS test |
+
+| Output | Where | What |
+|--------|-------|------|
+| `data/analysis/<run_id>/balance_table.csv` + `balance_plot.png` | `balance_viz.py` |  |
+| `data/analysis/<run_id>/cooccurrence_matrix.csv` + `cooccurrence_heatmap.png` | `cooccurrence.py` |  |
+| `data/analysis/<run_id>/feature_dist_table.csv` + `feature_dist_plot.png` + **`complexity_proxy_risk.md`** | `feature_dist.py` | The headline report |
+| `data/analysis/<run_id>/overlap_matrix.csv` + `overlap_heatmap.png` | `overlap_detector.py` |  |
+| `data/analysis/<run_id>/drift_report.md` | `drift_monitor.py` | (only with `--baseline-version`) |
+| `data/analysis/freshness_report.md` | Stage 1a's freshness.py | (separate path, not per-run) |
+
+## 6. Pipeline interactions
+
+| Stage | Direction | What |
+|-------|-----------|------|
+| Stage 3 (labeling) | ← | Reads `data/labels/merged/*.labels.json` |
+| Stage 2 (representation) | ← | Reads `data/representations/<source>/<sha256>.rep.json` for `node_count` + `edge_count` |
+| Stage 1b (preprocessing) | ← | Reads `data/preprocessed/<source>/<sha256>.sol` for 4 text-based features |
+| Stage 5 (registry) | ↔ | The CLI's `_run_analyze` looks up `--corpus` and `--baseline-version` from the catalog |
+| Stage 2 (cfg_builder) | ↔ | Optional input — `--emit-cfg` from Stage 2 produces `.cfg.json` files; the `cyclomatic_complexity` and `call_depth` proxies in feature_dist could be replaced by the real CFG metrics in a v2.1 enhancement |
+| `ml/` training | → | The `complexity_proxy_risk.md` is the operational gate before Run 11 launch |
+
+## 7. Tests
+
+**Location:** No dedicated `tests/test_analysis/` directory. The analysis modules are tested via:
+- `tests/test_skeleton.py` (basic import smoke test)
+- The Stage 0–4 integration tests (run analysis on the DIVE integration test outputs)
+- Manual review of `complexity_proxy_risk.md` on known corpora
+
+**Command:**
 ```bash
-# Run all 6 analysis tools
-sentinel-data analyze
-
-# Run a specific tool
-sentinel-data analyze --only feature_dist
-
-# Analyze a specific dataset version
-sentinel-data analyze --corpus sentinel-v2-dryrun-2026-08
-
-# Compare against a baseline
-sentinel-data analyze --baseline-version v1.4-bccc
+cd ~/projects/sentinel/data_module
+poetry run pytest tests/ -v -k "analysis or skeleton"
 ```
 
-## Pipeline Position
+**Coverage gaps** (deferred to v2.1):
+- No automated test for the `complexity_proxy_risk.md` headline output
+- No regression test for the σ-difference threshold (1.5)
+- No test for the drift monitor's KS test fallback when scipy is unavailable
 
-```
-Stage 7: Registry (catalog + lineage)
-    ↓
-Stage 8: Analysis ← YOU ARE HERE (6 exploratory tools)
-    ↓
-Stage 9: Export + Seam Swap (sharded output for ML)
-```
+## 8. See also
 
-## Design Decisions
-
-1. **Read-only** — analysis tools don't modify any input artifacts
-2. **DVC-tracked outputs** — analysis results are part of the reproducible pipeline
-3. **Complexity proxy as headline** — the Run 9 failure mode is the primary concern
-4. **Directed + conditional co-occurrence** — catches the 99% DoS↔Reentrancy pattern
-5. **Probe dataset re-export** — single source of truth for model interpretability input
+- Previous stage: `sentinel_data/registry/README.md`
+- Next stage: `sentinel_data/export/README.md` (the final pipeline stage — currently a stub)
+- CLI entry: `sentinel_data/cli.py` (`_run_analyze` at line 519)
+- Stage 6 plan: `docs/proposal/Data_Module_Proposals/actionable_plans/07_stage_6_analysis.md`
+- AUDIT_PATCHES 6-P1, 6-P2, 6-P3, 6-P4, 6-P5 (per-class rank correlation, label-conditional, drift types, co-occurrence, exact vs near)
+- L4 interpretability finding: `project_interpretability.md` MEMORY file
+- Stage 2 CFG builder: `sentinel_data/representation/cfg_builder.py` (replaces v1 cyclomatic/call-depth proxies)
+- Probe dataset (model interpretability input): `sentinel_data/verification/probe_dataset.py`
+- Operational gate: "Run 11 checks this report before launching. If any pair is HIGH-RISK, the launch is deferred pending model-team review." (`feature_dist.py:406-407`)

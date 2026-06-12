@@ -105,16 +105,11 @@ def parse_args() -> argparse.Namespace:
     )
 
     # --- Paths ---
-    p.add_argument("--graphs-dir",      default="ml/data/graphs")
-    p.add_argument("--tokens-dir",      default="ml/data/tokens_windowed",
-                   help="Token .pt directory. Multi-window [W,512] tensors (v7 default).")
-    p.add_argument("--splits-dir",      default="ml/data/splits/v10_deduped",
-                   help="[Run 6] v10 split directory. v9 splits at ml/data/splits/v9_deduped/.")
+    p.add_argument("--export-dir",      default="data_module/data/exports/sentinel-v2-baseline-2026-06-12",
+                   help="[Stage 7B] v2 export directory containing manifest.json + shard files. "
+                        "Replaces --graphs-dir/--tokens-dir/--splits-dir/--label-csv/--cache-path.")
     p.add_argument("--checkpoint-dir",  default="ml/checkpoints")
     p.add_argument("--checkpoint-name", default=None)
-    p.add_argument("--cache-path",      default="ml/data/cached_dataset_v10.pkl",
-                   help="[Run 6] RAM cache pickle (v10 — C-1 per-statement CFG features + H-2 ReferenceVariable DEF_USE). "
-                        "Use --cache-path ml/data/cached_dataset_v10.pkl for v10 reference runs.")
     p.add_argument("--log-dir",         default=None,
                    help="[Phase 4.6] Directory for structured JSONL logs. Default: ml/logs/<run-name>.")
 
@@ -325,12 +320,9 @@ def main() -> None:
         num_workers           = args.num_workers,
         use_compile           = args.compile,
         log_interval          = args.log_interval,
-        graphs_dir            = args.graphs_dir,
-        tokens_dir            = args.tokens_dir,
-        splits_dir            = args.splits_dir,
+        export_dir            = args.export_dir,
         checkpoint_dir        = args.checkpoint_dir,
         checkpoint_name       = args.checkpoint_name or f"{args.run_name}_best.pt",
-        cache_path            = args.cache_path,
         resume_from           = args.resume,
         resume_model_only     = args.resume_model_only,
         force_optimizer_reset = args.force_optimizer_reset,

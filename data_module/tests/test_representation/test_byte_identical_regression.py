@@ -21,7 +21,7 @@ import pytest
 import torch
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PREP_DIR  = REPO_ROOT / "Data" / "data" / "preprocessed" / "solidifi"
+PREP_DIR  = REPO_ROOT / "data_module" / "data" / "preprocessed" / "solidifi"
 SOLC_ROOT = Path.home() / ".solc-select" / "artifacts"
 
 
@@ -37,7 +37,9 @@ def _collect_fixtures(n: int = 10) -> list[tuple[Path, dict]]:
     metas = sorted(PREP_DIR.glob("*.meta.json"), key=lambda p: p.stat().st_size)
     result = []
     for m in metas:
-        sol = m.with_suffix(".sol")
+        # Stage 7B fix: m has suffix .meta.json; with_suffix(".sol") would give
+        # <hash>.meta.sol (only replaces .json). Use replace to drop .meta.json.
+        sol = m.with_name(m.name.replace(".meta.json", ".sol"))
         if not sol.exists():
             continue
         meta = json.loads(m.read_text())

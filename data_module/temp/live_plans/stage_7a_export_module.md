@@ -30,26 +30,31 @@
 
 ## Step 1 — Format schema spec (`format_schema/v1.yaml`)
 
-- [ ] Create `data_module/sentinel_data/export/format_schema/v1.yaml`
+- [x] Create `data_module/sentinel_data/export/format_schema/v1.yaml`
   - Defines the 4 file types (graphs_shard, tokens_shard, labels_parquet, metadata_parquet)
-  - Defines the manifest fields
+  - Defines the manifest fields (13 fields: schema_version, graph_schema_version, artifact_hash, hash_algorithm, shard_size, n_contracts, n_contracts_with_reps, n_shards, splits, shard_index, source_set, skipped_sources, preprocessing_config_hash, label_class_columns, created_at)
   - Pin the schema version (v1)
   - Document the shard naming pattern: `graphs-{shard:05d}.pt`, `tokens-{shard:05d}.pt`
   - This is the contract — every other piece conforms to it
+  - Fix A is baked in: manifest.json is excluded from the hash scope (chicken-and-egg avoidance); hash is computed over the 4 data file types + shard index files only
+  - 14 columns in `labels.parquet` (contract_id, source, split, class_0..9, confidence_tier)
+  - 14 columns in `metadata.parquet` (contract_id, source, split, solc_version, version_bucket, loc, n_functions, n_pos, primary_class, node_count, edge_count, has_unchecked_block, dedup_group_id, confidence_tier)
+  - Validates as YAML (pyyaml round-trip OK)
 
-- [ ] Re-read `data_module/data/labels/merged/$(head -1)` for label field structure
+- [x] Re-read `data_module/data/labels/merged/$(head -1)` for label field structure
   - sha256, sources, classes.{ClassName}.{value, tier, source}
   - 10 classes: CallToUnknown, DenialOfService, ExternalBug, GasException, IntegerUO, MishandledException, Reentrancy, Timestamp, TransactionOrderDependence, UnusedReturn
 
-- [ ] Re-read `data_module/data/representations/dive/$(head -1).rep.json` for sidecar structure
+- [x] Re-read `data_module/data/representations/dive/$(head -1).rep.json` for sidecar structure
   - sha256, source, original_path, schema_version, extractor_version, node_count, edge_count, window_count, compute_time_ms, cache_hit, pragma, solc_version
 
-- [ ] Re-read `data_module/sentinel_data/representation/graph_schema.py` to lock the column order in `labels.parquet`
+- [x] Re-read `data_module/sentinel_data/representation/graph_schema.py` to lock the column order in `labels.parquet`
   - Class order: 0=CallToUnknown, 1=DenialOfService, 2=ExternalBug, 3=GasException, 4=IntegerUO, 5=MishandledException, 6=Reentrancy, 7=Timestamp, 8=TransactionOrderDependence, 9=UnusedReturn
-  - Verify this is the same order used in `ml/src/preprocessing/graph_schema.py` and the merged labels
+  - This is the source of truth (`class_names()` in `data_module/sentinel_data/labeling/schema/__init__.py` reads from `taxonomy.yaml`)
+  - The split JSONL preserves the dict insertion order; we serialize `classes` in the locked class_names() order
 
-- [ ] Decide pyarrow version pin and minimal Parquet features (compression, dictionary encoding)
-  - `pyarrow` is in the .venv; check exact version
+- [x] Decide pyarrow version pin and minimal Parquet features (compression, dictionary encoding)
+  - pyarrow 23.0.1 confirmed in .venv
   - Use `snappy` compression as the default (PyArrow default; widely supported)
 
 ---
@@ -214,8 +219,30 @@
   - Call `chunk_export(...)` from Step 4
   - Print a summary: n_contracts, n_shards, output_path
   - If `--dataset-version` given, update the catalog's artifact_hash for that version
+  - **Source resolution per user note (2026-06-12)**: when no `--dataset-version` is given (using the current build), resolve the source set from `cfg.get("sources_critical_path")` filtered by `enabled: true` — NOT from `cfg.get("sources")` directly. The data module's config schema has `sources_critical_path: {<source_name>: {enabled: bool, ...}}` and an export must respect the same enable/disable semantics as the other stages (e.g. `sentinel-data preprocess` already does this filter). A source with `enabled: false` is skipped. The resolved source list is passed to `chunk_export` so the export's `manifest.source_set` is consistent with what the rest of the pipeline would actually process.
+  - **Skip sources with no preprocessed dir (per user note 2026-06-12)**: for each enabled source, check that `data/preprocessed/<source>/` exists. If it does not (e.g. the source was ingested but the preprocess stage was never run for it), **skip the source with a WARNING, do not crash with `FileNotFoundError`**. The export continues for the sources that ARE preprocessed. The user explicitly called this out: "Skip sources with no preprocessed dir instead of crashing with FileNotFoundError." The semantic: a missing preprocessed dir means "this source isn't ready to export" — it's a soft skip, not a hard error.
+    ```python
+    # Pseudocode
+    sources = [name for name, src in cfg["sources_critical_path"].items()
+               if src.get("enabled", False)]
+    ready_sources = []
+    for s in sources:
+        if (data_dir / "preprocessed" / s).exists():
+            ready_sources.append(s)
+        else:
+            print(f"  WARNING: skipping source {s!r} — "
+                  f"preprocessed dir does not exist (run sentinel-data preprocess first?)")
+    if not ready_sources:
+        print("  ERROR: no sources ready to export")
+        return
+    ```
+  - **In the export's manifest, record both the resolved source set and the skipped list** for reproducibility:
+    - `manifest.source_set: list[str]` (the actually-exported sources)
+    - `manifest.skipped_sources: list[{name, reason}]` (sources that were enabled but had no preprocessed dir)
 - [ ] Test: `sentinel-data export --help` shows the new flags
 - [ ] Test: `sentinel-data export --dataset-version sentinel-v2-dryrun-2026-08 --dry-run` prints the plan
+- [ ] Test: `sentinel-data export --dry-run` lists the resolved source set + the skipped sources
+- [ ] Test: `sentinel-data export` with a non-existent source enabled in config → that source is skipped with a WARNING, export continues for the others
 
 ---
 

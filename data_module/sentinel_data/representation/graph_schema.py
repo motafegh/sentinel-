@@ -1,75 +1,192 @@
-"""Schema constants for the SENTINEL graph representation — active schema: v9.
+"""
+graph_schema.py — SENTINEL graph feature schema (single source of truth, Stage 7B)
 
-THIS IS A THIN ADAPTER over `ml/src/preprocessing/graph_schema.py`.
+Stage 7B seam swap (2026-06-12): this file is now the canonical source of truth.
+`ml/src/preprocessing/graph_schema.py` is now a thin re-export shim pointing here.
+All model files (gnn_encoder.py, sentinel_model.py, predictor.py, etc.) continue to
+work without modification — their imports still resolve via the shim.
 
-Stage 0 (2026-06-08) shipped a stub with the constants hard-coded and 3 latent
-bugs (dict direction reversed, list instead of tuple). Stage 2 (2026-06-10) task
-2.1-2.2 fixes those bugs and replaces the stub with a re-export from the
-single source of truth in `ml/`.
+Class order (CLASS_NAMES, NUM_CLASSES) is LOCKED — changing it invalidates existing
+checkpoints. DO NOT reorder or add classes without bumping FEATURE_SCHEMA_VERSION.
 
-Why thin-adapter over copy-paste:
-  - Bug fixes apply once (in `ml/`), automatically propagate to the new path.
-  - The Stage 7 seam swap becomes a 1-line change (delete this file) instead
-    of a multi-file refactor.
-  - The "byte-identical output" guarantee is trivially true — same object,
-    different import name.
+WHY THIS FILE EXISTS
+────────────────────
+ml/src/data_extraction/ast_extractor.py (offline batch pipeline, ~41K training
+graphs) and ml/src/inference/preprocess.py (online inference, one contract
+per API request) previously duplicated every constant below verbatim.
 
-How it works:
-  - All public symbols from `ml/src/preprocessing/graph_schema.py` are
-    re-exported with the same names and values.
-  - `is` equality holds between the old and new import paths because
-    they're the same Python object.
-  - If `ml/src/preprocessing/graph_schema.py` is not importable (e.g. when
-    `sentinel_data` is installed as a standalone PyPI package in the future),
-    `__getattr__` raises a clear ImportError pointing the user to the dep.
+Any divergence between the two files would silently corrupt inference: the
+model would receive feature vectors encoded differently from the ones it was
+trained on — producing wrong predictions with no error signal.
 
-DO NOT change these constants without bumping FEATURE_SCHEMA_VERSION and
-updating the version registry. Class order (NUM_CLASSES = 10, indices 0-9)
-is LOCKED — changing it invalidates all existing checkpoints.
+Centralising here ensures atomic propagation: one edit to this file updates
+both pipelines simultaneously, making it structurally impossible for them to
+drift apart.
+
+CHANGE POLICY
+─────────────
+Any modification to NODE_TYPES, VISIBILITY_MAP, EDGE_TYPES, or the feature
+ordering in FEATURE_NAMES requires ALL of the following steps:
+
+  1. Rebuild all graph .pt files:
+       sentinel-data export (re-run full pipeline)
+  2. Rebuild all token .pt files (only if tokenizer logic changed):
+       sentinel-data represent
+  3. Retrain the model from scratch:
+       python ml/scripts/train.py
+       (GNNEncoder reads in_channels=NODE_FEATURE_DIM at construction time)
+  4. Increment FEATURE_SCHEMA_VERSION to invalidate all inference caches:
+       FEATURE_SCHEMA_VERSION = "v10"  (next increment — currently v9)
+
+Skipping any of these steps will cause silent accuracy regression.
+
+SCHEMA HISTORY (abbreviated — full history in ml/src/preprocessing/_backup_pre_seam_swap_2026-06-12/graph_schema.py)
+v1–v8: see backup
+v9   : NODE_FEATURE_DIM=12, NUM_NODE_TYPES=14, NUM_EDGE_TYPES=12
+       Added: in_unchecked_block[11], CFG_NODE_ARITH(13), EXTERNAL_CALL(11)
+       `now` keyword + library wrappers added to uses_block_globals[2]
 """
 
 from __future__ import annotations
 
-import importlib.metadata  # pre-import to avoid NameError in ml/'s except branch
+import sys
+from enum import IntEnum
 
-from typing import Any
+# ─────────────────────────────────────────────────────────────────────────────
+# Slither version assertion — hard failure at import, not a warning.
+# An old Slither silently produces wrong in_unchecked features.
+# ─────────────────────────────────────────────────────────────────────────────
+try:
+    import importlib.metadata as _importlib_metadata
+    _ver_str = _importlib_metadata.version("slither-analyzer")
+    _version = tuple(int(x) for x in _ver_str.split(".")[:3])
+    if _version < (0, 9, 3):
+        raise RuntimeError(
+            f"slither-analyzer {_ver_str} is too old. "
+            "SENTINEL requires >=0.9.3 for NodeType.STARTUNCHECKED support. "
+            "Upgrade: pip install 'slither-analyzer>=0.9.3,<0.11'"
+        )
+except _importlib_metadata.PackageNotFoundError:
+    pass  # slither not installed in this environment (e.g., inference-only deploy)
 
-_LIVE_SCHEMA_MODULE = "ml.src.preprocessing.graph_schema"
-_LIVE_SCHEMA_ATTRS = (
-    # Dimensions
-    "FEATURE_SCHEMA_VERSION",
-    "NODE_FEATURE_DIM",
-    "NUM_NODE_TYPES",
-    "NUM_EDGE_TYPES",
-    "NUM_CLASSES",
-    # Derived scalar (not in live schema, computed from NODE_TYPES)
-    "_MAX_TYPE_ID",
-    # Vocabularies
-    "VISIBILITY_MAP",
-    "NODE_TYPES",
-    "EDGE_TYPES",
-    "FEATURE_NAMES",
-    # Class order (LOCKED; defined locally since not in graph_schema.py)
-    "CLASS_NAMES",
-    # Typed aliases
-    "NodeType",
-    # Structural prefix (for K=48 GNN prefix injection)
-    "STRUCTURAL_PREFIX_TYPES",
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Schema version
+# ─────────────────────────────────────────────────────────────────────────────
+
+FEATURE_SCHEMA_VERSION: str = "v9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Structural constants
+# ─────────────────────────────────────────────────────────────────────────────
+
+NODE_FEATURE_DIM: int = 12
+NUM_NODE_TYPES: int = 14
+NUM_EDGE_TYPES: int = 12
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node type vocabulary
+# ─────────────────────────────────────────────────────────────────────────────
+
+NODE_TYPES: dict[str, int] = {
+    # Declaration-level node types (v1 — ids 0–7, stable)
+    "STATE_VAR":   0,
+    "FUNCTION":    1,
+    "MODIFIER":    2,
+    "EVENT":       3,
+    "FALLBACK":    4,
+    "RECEIVE":     5,
+    "CONSTRUCTOR": 6,
+    "CONTRACT":    7,
+    # CFG subtypes (v2 — ids 8–12)
+    "CFG_NODE_CALL":   8,
+    "CFG_NODE_WRITE":  9,
+    "CFG_NODE_READ":   10,
+    "CFG_NODE_CHECK":  11,
+    "CFG_NODE_OTHER":  12,
+    # v9 addition (Fix #4) — arithmetic ops for IntegerUO signal
+    "CFG_NODE_ARITH":  13,
+}
+
+
+class NodeType(IntEnum):
+    """Typed aliases for NODE_TYPES integer IDs."""
+    STATE_VAR      = NODE_TYPES["STATE_VAR"]        # 0
+    FUNCTION       = NODE_TYPES["FUNCTION"]          # 1
+    MODIFIER       = NODE_TYPES["MODIFIER"]          # 2
+    EVENT          = NODE_TYPES["EVENT"]             # 3
+    FALLBACK       = NODE_TYPES["FALLBACK"]          # 4
+    RECEIVE        = NODE_TYPES["RECEIVE"]           # 5
+    CONSTRUCTOR    = NODE_TYPES["CONSTRUCTOR"]       # 6
+    CONTRACT       = NODE_TYPES["CONTRACT"]          # 7
+    CFG_NODE_CALL  = NODE_TYPES["CFG_NODE_CALL"]    # 8
+    CFG_NODE_WRITE = NODE_TYPES["CFG_NODE_WRITE"]   # 9
+    CFG_NODE_READ  = NODE_TYPES["CFG_NODE_READ"]    # 10
+    CFG_NODE_CHECK = NODE_TYPES["CFG_NODE_CHECK"]   # 11
+    CFG_NODE_OTHER = NODE_TYPES["CFG_NODE_OTHER"]   # 12
+
+
+STRUCTURAL_PREFIX_TYPES: frozenset[NodeType] = frozenset({
+    NodeType.FUNCTION,
+    NodeType.MODIFIER,
+    NodeType.CONSTRUCTOR,
+    NodeType.FALLBACK,
+    NodeType.RECEIVE,
+})
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Visibility ordinal encoding
+# ─────────────────────────────────────────────────────────────────────────────
+
+VISIBILITY_MAP: dict[str, float] = {
+    "public":   0.0,
+    "external": 0.0,
+    "internal": 0.5,
+    "private":  1.0,
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Edge type vocabulary
+# ─────────────────────────────────────────────────────────────────────────────
+
+EDGE_TYPES: dict[str, int] = {
+    "CALLS":             0,
+    "READS":             1,
+    "WRITES":            2,
+    "EMITS":             3,
+    "INHERITS":          4,
+    "CONTAINS":          5,
+    "CONTROL_FLOW":      6,
+    "REVERSE_CONTAINS":  7,   # runtime-only, NEVER on disk
+    "CALL_ENTRY":        8,
+    "RETURN_TO":         9,
+    "DEF_USE":           10,
+    "EXTERNAL_CALL":     11,  # v9 addition (Fix #3)
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature name registry
+# ─────────────────────────────────────────────────────────────────────────────
+
+FEATURE_NAMES: tuple[str, ...] = (
+    "type_id",              # [0]
+    "visibility",           # [1]
+    "uses_block_globals",   # [2]
+    "view",                 # [3]
+    "payable",              # [4]
+    "complexity",           # [5]
+    "loc",                  # [6]
+    "return_ignored",       # [7]
+    "call_target_typed",    # [8]
+    "has_loop",             # [9]
+    "external_call_count",  # [10]
+    "in_unchecked_block",   # [11]
 )
 
-# _MAX_TYPE_ID was referenced in the Stage 0 stub but is NOT a real
-# module-level constant in the live ml/ schema. It is derived at the
-# call sites as `float(max(NODE_TYPES.values()))`. We re-export it
-# here as a derived value so downstream code can still use
-# `from sentinel_data.representation.graph_schema import _MAX_TYPE_ID`.
-_MAX_TYPE_ID: float = 0.0  # populated at import time below
+# ─────────────────────────────────────────────────────────────────────────────
+# Class vocabulary (LOCKED — changing order invalidates checkpoints)
+# ─────────────────────────────────────────────────────────────────────────────
 
-# NUM_CLASSES and CLASS_NAMES live in ml/src/training/trainer.py
-# (not in graph_schema.py). The Stage 0 stub duplicated them here.
-# We re-export them as derived values so the v1 import path
-# `from sentinel_data.representation.graph_schema import NUM_CLASSES`
-# continues to work. The class order is LOCKED to match existing
-# checkpoints — DO NOT change without bumping FEATURE_SCHEMA_VERSION.
 CLASS_NAMES: list[str] = [
     "Reentrancy",           # 0
     "CallToUnknown",        # 1
@@ -84,65 +201,43 @@ CLASS_NAMES: list[str] = [
 ]
 NUM_CLASSES: int = len(CLASS_NAMES)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Derived constants
+# ─────────────────────────────────────────────────────────────────────────────
 
+_MAX_TYPE_ID: float = float(max(NODE_TYPES.values()))  # 13.0 for v9
 
-_LOCAL_ATTRS = frozenset(("_MAX_TYPE_ID", "CLASS_NAMES", "NUM_CLASSES"))
+# ─────────────────────────────────────────────────────────────────────────────
+# Invariant assertions — caught at import time
+# ─────────────────────────────────────────────────────────────────────────────
 
-
-def __getattr__(name: str) -> Any:
-    """Lazy re-export for sentinel-data standalone install support.
-
-    _LOCAL_ATTRS are defined in this module and never fetched from ml/.
-    The rest of _LIVE_SCHEMA_ATTRS are lazily imported from ml/ if the
-    eager import block at the bottom of this file hasn't run (e.g. when
-    ml/ is not on PYTHONPATH in a standalone install).
-    """
-    if name in _LOCAL_ATTRS:
-        # These are in __dict__ already (defined above); __getattr__ is only
-        # called when normal lookup fails, so this branch is a safety net.
-        raise AttributeError(
-            f"module {__name__!r} has no attribute {name!r} "
-            f"(local constant not yet initialised — import order issue)"
-        )
-    if name in _LIVE_SCHEMA_ATTRS:
-        try:
-            import importlib
-            mod = importlib.import_module(_LIVE_SCHEMA_MODULE)
-        except ImportError as e:
-            raise ImportError(
-                f"sentinel_data.representation.graph_schema.{name} requires the "
-                f"`ml` package (from SENTINEL's `ml/` directory). Install it or "
-                f"add it to PYTHONPATH. Original error: {e}"
-            ) from e
-        return getattr(mod, name)
-    raise AttributeError(
-        f"module {__name__!r} has no attribute {name!r}. "
-        f"Available: {sorted(_LIVE_SCHEMA_ATTRS)}"
-    )
-
-
-# Eager re-export: this is the thin-adapter. The `from X import Y` at
-# module load time means `from sentinel_data.representation.graph_schema
-# import NODE_TYPES` returns the SAME dict object as
-# `from ml.src.preprocessing.graph_schema import NODE_TYPES`. Hence
-# `is` equality is trivially true and the byte-identical regression
-# test cannot fail due to "two different NODE_TYPES objects."
-from ml.src.preprocessing.graph_schema import (  # noqa: E402
-    FEATURE_SCHEMA_VERSION,
-    NODE_FEATURE_DIM,
-    NUM_NODE_TYPES,
-    NUM_EDGE_TYPES,
-    VISIBILITY_MAP,
-    NODE_TYPES,
-    EDGE_TYPES,
-    FEATURE_NAMES,
-    NodeType,
-    STRUCTURAL_PREFIX_TYPES,
+assert len(FEATURE_NAMES) == NODE_FEATURE_DIM, (
+    f"FEATURE_NAMES has {len(FEATURE_NAMES)} entries but NODE_FEATURE_DIM={NODE_FEATURE_DIM}."
+)
+assert len(EDGE_TYPES) == NUM_EDGE_TYPES, (
+    f"EDGE_TYPES has {len(EDGE_TYPES)} entries but NUM_EDGE_TYPES={NUM_EDGE_TYPES}."
+)
+assert len(NODE_TYPES) == 14, (
+    f"NODE_TYPES has {len(NODE_TYPES)} entries but expected 14 (ids 0-13, v9 schema)."
+)
+assert max(NODE_TYPES.values()) == 13, (
+    "max(NODE_TYPES.values()) must equal 13 (v9 schema). "
+    "Update _MAX_TYPE_ID normalization in graph_extractor.py and sentinel_model.py."
 )
 
-# _MAX_TYPE_ID is derived (not exported by the live schema). Compute it
-# after the eager import so we can re-export it for backward compat.
-_MAX_TYPE_ID = float(max(NODE_TYPES.values()))
 
-
-__all__ = list(_LIVE_SCHEMA_ATTRS)
+__all__ = [
+    "FEATURE_SCHEMA_VERSION",
+    "NODE_FEATURE_DIM",
+    "NUM_NODE_TYPES",
+    "NUM_EDGE_TYPES",
+    "VISIBILITY_MAP",
+    "NODE_TYPES",
+    "EDGE_TYPES",
+    "FEATURE_NAMES",
+    "CLASS_NAMES",
+    "NUM_CLASSES",
+    "_MAX_TYPE_ID",
+    "NodeType",
+    "STRUCTURAL_PREFIX_TYPES",
+]

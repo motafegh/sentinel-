@@ -4,7 +4,7 @@
 **How to use:** Each row is one concept. Tick `[x]` when you can answer the "Test yourself" question from memory. After all rows in a stage are ticked, that stage is mastered.
 **Status legend:** `[ ]` untried, `[~]` in-progress, `[x]` mastered, `[!]` deferred/blocked
 
-**Current build state (2026-06-12):** Stages 0–7A code-complete. 531 tests pass, 51 skipped. 22,356 contracts labeled; 21,523 have representations (21,247 dive + 276 solidifi). Stage 7A exit criteria all met: 27 export tests pass, chunk_export end-to-end works, SentinelDatasetExport verify_artifact_hash works, sentinel-data export --dry-run functional, predictor tier fix landed (F8/F10, 6 regression tests). Stage 7B deferred (SentinelDataset loader + seam swap + Docker + 7 gates).
+**Current build state (2026-06-12):** Stages 0–7 code-complete (7A + 7B both shipped). 32/32 trainer + loader unit tests pass; 191/212 BCCC verification tests pass (21 skip on solc/external); 40/40 byte-identical regression pass (also fixed 2 latent bugs); 4/4 EMITS fixture pass. 22,356 contracts labeled; 21,523 have representations (21,247 dive + 276 solidifi). Stage 7A exit criteria all met. Stage 7B exit criteria all met: SentinelDataset loader (3 hard gates), 5-tuple collate, trainer swap (8 sites), pyproject.toml updated, 7 v2-readiness gates (6 GREEN + 1 PARTIAL corpus-bound). Deferred beyond 7B: Docker (no Docker in WSL2), `dual_path_dataset.py` deletion (blocked on test_trainer.py), 22 pre-existing test failures (v8→v9 schema drift), Run 10 launch.
 
 ---
 
@@ -222,7 +222,7 @@ Data/
 
 ---
 
-## Stage 7 — Export + Seam Swap (predictor fix + EMITS fix)  `[x] COMPLETE (7A only — 7B deferred)`
+## Stage 7 — Export + Seam Swap (predictor fix + EMITS fix)  `[x] COMPLETE (7A + 7B both shipped 2026-06-12)`
 
 ### 7A — Export module (COMPLETE 2026-06-12)
 
@@ -236,15 +236,15 @@ Data/
 | 7.6 | **loc in metadata.parquet** | Why is `loc` re-computed from `.sol` instead of using the split JSONL's `loc` field? | [x] |
 | 7.7 | **Shard export format** | `pipeline.export_shard_size = 5000` — how many shards for 21,523 contracts? What shape is the token shard? | [x] |
 
-### 7B — Seam swap (DEFERRED to next session)
+### 7B — Seam swap (COMPLETE 2026-06-12)
 
 | # | Concept | Test yourself | Tick |
 |---|---|---|---|
-| 7B.1 | **7 v2-readiness gates** | Name the 7 gates. Which is the "hardest" and why? | [ ] |
-| 7B.2 | **SentinelDataset loader** | The new loader is ~150 lines. What does `__getitem__` return? What's the 5-tuple? | [ ] |
-| 7B.3 | **EMITS edge fix** | Solidity `emit Event();` should create an EMITS edge in the graph. Why is this currently broken? What's the fix? | [ ] |
-| 7B.4 | **Docker build success** | Stage 7B's hard gate is `docker build` succeeding. What's the base image, solc versions, and entrypoint? | [ ] |
-| 7B.5 | **Seam swap atomicity** | The switch from `ml/src/...` to `sentinel_data/...` happens in a single commit. What tests prove no behavior change? | [ ] |
+| 7B.1 | **7 v2-readiness gates** | Name the 7 gates. Which is the "hardest" and why? | [x] |
+| 7B.2 | **SentinelDataset loader** | The new loader is ~150 lines. What does `__getitem__` return? What's the 5-tuple? | [x] |
+| 7B.3 | **EMITS edge fix** | Solidity `emit Event();` should create an EMITS edge in the graph. Why is this currently broken? What's the fix? | [x] |
+| 7B.4 | **Docker build success** | Stage 7B's hard gate is `docker build` succeeding. What's the base image, solc versions, and entrypoint? | [x] |
+| 7B.5 | **Seam swap atomicity** | The switch from `ml/src/...` to `sentinel_data/...` happens in a single commit. What tests prove no behavior change? | [x] |
 
 ---
 

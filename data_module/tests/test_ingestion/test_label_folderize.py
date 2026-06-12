@@ -145,7 +145,7 @@ class TestFolderizeByLabels:
 
     def test_real_dive_csv_sample(self, tmp_path):
         """Smoke test against the actual DIVE_Labels.csv header + first 10 rows."""
-        real_csv = Path("/home/motafeq/projects/sentinel/Data/data/raw_staging/dive_labels/DIVE_Labels.csv")
+        real_csv = Path("/home/motafeq/projects/sentinel/data_module/data/raw_staging/dive_labels/DIVE_Labels.csv")
         if not real_csv.exists():
             pytest.skip("DIVE_Labels.csv not extracted; skipping real-data test")
         repo = tmp_path / "repo"

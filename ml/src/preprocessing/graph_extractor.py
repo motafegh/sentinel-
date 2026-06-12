@@ -109,7 +109,7 @@ from typing import Any
 import torch
 from torch_geometric.data import Data
 
-from .graph_schema import (
+from sentinel_data.representation.graph_schema import (
     EDGE_TYPES, FEATURE_NAMES, NODE_FEATURE_DIM, NODE_TYPES, NUM_EDGE_TYPES, VISIBILITY_MAP,
 )
 
@@ -1238,7 +1238,7 @@ def _compute_has_cei_path(
     stored as graph.has_cei_path (int, 0 or 1) and used by aux_cei_loss
     after Gate 7.5 validates label quality on v9 data.
     """
-    from ml.src.preprocessing.graph_schema import EDGE_TYPES
+    from sentinel_data.representation.graph_schema import EDGE_TYPES
 
     _CF = EDGE_TYPES["CONTROL_FLOW"]  # 6
 

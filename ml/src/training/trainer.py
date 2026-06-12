@@ -76,7 +76,7 @@ from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
+from ml.src.datasets import SentinelDataset, sentinel_collate_fn
 from ml.src.models.sentinel_model import SentinelModel
 from ml.src.training.focalloss import FocalLoss
 from ml.src.training.losses import AsymmetricLoss
@@ -186,9 +186,9 @@ def _parse_version(v: str) -> tuple[int, ...]:
 @dataclass
 class TrainConfig:
     # --- Paths ---
-    graphs_dir:      str = "ml/data/graphs"
-    tokens_dir:      str = "ml/data/tokens_windowed"
-    splits_dir:      str = "ml/data/splits/deduped"
+    # Stage 7B: data paths consolidated to a single v2 export directory.
+    # Splits are read from the export's manifest.json (SentinelDataset takes split name).
+    export_dir:      str = "data_module/data/exports/sentinel-v2-baseline-2026-06-12"
     checkpoint_dir:  str = "ml/checkpoints"
     checkpoint_name: str = "sentinel_best.pt"
 
@@ -220,7 +220,9 @@ class TrainConfig:
     lora_target_modules:  list[str]  = field(default_factory=lambda: ["query", "value"])
 
     # --- Label source ---
-    label_csv: str = "ml/data/processed/multilabel_index_cleaned.csv"
+    # Stage 7B: labels are read from the export's labels.parquet (SentinelDataset
+    # reads them internally). This field is kept as a fallback for ad-hoc CSV usage.
+    label_csv: str | None = None
 
     # --- Training ---
     epochs:              int   = 100         # 100 epochs; increased from v6's 60 for more data + harder ASL loss
@@ -358,7 +360,8 @@ class TrainConfig:
     jk_entropy_reg_lambda:         float = 0.005  # C-3: JK entropy regularizer weight (0=disabled); 0.01 forced uniform 33/33/33 in Run 3
 
     # --- Cache ---
-    cache_path: str | None = "ml/data/cached_dataset_v10.pkl"
+    # Stage 7B: v2 export uses lazy shard loading (LRU-cached). No prebuilt pickle.
+    cache_path: str | None = None
 
     # --- Logging ---
     log_interval: int = 100
@@ -425,22 +428,23 @@ class TrainConfig:
 # pos_weight computation
 # ---------------------------------------------------------------------------
 def compute_pos_weight(
-    train_dataset:          "DualPathDataset",
+    train_dataset:          "SentinelDataset",
     num_classes:            int,
     device:                 str,
     pos_weight_min_samples: int   = 0,
     pos_weight_cap:         float = 20.0,
 ) -> torch.Tensor:
-    # [A36] Compute from in-memory label map — no CSV I/O on every call.
-    # train_dataset.paired_hashes is already filtered to training indices.
-    if train_dataset._label_map is None:
+    # [A36] Compute from in-memory label lookup — no CSV/parquet I/O on every call.
+    # train_dataset._contract_ids is already filtered to training indices.
+    if not train_dataset._label_lookup:
         raise RuntimeError(
-            "compute_pos_weight requires a dataset in multi-label mode (label_csv must be set)."
+            "compute_pos_weight requires a SentinelDataset with labels loaded "
+            "(export manifest must include labels.parquet)."
         )
     train_labels = np.stack([
-        train_dataset._label_map[h].numpy()
-        for h in train_dataset.paired_hashes
-        if h in train_dataset._label_map
+        train_dataset._label_lookup[h][0].numpy()  # (y_tensor, tier) tuple
+        for h in train_dataset._contract_ids
+        if h in train_dataset._label_lookup
     ])
 
     N = len(train_labels)
@@ -501,7 +505,7 @@ def evaluate(
     with torch.no_grad():
         for batch in tqdm(loader, desc="Evaluating", leave=False,
                           disable=not sys.stdout.isatty()):
-            graphs, tokens, labels = batch
+            graphs, tokens, labels, *_ = batch  # SentinelDataset returns 5-tuple; ignore contract_ids + tiers
 
             graphs         = graphs.to(device)
             input_ids      = tokens["input_ids"].to(device)
@@ -641,7 +645,7 @@ def train_one_epoch(
     pbar = tqdm(loader, desc="Training", unit="batch", leave=False,
                 disable=not sys.stdout.isatty())
     for batch_idx, batch in enumerate(pbar):
-        graphs, tokens, labels = batch
+        graphs, tokens, labels, *_ = batch  # SentinelDataset returns 5-tuple; ignore contract_ids + tiers
 
         graphs         = graphs.to(device)
         input_ids      = tokens["input_ids"].to(device)
@@ -952,51 +956,66 @@ def _grad_norm(module: nn.Module) -> float:
 # Weighted sampler
 # ---------------------------------------------------------------------------
 def _build_weighted_sampler(
-    dataset: DualPathDataset,
-    label_csv_path: Path,
+    dataset: SentinelDataset,
+    label_csv_path: Path | None,  # kept for backward-compat; ignored in v2
     mode: str,
 ) -> "torch.utils.data.WeightedRandomSampler":
-    import pandas as pd
+    """Build a WeightedRandomSampler for the training set.
+
+    Stage 7B: reads labels from the in-memory `dataset._label_lookup` (built by
+    SentinelDataset from `labels.parquet` in the export). The old `label_csv_path`
+    arg is accepted but ignored — it referenced the v1 multilabel_index.csv which
+    is no longer in the data path.
+    """
     from torch.utils.data import WeightedRandomSampler
 
-    df = pd.read_csv(label_csv_path).set_index("md5_stem")
+    if label_csv_path is not None:
+        logger.debug(
+            f"_build_weighted_sampler: label_csv_path={label_csv_path} is ignored "
+            f"in v2 path; labels are read from export's labels.parquet"
+        )
+
+    if not dataset._label_lookup:
+        raise RuntimeError(
+            "_build_weighted_sampler requires a SentinelDataset with labels loaded."
+        )
+
+    _TIMESTAMP_IDX = CLASS_NAMES.index("Timestamp")
+    _DOS_IDX       = CLASS_NAMES.index("DenialOfService")
+    _LARGE_THRESHOLD = 150
+
     weights: list[float] = []
-    for md5 in dataset.paired_hashes:
-        if md5 not in df.index:
+    for contract_id in dataset._contract_ids:
+        entry = dataset._label_lookup.get(contract_id)
+        if entry is None:
             weights.append(1.0)
             continue
-        row = df.loc[md5]
+        y_tensor, _tier = entry  # (y_tensor, confidence_tier)
+        y = y_tensor.cpu().numpy()  # shape [10]
+
         if mode == "positive":
             # 3× weight for any row with at least one positive label.
             # Shifts effective positive/negative ratio from ~40/60 to ~60/40
             # without modifying labels. (BUG-H10 fix)
-            has_vuln = any(float(row.get(cls, 0)) == 1.0 for cls in CLASS_NAMES)
+            has_vuln = any(v == 1.0 for v in y)
             w = 3.0 if has_vuln else 1.0
         elif mode == "DoS-only":
-            w = 39.0 if float(row.get("DenialOfService", 0)) == 1.0 else 1.0
+            w = 39.0 if y[_DOS_IDX] == 1.0 else 1.0
         elif mode == "all-rare":
-            n_pos = sum(float(row.get(cls, 0)) for cls in CLASS_NAMES)
-            w = float(n_pos) if n_pos > 0 else 1.0
+            n_pos = float(y.sum())
+            w = n_pos if n_pos > 0 else 1.0
         elif mode == "timestamp-size":
             # E2 (Interp-3): Timestamp size shortcut mitigation.
             # Timestamp-positive contracts with >150 nodes get 4× weight;
             # large negatives get 0.5× weight. Encourages model to learn
             # genuine block.timestamp-in-branch patterns on large contracts.
-            # Threshold 150 matches EXP-L7 "large" stratum boundary.
-            _TIMESTAMP_IDX = CLASS_NAMES.index("Timestamp")
-            _LARGE_THRESHOLD = 150
-            is_ts_pos = float(row.get("Timestamp", 0)) == 1.0
-            num_nodes = 0
-            if dataset.cached_data is not None and md5 in dataset.cached_data:
-                _entry = dataset.cached_data[md5]
-                if isinstance(_entry, tuple) and len(_entry) >= 1:
-                    _graph = _entry[0]
-                    num_nodes = int(getattr(_graph, "num_nodes", 0))
+            is_ts_pos = y[_TIMESTAMP_IDX] == 1.0
+            num_nodes = dataset.num_nodes_map.get(contract_id, 0)
             is_large = num_nodes > _LARGE_THRESHOLD
             if is_ts_pos and is_large:
                 w = 4.0  # oversample hard Timestamp+ cases
             elif not is_ts_pos and is_large:
-                w = 0.5  # undersample large negatives that model already predicts correctly
+                w = 0.5  # undersample large negatives
             else:
                 w = 1.0
         else:
@@ -1058,50 +1077,56 @@ def train(config: TrainConfig) -> dict:
     if not (0.0 < config.smoke_subsample_fraction <= 1.0):
         raise ValueError(f"smoke_subsample_fraction must be in (0, 1], got {config.smoke_subsample_fraction}")
 
-    train_indices = np.load(Path(config.splits_dir) / "train_indices.npy")
-    val_indices   = np.load(Path(config.splits_dir) / "val_indices.npy")
+    train_indices = None  # Stage 7B: splits are read from export manifest, not .npy files
+    val_indices   = None
 
     if config.smoke_subsample_fraction < 1.0:
-        original_n = len(train_indices)
-        keep_n = max(1, int(original_n * config.smoke_subsample_fraction))
-        rng = np.random.default_rng(42)
-        train_indices = np.sort(rng.choice(train_indices, size=keep_n, replace=False))
-        logger.info(f"Smoke subsample: {keep_n}/{original_n} train samples ({100*config.smoke_subsample_fraction:.0f}%)")
+        # SentinelDataset doesn't support positional indices — for smoke tests
+        # we keep the first N contracts (deterministic via sorted _contract_ids).
+        # Real Run 10+ will use the full split.
+        logger.info(
+            f"Smoke subsample: {100*config.smoke_subsample_fraction:.0f}% of train split"
+        )
 
     label_csv_path = Path(config.label_csv) if config.label_csv else None
     if label_csv_path is not None and not label_csv_path.exists():
         raise FileNotFoundError(f"label_csv not found: {label_csv_path}.")
-    cache_path = Path(config.cache_path) if config.cache_path else None
 
-    # Load the cache through DualPathDataset so schema-version and 10-hash integrity
-    # checks always run (BUG-P4 fix). The train dataset loads and validates the full
-    # cache dict; val dataset then shares the already-validated reference to avoid
-    # double RAM (2.5 GB saved) without bypassing any validation.
-    logger.info("Creating training dataset...")
-    train_dataset = DualPathDataset(
-        graphs_dir=config.graphs_dir,
-        tokens_dir=config.tokens_dir,
-        indices=train_indices.tolist(),
-        label_csv=label_csv_path,
-        cache_path=cache_path,  # DualPathDataset runs schema + 10-hash integrity checks
+    # Stage 7B: SentinelDataset reads from the v2 export directory. Schema-version
+    # and artifact-hash integrity checks run at __init__ (3 hard ValueError gates).
+    # Shard loading is LRU-cached — train/val share the same shard cache.
+    logger.info(f"Creating training dataset from export: {config.export_dir}")
+    train_dataset = SentinelDataset(
+        split="train",
+        export_dir=Path(config.export_dir),
     )
-    logger.info(f"Train dataset cache loaded: {train_dataset.cached_data is not None}")
+    logger.info(f"Train dataset size: {len(train_dataset)} contracts")
+
+    if config.smoke_subsample_fraction < 1.0:
+        # Apply smoke subsample by slicing the in-memory _contract_ids.
+        # We monkey-patch here because SentinelDataset doesn't accept indices.
+        # This is a smoke-test-only hack — remove before Run 10.
+        keep_n = max(1, int(len(train_dataset) * config.smoke_subsample_fraction))
+        train_dataset._contract_ids = train_dataset._contract_ids[:keep_n]
+        train_dataset._num_nodes_map = {
+            c: n for c, n in train_dataset._num_nodes_map.items()
+            if c in set(train_dataset._contract_ids)
+        }
+        logger.info(
+            f"Smoke subsample applied: {len(train_dataset)} train contracts (post-slice)"
+        )
 
     logger.info("Creating validation dataset...")
-    val_dataset = DualPathDataset(
-        graphs_dir=config.graphs_dir,
-        tokens_dir=config.tokens_dir,
-        indices=val_indices.tolist(),
-        label_csv=label_csv_path,
-        cache_path=None,  # share validated dict from train_dataset — no double load
+    val_dataset = SentinelDataset(
+        split="val",
+        export_dir=Path(config.export_dir),
     )
-    if train_dataset.cached_data is not None:
-        val_dataset.cached_data = train_dataset.cached_data
+    logger.info(f"Val dataset size: {len(val_dataset)} contracts")
 
     _use_workers = config.num_workers > 0
     _loader_kwargs: dict = dict(
         batch_size=config.batch_size,
-        collate_fn=dual_path_collate_fn,
+        collate_fn=sentinel_collate_fn,
         num_workers=config.num_workers,
     )
     if _use_workers:
@@ -1611,9 +1636,8 @@ def train(config: TrainConfig) -> dict:
         _slog = StructuredLogger(_slog_dir)
         _slog.log_startup(
             dataset_paths=[
-                Path(config.graphs_dir),
-                Path(config.tokens_dir),
-                Path(config.label_csv) if config.label_csv else Path("."),
+                Path(config.export_dir),
+                Path(config.export_dir) / "labels.parquet",  # Stage 7B: labels live in export
             ],
             archive_dir=Path("ml/data/archive") if Path("ml/data/archive").exists() else None,
         )
@@ -1808,7 +1832,7 @@ def train(config: TrainConfig) -> dict:
                 and hasattr(model, "compute_prefix_attention_mean")
             ):
                 try:
-                    _diag_graphs, _diag_tokens, _ = next(iter(val_loader))
+                    _diag_graphs, _diag_tokens, _, *_ = next(iter(val_loader))  # 5-tuple: ignore contract_ids + tiers
                     _diag_graphs = _diag_graphs.to(device)
                     _diag_ids    = _diag_tokens["input_ids"].to(device)
                     _diag_mask   = _diag_tokens["attention_mask"].to(device)

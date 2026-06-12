@@ -74,7 +74,11 @@ def write_tokens_shards(
         if not tok_path.exists():
             skipped += 1
             continue
-        tok: torch.Tensor = torch.load(tok_path, weights_only=True)
+        tok_data = torch.load(tok_path, weights_only=False)
+        # .tokens.pt files are dicts produced by windowed_tokenizer — extract input_ids only.
+        # The shard format stores [N, 4, 512] int64 input_ids; attention_mask is reconstructed
+        # in SentinelDataset as (tok != pad_token_id).long().
+        tok: torch.Tensor = tok_data["input_ids"] if isinstance(tok_data, dict) else tok_data
         current_tensors.append(tok)
         current_ids.append(sha)
         if len(current_tensors) >= shard_size:
