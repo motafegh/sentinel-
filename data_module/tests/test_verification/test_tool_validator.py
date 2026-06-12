@@ -12,7 +12,7 @@ from sentinel_data.verification.tool_validator import (
     ToolValidationResult, run_tool_validation,
 )
 
-_DATA_DIR = Path("Data/data")
+_DATA_DIR = Path("data_module/data")
 _MERGED_DIR = _DATA_DIR / "labels" / "merged"
 _PREP_DIR = _DATA_DIR / "preprocessed"
 

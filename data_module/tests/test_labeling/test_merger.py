@@ -8,7 +8,7 @@ import pytest
 from sentinel_data.labeling.merger import run_merger, _merge_class_entries, _check_co_occurrence_flag
 from sentinel_data.labeling.schema import class_names
 
-_DATA_DIR = Path("Data/data")
+_DATA_DIR = Path("data_module/data")
 _LABELS_DIR = _DATA_DIR / "labels"
 
 

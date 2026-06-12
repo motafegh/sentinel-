@@ -65,6 +65,7 @@ class FolderizationResult:
     files_moved: int = 0
 
     def __post_init__(self):
+        """Default classes_present to empty list if not provided."""
         if self.classes_present is None:
             self.classes_present = []
 

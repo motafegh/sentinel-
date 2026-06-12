@@ -135,7 +135,7 @@ class TestBuildProbeDataset:
 
         This test requires real DIVE labels/preprocessed data. Skips otherwise.
         """
-        data_dir = Path("Data/data")
+        data_dir = Path("data_module/data")
         if not (data_dir / "labels" / "merged").exists() \
                 or not (data_dir / "preprocessed" / "dive").exists():
             pytest.skip("DIVE labels/preprocessed not on disk")

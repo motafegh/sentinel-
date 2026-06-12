@@ -49,8 +49,10 @@ from sentinel_data.ingestion.connectors.base import (
 
 
 class ManualConnector(BaseConnector):
+    """Materialise pre-downloaded .sol sources from a local path, zip, or glob."""
 
     def _pull(self, cfg: SourceConfig, dest: Path) -> PullResult:
+        """Materialize staging data into dest/repo and return discovered .sol files."""
         extra = cfg.extra or {}
         staging = extra.get("staging_path")
         if not staging:

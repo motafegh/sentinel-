@@ -100,6 +100,8 @@ class ClassFPStats:
 
 @dataclass
 class FPEstimationResult:
+    """Top-level result container for the full FP estimation run."""
+
     by_class: dict[str, ClassFPStats] = field(default_factory=dict)
     total_sampled: int = 0
     total_likely_fp: int = 0

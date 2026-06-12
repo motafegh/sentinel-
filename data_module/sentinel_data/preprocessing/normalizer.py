@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 @dataclass
 class NormalizeResult:
+    """Output of source normalization with line-count metadata."""
+
     content: str
     n_lines_before: int
     n_lines_after: int
@@ -21,6 +23,8 @@ _TRAIL_WS   = re.compile(r'[ \t]+$', re.MULTILINE)
 
 
 def normalize(source: str) -> NormalizeResult:
+    """Strip SPDX headers, line/block comments, trailing whitespace, and collapse blank lines."""
+
     n_before = source.count('\n') + 1
     out = _SPDX_RE.sub('', source)
     out = _BLOCK_CMT.sub('', out)

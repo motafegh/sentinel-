@@ -21,6 +21,8 @@ _ADDRESS_RE = re.compile(r'0x[0-9a-fA-F]{40}')
 
 @dataclass
 class DedupRecord:
+    """Outcome of deduplication for a single file."""
+
     sha256: str
     dedup_group_id: str   # = sha256 in Stage 1; similarity cluster id in Stage 2+
     is_duplicate: bool
@@ -37,6 +39,11 @@ class Deduplicator:
         self._seen_addr: dict[str, str] = {}
 
     def process(self, content: str, path: Path) -> DedupRecord:
+        """Check content against seen SHA-256 hashes and Ethereum addresses.
+
+        Returns a DedupRecord indicating whether this file is a duplicate.
+        """
+
         sha = _sha256(content)
 
         # Level 1: exact SHA-256 match
@@ -73,4 +80,6 @@ class Deduplicator:
 
 
 def _sha256(content: str) -> str:
+    """Compute hex-encoded SHA-256 of a string."""
+
     return hashlib.sha256(content.encode()).hexdigest()

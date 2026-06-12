@@ -34,6 +34,8 @@ _CROSSWALK_PATH = Path(__file__).parents[1] / "crosswalks" / "dive.yaml"
 
 @dataclass
 class LabelResult:
+    """Aggregated statistics from a DIVE labeling run."""
+
     source: str = "dive"
     contracts_seen: int = 0
     labels_written: int = 0
@@ -44,6 +46,7 @@ class LabelResult:
 
 
 def _load_crosswalk() -> dict:
+    """Load the DIVE crosswalk YAML mapping folder names to canonical classes."""
     with open(_CROSSWALK_PATH) as f:
         return yaml.safe_load(f)
 
@@ -72,6 +75,7 @@ def _build_labels_json(
     canonical_classes: frozenset[str],
     tier: str,
 ) -> dict:
+    """Build the full .labels.json dict for one DIVE contract."""
     all_classes = class_names()
     classes = {
         cls: {"value": 1 if cls in canonical_classes else 0,

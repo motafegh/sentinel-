@@ -53,6 +53,7 @@ _DET_REGISTRY: Optional[dict[str, type]] = None  # argument → detector class
 
 
 def _get_slither_version() -> str:
+    """Detect the installed Slither version (cached after first call)."""
     global _SLITHER_VERSION
     if _SLITHER_VERSION is None:
         try:
@@ -89,6 +90,8 @@ def _resolve_solc_binary(solc_version: str) -> Optional[Path]:
 
 @dataclass
 class SlitherFindings:
+    """Result of running Slither on a single contract."""
+
     sha256: str
     source: str
     detectors_run: list[str]

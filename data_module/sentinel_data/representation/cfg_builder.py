@@ -45,6 +45,14 @@ from typing import Any, Optional
 
 @dataclass
 class CfgNode:
+    """One normalized Slither CFG node.
+
+    Attributes:
+        index: Positional index within the function's sorted node list.
+        type: Category string (e.g. ``"CFG_NODE_WRITE"``, ``"CFG_NODE_CALL"``).
+        source_lines: Slither source-mapping line numbers (may be empty).
+        expression: Human-readable label from ``str(slither_node)``.
+    """
     index: int
     type: str                    # e.g. "CFG_NODE_WRITE", "CFG_NODE_OTHER"
     source_lines: list[int]      # Slither source_mapping.lines (may be empty)
@@ -53,12 +61,22 @@ class CfgNode:
 
 @dataclass
 class CfgEdge:
+    """A single control-flow edge between two ``CfgNode`` indices."""
     src: int
     dst: int
 
 
 @dataclass
 class CfgFunction:
+    """Per-function CFG: normalized nodes, edges, and structural metrics.
+
+    Attributes:
+        canonical_name: Slither's stable cross-run function identifier.
+        nodes: Sorted list of ``CfgNode`` objects.
+        edges: Control-flow edges between node indices.
+        num_loops: Number of back-edges detected via DFS (loop count).
+        max_depth: Longest path from the entrypoint to any terminal node.
+    """
     canonical_name: str
     nodes: list[CfgNode]
     edges: list[CfgEdge]
@@ -68,6 +86,17 @@ class CfgFunction:
 
 @dataclass
 class CfgArtifact:
+    """Top-level CFG result for a single contract; JSON-serializable via ``asdict()``.
+
+    Attributes:
+        sha256: Content hash of the source file (from Stage 1 meta.json).
+        source: Dataset source label (e.g. ``"solidifi"``).
+        solc_version: Solidity compiler version used for Slither analysis.
+        schema_version: ``FEATURE_SCHEMA_VERSION`` at the time of extraction.
+        extractor_version: ``EXTRACTOR_VERSION`` at the time of extraction.
+        functions: Per-function CFGs (empty on Slither failure).
+        error: Error message if Slither parsing failed; ``None`` on success.
+    """
     sha256: str
     source: str
     solc_version: str
@@ -77,6 +106,7 @@ class CfgArtifact:
     error: Optional[str] = None
 
     def to_dict(self) -> dict:
+        """Convert to a JSON-serializable dictionary via ``dataclasses.asdict``."""
         return asdict(self)
 
 
@@ -171,6 +201,11 @@ def _max_depth_from_entry(entry_node: Any) -> int:
 
 
 def _build_function_cfg(func: Any) -> CfgFunction:
+    """Build a normalized ``CfgFunction`` from a Slither function object.
+
+    Nodes are sorted by source line then node ID for deterministic ordering.
+    Back-edge and depth metrics are computed via DFS/BFS on the Slither graph.
+    """
     nodes_raw = sorted(
         getattr(func, "nodes", None) or [],
         key=lambda n: (

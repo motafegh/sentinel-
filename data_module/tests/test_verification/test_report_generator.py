@@ -10,7 +10,7 @@ from sentinel_data.verification.gate import run_gate
 from sentinel_data.verification.report_generator import generate_report
 from sentinel_data.verification.semantic_checker import run_semantic_check
 
-_DATA_DIR = Path("Data/data")
+_DATA_DIR = Path("data_module/data")
 
 
 def _skip_if_no_merged():

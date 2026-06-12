@@ -8,7 +8,7 @@ import pytest
 from sentinel_data.labeling.schema import class_names
 from sentinel_data.verification.class_auditor import run_audit, AuditResult, CO_OCCUR_FLAG_THRESHOLD
 
-_DATA_DIR = Path("Data/data")
+_DATA_DIR = Path("data_module/data")
 _MERGED_DIR = _DATA_DIR / "labels" / "merged"
 
 

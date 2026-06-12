@@ -58,6 +58,8 @@ TOOL_AGREEMENT_DOWNGRADE_THRESHOLD = 0.30
 
 
 class Verdict(str, Enum):
+    """Per-class verification verdict from the gate logic."""
+
     VERIFIED = "VERIFIED"
     PROVISIONAL = "PROVISIONAL"
     BEST_EFFORT = "BEST-EFFORT"
@@ -66,6 +68,8 @@ class Verdict(str, Enum):
 
 @dataclass
 class ClassVerdict:
+    """Gate verdict for a single vulnerability class, with supporting evidence."""
+
     class_name: str
     verdict: Verdict
     reason: str
@@ -79,6 +83,8 @@ class ClassVerdict:
 
 @dataclass
 class GateResult:
+    """Top-level result container for the verification gate run."""
+
     verdicts: dict[str, ClassVerdict] = field(default_factory=dict)
     hard_fails: list[str] = field(default_factory=list)
     negative_check_status: Optional[str] = None  # OK / WARN / FAIL / None (not run)

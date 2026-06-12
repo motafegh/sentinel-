@@ -59,9 +59,10 @@ import pytest
 
 
 _HERE = Path(__file__).resolve()
-_REPO_ROOT = _HERE.parents[3]   # tests/test_verification/test.py → Data/tests/.../repo/
+_REPO_ROOT = _HERE.parents[3]   # data_module/tests/test_verification/ → repo root
+_MODULE_ROOT = _HERE.parents[2]  # data_module/
 _SMARTBUGS_ROOT = _REPO_ROOT / "ml" / "data" / "smartbugs-curated" / "dataset"
-_CROSSWALK_PATH = _REPO_ROOT / "Data" / "sentinel_data" / "labeling" / "crosswalks" / "smartbugs_curated.yaml"
+_CROSSWALK_PATH = _MODULE_ROOT / "sentinel_data" / "labeling" / "crosswalks" / "smartbugs_curated.yaml"
 _RECALL_THRESHOLD = 0.90
 
 # DASP folder name → SENTINEL 10-class label (or "NonVulnerable" if not

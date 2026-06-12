@@ -62,6 +62,26 @@ def hash_lineage(lineage: dict) -> str:
     return compute_dict_hash(lineage)
 
 
+def record_training_run(lineage: dict, run_name: str, dataset_version: str, **details) -> dict:
+    """Record that a training run consumed a dataset version.
+
+    Per AUDIT_PATCHES 5-P6: the training-run link answers "what data did
+    Run 11 train on, and how did it differ from Run 10?"
+
+    Args:
+        lineage: existing lineage dict (modified in-place and returned)
+        run_name: e.g. "GCB-P1-Run11"
+        dataset_version: e.g. "sentinel-v2-2026-08"
+        **details: optional extra fields (e.g. epoch, f1_macro, checkpoint_path)
+    """
+    return record_lineage_step(
+        lineage, "training_run",
+        run_name=run_name,
+        dataset_version=dataset_version,
+        **details,
+    )
+
+
 def verify_artifact(path: Path, expected_hash: str) -> bool:
     """Verify a file's hash matches the expected value.
 

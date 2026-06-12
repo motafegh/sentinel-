@@ -22,10 +22,12 @@ def _all_sources(cfg: dict) -> dict[str, dict]:
 
 
 def _enabled_sources(cfg: dict) -> dict[str, dict]:
+    """Filter to only sources with ``enabled: true`` in config."""
     return {k: v for k, v in _all_sources(cfg).items() if v.get("enabled")}
 
 
 def _source_config(name: str, entry: dict) -> SourceConfig:
+    """Convert a raw config.yaml source entry into a SourceConfig dataclass."""
     return SourceConfig(
         name=name,
         connector=entry.get("connector", "git"),
@@ -95,6 +97,10 @@ def ingest_all(
     data_dir: Path,
     dry_run: bool = False,
 ) -> list[IngestionManifest]:
+    """Ingest every enabled source and return their manifests.
+
+    Prints progress to stdout for each source pulled.
+    """
     sources = _enabled_sources(cfg)
     manifests = []
     for name in sources:

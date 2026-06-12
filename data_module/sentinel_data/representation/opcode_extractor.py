@@ -24,6 +24,11 @@ An OpcodeArtifact captures:
 
 
 def extract_opcodes(*_args, **_kwargs):
+    """Extract EVM opcode frequency features from compiled bytecode.
+
+    Raises:
+        NotImplementedError: Always — opcode extractor is deferred to v3.1.
+    """
     raise NotImplementedError(
         "Opcode extractor is DEFERRED to v3.1.  "
         "See docs/proposal/Data_Module_Proposals/actionable_plans/03_stage_2_representation.md §D-2.4 "

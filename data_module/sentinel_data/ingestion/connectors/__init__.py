@@ -19,6 +19,10 @@ _REGISTRY: dict[str, type[BaseConnector]] = {
 
 
 def get_connector(connector_type: str) -> BaseConnector:
+    """Instantiate and return the connector for *connector_type*.
+
+    Raises ConnectorError if the type is not in the registry.
+    """
     cls = _REGISTRY.get(connector_type)
     if cls is None:
         raise ConnectorError(

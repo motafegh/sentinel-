@@ -10,7 +10,7 @@ from sentinel_data.verification.semantic_checker import (
     _has_external_call_edge, SemanticCheckResult,
 )
 
-_DATA_DIR = Path("Data/data")
+_DATA_DIR = Path("data_module/data")
 _MERGED_DIR = _DATA_DIR / "labels" / "merged"
 
 
