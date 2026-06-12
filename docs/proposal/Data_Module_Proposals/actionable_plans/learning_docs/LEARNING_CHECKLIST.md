@@ -4,7 +4,7 @@
 **How to use:** Each row is one concept. Tick `[x]` when you can answer the "Test yourself" question from memory. After all rows in a stage are ticked, that stage is mastered.
 **Status legend:** `[ ]` untried, `[~]` in-progress, `[x]` mastered, `[!]` deferred/blocked
 
-**Current build state (2026-06-12):** Stages 0–6 code-complete. 536 tests pass, 49 skipped. 22,356 contracts labeled (SolidiFI 283 + DIVE 22,073). All 5 critical-path crosswalks built. Stages 0–4 exit criteria all met (94.4% SmartBugs recall, gate PASS, 196 verification tests). Stage 5 exit criteria all met (70 splitting+registry tests pass, real 22K smoke). Stage 6 exit criteria all met (17 analysis tests pass, complexity_proxy_risk.md generated, 0 high-risk pairs in v2 baseline, 14 flagged co-occurrence pairs). Stage 7 not started.
+**Current build state (2026-06-12):** Stages 0–7A code-complete. 531 tests pass, 51 skipped. 22,356 contracts labeled; 21,523 have representations (21,247 dive + 276 solidifi). Stage 7A exit criteria all met: 27 export tests pass, chunk_export end-to-end works, SentinelDatasetExport verify_artifact_hash works, sentinel-data export --dry-run functional, predictor tier fix landed (F8/F10, 6 regression tests). Stage 7B deferred (SentinelDataset loader + seam swap + Docker + 7 gates).
 
 ---
 
@@ -222,17 +222,29 @@ Data/
 
 ---
 
-## Stage 7 — Export + Seam Swap (predictor fix + EMITS fix)  `[ ] NOT STARTED`
+## Stage 7 — Export + Seam Swap (predictor fix + EMITS fix)  `[x] COMPLETE (7A only — 7B deferred)`
+
+### 7A — Export module (COMPLETE 2026-06-12)
 
 | # | Concept | Test yourself | Tick |
 |---|---|---|---|
-| 7.1 | **7 v2-readiness gates** | Name the 7 gates. Which is the "hardest" and why? (likely: predictor.py tier bug fix + EMITS edge fix + Slither transitive dep) | [ ] |
-| 7.2 | **Predictor tier threshold fix** | The current `predictor.py:150,168,752` uses a hardcoded 0.55 tier threshold. What's the v2 replacement? (per-class tuned threshold from calibration JSON) | [ ] |
-| 7.3 | **EMITS edge fix** | Solidity `emit Event();` should create an EMITS edge in the graph. Why is this currently broken (`graph_extractor.py`)? What's the fix? | [ ] |
-| 7.4 | **Slither transitive dep test** | The Dockerfile must ensure `pip install sentinel-data` brings in slither-analyzer transitively. What's the test? | [ ] |
-| 7.5 | **Docker build success** | Stage 7's hard gate is `docker build` succeeding. What's the base image, solc versions, and entrypoint? | [ ] |
-| 7.6 | **Seam swap atomicity** | The switch from `ml/src/...` to `sentinel_data/...` happens in a single commit. What tests prove no behavior change? (the 36-issue regression + byte-identical + 7 gates) | [ ] |
-| 7.7 | **Shard export format** | `pipeline.export_shard_size = 5000` — what does a shard look like? (graph shards + token shards + sidecar NDJSON?) | [ ] |
+| 7.1 | **4 file types** | Name the 4 file types in the export artifact and what each contains. | [x] |
+| 7.2 | **Predictor tier threshold fix** | What was the bug in `predictor.py:698`? What's the fix? Why does it matter for a class tuned to 0.90? | [x] |
+| 7.3 | **Artifact hash scope** | Why is `manifest.json` excluded from the artifact_hash? What 4 file types ARE included? | [x] |
+| 7.4 | **confidence_tier=None for NonVulnerable** | Why does the export override the splitter's `tier="T0"` default to `None` for non-vulnerable contracts? | [x] |
+| 7.5 | **Split JSONL ordering** | Why do graph_writer and token_writer walk the split JSONL instead of globbing `representations/`? | [x] |
+| 7.6 | **loc in metadata.parquet** | Why is `loc` re-computed from `.sol` instead of using the split JSONL's `loc` field? | [x] |
+| 7.7 | **Shard export format** | `pipeline.export_shard_size = 5000` — how many shards for 21,523 contracts? What shape is the token shard? | [x] |
+
+### 7B — Seam swap (DEFERRED to next session)
+
+| # | Concept | Test yourself | Tick |
+|---|---|---|---|
+| 7B.1 | **7 v2-readiness gates** | Name the 7 gates. Which is the "hardest" and why? | [ ] |
+| 7B.2 | **SentinelDataset loader** | The new loader is ~150 lines. What does `__getitem__` return? What's the 5-tuple? | [ ] |
+| 7B.3 | **EMITS edge fix** | Solidity `emit Event();` should create an EMITS edge in the graph. Why is this currently broken? What's the fix? | [ ] |
+| 7B.4 | **Docker build success** | Stage 7B's hard gate is `docker build` succeeding. What's the base image, solc versions, and entrypoint? | [ ] |
+| 7B.5 | **Seam swap atomicity** | The switch from `ml/src/...` to `sentinel_data/...` happens in a single commit. What tests prove no behavior change? | [ ] |
 
 ---
 
