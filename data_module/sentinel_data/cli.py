@@ -453,12 +453,143 @@ def _run_verify(args: argparse.Namespace) -> None:
 
 
 def _run_analyze(args: argparse.Namespace) -> None:
+    """Stage 6 — Analysis (the Run-9-failure catcher).
+
+    Runs the 6 exploratory tools (5 implemented + probe_dataset re-export)
+    against the current build (or a registered `--corpus` version) and
+    writes outputs to `data/analysis/<run_id>/`.
+    """
+    from datetime import datetime
+
+    cfg = _load_config(args.config)
+    data_dir = Path(args.config).parent / "data"
+    analysis_cfg = (cfg or {}).get("pipeline", {}).get("analysis", {})
+    complexity_cfg = analysis_cfg.get("complexity_proxy_risk", {})
+    sigma_threshold = float(complexity_cfg.get("sigma_threshold", 1.5))
+    cooccur_threshold = float(analysis_cfg.get("cooccurrence", {}).get("flag_threshold", 0.5))
+    drift_cfg = analysis_cfg.get("drift", {})
+    pvalue_warn = float(drift_cfg.get("ks_pvalue_warn", 0.01))
+    min_sample = int(drift_cfg.get("min_sample_size", 30))
+
+    run_id = args.run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = data_dir / "analysis" / run_id
     print(f"[analyze] {STAGE_DESCRIPTIONS['analyze']}")
     print(f"  config : {args.config}")
+    print(f"  data   : {data_dir}")
+    print(f"  run-id : {run_id}")
+    print(f"  out    : {output_dir}")
+    if args.corpus:
+        print(f"  corpus : {args.corpus}")
+    if args.baseline_version:
+        print(f"  baseline : {args.baseline_version}")
+
     if args.dry_run:
         print("  (dry-run — no files written)")
         return
-    print("  NOT IMPLEMENTED — implement in Stage 6")
+
+    only = args.only
+    available = ["balance_viz", "feature_dist", "cooccurrence", "overlap_detector", "drift_monitor"]
+    if only and only not in available:
+        print(f"  ERROR: --only must be one of {available}")
+        return
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Inputs
+    rep_root = data_dir / "representations"
+    preproc_root = data_dir / "preprocessed"
+    labels_root = data_dir / "labels"
+    merged_dir = labels_root / "merged"
+
+    if not merged_dir.exists():
+        print(f"  ERROR: merged labels not found at {merged_dir}")
+        print("  Run the labeling stage first: sentinel-data label")
+        return
+
+    # ── 1. balance_viz ─────────────────────────────────────────────────────
+    if not only or only == "balance_viz":
+        print("\n  [1/5] balance_viz (per-class/source/tier counts)")
+        from sentinel_data.analysis.balance_viz import run_balance_viz
+        summary = run_balance_viz(merged_dir, output_dir)
+        print(f"    total={summary['total_contracts']} multi-label={summary['multi_label_count']}")
+        print(f"    csv:  {summary['csv']}")
+        print(f"    plot: {summary['plot']}")
+
+    # ── 2. feature_dist (the headline) ─────────────────────────────────────
+    if not only or only == "feature_dist":
+        print("\n  [2/5] feature_dist (the Run-9-failure catcher)")
+        from sentinel_data.analysis.feature_dist import run_feature_dist
+        summary = run_feature_dist(merged_dir, rep_root, preproc_root,
+                                   output_dir, sigma_threshold=sigma_threshold)
+        print(f"    high_risk_pairs={summary['high_risk_count']}")
+        if summary["high_risk_pairs"]:
+            for p in summary["high_risk_pairs"][:3]:
+                print(f"      {p['class_a']} ↔ {p['class_b']}  "
+                      f"({p['feature']} σ={p['sigma_diff']})")
+        print(f"    csv:    {summary['csv']}")
+        print(f"    plot:   {summary['plot']}")
+        print(f"    report: {summary['report']}")
+
+    # ── 3. cooccurrence ────────────────────────────────────────────────────
+    if not only or only == "cooccurrence":
+        print("\n  [3/5] cooccurrence (directed + conditional matrices)")
+        from sentinel_data.analysis.cooccurrence import run_cooccurrence
+        summary = run_cooccurrence(merged_dir, output_dir, flag_threshold=cooccur_threshold)
+        print(f"    multi_label={summary['multi_label_count']} "
+              f"flagged={summary['flagged_count']}")
+        for fp in summary["flagged_pairs"][:3]:
+            print(f"      {fp['class_a']} ↔ {fp['class_b']}  "
+                  f"max P={fp['p_max']:.2%}")
+        print(f"    csv:  {summary['csv']}")
+        print(f"    plot: {summary['plot']}")
+
+    # ── 4. overlap_detector ────────────────────────────────────────────────
+    if not only or only == "overlap_detector":
+        print("\n  [4/5] overlap_detector (pairwise source Jaccard)")
+        from sentinel_data.analysis.overlap_detector import run_overlap_detector
+        summary = run_overlap_detector(labels_root, preproc_root, output_dir)
+        print(f"    sources={summary['sources']}")
+        for p in summary["top_overlapping_pairs"][:3]:
+            print(f"      {p['a']} ↔ {p['b']}  "
+                  f"exact={p['exact_jaccard']:.3f} near={p['near_jaccard']:.3f}")
+        print(f"    csv:  {summary['csv']}")
+        print(f"    plot: {summary['plot']}")
+
+    # ── 5. drift_monitor ───────────────────────────────────────────────────
+    if not only or only == "drift_monitor":
+        print("\n  [5/5] drift_monitor (KS test for features + labels)")
+        from sentinel_data.analysis.drift_monitor import run_drift_monitor
+        if args.baseline_version:
+            # Look up the baseline's labels + representations from the registry
+            from sentinel_data.registry import Catalog
+            from sentinel_data.registry.catalog import compute_hash
+            try:
+                cat = Catalog(data_dir / "registry" / "catalog.db",
+                              data_dir / "registry" / "catalog.yaml")
+                baseline_v = cat.get_dataset_version(args.baseline_version)
+                if baseline_v is None:
+                    print(f"    ERROR: baseline version {args.baseline_version} not found in catalog")
+                else:
+                    baseline_labels = Path(baseline_v.artifact_path) / "labels" / "merged"
+                    baseline_rep = Path(baseline_v.artifact_path) / "representations"
+                    summary = run_drift_monitor(
+                        baseline_labels, baseline_rep,
+                        merged_dir, rep_root,
+                        output_dir, pvalue_warn=pvalue_warn, min_sample=min_sample,
+                    )
+                    print(f"    overall_warning={summary['overall_warning']}")
+                    if summary["feature_warnings"]:
+                        print(f"    feature warnings: {summary['feature_warnings']}")
+                    if summary["label_warnings"]:
+                        print(f"    label warnings:   {summary['label_warnings']}")
+                    print(f"    report: {summary['report']}")
+            except Exception as e:
+                print(f"    ERROR loading baseline: {e}")
+        else:
+            print("    skipped (no --baseline-version given; use --baseline-version <name> "
+                  "to compare against a registered dataset version)")
+
+    print(f"\n  ✓ Analysis complete. Outputs in: {output_dir}")
 
 
 def _run_export(args: argparse.Namespace) -> None:
@@ -662,6 +793,26 @@ def _build_parser() -> argparse.ArgumentParser:
             sp.add_argument(
                 "--retire-previous", default=None, metavar="NAME",
                 help="Retire this previous version (marks as superseded)",
+            )
+        if stage == "analyze":
+            sp.add_argument(
+                "--only", default=None, metavar="TOOL",
+                help="Run only this tool (one of: balance_viz, feature_dist, "
+                     "cooccurrence, overlap_detector, drift_monitor)",
+            )
+            sp.add_argument(
+                "--run-id", default=None, metavar="ID",
+                help="Analysis run identifier (default: timestamp YYYYMMDD_HHMMSS)",
+            )
+            sp.add_argument(
+                "--corpus", default=None, metavar="VERSION",
+                help="Analyze a specific registered dataset version (e.g. "
+                     "sentinel-v2-dryrun-2026-08). Default: current build.",
+            )
+            sp.add_argument(
+                "--baseline-version", default=None, metavar="VERSION",
+                help="For drift_monitor: compare against this registered "
+                     "dataset version (e.g. v1.4-bccc).",
             )
 
     # ── utility subcommands ───────────────────────────────────────────────────

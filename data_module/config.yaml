@@ -70,6 +70,30 @@ pipeline:
     call_to_unknown_min: 300          # below this, the merge rule triggers
     smartbugs_curated_recall_min: 0.90  # semantic_checker must retain ≥90% of the 143 hand-labeled positives
     forge_agreement_min: 0.85         # FORGE 50-entry agreement test; if <85%, defer FORGE to v2.2
+  # Stage 6 — Analysis (the Run-9-failure catcher)
+  analysis:
+    # D-6.2: complexity_proxy_risk flags any class-pair whose per-feature mean
+    # differs by more than sigma_threshold. The headline output catches the
+    # L4 finding ("complexity dominates all 10 classes at 34-36%") from the
+    # data side, before training.
+    complexity_proxy_risk:
+      sigma_threshold: 1.5             # >1.5σ per-feature mean diff → HIGH-RISK pair
+      # The 6 features checked (per D-6.2). node_count and edge_count are read
+      # from .rep.json sidecars; the rest are computed from preprocessed .sol
+      # source by feature_dist.py.
+      features: [node_count, edge_count, cyclomatic_complexity, call_depth, function_count, loc]
+    # D-6.3: co-occurrence matrices
+    cooccurrence:
+      flag_threshold: 0.50             # conditional P(B|A) > 0.50 → flagged (BCCC had 99% DoS↔Reentrancy)
+    # D-6.4: overlap detector
+    overlap:
+      # Jaccard similarity matrix. 6-P5: distinguish exact (same contract_id)
+      # from near (AST-similar but different contract_id).
+      near_similarity_threshold: 0.85
+    # D-6.5: drift monitor
+    drift:
+      ks_pvalue_warn: 0.01             # per-feature or label KS p < 0.01 → WARNING
+      min_sample_size: 30              # below this, "insufficient sample" not "drift"
 
 # ── CRITICAL-PATH (Run 11 ships with these 5) ───────────────────────────────
 sources_critical_path:
