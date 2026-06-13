@@ -212,13 +212,15 @@ def parse_args() -> argparse.Namespace:
                    help="Disable NC-1 Adam state reset for prefix_proj at warmup transition")
     p.add_argument("--jk-entropy-reg-lambda", type=float, default=0.005,
                    help="C-3: JK entropy regularizer weight (0=disabled; 0.005 default — 0.01 caused uniform 33/33/33 collapse in Run 3)")
-    p.add_argument("--drop-complexity-feature", action="store_true", default=False,
+    p.add_argument("--drop-complexity-feature", action=argparse.BooleanOptionalAction,
+                   default=True,
                    dest="drop_complexity_feature",
                    help=(
-                       "Run 8: zero feat[5] (complexity) at GNN input. "
+                       "Zero feat[5] (complexity) at GNN input (default: True). "
                        "L4 experiment: complexity dominates all 10 classes at 34-36%% gradient share — "
-                       "model learned complexity-proxy instead of structural reasoning. "
-                       "Must also be set at inference (predictor reads from checkpoint config)."
+                       "v2 audit confirms pos contracts 12-69%% more complex than neg. "
+                       "Use --no-drop-complexity-feature to disable. "
+                       "Must match at inference (predictor reads from checkpoint config)."
                    ))
     p.add_argument("--appnp-alpha", type=float, default=0.0,
                    dest="appnp_alpha",

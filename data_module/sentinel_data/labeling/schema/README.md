@@ -1,6 +1,6 @@
 # `sentinel_data.labeling.schema` — Canonical Taxonomy Loader
 
-> **Status: 1 YAML + 1 Python loader (31 lines).** The schema is the single point of truth for "what are the 10 class names and what order are they in" — at the labeling layer. ⚠ See §3 below: the order in this YAML does NOT match the v9 model checkpoint's classifier head.
+> **Status: 1 YAML + 1 Python loader (31 lines).** The schema is the single point of truth for "what are the 10 class names and what order are they in" — used by the entire pipeline and the model. Per ADR-0009 (Phase D, 2026-06-12), `representation/graph_schema.py:CLASS_NAMES` also uses this exact same order.
 
 ## 1. Purpose
 
@@ -19,16 +19,9 @@ The schema is **referenced by everything that does string-based class lookups** 
 
 ## 3. Key concepts
 
-### ⚠ The two-taxonomy problem (READ BEFORE USING)
+### The canonical source of truth for the 10-class vocabulary
 
-The labeling taxonomy in this file is **NOT the same as** the representation schema in `sentinel_data.representation.graph_schema.CLASS_NAMES`. They have:
-
-1. **Different class orderings** (labeling starts with `CallToUnknown=0`; representation starts with `Reentrancy=0`)
-2. **Different class sets** (labeling has `TransactionOrderDependence` at id=8; representation doesn't have it. Labeling has `UnusedReturn` at id=9; representation has `NonVulnerable` at id=9.)
-
-The reason: the **representation schema is preserved from Runs 1–9** to keep all existing model checkpoints loadable. The **labeling schema is the v2 design intent** — 10 vulnerability classes with `NonVulnerable` being a *negative* label (not a class) and `TransactionOrderDependence` being a *positive* class (was added in v2 because it was missing from the v1 set).
-
-**The representation schema is the one that matters for training.** If you write a new model from scratch, use the representation order. If you only do `class_names()` lookups (string-keyed dicts), both work — but be aware that index 9 means `NonVulnerable` in representation and `UnusedReturn` in labeling.
+Per ADR-0009 (Phase D, 2026-06-12), this file (`taxonomy.yaml` + `class_names()`) is the **single canonical source of truth** for the 10-class vocabulary across the entire pipeline — including the model. `representation/graph_schema.py:CLASS_NAMES` uses this exact same order. The historical "representation order" (with `NonVulnerable` at index 9) was the pre-Run-7 ordering and is no longer used in production.
 
 ### The YAML schema (this file)
 
@@ -133,7 +126,7 @@ Inverse of `class_names()`. Raises `KeyError` (not `ValueError`) for unknown nam
 | `verification/tool_validator.py`, `fp_estimator.py`, `negative_checker.py` | → | Same |
 | `analysis/balance_viz.py`, `cooccurrence.py`, `feature_dist.py`, `drift_monitor.py` | → | Same |
 | `splitting/splitters.py` | → | `class_names()` for the per-class stratification (indirect via Contract.classes) |
-| `representation/graph_schema.py` | ✗ | **Does NOT import from here** — defines its own CLASS_NAMES (see §3) |
+| `representation/graph_schema.py` | ↔ | Uses the same CLASS_NAMES order (per ADR-0009) — not a separate taxonomy anymore |
 
 ## 7. Tests
 
@@ -155,7 +148,7 @@ poetry run pytest tests/test_labeling/test_taxonomy.py -v
 
 - Parent: `sentinel_data.labeling/README.md`
 - Parsers: `sentinel_data.labeling.parsers`
-- The OTHER taxonomy (use this for training): `sentinel_data.representation.graph_schema.CLASS_NAMES`
+- The representation schema (uses the same order): `sentinel_data.representation.graph_schema.CLASS_NAMES`
 - Why two: see `data_module/docs/legacy/bccc_deep_dive/Phase5_LabelVerification_2026-06-08/` for the Phase 5 verified label set that the labeling taxonomy descends from
 - DASP taxonomy: https://dasp.co/ (Decentralized Application Security Project)
 - Locked order rationale: same file `taxonomy.yaml:1-12` (header comment)

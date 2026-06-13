@@ -1,7 +1,7 @@
 """Tests for SentinelDataset and sentinel_collate_fn (Stage 7B).
 
 Tests requiring the real export artifact are guarded with skipif.
-The export dir is produced by `sentinel-data export --dataset-version sentinel-v2-baseline-2026-06-12`.
+The export dir is produced by `sentinel-data export --dataset-version sentinel-v3-smartbugs-2026-06-13`.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import torch
 from torch.utils.data import DataLoader
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-EXPORT_DIR = REPO_ROOT / "data_module" / "data" / "exports" / "sentinel-v2-baseline-2026-06-12"
+EXPORT_DIR = REPO_ROOT / "data_module" / "data" / "exports" / "sentinel-v3-smartbugs-2026-06-13"
 
 HAS_EXPORT = EXPORT_DIR.exists() and (EXPORT_DIR / "manifest.json").exists()
 

@@ -189,9 +189,15 @@ sources_critical_path:
     enabled: true
     tier: 3
     tier_subtype: structural
-    connector: git
-    url: "https://github.com/smartbugs/smartbugs-curated"
-    pin: ""
+    connector: manual
+    pin: "2025-01-01"                  # SmartBugs Curated v1.0 (already on disk)
+    staging_path: "/home/motafeq/projects/sentinel/ml/data/smartbugs-curated/dataset"
+    materialize: symlink               # data/raw/smartbugs_curated/repo → staging_path
+    # After symlink, repo/ is the dataset/ dir. Sol files are at repo/<category>/<contract>.sol.
+    # Exclude non-vulnerability categories handled by fallback_label: NonVulnerable in crosswalk.
+    include_subdirs: [reentrancy, arithmetic, denial_of_service, time_manipulation,
+                      unchecked_low_level_calls, access_control, bad_randomness,
+                      front_running, short_addresses, other]
     crosswalk: sentinel_data/labeling/crosswalks/smartbugs_curated.yaml
     description: "CRITICAL #4 — 143 hand-labeled contracts (DASP → 10 classes direct); also serves as semantic_checker recall ground-truth"
 

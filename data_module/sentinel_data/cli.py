@@ -260,6 +260,21 @@ def _run_split(args: argparse.Namespace) -> None:
         print("  Run the labeling stage first: sentinel-data label")
         return
 
+    # Load graph-hash dedup groups if available (fixes Level-3 stub — see deduplicator.py).
+    # The file is written by `sentinel-data compute-dedup-groups` after representation.
+    # Without it the dedup_enforcer has nothing to act on (all groups are singletons).
+    dedup_groups_path = data_dir / "dedup_groups_graph_hash.json"
+    cid_to_group: dict[str, str] = {}
+    if dedup_groups_path.exists():
+        dg_data = json.loads(dedup_groups_path.read_text())
+        cid_to_group = dg_data.get("groups", {})
+        print(f"  Loaded {len(cid_to_group)} graph-hash dedup groups "
+              f"({dg_data.get('n_unique_groups',0)} unique) from {dedup_groups_path.name}")
+    else:
+        print(f"  WARNING: {dedup_groups_path.name} not found — "
+              f"dedup_enforcer will have no groups to act on (Level-3 stub). "
+              f"Run: sentinel-data compute-dedup-groups")
+
     print(f"\n  Loading contracts from {merged_dir}...")
     contracts = []
     for p in sorted(merged_dir.glob("*.labels.json")):
@@ -282,6 +297,7 @@ def _run_split(args: argparse.Namespace) -> None:
         contracts.append(Contract(
             sha256=sha, source=source, tier=tier,
             classes=classes, primary_class=primary, n_pos=n_pos,
+            dedup_group=cid_to_group.get(sha),  # None if not in graph-hash groups
         ))
     print(f"  Loaded {len(contracts)} contracts")
 

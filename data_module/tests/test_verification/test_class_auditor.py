@@ -121,23 +121,34 @@ class TestClassAuditorIntegration:
         assert result.total_contracts >= 22000
 
     def test_dive_dos_reentrancy_cooccurrence_finding(self):
-        """DIVE has high P(Reentrancy|DoS) due to reentrancy-based DoS attacks.
+        """DoS+Reentrancy co-occurrence was patched out on 2026-06-13.
 
-        P(Reentrancy=1 | DoS=1) ~ 70% — legitimately flagged by the auditor.
-        P(DoS=1 | Reentrancy=1) ~ 23% — not flagged (Reentrancy is the larger class).
+        Pre-patch: P(Reentrancy=1 | DoS=1) ~ 70% in DIVE (T2) — the legacy
+        DIVE labels had multi-label noise where many contracts were tagged
+        both DoS AND Reentrancy even when the DoS was a reentrancy-style
+        attack, not a true DoS. The 2,655 such contracts were zeroed
+        in data/labels/dive by the DoS patch (see pre-run12-fixes-2026-06-13.md
+        §Item 3 + §Step A decision).
 
-        This is NOT noise — DIVE curates multi-label contracts and many DoS
-        contracts use reentrancy as the DoS mechanism. The gate handles this
-        by downgrading DoS to PROVISIONAL rather than FAIL (T2 source).
+        Post-patch: 0 DoS+Reentrancy overlap. P(Reentrancy=1 | DoS=1) is
+        now ~ DoS_ree_overlap / total_DoS ≈ 0/1101 = 0% — well below the
+        auditor's 50% flag threshold.
+
+        This test verifies the patch is in effect, not the co-occurrence.
+        If the patch is reverted, this test will fail at len(flagged_dos) == 0.
         """
         _skip_if_no_merged()
         result = run_audit(_DATA_DIR)
-        # P(Reentrancy|DoS) is high → flagged
+        # P(Reentrancy|DoS) is now ~0% after the DoS patch — NOT flagged
         flagged_dos = [p for p in result.flagged_pairs
                        if p.class_a == "DenialOfService" and p.class_b == "Reentrancy"]
-        assert len(flagged_dos) == 1
-        assert flagged_dos[0].rate > 0.50
-        # P(DoS|Reentrancy) is lower → NOT flagged
+        assert len(flagged_dos) == 0, (
+            f"DoS+Reentrancy co-occurrence is still flagged: "
+            f"{[(p.class_a, p.class_b, p.rate) for p in flagged_dos]}. "
+            f"The DoS patch should have zeroed these in DIVE source labels. "
+            f"See data_module/temp/patch_dos_v3.py"
+        )
+        # P(DoS|Reentrancy) is also ~0% — NOT flagged
         flagged_reen = [p for p in result.flagged_pairs
                         if p.class_a == "Reentrancy" and p.class_b == "DenialOfService"]
         assert len(flagged_reen) == 0

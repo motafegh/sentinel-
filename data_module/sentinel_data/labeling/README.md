@@ -1,6 +1,6 @@
 # `sentinel_data.labeling` — Stage 3: Assigning Meaning to Code
 
-> **Status: ✅ Core shipped (merger + gate + 2 parsers).** `label` subcommand in CLI is a **STUB** (`cli.py:223-229` — "NOT IMPLEMENTED — implement in Stage 3") — the merger runs from a Python entry point or test harness, not the CLI. ⚠ See §3: the two taxonomies (labeling vs representation) disagree on order and class membership.
+> **Status: ✅ Core shipped (merger + gate + 2 parsers).** `label` subcommand in CLI is a **STUB** (`cli.py:223-229` — "NOT IMPLEMENTED — implement in Stage 3") — the merger runs from a Python entry point or test harness, not the CLI.
 
 ## 1. Purpose
 
@@ -32,18 +32,9 @@ The labeling module fixes this by making every label mapping **explicit, human-r
 
 ## 3. Key concepts
 
-### ⚠ The two-taxonomy problem (READ BEFORE USING)
+### The canonical 10-class taxonomy
 
-The labeling taxonomy in `schema/taxonomy.yaml` is **NOT the same as** the representation schema in `sentinel_data.representation.graph_schema.CLASS_NAMES`. They have:
-
-1. **Different class orderings** (labeling starts with `CallToUnknown=0`; representation starts with `Reentrancy=0`)
-2. **Different class sets** (labeling has `TransactionOrderDependence` at id=8; representation doesn't have it. Labeling has `UnusedReturn` at id=9; representation has `NonVulnerable` at id=9.)
-
-**Why two?** The representation schema is **preserved from Runs 1–9** to keep all existing model checkpoints loadable. The labeling taxonomy is the **v2 design intent** — 10 vulnerability classes with `NonVulnerable` being a *negative* label (not a class) and `TransactionOrderDependence` being a *positive* class (added in v2 because it was missing from the v1 set).
-
-**The representation schema is the one that matters for training** (its order matches the classifier head). If you write a new model from scratch, use the representation order. If you only do `class_names()` lookups (string-keyed dicts), both work — but be aware that **index 9 means `NonVulnerable` in representation and `UnusedReturn` in labeling**.
-
-See `sentinel_data/labeling/schema/README.md` §3 for the full side-by-side tables and the historical context.
+The labeling taxonomy in `schema/taxonomy.yaml` is the **single source of truth** for the 10-class vocabulary across the entire pipeline. Per ADR-0009 (Phase D, 2026-06-12), `representation/graph_schema.py:CLASS_NAMES` also uses this exact same order — the two are aligned. The `class_names()` function (from `schema/__init__.py`) returns the locked order: `["CallToUnknown", "DenialOfService", "ExternalBug", "GasException", "IntegerUO", "MishandledException", "Reentrancy", "Timestamp", "TransactionOrderDependence", "UnusedReturn"]`.
 
 ### The label output format (per-source, from parsers)
 
@@ -275,6 +266,7 @@ def label_source(data_dir: Path, *, force: bool = False, limit: int | None = Non
 | `sentinel_data.splitting.splitters` | → | Reads `data/labels/merged/*.labels.json` to build `Contract` objects |
 | `sentinel_data.analysis.{balance_viz,cooccurrence,feature_dist,drift_monitor}` | → | Same |
 | `sentinel_data.cli` | ↔ | `_run_label` is a **STUB** (line 223-229); the merger must be called from Python today |
+| `sentinel_data.representation.graph_schema` | ↔ | Uses the same CLASS_NAMES order (per ADR-0009) |
 
 ## 7. Tests
 
@@ -295,10 +287,10 @@ poetry run pytest tests/test_labeling/ -v
 ## 8. See also
 
 - Parsers: `sentinel_data/labeling/parsers/README.md`
-- Schema: `sentinel_data/labeling/schema/README.md` (the two-taxonomy problem explained)
+- Schema: `sentinel_data/labeling/schema/README.md` (canonical 10-class taxonomy)
 - Next stage: `sentinel_data/verification/README.md`
 - CLI entry: `sentinel_data/cli.py` (`_run_label` at line 223 — STUB)
-- The OTHER taxonomy (model order): `sentinel_data/representation/graph_schema.py:73-84`
+- The representation schema (uses the same order): `sentinel_data/representation/graph_schema.py:CLASS_NAMES`
 - Why two: see `data_module/docs/legacy/bccc_deep_dive/Phase5_LabelVerification_2026-06-08/` for the Phase 5 verified label set
 - DASP taxonomy: https://dasp.co/
 - Stage 3 plan: `docs/proposal/Data_Module_Proposals/actionable_plans/04_stage_3_labeling.md`

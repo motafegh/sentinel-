@@ -19,6 +19,7 @@ Shard loading is LRU-cached (default 4 shards; set SENTINEL_SHARD_CACHE_SIZE env
 from __future__ import annotations
 
 import os
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -70,8 +71,12 @@ class SentinelDataset(Dataset):
         export_dir: Path,
         model_graph_schema_version: Optional[str] = None,
     ) -> None:
+        _t0 = time.perf_counter()
+        print(f"[SentinelDataset] init split={split!r} export={Path(export_dir).name}")
+
         self.split = split
         self.export = SentinelDatasetExport(Path(export_dir))
+        print(f"[SentinelDataset] export loaded          {time.perf_counter()-_t0:.2f}s")
 
         expected_schema = model_graph_schema_version or FEATURE_SCHEMA_VERSION
 
@@ -94,13 +99,17 @@ class SentinelDataset(Dataset):
             )
 
         # Gate 3 — artifact hash integrity
+        _th = time.perf_counter()
+        print(f"[SentinelDataset] hashing artifact...   (this reads all shard files)")
         if not self.export.verify_artifact_hash():
             raise ValueError(
                 f"Export artifact hash mismatch — data files may be corrupt or tampered. "
                 f"Re-run `sentinel-data export` to regenerate a clean artifact."
             )
+        print(f"[SentinelDataset] hash verified          {time.perf_counter()-_th:.2f}s")
 
         # Build label lookup: {contract_id: (y_tensor, confidence_tier)}
+        _tl = time.perf_counter()
         labels_df = pd.read_parquet(self.export.labels_path).set_index("contract_id")
         class_cols = [f"class_{i}" for i in range(10)]
         self._label_lookup: dict[str, tuple[torch.Tensor, str | None]] = {}
@@ -108,25 +117,45 @@ class SentinelDataset(Dataset):
             y = torch.tensor([row[c] for c in class_cols], dtype=torch.float32)
             tier = row["confidence_tier"]
             self._label_lookup[cid] = (y, None if pd.isna(tier) else str(tier))
+        print(f"[SentinelDataset] label lookup built     {time.perf_counter()-_tl:.2f}s  ({len(self._label_lookup)} contracts)")
 
         # Contract list for this split, filtered to only those with representations.
         shard_index = self.export.shard_index
         all_ids = self.export.get_split_contract_ids(split)
         self._contract_ids: list[str] = [sha for sha in all_ids if sha in shard_index]
+        _contract_ids_set: set[str] = set(self._contract_ids)  # O(1) membership for loop below
+        print(f"[SentinelDataset] contract list filtered {time.perf_counter()-_t0:.2f}s  ({len(self._contract_ids)} in split)")
 
-        # Precompute num_nodes per contract. Used by _build_weighted_sampler's
-        # "timestamp-size" mode (trainer.py). All shards are touched once at init
-        # — LRU-cached so subsequent __getitem__ calls hit the cache.
+        # Precompute num_nodes per contract for _build_weighted_sampler (trainer.py).
+        # Fast path: read from shard_index["num_nodes"] if present (new exports).
+        # Fallback: load graph shards (old exports that predate the num_nodes field).
+        _tn = time.perf_counter()
         self._num_nodes_map: dict[str, int] = {}
-        for contract_id, entry in shard_index.items():
-            if contract_id not in self._contract_ids:
-                continue  # skip other splits
-            shard_num = entry["shard"]
-            pos = entry["pos_in_shard"]
-            graph_shard = _load_graph_shard(
-                self.export.graphs_dir / f"graphs-{shard_num:05d}.pt"
+        sample = next(iter(shard_index.values()), {})
+        if "num_nodes" in sample:
+            print(f"[SentinelDataset] reading num_nodes from shard_index (fast path)...")
+            self._num_nodes_map = {
+                sha: entry["num_nodes"]
+                for sha, entry in shard_index.items()
+                if sha in _contract_ids_set
+            }
+        else:
+            print(f"[SentinelDataset] num_nodes not in shard_index — loading shards (slow fallback)...")
+            # Sort by (shard, pos) so each shard is loaded once and stays hot in LRU cache.
+            # Without this, sha256-keyed iteration interleaves shards → O(N) cache misses.
+            ordered = sorted(
+                ((cid, e) for cid, e in shard_index.items() if cid in _contract_ids_set),
+                key=lambda t: (t[1]["shard"], t[1]["pos_in_shard"]),
             )
-            self._num_nodes_map[contract_id] = int(graph_shard.get_example(pos).num_nodes)
+            for contract_id, entry in ordered:
+                shard_num = entry["shard"]
+                pos = entry["pos_in_shard"]
+                graph_shard = _load_graph_shard(
+                    self.export.graphs_dir / f"graphs-{shard_num:05d}.pt"
+                )
+                self._num_nodes_map[contract_id] = int(graph_shard.get_example(pos).num_nodes)
+        print(f"[SentinelDataset] num_nodes done         {time.perf_counter()-_tn:.2f}s  ({len(self._num_nodes_map)} entries)")
+        print(f"[SentinelDataset] __init__ complete      {time.perf_counter()-_t0:.2f}s total")
 
     @property
     def num_nodes_map(self) -> dict[str, int]:

@@ -405,26 +405,29 @@ def _compute_call_target_typed(func: Any) -> float:
 # slither/solc_parsing/declarations/function.py:1090 sets Scope(is_checked=False)
 # when entering an UncheckedBlock AST node. There is also NO NodeType.STARTUNCHECKED
 # in Slither 0.10 (despite older docs referencing it).
-def _compute_in_unchecked(func: Any) -> float:
+def _compute_in_unchecked(func: Any, *, is_pre_08: bool = False) -> float:
     """
-    1.0 if any node in this function is in an unchecked arithmetic context,
-    0.0 otherwise.
+    Compute the in_unchecked feature for a function-level node.
 
-    Uses node.scope.is_checked from Slither 0.10's CFG parser. Empirically
-    (verified 2026-06-06 smoke test against installed slither 0.10):
-      • pre-0.8 contracts: Slither marks ~all nodes is_checked=False
-        (the entire contract is implicitly unchecked — keyword didn't exist)
-        → this function returns 1.0 universally on pre-0.8 contracts.
-      • 0.8+ contracts WITHOUT unchecked{} blocks: is_checked=True everywhere
-        → returns 0.0.
-      • 0.8+ contracts WITH unchecked{}: is_checked=False on nodes inside
-        the unchecked block → returns 1.0.
+    Returns:
+        1.0 — at least one node in this function is inside an unchecked{} block
+              (Solidity 0.8+, arithmetic explicitly opted out of overflow checks)
+        0.5 — pre-0.8 contract; unchecked{} keyword didn't exist.
+              Slither marks all nodes is_checked=False as an artefact of the CFG
+              parser — this is NOT a signal of actual unchecked blocks but of era.
+              0.5 signals "arithmetic risk unknown (pre-0.8 era)" to the model.
+        0.0 — all nodes are in a checked scope (0.8+, safe arithmetic)
 
-    The feature thus identifies the "overflow can occur" superset: pre-0.8
-    contracts and 0.8+ contracts that opted out. For 12.1% of v10 training
-    data (0.8+), it cleanly distinguishes safe (0.0) from at-risk (1.0).
-    For 87.9% pre-0.8, it correlates with the era — informative on its own.
+    Mechanism: node.scope.is_checked from Slither 0.10's CFG parser at
+    slither/solc_parsing/declarations/function.py:1090 sets Scope(is_checked=False)
+    when entering an UncheckedBlock AST node.
+
+    TODO v10: bump FEATURE_SCHEMA_VERSION "v9" → "v10" and re-export all graphs once
+    the full contract corpus .sol files are available. Until then, exported graphs
+    retain the v9 binary encoding (1.0 for all pre-0.8 function nodes).
     """
+    if is_pre_08:
+        return 0.5
     try:
         for node in (getattr(func, "nodes", None) or []):
             scope = getattr(node, "scope", None)
@@ -447,13 +450,25 @@ def _compute_in_unchecked(func: Any) -> float:
     return 0.0
 
 
-def _node_in_unchecked(slither_node: Any) -> float:
+def _node_in_unchecked(slither_node: Any, *, is_pre_08: bool = False) -> float:
     """
-    v9 (Fix #4) — per-CFG-node variant. 1.0 if THIS node lives in an unchecked
-    scope, 0.0 otherwise. Used by _build_cfg_node_features so the unchecked
-    signal is local to the arithmetic-bearing CFG nodes rather than just an
-    aggregated function-level flag.
+    v9 (Fix #4) — per-CFG-node variant.
+
+    Returns:
+        1.0 — this node is inside an unchecked{} block (0.8+ confirmed unsafe)
+        0.5 — pre-0.8 contract: unchecked{} keyword didn't exist; arithmetic risk unknown
+        0.0 — this node is in a checked scope (0.8+ confirmed safe)
+
+    The 0.5 sentinel avoids conflating "confirmed unchecked block" (v0.8+ opt-out)
+    with "pre-0.8 era where all arithmetic could overflow" (Slither marks all nodes
+    is_checked=False as an artefact of the CFG parser, not a meaningful signal).
+
+    TODO v10: bump FEATURE_SCHEMA_VERSION "v9" → "v10" and re-export all graphs once
+    the full contract corpus .sol files are available. Until then, exported graphs
+    retain the v9 binary encoding (1.0 for all pre-0.8 nodes).
     """
+    if is_pre_08:
+        return 0.5
     try:
         scope = getattr(slither_node, "scope", None)
         if scope is not None and not getattr(scope, "is_checked", True):
@@ -539,6 +554,36 @@ def _compute_has_loop(func: Any) -> float:
         pass
 
     return 0.0
+
+
+def _detect_pre_08(config_version: str | None, sol_path: "Path") -> bool:
+    """Return True if the contract uses pre-0.8 Solidity arithmetic semantics.
+
+    Priority:
+    1. config_version — explicit caller-provided version string (e.g. "0.6.12")
+    2. pragma statement in the first 2 KB of the source file
+
+    Safe default: False (assume 0.8+ checked arithmetic) so spurious 0.5 values
+    don't corrupt modern contracts when detection fails.
+    """
+    if config_version:
+        try:
+            # Strip leading operators/spaces: "^0.6.12" → "0.6.12", ">= 0.7.0" → "0.7.0"
+            clean = re.sub(r"[^0-9.]", "", config_version.split()[0]).lstrip(".")
+            parts = clean.split(".")
+            major, minor = int(parts[0]), int(parts[1])
+            return (major, minor) < (0, 8)
+        except (ValueError, IndexError):
+            pass
+    # Fallback: scan pragma statement in file header
+    try:
+        content = Path(sol_path).read_bytes()[:2000].decode("utf-8", errors="ignore")
+        m = re.search(r"pragma\s+solidity\s+[^;]*?(\d+)\.(\d+)", content)
+        if m:
+            return (int(m.group(1)), int(m.group(2))) < (0, 8)
+    except Exception:
+        pass
+    return False  # safe default: assume 0.8+
 
 
 def _compute_external_call_count(func: Any) -> float:
@@ -830,6 +875,8 @@ def _build_cfg_node_features(
     func: Any,
     cfg_type: int,
     parent_features: list | None = None,
+    *,
+    is_pre_08: bool = False,
 ) -> list:
     """
     Build the 12-dim (v9) feature vector for a CFG (statement-level) node.
@@ -892,7 +939,7 @@ def _build_cfg_node_features(
         _node_call_target_typed(slither_node),        # [8]  per-statement: typed interface vs raw addr
         has_loop,                                     # [9]  inherited from parent FUNCTION (BUG-C3)
         _node_external_call_count(slither_node),      # [10] per-statement: external call count (log1p)
-        _node_in_unchecked(slither_node),             # [11] v9 Fix #4: per-statement unchecked scope
+        _node_in_unchecked(slither_node, is_pre_08=is_pre_08),  # [11] v9/v10: unchecked scope or era proxy
     ]
 
 
@@ -903,6 +950,8 @@ def _build_control_flow_edges(
     x_list: list,
     node_metadata: list,
     parent_features: list | None = None,
+    *,
+    is_pre_08: bool = False,
 ) -> tuple:
     """
     For a given function, build CFG_NODE children and their edges.
@@ -956,7 +1005,7 @@ def _build_control_flow_edges(
         graph_idx = len(x_list)          # CORRECT: next available global index
         node_index_map[slither_node] = graph_idx
 
-        x_list.append(_build_cfg_node_features(slither_node, func, cfg_type, parent_features))
+        x_list.append(_build_cfg_node_features(slither_node, func, cfg_type, parent_features, is_pre_08=is_pre_08))
 
         cfg_type_name = _type_name_map.get(cfg_type, "CFG_NODE_OTHER")
         sm = getattr(slither_node, "source_mapping", None)
@@ -1280,7 +1329,7 @@ def _compute_has_cei_path(
     return 0
 
 
-def _build_node_features(obj: Any, type_id: int) -> list:
+def _build_node_features(obj: Any, type_id: int, *, is_pre_08: bool = False) -> list:
     """
     Compute the 12-dimensional feature vector (v9 schema) for one AST node.
 
@@ -1348,7 +1397,7 @@ def _build_node_features(obj: Any, type_id: int) -> list:
         call_target_typed   = _compute_call_target_typed(obj)
         has_loop            = _compute_has_loop(obj)
         external_call_count = _compute_external_call_count(obj)
-        in_unchecked        = _compute_in_unchecked(obj)  # v9 Fix #4
+        in_unchecked        = _compute_in_unchecked(obj, is_pre_08=is_pre_08)  # v9/v10 Fix #4
 
         # Override FUNCTION(1) type_id for special function kinds
         if getattr(obj, "is_constructor", False):
@@ -1599,6 +1648,14 @@ def extract_contract_graph(
     # ── Contract selection ─────────────────────────────────────────────────
     contract = _select_contract(sl, config)
 
+    # ── Pre-0.8 detection (feat[11] encoding) ─────────────────────────────
+    # For pre-0.8 Solidity, Slither marks all nodes is_checked=False as an
+    # artefact of the CFG parser. Using 0.5 instead of 1.0 signals "unknown era"
+    # rather than "confirmed unchecked{} block".
+    # TODO v10: bump FEATURE_SCHEMA_VERSION → "v10" and re-export graphs once
+    # full .sol corpus is available locally.
+    _is_pre_08: bool = _detect_pre_08(config.solc_version, sol_path)
+
     # ── Shared node lists (x_list and node_metadata are index-aligned) ─────
     # x_list:        grows as declaration nodes and CFG nodes are added.
     # node_metadata: parallel list of dicts; same length as x_list at all times.
@@ -1622,7 +1679,7 @@ def extract_contract_graph(
             return None
         idx = len(x_list)
         node_map[key] = idx
-        x_list.append(_build_node_features(obj, initial_type_id))
+        x_list.append(_build_node_features(obj, initial_type_id, is_pre_08=_is_pre_08))
 
         # Determine the actual type_id after _build_node_features may override it.
         # x_list[-1][0] is normalised (float(type_id)/_MAX_TYPE_ID), so reverse-normalise.
@@ -1716,6 +1773,7 @@ def extract_contract_graph(
             contains_edges, control_flow_edges = _build_control_flow_edges(
                 func, fn_idx, cfg_node_map, x_list, node_metadata,
                 parent_features=x_list[fn_idx],  # BUG-C3: propagate function features
+                is_pre_08=_is_pre_08,
             )
             for src, dst in contains_edges:
                 edges.append([src, dst])

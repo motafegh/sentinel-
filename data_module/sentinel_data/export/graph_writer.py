@@ -49,16 +49,19 @@ def write_graphs_shards(
     splits_dir: Path,
     output_dir: Path,
     shard_size: int = 5000,
-) -> tuple[list[Path], dict[str, int]]:
+) -> tuple[list[Path], dict[str, int], dict[str, int]]:
     """Write sharded PyG graph .pt files.
 
     Returns:
-        (shard_paths, shard_index) — shard_index maps sha256 → shard number.
+        (shard_paths, shard_index, num_nodes_map)
+        shard_index   maps sha256 → shard number.
+        num_nodes_map maps sha256 → num_nodes (recorded for free while graph is in hand).
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     contracts = _load_split_jsonl(splits_dir)
 
     shard_index: dict[str, int] = {}
+    num_nodes_map: dict[str, int] = {}
     shard_paths: list[Path] = []
 
     current_graphs: list[Data] = []
@@ -86,6 +89,7 @@ def write_graphs_shards(
             skipped += 1
             continue
         graph: Data = torch.load(pt_path, weights_only=True)
+        num_nodes_map[sha] = int(graph.num_nodes)
         current_graphs.append(graph)
         current_ids.append(sha)
         if len(current_graphs) >= shard_size:
@@ -96,7 +100,7 @@ def write_graphs_shards(
     if skipped:
         logger.warning("graph_writer: skipped %d contracts with no .pt file", skipped)
 
-    return shard_paths, shard_index
+    return shard_paths, shard_index, num_nodes_map
 
 
 __all__ = ["write_graphs_shards"]

@@ -51,7 +51,7 @@ def test_graph_writer_shard_count(tmp_path):
     splits_dir = _make_splits(tmp_path, shas)
     out_dir = tmp_path / "graphs"
 
-    paths, shard_idx = write_graphs_shards(rep_root, splits_dir, out_dir, shard_size=5)
+    paths, shard_idx, num_nodes_map = write_graphs_shards(rep_root, splits_dir, out_dir, shard_size=5)
     assert len(paths) == math.ceil(N / 5)  # 3 shards (5+5+2)
     assert len(shard_idx) == N
 
@@ -64,7 +64,7 @@ def test_graph_writer_shard_index_values(tmp_path):
     for sha, source, _ in shas:
         _write_graph(rep_root, sha, source)
     splits_dir = _make_splits(tmp_path, shas)
-    _, shard_idx = write_graphs_shards(rep_root, splits_dir, tmp_path / "g", shard_size=3)
+    _, shard_idx, _ = write_graphs_shards(rep_root, splits_dir, tmp_path / "g", shard_size=3)
     shard_nums = sorted(set(shard_idx.values()))
     assert shard_nums == list(range(len(shard_nums)))
 
@@ -77,7 +77,7 @@ def test_graph_writer_skips_missing(tmp_path):
     for sha, source, _ in shas[:3]:
         _write_graph(rep_root, sha, source)
     splits_dir = _make_splits(tmp_path, shas)
-    _, shard_idx = write_graphs_shards(rep_root, splits_dir, tmp_path / "g", shard_size=10)
+    _, shard_idx, _ = write_graphs_shards(rep_root, splits_dir, tmp_path / "g", shard_size=10)
     assert len(shard_idx) == 3  # only 3 made it
 
 
@@ -110,7 +110,7 @@ def test_graph_token_same_order(tmp_path):
         _write_tokens(rep_root, sha, source)
     splits_dir = _make_splits(tmp_path, shas)
 
-    _, g_idx = write_graphs_shards(rep_root, splits_dir, tmp_path / "g", shard_size=4)
+    _, g_idx, _ = write_graphs_shards(rep_root, splits_dir, tmp_path / "g", shard_size=4)
     _, t_idx = write_tokens_shards(rep_root, splits_dir, tmp_path / "t", shard_size=4)
     assert set(g_idx) == set(t_idx), "graph and token shard indices must cover the same contracts"
     for sha in g_idx:

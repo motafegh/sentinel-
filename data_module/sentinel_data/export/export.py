@@ -15,7 +15,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from sentinel_data.export.chunker import ExportManifest, _hash_export_data
+from sentinel_data.export.chunker import ExportManifest, _hash_export_data, _write_hash_cache, _HASH_EXCLUDED
 
 
 class SentinelDatasetExport:
@@ -63,12 +63,44 @@ class SentinelDatasetExport:
     # ── verification ───────────────────────────────────────────────────────
 
     def verify_artifact_hash(self) -> bool:
-        """Recompute the artifact hash and compare to manifest.artifact_hash.
+        """Compare artifact hash to manifest.artifact_hash.
 
-        Returns True if they match; False if any data file was tampered with.
-        Manifest.json is excluded from the hash (Fix A — it contains the hash).
+        Warm path (cache hit): stats each data file, compares mtime+size to
+        .hash_cache.json. If all match, trusts the cached hash — no disk reads
+        of shard data. Returns in milliseconds.
+
+        Cold path (cache miss or stale): falls back to full SHA-256 over all
+        data files, then writes a fresh .hash_cache.json for the next call.
+
+        Returns True if hashes match; False if any data file was tampered with.
+        Manifest.json and .hash_cache.json are excluded from the hash (Fix A).
         """
+        cache_path = self.export_dir / ".hash_cache.json"
+        if cache_path.exists():
+            try:
+                cache = json.loads(cache_path.read_text())
+                cached_hash = cache.get("artifact_hash", "")
+                cached_files: dict = cache.get("files", {})
+                all_match = True
+                for p in self.export_dir.rglob("*"):
+                    if not p.is_file() or p.name in _HASH_EXCLUDED:
+                        continue
+                    rel = str(p.relative_to(self.export_dir))
+                    entry = cached_files.get(rel)
+                    if entry is None:
+                        all_match = False
+                        break
+                    stat = p.stat()
+                    if stat.st_mtime != entry["mtime"] or stat.st_size != entry["size"]:
+                        all_match = False
+                        break
+                if all_match and cached_hash:
+                    return cached_hash == self.manifest.artifact_hash
+            except Exception:
+                pass  # corrupt cache — fall through to full recompute
+
         actual = _hash_export_data(self.export_dir)
+        _write_hash_cache(self.export_dir, actual)
         return actual == self.manifest.artifact_hash
 
     # ── split helpers ──────────────────────────────────────────────────────

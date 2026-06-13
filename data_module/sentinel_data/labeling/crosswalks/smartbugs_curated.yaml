@@ -13,6 +13,7 @@ schema_version: "1"
 source: smartbugs_curated
 label_field: directory_name
 fallback_label: NonVulnerable
+confidence_tier: T1
 
 class_map:
   reentrancy:               Reentrancy
@@ -21,12 +22,11 @@ class_map:
   time_manipulation:        Timestamp
   unchecked_low_level_calls: CallToUnknown
   access_control:           ExternalBug
-  bad_randomness:           Timestamp        # closest class; flagged for review in Stage 3
-  front_running:            Timestamp        # TOD → Timestamp (closest available class)
+  bad_randomness:           Timestamp        # closest class; no dedicated bad_randomness class
+  front_running:            TransactionOrderDependence  # TOD is front-running by definition (fixed: was Timestamp)
   short_addresses:          NonVulnerable    # not in 10-class taxonomy
   other:                    NonVulnerable
 
 open_questions:
   - "bad_randomness → Timestamp is a lossy mapping (no dedicated class). Flag in Stage 3."
-  - "front_running (TOD) → Timestamp is approximation. Acceptable given DIVE has front_running label."
   - "The 143 contracts are the recall gate for Stage 4 — ensure semantic_checker retains ≥90%."

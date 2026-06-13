@@ -143,6 +143,55 @@ def test_chunk_export_hash_changes_on_data_tamper(tmp_path):
     assert recomputed != original_hash, "Tampering with a data file must change the hash"
 
 
+def test_chunk_export_shard_index_has_num_nodes(tmp_path):
+    """shard_index entries must contain num_nodes after the Fix-A speedup."""
+    splits_dir = _make_splits(tmp_path, n_train=5, n_val=1, n_test=1)
+    rep_root = tmp_path / "representations"
+    preproc_root = tmp_path / "preprocessed"
+    _make_reps(rep_root, preproc_root, splits_dir)
+    out_dir = tmp_path / "export"
+
+    manifest = chunk_export(rep_root, preproc_root, splits_dir, out_dir)
+    for sha, entry in manifest.shard_index.items():
+        assert "num_nodes" in entry, f"shard_index entry for {sha} missing num_nodes"
+        assert entry["num_nodes"] == 4  # _make_reps writes x=[4,12]
+
+
+def test_chunk_export_hash_cache_written(tmp_path):
+    """.hash_cache.json must be written and contain the same artifact_hash."""
+    splits_dir = _make_splits(tmp_path, n_train=5, n_val=1, n_test=1)
+    rep_root = tmp_path / "representations"
+    preproc_root = tmp_path / "preprocessed"
+    _make_reps(rep_root, preproc_root, splits_dir)
+    out_dir = tmp_path / "export"
+
+    manifest = chunk_export(rep_root, preproc_root, splits_dir, out_dir)
+    cache_path = out_dir / ".hash_cache.json"
+    assert cache_path.exists(), ".hash_cache.json not written"
+    cache = json.loads(cache_path.read_text())
+    assert cache["artifact_hash"] == manifest.artifact_hash
+    assert "files" in cache and len(cache["files"]) > 0
+
+
+def test_chunk_export_hash_cache_excluded_from_artifact_hash(tmp_path):
+    """.hash_cache.json must not affect the artifact hash (like manifest.json)."""
+    splits_dir = _make_splits(tmp_path, n_train=5, n_val=1, n_test=1)
+    rep_root = tmp_path / "representations"
+    preproc_root = tmp_path / "preprocessed"
+    _make_reps(rep_root, preproc_root, splits_dir)
+    out_dir = tmp_path / "export"
+
+    manifest = chunk_export(rep_root, preproc_root, splits_dir, out_dir)
+    original_hash = manifest.artifact_hash
+
+    # Tamper with hash cache
+    cache_path = out_dir / ".hash_cache.json"
+    cache_path.write_text(json.dumps({"artifact_hash": "tampered", "files": {}}))
+
+    recomputed = _hash_export_data(out_dir)
+    assert recomputed == original_hash, ".hash_cache.json must not affect artifact_hash"
+
+
 def test_chunk_export_split_counts(tmp_path):
     splits_dir = _make_splits(tmp_path, n_train=10, n_val=3, n_test=3)
     rep_root = tmp_path / "representations"

@@ -51,7 +51,7 @@ class ExportManifest:
     n_contracts_with_reps: int
     n_shards: int
     splits: dict[str, list[str]]
-    shard_index: dict[str, dict]   # {sha: {shard: int, pos_in_shard: int}}
+    shard_index: dict[str, dict]   # {sha: {shard: int, pos_in_shard: int, num_nodes: int}}
     source_set: list[str]
     skipped_sources: list[dict]
     preprocessing_config_hash: str
@@ -59,14 +59,17 @@ class ExportManifest:
     created_at: str
 
 
+_HASH_EXCLUDED = {"manifest.json", ".hash_cache.json"}
+
+
 def _hash_export_data(export_dir: Path) -> str:
-    """SHA-256 over the 4 data file types (excludes manifest.json — Fix A).
+    """SHA-256 over the 4 data file types (excludes manifest.json and .hash_cache.json).
 
     File order is sorted by relative path for determinism.
     """
     candidate_files = sorted(
         p for p in export_dir.rglob("*")
-        if p.is_file() and p.name != "manifest.json"
+        if p.is_file() and p.name not in _HASH_EXCLUDED
     )
     h = hashlib.sha256()
     for p in candidate_files:
@@ -74,6 +77,20 @@ def _hash_export_data(export_dir: Path) -> str:
         h.update(rel.encode())
         h.update(p.read_bytes())
     return h.hexdigest()
+
+
+def _write_hash_cache(export_dir: Path, artifact_hash: str) -> None:
+    """Write .hash_cache.json: artifact_hash + per-file mtime+size for fast warm-load checks."""
+    files: dict[str, dict] = {}
+    for p in export_dir.rglob("*"):
+        if p.is_file() and p.name not in _HASH_EXCLUDED:
+            stat = p.stat()
+            files[str(p.relative_to(export_dir))] = {
+                "mtime": stat.st_mtime,
+                "size": stat.st_size,
+            }
+    cache = {"artifact_hash": artifact_hash, "files": files}
+    (export_dir / ".hash_cache.json").write_text(json.dumps(cache))
 
 
 def _config_hash(config_path: Path) -> str:
@@ -103,9 +120,13 @@ def _build_shard_index(
     shard_index_from_writer: dict[str, int],
     rep_root: Path,
     splits_dir: Path,
+    num_nodes_map: dict[str, int] | None = None,
 ) -> dict[str, dict]:
-    """Convert {sha: shard_num} → {sha: {shard, pos_in_shard}}."""
-    # Rebuild per-shard position ordering from the canonical JSONL order.
+    """Convert {sha: shard_num} → {sha: {shard, pos_in_shard, num_nodes}}.
+
+    num_nodes is embedded when num_nodes_map is provided (new exports).
+    Old callers that omit it get entries without the key (backward-compatible).
+    """
     shard_positions: dict[int, int] = {}  # {shard_num: next_pos}
     full_index: dict[str, dict] = {}
     for split_name in ("train", "val", "test"):
@@ -119,7 +140,10 @@ def _build_shard_index(
                 continue  # no rep
             shard_num = shard_index_from_writer[sha]
             pos = shard_positions.get(shard_num, 0)
-            full_index[sha] = {"shard": shard_num, "pos_in_shard": pos}
+            entry: dict = {"shard": shard_num, "pos_in_shard": pos}
+            if num_nodes_map is not None and sha in num_nodes_map:
+                entry["num_nodes"] = num_nodes_map[sha]
+            full_index[sha] = entry
             shard_positions[shard_num] = pos + 1
     return full_index
 
@@ -162,19 +186,22 @@ def chunk_export(
     write_metadata_parquet(splits_dir, rep_root, preproc_root, output_dir / "metadata.parquet")
 
     # ── 3. graph shards ──────────────────────────────────────────────────
-    _, graph_shard_map = write_graphs_shards(rep_root, splits_dir, graphs_dir, shard_size)
+    _, graph_shard_map, num_nodes_map = write_graphs_shards(rep_root, splits_dir, graphs_dir, shard_size)
 
     # ── 4. token shards ──────────────────────────────────────────────────
     _, token_shard_map = write_tokens_shards(rep_root, splits_dir, tokens_dir, shard_size)
 
     # ── 5. shard index files ─────────────────────────────────────────────
-    full_shard_index = _build_shard_index(graph_shard_map, rep_root, splits_dir)
+    full_shard_index = _build_shard_index(graph_shard_map, rep_root, splits_dir, num_nodes_map)
     shard_index_json = json.dumps(full_shard_index, sort_keys=True)
     (graphs_dir / "_shard_index.json").write_text(shard_index_json)
     (tokens_dir / "_shard_index.json").write_text(shard_index_json)
 
     # ── 6. compute artifact_hash (Fix A — before manifest.json exists) ──
     artifact_hash = _hash_export_data(output_dir)
+
+    # ── 6b. write hash cache (warm-load fast path for verify_artifact_hash) ──
+    _write_hash_cache(output_dir, artifact_hash)
 
     # ── 7. build manifest ────────────────────────────────────────────────
     splits_dict, n_contracts = _load_split_ids(splits_dir)

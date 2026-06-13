@@ -103,35 +103,21 @@ The folder index is built **once** before the per-meta loop (O(F) where F = tota
 
 Bad Randomness is **silently dropped** — no canonical equivalent, and inventing one would muddy the 10-class taxonomy. (The `bccc_class_to_sentinel` mapping in `verification/probe_trivials.py:16-27` shows the historical BCCC 12-class → SENTINEL 10-class mapping; "badrandomness" is not in it.)
 
-### The canonical 10-class taxonomy — a known inconsistency
+### The canonical 10-class taxonomy
 
-> **⚠ The two taxonomies disagree on order AND class membership. The representation schema is the source of truth for training.**
+The labeling taxonomy in `schema/taxonomy.yaml` is the **single source of truth** for the 10-class vocabulary. Per ADR-0009 (Phase D, 2026-06-12), `representation/graph_schema.py:CLASS_NAMES` also uses this exact same order — the two are aligned.
 
-**`representation/graph_schema.py:73-84`** (what the v9 model uses — indices match the Run 9 checkpoint):
-
-| Idx | Class | Idx | Class |
-|-----|-------|-----|-------|
-| 0 | Reentrancy | 5 | DenialOfService |
-| 1 | CallToUnknown | 6 | IntegerUO |
-| 2 | Timestamp | 7 | UnusedReturn |
-| 3 | ExternalBug | 8 | MishandledException |
-| 4 | GasException | 9 | **NonVulnerable** |
-
-**`labeling/schema/taxonomy.yaml:21-159`** (what `class_names()` returns — used by merger, gate, audit, all analysis tools):
+**`labeling/schema/taxonomy.yaml`** (the canonical order — used by `class_names()`, parsers, merger, gate, verification, analysis, and now also the model):
 
 | Idx | Class | Idx | Class |
 |-----|-------|-----|-------|
 | 0 | CallToUnknown | 5 | MishandledException |
 | 1 | DenialOfService | 6 | Reentrancy |
 | 2 | ExternalBug | 7 | Timestamp |
-| 3 | GasException | 8 | **TransactionOrderDependence** |
-| 4 | IntegerUO | 9 | **UnusedReturn** |
+| 3 | GasException | 8 | TransactionOrderDependence |
+| 4 | IntegerUO | 9 | UnusedReturn |
 
-**The two have different class orderings AND different class membership** (representation has `NonVulnerable` at id=9, no `TransactionOrderDependence`; labeling has `TransactionOrderDependence` at id=8, no `NonVulnerable` slot — `UnusedReturn` is at id=9).
-
-The two diverge because the **representation schema is the v9 model checkpoint's classifier head** (preserved from Runs 1–9 to keep all existing checkpoints loadable), while the **labeling taxonomy is the SENTINEL v2 design intent** (10 vulnerability classes, no `NonVulnerable` slot — nonvuln is a *negative* label, not a class). At the merger level this is masked because most code uses `class_names()` (string-keyed dicts), but anything that depends on **index-aligned label arrays** must be careful which one it imports from.
-
-The DIVE crosswalk notably has **no entry for `TransactionOrderDependence`** in `taxonomy.yaml` despite the class existing — DIVE maps `front_running` to `Timestamp` instead. The `TransactionOrderDependence` slot in the labeling taxonomy is used by **SolidiFI's `TOD` injection** which maps directly. If you train a new model from scratch, the right order to use is in `representation/graph_schema.py` (so it matches existing checkpoints).
+The DIVE crosswalk notably has **no entry for `TransactionOrderDependence`** in `taxonomy.yaml` despite the class existing — DIVE maps `front_running` to `Timestamp` instead. The `TransactionOrderDependence` slot in the taxonomy is used by **SolidiFI's `TOD` injection** which maps directly.
 
 ## 4. Public API
 

@@ -341,7 +341,9 @@ class TrainConfig:
     # --- Run 8: complexity-proxy suppression ---
     # Zero feat[5] (complexity = log1p(cfg_block_count)/log1p(100)) at GNN input.
     # L4 experiment: complexity dominates all 10 classes at 34-36% gradient share.
-    drop_complexity_feature: bool = False
+    # Enabled by default (Run 9+): v2 data quality audit confirmed feat[5] fires 5/5
+    # in every class and pos contracts are 12-69% more complex than neg contracts.
+    drop_complexity_feature: bool = True
 
     # --- Run 8: APPNP Phase 1 teleport ---
     # At each Phase 2 layer: x = α * phase1_output.detach() + (1-α) * x

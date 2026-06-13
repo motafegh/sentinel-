@@ -1,6 +1,6 @@
 # `sentinel_data` — SENTINEL Data Engineering Module
 
-> **Status: 9 sub-packages; Stages 0–4 ✅ COMPLETE; Stage 5 (splitting + registry) ✅ COMPLETE; Stages 6 (analysis) ✅ COMPLETE; Stage 7 (export) ⏳ STUB.** The `label` and `export` CLI subcommands are stubs. Run 11 launch: 2026-08-18.
+> **Status: 9 sub-packages; Stages 0–4 ✅ COMPLETE; Stage 5 (splitting + registry) ✅ COMPLETE; Stages 6 (analysis) ✅ COMPLETE; Stage 7 (export) ✅ COMPLETE.** The `label` CLI subcommand is a stub (merger runs from Python). Run 11 launch: 2026-08-18.
 
 ## 1. Purpose
 
@@ -11,7 +11,7 @@ The package is organized as a **5-stage transformation pipeline** (per the v2 ar
 ```
 raw ──► [ingest] ──► preprocessed ──► [preprocess] ──► representations ──► [label] ──►
 labels/merged ──► [verify] ──► verification_report ──► [split] ──► splits/v1 ──►
-[register] ──► catalog ──► [analyze] ──► analysis/<run_id> ──► [export] (STUB)
+[register] ──► catalog ──► [analyze] ──► analysis/<run_id> ──► [export] ──► data/exports/<version>/
 ```
 
 > **Note on pipeline order**: the previous `__init__.py` claimed the order was `ingest → preprocess → label → represent → split`. **That is wrong.** The actual CLI order (per `cli.py:STAGES`) is `ingest → preprocess → represent → label → verify → split → register → analyze → export`. The representation stage MUST happen before labeling because the labels are stored separately from the representations and labeling only needs the `meta.json` sidecar, but the canonical order in `cli.py` is the source of truth. The old diagram above is corrected below in §3.
@@ -32,9 +32,9 @@ The **single user-facing surface** is the `sentinel-data` CLI (`sentinel_data/cl
 | `splitting/` | 759 lines (4 files) | Stage 5 — 4 splitters + dedup_enforcer + leakage_auditor + NonVuln cap. See `splitting/README.md`. |
 | `registry/` | 800 lines (3 files) | Stage 5 — SQLite + YAML mirror + lineage + dataset_diff. See `registry/README.md`. |
 | `analysis/` | 1,350 lines (6 files) | Stage 6 — 5 analysis tools (balance_viz, cooccurrence, drift_monitor, feature_dist, overlap_detector). See `analysis/README.md`. |
-| `export/` | 10 lines (1 file) | Stage 7 — STUB. Planned 4-writer sharded export. See `export/README.md`. |
+| `export/` | 695 lines (7 files + format_schema/) | Stage 7 — 4-writer sharded export (graphs, tokens, labels, metadata) + orchestrator + consumer-facing API. See `export/README.md`. |
 
-**Sub-total: 9,041 lines of Python** across 53 files (excluding `__pycache__` and `__init__.py` files except the package-level one).
+**Sub-total: 9,726 lines of Python** across 60 files (excluding `__pycache__` and `__init__.py` files except the package-level one).
 
 ## 3. The actual pipeline order (corrected from the old `__init__.py`)
 
@@ -45,12 +45,12 @@ Per `cli.py:STAGES` (line 71-81):
 1. ingest      ──► data/raw/<source>/             ✅
 2. preprocess  ──► data/preprocessed/<source>/    ✅
 3. represent   ──► data/representations/<source>/ ✅
-4. label       ──► data/labels/<source>/, data/labels/merged/  ⚠ CLI is STUB
-5. verify      ──► data/verification/verification_report_*.md   ✅
-6. split       ──► data/splits/v<N>/              ✅
-7. register    ──► data/registry/catalog.db       ✅
-8. analyze     ──► data/analysis/<run_id>/        ✅
-9. export      ──► data/exports/<version>/         ⚠ STUB
+ 4. label       ──► data/labels/<source>/, data/labels/merged/  ✅ (CLI is stub; merger runs from Python)
+ 5. verify      ──► data/verification/verification_report_*.md   ✅
+ 6. split       ──► data/splits/v<N>/              ✅
+ 7. register    ──► data/registry/catalog.db       ✅
+ 8. analyze     ──► data/analysis/<run_id>/        ✅
+ 9. export      ──► data/exports/<version>/         ✅
 ```
 
 Utility subcommand (always available):
@@ -73,7 +73,7 @@ The package's own docstring groups the 9 stages into 5 "directed pipeline" stage
 - `analysis` — post-hoc diagnostics and visualizations
 
 **2 subpackages outside the conceptual model:**
-- `export` — Stage 7 stub (post-Stage-7 design)
+- `export` — Stage 7 sharded export (post-Stage-7 design, now implemented)
 - `cli` (in `cli.py` at the package root) — the orchestrator
 
 ## 4. Key concepts (cross-cutting)
@@ -123,17 +123,6 @@ The CLI's **first non-comment code** adds the SENTINEL repo root and `ml/` to `s
 
 This is the **only** place in the production code where `sys.path` is manipulated; tests use `conftest.py` instead. The two strategies are intentionally parallel: the CLI must work without pytest, the test suite must work without the CLI.
 
-### The two-taxonomy divergence (READ BEFORE USING)
-
-> **⚠ The representation and labeling subpackages have DIFFERENT 10-class taxonomies.** The order and class membership don't match.
-
-- **Representation order** (what the v9 model uses — `representation/graph_schema.py:73-84`): Reentrancy=0, CallToUnknown=1, Timestamp=2, ExternalBug=3, GasException=4, DoS=5, IntegerUO=6, UnusedReturn=7, MishandledException=8, NonVulnerable=9. 9 vulnerability classes + NonVulnerable. **No TransactionOrderDependence.**
-- **Labeling order** (what `class_names()` returns — `labeling/schema/taxonomy.yaml`): CallToUnknown=0, DoS=1, ExternalBug=2, GasException=3, IntegerUO=4, MishandledException=5, Reentrancy=6, Timestamp=7, TransactionOrderDependence=8, UnusedReturn=9. 9 vulnerability classes + UnusedReturn (as the 10th). **No NonVulnerable slot** — NonVulnerable is a *negative* label, not a class.
-
-The two diverge because the **representation schema is preserved from Runs 1–9** (to keep existing model checkpoints loadable), while the **labeling schema is the v2 design intent**. At the merger level this is masked because most code uses `class_names()` (string-keyed dicts), but anything that depends on **index-aligned label arrays** must be careful which one it imports from. The model order is the one that matters for training.
-
-See `labeling/schema/README.md` §3 and `representation/README.md` §3 for the full side-by-side tables.
-
 ### MLflow backend (per the root README)
 
 The v2 build uses `sqlite:///mlruns.db` only. The `file:///` backend is corrupt (experiments 1, 2, 3 are in the file backend and return empty results). Any plan or script that logs an experiment must set:
@@ -166,7 +155,7 @@ wsl -- bash -c 'cd /home/motafeq/projects/sentinel/Data && poetry run sentinel-d
 | `sentinel-data split [--version N] [--seed N] [--nonvuln-cap RATIO] [--dry-run]` | 5 (splitting) | `cli.py:_run_split` — reads merged labels, runs stratified splitter, applies dedup_enforcer + NonVulnerable cap, writes train/val/test + manifest | No |
 | `sentinel-data register --name NAME [--version N] [--sources SRC ...] [--verification-report PATH] [--retire-previous NAME]` | 5 (registry) | `cli.py:_run_register` — opens Catalog, registers DatasetVersion, writes YAML mirror | No |
 | `sentinel-data analyze [--only TOOL] [--run-id ID] [--corpus VERSION] [--baseline-version VERSION] [--dry-run]` | 6 | `cli.py:_run_analyze` — runs 5 analysis tools (balance_viz, feature_dist, cooccurrence, overlap_detector, drift_monitor if `--baseline-version` given) | No |
-| `sentinel-data export [--config CONFIG] [--dry-run]` | 7 | **STUB** — "NOT IMPLEMENTED — implement in Stage 7" (`cli.py:661-668`) | No |
+| `sentinel-data export [--config CONFIG] [--split-version N] [--shard-size N] [--output-dir PATH] [--dry-run]` | 7 | `cli.py:_run_export` — calls `export.chunk_export()` to produce sharded graphs/tokens/labels/metadata + manifest | No |
 | `sentinel-data freshness [--config CONFIG]` | (utility) | `ingestion.freshness.run_freshness_check` | No |
 
 The 9 stages are ordered in `cli.py:STAGES` (line 71-81):
@@ -190,7 +179,7 @@ STAGES: list[str] = [
 | 6 | **split** | Deterministic train/val/test splits (4 strategies, default stratified) + 2-pass with dedup_enforcer + NonVulnerable 3:1 cap (stratified by source) | `data/labels/merged/` | `data/splits/v<N>/{train,val,test}.jsonl` + `split_manifest.json` | ✅ |
 | 7 | **register** | Register a dataset version in the SQLite catalog (4 base + 2 system tables) + YAML mirror | `data/splits/v<N>/` | `data/registry/catalog.db` + `data/registry/catalog.yaml` | ✅ |
 | 8 | **analyze** | 5 read-only exploratory tools: balance_viz + feature_dist (the **Run-9-failure catcher** with `complexity_proxy_risk.md` headline) + cooccurrence + overlap_detector + drift_monitor (with `--baseline-version`) | `data/labels/merged/`, `data/representations/`, `data/preprocessed/` | `data/analysis/<run_id>/*.csv`, `*.png`, `complexity_proxy_risk.md`, `drift_report.md` | ✅ |
-| 9 | **export** | Shard export to sentinel-ml; predictor tier-threshold fix; EMITS edge fix | (TBD) | `data/exports/<version>/` | ⏳ STUB |
+| 9 | **export** | Shard export to sentinel-ml: 4 writers (graphs as PyG Batch, tokens as torch.Tensor, labels/metadata as parquet) + orchestrator + manifest with SHA-256 artifact hash | `data/representations/`, `data/labels/merged/`, `data/splits/v<N>/`, `data/preprocessed/` | `data/exports/<version>/` (graphs/, tokens/, labels.parquet, metadata.parquet, manifest.json) | ✅ |
 
 ## 7. Pipeline interactions
 
@@ -206,7 +195,7 @@ STAGES: list[str] = [
 | `sentinel_data.splitting` | → 5a | Reads merged labels + writes splits |
 | `sentinel_data.registry` | → 5b | Reads split manifest + writes catalog |
 | `sentinel_data.analysis` | → 6 | Reads labels + representations + preprocessed + writes analysis |
-| `sentinel_data.export` | → 7 | Reads representations + labels + splits + writes exports (STUB) |
+| `sentinel_data.export` | → 7 | Reads representations + labels + splits + preprocessed; writes sharded export (4 file types + manifest) |
 | `ml/` (post-Stage-7) | ↔ | Reads from `sentinel_data.export` (or directly from `sentinel_data.representation` + `sentinel_data.labeling` + `sentinel_data.splitting` during the seam-swap transition) |
 
 ## 8. Tests

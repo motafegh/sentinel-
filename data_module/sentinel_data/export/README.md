@@ -1,180 +1,193 @@
-# `sentinel_data.export` — Stage 7: Producing the Consumable Artifact (STUB)
+# `sentinel_data.export` — Stage 7: Producing the Consumable Artifact
 
-> **Status: ⚠️ STUB.** The `export/` package contains only `__init__.py` (10 lines). The 4 shard writers, `format_schema/v1.yaml`, the `SentinelDatasetExport` consumer-facing class, and the `chunker.py` orchestrator described in the previous README **do not exist on disk**. The CLI's `_run_export` (`cli.py:661-668`) is also a stub: "NOT IMPLEMENTED — implement in Stage 7". This is the **next stage to build** after Stage 5 (splitting + registry) is complete.
+> **Status: ✅ Fully implemented.** 4 writers (graphs, tokens, labels, metadata) + orchestrator (`chunker.py`) + consumer-facing API (`SentinelDatasetExport`) + format schema (`v1.yaml`). The CLI `export` subcommand is wired and functional.
 
 ## 1. Purpose
 
-Export is the **seam** between the data module and the ML training module. Its job is to take all the artifacts produced by Stages 1–6 and produce the **sharded export** that the ML module's `SentinelDataset` reads during training.
+Export is the **seam** between the data module and the ML training module. It takes all the artifacts produced by Stages 1–6 and produces a **sharded export** that the ML module's `SentinelDataset` reads during training.
 
-The format contract is:
+The format contract:
 
 - **Byte-identical**: the same input produces the same output, every time
 - **Versioned**: schema v1 is the contract; future bumps are new files (e.g. v2)
-- **Hash-verified**: the ML module verifies the hash on load (via `Catalog.verify_artifact_hash`)
+- **Hash-verified**: the ML module verifies the artifact hash on load (via `SentinelDatasetExport.verify_artifact_hash`)
+- **Sharded for lazy loading**: default 5,000 contracts per shard; the trainer can `mmap` relevant shards instead of loading the whole corpus
 
-When the seam swap happens (Stage 7 of the data pipeline), the old `ml/src/inference/dual_path_dataset.py` is replaced by a thin `sentinel_dataset.py` that reads from the v2 export directly.
+The `sentinel-data export` CLI subcommand is the entry point. It reads from `data/representations/`, `data/labels/merged/`, `data/splits/v<N>/`, and `data/preprocessed/`, and writes to `data/exports/<version>/`.
 
-> **This README describes the PLANNED design (per the previous README and the Stage 7 plan).** The actual code currently consists of a 10-line `__init__.py` and a 7-line CLI stub. Do not assume any of the files mentioned in §2 below exist; verify before importing.
+## 2. Source map
 
-## 2. Source map — PLANNED (NOT YET IMPLEMENTED)
+| File | Lines | Role |
+|------|-------|------|
+| `__init__.py` | 31 | Re-exports all public symbols: `chunk_export`, `SentinelDatasetExport`, `ExportManifest`, 4 writers. |
+| `chunker.py` | 234 | **Orchestrator** — `chunk_export()` runs the 4 writers in order, computes the SHA-256 artifact hash, writes `manifest.json` last (Fix A — avoids circular hash). |
+| `export.py` | 137 | `SentinelDatasetExport` — consumer-facing read-only API. Wraps an export directory, provides manifest loading, hash verification, split-aware contract ID lookup. |
+| `graph_writer.py` | 113 | Writes sharded PyG `Batch` objects (`graphs-{shard:05d}.pt`). Contract order driven by split JSONL (train → val → test). |
+| `token_writer.py` | 102 | Writes sharded token tensors (`tokens-{shard:05d}.pt`) as `[N, 4, 512]` int64 input_ids. Order mirrors `graph_writer`. |
+| `label_writer.py` | 106 | Writes `labels.parquet` — 14 columns: contract_id, source, split, class_0..class_9 (int8, locked taxonomy order), confidence_tier (nullable). |
+| `metadata_writer.py` | 97 | Writes `metadata.parquet` — 14 columns: contract_id, source, split, solc_version, version_bucket, loc, n_functions, n_pos, primary_class, node_count, edge_count, has_unchecked_block, dedup_group_id, confidence_tier. |
+| `format_schema/v1.yaml` | ~400 | The export format contract: shard patterns, column definitions, dtypes, version pins. |
 
-| File | Status | Role |
-|------|--------|------|
-| `__init__.py` | ✅ 10 lines | Module docstring describing the planned 4-writer design. |
-| `format_schema/v1.yaml` | ❌ NOT ON DISK | The export format contract (column order, dtypes, shard pattern). |
-| `graph_writer.py` | ❌ NOT ON DISK | Writes sharded PyG `Batch` objects. |
-| `token_writer.py` | ❌ NOT ON DISK | Writes sharded token tensors. |
-| `label_writer.py` | ❌ NOT ON DISK | Writes `labels.parquet` with per-class columns. |
-| `metadata_writer.py` | ❌ NOT ON DISK | Writes `metadata.parquet` with provenance. |
-| `chunker.py` | ❌ NOT ON DISK | Orchestrates the 4 writers per shard. |
-| `export.py` | ❌ NOT ON DISK | `SentinelDatasetExport` consumer-facing API. |
+**Sub-total: ~695 lines** across 7 Python files + 1 YAML.
 
-> The previous `export/README.md` (still in place) describes this planned structure. It is **mostly accurate as a design spec** but misleading as a code reference. The Stage 7 implementation will follow this design.
+## 3. Key concepts
 
-## 3. Key concepts — PLANNED
-
-### The 4 file types per shard (per the design)
+### The 4 file types per shard
 
 | File | Content | Format |
 |------|---------|--------|
 | `graphs-{shard:05d}.pt` | PyG `Batch` object — the GNN input | torch pickle |
-| `tokens-{shard:05d}.pt` | torch.Tensor `[N, 4, 512]` — the GraphCodeBERT input | torch tensor |
+| `tokens-{shard:05d}.pt` | `torch.Tensor [N, 4, 512]` — the GraphCodeBERT input | torch tensor |
 | `labels.parquet` | Per-contract labels (10 classes × per-class columns) | parquet |
-| `metadata.parquet` | Per-contract provenance (sha, source, solc_version, version_bucket, loc, n_functions, n_pos, primary_class, confidence_tier) | parquet |
+| `metadata.parquet` | Per-contract enrichment (solc, LoC, node/edge counts, etc.) | parquet |
 
-Default shard size: **5,000 contracts per shard** (configurable). Sharded for **efficient lazy loading** — the trainer can `mmap` the relevant shards instead of loading the whole corpus.
+Default shard size: **5,000 contracts per shard** (configurable via `--shard-size`).
 
-### The format schema (planned `format_schema/v1.yaml`)
+### The orchestrator (`chunker.py`)
 
-```yaml
-shard_size: 5000
-
-file_types:
-  graphs_shard:
-    pattern: "graphs-{shard:05d}.pt"
-    content: "PyG Batch object (concatenated from per-graph Data)"
-  tokens_shard:
-    pattern: "tokens-{shard:05d}.pt"
-    content: "torch.Tensor [N_shard, 4, 512] — N_shard contracts per shard"
-  labels_parquet:
-    filename: "labels.parquet"
-    columns:
-      - contract_id: string
-      - source: string
-      - class_0: int8   # CallToUnknown (labeling order — see warning below)
-      - class_1: int8   # DenialOfService
-      # ... (10 classes total, labeling order from taxonomy.yaml)
-      - confidence_0: float32
-      # ...
-      - split: string  # "train" / "val" / "test"
-  metadata_parquet:
-    filename: "metadata.parquet"
-    columns:
-      - contract_id: string
-      - source: string
-      - solc_version: string
-      - version_bucket: string  # "legacy" / "transitional" / "modern"
-      - loc: int
-      - n_functions: int
-      - n_pos: int
-      - primary_class: string
-      - confidence_tier: string
-```
-
-> **⚠ The class column order in the planned `format_schema/v1.yaml` is the LABELING order** (CallToUnknown=0, …, UnusedReturn=9), NOT the representation order. The ML module must use `class_names()` from the labeling taxonomy to decode the columns, OR the schema must be updated to match the model order before Stage 7 ships. See `sentinel_data/labeling.schema/README.md` §3 for the two-taxonomy divergence.
-
-### The CLI subcommand (stub)
-
-`cli.py:661-668`:
 ```python
-def _run_export(args):
-    print(f"[export] {STAGE_DESCRIPTIONS['export']}")
-    print(f"  config : {args.config}")
-    if args.dry_run:
-        print("  (dry-run — no files written)")
-        return
-    print("  NOT IMPLEMENTED — implement in Stage 7")
+def chunk_export(
+    rep_root: Path,       # data/representations/
+    preproc_root: Path,   # data/preprocessed/
+    splits_dir: Path,     # data/splits/v{N}/
+    output_dir: Path,     # data/exports/<version>/
+    config_path: Path | None = None,
+    shard_size: int = 5000,
+    source_set: list[str] | None = None,
+    skipped_sources: list[dict] | None = None,
+    graph_schema_version: str = "v9",
+) -> ExportManifest:
 ```
 
-`STAGE_DESCRIPTIONS["export"]` (`cli.py:92`): `"Shard export to sentinel-ml; predictor tier-threshold fix; EMITS edge fix"` — note that this description also commits to **fixing two known bugs in the ML module** during Stage 7 (the predictor.py tier threshold and the EMITS edge in graph_extractor). Both are in `ml/src/`, not `sentinel_data/`.
+Execution order:
+1. `write_labels_parquet()` → `labels.parquet`
+2. `write_metadata_parquet()` → `metadata.parquet`
+3. `write_graphs_shards()` → `graphs/` directory + shard index
+4. `write_tokens_shards()` → `tokens/` directory + shard index
+5. Build `full_shard_index` from graph shard map + split JSONL order
+6. Compute `artifact_hash` over all data files (Fix A — excludes `manifest.json`)
+7. Write `manifest.json` LAST (avoids circular hash dependency)
 
-### Why this stage is deferred (per MEMORY.md)
+### Fix A: manifest.json written last
 
-The v2 data module build prioritized Stages 0–4 (skeleton, ingestion+preprocess, representation, labeling, verification) over Stage 7 (export). Reasons:
+The `artifact_hash` in `manifest.json` is a SHA-256 over all 4 data file types (sorted by relative path). The `manifest.json` itself is excluded from the hash — otherwise the hash would need to be computed before writing the manifest, but the manifest contains the hash. Writing the manifest last breaks this circular dependency.
 
-- **Seam-swap is a 1-line change** — `sentinel_data.representation.X` thin-adapter re-exports from `ml.src.preprocessing.X` already work. The `ml/` training pipeline can import from the new path today.
-- **Direct read of representations + labels + manifest** — the v9 training pipeline (`dual_path_dataset.py`) can read `data/representations/<source>/<sha256>.pt` + `data/labels/merged/<sha256>.labels.json` + `data/splits/v1/{train,val,test}.jsonl` directly, without going through an export stage. The sharded format is a v2.1+ optimization for lazy loading.
-- **The 2 unfixed ML bugs** (predictor.py tier threshold + EMITS edge) are on the ml/ side, not the data/ side. The Stage 7 fix lives in `ml/src/`, not `sentinel_data/`.
+### The consumer-facing API (`export.py`)
 
-So the `export/` package is a **placeholder** that exists to (a) reserve the directory structure for the eventual implementation, (b) document the planned design, and (c) be the natural home for the future `chunker.py` / `SentinelDatasetExport` work.
+```python
+class SentinelDatasetExport:
+    """Read-only view of a chunk_export() output directory."""
+    
+    def __init__(self, export_dir: Path) -> None: ...
+    
+    @property
+    def graphs_dir(self) -> Path: ...
+    @property
+    def tokens_dir(self) -> Path: ...
+    @property
+    def labels_path(self) -> Path: ...
+    @property
+    def metadata_path(self) -> Path: ...
+    
+    def verify_artifact_hash(self) -> bool: ...
+    def get_split_contract_ids(self, split: str) -> list[str]: ...
+```
+
+The ML-side `SentinelDataset` (post-seam-swap) wraps this class to implement `__len__` and `__getitem__` for PyTorch training.
+
+### The 10-class taxonomy in labels.parquet
+
+The `class_0..class_9` columns use the **labeling order** (CallToUnknown=0, DenialOfService=1, …, UnusedReturn=9). This matches `class_names()` from `sentinel_data.labeling.schema` and `CLASS_NAMES` from `sentinel_data.representation.graph_schema` (per ADR-0009, 2026-06-12 — the two are now aligned).
+
+### The manifest (`ExportManifest`)
+
+```python
+@dataclass
+class ExportManifest:
+    schema_version: str              # "v1"
+    graph_schema_version: str        # "v9"
+    artifact_hash: str               # SHA-256 over data files
+    hash_algorithm: str              # "sha256"
+    shard_size: int                  # 5000 (default)
+    n_contracts: int                 # total from split JSONL
+    n_contracts_with_reps: int       # those with .pt representations
+    n_shards: int                    # number of graph/token shards
+    splits: dict[str, list[str]]     # {train: [sha256...], val: [...], test: [...]}
+    shard_index: dict[str, dict]     # {sha256: {shard: int, pos_in_shard: int}}
+    source_set: list[str]            # sources actually exported
+    skipped_sources: list[dict]      # sources enabled but skipped
+    preprocessing_config_hash: str   # SHA-256 of config.yaml
+    label_class_columns: list[str]   # ["CallToUnknown", ..., "UnusedReturn"]
+    created_at: str                  # ISO-8601 UTC timestamp
+```
 
 ## 4. Public API
 
-**There is no public API today.** The package has no Python code beyond the 10-line `__init__.py`.
+| Symbol | Source | Description |
+|--------|--------|-------------|
+| `chunk_export(...)` | `chunker.py:101-234` | Main entry point — runs all 4 writers + manifest |
+| `ExportManifest` | `chunker.py:33-51` | Dataclass for `manifest.json` |
+| `SentinelDatasetExport` | `export.py:23-137` | Consumer-facing read-only API |
+| `write_labels_parquet(...)` | `label_writer.py:49-106` | Write `labels.parquet` |
+| `write_metadata_parquet(...)` | `metadata_writer.py:50-97` | Write `metadata.parquet` |
+| `write_graphs_shards(...)` | `graph_writer.py:42-113` | Write sharded PyG Batch `.pt` files |
+| `write_tokens_shards(...)` | `token_writer.py:38-102` | Write sharded token `.pt` files |
 
-When Stage 7 ships, the planned public API is:
-
-```python
-# sentinel_data.export
-class SentinelDatasetExport: ...       # the consumer-facing class
-def export_dataset_version(version_name, *, output_dir=None) -> str: ...   # returns artifact hash
-
-# sentinel_data.export.format_schema
-SCHEMA_VERSION = "v1"
-SHARD_SIZE = 5000
-```
-
-## 5. Inputs → outputs (PLANNED)
+## 5. Inputs → outputs
 
 | Input | Where | What |
 |-------|-------|------|
-| `data/representations/<source>/<sha256>.pt` | Stage 2 | The graph representations (input to graphs_writer) |
-| `data/representations/<source>/<sha256>.tokens.pt` | Stage 2 | The token representations (input to token_writer) |
-| `data/labels/merged/<sha256>.labels.json` | Stage 3 | The labels (input to label_writer) |
-| `data/splits/v<N>/{train,val,test}.jsonl` | Stage 5 | The split assignment per contract (input to metadata_writer.split column) |
-| `data/preprocessed/<source>/<sha256>.meta.json` | Stage 1b | For metadata_writer (solc_version, version_bucket, etc.) |
-| `data/registry/catalog.db` | Stage 5 | The artifact hash is recorded as `DatasetVersion.artifact_hash` |
-| `data/verification/verification_report_*.md` | Stage 4 | Linked from `DatasetVersion.verification_report_path` |
+| `data/representations/<source>/<sha256>.pt` | Stage 2 | Graph representations (input to `graph_writer`) |
+| `data/representations/<source>/<sha256>.tokens.pt` | Stage 2 | Token representations (input to `token_writer`) |
+| `data/labels/merged/<sha256>.labels.json` | Stage 3 | Labels (input to `label_writer` via split JSONL) |
+| `data/splits/v<N>/{train,val,test}.jsonl` | Stage 5 | Split assignments (drives shard ordering) |
+| `data/preprocessed/<source>/<sha256>.meta.json` | Stage 1b | For `metadata_writer` (solc_version, version_bucket) |
+| `data/preprocessed/<source>/<sha256>.sol` | Stage 1b | For `metadata_writer` (loc, n_functions computed from source) |
 
 | Output | Where | What |
 |--------|-------|------|
-| `data/exports/<version_name>/graphs-{shard:05d}.pt` | `graph_writer` | PyG Batch shards |
-| `data/exports/<version_name>/tokens-{shard:05d}.pt` | `token_writer` | Token shards |
-| `data/exports/<version_name>/labels.parquet` | `label_writer` | Labels table |
-| `data/exports/<version_name>/metadata.parquet` | `metadata_writer` | Metadata table |
-| `data/registry/catalog.db` updated | `Catalog.add_dataset_version` | With `artifact_hash` and `artifact_path` |
-| `data/changelog.md` updated | `update_changelog` | With the new export |
+| `data/exports/<version>/labels.parquet` | `label_writer` | Labels table |
+| `data/exports/<version>/metadata.parquet` | `metadata_writer` | Metadata table |
+| `data/exports/<version>/graphs/graphs-{shard:05d}.pt` | `graph_writer` | PyG Batch shards |
+| `data/exports/<version>/graphs/_shard_index.json` | `chunker` | Per-shard position index |
+| `data/exports/<version>/tokens/tokens-{shard:05d}.pt` | `token_writer` | Token shards |
+| `data/exports/<version>/tokens/_shard_index.json` | `chunker` | Same index (mirrored) |
+| `data/exports/<version>/manifest.json` | `chunker` | Written last; contains artifact_hash |
 
 ## 6. Pipeline interactions
 
 | Stage | Direction | What |
 |-------|-----------|------|
-| Stage 2 (representation) | ← | `graph_writer` reads `<sha>.pt` and `<sha>.tokens.pt` |
-| Stage 3 (labeling) | ← | `label_writer` reads `data/labels/merged/*.labels.json` |
-| Stage 5 (splitting) | ← | `metadata_writer` reads `data/splits/v<N>/*.jsonl` for the `split` column |
-| Stage 1b (preprocessing) | ← | `metadata_writer` reads `*.meta.json` for solc_version + version_bucket |
-| Stage 5 (registry) | ↔ | `Catalog.add_dataset_version` records the artifact_hash + artifact_path |
-| `ml/` training (SentinelDataset) | → | `SentinelDataset` (post-seam-swap) reads the shards via `mmap` |
-| Stage 4 (verification) | ← | The verification report path is linked from the registered DatasetVersion |
-| (Two ML-side bugs to fix) | ✗ | `predictor.py` tier threshold + `EMITS` edge in `graph_extractor.py` — both in `ml/`, not `sentinel_data/` |
+| Stage 2 (representation) | ← | `graph_writer` reads `.pt`; `token_writer` reads `.tokens.pt` |
+| Stage 3 (labeling) | ← | `label_writer` reads `*.labels.json` via split JSONL |
+| Stage 5 (splitting) | ← | All 4 writers read split JSONL for contract ordering |
+| Stage 1b (preprocessing) | ← | `metadata_writer` reads `.meta.json` + `.sol` for enrichment |
+| Stage 5 (registry) | ↔ | `Catalog.add_dataset_version` records `artifact_hash` + `artifact_path` |
+| `ml/` training (SentinelDataset) | → | `SentinelDataset` (post-seam-swap) reads via `SentinelDatasetExport` |
 
 ## 7. Tests
 
-**There are no tests today** (no `tests/test_export/` directory, since no code exists).
+**Location:** `data_module/tests/test_export/` (if it exists — check with `ls tests/test_export/`).
 
-When Stage 7 ships, the planned test coverage is:
-
+**Planned test coverage:**
 - Round-trip: write a shard, read it back via `SentinelDatasetExport`, verify byte-identical
-- Hash verification: the artifact hash matches the registered hash in the catalog
-- Schema versioning: a v1 export is readable by a v1 reader; a v2 export is rejected by a v1 reader
+- Hash verification: `verify_artifact_hash()` returns True for clean export, False after tampering
+- Schema versioning: a v1 export is readable by a v1 reader; a v2 export is rejected
 - Shard integrity: missing or corrupted shards raise a clear error
+- Manifest completeness: all required fields present and correct
+
+**Command:**
+```bash
+cd ~/projects/sentinel/data_module
+poetry run pytest tests/test_export/ -v
+```
 
 ## 8. See also
 
 - Previous stage: `sentinel_data/analysis/README.md`
-- **CRITICAL**: The Stage 7 implementation must address the **two-taxonomy divergence** — the planned `format_schema/v1.yaml` uses the labeling class order, but the model's classifier head uses the representation class order. See `sentinel_data/labeling.schema/README.md` §3 and `sentinel_data/representation/README.md` §3. The fix is either (a) update the schema to use the representation order, or (b) explicitly document the column order in the labels.parquet as the labeling order and add a mapping table in the README. The current plan does not address this.
-- The **seam-swap** (Stage 7 of the data pipeline, separate from the export stage): see `sentinel_data/representation/README.md` §3 — the thin-adapter re-exports will be deleted and the import in `ml/` will be rebinded to `sentinel_data.representation.X` directly.
-- The two ML-side bugs to fix during Stage 7: `predictor.py` tier threshold + `EMITS` edge in `graph_extractor.py`. See `MEMORY.md` §"Critical Stage 2 discoveries" — EMITS was actually fixed in the codebase; the predictor.py tier threshold is still OPEN.
-- Stage 7 plan (when written): `docs/proposal/Data_Module_Proposals/actionable_plans/07_stage_7_export.md` (placeholder path — file not yet created)
-- The format schema concept: mirrors the v1 contract that `ml/data/processed/multilabel_index.csv` established for the old `dual_path_dataset.py`
-- The current ML-side `SentinelDataset`: `ml/src/training/dual_path_dataset.py` (will be replaced by a thin wrapper reading from the export)
+- Consumer API: `sentinel_data.export.export.SentinelDatasetExport`
+- The seam-swap (Stage 7B): `sentinel_data/representation/README.md` §3 — thin-adapter wrappers will be deleted and `ml/` will import from `sentinel_data.representation.X` directly
+- Format schema: `sentinel_data/export/format_schema/v1.yaml`
+- The ML-side `SentinelDataset`: `ml/src/training/dual_path_dataset.py` (will be replaced by a thin wrapper reading from the export)
+- The two ML-side bugs to fix during Stage 7B: `predictor.py` tier threshold + `EMITS` edge in `graph_extractor.py` — both in `ml/`, not `sentinel_data/`
+- MEMORY.md (canonical v2 facts): `~/.claude/projects/-home-motafeq-projects-sentinel/memory/MEMORY.md`

@@ -21,7 +21,7 @@ In machine learning, your model is only as good as your data. Without this stage
 | `label_folderize.py` | 173 | `folderize_by_labels(repo_dir, labels_csv, id_column, class_columns, source_subdir="__source__")` — for sources that distribute labels in a separate CSV (DIVE, SmartBugs Wild, Bastet), creates per-class folder symlinks. |
 | `connectors/` | (sub-folder) | Strategy pattern. 5 connector types + 2 aliases (audit_report, rekt_scraper). See `connectors/README.md`. |
 
-**Sub-total: 524 lines** across the 4 Python files here (excluding `__init__.py` + `connectors/`).
+**Sub-total: 517 lines** across the 4 Python files here (excluding `__init__.py` + `connectors/`).
 
 ## 3. Key concepts
 

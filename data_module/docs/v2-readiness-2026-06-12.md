@@ -5,6 +5,8 @@
 **Export under test:** `data_module/data/exports/sentinel-v2-baseline-2026-06-12/`
 (22,356 contracts → 21,523 with representations, 5 graph shards + 5 token shards, hash verified)
 
+> **⚠️ HISTORICAL — superseded by the v3 export (2026-06-13):** This report captures the gate state immediately after Stage 7B seam swap closure. The **active export is now `sentinel-v3-smartbugs-2026-06-13/`** with 22,493 contracts (post-SmartBugs + post-DoS-patch). For the **current v3 gate state** (still 6/7 GREEN, 1 AMBER — Gate 5 corpus-bound), see **`data_module/temp/pre-run12-fixes-2026-06-13.md`** §"Step D" and **`data_module/docs/architecture.md`** §"v2 → v3 transition". For Run 12 launch context (PID 230342, in flight on v3), see `~/.claude/projects/.../memory/project_run12_launch.md`.
+
 This report records the state of the 7 v2-readiness gates immediately after the
 seam swap was applied (2026-06-12). It is the formal closure of Stage 7B.
 

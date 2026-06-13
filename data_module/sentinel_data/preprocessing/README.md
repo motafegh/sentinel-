@@ -12,7 +12,7 @@ The pipeline is **drop-not-fix for compile failures**: a contract that fails to 
 
 | File | Lines | Role |
 |------|-------|------|
-| `__init__.py` | 5 | Module docstring. |
+| `__init__.py` | 5 | Module docstring + `__all__`. |
 | `pipeline.py` | 246 | `PreprocessingPipeline` orchestrator + `ContractMeta` sidecar dataclass + `META_SCHEMA_VERSION = "1"`. **Serial** execution. |
 | `preprocess.py` | 264 | `preprocess_source(name, cfg, data_dir, dry_run, n_workers, sample, retry_failed)` + `preprocess_all(...)` — the CLI service. Handles `--sample N`, `--retry-failed`, and `_maybe_folderize`. |
 | `flattener.py` | 311 | `flatten_contract(sol_path) -> FlattenResult` — `solc --flatten` with two-stage fallback (recursive unresolved-import strip + inheritance-parent strip). |
@@ -23,7 +23,7 @@ The pipeline is **drop-not-fix for compile failures**: a contract that fails to 
 | `parallel.py` | 156 | `run_preprocess_parallel(pipeline, sol_files, raw_base, n_workers)` — `multiprocessing.Pool` wrapper with auto-tuned chunksize. |
 | `_transitive_strip.py` | 104 | Helper for `flattener.py`: when the recursive strip modifies a transitive relative-imported file, writes a `.sentinel_stripped.sol` sibling and rewrites the top-level import. Auto-cleaned by `pipeline.py:_process_one`. |
 
-**Sub-total: 1,192 lines** across 9 files (the existing README's "228 / 256 / 311 / 183 / 76 / 35 / 64 / 156 / 104" line table is the source of truth; aggregated here).
+**Sub-total: 1,498 lines** across 10 Python files.
 
 ## 3. Key concepts
 
@@ -95,13 +95,13 @@ The strip also handles `contract Foo is A, B, C {` — if a stripped import brou
 
 When the recursive strip modifies a transitive relative-imported file (e.g. `interface.sol` that itself imported `forge-std/Test.sol`), the compiler must see the modified version. We can't safely modify the on-disk file (it might be used by other PoCs in the same source), so we write a sibling file with a `.sentinel_stripped.sol` suffix and rewrite the top-level import to point at it. The sibling is auto-cleaned by `pipeline.py:_process_one:159-163` after the compile step.
 
-### Three-level dedup (`deduplicator.py:32-79`)
+### Three-level dedup (`deduplicator.py:32-113`)
 
-| Level | Method | What it catches | Status |
+| Level | Method | What it catches | Status | 101:
 |-------|--------|-----------------|--------|
 | 1 | Exact SHA-256 | Whitespace/comment-only differences across sources | ✅ |
 | 2 | Ethereum address | Same address appearing in multiple files | ✅ |
-| 3 | AST near-dup (threshold 0.85) | Copy-paste-with-minor-edits patterns | ⚠️ STUB — `dedup_group_id = sha256` for now; Slither-based similarity clustering deferred to v2.1 |
+| 3 | AST near-dup (text-normalized) | Copy-paste-with-minor-edits patterns | ✅ (text-normalized hash; Slither-based clustering deferred to v2.1) |
 
 The 0.85 threshold is intentional — BCCC's 38.8% duplication rate was at 0.85–0.95 similarity; 0.92 is too strict and misses the "minor edits" cases that caused the duplication.
 
@@ -146,19 +146,19 @@ The retry mode **merges** with the existing preprocessed state: files that now s
 
 ### The `ContractMeta` sidecar (`pipeline.py:33-60`)
 
-Every preprocessed file is accompanied by a `meta.json` with these 17 fields:
+Every preprocessed file is accompanied by a `meta.json` with these 19 fields:
 
-| Field | Type | Source step |
-|-------|------|-------------|
+| Field | Type | Source step | 152:
+|-------|------|-------------| 153:
 | `sha256` | `str` | dedup |
 | `source_name` | `str` | orchestrator |
 | `original_path` | `str` | manifest |
 | `pragma` | `str` | compile (raw, whitespace-stripped) |
 | `solc_version` | `str` | compile (the version that succeeded) |
-| `compile_status` | `str` | `"ok"` \| `"failed"` |
+| `compile_status` | `str` | `"ok" \| "failed"` |
 | `compile_error` | `str` | empty on success |
 | `attempted_solc_versions` | `list[str]` | compile |
-| `flatten_status` | `str` | flatten (`"flattened"` \| `"skipped_no_imports"` \| `"skipped_error"` \| `"stripped_unresolved_imports"`) |
+| `flatten_status` | `str` | flatten (`"flattened" \| "skipped_no_imports" \| "skipped_error" \| "stripped_unresolved_imports"`) |
 | `dedup_group_id` | `str` | dedup |
 | `is_duplicate` | `bool` | dedup |
 | `duplicate_of` | `str` | dedup (sha256 of canonical) |
@@ -168,6 +168,7 @@ Every preprocessed file is accompanied by a `meta.json` with these 17 fields:
 | `n_raw_lines` | `int` | before normalize |
 | `n_normalized_lines` | `int` | after normalize |
 | `meta_schema_version` | `str` | `"1"` (LOCKED) |
+| `extra` | `dict[str, Any]` | catch-all for future extensions |
 
 This sidecar is the contract between preprocessing and every downstream stage. Representation reads `sha256` for cache keys. Labeling reads `source_name` for crosswalk lookup. Splitting reads `version_bucket` for stratification.
 

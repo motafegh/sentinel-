@@ -22,11 +22,11 @@ The v9 graph schema is **the source of truth for the model's classifier head**. 
 
 | File | Lines | Role |
 |------|-------|------|
-| `__init__.py` | 64 | Re-exports all public symbols from `graph_schema` + `graph_extractor`. |
-| `graph_schema.py` | 148 | **Thin adapter** — re-exports v9 schema constants from `ml/src/preprocessing/graph_schema.py`. Defines `CLASS_NAMES` + `NUM_CLASSES` locally (10 classes, LOCKED to match existing checkpoints). |
-| `graph_extractor.py` | 77 | **Thin adapter** — re-exports `extract_contract_graph` + error types from `ml/src/preprocessing/graph_extractor.py`. |
-| `tokenizer.py` | 72 | **Thin adapter** — re-exports `tokenize_windowed_contract` from `ml/src/data_extraction/windowed_tokenizer.py` (NOT `tokenizer.py` — that one is single-window codebert-base, wrong). |
-| `orchestrator.py` | 344 | **v2 manifest-driven orchestrator** — reads `data/preprocessed/<source>/<sha256>.meta.json`, runs graph_extractor + tokenizer, writes 3 files per contract. Honors content-addressed cache. |
+| `__init__.py` | 64 | Re-exports all public symbols from `graph_schema` + `graph_extractor` + lazy `__getattr__` fallback. |
+| `graph_schema.py` | 251 | **Canonical source of truth** (post-Stage 7B seam swap) — defines all v9 schema constants (`CLASS_NAMES`, `NODE_TYPES`, `EDGE_TYPES`, `FEATURE_NAMES`, etc.). `ml/src/preprocessing/graph_schema.py` re-exports FROM here. |
+| `graph_extractor.py` | 77 | **Thin adapter** — re-exports `extract_contract_graph` + error types from `ml/src/preprocessing/graph_extractor.py` + lazy `__getattr__` fallback. |
+| `tokenizer.py` | 72 | **Thin adapter** — re-exports `tokenize_windowed_contract` + constants from `ml/src/data_extraction/windowed_tokenizer.py` (fixed wrong-import point from `tokenizer.py` to `windowed_tokenizer.py`) + lazy `__getattr__` fallback. |
+| `orchestrator.py` | 344 | **v2 manifest-driven orchestrator** — reads `data/preprocessed/<source>/<sha256>.meta.json`, runs graph_extractor + tokenizer, writes 3 files per contract, optionally emits CFG artifacts. Honors content-addressed cache. |
 | `cache_manager.py` | 119 | Content-addressed cache: `is_cached()`, `invalidate()`, `list_cached_sha256s()`, `stale_entries()`, `evict_stale()`. Cache key = `(sha256, schema_version, extractor_version)`. |
 | `versioner.py` | 100 | Schema/extractor version registry at `data/representations/_version_registry.json`. Detects mismatches and evicts stale cache entries. |
 | `cfg_builder.py` | 309 | **Opt-in** standalone CFG builder (`--emit-cfg`). Produces `CfgArtifact` JSON. Used by Stage 6 complexity_proxy_risk. |
@@ -34,7 +34,7 @@ The v9 graph schema is **the source of truth for the model's classifier head**. 
 | `opcode_extractor.py` | 36 | **DEFERRED to v3.1** — placeholder. Requires separate solc `--bin` compilation step. |
 | `pdg_builder.py` | 34 | **DEFERRED to v3.1** — placeholder. Time better spent on Stage 4 verification. |
 
-**Sub-total: 1,302 lines** across 11 files (3 of which are ~35-line v3.1 stubs).
+**Sub-total: 1,441 lines** across 11 files (3 of which are v3.1 stubs).
 
 ## 3. Key concepts
 
@@ -42,49 +42,54 @@ The v9 graph schema is **the source of truth for the model's classifier head**. 
 
 | Constant | Value | Source |
 |----------|-------|--------|
-| `FEATURE_SCHEMA_VERSION` | `"v9"` | `ml/src/preprocessing/graph_schema.py:161,175,218` (re-exported via `graph_schema.py:131`) |
-| `NODE_FEATURE_DIM` | `12` | 12-dim per-node feature vector |
+| `FEATURE_SCHEMA_VERSION` | `"v9"` | **`graph_schema.py:131`** (now canonical; `ml/src/preprocessing/graph_schema.py` re-exports) |
+| `NODE_FEATURE_DIM` | `12` | 12-dim per-node feature vector (#0: `type_id`, #1–11: binary or normalized scalars) |
 | `NUM_NODE_TYPES` | `14` | 14 distinct node types (`CFG_NODE_ARITH=13` added in v9) |
-| `NUM_EDGE_TYPES` | `12` | 12 distinct edge types (`EXTERNAL_CALL=11` added in v9) |
-| `_MAX_TYPE_ID` | `13.0` | Derived from `max(NODE_TYPES.values())` (re-exported for back-compat) |
-| `NUM_CLASSES` | `10` | LOCKED |
-| `EXTRACTOR_VERSION` | `"v2.1-windowed-gcb"` | Bumped when windowed tokenizer was added |
+| `NUM_EDGE_TYPES` | `12` | 12 distinct edge types (`EXTERNAL_CALL=11` added in v9, cross-contract calls) |
+| `_MAX_TYPE_ID` | `13` (**int**) | Derived from `max(NODE_TYPES.values())` (back-compat constant; **not float**) |
+| `NUM_CLASSES` | `10` | **LOCKED** to match `graph_schema.CLASS_NAMES` order everywhere |
+| `EXTRACTOR_VERSION` | `"v2.1-windowed-gcb"` | Bumped for windowed tokenizer and thin-adapter revamp (orchestrator default still `"v2.0-thin-adapter"`) |
 
-### The 10-class taxonomy (THE model order)
+### The 10-class taxonomy (LOCKED — canonical order)
 
-From `graph_schema.py:73-84`. **This is the order the model classifier head uses; do not change.**
+From `graph_schema.py:190-201`. Per ADR-0009 (Phase D, 2026-06-12), this is the **single canonical source of truth** for the 10-class vocabulary — matching `labeling/schema/taxonomy.yaml` exactly. Do not change.
 
 | Idx | Class | Idx | Class |
 |-----|-------|-----|-------|
-| 0 | Reentrancy | 5 | DenialOfService |
-| 1 | CallToUnknown | 6 | IntegerUO |
-| 2 | Timestamp | 7 | UnusedReturn |
-| 3 | ExternalBug | 8 | MishandledException |
-| 4 | GasException | 9 | **NonVulnerable** |
+| 0 | CallToUnknown | 5 | MishandledException |
+| 1 | DenialOfService | 6 | Reentrancy |
+| 2 | ExternalBug | 7 | Timestamp |
+| 3 | GasException | 8 | TransactionOrderDependence |
+| 4 | IntegerUO | 9 | UnusedReturn |
 
-> **⚠ The labeling taxonomy is DIFFERENT** — see `sentinel_data.labeling.schema.taxonomy.yaml`. The labeling one has `TransactionOrderDependence` at id=8 and `UnusedReturn` at id=9; no `NonVulnerable` slot. The model uses the representation order; everything else uses the labeling order. See `sentinel_data.labeling.schema/README.md` §3 for the full divergence.
+### The thin-adapter pattern (CRITICAL — post-Stage 7B)
 
-### The thin-adapter pattern (CRITICAL)
+Per Stage 7B (seam swap, 2026-06-12): `graph_schema.py` is now the **canonical source of truth**. `ml/src/preprocessing/graph_schema.py` is a thin re-export shim pointing HERE. All model files (`gnn_encoder.py`, `sentinel_model.py`, `predictor.py`, etc.) continue to work without modification — their imports resolve via the shim.
 
-`graph_schema.py`, `graph_extractor.py`, and `tokenizer.py` are **thin adapters** — they re-export the actual implementation from `ml/`:
+`graph_extractor.py` and `tokenizer.py` remain thin adapters re-exporting from `ml/`:
 
 ```python
-# sentinel_data/representation/graph_schema.py (simplified)
-from ml.src.preprocessing.graph_schema import (
-    FEATURE_SCHEMA_VERSION, NODE_FEATURE_DIM, NUM_NODE_TYPES, NUM_EDGE_TYPES,
-    VISIBILITY_MAP, NODE_TYPES, EDGE_TYPES, FEATURE_NAMES, NodeType,
-    STRUCTURAL_PREFIX_TYPES,
+# sentinel_data/representation/graph_schema.py (the canonical source)
+# NODE_TYPES, EDGE_TYPES, FEATURE_NAMES, etc. are defined here.
+# CLASS_NAMES is defined here (the locked 10-class vocabulary).
+# ml/src/preprocessing/graph_schema.py re-exports FROM here.
+
+# sentinel_data/representation/graph_extractor.py (thin adapter)
+from ml.src.preprocessing.graph_extractor import (
+    extract_contract_graph, GraphExtractionConfig, ...
 )
-_MAX_TYPE_ID = float(max(NODE_TYPES.values()))   # derived, re-exported
-CLASS_NAMES = [...]                                # defined locally
-NUM_CLASSES = len(CLASS_NAMES)
+
+# sentinel_data/representation/tokenizer.py (thin adapter)
+from ml.src.data_extraction.windowed_tokenizer import (
+    tokenize_windowed_contract, init_worker, ...
+)
 ```
 
 **Why thin-adapter:**
 
-- **Single source of truth** — bug fixes in `ml/` automatically propagate to the new path. `from sentinel_data.representation.graph_schema import NODE_TYPES` returns the **same dict object** as `from ml.src.preprocessing.graph_schema import NODE_TYPES` (`is` equality holds).
+- **Single source of truth** — `graph_schema.py` defines all constants; `ml/` re-exports them. Bug fixes in either direction propagate automatically.
 - **Byte-identical output** — same code, different import name. The `test_byte_identical_regression.py` test enforces this.
-- **1-line seam swap in Stage 7** — delete the wrappers, rebind the import.
+- **1-line seam swap in Stage 7** — delete the wrappers, rebind the import in `ml/` to import directly from `sentinel_data.representation`.
 - **No `sys.path` hacks** — clean package boundaries (apart from the `cli.py` sys.path bootstrap).
 
 `tokenizer.py` was the one that got wrong-imported early: it previously pointed at `ml/src/data_extraction/tokenizer.py` (codebert-base, single-window, wrong). It now correctly points at `ml/src/data_extraction/windowed_tokenizer.py` (graphcodebert-base, `[4,512]` sliding-window). See `tokenizer.py:11-15` for the bug history.
@@ -168,7 +173,7 @@ The CFG adds ~0.5s per contract. Default off; pass `--emit-cfg` to enable.
 
 ## 4. Public API
 
-### `graph_schema` exports — `graph_schema.py:148`
+### `graph_schema` exports — `graph_schema.py:131‑` (constants start around line 131)
 
 ```python
 FEATURE_SCHEMA_VERSION    # "v9"
@@ -205,7 +210,7 @@ STRIDE            # 256
 MAX_WINDOWS       # 4
 ```
 
-### `orchestrator` exports — `orchestrator.py:344`
+### `orchestrator` exports — `orchestrator.py:216` (start of RepresentResult dataclass)
 
 ```python
 @dataclass
@@ -218,14 +223,12 @@ class RepresentResult:
     tokens_written: int = 0
     tokens_cached: int = 0
     tokens_failed: int = 0
+    cfg_written: int = 0              # <-- only if --emit-cfg
+    cfg_failed: int = 0               # <-- only if --emit-cfg
     duration_s: float = 0.0
     schema_version: str = ""
-    extractor_version: str = "v2.0-thin-adapter"
+    extractor_version: str = "v2.0-thin-adapter"   # legacy default; CLI overrides to "v2.1-windowed-gcb"
 
-def represent_source(source, cfg, data_dir, *, dry_run=False, force=False, limit=None,
-                     output_dir=None, emit_cfg=False) -> RepresentResult: ...
-
-EXTRACTOR_VERSION = "v2.1-windowed-gcb"
 ```
 
 ### `cache_manager` exports — `cache_manager.py:119`
@@ -306,7 +309,8 @@ poetry run pytest tests/test_representation/ -v
 - Previous stage: `sentinel_data/preprocessing/README.md`
 - Next stage: `sentinel_data/labeling/README.md`
 - CLI entry: `sentinel_data/cli.py` (`_run_represent` at line 160)
-- The actual schema: `ml/src/preprocessing/graph_schema.py`
+- The schema (this is the canonical source): `sentinel_data/representation/graph_schema.py`
+- The ml/ re-export shim: `ml/src/preprocessing/graph_schema.py` (points back here)
 - The actual extractor: `ml/src/preprocessing/graph_extractor.py`
 - The actual tokenizer: `ml/src/data_extraction/windowed_tokenizer.py`
 - Thin-adapter design rationale: `docs/ml/adr/0007-representation-port-design.md`

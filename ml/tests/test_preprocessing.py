@@ -47,26 +47,26 @@ from ml.src.preprocessing.graph_schema import (
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestSchemaSanity:
-    def test_node_feature_dim_is_11(self):
-        assert NODE_FEATURE_DIM == 11, (
-            f"NODE_FEATURE_DIM={NODE_FEATURE_DIM}; expected 11 (v8 schema). "
-            "in_unchecked was removed; 11 features remain."
+    def test_node_feature_dim_is_12(self):
+        assert NODE_FEATURE_DIM == 12, (
+            f"NODE_FEATURE_DIM={NODE_FEATURE_DIM}; expected 12 (v9 schema). "
+            "v9 added feat[11]=in_unchecked_block."
         )
 
     def test_feature_names_length_matches_dim(self):
         assert len(FEATURE_NAMES) == NODE_FEATURE_DIM
 
-    def test_num_edge_types_is_11(self):
-        assert NUM_EDGE_TYPES == 11  # v8: CALL_ENTRY(8)+RETURN_TO(9)+DEF_USE(10) added
+    def test_num_edge_types_is_12(self):
+        assert NUM_EDGE_TYPES == 12  # v9: EXTERNAL_CALL(11) added
 
     def test_edge_types_contains_new_v2_edges(self):
         assert "CONTAINS"     in EDGE_TYPES and EDGE_TYPES["CONTAINS"]     == 5
         assert "CONTROL_FLOW" in EDGE_TYPES and EDGE_TYPES["CONTROL_FLOW"] == 6
 
-    def test_node_types_has_13_entries(self):
-        assert len(NODE_TYPES) == 13, (
-            f"NODE_TYPES has {len(NODE_TYPES)} entries; expected 13 "
-            "(ids 0-12 including 5 CFG subtypes)."
+    def test_node_types_has_14_entries(self):
+        assert len(NODE_TYPES) == 14, (
+            f"NODE_TYPES has {len(NODE_TYPES)} entries; expected 14 "
+            "(ids 0-13 including 6 CFG subtypes; v9 added CFG_NODE_ARITH=13)."
         )
 
     def test_cfg_subtypes_present_and_ordered(self):
@@ -147,6 +147,10 @@ def _make_mock_func(
     sm.content = source_content
     sm.lines   = source_lines or []
     func.source_mapping = sm
+
+    # Explicit False prevents MagicMock auto-attribute (truthy) from fooling
+    # the is_loop_present fallback path in _compute_has_loop.
+    func.is_loop_present = False
 
     return func
 
@@ -246,7 +250,7 @@ class TestBuildCfgNodeFeatures:
         _build_cfg_node_features = self._import()
         node = _make_mock_slither_node()
         func = _make_mock_func()
-        _max_type = 12.0  # _MAX_TYPE_ID = max(NODE_TYPES.values())
+        _max_type = 13.0  # _MAX_TYPE_ID = max(NODE_TYPES.values()) for v9
         for cfg_type in [8, 9, 10, 11, 12]:
             result = _build_cfg_node_features(node, func, cfg_type)
             expected = float(cfg_type) / _max_type
@@ -313,7 +317,7 @@ class TestBuildNodeFeatures:
         _build_node_features = self._import()
         func = _make_mock_func(is_constructor=True)
         result = _build_node_features(func, NODE_TYPES["FUNCTION"])
-        expected = float(NODE_TYPES["CONSTRUCTOR"]) / 12.0
+        expected = float(NODE_TYPES["CONSTRUCTOR"]) / 13.0
         assert abs(result[0] - expected) < 1e-6, f"Expected {expected}, got {result[0]}"
 
     def test_type_id_override_for_fallback(self):
@@ -321,7 +325,7 @@ class TestBuildNodeFeatures:
         _build_node_features = self._import()
         func = _make_mock_func(is_fallback=True)
         result = _build_node_features(func, NODE_TYPES["FUNCTION"])
-        expected = float(NODE_TYPES["FALLBACK"]) / 12.0
+        expected = float(NODE_TYPES["FALLBACK"]) / 13.0
         assert abs(result[0] - expected) < 1e-6, f"Expected {expected}, got {result[0]}"
 
     def test_return_ignored_sentinel_on_ir_failure(self):
@@ -462,36 +466,35 @@ class TestComputeInUnchecked:
         from ml.src.preprocessing.graph_extractor import _compute_in_unchecked
         return _compute_in_unchecked
 
-    def test_regex_matches_unchecked_with_space(self):
+    def test_node_with_unchecked_scope_returns_1(self):
+        """Any node with scope.is_checked=False should return 1.0 (v9: Slither 0.10 path)."""
         _fn = self._import()
-        func = _make_mock_func(source_content="unchecked { x -= 1; }")
-        # If STARTUNCHECKED raises AttributeError, regex path is triggered
-        with patch("slither.core.cfg.node.NodeType") as mock_nt:
-            del mock_nt.STARTUNCHECKED  # simulate absence
-            result = _fn(func)
-        assert result == 1.0
+        node = _make_mock_slither_node()
+        node.scope.is_checked = False
+        func = _make_mock_func(nodes=[node])
+        assert _fn(func) == 1.0
 
-    def test_regex_matches_unchecked_no_space(self):
+    def test_node_with_checked_scope_returns_0(self):
+        """All nodes with scope.is_checked=True → no unchecked block → 0.0."""
         _fn = self._import()
-        func = _make_mock_func(source_content="unchecked{ x -= 1; }")
-        with patch("slither.core.cfg.node.NodeType") as mock_nt:
-            del mock_nt.STARTUNCHECKED
-            result = _fn(func)
-        assert result == 1.0
+        node = _make_mock_slither_node()
+        node.scope.is_checked = True
+        func = _make_mock_func(nodes=[node])
+        assert _fn(func) == 0.0
 
-    def test_regex_matches_unchecked_newline_brace(self):
-        """unchecked\\n{ is valid Solidity and must be caught by regex."""
+    def test_node_with_no_scope_is_skipped(self):
+        """scope=None is treated as checked (safe fallback); empty-node list → 0.0."""
         _fn = self._import()
-        func = _make_mock_func(source_content="unchecked\n{ x -= 1; }")
-        with patch("slither.core.cfg.node.NodeType") as mock_nt:
-            del mock_nt.STARTUNCHECKED
-            result = _fn(func)
-        assert result == 1.0
+        node = _make_mock_slither_node()
+        node.scope = None
+        func = _make_mock_func(nodes=[node])
+        assert _fn(func) == 0.0
 
-    def test_regex_does_not_match_unchecked_in_comment(self):
-        """'unchecked' in a comment string should be irrelevant — but regex checks
-        raw source so this can false-positive. Documented limitation, not tested here."""
-        pass  # intentionally left blank — regex-based detection has known limits
+    def test_empty_node_list_returns_0(self):
+        """Function with no nodes (e.g. abstract/interface) → 0.0."""
+        _fn = self._import()
+        func = _make_mock_func(nodes=[])
+        assert _fn(func) == 0.0
 
 
 class TestComputeHasLoop:
@@ -684,13 +687,13 @@ class TestExtractionIntegration:
 
     @staticmethod
     def _type_ids(graph) -> list[int]:
-        """Denormalize feature[0] (type_id / 12.0) back to raw integer type IDs."""
-        return (graph.x[:, 0] * 12).round().long().tolist()
+        """Denormalize feature[0] (type_id / 13.0) back to raw integer type IDs (v9 schema)."""
+        return (graph.x[:, 0] * 13).round().long().tolist()
 
     @staticmethod
     def _type_mask(graph, type_id: int):
         """Boolean mask selecting nodes with the given raw type_id."""
-        return (graph.x[:, 0] * 12).round().long() == type_id
+        return (graph.x[:, 0] * 13).round().long() == type_id
 
     # ── Reentrancy (call-before-write) ─────────────────────────────────────
     def test_reentrancy_has_cfg_node_call(self, sol_file):
