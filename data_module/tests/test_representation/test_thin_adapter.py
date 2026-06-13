@@ -104,13 +104,24 @@ class TestDictDirectionFix:
     def test_class_names_and_num_classes_are_present(self):
         """CLASS_NAMES and NUM_CLASSES live in ml/src/training/trainer.py
         (not in graph_schema.py). The thin adapter hard-codes them with
-        the LOCKED class order — DO NOT change."""
+        the LOCKED class order — DO NOT change.
+
+        Note: as of Phase D (2026-06-12), the canonical order is the
+        LABELING order (CallToUnknown=0, ..., UnusedReturn=9), matching
+        the trainer, the v9 checkpoint, the v2 export, and the labeling
+        schema. The pre-Run-7 "representation order" (Reentrancy=0, ...,
+        NonVulnerable=9) is no longer used in production. See ADR-0009.
+        """
         from sentinel_data.representation import CLASS_NAMES, NUM_CLASSES
         assert NUM_CLASSES == 10
         assert len(CLASS_NAMES) == 10
-        # Locked order — must match existing checkpoints
-        assert CLASS_NAMES[0] == "Reentrancy"
-        assert CLASS_NAMES[9] == "NonVulnerable"
+        # Locked LABELING order — must match existing checkpoints and trainer
+        assert CLASS_NAMES[0] == "CallToUnknown"
+        assert CLASS_NAMES[1] == "DenialOfService"
+        assert CLASS_NAMES[5] == "MishandledException"
+        assert CLASS_NAMES[6] == "Reentrancy"
+        assert CLASS_NAMES[8] == "TransactionOrderDependence"
+        assert CLASS_NAMES[9] == "UnusedReturn"
 
 
 class TestLazyFallback:

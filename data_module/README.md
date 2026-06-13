@@ -215,12 +215,15 @@ The active graph schema is **v9** (verified 2026-06-08). See `sentinel_data/repr
 | `NUM_CLASSES` | `10` (LOCKED) |
 | `EXTRACTOR_VERSION` | `"v2.1-windowed-gcb"` |
 
-> ⚠ **The 10-class taxonomy has TWO definitions in the codebase:**
+> **Single source of truth (post-Phase D, 2026-06-12, ADR-0009):** the canonical 10-class order is the LABELING order: `CallToUnknown=0, DenialOfService=1, ExternalBug=2, GasException=3, IntegerUO=4, MishandledException=5, Reentrancy=6, Timestamp=7, TransactionOrderDependence=8, UnusedReturn=9`. This order is used by:
+> - `sentinel_data/representation/graph_schema.py` (canonical)
+> - `ml/src/training/trainer.py:105-116` (defines its own copy, in sync)
+> - `ml/src/preprocessing/graph_schema.py` (shim re-exports the canonical)
+> - The v9 best checkpoint (`GCB-P1-Run9-v11-20260606_best.pt`, `class_names` field)
+> - The v2 export (`labels.parquet` columns `class_0..class_9`)
+> - `sentinel_data.labeling.schema.class_names()`
 >
-> - **Representation order** (used by the v9 model checkpoint): Reentrancy=0, CallToUnknown=1, Timestamp=2, ExternalBug=3, GasException=4, DoS=5, IntegerUO=6, UnusedReturn=7, MishandledException=8, **NonVulnerable**=9. 9 vulnerability classes + NonVulnerable. (No TransactionOrderDependence.)
-> - **Labeling order** (returned by `class_names()` from `labeling/schema/taxonomy.yaml`): CallToUnknown=0, DoS=1, ExternalBug=2, GasException=3, IntegerUO=4, MishandledException=5, Reentrancy=6, Timestamp=7, **TransactionOrderDependence**=8, **UnusedReturn**=9. 9 vulnerability classes + UnusedReturn. (No NonVulnerable slot — NonVulnerable is a *negative* label.)
->
-> At the string-keyed level (most of the pipeline), both work because all lookups go through `class_names()`. But anything that depends on **index alignment** must use the **representation order** (the one that matches the existing model checkpoints). See `sentinel_data/labeling/schema/README.md` §3 and `sentinel_data/representation/README.md` §3 for the full divergence.
+> The pre-Run-7 "representation order" (Reentrancy=0, ..., NonVulnerable=9) is **historical and no longer used in production**. Do not re-introduce it. The schema-dim gate test in `tests/test_representation/test_byte_identical_regression.py` and the new CLASS_NAMES assertions in `tests/test_representation/test_thin_adapter.py` guard against silent re-ordering.
 
 ---
 
@@ -259,23 +262,23 @@ For the full architecture (data-flow diagrams, DAGs, the BCCC failure retrospect
 
 ## Design decisions
 
-See `docs/decisions/` for the full ADR register. The four most important:
+See `../../docs/decisions/` for the full ADR register (project-wide). The most important for this module:
 
 - **ADR-0001:** Why `sentinel-data` is a separate package (the BCCC failure + one-way dependency rule)
 - **ADR-0002:** Code bug state at build start (8 fixed bugs + 2 still-open — what the Stage 2 regression test guards)
 - **ADR-0007:** Representation port design (the thin-adapter pattern + lazy import support)
-- **Implicit (no ADR yet):** Why the labeling and representation taxonomies diverge (representation preserves checkpoint compatibility; labeling is the v2 design intent). This needs an ADR before Stage 7.
+- **ADR-0009:** Canonical 10-class vocabulary — labeling order as the single source of truth (resolves the two-taxonomy divergence)
 
 ---
 
 ## Contributing
 
-1. Read `docs/decisions/ADR-0001-sentinel-data-skeleton.md` for the architectural context
+1. Read `../../docs/decisions/ADR-0001-sentinel-data-skeleton.md` for the architectural context
 2. Check `docs/proposal/Data_Module_Proposals/00_INDEX.md` for the current stage plan
 3. `poetry install` and `poetry run pytest tests/ -v` must pass before any PR
 4. The Stage 2 regression test (`tests/test_representation/test_byte_identical_regression.py`) is the merge gate for any extractor change
 5. The BCCC regression test (`tests/test_verification/test_bccc_regression.py`) is the merge gate for any verification change
-6. **The two-taxonomy divergence is a known issue** — if you add a new class or change the order, bump `FEATURE_SCHEMA_VERSION` and update both `representation/graph_schema.py:73-84` AND `labeling/schema/taxonomy.yaml:21-159`. Consider whether you also need to update `data/processed/multilabel_index.csv` (the v1 column-order contract that the existing trainer reads).
+6. **The 10-class taxonomy is locked per ADR-0009** (labeling order). If you add a new class, bump `FEATURE_SCHEMA_VERSION` to v10, re-train from scratch, and re-export.
 
 ---
 
@@ -284,7 +287,7 @@ See `docs/decisions/` for the full ADR register. The four most important:
 - **Per-subpackage READMEs**: 9 files at `sentinel_data/<subpackage>/README.md` + 4 sub-subfolder READMEs (`connectors`, `parsers`, `schema`, `patterns`)
 - **Tests overview**: `tests/README.md`
 - **Stage plans**: `docs/proposal/Data_Module_Proposals/actionable_plans/`
-- **ADRs**: `docs/decisions/`
+- **ADRs**: `../../docs/decisions/` (project-wide; see `INDEX.md` there)
 - **MEMORY.md** (canonical v2 facts): `~/.claude/projects/-home-motafeq-projects-sentinel/memory/MEMORY.md`
 - **Run 9 best checkpoint** (model-side, for context): `ml/checkpoints/GCB-P1-Run9-v11-20260606_best.pt` (ep52, fixed=0.2965, tuned=0.3081)
 - **Run 10 plan**: train on v1.3 verified labels (in `data_module/docs/legacy/bccc_deep_dive/Phase5_LabelVerification_2026-06-08/outputs/`)
