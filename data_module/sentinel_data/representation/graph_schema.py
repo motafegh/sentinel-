@@ -188,17 +188,25 @@ FEATURE_NAMES: tuple[str, ...] = (
 # ─────────────────────────────────────────────────────────────────────────────
 
 CLASS_NAMES: list[str] = [
-    "Reentrancy",           # 0
-    "CallToUnknown",        # 1
-    "Timestamp",            # 2
-    "ExternalBug",          # 3
-    "GasException",         # 4
-    "DenialOfService",      # 5
-    "IntegerUO",            # 6
-    "UnusedReturn",         # 7
-    "MishandledException",  # 8
-    "NonVulnerable",        # 9
+    "CallToUnknown",              # 0
+    "DenialOfService",            # 1
+    "ExternalBug",                # 2
+    "GasException",               # 3
+    "IntegerUO",                  # 4
+    "MishandledException",        # 5
+    "Reentrancy",                 # 6
+    "Timestamp",                  # 7
+    "TransactionOrderDependence", # 8
+    "UnusedReturn",               # 9
 ]
+# NOTE: This is the LABELING order (matches trainer.py:105, the v9 checkpoint's
+# class_names field, the v2 export's labels.parquet columns, and
+# sentinel_data.labeling.schema.class_names()). Per ADR-0009 (Phase D, 2026-06-12),
+# this file is the canonical source of truth for the 10-class vocabulary. The
+# historical "representation order" (with NonVulnerable at index 9) was the
+# pre-Run-7 ordering and is no longer used in production. The v9 best checkpoint
+# (GCB-P1-Run9-v11-20260606_best.pt) was trained with this order; future
+# refactors that import CLASS_NAMES from here will get the correct order.
 NUM_CLASSES: int = len(CLASS_NAMES)
 
 # ─────────────────────────────────────────────────────────────────────────────
