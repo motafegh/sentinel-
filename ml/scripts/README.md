@@ -1,18 +1,20 @@
 # SENTINEL ML Scripts
 
+> **Status:** ✅ Current — v9 schema, verified 2026-06-14
+
 All commands must be run from the **project root** (`~/projects/sentinel`).
 Activate the venv first: `source ml/.venv/bin/activate`
 
 ---
 
-## Active Pipeline (v10)
+## Active Pipeline (v9)
 
 ### Training
 
 - **train.py** — main training entry point (v8.1, 8-layer GNN, four-eye classifier, GraphCodeBERT+LoRA, Flash Attention 2, GNN prefix injection, AsymmetricLoss, torch.compile)
 
 ```bash
-# v10 training run (K=48 prefix, warmup=15 epochs)
+# v9 training run (K=48 prefix, warmup=15 epochs)
 TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup \
     python ml/scripts/train.py \
     --run-name v10-$(date +%Y%m%d) \
@@ -24,7 +26,7 @@ TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup \
     --gnn-prefix-proj-lr-mult 5.0 \
     --phase2-edge-types 6 8 9 10 \
     --weighted-sampler positive \
-    --cache-path ml/data/cached_dataset_v10.pkl \
+    --cache-path ml/data/cached_dataset_v9.pkl \
     > ml/logs/v10-$(date +%Y%m%d).log 2>&1 &
 ```
 
@@ -37,18 +39,18 @@ TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup \
 | `--gnn-prefix-proj-lr-mult` | `5.0` | LR multiplier for gnn_to_bert_proj |
 | `--phase2-edge-types` | `6` | Space-separated edge type ints for Phase 2 |
 | `--weighted-sampler` | `""` | `"positive"` = 3× weight for any-vuln rows |
-| `--cache-path` | `ml/data/cached_dataset_v10.pkl` | Path to paired cache |
+| `--cache-path` | `ml/data/cached_dataset_v9.pkl` | Path to paired cache |
 | `--early-stop-patience` | `30` | Epochs without val improvement before stop |
 
 ---
 
 ## Data Pipeline (run in order for full re-extraction)
 
-1. **reextract_graphs.py** — re-run Slither extraction → `ml/data/graphs/` (v8 schema, 11-dim, 11 edge types)
+1. **reextract_graphs.py** — re-run Slither extraction → `ml/data/graphs/` (v9 schema, 12-dim, 12 edge types)
 2. **retokenize_windowed.py** — windowed GraphCodeBERT tokenization → `ml/data/tokens_windowed/` (shape [4,512], stride=256)
 3. **build_multilabel_index.py** — scan graphs/tokens → `ml/data/processed/multilabel_index.csv`
-4. **create_cache.py** — build paired dataset cache → `ml/data/cached_dataset_v10.pkl`
-5. **create_splits.py** — generate stratified train/val/test splits (only if splits need regeneration; current splits at `ml/data/splits/v10_deduped/` are valid)
+4. **create_cache.py** — build paired dataset cache → `ml/data/cached_dataset_v9.pkl`
+5. **create_splits.py** — generate stratified train/val/test splits (only if splits need regeneration; current splits at `ml/data/splits/deduped/` are valid)
 
 **Note on retokenization:** stride=256 with K=48 (code_budget=464) gives 208-token overlap. Retokenization is only needed if K > 256, which would create gaps between windows.
 

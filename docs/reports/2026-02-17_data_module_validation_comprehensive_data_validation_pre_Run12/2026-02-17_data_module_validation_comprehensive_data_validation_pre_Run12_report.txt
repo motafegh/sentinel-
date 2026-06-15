@@ -1,0 +1,169 @@
+================================================================================
+SENTINEL - COMPREHENSIVE DATA VALIDATION
+================================================================================
+Started: 2026-02-17 14:53:01
+
+
+================================================================================
+CATEGORY 1: FILE-LEVEL INTEGRITY
+================================================================================
+
+1.1 File Counts
+  Graph files: 68,555
+  Token files: 68,568
+  ✅ Graph count OK: 68,555
+  ✅ Graph/token counts aligned (diff: 13)
+
+1.2 File Size Checks
+  ✅ No zero-byte graph files
+  ✅ No zero-byte token files
+  Graph size: 3.5 KB (avg)
+  Token size: 10.4 KB (avg)
+
+1.3 Hash Format Validation
+  ✅ All sampled hashes are valid MD5 (32 hex chars)
+
+================================================================================
+CATEGORY 2: GRAPH QUALITY
+================================================================================
+
+2.1 Graph Loading Test
+  ✅ All 1000 sampled graphs loaded successfully
+
+2.2 Graph Structure Validation
+  ✅ All graphs have 8-dimensional node features
+  Nodes per graph: min=1, max=107, mean=8.5
+  ⚠️  Found graphs with only 1 node (degenerate)
+  Edges per graph: min=0, max=160, mean=4.6
+  ⚠️  728/1000 graphs have no edges (disconnected)
+
+2.3 Node Feature Quality
+  ✅ No NaN or Inf values in node features (sample)
+  Feature ranges (8 dims):
+    Dim 0: [0.00, 7.00]
+    Dim 1: [0.00, 2.00]
+    Dim 2: [0.00, 1.00]
+    Dim 3: [0.00, 1.00]
+    Dim 4: [0.00, 1.00]
+    Dim 5: [0.00, 1.00]
+    Dim 6: [0.00, 41.00]
+    Dim 7: [0.00, 406.00]
+  ✅ All feature dimensions have non-zero values
+
+2.4 Label Quality
+  Label distribution (sample):
+    Label 0: 366 (36.6%)
+    Label 1: 634 (63.4%)
+  ✅ All graphs have binary labels (0 or 1)
+  ✅ Class balance is trainable: 1.73:1 ratio
+
+2.5 Metadata Presence
+  ✅ All graphs have contract_path attribute
+  ✅ All graphs have contract_hash attribute
+
+================================================================================
+CATEGORY 3: TOKEN QUALITY
+================================================================================
+
+3.1 Token Loading Test
+  ✅ All 1000 sampled tokens loaded successfully
+
+3.2 Token Format Validation
+  ✅ All tokens have shape [512] (CodeBERT format)
+  ✅ Attention masks match input_ids shapes
+
+3.3 Token Content Validation
+  ✅ All token IDs in valid CodeBERT range (0-50264)
+  ✅ No all-padding sequences
+  Truncation rate: 97.2%
+  ✅ Truncation rate is reasonable: 97.2%
+
+3.4 Token Metadata
+  ✅ All tokens have contract_path
+  ✅ All tokens have contract_hash
+
+================================================================================
+CATEGORY 4: PAIRING INTEGRITY
+================================================================================
+
+4.1 Hash Pairing
+  Paired (both): 68,555
+  Only graph: 0
+  Only token: 13
+  Pairing rate: 99.98%
+  ✅ Excellent pairing rate: 99.98%
+
+4.2 Contract Path Consistency
+  ✅ All paired files have matching contract_path (sample)
+
+4.3 Hash Consistency
+  ✅ All paired files have matching contract_hash (sample)
+
+================================================================================
+CATEGORY 5: LABEL INTEGRITY
+================================================================================
+
+5.1 CSV Label Validation
+  CSV rows: 44,442
+  CSV columns: ['contract_path', 'file_hash', 'binary_label', 'class_label', 'Class01:ExternalBug']...
+  Unique hashes in CSV: 44,442
+
+5.2 Graph vs CSV Label Match
+  ✅ All graph labels match CSV (sample)
+
+5.3 Full Dataset Label Distribution
+  Total graphs loaded: 68,555
+  Label 0: 24,456 (35.67%)
+  Label 1: 44,099 (64.33%)
+  ✅ Label distribution matches expected: 1.80:1
+
+================================================================================
+CATEGORY 6: STATISTICAL SANITY
+================================================================================
+
+6.1 Outlier Detection
+  ⚠️  Found 70 graphs with extreme node counts: max=107
+  Node count stats: Q1=5, Q3=9, Outlier threshold=21
+
+================================================================================
+CATEGORY 7: FUTURE-PROOFING (Module 3+)
+================================================================================
+
+7.1 PyTorch DataLoader Compatibility
+  ✅ PyTorch Geometric installed
+
+7.2 Batching Test
+  ✅ Graph batching works (batch size: 4)
+
+7.3 Train/Val/Test Split Feasibility
+  Total paired samples: 68,555
+  Minimum class count: 24,456
+  Proposed split (per class):
+    Train: 17,119 samples
+    Val:   3,668 samples
+    Test:  3,669 samples
+  ✅ Sufficient samples for stratified split
+
+7.4 Multi-Class Compatibility (Module 4)
+  ✅ Multi-class labels available (12 classes)
+
+================================================================================
+VALIDATION SUMMARY
+================================================================================
+
+✅ Passed: 30
+⚠️  Warnings: 3
+❌ Errors: 0
+
+⚠️  WARNINGS (Review recommended):
+  • Found graphs with only 1 node (degenerate)
+  • 728/1000 graphs have no edges (disconnected)
+  • Found 70 graphs with extreme node counts: max=107
+
+================================================================================
+✅ VERDICT: GOOD - Ready for training with minor notes
+   Warnings are non-blocking. Safe to proceed.
+================================================================================
+
+📄 Full report saved: ml/data/validation_report.json
+Completed: 2026-02-17 14:53:35

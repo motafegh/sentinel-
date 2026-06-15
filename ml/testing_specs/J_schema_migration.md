@@ -2,6 +2,24 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). **Major corrections**:
+>
+> 1. **Canonical source moved** (Stage 7B seam swap, 2026-06-12). The REAL
+>    `graph_schema.py` is at `data_module/sentinel_data/representation/graph_schema.py`.
+>    The `ml/src/preprocessing/graph_schema.py` is now a 22-line shim that
+>    re-exports the canonical. Always read the canonical source.
+> 2. **`graph_extractor.py` is in `ml/src/preprocessing/`, NOT `ml/src/data_extraction/`**
+>    (the old path in §J.2 was stale).
+> 3. **`ml/scripts/{reextract_graphs,retokenize_windowed,validate_graph_dataset}.py` NO LONGER EXIST**
+>    (verified via `ls ml/scripts/`: 2026-06-14). They were replaced by the
+>    `data_module/sentinel_data/cli.py` orchestrator (`represent` and `validate`
+>    subcommands). The seam-swap is INCOMPLETE for the underlying impl files
+>    (`ml/src/preprocessing/graph_extractor.py` 2,056 lines; `ml/src/data_extraction/windowed_tokenizer.py` 175 lines).
+> 4. **Active data dirs**: graphs and tokens are now under the v3 export
+>    `data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/`, not `ml/data/graphs/`.
+> 5. **Slither assertion target**: `graph_schema.py` asserts Slither >= 0.9.3
+>    (unchanged from v9). Currently installed: 0.11.5.
 
 ---
 
@@ -26,6 +44,11 @@ gates for the retrain after migration).
 A schema change is any modification whose effect reaches a training graph
 `.pt` file, an inference cache entry, or a model weight dimension. Read
 `graph_schema.py` `CHANGE POLICY` section before classifying.
+
+**Canonical source**: `data_module/sentinel_data/representation/graph_schema.py`
+(read this file, not the shim). The shim at `ml/src/preprocessing/graph_schema.py`
+(22 lines) re-exports the constants for backward compat with `ml/` code paths
+that haven't been seam-swapped.
 
 | Change type | Schema change? | Re-extract? | Re-tokenize? | Retrain? |
 |---|---|---|---|---|
@@ -65,12 +88,12 @@ Known consumers as of v9 schema (verify with search above — this list may be s
 
 | File | Uses | Impact if schema changes |
 |---|---|---|
-| `ml/src/data_extraction/graph_extractor.py` | All constants; `_MAX_TYPE_ID` assertion | Re-extraction required; `_MAX_TYPE_ID` must be updated if `max(NODE_TYPES.values())` changes |
+| `ml/src/preprocessing/graph_extractor.py` (REAL, 2,056 lines; seam-swap incomplete) | All constants; `_MAX_TYPE_ID` assertion | Re-extraction required; `_MAX_TYPE_ID` must be updated if `max(NODE_TYPES.values())` changes. Note: old path `ml/src/data_extraction/graph_extractor.py` no longer exists. |
 | `ml/src/inference/preprocess.py` | All constants | Inference preprocessing must match training; misuse = silent accuracy regression |
 | `ml/src/models/gnn_encoder.py` | `NODE_FEATURE_DIM`, `NUM_NODE_TYPES`, `NUM_EDGE_TYPES` | Model constructed with these dims at `__init__`; checkpoint incompatible after change |
 | `ml/src/models/sentinel_model.py` | `_MAX_TYPE_ID` assertion, `STRUCTURAL_PREFIX_TYPES` | `_MAX_TYPE_ID` assert fires at import if `max(NODE_TYPES.values())` changes |
-| `ml/scripts/validate_graph_dataset.py` | `NODE_FEATURE_DIM`, `FEATURE_NAMES`, `EDGE_TYPES` | Validation script will fail or pass incorrectly if not updated |
-| `ml/scripts/interpretability/` (all scripts) | `FEATURE_NAMES` for axis labels | Interpretability plots will have wrong feature names |
+| **`data_module/sentinel_data/cli.py` `validate` subcommand** (replaces legacy `ml/scripts/validate_graph_dataset.py`) | `NODE_FEATURE_DIM`, `FEATURE_NAMES`, `EDGE_TYPES` | Validation script will fail or pass incorrectly if not updated |
+| `ml/scripts/interpretability/` (all scripts; directory verified exists) | `FEATURE_NAMES` for axis labels | Interpretability plots will have wrong feature names |
 | `ml/src/training/training_logger.py` | `NODE_FEATURE_DIM` (imported for `check_inputs`) | WARN alert fires if `graphs.x.shape[-1] != NODE_FEATURE_DIM` |
 | `ml/scripts/smoke/` smoke tests | `NODE_FEATURE_DIM`, edge type IDs | Smoke tests may pass with wrong dims if not updated |
 
@@ -139,16 +162,22 @@ contract. A passing smoke suite confirms the updated code is self-consistent.
 ### J.3.5 — Re-extract All Graphs
 
 Required for all schema changes except runtime-only edge type additions (see J.1
-table). Read `reextract_graphs.py` docstring before running — it is destructive.
+table). Read `data_module/sentinel_data/cli.py` docstring (the `represent` and
+`validate` subcommands) before running — the operation is destructive (overwrites
+existing `.pt` files in the v3 export directory).
 
 ```bash
-PYTHONPATH=. python ml/scripts/reextract_graphs.py \
-    --graphs-dir ml/data/graphs \
-    --contracts-dir ml/data/contracts
+PYTHONPATH=. python -m sentinel_data.cli represent \
+    --graphs-dir data_module/data/exports/sentinel-v3-smartbugs-2026-06-13 \
+    --contracts-dir data_module/data/contracts
+# (Or use the v4 export directory once Run 13 produces it)
 ```
 
+**Note**: The legacy `ml/scripts/reextract_graphs.py` no longer exists; it
+was replaced by the `data_module` CLI orchestrator.
+
 After re-extraction:
-- Run `validate_graph_dataset.py` to confirm all graphs have the new
+- Run `python -m sentinel_data.cli validate` to confirm all graphs have the new
   `NODE_FEATURE_DIM` and the correct edge shape `[E]` (not `[E, 1]`)
 - Confirm the count of extracted graphs matches the prior count ± 0.1%
   (a large drop indicates a Slither compatibility issue with the new schema)
@@ -156,8 +185,12 @@ After re-extraction:
 ### J.3.6 — Re-tokenize (if required)
 
 Only required if tokenizer logic changed (see J.1 table). Read
-`retokenize_windowed.py` docstring before running — it is also destructive.
-Reference `E_preprocessing_consistency.md` E.3 for exact trigger conditions.
+`data_module/sentinel_data/cli.py` docstring (the `represent` subcommand) before
+running — it is also destructive. Reference `E_preprocessing_consistency.md` E.5
+for exact trigger conditions.
+
+**Note**: The legacy `ml/scripts/retokenize_windowed.py` no longer exists; it
+was replaced by the `data_module` CLI orchestrator.
 
 ### J.3.7 — Schema-Dim Gate Test
 

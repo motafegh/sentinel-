@@ -1,6 +1,8 @@
 # training — Training Loop
 
-Training loop, loss function, and configuration for SENTINEL v8 + GraphCodeBERT.
+> **Status:** ✅ Current — v9 schema, four-eye v8.1 architecture, verified 2026-06-14
+
+Training loop, loss function, and configuration for SENTINEL v8.1 + GraphCodeBERT.
 
 **Current architecture:** 8-layer GNN (2+3+3 phases), Flash Attention 2, IMP improvements (G1, G2, G3, M1, M3, C2, #26)
 
@@ -24,8 +26,8 @@ Single source of truth for all hyperparameters and paths. Serialized into each c
 @dataclass
 class TrainConfig:
     # Paths
-    cache_path:       str   = "ml/data/cached_dataset_v10.pkl"
-    splits_dir:       str   = "ml/data/splits/v10_deduped"
+    cache_path:       str   = "ml/data/cached_dataset_v9.pkl"
+    splits_dir:       str   = "ml/data/splits/deduped"
     checkpoint_dir:   str   = "ml/checkpoints"
     run_name:         str   = "gcb-run"
     experiment_name:  str   = "sentinel-gcb"
@@ -33,7 +35,7 @@ class TrainConfig:
     # Architecture
     gnn_hidden_dim:   int   = 256
     gnn_layers:       int   = 8      # 2+3+3 phases (IMP-G3 added conv4c)
-    phase2_edge_types: list = field(default_factory=lambda: [6, 8, 9, 10])  # CF+CE+RT+DU (v8)
+    phase2_edge_types: list = field(default_factory=lambda: [6, 8, 9, 10])  # CF+CE+RT+DU (v8+, v9 adds EXTERNAL_CALL=11)
     lora_r:           int   = 16
     lora_alpha:       int   = 32
 

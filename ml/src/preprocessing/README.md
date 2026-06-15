@@ -1,6 +1,10 @@
 # preprocessing — SENTINEL Graph Feature Extraction Pipeline
 
+> **Status:** ✅ Current — v9 schema, graph_schema.py is thin re-export shim, verified 2026-06-14
+
 Solidity source → PyG `Data` object. The single authoritative AST-to-graph conversion used by both the **offline batch pipeline** (`ml/scripts/reextract_graphs.py`, ~41K training graphs) and the **online inference API** (`ml/src/inference/preprocess.py`, one contract per request).
+
+**Canonical source of truth:** `sentinel_data/representation/graph_schema.py` — this `graph_schema.py` is a thin re-export shim.
 
 ---
 
@@ -8,7 +12,7 @@ Solidity source → PyG `Data` object. The single authoritative AST-to-graph con
 
 | File | Purpose |
 |------|---------|
-| `graph_schema.py` | Single source of truth for all graph constants — node types, edge types, feature layout, schema version |
+| `graph_schema.py` | Thin re-export shim — imports all constants from `sentinel_data.representation.graph_schema` (canonical source of truth) |
 | `graph_extractor.py` | Canonical Solidity-to-PyG graph extraction: Slither analysis → node/edge construction → `Data` object |
 | `__init__.py` | Re-exports all schema constants, the extraction function, and exception classes |
 
@@ -24,7 +28,7 @@ config = GraphExtractionConfig(multi_contract_policy="most_derived")
 graph = extract_contract_graph(Path("contract.sol"), config)
 
 # graph is a PyG Data object:
-#   graph.x           [N, 11]  float32  — node feature matrix
+#   graph.x           [N, 12]  float32  — node feature matrix
 #   graph.edge_index  [2, E]   int64    — COO edge connectivity
 #   graph.edge_attr   [E]      int64    — edge type IDs
 #   graph.contract_name  str            — analysed contract name
@@ -36,29 +40,29 @@ graph = extract_contract_graph(Path("contract.sol"), config)
 
 ---
 
-## graph_schema.py — Single Source of Truth
+## graph_schema.py — Thin Re-export Shim
 
-Every constant governing the node feature vector, node types, edge types, visibility encoding, and schema version lives here. Any change requires re-extraction of all training graphs and model retraining.
+This file is a **thin re-export shim** that imports all constants from `sentinel_data.representation.graph_schema` (the canonical source of truth, post-Stage 7B seam swap). All model files continue to work without modification — their imports still resolve via the shim.
 
 ### Schema Version
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `FEATURE_SCHEMA_VERSION` | `"v8"` | Appended to inference cache keys; bumping invalidates stale caches |
+| `FEATURE_SCHEMA_VERSION` | `"v9"` | Appended to inference cache keys; bumping invalidates stale caches |
 
 ### Structural Constants
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `NODE_FEATURE_DIM` | `11` | Scalar features per graph node (v8 schema) |
-| `NUM_NODE_TYPES` | `13` | Distinct node type IDs (0–12) |
-| `NUM_EDGE_TYPES` | `11` | Distinct edge relation types (IDs 0–10) |
+| `NODE_FEATURE_DIM` | `12` | Scalar features per graph node (v9 schema) |
+| `NUM_NODE_TYPES` | `14` | Distinct node type IDs (0–13) |
+| `NUM_EDGE_TYPES` | `12` | Distinct edge relation types (IDs 0–11) |
 
-### Feature Layout (v8 — 11 dimensions)
+### Feature Layout (v9 — 12 dimensions)
 
 | Index | Name | Semantics | Range |
 |-------|------|-----------|-------|
-| 0 | `type_id` | `NODE_TYPES[kind]/12.0`, normalised | [0, 1] |
+| 0 | `type_id` | `NODE_TYPES[kind]/13.0`, normalised | [0, 1] |
 | 1 | `visibility` | `VISIBILITY_MAP` ordinal encoding | {0.0, 0.5, 1.0} |
 | 2 | `uses_block_globals` | 1.0 if reads block.timestamp/number/etc. | {0.0, 1.0} |
 | 3 | `view` | Read-only state | {0.0, 1.0} |
@@ -69,6 +73,7 @@ Every constant governing the node feature vector, node types, edge types, visibi
 | 8 | `call_target_typed` | 0.0=raw addr / 1.0=typed / -1.0=source unavailable | {-1.0, 0.0, 1.0} |
 | 9 | `has_loop` | Function contains a loop | {0.0, 1.0} |
 | 10 | `external_call_count` | `log1p(n)/log1p(20)`, includes Transfer/Send | [0, 1] |
+| 11 | `in_unchecked_block` | 1.0 if inside an unchecked block (v9 addition) | {0.0, 1.0} |
 
 ### Node Types
 
@@ -95,6 +100,12 @@ CFG subtypes (v2 — IDs 8–12):
 | 11 | `CFG_NODE_CHECK` | require / assert / if condition |
 | 12 | `CFG_NODE_OTHER` | All other statement types (synthetic nodes, etc.) |
 
+v9 additions (IDs 13):
+
+| ID | Name | Description |
+|----|------|-------------|
+| 13 | `CFG_NODE_ARITH` | Arithmetic operation (v9 — IntegerUO signal) |
+
 When a single IR node spans multiple operations, `_cfg_node_type()` assigns the **highest-priority** type: CALL > WRITE > READ > CHECK > OTHER.
 
 ### Edge Types
@@ -112,6 +123,7 @@ When a single IR node spans multiple operations, `_cfg_node_type()` assigns the 
 | 8 | `CALL_ENTRY` | Phase 2 | Yes (v8) | Calling CFG_NODE → ENTRYPOINT of callee function |
 | 9 | `RETURN_TO` | Phase 2 | Yes (v8) | Terminal CFG_NODE of callee → successor of the call site |
 | 10 | `DEF_USE` | Phase 2 | Yes (v8) | CFG_NODE defining a LocalVariable → CFG_NODE reading it |
+| 11 | `EXTERNAL_CALL` | Phase 1 | Yes (v9) | CFG call site → external contract target (v9 addition) |
 
 ### NodeType IntEnum
 
@@ -122,7 +134,7 @@ from ml.src.preprocessing.graph_schema import NodeType
 mask = node_type_ids == NodeType.CFG_NODE_CALL   # not == 8
 ```
 
-All 13 members (`STATE_VAR` through `CFG_NODE_OTHER`) mirror `NODE_TYPES` values. Derived at module load time so they cannot drift.
+All 14 members (`STATE_VAR` through `CFG_NODE_ARITH`) mirror `NODE_TYPES` values. Derived at module load time so they cannot drift.
 
 ### STRUCTURAL_PREFIX_TYPES
 
@@ -148,8 +160,8 @@ Normalised ordinal encoding preserving private > internal > public ordering. Cha
 Four assertions fire at import time to catch schema drift:
 1. `len(FEATURE_NAMES) == NODE_FEATURE_DIM`
 2. `len(EDGE_TYPES) == NUM_EDGE_TYPES`
-3. `len(NODE_TYPES) == 13`
-4. `max(NODE_TYPES.values()) == 12`
+3. `len(NODE_TYPES) == 14`
+4. `max(NODE_TYPES.values()) == 13`
 
 If any assertion fails, the import itself fails — preventing silent misalignment between schema constants and model expectations.
 
@@ -219,7 +231,7 @@ def extract_contract_graph(
 
 | Attribute | Shape/Type | Description |
 |-----------|------------|-------------|
-| `x` | `[N, 11]` float32 | Node feature matrix |
+| `x` | `[N, 12]` float32 | Node feature matrix |
 | `edge_index` | `[2, E]` int64 | COO edge connectivity |
 | `edge_attr` | `[E]` int64 | Edge type IDs (if `config.include_edge_attr`) |
 | `node_metadata` | `list[dict]` | Index-aligned dicts: `{name, type, source_lines}` |
@@ -245,7 +257,7 @@ These functions compute individual feature dimensions from Slither IR analysis:
 | Function | Returns | Description |
 |----------|---------|-------------|
 | `_cfg_node_type(slither_node)` | 8–12 | Classifies CFG node by priority: CALL > WRITE > READ > CHECK > OTHER |
-| `_build_cfg_node_features(node, func, cfg_type, parent_features)` | 11 floats | Builds CFG node feature vector; inherits function-scoped dims from parent |
+| `_build_cfg_node_features(node, func, cfg_type, parent_features)` | 12 floats | Builds CFG node feature vector; inherits function-scoped dims from parent |
 | `_build_control_flow_edges(func, ...)` | tuple | Builds CONTAINS(5) and CONTROL_FLOW(6) edges for one function |
 | `_add_icfg_edges(contract, ...)` | — | Adds CALL_ENTRY(8) and RETURN_TO(9) cross-function edges |
 | `_add_def_use_edges(contract, ...)` | — | Adds DEF_USE(10) data-flow edges with two-tier scope |
@@ -297,7 +309,7 @@ Any modification to `NODE_TYPES`, `VISIBILITY_MAP`, `EDGE_TYPES`, or `FEATURE_NA
    (`GNNEncoder` reads `in_channels=NODE_FEATURE_DIM` at construction time)
 4. **Increment `FEATURE_SCHEMA_VERSION`** to invalidate all inference caches:
    ```python
-   FEATURE_SCHEMA_VERSION = "v9"  # next increment — currently v8
+   FEATURE_SCHEMA_VERSION = "v10"  # next increment — currently v9
    ```
 
 Skipping any of these steps will cause silent accuracy regression.
@@ -315,6 +327,7 @@ Skipping any of these steps will cause silent accuracy regression.
 | **v6** | BUG-3: visibility normalised to [0,1] (was raw int 0/1/2) |
 | **v7** | 11 features (dropped dead `in_unchecked`), EMITS/INHERITS fire, CFG nodes inherit parent features, REVERSE_CONTAINS(7) added |
 | **v8** | 11 features, 11 edge types (+CALL_ENTRY, RETURN_TO, DEF_USE), ICFG-Lite cross-function edges, data-flow edges |
+| **v9** | 12 features (+in_unchecked_block), 12 edge types (+EXTERNAL_CALL), 14 node types (+CFG_NODE_ARITH), now keyword + library wrappers in uses_block_globals |
 
 ---
 
@@ -322,9 +335,9 @@ Skipping any of these steps will cause silent accuracy regression.
 
 ```
 graph_schema.py  ←──  graph_extractor.py  ←──  __init__.py
-    (constants)       (imports schema       (re-exports
-                       constants; defines    everything
-                       extraction logic)     from both)
+    (shim: re-     (imports schema       (re-exports
+     exports from   constants; defines    everything
+     sentinel_data) extraction logic)     from both)
 ```
 
 ```

@@ -18,67 +18,68 @@ The current implementation in `verification/semantic_checker.py` does **not read
 
 | File | Approx lines | Role |
 |------|--------------|------|
-| `CallToUnknown.yaml` | ~15 | Pattern: `.call{}` / `.delegatecall{}` / `.send{}` to dynamic address, return ignored, no SafeERC20 wrapper |
-| `DenialOfService.yaml` | ~15 | Pattern: unbounded loop with external call, or single-revert blocks payout |
-| `ExternalBug.yaml` | ~15 | Pattern: cross-contract call to non-interface target, or `tx.origin` in permission check |
-| `GasException.yaml` | ~15 | Pattern: unchecked `send()` / `transfer()`, large calldata, or OOG-prone loop |
-| `IntegerUO.yaml` | ~15 | Pattern: arithmetic op in pre-0.8 Solidity, or in `unchecked{}` block in 0.8.x |
-| `MishandledException.yaml` | ~15 | Pattern: low-level call with discarded `(bool, bytes)` return |
-| `Reentrancy.yaml` | ~15 | Pattern: external call before state write (CEI violation) |
-| `Timestamp.yaml` | ~15 | Pattern: `block.timestamp` / `now` in security-sensitive conditional |
-| `TransactionOrderDependence.yaml` | ~15 | Pattern: `tx.origin` in permission check, or approve/transferFrom race |
-| `UnusedReturn.yaml` | ~15 | Pattern: internal function call with discarded return value |
+| `CallToUnknown.yaml` | 42 | Pattern: `.call{}` / `.delegatecall{}` / `.send{}` to dynamic address, return ignored, no SafeERC20 wrapper |
+| `DenialOfService.yaml` | 37 | Pattern: unbounded loop with external call, or single-revert blocks payout |
+| `ExternalBug.yaml` | 34 | Pattern: cross-contract call to non-interface target, or `tx.origin` in permission check |
+| `GasException.yaml` | 26 | Pattern: unchecked `send()` / `transfer()`, large calldata, or OOG-prone loop |
+| `IntegerUO.yaml` | 39 | Pattern: arithmetic op in pre-0.8 Solidity, or in `unchecked{}` block in 0.8.x |
+| `MishandledException.yaml` | 30 | Pattern: low-level call with discarded `(bool, bytes)` return |
+| `Reentrancy.yaml` | 38 | Pattern: external call before state write (CEI violation) |
+| `Timestamp.yaml` | 30 | Pattern: `block.timestamp` / `now` in security-sensitive conditional |
+| `TransactionOrderDependence.yaml` | 30 | Pattern: `tx.origin` in permission check, or approve/transferFrom race |
+| `UnusedReturn.yaml` | 29 | Pattern: internal function call with discarded return value |
 
-**Sub-total: ~150 lines** (each YAML is small — single-pattern spec with regex, positive/negative examples, structural features).
+**Sub-total: ~335 lines** across 10 YAML files.
 
 ## 3. Key concepts
 
-### The schema (per YAML, inferred from the simplest entry)
+### The schema (per YAML, inferred from `Reentrancy.yaml` and `CallToUnknown.yaml`)
 
-Each YAML follows a similar shape (NOT all files are byte-identical — older files may have simpler structure):
+Each YAML follows a consistent shape (different files may have slightly different `v9_signal` sub-fields depending on the signal type):
 
 ```yaml
 class: Reentrancy
-schema_version: "1"
-
 description: >
-  An external call is made before state is updated (CEI violation),
-  allowing the callee to re-enter and manipulate the contract's state.
+  External call before state update (CEI violation). An attacker's fallback
+  function can re-enter the vulnerable function before state is updated.
 
-# Structural features that should fire (from v9 graph features):
-v9_features_should_fire:
-  - feat_2: 0         # uses_block_globals — should NOT fire for reentrancy
-  - has_cei_path: 1   # the new (v9) structural signal: external call BEFORE state write
-  - edge_attr_11: 1   # at least one EXTERNAL_CALL edge (cross-contract call)
+v9_signal:
+  method: graph_attribute       # one of: graph_attribute, graph_edge, graph_feature, composite, NOT_EXTRACTABLE
+  field: has_cei_path           # for graph_attribute: the field name on the PyG Data object
+  positive_value: 1             # the value that indicates a positive signal
+  note: >
+    Computed by _compute_has_cei_path() in graph_extractor.py.
 
-# Anti-features (should NOT fire for a clean reentrancy label):
-v9_features_should_not_fire:
-  - has_reentrancy_guard: 1  # presence of nonReentrant modifier = probably not vulnerable
+false_positive_risk:
+  level: HIGH                   # LOW / MEDIUM / HIGH / VERY_HIGH
+  bccc_fp_rate: "89%"           # historical FP rate in BCCC dataset
+  bccc_root_cause: >            # why BCCC got it wrong
+    BCCC matched any external call + state write regardless of ordering.
 
-# Regex patterns in source text (optional, for source-level grep):
-source_patterns:
-  - pattern: '\\.call\\s*\\{'
-    description: "low-level call to dynamic target"
-
-# Positive example (BCCC review batch snippet):
 positive_example: |
   function withdraw(uint amount) public {
       require(balances[msg.sender] >= amount);
-      (bool ok,) = msg.sender.call{value: amount}("");
-      require(ok);
-      balances[msg.sender] -= amount;   // ← state write AFTER call = vulnerable
+      msg.sender.call{value: amount}("");
+      balances[msg.sender] -= amount;
   }
 
-# Negative example (clean OZ-style):
 negative_example: |
-  function transfer(address to, uint amount) external {
-      _balances[msg.sender] -= amount;   // ← state write BEFORE call = safe
-      _balances[to] += amount;
-      emit Transfer(msg.sender, to, amount);
+  function withdraw(uint amount) public {
+      require(balances[msg.sender] >= amount);
+      balances[msg.sender] -= amount;
+      msg.sender.call{value: amount}("");
   }
+
+dasp_id: 1                     # DASP taxonomy mapping
+tier_for_solidifi: T0          # confidence tier for SolidiFI source
 ```
 
-> **The exact schema is informal** — different files were authored at different times. The Stage 4 plan D-4.1 says "pattern YAMLs are human-authored, version-controlled" but the schema version field is the only enforced contract.
+> **Note on `v9_signal` variants** — the `method` field determines the sub-fields:
+> - `graph_attribute` → `field`, `positive_value`, `note`
+> - `graph_edge` → `edge_type`, `edge_id`, `note`
+> - `graph_feature` → `feature_index`, `note`
+> - `composite` → `signals` (list of sub-signals)
+> - `NOT_EXTRACTABLE` → no additional fields (the class cannot be verified from v9 features alone)
 
 ### What `semantic_checker.py` actually uses (per `verification/semantic_checker.py`)
 

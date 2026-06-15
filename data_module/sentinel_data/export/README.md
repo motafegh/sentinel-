@@ -19,16 +19,16 @@ The `sentinel-data export` CLI subcommand is the entry point. It reads from `dat
 
 | File | Lines | Role |
 |------|-------|------|
-| `__init__.py` | 31 | Re-exports all public symbols: `chunk_export`, `SentinelDatasetExport`, `ExportManifest`, 4 writers. |
-| `chunker.py` | 234 | **Orchestrator** — `chunk_export()` runs the 4 writers in order, computes the SHA-256 artifact hash, writes `manifest.json` last (Fix A — avoids circular hash). |
-| `export.py` | 137 | `SentinelDatasetExport` — consumer-facing read-only API. Wraps an export directory, provides manifest loading, hash verification, split-aware contract ID lookup. |
-| `graph_writer.py` | 113 | Writes sharded PyG `Batch` objects (`graphs-{shard:05d}.pt`). Contract order driven by split JSONL (train → val → test). |
-| `token_writer.py` | 102 | Writes sharded token tensors (`tokens-{shard:05d}.pt`) as `[N, 4, 512]` int64 input_ids. Order mirrors `graph_writer`. |
-| `label_writer.py` | 106 | Writes `labels.parquet` — 14 columns: contract_id, source, split, class_0..class_9 (int8, locked taxonomy order), confidence_tier (nullable). |
-| `metadata_writer.py` | 97 | Writes `metadata.parquet` — 14 columns: contract_id, source, split, solc_version, version_bucket, loc, n_functions, n_pos, primary_class, node_count, edge_count, has_unchecked_block, dedup_group_id, confidence_tier. |
-| `format_schema/v1.yaml` | ~400 | The export format contract: shard patterns, column definitions, dtypes, version pins. |
+| `__init__.py` | 27 | Re-exports all public symbols: `chunk_export`, `SentinelDatasetExport`, `ExportManifest`, 4 writers. |
+| `chunker.py` | 237 | **Orchestrator** — `chunk_export()` runs the 4 writers in order, computes the SHA-256 artifact hash, writes `manifest.json` last (Fix A — avoids circular hash). |
+| `export.py` | 173 | `SentinelDatasetExport` — consumer-facing read-only API. Wraps an export directory, provides manifest loading, hash verification, split-aware contract ID lookup. |
+| `graph_writer.py` | 106 | Writes sharded PyG `Batch` objects (`graphs-{shard:05d}.pt`). Contract order driven by split JSONL (train → val → test). |
+| `token_writer.py` | 95 | Writes sharded token tensors (`tokens-{shard:05d}.pt`) as `[N, 4, 512]` int64 input_ids. Order mirrors `graph_writer`. |
+| `label_writer.py` | 150 | Writes `labels.parquet` — 14 columns: contract_id, source, split, class_0..class_9 (int8, locked taxonomy order), confidence_tier (nullable). |
+| `metadata_writer.py` | 200 | Writes `metadata.parquet` — 14 columns: contract_id, source, split, solc_version, version_bucket, loc, n_functions, n_pos, primary_class, node_count, edge_count, has_unchecked_block, dedup_group_id, confidence_tier. |
+| `format_schema/v1.yaml` | 494 | The export format contract: shard patterns, column definitions, dtypes, version pins. |
 
-**Sub-total: ~695 lines** across 7 Python files + 1 YAML.
+**Sub-total: ~995 lines** across 7 Python files + 1 YAML (494 lines).
 
 ## 3. Key concepts
 
@@ -113,7 +113,7 @@ class ExportManifest:
     n_contracts_with_reps: int       # those with .pt representations
     n_shards: int                    # number of graph/token shards
     splits: dict[str, list[str]]     # {train: [sha256...], val: [...], test: [...]}
-    shard_index: dict[str, dict]     # {sha256: {shard: int, pos_in_shard: int}}
+    shard_index: dict[str, dict]     # {sha256: {shard: int, pos_in_shard: int, num_nodes: int}}
     source_set: list[str]            # sources actually exported
     skipped_sources: list[dict]      # sources enabled but skipped
     preprocessing_config_hash: str   # SHA-256 of config.yaml
@@ -125,13 +125,13 @@ class ExportManifest:
 
 | Symbol | Source | Description |
 |--------|--------|-------------|
-| `chunk_export(...)` | `chunker.py:101-234` | Main entry point — runs all 4 writers + manifest |
-| `ExportManifest` | `chunker.py:33-51` | Dataclass for `manifest.json` |
-| `SentinelDatasetExport` | `export.py:23-137` | Consumer-facing read-only API |
-| `write_labels_parquet(...)` | `label_writer.py:49-106` | Write `labels.parquet` |
-| `write_metadata_parquet(...)` | `metadata_writer.py:50-97` | Write `metadata.parquet` |
-| `write_graphs_shards(...)` | `graph_writer.py:42-113` | Write sharded PyG Batch `.pt` files |
-| `write_tokens_shards(...)` | `token_writer.py:38-102` | Write sharded token `.pt` files |
+| `chunk_export(...)` | `chunker.py:151-234` | Main entry point — runs all 4 writers + manifest |
+| `ExportManifest` | `chunker.py:44-60` | Dataclass for `manifest.json` |
+| `SentinelDatasetExport` | `export.py:21-173` | Consumer-facing read-only API |
+| `write_labels_parquet(...)` | `label_writer.py:116-143` | Write `labels.parquet` |
+| `write_metadata_parquet(...)` | `metadata_writer.py:157-194` | Write `metadata.parquet` |
+| `write_graphs_shards(...)` | `graph_writer.py:47-103` | Write sharded PyG Batch `.pt` files |
+| `write_tokens_shards(...)` | `token_writer.py:36-92` | Write sharded token `.pt` files |
 
 ## 5. Inputs → outputs
 

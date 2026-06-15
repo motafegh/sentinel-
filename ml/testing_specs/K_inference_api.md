@@ -2,6 +2,15 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). **Critical update**: the
+> `SENTINEL_CHECKPOINT` default in `api.py` is still `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt`
+> (historical). The active best as of Run 12 is
+> `ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt`. **Always set
+> `SENTINEL_CHECKPOINT` env var explicitly when validating**. Forward-looking:
+> Run 13 plan drops `GasException` → `NUM_CLASSES=9` (10 → 9); the response
+> schema (10-element vectors) will change. This file will need a major update
+> after Run 13 launches.
 
 ---
 
@@ -239,7 +248,7 @@ Read `api.py` for the full list. Key overrides:
 
 | Env var | Default | Effect |
 |---|---|---|
-| `SENTINEL_CHECKPOINT` | `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt` | Override checkpoint path |
+| `SENTINEL_CHECKPOINT` | `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt` (STALE; Run 4 baseline) | Override checkpoint path. **Always set explicitly when validating** — verify from `/health` `checkpoint` field. Active best: `ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt`. |
 | `SENTINEL_DRIFT_BASELINE` | `ml/data/drift_baseline.json` | Override drift baseline path |
 | `SENTINEL_DRIFT_CHECK_INTERVAL` | `50` | Requests between KS checks |
 | `SENTINEL_PREDICT_TIMEOUT` | `60` | Seconds before HTTP 504 |
@@ -247,6 +256,9 @@ Read `api.py` for the full list. Key overrides:
 The checkpoint default in `api.py` is the **Run 4 checkpoint**, not the current
 best. Always verify `SENTINEL_CHECKPOINT` is set to the correct promoted checkpoint
 before running any validation. Confirm from `/health` `checkpoint` field.
+
+**Active best (post-Run-12 launch)**: `ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt`
+(path subject to change; verify from `MEMORY.md` Current State).
 
 ---
 

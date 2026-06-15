@@ -1,0 +1,44 @@
+{
+  "n_total": 5,
+  "n_successful": 3,
+  "n_errors": 2,
+  "elapsed_sec": 2.5913517475128174,
+  "throughput_per_sec": 7.414050793938855,
+  "time_per_pred_ms": {
+    "mean": 134.87903277079263,
+    "p50": 139.24694061279297,
+    "p95": 149.97642040252686,
+    "p99": 150.9301519393921
+  },
+  "class_distribution": {
+    "ExternalBug": 1,
+    "DenialOfService": 1,
+    "Reentrancy": 1
+  },
+  "class_mean_confidence": {
+    "ExternalBug": 0.7338706558979055,
+    "DenialOfService": 0.9967842116061782,
+    "Reentrancy": 0.8933745455140305
+  },
+  "n_with_any_trigger": 3,
+  "trigger_stats": {
+    "mean_per_contract": 1.3333333333333333,
+    "p50": 1.0,
+    "p95": 1.9,
+    "max": 2
+  },
+  "error_samples": [
+    {
+      "address": "0x00000000000fe8503db73c68f1a1874eb9d86883",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_58yd9uyc.sol': Slither failed to parse 'sentinel_prep_58yd9uyc.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_58yd9u"
+    },
+    {
+      "address": "0x00000000002b13cccec913420a21e4d11b2dcd3c",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_czgu9f68.sol': Slither failed to parse 'sentinel_prep_czgu9f68.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_czgu9f"
+    }
+  ],
+  "checkpoint_state_path": "/home/motafeq/projects/sentinel/ml/data/smartbugs_wild_eval_state.json",
+  "log_path": "/home/motafeq/projects/sentinel/ml/logs/smartbugs_wild_eval_20260614_222006.log",
+  "completed_at": "2026-06-14T22:20:09.152652",
+  "total_elapsed_sec": 2.5918478965759277
+}

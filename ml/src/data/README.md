@@ -1,14 +1,16 @@
 # ml/src/data — Data Storage Directory
 
+> **Status:** ✅ Current — v9 schema, verified 2026-06-14
+
 Storage location for processed ML data artifacts. This directory and its contents are **not committed to git** (see `.gitignore`).
 
 ## Structure
 
 ```
 ml/data/
-├── graphs/                      # PyG graph files — v8 schema, 11-dim
+├── graphs/                      # PyG graph files — v9 schema, 12-dim
 ├── tokens_windowed/             # GraphCodeBERT token windows — [4, 512]
-├── cached_dataset_v8.pkl        # 2.2 GB paired cache — 41,576 samples
+├── cached_dataset_v9.pkl        # paired cache — (graph, tokens) tuples
 ├── processed/
 │   ├── multilabel_index.csv             # raw label index
 │   ├── multilabel_index_deduped.csv     # after content-hash dedup
@@ -28,14 +30,14 @@ Each file is a PyG `Data` object:
 
 | Field | Shape | Dtype | Notes |
 |-------|-------|-------|-------|
-| `graph.x` | `[N, 11]` | float32 | Node features, v8 schema |
+| `graph.x` | `[N, 12]` | float32 | Node features, v9 schema |
 | `graph.edge_index` | `[2, E]` | int64 | Directed edges, COO format |
-| `graph.edge_attr` | `[E]` | int64 | Edge type indices 0–10 |
+| `graph.edge_attr` | `[E]` | int64 | Edge type indices 0–11 |
 | `graph.contract_hash` | str | — | MD5 hash, matches token file name |
 
 - **Count:** 41,576 files
 - **Naming:** `<md5_hash>.pt`
-- **Schema version:** `FEATURE_SCHEMA_VERSION = "v8"`
+- **Schema version:** `FEATURE_SCHEMA_VERSION = "v9"`
 - **Loading:** `torch.load(path, weights_only=False)` — PyG 2.7 metadata blocks `weights_only=True`
 
 ### Token Files (`tokens_windowed/*.pt`)
@@ -46,12 +48,11 @@ Each file is a tensor of shape `[4, 512]`:
 - **Count:** 44,470 files (includes contracts without matching graphs)
 - **Naming:** `<md5_hash>.pt` (matches graph file)
 
-### Cached Dataset (`cached_dataset_v8.pkl`)
+### Cached Dataset (`cached_dataset_v9.pkl`)
 
 Pre-built paired cache:
-- **Size:** ~2.2 GB
 - **Contents:** 41,576 `(graph, tokens, label)` tuples
-- **Schema:** v8 — regenerate if `FEATURE_SCHEMA_VERSION` is bumped
+- **Schema:** v9 — regenerate if `FEATURE_SCHEMA_VERSION` is bumped
 - **Build:** `poetry run python ml/scripts/create_cache.py`
 
 ### Split Indices (`splits/deduped/*.npy`)
@@ -68,13 +69,13 @@ Always load from `.npy` files — never from `.txt` equivalents.
 
 ## Schema Version
 
-**Current: v8**
+**Current: v9**
 
 | Constant | Value |
 |----------|-------|
-| `NODE_FEATURE_DIM` | 11 |
-| `FEATURE_SCHEMA_VERSION` | `"v8"` |
-| `NUM_EDGE_TYPES` | 11 |
+| `NODE_FEATURE_DIM` | 12 |
+| `FEATURE_SCHEMA_VERSION` | `"v9"` |
+| `NUM_EDGE_TYPES` | 12 |
 | `NUM_CLASSES` | 10 |
 
 Bump `FEATURE_SCHEMA_VERSION` in `graph_schema.py` for any schema change. This invalidates the cache (`create_cache.py` checks the version and refuses stale data).
@@ -102,6 +103,6 @@ poetry run python ml/scripts/create_cache.py
 |----------|------|
 | `graphs/` | ~2–3 GB |
 | `tokens_windowed/` | ~1–2 GB |
-| `cached_dataset_v8.pkl` | ~2.2 GB |
+| `cached_dataset_v9.pkl` | ~2.2 GB |
 | `processed/` + `splits/` | < 100 MB |
 | **Total** | **~5–8 GB** |

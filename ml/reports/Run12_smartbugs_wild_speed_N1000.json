@@ -1,0 +1,132 @@
+{
+  "n_contracts": 1000,
+  "n_successful": 849,
+  "n_errors": 151,
+  "warmup_time_sec": 1.5562412738800049,
+  "time_per_pred_ms": {
+    "mean": 343.38559671902965,
+    "p50": 197.235107421875,
+    "p95": 874.1687297821045,
+    "p99": 3735.007257461544,
+    "total": 291.5343716144562
+  },
+  "throughput_per_sec": 2.9121780574222385,
+  "extrapolated_full_dataset_minutes": 271.2631752214761,
+  "class_distribution": {
+    "Reentrancy": 109,
+    "UnusedReturn": 78,
+    "ExternalBug": 281,
+    "IntegerUO": 150,
+    "Timestamp": 218,
+    "DenialOfService": 13
+  },
+  "class_mean_confidence": {
+    "Reentrancy": 0.6635256880733945,
+    "UnusedReturn": 0.8253679487179486,
+    "ExternalBug": 0.726322775800711,
+    "IntegerUO": 0.732898666666667,
+    "Timestamp": 0.8795981651376151,
+    "DenialOfService": 0.5967384615384614
+  },
+  "n_with_any_trigger": 808,
+  "trigger_stats": {
+    "mean_per_contract": 2.3686690223792697,
+    "max_per_contract": 5,
+    "p50": 2.0,
+    "p95": 4.0
+  },
+  "top_10_highest_confidence": [
+    {
+      "prob": 0.9729,
+      "class": "Timestamp",
+      "name": "0xfcf0ef1fbaf383b254e088b4ab77f23f87f6de40.sol"
+    },
+    {
+      "prob": 0.9505,
+      "class": "Timestamp",
+      "name": "0x46580533db92c418a79f91b46df70283daef7f99.sol"
+    },
+    {
+      "prob": 0.9458,
+      "class": "Timestamp",
+      "name": "0x108116d36907223e13ba244b5bde5893cd5e730b.sol"
+    },
+    {
+      "prob": 0.9432,
+      "class": "Timestamp",
+      "name": "0x4da3f7aafd1d458737417433ede487a2c027549b.sol"
+    },
+    {
+      "prob": 0.942,
+      "class": "Timestamp",
+      "name": "0xab857d8a2c8d743f0184ddc3ca184904afa66673.sol"
+    },
+    {
+      "prob": 0.9411,
+      "class": "Timestamp",
+      "name": "0xc42843f7a26d5d1f60c196c6218dfeec8b4404b7.sol"
+    },
+    {
+      "prob": 0.9411,
+      "class": "Timestamp",
+      "name": "0x59d767e793be9fc96b8b2e7039adde96e3d2a09d.sol"
+    },
+    {
+      "prob": 0.9401,
+      "class": "Timestamp",
+      "name": "0xa174aeddeeb90a89ce8bc34b646d4fb708ee8b58.sol"
+    },
+    {
+      "prob": 0.9384,
+      "class": "Timestamp",
+      "name": "0x05af72594440cf75c0fdcbbd9993fc26f62c7afc.sol"
+    },
+    {
+      "prob": 0.9366,
+      "class": "Timestamp",
+      "name": "0x2f25c1e277d4f0a37de6b0ca4365eafebae0b759.sol"
+    }
+  ],
+  "errors_sample": [
+    [
+      "0x22f83d39a2148dd389ed4c7a9280f57d5c8679da.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_w79vpl2t.sol': Slither failed to parse 'sentinel_prep_w79vpl2t.sol': Invalid compilation: \nInvalid solc compilation Warning: SPDX license ide"
+    ],
+    [
+      "0xabe12e3548fdb334d11fcc962c413d91ef12233f.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_4g2yufz2.sol': Slither failed to parse 'sentinel_prep_4g2yufz2.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_4g2yuf"
+    ],
+    [
+      "0xd7e53b24e014cd3612d8469fd1d8e371dd7b3024.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_nyypu7p3.sol': Slither failed to parse 'sentinel_prep_nyypu7p3.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_nyypu7"
+    ],
+    [
+      "0x14d01b02d1a2aa051082810d77f8d64c80937cd5.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_6tvl0lkl.sol': Slither failed to parse 'sentinel_prep_6tvl0lkl.sol': Invalid compilation: \nInvalid solc compilation Warning: SPDX license ide"
+    ],
+    [
+      "0xea94f0fffaa4f1c17ba190f5df3b738edcd43228.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_8q0yq7by.sol': Slither failed to parse 'sentinel_prep_8q0yq7by.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_8q0yq7"
+    ],
+    [
+      "0x0c003006e6ae1b2509e027e2b2441720b3da85d1.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_slzy8tur.sol': Slither failed to parse 'sentinel_prep_slzy8tur.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_slzy8t"
+    ],
+    [
+      "0xb5241eca09b809faacfe82957e234dbb8e086bda.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_sgg4cdv0.sol': Slither failed to parse 'sentinel_prep_sgg4cdv0.sol': Invalid compilation: \nInvalid solc compilation Warning: SPDX license ide"
+    ],
+    [
+      "0x117618d05e4a35511332448e505fe7519decc14c.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_zi5yl57d.sol': Slither failed to parse 'sentinel_prep_zi5yl57d.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_zi5yl5"
+    ],
+    [
+      "0x14b22449fb80c9efd00d0ffd9bd6b9aba27ede6e.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_rxsnwzd0.sol': Slither failed to parse 'sentinel_prep_rxsnwzd0.sol': Invalid compilation: \nInvalid solc compilation Error: Source file requir"
+    ],
+    [
+      "0xa550a7980f856d5f9dd0a8c405e8736223f0b44a.sol",
+      "Graph extraction infrastructure failure for 'sentinel_prep_6ek2dxl1.sol': Slither failed to parse 'sentinel_prep_6ek2dxl1.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_6ek2dx"
+    ]
+  ]
+}

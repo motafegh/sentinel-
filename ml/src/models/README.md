@@ -74,14 +74,14 @@ Edges: types 0–5 (CALLS, READS, WRITES, EMITS, INHERITS, CONTAINS)
 add_self_loops=True
 heads=8, concat=True → output = hidden_dim (256)
 
-Layer 1: _GNN_IN_DIM (27) → hidden_dim
-  BUG-R7-2: type_embedding nn.Embedding(13, 16) prepended to node features.
-    type_id was stored as float(id)/12.0 in feat[0] — a continuous scalar.
+Layer 1: _GNN_IN_DIM (28) → hidden_dim
+  BUG-R7-2: type_embedding nn.Embedding(14, 16) prepended to node features.
+    type_id was stored as float(id)/13.0 in feat[0] — a continuous scalar.
     GATConv cannot learn categorical structure from a single float. The 16-dim
-    learned embedding gives each of the 13 node types its own representation
-    vector. _GNN_IN_DIM = NODE_FEATURE_DIM (11) + _TYPE_EMB_DIM (16) = 27.
+    learned embedding gives each of the 14 node types its own representation
+    vector. _GNN_IN_DIM = NODE_FEATURE_DIM (12) + _TYPE_EMB_DIM (16) = 28.
     No graph re-extraction needed — the embedding is model-internal.
-  IMP-G2: input_proj skip connection (Linear(27, 256, bias=False)) added
+  IMP-G2: input_proj skip connection (Linear(28, 256, bias=False)) added
     before ReLU in Layer 1. Prevents raw feature loss when GAT attention
     weights start near-uniform at initialization.
 
@@ -184,8 +184,8 @@ GNNEncoder.forward(
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `_TYPE_EMB_DIM` | 16 | Learned node-type embedding dim (BUG-R7-2) |
-| `_NUM_NODE_TYPES` | 13 | Number of distinct node types (IDs 0–12) |
-| `_GNN_IN_DIM` | 27 | 11 (features) + 16 (type embedding) — model-internal input dim |
+| `_NUM_NODE_TYPES` | 14 | Number of distinct node types (IDs 0–13) |
+| `_GNN_IN_DIM` | 28 | 12 (features) + 16 (type embedding) — model-internal input dim |
 | `SENTINEL_GNN_NUM_LAYERS` | 8 | Fixed architecture: 2+3+3 phases |
 
 ---
@@ -399,7 +399,7 @@ SentinelModel.forward(
 
 | Constant | Value | Source | Purpose |
 |----------|-------|--------|---------|
-| `_MAX_TYPE_ID` | 12.0 | `max(NODE_TYPES.values())` | Recover integer type_id from normalised feat[0] |
+| `_MAX_TYPE_ID` | 13.0 | `max(NODE_TYPES.values())` | Recover integer type_id from normalised feat[0] |
 | `_FUNC_TYPE_IDS` | {1,2,4,5,6} | `NODE_TYPES` | GNN Eye pooling target: function-level nodes |
 | `_CFG_TYPE_IDS` | {8,9,10,11,12} | `NODE_TYPES` | CFG Eye + aux_phase2 pooling target |
 | `_FUNC_IDS_CPU` | Tensor[5] | Pre-built from `_FUNC_TYPE_IDS` | Avoids allocation per forward pass |
@@ -407,7 +407,7 @@ SentinelModel.forward(
 | `_PREFIX_NODE_PRIORITY` | dict | `NODE_TYPES` | Prefix selection priority |
 | `_PREFIX_TYPE_IDX` | dict | `NODE_TYPES` | Stable embedding index for prefix |
 
-Import-time assertion: `_MAX_TYPE_ID == 12.0` — fires immediately if a new node type is added to `NODE_TYPES`, preventing silent misalignment.
+Import-time assertion: `_MAX_TYPE_ID == 13.0` — fires immediately if a new node type is added to `NODE_TYPES`, preventing silent misalignment.
 
 ### Diagnostic Methods
 
@@ -504,7 +504,7 @@ model._current_epoch = 9999           # ensures prefix always active at inferenc
 | ID | Type | Change | Impact |
 |----|------|--------|--------|
 | BUG-R7-1 | Bug fix | aux_phase2 pools CFG nodes (not FUNCTION) | Phase 2 gradient starvation fixed; Ph2/Ph1 ratio 0.18→0.74 |
-| BUG-R7-2 | Bug fix | type_id scalar → nn.Embedding(13, 16) | Categorical node type representation; cleaner gradients |
+| BUG-R7-2 | Bug fix | type_id scalar → nn.Embedding(14, 16) | Categorical node type representation; cleaner gradients |
 | IMP-R7-1 | Improvement | Phase 2 heads 1→4 | Multi-pattern directional flow; only effective after BUG-R7-1 |
 | IMP-R7-2 | Improvement | CFG Eye added (4th eye, classifier 384→512) | Direct gradient to conv3; execution-flow perspective |
 | IMP-R7-3 | Improvement | Phase 2 aux weight 0.10→0.20 | Stronger Phase 2 supervision; amplifies BUG-R7-1 fix |

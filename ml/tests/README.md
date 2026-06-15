@@ -1,5 +1,7 @@
 # ml/tests — Test Suite
 
+> **Status:** ✅ Current — v9 schema, 14 test files, verified 2026-06-14
+
 Comprehensive test suite for the SENTINEL ML pipeline.
 
 ## Purpose
@@ -14,19 +16,19 @@ This directory contains pytest-based tests for validating the correctness, robus
   - Forward pass shape verification
   - Auxiliary output testing
   - Output dimension validation [B, 10]
-  - Three-eye classifier functionality
+  - Four-eye classifier functionality
 
 - **`test_preprocessing.py`** — Graph schema and feature validation
-  - Schema validation (NODE_FEATURE_DIM=11, 13 types)
+  - Schema validation (NODE_FEATURE_DIM=12, 14 types)
   - Feature builder correctness
   - CFG feature inheritance
-  - Edge type validation (8 types)
+  - Edge type validation (12 types)
 
-- **`test_dataset.py`** — Dataset loading and batching
-  - DualPathDataset loading
+- **`test_sentinel_dataset.py`** — Dataset loading and batching
+  - SentinelDataset loading from v2 export artifacts
   - Collate function correctness
   - Batch shape validation
-  - Graph-token pairing verification
+  - 5-tuple return verification
 
 - **`test_trainer.py`** — Training pipeline validation
   - TrainConfig parameter validation
@@ -72,10 +74,14 @@ This directory contains pytest-based tests for validating the correctness, robus
   - Embedding computation
   - Feature isolation
 
+- **`test_predictor.py`** — Predictor loading and inference tests
+  - Checkpoint loading
+  - Architecture detection
+  - Per-class threshold loading
+
 ### Additional Tests
 
-- **`test_promote_model.py`** — Model promotion workflow
-- **`test_promote_model.py`** — Checkpoint management
+- **`test_promote_model.py`** — Model promotion workflow and checkpoint management
 
 ## Configuration
 
@@ -130,7 +136,7 @@ poetry run pytest tests/ -n auto
 ## Test Data
 
 Tests use:
-- Mock graph data with v8 schema (11-dim features, 11 edge types)
+- Mock graph data with v9 schema (12-dim features, 12 edge types)
 - Synthetic token sequences
 - Minimal test contracts
 - Cached test fixtures

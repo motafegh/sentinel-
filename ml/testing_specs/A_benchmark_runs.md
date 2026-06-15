@@ -2,6 +2,8 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). Updated paths to v3 export (`data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/`) and v3 splits (`data_module/data/splits/v3/`). Updated default checkpoint to point at Run 12 (current best, in flight). Added note about BCCC re-evaluation findings (callToUnknown/GasException noise — see `project_bccc_2tool_audit_2026-06-14.md`).
 
 ---
 
@@ -54,10 +56,10 @@ PYTHONPATH=. python -m ml.scripts.check_contamination \
 ```
 
 Required paths (read from `check_contamination.py` constants):
-- `ml/data/smartbugs-curated/dataset/` — SmartBugs Curated
-- `BCCC-SCsVul-2024/SourceCodes/` — 111,897 BCCC training contracts
-- `ml/data/graphs/` — 41,576 training graph `.pt` files (Tier 4 only)
-- `ml/data/splits/deduped/` — split index `.npy` files (Tier 4 only)
+- `ml/data/smartbugs-curated/dataset/` — SmartBugs Curated (143 real contracts)
+- **`/home/motafeq/projects/sentinel/BCCC-SCsVul-2024/SourceCodes/`** — 111,897 BCCC training contracts (read-only)
+- **Active v3 export: `data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/`** — 22,493 contracts, 5 shards, ~21,657 graphs. (The legacy path `ml/data/graphs/` with 41,576 graphs was for v9/v10 — DO NOT USE for v3 runs.)
+- **Active v3 splits: `data_module/data/splits/v3/`** — 18,596/1,983/1,914 (0% leakage). (The legacy path `ml/data/splits/deduped/` was for v9/v10 — DO NOT USE for v3 runs.)
 
 If any required path is missing the script prints a clear error and exits 1.
 
@@ -72,6 +74,8 @@ The summary block at the end of the run reports:
   Structural graph match      : N
   Total flagged (any tier)    : N
 ```
+
+(Note: the **v3** export now has **137** SmartBugs contracts (the original 143 minus 6 that failed compilation in the v3 preprocess stage). Use 137 for v3+ benchmark contamination checks; 143 is the v9/v10 number.)
 
 - `Total flagged = 0` — safe to publish benchmark numbers
 - `Total flagged > 0` — inspect each flagged contract; determine whether
@@ -96,10 +100,10 @@ Hardcoded in the script (read to confirm before each run):
 
 | Constant | Value |
 |---|---|
-| `DEFAULT_CKPT` | `ml/checkpoints/GCB-P1-Run9-v11-20260606_best.pt` |
-| `THRESHOLDS_JSON` | `ml/calibration/GCB-P1-Run9-v11-20260606_thresholds.json` |
+| `DEFAULT_CKPT` | **Historical: `ml/checkpoints/GCB-P1-Run9-v11-20260606_best.pt` (Run 9, last honest F1 before 45% leakage fix).** Current best: `ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt` (Run 12, f1_tuned=0.6941, in flight as of 2026-06-14). Always verify the active best from `MEMORY.md` Current State. |
+| `THRESHOLDS_JSON` | Companion to active checkpoint: e.g., `ml/calibration/GCB-P1-Run12-v3dospatched-20260613_thresholds.json` (created when Run 12 finalizes). |
 | `SMARTBUGS_DIR` | `ml/data/smartbugs-curated/dataset/` |
-| `TRAINING_MEDIAN_NODES` | 90 (from audit findings) |
+| `TRAINING_MEDIAN_NODES` | **v9/v10: 90. v3: 295** (mean, from Run 12 audit). SmartBugs contracts are typically smaller (median ~20). The v3 number reflects post-DoS-patch + L3-deduped data. |
 | `TIER_CONFIRMED` | 0.55 |
 | `TIER_SUSPICIOUS` | 0.25 |
 

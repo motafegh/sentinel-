@@ -1,0 +1,131 @@
+{
+  "results": [
+    {
+      "address": "0xbb9bc244d798123fde783fcc1c72d3bb8c189413",
+      "status": "ERROR",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_n3n6b1k9.sol': Slither failed to parse 'sentinel_prep_n3n6b1k9.sol': Invalid compilation: \nInvalid solc compilation Error: Expected '{' but g"
+    },
+    {
+      "address": "0x8d12a197cb00d4747a1fe03395095ce2a5cc6819",
+      "description": "EtherDelta (2017 hack)",
+      "expected": "Reentrancy",
+      "top_class": "UnusedReturn",
+      "top_prob": 0.9346138418076103,
+      "top_3": [
+        [
+          "UnusedReturn",
+          0.9346138418076103
+        ],
+        [
+          "ExternalBug",
+          0.8942973677421091
+        ],
+        [
+          "Reentrancy",
+          0.8238276339321654
+        ]
+      ],
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "status": "\u2713 PASS"
+    },
+    {
+      "address": "0x242aa8c63aab36df59ce19aaccd020fe4114c349",
+      "status": "ERROR",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_ml37u00q.sol': Slither failed to parse 'sentinel_prep_ml37u00q.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_ml37u0"
+    },
+    {
+      "address": "0xbf4ed7b27f1d666546e30d74d50d173d20bca754",
+      "status": "ERROR",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_nopzpy8g.sol': Slither failed to parse 'sentinel_prep_nopzpy8g.sol': Invalid compilation: \nInvalid solc compilation Warning: SPDX license ide"
+    },
+    {
+      "address": "0x543ff227f64aa17ea132bf9886cab5db55dcaddf",
+      "description": "DAOToken (DAO-related)",
+      "expected": "Reentrancy",
+      "top_class": "UnusedReturn",
+      "top_prob": 0.9563297525268375,
+      "top_3": [
+        [
+          "UnusedReturn",
+          0.9563297525268375
+        ],
+        [
+          "ExternalBug",
+          0.8491241408063935
+        ],
+        [
+          "Reentrancy",
+          0.7190694000784833
+        ]
+      ],
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "status": "\u2713 PASS"
+    },
+    {
+      "address": "0x4c0ff1b2c1ef5e2b3dd2c74023cbf7ae36f01391",
+      "status": "ERROR",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_b4c929xp.sol': Slither failed to parse 'sentinel_prep_b4c929xp.sol': Invalid compilation: \nInvalid solc compilation Error: Expected ';' but g"
+    },
+    {
+      "address": "0x6f6deb5db0c4994a8283a01d6cfeeb27fc3bbe9c",
+      "description": "SmartBillions (exploited)",
+      "expected": "Reentrancy",
+      "top_class": "Timestamp",
+      "top_prob": 0.966888465314876,
+      "top_3": [
+        [
+          "Timestamp",
+          0.966888465314876
+        ],
+        [
+          "IntegerUO",
+          0.8548855457002105
+        ],
+        [
+          "Reentrancy",
+          0.7098573932340869
+        ]
+      ],
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "status": "\u2713 PASS"
+    },
+    {
+      "address": "0x9e6b2b11542f2bc52f3029077ace37e8fd838d7f",
+      "status": "ERROR",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_f43_br2g.sol': Slither failed to parse 'sentinel_prep_f43_br2g.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_f43_br"
+    }
+  ],
+  "n_pass": 3,
+  "n_total": 3
+}

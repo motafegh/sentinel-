@@ -2,6 +2,8 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). **No routing-table changes** — the 11 alert codes in §H.2 are still valid and the source-of-truth is unchanged. Observed in Run 12: 18 alerts fired by ep44, all `WARN` tier `[9.3.6b]` (AUC-PR<0.1, minority classes) and `[9.3.6c]` (F1-AUC divergence). Both are expected for minority classes and do not require abort (per §H.4 decision tree: class death + F1 still improving = MONITOR).
 
 ---
 

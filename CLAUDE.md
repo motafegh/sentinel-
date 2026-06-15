@@ -17,6 +17,61 @@ out to `project_*.md` files — never exceed 200 lines.**
 
 ---
 
+## Documentation & File Naming Rules (MANDATORY)
+
+Every new file/folder MUST be self-describing — no opening needed to know what's inside.
+
+**1. Naming — 6 parts, ALL required:**
+`<YYYY-MM-DD>_<MODULE>_<RUN_or_PHASE>_<WHAT_it_is>_<descriptor>.<ext>`
+- Date = YYYY-MM-DD (use in-file `**Date:**` line, NEVER future dates)
+- Module = `ml` | `data_module` | `agents` | `zkml` | `contracts`
+- Run/Phase = `Run12` | `pre_Run5` | `Stage7B` | `v2_audit` | `bccc_deep_dive` (use `none` if N/A)
+- What = `plan` | `audit` | `summary` | `eval_benchmark` | `eval_full_eval` | `training_analysis` | `calibration` | `findings` | `action_plan` | `proposal` | `handoff` | `INDEX`
+- Descriptor = specific (e.g., `honest_OOD_v0.1_quickstart`, `47K_in_progress`, `45pct_leakage`)
+- Example: `2026-06-14_ml_Run12_eval_full_eval_smartbugs_wild_47K_in_progress.json` ✓
+- Bad: `report.md`, `Run12_results.json`, `docs/reports/run12/` (no date/module/run)
+
+**2. Canonical locations (FINAL):**
+- Project plans → `docs/plans/<dated>_<subject>.md`
+- Project reports → `docs/reports/<YYYY-MM-DD>_<module>_<Run>_<what>_<descriptor>/` (each report is its own dated folder)
+- Per-run summaries → `docs/run_summaries/<dated>_<Run>_<descriptor>.md`
+- Training analysis → `docs/training/<dated>_<Run>_<what>_<descriptor>.md`
+- Data module docs → `data_module/docs/<dated>_data_module_<what>_<descriptor>.md`
+- Data module audits → `data_module/audit/<dated>_data_module_<audit>_<stage>.md`
+- Calibration → `ml/calibration/run<N>/temperatures_run<N>.{json,stats.json,ece_comparison.png}`
+- Code audit/eval → `ml/scripts/{audit,eval,util}/<script>.py` (NO date prefix for code)
+- Cross-session memory → `~/.claude/projects/.../memory/{MEMORY.md, project_*.md}`
+- Session scratch → `~/.claude/scratch/<topic>_<YYYYMMDD>.md`
+- Safety bin → `docs/.bin/<YYYY-MM-DD>_<phase>_<reason>/` (do-not-touch storage)
+
+**3. No generic folder names** — `Run12/`, `audit/`, `reports/` are FORBIDDEN.
+
+**4. Duplicates / moves → `docs/.bin/` (NEVER delete directly):**
+- KEEP canonical, MOVE non-canonical to `docs/.bin/<date>_<phase>_<reason>/`
+- After full validation passes, user can `rm -rf docs/.bin/`
+- NEVER symlinks (they confuse search)
+
+**5. Update ALL references after move/rename:**
+- `grep -rln '<old_path>' ~/.claude/projects/.../memory/` → update each
+- Same for `docs/CHANGELOG.md` and any scripts
+- Re-verify `grep -rln '<old_path>'` returns 0 results
+
+**6. Log every move/rename** to `~/.claude/scratch/file_organization_log_<YYYYMMDD>.md` (source → dest, all memory ref updates, verification results).
+
+**7. Archive = don't touch:** Folders named `archive/`, `_archive/`, `_backup_*/` are excluded.
+
+**8. Pre-rename workflow:** fast-scan first 5 lines to extract subject/date/module/run context. NEVER guess dates. If date is wrong, fix BOTH in-file `**Date:**` line AND filename, save old to `docs/.bin/<date>_misleading_date_fixes/`.
+
+**9. Exceptions:** Source code in `ml/scripts/` (no date prefix), ADRs in `docs/ml/adr/` (industry-standard `ADR-NNNN-name.md`).
+
+**10. When in doubt, ASK the user.** Don't guess.
+
+---
+
+
+
+---
+
 ## Five Rules That Override Everything Else
 
 

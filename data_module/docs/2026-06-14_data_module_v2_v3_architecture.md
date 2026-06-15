@@ -1,10 +1,19 @@
-# sentinel-data Architecture (v2 → v3)
+# sentinel-data Architecture (v2 → v3 → v3.1 planned)
 
-> **Last revised:** 2026-06-13 23:35 UTC (post-Stage 7 + post-data-quality investigation + post-45% leakage fix + Run 11 ep1 + **DoS/Reentrancy co-occurrence patch APPLIED + Run 12 LAUNCHED**)
-> **Scope:** Full v2 data module — Stages 0 through 7B complete (Stage 5 registry partially skipped). **v3 export is now ACTIVE** (post-DoS-patch).
-> **Status:** End-to-end functional. **Run 12 training on v3 export** (PID 230342, launched 2026-06-13 23:31:17 UTC). 22,493 contracts / 18,596-1,983-1,914 splits / 0% leakage / 0 DoS+Reentrancy overlap / DoS=1,101 (was 3,756 pre-patch).
+> **Last revised:** 2026-06-14 21:55 UTC (Run 12 COMPLETE + post-training DONE + SmartBugs Wild eval)
+> **Scope:** Full v2 data module — Stages 0 through 7B complete (Stage 5 registry partially skipped). **v3 export is ACTIVE** (post-DoS-patch). **Run 12 finished** with f1_tuned=0.7004 @ ep50 and is now in Staging.
+> **Status:** End-to-end functional. **Run 12: 51 epochs, f1_tuned=0.7004 @ ep50, honest OOD F1=0.8743 (5 in-benchmark classes, 66 contracts).** 22,493 contracts / 18,596-1,983-1,914 splits / 0% leakage / 0 DoS+Reentrancy overlap / DoS=1,101 (was 3,756 pre-patch).
 
-> **⚠️ Important:** This doc was originally written for the v2 state (Run 11). Sections below still describe v2 architecture (which is unchanged), but the **active export, splits, and DoS counts are now v3** (post-DoS-patch). See §"v2 → v3 transition" below for the change summary. Full audit trail in `data_module/temp/pre-run12-fixes-2026-06-13.md` and `data_module/temp/data-source-addition-plan-2026-06-13.md`. Run 12 launch context: `~/.claude/projects/.../memory/project_run12_launch.md` (or `project_dos_patch_2026-06-13.md` for the patch audit).
+> **⚠️ Important:** This doc was originally written for the v2 state (Run 11). Sections below still describe v2 architecture (which is unchanged), but the **active export, splits, and DoS counts are now v3** (post-DoS-patch). See §"v2 → v3 transition" below for the change summary. Full audit trail in `data_module/temp/pre-run12-fixes-2026-06-13.md`. Run 12 launch context: `~/.claude/projects/.../memory/project_run12_launch.md` (or `project_dos_patch_2026-06-13.md` for the patch audit). Run 12 final report: `docs/training/GCB-P1-Run12-v3dospatched-analysis-2026-06-14.md`.
+
+> **🆕 2026-06-14 updates:**
+> - **BCCC re-evaluation + 2-tool audit DONE** — 658 high-confidence MishandledException contracts ready for Run 13 injection. ONLY MishandledException is extractable from BCCC. See `~/.claude/projects/.../memory/project_bccc_2tool_audit_2026-06-14.md`.
+> - **Feature leakage audit DONE** — comments stripped ✓, AST features are legitimate not leaks, graph size correlations r<0.25, Solidifi `bug_*` function name leak (0.94% of train), GasException = 0 data → DROP class. See `~/.claude/projects/.../memory/project_feature_leakage_audit_2026-06-14.md`.
+> - **Run 13 plan** (post-Run-12): 4 fixes — (1) Drop GasException (NUM_CLASSES=9), (2) Extend L4 to also drop `loc` (dim 6), (3) Strip Solidifi `bug_*` prefix, (4) Inject 658 BCCC ME contracts.
+> - **Run 12 COMPLETE + post-training validated**: killed at ep51, f1_tuned 0.7004, F1-macro 0.6800, in Staging (MLflow `sentinel-vulnerability-detector` v1). Honest OOD F1 = 0.8743 (tuned) on v0.1 quickstart benchmark (66 contracts, 0% contamination). 5/5 in-benchmark classes hit reasonable F1 (0.74-0.95). Mean ECE dropped 82% after temperature scaling (0.19→0.03). See `data_module/temp/live_plans/post_training_process_complete_2026-06-14.md`.
+> - **CRITICAL contamination finding**: 95.8% of SmartBugs and 82.9% of SolidiFI contracts in legacy benchmark are in v3 training. The legacy `ml/scripts/check_contamination.py` only checks vs BCCC, missing v3 contamination. New v3-aware audit at `/mnt/c/lenovo/AppData/Local/Temp/opencode/check_contamination_v3.py` is the source of truth. All prior benchmark F1 numbers were 80-95% inflated.
+> - **Comprehensive benchmark** at `data_module/benchmarks/`: 5-tier design (Tier A existing OOD + Tier B DeFiHackLabs held-out + Tier C BCCC 2-tool consensus + Tier D mutation + Tier E known-safe). v0.1 quickstart BUILT (66 contracts, 0% contamination). See `data_module/benchmarks/BENCHMARK_DESIGN.md`.
+> - **SmartBugs Wild evaluation** DONE: 849/1000 contracts successful, mean 343ms/pred, throughput 2.91/sec, full 47K = 271min. Distribution on real contracts: ExternalBug 33%, Timestamp 26%, IntegerUO 18%, Reentrancy 13%, UnusedReturn 9%, DoS 2%. 95.2% have >=1 trigger. Famous contracts: 3/3 compilable famous (EtherDelta, DAOToken, SmartBillions) correctly flagged for Reentrancy. The DAO, Parity MultiSig, WithdrawDAO, Hacken failed to compile (pre-0.4.21 syntax).
 
 ---
 

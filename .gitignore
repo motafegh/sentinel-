@@ -142,3 +142,10 @@ Thumbs.db
 *.tar.xz
 *.tar.zstdocs/IRVLESS*.txt
 IRVLESS*.txt
+
+# ── SmartBugs Wild eval large files (regeneratable from state) ──────────────
+ml/data/smartbugs_wild_eval_state.json
+
+# ── SmartBugs Wild eval large per-contract/contamination outputs ─────────────
+docs/reports/**/per_contract*.json
+docs/reports/**/contamination_index.json

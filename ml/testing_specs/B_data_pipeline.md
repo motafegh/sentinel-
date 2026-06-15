@@ -188,7 +188,7 @@ correction, new BCCC version), run steps in this exact order:
 3. `dedup_multilabel_index.py --relabel-timestamp` — fix Timestamp garbage labels
 4. `create_splits.py` — regenerate splits from the new CSV
 5. `retokenize_windowed.py` — rebuild token `.pt` files if schema or tokenizer changed (see E.5)
-6. Delete or invalidate the DataLoader RAM cache (`cached_dataset_v10.pkl`
+6. Delete or invalidate the DataLoader RAM cache (`cached_dataset_v9.pkl`
    or equivalent) — it references stale graph/token file timestamps
 7. Run smoke suite (D.1) before any training run
 

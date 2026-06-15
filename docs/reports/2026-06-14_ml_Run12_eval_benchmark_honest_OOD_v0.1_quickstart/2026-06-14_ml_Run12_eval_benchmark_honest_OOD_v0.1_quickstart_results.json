@@ -1,0 +1,1596 @@
+{
+  "benchmark": "data_module/benchmarks/benchmark_v0.1_quickstart",
+  "checkpoint": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt",
+  "thresholds_file": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best_thresholds.json",
+  "temperatures_file": "ml/calibration/temperatures_run12.json",
+  "n_contracts": 66,
+  "n_evaluated": 65,
+  "n_errors": 66,
+  "per_class_counts": {
+    "CallToUnknown": 14,
+    "MishandledException": 10,
+    "NonVulnerable": 11,
+    "Reentrancy": 11,
+    "Timestamp": 10,
+    "TransactionOrderDependence": 10
+  },
+  "per_class_f1": {
+    "CallToUnknown": {
+      "tier_f1": 0.875,
+      "tuned_f1": 0.8666666666666667,
+      "support": 14,
+      "in_benchmark": true
+    },
+    "DenialOfService": {
+      "tier_f1": null,
+      "tuned_f1": null,
+      "support": 0,
+      "in_benchmark": false
+    },
+    "ExternalBug": {
+      "tier_f1": null,
+      "tuned_f1": null,
+      "support": 0,
+      "in_benchmark": false
+    },
+    "GasException": {
+      "tier_f1": null,
+      "tuned_f1": null,
+      "support": 0,
+      "in_benchmark": false
+    },
+    "IntegerUO": {
+      "tier_f1": null,
+      "tuned_f1": null,
+      "support": 0,
+      "in_benchmark": false
+    },
+    "MishandledException": {
+      "tier_f1": 0.9473684210526315,
+      "tuned_f1": 0.9473684210526315,
+      "support": 10,
+      "in_benchmark": true
+    },
+    "Reentrancy": {
+      "tier_f1": 0.7333333333333333,
+      "tuned_f1": 0.9166666666666666,
+      "support": 11,
+      "in_benchmark": true
+    },
+    "Timestamp": {
+      "tier_f1": 0.6896551724137931,
+      "tuned_f1": 0.7407407407407407,
+      "support": 10,
+      "in_benchmark": true
+    },
+    "TransactionOrderDependence": {
+      "tier_f1": 0.9,
+      "tuned_f1": 0.9,
+      "support": 10,
+      "in_benchmark": true
+    },
+    "UnusedReturn": {
+      "tier_f1": null,
+      "tuned_f1": null,
+      "support": 0,
+      "in_benchmark": false
+    }
+  },
+  "in_benchmark_classes": [
+    "CallToUnknown",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence"
+  ],
+  "f1_tier_macro": 0.8290713853599516,
+  "f1_tuned_macro": 0.8742884990253412,
+  "f1_tier_micro": 0.9261538461538461,
+  "f1_tuned_micro": 0.9507692307692308,
+  "fp_probe_tier_rate": 1.0,
+  "fp_probe_tuned_rate": 1.0,
+  "per_contract": [
+    {
+      "name": "smartbugs_curated_unchecked_low_level_calls_0x78c2a1e91b52bca4130b6ed9edd9fbcfd4671c37.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.9401,
+        "DenialOfService": 0.2861,
+        "ExternalBug": 0.1768,
+        "GasException": 0.2701,
+        "IntegerUO": 0.176,
+        "MishandledException": 0.2889,
+        "Reentrancy": 0.2485,
+        "Timestamp": 0.1489,
+        "TransactionOrderDependence": 0.2407,
+        "UnusedReturn": 0.1861
+      }
+    },
+    {
+      "name": "smartbugs_curated_unchecked_low_level_calls_0x7a4349a749e59a5736efb7826ee3496a2dfd5489.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.9367,
+        "DenialOfService": 0.2841,
+        "ExternalBug": 0.1876,
+        "GasException": 0.2719,
+        "IntegerUO": 0.1644,
+        "MishandledException": 0.2916,
+        "Reentrancy": 0.2592,
+        "Timestamp": 0.1699,
+        "TransactionOrderDependence": 0.248,
+        "UnusedReturn": 0.1939
+      }
+    },
+    {
+      "name": "smartbugs_curated_unchecked_low_level_calls_0xd2018bfaa266a9ec0a1a84b061640faa009def76.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.9327,
+        "DenialOfService": 0.2826,
+        "ExternalBug": 0.1901,
+        "GasException": 0.2732,
+        "IntegerUO": 0.1706,
+        "MishandledException": 0.2891,
+        "Reentrancy": 0.2673,
+        "Timestamp": 0.174,
+        "TransactionOrderDependence": 0.2553,
+        "UnusedReturn": 0.1949
+      }
+    },
+    {
+      "name": "smartbugs_curated_unchecked_low_level_calls_0xf70d589d76eebdd7c12cc5eec99f8f6fa4233b9e.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.936,
+        "DenialOfService": 0.2843,
+        "ExternalBug": 0.1865,
+        "GasException": 0.2719,
+        "IntegerUO": 0.1649,
+        "MishandledException": 0.2907,
+        "Reentrancy": 0.2597,
+        "Timestamp": 0.1711,
+        "TransactionOrderDependence": 0.2482,
+        "UnusedReturn": 0.1935
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_12.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.732,
+        "DenialOfService": 0.3295,
+        "ExternalBug": 0.2786,
+        "GasException": 0.2953,
+        "IntegerUO": 0.2484,
+        "MishandledException": 0.2906,
+        "Reentrancy": 0.2939,
+        "Timestamp": 0.2232,
+        "TransactionOrderDependence": 0.2886,
+        "UnusedReturn": 0.2857
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_17.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.6799,
+        "DenialOfService": 0.3436,
+        "ExternalBug": 0.2833,
+        "GasException": 0.3027,
+        "IntegerUO": 0.276,
+        "MishandledException": 0.2713,
+        "Reentrancy": 0.3109,
+        "Timestamp": 0.3255,
+        "TransactionOrderDependence": 0.3026,
+        "UnusedReturn": 0.3048
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_24.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.4803,
+        "DenialOfService": 0.3612,
+        "ExternalBug": 0.2925,
+        "GasException": 0.3164,
+        "IntegerUO": 0.6154,
+        "MishandledException": 0.2844,
+        "Reentrancy": 0.4574,
+        "Timestamp": 0.6325,
+        "TransactionOrderDependence": 0.3338,
+        "UnusedReturn": 0.3795
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_26.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.8058,
+        "DenialOfService": 0.3194,
+        "ExternalBug": 0.2993,
+        "GasException": 0.2889,
+        "IntegerUO": 0.263,
+        "MishandledException": 0.2353,
+        "Reentrancy": 0.2704,
+        "Timestamp": 0.2,
+        "TransactionOrderDependence": 0.284,
+        "UnusedReturn": 0.2407
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_29.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.7919,
+        "DenialOfService": 0.4059,
+        "ExternalBug": 0.2974,
+        "GasException": 0.2707,
+        "IntegerUO": 0.0961,
+        "MishandledException": 0.2663,
+        "Reentrancy": 0.2067,
+        "Timestamp": 0.1173,
+        "TransactionOrderDependence": 0.2617,
+        "UnusedReturn": 0.1945
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_30.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "tuned_pred": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "probs": {
+        "CallToUnknown": 0.6195,
+        "DenialOfService": 0.316,
+        "ExternalBug": 0.4822,
+        "GasException": 0.2972,
+        "IntegerUO": 0.2748,
+        "MishandledException": 0.3111,
+        "Reentrancy": 0.2581,
+        "Timestamp": 0.241,
+        "TransactionOrderDependence": 0.2896,
+        "UnusedReturn": 0.3104
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_31.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.8112,
+        "DenialOfService": 0.3132,
+        "ExternalBug": 0.3031,
+        "GasException": 0.2869,
+        "IntegerUO": 0.2366,
+        "MishandledException": 0.241,
+        "Reentrancy": 0.2616,
+        "Timestamp": 0.2057,
+        "TransactionOrderDependence": 0.2768,
+        "UnusedReturn": 0.2591
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_32.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.8408,
+        "DenialOfService": 0.3051,
+        "ExternalBug": 0.2964,
+        "GasException": 0.2858,
+        "IntegerUO": 0.218,
+        "MishandledException": 0.2365,
+        "Reentrancy": 0.2707,
+        "Timestamp": 0.2059,
+        "TransactionOrderDependence": 0.279,
+        "UnusedReturn": 0.2444
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_37.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown"
+      ],
+      "probs": {
+        "CallToUnknown": 0.7958,
+        "DenialOfService": 0.3289,
+        "ExternalBug": 0.2768,
+        "GasException": 0.2891,
+        "IntegerUO": 0.2419,
+        "MishandledException": 0.2892,
+        "Reentrancy": 0.2673,
+        "Timestamp": 0.1949,
+        "TransactionOrderDependence": 0.2705,
+        "UnusedReturn": 0.2588
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_4.sol",
+      "true_class": "CallToUnknown",
+      "tier_pred": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.6829,
+        "DenialOfService": 0.3366,
+        "ExternalBug": 0.5173,
+        "GasException": 0.3028,
+        "IntegerUO": 0.2402,
+        "MishandledException": 0.2507,
+        "Reentrancy": 0.3016,
+        "Timestamp": 0.6042,
+        "TransactionOrderDependence": 0.3119,
+        "UnusedReturn": 0.2888
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_12.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "tuned_pred": [
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.4374,
+        "DenialOfService": 0.2749,
+        "ExternalBug": 0.172,
+        "GasException": 0.2672,
+        "IntegerUO": 0.2902,
+        "MishandledException": 0.6902,
+        "Reentrancy": 0.2331,
+        "Timestamp": 0.1482,
+        "TransactionOrderDependence": 0.2226,
+        "UnusedReturn": 0.2041
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_17.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "MishandledException"
+      ],
+      "tuned_pred": [
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.4509,
+        "DenialOfService": 0.2887,
+        "ExternalBug": 0.1989,
+        "GasException": 0.2789,
+        "IntegerUO": 0.2749,
+        "MishandledException": 0.635,
+        "Reentrancy": 0.2422,
+        "Timestamp": 0.1847,
+        "TransactionOrderDependence": 0.2463,
+        "UnusedReturn": 0.2539
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_24.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3849,
+        "DenialOfService": 0.3454,
+        "ExternalBug": 0.2362,
+        "GasException": 0.3095,
+        "IntegerUO": 0.5265,
+        "MishandledException": 0.4029,
+        "Reentrancy": 0.392,
+        "Timestamp": 0.5427,
+        "TransactionOrderDependence": 0.309,
+        "UnusedReturn": 0.3617
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_26.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "tuned_pred": [
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.4829,
+        "DenialOfService": 0.2733,
+        "ExternalBug": 0.149,
+        "GasException": 0.262,
+        "IntegerUO": 0.2562,
+        "MishandledException": 0.6641,
+        "Reentrancy": 0.2087,
+        "Timestamp": 0.1341,
+        "TransactionOrderDependence": 0.2105,
+        "UnusedReturn": 0.1835
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_29.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "MishandledException"
+      ],
+      "tuned_pred": [
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.4033,
+        "DenialOfService": 0.2719,
+        "ExternalBug": 0.1268,
+        "GasException": 0.2633,
+        "IntegerUO": 0.1925,
+        "MishandledException": 0.7108,
+        "Reentrancy": 0.2473,
+        "Timestamp": 0.1237,
+        "TransactionOrderDependence": 0.2324,
+        "UnusedReturn": 0.1934
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_30.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "MishandledException"
+      ],
+      "tuned_pred": [
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.4374,
+        "DenialOfService": 0.2901,
+        "ExternalBug": 0.2553,
+        "GasException": 0.2837,
+        "IntegerUO": 0.2489,
+        "MishandledException": 0.6536,
+        "Reentrancy": 0.2263,
+        "Timestamp": 0.2132,
+        "TransactionOrderDependence": 0.2611,
+        "UnusedReturn": 0.2416
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_31.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "tuned_pred": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.6007,
+        "DenialOfService": 0.2766,
+        "ExternalBug": 0.1772,
+        "GasException": 0.272,
+        "IntegerUO": 0.2663,
+        "MishandledException": 0.6449,
+        "Reentrancy": 0.2137,
+        "Timestamp": 0.148,
+        "TransactionOrderDependence": 0.2307,
+        "UnusedReturn": 0.2077
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_32.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "tuned_pred": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.5729,
+        "DenialOfService": 0.2852,
+        "ExternalBug": 0.1916,
+        "GasException": 0.2725,
+        "IntegerUO": 0.2084,
+        "MishandledException": 0.6768,
+        "Reentrancy": 0.2426,
+        "Timestamp": 0.1493,
+        "TransactionOrderDependence": 0.2288,
+        "UnusedReturn": 0.2004
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_37.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "tuned_pred": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.5004,
+        "DenialOfService": 0.2803,
+        "ExternalBug": 0.1902,
+        "GasException": 0.2708,
+        "IntegerUO": 0.2355,
+        "MishandledException": 0.6946,
+        "Reentrancy": 0.2336,
+        "Timestamp": 0.157,
+        "TransactionOrderDependence": 0.2298,
+        "UnusedReturn": 0.1944
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_4.sol",
+      "true_class": "MishandledException",
+      "tier_pred": [
+        "MishandledException",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "MishandledException"
+      ],
+      "probs": {
+        "CallToUnknown": 0.4557,
+        "DenialOfService": 0.3036,
+        "ExternalBug": 0.2264,
+        "GasException": 0.287,
+        "IntegerUO": 0.2035,
+        "MishandledException": 0.6402,
+        "Reentrancy": 0.2218,
+        "Timestamp": 0.4505,
+        "TransactionOrderDependence": 0.2592,
+        "UnusedReturn": 0.2217
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_12.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2691,
+        "DenialOfService": 0.3558,
+        "ExternalBug": 0.8369,
+        "GasException": 0.2815,
+        "IntegerUO": 0.2899,
+        "MishandledException": 0.2833,
+        "Reentrancy": 0.5469,
+        "Timestamp": 0.197,
+        "TransactionOrderDependence": 0.2988,
+        "UnusedReturn": 0.304
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_17.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "ExternalBug"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2725,
+        "DenialOfService": 0.3188,
+        "ExternalBug": 0.8021,
+        "GasException": 0.284,
+        "IntegerUO": 0.3047,
+        "MishandledException": 0.286,
+        "Reentrancy": 0.3027,
+        "Timestamp": 0.3141,
+        "TransactionOrderDependence": 0.2844,
+        "UnusedReturn": 0.2643
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_24.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3046,
+        "DenialOfService": 0.3555,
+        "ExternalBug": 0.4828,
+        "GasException": 0.307,
+        "IntegerUO": 0.4034,
+        "MishandledException": 0.3097,
+        "Reentrancy": 0.5621,
+        "Timestamp": 0.7993,
+        "TransactionOrderDependence": 0.3237,
+        "UnusedReturn": 0.2921
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_26.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2721,
+        "DenialOfService": 0.435,
+        "ExternalBug": 0.6641,
+        "GasException": 0.2829,
+        "IntegerUO": 0.4769,
+        "MishandledException": 0.2833,
+        "Reentrancy": 0.298,
+        "Timestamp": 0.2029,
+        "TransactionOrderDependence": 0.2948,
+        "UnusedReturn": 0.2314
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_29.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2637,
+        "DenialOfService": 0.3656,
+        "ExternalBug": 0.7053,
+        "GasException": 0.2858,
+        "IntegerUO": 0.2905,
+        "MishandledException": 0.2923,
+        "Reentrancy": 0.4114,
+        "Timestamp": 0.256,
+        "TransactionOrderDependence": 0.5859,
+        "UnusedReturn": 0.2461
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_30.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "ExternalBug"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2701,
+        "DenialOfService": 0.3219,
+        "ExternalBug": 0.7772,
+        "GasException": 0.2819,
+        "IntegerUO": 0.4373,
+        "MishandledException": 0.2868,
+        "Reentrancy": 0.2798,
+        "Timestamp": 0.1914,
+        "TransactionOrderDependence": 0.2771,
+        "UnusedReturn": 0.269
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_31.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2759,
+        "DenialOfService": 0.3175,
+        "ExternalBug": 0.7084,
+        "GasException": 0.2859,
+        "IntegerUO": 0.6958,
+        "MishandledException": 0.2871,
+        "Reentrancy": 0.3681,
+        "Timestamp": 0.2144,
+        "TransactionOrderDependence": 0.2779,
+        "UnusedReturn": 0.3022
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_32.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "ExternalBug"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2633,
+        "DenialOfService": 0.3006,
+        "ExternalBug": 0.829,
+        "GasException": 0.2763,
+        "IntegerUO": 0.312,
+        "MishandledException": 0.2772,
+        "Reentrancy": 0.3122,
+        "Timestamp": 0.1966,
+        "TransactionOrderDependence": 0.2711,
+        "UnusedReturn": 0.2578
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_37.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "ExternalBug"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2629,
+        "DenialOfService": 0.3479,
+        "ExternalBug": 0.8364,
+        "GasException": 0.2784,
+        "IntegerUO": 0.2561,
+        "MishandledException": 0.2788,
+        "Reentrancy": 0.4347,
+        "Timestamp": 0.1958,
+        "TransactionOrderDependence": 0.27,
+        "UnusedReturn": 0.2617
+      }
+    },
+    {
+      "name": "solidifi_benchmark_tx.origin_buggy_4.sol",
+      "true_class": "NonVulnerable",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "ExternalBug"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2513,
+        "DenialOfService": 0.2961,
+        "ExternalBug": 0.8797,
+        "GasException": 0.2692,
+        "IntegerUO": 0.3634,
+        "MishandledException": 0.2683,
+        "Reentrancy": 0.2611,
+        "Timestamp": 0.457,
+        "TransactionOrderDependence": 0.2491,
+        "UnusedReturn": 0.232
+      }
+    },
+    {
+      "name": "smartbugs_curated_reentrancy_0x4320e6f8c05b27ab4707cd1f6d5ce6f3e4b3a5a1.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2378,
+        "DenialOfService": 0.2826,
+        "ExternalBug": 0.2445,
+        "GasException": 0.2615,
+        "IntegerUO": 0.1935,
+        "MishandledException": 0.2648,
+        "Reentrancy": 0.8675,
+        "Timestamp": 0.1365,
+        "TransactionOrderDependence": 0.2239,
+        "UnusedReturn": 0.229
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_12.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2663,
+        "DenialOfService": 0.3083,
+        "ExternalBug": 0.3194,
+        "GasException": 0.2808,
+        "IntegerUO": 0.2966,
+        "MishandledException": 0.2874,
+        "Reentrancy": 0.7799,
+        "Timestamp": 0.2009,
+        "TransactionOrderDependence": 0.2746,
+        "UnusedReturn": 0.2536
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_17.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2557,
+        "DenialOfService": 0.3046,
+        "ExternalBug": 0.1735,
+        "GasException": 0.2775,
+        "IntegerUO": 0.4517,
+        "MishandledException": 0.2891,
+        "Reentrancy": 0.6518,
+        "Timestamp": 0.7274,
+        "TransactionOrderDependence": 0.2489,
+        "UnusedReturn": 0.2452
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_24.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3134,
+        "DenialOfService": 0.3621,
+        "ExternalBug": 0.5384,
+        "GasException": 0.3082,
+        "IntegerUO": 0.7566,
+        "MishandledException": 0.3151,
+        "Reentrancy": 0.6674,
+        "Timestamp": 0.7369,
+        "TransactionOrderDependence": 0.327,
+        "UnusedReturn": 0.6752
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_26.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2406,
+        "DenialOfService": 0.285,
+        "ExternalBug": 0.1842,
+        "GasException": 0.2627,
+        "IntegerUO": 0.2346,
+        "MishandledException": 0.2795,
+        "Reentrancy": 0.7705,
+        "Timestamp": 0.1427,
+        "TransactionOrderDependence": 0.2276,
+        "UnusedReturn": 0.2285
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_29.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2665,
+        "DenialOfService": 0.2965,
+        "ExternalBug": 0.2511,
+        "GasException": 0.2758,
+        "IntegerUO": 0.2672,
+        "MishandledException": 0.2876,
+        "Reentrancy": 0.6118,
+        "Timestamp": 0.1862,
+        "TransactionOrderDependence": 0.2958,
+        "UnusedReturn": 0.2172
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_30.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2637,
+        "DenialOfService": 0.304,
+        "ExternalBug": 0.2697,
+        "GasException": 0.2764,
+        "IntegerUO": 0.3287,
+        "MishandledException": 0.296,
+        "Reentrancy": 0.6239,
+        "Timestamp": 0.2088,
+        "TransactionOrderDependence": 0.2461,
+        "UnusedReturn": 0.2203
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_31.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2506,
+        "DenialOfService": 0.2874,
+        "ExternalBug": 0.2086,
+        "GasException": 0.2677,
+        "IntegerUO": 0.2679,
+        "MishandledException": 0.2758,
+        "Reentrancy": 0.7942,
+        "Timestamp": 0.1801,
+        "TransactionOrderDependence": 0.2393,
+        "UnusedReturn": 0.2838
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_32.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2568,
+        "DenialOfService": 0.2932,
+        "ExternalBug": 0.3162,
+        "GasException": 0.272,
+        "IntegerUO": 0.2135,
+        "MishandledException": 0.2793,
+        "Reentrancy": 0.826,
+        "Timestamp": 0.2071,
+        "TransactionOrderDependence": 0.252,
+        "UnusedReturn": 0.2239
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_37.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2469,
+        "DenialOfService": 0.2855,
+        "ExternalBug": 0.2691,
+        "GasException": 0.266,
+        "IntegerUO": 0.2106,
+        "MishandledException": 0.274,
+        "Reentrancy": 0.8293,
+        "Timestamp": 0.1904,
+        "TransactionOrderDependence": 0.2343,
+        "UnusedReturn": 0.228
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Re-entrancy_buggy_4.sol",
+      "true_class": "Reentrancy",
+      "tier_pred": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2518,
+        "DenialOfService": 0.2918,
+        "ExternalBug": 0.2635,
+        "GasException": 0.2697,
+        "IntegerUO": 0.2187,
+        "MishandledException": 0.2803,
+        "Reentrancy": 0.7839,
+        "Timestamp": 0.3482,
+        "TransactionOrderDependence": 0.2394,
+        "UnusedReturn": 0.1778
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_12.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2805,
+        "DenialOfService": 0.3124,
+        "ExternalBug": 0.2612,
+        "GasException": 0.2888,
+        "IntegerUO": 0.2997,
+        "MishandledException": 0.2902,
+        "Reentrancy": 0.3466,
+        "Timestamp": 0.8736,
+        "TransactionOrderDependence": 0.2818,
+        "UnusedReturn": 0.2636
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_17.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2756,
+        "DenialOfService": 0.3204,
+        "ExternalBug": 0.2355,
+        "GasException": 0.2878,
+        "IntegerUO": 0.4429,
+        "MishandledException": 0.2926,
+        "Reentrancy": 0.3408,
+        "Timestamp": 0.8799,
+        "TransactionOrderDependence": 0.278,
+        "UnusedReturn": 0.2686
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_24.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2938,
+        "DenialOfService": 0.3339,
+        "ExternalBug": 0.2492,
+        "GasException": 0.2896,
+        "IntegerUO": 0.714,
+        "MishandledException": 0.2886,
+        "Reentrancy": 0.3975,
+        "Timestamp": 0.8249,
+        "TransactionOrderDependence": 0.2814,
+        "UnusedReturn": 0.2813
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_26.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2775,
+        "DenialOfService": 0.3076,
+        "ExternalBug": 0.2414,
+        "GasException": 0.2829,
+        "IntegerUO": 0.2596,
+        "MishandledException": 0.2814,
+        "Reentrancy": 0.2727,
+        "Timestamp": 0.8489,
+        "TransactionOrderDependence": 0.2694,
+        "UnusedReturn": 0.2452
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_29.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3085,
+        "DenialOfService": 0.2812,
+        "ExternalBug": 0.2686,
+        "GasException": 0.2717,
+        "IntegerUO": 0.2037,
+        "MishandledException": 0.2507,
+        "Reentrancy": 0.2418,
+        "Timestamp": 0.8826,
+        "TransactionOrderDependence": 0.2618,
+        "UnusedReturn": 0.2002
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_30.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.244,
+        "DenialOfService": 0.2748,
+        "ExternalBug": 0.1867,
+        "GasException": 0.2648,
+        "IntegerUO": 0.2168,
+        "MishandledException": 0.2707,
+        "Reentrancy": 0.2682,
+        "Timestamp": 0.8843,
+        "TransactionOrderDependence": 0.2306,
+        "UnusedReturn": 0.2244
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_31.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2655,
+        "DenialOfService": 0.2911,
+        "ExternalBug": 0.2072,
+        "GasException": 0.279,
+        "IntegerUO": 0.4009,
+        "MishandledException": 0.2824,
+        "Reentrancy": 0.2803,
+        "Timestamp": 0.8442,
+        "TransactionOrderDependence": 0.2567,
+        "UnusedReturn": 0.2494
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_32.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2849,
+        "DenialOfService": 0.281,
+        "ExternalBug": 0.1963,
+        "GasException": 0.2743,
+        "IntegerUO": 0.3143,
+        "MishandledException": 0.264,
+        "Reentrancy": 0.2603,
+        "Timestamp": 0.8442,
+        "TransactionOrderDependence": 0.2509,
+        "UnusedReturn": 0.2194
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_37.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2799,
+        "DenialOfService": 0.3115,
+        "ExternalBug": 0.2566,
+        "GasException": 0.2861,
+        "IntegerUO": 0.2603,
+        "MishandledException": 0.2916,
+        "Reentrancy": 0.3395,
+        "Timestamp": 0.7919,
+        "TransactionOrderDependence": 0.2742,
+        "UnusedReturn": 0.2545
+      }
+    },
+    {
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_4.sol",
+      "true_class": "Timestamp",
+      "tier_pred": [
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2784,
+        "DenialOfService": 0.3026,
+        "ExternalBug": 0.2338,
+        "GasException": 0.276,
+        "IntegerUO": 0.2524,
+        "MishandledException": 0.2708,
+        "Reentrancy": 0.2829,
+        "Timestamp": 0.8719,
+        "TransactionOrderDependence": 0.2532,
+        "UnusedReturn": 0.2215
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_12.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.295,
+        "DenialOfService": 0.2976,
+        "ExternalBug": 0.1698,
+        "GasException": 0.2849,
+        "IntegerUO": 0.3292,
+        "MishandledException": 0.3215,
+        "Reentrancy": 0.2957,
+        "Timestamp": 0.1859,
+        "TransactionOrderDependence": 0.583,
+        "UnusedReturn": 0.2197
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_17.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.2872,
+        "DenialOfService": 0.2855,
+        "ExternalBug": 0.1657,
+        "GasException": 0.2697,
+        "IntegerUO": 0.2176,
+        "MishandledException": 0.2667,
+        "Reentrancy": 0.2658,
+        "Timestamp": 0.2945,
+        "TransactionOrderDependence": 0.5161,
+        "UnusedReturn": 0.2009
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_24.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3337,
+        "DenialOfService": 0.3333,
+        "ExternalBug": 0.1822,
+        "GasException": 0.2896,
+        "IntegerUO": 0.4916,
+        "MishandledException": 0.2681,
+        "Reentrancy": 0.3005,
+        "Timestamp": 0.5366,
+        "TransactionOrderDependence": 0.3615,
+        "UnusedReturn": 0.2448
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_26.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3644,
+        "DenialOfService": 0.2944,
+        "ExternalBug": 0.2036,
+        "GasException": 0.283,
+        "IntegerUO": 0.2857,
+        "MishandledException": 0.2776,
+        "Reentrancy": 0.2428,
+        "Timestamp": 0.1961,
+        "TransactionOrderDependence": 0.5316,
+        "UnusedReturn": 0.2167
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_29.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3249,
+        "DenialOfService": 0.3099,
+        "ExternalBug": 0.2738,
+        "GasException": 0.2769,
+        "IntegerUO": 0.2086,
+        "MishandledException": 0.2665,
+        "Reentrancy": 0.3214,
+        "Timestamp": 0.1746,
+        "TransactionOrderDependence": 0.8087,
+        "UnusedReturn": 0.201
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_30.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3217,
+        "DenialOfService": 0.3375,
+        "ExternalBug": 0.2472,
+        "GasException": 0.3068,
+        "IntegerUO": 0.3006,
+        "MishandledException": 0.3375,
+        "Reentrancy": 0.2908,
+        "Timestamp": 0.3214,
+        "TransactionOrderDependence": 0.5512,
+        "UnusedReturn": 0.2587
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_31.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3468,
+        "DenialOfService": 0.3221,
+        "ExternalBug": 0.2177,
+        "GasException": 0.2972,
+        "IntegerUO": 0.4566,
+        "MishandledException": 0.3023,
+        "Reentrancy": 0.3057,
+        "Timestamp": 0.2038,
+        "TransactionOrderDependence": 0.5329,
+        "UnusedReturn": 0.2481
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_32.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3601,
+        "DenialOfService": 0.3041,
+        "ExternalBug": 0.3004,
+        "GasException": 0.2913,
+        "IntegerUO": 0.2228,
+        "MishandledException": 0.2894,
+        "Reentrancy": 0.3375,
+        "Timestamp": 0.2062,
+        "TransactionOrderDependence": 0.4982,
+        "UnusedReturn": 0.2318
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_37.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.3223,
+        "DenialOfService": 0.2681,
+        "ExternalBug": 0.1744,
+        "GasException": 0.2701,
+        "IntegerUO": 0.1903,
+        "MishandledException": 0.3004,
+        "Reentrancy": 0.2331,
+        "Timestamp": 0.1824,
+        "TransactionOrderDependence": 0.6156,
+        "UnusedReturn": 0.186
+      }
+    },
+    {
+      "name": "solidifi_benchmark_TOD_buggy_4.sol",
+      "true_class": "TransactionOrderDependence",
+      "tier_pred": [
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "TransactionOrderDependence"
+      ],
+      "probs": {
+        "CallToUnknown": 0.312,
+        "DenialOfService": 0.3132,
+        "ExternalBug": 0.3013,
+        "GasException": 0.2829,
+        "IntegerUO": 0.2928,
+        "MishandledException": 0.2706,
+        "Reentrancy": 0.307,
+        "Timestamp": 0.2116,
+        "TransactionOrderDependence": 0.8908,
+        "UnusedReturn": 0.2075
+      }
+    }
+  ]
+}

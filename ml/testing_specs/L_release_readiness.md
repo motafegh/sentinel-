@@ -2,6 +2,12 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). **DVC was retired** for
+> the data pipeline; v3 export is the source of truth. L.1.3 updated to use
+> the v3 export artifact hash + splits SHA instead of DVC. Added cross-reference
+> to `data_module/temp/live_plans/post_training_process_2026-06-14.md` (the
+> end-to-end post-training runner that walks the L.4 release gate).
 
 ---
 
@@ -20,6 +26,12 @@ This file covers three concerns in one:
 
 Always load alongside: `I_regression_guard.md` (promotion gates) and
 `F_new_run_checklist.md` F.3 (post-run documentation requirements).
+
+**End-to-end workflow**: For the full post-training → promotion workflow
+(reproducibility check, performance analysis, OOD/contamination check,
+final report, save artifacts, MLflow promotion, monitoring handover),
+see `data_module/temp/live_plans/post_training_process_2026-06-14.md`.
+This file (L) is the per-gate detail; that doc is the runner.
 
 ---
 
@@ -53,18 +65,29 @@ behaviour across sessions. Set before any training or evaluation:
 export TRANSFORMERS_OFFLINE=1
 ```
 
-### L.1.3 — DVC Data Hash Verification
+### L.1.3 — Data Export Hash Verification
 
-Confirm that the training data files match their DVC-tracked hashes before
-claiming a result is reproducible:
+DVC was retired for the data pipeline (Stage 7B seam swap, 2026-06-12). The
+v3 export is the source of truth. Verify the export's artifact hash matches
+the run's recorded `export_artifact_hash` in `epoch_summary.jsonl`:
 
 ```bash
-dvc status ml/data/
+# Active v3 export: data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/
+# Verify its manifest:
+python -c "import json; print(json.load(open('data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/MANIFEST.json'))['artifact_hash'])"
+# Compare to the value recorded in the run's epoch_summary.jsonl
+jq '.[0].export_artifact_hash' ml/logs/<run_name>/epoch_summary.jsonl
 ```
 
-Expected output: no changes listed. Any `modified` or `deleted` file means
-the training data has drifted from what the run used. Do not claim
-reproducibility if DVC status is dirty.
+Both values must match. A mismatch means the data was re-exported between
+the run start and the current check — do not claim reproducibility without
+re-running on the original data version.
+
+For split files:
+```bash
+sha256sum data_module/data/splits/v3/{train,val,test}.jsonl
+```
+Compare against the SHA recorded in the run's pre-flight log.
 
 ### L.1.4 — Dependency Lockfile
 

@@ -3,6 +3,8 @@
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
 > This section covers post-run analysis, not pre-launch gates (see F).
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). Added reference to alert codes fired in Run 12 (18 alerts: `[9.3.6b]` AUC-PR<0.1 and `[9.3.6c]` F1-AUC divergence — see `MEMORY.md` Current State). Updated path references to v3 export.
 
 ---
 
@@ -133,10 +135,13 @@ Expected behaviour:
   check `gnn_share` and JK entropy from the training log
 
 Read `ml/src/inference/predictor.py` before running inference to confirm:
-- Which checkpoint path it loads (hardcoded vs config-driven)
+- Which checkpoint path it loads (hardcoded vs `SENTINEL_CHECKPOINT` env var)
+  - **Default: `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt` (historical). Always set
+    `SENTINEL_CHECKPOINT` to the active best from `MEMORY.md` Current State.**
 - Whether `drop_complexity_feature` is read from the checkpoint config
   (if `--drop-complexity-feature` was used at training, it must be applied
-  at inference — read `train.py` arg comment: predictor reads from checkpoint config)
+  at inference — read `train.py` arg comment: predictor reads from checkpoint config).
+  - **Run 12+ default: `drop_complexity_feature=True` (was `False` pre-Run 12)**
 
 ### C.2.2 — False Positive Probe
 
@@ -158,6 +163,9 @@ thresholds. Read the script before running to confirm:
   (every 10 validation epochs by default; check the `[A37]` log entries)
 - The companion `<run_name>_best_thresholds.json` file exists alongside
   the checkpoint in `ml/checkpoints/`
+  - **Historical convention**: file is created at the `ml/checkpoints/`
+    directory. **v3+ convention** (post-seam-swap): companion files may
+    live at the run's log dir. Verify from `MEMORY.md`.
 - If the thresholds JSON is missing, `promote_model.py` will warn but
   proceed — the deployed model will use uniform 0.5 for all classes
 

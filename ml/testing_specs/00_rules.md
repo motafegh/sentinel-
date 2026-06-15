@@ -3,6 +3,8 @@
 > These rules apply to **every procedure in every spec file** in this folder.
 > They are not repeated in individual files. They are always in force.
 > Load this file alongside whichever section spec you are using.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch, pre-Run-13 prep). Added 6 new entries to the "Where Things Live" table to reflect the seam-swap canonical paths, the new sibling files (BCCC re-evaluation, feature leakage audit, Run 12/13 cron), and the post-training process overview.
 
 ---
 
@@ -26,18 +28,23 @@ Read from the correct source. Do not look for values anywhere else.
 
 | What you need | Where to read it |
 |---|---|
-| Schema constants (dims, types, edge types) | `ml/src/preprocessing/graph_schema.py` |
-| Active checkpoint path, current run state | `MEMORY.md` → Key Paths and Current State |
-| Open bugs, known failure modes | `project_run8_audit_findings.md` |
+| Schema constants (dims, types, edge types) | **CANONICAL: `data_module/sentinel_data/representation/graph_schema.py`**. Shim: `ml/src/preprocessing/graph_schema.py` (22 lines, re-exports). Always read the canonical source first. |
+| Active checkpoint path, current run state | `MEMORY.md` → "Current State" + "Key Operational Facts" sections |
+| Open bugs, known failure modes | `project_run8_audit_findings.md` (Runs 7-9) + BCCC re-evaluation findings in `project_bccc_2tool_audit_2026-06-14.md` |
 | Training log field names | `ml/src/training/training_logger.py` |
-| Training log data | `ml/logs/<run_name>/` (JSONL) |
+| Training log data | `ml/logs/<run_name>/` (JSONL — step_metrics, epoch_summary, alerts) |
 | Run analysis, metric results | `docs/training/<run_name>-analysis.md` |
-| Architecture decisions | `docs/ml/adr/INDEX.md` |
-| Data module v2 config and gates | `docs/proposal/Data_Module_Proposals/README.md` |
+| Architecture decisions | `docs/ml/adr/INDEX.md` (8 ADRs as of Run 12) |
+| Data module config + gates | **CANONICAL: `data_module/docs/architecture.md`**. Historical: `data_module/docs/v2-readiness-2026-06-12.md` |
 | Interpretability experiment status | `docs/interpretability/EXPERIMENT_INDEX.md` |
 | Threshold load path | `ml/src/inference/predictor.py` |
 | Warmup and loss instantiation | `ml/src/training/trainer.py` |
 | Eye-to-output relationship | `ml/src/models/sentinel_model.py` |
+| **Run 12/13 monitoring cron** | `ml/scripts/check_run12_status.sh` + `ml/scripts/check_run12_status_README.md` |
+| **BCCC re-evaluation** | `project_bccc_2tool_audit_2026-06-14.md` (sibling) — 658 ME contracts ready |
+| **Feature leakage audit** | `project_feature_leakage_audit_2026-06-14.md` (sibling) — comments stripped, AST legit, etc. |
+| **Run 13 plan (post-Run-12)** | `data_module/temp/live_plans/run_12_to_13_handoff_2026-06-14.md` + `run13_plan_2026-06-14.md` |
+| **Post-training process overview** | `data_module/temp/live_plans/post_training_process_2026-06-14.md` |
 
 If the information you need is not in this table, find its canonical source file
 before proceeding — do not assume or reconstruct from context.

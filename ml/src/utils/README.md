@@ -1,5 +1,7 @@
 # ml/src/utils — Utility Functions
 
+> **Status:** ✅ Current — verified 2026-06-14
+
 Shared utility functions used across the SENTINEL ML pipeline.
 
 ## Purpose
@@ -42,9 +44,9 @@ contract_hash = get_contract_hash(path)
 ## Critical Integration
 
 **All pipeline components MUST use these functions:**
-- Graph extraction (`ml/src/data_extraction/ast_extractor.py`)
-- Tokenization (`ml/src/data_extraction/tokenizer.py`)
-- Dataset loading (`ml/src/datasets/dual_path_dataset.py`)
+- Graph extraction (`ml/src/preprocessing/graph_extractor.py`)
+- Tokenization (`ml/src/data_extraction/windowed_tokenizer.py`)
+- Dataset loading (`ml/src/datasets/sentinel_dataset.py`)
 - Inference preprocessing (`ml/src/inference/preprocess.py`)
 
 This ensures consistent file naming and pairing across the entire pipeline.

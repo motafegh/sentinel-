@@ -1,0 +1,84 @@
+{
+  "n_total": 44000,
+  "n_successful": 37740,
+  "n_errors": 6260,
+  "elapsed_sec": 13641.101320028305,
+  "throughput_per_sec": 2.793401084484623,
+  "time_per_pred_ms": {
+    "mean": 357.9865439139034,
+    "p50": 197.58129119873047,
+    "p95": 906.0357689857477,
+    "p99": 3260.8981204032934
+  },
+  "class_distribution": {
+    "ExternalBug": 10963,
+    "Timestamp": 10216,
+    "Reentrancy": 7438,
+    "UnusedReturn": 4191,
+    "IntegerUO": 3929,
+    "DenialOfService": 647,
+    "TransactionOrderDependence": 301,
+    "CallToUnknown": 55
+  },
+  "class_mean_confidence": {
+    "ExternalBug": 0.8009798364468727,
+    "DenialOfService": 0.8694180679836254,
+    "Reentrancy": 0.817427498844325,
+    "UnusedReturn": 0.9634251898752766,
+    "Timestamp": 0.9751935020872846,
+    "TransactionOrderDependence": 0.9507697457342503,
+    "IntegerUO": 0.6685719483757754,
+    "CallToUnknown": 0.9765891623155982
+  },
+  "n_with_any_trigger": 36345,
+  "trigger_stats": {
+    "mean_per_contract": 2.505511393746688,
+    "p50": 3.0,
+    "p95": 5.0,
+    "max": 6
+  },
+  "error_samples": [
+    {
+      "address": "0x00000000000fe8503db73c68f1a1874eb9d86883",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_87kdrpvp.sol': Slither failed to parse 'sentinel_prep_87kdrpvp.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_87kdrp"
+    },
+    {
+      "address": "0x00000000002b13cccec913420a21e4d11b2dcd3c",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_22_q4742.sol': Slither failed to parse 'sentinel_prep_22_q4742.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_22_q47"
+    },
+    {
+      "address": "0x000000000063b99b8036c31e91c64fc89bff9ca7",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_s6v0ihch.sol': Slither failed to parse 'sentinel_prep_s6v0ihch.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_s6v0ih"
+    },
+    {
+      "address": "0x00000000e82eb0431756271f0d00cfb143685e7b",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_je7g0hrs.sol': Slither failed to parse 'sentinel_prep_je7g0hrs.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_je7g0h"
+    },
+    {
+      "address": "0x00000007b0390fc9ca72f534366f5c02d5af5334",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_dsao7yr3.sol': Slither failed to parse 'sentinel_prep_dsao7yr3.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_dsao7y"
+    },
+    {
+      "address": "0x000000085824f23a070c2474442ed014c0e46b58",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_zvf1y03v.sol': Slither failed to parse 'sentinel_prep_zvf1y03v.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_zvf1y0"
+    },
+    {
+      "address": "0x0000000a9e27410f13dd4818488bf1e706c9a2fe",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_hd3flffw.sol': Slither failed to parse 'sentinel_prep_hd3flffw.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_hd3flf"
+    },
+    {
+      "address": "0x000003ed2eb44cded8ade31c01dda60da466b2d1",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_s3xf097y.sol': Slither failed to parse 'sentinel_prep_s3xf097y.sol': Invalid compilation: \nInvalid solc compilation Error: Source file requir"
+    },
+    {
+      "address": "0x000983ba1a675327f0940b56c2d49cd9c042dfbf",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_qi5s821y.sol': Slither failed to parse 'sentinel_prep_qi5s821y.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_qi5s82"
+    },
+    {
+      "address": "0x001a589dda0d6be37632925eaf1256986b2c6ad0",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_p3ou9x0w.sol': Slither failed to parse 'sentinel_prep_p3ou9x0w.sol': Invalid compilation: \nInvalid solc compilation Error: Expected '{' but g"
+    }
+  ],
+  "snapshot_n": 44000,
+  "snapshot_at": "2026-06-15T02:13:37.874040"
+}

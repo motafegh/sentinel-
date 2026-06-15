@@ -25,7 +25,7 @@ The module also implements the **4 splitting strategies** required by the plan, 
 | `leakage_auditor.py` | 163 | `find_leaks(splits, *, texts, threshold, sources_for_text) -> LeakageReport` + `run_audit(splits, *, data_dir, threshold, sources)` high-level wrapper. Uses 3-shingle Jaccard similarity (different from dedup_enforcer's AST-based dedup_group). |
 | `nonvulnerable_cap.py` | 163 | `apply_nonvulnerable_cap(splits, *, cap=3.0, seed=42) -> Splits` — subsample NonVulnerable to at most `cap × total_positive_count`. Stratified by source to preserve per-source distribution. |
 
-**Sub-total: 759 lines** across 4 files.
+**Sub-total: 922 lines** across 5 files.
 
 ## 3. Key concepts
 

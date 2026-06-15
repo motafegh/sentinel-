@@ -1,0 +1,549 @@
+{
+  "version": "v0.1_quickstart",
+  "export_dir": "/home/motafeq/projects/sentinel/data_module/data/exports/sentinel-v3-smartbugs-2026-06-13",
+  "splits_dir": "/home/motafeq/projects/sentinel/data_module/data/splits/v3",
+  "audit_date": "2026-06-14 20:58:29.175463",
+  "total_contracts": 66,
+  "overlap_count": 0,
+  "overlap_pct": 0.0,
+  "per_class_counts": {
+    "CallToUnknown": 14,
+    "MishandledException": 10,
+    "NonVulnerable": 11,
+    "Reentrancy": 11,
+    "Timestamp": 10,
+    "TransactionOrderDependence": 10
+  },
+  "per_class_overlap": {},
+  "overlap_contracts": [],
+  "all_contracts": [
+    {
+      "class": "CallToUnknown",
+      "name": "smartbugs_curated_unchecked_low_level_calls_0x78c2a1e91b52bca4130b6ed9edd9fbcfd4671c37.sol",
+      "path": "contracts/by_class/CallToUnknown/smartbugs_curated_unchecked_low_level_calls_0x78c2a1e91b52bca4130b6ed9edd9fbcfd4671c37.sol",
+      "sha256": "c6e4d50e5007600bfd8371c5735b76eae5c22ffc64be505c8068d504153a160d",
+      "size_bytes": 9420,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "smartbugs_curated_unchecked_low_level_calls_0x7a4349a749e59a5736efb7826ee3496a2dfd5489.sol",
+      "path": "contracts/by_class/CallToUnknown/smartbugs_curated_unchecked_low_level_calls_0x7a4349a749e59a5736efb7826ee3496a2dfd5489.sol",
+      "sha256": "34da8b64840b5e44730ca73cc1d2417adea161d9b92299ed2115e4d16dbaee92",
+      "size_bytes": 9357,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "smartbugs_curated_unchecked_low_level_calls_0xd2018bfaa266a9ec0a1a84b061640faa009def76.sol",
+      "path": "contracts/by_class/CallToUnknown/smartbugs_curated_unchecked_low_level_calls_0xd2018bfaa266a9ec0a1a84b061640faa009def76.sol",
+      "sha256": "bd7c5fd3d7647cc476b968c41d93c180e8a0ffe01c926a14c099d6c8e0842008",
+      "size_bytes": 10200,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "smartbugs_curated_unchecked_low_level_calls_0xf70d589d76eebdd7c12cc5eec99f8f6fa4233b9e.sol",
+      "path": "contracts/by_class/CallToUnknown/smartbugs_curated_unchecked_low_level_calls_0xf70d589d76eebdd7c12cc5eec99f8f6fa4233b9e.sol",
+      "sha256": "244b9e1877bcbcc29c5ecbad3cb007b6ab4c1a15e9fe9a9ff0b42e1e78aa2a84",
+      "size_bytes": 9358,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_12.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_12.sol",
+      "sha256": "d7ad48e99ccb650a8f4449cd915b176602e72e4edbe769093816431cc0ec455c",
+      "size_bytes": 11773,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_17.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_17.sol",
+      "sha256": "46b2a6c2b95b3e9e07f5ab07fccd9e325c7994f2ff3c6dae917acd1114df2eeb",
+      "size_bytes": 8489,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_24.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_24.sol",
+      "sha256": "b87db9d6b17b8c0d359835b63891af69416afcdd3c8ba9577b32911857d5f32d",
+      "size_bytes": 35298,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_26.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_26.sol",
+      "sha256": "77072eb50f0eafe6cba1e4b73a8f29786de54cedcf01be660ac60717a5ca43d1",
+      "size_bytes": 7087,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_29.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_29.sol",
+      "sha256": "5cac5bab80eec938670eab80ab0d94e9566ab175932afd71a22e9b48ea36fe69",
+      "size_bytes": 11453,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_30.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_30.sol",
+      "sha256": "317c7c1030095457cc928542fa403d655362f562b8d50c7b01cc27d3fe283b15",
+      "size_bytes": 21323,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_31.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_31.sol",
+      "sha256": "87e257ca800fe17894743420940edcdd083dd2a31f3d1b0ef3f715284608cc48",
+      "size_bytes": 9046,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_32.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_32.sol",
+      "sha256": "ea3ed881271a02bae01752b12dea2d54245238d1e4319c2cf3b710f52f0e2131",
+      "size_bytes": 7115,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_37.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_37.sol",
+      "sha256": "8e64a222a5cc2e955011b600becc337d80a31896cd64252c7ff08b3edc6f4771",
+      "size_bytes": 11557,
+      "in_export": false
+    },
+    {
+      "class": "CallToUnknown",
+      "name": "solidifi_benchmark_Unchecked-Send_buggy_4.sol",
+      "path": "contracts/by_class/CallToUnknown/solidifi_benchmark_Unchecked-Send_buggy_4.sol",
+      "sha256": "88697ed357259de07e955386d3d790faacc77f41a8f04d86735b3ab9a90a599c",
+      "size_bytes": 4904,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_12.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_12.sol",
+      "sha256": "0018abe74f5bfb9eea5ddb83dfeacb1a6c738d44a9bed0276890a5cd9845eff2",
+      "size_bytes": 14339,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_17.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_17.sol",
+      "sha256": "391fc2b4a92a4f15f102bcd37b493194ef897a8ca89451814d85c4c78ae5f6c4",
+      "size_bytes": 10323,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_24.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_24.sol",
+      "sha256": "88e6c19a372777adb2ef0da741fd9aeb6041f040e92c5828d1c99b629b757fd7",
+      "size_bytes": 39572,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_26.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_26.sol",
+      "sha256": "f84f7f6b527cb392aa88563ecc3d21b6c22b5401bed00f576975c5379c93369b",
+      "size_bytes": 8707,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_29.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_29.sol",
+      "sha256": "1406ab204da1b704f9318be3433324040d2298fc2a8743707da7b39de4a3f828",
+      "size_bytes": 12810,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_30.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_30.sol",
+      "sha256": "2e3348f37a5dd6e2c019669243538e57d0823baa616931371e4f372ca7551db0",
+      "size_bytes": 25597,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_31.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_31.sol",
+      "sha256": "3f568a7076b2bc2ec9579bb252fa29f0db9cba4413dd147d41cd74a8dde1bf97",
+      "size_bytes": 9955,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_32.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_32.sol",
+      "sha256": "cc0ff588c556d9363b0d5be2b69c643b9aea57618366893100787b90677b80f1",
+      "size_bytes": 8677,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_37.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_37.sol",
+      "sha256": "18e6c8a35172f0c1044ee63a4971bf5286db773bd598a1db30c0238cff16be2a",
+      "size_bytes": 13807,
+      "in_export": false
+    },
+    {
+      "class": "MishandledException",
+      "name": "solidifi_benchmark_Unhandled-Exceptions_buggy_4.sol",
+      "path": "contracts/by_class/MishandledException/solidifi_benchmark_Unhandled-Exceptions_buggy_4.sol",
+      "sha256": "902357bfae6f15995fd088ea7a4840fac933f26e107e82b5f63a65ecc03d3297",
+      "size_bytes": 6068,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "smartbugs_curated_access_control_parity_wallet_bug_1.sol",
+      "path": "contracts/by_class/NonVulnerable/smartbugs_curated_access_control_parity_wallet_bug_1.sol",
+      "sha256": "ca6d797c809ab8f67d8833e1208a16d7f284307ed0418fdd29a171d0b6e7cec9",
+      "size_bytes": 16509,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_12.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_12.sol",
+      "sha256": "9c0c61eac0e9687e27eb2b6163ec2d027edd46e9cc6901777ac47cff71bb577a",
+      "size_bytes": 15032,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_17.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_17.sol",
+      "sha256": "788160484c1842be9e759d3902f425af925f0299c39ac61e876a765430d296da",
+      "size_bytes": 10870,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_24.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_24.sol",
+      "sha256": "1c5ac378add0c2d531237ca87366e49101a7002528c81a90f8355d9bc66c2a4b",
+      "size_bytes": 39126,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_26.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_26.sol",
+      "sha256": "129a0b4301ccaaba94cb50772fbfefe574f59ee088373a03380faa25ea0f6d74",
+      "size_bytes": 8824,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_29.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_29.sol",
+      "sha256": "ca020711c077a3052a10499a2f49209f52e39384409016f57d06e767020fbdb8",
+      "size_bytes": 12845,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_30.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_30.sol",
+      "sha256": "afbb76650f23d7e9fc5ba07e735c08c4ff6a80ca914ae5fc33491a4f47ef05a9",
+      "size_bytes": 25151,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_31.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_31.sol",
+      "sha256": "8d5abfe19c1199891fdc34853d92b7cef9cab4bc9859c66cfea281fc765cedad",
+      "size_bytes": 10174,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_32.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_32.sol",
+      "sha256": "850f1b2de2a4bea0030726cee6cc81eeba108af2b53f129d5b7f4755ba15e674",
+      "size_bytes": 8686,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_37.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_37.sol",
+      "sha256": "955056ee312363bf1c972827fb2911a63ff6c6377a92151dcf367085a739447b",
+      "size_bytes": 14590,
+      "in_export": false
+    },
+    {
+      "class": "NonVulnerable",
+      "name": "solidifi_benchmark_tx.origin_buggy_4.sol",
+      "path": "contracts/by_class/NonVulnerable/solidifi_benchmark_tx.origin_buggy_4.sol",
+      "sha256": "1c963c08a66e6516d74a296676631091f82a275d88a8a1539eb7de6ba119114e",
+      "size_bytes": 6217,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "smartbugs_curated_reentrancy_0x4320e6f8c05b27ab4707cd1f6d5ce6f3e4b3a5a1.sol",
+      "path": "contracts/by_class/Reentrancy/smartbugs_curated_reentrancy_0x4320e6f8c05b27ab4707cd1f6d5ce6f3e4b3a5a1.sol",
+      "sha256": "97a35d9e594162b70c9b21ce2245863406e6a47ae979e25a9d32a6f3cc615ec4",
+      "size_bytes": 1703,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_12.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_12.sol",
+      "sha256": "14bc5655ca6bebe5876d405301de81744fb7591a756aedb936b257b555091bcc",
+      "size_bytes": 20278,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_17.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_17.sol",
+      "sha256": "d753deb54cffbc0c0a73eef4c79b68920d27cd10579abd2ef148fe4e989ffb79",
+      "size_bytes": 15347,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_24.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_24.sol",
+      "sha256": "56a65952a6be4eaf4f21d09d2e2c10d99dfebfb0cf85bf16b7e085af76197bdb",
+      "size_bytes": 45233,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_26.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_26.sol",
+      "sha256": "c3f36ced6b7f8b8481716b60acf85e3e77f2f579e65cbb67a3255b0822025182",
+      "size_bytes": 12410,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_29.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_29.sol",
+      "sha256": "118efce476d6db982437b4440bfa9dd7e7bd210c252a46c2d9c80f35f8c47bfe",
+      "size_bytes": 15753,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_30.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_30.sol",
+      "sha256": "e980c9dc84521ae5f3b610bd5eb94b6114a2cddc6b77ea9b4c498582caf23464",
+      "size_bytes": 31258,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_31.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_31.sol",
+      "sha256": "b8ed9c3c63b6b65af4a12efeb3acbf33ea814c96a075a2132f933514ce6f245e",
+      "size_bytes": 12245,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_32.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_32.sol",
+      "sha256": "166af0a5f958190083dbf5648012653b67c2363b494fccc4fa2ddd1af5aa7b4c",
+      "size_bytes": 11961,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_37.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_37.sol",
+      "sha256": "978229aa4e620f8812c78e90f8303fe773d94b7940195e01dde5a8c0a9c0547c",
+      "size_bytes": 19266,
+      "in_export": false
+    },
+    {
+      "class": "Reentrancy",
+      "name": "solidifi_benchmark_Re-entrancy_buggy_4.sol",
+      "path": "contracts/by_class/Reentrancy/solidifi_benchmark_Re-entrancy_buggy_4.sol",
+      "sha256": "340c5aa2b9f8042daeff15354682d9406bfee2e90d07ea7ce0083cca0daf0047",
+      "size_bytes": 8903,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_12.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_12.sol",
+      "sha256": "20b8015c451cfa666a2c481021d89b4af453c07b282f62662328ce5a32697c7d",
+      "size_bytes": 16597,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_17.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_17.sol",
+      "sha256": "28e20f105a3bafc8a06c957e292b6f782b38adb2522870fa5a5e9c059fc7f697",
+      "size_bytes": 11700,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_24.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_24.sol",
+      "sha256": "5362fad8ffd80cd469a4d0b43a2bec0fc20c91abc0666940fb7514c427c58d0f",
+      "size_bytes": 41472,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_26.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_26.sol",
+      "sha256": "3d7e0e5fc809f3889ccfd77f3a0a69d36736fa0d45f684c78c32a5642d52a2f5",
+      "size_bytes": 9856,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_29.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_29.sol",
+      "sha256": "5934304e8a4b6b5fe47c6207ef0f1c25f5e35f248ee345e1d0c103583a09a3d6",
+      "size_bytes": 13968,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_30.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_30.sol",
+      "sha256": "d655f1ce9bd442edccc068eaf8051111ab1066c507fa4bb5dd4b442a5b8fe180",
+      "size_bytes": 27497,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_31.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_31.sol",
+      "sha256": "5d7be62fce8efa289c017d5c3630bcf3cdcda1735b8c93757a005858b38f066d",
+      "size_bytes": 10710,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_32.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_32.sol",
+      "sha256": "4f0fda8466b6207ca8ee0829447f5437a28860b1be3db18c30bbae98bb68c07d",
+      "size_bytes": 9468,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_37.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_37.sol",
+      "sha256": "3ec55d8e376fd86d1325d5c9cb903bcaccf1f64ec57423f93950f1143965535b",
+      "size_bytes": 15622,
+      "in_export": false
+    },
+    {
+      "class": "Timestamp",
+      "name": "solidifi_benchmark_Timestamp-Dependency_buggy_4.sol",
+      "path": "contracts/by_class/Timestamp/solidifi_benchmark_Timestamp-Dependency_buggy_4.sol",
+      "sha256": "1bfa6f9395b9fac8bfaa35b729569317c177dc7060ac52f4f0cc48623f3deafd",
+      "size_bytes": 6921,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_12.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_12.sol",
+      "sha256": "a477075cd5bd63915c0223b9099263a4b6441b667b121943a5084d69978aa55f",
+      "size_bytes": 23831,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_17.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_17.sol",
+      "sha256": "dad97bc18e9f844527a71d2751603244a0466d2f3108efaa4185297bb815dcf4",
+      "size_bytes": 17819,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_24.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_24.sol",
+      "sha256": "f5ffb74ca9826cfcd10767c2355319a286ddc7b0ec36bf7e8f2b3bb01a2e34a6",
+      "size_bytes": 48638,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_26.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_26.sol",
+      "sha256": "55c8bf27178556c297b086b9b625eebc88d5b77ba23fd535b6323ec67ff37254",
+      "size_bytes": 14105,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_29.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_29.sol",
+      "sha256": "0483a8179a32b92fed08905481351b55ff4c83004bc822dcf9a7c6a493311711",
+      "size_bytes": 17585,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_30.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_30.sol",
+      "sha256": "ca6cb2882277c3bb4d00b9ed8ea28997be0c572b50a368afb49b412e7159654d",
+      "size_bytes": 34663,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_31.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_31.sol",
+      "sha256": "bcea427d6364a6e10cbfdfa43c2dd428156ae5a12551b1e7fc5e662755eb0ccb",
+      "size_bytes": 13709,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_32.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_32.sol",
+      "sha256": "883cc8ea6d38ec48de3d828f435fd226ced5165be1e3db59ea4da3e19e3dcb41",
+      "size_bytes": 13690,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_37.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_37.sol",
+      "sha256": "524d362bd7f3b82c57889a8b202a250909415c93b3f2eb4a7d6c696f260a519f",
+      "size_bytes": 22625,
+      "in_export": false
+    },
+    {
+      "class": "TransactionOrderDependence",
+      "name": "solidifi_benchmark_TOD_buggy_4.sol",
+      "path": "contracts/by_class/TransactionOrderDependence/solidifi_benchmark_TOD_buggy_4.sol",
+      "sha256": "8e833dc582e73f35c342981b58aa9e96a22f3ca01f91aa7383dd5dce1c4ef74a",
+      "size_bytes": 10811,
+      "in_export": false
+    }
+  ]
+}

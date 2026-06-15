@@ -1,5 +1,7 @@
 # ml/analysis — Data Quality Validation
 
+> **Status:** ✅ Current — verified 2026-06-14
+
 Comprehensive validation and analysis tools for the SENTINEL dataset.
 
 ## Purpose

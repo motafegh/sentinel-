@@ -61,14 +61,14 @@ agents/
 │   ├── mcp/servers/         MCP SSE servers (Model Context Protocol)
 │   │   ├── inference_server.py       :8010 — predict, batch_predict
 │   │   ├── rag_server.py             :8011 — search
-│   │   ├── audit_server.py           :8012 — get_audit_history, check_audit_exists
+│   │   ├── audit_server.py           :8012 — get_latest_audit, get_audit_history, check_audit_exists
 │   │   └── graph_inspector_server.py :8013 — get_graph_hotspots
 │   │
 │   └── llm/
 │       └── client.py        LM Studio connection, 4 model roles
 │
-├── scripts/                 Smoke tests
-├── tests/                   Unit + integration tests
+├── scripts/                 Smoke tests (see scripts/README.md)
+├── tests/                   Unit + integration tests (see tests/README.md, 9 files, 3,293 lines)
 ├── data/
 │   ├── index/               FAISS + BM25 + chunks + metadata
 │   ├── reports/             Final audit report JSON per contract_address
@@ -283,7 +283,7 @@ SEPOLIA_RPC=<your-rpc> poetry run python -m src.ingestion.feedback_loop
 | Server | Port | Tools | Backend |
 |--------|------|-------|---------|
 | `inference_server` | 8010 | `predict`, `batch_predict` | Module 1 FastAPI (`:8001`) |
-| `rag_server` | 8011 | `search` | `HybridRetriever` |
+| `rag_server` | 8011 | `search` | `HybridRetriever` (FAISS + BM25) |
 | `audit_server` | 8012 | `get_latest_audit`, `get_audit_history`, `check_audit_exists` | AuditRegistry (Sepolia Web3) |
 | `graph_inspector_server` | 8013 | `get_graph_hotspots` | GNN attention / Slither fallback |
 
@@ -309,15 +309,15 @@ poetry run pytest tests/ -v
 
 | Test file | Coverage |
 |-----------|---------|
-| `test_graph_routing.py` | Routing logic, all node paths, graph compilation |
-| `test_inference_server.py` | MCP tool schemas, mock/live transport |
-| `test_audit_server.py` | On-chain history decoding, mock mode |
-| `test_github_fetcher.py` | DeFiHackLabs parsing (3 comment formats) |
-| `test_retriever_filters.py` | FAISS+BM25+RRF filter behaviour |
-| `test_deduplicator.py` | SHA256 hash deduplication |
-| `test_chunker.py` | Chunk size and overlap |
-| `test_routing_phase0.py` | Phase 0 routing edge cases |
-| `test_smoke_e2e.py` | End-to-end audit graph execution |
+| `test_graph_routing.py` | Routing logic, all node paths, graph compilation, full graph integration (931 lines) |
+| `test_smoke_e2e.py` | End-to-end smoke tests — deep/fast/screen-escalated/ML-failure paths (375 lines) |
+| `test_audit_server.py` | On-chain history decoding, mock mode, address validation, hard caps (345 lines) |
+| `test_inference_server.py` | MCP tool schemas, mock/live transport, batch predict, partial failure (336 lines) |
+| `test_routing_phase0.py` | Per-class thresholds, tool matrix, verdict logic, DETECTOR_TO_CLASSES (345 lines) |
+| `test_retriever_filters.py` | FAISS+BM25+RRF filter behaviour, score validation, sync validation (236 lines) |
+| `test_github_fetcher.py` | DeFiHackLabs parsing (3 comment formats, FIX-20/21/22b) (211 lines) |
+| `test_deduplicator.py` | SHA256 hash deduplication, persistence, checkpoint pattern (159 lines) |
+| `test_chunker.py` | Chunk size, overlap, metadata inheritance, edge cases (155 lines) |
 
 ## Environment Variables
 

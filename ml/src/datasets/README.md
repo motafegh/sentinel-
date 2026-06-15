@@ -1,96 +1,77 @@
-# datasets — DualPathDataset
+# datasets — SentinelDataset
 
-Paired graph + token dataset for SENTINEL training and evaluation.
+> **Status:** ✅ Current — v9 schema, Stage 7B export-backed, verified 2026-06-14
+
+Paired graph + token dataset for SENTINEL training and evaluation. Reads from v2 export artifacts (sharded .pt files + labels.parquet + manifest.json).
 
 ---
 
 ## Files
 
-| File | Contents |
-|------|----------|
-| `dual_path_dataset.py` | `DualPathDataset` class + `dual_path_collate_fn` |
+| File | Lines | Contents |
+|------|-------|----------|
+| `sentinel_dataset.py` | 193 | `SentinelDataset` class — PyTorch Dataset backed by v2 export artifact |
+| `collate.py` | 51 | `sentinel_collate_fn` — batches 5-tuple items into training batches |
 
 ---
 
-## DualPathDataset
+## SentinelDataset
 
 ### What it does
 
-Loads paired samples from a pre-built pickle cache (`cached_dataset_v8.pkl`). Each sample is one smart contract represented two ways:
-- **Graph** — PyG `Data` object with v8 schema (11-dim node features, 11 edge types)
-- **Tokens** — `[4, 512]` GraphCodeBERT token tensors from sliding-window tokenization
+Loads paired samples from a v2 export artifact (output of `sentinel-data export`). Each sample is one smart contract represented as a 5-tuple:
+- **graph** — PyG `Data` object with v9 schema (12-dim node features, 12 edge types)
+- **tokens** — `[4, 512]` GraphCodeBERT token tensors from sliding-window tokenization
+- **y** — `float32 Tensor[10]` multi-label vulnerability targets
+- **contract_id** — `str` (sha256 of the contract)
+- **confidence_tier** — `str | None` ("T0", "T1", "T2", or None for NonVulnerable)
 
-The cache stores 41,576 paired (graph, tokens) objects keyed by MD5 hash. Samples with no matching graph or no matching tokens are excluded at cache-build time.
+The export artifact stores sharded .pt files (graphs and tokens), a labels.parquet file, and a manifest.json with schema version + artifact hash.
 
-### Label Modes
+### Three construction gates (hard ValueError on failure)
 
-**Binary mode (label_csv=None, default):**
-- Labels come from graph.y — scalar 0/1 long tensor
-- Collate produces [B] long
-- Used for binary training and inference with old checkpoints
+1. **Format schema version** must be "v1"
+2. **Graph schema version** must match `FEATURE_SCHEMA_VERSION`
+3. **Artifact hash** must be intact (data-integrity check)
 
-**Multi-label mode (label_csv=Path(...)):**
-- Labels come from multilabel_index.csv — float32 tensor [10]
-- Each position is 0.0 or 1.0 for one of the 10 vulnerability classes
-- Collate produces [B, 10] float32
-- Used for Track 3 multi-label retrain
+### LRU shard caching
 
-### Lazy loading from cache
+Graph and token shards are LRU-cached (default 4 shards). Set `SENTINEL_SHARD_CACHE_SIZE` env var to override.
 
-The cache is memory-mapped: graph and token data are loaded in `__getitem__`, not all at once. Memory usage stays flat regardless of dataset size.
+### Precomputed num_nodes
 
-### Cache validation
-
-When `cache_path` is provided, the dataset performs several validation checks:
-- **Schema version validation:** Cache must contain `__schema_version__` key matching current `FEATURE_SCHEMA_VERSION`
-- **Random integrity sampling:** 10 random hashes are sampled to verify cache entries exist and have correct structure
-- **Type guard:** Validates cache is a dict and entries have required attributes (graph.x, tokens.input_ids)
+`__init__` precomputes `num_nodes_map: dict[str, int]` for every contract in the split. Fast path: reads from `shard_index["num_nodes"]` if present (new exports). Fallback: loads graph shards to count nodes.
 
 ### Instantiation
 
 ```python
-import numpy as np
-from ml.src.datasets.dual_path_dataset import DualPathDataset
+from pathlib import Path
+from ml.src.datasets.sentinel_dataset import SentinelDataset
 
-val_indices = np.load("ml/data/splits/deduped/val_indices.npy")
-
-# Multi-label mode (Track 3)
-dataset = DualPathDataset(
-    graphs_dir="ml/data/graphs",
-    tokens_dir="ml/data/tokens_windowed",
-    indices=val_indices.tolist(),
-    label_csv="ml/data/processed/multilabel_index_cleaned.csv",
-    cache_path="ml/data/cached_dataset_v8.pkl",
+dataset = SentinelDataset(
+    split="val",
+    export_dir=Path("data/exports/sentinel-v3-smartbugs-2026-06-13"),
 )
-
-# Binary mode (legacy)
-dataset = DualPathDataset(
-    graphs_dir="ml/data/graphs",
-    tokens_dir="ml/data/tokens_windowed",
-    indices=val_indices.tolist(),
-    cache_path="ml/data/cached_dataset_v8.pkl",
-)
-# indices=None → uses all 41,576 cached samples
 ```
 
 ### `__getitem__` return value
 
 ```python
-graph, tokens, label = dataset[i]
+graph, tokens, y, contract_id, confidence_tier = dataset[i]
 
 # graph: PyG Data object
-#   graph.x              [N, 11]   float32 — node features (v8 schema)
-#   graph.edge_index     [2, E]    int64   — directed edges (COO)
-#   graph.edge_attr      [E]       int64   — edge type, 1-D, values 0–10
-#   graph.contract_hash  str               — MD5 hash
+#   graph.x              [N, 12]  float32 — node features (v9 schema)
+#   graph.edge_index     [2, E]   int64   — directed edges (COO)
+#   graph.edge_attr      [E]      int64   — edge type, 1-D, values 0–11
+#   graph.contract_hash  str              — MD5 hash
 
 # tokens: dict
 #   tokens["input_ids"]      [4, 512]  long  — GraphCodeBERT token IDs, 4 windows
 #   tokens["attention_mask"] [4, 512]  long  — 1=real token, 0=padding
-#   (Also accepts single-window [512] shape for backward compatibility)
 
-# label: Tensor[10]  float  — multi-hot vulnerability label vector (multi-label mode)
-#        Tensor[1]   long   — binary label (binary mode)
+# y: Tensor[10]  float  — multi-hot vulnerability label vector
+# contract_id: str       — sha256 hash of the contract
+# confidence_tier: str | None — "T0", "T1", "T2", or None
 ```
 
 ### Safe-globals allowlist
@@ -98,61 +79,65 @@ graph, tokens, label = dataset[i]
 Graph files contain PyG `Data` objects. The following classes are registered via `torch.serialization.add_safe_globals()` to enable `weights_only=True`:
 - `Data`, `DataEdgeAttr`, `DataTensorAttr`, `GlobalStorage`
 
-This allows safe deserialization of PyG objects without disabling pickle security entirely. If future PyG releases add new wrapper classes, they must be added to this allowlist.
+This allows safe deserialization of PyG objects without disabling pickle security entirely.
 
 ---
 
-## dual_path_collate_fn
+## sentinel_collate_fn
 
 Module-level collate function required by `DataLoader`. Must be at module level (not a lambda or nested function) for multiprocessing compatibility.
 
 ### What it does
 
-Merges a list of `(graph, tokens, label)` samples into batch tensors.
+Merges a list of `(graph, tokens, y, contract_id, confidence_tier)` samples into batch tensors.
 
 ```python
-batched_graphs = Batch.from_data_list(graphs)
+graphs_batch = Batch.from_data_list(graphs)
 # PyG merges variable-size graphs into one disconnected super-graph.
 # batched_graphs.batch maps each node → its graph index [0,0,0,1,1,...]
 
-batched_tokens = {
+tokens_batch = {
     "input_ids":      torch.stack([...]),   # [B, 4, 512]
     "attention_mask": torch.stack([...]),   # [B, 4, 512]
 }
 
-batched_labels = torch.stack(labels)   # [B, 10]  float
+y_batch = torch.stack(labels)   # [B, 10]  float
 ```
 
 ### Output shapes (what the training loop receives)
 
 | Tensor | Shape | Dtype |
 |--------|-------|-------|
-| `batched_graphs.x` | `[N_total, 11]` | float32 |
-| `batched_graphs.edge_index` | `[2, E_total]` | int64 |
-| `batched_graphs.edge_attr` | `[E_total]` | int64 |
-| `batched_graphs.batch` | `[N_total]` | int64 |
-| `batched_tokens["input_ids"]` | `[B, 4, 512]` | int64 |
-| `batched_tokens["attention_mask"]` | `[B, 4, 512]` | int64 |
-| `batched_labels` | `[B, 10]` | float32 |
+| `graphs_batch.x` | `[N_total, 12]` | float32 |
+| `graphs_batch.edge_index` | `[2, E_total]` | int64 |
+| `graphs_batch.edge_attr` | `[E_total]` | int64 |
+| `graphs_batch.batch` | `[N_total]` | int64 |
+| `tokens_batch["input_ids"]` | `[B, 4, 512]` | int64 |
+| `tokens_batch["attention_mask"]` | `[B, 4, 512]` | int64 |
+| `y_batch` | `[B, 10]` | float32 |
 
 ### Usage with DataLoader
 
 ```python
 from torch.utils.data import DataLoader
-from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
+from ml.src.datasets.sentinel_dataset import SentinelDataset
+from ml.src.datasets.collate import sentinel_collate_fn
 
+dataset = SentinelDataset(split="train", export_dir=export_path)
 loader = DataLoader(
     dataset,
     batch_size=8,
     shuffle=True,
     num_workers=4,
-    collate_fn=dual_path_collate_fn,
+    collate_fn=sentinel_collate_fn,
 )
 
-for graphs, tokens, labels in loader:
+for graphs, tokens, y_batch, contract_ids, tiers in loader:
     # graphs: PyG Batch
     # tokens: {"input_ids": [B,4,512], "attention_mask": [B,4,512]}
-    # labels: [B, 10] float
+    # y_batch: [B, 10] float
+    # contract_ids: list[str]
+    # tiers: list[str | None]
     ...
 ```
 
@@ -160,16 +145,30 @@ for graphs, tokens, labels in loader:
 
 ---
 
-## Split Index Files
+## Export Artifact Structure
 
-Pre-computed in `ml/data/splits/deduped/` by `ml/scripts/create_splits.py`.
+```
+sentinel-v3-smartbugs-2026-06-13/
+├── manifest.json          ← schema_version, graph_schema_version, artifact_hash
+├── labels.parquet         ← contract_id, class_0..class_9, confidence_tier
+├── graphs/
+│   ├── graphs-00000.pt    ← PyG Batch shards
+│   ├── graphs-00001.pt
+│   └── ...
+├── tokens/
+│   ├── tokens-00000.pt    ← [N_shard, 4, 512] int64
+│   ├── tokens-00001.pt
+│   └── ...
+└── shard_index.json       ← {contract_id: {shard, pos_in_shard, num_nodes}}
+```
 
-| File | Samples | Description |
-|------|---------|-------------|
-| `train_indices.npy` | 29,103 | Positions into the sorted cache sample list |
-| `val_indices.npy` | 6,236 | Same — used for checkpoint selection and threshold tuning |
-| `test_indices.npy` | 6,237 | Same — held out; never used during training |
+---
 
-Indices are `int64` position arrays (not boolean masks). Stratified split (seed=42).
+## Schema Constants
 
-**Important:** load from `ml/data/splits/deduped/val_indices.npy` (numpy binary), not from any `.txt` files. The `.npy` files are the authoritative source.
+| Constant | Value | Source |
+|----------|-------|--------|
+| `NODE_FEATURE_DIM` | 12 | `sentinel_data.representation.graph_schema` |
+| `NUM_EDGE_TYPES` | 12 | `sentinel_data.representation.graph_schema` |
+| `NUM_CLASSES` | 10 | `sentinel_data.representation.graph_schema` |
+| `FEATURE_SCHEMA_VERSION` | `"v9"` | `sentinel_data.representation.graph_schema` |

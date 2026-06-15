@@ -3,6 +3,8 @@
 > **Entry point for all validation and testing procedures in the ml module.**
 > Always load `00_rules.md` alongside any spec file you use.
 > The rules in `00_rules.md` apply universally and are not repeated in section files.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). The 12-spec alphabet covers general procedures; session-specific plans (Run 12 → Run 13) live in `data_module/temp/live_plans/`. See routing table for cross-refs.
 
 ---
 
@@ -60,6 +62,7 @@ your current task.
 | Change the graph schema | `00_rules` + `J` + `E` + `F` |
 | Verify a result is reproducible | `00_rules` + `L` + `C` |
 | Close a session / hand off | `00_rules` + `L` (section L.5) |
+| **Plan the post-training workflow** (Run N done → next run) | **CROSS-REF: `data_module/temp/live_plans/post_training_process_2026-06-14.md` + `run_12_to_13_handoff_2026-06-14.md`** (session-specific plans in `live_plans/`) |
 | Unsure what applies | Read this README, then `00_rules` |
 
 ---

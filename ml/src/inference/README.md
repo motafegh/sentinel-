@@ -1,8 +1,10 @@
 # inference — Inference Pipeline
 
+> **Status:** ✅ Current — v9 schema, four-eye v8.1 architecture, verified 2026-06-14
+
 Converts a Solidity contract (file or raw string) into per-class vulnerability probabilities across 10 classes.
 
-**Current architecture:** v8 with 8-layer GNN (2+3+3 phases), Flash Attention 2, GNN prefix injection
+**Current architecture:** v8.1 with 8-layer GNN (2+3+3 phases), four-eye classifier, Flash Attention 2, GNN prefix injection
 
 ---
 
@@ -49,9 +51,9 @@ graph, tokens = preprocessor.process("contracts/Vault.sol")
 graph, tokens = preprocessor.process_source(open("Vault.sol").read(), name="Vault")
 
 # graph: PyG Data object
-#   graph.x              [N, 11]    float32 — node features (v8 schema)
+#   graph.x              [N, 12]    float32 — node features (v9 schema)
 #   graph.edge_index     [2, E]     int64   — directed edges
-#   graph.edge_attr      [E]        int64   — edge type (1-D, values 0–10)
+#   graph.edge_attr      [E]        int64   — edge type (1-D, values 0–11)
 #   graph.contract_hash  str                — MD5 hash
 
 # tokens: dict
@@ -77,7 +79,7 @@ These shapes must match training data exactly:
 
 | Tensor | Training (from dataset) | Inference (from preprocessor) |
 |--------|-------------------------|-------------------------------|
-| `graph.x` | `[N, 11]` | `[N, 11]` ✓ |
+| `graph.x` | `[N, 12]` | `[N, 12]` ✓ |
 | `graph.edge_attr` | `[E]` 1-D int64 | `[E]` 1-D int64 ✓ |
 | `tokens["input_ids"]` | `[B, 4, 512]` after collate | `[1, 4, 512]` ✓ |
 | `tokens["attention_mask"]` | `[B, 4, 512]` after collate | `[1, 4, 512]` ✓ |
@@ -106,7 +108,7 @@ predictor = SentinelPredictor(
 4. Sets `model._current_epoch = 9999` — prefix always active regardless of warmup setting
 5. Calls `model.eval()`
 
-The architecture string `"three_eye_v7"` is used for `_ARCH_TO_FUSION_DIM` / `_ARCH_TO_NODE_DIM` validation — no architecture string change needed for v8 since the fusion output shape (128) and node feature dim (11) are unchanged.
+The architecture string `"four_eye_v8"` is used for `_ARCH_TO_FUSION_DIM` / `_ARCH_TO_NODE_DIM` validation — fusion output shape is 128, node feature dim is 12.
 
 ### Prediction
 
@@ -127,7 +129,7 @@ result = predictor.predict_source(source_code, name="Vault")
 #   "thresholds": [0.45, 0.50, ...],   # per-class, from checkpoint
 #   "num_nodes":  42,
 #   "num_edges":  89,
-#   "architecture": "three_eye_v7",  # legacy string for compatibility
+#       "architecture": "four_eye_v8",  # current four-eye architecture
 # }
 ```
 

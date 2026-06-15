@@ -1,0 +1,84 @@
+{
+  "n_total": 200,
+  "n_successful": 163,
+  "n_errors": 37,
+  "elapsed_sec": 67.07260918617249,
+  "throughput_per_sec": 2.526755579911449,
+  "time_per_pred_ms": {
+    "mean": 395.76443718986275,
+    "p50": 233.27374458312988,
+    "p95": 1061.728143692017,
+    "p99": 2509.1328763961674
+  },
+  "class_distribution": {
+    "ExternalBug": 59,
+    "Reentrancy": 33,
+    "Timestamp": 33,
+    "UnusedReturn": 16,
+    "DenialOfService": 11,
+    "IntegerUO": 9,
+    "TransactionOrderDependence": 2
+  },
+  "class_mean_confidence": {
+    "ExternalBug": 0.8207292563499702,
+    "DenialOfService": 0.9257066521805744,
+    "Reentrancy": 0.7935625054031743,
+    "UnusedReturn": 0.9552678290765416,
+    "Timestamp": 0.9735245884627913,
+    "TransactionOrderDependence": 0.988480807840266,
+    "IntegerUO": 0.6923266264253586
+  },
+  "n_with_any_trigger": 159,
+  "trigger_stats": {
+    "mean_per_contract": 2.3006134969325154,
+    "p50": 2.0,
+    "p95": 5.0,
+    "max": 5
+  },
+  "error_samples": [
+    {
+      "address": "0x00000000000fe8503db73c68f1a1874eb9d86883",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_2ae32vgj.sol': Slither failed to parse 'sentinel_prep_2ae32vgj.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_2ae32v"
+    },
+    {
+      "address": "0x00000000002b13cccec913420a21e4d11b2dcd3c",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_182xbr8g.sol': Slither failed to parse 'sentinel_prep_182xbr8g.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_182xbr"
+    },
+    {
+      "address": "0x000000000063b99b8036c31e91c64fc89bff9ca7",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_8pld0c1c.sol': Slither failed to parse 'sentinel_prep_8pld0c1c.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_8pld0c"
+    },
+    {
+      "address": "0x00000000e82eb0431756271f0d00cfb143685e7b",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_y2qegpi1.sol': Slither failed to parse 'sentinel_prep_y2qegpi1.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_y2qegp"
+    },
+    {
+      "address": "0x00000007b0390fc9ca72f534366f5c02d5af5334",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_xq7cw4vg.sol': Slither failed to parse 'sentinel_prep_xq7cw4vg.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_xq7cw4"
+    },
+    {
+      "address": "0x000000085824f23a070c2474442ed014c0e46b58",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_g360_xav.sol': Slither failed to parse 'sentinel_prep_g360_xav.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_g360_x"
+    },
+    {
+      "address": "0x0000000a9e27410f13dd4818488bf1e706c9a2fe",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_fsal3b24.sol': Slither failed to parse 'sentinel_prep_fsal3b24.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_fsal3b"
+    },
+    {
+      "address": "0x000003ed2eb44cded8ade31c01dda60da466b2d1",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_npxdybjq.sol': Slither failed to parse 'sentinel_prep_npxdybjq.sol': Invalid compilation: \nInvalid solc compilation Error: Source file requir"
+    },
+    {
+      "address": "0x000983ba1a675327f0940b56c2d49cd9c042dfbf",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_ilcq1u6h.sol': Slither failed to parse 'sentinel_prep_ilcq1u6h.sol': Invalid compilation: \nInvalid solc compilation /tmp/sentinel_prep_ilcq1u"
+    },
+    {
+      "address": "0x001a589dda0d6be37632925eaf1256986b2c6ad0",
+      "error": "Graph extraction infrastructure failure for 'sentinel_prep_q14gpeye.sol': Slither failed to parse 'sentinel_prep_q14gpeye.sol': Invalid compilation: \nInvalid solc compilation Error: Expected '{' but g"
+    }
+  ],
+  "checkpoint_state_path": "/home/motafeq/projects/sentinel/ml/data/smartbugs_wild_eval_state.json",
+  "log_path": "/home/motafeq/projects/sentinel/ml/logs/smartbugs_wild_eval_20260614_222124.log",
+  "completed_at": "2026-06-14T22:22:31.908904",
+  "total_elapsed_sec": 67.07318067550659
+}

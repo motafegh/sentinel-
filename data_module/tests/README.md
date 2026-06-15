@@ -22,7 +22,7 @@ data_module/tests/
 ├── conftest.py                          # sys.path bootstrap + shared fixtures
 ├── test_skeleton.py                     # import smoke test
 │
-├── test_analysis/                       # (no dedicated tests; covered by test_skeleton + integration)
+├── test_analysis/                       # analysis tools coverage
 │   ├── __init__.py
 │   └── test_analysis.py
 │
@@ -50,6 +50,7 @@ data_module/tests/
 ├── test_representation/
 │   ├── test_13_issue_preservation.py    # 13 bug-fix regression tests
 │   ├── test_byte_identical_regression.py # schema-dim gate + old-is-new guard
+│   ├── test_emits_fixture.py            # EMITS edge type fixture test
 │   ├── test_orchestrator.py             # full orchestrator flow with synthetic Solidity
 │   ├── test_solidifi_fixes.py           # A-1, A-2, A-3 fix regression tests
 │   └── test_thin_adapter.py             # is equality between sentinel_data.X and ml.X
@@ -78,11 +79,19 @@ data_module/tests/
 │   ├── test_bccc_regression.py          # the BCCC Phase 5 regression test
 │   └── test_smartbugs_recall.py         # recall on SmartBugs Curated (≥ 70% on major classes)
 │
+├── test_export/
+│   ├── __init__.py
+│   ├── test_chunker.py                  # chunk_export orchestration, manifest generation
+│   ├── test_export.py                   # SentinelDatasetExport consumer API, hash verification
+│   ├── test_graph_token_writer.py       # graph + token shard writing
+│   ├── test_label_writer.py             # labels.parquet schema and content
+│   └── test_metadata_writer.py          # metadata.parquet schema and enrichment
+│
 ├── test_integration_solidifi.py         # full end-to-end on SolidiFI (283 contracts)
 └── test_integration_dive.py             # full end-to-end on DIVE (22,073 contracts)
 ```
 
-**Sub-total: 29 test files** across 9 directories + 3 top-level files.
+**Sub-total: 34 test files** across 10 directories + 3 top-level files.
 
 ## 3. Test counts per stage (per MEMORY.md, 2026-06-11)
 

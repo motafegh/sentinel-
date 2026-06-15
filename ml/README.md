@@ -1,8 +1,10 @@
 # ml — SENTINEL Machine Learning Core
 
+> **Status:** ✅ Current — v9 schema, four-eye v8.1 architecture, verified 2026-06-14
+
 Dual-path smart contract vulnerability detector. An 8-layer **Graph Attention Network** encodes AST/CFG structure with typed edge relations across three phases; a **LoRA-adapted GraphCodeBERT** encodes source text across sliding windows with optional GNN-prefix injection. A **four-eye CrossAttentionFusion** (GNN eye, Transformer eye, Fused eye, CFG eye) produces per-class probabilities across **10 vulnerability classes**.
 
-**Current architecture: v8.1** — `FEATURE_SCHEMA_VERSION = "v8"`, `NODE_FEATURE_DIM = 11`, backbone: `microsoft/graphcodebert-base`, architecture tag: `"four_eye_v8"`
+**Current architecture: v8.1** — `FEATURE_SCHEMA_VERSION = "v9"`, `NODE_FEATURE_DIM = 12`, backbone: `microsoft/graphcodebert-base`, architecture tag: `"four_eye_v8"`
 
 ---
 
@@ -58,18 +60,18 @@ export TRITON_CACHE_DIR=/tmp/triton_cache  # required on WSL2 — avoids p9io cr
 ```
 Input: Solidity contract (.sol)
         │
-        ├─ graph_extractor.py ──► .pt graph (NODE_FEATURE_DIM=11, 11 edge types)
+        ├─ graph_extractor.py ──► .pt graph (NODE_FEATURE_DIM=12, 12 edge types)
         │
         └─ retokenize_windowed.py ► .pt tokens ([4, 512] windows, stride=256)
                 │
-        DualPathDataset (cached_dataset_v10.pkl)
+        SentinelDataset (v2 export artifacts)
                 │
         ┌───────┴────────────────────────────────────────────┐
         │                                                    │
    GNNEncoder                                    TransformerEncoder
    8-layer GAT, 3 phases (2+3+3)              GraphCodeBERT + LoRA r=16
    JK attention, hidden_dim=256                  12 layers, Q+V adapters
-   type_embedding(13,16), input_proj skip        frozen base, BF16
+   type_embedding(14,16), input_proj skip        frozen base, BF16
    IMP-G1 edge subsets, IMP-G3 bidir CONTAINS   Flash Attention 2
         │                                        │
         │  [B, K, 256] prefix nodes (K=48)            │
@@ -118,15 +120,15 @@ poetry run python ml/scripts/create_cache.py
 poetry run python ml/scripts/validate_graph_dataset.py
 ```
 
-**Current data state (v10):**
+**Current data state (v9):**
 
 | File | Count / Size | Contents |
 |------|-------------|----------|
-| `ml/data/graphs/` | ~41K .pt | v8 graphs, 11-dim, FEATURE_SCHEMA_VERSION="v8" |
+| `ml/data/graphs/` | ~41K .pt | v9 graphs, 12-dim, FEATURE_SCHEMA_VERSION="v9" |
 | `ml/data/tokens_windowed/` | ~41K .pt | windowed tokens [4,512], stride=256 |
-| `ml/data/cached_dataset_v10.pkl` | paired | (graph, tokens) pairs |
+| `ml/data/cached_dataset_v9.pkl` | paired | (graph, tokens) pairs |
 | `ml/data/processed/multilabel_index.csv` | 68,523 rows | 10 classes |
-| `ml/data/splits/v10_deduped/` | 3 .npy | train / val / test indices |
+| `ml/data/splits/deduped/` | 3 .npy | train / val / test indices |
 
 **Note on retokenization for K=48:** With stride=256 and code_budget=464 (K=48), overlap per window = 464−256 = 208 tokens. Since stride < code_budget there are no gaps — retokenization is not required unless K > 256.
 
@@ -134,7 +136,7 @@ poetry run python ml/scripts/validate_graph_dataset.py
 
 ## Dataset
 
-`DualPathDataset` (`ml/src/datasets/dual_path_dataset.py`) loads pairs from the pre-built `.pkl` cache. `dual_path_collate_fn` batches graph data via PyG `Batch.from_data_list` and stacks token tensors.
+`SentinelDataset` (`ml/src/datasets/sentinel_dataset.py`) loads paired (graph, tokens, label, contract_id, confidence_tier) samples from v2 export artifacts. `sentinel_collate_fn` (`ml/src/datasets/collate.py`) batches graph data via PyG `Batch.from_data_list` and stacks token tensors.
 
 **Label distribution (training targets):**
 
@@ -165,12 +167,12 @@ poetry run python ml/scripts/validate_graph_dataset.py
 
 ```
 Type Embedding (BUG-R7-2)
-  Embedding(13, 16) → [N, 16]
-  Concatenated with raw features → [N, 27]
+  Embedding(14, 16) → [N, 16]
+  Concatenated with raw features → [N, 28]
 
 Phase 1 — Structural + CONTAINS (layers 1+2)
   GAT over edge types 0–5, 8 heads, add_self_loops=True
-  IMP-G2: input_proj skip connection (Linear(27,256)) added before relu in Layer 1
+  IMP-G2: input_proj skip connection (Linear(28,256)) added before relu in Layer 1
          Prevents raw feature loss when GAT attention weights start near-uniform
   LayerNorm after phase
 
@@ -192,10 +194,10 @@ Phase 3 — Bidirectional CONTAINS (layers 6+7+8)
   LayerNorm after phase
 
 JK attention aggregation over all 8 layer outputs → hidden_dim=256
-Edge type embedding: Embedding(11, 64) concatenated per message
+Edge type embedding: Embedding(12, 64) concatenated per message
 ```
 
-**Node types** are defined in `graph_schema.py` (13 types, IDs 0–12). Always use named constants, never raw integers.
+**Node types** are defined in `graph_schema.py` (14 types, IDs 0–13). Always use named constants, never raw integers.
 
 ### Transformer Encoder
 
@@ -298,11 +300,11 @@ Aux heads: one Linear(128,10) per eye + aux_phase2 MLP(256→128→10) for auxil
 
 ### Node Feature Vector
 
-**v8 schema, 11 dimensions:**
+**v9 schema, 12 dimensions:**
 
 | Dim | Feature | Notes |
 |-----|---------|-------|
-| [0] | `type_id / 12.0` | NodeType enum value (0–12 → 0.0–1.0) |
+| [0] | `type_id / 13.0` | NodeType enum value (0–13 → 0.0–1.0) |
 | [1] | `visibility` | 0.0=public/external, 0.5=internal, 1.0=private |
 | [2] | `uses_block_globals` | 1.0 if reads block.timestamp/number/difficulty/etc. |
 | [3] | `view` | 0/1 |
@@ -313,6 +315,7 @@ Aux heads: one Linear(128,10) per eye + aux_phase2 MLP(256→128→10) for auxil
 | [8] | `call_target_typed` | 0=dynamic/unknown target, 1=typed interface |
 | [9] | `has_loop` | 0/1 |
 | [10] | `external_call_count` | log1p(count) / log1p(20) |
+| [11] | `in_unchecked_block` | 1.0 if inside an unchecked block (v9 addition) |
 
 CFG nodes inherit dims [1,3,4,5,9] from their parent FUNCTION node.
 
@@ -331,8 +334,9 @@ CFG nodes inherit dims [1,3,4,5,9] from their parent FUNCTION node.
 | 8 | CALL_ENTRY | call site → function entry CFG block |
 | 9 | RETURN_TO | function exit CFG block → call-site continuation |
 | 10 | DEF_USE | definition → use (data-flow) |
+| 11 | EXTERNAL_CALL | CFG call site → external contract target (v9 addition) |
 
-`NUM_EDGE_TYPES=11` is locked. `edge_attr` is 1-D int64 of shape `[E]`.
+`NUM_EDGE_TYPES=12` is locked. `edge_attr` is 1-D int64 of shape `[E]`.
 
 ---
 
@@ -372,7 +376,7 @@ TRANSFORMERS_OFFLINE=1 TRITON_CACHE_DIR=/tmp/triton_cache PYTHONPATH=. nohup \
     --gnn-prefix-proj-lr-mult 5.0 \
     --phase2-edge-types 6 8 9 10 \
     --weighted-sampler positive \
-    --cache-path ml/data/cached_dataset_v10.pkl \
+    --cache-path ml/data/cached_dataset_v9.pkl \
     > ml/logs/v10-$(date +%Y%m%d).log 2>&1 &
 
 # Monitor:
@@ -457,7 +461,7 @@ TRANSFORMERS_OFFLINE=1 PYTHONPATH=. uvicorn ml.src.inference.api:app --port 8001
 - `GET /health` — liveness
 - `GET /metrics` — Prometheus
 
-`predictor.py` reads `gnn_prefix_k` and `gnn_prefix_warmup_epochs` from the checkpoint's saved config and sets `model._current_epoch = 9999` so the prefix is always active at inference time. Architecture detection via `_ARCH_TO_FUSION_DIM`: `"four_eye_v8"` → fusion_dim=128, node_dim=11.
+`predictor.py` reads `gnn_prefix_k` and `gnn_prefix_warmup_epochs` from the checkpoint's saved config and sets `model._current_epoch = 9999` so the prefix is always active at inference time. Architecture detection via `_ARCH_TO_FUSION_DIM`: `"four_eye_v8"` → fusion_dim=128, node_dim=12.
 
 ---
 
@@ -491,11 +495,11 @@ cd ml && poetry run pytest tests/ -v
 
 | File | Coverage |
 |------|---------|
-| `test_preprocessing.py` | Schema (NODE_FEATURE_DIM=11, 13 types), feature builders, CFG inheritance |
+| `test_preprocessing.py` | Schema (NODE_FEATURE_DIM=12, 14 types), feature builders, CFG inheritance |
 | `test_model.py` | Forward pass shapes, aux output, [B,10] output, prefix path |
-| `test_training.py` | TrainConfig, ASL loss, gradient flow, prefix warmup suppression |
+| `test_trainer.py` | TrainConfig, ASL loss, gradient flow, prefix warmup suppression |
 | `test_cache.py` | Cache key, schema-version invalidation, atomic write |
-| `test_dataset.py` | DualPathDataset loading, collate, batch shapes |
+| `test_sentinel_dataset.py` | SentinelDataset loading, collate, batch shapes |
 
 ---
 
@@ -530,10 +534,11 @@ ml/
 │   │   ├── transformer_encoder.py  ← GraphCodeBERT + LoRA + Flash Attention 2 + prefix
 │   │   └── fusion_layer.py         ← CrossAttentionFusion, compile-safe, token_norm
 │   ├── preprocessing/
-│   │   ├── graph_schema.py         ← NODE_FEATURE_DIM=11, FEATURE_SCHEMA_VERSION="v8"
-│   │   └── graph_extractor.py      ← Slither → v8 graph .pt files
+│   │   ├── graph_schema.py         ← thin re-export shim from sentinel_data
+│   │   └── graph_extractor.py      ← Slither → v9 graph .pt files
 │   ├── datasets/
-│   │   └── dual_path_dataset.py    ← DualPathDataset + collate
+│   │   ├── sentinel_dataset.py     ← SentinelDataset (v2 export artifacts)
+│   │   └── collate.py              ← sentinel_collate_fn
 │   ├── training/
 │   │   ├── trainer.py              ← TrainConfig, train(), BF16, submodule compile
 │   │   ├── training_logger.py      ← StructuredLogger, MLflow integration
@@ -545,17 +550,20 @@ ml/
 │   │   ├── cache.py                ← InferenceCache (content-addressed, TTL)
 │   │   ├── drift_detector.py       ← KS test drift detection
 │   │   └── preprocess.py           ← ContractPreprocessor
+│   ├── data_extraction/
+│   │   └── windowed_tokenizer.py   ← windowed tokenization logic
 │   ├── data/                       ← data loading helpers
 │   ├── tools/                      ← utility tools
-│   ├── utils/                      ← shared utilities
+│   ├── utils/
+│   │   └── hash_utils.py           ← hash verification utilities
 │   └── validation/                 ← validation helpers
 ├── data/                           ← NOT committed (.gitignore)
-│   ├── graphs/                     ← .pt graph files (v8, 11-dim)
+│   ├── graphs/                     ← .pt graph files (v9, 12-dim)
 │   ├── tokens_windowed/            ← .pt token files ([4,512], stride=256)
 │   ├── processed/                  ← CSV label files
-│   ├── splits/v10_deduped/         ← train/val/test .npy indices
+│   ├── splits/deduped/             ← train/val/test .npy indices
 │   ├── augmented/                  ← DoS and CEI augmented .sol files
-│   └── cached_dataset_v10.pkl      ← paired cache
+│   └── cached_dataset_v9.pkl       ← paired cache
 ├── checkpoints/                    ← NOT committed
 └── logs/                           ← NOT committed
 ```
@@ -566,10 +574,10 @@ ml/
 
 | Invariant | Value | Break condition |
 |-----------|-------|----------------|
-| `NODE_FEATURE_DIM` | **11** | Rebuild all graph `.pt` files + retrain |
-| `FEATURE_SCHEMA_VERSION` | **`"v8"`** | Bump on any schema change; invalidates inference cache |
+| `NODE_FEATURE_DIM` | **12** | Rebuild all graph `.pt` files + retrain |
+| `FEATURE_SCHEMA_VERSION` | **`"v9"`** | Bump on any schema change; invalidates inference cache |
 | `NUM_CLASSES` | **10** | Locked — ZKML circuit and CLASS_NAMES order both depend on this |
-| `NUM_EDGE_TYPES` | **11** | GNNEncoder Embedding(11,64) + retrain |
+| `NUM_EDGE_TYPES` | **12** | GNNEncoder Embedding(12,64) + retrain |
 | `fusion_output_dim` | **128** | ZKML proxy MLP (M2) depends on this; never change |
 | `gnn_num_layers` | **8** | 2+3+3 phases (IMP-G3 added conv4c for downward CONTAINS) |
 | Classifier input | **512** (4 × 128) | Four-eye architecture; changing eye count breaks this |
@@ -587,5 +595,5 @@ ml/
 | Prefix position IDs | prefix=1, code=3..466 | RoBERTa uses 0=BOS, 1=padding, 2=EOS slots |
 | `token_norm` in CrossAttentionFusion | Always active | BUG-C2 fix; prevents CodeBERT norm dominance |
 | `need_weights=False` in MHA | Always set | Fix #26; saves ~12.6 MB VRAM per forward pass |
-| `type_embedding` in GNNEncoder | Embedding(13, 16) | Concatenated with features → [N, 27] input |
+| `type_embedding` in GNNEncoder | Embedding(14, 16) | Concatenated with features → [N, 28] input |
 | Phase 2 attention heads | **4** | IMP-R7-1; was 1 before Run 7 |

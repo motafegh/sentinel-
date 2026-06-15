@@ -1,0 +1,42 @@
+{
+  "checkpoint": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt",
+  "export_dir": "data_module/data/exports/sentinel-v3-smartbugs-2026-06-13",
+  "ece_before": {
+    "CallToUnknown": 0.26763158746914156,
+    "DenialOfService": 0.2846094749945229,
+    "ExternalBug": 0.08261488117623496,
+    "GasException": 0.28073947480765277,
+    "IntegerUO": 0.08103109439626409,
+    "MishandledException": 0.28105521667596095,
+    "Reentrancy": 0.12370307557183105,
+    "Timestamp": 0.1405005430927829,
+    "TransactionOrderDependence": 0.24139473540479534,
+    "UnusedReturn": 0.16456911296612708
+  },
+  "ece_after": {
+    "CallToUnknown": 0.0009108994315136255,
+    "DenialOfService": 0.03750845402528002,
+    "ExternalBug": 0.02892634767788738,
+    "GasException": 2.6784166493598605e-06,
+    "IntegerUO": 0.08144843273967554,
+    "MishandledException": 2.7196089793457286e-06,
+    "Reentrancy": 0.0706402148333226,
+    "Timestamp": 0.044151331153090445,
+    "TransactionOrderDependence": 0.01591239172552271,
+    "UnusedReturn": 0.06631790957673529
+  },
+  "mean_ece_before": 0.19478491965553135,
+  "mean_ece_after": 0.034582137918865635,
+  "temperatures": {
+    "CallToUnknown": 0.12343470752239227,
+    "DenialOfService": 0.23128101229667664,
+    "ExternalBug": 0.6398836374282837,
+    "GasException": 0.07152186334133148,
+    "IntegerUO": 0.836505115032196,
+    "MishandledException": 0.0710616484284401,
+    "Reentrancy": 0.5253974199295044,
+    "Timestamp": 0.46470606327056885,
+    "TransactionOrderDependence": 0.27254220843315125,
+    "UnusedReturn": 0.417867511510849
+  }
+}

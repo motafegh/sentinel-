@@ -1,7 +1,7 @@
 # SENTINEL — Project Changelog
 
-**Scope:** Full project history from initial commit through Phase 5 (Label Verification — 46,977 BCCC labels dropped, v1.3/v1.4 verified dataset produced).
-**Last updated:** 2026-06-08
+**Scope:** Full project history from initial commit through Run 12 training + Run 13 plan.
+**Last updated:** 2026-06-14
 
 This document is the single authoritative changelog. Session-level detail lives in `docs/changes/` and `docs/ml/`. This file records *what changed, why, and what it produced* — not how to reproduce it.
 
@@ -2898,3 +2898,129 @@ Training on these labels would teach the model to detect label noise, not vulner
 - MEMORY.md (Phase 5 section)
 
 
+
+---
+
+## Post-Phase-5: Sentinel v2 Data Module + Training (2026-06-08 → Run 12)
+
+### 5b. Stage 7 (Export + Seam Swap) — 2026-06-12
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| 7.0 | 2026-06-08 | Sentinel v2 Data Module Plan | Stages 0-7 plan: 9 stages, 5 sources, 4 readiness gates |
+| 7.1 | 2026-06-08 → 06-11 | Stages 0-4 ✅ | Skeleton (27 tests), ingestion (35), representation (45), labeling (80), verification (91) |
+| 7.2 | 2026-06-11 | Stage 5 SKIPPED to Stage 7 | Splitting+registry deferred; export+seam-swap prioritized |
+| 7.3 | 2026-06-12 | Stage 7A ✅ COMPLETE | Export module (1482 LOC across 7 files + YAML), CLI, 27 tests |
+| 7.4 | 2026-06-12 | Stage 7B seam swap ✅ | Schema canonical to sentinel_data; SentinelDataset/collate built; 8 trainer.py sites swapped; 6 GREEN + 1 AMBER gates |
+| 7.5 | 2026-06-13 | SmartBugs Curated ingestion ✅ | 137 contracts added (parser, crosswalk fix for ront_running→TransactionOrderDependence, T1 tier) |
+| 7.6 | 2026-06-13 | L3 text-hash dedup ✅ | 83/147 L3 groups applied; consistent labels only |
+| 7.7 | 2026-06-13 | **45% leakage fix ✅** | Graph-hash dedup file (dedup_groups_graph_hash.json); cli.py:_run_split patched; v2 splits 0% leaky. **Root cause: Run 10 F1=0.683 was memorization.** |
+| 7.8 | 2026-06-13 | **DoS/Reentrancy patch ✅** | 2,655 DIVE labels zeroed; DoS 3,756 → 1,101; 0 overlap; 598/27/0 tests pass |
+
+**v2 export (superseded by v3):** sentinel-v2-baseline-2026-06-12/ — 22,356 contracts. USE v3.
+**v3 export (active, Run 12):** sentinel-v3-smartbugs-2026-06-13/ — 22,493 contracts, 21,657 with reps, 0% leakage, artifact_hash 5cc5cfcbf42bef4ced58b963ef98241bcf3ec4ab3bea5d198f336ec763a4faa9. DoS=1,101 (post-patch). 9 active classes + 1 dead (GasException=0).
+
+### 6. Training History (Runs 4-12)
+
+| Run | Date | Config | Best F1 | Note |
+|------|------|--------|---------|------|
+| Run 4 | 2026-05-XX | 8L+λ=0.005+no ASL pw (v9 data) | 0.3362 | capacity ceiling ep44 |
+| Run 7 | 2026-06-03 | v10 + BUG/IMP fixes + 4-eye arch | 0.3074 fixed / 0.3329 tuned | 4-eye, type emb, Ph2 heads=4 |
+| Run 8 | 2026-06-05 | v10 + same arch | 0.2814 | killed — below Run 7 |
+| Run 9 | 2026-06-06 | v9 + drop-complexity + APPNP α=0.2 + prefix K=48 | 0.2965 / 0.3081 | killed ep65 plateau. Last honest F1 before 45% leakage fix |
+| **Run 10** | 2026-06-12 | v2 clean + DoS patch + verified + SentinelDataset | **F1=0.683 INFLATED** | **KILLED** — memorization, 45% v1 split bug |
+| Run 11 | 2026-06-13 | v2 DEDUPED splits + same arch | ep1 F1=0.3293 (honest) | **PAUSED** — WSL crashed ep2 |
+| **Run 12** | 2026-06-13 → ongoing | v3 + DoS patch + FRESH start + dos_loss_weight=1.0 | **ep40 f1_tuned=0.6941 ★ (2x Run 11 ep1)** | 🟢 TRAINING ep44. DoS_F1 0.11→0.36 (DoS patch working). New SOTA. |
+
+### 7. Run 12 Validation + Monitoring (2026-06-14)
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| 7.0 | 2026-06-14 | Run 12 monitoring infra | ml/scripts/check_run12_status.sh + cron (every 5 min) + 3-tier notify (PowerShell MessageBox → log) |
+| 7.1 | 2026-06-14 | Run 12 ep25-44 progress | f1_tuned trajectory ep10=0.5588 → ep20=0.6709 → ep30=0.6945 → ep40=0.6941; 18 alerts (TransactionOrderDependence F1-AUC divergence) |
+| 7.2 | 2026-06-14 | **BCCC re-evaluation + 2-tool audit** | slither 0.11.5 + aderyn 0.6.8 on 4,900 BCCC ME contracts. **Verdict: ONLY MishandledException extractable.** 658 high-confidence contracts ready. |
+| 7.3 | 2026-06-14 | **Feature leakage audit** | Comments stripped ✓, AST features legitimate not leaks, graph size r<0.25, **Solidifi ug_* leak (0.94% of train)**, **GasException=0 across ALL sources** |
+| 7.4 | 2026-06-14 | **Run 13 plan drafted** | 4 fixes: (1) Drop GasException → NUM_CLASSES=9, (2) Extend L4 to drop loc, (3) Strip Solidifi ug_*, (4) Inject 658 BCCC ME |
+| 7.5 | 2026-06-14 | **Run 12 → Run 13 handoff plan** | data_module/temp/live_plans/run_12_to_13_handoff_2026-06-14.md (6-step workflow) |
+| 7.6 | 2026-06-14 | **Run 13 detailed plan** | data_module/temp/live_plans/run13_plan_2026-06-14.md (4 fixes, v4 build, scripts) |
+
+### 8. Phase 5.5 (DEFERRED) + Run 14+ (PLANNED)
+
+| § | Date | Title | One-line summary |
+|---|------|-------|------------------|
+| 5.5 | TBD | CodeBERT propagation | Would improve Timestamp/DoS confidence. Parked for v4. |
+| 6.0 | 2026-06-14+ | Run 13 (4 fixes + BCCC ME) | Expected: f1_tuned ~0.70-0.75, ME F1 0.5-0.7 (was 1.0 overfit) |
+| 6.1 | TBD | Seam-swap completion | data_module/temp/live_plans/seam_swap_completion_2026-06-13.md (3 open Qs for Ali) |
+| 6.2 | TBD | Run 14 | If Run 13 < 0.72, try CGT ingestion (2-3 days, +3,103 contracts) |
+| 6.3 | TBD | Production promotion | Best checkpoint → inference pipeline; needs release readiness L.1-L.5 |
+
+### Key Decisions (post-Phase-5)
+
+| ID | Date | Decision | Doc |
+|----|------|----------|-----|
+| D-S7-1 | 2026-06-12 | Stage 5 (splitting+registry) skipped to Stage 7 | project_stage7b_handoff.md |
+| D-S7-2 | 2026-06-13 | SmartBugs Curated added as T1 (academic + curated, real bugs) | data-source-addition-plan |
+| D-S7-3 | 2026-06-13 | L3 dedup applied with conservative threshold (consistent labels only) | pre-run12-fixes-2026-06-13.md |
+| D-S7-4 | 2026-06-13 | DoS/Reentrancy patch propagated through merger → split → export | project_dos_patch_2026-06-13.md |
+| D-S7-5 | 2026-06-13 | co_occurrence_patch=True flag to be added to un_merger() (deferred to Run 13+) | project_dos_patch_2026-06-13.md §
+
+### New/Updated Docs (2026-06-14)
+
+- `~/.claude/projects/.../memory/MEMORY.md` (160 lines, central index)
+- `~/.claude/projects/.../memory/project_run12_launch.md` (196 lines, Run 12 + handoff)
+- `~/.claude/projects/.../memory/project_bccc_2tool_audit_2026-06-14.md` (168 lines, NEW)
+- `~/.claude/projects/.../memory/project_feature_leakage_audit_2026-06-14.md` (178 lines, NEW)
+- `data_module/temp/live_plans/run_12_to_13_handoff_2026-06-14.md` (NEW, post-training workflow)
+- `data_module/temp/live_plans/run13_plan_2026-06-14.md` (NEW, 4 fixes details)
+- `data_module/docs/architecture.md` (updated v2→v3→v4 timeline)
+- `ml/scripts/check_run12_status.sh` + `check_run12_status_README.md` (NEW, cron monitor)
+- `/mnt/c/Users/lenovo/AppData/Local/Temp/opencode/full_me_audit.py` + `aderyn_retry.py` + `post_audit_analysis.py` + `both_tools_audit.py` + `deep_dive_v2.py` (BCCC audit scripts)
+- `/tmp/bccc_me_*.json` (4,900-contract audit results, 658 extraction list)
+
+### Outstanding Open Questions (from seam_swap_completion_2026-06-13.md)
+
+1. **Q1:** Delete legacy `ml/src/data_extraction/tokenizer.py` (3 importers) or keep as 2nd shim?
+2. **Q2:** Also flip `ml/src/inference/preprocess.py` shim too (now or defer)?
+3. **Q3:** Keep current `data_module/.gitignore` rules (excludes v3 export + dedup file)?
+
+All 3 are deferred to post-Run-12.
+
+### Backups Created (post-Phase-5)
+
+- `data_module/data/_backup_pre_dos_patch_2026-06-13/` (22,073 original DIVE labels, ~3.7 MB) — SAFE TO DELETE after Run 12 confirms success
+- `data_module/data/splits/v3-PRE-DOS-PATCH-backup/` (~11 MB)
+- `data_module/data/exports/sentinel-v3-PRE-DOS-PATCH-backup/` (~3.5 GB)
+- `data_module/data/exports/sentinel-v3-PRE-DOS-PATCH-AND-RESPLIT-backup/` (~3.5 GB)
+
+### Latest Run (Run 12, COMPLETE)
+
+- **Launched 2026-06-13 23:31:17 UTC, killed cleanly 2026-06-14 21:30 UTC at ep51** (PID 230342, SIGTERM)
+- 51 epochs total, 21h35m wall time, plateaued at ep50-51
+- **Best f1_tuned = 0.7004 @ ep50** (NEW SOTA, +0.006 over ep30's 0.6945, 2.07x Run 11 ep1)
+- **Best f1_macro = 0.6800 @ ep51** (default 0.5 threshold)
+- DoS_F1 trajectory: 0.11 → 0.38 (3.5x, DoS patch + L4 working)
+- Per-class at best tuned: CallToUnknown 0.91, ME 0.91 (overfit, 5-10 test), ExtBug 0.88, Timestamp 0.83, Reentrancy 0.82, UnusedReturn 0.77, IntUO 0.74, ToD 0.44, DoS 0.30, GasException 0.0 (will be dropped Run 13)
+- 19 alerts (all WARN tier: `[9.3.6b]` AUC-PR<0.1, `[9.3.6c]` F1-AUC divergence, no KILL)
+- 0 NaN, 0 KILL events, 0 loss spikes
+- Train loss 0.36→0.47 (warmup peak at ep11, then decline)
+- 2.27x the best honest prior f1_tuned (Run 9 = 0.3081)
+- **Promoted to Staging** (MLflow `sentinel-vulnerability-detector` v1, Run ID 4d8de6c485cc4991989e32b861d09ba7, git 344ce5e)
+- **NOT Production** (requires drift_baseline=warmup + statistical sig, neither available)
+
+### Post-Training Process — 5 Phases (2026-06-14, COMPLETE)
+
+**Phase 1 (Validation)**: Reproducibility check (RNG state saved, TRANSFORMERS_OFFLINE=1, export hash match, poetry.lock unchanged), performance analysis (per-class F1 + DoS trajectory), final report at `docs/training/GCB-P1-Run12-v3dospatched-analysis-2026-06-14.md`.
+
+**Phase 2 (Calibration)**: Threshold tuning via `ml/scripts/tune_threshold.py` (F1-macro 0.6823, 10 per-class thresholds). Temperature scaling via v3-aware replacement (mean ECE 0.1948→0.0346, -82%). **CRITICAL FINDING**: legacy `ml/scripts/calibrate_temperature.py` used stale v9/v10 paths — v3-aware replacement at `/mnt/c/Users/lenovo/AppData/Local/Temp/opencode/calibrate_temperature_v3.py`.
+
+**Phase 3 (External Benchmark)**: v3-aware contamination audit confirmed SmartBugs 95.8% and SolidiFI 82.9% contaminated with v3. Built `data_module/benchmarks/benchmark_v0.1_quickstart/` (66 contracts, 0% contamination verified). **First honest OOD F1: 0.8743 (tuned), 0.8291 (tier)** on 5 in-benchmark classes.
+
+**Phase 4 (Behaviour/API)**: Predictor loads correctly (architecture=four_eye_v8, thresholds_loaded=True). Round-trip on `ml/scripts/test_contracts/` was 7/16 positive, 1/4 safe (OOD-tiny limitation: test contracts median ~20 nodes vs training 295). FP probe on NonVulnerable was 100% (category-mismatch: SmartBugs unmapped categories → SENTINEL predicts ExternalBug etc., which is correct at different granularity).
+
+**Phase 5 (Promotion)**: Dry-run clean. Live promotion to Staging. NOT Production (I.2.2 gates not met).
+
+### Comprehensive Benchmark Built (2026-06-14)
+
+`data_module/benchmarks/` directory created with 5-tier design (Tier A existing OOD + Tier B DeFiHackLabs held-out + Tier C BCCC 2-tool consensus + Tier D mutation + Tier E known-safe). v0.1 quickstart BUILT + VERIFIED: 66 contracts (Tier A), 0% contamination. Full design: `data_module/benchmarks/BENCHMARK_DESIGN.md`.
+
+End of changelog.

@@ -2,6 +2,8 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). Fixed broken `M_session_handoff.md` reference (was a typo for `L.5`). No path updates needed — `ml/scripts/smoke/run_all.py` and `ml/scripts/smoke/_common.py` still exist (verified).
 
 ---
 
@@ -93,7 +95,7 @@ Read `vram_gate_test.py` before running to understand:
 If the gate fails:
 - Document the available vs. required VRAM in the run pre-flight log
 - Do not proceed with the training run
-- Record as a blocker in the session handoff (see `M_session_handoff.md`)
+- Record as a blocker in the session handoff (see `L_release_readiness.md` §L.5)
 
 Write a gate assertion: `vram_gate: PASS | FAIL — <available>GB available,
 <required>GB required, <headroom>GB headroom`

@@ -2,6 +2,8 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). **No gate changes** — all 4 Production gates in §I.2.2 and 6 Staging gates in §I.2.1 are still valid and the source-of-truth (`ml/scripts/promote_model.py`) is unchanged. Added cross-reference to `data_module/temp/live_plans/post_training_process_2026-06-14.md` which is the canonical end-to-end post-training workflow that calls into §I.3 steps.
 
 ---
 
@@ -16,6 +18,12 @@
 Always load alongside: `G_ablation_protocol.md` G.2.5 (metric comparison
 procedure) and `C_diagnostic_checks.md` C.2 (behaviour checks required
 before promotion).
+
+**End-to-end workflow**: For the full post-training → promotion workflow
+(reproducibility check, performance analysis, OOD/contamination check,
+final report, save artifacts, MLflow promotion, monitoring handover),
+see `data_module/temp/live_plans/post_training_process_2026-06-14.md`.
+This file (I) is the per-gate detail; that doc is the runner.
 
 ---
 

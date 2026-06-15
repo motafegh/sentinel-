@@ -2,6 +2,8 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). **Major update**: data pipeline moved to `data_module/sentinel_data/cli.py` (Stage 7B seam swap, 2026-06-12). The `ml/scripts/{create_splits,retokenize_windowed,reextract_graphs}.py` scripts referenced below **NO LONGER EXIST** — they were replaced by `data_module/sentinel_data/cli.py` subcommands (`split`, `represent`, `preprocess`). The seam-swap is INCOMPLETE for `graph_extractor.py` and `windowed_tokenizer.py` (those still have the real impl in `ml/src/`, with a thin adapter in `data_module/sentinel_data/representation/`). See `data_module/temp/live_plans/seam_swap_completion_2026-06-13.md` for the unfinished work.
 
 ---
 
@@ -19,15 +21,20 @@ Load this spec when:
 
 Before checking consistency, read these files in order:
 
-1. `ml/src/data_extraction/windowed_tokenizer.py`
-   - Source of truth for training tokenization: model name, window size, stride,
-     max windows, comment stripping behaviour
-2. `ml/scripts/retokenize_windowed.py`
-   - Batch orchestration for offline token generation; reads `windowed_tokenizer.py`
-3. `ml/src/inference/preprocess.py` — `ContractPreprocessor` class
-   - Source of truth for inference-time tokenization
-4. `ml/src/preprocessing/graph_schema.py`
+1. **`data_module/sentinel_data/representation/graph_schema.py`** (CANONICAL)
    - Source of truth for graph feature dimensions and schema version
+   - **Shim**: `ml/src/preprocessing/graph_schema.py` (22 lines, re-exports). Read the canonical source first.
+2. `ml/src/data_extraction/windowed_tokenizer.py` (REAL, 175 lines)
+   - Source of truth for training tokenization: model name, window size, stride, max windows, comment stripping behaviour
+   - **Seam-swap incomplete**: `data_module/sentinel_data/representation/tokenizer.py` (72 lines) is a thin adapter pointing back to ml/. Until seam-swap is completed, training tokenization still uses `ml/src/`.
+3. `ml/src/inference/preprocess.py` (REAL, ~28KB) — `ContractPreprocessor` class
+   - Source of truth for inference-time tokenization
+   - Note: the inference path is NOT seam-swapped; it imports from `ml/src/`
+4. `data_module/sentinel_data/cli.py` (45KB) — v2 pipeline CLI
+   - Source of truth for the **data pipeline** (ingest → preprocess → represent → label → split → export)
+   - The `split` and `represent` subcommands replace the legacy `ml/scripts/{create_splits,retokenize_windowed,reextract_graphs}.py` (which **no longer exist**)
+5. `ml/src/inference/api.py` (REAL) — the FastAPI server
+   - Verify the schema version it loads from the checkpoint vs the active `data_module` canonical
 
 Do not proceed from memory. Read each file header and the relevant constants
 before performing any comparison.
@@ -86,12 +93,13 @@ Write a gate assertion for comment stripping alignment status.
 Confirm the `FEATURE_SCHEMA_VERSION` and `NODE_FEATURE_DIM` used at inference
 match what the model was trained on.
 
-1. Read `ml/src/preprocessing/graph_schema.py` — note the current
-   `FEATURE_SCHEMA_VERSION` and `NODE_FEATURE_DIM`
+1. Read **`data_module/sentinel_data/representation/graph_schema.py`** (canonical) — note the current
+   `FEATURE_SCHEMA_VERSION` (v9 as of Run 12) and `NODE_FEATURE_DIM` (12)
 2. Read the checkpoint metadata (path from `MEMORY.md`) — confirm which schema
    version the checkpoint was built with
-3. Read `preprocess.py` — confirm it imports from `graph_schema.FEATURE_SCHEMA_VERSION`
+3. Read `ml/src/inference/preprocess.py` — confirm it imports from `graph_schema.FEATURE_SCHEMA_VERSION`
    and that the cache key includes the schema version (it should; verify)
+4. **Current state (v9)**: Run 12 uses v9 schema. The v10 schema (`_detect_pre_08` fix) is in code but not yet re-exported.
 
 `preprocess.py` includes this in the cache key:
 `contract_hash = f"{content_hash}_{FEATURE_SCHEMA_VERSION}"`
@@ -103,27 +111,30 @@ Confirm this is working correctly if the schema has changed since the last run.
 
 ## E.5 — Re-tokenization Trigger Conditions
 
-Run `ml/scripts/retokenize_windowed.py` when **any** of the following change:
+Run `data_module/sentinel_data/cli.py represent` (or `python -m sentinel_data.cli represent`) when **any** of the following change:
 
 - Tokenizer model name changes
-- `WINDOW_SIZE`, `STRIDE`, or `MAX_WINDOWS` constants change
+- `WINDOW_SIZE`, `STRIDE`, or `MAX_WINDOWS` constants in `ml/src/data_extraction/windowed_tokenizer.py` change
 - `strip_comments` default changes
 - The `--relabel-timestamp` flag behaviour changes
 
-**Destructive side-effect warning:** `retokenize_windowed.py` overwrites
-existing `.pt` token files in `ml/data/tokens_windowed/`. There is no
-automatic backup. Archive or DVC-snapshot the existing token files
-before running if they may be needed for reproducibility.
+**Note**: The legacy `ml/scripts/retokenize_windowed.py` was replaced by the
+`data_module` CLI orchestrator. Read the `cli.py` docstring before invoking.
+
+**Destructive side-effect warning**: `cli.py represent` overwrites existing `.pt`
+token files. There is no automatic backup. Archive or DVC-snapshot the existing
+token files before running if they may be needed for reproducibility.
 
 After re-tokenization, the token cache used by the DataLoader must also be
-invalidated. Read `ml/src/datasets/dual_path_dataset.py` to confirm the cache
-key format and which files must be deleted or regenerated.
+invalidated. Read `data_module/sentinel_data/datasets/sentinel_dataset.py` to
+confirm the cache key format and which files must be deleted or regenerated.
+(Note: `sentinel_dataset.py` is in `data_module/`, not `ml/src/`, per the seam-swap.)
 
 ---
 
 ## E.6 — Re-extraction Trigger Conditions
 
-Run `ml/scripts/reextract_graphs.py` when **any** of the following change:
+Run `data_module/sentinel_data/cli.py represent` (or `python -m sentinel_data.cli represent`) when **any** of the following change:
 
 - `FEATURE_SCHEMA_VERSION` advances in `graph_schema.py`
 - `NODE_FEATURE_DIM` or any node feature encoding logic changes
@@ -131,9 +142,11 @@ Run `ml/scripts/reextract_graphs.py` when **any** of the following change:
 - New node types are added
 - Slither version changes (different CFG/AST output)
 
-**Destructive side-effect warning:** `reextract_graphs.py` overwrites
-existing `.pt` graph files in `ml/data/graphs/`. Archive or DVC-snapshot
-before running.
+**Note**: The legacy `ml/scripts/reextract_graphs.py` was replaced by the
+`data_module` CLI orchestrator. Read the `cli.py` docstring before invoking.
+
+**Destructive side-effect warning**: `cli.py represent` overwrites existing `.pt`
+graph files. Archive or DVC-snapshot before running.
 
 After re-extraction:
 - The smoke suite (Section D) must be re-run — schema constants in
@@ -145,7 +158,7 @@ After re-extraction:
 
 ## E.7 — DataLoader Cache Validation
 
-Read `ml/src/datasets/dual_path_dataset.py` before verifying the DataLoader cache:
+Read `ml/src/datasets/sentinel_dataset.py` before verifying the DataLoader cache:
 
 - Confirm the cache key format (what fields constitute a cache hit)
 - Confirm the cache version recorded in the current split files matches

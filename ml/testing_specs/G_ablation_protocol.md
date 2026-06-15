@@ -2,6 +2,8 @@
 
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
+>
+> **Last revised: 2026-06-14** (post-Run-12 launch). Verified `drop_complexity_feature` default flipped from `False` to `True` in `ml/src/training/trainer.py:346` (L4 mitigation, Run 12+). `dos_loss_weight` default remains `0.5`; Run 12 used override `1.0`. Updated `--splits-dir` in §G.2.3 from legacy `ml/data/splits/deduped` to current `data_module/data/splits/v3/`.
 
 ---
 
@@ -32,7 +34,7 @@ signal direction if the feature is working. All values sourced from
 | `gnn_jk_mode` | `'attention'` | `'cat'` or `'max'` | Attention mode allows per-node routing; weaker modes collapse to global weight |
 | `use_edge_attr` | `True` | `False` | Phase-specific edge masking lost; CFG/ICFG distinction disabled |
 | `gnn_edge_emb_dim` | `64` | `0` (requires `use_edge_attr=False`) | Companion to `use_edge_attr` |
-| `drop_complexity_feature` | `False` | `True` | Reduces complexity-proxy dominance; complexity held 34–36% gradient share (L4 experiment) |
+| `drop_complexity_feature` | `True` (Run 12+; was `False` pre-Run 12) | `False` | Reduces complexity-proxy dominance; L4 experiment confirmed complexity held 34–36% gradient share before drop. Re-enabling risks regression to L4 baseline. |
 | `appnp_alpha` | `0.0` (disabled) | `0.2` | Phase 1 teleport prevents CEI signal decay; Run 8 recommendation |
 | `gnn_prefix_k` | `0` (disabled) | `48` | GNN prefix tokens injected into BERT; monitor `prefix_attention_mean` |
 | `gnn_phase2_edge_types` | `None` (all types) | `[specific IDs]` | Phase 2 ablation: restricts CFG-mask edge types in Phase 2 |
@@ -128,7 +130,7 @@ what was changed.
 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. python ml/scripts/train.py \
     --run-name v8-run1-abl-jk-off \
     --experiment-name sentinel-multilabel \
-    --splits-dir ml/data/splits/v10_deduped \
+    --splits-dir data_module/data/splits/v3 \
     --epochs 100 \
     --gradient-accumulation-steps 8 \
     # add the single ablated flag here, e.g.:
@@ -184,7 +186,7 @@ wastes GPU time unless a code change invalidates the result.
 | `fusion_lr_multiplier` | `1.0` (full LR) | Fusion 4–5× GNN gradient norm; CodeBERT Reentrancy bias overwhelmed GNN | RC1 fix 2026-05-16 |
 | `pos_weight_min_samples` | `0` (no cap) | Reentrancy 2.82× amplification caused behavioral collapse v5.2 | BUG-H3 fix |
 | `jk_entropy_reg_lambda` | `0.01` | Forced uniform 33/33/33 JK weights in Run 3 — no per-node routing | C-3 comment in `trainer.py` |
-| `drop_complexity_feature` | `False` | Complexity held 34–36% gradient share (L4 experiment); ablation pending Run 8 | Config comment |
+| `drop_complexity_feature` | `False` | Complexity held 34–36% gradient share (L4 experiment); L4 confirmed 2026-06-13, mitigation `drop_complexity_feature=True` shipped in Run 12 | `ml/audit_docs/L4_complexity_bias.md` |
 | `appnp_alpha` | `0.2` | Pending — scheduled for Run 8 | `appnp_alpha` default=0.0 comment |
 
 ---

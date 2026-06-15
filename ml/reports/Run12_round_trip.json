@@ -1,0 +1,364 @@
+{
+  "n_positive_total": 16,
+  "n_positive_correct": 7,
+  "positive_rate": 0.4375,
+  "n_safe_total": 4,
+  "n_safe_clean": 1,
+  "fp_rate": 0.75,
+  "n_fp": 3,
+  "results": [
+    {
+      "name": "01_reentrancy_classic.sol",
+      "expected": "Reentrancy",
+      "confirmed": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "status": "PASS",
+      "top_probs": {
+        "Reentrancy": 0.7588742268115576,
+        "UnusedReturn": 0.5351307734904122,
+        "ExternalBug": 0.41715673048333485
+      }
+    },
+    {
+      "name": "02_reentrancy_tricky.sol",
+      "expected": "Reentrancy",
+      "confirmed": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "status": "PASS",
+      "top_probs": {
+        "IntegerUO": 0.7780146333612638,
+        "ExternalBug": 0.6248535185135631,
+        "Reentrancy": 0.5554117494609923
+      }
+    },
+    {
+      "name": "03_integer_overflow.sol",
+      "expected": "IntegerUO",
+      "confirmed": [
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "IntegerUO"
+      ],
+      "status": "PASS",
+      "top_probs": {
+        "IntegerUO": 0.6352663807863518,
+        "ExternalBug": 0.30398586753755424,
+        "Reentrancy": 0.16684557276346768
+      }
+    },
+    {
+      "name": "04_timestamp_dependence.sol",
+      "expected": "Timestamp",
+      "confirmed": [
+        "ExternalBug",
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "status": "PASS",
+      "top_probs": {
+        "Timestamp": 0.9699298784983474,
+        "IntegerUO": 0.9088952301174437,
+        "ExternalBug": 0.858526281042826
+      }
+    },
+    {
+      "name": "05_denial_of_service.sol",
+      "expected": "DenialOfService",
+      "confirmed": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "Reentrancy": 0.7781353776966144,
+        "ExternalBug": 0.6136809533488524,
+        "IntegerUO": 0.5930385849447477
+      }
+    },
+    {
+      "name": "06_mishandled_exception.sol",
+      "expected": "MishandledException",
+      "confirmed": [
+        "CallToUnknown"
+      ],
+      "tuned_pred": [
+        "CallToUnknown",
+        "IntegerUO"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "CallToUnknown": 0.9431173922676528,
+        "IntegerUO": 0.46117135835970696,
+        "DenialOfService": 0.28708237239829143
+      }
+    },
+    {
+      "name": "07_tx_order_dependence.sol",
+      "expected": "TransactionOrderDependence",
+      "confirmed": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "ExternalBug": 0.8246309267115134,
+        "IntegerUO": 0.6914297335799177,
+        "Reentrancy": 0.16471331852834076
+      }
+    },
+    {
+      "name": "08_unused_return.sol",
+      "expected": "UnusedReturn",
+      "confirmed": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "IntegerUO": 0.8478634729605937,
+        "ExternalBug": 0.7153677899917407,
+        "Reentrancy": 0.5989702015156411
+      }
+    },
+    {
+      "name": "09_call_to_unknown.sol",
+      "expected": "CallToUnknown",
+      "confirmed": [
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "IntegerUO"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "IntegerUO": 0.6136867756354131,
+        "ExternalBug": 0.38965454565397556,
+        "UnusedReturn": 0.21030922234438543
+      }
+    },
+    {
+      "name": "10_gas_exception.sol",
+      "expected": "GasException",
+      "confirmed": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "ExternalBug": 0.9144064502556154,
+        "IntegerUO": 0.6950770395823486,
+        "DenialOfService": 0.482711547864359
+      }
+    },
+    {
+      "name": "11_external_bug.sol",
+      "expected": "ExternalBug",
+      "confirmed": [],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "Reentrancy": 0.5378237103036011,
+        "IntegerUO": 0.3918478158507333,
+        "ExternalBug": 0.3353781593024098
+      }
+    },
+    {
+      "name": "12_safe_contract.sol",
+      "expected": null,
+      "confirmed": [
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "tuned_pred": [
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "status": "FP",
+      "top_probs": {
+        "Reentrancy": 0.6924220350997814,
+        "UnusedReturn": 0.6419701388670633,
+        "IntegerUO": 0.4169088634366393
+      }
+    },
+    {
+      "name": "13_multilabel_complex.sol",
+      "expected": null,
+      "confirmed": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "status": "FP",
+      "top_probs": {
+        "Timestamp": 0.953454565090196,
+        "UnusedReturn": 0.9044045837920094,
+        "Reentrancy": 0.8462032746409514
+      }
+    },
+    {
+      "name": "14_reentrancy_minimal.sol",
+      "expected": "Reentrancy",
+      "confirmed": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "status": "PASS",
+      "top_probs": {
+        "Reentrancy": 0.7223283928538936,
+        "IntegerUO": 0.1989141723483923,
+        "ExternalBug": 0.152164113212111
+      }
+    },
+    {
+      "name": "15_tod_minimal.sol",
+      "expected": "TransactionOrderDependence",
+      "confirmed": [
+        "ExternalBug",
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "tuned_pred": [
+        "DenialOfService",
+        "ExternalBug",
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "status": "PASS",
+      "top_probs": {
+        "IntegerUO": 0.7640672036083825,
+        "ExternalBug": 0.6479972240237519,
+        "TransactionOrderDependence": 0.6102096480831466
+      }
+    },
+    {
+      "name": "16_gas_minimal.sol",
+      "expected": "GasException",
+      "confirmed": [
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "IntegerUO"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "IntegerUO": 0.5506349325573254,
+        "ExternalBug": 0.3957345071298719,
+        "DenialOfService": 0.2220163991988752
+      }
+    },
+    {
+      "name": "17_integer_simple.sol",
+      "expected": "IntegerUO",
+      "confirmed": [
+        "IntegerUO"
+      ],
+      "tuned_pred": [
+        "IntegerUO"
+      ],
+      "status": "PASS",
+      "top_probs": {
+        "IntegerUO": 0.8685192051181786,
+        "ExternalBug": 0.40000183818412427,
+        "Reentrancy": 0.10295470908732683
+      }
+    },
+    {
+      "name": "18_safe_no_calls.sol",
+      "expected": null,
+      "confirmed": [],
+      "tuned_pred": [],
+      "status": "PASS",
+      "top_probs": {
+        "IntegerUO": 0.4012871803237397,
+        "ExternalBug": 0.22338770524423351,
+        "Reentrancy": 0.18417704074108696
+      }
+    },
+    {
+      "name": "19_safe_with_transfer.sol",
+      "expected": null,
+      "confirmed": [
+        "UnusedReturn"
+      ],
+      "tuned_pred": [
+        "ExternalBug",
+        "IntegerUO",
+        "UnusedReturn"
+      ],
+      "status": "FP",
+      "top_probs": {
+        "UnusedReturn": 0.9270220044024304,
+        "ExternalBug": 0.49374905577634876,
+        "IntegerUO": 0.49366421707784364
+      }
+    },
+    {
+      "name": "20_unused_return_minimal.sol",
+      "expected": "UnusedReturn",
+      "confirmed": [
+        "Reentrancy"
+      ],
+      "tuned_pred": [
+        "Reentrancy"
+      ],
+      "status": "MISS",
+      "top_probs": {
+        "Reentrancy": 0.8103356566254127,
+        "ExternalBug": 0.33684024379872163,
+        "IntegerUO": 0.15862633043879693
+      }
+    }
+  ]
+}
