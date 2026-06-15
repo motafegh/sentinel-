@@ -1,0 +1,750 @@
+{
+  "check": "C.2.1",
+  "date": "2026-06-15",
+  "benchmark_dir": "/home/motafeq/projects/sentinel/data_module/benchmarks",
+  "checkpoint": "/home/motafeq/projects/sentinel/ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt",
+  "total": 65,
+  "top_class_correct": 50,
+  "accuracy_pct": 76.9,
+  "n_triggered": 65,
+  "n_clean": 0,
+  "n_errors": 1,
+  "results": [
+    {
+      "contract": "smartbugs_curated_unchecked_low_level_calls_0x78c2a1e91b52bca4130b6ed9edd9fbcfd4671c37",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "smartbugs_curated_unchecked_low_level_calls_0x7a4349a749e59a5736efb7826ee3496a2dfd5489",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "smartbugs_curated_unchecked_low_level_calls_0xd2018bfaa266a9ec0a1a84b061640faa009def76",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "smartbugs_curated_unchecked_low_level_calls_0xf70d589d76eebdd7c12cc5eec99f8f6fa4233b9e",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_12",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 0.9997,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_17",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 0.9978,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_24",
+      "label": "CallToUnknown",
+      "top_pred": "Timestamp",
+      "top_prob": 0.7629,
+      "top_match": false,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "IntegerUO",
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_26",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_29",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_30",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 0.9811,
+      "top_match": true,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "CallToUnknown",
+        "ExternalBug"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_31",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_32",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_37",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "CallToUnknown"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unchecked-Send_buggy_4",
+      "label": "CallToUnknown",
+      "top_pred": "CallToUnknown",
+      "top_prob": 0.998,
+      "top_match": true,
+      "n_triggered": 3,
+      "triggered_classes": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_12",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_17",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 0.9996,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_24",
+      "label": "MishandledException",
+      "top_pred": "Timestamp",
+      "top_prob": 0.5911,
+      "top_match": false,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "IntegerUO",
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_26",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 0.9999,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_29",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_30",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 0.9999,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_31",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 0.9998,
+      "top_match": true,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "CallToUnknown",
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_32",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "CallToUnknown",
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_37",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 1.0,
+      "top_match": true,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "CallToUnknown",
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Unhandled-Exceptions_buggy_4",
+      "label": "MishandledException",
+      "top_pred": "MishandledException",
+      "top_prob": 0.9997,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "MishandledException"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_12",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.928,
+      "top_match": "N/A",
+      "n_triggered": 2,
+      "triggered_classes": [
+        "ExternalBug",
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_17",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.8991,
+      "top_match": "N/A",
+      "n_triggered": 1,
+      "triggered_classes": [
+        "ExternalBug"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_24",
+      "label": "NonVulnerable",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9514,
+      "top_match": "N/A",
+      "n_triggered": 3,
+      "triggered_classes": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_26",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.7437,
+      "top_match": "N/A",
+      "n_triggered": 2,
+      "triggered_classes": [
+        "ExternalBug",
+        "IntegerUO"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_29",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.7964,
+      "top_match": "N/A",
+      "n_triggered": 2,
+      "triggered_classes": [
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_30",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.8757,
+      "top_match": "N/A",
+      "n_triggered": 1,
+      "triggered_classes": [
+        "ExternalBug"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_31",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.8001,
+      "top_match": "N/A",
+      "n_triggered": 2,
+      "triggered_classes": [
+        "ExternalBug",
+        "IntegerUO"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_32",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.9218,
+      "top_match": "N/A",
+      "n_triggered": 1,
+      "triggered_classes": [
+        "ExternalBug"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_37",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.9276,
+      "top_match": "N/A",
+      "n_triggered": 1,
+      "triggered_classes": [
+        "ExternalBug"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_tx.origin_buggy_4",
+      "label": "NonVulnerable",
+      "top_pred": "ExternalBug",
+      "top_prob": 0.9573,
+      "top_match": "N/A",
+      "n_triggered": 1,
+      "triggered_classes": [
+        "ExternalBug"
+      ]
+    },
+    {
+      "contract": "smartbugs_curated_reentrancy_0x4320e6f8c05b27ab4707cd1f6d5ce6f3e4b3a5a1",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.9728,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_12",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.9174,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_17",
+      "label": "Reentrancy",
+      "top_pred": "Timestamp",
+      "top_prob": 0.8921,
+      "top_match": false,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "Reentrancy",
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_24",
+      "label": "Reentrancy",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9017,
+      "top_match": false,
+      "n_triggered": 5,
+      "triggered_classes": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_26",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.9093,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_29",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.7039,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_30",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.7238,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_31",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.9289,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_32",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.9509,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_37",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.953,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Re-entrancy_buggy_4",
+      "label": "Reentrancy",
+      "top_pred": "Reentrancy",
+      "top_prob": 0.9207,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Reentrancy"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_12",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9846,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_17",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9864,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_24",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9656,
+      "top_match": true,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "IntegerUO",
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_26",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9762,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_29",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9871,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_30",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9876,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_31",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9743,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_32",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9743,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_37",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9466,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_Timestamp-Dependency_buggy_4",
+      "label": "Timestamp",
+      "top_pred": "Timestamp",
+      "top_prob": 0.9841,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_12",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.7737,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_17",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.5588,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_24",
+      "label": "TransactionOrderDependence",
+      "top_pred": "Timestamp",
+      "top_prob": 0.5783,
+      "top_match": false,
+      "n_triggered": 2,
+      "triggered_classes": [
+        "IntegerUO",
+        "Timestamp"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_26",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.6141,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_29",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.995,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_30",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.6801,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_31",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.6186,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_32",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.4934,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_37",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.8491,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    },
+    {
+      "contract": "solidifi_benchmark_TOD_buggy_4",
+      "label": "TransactionOrderDependence",
+      "top_pred": "TransactionOrderDependence",
+      "top_prob": 0.9995,
+      "top_match": true,
+      "n_triggered": 1,
+      "triggered_classes": [
+        "TransactionOrderDependence"
+      ]
+    }
+  ]
+}

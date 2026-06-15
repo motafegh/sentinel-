@@ -1,0 +1,37 @@
+Calibration Files Check — Run 12 — 2026-06-15
+Source: Rule 2 Layer 1 gate assertion per I.3.2
+============================================================
+
+CHECKPOINT STEM: GCB-P1-Run12-v3dospatched-20260613_best
+
+File 1: _best_thresholds.json
+  Path:    ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best_thresholds.json
+  Exists:  YES
+  Size:    3.3K
+  Date:    2026-06-14 21:15
+  Thresholds (per-class):
+    CallToUnknown:              0.40
+    DenialOfService:            0.50
+    ExternalBug:                0.45
+    GasException:               0.05
+    IntegerUO:                  0.45
+    MishandledException:        0.35
+    Reentrancy:                 0.45
+    Timestamp:                  0.50
+    TransactionOrderDependence: 0.35
+    UnusedReturn:               0.40
+  Result: PRESENT ✓
+
+File 2: temperatures_run12.json (in ml/calibration/run12/)
+  Path:    ml/calibration/run12/temperatures_run12.json
+  Exists:  YES
+  Date:    confirmed in run12/ folder
+  ECE before: 0.195 (mean across all classes)
+  ECE after:  0.035 (mean — 5.6× improvement)
+  Worst post-cal class: IntegerUO 0.081, Reentrancy 0.071
+  Result: PRESENT ✓
+
+ALSO PRESENT: _FINAL.pt + _FINAL_thresholds.json (ep51 checkpoint, not the best)
+
+Companion files result: PASS — both thresholds and temperatures present and dated after checkpoint save.
+GasException threshold=0.05 is near-zero — consistent with 0 val positives; model never predicts this class above any meaningful threshold.

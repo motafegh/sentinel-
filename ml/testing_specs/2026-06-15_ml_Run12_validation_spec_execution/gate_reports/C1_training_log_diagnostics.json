@@ -1,0 +1,68 @@
+{
+  "generated": "2026-06-15",
+  "run_name": "GCB-P1-Run12-v3dospatched-20260613",
+  "source": "ml/logs/GCB-P1-Run12-v3dospatched-20260613/",
+  "kill_alerts": {
+    "count": 0,
+    "result": "PASS"
+  },
+  "warn_alerts": {
+    "9_3_6b_auc_pr_below_01": {
+      "count": 11,
+      "affected_classes": ["CallToUnknown", "DenialOfService", "MishandledException", "TransactionOrderDependence"],
+      "note": "Near-random AUC-PR for 4 minority classes. Expected given low training sample counts. GasException also has 0 data."
+    },
+    "9_3_6c_f1_auc_divergence": {
+      "count": 5,
+      "affected": [
+        {"class": "ExternalBug", "epochs": [17, 21]},
+        {"class": "TransactionOrderDependence", "epochs": [21, 31, 37]}
+      ],
+      "note": "F1 improving while AUC-ROC degrades = threshold gaming. Consistent with ExternalBug class definition mismatch finding. TransactionOrderDependence has very few positives."
+    }
+  },
+  "jk_entropy": {
+    "min": 1.09043,
+    "max": 1.098535,
+    "ln3_reference": 1.0986,
+    "all_above_05_threshold": true,
+    "result": "PASS",
+    "observation": "Entropy uniformly near ln(3)=1.099 throughout all 51 epochs — JK phases are evenly distributed. Not collapsing to any single phase. Could indicate jk_entropy_reg is slightly too strong (uniform lock), but well within acceptable range."
+  },
+  "gnn_share": {
+    "steps_logged": 102,
+    "min_observed": 0.6606,
+    "max_observed": 0.9062,
+    "all_above_015_threshold": true,
+    "result": "PASS",
+    "note": "gnn_share not logged in epoch_summary (null), but confirmed in step_metrics. Values 0.66-0.91 — GNN gradient flowing strongly."
+  },
+  "best_epoch_metrics": {
+    "epoch": 50,
+    "f1_macro_tuned": 0.7004,
+    "auc_roc_macro": 0.9109,
+    "auc_pr_macro": 0.7891,
+    "brier_score_overall": 0.1117,
+    "ece_pre_calibration": 0.1835,
+    "ece_post_calibration": 0.0346,
+    "per_class_f1": {
+      "CallToUnknown": 0.9091,
+      "DenialOfService": 0.3005,
+      "ExternalBug": 0.8838,
+      "GasException": 0.0,
+      "IntegerUO": 0.7375,
+      "MishandledException": 0.9091,
+      "Reentrancy": 0.8203,
+      "Timestamp": 0.8299,
+      "TransactionOrderDependence": 0.4426,
+      "UnusedReturn": 0.7683
+    }
+  },
+  "total_epochs": 51,
+  "findings": [
+    "FIND-R12-01: ExternalBug shows [9.3.6c] F1-AUC divergence at ep17 and ep21 — threshold gaming consistent with class label quality issue (see manual inspection report).",
+    "FIND-R12-02: TransactionOrderDependence shows [9.3.6c] divergence at ep21/31/37 — very low positive count, model threshold-gaming a minority class.",
+    "FIND-R12-03: GasException F1=0.0 throughout — zero val positives. Confirmed class drop for Run 13.",
+    "FIND-R12-04: JK entropy locked near ln(3) — worth testing lower jk_entropy_reg_lambda in Run 13 ablation."
+  ]
+}

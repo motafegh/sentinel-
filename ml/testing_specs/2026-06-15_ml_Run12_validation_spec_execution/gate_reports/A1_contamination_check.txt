@@ -1,0 +1,34 @@
+Contamination Check Gate — Run 12 Wild Eval — 2026-06-15
+Source: Rule 2 Layer 1 gate assertion per A.1 and I.3.3
+============================================================
+
+SCRIPT: ml/scripts/audit/check_contamination_wild.py
+RUN AT: 2026-06-14T23:16:04.997517+00:00
+RESULT FILE: docs/reports/2026-06-15_ml_Run12_eval_full_eval_smartbugs_wild_47K_complete/
+             2026-06-15_ml_Run12_eval_full_eval_smartbugs_wild_contamination_summary.json
+
+SCOPE: SmartBugs Wild 47K contracts vs v3 training data
+
+Results:
+  Total Wild contracts:      47,398
+  Flagged (in v3):           8,233 (17.37%)
+  OOD (not in v3):           39,165 (82.63%)
+  Tier 1 exact matches:      6
+  Tier 2 normalised matches: 8,227
+  Tier 3 (Jaccard):          SKIPPED (skip_tier3=True)
+
+Contamination sources:
+  DIVE:             8,186 contracts
+  SmartBugs Curated:   47 contracts
+
+v3 split breakdown:
+  In train split:   6,493
+  In val/test:      1,645 (should not be used for OOD eval)
+
+SCRIPT: ml/scripts/audit/check_contamination_v3.py (v3 internal split check)
+RESULT: 0% overlap between train/val/test splits (v3 splits are clean)
+
+Gate result: PASS
+  - Wild OOD pool clearly identified: 39,165 contracts (82.6%)
+  - All benchmark results use OOD-only partition where honesty matters
+  - v3 internal splits have zero contamination

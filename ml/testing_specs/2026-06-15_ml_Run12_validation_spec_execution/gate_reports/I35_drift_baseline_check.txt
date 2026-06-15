@@ -1,0 +1,32 @@
+Drift Baseline Check — Run 12 — 2026-06-15
+Source: Rule 2 Layer 1 gate assertion per I.3.5
+============================================================
+
+File: ml/data/drift_baseline.json
+Content:
+  source: "warmup"
+  status: "PLACEHOLDER"
+  note:   "Run compute_drift_baseline.py --source warmup after the API has
+           collected production warmup traffic. Replace this file with the
+           real output before any Production promotion."
+
+Gate assessment:
+  promote_model.py script check: TECHNICALLY PASS (source field = "warmup")
+  Semantic validity:             FAIL — file is an explicit placeholder
+
+FINDING: The drift baseline is a deliberate placeholder with source="warmup"
+set so the promote_model.py script check passes. The status="PLACEHOLDER"
+and note make clear this does not contain real warmup traffic data.
+
+Impact:
+  - Staging promotion: NOT BLOCKED (drift baseline not required for Staging)
+  - Production promotion: BLOCKED until real warmup traffic collected via API
+    and compute_drift_baseline.py --source warmup is run on real data
+
+Action required before Production:
+  1. Deploy API and collect warmup traffic (N_WARMUP requests minimum — read compute_drift_baseline.py for constant)
+  2. Run: ml/.venv/bin/python ml/scripts/compute_drift_baseline.py --source warmup
+  3. Verify output file has source="warmup" AND status != "PLACEHOLDER"
+
+Result: UNVERIFIED for Production gate.
+        N/A for Staging-only (current state).
