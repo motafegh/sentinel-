@@ -322,7 +322,7 @@ CrossAttentionFusion.forward(
 
 ## SentinelModel (`sentinel_model.py`)
 
-Four-eye classifier orchestrating all sub-modules into a 10-class multi-label vulnerability detector.
+Four-eye classifier orchestrating all sub-modules into a NUM_CLASSES-class multi-label vulnerability detector (10 in Run 12, 9 in Run 13).
 
 ### Four Eyes
 
@@ -482,7 +482,7 @@ model._current_epoch = 9999           # ensures prefix always active at inferenc
 
 ---
 
-## Vulnerability Classes (10-class multi-label)
+## Vulnerability Classes (NUM_CLASSES-class multi-label; 10 in Run 12, 9 in Run 13)
 
 | Class ID | Name | Description |
 |----------|------|-------------|

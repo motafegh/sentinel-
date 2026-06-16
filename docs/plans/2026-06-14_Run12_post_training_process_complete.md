@@ -195,7 +195,7 @@ PYTHONPATH=. ml/.venv/bin/python ml/scripts/audit/calibrate_temperature_v3.py \
 
 > ⚠️ **DO NOT use legacy `ml/scripts/calibrate_temperature.py`** — it uses v9/v10 paths (`cached_dataset_v9.pkl`, `multilabel_index_deduped.csv`). Use `ml/scripts/audit/calibrate_temperature_v3.py` instead.
 
-**Output schema (per `ml/calibration/run12/temperatures_run12.json`):** `{class_name: T_c, ...}` — one T per class.
+**Output schema (per `ml/calibration/temperatures_run12.json` — canonical root-level):** `{class_name: T_c, ...}` — one T per class.
 
 ### 3.3 — Why BOTH are needed
 

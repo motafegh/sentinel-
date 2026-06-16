@@ -217,7 +217,7 @@ in api.py (the original plan).
 
 **Trace:**
 - `ml/calibration/temperatures_run12.json` (root level, 401 B) — appears to be the canonical one
-- `ml/calibration/run12/temperatures_run12.json` (subdir, same content)
+- `ml/calibration/run12/temperatures_run12.json` (subdir, same content) — **MOVED 2026-06-15 to `docs/.bin/2026-06-15_ml_q4_proposal_mlops_duplicate_calibration_cleanup/`**; canonical is root-level file
 - `ml/calibration/run12/temperatures_run12_stats.json` + `_ece_comparison.png` (only in subdir)
 
 **Recommendation:** Keep root-level (matches naming convention `temperatures_run<N>.<ext>` at root).

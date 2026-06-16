@@ -18,7 +18,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parents[4]
 CHECKPOINT = REPO_ROOT / "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt"
 THRESHOLDS = REPO_ROOT / "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best_thresholds.json"
-TEMPERATURES = REPO_ROOT / "ml/calibration/run12/temperatures_run12.json"
+TEMPERATURES = REPO_ROOT / "ml/calibration/temperatures_run12.json"  # canonical root-level path; subdir copy moved to docs/.bin/2026-06-15_ml_q4_proposal_mlops_duplicate_calibration_cleanup/
 BENCHMARK_DIR = REPO_ROOT / "data_module/benchmarks"
 
 import numpy as np

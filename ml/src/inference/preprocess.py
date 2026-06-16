@@ -36,7 +36,7 @@ graph_builder.py uses one-hot encoding for node features:
   type_onehot(4) + visibility_onehot(4) + mutability_onehot(6) + flags(3) = 17 dims
 
 The training data (68K .pt files) was built by ast_extractor.py, which uses
-NODE_FEATURE_DIM raw floats per node (currently 13 in v5, was 8 in v1/v4).
+NODE_FEATURE_DIM raw floats per node (currently 12 in v9, was 8 in v1/v4).
 GNNEncoder.conv1 reads in_channels=NODE_FEATURE_DIM from graph_schema —
 passing a different-dim feature vector causes a mat-mul shape error at runtime.
 
@@ -52,7 +52,7 @@ The tokenizer is called directly on the string — no redundant file read.
 
 SHAPE CONTRACT  (must match training data — do not change without retraining)
 ──────────────────────────────────────────────────────────────────────────────
-  graph.x                  [N, NODE_FEATURE_DIM]  float32  (13 in v5; was 8 in v4)
+  graph.x                  [N, NODE_FEATURE_DIM]  float32  (12 in v9; was 8 in v4)
   graph.edge_index         [2, E]                 int64
   tokens["input_ids"]      [1, 512]   long    (single window)
   tokens["attention_mask"] [1, 512]   long

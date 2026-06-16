@@ -1,3 +1,15 @@
-/graphs
-/tokens
-/splits
+# Active data (canonical v3 export lives in data_module/data/exports/)
+# Legacy pre-seam-swap data was archived to docs/.bin/ on 2026-06-15
+# (see docs/proposal/MLOps/2026-06-15_ml_q4_proposal_mlops_q4_implementation_plan.md §A.4)
+
+# Legacy analysis cache (rebuildable from source)
+/cached_dataset_v9.pkl
+
+# SmartBugs Wild eval state (large, transient)
+/smartbugs_wild_eval_state.json
+
+# Drift baseline (tracked by code, not git)
+/drift_baseline.json
+
+# Reports (regenerable)
+/reports/

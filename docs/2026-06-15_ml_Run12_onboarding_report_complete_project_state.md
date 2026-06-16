@@ -360,7 +360,7 @@ For specific questions:
 - "Why ExternalBug class has FPs?" → `sentinel vs_tools_manual_inspection.md` (Finding 3)
 - "What was Run 11?" → `2026-06-13_project_run11_launch.md`
 - "How do I train?" → `2026-06-13_project_run12_launch.md` (config + launch)
-- "Where is the calibration file?" → `ml/calibration/run12/temperatures_run12.json`
+- "Where is the calibration file?" → `ml/calibration/temperatures_run12.json` (canonical root-level; subdir copy was a duplicate, moved to `docs/.bin/2026-06-15_ml_q4_proposal_mlops_duplicate_calibration_cleanup/` on 2026-06-15)
 - "How is the data built?" → `data_module/docs/2026-06-14_data_module_v2_v3_architecture.md`
 
 ---

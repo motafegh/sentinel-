@@ -59,6 +59,13 @@ KS_ALPHA = 0.05
 # Fewer samples produce unreliable p-values.
 MIN_SAMPLES_FOR_KS = 30
 
+# Stat names the detector knows how to monitor. A baseline file that contains
+# none of these is treated as invalid (e.g., the placeholder JSON has only
+# `source/status/note` keys) and forces warm-up mode.
+_KNOWN_STAT_NAMES: frozenset[str] = frozenset(
+    {"num_nodes", "num_edges", "confirmed_count", "suspicious_count"}
+)
+
 
 class DriftDetector:
     """
@@ -92,12 +99,42 @@ class DriftDetector:
             bp = Path(baseline_path)
             if bp.exists():
                 with open(bp) as f:
-                    self._baseline = json.load(f)
-                self._warmup_done = True
-                logger.info(
-                    f"DriftDetector: baseline loaded from {bp} "
-                    f"({len(self._baseline)} stats)"
-                )
+                    loaded_baseline = json.load(f)
+                # D5 fix (Q4 2026): validate baseline contains known stat names.
+                # The placeholder JSON (e.g. drift_baseline.json with
+                # `source/status/note` keys) used to silently disable drift
+                # monitoring — KS loop would iterate non-stat keys, find no
+                # match in update_stats, and never fire. Now: detect the bad
+                # baseline explicitly and force warm-up mode with a loud log.
+                if not isinstance(loaded_baseline, dict):
+                    logger.warning(
+                        f"DriftDetector: baseline at {bp} is not a JSON object "
+                        f"(got {type(loaded_baseline).__name__}). Treating as "
+                        f"warm-up mode — alerts suppressed until a real baseline "
+                        f"is provided."
+                    )
+                    self._baseline = None
+                    self._warmup_done = False
+                else:
+                    actual_stat_names = set(loaded_baseline.keys())
+                    valid_stat_names = actual_stat_names & _KNOWN_STAT_NAMES
+                    if not valid_stat_names:
+                        logger.warning(
+                            f"DriftDetector: baseline at {bp} contains no known "
+                            f"stat names (found: {sorted(actual_stat_names)}). "
+                            f"Treating as warm-up mode — alerts suppressed until "
+                            f"a real baseline is provided."
+                        )
+                        self._baseline = None
+                        self._warmup_done = False
+                    else:
+                        self._baseline = loaded_baseline
+                        self._warmup_done = True
+                        logger.info(
+                            f"DriftDetector: baseline loaded from {bp} "
+                            f"({len(valid_stat_names)} stats: "
+                            f"{sorted(valid_stat_names)})"
+                        )
             else:
                 logger.warning(
                     f"DriftDetector: baseline path {bp} not found — "

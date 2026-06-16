@@ -4,19 +4,24 @@ api.py — SENTINEL FastAPI Inference Endpoint
 SCHEMA VERSION: Three-tier suspicion output (2026-05-27)
   PredictResponse now includes:
     label           "safe" | "suspicious" | "confirmed_vulnerable"
-    probabilities   {class: float}  full 10-class vector, always present
+    probabilities   {class: float}  full NUM_CLASSES-class vector (10 in Run 12, 9 in Run 13)
     confirmed       [{vulnerability_class, probability, tier="CONFIRMED"}, ...]
     suspicious      [{vulnerability_class, probability, tier="SUSPICIOUS"}, ...]
     vulnerabilities legacy alias for confirmed (backward compat)
     tier_thresholds {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10}
 
-CHECKPOINT: GCB-P1-Run4-no-asl-pw_best.pt (epoch 32, F1=0.3362, all-time best)
+CHECKPOINT: read from mlops_config.json (`checkpoint` field) or SENTINEL_CHECKPOINT
+            env var. Defaults to Run 4 path for backward compat (Run 12 wiring happens
+            in Phase B of the Q4 MLOps proposal — docs/proposal/MLOps/).
   Pipeline verified FAIL=0 with compare_pipelines.py (2026-05-26).
   Override via SENTINEL_CHECKPOINT env var.
 
 FIXES (2026-04-29):
     Bug 1 — import torch added.
     Bug 3 — v['class'] → v['vulnerability_class'].
+
+FIXES (2026-06-15, Q4 MLOps Phase A.2):
+    Doc only — replaced schema-agnostic phrasing to avoid hardcoding class count.
 """
 
 from __future__ import annotations
@@ -163,7 +168,8 @@ class PredictResponse(BaseModel):
     # Three-tier label: "safe" | "suspicious" | "confirmed_vulnerable"
     label: str = Field(..., description="Highest active tier: safe | suspicious | confirmed_vulnerable")
 
-    # Full 10-class probability vector — always present, never filtered.
+    # Full NUM_CLASSES-class probability vector — always present, never filtered.
+    # NUM_CLASSES is read from the loaded checkpoint config (10 in Run 12, 9 in Run 13).
     # Enables agents to see all signal regardless of tier thresholds.
     probabilities: dict[str, float] = Field(..., description="Full per-class probability vector")
 

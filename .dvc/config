@@ -1,5 +1,5 @@
 [core]
-    analytics = false
+    no_scm = True
     remote = localbackup
 ['remote "localbackup"']
     url = /mnt/d/sentinel-dvc-remote

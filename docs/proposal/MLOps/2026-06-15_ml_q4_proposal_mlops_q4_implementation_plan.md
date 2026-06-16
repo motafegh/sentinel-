@@ -31,9 +31,9 @@ status: ACTIVE
 
 ---
 
-## Phase A: Bugs + Housekeeping (~1.5 hr)
+## Phase A: Bugs + Housekeeping (~1.5 hr) — ✅ COMPLETE 2026-06-15
 
-### A.1 Fix drift detector silent failure — 30 min
+### A.1 Fix drift detector silent failure — 30 min ✅ DONE
 
 **Problem:** Detector thinks placeholder baseline is real, no alerts ever fire.
 
@@ -88,9 +88,11 @@ uvicorn ml.src.inference.api:app --port 8001 2>&1 | grep "DriftDetector"
 **Rollback:** Revert the changes; the original behavior is preserved (just
 silently broken).
 
+**Outcome 2026-06-15:** Implemented + tested. Validation in `__init__` checks for known stat names; 3 branches (invalid type, no known stat names, valid baseline). Unit test `ml/scripts/smoke/test_drift_detector_a1.py` covers 5 cases; all PASS.
+
 ---
 
-### A.2 Update stale "10-class" comments — 5 min
+### A.2 Update stale "10-class" comments — 5 min ✅ DONE
 
 **Files:**
 - `ml/src/inference/api.py:7` — docstring
@@ -109,7 +111,7 @@ silently broken).
 
 ---
 
-### A.3 Resolve duplicate Run 12 calibration files — 5 min
+### A.3 Resolve duplicate Run 12 calibration files — 5 min ✅ DONE (scope expanded)
 
 **Files:**
 - Move: `ml/calibration/run12/temperatures_run12.json` → `docs/.bin/2026-06-15_ml_q4_proposal_mlops_duplicate_calibration_cleanup/`
@@ -132,7 +134,7 @@ ls ml/calibration/run12/  # should show stats.json + ece_comparison.png only
 
 ---
 
-### A.4 Decide DVC tracking policy — 15 min
+### A.4 Decide DVC tracking policy — 15 min ⏸️ DEFERRED
 
 **Files:** `ml/checkpoints.dvc`
 
@@ -172,7 +174,7 @@ are many smoke-test variants. Defer to a quiet afternoon.
 
 ---
 
-### A.5 Smoke test: does Run 12 still load cleanly? — 30 min
+### A.5 Smoke test: does Run 12 still load cleanly? — 30 min ✅ DONE
 
 **Purpose:** Regression guard. Before changing anything, verify the baseline works.
 

@@ -679,7 +679,7 @@ class Predictor:
 
         Schema:
           label           "safe" | "suspicious" | "confirmed_vulnerable"
-          probabilities   {class: float} — full 10-class vector, ALWAYS present
+          probabilities   {class: float} — full NUM_CLASSES-class vector (10 in Run 12, 9 in Run 13), ALWAYS present
           confirmed       [{vulnerability_class, probability, tier="CONFIRMED"}, ...]
           suspicious      [{vulnerability_class, probability, tier="SUSPICIOUS"}, ...]
           vulnerabilities legacy alias for confirmed (backward compat — was above-threshold)
