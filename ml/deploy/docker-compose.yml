@@ -1,0 +1,106 @@
+# docker-compose.yml — SENTINEL MLOps stack (Q4 MLOps Phase C.2)
+#
+# Usage:
+#   cp .env.example .env       # edit if needed
+#   docker compose build       # build the inference image
+#   docker compose up -d       # start the stack (api + prometheus)
+#   docker compose ps          # check health
+#   docker compose logs -f     # tail logs
+#   docker compose down        # stop
+#
+# What runs:
+#   - inference:  FastAPI on :8001 (the SENTINEL model serving)
+#   - prometheus: scrapes /metrics from inference on :9090
+#
+# Volume mounts:
+#   - ./ml/checkpoints  → /app/ml/checkpoints     (model weights)
+#   - ./ml/data         → /app/ml/data             (drift baseline, etc.)
+#   - ./ml/calibration  → /app/ml/calibration     (per-run temperatures)
+#   - ./ml/mlops_config.json → /app/ml/mlops_config.json
+#   - prometheus-data   → /prometheus             (metrics retention)
+
+version: "3.9"
+
+services:
+  # ───────────────────────────────────────────────────────────────────────────
+  # SENTINEL Inference API (FastAPI + uvicorn + Run 12 model)
+  # ───────────────────────────────────────────────────────────────────────────
+  inference:
+    build:
+      context: ../..              # repo root (sentinel/ — has pyproject.toml)
+      dockerfile: ml/deploy/Dockerfile.inference
+    image: sentinel-inference:1.0.0
+    container_name: sentinel-inference
+    restart: unless-stopped
+    ports:
+      - "8001:8001"               # /predict, /hotspots, /health, /metrics
+    environment:
+      # Config file path inside container
+      SENTINEL_CONFIG: /app/ml/mlops_config.json
+      # Env-var overrides (commented out — mlops_config.json provides defaults)
+      # SENTINEL_CHECKPOINT: /app/ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt
+      # SENTINEL_DRIFT_BASELINE: /app/ml/data/drift_baseline_run12.json
+      # Unbuffered output for clean logs
+      PYTHONUNBUFFERED: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    volumes:
+      # Mount host-side artifacts so the container reads the latest without rebuild
+      # Production: replace bind mounts with a named volume + DVC pull step
+      - ../../ml/checkpoints:/app/ml/checkpoints:ro
+      - ../../ml/data:/app/ml/data:ro
+      - ../../ml/calibration:/app/ml/calibration:ro
+      - ../../ml/mlops_config.json:/app/ml/mlops_config.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s          # model load takes ~30s on first start
+    # GPU passthrough (requires nvidia-docker2 / nvidia-container-toolkit)
+    # Uncomment on RTX 3070 / CUDA hosts
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - sentinel-net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Prometheus — scrapes the inference /metrics endpoint
+  # ───────────────────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: sentinel-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"               # Prometheus UI: http://localhost:9090
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      inference:
+        condition: service_healthy
+    networks:
+      - sentinel-net
+
+# ───────────────────────────────────────────────────────────────────────────
+# Named volumes (persist Prometheus data across container restarts)
+# ───────────────────────────────────────────────────────────────────────────
+volumes:
+  prometheus-data:
+    name: sentinel-prometheus-data
+
+# ───────────────────────────────────────────────────────────────────────────
+# Internal network (api + prometheus on the same bridge)
+# ───────────────────────────────────────────────────────────────────────────
+networks:
+  sentinel-net:
+    name: sentinel-net
+    driver: bridge

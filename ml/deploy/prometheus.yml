@@ -1,0 +1,43 @@
+# prometheus.yml — SENTINEL metrics scrape config (Q4 MLOps Phase C.3)
+#
+# Scrapes the inference API at :8001/metrics every 15s. The API exposes
+# prometheus-fastapi-instrumentator metrics + custom gauges from ml/src/inference/api.py:
+#   - sentinel_model_loaded            (gauge, 1 = loaded, 0 = not loaded)
+#   - sentinel_gpu_memory_bytes        (gauge, current GPU alloc in bytes)
+#   - sentinel_drift_alerts_total      (counter, labelled by stat — populated by DriftDetector)
+#   - http_requests_total              (default FastAPI instrumentation)
+#   - http_request_duration_seconds    (default FastAPI instrumentation)
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: sentinel-local
+    service: sentinel-ml-inference
+    environment: local
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Scrape jobs
+# ─────────────────────────────────────────────────────────────────────────────
+
+scrape_configs:
+  # SENTINEL inference API
+  - job_name: sentinel-inference
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - inference:8001         # Docker Compose service name resolves via DNS
+        labels:
+          service: sentinel
+          component: inference
+          environment: local
+          # Tag the model version so dashboards can pivot per checkpoint
+          # (auto-overridden by mlops_config.json at runtime if needed)
+          model_version: GCB-P1-Run12-v3dospatched-20260613
+
+  # Prometheus itself (for self-monitoring)
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090

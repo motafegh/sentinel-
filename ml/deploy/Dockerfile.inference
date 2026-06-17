@@ -1,0 +1,92 @@
+# Dockerfile.inference — SENTINEL ML Inference API (Q4 MLOps Phase C.1)
+#
+# Build:  docker build -f ml/deploy/Dockerfile.inference -t sentinel-inference .
+# Run:    docker run -p 8001:8001 --gpus all sentinel-inference
+# Compose: see ml/deploy/docker-compose.yml
+#
+# Image layers (top to bottom = build order):
+#   1. Base Python 3.12.1 slim
+#   2. System deps (git, build tools for scipy/numpy)
+#   3. Poetry + Python dependencies
+#   4. Application code (ml/ + data_module/)
+#   5. Runtime: uvicorn serving ml.src.inference.api:app on port 8001
+
+FROM python:3.12.1-slim AS base
+
+# Prevent Python from writing .pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# System deps
+# - git: for pulling HuggingFace model snapshots if not TRANSFORMERS_OFFLINE
+# - curl: for HEALTHCHECK below
+# - build-essential: needed at install time for numpy/scipy wheel compilation
+#   (most ml deps have prebuilt wheels for Linux x86_64, but keep as fallback)
+# - solc-select + solc: multi-version Solidity compiler support (per preprocess.py)
+#   Note: solc-select requires Python pip; we install it via pip
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        curl \
+        build-essential \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer 3: Python dependencies (cached separately from source for faster rebuilds)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Install poetry
+RUN pip install --no-cache-dir poetry==1.8.4
+
+# Copy only the dependency manifests first (cache invalidation)
+COPY pyproject.toml poetry.lock ./
+
+# Disable poetry's venv creation (we install into the system Python)
+# --no-dev: skip pytest, coverage, etc. for production image
+# --no-interaction: don't prompt
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-dev --no-interaction --no-ansi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer 4: Application code
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Copy the ML module + data module (everything the inference API imports)
+# Excluded via .dockerignore: .git, mlruns, htmlcov, .venv, ml/.cache, etc.
+COPY ml/ ./ml/
+COPY data_module/ ./data_module/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer 5: Runtime
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Inference API port
+EXPOSE 8001
+
+# HuggingFace offline mode (graphcodebert-base is pre-baked into the image
+# via ml/.venv at build time; no network needed at runtime)
+ENV TRANSFORMERS_OFFLINE=1 \
+    HF_HUB_OFFLINE=1 \
+    PYTHONPATH=/app
+
+# Health check — uvicorn serves /health which reports predictor_loaded
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Entrypoint
+# --host 0.0.0.0: accept connections from outside the container
+# --port 8001: matches the docker-compose port mapping
+# --workers 1: single worker for now (Run 12 is GPU-bound; multi-worker adds complexity)
+CMD ["uvicorn", "ml.src.inference.api:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Image metadata
+# ─────────────────────────────────────────────────────────────────────────────
+LABEL org.opencontainers.image.title="sentinel-inference" \
+      org.opencontainers.image.description="SENTINEL multi-label Solidity vulnerability detection API" \
+      org.opencontainers.image.source="https://github.com/motafegh/sentinel-" \
+      org.opencontainers.image.version="1.0.0-mlops-q4"
