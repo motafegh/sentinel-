@@ -1,0 +1,10 @@
+{
+  "_comment": "SENTINEL MLOps active config — Q4 2026 Phase B. Single source of truth for which model the inference API serves. Env vars override these defaults.",
+  "checkpoint": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt",
+  "thresholds": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL_thresholds.json",
+  "num_classes": 10,
+  "experiment": "sentinel-retrain-v2",
+  "drift_baseline": "ml/data/drift_baseline.json",
+  "drift_check_interval": 50,
+  "predict_timeout": 60
+}

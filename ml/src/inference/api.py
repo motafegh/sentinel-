@@ -11,8 +11,7 @@ SCHEMA VERSION: Three-tier suspicion output (2026-05-27)
     tier_thresholds {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10}
 
 CHECKPOINT: read from mlops_config.json (`checkpoint` field) or SENTINEL_CHECKPOINT
-            env var. Defaults to Run 4 path for backward compat (Run 12 wiring happens
-            in Phase B of the Q4 MLOps proposal — docs/proposal/MLOps/).
+            env var. Defaults to Run 12 FINAL for forward compat.
   Pipeline verified FAIL=0 with compare_pipelines.py (2026-05-26).
   Override via SENTINEL_CHECKPOINT env var.
 
@@ -27,6 +26,7 @@ FIXES (2026-06-15, Q4 MLOps Phase A.2):
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -42,12 +42,28 @@ from ml.src.inference.drift_detector import DriftDetector
 from ml.src.inference.predictor import Predictor
 from ml.src.inference.preprocess import ContractPreprocessor
 
+
+def _load_mlops_config() -> dict:
+    """Load mlops_config.json if present. Env vars take precedence over file values."""
+    config_path = os.getenv("SENTINEL_CONFIG", "ml/mlops_config.json")
+    cp = Path(config_path)
+    if cp.exists():
+        with open(cp) as f:
+            return json.load(f)
+    return {}
+
+
+_CONFIG = _load_mlops_config()
+
 DRIFT_BASELINE_PATH: str = os.getenv(
     "SENTINEL_DRIFT_BASELINE",
-    "ml/data/drift_baseline.json",
+    _CONFIG.get("drift_baseline", "ml/data/drift_baseline.json"),
 )
 # Run a KS check every N requests (balance: lower = more responsive, higher = cheaper).
-DRIFT_CHECK_INTERVAL: int = int(os.getenv("SENTINEL_DRIFT_CHECK_INTERVAL", "50"))
+DRIFT_CHECK_INTERVAL: int = int(os.getenv(
+    "SENTINEL_DRIFT_CHECK_INTERVAL",
+    str(_CONFIG.get("drift_check_interval", 50)),
+))
 
 # ---------------------------------------------------------------------------
 # Prometheus — custom gauges
@@ -57,11 +73,17 @@ _gauge_gpu_mem_bytes = Gauge("sentinel_gpu_memory_bytes",  "Current GPU memory a
 
 CHECKPOINT: str = os.getenv(
     "SENTINEL_CHECKPOINT",
-    "ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt",
+    _CONFIG.get(
+        "checkpoint",
+        "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt",
+    ),
 )
 
 # Inference timeout in seconds — override via SENTINEL_PREDICT_TIMEOUT env var.
-PREDICT_TIMEOUT: float = float(os.getenv("SENTINEL_PREDICT_TIMEOUT", "60"))
+PREDICT_TIMEOUT: float = float(os.getenv(
+    "SENTINEL_PREDICT_TIMEOUT",
+    str(_CONFIG.get("predict_timeout", 60)),
+))
 
 # Hard upper bound on source_code size — imported from ContractPreprocessor so both
 # the HTTP boundary and the preprocessing layer share one definition.
@@ -182,7 +204,9 @@ class PredictResponse(BaseModel):
     vulnerabilities: list[VulnerabilityResult] = Field(default_factory=list)
 
     # Tier boundaries used — allows agents to interpret tiers without hardcoding thresholds.
-    tier_thresholds: dict[str, float] = Field(default_factory=dict)
+    # "confirmed" is a per-class list when per-class thresholds are loaded; "suspicious"
+    # and "noteworthy" are scalar defaults.
+    tier_thresholds: dict[str, float | list[float]] = Field(default_factory=dict)
 
     thresholds:   list[float] = Field(..., description="Per-class tuned decision thresholds")
     truncated:    bool
