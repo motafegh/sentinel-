@@ -86,7 +86,7 @@ def _ml_result_vault() -> dict:
         "label": "confirmed_vulnerable",
         "probabilities": {
             "Reentrancy": 0.82, "IntegerUO": 0.15, "GasException": 0.05,
-            "Timestamp": 0.08, "TOD": 0.04, "ExternalBug": 0.11,
+            "Timestamp": 0.08, "TransactionOrderDependence": 0.04, "ExternalBug": 0.11,
             "CallToUnknown": 0.09, "MishandledException": 0.06,
             "UnusedReturn": 0.03, "DenialOfService": 0.04,
         },
@@ -106,7 +106,7 @@ def _ml_result_safe() -> dict:
     """Three-tier ML result — all classes well below DEEP_THRESHOLDS."""
     probs = {
         "Reentrancy": 0.04, "IntegerUO": 0.03, "GasException": 0.02,
-        "Timestamp": 0.05, "TOD": 0.01, "ExternalBug": 0.03,
+        "Timestamp": 0.05, "TransactionOrderDependence": 0.01, "ExternalBug": 0.03,
         "CallToUnknown": 0.02, "MishandledException": 0.02,
         "UnusedReturn": 0.01, "DenialOfService": 0.01,
     }

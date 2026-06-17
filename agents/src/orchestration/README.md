@@ -89,7 +89,7 @@ DEEP_THRESHOLDS = {
     "IntegerUO":           0.35,
     "GasException":        0.40,
     "Timestamp":           0.35,
-    "TOD":                 0.35,
+    "TransactionOrderDependence": 0.35,
     "ExternalBug":         0.40,
     "CallToUnknown":       0.40,
     "MishandledException": 0.40,
@@ -104,7 +104,7 @@ Which tool nodes activate per flagged class:
 
 | Class | Tools |
 |-------|-------|
-| Reentrancy, IntegerUO, Timestamp, TOD, ExternalBug, CallToUnknown, DenialOfService | `static_analysis` + `rag_research` |
+| Reentrancy, IntegerUO, Timestamp, TransactionOrderDependence, ExternalBug, CallToUnknown, DenialOfService | `static_analysis` + `rag_research` |
 | GasException, MishandledException, UnusedReturn | `static_analysis` only |
 
 ### CLASS_TO_DETECTORS

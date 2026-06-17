@@ -134,7 +134,7 @@ class TestComputeActiveTools:
 
     def test_all_ten_classes_covered_in_routing_rules(self):
         expected = {
-            "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TOD",
+            "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TransactionOrderDependence",
             "ExternalBug", "CallToUnknown", "MishandledException",
             "UnusedReturn", "DenialOfService",
         }
@@ -142,7 +142,7 @@ class TestComputeActiveTools:
 
     def test_all_ten_classes_covered_in_thresholds(self):
         expected = {
-            "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TOD",
+            "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TransactionOrderDependence",
             "ExternalBug", "CallToUnknown", "MishandledException",
             "UnusedReturn", "DenialOfService",
         }

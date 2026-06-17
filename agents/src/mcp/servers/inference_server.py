@@ -258,7 +258,7 @@ def _mock_prediction(contract_code: str) -> dict[str, Any]:
 
     # Full 10-class probability vector — realistic baseline probabilities.
     _CLASS_NAMES = [
-        "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TOD",
+        "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TransactionOrderDependence",
         "ExternalBug", "CallToUnknown", "MishandledException", "UnusedReturn", "DenialOfService",
     ]
     base_probs: dict[str, float] = {
@@ -266,7 +266,7 @@ def _mock_prediction(contract_code: str) -> dict[str, Any]:
         "IntegerUO":           0.54 if has_reentrancy_pattern else 0.12,
         "GasException":        0.18,
         "Timestamp":           0.31 if has_reentrancy_pattern else 0.14,
-        "TOD":                 0.09,
+        "TransactionOrderDependence": 0.09,
         "ExternalBug":         0.14,
         "CallToUnknown":       0.07,
         "MishandledException": 0.22,

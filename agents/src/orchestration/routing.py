@@ -25,7 +25,7 @@ DEEP_THRESHOLDS: dict[str, float] = {
     "IntegerUO":           0.35,
     "GasException":        0.40,
     "Timestamp":           0.35,
-    "TOD":                 0.35,
+    "TransactionOrderDependence": 0.35,
     "ExternalBug":         0.40,
     "CallToUnknown":       0.40,
     "MishandledException": 0.40,
@@ -45,7 +45,7 @@ ROUTING_RULES: dict[str, list[str]] = {
     "IntegerUO":           ["static_analysis", "rag_research"],
     "GasException":        ["static_analysis"],
     "Timestamp":           ["static_analysis", "rag_research"],
-    "TOD":                 ["static_analysis", "rag_research"],
+    "TransactionOrderDependence": ["static_analysis", "rag_research"],
     "ExternalBug":         ["static_analysis", "rag_research"],
     "CallToUnknown":       ["static_analysis", "rag_research"],
     "MishandledException": ["static_analysis"],
@@ -79,7 +79,7 @@ CLASS_TO_DETECTORS: dict[str, list[str]] = {
     "Timestamp": [
         "timestamp",
     ],
-    "TOD": [
+    "TransactionOrderDependence": [
         "tx-origin",
         "controlled-delegatecall",
         "msg-value-loop",
