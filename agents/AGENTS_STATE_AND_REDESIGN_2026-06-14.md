@@ -94,31 +94,35 @@ START → ml_assessment → quick_screen → evidence_router
 
 ## 3. Staleness Issues — What Needs Updating for Run 13
 
-### 3.1 GasException must be removed from routing layer
+### 3.1 GasException — DEFERRED (still live in Run 12, remove after Run 13 lands)
 
 `agents/src/orchestration/routing.py` hardcodes GasException in:
 - `DEEP_THRESHOLDS["GasException"] = 0.40`
 - `ROUTING_RULES["GasException"] = ["static_analysis"]`
 - `CLASS_TO_DETECTORS["GasException"] = ["costly-loop", "calls-loop", "incorrect-exp"]`
 
-After Run 13, NUM_CLASSES=9 and GasException no longer exists. These 3 entries must be removed.
+**Status:** NOT FIXED YET — Left alone (2026-06-17) because:
+- The model STILL outputs GasException (10 classes, including GasException)
+- Run 13's plan to drop GasException (NUM_CLASSES=9) has NOT shipped yet
+- Removing it now would break routing for a class the model still predicts
 
-**Fix (10 min):** Delete the GasException entries from `routing.py`. Also update `DETECTOR_TO_CLASSES` (auto-built at import time from `CLASS_TO_DETECTORS` — will be correct after the deletion).
+**Fix timing:** Only remove these 3 entries from `routing.py` **after** Run 13 training completes and the model is deployed with NUM_CLASSES=9. Then update `DETECTOR_TO_CLASSES` (auto-built at import time from `CLASS_TO_DETECTORS` — will be correct after deletion).
 
-### 3.2 Class name mismatch: "TOD" vs "TransactionOrderDependence"
+### 3.2 Class name mismatch: "TOD" vs "TransactionOrderDependence" — ✅ FIXED (2026-06-17)
 
-`routing.py` uses `"TOD"` as the class key. The model outputs `"TransactionOrderDependence"`. This means routing never triggers for ToD — probabilities from the model come in as `"TransactionOrderDependence"` but are looked up in `DEEP_THRESHOLDS` as `"TOD"`.
+**Status:** CLOSED — Fixed in commit 8c50fb8d7 (2026-06-17 02:45 UTC).
 
-```python
-# routing.py — WRONG key
-DEEP_THRESHOLDS: dict[str, float] = {
-    ...
-    "TOD": 0.35,    # ← model outputs "TransactionOrderDependence"
-    ...
-}
-```
+What the bug was: `routing.py` used `"TOD"` as the class key. The model outputs `"TransactionOrderDependence"`. This meant routing never triggered for ToD — probabilities from the model came in as `"TransactionOrderDependence"` but were looked up in `DEEP_THRESHOLDS` as `"TOD"`, causing a silent miss (empty tool list returned, contract never enters deep analysis).
 
-**Fix:** Change `"TOD"` to `"TransactionOrderDependence"` everywhere in `routing.py`. Also update `CLASS_TO_DETECTORS` and `ROUTING_RULES`.
+Why tests didn't catch it: All test fixtures and the mock predictor independently invented `"TOD"` too — so they were internally consistent with the buggy code, but never with the real ML API.
+
+**Fix applied (renamed "TOD" → "TransactionOrderDependence" everywhere):**
+- `agents/src/orchestration/routing.py` (3 places: DEEP_THRESHOLDS, ROUTING_RULES, CLASS_TO_DETECTORS)
+- `agents/src/mcp/servers/graph_inspector_server.py` (2 places: _CLASS_STRUCTURAL_SIGNALS, _DETECTOR_CLASS_MAP)
+- `agents/src/mcp/servers/inference_server.py` mock predictor (2 places)
+- Test fixtures + docs (4 places across test_routing_phase0.py, test_smoke_e2e.py, README.md)
+
+All 53+ tests pass post-fix. TransactionOrderDependence contracts now correctly route to static_analysis + rag_research.
 
 ### 3.3 DEEP_THRESHOLDS values are not calibrated to Run 12
 
@@ -217,8 +221,8 @@ synthesizer → writes final_report JSON
 
 **Order matters:**
 
-1. **Fix class name "TOD" → "TransactionOrderDependence"** in `routing.py` (10 min, bug fix)
-2. **Remove GasException from routing.py** (10 min, after Run 13 trains)
+1. ✅ **Fix class name "TOD" → "TransactionOrderDependence"** in `routing.py` (10 min, bug fix) — **DONE 2026-06-17, commit 8c50fb8d7**
+2. **Remove GasException from routing.py** (10 min, after Run 13 trains) — DEFERRED until Run 13 lands
 3. **Update AUDIT_REGISTRY address** after contract redeployment (env var — 5 min)
 4. **Re-tune DEEP_THRESHOLDS** using Run 12/13 per-class AUC-PR values (30 min)
 5. **Rebuild RAG index** once Web3Bugs data is ingested (1 hr — runs pipeline.py)
@@ -242,7 +246,7 @@ agents/tests/
   test_smoke_e2e.py            ← end-to-end smoke (Phase 1 A5, 7 tests)
 ```
 
-219 tests passing as of 2026-05-30. After class name fix (TOD → TransactionOrderDependence) and GasException removal, re-run `poetry run pytest agents/tests/` to verify.
+219+ tests passing as of 2026-05-30. After TOD → TransactionOrderDependence fix (2026-06-17, commit 8c50fb8d7), all 53+ tests in test_routing_phase0.py + test_smoke_e2e.py verified PASS. After Run 13 lands and GasException is removed, re-run full `poetry run pytest agents/tests/` to verify again.
 
 ---
 
@@ -265,7 +269,7 @@ Currently uses LM Studio (local LLM, Windows host at port 1234). For production,
 |---|---|
 | Graph topology | `agents/src/orchestration/graph.py` |
 | Node functions | `agents/src/orchestration/nodes.py` |
-| Routing + thresholds | `agents/src/orchestration/routing.py` ← **needs TOD fix + GasException removal** |
+| Routing + thresholds | `agents/src/orchestration/routing.py` ← **TOD fix ✅ done (2026-06-17); GasException removal pending Run 13** |
 | State TypedDict | `agents/src/orchestration/state.py` |
 | MCP servers | `agents/src/mcp/servers/` |
 | RAG retriever | `agents/src/rag/retriever.py` |
