@@ -121,3 +121,125 @@ def test_buffer_rolls_after_buffer_size(tmp_path):
         f"Buffer should cap at {buffer_size}, got {detector.buffer_len}"
     )
     assert detector.n_seen == 80, "n_seen should count ALL requests, not just buffered ones"
+
+
+# ---------------------------------------------------------------------------
+# Test 4 — placeholder baseline triggers warm-up mode (Q4 MLOps Phase A.1)
+# ---------------------------------------------------------------------------
+
+def test_placeholder_baseline_triggers_warmup_mode(tmp_path):
+    """A baseline JSON with no known stat names forces warm-up mode (alerts off).
+
+    The shipped placeholder JSON has only `source/status/note` keys. Loading
+    it must NOT silently disable drift monitoring; the detector should log
+    a warning and enter warm-up mode.
+    """
+    placeholder = tmp_path / "placeholder.json"
+    placeholder.write_text(json.dumps({
+        "source": "warmup", "status": "PLACEHOLDER", "note": "not real"
+    }))
+
+    detector = DriftDetector(baseline_path=placeholder)
+    assert not detector.warmup_done, (
+        "Placeholder baseline (no known stat names) must force warm-up mode"
+    )
+    assert detector._baseline is None
+
+
+def test_non_dict_baseline_triggers_warmup_mode(tmp_path):
+    """A baseline that is not a JSON object forces warm-up mode."""
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps([1, 2, 3]))  # list, not dict
+
+    detector = DriftDetector(baseline_path=bad)
+    assert not detector.warmup_done
+    assert detector._baseline is None
+
+
+def test_partial_baseline_recognises_known_stats(tmp_path):
+    """A baseline with at least one known stat name is accepted."""
+    mixed = {"source": "warmup", "unrelated_key": [1, 2], "num_nodes": [10, 20, 30]}
+    p = tmp_path / "mixed.json"
+    p.write_text(json.dumps(mixed))
+
+    detector = DriftDetector(baseline_path=p)
+    assert detector.warmup_done, "Should accept baseline that has at least one known stat"
+    assert "num_nodes" in detector._baseline
+
+
+# ---------------------------------------------------------------------------
+# Test 5 — dump_warmup_to_jsonl (Q4 MLOps Phase B.4)
+# ---------------------------------------------------------------------------
+
+def test_dump_warmup_to_jsonl_writes_valid_jsonl(tmp_path):
+    """dump_warmup_to_jsonl writes one JSON record per line, all fields preserved."""
+    detector = DriftDetector(baseline_path=None, n_warmup=5, buffer_size=200)
+    for i in range(10):
+        detector.update_stats({
+            "num_nodes":        float(i * 10),
+            "num_edges":        float(i * 25),
+            "confirmed_count":  float(i % 3),
+            "suspicious_count": float((i + 1) % 2),
+        })
+
+    out = tmp_path / "warmup.jsonl"
+    n = detector.dump_warmup_to_jsonl(out)
+    assert n == 10, f"Expected 10 records written, got {n}"
+    assert out.exists()
+
+    records = [json.loads(line) for line in out.read_text().splitlines() if line]
+    assert len(records) == 10
+    # Verify the first and last records preserve all stat fields
+    assert set(records[0].keys())  == {"num_nodes", "num_edges", "confirmed_count", "suspicious_count"}
+    assert records[0]["num_nodes"]  == 0.0
+    assert records[9]["num_nodes"]  == 90.0
+
+
+def test_dump_warmup_to_jsonl_creates_parent_dirs(tmp_path):
+    """dump_warmup_to_jsonl creates missing parent directories."""
+    detector = DriftDetector(baseline_path=None, n_warmup=2, buffer_size=200)
+    detector.update_stats({"num_nodes": 1.0})
+    detector.update_stats({"num_nodes": 2.0})
+
+    nested = tmp_path / "deep" / "nested" / "warmup.jsonl"
+    detector.dump_warmup_to_jsonl(nested)
+    assert nested.exists(), "Should create nested parent dirs"
+
+
+def test_dump_warmup_to_jsonl_empty_buffer(tmp_path):
+    """dump_warmup_to_jsonl on an empty buffer writes an empty file (0 lines)."""
+    detector = DriftDetector(baseline_path=None, n_warmup=5, buffer_size=200)
+    out = tmp_path / "empty.jsonl"
+    n = detector.dump_warmup_to_jsonl(out)
+    assert n == 0
+    assert out.exists()
+    assert out.read_text() == ""
+
+
+# ---------------------------------------------------------------------------
+# Test 6 — B.4 real baseline file (synthetic warmup)
+# ---------------------------------------------------------------------------
+
+def test_real_baseline_file_loads_into_active_mode():
+    """The shipped drift_baseline_run12.json loads into active mode (4 stats)."""
+    baseline_path = Path("ml/data/drift_baseline_run12.json")
+    if not baseline_path.exists():
+        pytest.skip(
+            "ml/data/drift_baseline_run12.json not present — "
+            "run: python ml/scripts/compute_drift_baseline.py --source warmup "
+            "--warmup-log ml/data/warmup_run12.jsonl "
+            "--output ml/data/drift_baseline_run12.json"
+        )
+
+    detector = DriftDetector(baseline_path=baseline_path)
+    assert detector.warmup_done, "Real baseline should put detector in active mode"
+    assert detector._baseline is not None
+    expected_stats = {"num_nodes", "num_edges", "confirmed_count", "suspicious_count"}
+    actual_stats = set(detector._baseline.keys()) & expected_stats
+    assert actual_stats == expected_stats, (
+        f"Expected 4 known stats, got {actual_stats}"
+    )
+    for stat in expected_stats:
+        assert len(detector._baseline[stat]) >= 30, (
+            f"{stat} has {len(detector._baseline[stat])} samples; need >=30 for KS"
+        )

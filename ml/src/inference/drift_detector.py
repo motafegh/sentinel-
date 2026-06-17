@@ -213,6 +213,29 @@ class DriftDetector:
         """Return current buffer contents as a list for baseline construction."""
         return list(self._buffer)
 
+    def dump_warmup_to_jsonl(self, path: str | Path) -> int:
+        """Dump the current rolling buffer to a JSONL file for baseline building.
+
+        Used after warm-up phase to produce a JSONL that
+        `compute_drift_baseline.py --source warmup` can consume.
+
+        Args:
+            path: Output JSONL path. Will be created (or overwritten) with
+                  one JSON object per line, in the order they were received.
+
+        Returns:
+            Number of samples written.
+        """
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        n = 0
+        with path.open("w") as f:
+            for stats in self._buffer:
+                f.write(json.dumps(stats) + "\n")
+                n += 1
+        logger.info(f"DriftDetector: dumped {n} warmup samples to {path}")
+        return n
+
     # ─────────────────────────────────────────────────────────────────────
     # Properties
     # ─────────────────────────────────────────────────────────────────────
