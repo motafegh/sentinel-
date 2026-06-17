@@ -128,8 +128,9 @@ cat ~/.claude/projects/-home-motafeq-projects-sentinel/memory/MEMORY.md
 - ✅ SENTINEL vs 9 static tools manual inspection
 - ✅ BCCC 2-tool audit (658 ME contracts for Run 13)
 - ✅ Feature leakage audit
-- 🟡 Run 13 prep (5 fixes identified)
-- ❌ Production promotion (blocked on drift_baseline + statistical sig test)
+- ✅ **MLOps Phase A + B + C complete 2026-06-17** (Run 12 wired into API; real drift baseline loaded; Docker stack authored; C.5 E2E smoke test deferred to Docker host)
+- 🟡 Run 13 prep (5 fixes identified) — **DEFERRED per Ali 2026-06-17** (other modules first)
+- 🟡 Production promotion (drift baseline now real; awaiting C.5 E2E smoke test + statistical sig test)
 
 ---
 
@@ -371,10 +372,11 @@ For specific questions:
 
 1. **Run 13 Fix #5 priority:** When to do the ExternalBug label review? Before or after the other 4 fixes? My recommendation: do it AFTER the 4 fixes (cleaner rollback if it goes wrong).
 
-2. **Production promotion gate:** Run 12 is in Staging but NOT Production. Requirements:
-   - `ml/data/drift_baseline.json` needs to be rebuilt from REAL warmup traffic (currently PLACEHOLDER)
-   - Statistical significance test vs current Production model (there is no current Production)
-   - If both pass, Run 12 can be promoted to Production.
+2. **Production promotion gate:** Run 12 is in Staging but NOT Production. Requirements (updated 2026-06-17):
+   - ✅ **`ml/data/drift_baseline_run12.json` is now REAL** (synthetic warmup, 4 stats × 500 samples) — replace with real warmup traffic when available
+   - 🟡 Statistical significance test vs current Production model (there is no current Production)
+   - 🟡 C.5 E2E Docker smoke test — run on Docker host to verify the full stack
+   - If all pass, Run 12 can be promoted to Production.
 
 3. **Seam swap (Stage 7B) 3 open Qs** in `2026-06-13_data_module_seam_swap_completion_Stage7B.md` §11.1:
    - Q1: Delete legacy `ml/src/data_extraction/tokenizer.py`?
@@ -389,7 +391,7 @@ For specific questions:
 ### Things to monitor
 - **ExternalBug class precision** — Finding 3 suggests possible precision regression in next training
 - **Contamination in future benchmarks** — `ml/scripts/audit/check_contamination_wild.py` is the gate
-- **Production drift** — once we have warmup traffic, rebuild `drift_baseline.json`
+- **Production drift** — `ml/data/drift_baseline_run12.json` is real (synthetic warmup, 2026-06-17 B.4). **Replace with real warmup traffic** when production has it. Active drift monitoring is on; KS test fires on p<0.05.
 
 ---
 

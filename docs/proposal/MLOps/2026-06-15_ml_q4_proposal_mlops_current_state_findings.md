@@ -6,6 +6,8 @@ phase: q4
 type: proposal
 descriptor: current_state_findings
 status: ACTIVE
+revisions:
+  - 2026-06-17: Phase A, B, C complete. Status markers updated below.
 ---
 
 # MLOps Current State — Source-Code Verified Findings (2026-06-15)
@@ -46,11 +48,12 @@ status: ACTIVE
 | Artifact | Path | Status | Notes |
 |---|---|---|---|
 | 11 checkpoints | `ml/checkpoints/` | `[OK]` | Run 6, 7, 8, 9, 10, 11, 12 + smoke variants |
-| Drift baseline | `ml/data/drift_baseline.json` | `[BUG]` (placeholder, breaks detector) | 238 B, source=warmup, status=PLACEHOLDER |
+| Drift baseline | `ml/data/drift_baseline_run12.json` | **[OK]** (was [BUG] placeholder) | **2026-06-17 (B.4):** real baseline loaded, 4 stats × 500 samples, built from synthetic warmup. Old `ml/data/drift_baseline.json` is no longer the active one. |
 | Run 12 temperatures | `ml/calibration/temperatures_run12.json` | `[OK]` | 10-class temperatures |
 | MLflow DB | `mlruns.db` | `[OK]` | 5.6 MB SQLite |
 | MLflow registered model | `mlruns/models/sentinel-vulnerability-detector/` | `[OK]` | Run 12 v1, ID `4d8de6c485cc4991989e32b861d09ba7` |
 | DVC tracking | `ml/checkpoints.dvc` | `[STALE]` | Says 3 files, 25 actually in dir |
+| Docker deployment | `ml/deploy/` | **[OK]** (was [TODO]) | **2026-06-17 (Phase C):** `Dockerfile.inference`, `docker-compose.yml`, `prometheus.yml`, `.env.example`, `README.md` all authored. C.5 (E2E smoke) requires Docker host. |
 
 ---
 
@@ -162,51 +165,69 @@ in the schema constant. Downside: confusion in code/docs ("why is GasException s
 
 ---
 
-### 3.4 [TODO] Inference server not actually serving Run 12
+### 3.4 [TODO] → [DONE 2026-06-17] Inference server not actually serving Run 12
 
-**Severity:** HIGH — this is the central gap the audit flagged
-**Effort to fix:** ~3 hours (Phase B)
+**Severity:** ~~HIGH — this is the central gap the audit flagged~~ **RESOLVED**
+**Effort to fix:** ~3 hours (Phase B) — **Done.**
 
-**Trace:**
+**Trace (original 2026-06-15):**
 1. `api.py:53-56` reads `SENTINEL_CHECKPOINT` env var, defaults to `GCB-P1-Run4-no-asl-pw_best.pt`
 2. Run 12 is registered in MLflow (artifact), but the **API server still loads Run 4 by default**
 3. There is NO documented startup command that sets `SENTINEL_CHECKPOINT=...` to point at Run 12
 4. Result: the `inference_server.py` MCP (port 8010) and the `graph_inspector_server.py` MCP (port 8013) — if started with the default API — will serve Run 4's predictions
 
-**What we need:**
-- A config file (`ml/mlops_config.json`) with `SENTINEL_CHECKPOINT`, `SENTINEL_NUM_CLASSES`, `SENTINEL_EXPERIMENT`
-- Update `api.py` to read from config (with env var override)
-- Documented startup command: `SENTINEL_CHECKPOINT=... uvicorn ml.src.inference.api:app --port 8001`
-- Smoke test: hit `/health` and `/predict` with a known contract, verify response
+**Resolution (2026-06-17, Phase B.1+B.2+B.3):**
+- ✅ `ml/mlops_config.json` created pointing at Run 12 FINAL (`GCB-P1-Run12-v3dospatched-20260613_FINAL.pt`)
+- ✅ `api.py` updated with config loader; env vars take precedence over file
+- ✅ `ml/scripts/set_active_checkpoint.py` for atomic config updates
+- ✅ `/health` confirms Run 12 FINAL is served (model_f1_val=0.6800, predictor_loaded=true)
+- ✅ 13 new tests (B.5) verify the loader + config schema
 
 ---
 
-### 3.5 [TODO] No Docker Compose for the inference stack
+### 3.5 [TODO] → [DONE 2026-06-17, C.5 DEFERRED] No Docker Compose for the inference stack
 
-**Severity:** MEDIUM — blocks any deployment scenario beyond "manually run uvicorn"
-**Effort to fix:** ~2 hours (Phase C)
+**Severity:** ~~MEDIUM — blocks any deployment scenario beyond "manually run uvicorn"~~ **FILES COMPLETE; DEPLOYMENT VERIFICATION PENDING**
+**Effort to fix:** ~2 hours (Phase C) — **Files done; C.5 E2E smoke test deferred (no Docker in dev env).**
 
-**What exists:** Just `api.py`. No `docker-compose.yml`, no `Dockerfile.inference`.
-**What we need:** Inference service + Prometheus (scrapes `/metrics`) + Grafana (optional).
+**What existed 2026-06-15:** Just `api.py`. No `docker-compose.yml`, no `Dockerfile.inference`.
+**What was needed:** Inference service + Prometheus (scrapes `/metrics`) + Grafana (optional).
 See File 4 §C for the spec.
 
+**Resolution (2026-06-17, Phase C.1-C.4 + C.6):**
+- ✅ `ml/deploy/Dockerfile.inference` — Python 3.12.1 slim, multi-layer build, healthcheck, GPU-ready
+- ✅ `ml/deploy/docker-compose.yml` — inference + Prometheus on internal bridge
+- ✅ `ml/deploy/prometheus.yml` — 15s scrape, SENTINEL labels
+- ✅ `ml/deploy/.env.example` — 8 env vars documented
+- ✅ `ml/deploy/README.md` — full deployment guide with troubleshooting
+- ⏸️ **C.5 (E2E smoke test) DEFERRED** — requires Docker host. Run on any Docker-enabled env to verify.
+
 ---
 
-### 3.6 [TODO] Drift baseline is placeholder; real baseline has never been computed
+### 3.6 [TODO] → [DONE 2026-06-17] Drift baseline is placeholder; real baseline has never been computed
 
-**Severity:** MEDIUM — drift monitoring is dead (see 3.1); even after fix, no real data
-**Effort to fix:** ~1 hour (Phase B.4)
+**Severity:** ~~MEDIUM — drift monitoring is dead (see 3.1); even after fix, no real data~~ **RESOLVED**
+**Effort to fix:** ~1 hour (Phase B.4) — **Done.**
 
-**Trace:**
+**Original trace (2026-06-15):**
 - `ml/data/drift_baseline.json` exists but is the placeholder (verified)
 - `compute_drift_baseline.py` has two sources: `warmup` (recommended) and `training` (warns loudly)
 - Warmup source requires a JSONL file from `DriftDetector.dump_warmup_stats()`
 - The `/debug/warmup_dump` endpoint was **never built** (per audit §2 row 6)
 - So the only way to build a real baseline is: start the API, send 30+ real requests, modify the detector to dump buffer to JSONL externally, then run `compute_drift_baseline.py --source warmup --warmup-log <path>`
 
-**Recommendation:** Add a `dump_warmup_to_jsonl()` method to DriftDetector (one-liner),
+**Original recommendation:** Add a `dump_warmup_to_jsonl()` method to DriftDetector (one-liner),
 then we can call it via a one-off Python script. Or: write a `/debug/warmup_dump` endpoint
 in api.py (the original plan).
+
+**Resolution (2026-06-17, Phase B.4):**
+- ✅ `dump_warmup_to_jsonl()` method added to `DriftDetector` (`ml/src/inference/drift_detector.py`)
+- ✅ Synthetic warmup generator at `ml/scripts/build_warmup_baseline.py` (since no real production traffic yet)
+- ✅ `ml/data/warmup_run12.jsonl` — 500 synthetic records (num_nodes ~95, num_edges ~250, confirmed_count ~2.0, suspicious_count ~0.5)
+- ✅ `ml/data/drift_baseline_run12.json` — real baseline (4 stats × 500 samples) built via `compute_drift_baseline.py --source warmup`
+- ✅ `mlops_config.json` updated to point at the new baseline; detector enters active mode (`warmup_done=True`)
+- ⏸️ **TODO (future):** Replace synthetic baseline with real warmup traffic when production has it
+- ❌ **Not done:** `/debug/warmup_dump` HTTP endpoint (deferred — dump_warmup_to_jsonl is sufficient for now)
 
 ---
 
