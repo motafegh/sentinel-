@@ -3,7 +3,7 @@
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
 >
-> **Last revised: 2026-06-14** (post-Run-12 launch). **Critical update**: the
+> **Last revised: 2026-06-17** (corrected `tier_thresholds` type to `dict[str, float | list[float]]`; flagged /health vs /predict shape inconsistency — was `dict[str, float]` which is incomplete). Prior revision: 2026-06-14 (post-Run-12 launch). **Critical update**: the
 > `SENTINEL_CHECKPOINT` default in `api.py` is still `ml/checkpoints/GCB-P1-Run4-no-asl-pw_best.pt`
 > (historical). The active best as of Run 12 is
 > `ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_best.pt`. **Always set
@@ -44,7 +44,7 @@ output (2026-05-27)**. `PredictResponse` fields:
 | `confirmed` | `list[VulnerabilityResult]` | prob ≥ `tier_confirmed_threshold` (default 0.55) |
 | `suspicious` | `list[VulnerabilityResult]` | `tier_suspicious_threshold` ≤ prob < `tier_confirmed_threshold` |
 | `vulnerabilities` | `list[VulnerabilityResult]` | Legacy alias for `confirmed` (backward compat) |
-| `tier_thresholds` | `dict[str, float]` | `{"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10}` |
+| `tier_thresholds` | `dict[str, float \| list[float]]` | `{"confirmed": [0.4, 0.5, ...], "suspicious": 0.25, "noteworthy": 0.10}`. `"confirmed"` is a per-class list when per-class thresholds are loaded (Run 12+); scalars when using the default 0.55. **Inconsistency note (2026-06-17):** `/health` returns the scalar default for `"confirmed"`; `/predict` returns the per-class list. Not a 500 — agent consumers should accept both shapes. |
 | `thresholds` | `list[float]` | Per-class tuned decision thresholds (10-element list) |
 | `truncated` | `bool` | True if source was truncated to `MAX_SOURCE_BYTES` |
 | `windows_used` | `int` | Token windows scored (≥1; >1 for long contracts) |
