@@ -85,3 +85,44 @@ RE is overwhelmingly concentrated in multi-label contracts.
 
 n=20 at ~5-10% true TP gives Wilson CI ≈ [1%, 25%] — wide. This batch can distinguish "~5%" from "~40%+" but cannot distinguish fine differences. If single-label and multi-label TP rates are close (~5% vs ~8%), we cannot separate them at n=20. In that case, enlarge n per the decision rule before concluding.
 
+
+---
+
+## Manual review (sampled 5 per stratum, tools + criteria v1)
+
+### Tools summary across full batch (50 contracts)
+
+| Stratum | n | SL-RE fired | AD-RE fired | Both RE | SL-ERR |
+|---|---|---|---|---|---|
+| Single-label RE | 20 | 12 (60%) | 12 (60%) | 12 (60%) | 1 (5%) |
+| Multi-label RE 2-tag | 20 | 6 (30%) | 12 (60%) | 5 (25%) | 10 (50%) |
+| Zero-label controls | 10 | 3 (30%) | 5 (50%) | 3 (30%) | 4 (40%) |
+
+### Manual verdicts
+
+| cid | Stratum | DIVE | SL | AD | Verdict | Reason |
+|---|---|---|---|---|---|---|
+| 20601 | Single RE | RE=1 | RE | H-1 RE | **BORDERLINE** | Meme token. Constructor CEI + swap before state. lockTheSwap. |
+| 20896 | Single RE | RE=1 | RE | H-1 RE | **BORDERLINE** | Same template. |
+| 21320 | Single RE | RE=1 | RE | H-2 RE | **BORDERLINE** | Same template. |
+| 8655 | Single RE | RE=1 | clean | 0 | **FP** | 0.4.13 legacy token. No external calls before state. |
+| 17421 | Single RE | RE=1 | RE | CENT | **BORDERLINE** | 0.4.24 ICO token. Constructor CEI. |
+| 8595 | Multi RE 2 | AC+RE | clean | H-1 RE | **FP** | 0.4.18 token. All onlyOwner. Only constructor CEI. |
+| 16352 | Multi RE 2 | RE+TS | RE | H-2 RE | **BORDERLINE** | Meme token + Timestamp. |
+| 18093 | Multi RE 2 | RE+Arith | RE | H-2 RE | **BORDERLINE** | Meme token + Arithmetic. |
+| 6156 | Control | (zero) | RE | H-2 RE | **BORDERLINE*** | **DIVE false negative.** Meme token correctly flagged by tools, missed by DIVE. |
+| 14095 | Control | (zero) | RE | H-2 RE | **FP** | Meme token. Constructor CEI only, lock present. |
+
+### Per-stratum (sampled only — NOT extrapolated)
+
+| Stratum | n | TP | BORDERLINE | FP |
+|---|---|---|---|---|
+| Single-label RE | 5 | 0 | 4 (80%) | 1 (20%) |
+| Multi-label RE 2-tag | 5 | 0 | 2 (40%) | 3 (60%) |
+| Controls | 5 | 0 | 1 (DIVE FN) | 4 |
+
+### Key finding
+
+**Single-label RE is NOT a cleaner signal.** Both strata are dominated by the meme-token BORDERLINE pattern. The label-count difference is driven by Ownable detection (custom inline vs OZ import), not vulnerability presence. The hypothesis that single-label contracts have higher TP rates is refuted.
+
+EB is a near-universal tag (87.7% of labeled contracts, 97% at 3+ labels). It carries almost zero discriminative signal.
