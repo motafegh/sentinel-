@@ -1,168 +1,60 @@
-# ml/tests — Test Suite
+# ml/tests — SENTINEL ML Test Suite
 
-> **Status:** ✅ Current — v9 schema, 14 test files, verified 2026-06-14
+Pytest test suite covering model architecture, training, inference, preprocessing, and data integrity.
 
-Comprehensive test suite for the SENTINEL ML pipeline.
+---
 
-## Purpose
+## Files
 
-This directory contains pytest-based tests for validating the correctness, robustness, and performance of all ML pipeline components.
+| File | Tests | What it covers |
+|------|-------|---------------|
+| `test_model.py` | ~15 | SentinelModel forward pass shapes, aux output, empty batch, prefix path |
+| `test_gnn_encoder.py` | ~10 | GNNEncoder shapes, phase routing, JK aggregation, edge masks |
+| `test_fusion_layer.py` | ~8 | CrossAttentionFusion shapes, padding, token norm, device mismatch |
+| `test_trainer.py` | ~12 | TrainConfig validation, ASL loss, gradient flow, prefix warmup |
+| `test_api.py` | 18 | API endpoint tests (predict, health, hotspots, validation) |
+| `test_api_config.py` | ~5 | API config loading from mlops_config.json |
+| `test_predictor.py` | ~8 | Checkpoint loading, architecture detection, warmup |
+| `test_drift_detector.py` | ~8 | DriftDetector warm-up, KS test, Prometheus counter |
+| `test_preprocessing.py` | ~10 | Schema constants, feature builders, CFG inheritance |
+| `test_sentinel_dataset.py` | ~6 | SentinelDataset loading, collation, batch shapes |
+| `test_cache.py` | ~6 | Cache key format, TTL expiry, schema validation, atomic write |
+| `test_promote_model.py` | ~4 | MLflow staging promotion |
+| `test_framework_gates.py` | ~10 | Testing framework gate validation |
+| `test_cfg_embedding_separation.py` | ~4 | CFG vs function node embedding separation |
+| `conftest.py` | — | Shared fixtures (model instances, dummy graphs, temp dirs) |
 
-## Test Files
-
-### Core Component Tests
-
-- **`test_model.py`** — Model architecture and forward pass validation
-  - Forward pass shape verification
-  - Auxiliary output testing
-  - Output dimension validation [B, 10]
-  - Four-eye classifier functionality
-
-- **`test_preprocessing.py`** — Graph schema and feature validation
-  - Schema validation (NODE_FEATURE_DIM=12, 14 types)
-  - Feature builder correctness
-  - CFG feature inheritance
-  - Edge type validation (12 types)
-
-- **`test_sentinel_dataset.py`** — Dataset loading and batching
-  - SentinelDataset loading from v2 export artifacts
-  - Collate function correctness
-  - Batch shape validation
-  - 5-tuple return verification
-
-- **`test_trainer.py`** — Training pipeline validation
-  - TrainConfig parameter validation
-  - Loss function correctness (ASL)
-  - Gradient flow verification
-  - Training loop integration
-
-### Infrastructure Tests
-
-- **`test_cache.py`** — Cache system validation
-  - Cache key generation
-  - Schema version invalidation
-  - Atomic write operations
-  - Cache consistency
-
-- **`test_api.py`** — Inference API testing
-  - FastAPI endpoint functionality
-  - Request/response validation
-  - Error handling
-  - Performance characteristics
-
-### Specialized Tests
-
-- **`test_gnn_encoder.py`** — GNN encoder specific tests
-  - 8-layer GAT architecture (2+3+3 phases)
-  - Three-phase attention
-  - JK aggregation
-  - Edge type handling
-
-- **`test_fusion_layer.py`** — Cross-attention fusion tests
-  - Bidirectional cross-attention
-  - Node-token interaction
-  - Output dimension validation (128)
-  - Compile safety verification
-
-- **`test_drift_detector.py`** — Drift detection tests
-  - Statistical drift detection
-  - Threshold validation
-  - Alert generation
-
-- **`test_cfg_embedding_separation.py`** — CFG embedding tests
-  - CFG node separation
-  - Embedding computation
-  - Feature isolation
-
-- **`test_predictor.py`** — Predictor loading and inference tests
-  - Checkpoint loading
-  - Architecture detection
-  - Per-class threshold loading
-
-### Additional Tests
-
-- **`test_promote_model.py`** — Model promotion workflow and checkpoint management
-
-## Configuration
-
-### `conftest.py`
-Pytest configuration file with:
-- Shared fixtures
-- Test data setup
-- Common test utilities
-- Environment configuration
+---
 
 ## Running Tests
 
-### Run All Tests
 ```bash
 cd ml
 poetry run pytest tests/ -v
 ```
 
-### Run Specific Test File
+Or from project root:
 ```bash
-poetry run pytest tests/test_model.py -v
+poetry run pytest ml/tests/ -v
 ```
 
-### Run Specific Test Function
-```bash
-poetry run pytest tests/test_model.py::test_forward_pass -v
-```
+---
 
-### Run with Coverage
-```bash
-poetry run pytest tests/ --cov=ml/src --cov-report=html
-```
+## Test Categories
 
-### Run in Parallel
-```bash
-poetry run pytest tests/ -n auto
-```
+- **Architecture tests** (`test_model.py`, `test_gnn_encoder.py`, `test_fusion_layer.py`): Verify tensor shapes, module composition, and forward pass correctness
+- **Training tests** (`test_trainer.py`): Config validation, loss computation, gradient flow, early stopping
+- **Inference tests** (`test_api.py`, `test_predictor.py`, `test_api_config.py`): HTTP endpoints, checkpoint loading, warmup
+- **Data tests** (`test_sentinel_dataset.py`, `test_preprocessing.py`): Dataset loading, schema validation, feature correctness
+- **Infrastructure tests** (`test_cache.py`, `test_drift_detector.py`, `test_promote_model.py`): Caching, drift monitoring, MLflow integration
+- **Framework tests** (`test_framework_gates.py`): Testing framework gate validation
 
-## Test Coverage
+---
 
-| Module | Coverage Area |
-|--------|---------------|
-| `test_preprocessing.py` | Schema, features, CFG inheritance |
-| `test_model.py` | Forward pass, aux output, shapes |
-| `test_trainer.py` | TrainConfig, ASL loss, gradients |
-| `test_cache.py` | Cache key, schema invalidation, atomic write |
-| `test_dataset.py` | Dataset loading, collate, batch shapes |
-| `test_api.py` | API endpoints, error handling |
-| `test_gnn_encoder.py` | GNN architecture, edge types |
-| `test_fusion_layer.py` | Cross-attention, compile safety |
+## Shared Fixtures (conftest.py)
 
-## Test Data
-
-Tests use:
-- Mock graph data with v9 schema (12-dim features, 12 edge types)
-- Synthetic token sequences
-- Minimal test contracts
-- Cached test fixtures
-
-## Best Practices
-
-When adding new tests:
-1. Follow existing test structure
-2. Use descriptive test names
-3. Include edge cases
-4. Test error conditions
-5. Add fixtures to `conftest.py` for shared setup
-6. Update this README with new test descriptions
-
-## Continuous Integration
-
-These tests are designed to run in CI/CD pipelines:
-- Fast execution (< 5 minutes)
-- No external dependencies
-- Deterministic results
-- Clear failure messages
-
-## Dependencies
-
-- `pytest` — Test framework
-- `pytest-cov` — Coverage reporting
-- `pytest-xdist` — Parallel execution
-- `torch` — PyTorch for model testing
-- `torch-geometric` — PyG for graph testing
+Common fixtures used across test files:
+- Dummy PyG graphs with correct feature dimensions
+- Small SentinelModel instances for fast testing
+- Temporary directories for checkpoint/cache tests
+- Mock Solidity source strings

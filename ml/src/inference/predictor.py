@@ -576,9 +576,53 @@ class Predictor:
           2. CrossAttentionFusion sees 4×512=2048 token positions — identical to training.
           3. No source truncation: the sliding window covers up to 4×510=2040 content
              tokens (vs 510 max with a single window).
+
+        Robustness (BUG-6 fix, 2026-06-18): if the source has no analyzable
+        contract (EmptyGraphError from preprocessor), return a structured
+        "no_contracts_found" response instead of raising. The schema matches
+        `_format_result()` so downstream callers don't need a try/except.
         """
-        graph, windows = self.preprocessor.process_source_windowed(source_code)
+        try:
+            graph, windows = self.preprocessor.process_source_windowed(source_code)
+        except ValueError as exc:
+            # _extract_graph() wraps EmptyGraphError as ValueError with
+            # "No analyzable contract nodes in '<name>'" message.
+            if "No analyzable contract nodes" in str(exc) or "EmptyGraphError" in str(exc):
+                return self._format_no_contracts_response(name, str(exc))
+            raise
         return self._score_windowed(graph, windows)
+
+    def _format_no_contracts_response(self, name: str, reason: str) -> dict:
+        """
+        Return a structured response for sources with no analyzable contract.
+
+        Schema matches _format_result() so callers can treat it identically.
+        The `label` is "no_contracts_found" and probabilities are all 0.0.
+        A `warning` field explains why; `num_nodes = 0` flags it clearly.
+        """
+        probabilities: dict[str, float] = {cls: 0.0 for cls in self._class_names}
+        logger.warning(
+            f"No contracts found in {name!r} — returning no_contracts_found response. "
+            f"Reason: {reason}"
+        )
+        return {
+            "label":            "no_contracts_found",
+            "probabilities":    probabilities,
+            "confirmed":        [],
+            "suspicious":       [],
+            "vulnerabilities":  [],   # legacy alias
+            "tier_thresholds":  {
+                "confirmed":  self.thresholds.cpu().tolist(),
+                "suspicious": self.tier_suspicious_threshold,
+                "noteworthy": 0.10,
+            },
+            "thresholds":    self.thresholds.cpu().tolist(),
+            "truncated":     False,
+            "windows_used":  0,
+            "num_nodes":     0,
+            "num_edges":     0,
+            "warning":       f"no_contracts_found: {reason}",
+        }
 
     def _score_windowed(self, graph, windows: list[dict]) -> dict:
         """

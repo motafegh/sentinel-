@@ -1,79 +1,31 @@
 # ml/src/utils — Utility Functions
 
-> **Status:** ✅ Current — verified 2026-06-14
+Hash utilities for contract identification across the pipeline.
 
-Shared utility functions used across the SENTINEL ML pipeline.
+---
 
-## Purpose
+## Files
 
-This module contains common utility functions that are used by multiple components in the ML pipeline, ensuring consistency and reducing code duplication.
+| File | Lines | Purpose |
+|------|-------|---------|
+| `hash_utils.py` | 315 | MD5 hashing for contract identification |
+| `__init__.py` | 0 | Empty |
 
-## Components
+---
 
-### `hash_utils.py`
-**Contract Identification and Hashing**
+## hash_utils.py
 
-Production-grade contract identification using MD5 hashing.
+MD5-based contract identification used by graph extraction, tokenization, and inference cache.
 
-**Key Functions:**
+**Functions:**
 
-- `get_contract_hash(contract_path)` — Generate MD5 hash for contract identification
-  - Hashes the full contract path to create a unique identifier
-  - Returns 32-character hexadecimal string
-  - Used as filename for both graph and token files to ensure pairing
+| Function | Purpose |
+|----------|---------|
+| `get_contract_hash(path)` | MD5 of full file path (deterministic, for offline pipeline) |
+| `get_contract_hash_from_content(content)` | MD5 of source text (content-addressable, for inference cache) |
+| `validate_hash(s)` | Validate 32-char lowercase hex string |
+| `get_filename_from_hash(h)` | Returns `"{hash}.pt"` |
+| `get_filename_from_path(path)` | Combines path hash + filename |
+| `extract_hash_from_filename(fn)` | Reverse lookup from `.pt` filename |
 
-**Design Decision (Feb 15, 2026):**
-- Use MD5 hash of full contract path for guaranteed uniqueness
-- 32-character hexadecimal string (128 bits)
-- Industry standard for non-cryptographic file identification
-- Collision probability: ~0% for millions of files
-
-**Performance:**
-- 44,434 contracts: ~0.13 seconds
-- Suitable for millions of contracts
-
-**Usage Example:**
-```python
-from ml.src.utils.hash_utils import get_contract_hash
-
-path = Path('BCCC-SCsVul-2024/SourceCodes/Reentrancy/contract_001.sol')
-contract_hash = get_contract_hash(path)
-# Returns: 'a1b2c3d4e5f6789012345678abcdef12'
-```
-
-## Critical Integration
-
-**All pipeline components MUST use these functions:**
-- Graph extraction (`ml/src/preprocessing/graph_extractor.py`)
-- Tokenization (`ml/src/data_extraction/windowed_tokenizer.py`)
-- Dataset loading (`ml/src/datasets/sentinel_dataset.py`)
-- Inference preprocessing (`ml/src/inference/preprocess.py`)
-
-This ensures consistent file naming and pairing across the entire pipeline.
-
-## Technical Details
-
-**Hash Properties:**
-- Uses MD5 (not security-critical, just need uniqueness)
-- Hashes full path string (not file content)
-- UTF-8 encoding for Windows/Linux consistency
-- Deterministic: same path always produces same hash
-
-**Why MD5:**
-- Fast computation
-- Sufficient for non-cryptographic file identification
-- Widely supported across platforms
-- Collision resistance adequate for dataset scale
-
-## Future Extensions
-
-This module may be expanded to include:
-- Additional hashing utilities
-- File path manipulation helpers
-- Configuration validation utilities
-- Common data transformation functions
-
-## Dependencies
-
-- `hashlib` — Standard library for MD5 hashing
-- `pathlib` — Path handling
+**Design:** MD5 is used for non-cryptographic uniqueness (file identification, not security). All pipeline components MUST use these functions for file pairing.

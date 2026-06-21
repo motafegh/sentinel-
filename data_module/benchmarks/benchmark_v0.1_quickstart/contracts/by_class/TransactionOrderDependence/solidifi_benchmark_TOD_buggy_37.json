@@ -1,0 +1,10 @@
+{
+  "labels": [
+    "TransactionOrderDependence"
+  ],
+  "source": "solidifi_benchmark",
+  "category": "TOD",
+  "original_name": "buggy_37.sol",
+  "tier": "A",
+  "ground_truth": "vulnerable"
+}

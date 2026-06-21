@@ -1,0 +1,6280 @@
+{
+  "a60cd0cfdf731fbc91d2629c3b41b96a43518e3b6dcccba92e93d0f4e6e985d4": {
+    "fired": [
+      "large-numeric-literal",
+      "push-zero-opcode",
+      "unspecific-solidity-pragma",
+      "unused-error"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 722.5723339997785
+  },
+  "a2fe5fc650ec952e383445fa3f64b4225eaec0f9783d85f70735102da83f29c1": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 724.6254100009537
+  },
+  "9a15500910264f1dd3cffb9760aa7c2b34fca87d9f18b2febaf1332b93a58133": {
+    "fired": [
+      "centralization-risk",
+      "costly-loop",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 748.0801050005539
+  },
+  "3ec12d54837f7f9155647a20b99392f10323e86aa5784d49c5dfb40cae0fbe4f": {
+    "fired": [
+      "centralization-risk",
+      "costly-loop",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "redundant-statement",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 748.6653329997353
+  },
+  "da511b22efb610d9f7d6d6eeb20a5bdbaa367a068b07fdd2f779018a4fee41bc": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 789.7871660006786
+  },
+  "7f7f726229e9a8365f73701845184ee4527d1a4abe71cd30b4bdc581736da299": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 796.3268900002731
+  },
+  "fd527d9e3da2046121e365f70372075529fdbe72a7ff8459673dac6f23791341": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"fd527d9e3da2046121e365f70372075529fdbe72a7ff8459673dac6f23791341.sol\",\"exportedSymbols\":{\"MyBoToken\":[652],\"owned\":[35],\"token\":[290],\"toke",
+    "duration_ms": 49.802316001660074
+  },
+  "b80dcf3dea30f29fd3f6ffa4cd6680323ae88c891283410ec89144a0baf1873e": {
+    "fired": [
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "uninitialized-local-variable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1699.691884999993
+  },
+  "bd52f5f8d7787638a4b5a55d4bd39fd17f0e1b3e227fa4e3c04846930b3e124e": {
+    "fired": [
+      "costly-loop",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "unspecific-solidity-pragma",
+      "unused-error"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1714.9967959994683
+  },
+  "a265fb33dc20657ca9c403dd2f6337f385f938cf663ea8eb847958d1188c5c15": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1662.1064039991325
+  },
+  "c8d2943b94abaaaee1a464a8ba460c557f87305e26927732c5dfabcc6c98e427": {
+    "fired": [
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "strict-equality-contract-balance",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1662.2563340006309
+  },
+  "e88239d53e39d2318489eb33e20665ecdff23248010493342d63a3717330b8e5": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"e88239d53e39d2318489eb33e20665ecdff23248010493342d63a3717330b8e5.sol\",\"exportedSymbols\":{\"Ownable\":[25],\"TimeCapsule\":[130]},\"id\":131,\"node",
+    "duration_ms": 17.673461999947904
+  },
+  "720125234411593cb6ad5f31e86bbbcca8015da1cd3be77b65c9ab2cd6003a97": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1719.736601000477
+  },
+  "9da7ca3327cfc95bac0461f675ec2b7c3001c4b87912c2bb96fbfe386110332c": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1681.7246850005176
+  },
+  "72a3da4883b8b286613843192d2ba6f440ff0b7f119fcff5d66568e60a31d5be": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"72a3da4883b8b286613843192d2ba6f440ff0b7f119fcff5d66568e60a31d5be.sol\",\"exportedSymbols\":{\"SafeMath\":[127],\"TEX\":[603]},\"id\":604,\"nodeType\":",
+    "duration_ms": 39.59907200078305
+  },
+  "67ef40471c0969c60671eb2e3d3b3823e96feb3d2264fea41e491745211576e1": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "selfdestruct",
+      "unchecked-send",
+      "unsafe-casting",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 766.4364160009427
+  },
+  "0dbe63747cc9ac2949ab6a4fecc99e19c02b1b78db0afe582d4383959e9b5a37": {
+    "fired": [
+      "centralization-risk",
+      "ecrecover",
+      "empty-block",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "selfdestruct",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 751.9320450010127
+  },
+  "4c45905145d904ee14dd5782643112e52bd90eaad7787977f9d4a6968ee3b5c4": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "boolean-equality",
+      "centralization-risk",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 766.4894909994473
+  },
+  "21923478d9164857bd255ba1db312fd82e75ed29b64be28bb901958fc48d266b": {
+    "fired": [
+      "dynamic-array-length-assignment",
+      "empty-block",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "reentrancy-state-change",
+      "selfdestruct",
+      "state-no-address-check",
+      "storage-array-memory-edit",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 769.6231169993553
+  },
+  "8b9a5b536f5d6f77c3c06a19ca4dfe9c534b3c843f6f43a806210eaeebb6ab93": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 757.3791089998849
+  },
+  "40722c128b8ec1dff0dbec1437b0de3d80dbaca30c79c59d9fbea9ce3ce942f6": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "selfdestruct",
+      "state-no-address-check",
+      "storage-array-memory-edit",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 815.5988670005172
+  },
+  "47752a082f8d68b1dc43c126386269e8f5fb8eb485a1349743ea2d683e681e24": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 701.2079550004273
+  },
+  "7540e1ede8c78f94a09326e4cd57aeecc7a27aac58800ec3cfc0ad2846ce8ca4": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 719.2243459994643
+  },
+  "f8a9746862288a3958babee806b4e450c42c1657c8f481a182001d29f1ad6168": {
+    "fired": [
+      "block-timestamp-deadline",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 708.7974949990894
+  },
+  "c83cba55a8c87722218a1c22bb2b9bcf9009ed8960d955c63bfb8063b558f870": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 712.761730001148
+  },
+  "48c3272b3b6ed1a70f82a3d648df1ae19c0dca07ccc713fade21c589d23e8db7": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 726.6576069996518
+  },
+  "03f5b662b3a9f595546122ab806b56d7782d9262b325672fe28b2dcd98008434": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "centralization-risk",
+      "contract-locks-ether",
+      "costly-loop",
+      "empty-block",
+      "empty-require-revert",
+      "incorrect-shift-order",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unsafe-casting",
+      "unused-error",
+      "unused-public-function",
+      "unused-state-variable",
+      "yul-return"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 697.5912019988755
+  },
+  "7aee4627eba8c551de3cc9b1b3d30efdd7f605bd8ce1b9176abbb81302800ce9": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 673.3266910014208
+  },
+  "cbe73a9c6a91721f2b43cf261883507b91ce823ad2c9a49ad0efa71de01449b6": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unchecked-return",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 727.7415069984272
+  },
+  "3704039cb9049d5576ba1359b3ba8267a211a4bd5b283ff8c9a115e5020ac205": {
+    "fired": [
+      "local-variable-shadowing",
+      "push-zero-opcode",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 746.2860340001498
+  },
+  "3a6f7960d3fdfa9ff0177745801f0e4b741c896fbb2406a336d8ef637afd83b6": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 747.2194100009801
+  },
+  "06d2146e38a82fa63b61fad26df0642ebc6dd5db7708901681275d1331f9d854": {
+    "fired": [
+      "dead-code",
+      "dynamic-array-length-assignment",
+      "internal-function-used-once",
+      "reentrancy-state-change",
+      "selfdestruct",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function",
+      "weak-randomness"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 748.2312140000431
+  },
+  "420cb4e7ee5d106b4726ed86631d2fb2e65d0b7fe37a242de258e46b9d61118f": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "dead-code",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 730.8286990009947
+  },
+  "5fb0ffea143a1e72d4d8754dab96ba5bb6c76c27e844ab0100fead46b88400bd": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 593.953572000828
+  },
+  "bbea62297f302c87736ed7d29d3e519af98640a6c174c891de1206f283d6b829": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 659.008825001365
+  },
+  "1fd0f17d80c546e802f46b4d6ad3dd22ff78389784a068a657801e1180eb96d1": {
+    "fired": [
+      "centralization-risk",
+      "contract-locks-ether",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 595.7451079993916
+  },
+  "fb722e75ed3f87eab65eda567ca19c43f61d33fdf8a8a643125af7aa05a1ed11": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "dynamic-array-length-assignment",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "selfdestruct",
+      "uninitialized-local-variable",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 632.967951001774
+  },
+  "303632b88e26757f4828052d4df1a1f10a563acd4655feb5271397cb950f31b2": {
+    "fired": [
+      "empty-require-revert",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 632.3981459991046
+  },
+  "5c7cc94d7b7cf31d2c03bc482daa05b25ebff0001eff59eeac18779d27d9530f": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 632.8447939995385
+  },
+  "7ea7b7ee8fa3ffc94794c7ff160bc74b4ba304a0502c45510f2a427ea3d1a417": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 666.1936390009942
+  },
+  "cf344e4aba64f08f7f1b4ec35f0461cc4f4609f580d50741afa475e1c1ed46b1": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 667.3487480002223
+  },
+  "d7a4da294ac0d61059f4c2edeb3bb0b054f5f5c4a51222eb876aa1d234a8289a": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 697.0267739998235
+  },
+  "322f2bf6fe7f508bc5f6ceef679f7698f9c8f53b1844703fd600515d9a34f653": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "selfdestruct",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 680.6591889999254
+  },
+  "f0cc2a4700375e398df1d51a6eae34b53bfb05057fcfc5e051460bb022be2a2c": {
+    "fired": [
+      "centralization-risk",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "state-variable-could-be-immutable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 680.9840940004506
+  },
+  "0ed0180e24e97a128b77d9d93cda1cb9f354feff646c326cd41b251a91534211": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "local-variable-shadowing",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 703.1379979998746
+  },
+  "23ac0b647910f41f0e0eadfc13b806dfdbc408d180f5a01830ddc819dc378029": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 658.4736090007937
+  },
+  "968505fd01401661ec73f2b2a90b65e3f23833252455ca3bc19e7a2637ec74a5": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 673.4189990002051
+  },
+  "7c61d082168686bea9234127f1a05aea49bac9ad5db470e36d0f38420f75f5d5": {
+    "fired": [
+      "division-before-multiplication",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 650.0988909992884
+  },
+  "c4e524482f86059cc840ccc46adea7cb9b1211ba4f69552f3ae8e3b1b6e60cb6": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 694.5294609995472
+  },
+  "4020a180d77bd3b5ad07b4bc4414034043cf25de4bcb52eeff2b22fca0cde3ed": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 685.463826999694
+  },
+  "c8a24680ab826e2a226dff0c72ba86799f4f5df66eb88f18e6b1f8edd17061f0": {
+    "fired": [
+      "centralization-risk",
+      "costly-loop",
+      "incorrect-caret-operator",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unused-error",
+      "unused-public-function",
+      "weak-randomness"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 669.5793510007206
+  },
+  "4d909f68f364547a07309a705cb04866fec718f91f734ec0158aa11483c09755": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 650.2280860004248
+  },
+  "9a6f8c8da1f4e91ebdb0a2d64f6c6505033aa4179ff4d1470a81d1fa96b3df02": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 641.7008910011646
+  },
+  "995712298f62a90a5bb9470e79d2cf4263353710df281855ced10b14b8af83c3": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 694.8966919990198
+  },
+  "db938375014937330cc275b30ec2350d1a42c278bf8551f579c11946f4a80f18": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "tautology-or-contradiction",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 649.2439049998211
+  },
+  "87e721fd0cf964d8ba40ed46db548d1150a4aef54000aa74b71c6ffdf1260657": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-block",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "redundant-statement",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unspecific-solidity-pragma",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 713.0614090001473
+  },
+  "6b465a698c7cfd22d199f9c8b0e38556bb790a2c57a1f492078ba0f09203ea2d": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 729.1073689993937
+  },
+  "49a03485e42b2d12c2f8bc6913aea4491a2062a98af325bdfcc6dd65607717f1": {
+    "fired": [
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 646.3820509998186
+  },
+  "3d0df0e4b8f1a39007e4241afc2d93fdc01e6d0429da187ffab5cd93c81823c1": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 653.850267000962
+  },
+  "cb017771e3f28f2b2d32116adabf436d441fd07712ac0eb1e9913022df0d3e58": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-use-of-modifier",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 682.6038369999878
+  },
+  "3e537a866acc4fb5218752f97476b9c5a841336ee9af61ab3040d6d679ed66b0": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 682.2999140003958
+  },
+  "d1d677aa21d6e5657b9025b1ddae5d5bc89c04e2d9802cb132286eba870ebeea": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 669.6876909991261
+  },
+  "d1e9ea04d9ea8270daba4235ab1c7f0bb474f6a6083c4952cffb7a8feb28659b": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 690.8692709985189
+  },
+  "af52937cefc52c45cb6e01526151d752613c925d88630d3df7347333544c07c5": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 751.2931250003021
+  },
+  "d981eb53ba1dfd5e8a1b794fa54289bc56102a9102c15d262d06b1cda4df1dc9": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "push-zero-opcode",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 754.8805049991643
+  },
+  "53e551a57f7085f42bcba5632b44d9d06c04e45451c2be246e598335632b355c": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 780.7508329988195
+  },
+  "46022481948070295a74c933b6108e65668c50ba181a8873aa4ce911197b0549": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 745.6075930003863
+  },
+  "d95d0c33b37460a75218811d2ffa5045750389dd0a773317810dfb2eca601bd7": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 745.6357450009818
+  },
+  "8bdf069dff1ca8ae7eafcb3179e282fec559530d1a3d24c9c92564aa8fc60a50": {
+    "fired": [
+      "dead-code",
+      "empty-block",
+      "push-zero-opcode",
+      "redundant-statement",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 755.2106580005784
+  },
+  "441713b4524f94df9970b7cbc786c0dd3a88d8aa41aff77e571bd032bcb82fd3": {
+    "fired": [
+      "centralization-risk",
+      "costly-loop",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 662.5384750004741
+  },
+  "bef251bb43ea9ce1bb304d02f46cb3afb6153c3431334b6f57373b6c46819b93": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 674.3336870003986
+  },
+  "693d0e908c5cfffdcc71066fd68db5da1b150f6d703de296c0516cc678d33475": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 719.5630210007948
+  },
+  "ee64445ba591692d0972d181bd79e7096f0929a18968cf02c326107476215e07": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 727.3338320010225
+  },
+  "ebbeb89f4f60b4a733b21373a3c343e2f0f898f27f32620ea6188ca638907c86": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 727.5592519999918
+  },
+  "1c2eb7232a3569fafd2d14ecd7f4f4e818c75425cda3c5bfd56be71f6daee201": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 727.9806349997671
+  },
+  "a398b6401f3ff46f7e0c0f922e64d8314d75cd9c21d86ba1c3be897ecbdd92aa": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 745.0826539989066
+  },
+  "dec7c6ccce0c807d58ae55550f20b426862aab137df875ef4bf479e6b0b34ba6": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "selfdestruct",
+      "state-no-address-check",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 746.8879759999254
+  },
+  "05b086b14de4ce1c207eb30f8a7cb3bcec7d34c05e60ec75f238035dd2e31d66": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 801.4355169998453
+  },
+  "2fc5ec0b152afb56d21f38ef250a27101f26add766eb1616ac82eefcf09303c2": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 795.9133250005834
+  },
+  "0518188835c65e1c4f42d41e9346925082f28068876576d702b75103cc780824": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 789.2388590007613
+  },
+  "5e0a4797b5b39006bfda643f02a82e6b514bbbbf55de7a9b794e45feaa4d8747": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "boolean-equality",
+      "centralization-risk",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 850.9350529984658
+  },
+  "099f7baccbe0c69bc84459bc9a78ee2e3b8eba425d077d1373c38f807590c4a0": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 729.3882850008231
+  },
+  "a53f8d3cf4347eda50452f98b930597454eb2f0ac9f37b2696a3bb5469a311fb": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 793.3748610012117
+  },
+  "35d7df9ba861ec698b2c8d263535224b66bdc2b6bced43cd1133204605cb5e14": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 754.8337360003643
+  },
+  "651ee19f95e212b528916f5a763dded901c49fe6ce255c790711bdf96a1643b3": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 802.2801890001574
+  },
+  "a0fa5fd5d3cb30786080bf76b2a19cdedd55d3be7219e37e34ee18d0057477e7": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 750.4700569988927
+  },
+  "c8c45bb326db817cc7bf943296d86bc6ea1908b489e688aee28df02526c11029": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 812.9117669996049
+  },
+  "4da86b742a15b22611e119e00eac2a2fb540553755f284f0b868d5a07f2e9c3c": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 665.1983049996488
+  },
+  "9a5ad2f0c83144dde8654c23020ef6d69047eecb65ceb1e913bc50e699af2ffc": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 674.6313029998419
+  },
+  "0bc6e1520ed098c410a7e42dcb23a9815dc2adaa0203174df46296d612029f01": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 668.7848179990397
+  },
+  "43e3f8de0e96e4c216dbb0877e5675220b71093d0d97c38f45f4daf18d1bef03": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 664.3946639997012
+  },
+  "d8ae4bb928d810828bf10704797a52f53599046fc346833187b5d7cb273df28a": {
+    "fired": [
+      "costly-loop",
+      "large-numeric-literal",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "unspecific-solidity-pragma",
+      "unused-error"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 748.5062810010277
+  },
+  "b8ac8eee17d55f82c4a80837ddde3eea4cfab537eb29d76aa3dfa3f591d59459": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "misused-boolean",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "redundant-statement",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "unchecked-return",
+      "unsafe-erc20-operation"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 724.6338759996434
+  },
+  "450ebc34b8abd9e446faf3e0acc344a8887fb8493045de7634ad2f46535a6194": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-use-of-modifier",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unchecked-send",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 702.2132399997645
+  },
+  "3a64be6aa92e7acf53105847859a604814aabd50c084fa319214eadd0a57c752": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 701.2142860003223
+  },
+  "f4fa317bdbaeee0eeb33acee1b190d14d274a2cfee0f6b9922e37b7d2d1d3ddf": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "dead-code",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 743.5382309995475
+  },
+  "29de9586c6c839aacd29cae22de89b1312e2773711989e2899340672d070d54e": {
+    "fired": [
+      "builtin-symbol-shadowing",
+      "constant-function-contains-assembly",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "storage-array-memory-edit",
+      "unchecked-return",
+      "uninitialized-local-variable",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 744.3820990010863
+  },
+  "d22144ae72939540d01321e8e4e80b4b05c1d246151abe2e631f5c975cfc5660": {
+    "fired": [
+      "large-numeric-literal",
+      "push-zero-opcode",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 744.5776910008135
+  },
+  "efb8896335e0af85b461681cb824e12967bc0fd45c50585fce2a04a6fe4f6cdc": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "unchecked-return",
+      "uninitialized-local-variable",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 710.4645149993303
+  },
+  "99da53e17737e505ecd0e2cc8c5f4db52d3184cc558423535c2157fa345ff3e3": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"99da53e17737e505ecd0e2cc8c5f4db52d3184cc558423535c2157fa345ff3e3.sol\",\"exportedSymbols\":{\"SYCEarlyPurchase\":[294]},\"id\":295,\"nodeType\":\"Sou",
+    "duration_ms": 24.697467999430955
+  },
+  "a6507dc736ff9b6a30346f441e78960d0726dcbe1419bfc9aa8853a15ba72187": {
+    "fired": [
+      "dead-code",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 669.445617000747
+  },
+  "d6fb7ee70189d7b2516f64f65ec013eca45ef937c7bae0435474182597f74fe7": {
+    "fired": [
+      "large-numeric-literal",
+      "push-zero-opcode",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 684.1009330000816
+  },
+  "b5f3cda0c4c5efa7be7b3638593c7d1c2e4ea726d213417a7092618b28ee6bd2": {
+    "fired": [
+      "arbitrary-transfer-from",
+      "centralization-risk",
+      "constant-function-contains-assembly",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "misused-boolean",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 720.7687409991195
+  },
+  "4ad7dd7055f463a442b7b3a13b7fa5dd5aac00e2647cfeee5e2fa154f69aa78e": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "modifier-used-only-once",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 722.4676839996391
+  },
+  "bc09c8bc1a4f9e0280cf7fb7355b737727c934c3530ec86a87d779da8942f1a0": {
+    "fired": [
+      "costly-loop",
+      "large-numeric-literal",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "unspecific-solidity-pragma",
+      "unused-error"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 765.6795919992874
+  },
+  "64bcd340a710f1b0780fc1ed1e83b57be51d1d6b616d02d8d48554582785822d": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 728.4231379999255
+  },
+  "7a71e876a2340f453a6a9af1f9807ba6f7dd257730b585c69a2445f9603aefc4": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "redundant-statement",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 601.1471840010927
+  },
+  "7b955aa68334542341bf83492dc2f61ef188e58b6fe76ea83e5f84960cb98a3b": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 609.5486680005706
+  },
+  "ecf1bef89de5f232bc5891e46f47b455ec7be58e374d6ee2518fa6c5231259a4": {
+    "fired": [
+      "push-zero-opcode",
+      "state-change-without-event",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 663.9729510006873
+  },
+  "38429b449eeb2e9b5078f8cf886c51029fddd195500395e426b22d80cb0429a4": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 634.202744000504
+  },
+  "607c17c4ffb37109e29c1a5d893eb23291f2d7b0bb65707d9b729e8abb89a6aa": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "eth-send-unchecked-address",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 641.4010490007058
+  },
+  "b2c0a1ce9f683a2bcff4b1af93cef606ca39403fcb988106c94f1bbae8942d27": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"b2c0a1ce9f683a2bcff4b1af93cef606ca39403fcb988106c94f1bbae8942d27.sol\",\"exportedSymbols\":{\"BasicToken\":[428],\"ERC20Basic\":[163],\"IRCToken\":[",
+    "duration_ms": 44.801450001614285
+  },
+  "a7e6ab1c29b15599d81b08016b6b4d6ad2a32f07543fb42f74bd21b503885583": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "centralization-risk",
+      "ecrecover",
+      "incorrect-caret-operator",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "state-no-address-check",
+      "unchecked-return",
+      "unused-error",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1014.8992550002731
+  },
+  "99aae68f68fad3e85d8843f488c42752d8ab73a5d571cac2344a8cf09fb3e74d": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"99aae68f68fad3e85d8843f488c42752d8ab73a5d571cac2344a8cf09fb3e74d.sol\",\"exportedSymbols\":{\"BitHaus\":[277],\"StandardToken\":[245],\"Token\":[65]",
+    "duration_ms": 25.40545000010752
+  },
+  "f0f121ca17932092e2f4d7e12ab52b1ebbec69e0de2aeea308096c4a087c76ac": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "reentrancy-state-change",
+      "unchecked-send",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 659.5040619995416
+  },
+  "37a95b1ca653466ba433bc8880138eae8feeb5fe53ed6e3b004aa1edc00e54c7": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 631.675444999928
+  },
+  "96e68aefad78fb823538062c998891604ce67caf0324d4337ab30d071b97404b": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Compilation Error: \u001b[1;31mError\u001b[0m\u001b[1;37m: Data location must be \"memory\" for parameter in function, but none was given.\u001b[0m\n96e68aefad78fb823538062c998891604ce67caf0324d4337ab30d071b97404b.sol:88:5:",
+    "duration_ms": 7.897845000115922
+  },
+  "05b10118e59e18eb5ee456f1099cca65d290eebda1ce47642f7e7955c22d4ad3": {
+    "fired": [
+      "centralization-risk",
+      "large-numeric-literal",
+      "push-zero-opcode",
+      "state-no-address-check",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 665.9729029997834
+  },
+  "caa5023f040a4970cf9a7d0f2628926336655c7c0e764b3cdb116512b3bb1e50": {
+    "fired": [
+      "dead-code",
+      "empty-block",
+      "large-numeric-literal",
+      "push-zero-opcode",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 633.4734219999518
+  },
+  "d144103a3e4ff27c96077e129c292948e2d6a948b43a3ef8efb4b3ea2ea6a746": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 669.1265589997784
+  },
+  "9c98e7dd2de51b78764ffa8f4785d404fb1b5ca71de68d82f338ce2e91084137": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 663.3764039997914
+  },
+  "137792ec38da483e79ee1c99488a8a55b5c30f0fae71457a3e74bcd0c866c75a": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 492.03669800044736
+  },
+  "fb8098091808d8527951c844d7c390dd5a970357e54f000c7f228201a8b5d921": {
+    "fired": [
+      "builtin-symbol-shadowing",
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "uninitialized-local-variable",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 741.1854180008959
+  },
+  "781461bc776294ec277cdd0859f57af652f4668093b77838083c575960467ea5": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 727.5858590001008
+  },
+  "115c100ad83429e792743cec20b0e5783133fa69825b59468823ed0594e890bd": {
+    "fired": [
+      "arbitrary-transfer-from",
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "nested-struct-in-mapping",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 771.459790001245
+  },
+  "869723f494bd49e824500d862dc4a65cfc5fafa55a4c90b5ae29240491463738": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Compilation Error: \u001b[1;31mError (5333)\u001b[0m\u001b[1;37m: Source file requires different compiler version (current compiler is 0.8.33+commit.64118f21.Linux.g++) - note that nightly builds are considered to b",
+    "duration_ms": 10.406972000055248
+  },
+  "5f0caaf27a4219559f4467396e63e9cc33c61911d9ab05ba14809af45ed08dc9": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 689.4784960004472
+  },
+  "9d1526fd3c3918cb60d889586521ae1899d2c2569f24b4484cb1eb023a0384f0": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 626.3132150015736
+  },
+  "2c831d11799a9e5cbbb8a7c1757eb473bf3bb4ce5c0a9411093911a452f2a10b": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 668.3602630000678
+  },
+  "6164973eff6573a375016ed46fd93d4ace9dc98fc021ec2b84d92b09486c2851": {
+    "fired": [
+      "empty-block",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 716.4670189995377
+  },
+  "c62b13176fbc6b56ebc99d56e6fd963a6fd99aed7e859545044bb96ea32b9399": {
+    "fired": [
+      "centralization-risk",
+      "ecrecover",
+      "state-no-address-check",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 739.7208339989447
+  },
+  "d460ade4d19838e6b08aef8b0ab09e671fd6719efb900061729e2052acc29a6c": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1795.8920909986773
+  },
+  "04cb2dd1d4ad42ac5c951b3625ab88319f79c7f38e79c457bd878bb12e983f7f": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1466.2988429990946
+  },
+  "80b36c26d1ba4c9b182452f937086941c82c9bad9634d6a1412fb8b2e29fc38e": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1440.20863500009
+  },
+  "5dc8b3c5d1a5b38b31473e6960fbe6885e7fc1b5da20d6f3950c5fce28c75b15": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "dead-code",
+      "empty-block",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "push-zero-opcode",
+      "redundant-statement",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1823.7285200011684
+  },
+  "fbf0aeff8c03032f33ef17abe6ce40308ade3cd37273197b89a8d38274d0cffa": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1529.3242890002148
+  },
+  "67b7f23736faf25851ac791a26bca9de775a7e890f0fb616622a8b6bb827dcce": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 3465.523270999256
+  },
+  "558f6befd55009623727d995475052c3f4364909fa073fc8b8129ae3e4348fba": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 506.90900399968086
+  },
+  "d4988d910781da48f8699967abd4bddd8a790ec8ec6490012cae674802fc0fa4": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 509.846254999502
+  },
+  "bc7f662300a1a8da70442c5e1d6b84a883281ab1b99f4e19e12e481c18d9207c": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 547.5475660005031
+  },
+  "10d406919a4d1e4152eb83fde6428c1f359dd1e9cceff59c1e6a8c9b019f28e6": {
+    "fired": [
+      "centralization-risk",
+      "contract-locks-ether",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "redundant-statement",
+      "state-variable-could-be-immutable",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 543.948687000011
+  },
+  "4ff1df8f8a4d7367c02c2397c5a1edf29ecc758119ae002d07dfa7996fbca340": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 573.8756830014609
+  },
+  "811023048c74c26682843e78bb116b4706c68f9b685ee8ab0f0ed83df7c44b07": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"811023048c74c26682843e78bb116b4706c68f9b685ee8ab0f0ed83df7c44b07.sol\",\"exportedSymbols\":{\"BidGame\":[1369],\"Owned\":[385],\"RoundToken\":[324],",
+    "duration_ms": 93.78137499879813
+  },
+  "13c63c1ff8e16e59b4268e0571ebfe7228e7a99447c28146f6582946bd450f03": {
+    "fired": [
+      "centralization-risk",
+      "literal-instead-of-constant",
+      "non-reentrant-not-first",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1374.998670999048
+  },
+  "fe6f57d78dc18f62814b8d75d4d897f2afb7872db2d0d2075c84ca11e02b3c31": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1271.4392060006503
+  },
+  "10cb948e38184947aced2c26d5a1e18052ef1a4ee5d0a3084fdb732d81a0461c": {
+    "fired": [
+      "centralization-risk",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "unchecked-return",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1346.5591280000808
+  },
+  "98265c4d6121c152f75a83560a50ab0e82950d0c2a30a61c11c93a2f5ffa2535": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1404.0953869989607
+  },
+  "4fdadd7bab1f31282b1b37dda1ad43714c3f5a8b3ac8eba5b8a9560834276f15": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "dead-code",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1399.3447850007215
+  },
+  "e8d0383ab23b2749659ed4dd0f9653f226a2b1e91d7903e3c5b04ec8f09f9b03": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "dead-code",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1365.9909600009996
+  },
+  "fce3d3b8423fc442e3fd4f792e1722760d687a999220fc3a35de861fe9f62cba": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"fce3d3b8423fc442e3fd4f792e1722760d687a999220fc3a35de861fe9f62cba.sol\",\"exportedSymbols\":{\"Arbitrage\":[557],\"Deploy\":[643],\"ERC20\":[293],\"ER",
+    "duration_ms": 52.905033000570256
+  },
+  "b46ace8c885705383306d9d255c3dde780693ebdb35a17be39edb2430c18f2af": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1300.6854390005174
+  },
+  "4064dd309ce33e9538946314bae009647318099e766824ecdef6958acdcf42c2": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "uninitialized-local-variable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1333.5371569992276
+  },
+  "d9a65b8a3a5390855cbe3bc631b62f8ea3b468c34bcb9cbb711305d5619a67ac": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1339.8631069994735
+  },
+  "b82f6165df0814b2f987fdb1118e96644dfe9bb84989bb5254f5c3a468bb0fc6": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unchecked-return",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1315.5840059989714
+  },
+  "4e81b7672c6c3f37a67fada61ca79d145007b7984e0cba1281781cc8e6f84ae6": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1269.3768049994105
+  },
+  "e0cd1ebf024928c9c3ff67d6ae07cb0796b41374f3608b9b357d3589d30d431a": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1348.052359000576
+  },
+  "418e96743f4f0acfe8183e6a94d5cb529b8a87a6d14d100f052082c344da0d10": {
+    "fired": [
+      "centralization-risk",
+      "push-zero-opcode",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-error"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 651.7366110001603
+  },
+  "855035bdaec044484aa133b40bd4af6ed6d8d8e3a45f758034eedfc877722bab": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 617.786384998908
+  },
+  "b23362af7da260a6a0df88c4257976f594fc3e021a1cfec60e3a9d976a45ee34": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "boolean-equality",
+      "centralization-risk",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 624.8418229988602
+  },
+  "6839aa110c1e29438fa78fc0ad8e344e147a125eeaf8116c6220c687454ab6fe": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 621.9877130006353
+  },
+  "2752ac4776b04df80e058ac6b514fed8e7a5f3d4cd9caad90f5a5a8c9ef8df07": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 628.6138980012765
+  },
+  "00c4908d40c0e23bc3ae18cc72f1f7074b4c5d3602507b1876aa6c0db34d38d5": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 643.5412169994379
+  },
+  "cf13374b91347e450a2c3a7c6ae3b0654e3e13666cb5ead5d0d2d88c432a68a0": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 687.6220569993166
+  },
+  "b402a2fca3bbfec442560dd4750267d73b09be0c4c2f3bf213d9fcaad86a2d7f": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "state-no-address-check",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 722.9100849999668
+  },
+  "5a5aac015dff7b57ce58edc43420cf31f913fae47c19b21543499ab41da6b6a3": {
+    "fired": [
+      "centralization-risk",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 726.4423910000914
+  },
+  "b3baa4eabe8cdc203e63486c7f266625f4b1dc5a0164659f087ec6850921616e": {
+    "fired": [
+      "arbitrary-transfer-from",
+      "dead-code",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 678.8992029996734
+  },
+  "55a27848870480be2a1d001031e85fc02b4624b55238a6fe9f5b50ee1109dbbc": {
+    "fired": [
+      "boolean-equality",
+      "builtin-symbol-shadowing",
+      "empty-block",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "reentrancy-state-change",
+      "selfdestruct",
+      "state-no-address-check",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 745.403640999939
+  },
+  "318466da6ceefb7b62c5fce703b4e345c6fbe63a924657d31d4234a5ff609472": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "tautology-or-contradiction",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 739.1441090003354
+  },
+  "ac6ee58bd69176057204a484d6aa65c67ad0a1cac19d1b2f1fb122eb7adbf2d0": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"ac6ee58bd69176057204a484d6aa65c67ad0a1cac19d1b2f1fb122eb7adbf2d0.sol\",\"exportedSymbols\":{\"ERC20\":[68],\"ERC20i\":[28],\"MARIADARIO\":[482],\"Own",
+    "duration_ms": 44.340026999634574
+  },
+  "101b77884394e82ea1e9ac3b0ff2214d092f9a466152632e632e3241aa03da3c": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"101b77884394e82ea1e9ac3b0ff2214d092f9a466152632e632e3241aa03da3c.sol\",\"exportedSymbols\":{\"SafeMath\":[127],\"TCP\":[386]},\"id\":387,\"nodeType\":",
+    "duration_ms": 35.06634900077188
+  },
+  "bf73083c241e3efe3efc5ffd646d09a485da5c828ef3c4cdb73cf178ead6d3b2": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "selfdestruct",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 664.3675220002478
+  },
+  "dc71defcb57ad0cdb3d7be5dee95ecb94798e56cf79e6faa7f1b5c2428dd138e": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 663.889860999916
+  },
+  "6797a05ba7b4f69a659f1b497e3f1d870489a1fb4b310f1efa1cf5e2ade2866c": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 665.3076990005502
+  },
+  "0f88afaa411784c7a8c7eec3d3d86e5f91dc5a7562bac29043eebb1082b4fac0": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 715.8948030009924
+  },
+  "cb81efd08f543d60818aa8d1aff3543d57d339284f0d655b46207041e93ee3fb": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 682.4464130004344
+  },
+  "9d1d9ef639ed8b3977c78e00fd2c176dd72e18515ce4f43edb9f757747a35a5b": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 608.7466839999252
+  },
+  "d4f7ac7295129e286910c6d424a5999e45c24dfd28184af5b46a818c961667d9": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "nested-struct-in-mapping",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 716.3074090003647
+  },
+  "b127e627c9855ac10dd1884cee45945a4bbb3437f81e3de4a599429064752ee0": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 697.0693040002516
+  },
+  "a59e01498a578d9dc74a87a9d7928bc3b76ea4764e1297cf00c4df5d4e6433cf": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 716.2629510003171
+  },
+  "7bbcbf40a54a8e314ce00ad104361aef68d0023c7fa645f0f77220251fa55f86": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 717.3214859994914
+  },
+  "b2fb283a16df28dcbc0913a9f26eeb223c19f7dd2ff4acbef4eb2580fc5cd724": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "centralization-risk",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "incorrect-caret-operator",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "state-variable-could-be-immutable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 714.0845879985136
+  },
+  "f7d3931fcb292cd1dec9b18e23dd279601a79eaa301ca64e9cd1e299d2515887": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 750.6448489984905
+  },
+  "5c193ed0f24f071ab2b21094cb8e30d86db9141fb45864947cac31ea5d5dd4d5": {
+    "fired": [
+      "empty-block",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 662.5160540006618
+  },
+  "baebfddb047617dbc5952bfb12f66d0c079a86d6ac27e3999f0aed06521f3e22": {
+    "fired": [
+      "centralization-risk",
+      "costly-loop",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-immutable",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 707.0019419988967
+  },
+  "daadc7c665dc597ffe34c74f41c3e9a162a79d6f3600a11a098daaf0b0b0f348": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "division-before-multiplication",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 707.5592529999994
+  },
+  "65c7be0855be5c5bdcbbdbc6b4dc8f8bda7777cf983818212e89a5ebc8b43175": {
+    "fired": [
+      "empty-block",
+      "inconsistent-type-names",
+      "state-no-address-check",
+      "unchecked-return",
+      "unchecked-send",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 718.9062249999552
+  },
+  "6398390b05509e7966a1ee7e476a748021846c713a9620c2ca9c0ebaea85f76e": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 746.7477970003529
+  },
+  "c8847504e5651508ec87c867d30fe437810f5f86145884dfd56e646d05b56e38": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 748.6835620002239
+  },
+  "c239a76b453e0c9531959debeca4004ab52c6e74804d30aa6dce1b4efae810f3": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 690.285145999951
+  },
+  "6c619a1d8e26a566da581239bc94bcbcff4f4b1d8725d962c2f8a387c577fd14": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "local-variable-shadowing",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 705.0236880004377
+  },
+  "7bb2b07d536f4781427bdbe4d4518527eec28fb1722f82645e67db0ea42df4a9": {
+    "fired": [
+      "arbitrary-transfer-from",
+      "centralization-risk",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "modifier-used-only-once",
+      "redundant-statement",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 780.1371719997405
+  },
+  "9006b8dd22819e54add525adedb627da6e115b64f2c838c167e43f8992f9b878": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 745.9859369992046
+  },
+  "efdc775215c69208bd604136981806cf8a71d5c5549b0f1607656f4477f8cf8a": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 706.9208689990774
+  },
+  "fe8310bb20369844a8ae8497cf73bbe6507c90fd742ba225070139b498e2090e": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "centralization-risk",
+      "contract-locks-ether",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 758.8587740010553
+  },
+  "546178c06fbf758123bc8698ea6dd8a76efba4d966e75367877139e8826f0d60": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"546178c06fbf758123bc8698ea6dd8a76efba4d966e75367877139e8826f0d60.sol\",\"exportedSymbols\":{\"Barneys4HackerSpaceToken\":[236],\"tokenRecipient\":",
+    "duration_ms": 30.46456300035061
+  },
+  "7008b869ea28e349844765d8e8d9f7fcab67ebfb0d221f6739fa9e7c69bd9aca": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"7008b869ea28e349844765d8e8d9f7fcab67ebfb0d221f6739fa9e7c69bd9aca.sol\",\"exportedSymbols\":{\"Mstcoin\":[355],\"StandardToken\":[256],\"Token\":[74]",
+    "duration_ms": 46.623149999504676
+  },
+  "074e72ddf153728a365eeac458c5833231c72672548b7a414119727b24017409": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "state-variable-shadowing",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 669.9733980003657
+  },
+  "8d8e6418c70b09d2d1e22e66787875bcb31f931d61a26aa1d2a7f42002dd98b7": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 672.3148340006446
+  },
+  "453e3b8b29c5446a348e1be52a976f250eb0621149c14bacd1678f6f03e47aac": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 717.1433569983492
+  },
+  "40574d1573964ec9d35d3045ccb2c903e5dc1eaf02e224f5b191f003304c9148": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 709.7982729992509
+  },
+  "03eb4d05465e9cd006ff113203b56750cfc9d20bf73118f49537e48456616818": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 632.6644599994324
+  },
+  "0a4e496565762409ffdabe40e77bbafcd6259993d320e1e6c27bd14b2486ff89": {
+    "fired": [
+      "block-timestamp-deadline",
+      "centralization-risk",
+      "costly-loop",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 712.599599000896
+  },
+  "a118bd43bc65be6d392ead35fc2f6197ca2fffd654359e1876374facd1243a73": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"a118bd43bc65be6d392ead35fc2f6197ca2fffd654359e1876374facd1243a73.sol\",\"exportedSymbols\":{\"CrystalReignShard\":[879],\"SafeMath\":[97],\"Standar",
+    "duration_ms": 86.59417099988787
+  },
+  "ee31253aa960c8ae843884f6bdb47e8b6cd2cbf03d5406357aa41b6834dfab47": {
+    "fired": [
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 727.6224400011415
+  },
+  "70ba53dd03f314975a7ee70445f383b5ce8cafe5bce7f76cd22acd5b40e8bb86": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-block",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 694.5741990002716
+  },
+  "3e629c341ee8a442c378c485b6efbb0204297ccfb6c57f1bc0698f721cf0aba0": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 682.3174919991288
+  },
+  "bee089b45876df54540c98942e66bf15e04862a147b037f4fa84b5fba3161267": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 734.6947949990863
+  },
+  "7ae066a942211894f57e5bb0a5862f9bf94505d0111dd0076e31efb29933358b": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 713.3664730008604
+  },
+  "d4cf049a6a9fb56be7291143d2e1ff0b0c273daba78a8837115a1c9d6be3c68c": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 632.0111389995873
+  },
+  "dacba84c6cb035218106c654252cb35886f25b85dd0db3b9680e9ddbe747d648": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 644.9079150006582
+  },
+  "aa0db319718a5214d650e91b612a7285236bb6ec5f68d1ef3e6c1f059dc448b0": {
+    "fired": [
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 647.0212490003178
+  },
+  "6123f575059553912045595ea7e90170cceefda27bd23b87f0204f5b989e2bac": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 649.6415210003761
+  },
+  "a036b9df528d0fae19c75b3e93c9ae195f3c7683bed2a8345c56a7948159143b": {
+    "fired": [
+      "arbitrary-transfer-from",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 662.0686090009258
+  },
+  "cd0b43101e36f1cc20a5fe8f16493ff807a097d0cd6cb71456ea1a1adc88e6a4": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 673.8028679992567
+  },
+  "e4cf17f48f4bc3409ecae1ad4420918cfeaa52e48a308a9dd257f921797b2c52": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 681.2860460013326
+  },
+  "e3fbc1aeb6408a20eef1a0168ad6dda087412feda88c17972a587de147411ad5": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 684.5194190009352
+  },
+  "957fcd743316a12f967b132bfbdaa74562532ff199ecb26e7d6af66ee56eaa4b": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 709.5993500006443
+  },
+  "63deab53b18bbf18674c681ecfa8f93323e8e5f1d1cfb0b1dcfeb49046232991": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 709.903546001442
+  },
+  "40eb26313e5b8fca94149f1f48d22923eb937684f1a3304e4caba5a61fc93f77": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 722.0148450014676
+  },
+  "8fd45e5bef4d5f27229850b083dc7d4eac93c04f3bd2f1f877d5d2871e858f93": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 700.8356799997273
+  },
+  "86e0ed3eeba446ba8e139beac3c4e5ef3d45875d068962a501630186ae8763fa": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-erc20-interface",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 727.8607549997105
+  },
+  "58f95dd1ebfab871015cc398b9d0edace2211931411276d485d053c0a999b23c": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 677.9154320011003
+  },
+  "03c0085f3b0ad8e5a393503bc553431a017f43846a46423466b87aad733aba40": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unchecked-return",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 671.7244299998129
+  },
+  "d13cdaac4b3cde5e8cdee0a062567c0ba81e6ed93cb2f6243ad5782f72565f20": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 646.0856859994237
+  },
+  "05789787ce8d9a0743d0c9bc3862c206aa34b5bab4b7a501596a1e4f6e7acc22": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 645.4496339993057
+  },
+  "1ac3f755f981fad869cf1049d8f221110da0062d31ca74bf76aabed98c6c9b80": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "unchecked-send",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 688.5369980009273
+  },
+  "2c94f9a7e0a4a344728bfe6bc5cfe9049771be08687d52bff692251690543d2f": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 721.6408050007885
+  },
+  "d39b61d1eab76d3b089d8095a3d1ce495071a7b89082ced0a49a1c1602bdee34": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"d39b61d1eab76d3b089d8095a3d1ce495071a7b89082ced0a49a1c1602bdee34.sol\",\"exportedSymbols\":{\"MYVRN\":[361],\"StandardToken\":[268],\"Token\":[74]},",
+    "duration_ms": 41.647169999123435
+  },
+  "4874dd72a4112a31610e32e21afbd446c68ebf4a9167859df0afc8e4b9d11f25": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"4874dd72a4112a31610e32e21afbd446c68ebf4a9167859df0afc8e4b9d11f25.sol\",\"exportedSymbols\":{\"IMPACT\":[421],\"StandardToken\":[256],\"Token\":[74]}",
+    "duration_ms": 44.002563001413364
+  },
+  "7bd616bc69dd037b292881ee774a1c53041ab95020a2f613e10b05f61d6df5b0": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 662.2687660001247
+  },
+  "41ea275a67f7f723c815997a94c270d3d0ed69a34831141d6ad2fe3d69b4241b": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 637.5830699998914
+  },
+  "82fead83844023d217a49e64756915a8113f6eb32c92676096c7add138869ac6": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "dynamic-array-length-assignment",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unchecked-return",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 625.3844170005323
+  },
+  "c4ff0da6a2568cf6062ade5ec5854f2633833721261d708969bc6745bf99d46f": {
+    "fired": [
+      "division-before-multiplication",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 650.7162420002714
+  },
+  "988af464502c467bb0acd135c67cd9978ac818ccfa5540555a1c4a88ed878688": {
+    "fired": [
+      "centralization-risk",
+      "internal-function-used-once",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 709.1970149995177
+  },
+  "8f2a70ca3e8634f3b010337816e3796f7f28b7c8f366c652b82eaf2f8a43f0c6": {
+    "fired": [
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 717.4601799997617
+  },
+  "5a19ac77dd355d0ce896263f84c4544504b6a15b4e6e7f0489877d0db6bafd8e": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"5a19ac77dd355d0ce896263f84c4544504b6a15b4e6e7f0489877d0db6bafd8e.sol\",\"exportedSymbols\":{\"StandardToken\":[256],\"Token\":[74],\"WORLD1Coin\":[3",
+    "duration_ms": 37.8639500013378
+  },
+  "7b4b0fcde8976d4cc36d0532cbc0e25443d517b01a6306303bd00fe3fce7ded3": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 704.960156001107
+  },
+  "daeb610f54dc08c3f81a9d543301aaa0e0232346322df7d675544d4b55f372e1": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 700.4931490009767
+  },
+  "707b73a8d3773fe2aab03701a1bd3efd65550c03a9ec7754118abedd45dc3863": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 656.1312899993936
+  },
+  "b5d18b7771a71fa759506d2cefbb88c8121a984e52c8b94c66728a6c9064783b": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 717.4018220011931
+  },
+  "e1a87aeb8376c1143f5e8e020fbe24bb00ee7352b9cb64ee9bf86e8078fb84e9": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-low-level-call",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 679.6350379991054
+  },
+  "25d3cda58b53c34466c533963ad1a1197f23b8fd83739e2068ab669b437ff685": {
+    "fired": [
+      "division-before-multiplication",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 679.2739819993585
+  },
+  "99a2d9fa02e2fe8fd1385d994b1851a4b2e0f99ef83321f3ee4e01ffe2a7805e": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 668.7990169994009
+  },
+  "4cf673dc833a859d07a4f98cce4ba7e73b19174d71b456d930a9d34cf52d5496": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 675.6478820007032
+  },
+  "b56bbd55fe45debf39889b133a77dc25f96d87a7e831ea250e3bd9cbfdb2b8f6": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 682.4465360004979
+  },
+  "7ed0a09620c550ecae8940a6d20934ce1029e73dccaba59d4e6405b5e45d5dff": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 718.5282730006293
+  },
+  "b9d977dfb1af9fe0c97e6a99ff9fc86fd6248e88ad3b59c90296c5cae9436be2": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 694.6996839997155
+  },
+  "a6eda1c4c06ae2764c6d2a781bdfbaf72d12f0e12e52faa80f6c93f41b333c3a": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 728.5527349995391
+  },
+  "8a44db3e51965b52d478ef8af8ad6a28732ab6f09e31d0fac5de251697703c15": {
+    "fired": [
+      "literal-instead-of-constant",
+      "uninitialized-local-variable",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 653.4313419997488
+  },
+  "663a72679a994cf9c58b1cd54e84c9e732421fc474bd8b90f3b07a8b22948520": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "incorrect-erc20-interface",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 683.7534409987711
+  },
+  "661b30489e9b86171da1d7b628a65847c3b609fcbd9eba085cb179a3a755b09f": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 687.672191999809
+  },
+  "bd399c92126fca84b8180283d28c4b865b9f845c368f13505588a739d6bbc543": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 688.2221460000437
+  },
+  "0e70574d06f86a8d8e61eac5b2a848e37bc75b8cfbd0285f9f1bef13dfc7a273": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-erc20-interface",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 647.4014579998766
+  },
+  "eed181e58626a1c941e9548079796ec5b6e63fed38bcaa43a8393a41154c53a9": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 659.5105819997116
+  },
+  "db0c4c6c54d70331dd87192c498b74b92c5b61b1120d72587a675455c4c49c4a": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unchecked-low-level-call",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 2317.830081001375
+  },
+  "0dc2dc07ce955add80b2bb8ed6dee1a126ef5d2640b6118b782a211b0173b3eb": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 2330.565377000312
+  },
+  "1485039d16c94f608382c05cdccc48547c4524da47e89ba853f8002bdc84bfc8": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"1485039d16c94f608382c05cdccc48547c4524da47e89ba853f8002bdc84bfc8.sol\",\"exportedSymbols\":{\"AbstractSYCCrowdsale\":[2],\"SYCEarlyPurchase\":[306",
+    "duration_ms": 22.375503000148456
+  },
+  "ba770e4b0d607d4456a3e23f2f3be912517d0f61c802c0f335321841681b795e": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 2359.9008830005914
+  },
+  "af8c97eaf1b876fb01a1dbbba8d0faac16060eb39692be9f53c425f4d0292cd1": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 2375.1363350002066
+  },
+  "53151c0693cbc77fd745fe14e8d21b1013ca3399f26197bfee7a379ec58c87cd": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 2376.4952040000935
+  },
+  "d3b2111e4baa5723417630bd28b0ffe3c9cbbe8ec715fad0d9f73b45db55d2b1": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 2391.119742000228
+  },
+  "40db1e4d62a2aad0d13dc402fb37c74e2550de8d5a2e8b70dcebe6e887d4a75d": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 682.3761750001722
+  },
+  "8b9b6fed86871ad45ff601ab009d09aac6ef6d2f1366c6607b3b1fe1d99304b3": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 740.5661960001453
+  },
+  "2515ef1ee0099ecc54d741b95a8f1e0ff3bc0aa0cc80c1e1be71214ae2bba790": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 689.5912309992127
+  },
+  "8e7f35e7d76503906e4735449f74c3364562827a96b6d0ef3c09efea69083e64": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unchecked-return",
+      "uninitialized-local-variable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 709.6014710004965
+  },
+  "b258796ad37cf2af56b9e29f1bce3604258d7b2a3968c04e3bad031b385209d3": {
+    "fired": [
+      "incorrect-use-of-modifier",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 717.250645000604
+  },
+  "da036efe1241689ae4895701d98d90aa0cbec30fd30997303606b2eb431c1861": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 722.2688370002288
+  },
+  "56a36c09350b6c0f7ad73d044c42675eb4e76897287838a1541355c147a8bdc2": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"56a36c09350b6c0f7ad73d044c42675eb4e76897287838a1541355c147a8bdc2.sol\",\"exportedSymbols\":{\"ETHERION\":[421],\"StandardToken\":[256],\"Token\":[74",
+    "duration_ms": 41.157028999805334
+  },
+  "3721fc5363935fd4791e3c050b2bfc68d41ca6c8f854395792555cb7b9f151bd": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 693.0864690002636
+  },
+  "5520e8c7d34c2d03640fdec676d1399578d5750749b736622602ec832a047169": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 664.4616560006398
+  },
+  "6922527a7f8dfcfee2566940c15f3218df9a91a433968fffa60806f28f4d238a": {
+    "fired": [
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 600.5039849987952
+  },
+  "1caed43fe80a51609ddb2af25f36c21f7518f9704717d9b5944fd15248e2a552": {
+    "fired": [
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 686.5806200003135
+  },
+  "1ef4e71bca2db7124af8425e09a85654d9d62b1a9d3a04a9d14697d311f45abc": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"1ef4e71bca2db7124af8425e09a85654d9d62b1a9d3a04a9d14697d311f45abc.sol\",\"exportedSymbols\":{\"CosmosToken\":[488],\"ForeignToken\":[18]},\"id\":489,",
+    "duration_ms": 34.247564000907005
+  },
+  "df96c540e5862fb547667c32ebcefa163c88fbdd3d71e1885d3ddc90e5d25943": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 728.9806460012187
+  },
+  "82e656b5d94b3f0a0d91c36ed919bf89c7dbf4005d0ed9d2e0b0ae7983886f57": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"82e656b5d94b3f0a0d91c36ed919bf89c7dbf4005d0ed9d2e0b0ae7983886f57.sol\",\"exportedSymbols\":{\"ERC20Token\":[256],\"INAToken\":[411],\"Token\":[74]},",
+    "duration_ms": 37.74418200009677
+  },
+  "b7ab01b5e86b088d9be75852c4347bcb9586a543ae9d037fe31fc72040decdc5": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 761.9157110002561
+  },
+  "cc29a39a2ce39b0f1abb799efb62934e982cf054e7c263a7b7c95d9515880dc4": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 642.1925449994887
+  },
+  "49fe7b7ff7ae00e1128df9b85c1dc6b3acaa7c4cbf39f7a35b55505acf77ce04": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-erc20-interface",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 671.212420998927
+  },
+  "cda4b0a271bbf041b23b413f7519eaeda26d2582b7641beafee702802db7ea7f": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-erc20-interface",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "selfdestruct",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 707.6472869994177
+  },
+  "fe7a0bd511d4468a99157d0cd2a5fd92dadde36322629604eb8835ae65b540e5": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-use-of-modifier",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 723.3692259997042
+  },
+  "8f570242c5d461107133afacfb606d8af29ae3986fc32e5b8a5ce3bf1d76df3e": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "eth-send-unchecked-address",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 669.7900090002804
+  },
+  "81b314512b69fa492885d1fd9835e61c0991cf5a5961a168c8190c1c5300e162": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 700.9710460006318
+  },
+  "f5cb9d0413d58372508fdc70d80d01fbe6e2cb8b6973745e8b8b6db1d50d8a73": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"f5cb9d0413d58372508fdc70d80d01fbe6e2cb8b6973745e8b8b6db1d50d8a73.sol\",\"exportedSymbols\":{\"ALT\":[625],\"BasicToken\":[316],\"ERC20\":[234],\"ERC2",
+    "duration_ms": 40.66155100008473
+  },
+  "e9cd738959a1688da8459ea40687046e522e9f112088b308b114d2956dec330c": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"e9cd738959a1688da8459ea40687046e522e9f112088b308b114d2956dec330c.sol\",\"exportedSymbols\":{\"DiscoverCoin\":[349],\"StandardToken\":[256],\"Token\"",
+    "duration_ms": 39.24736699991627
+  },
+  "56eed656e3b51119bd6c273404fe3118237cca3ac9146e609207e176188e6dac": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unchecked-return",
+      "uninitialized-local-variable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 673.8273560004018
+  },
+  "b3d38931447cbbd01d397cb38c864578953e31ef1c378df4d7b58d03221a2760": {
+    "fired": [
+      "eth-send-unchecked-address",
+      "inconsistent-type-names",
+      "modifier-used-only-once",
+      "push-zero-opcode",
+      "state-change-without-event",
+      "state-variable-could-be-immutable",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 646.5864590009005
+  },
+  "74271665e9af8529fb57f97d15b79cdefb5aa69b1a4d691601c5cc7e505c3ac7": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 676.2412240004778
+  },
+  "1121e45723bf84d36c1165d9d16893b39d418ab4b2320b875b7c820b2f7ac532": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 708.733621000647
+  },
+  "b12a3f1229ed8e9f4bc24f8f1f1a02239048fb501732a3d1e4f9dd208c020608": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 708.6298449994501
+  },
+  "60af21a02565b6376c15007a411b084564dc461e6c400e3807a3ffed2de598a3": {
+    "fired": [
+      "centralization-risk",
+      "push-zero-opcode",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 629.2412929997226
+  },
+  "df098a840b6074f92537a6aef59a91a166ffbab5893420de7af7453c6ef502a3": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-erc20-interface",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 619.4669659998908
+  },
+  "caa16ab9eb08f064a149c362035e99682aac124a5785bfa0349612265e7774ca": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 619.5605619996059
+  },
+  "ea203cf7014dc047774eddf8f488f4cc0949cd5d265e6a301b0347c540e72e85": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 658.1966209996608
+  },
+  "f0bf5c4aa3f9205f51139b7e83ad4cd1b2594133b8cb9652922599467b4b4039": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 680.7818130000669
+  },
+  "b674405e3203782d6b158d9dd29a7b3ae0aecd0dea556fee3dd4a77034198899": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 686.307822001254
+  },
+  "31ad40df5e66c2a5d6abd3ed7f80d2f46994d56a8040d75f3d63ffc8766ae337": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"31ad40df5e66c2a5d6abd3ed7f80d2f46994d56a8040d75f3d63ffc8766ae337.sol\",\"exportedSymbols\":{\"MaximumCoin\":[348],\"StandardToken\":[256],\"Token\":",
+    "duration_ms": 35.42153799935477
+  },
+  "f4ac60a2b68eb379c75ed6a6edefa4065d0d862a5cb7955ee8e32db529967d6c": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "modifier-used-only-once",
+      "pre-declared-local-variable-usage",
+      "selfdestruct",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 665.2390510007535
+  },
+  "9ade92782381926c5ed0c01ffc0e41a9088aa1ff89b313e8e95583c0067a2fc2": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "redundant-statement",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 642.582491000212
+  },
+  "bd60df51920801f72088e0ea0e35f978aec532c6e58b23a7608026bd13ac4ecf": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "state-variable-shadowing",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 698.1862720003846
+  },
+  "b569e018fd5ed674aa73f5ba5ee8780cf066c7fe099bfee42d7fa0c20976479a": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-erc20-interface",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 710.6326800003444
+  },
+  "0f6720c5bff1e779f934d19d2ef0cbbf7fd1e6bb845ea5f2bfce8d8a72081e60": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "unchecked-return",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 690.8366409988957
+  },
+  "c627f9ab6807ce4e0181df52685a2eb186728d0603d9793f5717a5a208443dbb": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 690.7759929999884
+  },
+  "53d79afd9a5efab07f93974ed99d49cb9f5ebb31fc76011172ddc06a09867968": {
+    "fired": [
+      "centralization-risk",
+      "costly-loop",
+      "eth-send-unchecked-address",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 681.7138420010451
+  },
+  "6a39cf2cbc4e9a0f8ecbd7b605872890dbe17eb0300c284a605eee8202102ed2": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"6a39cf2cbc4e9a0f8ecbd7b605872890dbe17eb0300c284a605eee8202102ed2.sol\",\"exportedSymbols\":{\"StandardToken\":[256],\"Token\":[74],\"WhiteBitcoin\":",
+    "duration_ms": 39.00860199973977
+  },
+  "b662cc586aebf0805acad7b78ef32c362cecc8858731f598b7b195edf0799f1e": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"b662cc586aebf0805acad7b78ef32c362cecc8858731f598b7b195edf0799f1e.sol\",\"exportedSymbols\":{\"StandardToken\":[256],\"The600token\":[421],\"Token\":",
+    "duration_ms": 41.03366600065783
+  },
+  "6ed616dd7e8f5e9f188a7e24ebfa8f2271a34f91c286d58e423b5f0668e7ebf2": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 661.4007360003598
+  },
+  "cc34b1b418f1b4a54b9e94c86baaee7ff7c6d0280f8c49686f9a521a8e5fedff": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 646.2578799983021
+  },
+  "8130cca7bab42178b55d05ecd857ce844955edc8a4e1b3bdef6db7e7dc7eec18": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "uninitialized-local-variable",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 668.86353100017
+  },
+  "b413d40ed8987b9d09fac12d3c6835b04f3a51646d8c02eae7189cee261c3ec2": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 657.5980950001394
+  },
+  "00896b7716599745ad4b7d1c345c8db61b4cc4519f4aaf7d9b84bf43f6a162bb": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-erc20-interface",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 663.1452209985582
+  },
+  "fbc1aac2c094874845d31b4e7878ac8b86a32fee327a773ddce5b918cbccf994": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 587.4550010012172
+  },
+  "7315f4d5d1920af8fb1ec8761ce10ed66c457dbaed36fb35718184f1cb9efb56": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"7315f4d5d1920af8fb1ec8761ce10ed66c457dbaed36fb35718184f1cb9efb56.sol\",\"exportedSymbols\":{\"CloudX\":[353],\"StandardToken\":[256],\"Token\":[74]}",
+    "duration_ms": 35.811965999528184
+  },
+  "d8a3891be579b7af2217dd493ed44ffb813e70a033327d933acf625d19416efb": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"d8a3891be579b7af2217dd493ed44ffb813e70a033327d933acf625d19416efb.sol\",\"exportedSymbols\":{\"Bitzex\":[421],\"StandardToken\":[256],\"Token\":[74]}",
+    "duration_ms": 39.17925199857564
+  },
+  "16be539800760c1392205ea5a4c26cf6640a39f61293e100dc621d9724ae086c": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"16be539800760c1392205ea5a4c26cf6640a39f61293e100dc621d9724ae086c.sol\",\"exportedSymbols\":{\"RYNOTE\":[421],\"StandardToken\":[256],\"Token\":[74]}",
+    "duration_ms": 40.126070998667274
+  },
+  "cb8379905ecf2e7c584cfb8e5586205e98014f8ca332b9da2050a5581b5b74ba": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 627.1415470000647
+  },
+  "1df2b73d06e6147a5da16eda7347cafc443666efb53cdac7dbcda028d7ae4d99": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 628.3964020003623
+  },
+  "096def75ca51dbd0e0e07dead721122a08a5d392ac6fc77607c4f6f06c071706": {
+    "fired": [
+      "division-before-multiplication",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 636.1927239995566
+  },
+  "1d106ea47030e227d086e5d9843ac40dce08f17631f9cd001862257eed9fc644": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 688.2154430004448
+  },
+  "a0cd5ce3d39d0f1bf549a8289fa9414a689c719f62ae421727c51d30306b12c8": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 628.2561620009801
+  },
+  "0220a93742232d1ac2e90d9e10ff656a6a1f68650536cdf611a1ccee8e3f3ee0": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 630.2084059989284
+  },
+  "a7d4fc7bf4bcaa6141901e5b335388e0991995b487a2e0b0b8ec3d307e5cd525": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"a7d4fc7bf4bcaa6141901e5b335388e0991995b487a2e0b0b8ec3d307e5cd525.sol\",\"exportedSymbols\":{\"BasicToken\":[280],\"ERC20\":[316],\"ERC20Basic\":[198",
+    "duration_ms": 57.09727500106965
+  },
+  "c7e3460f3382f871fffdab00e766afc363c6f2c22c6c1afcd284d78a93b95d5c": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 686.8166200001724
+  },
+  "26577e5c3679be94081f14877f638731c61becb66dd132faffaadfc039be4e96": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 707.2138160001487
+  },
+  "6af92dce62bdad73da8866ad2a95de64ebf04e1d6900f70aa088e7c633933589": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 653.6992090004787
+  },
+  "46d815393293134d6e12b36a146aaa72abbf73c2401ffa8ad8ad10e743554d8c": {
+    "fired": [
+      "centralization-risk",
+      "costly-loop",
+      "eth-send-unchecked-address",
+      "inconsistent-type-names",
+      "push-zero-opcode",
+      "reentrancy-state-change",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 665.4395129990007
+  },
+  "22aad2ec24c92d6752805d6c9fbeab87f357fabee3249cbc7a91d927427d626b": {
+    "fired": [
+      "arbitrary-transfer-from",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "unchecked-low-level-call",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 712.3984719983127
+  },
+  "39af83a11140b07f5930447de07601d6aeb596c9a124230608e2b50620987390": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 680.5328110003757
+  },
+  "307fe0194d16eadf50ebf76899d4dc997dcf46cfb755d495024cf823183a719b": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"307fe0194d16eadf50ebf76899d4dc997dcf46cfb755d495024cf823183a719b.sol\",\"exportedSymbols\":{\"SOiVAToken\":[421],\"StandardToken\":[256],\"Token\":[",
+    "duration_ms": 39.87793200030865
+  },
+  "08ca583e28776955d4da99f4acbf63e26392e042123b616e373ce1a3bc64df05": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 652.2404299994378
+  },
+  "2c8707ccaf9bbf424532d396a263392ec6ac36479c7b7d4472b56a9260916161": {
+    "fired": [
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 694.7311349995289
+  },
+  "50d516d85d5b33d86e2d8dafcf298ba61dd6c7cdce5be5571d14bd71b67d8956": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "centralization-risk",
+      "contract-locks-ether",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "local-variable-shadowing",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 693.4153239999432
+  },
+  "4400be216f569cbfac0564a0b2d54f0f7258d9c8448f8ca9d5948d8072e3f736": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 696.1996070003806
+  },
+  "a928f4a34e93cdd0aa5541037064ac21becca624eb1b5b7c58e7ab3a23d093d7": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 708.8059569996403
+  },
+  "a2b196b8300aee549a7235cd442c5114fea4cc5951baf9fc06ab0a24355987ea": {
+    "fired": [
+      "arbitrary-transfer-from",
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 720.9391360011068
+  },
+  "e5ce96c877dd3222b33c5e711f392a1a2838be0b2d802c72e48430bfefeebf01": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"e5ce96c877dd3222b33c5e711f392a1a2838be0b2d802c72e48430bfefeebf01.sol\",\"exportedSymbols\":{\"Elance\":[421],\"StandardToken\":[256],\"Token\":[74]}",
+    "duration_ms": 41.47904499950528
+  },
+  "28b9eb295b735434bc39eef63498db49a4c7fa2ce6685e9ad9964f5eae064a59": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"28b9eb295b735434bc39eef63498db49a4c7fa2ce6685e9ad9964f5eae064a59.sol\",\"exportedSymbols\":{\"BitcoinVision\":[421],\"StandardToken\":[256],\"Token",
+    "duration_ms": 43.36020600021584
+  },
+  "294ee95a026f9b2f029b99539fe09a6f5f3be7e68ca0bfbc857f2e29bf4fb699": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"294ee95a026f9b2f029b99539fe09a6f5f3be7e68ca0bfbc857f2e29bf4fb699.sol\",\"exportedSymbols\":{\"HELP4HUMANITY\":[421],\"StandardToken\":[256],\"Token",
+    "duration_ms": 45.53154600034759
+  },
+  "98789273d5db972a31a7264b7765c071a510f74ba9fb6dda5ac6af8ae0a0bed9": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 600.4999239994504
+  },
+  "c6923685a1657e6ae0044f19a1dda204de227215c2a91798d4d5747eec9aab68": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 612.5778699988587
+  },
+  "d4bf8b535201d1f884917a7d4d323b8601fdc908fe0c4e9335cb0c2ba77f0798": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 636.0916949997772
+  },
+  "fa3c05b492152e8d446e2bd7cc96a9a425998e6cefb57b9483879d68de8c3c89": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 655.259594999734
+  },
+  "e82dbc17cd270c4c6a56be03b834478599fd253fce27620ae0bc61481c69e571": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Compilation Error: \u001b[1;31mError (2915)\u001b[0m\u001b[1;37m: Expected a state variable declaration. If you intended this as a fallback function or a function to handle plain ether transactions, use the \"fallbac",
+    "duration_ms": 11.26119699983974
+  },
+  "e0d52557d26744c032b941ce46ae8fb1b52b47a065150aae2c720e863cb7061c": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 632.1799969991844
+  },
+  "93f64542b2508b18950316af5732225016c97d719541226f02ea2ebbf6a81b83": {
+    "fired": [
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 692.6744180000242
+  },
+  "e882e9e07bcbcb6e30bc00fd33be28e980edcfee332bfdf50ad53e18231dca86": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"e882e9e07bcbcb6e30bc00fd33be28e980edcfee332bfdf50ad53e18231dca86.sol\",\"exportedSymbols\":{\"Fortincoin\":[349],\"StandardToken\":[256],\"Token\":[",
+    "duration_ms": 35.448860999167664
+  },
+  "8c2557f5a565f15b31b354a00dbf5304dd70bfaa666bad1f5995a7b649546acf": {
+    "fired": [
+      "division-before-multiplication",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "unchecked-send",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 651.4386729995749
+  },
+  "1d67a4539d891221b76dce2b0546ca7a368ad6f60b5e7e608ffda501d60d01ec": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 681.1186190006993
+  },
+  "f4d6e7f8631aa6e188b0dd51ce6cbde6b1878602d94ece3f9d58f12ad30928a3": {
+    "fired": [
+      "empty-require-revert",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 668.1772600004479
+  },
+  "b071877048438b7f5295dde2610515510f307c7d1af4f24bf7cf62ada708aab3": {
+    "fired": [
+      "empty-require-revert",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 620.740817999831
+  },
+  "20b477653982476f01b2066a48434e9055611009cae0b530dbadff7f45c66422": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 639.9436589999823
+  },
+  "030f125ab054ff4a3bc678f00d44d8b501297e29cd33cd8c08fb5ecc7fe2d828": {
+    "fired": [
+      "centralization-risk",
+      "dead-code",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "redundant-statement",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 675.3499710011965
+  },
+  "0d524af452a5360a359f2fec711e79a63f01402d15fadf20d18ebae90b66ecca": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 656.0373819993401
+  },
+  "4d28d5f12dcb828eadd6d851ef7c1234822ae5a2f4a962a8ceb553123e95b2dd": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 656.1659489998419
+  },
+  "e3f51e7471ea67e3268543042013e1ad719130c6882e6a81900eda73ce2e5cef": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 666.0085070016066
+  },
+  "b599ebebc28075e0b10150e63106ec18c2fec438cec3108401d155d44d7f5cbd": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 683.2066110000596
+  },
+  "b8aecbafebf7de7e412448260c19c22531f254e097625c70241a145e4a3b7ff8": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 682.741745000385
+  },
+  "395a0a0c8b9f3c1f3e02f453138dfd4df74ca7eb34987f2d7d758e258532cadb": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 667.5180330003059
+  },
+  "d26d3bfbf342a43a316c172875f2dc81f325ddc06f94692f4d39e9c9463c0bd8": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"d26d3bfbf342a43a316c172875f2dc81f325ddc06f94692f4d39e9c9463c0bd8.sol\",\"exportedSymbols\":{\"ContinentsChain\":[342],\"tokenRecipient\":[13]},\"id",
+    "duration_ms": 29.853949001335423
+  },
+  "2d5bbfb32183dff51b383c454b0aeef7ab1e0b4f2c64d2d10815aeeb7b809725": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"2d5bbfb32183dff51b383c454b0aeef7ab1e0b4f2c64d2d10815aeeb7b809725.sol\",\"exportedSymbols\":{\"ELECTRONICPLATINUM\":[344],\"StandardToken\":[256],\"",
+    "duration_ms": 42.1762990008574
+  },
+  "0af0527a94ad3f4d8fc425b56aa617d634a30c0c9a8c3b944b14814f191aafce": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 693.10168300035
+  },
+  "f5532c2e3fbfb7f1d7c8a159387c2bf3f7a65c7996a03f56e9bed94aee96d0d5": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-low-level-call",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 662.4729600007413
+  },
+  "ef3b80fd5204f7f6d6e58f5bccd149152b2c430a51f164e6b3cd3f7f55c6b548": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 734.659929999907
+  },
+  "5cbe7ec95063c32520ec6db7485b7b46f50e73cb11596197aabda50bf47c244c": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "boolean-equality",
+      "centralization-risk",
+      "contract-locks-ether",
+      "costly-loop",
+      "dead-code",
+      "empty-block",
+      "empty-require-revert",
+      "incorrect-caret-operator",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "local-variable-shadowing",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "unsafe-erc20-operation",
+      "unused-public-function",
+      "unused-state-variable"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 753.1540159998258
+  },
+  "bf044d812550bd4c402ac88b0a94738d9e19adf7cadd54277ad3c12b6704268f": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 690.8634610008448
+  },
+  "57def31e20bc97fc67bdcbdcbfffcc0dcd0692d9959afdd307f421c2ffb6d784": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "state-variable-shadowing",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 738.2670910010347
+  },
+  "509324d6e34e1b142ead2dd33ccd17612b1149d536171a8f31cf537c1baafecf": {
+    "fired": [
+      "centralization-risk",
+      "dynamic-array-length-assignment",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "selfdestruct",
+      "state-no-address-check",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 672.6210580000043
+  },
+  "ad1b4ead8ecc9fa5b27f8721252daa791d60f4f4afc55bca142ea645424adca3": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 621.656167000765
+  },
+  "792ffec7e8125dc5e5754f068d19033ad9daf353f56d3154ad8cd5c81b1c92d2": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 633.459380000204
+  },
+  "48df07195a89f90e23cdf85a4201089ea180bcd2e37dac1df77b11a74ec83906": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "incorrect-erc20-interface",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 653.9232840004843
+  },
+  "bfbba1278aefb2d68e56e11a87358f11c68a976435234080d1c1d136766d42ab": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 652.0328170008725
+  },
+  "6bd75d39e1ec51f775bc2abb06dbf56f5cbf445c7cf015dd3c64e4f314349578": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 709.6274819996324
+  },
+  "9ad72fe3ccaacef87f99f11aa38f994853d7856fb0e44d4ef1b62ec09a629d54": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 670.4011269994226
+  },
+  "9946b3e8616200fdabf51a6d55168d05db325b5a64566dcbd6f60229b75901cf": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"9946b3e8616200fdabf51a6d55168d05db325b5a64566dcbd6f60229b75901cf.sol\",\"exportedSymbols\":{\"MUNIRAHAMID\":[421],\"StandardToken\":[256],\"Token\":",
+    "duration_ms": 38.024755000151345
+  },
+  "d91058279bd6567ebb6289e2c3dc0b7f4b0f55e511ce9cdb6ffa6b983e72e948": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "reentrancy-state-change",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 694.6412329998566
+  },
+  "aca1473e058525f2835d49a0cd184adbbdf0636bb683efa9954335d9c1868a69": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "state-variable-shadowing",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 664.888315999633
+  },
+  "d6cfd4200bd29c536535a6ac7b5895f8b70cd4fcdfad17c9511b4af007e4d6c1": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 665.5462910002825
+  },
+  "4af05b8953bef50ec490eb6b9cc6ddfa1833d2693e912ac6c31f8ba31f1f5700": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "literal-instead-of-constant",
+      "state-variable-shadowing",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 666.2715949987614
+  },
+  "7ad5eaca814158798e3cd26916158bce8180a17295359acac77b0797247c9301": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "selfdestruct",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 711.6180859993619
+  },
+  "1b3fee4427ce06b61d89f483f85b1afe9c422c69cb8b003d5de63a98e72aaca7": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"1b3fee4427ce06b61d89f483f85b1afe9c422c69cb8b003d5de63a98e72aaca7.sol\",\"exportedSymbols\":{\"SLFYCoin\":[421],\"StandardToken\":[256],\"Token\":[74",
+    "duration_ms": 46.113459999105544
+  },
+  "d252aec775e35f58c9ae7c529f74334fe763cc11bf885649a6977a10f400cf10": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"d252aec775e35f58c9ae7c529f74334fe763cc11bf885649a6977a10f400cf10.sol\",\"exportedSymbols\":{\"QuranToken\":[421],\"StandardToken\":[256],\"Token\":[",
+    "duration_ms": 51.17131400038488
+  },
+  "634af6c57ac6f27efd051978620fd0851e2d8016e0d3d5679b2ae3d7d417816e": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"634af6c57ac6f27efd051978620fd0851e2d8016e0d3d5679b2ae3d7d417816e.sol\",\"exportedSymbols\":{\"Etros\":[421],\"StandardToken\":[256],\"Token\":[74]},",
+    "duration_ms": 51.16268699930515
+  },
+  "b22127b3c1958766c734686b1a8d71c07e1b3141551d04917df158c590395bb6": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "strict-equality-contract-balance",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 673.528293000345
+  },
+  "7a66b90ef72ddb4034ff1e88aeb1c463b33bd971115dcc550e3a78ad1889645d": {
+    "fired": [
+      "abi-encode-packed-hash-collision",
+      "centralization-risk",
+      "costly-loop",
+      "ecrecover",
+      "empty-require-revert",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "push-zero-opcode",
+      "require-revert-in-loop",
+      "state-change-without-event",
+      "state-no-address-check",
+      "state-variable-could-be-constant",
+      "state-variable-could-be-immutable",
+      "uninitialized-local-variable",
+      "unused-error",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 704.9127390000649
+  },
+  "26888c02196078c04e6455e8fbcd6e8af23ad0be1b7be1001f2da1f9ccadda94": {
+    "fired": [
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 603.9932760013471
+  },
+  "584849d4e3715400f07a63c14763937fa52865d1ef78225591e6efa7b43fbec2": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 636.884634001035
+  },
+  "663fb79788405e65dc76f7763ef25db15cd0398c445f40aa32941b7df912dc84": {
+    "fired": [
+      "boolean-equality",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 709.5731910012546
+  },
+  "b6cdd372fc8e5b2c5b7514c35a4a19264617eb3422e2d0a54785c8e0faec3338": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "large-numeric-literal",
+      "reentrancy-state-change",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 651.5179839989287
+  },
+  "977f7372cc0c09f15575f2dde8dc2b604f1093bd03d6966998ce57c023c45497": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"977f7372cc0c09f15575f2dde8dc2b604f1093bd03d6966998ce57c023c45497.sol\",\"exportedSymbols\":{\"Presale\":[432]},\"id\":433,\"nodeType\":\"SourceUnit\",",
+    "duration_ms": 33.968685998843284
+  },
+  "af56e58a49d7b3780472880c9884f63928a5eabe5dd0915f3411d418a1635600": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1240.3206099988893
+  },
+  "9fea8e0f98084fd30d22876dcf576119747b3133b01291aa1b848cad1fc5eb90": {
+    "fired": [
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1277.1056279998447
+  },
+  "939d45b5d86b97c941eebc2d7c13779018ad1e489885954db938ca999b870907": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1267.3960910015012
+  },
+  "e1d9e868c57ab78ee8d1f06f1efac8068c515063e314d7413e5b0a8cd33cc3ff": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "large-numeric-literal",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1341.7251760001818
+  },
+  "58d25cc05157b5c204e14d9fbea51c944593acc28a5369b6ac004f0668527964": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "large-numeric-literal",
+      "state-no-address-check",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1330.3173719996266
+  },
+  "eb1a36dfd82195ea45d3bd1995cd33ac2d2b23fff3bbc24b0f7804d2350d24ea": {
+    "fired": [
+      "empty-block",
+      "empty-require-revert",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1358.8534439986688
+  },
+  "7e2416aebe31e98fc1d214ed02a9affe8f2e3e6d7ae51b5549fd43a6ae64f038": {
+    "fired": [],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": "Unable to serialize Source Unit from AST - \n{\"absolutePath\":\"7e2416aebe31e98fc1d214ed02a9affe8f2e3e6d7ae51b5549fd43a6ae64f038.sol\",\"exportedSymbols\":{\"GlobalFreeCoin\":[421],\"StandardToken\":[256],\"Toke",
+    "duration_ms": 35.19236899956013
+  },
+  "df712e09c1723378aa79ac038d8f300a1b64b1743872afdfcd84b4ed2196c35f": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "modifier-used-only-once",
+      "state-no-address-check",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": true,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1650.9263110001484
+  },
+  "36265ceebe739ece0ee19d5c71547e9dc50fcc3e7fe9ebab3b008ee5f19006f9": {
+    "fired": [
+      "empty-block",
+      "state-variable-shadowing",
+      "unsafe-erc20-operation",
+      "unspecific-solidity-pragma",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1653.3385170005204
+  },
+  "84ef47942dea5b778321ebeb83d8051e5638f8f14e25ca72abcea177e85e25b6": {
+    "fired": [
+      "boolean-equality",
+      "centralization-risk",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "modifier-used-only-once",
+      "reentrancy-state-change",
+      "tautology-or-contradiction",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": true,
+    "error": null,
+    "duration_ms": 1578.7239069995849
+  },
+  "c40bf6caa8f51da47eeff90138152a975149158c4f6da2a5e2f9262a788ec3f4": {
+    "fired": [
+      "centralization-risk",
+      "empty-require-revert",
+      "inconsistent-type-names",
+      "internal-function-used-once",
+      "literal-instead-of-constant",
+      "unchecked-low-level-call",
+      "unchecked-return",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1603.8383729992347
+  },
+  "f145875238f2a1e1848f4134b874fe101176343ce65fb798ce123f46b4367b4f": {
+    "fired": [
+      "centralization-risk",
+      "empty-block",
+      "empty-require-revert",
+      "literal-instead-of-constant",
+      "redundant-statement",
+      "unsafe-erc20-operation",
+      "unused-public-function"
+    ],
+    "agrees_eb": false,
+    "agrees_re": false,
+    "error": null,
+    "duration_ms": 1640.296623998438
+  }
+}

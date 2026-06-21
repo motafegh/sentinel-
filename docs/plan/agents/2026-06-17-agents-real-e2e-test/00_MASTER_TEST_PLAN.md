@@ -61,6 +61,25 @@ The complete agents audit pipeline:
 
 ---
 
+## LLM Model Selection (Reference)
+
+When loading models in LM Studio, use these exact IDs (verified against `agents/src/llm/client.py:51-58`):
+
+| Role | Model ID | Used by | Why |
+|---|---|---|---|
+| `MODEL_FAST` | `gemma-4-e2b-it` | Tool selection, simple routing | Small, fast, low-latency |
+| `MODEL_STRONG` | `qwen3.5-9b-ud` | `cross_validator` (P/D/J debate), report gen | Reasoning quality on long context |
+| `MODEL_CODER` | `qwen2.5-coder-7b-instruct` | Solidity code review | Trained on 80+ languages incl. Solidity |
+| `MODEL_EMBED` | `text-embedding-nomic-embed-text-v1.5` | RAG embeddings | 8K context, top of MTEB |
+
+Verify loaded models with:
+```bash
+curl -s $LM_STUDIO_BASE_URL/models | jq '.data[].id'
+```
+Expect all 4 IDs above. Missing any → load before starting.
+
+→ You now know: The plan originally said "Qwen 2.5 7B or Mistral-7B" but the actual code (`client.py:51-58`) has 4 specific model IDs. Loading the wrong models = silent fallback or 404 from LM Studio. Always cross-check with the `curl` above.
+
 ## Test Strategy
 
 ### Phase 1: Setup (2-3 hours)
@@ -153,9 +172,15 @@ Before starting, verify you have:
   - Download from: https://lmstudio.ai/
   - Or use OpenAI API
 - [ ] poetry installed (for ML API + agents)
-- [ ] Slither + Aderyn in agents/.venv
+- [ ] **Slither + Aderyn in `agents/.venv`** — verify with:
+  ```bash
+  cd ~/projects/sentinel/agents
+  poetry run slither --version   # expect 0.11.x
+  poetry run aderyn --version   # expect ≥ 0.4.21 (pre-0.4.21 has known errors, see Run 12 eval)
+  ```
 - [ ] Run 12 checkpoint exists: `ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt`
 - [ ] RAG index exists: `agents/data/index/`
+- [ ] `agents/.env` has: `LM_STUDIO_BASE_URL`, `AUDIT_MOCK=true`, `LM_STUDIO_API_KEY="lm-studio"`
 
 **Access:**
 - [ ] Can start background processes (terminals)
@@ -270,3 +295,13 @@ After completing this test, you'll have:
 ---
 
 **Ready to start?** Open `01_SETUP_PLAN.md` →
+
+---
+
+## Learning Outcomes (Plan Onboarding)
+
+→ You now know: This E2E test exists because no real E2E test exists — `tests/test_smoke_e2e.py` mocks all MCP calls (per its own docstring), and `scripts/smoke_*.py` only test individual servers. So this run is the first time the 9-node graph executes against real LLM + real MCP + real ML.
+
+→ You now know: The 9 nodes (`nodes.py:162,291,336,409,493,676,842,941,1103`) and 4 MCP ports (8010/8011/8012/8013) and ML API port 8001 are all verified against code. The 5 v1.1 fixes are documented in `CHANGELOG.md`.
+
+→ You now know: The plan's critical premise (5-8 hours saves 4-8 hours of debugging in Phase A) is valid because Phase A's first 3 steps (graph cleanup, reflection, debate) WILL interact with cross_validator + audit_check + rag_research — and any of those 3 having a real bug is a Phase A blocker.

@@ -1,0 +1,10 @@
+{
+  "labels": [
+    "Reentrancy"
+  ],
+  "source": "solidifi_benchmark",
+  "category": "Re-entrancy",
+  "original_name": "buggy_30.sol",
+  "tier": "A",
+  "ground_truth": "vulnerable"
+}

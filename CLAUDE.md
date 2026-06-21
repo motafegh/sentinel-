@@ -27,10 +27,14 @@ are not a nod.
 
 **2 — Check MEMORY.md.**
 Before any architecture or library decision, check the live `MEMORY.md` and all of its
-references at:
+references that you need for your works at:
+wsl path : 
+`/home/motafeq/.claude/projects/-home-motafeq-projects-sentinel/memory/`
+
+windows path : 
 `\\wsl.localhost\\Ubuntu-24.04\\home\\motafeq\\.claude\\projects\\-home-motafeq-projects-sentinel\\memory`
 
-**3 — Document incrementally, never batch.**
+**3 — WORKING MEMORIES : Document incrementally, never batch.**
 Whenever planning, analyzing, or reading source code:
 - Before starting, create a dedicated `.md` file at a path like
   `~/.claude/scratch/<topic>_<YYYYMMDD>.md` (e.g. `gnn_trainer_analysis_20260613.md`).
@@ -56,28 +60,6 @@ When reading the SENTINEL codebase:
 
 ---
 
-## Role System
-
-Default: **Senior Tech Lead + Career Coach** (combined, always active).
-
-| Signal | Primary Role |
-|---|---|
-| Planning, task breakdown | PROJECT MANAGER |
-| Portfolio / career trade-offs | CAREER COACH |
-| Architecture, system design | SENIOR TECH LEAD |
-| Active coding | PAIR PROGRAMMER |
-| Error message / broken code | DEBUGGER |
-| **Trigger phrase (see Modes below)** | **DEEP DIVE TEACHER** (incremental teaching) |
-
-Label perspective shifts explicitly: [TECH LEAD] / [CAREER COACH] / [RECOMMENDATION].
-
-Role conflict resolution:
-- Tech Lead says deep dive vs Career Coach says fast-forward → Career Coach wins
-- PM says stay in scope vs Tech Lead sees critical flaw → Tech Lead wins
-
-
----
-
 ## Modes (opt-in via explicit trigger phrase)
 
 
@@ -99,6 +81,31 @@ learning_sentinel material.
 normal ask — not as "do the X in incremental-teaching mode." Only the trigger phrases
 activate the mode.
 
+
+---
+
+## Plan Execution Style (auto, no trigger needed)
+
+For multi-step work where decisions are being made, activate **Plan Onboarding** mode
+based on judgment (see `ONBOARDING.md` §2 activation signal), not on file paths. The
+full style definition, templates, and guardrails live in **`ONBOARDING.md`** (project
+root). Read it once, then refer back as needed.
+
+**The contract:**
+- Explain **why/how/what/where** understandable/simply only at decision points Or at the important checkpoints (e.g., "before we code, let's confirm the plan," "after we code, let's confirm what changed and what we learned").
+- End meaningful steps with `→ You now know: <insight>` (1-4 lines, not a paragraph- depeneding on the insight) to confirm the learning.
+- The work itself is the learning vehicle — not chat spam
+- Teaching must NOT slow execution or cause drift — the 5 guardrails in ONBOARDING.md
+  §5 prevent this
+- This is **lighter** than DEEP DIVE TEACHING (no `learning_sentinel/` material unless
+  that mode's trigger phrase is used)
+- **No path-based trigger.** Claude judges per step, not per session, and can switch
+  mid-session when the work's nature changes.
+
+**Correction signals (Ali → Claude):**
+- "lighter" / "terse" — too verbose, re-engage Rule 1
+- "what did we just learn?" — emit the `→ you now know` note
+- "explain that decision" — add a 1-line tradeoff callout
 
 ---
 

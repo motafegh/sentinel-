@@ -1,0 +1,68 @@
+# SENTINEL v2 testing framework config
+# This file is the single source of truth for what gates run, what probes
+# are used, and what paths are checked.
+#
+# Edit the values below to customize for your run/project. See
+# ml/testing_specs/MIGRATION.md for adapting to a new project.
+
+project: sentinel
+run_name: GCB-P1-Run12-v3dospatched-20260613
+schema_version: v9
+num_classes: 10
+
+# Paths
+paths:
+  checkpoint: ml/checkpoints/${run_name}_FINAL.pt
+  thresholds: ml/checkpoints/${run_name}_FINAL_thresholds.json
+  behavioral_probes: ml/checkpoints/${run_name}_behavioral_probes.json
+  label_quality: ml/checkpoints/v3_label_quality.json
+  export: data_module/data/exports/sentinel-v3-smartbugs-2026-06-13
+  val_log: ml/logs/${run_name}/epoch_summary.jsonl
+  threshold_sensitivity: ml/checkpoints/${run_name}_threshold_sensitivity.json
+  cross_tool: ml/checkpoints/${run_name}_cross_tool.json
+  reproducibility: ml/checkpoints/${run_name}_reproducibility.json
+  stale_checkpoints: ml/checkpoints/${run_name}_stale_checkpoints.json
+
+# Gates (any of these can be skipped with `enabled: false`)
+gates:
+  file_exists:
+    enabled: true
+  behavioral_probes:
+    enabled: true
+    all_passed_required: true
+  label_quality:
+    enabled: true
+    no_fail_required: true
+  f1_vs_prior:
+    enabled: true
+    min_improvement: 0.0
+  contamination:
+    enabled: true
+    tiers: [1a, 1b, 2, 3, 4]
+  calibration_files:
+    enabled: true
+    required: [thresholds]
+  threshold_sensitivity:
+    enabled: true
+  cross_tool:
+    enabled: true
+    max_disagreement: 0.50
+  reproducibility:
+    enabled: true
+  stale_checkpoints:
+    enabled: true
+    max_stale: 0
+
+# Thresholds
+thresholds:
+  label_quality_max_positive_rate: 0.50
+  label_quality_min_positive_rate: 0.01
+  label_quality_max_source_dominance: 0.80
+  label_quality_max_co_occurrence: 0.60
+  behavioral_probe_default_max_prob: 0.30
+  behavioral_probe_default_min_prob: 0.40
+
+# Output
+output:
+  report_path: ml/checkpoints/${run_name}_gate_report.json
+  log_level: INFO

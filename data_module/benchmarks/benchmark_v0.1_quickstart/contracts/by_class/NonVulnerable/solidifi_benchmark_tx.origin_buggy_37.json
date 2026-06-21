@@ -1,0 +1,8 @@
+{
+  "labels": [],
+  "source": "solidifi_benchmark",
+  "category": "tx.origin",
+  "original_name": "buggy_37.sol",
+  "tier": "A",
+  "ground_truth": "safe"
+}

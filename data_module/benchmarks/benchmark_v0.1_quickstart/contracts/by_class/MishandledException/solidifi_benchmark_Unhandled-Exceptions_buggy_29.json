@@ -1,0 +1,10 @@
+{
+  "labels": [
+    "MishandledException"
+  ],
+  "source": "solidifi_benchmark",
+  "category": "Unhandled-Exceptions",
+  "original_name": "buggy_29.sol",
+  "tier": "A",
+  "ground_truth": "vulnerable"
+}

@@ -1,0 +1,10 @@
+{
+  "labels": [
+    "CallToUnknown"
+  ],
+  "source": "smartbugs_curated",
+  "category": "unchecked_low_level_calls",
+  "original_name": "0xd2018bfaa266a9ec0a1a84b061640faa009def76.sol",
+  "tier": "A",
+  "ground_truth": "vulnerable"
+}

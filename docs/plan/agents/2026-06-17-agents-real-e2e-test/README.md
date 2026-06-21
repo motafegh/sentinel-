@@ -196,6 +196,13 @@ ml_assessment → quick_screen → evidence_router →
 
 ---
 
-**Created:** 2026-06-17  
-**Version:** 1.0  
-**Status:** Ready to execute
+## Changelog
+
+- **v1.1 (2026-06-17):** Plan-vs-code audit applied. Fixed 5 discrepancies (LM Studio URL, model names, AUDIT_MOCK, RAG fetchers, test contracts). Status: **docs-only**, execution deferred. See `CHANGELOG.md`.
+- **v1.0 (2026-06-17):** Initial plan. 5 docs, ~1,885 lines.
+
+---
+
+**Created:** 2026-06-17
+**Version:** 1.1
+**Status:** 📚 **Docs-only — execution deferred.** Plan validated against source code; ready to execute when Ali commits the time window. CHANGELOG records the 5 fixes.

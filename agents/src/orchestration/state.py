@@ -158,3 +158,45 @@ class AuditState(TypedDict, total=False):
     # The synthesizer includes it in the final report if set.
     # A node setting error does NOT stop the graph — the synthesizer
     # still runs and produces a partial report.
+
+    # ══ Extended Capability — Phase A (2026-06-21) ═══════════════════════════
+    # All optional (total=False). Additive: existing nodes ignore them; new
+    # nodes populate them. See docs/plan/agents/2026-06-17-extended-capability/.
+
+    consensus_verdict: dict[str, dict[str, Any]]
+    # Set by consensus_engine node (A.6), runs after audit_check.
+    # {class: {ml_signal, slither_match, aderyn_match, score,
+    #          confidence, verdict}} — weighted per-class tool vote.
+
+    confidence_by_class: dict[str, float]
+    # Set by consensus_engine / cross_validator via confidence tracker (A.7).
+    # {class: final_confidence in [0,1]} — Bayesian-updated through pipeline.
+    # Also surfaced into final_report["confidence_by_class"].
+
+    metric_attribution: dict[str, dict[str, float]]
+    # Set by explainer node (A.8), runs after synthesizer.
+    # {class: {ml_pct, slither_pct, rag_pct}} — LIME-style source breakdown
+    # of each verdict; the three percentages sum to ~100.
+
+    reflection_notes: dict[str, Any]
+    # Set by reflection node (A.3), runs after synthesizer (self-critique).
+    # {unused_evidence: [...], contradictions: [...], uncertain_verdicts: [...],
+    #  failure_modes: [...], summary: str, llm_used: bool}
+
+    debate_transcript: dict[str, str]
+    # Set by cross_validator when DEBATE_MODE is on (A.4).
+    # {prosecutor: str, defender: str, judge: str} — the three-role exchange.
+
+    hotspot_visualization: str | None
+    # Set by visualizer node (A.9). Self-contained interactive HTML string
+    # (also written to data/reports/{address}_hotspot.html).
+
+    # ── Phase B placeholders (schema only; nodes land in Phase B) ────────────
+    symbolic_findings: list[dict[str, Any]]
+    # Halmos/Z3: {invariant, proven, counterexample_if_false}.
+    bytecode_analysis: dict[str, Any]
+    # Gigahorse: {cfg, call_graph, inferred_logic, storage_layout}.
+    taint_flows: list[dict[str, Any]]
+    # Dataflow: {source, sink, path} from taint analyzer.
+    permission_graph: dict[str, list[str]]
+    # Access control: {role: [callable_functions]}.

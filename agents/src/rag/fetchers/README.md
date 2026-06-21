@@ -4,10 +4,16 @@ Strategy-pattern fetchers that supply documents to the RAG ingestion pipeline. E
 
 ## Files
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `base_fetcher.py` | 95 | Abstract `BaseFetcher` + `Document` dataclass |
-| `github_fetcher.py` | 478 | `DeFiHackLabsFetcher` — .sol exploit PoC parser |
+| File | Purpose |
+|------|---------|
+| `base_fetcher.py` | Abstract `BaseFetcher` + `Document` dataclass |
+| `github_fetcher.py` | `DeFiHackLabsFetcher` — .sol exploit PoC parser (726 docs) |
+| `json_corpus_fetcher.py` | **(A.5, 2026-06-21)** Shared base for curated JSON-backed corpora |
+| `code4rena_fetcher.py` | **(A.5)** Code4rena contest findings |
+| `sherlock_fetcher.py` | **(A.5)** Sherlock contest findings (oracle/MEV-heavy) |
+| `solodit_fetcher.py` | **(A.5)** Solodit aggregated findings |
+| `immunefi_fetcher.py` | **(A.5)** Immunefi bug-bounty disclosures |
+| `swc_registry_fetcher.py` | **(A.5)** SWC weakness-classification registry (static reference) |
 
 ## `base_fetcher.py` — BaseFetcher
 
@@ -86,3 +92,35 @@ fetcher = DeFiHackLabsFetcher(
 docs = fetcher.fetch()           # 726 documents
 recent = fetcher.fetch_since(datetime(2024, 1, 1))  # incremental
 ```
+
+## `json_corpus_fetcher.py` — JsonCorpusFetcher (A.5, 2026-06-21)
+
+Shared base for the 5 corpus-expansion fetchers. Each reads a curated JSON corpus
+from `data/knowledge/<corpus_key>.json` — a list of `{title, content, vuln_type,
+severity, protocol, date, url, chain, loss_usd}` records — and converts each record to
+a `Document`. Design rationale: **deterministic, offline, unit-testable** — no network
+flakiness in CI. Production scale-up means replacing the JSON file with a full export;
+the fetcher contract (and all calling code) does not change.
+
+```python
+class Code4renaFetcher(JsonCorpusFetcher):
+    corpus_key = "code4rena"        # → data/knowledge/code4rena.json
+    _source_name = "code4rena"
+```
+
+| Concrete fetcher | Corpus file | Seed doc count | Focus |
+|---|---|---|---|
+| `Code4renaFetcher` | `code4rena.json` | 5 | Contest-graded High/Medium findings |
+| `SherlockFetcher` | `sherlock.json` | 4 | Oracle manipulation, MEV, state bugs |
+| `SoloditFetcher` | `solodit.json` | 5 | Cross-firm aggregated findings |
+| `ImmunefiFetcher` | `immunefi.json` | 3 | Paid bounty post-mortems (incl. `loss_usd`) |
+| `SWCRegistryFetcher` | `swc_registry.json` | 7 | Canonical SWC-1xx weakness definitions |
+
+Missing corpus file → `health_check()` returns `False`, `fetch()` returns `[]`
+(degrades gracefully; `build_index.py` continues with DeFiHackLabs + whichever
+corpora ARE present). Malformed JSON → logged warning, `[]`, never raises.
+
+Wired into `src/rag/build_index.py:_collect_extra_documents()` — runs after the
+DeFiHackLabs fetch and adds its documents to the same chunk/embed/FAISS/BM25 pipeline.
+Live rebuild (2026-06-21): 750 total documents / 776 chunks (726 DeFiHackLabs + 24 from
+the 5 new corpora).

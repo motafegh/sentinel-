@@ -131,17 +131,18 @@ Economic simulator + ZKML proofs + On-chain submission +
 - [ ] Confirm baseline tests pass: `poetry run pytest agents/tests/ -q` → 219+ PASS
 - [ ] Create scratch file: `~/.claude/scratch/agents_implementation_<YYYYMMDD>.md`
 
-### Phase A
-- [ ] A.1 Graph cleanup
-- [ ] A.2 AuditState schema
-- [ ] A.3 Reflection agent
-- [ ] A.4 Multi-LLM debate
-- [ ] A.5 RAG expansion
-- [ ] A.6 Consensus voting
-- [ ] A.7 Confidence tracking
-- [ ] A.8 Metric attribution
-- [ ] A.9 Visualization
-- [ ] Phase A tests: ~250 PASS
+### Phase A — ✅ COMPLETE (2026-06-21)
+- [x] A.1 Graph cleanup (lazy `audit_graph`, PEP 562 `__getattr__`)
+- [x] A.2 AuditState schema (10 new optional fields)
+- [x] A.3 Reflection agent (rule-based + optional LLM summary)
+- [x] A.4 Multi-LLM debate (Prosecutor/Defender/Judge, reads source)
+- [x] A.5 RAG expansion (5 fetchers + curated corpora + index wiring)
+- [x] A.6 Consensus voting (`consensus.py` + `consensus_engine`)
+- [x] A.7 Confidence tracking (`confidence.py`, Bayesian)
+- [x] A.8 Metric attribution (`attribution.py` + `explainer`)
+- [x] A.9 Visualization (`visualizer.py` + node, interactive HTML)
+- [x] Phase A tests: **276 PASS** (219 baseline + 57 new)
+- See `docs/changes/2026-06-21-agents-phase-a-extended-capability.md`
 
 ### Phase B (can start after A.1-A.2 complete)
 - [ ] B.1 Halmos wrapper

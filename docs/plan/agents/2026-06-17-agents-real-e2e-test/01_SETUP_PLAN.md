@@ -26,28 +26,54 @@ ls -lh ~/projects/sentinel/ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FIN
 ls -lh ~/projects/sentinel/agents/data/index/
 # Should show faiss.index + bm25.pickle
 
-# Check Slither + Aderyn installed
-cd ~/projects/sentinel/agents && poetry run python -c "from slither.slither import Slither; from aderyn import Aderyn; print('OK')"
-# Should print OK
+# Check Slither + Aderyn installed (use poetry run, not system Python)
+cd ~/projects/sentinel/agents
+poetry run slither --version    # expect 0.11.x
+poetry run aderyn --version     # expect ≥ 0.4.21
+
+# Check .env has required vars
+grep -E '^(LM_STUDIO_BASE_URL|AUDIT_MOCK|LM_STUDIO_API_KEY)' .env
+# Expect all 3 lines present
 ```
 
 ---
 
 ## Step 1: LM Studio Setup (30 minutes)
 
+**Port is fluid — never hardcode it.** LM Studio's desktop app auto-picks a port to avoid
+collisions (was :1234, then :4567, currently :1256 on Ali's machine). Always read from
+`LM_STUDIO_BASE_URL` env var.
+
 **Option A: Local LM Studio**
 
 1. Download LM Studio from https://lmstudio.ai/
 2. Install on your machine
 3. Launch LM Studio
-4. Download a model (recommended: Qwen2.5-7B or Mistral-7B)
-   - Start menu → Model Library → Search for model → Download
-   - Expect: 15-20 min download + load time
-5. Verify it's running at `http://localhost:1234`
+4. Open the **Local Server** tab. Note the **port** it picked (e.g. :1256).
+5. Download the 4 required models (see `00_MASTER_TEST_PLAN.md` §LLM Model Selection):
+   - `gemma-4-e2b-it` (FAST)
+   - `qwen3.5-9b-ud` (STRONG — used by cross_validator)
+   - `qwen2.5-coder-7b-instruct` (CODER)
+   - `text-embedding-nomic-embed-text-v1.5` (EMBED)
+   - Expect: 15-20 min download per large model
+6. Add to `agents/.env`:
    ```bash
-   curl http://localhost:1234/v1/models
-   # Should return list of loaded models
+   LM_STUDIO_BASE_URL="http://127.0.0.1:<THE_PORT_YOU_SAW>/v1"
+   LM_STUDIO_API_KEY="lm-studio"
+   AUDIT_MOCK=true
    ```
+7. Verify LM Studio is responding:
+   ```bash
+   curl -s $LM_STUDIO_BASE_URL/models | jq '.data[].id'
+   # Expect: gemma-4-e2b-it, qwen3.5-9b-ud, qwen2.5-coder-7b-instruct, text-embedding-nomic-embed-text-v1.5
+   ```
+
+**On WSL2 + Windows host:** if LM Studio runs as a Windows app (not WSL), replace
+`127.0.0.1` with the WSL2 gateway IP:
+```bash
+cat /etc/resolv.conf | grep nameserver | awk '{print $2}'
+# Use that IP, e.g. LM_STUDIO_BASE_URL="http://172.21.16.1:1256/v1"
+```
 
 **Option B: OpenAI API**
 
@@ -277,9 +303,9 @@ Download from Etherscan or use a well-known contract (Uniswap V2 Router, etc.)
 ## Setup Verification Checklist
 
 - [ ] **LM Studio**
-  - [ ] Running at :1234
-  - [ ] Model loaded
-  - [ ] Responds to API calls
+  - [ ] Running (port written to `LM_STUDIO_BASE_URL` in `agents/.env`)
+  - [ ] All 4 model IDs loaded (see `00_MASTER` §LLM Model Selection)
+  - [ ] Responds to `/v1/models`
 
 - [ ] **ML API**
   - [ ] Running at :8001 (MLOps standard, matches agents inference_server)
@@ -332,7 +358,7 @@ tail -f ~/projects/sentinel/agents/logs/*.log
 
 | Issue | Symptom | Fix |
 |-------|---------|-----|
-| LM Studio not responding | `curl :1234` → refused | Restart LM Studio app |
+| LM Studio not responding | `curl $LM_STUDIO_BASE_URL/models` → refused | Restart LM Studio app, recheck port |
 | Port in use | `Address already in use` | `lsof -i :PORT \| kill` |
 | ML API OOM | Out of memory during inference | Reduce batch size or restart |
 | RAG index missing | `FileNotFoundError: index/` | Run `build_index.py` |
@@ -368,3 +394,13 @@ If everything goes smoothly, you can be ready for execution in 1-2 hours.
 **Setup complete when all 5 services show ✓ in connectivity check.**
 
 **Next:** `02_EXECUTION_PLAN.md` →
+
+---
+
+## Learning Outcomes (Plan Onboarding)
+
+→ You now know: The original plan hardcoded `http://localhost:1234` for LM Studio — but the actual code (`client.py:60`) reads `LM_STUDIO_BASE_URL` env var with a stale WSL2 gateway IP as fallback. The desktop app also picks a fluid port (Ali is currently on :1256). Using env vars + verifying with `/v1/models` is the only stable way.
+
+→ You now know: `AUDIT_MOCK=true` is critical — `audit_server.py` defaults to real Sepolia RPC mode, which would hang at startup without a `SEPOLIA_RPC_URL`. Mock mode returns canned responses so the graph can complete without blockchain access.
+
+→ You now know: `slither --version` and `aderyn --version` are added to prereqs because Run 12 eval found that pre-0.4.21 Slither versions produced 6,782 errors across 47K contracts (not model bugs — tool bugs). Catching this BEFORE running E2E saves debugging time.

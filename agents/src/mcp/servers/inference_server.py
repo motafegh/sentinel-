@@ -36,6 +36,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response   # Response is new
 from starlette.routing import Mount, Route
 
+from src.orchestration.timeouts import DEFAULT_MODULE1_INFERENCE_TIMEOUT_S
+from src.orchestration.timing import step_timer
+
 # ---------------------------------------------------------------------------
 # Configuration — all values overridable via agents/.env
 # ---------------------------------------------------------------------------
@@ -49,7 +52,9 @@ _MODULE1_URL: str = os.getenv("MODULE1_INFERENCE_URL", "http://localhost:8001")
 _SERVER_PORT: int = int(os.getenv("MCP_INFERENCE_PORT", "8010"))
 
 # Timeout for calls to Module 1. Inference can take 5-15s on CPU.
-_REQUEST_TIMEOUT: float = float(os.getenv("MODULE1_TIMEOUT", "30.0"))
+_REQUEST_TIMEOUT: float = float(os.getenv(
+    "MODULE1_TIMEOUT", str(DEFAULT_MODULE1_INFERENCE_TIMEOUT_S)
+))
 
 # Mock mode — return realistic fake responses when Module 1 is not running.
 # Set MODULE1_MOCK=true in agents/.env during M4 development.
@@ -346,14 +351,15 @@ async def _handle_predict(arguments: dict[str, Any]) -> list[TextContent]:
     contract_address: str = arguments.get("contract_address", "")
 
     try:
-        result = await _call_inference_api(contract_code, contract_address)
-        logger.info(
-            "predict complete | address={} | label={} | confirmed={} | suspicious={}",
-            contract_address or "unknown",
-            result.get("label", "unknown"),
-            len(result.get("confirmed",  result.get("vulnerabilities", []))),
-            len(result.get("suspicious", [])),
-        )
+        with step_timer("inference.predict", address=contract_address or "unknown"):
+            result = await _call_inference_api(contract_code, contract_address)
+            logger.info(
+                "predict complete | address={} | label={} | confirmed={} | suspicious={}",
+                contract_address or "unknown",
+                result.get("label", "unknown"),
+                len(result.get("confirmed",  result.get("vulnerabilities", []))),
+                len(result.get("suspicious", [])),
+            )
         return [TextContent(type="text", text=json.dumps(result))]
 
     except httpx.HTTPStatusError as exc:
@@ -385,6 +391,11 @@ async def _handle_batch_predict(arguments: dict[str, Any]) -> list[TextContent]:
             text=json.dumps({"error": "batch size exceeds maximum of 20"}),
         )]
 
+    with step_timer("inference.batch_predict", contract_count=len(contracts)):
+        return await _run_batch_predict(contracts)
+
+
+async def _run_batch_predict(contracts: list[dict]) -> list[TextContent]:
     results = []
     for i, contract in enumerate(contracts):
         code = contract["contract_code"]
@@ -459,9 +470,19 @@ def run_server() -> None:
             "module1_url": _MODULE1_URL,
         })
 
+    # Starlette >= 1.0 removed on_startup/on_shutdown kwargs in favor of lifespan.
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def lifespan(app):
+        await _on_startup()
+        try:
+            yield
+        finally:
+            await _on_shutdown()
+
     starlette_app = Starlette(
-        on_startup=[_on_startup],    # creates shared HTTP client
-        on_shutdown=[_on_shutdown],  # closes it cleanly on Ctrl+C / SIGTERM
+        lifespan=lifespan,
         routes=[
             Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse_transport.handle_post_message),

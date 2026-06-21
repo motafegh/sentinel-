@@ -1,0 +1,10 @@
+{
+  "labels": [
+    "Timestamp"
+  ],
+  "source": "solidifi_benchmark",
+  "category": "Timestamp-Dependency",
+  "original_name": "buggy_31.sol",
+  "tier": "A",
+  "ground_truth": "vulnerable"
+}

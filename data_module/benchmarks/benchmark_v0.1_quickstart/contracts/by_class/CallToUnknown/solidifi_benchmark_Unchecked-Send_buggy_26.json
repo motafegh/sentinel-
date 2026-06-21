@@ -1,0 +1,10 @@
+{
+  "labels": [
+    "CallToUnknown"
+  ],
+  "source": "solidifi_benchmark",
+  "category": "Unchecked-Send",
+  "original_name": "buggy_26.sol",
+  "tier": "A",
+  "ground_truth": "vulnerable"
+}

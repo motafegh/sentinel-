@@ -3,11 +3,9 @@
 > Always load `00_rules.md` before following this procedure.
 > Apply Rule 2 (gate assertions + completion attestation) at every step.
 >
-> **Last revised: 2026-06-14** (post-Run-12 launch). **DVC was retired** for
-> the data pipeline; v3 export is the source of truth. L.1.3 updated to use
-> the v3 export artifact hash + splits SHA instead of DVC. Added cross-reference
-> to `data_module/temp/live_plans/post_training_process_2026-06-14.md` (the
-> end-to-end post-training runner that walks the L.4 release gate).
+> **Last revised: 2026-06-17** (overhaul per `2026-06-17_testing_suite_overhaul_plan.md`).
+> Added L.4.1 (auto-reproducibility) and L.5.1 (auto-floating-findings detection).
+> Behavioral probes (C.2.4) and label quality (F.1.0) are now required for promotion.
 
 ---
 
@@ -171,17 +169,51 @@ dated after the current checkpoint was saved.
 | Smoke suite passed | `D_smoke_preflight.md` D.1 | Written to run doc |
 | VRAM gate passed | `D_smoke_preflight.md` D.2 | Written to run doc |
 | Calibration files present | `I_regression_guard.md` I.3.2 | `<stem>_thresholds.json` + `<stem>_temperatures.json` exist |
-| Behaviour checks passed | `I_regression_guard.md` I.3.1 | Written to run doc |
+| **Behavioural probes pass** | **`C_diagnostic_checks.md` C.2.4** | **`<stem>_behavioral_probes.json` `all_passed=true`** |
+| **Label quality OK** | **`F_new_run_checklist.md` F.1.0** | **`<stem>_label_quality.json` no FAILs** |
 | Drift baseline is `source=warmup` | `I_regression_guard.md` I.3.5 | Confirmed from baseline JSON |
 | F1 dry-run gate passed | `I_regression_guard.md` I.3.6 | Dry-run output printed/logged |
 | Two-source F1 confirmed | L.2.1 above | Both sources read and agree |
 | Reproducibility checks done | L.1.1–1.4 above | Seed, tokenizer, DVC, lockfile |
+| **L.4.1 Auto-reproducibility** | **NEW (2026-06-17)** | **Auto-run hash compare; see below** |
 | No open KILL-level issues | `H_issue_triage.md` H.3 | No unresolved KILL issues in `ISSUES.md` |
 | API validation passed | `K_inference_api.md` K.3–K.5 | `/health` verified, round-trip tests passed |
 | `MEMORY.md` Training History updated | `F_new_run_checklist.md` F.3 | Entry added for this run |
 
 If any gate is missing its attestation: do not promote. Run the referenced
 procedure and produce the attestation first.
+
+### L.4.1 — Auto-Reproducibility Check (NEW 2026-06-17)
+
+**Why this exists:** The previous L.4 was a checklist that required humans
+to confirm reproducibility by re-running. Humans forget, skip steps, or
+declare "looks reproducible" without verification. L.4.1 makes this
+automated.
+
+**What it does:** Before any Production promotion, automatically:
+1. Re-run the same evaluation suite on the same checkpoint
+2. Compare outputs to the recorded evaluation results
+3. Hash the model + tokenizer state
+4. Confirm seed, lockfile, tokenizer mode haven't changed
+
+**Run the check:**
+
+```bash
+# Compare current checkpoint to recorded results
+python ml/scripts/auto_reproducibility_check.py \
+    --checkpoint ml/checkpoints/Run12_FINAL.pt \
+    --reference ml/checkpoints/Run12_reference_eval.json \
+    --output ml/checkpoints/Run12_reproducibility.json
+```
+
+**Pass criteria:**
+- Hash of model state matches reference (within tolerance for non-deterministic ops)
+- Re-run F1 within ±0.005 of reference
+- Seed, lockfile, tokenizer mode all match
+
+**Why this matters:** A model that produces different F1 on re-run is
+not safe to promote. Either there's a non-determinism source (e.g., a
+random seed not set), or the model is unstable. Either way, block promotion.
 
 ---
 
@@ -191,7 +223,32 @@ This section is the enforcement mechanism for Rule 3 (no floating findings)
 from `00_rules.md`. Complete it before ending any session where more than
 one meaningful finding, decision, or change was made.
 
-### L.5.1 — Mandatory Writes Before Session Close
+### L.5.1 — Auto-Detection of Floating Findings (NEW 2026-06-17)
+
+**Why this exists:** Rule 3 (no floating findings) was enforced by humans
+remembering to write findings. L.5.1 makes it automated.
+
+**What it does:** Before any session close, the L.5 script (`ml/scripts/
+session_close.py`) automatically:
+1. Scans the conversation log for finding patterns (e.g., "BUG-", "found",
+   "discovered", "issue", "FP", "FN", "broken", "wrong")
+2. For each candidate, checks if it has a corresponding entry in
+   `ISSUES.md` or relevant audit doc
+3. For any finding WITHOUT a corresponding written entry, raises a
+   `FloatingFindingError` and refuses to close the session
+4. Writes a `## Open Questions` block to MEMORY.md with the unresolved items
+
+**This is the AI-assistance layer.** Humans don't have to remember to write
+findings — the script catches what they forgot.
+
+**Run the check:**
+
+```bash
+# At session close
+python ml/scripts/session_close.py --session-log <path>
+```
+
+### L.5.2 — Mandatory Writes Before Session Close
 
 In order, before closing the session:
 
@@ -217,7 +274,7 @@ In order, before closing the session:
 5. **Open questions** — any unresolved question that affected work during the
    session: append to an `## Open Questions` section in the most relevant doc
 
-### L.5.2 — Verification Before Close
+### L.5.3 — Verification Before Close
 
 Answer each of these before ending the session:
 
@@ -226,7 +283,7 @@ Answer each of these before ending the session:
 - Could a fresh Claude session (with no memory of this conversation) resume work
   correctly using only the written docs? → If no, what is missing?
 
-### L.5.3 — Handoff Summary
+### L.5.4 — Handoff Summary
 
 Append to `MEMORY.md` before closing:
 

@@ -1,220 +1,166 @@
-# training — Training Loop
+# ml/src/training — SENTINEL Training Loop
 
-> **Status:** ✅ Current — v9 schema, four-eye v8.1 architecture, verified 2026-06-14
-
-Training loop, loss function, and configuration for SENTINEL v8.1 + GraphCodeBERT.
-
-**Current architecture:** 8-layer GNN (2+3+3 phases), Flash Attention 2, IMP improvements (G1, G2, G3, M1, M3, C2, #26)
+Training infrastructure: the main training loop, loss functions, and structured logging.
 
 ---
 
 ## Files
 
-| File | Contents |
-|------|----------|
-| `trainer.py` | `TrainConfig`, `train_one_epoch()`, `evaluate()`, `train()` |
-| `losses.py` | `AsymmetricLoss` — multi-label focal loss for class-imbalanced training |
-| `focalloss.py` | `FocalLoss` and `MultiLabelFocalLoss` — focal loss implementations |
+| File | Lines | Purpose |
+|------|-------|---------|
+| `trainer.py` | 1300+ | `TrainConfig`, `train()`, `train_one_epoch()`, `evaluate()`, weighted sampler |
+| `training_logger.py` | 729 | `StructuredLogger` — three-stream JSONL logging with alert tiers |
+| `losses.py` | 126 | `AsymmetricLoss` (ASL) — default loss function |
+| `focalloss.py` | 143 | `FocalLoss`, `MultiLabelFocalLoss` — alternative loss functions |
+| `__init__.py` | 0 | Empty |
 
 ---
 
-## TrainConfig (`trainer.py`)
+## trainer.py
 
-Single source of truth for all hyperparameters and paths. Serialized into each checkpoint as `saved_cfg` via `dataclasses.asdict(config)` so any run can be fully reconstructed from its checkpoint.
+### TrainConfig (dataclass)
 
-```python
-@dataclass
-class TrainConfig:
-    # Paths
-    cache_path:       str   = "ml/data/cached_dataset_v9.pkl"
-    splits_dir:       str   = "ml/data/splits/deduped"
-    checkpoint_dir:   str   = "ml/checkpoints"
-    run_name:         str   = "gcb-run"
-    experiment_name:  str   = "sentinel-gcb"
+All training hyperparameters in a single dataclass. Key groups:
 
-    # Architecture
-    gnn_hidden_dim:   int   = 256
-    gnn_layers:       int   = 8      # 2+3+3 phases (IMP-G3 added conv4c)
-    phase2_edge_types: list = field(default_factory=lambda: [6, 8, 9, 10])  # CF+CE+RT+DU (v8+, v9 adds EXTERNAL_CALL=11)
-    lora_r:           int   = 16
-    lora_alpha:       int   = 32
+**Paths:** `export_dir`, `checkpoint_dir`, `checkpoint_name`
 
-    # GNN Prefix Injection
-    gnn_prefix_k:               int   = 0     # 0 = disabled
-    gnn_prefix_warmup_epochs:   int   = 15
-    gnn_prefix_proj_lr_mult:    float = 1.0
+**Model:** `num_classes=10`, `fusion_output_dim=128`, `fusion_max_nodes=2048`
 
-    # Training
-    epochs:                     int   = 100
-    batch_size:                 int   = 8
-    gradient_accumulation_steps: int  = 8     # effective batch = 64
-    lr:                         float = 2e-4
+**GNN:** `gnn_hidden_dim=256`, `gnn_layers=8`, `gnn_heads=8`, `gnn_dropout=0.2`, `use_edge_attr=True`, `gnn_edge_emb_dim=64`, `gnn_use_jk=True`, `gnn_jk_mode='attention'`
 
-    # Per-group LR multipliers
-    lora_lr_mult:    float = 0.3    # LoRA adapter LR
-    gnn_lr_mult:     float = 2.5    # GNN encoder LR
-    fusion_lr_mult:  float = 0.5    # CrossAttentionFusion LR
+**LoRA:** `lora_r=16`, `lora_alpha=32`, `lora_dropout=0.1`, `lora_target_modules=["query","value"]`
 
-    # Loss
-    loss_fn:         str   = "asl"
-    asl_gamma_neg:   float = 2.0
-    asl_gamma_pos:   float = 1.0
-    asl_clip:        float = 0.01
-    dos_loss_weight: float = 0.5    # DoS auxiliary loss weight
+**Training:** `epochs=100`, `batch_size=8`, `lr=2e-4`, `weight_decay=1e-2`, `grad_clip=1.0`, `warmup_pct=0.10`
 
-    # Sampling
-    use_weighted_sampler: str = "positive"  # 3× weight for any-vuln rows
-    pos_weight_min_samples: int = 3000
+**LR multipliers:** `gnn_lr_multiplier=2.5`, `lora_lr_multiplier=0.3`, `fusion_lr_multiplier=0.5`
 
-    # Performance
-    num_workers:   int  = 4
-    use_compile:   bool = True    # submodule-level; transformer excluded
-    use_amp:       bool = True    # BF16; no GradScaler
-    early_stop_patience: int = 30
-```
+**Loss:** `loss_fn="asl"`, `asl_gamma_neg=2.0`, `asl_gamma_pos=1.0`, `asl_clip=0.01`
 
-**Per-group learning rates:** AdamW uses separate param groups with LR multipliers relative to the base `lr`:
-- LoRA adapters: `lr * lora_lr_mult`
-- GNNEncoder: `lr * gnn_lr_mult`
-- CrossAttentionFusion: `lr * fusion_lr_mult`
-- `gnn_to_bert_proj`: `lr * gnn_prefix_proj_lr_mult`
-- Everything else (classifier, eye projectors): `lr`
+**Auxiliary:** `aux_loss_weight=0.3`, `aux_phase2_loss_weight=0.20`, `aux_loss_warmup_epochs=8`
 
----
+**Regularization:** `jk_entropy_reg_lambda=0.005`, `dos_loss_weight=0.5`
 
-## AsymmetricLoss (`losses.py`)
+**Per-class label smoothing:** `class_label_smoothing` dict with calibrated noise rates per class.
 
-Multi-label focal loss with separate γ values for positives and negatives. Designed for class-imbalanced multi-label classification.
+**Gradient accumulation:** `gradient_accumulation_steps=8` (effective batch = 64)
 
-**Formula:**
-```
-ASL(p, y) = alpha_t * (1 - pt)^gamma_t * BCE(p, y)
+**Prefix:** `gnn_prefix_k=0`, `gnn_prefix_warmup_epochs=15`, `gnn_prefix_proj_lr_mult=5.0`
 
-For positive labels (y=1): gamma_t = gamma_pos, pt = p
-For negative labels (y=0): gamma_t = gamma_neg, pt = 1-p (after probability shift)
-Clip: p_neg clamped to [clip, 1-clip] to prevent hard negative dominance
-```
+**Validation:** `eval_threshold=0.35`, `early_stop_patience=30`, `threshold_tune_interval=10`
 
-**SENTINEL configuration:**
-```
-asl_gamma_neg = 2.0  — strong down-weighting of easy negatives (majority)
-asl_gamma_pos = 1.0  — mild down-weighting of easy positives
-asl_clip      = 0.01 — prevent log(0) and hard-negative collapse
-```
+**Performance:** `use_amp=True`, `use_compile=True`, `num_workers=4`, `persistent_workers=True`
 
-**Interface:**
-```python
-loss_fn = AsymmetricLoss(gamma_neg=2.0, gamma_pos=1.0, clip=0.01)
-# logits:  [B, 10]  float  — raw model output (pre-sigmoid)
-# targets: [B, 10]  float  — multi-hot labels cast to float
-loss = loss_fn(logits, targets)   # scalar
-```
+### train() function
 
-Loss takes **raw logits**. `SentinelModel.forward()` returns logits; apply sigmoid only at inference time.
+Main training entry point. Handles:
+- Checkpoint resume (full or model-only)
+- OneCycleLR scheduler with warmup
+- WeightedRandomSampler
+- Per-class label smoothing tensor construction
+- MLflow experiment tracking
+- Early stopping on `f1_macro_tuned`
+- Threshold tuning every `threshold_tune_interval` epochs
+- NaN rate monitoring with KILL alert at >0.5%
+
+### train_one_epoch()
+
+Single epoch training with:
+- AMP (BF16) autocast
+- Gradient accumulation
+- NaN loss guard (A38) — checks finiteness BEFORE backward
+- Post-clip gradient guard — skips optimizer.step on non-finite gradients
+- Per-interval logging (loss, grad norms, GNN share, Phase2/Phase1 ratio)
+- GNN collapse detection (warns at <10% share for 3 intervals)
+- Structured logging via `StructuredLogger`
+
+### evaluate()
+
+Evaluation with optional threshold tuning:
+- Returns f1_macro, f1_micro, hamming_loss, per-class F1
+- When `tune_thresholds=True`: sweeps 19 thresholds per class over [0.1, 0.9]
+- Size-stratified Timestamp F1 (small/medium/large by node count)
+
+### compute_pos_weight()
+
+Computes sqrt-scaled pos_weight for BCE/ASL loss:
+- Classes with >= `pos_weight_min_samples` (3000) positives get weight=1.0
+- Others: `min(sqrt(N/pos), pos_weight_cap)` where cap=10.0
+
+### _build_weighted_sampler()
+
+WeightedRandomSampler with modes:
+- `"positive"`: 3x weight for any-vuln rows
+- `"timestamp-size"`: 4x for large Timestamp+ contracts, 0.5x for large negatives
+- `"DoS-only"`: 39x for DoS+ rows
+- `"all-rare"`: weight = number of positive labels
 
 ---
 
-## train_one_epoch() (`trainer.py`)
+## training_logger.py
 
-Runs one full pass over the training loader with gradient accumulation.
+### StructuredLogger
 
-```python
-def train_one_epoch(model, loader, optimizer, scaler, loss_fn, config, epoch) -> float:
-    # Returns: mean ASL over all effective steps (float)
-```
+Three-stream JSONL logger for training monitoring.
 
-- `model._current_epoch = epoch` set before the loop — controls prefix warmup suppression
-- Gradient accumulation: `loss / gradient_accumulation_steps` before backward
-- BF16 autocast via `torch.amp.autocast("cuda", dtype=torch.bfloat16)`
-- GradScaler disabled for BF16 (no underflow risk)
-- Optimizer step every `gradient_accumulation_steps` mini-batches
+**Streams:**
+- `step_metrics.jsonl` — per-step data (loss, lr, grad_norm, vram)
+- `epoch_summary.jsonl` — 37-field epoch summary
+- `alerts.jsonl` — WARN/KILL alerts with timestamps
 
----
+**Alert tiers:**
+- `KILL` — raises `TrainingAbortError` immediately (NaN loss/params/Adam state)
+- `WARN_SKIP` — returns skip=True to caller (poisoned batch)
+- `WARN` — log alert, continue training
 
-## evaluate() (`trainer.py`)
+**Per-step checks:**
+- `check_batch()` — label distribution, NaN/Inf in inputs
+- `check_inputs()` — feature dim, negative edge_index
+- `check_loss()` — NaN/Inf, spike detection (>5x rolling mean)
+- `check_parameters()` — NaN/Inf in model params
+- `check_adam_state()` — NaN/Inf in exp_avg/exp_avg_sq
+- `check_vram()` — warns at >7500 MB
+- `check_grad_norm()` — warns on >100x rolling mean
 
-Runs inference over val or test set, returns multi-label metrics.
+**Per-epoch checks:**
+- `check_aux_head()` — aux_phase2 weight/bias norms
+- `check_jk_entropy()` — Shannon entropy of JK attention weights
 
-```python
-def evaluate(model, loader, config, device) -> dict[str, float]:
-```
-
-**Returns:**
-```python
-{
-    "f1_macro":   float,   # primary checkpoint criterion — macro-averaged across 10 classes
-    "f1_micro":   float,
-    "precision":  float,
-    "recall":     float,
-    # per-class F1 for each of the 10 vulnerability classes
-    "f1_CallToUnknown":            float,
-    "f1_DenialOfService":          float,
-    "f1_ExternalBug":              float,
-    "f1_GasException":             float,
-    "f1_IntegerUO":                float,
-    "f1_MishandledException":      float,
-    "f1_Reentrancy":               float,
-    "f1_Timestamp":                float,
-    "f1_TransactionOrderDependence": float,
-    "f1_UnusedReturn":             float,
-}
-```
-
-**Threshold:** fixed at 0.5 during training evaluation. Use `ml/scripts/tune_threshold.py` post-training for per-class optimal thresholds.
+**Calibration metrics:**
+- `compute_auc_metrics()` — per-label and macro/micro AUC-ROC + AUC-PR
+- `compute_brier()` — per-label Brier Score
+- `compute_ece()` — Expected Calibration Error (10 bins)
+- `check_f1_auc_divergence()` — flags F1 improving while AUC degrading
 
 ---
 
-## train() (`trainer.py`)
+## losses.py
 
-Full training loop. Builds everything from `config`, trains for N epochs, logs to MLflow, saves best checkpoint.
+### AsymmetricLoss (ASL)
 
-```python
-train(config: TrainConfig) -> None
-```
+Default loss function. Applies different gamma exponents to positives and negatives independently.
 
-**Checkpointing:** saves whenever `val_f1_macro` improves. Checkpoint dict:
-```python
-{
-    "model_state_dict": ...,    # stripped of ._orig_mod. torch.compile infix
-    "optimizer_state_dict": ...,
-    "epoch": int,
-    "val_f1": float,
-    "saved_cfg": dataclasses.asdict(config),   # full config for reconstruction
-    "class_thresholds": [...],                 # 10 floats, updated each epoch
-}
-```
+**Parameters:**
+- `gamma_neg=4.0` (focus on hard negatives; reduced to 2.0 in Run 12 config)
+- `gamma_pos=1.0` (mild positive focus)
+- `clip=0.05` (probability margin; reduced to 0.01 in Run 12 config)
+- `pos_weight` optional tensor
 
-**torch.compile strategy:** submodule-level — `gnn`, `fusion`, `classifier`, eye projectors, aux heads are compiled. `model.transformer` (GraphCodeBERT+LoRA) is excluded to avoid HuggingFace control-flow graph breaks. `cache_size_limit=256` prevents dynamo fallback on unique graph shapes.
+**AMP safety:** Explicit `.float()` casts to prevent BF16 precision loss.
 
-**MLflow metrics logged per epoch:**
-
-| Metric | Description |
-|--------|-------------|
-| `train_loss` | Mean ASL over training set |
-| `val_f1_macro` | Macro-averaged F1 (checkpoint criterion) |
-| `val_f1_{ClassName}` | Per-class F1 for all 10 classes |
-| `prefix_active` | 1 when epoch ≥ warmup, 0 otherwise |
-| `prefix_proj_weight_norm` | `gnn_to_bert_proj` weight L2 norm |
-| `learning_rate` | Current LR (after scheduler) |
-
-**Prefix logging (per epoch when gnn_prefix_k > 0):**
-```
-GNN prefix K=48: WARMUP (starts ep15)    ← epochs 0–14
-GNN prefix K=48: ACTIVE                  ← epochs 15+
-gnn_to_bert_proj weight norm: 16.0000    ← constant during warmup (zero gradient confirmed)
-```
+Supports per-class gamma/clip via Tensor inputs registered as buffers.
 
 ---
 
-## Training History
+## focalloss.py
 
-| Run | Phase 2 | Best ep | Tuned F1 | Notes |
-|-----|---------|---------|----------|-------|
-| v7.0 | CF | 23 | 0.2875 | CodeBERT baseline |
-| PLAN-3A | CF+CE+RT | 41 | **0.2877** | Best v8 checkpoint |
-| v8.0-B | PLAN-3A + labels | 10 | killed | ceiling confirmed at ~0.287 |
-| Run 7 | CF+CE+RT+DU | 39 | **0.3329** | Four-eye + type embedding + Phase2 heads=4 |
+### FocalLoss
 
-**Ceiling conclusion:** All v7/v8 CodeBERT runs converge to ~0.287 tuned F1. Run 7 with four-eye architecture (IMP-R7-2), type embedding (BUG-R7-2), and Phase 2 multi-head (IMP-R7-1) achieved 0.3329 tuned F1 — a 16% relative improvement.
+Standard focal loss. Expects POST-SIGMOID probabilities (not raw logits). Used with `_FocalFromLogits` wrapper in trainer.py.
 
-MLflow backend: `sqlite:///mlruns.db`. View: `poetry run mlflow ui --backend-store-uri sqlite:///mlruns.db`
+**Parameters:** `gamma=2.0`, `alpha=0.25`
+
+### MultiLabelFocalLoss
+
+Accepts RAW LOGITS (applies sigmoid internally). Per-class alpha weights for imbalance correction.
+
+**Note:** FocalLoss is an alternative to ASL, not used by default in Run 12.

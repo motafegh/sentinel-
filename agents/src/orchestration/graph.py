@@ -66,16 +66,21 @@ from loguru import logger
 
 from src.orchestration.state import AuditState
 from src.orchestration.routing import compute_active_tools
+from src.orchestration.timing import timed_node
 from src.orchestration.nodes import (
     audit_check,
+    consensus_engine,
     cross_validator,
     evidence_router,
+    explainer,
     graph_explain,
     ml_assessment,
     quick_screen,
     rag_research,
+    reflection,
     static_analysis,
     synthesizer,
+    visualizer,
 )
 
 
@@ -157,15 +162,24 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     graph = StateGraph(AuditState)
 
     # ── Register nodes ──────────────────────────────────────────────────────
-    graph.add_node("ml_assessment",   ml_assessment)
-    graph.add_node("quick_screen",    quick_screen)
-    graph.add_node("evidence_router", evidence_router)
-    graph.add_node("rag_research",    rag_research)
-    graph.add_node("static_analysis", static_analysis)
-    graph.add_node("graph_explain",   graph_explain)
-    graph.add_node("audit_check",     audit_check)
-    graph.add_node("cross_validator", cross_validator)
-    graph.add_node("synthesizer",     synthesizer)
+    # Every node is wrapped with `timed_node` (2026-06-21) so a uniform
+    # START/DONE+elapsed log pair is produced for EVERY invocation, in EVERY
+    # context this graph runs in (production MCP-driven server,
+    # run_real_audit.py, ad-hoc scripts) — not only when a caller happens to
+    # add its own ad-hoc timing wrapper. See src/orchestration/timing.py.
+    graph.add_node("ml_assessment",   timed_node("ml_assessment", ml_assessment))
+    graph.add_node("quick_screen",    timed_node("quick_screen", quick_screen))
+    graph.add_node("evidence_router", timed_node("evidence_router", evidence_router))
+    graph.add_node("rag_research",    timed_node("rag_research", rag_research))
+    graph.add_node("static_analysis", timed_node("static_analysis", static_analysis))
+    graph.add_node("graph_explain",   timed_node("graph_explain", graph_explain))
+    graph.add_node("audit_check",     timed_node("audit_check", audit_check))
+    graph.add_node("consensus_engine", timed_node("consensus_engine", consensus_engine))  # A.6/A.7
+    graph.add_node("cross_validator", timed_node("cross_validator", cross_validator))
+    graph.add_node("synthesizer",     timed_node("synthesizer", synthesizer))
+    graph.add_node("reflection",      timed_node("reflection", reflection))               # A.3
+    graph.add_node("explainer",       timed_node("explainer", explainer))                 # A.8
+    graph.add_node("visualizer",      timed_node("visualizer", visualizer))                # A.9
 
     # ── Entry point ─────────────────────────────────────────────────────────
     graph.set_entry_point("ml_assessment")
@@ -188,15 +202,22 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     graph.add_edge("static_analysis", "audit_check")
     graph.add_edge("graph_explain",   "audit_check")
 
-    # ── Deep path: audit_check → cross_validator → synthesizer ───────────────
-    # cross_validator adjudicates per-class verdicts using LLM before synthesis.
-    # Falls back silently: if LLM is unavailable, cross_validator returns {}
-    # and synthesizer computes rule-based verdicts as before.
-    graph.add_edge("audit_check",     "cross_validator")
-    graph.add_edge("cross_validator", "synthesizer")
+    # ── Deep path: audit_check → consensus_engine → cross_validator → synthesizer
+    # consensus_engine (A.6/A.7) weights ML/Slither/Aderyn per class and tracks
+    # Bayesian confidence; cross_validator then runs the Prosecutor/Defender/Judge
+    # debate (A.4). Both fail-soft → rule-based verdicts when the LLM is absent.
+    graph.add_edge("audit_check",      "consensus_engine")
+    graph.add_edge("consensus_engine", "cross_validator")
+    graph.add_edge("cross_validator",  "synthesizer")
 
-    # ── Terminal edge ────────────────────────────────────────────────────────
-    graph.add_edge("synthesizer", END)
+    # ── Post-synthesis enrichment: reflection → explainer → visualizer → END ──
+    # A.3 self-critique → A.8 metric attribution (+ folds confidence/consensus
+    # into final_report) → A.9 interactive hotspot HTML. The fast path also
+    # reaches synthesizer, so every run gets the enrichment chain.
+    graph.add_edge("synthesizer", "reflection")
+    graph.add_edge("reflection",  "explainer")
+    graph.add_edge("explainer",   "visualizer")
+    graph.add_edge("visualizer",  END)
 
     # ── Checkpointer ────────────────────────────────────────────────────────
     checkpointer = None
@@ -226,16 +247,34 @@ def build_graph(use_checkpointer: bool = True) -> Any:
         "Audit graph compiled | checkpointer={} | nodes={}",
         type(checkpointer).__name__ if checkpointer else "None",
         ["ml_assessment", "quick_screen", "evidence_router", "rag_research",
-         "static_analysis", "graph_explain", "audit_check",
-         "cross_validator", "synthesizer"],
+         "static_analysis", "graph_explain", "audit_check", "consensus_engine",
+         "cross_validator", "synthesizer", "reflection", "explainer", "visualizer"],
     )
     return compiled
 
 
 # ---------------------------------------------------------------------------
-# Module-level default instance
+# Module-level default instance (LAZY — A.1 graph cleanup)
 # ---------------------------------------------------------------------------
-# Importing this module gives you a ready-to-use graph instance.
-# For tests, call build_graph(use_checkpointer=False) directly.
+# Historically this module ran `audit_graph = build_graph()` at import time.
+# That side effect compiled the graph (and opened a SqliteSaver connection)
+# on every `import`, even for callers that only wanted `build_graph` or a
+# single node — slowing test collection and forcing checkpointer I/O.
+#
+# PEP 562 module-level __getattr__ defers the build until the FIRST time
+# `audit_graph` is actually accessed, then caches it. Existing callers
+# (`from src.orchestration.graph import audit_graph`, smoke scripts) keep
+# working unchanged; importers that never touch `audit_graph` pay nothing.
+# Tests should still call build_graph(use_checkpointer=False) directly.
 
-audit_graph = build_graph()
+_audit_graph_singleton: Any = None
+
+
+def __getattr__(name: str) -> Any:
+    """Lazily construct the default `audit_graph` on first attribute access."""
+    if name == "audit_graph":
+        global _audit_graph_singleton
+        if _audit_graph_singleton is None:
+            _audit_graph_singleton = build_graph()
+        return _audit_graph_singleton
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

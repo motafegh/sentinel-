@@ -63,12 +63,19 @@ CLASS_TO_DETECTORS: dict[str, list[str]] = {
     "Reentrancy": [
         "reentrancy-eth",
         "reentrancy-no-eth",
-        "reentrancy-events-and-order",
+        # 2026-06-21: renamed from "reentrancy-events-and-order" in current
+        # Slither (0.11.5) — verified via direct detector enumeration.
+        "reentrancy-events",
         "reentrancy-benign",
     ],
     "IntegerUO": [
-        "integer-overflow",
-        "toctou",
+        # 2026-06-21: "integer-overflow" and "toctou" do NOT exist as Slither
+        # 0.11.5 detector ARGUMENT values — verified via direct enumeration of
+        # slither.detectors.all_detectors (101 detectors, neither name present).
+        # Both were removed upstream (Solidity >=0.8 has built-in checked
+        # arithmetic; Slither dropped the dedicated overflow detector with no
+        # direct replacement). Previously these were silent dead entries —
+        # IntegerUO got zero real corroboration from either name.
         "unchecked-lowlevel",
     ],
     "GasException": [

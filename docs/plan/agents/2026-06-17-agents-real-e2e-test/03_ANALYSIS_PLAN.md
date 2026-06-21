@@ -20,6 +20,43 @@ Use this to record:
 - Baseline performance numbers
 - Recommendations for Phase A
 
+## Step 0: Log Service Versions (5 minutes — DO THIS FIRST)
+
+Before analyzing results, log the exact versions of every service. Without this, you
+can't tell if a verdict change is a model regression or a corpus update.
+
+```bash
+# Run this at the start of analysis — paste output into scratch file
+echo "=== SERVICE VERSIONS ($(date -u +%Y-%m-%dT%H:%M:%SZ)) ==="
+
+# ML checkpoint — capture MD5
+md5sum ~/projects/sentinel/ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt
+# Also record: size, mtime, .tflite metadata if present
+
+# LM Studio — capture loaded model IDs
+curl -s $LM_STUDIO_BASE_URL/models | jq '.data[] | {id, created}'
+
+# RAG index — capture file sha + metadata
+cd ~/projects/sentinel/agents/data/index
+sha256sum faiss.index bm25.pkl chunks.pkl
+cat index_metadata.json | jq '{build_date, num_chunks, embedding_model, source}'
+
+# Slither / Aderyn versions
+slither --version
+aderyn --version
+
+# Audit server mode (mock vs real)
+echo "AUDIT_MOCK=$AUDIT_MOCK"
+```
+
+**Out-of-scope flag:** with `AUDIT_MOCK=true`, `audit_check` returns canned responses —
+NOT real Sepolia lookups. Any "no on-chain history found" in verdicts is mock data, not
+a real gap. Mark all `audit_check` findings as **mock-sourced** in analysis.
+
+→ You now know: Service version logging turns "the verdict changed" into a debugging
+trail. Without it, you can't distinguish a model regression from a corpus update from a
+tool upgrade. This is the single highest-ROI 5 minutes in the whole E2E test.
+
 ---
 
 ## Step 1: Load & Review JSON Reports (30 minutes)
@@ -444,7 +481,7 @@ ls -lh ~/projects/sentinel/agents/data/index/
 nvidia-smi
 
 # If stuck on cross_validator: check LM Studio
-curl -s http://localhost:1234/v1/models
+curl -s $LM_STUDIO_BASE_URL/models | jq '.data[].id'
 ```
 
 ### If Test Returned Wrong Verdict
@@ -668,3 +705,55 @@ After analysis, save these to project memory:
 **When done:** Update MEMORY.md and create implementation notes for Phase A
 
 **Success:** You have a clear picture of the current agents system + confidence in the architecture
+
+---
+
+## What you have at the end (Plan Onboarding final map)
+
+### Artifacts
+- `agents/test_audit_reports/erc20_safe_report.json` (or `safe_storage_report.json`)
+- `agents/test_audit_reports/vulnerable_reentrant_report.json`
+- `agents/test_audit_reports/ANALYSIS_SUMMARY.md`
+- `~/.claude/scratch/agents_e2e_test_analysis_20260617.md` (raw findings + service versions)
+- Service version log (MD5 of checkpoint, model IDs, RAG sha, tool versions)
+
+### Knowledge deltas
+- Real per-node latency (ml_assessment, quick_screen, evidence_router, rag_research, static_analysis, graph_explain, audit_check, cross_validator, synthesizer)
+- Real LLM reasoning quality (prosecutor/defender/judge debate text)
+- RAG retrieval relevance (precision % on each contract)
+- MCP failure modes (which servers hang, which return errors)
+- Memory peak per contract (where the spikes come from)
+- Verdict accuracy on known-safe + known-vulnerable contracts
+
+### Decisions logged
+- **GO for Phase A** (proceed immediately) — if 0 critical bugs, all verdicts coherent, latency < 5 min
+- **CAUTION for Phase A** (fix small issues first) — if 1-2 minor bugs, document in scratch, fix in < 4 hrs
+- **NO-GO for Phase A** (redesign needed) — if > 2 critical bugs OR verdict accuracy < 50% on Test 2
+
+### What's NOT covered (intentionally)
+- Real Sepolia on-chain lookups (audit_check is mocked)
+- SmartBugs Wild / large-corpus RAG (single-contract test only)
+- Network resilience (everything runs on localhost; no real-world network failures simulated)
+
+→ You now know: The "What you have at the end" map is what survives the session. If you
+come back in 3 weeks, the artifacts + knowledge deltas + decisions log let you resume
+Phase A without re-running this E2E.
+
+→ You now know: The 3-contract limit is a budget choice, not a coverage claim. "3
+contracts passed" doesn't mean the system is production-ready — it means the 9-node
+graph executes end-to-end with real services. Production readiness needs the full
+benchmark v0.1 (66 contracts, honest OOD).
+
+---
+
+## Learning Outcomes (Plan Onboarding summary)
+
+→ You now know: Analysis is the highest-leverage phase of E2E testing. Setup is
+mechanical; execution is plumbing; analysis is where you learn what the system can
+actually do. The scratch file + ANALYSIS_SUMMARY.md are the deliverables that
+matter.
+
+→ You now know: The "→ You now know" lines at the end of each plan section capture
+**knowledge deltas** (per `ONBOARDING.md` §7) — the new facts that are true now that
+weren't true before. They are NOT action summaries. If a "you now know" line just
+describes what we did, it failed.

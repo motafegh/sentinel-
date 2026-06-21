@@ -5,15 +5,30 @@ LangGraph orchestration, four MCP servers, a hybrid RAG retriever over DeFi expl
 ## Overview
 
 ```
-                    ┌──────────────────────────────────────────┐
-                    │         LangGraph StateGraph (9 nodes)   │
-                    │                                          │
-                    │  ml_assessment → quick_screen → evidence_router
-                    │       │                      ├─ deep ──────────▶ rag_research ──┐
-                    │       │                      │                  static_analysis ─┤→ audit_check → cross_validator → synthesizer
-                    │       │                      │                  graph_explain ──┘
-                    │       │                      └─ fast ──────────────────────────────▶ synthesizer
-                    └──────────────────────────────────────────┘
+                    ┌────────────────────────────────────────────────────────────┐
+                    │            LangGraph StateGraph (13 nodes)                 │
+                    │                                                            │
+                    │  ml_assessment → quick_screen → evidence_router            │
+                    │       │                      ├─ deep ─▶ rag_research ──┐   │
+                    │       │                      │         static_analysis ┤   │
+                    │       │                      │         graph_explain ──┘   │
+                    │       │                      │              │              │
+                    │       │                      │         audit_check         │
+                    │       │                      │              │              │
+                    │       │                      │       consensus_engine      │  ← A.6/A.7
+                    │       │                      │              │              │
+                    │       │                      │        cross_validator      │  ← A.4 debate
+                    │       │                      │              │              │
+                    │       │                      └─ fast ─▶ synthesizer ◀──────┘
+                    │       │                                     │                │
+                    │       │                                reflection            │  ← A.3
+                    │       │                                     │                │
+                    │       │                                 explainer            │  ← A.8
+                    │       │                                     │                │
+                    │       │                                visualizer            │  ← A.9
+                    │       │                                     │                │
+                    │       │                                    END               │
+                    └────────────────────────────────────────────────────────────┘
                                         │
                     ┌───────────────────┼───────────────────┐
                     ▼                   ▼                   ▼
@@ -22,25 +37,41 @@ LangGraph orchestration, four MCP servers, a hybrid RAG retriever over DeFi expl
               │                     │                    │                  │
               ▼                     ▼                    ▼                  ▼
          Module 1 FastAPI    HybridRetriever      AuditRegistry       GNN / Slither
-           (ML model)      (FAISS + BM25)         (Sepolia)         (hotspots)
+        (ML — treated as a    (FAISS + BM25)        (Sepolia)         (hotspots)
+         HINT, not authority —
+         see ML_WEIGHT_SCALE)
 
-                    ┌──────────────────────────────────────────┐
-                    │         RAG Pipeline                      │
-                    │  DeFiHackLabs → chunk → embed → FAISS    │
-                    │  AuditRegistry → feedback → RAG           │
-                    └──────────────────────────────────────────┘
+                    ┌──────────────────────────────────────────────────────┐
+                    │         RAG Pipeline                                 │
+                    │  DeFiHackLabs + Code4rena/Sherlock/Solodit/          │
+                    │  Immunefi/SWC → chunk → embed → FAISS               │
+                    │  AuditRegistry → feedback → RAG                      │
+                    └──────────────────────────────────────────────────────┘
 ```
+
+**2026-06-21 — Extended Capability Phase A complete.** Added `consensus_engine`,
+`reflection`, `explainer`, `visualizer` nodes; upgraded `cross_validator` to a
+Prosecutor/Defender/Judge debate; expanded RAG to 5 new sources. ML predictions
+are deliberately down-weighted in voting (`ML_WEIGHT_SCALE`, default 0.5) — the
+agent layer does its own analysis via static tools + LLM debate rather than
+trusting the ML model as ground truth. Full details:
+`docs/changes/2026-06-21-agents-phase-a-extended-capability.md`.
 
 ## Module Map
 
 ```
 agents/
 ├── src/
-│   ├── orchestration/       LangGraph workflow (9 nodes, conditional routing)
-│   │   ├── state.py         AuditState TypedDict (16 fields)
+│   ├── orchestration/       LangGraph workflow (13 nodes, conditional routing)
+│   │   ├── state.py         AuditState TypedDict (26 fields incl. Phase A/B placeholders)
 │   │   ├── routing.py       Per-class thresholds, tool routing, verdict computation
-│   │   ├── nodes.py         9 node implementations (1415 lines)
-│   │   └── graph.py         StateGraph builder, SqliteSaver checkpointing
+│   │   ├── nodes.py         13 node implementations (consensus_engine, cross_validator
+│   │   │                    debate, reflection, explainer, visualizer added 2026-06-21)
+│   │   ├── consensus.py     A.6 — weighted ML/Slither/Aderyn vote (ML down-weighted)
+│   │   ├── confidence.py    A.7 — Bayesian staged confidence tracking
+│   │   ├── attribution.py   A.8 — LIME-style evidence-source breakdown
+│   │   ├── visualizer.py    A.9 — interactive hotspot HTML generator
+│   │   └── graph.py         StateGraph builder, lazy audit_graph, SqliteSaver checkpointing
 │   │
 │   ├── rag/                 Hybrid FAISS + BM25 retriever
 │   │   ├── retriever.py     HybridRetriever with Reciprocal Rank Fusion
@@ -48,8 +79,14 @@ agents/
 │   │   ├── embedder.py      Nomic-embed-text via LM Studio
 │   │   ├── build_index.py   Full rebuild with atomic writes + rollback
 │   │   └── fetchers/
-│   │       ├── base_fetcher.py     Abstract BaseFetcher + Document dataclass
-│   │       └── github_fetcher.py   DeFiHackLabs .sol parser (3 formats)
+│   │       ├── base_fetcher.py        Abstract BaseFetcher + Document dataclass
+│   │       ├── github_fetcher.py      DeFiHackLabs .sol parser (3 formats)
+│   │       ├── json_corpus_fetcher.py Shared base for curated JSON corpora (A.5)
+│   │       ├── code4rena_fetcher.py   Code4rena contest findings
+│   │       ├── sherlock_fetcher.py    Sherlock contest findings
+│   │       ├── solodit_fetcher.py     Solodit aggregated findings
+│   │       ├── immunefi_fetcher.py    Immunefi bounty disclosures
+│   │       └── swc_registry_fetcher.py SWC weakness-classification registry
 │   │
 │   ├── ingestion/           Incremental pipeline + feedback loop
 │   │   ├── pipeline.py      Dedup → chunk → embed → atomic write
@@ -168,16 +205,54 @@ poetry run python scripts/smoke_audit_mcp.py
 ```
 START → ml_assessment → quick_screen → evidence_router
     ├─ [deep path]  → rag_research ──┐
-    │                static_analysis ─┤→ audit_check → cross_validator → synthesizer → END
-    │                graph_explain ───┘
-    └─ [fast path]  → synthesizer → END
+    │                static_analysis ─┤→ audit_check → consensus_engine → cross_validator ─┐
+    │                graph_explain ───┘                                                      │
+    └─ [fast path]  ─────────────────────────────────────────────────────────────────────────┤
+                                                                                                ▼
+                                                                                         synthesizer
+                                                                                                │
+                                                                                          reflection
+                                                                                                │
+                                                                                           explainer
+                                                                                                │
+                                                                                          visualizer
+                                                                                                │
+                                                                                               END
 ```
 
 **Two-signal fast-path gate:** Fast path requires BOTH:
 1. ML all class probabilities below `DEEP_THRESHOLDS`
 2. `quick_screen` zero High/Critical Slither/Aderyn hits
 
-If either signal flags risk, the contract goes to deep path.
+If either signal flags risk, the contract goes to deep path. **All paths converge at
+`synthesizer`**, then run the post-synthesis enrichment chain
+(`reflection → explainer → visualizer`) before `END`.
+
+**`consensus_engine` (A.6/A.7, deep path only):** weighted vote over ML/Slither/Aderyn
+per class, then Bayesian-updates a confidence score. ML's vote weight is discounted by
+`ML_WEIGHT_SCALE` (default 0.5) — **ML alone can never reach a CONFIRMED verdict**; it
+needs at least one corroborating static-analysis hit. This is intentional: Run 12's ML
+model is not yet reliable enough to be treated as ground truth, so the agent layer does
+independent analysis (static tools + LLM debate) and uses ML only as a clue.
+
+**`cross_validator` (A.4):** when `DEBATE_MODE=on` (default), runs three sequential LLM
+calls — Prosecutor (argues vulnerable, reading the actual source), Defender (argues
+false-positive), Judge (renders the verdict) — instead of one classification call.
+Falls back to a single-pass call if `DEBATE_MODE=off`, and to rule-based verdicts in
+`synthesizer` if the LLM is unavailable. Transcript stored in `state["debate_transcript"]`.
+
+**`reflection` (A.3):** self-critique after `synthesizer` — flags unused evidence,
+tool contradictions, low-confidence/DISPUTED verdicts, and known failure modes (e.g.
+truncated contracts, ExternalBug's known ML over-prediction). Optional LLM-written
+narrative summary; always produces a rule-based summary even without an LLM.
+
+**`explainer` (A.8):** LIME-style attribution per verdict (`{ml_pct, slither_pct,
+rag_pct}`, sums to ~100) and folds `confidence_by_class` / `consensus_verdict` /
+`reflection_notes` into `final_report` so one artifact carries the full enrichment.
+
+**`visualizer` (A.9):** renders a self-contained interactive HTML report (source with
+hotspot highlighting + verdict cards with confidence/attribution bars), written to
+`data/reports/{contract_address}_hotspot.html`.
 
 ### AuditState Fields
 
@@ -199,6 +274,13 @@ If either signal flags risk, the contract goes to deep path.
 | `final_report` | `dict` | `synthesizer` | Complete audit report |
 | `narrative` | `str \| None` | `synthesizer` | LLM-generated Markdown narrative |
 | `error` | `str \| None` | Any node | Non-fatal error |
+| `consensus_verdict` | `dict[str, dict]` | `consensus_engine` | Per-class weighted ML/Slither/Aderyn vote |
+| `confidence_by_class` | `dict[str, float]` | `consensus_engine` | Bayesian-updated confidence, [0,1] |
+| `debate_transcript` | `dict[str, str]` | `cross_validator` | `{prosecutor, defender, judge}` when DEBATE_MODE=on |
+| `reflection_notes` | `dict` | `reflection` | Self-critique: unused evidence, contradictions, uncertain verdicts, failure modes |
+| `metric_attribution` | `dict[str, dict]` | `explainer` | LIME-style `{ml_pct, slither_pct, rag_pct}` per class |
+| `hotspot_visualization` | `str \| None` | `visualizer` | Self-contained interactive HTML report |
+| `symbolic_findings`, `bytecode_analysis`, `taint_flows`, `permission_graph` | — | *(Phase B, schema only)* | Halmos/Gigahorse/taint/access-control — nodes not yet built |
 
 ### Per-Class Routing
 
@@ -227,9 +309,14 @@ If either signal flags risk, the contract goes to deep path.
 | Source | Scale |
 |--------|-------|
 | Rule-based (`compute_verdict`) | CONFIRMED / LIKELY / DISPUTED / SAFE |
-| LLM-adjudicated (`cross_validator`) | CONFIRMED / LIKELY / DISPUTED / WATCH / SAFE |
+| Consensus vote (`consensus_engine`) | CONFIRMED / LIKELY / DISPUTED / SAFE (ML weight discounted) |
+| LLM-adjudicated debate (`cross_validator`) | CONFIRMED / LIKELY / DISPUTED / WATCH / SAFE |
 
-**LLM-adjudicated verdicts** prompt the strong LLM (qwen3.5-9b-ud) with per-class evidence (ML tier + probability, Slither findings, RAG topics, prior audits). Falls back silently to rule-based on LLM failure.
+**LLM-adjudicated verdicts** run a Prosecutor/Defender/Judge debate (FAST model by
+default — `CROSS_VALIDATOR_LLM_MODEL=fast`) over per-class evidence (ML tier +
+probability, Slither findings, RAG topics, prior audits, and the contract source
+itself). Falls back silently to rule-based on LLM failure or when
+`AGENTS_DISABLE_LLM=1`.
 
 ### Checkpointing
 
@@ -318,6 +405,21 @@ poetry run pytest tests/ -v
 | `test_github_fetcher.py` | DeFiHackLabs parsing (3 comment formats, FIX-20/21/22b) (211 lines) |
 | `test_deduplicator.py` | SHA256 hash deduplication, persistence, checkpoint pattern (159 lines) |
 | `test_chunker.py` | Chunk size, overlap, metadata inheritance, edge cases (155 lines) |
+| `test_consensus_voting.py` | A.6 weighted vote, ML-weight discount, `consensus_engine` node |
+| `test_confidence_tracking.py` | A.7 Bayesian confidence updating, bounds, bands |
+| `test_metric_attribution.py` | A.8 LIME-style attribution, `explainer` node, report folding |
+| `test_reflection.py` | A.3 reflection (rule-based + LLM) and A.4 debate (3-role mock) |
+| `test_visualizer.py` | A.9 hotspot HTML generation, escaping, `visualizer` node |
+| `test_rag_fetchers.py` | A.5 Code4rena/Sherlock/Solodit/Immunefi/SWC fetchers + JSON corpus base |
+| `test_static_analysis_real_slither.py` | (2026-06-21) REAL Slither — catches detector-registration regressions |
+| `test_static_analysis_real_aderyn.py` | (2026-06-21) REAL Aderyn — catches dir/output-path/schema regressions |
+| `test_timeouts_and_timing.py` | (2026-06-21) Centralized timeout config + uniform step timing |
+
+`tests/conftest.py` sets `AGENTS_DISABLE_LLM=1` for the whole session so the suite
+never depends on a live LM Studio — LLM-calling nodes consult `_llm_enabled()` and
+fall back to rule-based logic. Tests that exercise the LLM path explicitly mock it
+and re-enable LLM via an autouse fixture (see `TestCrossValidatorNode` in
+`test_graph_routing.py`).
 
 ## Environment Variables
 
@@ -358,6 +460,23 @@ GRAPH_INSPECTOR_MOCK=false
 
 # Dagster
 DAGSTER_HOME=agents/.dagster
+
+# Extended Capability Phase A (2026-06-21)
+AGENTS_DISABLE_LLM=        # "1"/"true" → all LLM calls skipped, rule-based fallback used
+DEBATE_MODE=on             # "off" → cross_validator single-pass instead of 3-role debate
+ML_WEIGHT_SCALE=0.5        # discounts ML's consensus-vote weight — ML alone can't CONFIRM
+REFLECTION_TIMEOUT_S=120
+REFLECTION_MAX_TOKENS=1024
+
+# Timeouts — every default centralized in src/orchestration/timeouts.py (2026-06-21).
+# Unset here = falls through to that file's default. scripts/run_real_audit.py also
+# exposes a --<name>-timeout-s CLI flag per variable + --unbounded-timeouts (sets all
+# to 3600s at once, for observing true per-step timing with nothing truncated).
+LM_STUDIO_TIMEOUT=60       # floor under EVERY LLM call (import-time read by client.py)
+CROSS_VALIDATOR_TIMEOUT_S=90   # single-pass mode only (DEBATE_MODE=off)
+DEBATE_TIMEOUT_S=240       # entire 3-role debate as ONE budget, not per-call
+SYNTHESIZER_TIMEOUT_S=120
+ADERYN_TIMEOUT_S=90
 ```
 
 ## Do Not Change Without Wider Plan

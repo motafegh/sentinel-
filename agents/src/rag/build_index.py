@@ -59,6 +59,12 @@ from rank_bm25 import BM25Okapi
 from .chunker import Chunk, Chunker
 from .embedder import Embedder
 from .fetchers.github_fetcher import DeFiHackLabsFetcher
+# Phase A (A.5) — curated audit/finding corpora (offline JSON-backed).
+from .fetchers.code4rena_fetcher import Code4renaFetcher
+from .fetchers.sherlock_fetcher import SherlockFetcher
+from .fetchers.solodit_fetcher import SoloditFetcher
+from .fetchers.immunefi_fetcher import ImmunefiFetcher
+from .fetchers.swc_registry_fetcher import SWCRegistryFetcher
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -75,6 +81,38 @@ SEEN_HASHES_PATH = INDEX_DIR / "seen_hashes.json"
 
 DEFIHACKLABS_DIR = _AGENTS_DIR / "data" / "defihacklabs"
 EXPLOITS_DIR = _AGENTS_DIR / "data" / "exploits"
+KNOWLEDGE_DIR = _AGENTS_DIR / "data" / "knowledge"
+
+
+def _extra_fetchers() -> list[Any]:
+    """
+    Phase A (A.5) corpus-expansion fetchers. Each reads a curated JSON corpus
+    under data/knowledge/ and returns [] gracefully if its file is absent, so
+    the index build degrades to DeFiHackLabs-only when corpora are missing.
+    """
+    return [
+        Code4renaFetcher(),
+        SherlockFetcher(),
+        SoloditFetcher(),
+        ImmunefiFetcher(),
+        SWCRegistryFetcher(),
+    ]
+
+
+def _collect_extra_documents() -> tuple[list[Any], list[str]]:
+    """Fetch from all extra corpora; return (documents, source_names_used)."""
+    docs: list[Any] = []
+    sources: list[str] = []
+    for f in _extra_fetchers():
+        try:
+            fetched = f.fetch()
+        except Exception as exc:  # never let one corpus break the build
+            logger.warning("build_index | fetcher {} failed (skipped): {}", f.source_name, exc)
+            continue
+        if fetched:
+            docs.extend(fetched)
+            sources.append(f.source_name)
+    return docs, sources
 
 # Shared with ingestion/pipeline.py by convention.
 # Full rebuild and incremental ingestion must never write the index at the same time.
@@ -487,7 +525,16 @@ def build_index(force_rebuild: bool = False) -> dict[str, Any]:
             )
             source_count = _source_file_count(fetcher)
             documents = fetcher.fetch()
-            logger.info("  Fetched {} documents", len(documents))
+            logger.info("  Fetched {} documents from {}", len(documents), fetcher.source_name)
+
+            # Phase A (A.5): augment with curated audit/finding corpora.
+            extra_docs, extra_sources = _collect_extra_documents()
+            if extra_docs:
+                documents = documents + extra_docs
+                logger.info(
+                    "  + {} documents from {} extra corpora: {}",
+                    len(extra_docs), len(extra_sources), extra_sources,
+                )
 
             # ── Step 2: Chunk ─────────────────────────────────────────────
             logger.info("Step 2/6 — Chunking documents...")
@@ -548,7 +595,7 @@ def build_index(force_rebuild: bool = False) -> dict[str, Any]:
                 "total_chunks": len(chunks),
                 "total_documents": len(documents),
                 "vector_dimension": dimension,
-                "sources": [fetcher.source_name],
+                "sources": [fetcher.source_name] + extra_sources,
                 "embedding_model": EMBEDDING_MODEL_NAME,
                 "chunk_size": chunker.chunk_size,
                 "chunk_overlap": chunker.chunk_overlap,

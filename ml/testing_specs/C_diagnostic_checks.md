@@ -169,6 +169,95 @@ thresholds. Read the script before running to confirm:
 - If the thresholds JSON is missing, `promote_model.py` will warn but
   proceed — the deployed model will use uniform 0.5 for all classes
 
+### C.2.4 — Synthetic Behavioral Probes (the missing test)
+
+**Why this exists:** Run 12 was promoted to Staging despite giving
+ExternalBug=0.82 on a safe_storage-style contract. The validation spec
+suite at the time had no automated test that would have caught this.
+C.2.4 is the missing test.
+
+**What it does:** Runs the model against 30+ fixed synthetic contracts
+(3 per class) with hardcoded expected probability bounds. Each probe has:
+- A source code string
+- A target class
+- An expected operator (`>` or `<`)
+- An expected probability threshold
+
+If the model's actual probability violates the bound, the probe FAILS.
+
+**Run the probes:**
+
+```bash
+# Default: Run 12 FINAL checkpoint
+python ml/testing_specs/synthetic_probes.py --exit-on-fail
+
+# Explicit checkpoint
+python ml/testing_specs/synthetic_probes.py \
+    --checkpoint ml/checkpoints/Run12_best.pt \
+    --output ml/checkpoints/Run12_behavioral_probes.json \
+    --exit-on-fail
+
+# HTTP API mode (tests the inference_server, not the local checkpoint)
+python ml/testing_specs/synthetic_probes.py \
+    --base-url http://localhost:8001 \
+    --output ml/checkpoints/Run12_behavioral_probes.json
+
+# Single probe (debugging)
+python ml/testing_specs/synthetic_probes.py \
+    --checkpoint ml/checkpoints/Run12_best.pt \
+    --probe ext_owner_only
+```
+
+**Output JSON format (`<output>`):**
+
+```json
+{
+  "summary": {
+    "total": 30, "passed": 19, "failed": 11,
+    "pass_rate": 0.633, "all_passed": false,
+    "by_class": {"ExternalBug": {"passed": 0, "failed": 3}, ...}
+  },
+  "results": [
+    {
+      "probe_id": "ext_owner_only",
+      "class_name": "ExternalBug",
+      "operator": "<", "threshold": 0.30,
+      "actual": 0.861, "passed": false,
+      "description": "address public owner; constructor() ...",
+      "duration_s": 0.5, "source_chars": 95
+    },
+    ...
+  ]
+}
+```
+
+**Probes per class (3 each):**
+
+For each of the 10 SENTINEL classes:
+1. **Should trigger** — a contract that genuinely has the vulnerability
+2. **Should NOT trigger** — a contract that LOOKS similar but is safe
+3. **Edge case** — a contract that may or may not trigger (gray area)
+
+See `synthetic_probes.py` for the full list. **Editing probes:**
+- Open `ml/testing_specs/synthetic_probes.py`
+- Add a new entry to the `PROBES` list
+- Each entry must have: `id`, `class`, `operator`, `threshold`, `description`, `source`
+- Re-run `python ml/testing_specs/synthetic_probes.py --exit-on-fail`
+
+**Baseline result on Run 12 (2026-06-17):**
+- 19/30 probes pass
+- 11/30 fail — most notably all 3 ExternalBug probes (the FP issue)
+- 1/3 IntegerUO probes (safe_math_08 in 0.8 gives 0.768)
+- 2/3 CallToUnknown, GasException, DoS, UnusedReturn, MishandledException, TOD
+
+**This probe set is the regression suite.** Any model that regresses on
+these will fail this gate. Any future class with a broken feature will
+also fail this gate.
+
+**Auto-promotion gate:** The behavioral probe results JSON
+(`<stem>_behavioral_probes.json`) is required by `promote_model.py`
+for promotion. See `I_regression_guard.md` I.2.2 for the gate logic.
+
 ---
 
 ## C.3 — Regression Investigation

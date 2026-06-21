@@ -43,6 +43,9 @@ import uvicorn
 from loguru import logger
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
+
+from src.orchestration.timeouts import DEFAULT_GRAPH_INSPECTOR_HOTSPOTS_TIMEOUT_S
+from src.orchestration.timing import step_timer
 from mcp.types import TextContent, Tool
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -58,7 +61,9 @@ _MOCK_MODE:        bool = os.getenv("GRAPH_INSPECTOR_MOCK", "false").lower() == 
 
 # ML inference API base URL — override via env var if running on a different host.
 _ML_API_URL:       str  = os.getenv("SENTINEL_ML_API_URL", "http://localhost:8000")
-_HOTSPOTS_TIMEOUT: float = float(os.getenv("GRAPH_INSPECTOR_HOTSPOTS_TIMEOUT", "60"))
+_HOTSPOTS_TIMEOUT: float = float(os.getenv(
+    "GRAPH_INSPECTOR_HOTSPOTS_TIMEOUT", str(DEFAULT_GRAPH_INSPECTOR_HOTSPOTS_TIMEOUT_S)
+))
 
 # Vulnerability class → structural features that indicate suspicion.
 # Used by the Slither fallback path only.
@@ -79,10 +84,12 @@ _CLASS_STRUCTURAL_SIGNALS: dict[str, list[str]] = {
 _DETECTOR_CLASS_MAP: dict[str, str] = {
     "reentrancy-eth":               "Reentrancy",
     "reentrancy-no-eth":            "Reentrancy",
-    "reentrancy-events-and-order":  "Reentrancy",
+    # 2026-06-21: renamed from "reentrancy-events-and-order" in Slither 0.11.5.
+    "reentrancy-events":            "Reentrancy",
     "reentrancy-benign":            "Reentrancy",
-    "integer-overflow":             "IntegerUO",
-    "toctou":                       "IntegerUO",
+    # 2026-06-21: "integer-overflow" / "toctou" removed from Slither entirely
+    # (no replacement) — IntegerUO now has no surviving Slither-fallback signal
+    # beyond unchecked-lowlevel.
     "unchecked-lowlevel":           "MishandledException",
     "costly-loop":                  "GasException",
     "calls-loop":                   "GasException",
@@ -266,7 +273,11 @@ def _analyze_hotspots_slither(
               + is_external_facing  × 0.2
     """
     try:
+        import inspect
+
         from slither import Slither
+        from slither.detectors import all_detectors
+        from slither.detectors.abstract_detector import AbstractDetector
 
         with tempfile.NamedTemporaryFile(
             suffix=".sol", prefix="sentinel_gi_", mode="w",
@@ -276,6 +287,16 @@ def _analyze_hotspots_slither(
             tmp_path = tmp.name
 
         sl = Slither(tmp_path)
+
+        # CRITICAL (found 2026-06-21, same bug as nodes.py static_analysis/
+        # quick_screen): Slither() registers ZERO detectors on construction —
+        # must register the full set before scoping/running, or this hotspot
+        # fallback path NEVER finds anything.
+        for detector_cls in (
+            d for d in (getattr(all_detectors, name) for name in dir(all_detectors))
+            if inspect.isclass(d) and issubclass(d, AbstractDetector)
+        ):
+            sl.register_detector(detector_cls)
 
         # Scope Slither to relevant detectors when flagged_classes provided.
         try:
@@ -463,20 +484,21 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             "error": "contract_code is required and must not be empty."
         }))]
 
-    if _MOCK_MODE:
-        result = _mock_hotspots(flagged_classes)
-    else:
-        # Try GNN attention first (Phase 2), fall back to Slither (Phase 1).
-        result = await _analyze_hotspots_gnn(contract_code, flagged_classes)
-        if result is None:
-            result = _analyze_hotspots_slither(contract_code, flagged_classes)
+    with step_timer("graph_inspector.get_graph_hotspots", classes=flagged_classes or "all"):
+        if _MOCK_MODE:
+            result = _mock_hotspots(flagged_classes)
+        else:
+            # Try GNN attention first (Phase 2), fall back to Slither (Phase 1).
+            result = await _analyze_hotspots_gnn(contract_code, flagged_classes)
+            if result is None:
+                result = _analyze_hotspots_slither(contract_code, flagged_classes)
 
-    logger.info(
-        "get_graph_hotspots | mode={} | hotspots={} | classes={}",
-        result.get("analysis_mode"),
-        len(result.get("hotspots", [])),
-        flagged_classes or ["all"],
-    )
+        logger.info(
+            "get_graph_hotspots | mode={} | hotspots={} | classes={}",
+            result.get("analysis_mode"),
+            len(result.get("hotspots", [])),
+            flagged_classes or ["all"],
+        )
     return [TextContent(type="text", text=json.dumps(result))]
 
 
@@ -485,15 +507,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 # ---------------------------------------------------------------------------
 
 async def handle_sse(request: Request) -> Response:
-    transport = SseServerTransport("/messages/")
-    async with transport.connect_sse(request.scope, request.receive, request._send) as streams:
+    async with sse_transport.connect_sse(request.scope, request.receive, request._send) as streams:
         await server.run(streams[0], streams[1], server.create_initialization_options())
-    return Response()
-
-
-async def handle_messages(request: Request) -> Response:
-    transport = SseServerTransport("/messages/")
-    await transport.handle_post_message(request.scope, request.receive, request._send)
     return Response()
 
 
@@ -511,10 +526,12 @@ async def health(request: Request) -> JSONResponse:
 # ASGI app + entry point
 # ---------------------------------------------------------------------------
 
+sse_transport = SseServerTransport("/messages/")
+
 app = Starlette(routes=[
     Route("/health",    health),
     Route("/sse",       handle_sse),
-    Mount("/messages/", routes=[Route("/{path:path}", handle_messages, methods=["POST"])]),
+    Mount("/messages/", app=sse_transport.handle_post_message),
 ])
 
 

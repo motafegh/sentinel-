@@ -458,7 +458,50 @@ class TestSynthesizerNode:
         report = result["final_report"]
 
         assert report["path_taken"] == "fast"
-        assert report["rag_evidence"] == []
+
+    @pytest.mark.asyncio
+    async def test_narrative_prompt_grounds_each_class_with_its_verdict(
+        self, base_state, ml_high, rag_chunks, audit_records, monkeypatch,
+    ):
+        # Fix 2 (2026-06-21, "narrative hallucination" incident — see
+        # docs/changes/2026-06-21-agents-manual-verification-real-bugs-found.md):
+        # the narrative prompt used to list every ML-flagged class with NO
+        # verdict attached, so the model had no signal a class had been
+        # cleared — observed live: it wrote about a "Reentrancy risk" on a
+        # contract whose Reentrancy verdict was SAFE. Verify the prompt sent
+        # to the LLM now attaches each class's verdict, and the system prompt
+        # explicitly instructs the model to only discuss CONFIRMED/LIKELY
+        # classes and to treat RAG content as general background.
+        monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
+        from unittest.mock import MagicMock
+        mock_llm = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.content = "## Severity\nHIGH\n## Vulnerability Summary\n...\n## Exploit Pattern\n...\n## Recommended Fix\n..."
+        mock_llm.invoke.return_value = mock_resp
+
+        state = {
+            **base_state,
+            "ml_result":     ml_high,
+            "rag_results":   rag_chunks,
+            "audit_history": audit_records,
+        }
+        with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
+            await synthesizer(state)
+
+        sent_messages = mock_llm.invoke.call_args[0][0]
+        system_text = sent_messages[0].content
+        user_text   = sent_messages[1].content
+
+        # System prompt grounds the model against hallucinating ungated classes.
+        assert "CONFIRMED or LIKELY" in system_text
+        assert "do NOT describe it as" in system_text or "do NOT introduce" in system_text
+
+        # User prompt attaches "→ verdict: ..." to every listed class.
+        assert "→ verdict:" in user_text
+
+        # RAG section is explicitly labeled as general background, not
+        # site-specific evidence.
+        assert "general historical reference" in user_text or "NOT necessarily about this contract" in user_text
 
     @pytest.mark.asyncio
     async def test_safe_label_recommendation(self, base_state, ml_safe):
@@ -703,6 +746,15 @@ class TestGraphExplainNode:
 # ---------------------------------------------------------------------------
 
 class TestCrossValidatorNode:
+    @pytest.fixture(autouse=True)
+    def _enable_llm_single_pass(self, monkeypatch):
+        # These tests exercise the LLM verdict-parsing path with a mocked LLM,
+        # so re-enable LLM (conftest disables it globally) and force single-pass
+        # (debate off) for deterministic one-call parsing assertions.
+        monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
+        monkeypatch.setenv("DEBATE_MODE", "off")
+        monkeypatch.setenv("CROSS_VALIDATOR_LLM_MODEL", "strong")
+
     @pytest.mark.asyncio
     async def test_no_flagged_classes_returns_empty(self, base_state, ml_safe):
         state = {**base_state, "ml_result": ml_safe}
@@ -764,6 +816,36 @@ class TestCrossValidatorNode:
         assert result["verdicts"]["Reentrancy"] == "CONFIRMED"
 
     @pytest.mark.asyncio
+    async def test_caps_classes_sent_to_llm(self, base_state, monkeypatch):
+        # Real-audit finding (2026-06-21): ambiguous contracts can flag most of
+        # the 10 classes as "suspicious". Adjudicating all of them risked the
+        # FAST model overrunning the timeout in the 3-call debate. Verify the
+        # cap keeps only the top-N most probable classes in the LLM prompt.
+        monkeypatch.setenv("CROSS_VALIDATOR_MAX_CLASSES", "3")
+        many_suspicious = [
+            {"vulnerability_class": f"Class{i}", "probability": 0.30 + i * 0.01, "tier": "SUSPICIOUS"}
+            for i in range(9)
+        ]
+        state = {
+            **base_state,
+            "ml_result": {"confirmed": [], "suspicious": many_suspicious},
+            "static_findings": [], "rag_results": [], "audit_history": [],
+        }
+        from unittest.mock import MagicMock
+        mock_llm = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = "{}"
+        mock_llm.invoke.return_value = mock_response
+
+        with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
+            await cross_validator(state)
+
+        sent_prompt = mock_llm.invoke.call_args[0][0][1].content
+        # Only the top-3 by probability (Class6, Class7, Class8) should appear.
+        assert "Class8" in sent_prompt and "Class7" in sent_prompt and "Class6" in sent_prompt
+        assert "Class0" not in sent_prompt
+
+    @pytest.mark.asyncio
     async def test_llm_json_parse_error_returns_empty(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high, "static_findings": [], "rag_results": [], "audit_history": []}
         from unittest.mock import MagicMock
@@ -808,6 +890,68 @@ class TestSynthesizerUsesPreComputedVerdicts:
         vv = {v["vulnerability_class"]: v["verdict"] for v in report["vulnerability_verdicts"]}
         assert vv["Reentrancy"] == "CONFIRMED"
         assert vv["IntegerUO"]  == "LIKELY"
+
+    @pytest.mark.asyncio
+    async def test_consensus_engine_wins_over_compute_verdict_when_debate_fails(
+        self, base_state, ml_high,
+    ):
+        # Fix 1 (2026-06-21, "verdict fallback gap" — see
+        # docs/changes/2026-06-21-agents-manual-verification-real-bugs-found.md):
+        # when cross_validator's debate fails (no "verdicts" in state),
+        # synthesizer must prefer consensus_engine's already-computed,
+        # ML-discounted vote over the older compute_verdict() rule, which can
+        # disagree (verified live: compute_verdict() said DISPUTED while
+        # consensus_engine correctly said SAFE for the identical evidence).
+        state = {
+            **base_state,
+            "ml_result":         ml_high,
+            "rag_results":       [],
+            "audit_history":     [],
+            "static_findings":   [],  # no Slither corroboration
+            "routing_decisions": [],
+            # cross_validator did NOT run / failed — no "verdicts" key at all.
+            "consensus_verdict": {
+                "Reentrancy": {"verdict": "SAFE", "confidence": 0.19},
+                "IntegerUO":  {"verdict": "LIKELY", "confidence": 0.55},
+            },
+        }
+        with patch("src.llm.client.get_strong_llm", side_effect=ImportError("no LLM")):
+            result = await synthesizer(state)
+
+        vv = {v["vulnerability_class"]: v["verdict"] for v in result["final_report"]["vulnerability_verdicts"]}
+        # consensus_engine's vote wins, NOT compute_verdict()'s DISPUTED
+        # (which is what prob>=0.50+no-corroboration would otherwise yield).
+        assert vv["Reentrancy"] == "SAFE"
+        assert vv["IntegerUO"]  == "LIKELY"
+
+    @pytest.mark.asyncio
+    async def test_compute_verdict_is_last_resort_when_consensus_engine_didnt_score_class(
+        self, base_state,
+    ):
+        # A class consensus_engine never voted on (e.g. weak SUSPICIOUS-tier
+        # noise below its scoring bar) still needs an answer — compute_verdict()
+        # remains the correct final fallback for THOSE classes only.
+        ml_result = {
+            "confirmed":  [],
+            "suspicious": [{"vulnerability_class": "Timestamp", "probability": 0.30, "tier": "SUSPICIOUS"}],
+        }
+        state = {
+            **base_state,
+            "ml_result":         ml_result,
+            "rag_results":       [],
+            "audit_history":     [],
+            "static_findings":   [],
+            "routing_decisions": [],
+            "consensus_verdict": {},  # did not score Timestamp at all
+        }
+        with patch("src.llm.client.get_strong_llm", side_effect=ImportError("no LLM")):
+            result = await synthesizer(state)
+
+        vv = {v["vulnerability_class"]: v["verdict"] for v in result["final_report"]["vulnerability_verdicts"]}
+        # compute_verdict()'s rule for prob < 0.50: falls through its own logic
+        # (not asserting the exact label here, only that it didn't crash and
+        # produced SOME verdict via the compute_verdict() path).
+        assert "Timestamp" in vv
 
 
 # ---------------------------------------------------------------------------

@@ -1,8 +1,6 @@
-# data_extraction — Windowed Tokenization
+# ml/src/data_extraction — Data Extraction Utilities
 
-> **Status:** ✅ Current — GraphCodeBERT windowed tokenization, verified 2026-06-14
-
-Windowed tokenization for SENTINEL — produces `[W, 512]` token tensors from Solidity source files.
+Windowed tokenization logic extracted from `ml/scripts/retokenize_windowed.py`.
 
 ---
 
@@ -10,69 +8,39 @@ Windowed tokenization for SENTINEL — produces `[W, 512]` token tensors from So
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `windowed_tokenizer.py` | 175 | Per-file tokenization primitives — GraphCodeBERT, sliding window, comment stripping |
-| `__init__.py` | — | Package init |
-| `_backup_pre_seam_swap_2026-06-12/` | — | Backup of pre-seam-swap code (archived) |
+| `windowed_tokenizer.py` | 175 | Windowed tokenization for GraphCodeBERT |
+| `__init__.py` | 0 | Empty |
 
 ---
 
-## Config Constants
+## windowed_tokenizer.py
+
+### Constants
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `TOKENIZER_MODEL` | `"microsoft/graphcodebert-base"` | Tokenizer model name |
+| `TOKENIZER_MODEL` | `"microsoft/graphcodebert-base"` | Tokenizer backbone |
 | `WINDOW_SIZE` | `512` | Max sequence length per window |
 | `STRIDE` | `256` | Overlap between consecutive windows |
-| `MAX_WINDOWS` | `4` | Cap; linspace sub-sampling preserves start/mid/end |
+| `MAX_WINDOWS` | `4` | Hard cap; linspace sub-sampling preserves start/mid/end |
 
----
+### Functions
 
-## Public API
+**`init_worker()`** — Load tokenizer into process-level global. Call once per worker process.
 
-### `init_worker()`
+**`tokenize_windowed_contract(path, max_windows=4, strip_comments=True)`** — Tokenize one .sol file into `[max_windows, 512]` tensors.
 
-Load the graphcodebert-base tokenizer into the process-level global. Call once per worker process before any `tokenize_windowed_contract()` call.
+Output:
+- Short contracts (< 512 tokens): 1 real window; remaining are zero-padded
+- Long contracts (> max_windows): sub-sampled via linspace
+- Normal: padded with zero windows
 
-### `tokenize_windowed_contract(path, max_windows=4, strip_comments=True)`
+**`_strip_comments(source)`** — Remove `/* */` and `//` comments before tokenization (reclaims token budget for code).
 
-Per-file entry point. Returns `(input_ids, attention_mask)` — each `[W, 512]` int64 tensors.
+**`_select_windows(all_ids, all_masks, max_windows)`** — Sub-sample via `np.linspace` to preserve beginning, middle, and end.
 
-**Parameters:**
-- `path`: Path to `.sol` file
-- `max_windows`: Maximum number of windows (default 4)
-- `strip_comments`: Remove `/* */` and `//` comments before tokenization (default True)
+### Key Design
 
-**Comment stripping (A-1 fix):**
-- Removes `/* */` blocks and `//` line comments before tokenization
-- Reclaims token budget for actual code tokens rather than documentation
-- NatSpec tags are removed along with all other comment content
+This module produces the same shape as the offline training pipeline (`retokenize_windowed.py`). The v2 orchestrator (`sentinel_data/representation/orchestrator.py`) uses this module to ensure uniform tensor shapes for DataLoader collation.
 
----
-
-## Window Selection
-
-When a contract produces more than `max_windows` windows, linspace sub-sampling selects windows that preserve start/mid/end coverage. This ensures the model sees a representative sample of the contract's code.
-
----
-
-## Usage
-
-```python
-from ml.src.data_extraction.windowed_tokenizer import (
-    init_worker,
-    tokenize_windowed_contract,
-    MAX_WINDOWS,
-)
-
-# Initialize tokenizer (once per process)
-init_worker()
-
-# Tokenize a contract
-input_ids, attention_mask = tokenize_windowed_contract(
-    Path("contract.sol"),
-    max_windows=MAX_WINDOWS,
-    strip_comments=True,
-)
-# input_ids:      [4, 512] int64
-# attention_mask:  [4, 512] int64
-```
+Hash is NOT included — the caller (v2 orchestrator) sets the hash from Stage 1's SHA-256 in `meta.json`.

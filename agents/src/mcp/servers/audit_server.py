@@ -684,9 +684,19 @@ def run_server() -> None:
             "tools":              ["get_latest_audit", "get_audit_history", "check_audit_exists"],
         })
 
+    # Starlette >= 1.0 removed on_startup/on_shutdown kwargs in favor of lifespan.
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def lifespan(app):
+        await _on_startup()
+        try:
+            yield
+        finally:
+            await _on_shutdown()
+
     starlette_app = Starlette(
-        on_startup=[_on_startup],
-        on_shutdown=[_on_shutdown],
+        lifespan=lifespan,
         routes=[
             Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse_transport.handle_post_message),

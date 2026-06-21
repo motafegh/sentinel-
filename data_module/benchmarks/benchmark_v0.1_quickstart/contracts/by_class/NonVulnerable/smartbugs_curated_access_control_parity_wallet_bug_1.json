@@ -1,0 +1,8 @@
+{
+  "labels": [],
+  "source": "smartbugs_curated",
+  "category": "access_control",
+  "original_name": "parity_wallet_bug_1.sol",
+  "tier": "A",
+  "ground_truth": "safe"
+}

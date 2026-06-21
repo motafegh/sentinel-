@@ -83,6 +83,10 @@ validation_full_output.txt
 .env.local
 *.env.*
 
+# Slither/crytic build-cache artifacts (regenerated on every run)
+crytic-export/
+*.call-graph.dot
+
 # Editor/IDE files
 .vscode/
 .idea/

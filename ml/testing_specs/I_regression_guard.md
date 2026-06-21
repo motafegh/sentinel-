@@ -53,6 +53,8 @@ These are the gates enforced by `promote_model.py`. They fire even in
 | Checkpoint file exists | YES (`sys.exit(1)` if missing) | Confirm the `.pt` file is the correct run's best checkpoint, not a mid-run save |
 | Thresholds JSON present | WARNING only (not a hard gate) | Always run `tune_threshold.py` before Staging promotion; uniform 0.5 fallback is not acceptable for evaluation |
 | `val_f1_macro` provided | Argument required | Read the value from `epoch_summary.jsonl` `f1_macro_tuned` field, not from memory |
+| **Behavioral probes JSON present + all PASS** | **YES** (`sys.exit(1)` if any probe FAIL) | Run `synthetic_probes.py` first; the JSON is the gate artifact. See C.2.4. |
+| **Label quality JSON present + no FAIL** | **YES** (`sys.exit(1)` if any class rate > 0.50) | Run `label_quality.py` first. See F.1.0. |
 
 No F1 regression gate is enforced for Staging. Staging is for evaluation,
 not deployment. The F1 regression gate is Production-only.
@@ -65,6 +67,8 @@ not deployment. The F1 regression gate is Production-only.
 | Drift baseline exists at `--require-baseline` path | YES (`sys.exit(1)` if missing) | Confirm baseline `source` field is `'warmup'`, not `'training'` — script checks this too |
 | Drift baseline was built from warmup traffic (not training data) | YES (`sys.exit(1)` if `source=='training'`) | Check baseline JSON `source` field manually before passing path |
 | Thresholds JSON present | WARNING only | Never promote to Production without per-class tuned thresholds |
+| **Behavioral probes JSON PASS rate == 100%** | **YES** (`sys.exit(1)` if any probe FAIL) | All 30+ probes must pass. See C.2.4. |
+| **Label quality JSON: no FAIL** | **YES** | No class > 50% positive rate. See F.1.0. |
 
 **The F1 tie-break rule:** `val_f1_macro` must be strictly greater than the
 current Production model's recorded metric, not equal. The script uses `<=`
@@ -79,17 +83,25 @@ Complete these steps before running `promote_model.py`. Steps I.3.1–I.3.4
 are required for both Staging and Production. Steps I.3.5–I.3.6 are
 Production-only.
 
-### I.3.1 — Behaviour Checks (required, not automated)
+### I.3.1 — Behaviour Checks (now automated via C.2.4)
 
-These are NOT enforced by `promote_model.py`. You must run them manually:
+**As of 2026-06-17, I.3.1 is ENFORCED by `promote_model.py` via the behavioral
+probes gate (C.2.4).** The previous version of this spec listed these as
+manual checks; the ExternalBug FP on Run 12 showed that manual checks are
+not reliable — they were done but the FP was still promoted. Now they are
+automated.
 
-1. SmartBugs Curated smoke inference — run `C.2` from `C_diagnostic_checks.md`
-2. Known-positive contract round-trip — at least one contract from each of the
-   10 classes should predict correctly with the tuned threshold
-3. Known-negative (NonVulnerable) contract check — at least 5 clean contracts
-   should produce no predictions above threshold
-4. FP probe check — any contract used as FP probe in prior runs must not
-   regress (record result against its prior result)
+**The behavioral probes gate (C.2.4)** is the new I.3.1:
+1. SmartBugs Curated smoke inference — replaced by synthetic probes (C.2.4)
+   when SmartBugs Curated is contaminated
+2. Known-positive contract round-trip — 10+ synthetic contracts with
+   "should trigger" expected outcomes
+3. Known-negative (NonVulnerable) contract check — 10+ synthetic contracts
+   with "should NOT trigger" expected outcomes
+4. FP probe check — 5+ edge-case contracts (gray area)
+
+**See `C_diagnostic_checks.md` C.2.4 for the probe definitions and
+`promote_model.py` for the gate enforcement.**
 
 ### I.3.2 — Calibration Files
 

@@ -24,6 +24,62 @@ Always load alongside: `D_smoke_preflight.md` and `E_preprocessing_consistency.m
 Complete every gate before running `train.py`. A gate that is skipped without
 a documented reason is treated as a gap (Rule 2, Layer 3).
 
+### F.1.0 — Label Quality Gate (BLOCKING)
+
+**Why this exists:** Run 12 had ExternalBug labeled positive on 75% of training
+contracts (16,638 / 22,493). The DIVE crosswalk maps the "Access Control"
+folder to ExternalBug, which is too broad — it includes benign owner patterns.
+The model then learned the wrong feature and gave ExternalBug=0.85 on a
+safe_storage-style contract.
+
+**A pre-launch label quality check would have caught this before training.**
+
+**What it does:** Before launching any run, check the training labels for:
+1. Per-class positive rate (FAIL if any class > 50% or < 1%)
+2. Per-source positive rate per class (FAIL if a single source is > 80% of positives)
+3. Class co-occurrence matrix (FLAG suspicious correlations > 0.6)
+4. Class definition sanity (FLAG if a class has 0 positives in test split)
+
+**Run the check:**
+
+```bash
+# Default: uses v3 export
+python ml/testing_specs/label_quality.py --exit-on-fail
+
+# Explicit path
+python ml/testing_specs/label_quality.py \
+    --labels data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/labels.parquet \
+    --output ml/checkpoints/Run13_label_quality.json \
+    --exit-on-fail
+```
+
+**Output JSON format:**
+
+```json
+{
+  "summary": {
+    "total_contracts": 22493,
+    "per_class": {
+      "Reentrancy": {"positive": 11399, "rate": 0.507},
+      "ExternalBug": {"positive": 16638, "rate": 0.740, "ALERT": "rate > 0.50"}
+    },
+    "alerts": ["ExternalBug: positive rate 0.740 > 0.50 threshold"]
+  }
+}
+```
+
+**Baseline result on v3 export (2026-06-17):**
+- FAIL: ExternalBug positive rate = 0.740 (threshold 0.50)
+- FAIL: DIVE source has 16,582 / 16,638 (99.6%) of ExternalBug positives
+- FLAG: ExternalBug-Reentrancy co-occurrence = 0.64 (suspicious)
+- FLAG: ExternalBug-IntegerUO co-occurrence = 0.50
+
+**This gate would have blocked Run 12** by flagging the 75% ExternalBug
+positive rate BEFORE training started. The fix would have been to audit
+the DIVE crosswalk before launching.
+
+**See:** `ml/audit_docs/2026-06-17_ml_Run12_externalbug_false_positive_root_cause.md`
+
 ### F.1.1 — Label File and Data Integrity
 
 - Confirm the active export and split version (read from `MEMORY.md` Current State — do not assume)

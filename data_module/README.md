@@ -1,294 +1,675 @@
-# sentinel-data
+# SENTINEL Data Module (`sentinel-data`)
 
-> **Data engineering module for the SENTINEL smart-contract security oracle.**
-> **Status (2026-06-12):** Stages 0–4 ✅ COMPLETE; Stage 5 (splitting + registry) ✅ COMPLETE; Stage 6 (analysis) ✅ COMPLETE; Stage 7 (export) ⏳ STUB. **Run 11 launch: 2026-08-18.**
+A standalone Python package (`sentinel-data`, Poetry-managed, Python ≥3.12,<3.13) that implements the full data pipeline for the SENTINEL smart contract vulnerability classifier — from raw source ingestion through labeled, verified, split, and exported dataset artifacts.
 
-Builds a **verified, multi-source, multi-label** Solidity contract dataset from 17 curated sources and exports it to `sentinel-ml` as versioned shards. The module exists because the BCCC corpus that trained Runs 1–9 had 89.4% Reentrancy false-positives and 86.9% CallToUnknown false-positives — the model was learning label noise, not vulnerability patterns. See `docs/legacy/bccc_deep_dive/` for the full Phase 1–5 investigation.
-
-**One-way dependency:** `sentinel-data` → (used by) → `sentinel-ml`. This package never imports from `sentinel-ml`.
+**Purpose**: Produce clean, leak-free, verifiably-labeled training data for the ML module (`ml/`). The data module owns all 9 pipeline stages; the ML module consumes the exported artifacts via `SentinelDataset`.
 
 ---
 
-## Quick start
+## Table of Contents
+
+1. [Pipeline Architecture](#1-pipeline-architecture)
+2. [Directory Structure](#2-directory-structure)
+3. [Sources](#3-sources)
+4. [Stage 1: Ingestion](#4-stage-1-ingestion)
+5. [Stage 2: Preprocessing](#5-stage-2-preprocessing)
+6. [Stage 3: Labeling](#6-stage-3-labeling)
+7. [Stage 4: Representation](#7-stage-4-representation)
+8. [Stage 5: Verification](#8-stage-5-verification)
+9. [Stage 6: Splitting](#9-stage-6-splitting)
+10. [Stage 7: Registry](#10-stage-7-registry)
+11. [Stage 8: Analysis](#11-stage-8-analysis)
+12. [Stage 9: Export](#12-stage-9-export)
+13. [Configuration](#13-configuration)
+14. [CLI Usage](#14-cli-usage)
+15. [Dependency Map](#15-dependency-map)
+
+---
+
+## 1. Pipeline Architecture
+
+The data module implements a 9-stage DVC-tracked pipeline (defined in `dvc.yaml`):
+
+```
+ingest → preprocess → label → represent → verify → split → register → analyze → export
+```
+
+Each stage reads from `data/<input>/` and writes to `data/<output>/`. The pipeline is orchestrated by the CLI (`sentinel-data`) and tracked by DVC for reproducibility.
+
+**Key invariants**:
+- Schema changes require bumping `FEATURE_SCHEMA_VERSION` (currently `"v9"`) and rebuilding all caches
+- The 10-class taxonomy is LOCKED — changing class order invalidates existing checkpoints
+- All graphs use SHA-256 content addressing (not MD5)
+- The representation cache is keyed on `(sha256, schema_version, extractor_version)`
+
+**Current corpus**: 22,493 contracts across 5 active sources, 0% leakage, splits 18,596/1,983/1,914 (train/val/test).
+
+---
+
+## 2. Directory Structure
+
+```
+data_module/
+├── sentinel_data/               # Main Python package
+│   ├── __init__.py              # Package docstring, pipeline architecture
+│   ├── cli.py                   # CLI entry point (sentinel-data)
+│   ├── ingestion/               # Stage 1: source ingestion
+│   │   ├── ingest.py            # Orchestrates connector + manifest
+│   │   ├── manifest.py          # Per-source pull record with SHA-256 verification
+│   │   ├── label_folderize.py   # Label-aware folderization (DIVE, SmartBugs)
+│   │   ├── freshness.py         # Source pin freshness checker
+│   │   └── connectors/          # Source connectors
+│   │       ├── base.py          # BaseConnector, SourceConfig, PullResult
+│   │       ├── git_connector.py # Git clone + checkout
+│   │       ├── manual_connector.py # Manual download / symlink
+│   │       ├── huggingface_connector.py # HuggingFace datasets
+│   │       ├── zenodo_connector.py # Zenodo records
+│   │       └── etherscan_connector.py # Etherscan API (DISL)
+│   ├── preprocessing/           # Stage 2: source normalization
+│   │   ├── pipeline.py          # PreprocessingPipeline (5-step orchestration)
+│   │   ├── compiler.py          # Two-pass solc compilation
+│   │   ├── flattener.py         # Import flattening
+│   │   ├── deduplicator.py      # Content-based dedup (SHA-256)
+│   │   ├── normalizer.py        # Whitespace/format normalization
+│   │   ├── segmenter.py         # Contract segmentation + version bucketing
+│   │   └── parallel.py          # Multiprocessing variant
+│   ├── labeling/                # Stage 3: label assignment
+│   │   ├── schema/              # Canonical 10-class taxonomy
+│   │   │   ├── __init__.py      # class_names(), class_index()
+│   │   │   └── taxonomy.yaml    # Class definitions + descriptions
+│   │   ├── parsers/             # Per-source label parsers
+│   │   │   ├── solidifi.py      # SolidiFI ground-truth parser
+│   │   │   ├── dive.py          # DIVE CSV label parser
+│   │   │   └── smartbugs_curated.py # SmartBugs Curated parser
+│   │   ├── crosswalks/          # Per-source label mapping YAMLs
+│   │   ├── merger.py            # Multi-source label merger (tier precedence)
+│   │   └── gate.py              # Go/No-Go minimum-viable-corpus gate
+│   ├── representation/          # Stage 4: graph + token representation
+│   │   ├── graph_schema.py      # CANONICAL schema (NODE_TYPES, EDGE_TYPES, FEATURE_NAMES)
+│   │   ├── graph_extractor.py   # Solidity → PyG graph extraction (v8 schema)
+│   │   ├── orchestrator.py      # Represent orchestrator (reads Stage 1, writes .pt)
+│   │   ├── tokenizer.py         # Thin adapter over ml/ windowed tokenizer
+│   │   ├── cache_manager.py     # Content-addressed representation cache
+│   │   ├── versioner.py         # Schema + extractor version registry
+│   │   ├── cfg_builder.py       # Standalone CFG artifact (opt-in)
+│   │   ├── call_graph.py        # DEFERRED to v3.1
+│   │   ├── pdg_builder.py       # DEFERRED to v3.1
+│   │   └── opcode_extractor.py  # DEFERRED to v3.1
+│   ├── verification/            # Stage 5: label verification
+│   │   ├── gate.py              # Verification gate (VERIFIED/PROVISIONAL/FAIL)
+│   │   ├── class_auditor.py     # Per-class stats + co-occurrence matrix
+│   │   ├── semantic_checker.py  # Graph-feature-based label verification
+│   │   ├── tool_validator.py    # Slither agreement rate per class
+│   │   ├── fp_estimator.py      # Empirical false-positive rate (stratified)
+│   │   ├── negative_checker.py  # NonVulnerable contamination check
+│   │   ├── slither_runner.py    # Content-addressed Slither runner
+│   │   ├── aeryn_runner.py      # Aderyn tool runner
+│   │   └── patterns/            # Vulnerability pattern definitions
+│   ├── splitting/               # Stage 6: train/val/test splits
+│   │   ├── splitters.py         # 4 splitter strategies (random, stratified, project, temporal)
+│   │   ├── dedup_enforcer.py    # Reassign straddling dedup groups
+│   │   ├── leakage_auditor.py   # Post-split text similarity check
+│   │   └── nonvulnerable_cap.py # NonVulnerable : positive ratio cap (3:1)
+│   ├── registry/                # Stage 7: dataset versioning
+│   │   ├── catalog.py           # SQLite + YAML mirror catalog
+│   │   ├── lineage_tracker.py   # DAG lineage tracking
+│   │   └── dataset_diff.py      # Dataset version diffing
+│   ├── analysis/                # Stage 8: dataset analysis
+│   │   ├── drift_monitor.py     # KS-test feature + label drift detection
+│   │   ├── overlap_detector.py  # Pairwise Jaccard similarity between sources
+│   │   ├── cooccurrence.py      # Class co-occurrence analysis
+│   │   ├── feature_dist.py      # Feature distribution analysis
+│   │   ├── balance_viz.py       # Class balance visualization
+│   │   └── probe_dataset.py     # Dataset probing utilities
+│   └── export/                  # Stage 9: consumer-facing export
+│       ├── chunker.py           # Orchestrates all 4 writers → manifest.json
+│       ├── export.py            # SentinelDatasetExport (read-only view)
+│       ├── graph_writer.py      # Graph .pt sharding
+│       ├── token_writer.py      # Token .pt sharding
+│       ├── label_writer.py      # labels.parquet writer
+│       ├── metadata_writer.py   # metadata.parquet writer
+│       └── format_schema/       # Export format definitions
+├── config.yaml                  # Single source of truth for all sources + pipeline settings
+├── pyproject.toml               # Poetry build config (sentinel-data package)
+├── dvc.yaml                     # 9-stage DVC DAG
+├── benchmarks/                  # Benchmark datasets
+├── tests/                       # Test suite
+└── docs/                        # Documentation
+```
+
+---
+
+## 3. Sources
+
+Sources are defined in `config.yaml` under `sources_critical_path` and `sources_additive`. Each source has a confidence tier (T0–T4) that governs label precedence and verification thresholds.
+
+### Critical-Path Sources
+
+| Source | Tier | Connector | Contracts | Description |
+|--------|------|-----------|-----------|-------------|
+| **SolidiFI** | T0 (Gold) | git | 9,369 | ISSTA 2020, injected bugs with 100% ground-truth certainty |
+| **DIVE** | T1 (Gold) | manual | 22,330 | Nature Sci. Data 2025, 8 DASP classes, multi-label, peer-reviewed |
+| **Web3Bugs** | T1 (Gold) | git | ~3,500 | Contest-verified bugs from Code4rena/Sherlock/Immunefi |
+| **SmartBugs Curated** | T3 (Structural) | manual | 143 | Hand-labeled contracts (DASP → 10 classes direct) |
+| **DISL** | T4 (Bronze) | etherscan | 514,506 | Unlabeled Solidity files; NonVulnerable pool only, 3:1 cap |
+
+### Deferred Sources
+
+| Source | Status | Reason |
+|--------|--------|--------|
+| DeFiHackLabs | Deferred to v2.1 | Foundry project — requires forge-std clone |
+| FORGE | Deferred to v2.2 | 50-entry agreement test required |
+| Bastet | v2.1 additive | Replaces Code4rena scraper (legal risk) |
+| ScrawlD | v2.1 additive | 5-tool majority voting |
+| REKT | v2.1 additive | Verified real exploits |
+
+---
+
+## 4. Stage 1: Ingestion
+
+**Entry point**: `sentinel_data.ingestion.ingest`
+
+**What it does**:
+1. Reads `config.yaml` to find enabled sources
+2. For each source, selects the appropriate connector (git, manual, huggingface, etc.)
+3. Pulls the source to `data/raw/<source>/repo/`
+4. Writes `ingestion_manifest.json` with per-file SHA-256 fingerprints
+5. For sources with separate label CSVs (DIVE, SmartBugs), runs label-aware folderization
+
+**Key files**:
+- `ingestion/ingest.py` — `ingest_source()`, `ingest_all()`
+- `ingestion/manifest.py` — `IngestionManifest`, `FileRecord`, `verify()`
+- `ingestion/label_folderize.py` — `folderize_by_labels()` for DIVE/SmartBugs
+- `ingestion/freshness.py` — `run_freshness_check()` for source pin staleness
+
+**Connectors** (`ingestion/connectors/`):
+- `base.py` — `BaseConnector` (ABC), `SourceConfig`, `PullResult`
+- `git_connector.py` — Clone + checkout to pinned commit
+- `manual_connector.py` — Symlink/copy from staging path
+- `huggingface_connector.py` — HuggingFace datasets API
+- `zenodo_connector.py` — Zenodo record download
+- `etherscan_connector.py` — Etherscan API (DISL)
+
+**Output**: `data/raw/<source>/repo/` with `ingestion_manifest.json`
+
+---
+
+## 5. Stage 2: Preprocessing
+
+**Entry point**: `sentinel_data.preprocessing.preprocess`
+
+**What it does**: Runs a 5-step pipeline on each `.sol` file:
+
+1. **Flatten** (`flattener.py`) — Resolve imports, produce single-file output
+2. **Compile** (`compiler.py`) — Two-pass solc compilation (exact version, then nearest satisfying)
+3. **Dedup** (`deduplicator.py`) — Content-based dedup via SHA-256 hash
+4. **Normalize** (`normalizer.py`) — Whitespace/format normalization
+5. **Segment + Bucket** (`segmenter.py`) — Contract segmentation, version bucketing (legacy/transitional/modern)
+
+**Key files**:
+- `preprocessing/preprocess.py` — `preprocess_source()`, supports `--sample N` and `--retry-failed`
+- `preprocessing/pipeline.py` — `PreprocessingPipeline`, `ContractMeta` (sidecar), `PipelineResult`
+- `preprocessing/compiler.py` — `compile_contract()` → `CompileResult` (two-pass solc)
+- `preprocessing/parallel.py` — Multiprocessing variant for batch processing
+
+**Output**: `data/preprocessed/<source>/<sha256>.{sol, meta.json}` + `dropped.csv` for failures
+
+**Sidecar schema** (`ContractMeta`):
+```json
+{
+  "sha256": "...",
+  "source_name": "solidifi",
+  "original_path": "repo/buggy_contracts/reentrancy/x.sol",
+  "pragma": "^0.8.0",
+  "solc_version": "0.8.19",
+  "compile_status": "ok",
+  "flatten_status": "flattened",
+  "dedup_group_id": "abc123",
+  "version_bucket": "modern",
+  "has_unchecked_block": false
+}
+```
+
+---
+
+## 6. Stage 3: Labeling
+
+**Entry point**: `sentinel_data.labeling.merger`
+
+**What it does**: Assigns vulnerability labels to contracts using per-source parsers and crosswalks, then merges multi-source labels with tier-precedence conflict resolution.
+
+**Key files**:
+- `labeling/schema/__init__.py` — `class_names()` (locked 10-class order), `class_index()`
+- `labeling/schema/taxonomy.yaml` — Canonical class definitions
+- `labeling/parsers/solidifi.py` — SolidiFI ground-truth parser (T0)
+- `labeling/parsers/dive.py` — DIVE CSV label parser (T1)
+- `labeling/parsers/smartbugs_curated.py` — SmartBugs Curated parser (T3)
+- `labeling/crosswalks/` — Per-source label mapping YAMLs (10 classes)
+- `labeling/merger.py` — Multi-source merge with tier precedence (T0 > T1 > T2 > T3 > T4)
+- `labeling/gate.py` — Go/No-Go minimum-viable-corpus gate
+
+**Merge rules** (from `merger.py`):
+- Tier precedence: T0 > T1 > T2 > T3 > T4 (lower index = higher confidence)
+- Within a tier: positive wins over negative
+- DoS+Reentrancy co-occurrence from a single T3/T4 source is flagged as suspect noise (threshold: 50%)
+
+**Output**: `data/labels/<source>/<sha256>.labels.json` + `data/labels/merged/<sha256>.labels.json`
+
+**Label schema**:
+```json
+{
+  "sha256": "...",
+  "sources": ["solidifi"],
+  "classes": {
+    "Reentrancy": {"value": 1, "tier": "T0", "source": "solidifi"},
+    "DenialOfService": {"value": 0, "tier": null, "source": "solidifi"}
+  },
+  "n_pos": 1,
+  "flags": []
+}
+```
+
+---
+
+## 7. Stage 4: Representation
+
+**Entry point**: `sentinel_data.representation.orchestrator`
+
+**What it does**: Converts preprocessed `.sol` files into PyG graph tensors and windowed GraphCodeBERT tokens.
+
+**Key files**:
+- `representation/graph_schema.py` — **CANONICAL** schema: `NODE_TYPES` (14), `EDGE_TYPES` (12), `FEATURE_NAMES` (12 dims), `CLASS_NAMES` (10)
+- `representation/graph_extractor.py` — `extract_contract_graph()` → PyG `Data` object
+- `representation/orchestrator.py` — `represent_source()` (reads Stage 1, writes .pt)
+- `representation/tokenizer.py` — Thin adapter over `ml/src/data_extraction/windowed_tokenizer.py`
+- `representation/cache_manager.py` — Content-addressed cache (sha256 + schema + extractor versions)
+- `representation/versioner.py` — Schema + extractor version registry
+
+**Graph shape contract** (v9 schema):
+```
+graph.x             [N, 12]  float32  node feature matrix (NODE_FEATURE_DIM=12)
+graph.edge_index    [2, E]   int64    edge connectivity (COO format)
+graph.edge_attr     [E]      int64    edge type IDs 0–11
+graph.node_metadata list     of dicts (one per node: name, type, source_lines)
+```
+
+**Feature dimensions** (v9):
+| Dim | Name | Description |
+|-----|------|-------------|
+| 0 | type_id | Node type / 13.0 (normalized) |
+| 1 | visibility | 0=public, 0.5=internal, 1=private |
+| 2 | uses_block_globals | block.timestamp/number/now detected |
+| 3 | view | Function is view/pure |
+| 4 | payable | Function is payable |
+| 5 | complexity | log1p(CFG block count) / log1p(1000) |
+| 6 | loc | log1p(line count) / log1p(1000) |
+| 7 | return_ignored | External call return value discarded |
+| 8 | call_target_typed | All calls via typed interfaces |
+| 9 | has_loop | Function contains loop construct |
+| 10 | external_call_count | log1p(count) / log1p(20) |
+| 11 | in_unchecked_block | Inside unchecked{} (0.8+) or pre-0.8 era |
+
+**Edge types** (12):
+| ID | Name | Description |
+|----|------|-------------|
+| 0 | CALLS | Function calls |
+| 1 | READS | State variable reads |
+| 2 | WRITES | State variable writes |
+| 3 | EMITS | Event emissions |
+| 4 | INHERITS | Contract inheritance |
+| 5 | CONTAINS | Contract contains function |
+| 6 | CONTROL_FLOW | CFG edges |
+| 7 | REVERSE_CONTAINS | Runtime-only (never on disk) |
+| 8 | CALL_ENTRY | ICFG-Lite cross-function call |
+| 9 | RETURN_TO | ICFG-Lite cross-function return |
+| 10 | DEF_USE | Intra-function data-flow |
+| 11 | EXTERNAL_CALL | Cross-contract call site marker |
+
+**Cache key**: `(sha256, FEATURE_SCHEMA_VERSION, EXTRACTOR_VERSION)` — change any → cache invalidation.
+
+**Output**: `data/representations/<source>/<sha256>.{pt, tokens.pt, rep.json}`
+
+---
+
+## 8. Stage 5: Verification
+
+**Entry point**: `sentinel_data.verification.gate`
+
+**What it does**: Produces per-class VERIFIED / PROVISIONAL / BEST-EFFORT / FAIL verdicts from multiple verification signals.
+
+**Key files**:
+- `verification/gate.py` — `run_gate()` → `GateResult` with per-class `ClassVerdict`
+- `verification/class_auditor.py` — Per-class stats + 10×10 co-occurrence matrix
+- `verification/semantic_checker.py` — Graph-feature-based label verification
+- `verification/tool_validator.py` — Slither agreement rate per class
+- `verification/fp_estimator.py` — Empirical false-positive rate (stratified by source+tier)
+- `verification/negative_checker.py` — NonVulnerable contamination check
+- `verification/slither_runner.py` — Content-addressed Slither runner with cache
+
+**Gate rules** (from `gate.py`):
+| Condition | Verdict |
+|-----------|---------|
+| FP rate > 30% | FAIL |
+| T0 injection-verified, no semantic failures | VERIFIED |
+| Semantic pass rate > 90%, no co-occurrence flag | VERIFIED |
+| Semantic pass rate 60–90% | PROVISIONAL |
+| Semantic pass rate 30–60% | BEST-EFFORT |
+| Semantic pass rate < 30% | FAIL |
+| Co-occurrence flag on high-noise source | BEST-EFFORT |
+
+**Semantic check coverage** (from `semantic_checker.py`):
+| Class | Feature Used |
+|-------|-------------|
+| Reentrancy | `has_cei_path` (EXTERNAL_CALL edge + WRITE reachable) |
+| Timestamp | `feat[2]` uses_block_globals |
+| IntegerUO | `feat[11]` unchecked_block OR pre-0.8 pragma |
+| UnusedReturn | `feat[7]` return_ignored |
+| MishandledException | `feat[7]` return_ignored (low-level call) |
+| CallToUnknown | EXTERNAL_CALL edge (type 11) present |
+| ExternalBug | EXTERNAL_CALL edge (weaker signal) |
+| DenialOfService | NOT_EXTRACTABLE (no v9 feature) |
+| GasException | NOT_EXTRACTABLE (no v9 feature) |
+| TransactionOrderDependence | NOT_EXTRACTABLE (no v9 feature) |
+
+**Output**: `data/analysis/<run_id>/verification_report.md`
+
+---
+
+## 9. Stage 6: Splitting
+
+**Entry point**: `sentinel_data.splitting.splitters`
+
+**What it does**: Produces leak-free, deterministic train/val/test splits using a two-pass approach: splitter → dedup_enforcer.
+
+**Key files**:
+- `splitting/splitters.py` — 4 strategies: `random_split`, `stratified_split`, `project_split`, `temporal_split`
+- `splitting/dedup_enforcer.py` — Reassign straddling dedup groups (majority-wins rule)
+- `splitting/leakage_auditor.py` — Post-split text shingle similarity check (safety net)
+- `splitting/nonvulnerable_cap.py` — NonVulnerable : positive ratio cap (default 3:1)
+
+**Splitter strategies**:
+| Strategy | Description | Default For |
+|----------|-------------|-------------|
+| `stratified` | Per-class + per-source + per-tier distribution preserved (±2%) | Tool-derived sources |
+| `project` | Each project goes entirely to one split | Audit datasets (Bastet, Web3Bugs) |
+| `temporal` | Pre-2023 train/val, post-2023 test | Optional temporal evaluation |
+| `random` | Random assignment, deterministic seed | Sanity testing only |
+
+**Two-pass split**:
+1. **Pass 1**: Splitter assigns contracts to splits per strategy
+2. **Pass 2**: `dedup_enforcer` reassigns any near-dup group that straddles a split boundary (majority-wins, ties → train)
+
+**NonVulnerable cap** (from `nonvulnerable_cap.py`):
+- Default cap: 3:1 (NonVulnerable : positive ratio)
+- Stratified by source to preserve per-source distribution
+- Prevents the BCCC failure pattern (99% DoS↔Reentrancy co-occurrence from class imbalance)
+
+**Output**: `data/splits/v{N}/{train,val,test}.jsonl` + `split_manifest.json`
+
+---
+
+## 10. Stage 7: Registry
+
+**Entry point**: `sentinel_data.registry.catalog`
+
+**What it does**: Tracks dataset provenance, artifacts, splits, and versioned snapshots in a SQLite database with YAML mirror.
+
+**Key files**:
+- `registry/catalog.py` — `Catalog` class (SQLite + YAML mirror)
+- `registry/lineage_tracker.py` — DAG lineage tracking for artifacts
+- `registry/dataset_diff.py` — Dataset version diffing
+
+**Catalog tables** (6):
+| Table | Purpose |
+|-------|---------|
+| `sources` | Source metadata (pin, tier, contract count) |
+| `artifacts` | Content-addressed files (SHA-256, lineage DAG) |
+| `splits` | Split configurations (version, seed, strategy) |
+| `dataset_versions` | Named, immutable snapshots (append-only) |
+| `dataset_version_retirements` | Retirement tracking |
+| `schema_migrations` | Forward-only schema evolution |
+
+**API**:
+- `Catalog.add_source()`, `get_source()`, `list_sources()`
+- `Catalog.add_artifact()`, `get_artifact()`
+- `Catalog.add_split()`, `get_split()`
+- `Catalog.add_dataset_version()`, `get_dataset_version()`, `list_dataset_versions()`
+- `Catalog.load_artifact()` — ML module interface (hash-verified on load)
+- `Catalog.verify_artifact_hash()` — SHA-256 verification
+- `Catalog.write_yaml_mirror()` — Export for version control
+
+**Output**: `data/registry/catalog.db` + `data/registry/catalog.yaml`
+
+---
+
+## 11. Stage 8: Analysis
+
+**Entry point**: Various analysis modules
+
+**What it does**: Produces dataset quality reports, drift detection, and overlap analysis.
+
+**Key files**:
+- `analysis/drift_monitor.py` — KS-test feature + label drift between versions
+- `analysis/overlap_detector.py` — Pairwise Jaccard similarity (exact + near) between sources
+- `analysis/cooccurrence.py` — Class co-occurrence analysis
+- `analysis/feature_dist.py` — Feature distribution analysis
+- `analysis/balance_viz.py` — Class balance visualization
+- `analysis/probe_dataset.py` — Dataset probing utilities
+
+**Drift monitor** (`drift_monitor.py`):
+- Per-feature KS test (node_count, edge_count, loc, function_count, cyclomatic_complexity, call_depth)
+- Per-class label distribution KS test (binary: count_positive / total)
+- Outputs `data/analysis/<run_id>/drift_report.md`
+
+**Overlap detector** (`overlap_detector.py`):
+- Exact overlap: shared sha256s between sources
+- Near overlap: shared dedup_groups (AST-similar, different sha256)
+- Outputs `overlap_matrix.csv` + `overlap_heatmap.png`
+
+**Output**: `data/analysis/<run_id>/{drift_report.md, overlap_matrix.csv, overlap_heatmap.png}`
+
+---
+
+## 12. Stage 9: Export
+
+**Entry point**: `sentinel_data.export.chunker`
+
+**What it does**: Produces the consumer-facing export artifact that the ML module consumes via `SentinelDataset`.
+
+**Key files**:
+- `export/chunker.py` — `chunk_export()` orchestrates all 4 writers
+- `export/export.py` — `SentinelDatasetExport` (read-only view with hash verification)
+- `export/graph_writer.py` — Graph .pt sharding (default 5000 contracts/shard)
+- `export/token_writer.py` — Token .pt sharding
+- `export/label_writer.py` — `labels.parquet` (10-class binary matrix)
+- `export/metadata_writer.py` — `metadata.parquet` (per-contract metadata)
+
+**Export layout**:
+```
+<output_dir>/
+├── labels.parquet          # 10-class binary labels
+├── metadata.parquet        # Per-contract metadata
+├── graphs/
+│   ├── graphs-{shard:05d}.pt   # Graph shards
+│   └── _shard_index.json       # {sha: {shard, pos_in_shard, num_nodes}}
+├── tokens/
+│   ├── tokens-{shard:05d}.pt   # Token shards
+│   └── _shard_index.json
+├── manifest.json           # Written LAST (Fix A — avoids circular hash)
+└── .hash_cache.json        # Warm-load fast path for hash verification
+```
+
+**Manifest fields**:
+- `schema_version`: Export format version (currently "v1")
+- `graph_schema_version`: Graph feature schema (currently "v9")
+- `artifact_hash`: SHA-256 over all data files (excludes manifest.json)
+- `n_contracts`: Total contracts in splits
+- `n_contracts_with_reps`: Contracts with graph representations
+- `n_shards`: Number of graph/token shards
+- `splits`: `{train: [sha256...], val: [...], test: [...]}`
+- `shard_index`: `{sha: {shard, pos_in_shard, num_nodes}}`
+- `source_set`: List of sources actually exported
+- `label_class_columns`: The 10 class names (locked order)
+
+**Hash verification** (`SentinelDatasetExport.verify_artifact_hash()`):
+- Warm path: stats each file, compares mtime+size to `.hash_cache.json` (milliseconds)
+- Cold path: full SHA-256 over all data files (fallback)
+
+**Output**: `data/exports/v{N}/` with manifest.json
+
+---
+
+## 13. Configuration
+
+The single source of truth is `config.yaml` at the data_module root.
+
+**Key sections**:
+- `sources_critical_path`: Core sources (SolidiFI, DIVE, Web3Bugs, SmartBugs Curated, DISL)
+- `sources_additive`: Deferred sources (Bastet, FORGE, ScrawlD, REKT, etc.)
+- `pipeline.min_viable_corpus`: Gate thresholds (total ≥4000, major classes ≥300, minor ≥100)
+- `pipeline.negative.positive_ratio_max`: NonVulnerable cap (default 3.0)
+- `pipeline.dedup.ast_similarity_threshold`: Dedup threshold (default 0.85)
+
+**Schema constants** (from `representation/graph_schema.py`):
+- `FEATURE_SCHEMA_VERSION = "v9"`
+- `NODE_FEATURE_DIM = 12`
+- `NUM_NODE_TYPES = 14`
+- `NUM_EDGE_TYPES = 12`
+- `NUM_CLASSES = 10`
+
+---
+
+## 14. CLI Usage
+
+The CLI entry point is `sentinel-data` (defined in `pyproject.toml`).
 
 ```bash
-# Install (core deps, no GPU required)
-cd data_module/
-poetry install
+# Full pipeline
+sentinel-data ingest --source solidifi
+sentinel-data preprocess --source solidifi
+sentinel-data label --source solidifi
+sentinel-data represent --source solidifi
+sentinel-data verify
+sentinel-data split
+sentinel-data register
+sentinel-data analyze
+sentinel-data export
 
-# Verify the installation
-poetry run sentinel-data --help
+# Dry run
+sentinel-data ingest --source solidifi --dry-run
 
-# Dry-run the full pipeline
-poetry run sentinel-data run --dry-run
+# Sample mode (fast iteration)
+sentinel-data preprocess --source dive --sample 100
 
-# Dry-run from a specific stage
-poetry run sentinel-data run --dry-run --from-stage verify
+# Retry failed files
+sentinel-data preprocess --source solidifi --retry-failed
 
-# Run a single stage (dry)
-poetry run sentinel-data ingest --source solidifi --dry-run
+# Force re-extraction
+sentinel-data represent --source solidifi --force
 
-# Run a single stage (real)
-poetry run sentinel-data verify
-
-# Run all tests
-poetry run pytest tests/ -v
+# Analysis
+sentinel-data analyze --drift --baseline-version v1
+sentinel-data analyze --overlap
 ```
 
 ---
 
-## Module map
+## 15. Dependency Map
+
+### Module → Module Dependencies
 
 ```
-data_module/                              # THIS PACKAGE
-├── pyproject.toml                         # sentinel-data package definition (poetry)
-├── config.yaml                            # single source of truth for sources + pipeline settings
-├── dvc.yaml                               # 9-stage DVC DAG
-├── README.md                              # ← you are here
-├── sentinel_data/                         # installable Python package (9 sub-packages)
-│   ├── __init__.py                        # package docstring + __version__ = "0.1.0"
-│   ├── cli.py                             # entry point: sentinel-data <stage> [--dry-run] (953 lines)
-│   ├── ingestion/                         # Stage 1a — per-source connectors + SHA-256 manifests
-│   │   ├── README.md
-│   │   ├── ingest.py                      # orchestrator (ingest_source / ingest_all)
-│   │   ├── manifest.py                    # IngestionManifest + FileRecord + verify_manifest
-│   │   ├── freshness.py                   # pin staleness + slither-analyzer version check
-│   │   ├── label_folderize.py             # per-class symlinks for CSV-labeled sources
-│   │   └── connectors/                    # 5 connector types + 2 aliases (strategy pattern)
-│   │       └── README.md
-│   ├── preprocessing/                     # Stage 1b — flatten + 2-pass compile + 3-level dedup + normalize + segment
-│   │   ├── README.md
-│   │   ├── pipeline.py                    # PreprocessingPipeline + ContractMeta sidecar
-│   │   ├── preprocess.py                  # CLI service (--sample N, --retry-failed)
-│   │   ├── flattener.py                   # solc --flatten + 2-stage unresolved-import strip fallback
-│   │   ├── compiler.py                    # 2-pass: exact pragma → nearest available
-│   │   ├── deduplicator.py                # SHA-256 → address → (AST near-dup STUB)
-│   │   ├── normalizer.py                  # strip comments, SPDX, whitespace
-│   │   ├── segmenter.py                   # version bucket + has_unchecked_block
-│   │   ├── parallel.py                    # multiprocessing wrapper
-│   │   └── _transitive_strip.py           # helper for flattener's import-strip fallback
-│   ├── representation/                    # Stage 2 — graph (.pt) + token extraction (v9 schema, thin-adapter)
-│   │   ├── README.md
-│   │   ├── graph_schema.py                # thin-adapter over ml/src/preprocessing/graph_schema.py
-│   │   ├── graph_extractor.py             # thin-adapter over ml/src/preprocessing/graph_extractor.py
-│   │   ├── tokenizer.py                   # thin-adapter over ml/src/data_extraction/windowed_tokenizer.py
-│   │   ├── orchestrator.py                # v2 manifest-driven, SHA-256 from Stage 1
-│   │   ├── cache_manager.py               # content-addressed cache (schema + extractor version)
-│   │   ├── versioner.py                   # version registry (prevents Run 8 v8/v9 silent mix)
-│   │   ├── cfg_builder.py                 # opt-in standalone CFG (--emit-cfg)
-│   │   ├── call_graph.py                  # DEFERRED to v3.1
-│   │   ├── opcode_extractor.py            # DEFERRED to v3.1
-│   │   └── pdg_builder.py                 # DEFERRED to v3.1
-│   ├── labeling/                          # Stage 3 — parsers + merger + Go/No-Go gate
-│   │   ├── README.md
-│   │   ├── merger.py                      # multi-source label merger (tier precedence + 99% co-occurrence)
-│   │   ├── gate.py                        # minimum-viable-corpus Go/No-Go gate
-│   │   ├── parsers/                       # one per source (solidifi, dive)
-│   │   │   └── README.md
-│   │   ├── schema/                        # canonical 10-class taxonomy
-│   │   │   └── README.md
-│   │   └── crosswalks/                    # source-specific class maps (TO BE CREATED)
-│   ├── verification/                      # Stage 4 — AST semantic checks + Slither corroboration + gate
-│   │   ├── README.md
-│   │   ├── class_auditor.py               # 10×10 co-occurrence matrix + flagging
-│   │   ├── semantic_checker.py            # graph-feature-based per-class checks
-│   │   ├── tool_validator.py              # Slither per-class agreement
-│   │   ├── fp_estimator.py                # stratified-by-(source,tier) FP rate
-│   │   ├── negative_checker.py            # NonVulnerable contamination
-│   │   ├── gate.py                        # per-class VERIFIED/PROVISIONAL/BEST-EFFORT/FAIL
-│   │   ├── report_generator.py            # human-readable verification_report_<ts>.md
-│   │   ├── slither_runner.py              # shared Slither with content-addressed cache
-│   │   ├── probe_dataset.py               # 40+2 per class for model interpretability
-│   │   ├── probe_trivials.py              # 10 trivial positives + 1 trivial negative
-│   │   └── patterns/                      # 10 per-class pattern YAMLs (documentation only)
-│   │       └── README.md
-│   ├── splitting/                         # Stage 5a — train/val/test splits (4 strategies + dedup_enforcer + NonVuln cap)
-│   │   ├── README.md
-│   │   ├── splitters.py                   # Contract / Splits / SplitMetadata + 4 splitter functions
-│   │   ├── dedup_enforcer.py              # BCCC-failure pattern fix
-│   │   ├── leakage_auditor.py             # post-split text shingle safety net
-│   │   └── nonvulnerable_cap.py           # 3:1 cap (friend review)
-│   ├── registry/                          # Stage 5b — SQLite + YAML mirror + lineage
-│   │   ├── README.md
-│   │   ├── catalog.py                     # 4 base + 2 system tables
-│   │   ├── dataset_diff.py                # per-class metric projection
-│   │   └── lineage_tracker.py             # DAG of transformations + hash_artifact / verify_artifact
-│   ├── analysis/                          # Stage 6 — 5 read-only exploratory tools
-│   │   ├── README.md
-│   │   ├── balance_viz.py                 # per-class / per-source / per-tier counts
-│   │   ├── feature_dist.py                # ⭐ the Run-9-failure catcher (complexity_proxy_risk.md)
-│   │   ├── cooccurrence.py                # directed + conditional matrices
-│   │   ├── overlap_detector.py            # pairwise Jaccard between source datasets
-│   │   ├── drift_monitor.py               # KS test for feature + label distribution
-│   │   └── probe_dataset.py               # re-export (actual impl in verification/)
-│   ├── export/                            # Stage 7 — STUB
-│   │   ├── README.md
-│   │   └── __init__.py                    # 10-line module docstring only
-│   └── tests/                             # consolidated test overview
-│       └── README.md
-├── tests/                                 # pytest test suite (~94 tests + 2 integration)
-│   ├── conftest.py                        # sys.path bootstrap (parallels cli.py:62-68)
-│   ├── test_skeleton.py
-│   ├── test_integration_solidifi.py
-│   ├── test_integration_dive.py
-│   ├── test_ingestion/                    # 3 test files
-│   ├── test_preprocessing/                # 2 test files
-│   ├── test_representation/               # 5 test files (no __init__.py — pytest rootdir)
-│   ├── test_labeling/                     # 7 test files
-│   ├── test_verification/                 # 12 test files
-│   ├── test_splitting/                    # 1 test file
-│   ├── test_registry/                     # 1 test file
-│   └── test_analysis/                     # 1 test file
-├── data/                                  # DVC-tracked pipeline outputs (not in git)
-│   ├── raw/                               # ingested .sol files + manifests
-│   ├── preprocessed/                      # flattened + compiled + deduped
-│   ├── representations/                   # graph .pt + token files
-│   ├── labels/                            # per-contract multi-label CSVs
-│   ├── verification/                      # verification reports + dropped.csv
-│   ├── splits/                            # train/val/test split manifests
-│   ├── registry/                          # SQLite catalog
-│   ├── analysis/                          # complexity_proxy_risk.md + co-occurrence + drift
-│   └── exports/                           # sharded .pt export for sentinel-ml (after Stage 7)
-├── docs/
-│   ├── architecture.md                    # data-flow + DAG diagrams
-│   ├── decisions/                         # ADRs (append-only)
-│   └── legacy/bccc_deep_dive/             # frozen Phase 1–5 BCCC investigation
-└── docker/
-    └── Dockerfile.data                    # python:3.12.1-bookworm + 6 baseline solc versions
+sentinel_data/
+├── cli.py → ingest, preprocess, label, represent, verify, split, register, analyze, export
+├── ingestion/
+│   ├── ingest.py → connectors, manifest
+│   ├── manifest.py → (stdlib only)
+│   ├── label_folderize.py → (stdlib only)
+│   ├── freshness.py → ingest._all_sources
+│   └── connectors/ → base.py (all connectors inherit BaseConnector)
+├── preprocessing/
+│   ├── preprocess.py → pipeline, ingestion.ingest._enabled_sources, label_folderize
+│   ├── pipeline.py → compiler, deduplicator, flattener, normalizer, segmenter
+│   ├── compiler.py → (subprocess: solc)
+│   ├── flattener.py → _transitive_strip
+│   ├── deduplicator.py → (hashlib)
+│   ├── normalizer.py → (stdlib only)
+│   └── segmenter.py → (stdlib only)
+├── labeling/
+│   ├── schema/__init__.py → taxonomy.yaml
+│   ├── parsers/{solidifi,dive,smartbugs_curated}.py → schema.class_names
+│   ├── merger.py → schema.class_names
+│   └── gate.py → schema.class_names
+├── representation/
+│   ├── graph_schema.py → (stdlib only, canonical schema)
+│   ├── graph_extractor.py → graph_schema (imports all constants)
+│   ├── orchestrator.py → graph_extractor, tokenizer, cache_manager, versioner
+│   ├── tokenizer.py → ml.src.data_extraction.windowed_tokenizer (thin adapter)
+│   ├── cache_manager.py → (json, pathlib)
+│   ├── versioner.py → graph_schema, orchestrator, cache_manager
+│   └── cfg_builder.py → graph_extractor, orchestrator.EXTRACTOR_VERSION
+├── verification/
+│   ├── gate.py → class_auditor, semantic_checker, tool_validator, fp_estimator, negative_checker
+│   ├── class_auditor.py → schema.class_names
+│   ├── semantic_checker.py → schema.class_names, torch (for .pt loading)
+│   ├── tool_validator.py → schema.class_names, slither_runner
+│   ├── fp_estimator.py → schema.class_names, slither_runner
+│   ├── negative_checker.py → schema.class_names, slither_runner
+│   └── slither_runner.py → (subprocess: slither)
+├── splitting/
+│   ├── splitters.py → (stdlib: random, collections)
+│   ├── dedup_enforcer.py → splitters.Contract, Splits
+│   ├── leakage_auditor.py → splitters.Contract, Splits
+│   └── nonvulnerable_cap.py → splitters.Contract, Splits
+├── registry/
+│   ├── catalog.py → (sqlite3, yaml, hashlib)
+│   ├── lineage_tracker.py → catalog
+│   └── dataset_diff.py → catalog
+├── analysis/
+│   ├── drift_monitor.py → schema.class_names, feature_dist
+│   ├── overlap_detector.py → (json, csv, collections)
+│   ├── cooccurrence.py → schema.class_names
+│   ├── feature_dist.py → (json, pathlib)
+│   ├── balance_viz.py → schema.class_names, matplotlib
+│   └── probe_dataset.py → (json, pathlib)
+└── export/
+    ├── chunker.py → label_writer, metadata_writer, graph_writer, token_writer, schema.class_names
+    ├── export.py → chunker.ExportManifest
+    ├── graph_writer.py → (torch, pathlib)
+    ├── token_writer.py → (torch, pathlib)
+    ├── label_writer.py → (pyarrow, json)
+    └── metadata_writer.py → (pyarrow, json)
 ```
 
----
+### External Dependencies
 
-## Pipeline stages
+| Package | Used By | Purpose |
+|---------|---------|---------|
+| `slither-analyzer` | graph_extractor, slither_runner | Solidity static analysis |
+| `torch` | graph_extractor, orchestrator, semantic_checker | PyG graph tensors |
+| `torch_geometric` | graph_extractor | PyG Data objects |
+| `transformers` | tokenizer (via ml/) | GraphCodeBERT tokenization |
+| `pyarrow` | export writers | Parquet file I/O |
+| `pyyaml` | config, taxonomy, catalog | YAML parsing |
+| `scipy` | drift_monitor | KS test |
+| `matplotlib` | overlap_detector, balance_viz | Visualization |
+| `networkx` | (optional) | Graph operations |
 
-| # | Stage | CLI subcommand | What it does | Status |
-|---|-------|----------------|--------------|--------|
-| 0 | (skeleton) | — | Package setup + DVC scaffold | ✅ |
-| 1a | Ingest | `sentinel-data ingest [--source NAME]` | Pull raw `.sol` from all enabled sources + SHA-256 manifests | ✅ |
-| 1b | Preprocess | `sentinel-data preprocess [--source NAME] [--workers N] [--sample N] [--retry-failed]` | Flatten + 2-pass compile + 3-level dedup + normalize + segment | ✅ |
-| 2 | Represent | `sentinel-data represent [--source NAME] [--workers N] [--limit N] [--force] [--emit-cfg]` | Extract v9 graph (`.pt`) + windowed tokens (GraphCodeBERT, `[4,512]`) via thin-adapter | ✅ |
-| 3 | Label | `sentinel-data label [--source NAME]` | Apply per-source crosswalk YAMLs + merge + 99% co-occurrence flag + Go/No-Go gate | ⚠️ CLI STUB (`cli.py:223-229`); merger runs from Python today |
-| 4 | Verify | `sentinel-data verify [--strict] [--semantic-limit-per-class N] [--tool-limit-per-class N] [--negative-limit N] [--force-slither] [--skip-tool-validator] [--skip-fp-estimator] [--skip-negative-checker]` | 5 sub-checkers (semantic + tool_validator + fp_estimator + negative_checker + class_auditor) → per-class gate → `verification_report_<ts>.md` | ✅ |
-| 5a | Split | `sentinel-data split [--version N] [--seed N] [--nonvuln-cap RATIO]` | 4 strategies + dedup_enforcer + NonVulnerable 3:1 cap → `data/splits/v<N>/{train,val,test}.jsonl` + `split_manifest.json` | ✅ |
-| 5b | Register | `sentinel-data register --name NAME [--version N] [--sources SRC ...] [--verification-report PATH] [--retire-previous NAME]` | Register a dataset version in `data/registry/catalog.db` + YAML mirror | ✅ |
-| 6 | Analyze | `sentinel-data analyze [--only TOOL] [--run-id ID] [--corpus VERSION] [--baseline-version VERSION]` | 5 read-only tools: `balance_viz`, `feature_dist` (⭐ the Run-9-failure catcher with `complexity_proxy_risk.md`), `cooccurrence`, `overlap_detector`, `drift_monitor` | ✅ |
-| 7 | Export | `sentinel-data export` | Sharded export to sentinel-ml + 2 ML-side bug fixes (predictor.py tier threshold + EMITS edge) | ⏳ STUB |
-| — | (utility) | `sentinel-data freshness` | Pin staleness + `slither-analyzer` version check → `data/analysis/freshness_report.md` | ✅ |
-| — | (orchestrator) | `sentinel-data run [--from-stage STAGE]` | Walk multiple stages in sequence (calls the dispatch table in `cli.py:679-690`) | ✅ |
+### ML Module → Data Module Interface
 
-Run 11 launch: **2026-08-18.**
-
----
-
-## Data sources (17 enabled + BCCC deferred)
-
-See `config.yaml` for the full list with pins and connector types. Summary:
-
-**Tier 1 (gold — human-curated or mathematically certain):**
-ScaBench, SmartBugs Curated, SolidiFI, DIVE (Nature 2025), FORGE (ICSE 2026), Web3Bugs
-
-**Tier 2 (silver — expert-audited or tool-majority):**
-ScrawlD (3/5 tool majority), Code4rena audit reports, DeFi Hacks REKT, DeFiVulnLabs, EVMbench, Bastet
-
-**Tier 3 (bronze — tool-generated, conservative):**
-SmartBugs Wild ⚠ (97% FP rate — use with care), Slither-Audited (HF), OpenZeppelin Contracts, Ethernaut
-
-**Tier 4 (unlabeled pretraining):**
-DISL (514K contracts), ReentrancyStudy (230K)
-
-**BCCC (deferred):** 89.4% Reentrancy FP. Legacy outputs at `docs/legacy/bccc_deep_dive/`. Verified v1.4 labels (24,021 contracts) may be re-introduced as a gold supplement in v2.1.
-
-> **Sources list is also reflected in v2 design documents.** The 5 critical-path sources for Run 11 (per MEMORY.md §"Critical v2 facts") are: **DeFiHackLabs, SolidiFI, DIVE, SmartBugs Curated, Web3Bugs** + DISL as the NonVulnerable pool (3:1 cap).
+The ML module consumes data module artifacts via:
+- `ml/src/datasets/sentinel_dataset.py` → `SentinelDatasetExport` (from `export/export.py`)
+- `ml/src/preprocessing/graph_schema.py` → Re-export shim pointing to `sentinel_data.representation.graph_schema`
+- `ml/scripts/train.py` → Reads `data/exports/v{N}/` via `SentinelDataset`
 
 ---
 
-## Schema version
+## Key Invariants
 
-The active graph schema is **v9** (verified 2026-06-08). See `sentinel_data/representation/graph_schema.py` for the full constant table.
-
-| Constant | Value |
-|----------|-------|
-| `FEATURE_SCHEMA_VERSION` | `"v9"` |
-| `NODE_FEATURE_DIM` | `12` |
-| `NUM_NODE_TYPES` | `14` |
-| `NUM_EDGE_TYPES` | `12` |
-| `NUM_CLASSES` | `10` (LOCKED) |
-| `EXTRACTOR_VERSION` | `"v2.1-windowed-gcb"` |
-
-> **Single source of truth (post-Phase D, 2026-06-12, ADR-0009):** the canonical 10-class order is the LABELING order: `CallToUnknown=0, DenialOfService=1, ExternalBug=2, GasException=3, IntegerUO=4, MishandledException=5, Reentrancy=6, Timestamp=7, TransactionOrderDependence=8, UnusedReturn=9`. This order is used by:
-> - `sentinel_data/representation/graph_schema.py` (canonical)
-> - `ml/src/training/trainer.py:105-116` (defines its own copy, in sync)
-> - `ml/src/preprocessing/graph_schema.py` (shim re-exports the canonical)
-> - The v9 best checkpoint (`GCB-P1-Run9-v11-20260606_best.pt`, `class_names` field)
-> - The v2 export (`labels.parquet` columns `class_0..class_9`)
-> - `sentinel_data.labeling.schema.class_names()`
->
-> The pre-Run-7 "representation order" (Reentrancy=0, ..., NonVulnerable=9) is **historical and no longer used in production**. Do not re-introduce it. The schema-dim gate test in `tests/test_representation/test_byte_identical_regression.py` and the new CLASS_NAMES assertions in `tests/test_representation/test_thin_adapter.py` guard against silent re-ordering.
-
----
-
-## WSL2 caveats
-
-All commands in this module are run inside WSL2. Use `wsl -- bash -c '...'` from the Windows host when scripting. The PowerShell host throws errors on inline WSL commands. Example:
-
-```powershell
-# From Windows PowerShell
-wsl -- bash -c 'cd /home/motafeq/projects/sentinel/Data && poetry run sentinel-data run --dry-run'
-```
-
-The `cli.py:62-68` `sys.path` bootstrap makes the CLI work from any CWD (including Docker) by adding the repo root and `ml/` to `sys.path` before any imports.
-
----
-
-## MLflow backend
-
-The v2 build uses `sqlite:///mlruns.db` only. The `file:///` backend is **corrupt** (experiments 1, 2, 3 are in the file backend and return empty results). Any plan or script that logs an experiment must set:
-
-```bash
-export MLFLOW_TRACKING_URI=sqlite:///mlruns.db
-```
-
-This is also declared in `config.yaml` under `pipeline.mlflow.uri`.
-
----
-
-## Architecture in 3 sentences
-
-**The v2 data pipeline is a 5-stage transformation pipeline** (ingest → preprocess → represent → label → verify) followed by **3 cross-cutting support systems** (splitting, registry, analysis) and **one final stage** (export — currently a stub). **Every stage writes to a well-known path** under `data/` and is the canonical input of the next stage; **`sentinel-data` has a one-way dependency on `sentinel-ml`** (the data module never imports from training code). **The thin-adapter pattern** in `sentinel_data/representation` re-exports the v9 graph and tokenizer code from `ml/src/preprocessing/` and `ml/src/data_extraction/`, so bug fixes apply once and propagate automatically; the Stage 7 seam swap deletes the wrappers and rebinds the import.
-
-For the full architecture (data-flow diagrams, DAGs, the BCCC failure retrospective), see `docs/architecture.md` and `docs/legacy/bccc_deep_dive/`.
-
----
-
-## Design decisions
-
-See `../../docs/decisions/` for the full ADR register (project-wide). The most important for this module:
-
-- **ADR-0001:** Why `sentinel-data` is a separate package (the BCCC failure + one-way dependency rule)
-- **ADR-0002:** Code bug state at build start (8 fixed bugs + 2 still-open — what the Stage 2 regression test guards)
-- **ADR-0007:** Representation port design (the thin-adapter pattern + lazy import support)
-- **ADR-0009:** Canonical 10-class vocabulary — labeling order as the single source of truth (resolves the two-taxonomy divergence)
-
----
-
-## Contributing
-
-1. Read `../../docs/decisions/ADR-0001-sentinel-data-skeleton.md` for the architectural context
-2. Check `docs/proposal/Data_Module_Proposals/00_INDEX.md` for the current stage plan
-3. `poetry install` and `poetry run pytest tests/ -v` must pass before any PR
-4. The Stage 2 regression test (`tests/test_representation/test_byte_identical_regression.py`) is the merge gate for any extractor change
-5. The BCCC regression test (`tests/test_verification/test_bccc_regression.py`) is the merge gate for any verification change
-6. **The 10-class taxonomy is locked per ADR-0009** (labeling order). If you add a new class, bump `FEATURE_SCHEMA_VERSION` to v10, re-train from scratch, and re-export.
-
----
-
-## Quick links
-
-- **Per-subpackage READMEs**: 9 files at `sentinel_data/<subpackage>/README.md` + 4 sub-subfolder READMEs (`connectors`, `parsers`, `schema`, `patterns`)
-- **Tests overview**: `tests/README.md`
-- **Stage plans**: `docs/proposal/Data_Module_Proposals/actionable_plans/`
-- **ADRs**: `../../docs/decisions/` (project-wide; see `INDEX.md` there)
-- **MEMORY.md** (canonical v2 facts): `~/.claude/projects/-home-motafeq-projects-sentinel/memory/MEMORY.md`
-- **Run 9 best checkpoint** (model-side, for context): `ml/checkpoints/GCB-P1-Run9-v11-20260606_best.pt` (ep52, fixed=0.2965, tuned=0.3081)
-- **Run 10 plan**: train on v1.3 verified labels (in `data_module/docs/legacy/bccc_deep_dive/Phase5_LabelVerification_2026-06-08/outputs/`)
-- **Run 11 launch**: 2026-08-18; sqlite mlflow; `--gnn-prefix-warmup-epochs=5`; `--jk-entropy-reg-lambda=0.005`; timestamped `--run-name`; watcher = copy of `ml/scripts/run8_watcher.sh` with F1>0.1 floor
+1. **Schema lock**: `CLASS_NAMES` order is frozen — changing it invalidates all checkpoints
+2. **Content addressing**: All artifacts use SHA-256 (not MD5)
+3. **Cache invalidation**: Representation cache keyed on `(sha256, schema_version, extractor_version)`
+4. **Tier precedence**: T0 > T1 > T2 > T3 > T4 for label conflict resolution
+5. **NonVulnerable cap**: Default 3:1 ratio prevents class imbalance
+6. **Dedup enforcement**: Two-pass split ensures no near-dup group straddles split boundaries
+7. **Manifest-last**: Export writes `manifest.json` last to avoid circular hash dependency

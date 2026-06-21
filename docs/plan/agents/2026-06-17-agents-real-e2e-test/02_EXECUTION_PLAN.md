@@ -8,7 +8,7 @@
 ## Prerequisites
 
 Before starting, verify:
-- ✅ LM Studio running at :1234
+- ✅ LM Studio running (URL in `LM_STUDIO_BASE_URL` env var; currently `http://127.0.0.1:1256/v1` on Ali's machine)
 - ✅ ML API running at :8001 (MLOps standard)
 - ✅ All 4 MCP servers running (:8010, :8011, :8012, :8013)
 - ✅ Connectivity check passed
@@ -152,6 +152,48 @@ if __name__ == "__main__":
 
 ---
 
+## Step 0: Get Test Contracts (10 minutes)
+
+The original plan asked to create 2 hand-written .sol files. **Reuse the existing fixtures
+from `tests/test_smoke_e2e.py:44-79` instead** — this keeps inputs consistent between
+mocked and real E2E, so any verdict difference is attributable to real (not mock) services.
+
+```bash
+mkdir -p ~/projects/sentinel/agents/test_contracts
+
+# Extract Vault fixture (vulnerable — reentrancy)
+poetry run python -c "
+import re, pathlib
+src = pathlib.Path('tests/test_smoke_e2e.py').read_text()
+m = re.search(r'\"\"\"\s*pragma.*?\"\"\"', src, re.DOTALL)
+pathlib.Path('test_contracts/vulnerable_reentrant.sol').write_text(m.group(0).strip('\"').strip())
+print('wrote vulnerable_reentrant.sol')
+"
+
+# Extract SafeStorage fixture (safe baseline)
+poetry run python -c "
+import re, pathlib
+src = pathlib.Path('tests/test_smoke_e2e.py').read_text()
+matches = re.findall(r'\"\"\"\s*pragma.*?\"\"\"', src, re.DOTALL)
+pathlib.Path('test_contracts/safe_storage.sol').write_text(matches[1].strip('\"').strip())
+print('wrote safe_storage.sol')
+"
+
+ls test_contracts/
+# Expect: vulnerable_reentrant.sol, safe_storage.sol
+```
+
+**Known limitation — callout:**
+
+> The Run 12 model has 9-10 vulnerability classes (no `AccessControl` class — Run 13 plan
+> removes `GasException` for 9 total). The `Vault` fixture has reentrancy + missing access
+> control, but **only reentrancy will surface**. If `access_control` is missing from
+> verdict, that's expected — not a model bug. Document it as a known gap, not a failure.
+
+→ You now know: Reusing fixtures from `test_smoke_e2e.py` means we test the SAME inputs
+that pass under mocks. If a verdict differs between mocked and real runs, the
+difference is real (LLM/MCP behavior), not input drift.
+
 ## Test 1: Safe Contract (Baseline)
 
 **Run:**
@@ -224,16 +266,22 @@ poetry run python scripts/run_real_audit.py test_contracts/vulnerable_reentrant.
 
 ---
 
-## Test 3: Real Contract (Optional)
+## Test 3: Real Contract (Optional — skip unless time available)
 
-If you have a real contract from Etherscan:
+> **Skip if time is tight.** Real-world DeFi contracts are 700+ LOC, multi-file, with
+> import chains. Run 12 model + Slither both degrade on contracts > 500 LOC. The
+> baseline (Tests 1 + 2) is sufficient for Phase A validation.
+
+If you do run Test 3, pick a contract < 500 LOC and single-file:
+- Compound `cToken.sol` (single file, ~400 LOC, well-audited)
+- Aave `Pool.sol` (too large — skip)
+- Uniswap V2 `Router.sol` (~250 LOC, classic test case)
+- A known-buggy contract from SmartBugs Curated (decontaminated per
+  `ml/scripts/audit/check_contamination_v3.py`)
 
 ```bash
 cd ~/projects/sentinel/agents
 poetry run python scripts/run_real_audit.py test_contracts/real_contract.sol
-
-# Will take 1-2 hours if contract is large
-# Don't do this test if time-constrained
 ```
 
 ---
@@ -371,3 +419,13 @@ When audits are complete:
 **Estimated total execution time:** 1-2 hours for all 3 contracts
 
 **Next:** `03_ANALYSIS_PLAN.md` →
+
+---
+
+## Learning Outcomes (Plan Onboarding)
+
+→ You now know: The original plan's "1-2 hours per contract" budget assumed 3 small test contracts. Test 3 (real DeFi) easily blows that budget to 4-6 hours. Skipping Test 3 keeps the run inside the 5-8 hour total target.
+
+→ You now know: The `AUDIT_MOCK=true` setting means `audit_check` returns canned responses — not real Sepolia lookups. So any "missing on-chain audit history" finding is mock data, not a real gap. Flag it in analysis as out-of-scope for this run.
+
+→ You now know: `await graph.ainvoke(initial_state)` requires `use_checkpointer=False` for ad-hoc runs. The default `use_checkpointer=True` uses LangGraph's persistent checkpointer (designed for `thread_id` workflows), which fails without one. The plan script already passes this correctly.

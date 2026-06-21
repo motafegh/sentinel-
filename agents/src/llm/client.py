@@ -51,11 +51,25 @@ LM_STUDIO_API_KEY  = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
 # FIX-16: Request timeout in seconds.
 # If LM Studio hangs (model loading, GPU OOM), callers get an exception
 # after this many seconds instead of blocking indefinitely.
-LM_STUDIO_TIMEOUT  = int(os.getenv("LM_STUDIO_TIMEOUT", "60"))
+# Default centralized in src/orchestration/timeouts.py (2026-06-21) — this is
+# the ONLY timeout in the pipeline read at IMPORT time (module-level), so to
+# override it for a given run the env var must be set BEFORE this module is
+# first imported. run_real_audit.py's `_resolve_timeouts()` does this.
+from src.orchestration.timeouts import DEFAULT_LM_STUDIO_TIMEOUT_S
+# int(float(...)) tolerates BOTH "60" and "3600.0" — every other timeout in the
+# pipeline is resolved as a float (see timeouts.get_timeout); CLI/--unbounded-
+# timeouts writes float-formatted strings, which plain int() rejects.
+LM_STUDIO_TIMEOUT  = int(float(os.getenv("LM_STUDIO_TIMEOUT", str(DEFAULT_LM_STUDIO_TIMEOUT_S))))
 
 # ── Model IDs (exactly as LM Studio reports from /v1/models) ─────────────────
 MODEL_FAST   = "gemma-4-e2b-it"
-MODEL_STRONG = "qwen3.5-9b-ud"
+# 2026-06-17 FIX-18: Changed MODEL_STRONG from "qwen3.5-9b-ud" to "gemma-4-e2b-it".
+# The Qwen 9B runs at 2.91 tok/sec on this RTX 3070 with Q4_K_XL quantization
+# (LM Studio log: 23:17:51 [INFO] tg = 2.91 t/s). 4096 tokens would take 23 minutes.
+# gemma-4-e2b-it (2B) runs at ~17-30s for similar tasks. Quality is sufficient for
+# the 4-section Markdown narrative. If higher quality is needed later, try
+# "qwen2.5-coder-7b-instruct" (7B, code-specialized, faster than 9B Qwen).
+MODEL_STRONG = "gemma-4-e2b-it"
 
 # Code-specific LLM — trained on 80+ languages including Solidity.
 # Understands: access control patterns, state machine transitions,
@@ -66,21 +80,31 @@ MODEL_CODER  = "qwen2.5-coder-7b-instruct"
 MODEL_EMBED  = "text-embedding-nomic-embed-text-v1.5"
 
 
-def get_llm(model: str = MODEL_FAST, temperature: float = 0.0) -> ChatOpenAI:
+def get_llm(model: str = MODEL_FAST, temperature: float = 0.0, max_tokens: int | None = None) -> ChatOpenAI:
     """
     Returns a LangChain ChatOpenAI instance pointed at LM Studio.
 
     FIX-15: Uses LM_STUDIO_BASE_URL from env (not hardcoded IP).
     FIX-16: timeout=LM_STUDIO_TIMEOUT prevents indefinite hangs.
+    FIX-17 (2026-06-17): max_tokens parameter. LM Studio's default is too low for
+            the synthesizer narrative (4 Markdown sections + reasoning content).
+            Without explicit max_tokens, the model hits finish_reason="length"
+            and returns content="" — LangChain then raises an empty exception.
 
     Args:
         model:       LM Studio model ID — use MODEL_* constants above
         temperature: 0.0 = deterministic (correct for security audit tasks)
+        max_tokens:  Output token limit. None = LM Studio default (~2-4K).
+                     Pass 4096+ for long generations (narrative, reports).
 
     Returns:
         ChatOpenAI instance ready for LangChain chains and agents
     """
-    logger.debug(f"Initialising LLM — model: {model} | temp: {temperature} | timeout: {LM_STUDIO_TIMEOUT}s")
+    logger.debug(f"Initialising LLM — model: {model} | temp: {temperature} | timeout: {LM_STUDIO_TIMEOUT}s | max_tokens: {max_tokens}")
+
+    kwargs = {}
+    if max_tokens is not None:
+        kwargs["max_tokens"] = max_tokens
 
     return ChatOpenAI(
         model=model,
@@ -88,6 +112,7 @@ def get_llm(model: str = MODEL_FAST, temperature: float = 0.0) -> ChatOpenAI:
         api_key=LM_STUDIO_API_KEY,
         temperature=temperature,
         timeout=LM_STUDIO_TIMEOUT,    # FIX-16
+        **kwargs,
     )
 
 
@@ -100,13 +125,16 @@ def get_fast_llm() -> ChatOpenAI:
     return get_llm(model=MODEL_FAST, temperature=0.0)
 
 
-def get_strong_llm() -> ChatOpenAI:
+def get_strong_llm(max_tokens: int | None = None) -> ChatOpenAI:
     """
     Qwen3.5-9B — strong reasoning.
     Use for: RAGResearcherAgent, SynthesizerAgent.
     Speed: ~37 tokens/sec on RTX 3070 (most layers on GPU).
+
+    FIX-17 (2026-06-17): max_tokens pass-through. Synthesizer needs 4096+ for
+    the 4-section narrative. Without it, LM Studio truncates mid-response.
     """
-    return get_llm(model=MODEL_STRONG, temperature=0.0)
+    return get_llm(model=MODEL_STRONG, temperature=0.0, max_tokens=max_tokens)
 
 
 def get_coder_llm() -> ChatOpenAI:
