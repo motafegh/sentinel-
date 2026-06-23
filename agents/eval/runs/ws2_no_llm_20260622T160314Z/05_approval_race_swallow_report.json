@@ -1,0 +1,1631 @@
+{
+  "contract": "05_approval_race_swallow.sol",
+  "contract_address": "0xeacec9f18b02ef741e77f5b53d6c4939bf72fdbb",
+  "timestamp": "2026-06-22T12:34:07.845828+00:00",
+  "total_wall_s": 1.1017792224884033,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['contract-locks-ether', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-no-eth",
+      "unchecked-transfer"
+    ],
+    "aderyn": [
+      "contract-locks-ether",
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 35,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "assembly",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "PaymentChannel.splitSignature(bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#109-117) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_fa1z9lof.sol#111-115)\n",
+      "lines": [
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117
+      ],
+      "function_names": [
+        "splitSignature"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "PaymentChannel.owner (../../../../../tmp/sentinel_static_fa1z9lof.sol#25) should be immutable \n",
+      "lines": [
+        25
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "PaymentChannel.token (../../../../../tmp/sentinel_static_fa1z9lof.sol#26) should be immutable \n",
+      "lines": [
+        26
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_fa1z9lof.sol#7)\n",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "locked-ether",
+      "impact": "Medium",
+      "confidence": "High",
+      "description": "Contract locking ether found:\n\tContract PaymentChannel (../../../../../tmp/sentinel_static_fa1z9lof.sol#15-129) has payable functions:\n\t - PaymentChannel.receive() (../../../../../tmp/sentinel_static_fa1z9lof.sol#127)\n\tBut does not have a function to withdraw the ether\n",
+      "lines": [
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129
+      ],
+      "function_names": [
+        "receive"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101) has external calls inside a loop: token.transfer(ch.recipient,amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#96)\n",
+      "lines": [
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101
+      ],
+      "function_names": [
+        "batchSettle"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101) has external calls inside a loop: token.transfer(ch.sender,ch.deposit - amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#97)\n",
+      "lines": [
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101
+      ],
+      "function_names": [
+        "batchSettle"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52):\n\tExternal calls:\n\t- token.transferFrom(msg.sender,address(this),deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#49)\n\tEvent emitted after the call(s):\n\t- ChannelOpened(channelId,msg.sender,recipient) (../../../../../tmp/sentinel_static_fa1z9lof.sol#50)\n",
+      "lines": [
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52
+      ],
+      "function_names": [
+        "openChannel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73):\n\tExternal calls:\n\t- token.transfer(ch.recipient,toRecipient) (../../../../../tmp/sentinel_static_fa1z9lof.sol#67)\n\t- token.transfer(ch.sender,returned) (../../../../../tmp/sentinel_static_fa1z9lof.sol#70)\n\tEvent emitted after the call(s):\n\t- ChannelSettled(channelId,toRecipient,returned) (../../../../../tmp/sentinel_static_fa1z9lof.sol#72)\n",
+      "lines": [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "settleChannel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83):\n\tExternal calls:\n\t- token.transfer(ch.sender,ch.deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#81)\n\tEvent emitted after the call(s):\n\t- ChannelSettled(channelId,0,ch.deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#82)\n",
+      "lines": [
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ],
+      "function_names": [
+        "closeExpired"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101):\n\tExternal calls:\n\t- token.transfer(ch.recipient,amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#96)\n\t- token.transfer(ch.sender,ch.deposit - amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#97)\n\tState variables written after the call(s):\n\t- ch.closed = true (../../../../../tmp/sentinel_static_fa1z9lof.sol#94)\n\tPaymentChannel.channels (../../../../../tmp/sentinel_static_fa1z9lof.sol#27) can be used in cross function reentrancies:\n\t- PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101)\n\t- PaymentChannel.channels (../../../../../tmp/sentinel_static_fa1z9lof.sol#27)\n\t- PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83)\n\t- PaymentChannel.depositForChannel(bytes32,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#119-125)\n\t- PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52)\n\t- PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73)\n\t- ch.spent = amounts[i] (../../../../../tmp/sentinel_static_fa1z9lof.sol#95)\n\tPaymentChannel.channels (../../../../../tmp/sentinel_static_fa1z9lof.sol#27) can be used in cross function reentrancies:\n\t- PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101)\n\t- PaymentChannel.channels (../../../../../tmp/sentinel_static_fa1z9lof.sol#27)\n\t- PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83)\n\t- PaymentChannel.depositForChannel(bytes32,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#119-125)\n\t- PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52)\n\t- PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73)\n",
+      "lines": [
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101
+      ],
+      "function_names": [
+        "batchSettle"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp > ch.expiresAt,not expired) (../../../../../tmp/sentinel_static_fa1z9lof.sol#78)\n",
+      "lines": [
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ],
+      "function_names": [
+        "closeExpired"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(expiresAt > block.timestamp,expired) (../../../../../tmp/sentinel_static_fa1z9lof.sol#45)\n",
+      "lines": [
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52
+      ],
+      "function_names": [
+        "openChannel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp <= ch.expiresAt,channel expired) (../../../../../tmp/sentinel_static_fa1z9lof.sol#58)\n",
+      "lines": [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "settleChannel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101) ignores return value by token.transfer(ch.sender,ch.deposit - amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#97)\n",
+      "lines": [
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101
+      ],
+      "function_names": [
+        "batchSettle"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73) ignores return value by token.transfer(ch.recipient,toRecipient) (../../../../../tmp/sentinel_static_fa1z9lof.sol#67)\n",
+      "lines": [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "settleChannel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73) ignores return value by token.transfer(ch.sender,returned) (../../../../../tmp/sentinel_static_fa1z9lof.sol#70)\n",
+      "lines": [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "settleChannel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52) ignores return value by token.transferFrom(msg.sender,address(this),deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#49)\n",
+      "lines": [
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52
+      ],
+      "function_names": [
+        "openChannel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "PaymentChannel.depositForChannel(bytes32,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#119-125) ignores return value by token.transferFrom(msg.sender,address(this),additionalDeposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#124)\n",
+      "lines": [
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125
+      ],
+      "function_names": [
+        "depositForChannel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101) ignores return value by token.transfer(ch.recipient,amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#96)\n",
+      "lines": [
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101
+      ],
+      "function_names": [
+        "batchSettle"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83) ignores return value by token.transfer(ch.sender,ch.deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#81)\n",
+      "lines": [
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ],
+      "function_names": [
+        "closeExpired"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "contract-locks-ether",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "It appears that the contract includes a payable function to accept Ether but lacks a corresponding function to withdraw it, which leads to the Ether being locked in the contract. To resolve this issue, please implement a public or external function that allows for the withdrawal of Ether from the contract.",
+      "lines": [
+        15
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        96,
+        97
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        88
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "ecrecover",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "The `ecrecover` function is susceptible to signature malleability. This means that the same message can be signed in multiple ways, allowing an attacker to change the message signature without invalidating it. This can lead to unexpected behavior in smart contracts, such as the loss of funds or the ability to bypass access control. Consider using OpenZeppelin's ECDSA library instead of the built-in function.",
+      "lines": [
+        106
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "internal-function-used-once",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Instead of separating the logic into a separate function, consider inlining the logic into the calling function. This can reduce the number of function calls and improve readability.",
+      "lines": [
+        109
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "literal-instead-of-constant",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Define and use `constant` variables instead of using literals. If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract.",
+      "lines": [
+        116
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        88
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        85,
+        119
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        40
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        25,
+        26
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unchecked-return",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Function returns a value but it is ignored. Consider checking the return value.",
+      "lines": [
+        49,
+        67,
+        70,
+        81,
+        96,
+        97,
+        124
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unsafe-erc20-operation",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+      "lines": [
+        49,
+        67,
+        70,
+        81,
+        96,
+        97,
+        124
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xeacec9f18b02ef741e77f5b53d6c4939bf72fdbb",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "assembly",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "PaymentChannel.splitSignature(bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#109-117) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_fa1z9lof.sol#111-115)\n",
+        "lines": [
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117
+        ],
+        "function_names": [
+          "splitSignature"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "PaymentChannel.owner (../../../../../tmp/sentinel_static_fa1z9lof.sol#25) should be immutable \n",
+        "lines": [
+          25
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "PaymentChannel.token (../../../../../tmp/sentinel_static_fa1z9lof.sol#26) should be immutable \n",
+        "lines": [
+          26
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_fa1z9lof.sol#7)\n",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "locked-ether",
+        "impact": "Medium",
+        "confidence": "High",
+        "description": "Contract locking ether found:\n\tContract PaymentChannel (../../../../../tmp/sentinel_static_fa1z9lof.sol#15-129) has payable functions:\n\t - PaymentChannel.receive() (../../../../../tmp/sentinel_static_fa1z9lof.sol#127)\n\tBut does not have a function to withdraw the ether\n",
+        "lines": [
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129
+        ],
+        "function_names": [
+          "receive"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101) has external calls inside a loop: token.transfer(ch.recipient,amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#96)\n",
+        "lines": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101
+        ],
+        "function_names": [
+          "batchSettle"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101) has external calls inside a loop: token.transfer(ch.sender,ch.deposit - amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#97)\n",
+        "lines": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101
+        ],
+        "function_names": [
+          "batchSettle"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52):\n\tExternal calls:\n\t- token.transferFrom(msg.sender,address(this),deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#49)\n\tEvent emitted after the call(s):\n\t- ChannelOpened(channelId,msg.sender,recipient) (../../../../../tmp/sentinel_static_fa1z9lof.sol#50)\n",
+        "lines": [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52
+        ],
+        "function_names": [
+          "openChannel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73):\n\tExternal calls:\n\t- token.transfer(ch.recipient,toRecipient) (../../../../../tmp/sentinel_static_fa1z9lof.sol#67)\n\t- token.transfer(ch.sender,returned) (../../../../../tmp/sentinel_static_fa1z9lof.sol#70)\n\tEvent emitted after the call(s):\n\t- ChannelSettled(channelId,toRecipient,returned) (../../../../../tmp/sentinel_static_fa1z9lof.sol#72)\n",
+        "lines": [
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "settleChannel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83):\n\tExternal calls:\n\t- token.transfer(ch.sender,ch.deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#81)\n\tEvent emitted after the call(s):\n\t- ChannelSettled(channelId,0,ch.deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#82)\n",
+        "lines": [
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83
+        ],
+        "function_names": [
+          "closeExpired"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101):\n\tExternal calls:\n\t- token.transfer(ch.recipient,amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#96)\n\t- token.transfer(ch.sender,ch.deposit - amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#97)\n\tState variables written after the call(s):\n\t- ch.closed = true (../../../../../tmp/sentinel_static_fa1z9lof.sol#94)\n\tPaymentChannel.channels (../../../../../tmp/sentinel_static_fa1z9lof.sol#27) can be used in cross function reentrancies:\n\t- PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101)\n\t- PaymentChannel.channels (../../../../../tmp/sentinel_static_fa1z9lof.sol#27)\n\t- PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83)\n\t- PaymentChannel.depositForChannel(bytes32,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#119-125)\n\t- PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52)\n\t- PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73)\n\t- ch.spent = amounts[i] (../../../../../tmp/sentinel_static_fa1z9lof.sol#95)\n\tPaymentChannel.channels (../../../../../tmp/sentinel_static_fa1z9lof.sol#27) can be used in cross function reentrancies:\n\t- PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101)\n\t- PaymentChannel.channels (../../../../../tmp/sentinel_static_fa1z9lof.sol#27)\n\t- PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83)\n\t- PaymentChannel.depositForChannel(bytes32,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#119-125)\n\t- PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52)\n\t- PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73)\n",
+        "lines": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101
+        ],
+        "function_names": [
+          "batchSettle"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp > ch.expiresAt,not expired) (../../../../../tmp/sentinel_static_fa1z9lof.sol#78)\n",
+        "lines": [
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83
+        ],
+        "function_names": [
+          "closeExpired"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(expiresAt > block.timestamp,expired) (../../../../../tmp/sentinel_static_fa1z9lof.sol#45)\n",
+        "lines": [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52
+        ],
+        "function_names": [
+          "openChannel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp <= ch.expiresAt,channel expired) (../../../../../tmp/sentinel_static_fa1z9lof.sol#58)\n",
+        "lines": [
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "settleChannel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101) ignores return value by token.transfer(ch.sender,ch.deposit - amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#97)\n",
+        "lines": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101
+        ],
+        "function_names": [
+          "batchSettle"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73) ignores return value by token.transfer(ch.recipient,toRecipient) (../../../../../tmp/sentinel_static_fa1z9lof.sol#67)\n",
+        "lines": [
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "settleChannel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "PaymentChannel.settleChannel(bytes32,uint256,bytes) (../../../../../tmp/sentinel_static_fa1z9lof.sol#54-73) ignores return value by token.transfer(ch.sender,returned) (../../../../../tmp/sentinel_static_fa1z9lof.sol#70)\n",
+        "lines": [
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "settleChannel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "PaymentChannel.openChannel(address,uint256,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#43-52) ignores return value by token.transferFrom(msg.sender,address(this),deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#49)\n",
+        "lines": [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52
+        ],
+        "function_names": [
+          "openChannel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "PaymentChannel.depositForChannel(bytes32,uint256) (../../../../../tmp/sentinel_static_fa1z9lof.sol#119-125) ignores return value by token.transferFrom(msg.sender,address(this),additionalDeposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#124)\n",
+        "lines": [
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125
+        ],
+        "function_names": [
+          "depositForChannel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "PaymentChannel.batchSettle(bytes32[],uint256[],bytes[]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#85-101) ignores return value by token.transfer(ch.recipient,amounts[i]) (../../../../../tmp/sentinel_static_fa1z9lof.sol#96)\n",
+        "lines": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101
+        ],
+        "function_names": [
+          "batchSettle"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "PaymentChannel.closeExpired(bytes32) (../../../../../tmp/sentinel_static_fa1z9lof.sol#75-83) ignores return value by token.transfer(ch.sender,ch.deposit) (../../../../../tmp/sentinel_static_fa1z9lof.sol#81)\n",
+        "lines": [
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83
+        ],
+        "function_names": [
+          "closeExpired"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "contract-locks-ether",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "It appears that the contract includes a payable function to accept Ether but lacks a corresponding function to withdraw it, which leads to the Ether being locked in the contract. To resolve this issue, please implement a public or external function that allows for the withdrawal of Ether from the contract.",
+        "lines": [
+          15
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          96,
+          97
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          88
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "ecrecover",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "The `ecrecover` function is susceptible to signature malleability. This means that the same message can be signed in multiple ways, allowing an attacker to change the message signature without invalidating it. This can lead to unexpected behavior in smart contracts, such as the loss of funds or the ability to bypass access control. Consider using OpenZeppelin's ECDSA library instead of the built-in function.",
+        "lines": [
+          106
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "internal-function-used-once",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Instead of separating the logic into a separate function, consider inlining the logic into the calling function. This can reduce the number of function calls and improve readability.",
+        "lines": [
+          109
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "literal-instead-of-constant",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Define and use `constant` variables instead of using literals. If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract.",
+        "lines": [
+          116
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          88
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          85,
+          119
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          40
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          25,
+          26
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          49,
+          67,
+          70,
+          81,
+          96,
+          97,
+          124
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unsafe-erc20-operation",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+        "lines": [
+          49,
+          67,
+          70,
+          81,
+          96,
+          97,
+          124
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['contract-locks-ether', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "11 High/Medium static finding(s) not tied to a verdict: locked-ether, reentrancy-no-eth, unchecked-transfer, unchecked-transfer, unchecked-transfer"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

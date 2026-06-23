@@ -1,0 +1,738 @@
+{
+  "contract": "02_access_control_bypass.sol",
+  "contract_address": "0x355615041a3d42f95034c7d2ec1016355888217a",
+  "timestamp": "2026-06-22T12:33:43.386361+00:00",
+  "total_wall_s": 1.5437231063842773,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['arbitrary-send-eth', 'controlled-delegatecall', 'tx-origin'] aderyn=['eth-send-unchecked-address', 'tx-origin-used-for-auth'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "arbitrary-send-eth",
+      "controlled-delegatecall",
+      "tx-origin"
+    ],
+    "aderyn": [
+      "eth-send-unchecked-address",
+      "tx-origin-used-for-auth"
+    ]
+  },
+  "static_findings_count": 21,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "arbitrary-send-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_re5kez5a.sol#63-68) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = owner.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#66)\n",
+      "lines": [
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "function_names": [
+        "operatorWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "assembly",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#77-85) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_re5kez5a.sol#80-82)\n",
+      "lines": [
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "delegateExecute"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "controlled-delegatecall",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#77-85) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = owner.delegatecall(data) (../../../../../tmp/sentinel_static_re5kez5a.sol#78)\n",
+      "lines": [
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "delegateExecute"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_re5kez5a.sol#8)\n",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#77-85):\n\t- (ok,ret) = owner.delegatecall(data) (../../../../../tmp/sentinel_static_re5kez5a.sol#78)\n",
+      "lines": [
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "delegateExecute"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_re5kez5a.sol#63-68):\n\t- (ok,None) = owner.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#66)\n",
+      "lines": [
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "function_names": [
+        "operatorWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.guardedCall(address,bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#70-75):\n\t- (ok,ret) = target.call{gas: 50000}(data) (../../../../../tmp/sentinel_static_re5kez5a.sol#72)\n",
+      "lines": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        75
+      ],
+      "function_names": [
+        "guardedCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.withdrawTo(address,uint256) (../../../../../tmp/sentinel_static_re5kez5a.sol#56-61):\n\t- (ok,None) = recipient.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#59)\n",
+      "lines": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "function_names": [
+        "withdrawTo"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.withdrawAll() (../../../../../tmp/sentinel_static_re5kez5a.sol#48-54):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#52)\n",
+      "lines": [
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "withdrawAll"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "AccessControlVault.withdrawTo(address,uint256).recipient (../../../../../tmp/sentinel_static_re5kez5a.sol#56) lacks a zero-check on :\n\t\t- (ok,None) = recipient.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#59)\n",
+      "lines": [
+        56,
+        59
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "AccessControlVault.claimOwnership(address).newOwner (../../../../../tmp/sentinel_static_re5kez5a.sol#91) lacks a zero-check on :\n\t\t- owner = newOwner (../../../../../tmp/sentinel_static_re5kez5a.sol#93)\n",
+      "lines": [
+        91,
+        93
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "return-bomb",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "AccessControlVault.guardedCall(address,bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#70-75) tries to limit the gas of an external call that controls implicit decoding\n\t(ok,ret) = target.call{gas: 50000}(data) (../../../../../tmp/sentinel_static_re5kez5a.sol#72)\n",
+      "lines": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        75
+      ],
+      "function_names": [
+        "guardedCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "tx-origin",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "AccessControlVault.claimOwnership(address) (../../../../../tmp/sentinel_static_re5kez5a.sol#91-94) uses tx.origin for authorization: require(bool,string)(tx.origin == owner,only owner via tx.origin) (../../../../../tmp/sentinel_static_re5kez5a.sol#92)\n",
+      "lines": [
+        91,
+        92,
+        93,
+        94
+      ],
+      "function_names": [
+        "claimOwnership"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "eth-send-unchecked-address",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+      "lines": [
+        48,
+        56,
+        63
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "tx-origin-used-for-auth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Using `tx.origin` may lead to problems when users are interacting via smart contract with your protocol. It is recommended to use `msg.sender` for authentication.",
+      "lines": [
+        92
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        35,
+        39,
+        70,
+        77,
+        87
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "modifier-used-only-once",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider removing the modifier or inlining the logic into the calling function.",
+      "lines": [
+        21
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        35,
+        39,
+        43,
+        48,
+        56,
+        63,
+        87,
+        91
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        93
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x355615041a3d42f95034c7d2ec1016355888217a",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "arbitrary-send-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_re5kez5a.sol#63-68) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = owner.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#66)\n",
+        "lines": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ],
+        "function_names": [
+          "operatorWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "assembly",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#77-85) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_re5kez5a.sol#80-82)\n",
+        "lines": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "delegateExecute"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#77-85) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = owner.delegatecall(data) (../../../../../tmp/sentinel_static_re5kez5a.sol#78)\n",
+        "lines": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "delegateExecute"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_re5kez5a.sol#8)\n",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#77-85):\n\t- (ok,ret) = owner.delegatecall(data) (../../../../../tmp/sentinel_static_re5kez5a.sol#78)\n",
+        "lines": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "delegateExecute"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_re5kez5a.sol#63-68):\n\t- (ok,None) = owner.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#66)\n",
+        "lines": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ],
+        "function_names": [
+          "operatorWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.guardedCall(address,bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#70-75):\n\t- (ok,ret) = target.call{gas: 50000}(data) (../../../../../tmp/sentinel_static_re5kez5a.sol#72)\n",
+        "lines": [
+          70,
+          71,
+          72,
+          73,
+          74,
+          75
+        ],
+        "function_names": [
+          "guardedCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.withdrawTo(address,uint256) (../../../../../tmp/sentinel_static_re5kez5a.sol#56-61):\n\t- (ok,None) = recipient.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#59)\n",
+        "lines": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61
+        ],
+        "function_names": [
+          "withdrawTo"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.withdrawAll() (../../../../../tmp/sentinel_static_re5kez5a.sol#48-54):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#52)\n",
+        "lines": [
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "withdrawAll"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "AccessControlVault.withdrawTo(address,uint256).recipient (../../../../../tmp/sentinel_static_re5kez5a.sol#56) lacks a zero-check on :\n\t\t- (ok,None) = recipient.call{value: amount}() (../../../../../tmp/sentinel_static_re5kez5a.sol#59)\n",
+        "lines": [
+          56,
+          59
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "AccessControlVault.claimOwnership(address).newOwner (../../../../../tmp/sentinel_static_re5kez5a.sol#91) lacks a zero-check on :\n\t\t- owner = newOwner (../../../../../tmp/sentinel_static_re5kez5a.sol#93)\n",
+        "lines": [
+          91,
+          93
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "return-bomb",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "AccessControlVault.guardedCall(address,bytes) (../../../../../tmp/sentinel_static_re5kez5a.sol#70-75) tries to limit the gas of an external call that controls implicit decoding\n\t(ok,ret) = target.call{gas: 50000}(data) (../../../../../tmp/sentinel_static_re5kez5a.sol#72)\n",
+        "lines": [
+          70,
+          71,
+          72,
+          73,
+          74,
+          75
+        ],
+        "function_names": [
+          "guardedCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "tx-origin",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "AccessControlVault.claimOwnership(address) (../../../../../tmp/sentinel_static_re5kez5a.sol#91-94) uses tx.origin for authorization: require(bool,string)(tx.origin == owner,only owner via tx.origin) (../../../../../tmp/sentinel_static_re5kez5a.sol#92)\n",
+        "lines": [
+          91,
+          92,
+          93,
+          94
+        ],
+        "function_names": [
+          "claimOwnership"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          48,
+          56,
+          63
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "tx-origin-used-for-auth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Using `tx.origin` may lead to problems when users are interacting via smart contract with your protocol. It is recommended to use `msg.sender` for authentication.",
+        "lines": [
+          92
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          35,
+          39,
+          70,
+          77,
+          87
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "modifier-used-only-once",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider removing the modifier or inlining the logic into the calling function.",
+        "lines": [
+          21
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          35,
+          39,
+          43,
+          48,
+          56,
+          63,
+          87,
+          91
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          93
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['arbitrary-send-eth', 'controlled-delegatecall', 'tx-origin'] aderyn=['eth-send-unchecked-address', 'tx-origin-used-for-auth'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "5 High/Medium static finding(s) not tied to a verdict: arbitrary-send-eth, controlled-delegatecall, tx-origin, eth-send-unchecked-address, tx-origin-used-for-auth"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

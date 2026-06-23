@@ -1,0 +1,130 @@
+# SENTINEL Agents Pipeline Evaluation Report
+
+**Contracts evaluated:** 88  
+**Positive verdict set:** ['CONFIRMED', 'LIKELY']  
+**Macro-F1:** 0.2455  |  **Micro-F1:** 0.2736
+
+## Gate assertions
+
+| Gate | Description | Passed | Detail |
+|---|---|---|---|
+| `WS1a_silent_safe_on_flagged` | No class with prob in [0.35,0.5) ends SAFE with no corroboration | PASS | 0 violation(s) |
+| `WS1b_inconclusive_on_timeout` | edge_debate_timeout emits INCONCLUSIVE (LLM-on mode only) | PASS | N/A in --no-llm mode (no debate to time out) |
+| `WS2_false_positives_on_safe` | Zero false-positive verdicts on the safe subset | FAIL | 6 FP(s) on 6 safe contract(s): 01_checks_effects_interactions: ['IntegerUO', 'ExternalBug', 'CallToUnknown']; 02_pull_over_push_payment: ['ExternalBug', 'Reentrancy', 'IntegerUO', 'CallToUnknown']; 03_openzeppelin_managed: ['IntegerUO', 'ExternalBug']; 04_pausable_circuit_breaker: ['IntegerUO', 'ExternalBug']; 05_emergency_stop_controlled: ['IntegerUO', 'ExternalBug', 'Timestamp'] |
+| `WS3_long_contract_bug_detected` | edge_long_contract_truncated Reentrancy flagged (bug is past 2000-char cutoff) | FAIL | Reentrancy verdict = DISPUTED (positive set = ['CONFIRMED', 'LIKELY']) |
+| `macro_f1_vs_baseline` | macro_F1 >= baseline (no baseline given — informational) | PASS | macro_F1 = 0.2455 (no baseline to compare) |
+
+**Overall: GATE FAILURE**
+
+## Per-class metrics
+
+| Class | Support | TP | FP | FN | TN | Precision | Recall | F1 |
+|---|---|---|---|---|---|---|---|---|
+| Reentrancy | 14 | 9 | 28 | 5 | 46 | 0.2432 | 0.6429 | 0.3529 |
+| Timestamp | 14 | 9 | 11 | 5 | 63 | 0.4500 | 0.6429 | 0.5294 |
+| CallToUnknown | 13 | 5 | 22 | 8 | 53 | 0.1852 | 0.3846 | 0.2500 |
+| DenialOfService | 10 | 1 | 3 | 9 | 75 | 0.2500 | 0.1000 | 0.1429 |
+| ExternalBug | 10 | 7 | 44 | 3 | 34 | 0.1373 | 0.7000 | 0.2295 |
+| MishandledException | 10 | 2 | 3 | 8 | 75 | 0.4000 | 0.2000 | 0.2667 |
+| UnusedReturn | 10 | 4 | 9 | 6 | 69 | 0.3077 | 0.4000 | 0.3478 |
+| GasException | 9 | 1 | 3 | 8 | 76 | 0.2500 | 0.1111 | 0.1538 |
+| IntegerUO | 9 | 4 | 31 | 5 | 48 | 0.1143 | 0.4444 | 0.1818 |
+| TransactionOrderDependence | 9 | 0 | 3 | 9 | 76 | 0.0000 | 0.0000 | 0.0000 |
+
+## Contract-level accuracy
+
+- **Loose** (safe→no flag OR vuln→≥1 correct flag): 36/88 = 40.91%
+- **Strict exact-match** (predicted set == label set): 2/88 = 2.27%
+
+## Per-contract detail
+
+| Contract | GT | Labels | Predicted | TP | FP | FN | Correct |
+|---|---|---|---|---|---|---|---|
+| 01_approve_frontrun | vulnerable | TransactionOrderDependence | — | — | — | TransactionOrderDependence | ✗ |
+| 01_batch_payout_swallow | vulnerable | MishandledException | — | — | — | MishandledException | ✗ |
+| 01_bccc_reentrancy_injected_erc20 | vulnerable | Reentrancy,IntegerUO | — | — | — | IntegerUO,Reentrancy | ✗ |
+| 01_cei_violation_erc721 | vulnerable | Reentrancy | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | Reentrancy | CallToUnknown,ExternalBug,IntegerUO | — | ✓ |
+| 01_checks_effects_interactions | safe | — | CallToUnknown,ExternalBug,IntegerUO | — | CallToUnknown,ExternalBug,IntegerUO | — | ✗ |
+| 01_erc20_underflow | vulnerable | IntegerUO | — | — | — | IntegerUO | ✗ |
+| 01_flash_loan_oracle_manipulation | vulnerable | ExternalBug | ExternalBug,Reentrancy | ExternalBug | Reentrancy | — | ✓ |
+| 01_massive_storage_loop | vulnerable | GasException | Timestamp | — | Timestamp | GasException | ✗ |
+| 01_multi_asset_transfer | vulnerable | UnusedReturn | — | — | — | UnusedReturn | ✗ |
+| 01_proxy_delegatecall | vulnerable | CallToUnknown | CallToUnknown,ExternalBug,TransactionOrderDependence | CallToUnknown | ExternalBug,TransactionOrderDependence | — | ✓ |
+| 01_unbounded_refund | vulnerable | DenialOfService | ExternalBug,Reentrancy | — | ExternalBug,Reentrancy | DenialOfService | ✗ |
+| 01_vesting_schedule | vulnerable | Timestamp | ExternalBug,IntegerUO,Reentrancy,Timestamp,UnusedReturn | Timestamp | ExternalBug,IntegerUO,Reentrancy,UnusedReturn | — | ✓ |
+| 02_access_control_bypass | vulnerable | ExternalBug | ExternalBug,TransactionOrderDependence | ExternalBug | TransactionOrderDependence | — | ✓ |
+| 02_auction_deadline | vulnerable | Timestamp | ExternalBug,Reentrancy,Timestamp | Timestamp | ExternalBug,Reentrancy | — | ✓ |
+| 02_bccc_dos_injected_loop | vulnerable | DenialOfService,Timestamp | — | — | — | DenialOfService,Timestamp | ✗ |
+| 02_calldata_expansion_dos | vulnerable | GasException | Timestamp | — | Timestamp | GasException | ✗ |
+| 02_cross_function_reentrancy | vulnerable | Reentrancy | CallToUnknown,ExternalBug,IntegerUO,Reentrancy,Timestamp | Reentrancy | CallToUnknown,ExternalBug,IntegerUO,Timestamp | — | ✓ |
+| 02_delegatecall_muted | vulnerable | MishandledException | CallToUnknown,ExternalBug,TransactionOrderDependence | — | CallToUnknown,ExternalBug,TransactionOrderDependence | MishandledException | ✗ |
+| 02_dynamic_dispatch | vulnerable | CallToUnknown | ExternalBug,IntegerUO,UnusedReturn | — | ExternalBug,IntegerUO,UnusedReturn | CallToUnknown | ✗ |
+| 02_liquidation_ignore | vulnerable | UnusedReturn | DenialOfService,ExternalBug,GasException,Reentrancy,UnusedReturn | UnusedReturn | DenialOfService,ExternalBug,GasException,Reentrancy | — | ✓ |
+| 02_mempool_sniping | vulnerable | TransactionOrderDependence | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | — | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | TransactionOrderDependence | ✗ |
+| 02_pull_over_push_payment | safe | — | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | — | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | — | ✗ |
+| 02_push_payment_failure | vulnerable | DenialOfService | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | — | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | DenialOfService | ✗ |
+| 02_unchecked_auction_bid | vulnerable | IntegerUO | — | — | — | IntegerUO | ✗ |
+| 03_bccc_calltounknown_injected_delegate | vulnerable | CallToUnknown,MishandledException | — | — | — | CallToUnknown,MishandledException | ✗ |
+| 03_delegatecall_injection | vulnerable | ExternalBug | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | ExternalBug | CallToUnknown,IntegerUO,Reentrancy | — | ✓ |
+| 03_dynamic_loop_gas_bomb | vulnerable | DenialOfService | CallToUnknown,DenialOfService,ExternalBug,GasException,Reentrancy | DenialOfService | CallToUnknown,ExternalBug,GasException,Reentrancy | — | ✓ |
+| 03_failed_batch_approve | vulnerable | UnusedReturn | — | — | — | UnusedReturn | ✗ |
+| 03_low_level_forwarder | vulnerable | CallToUnknown | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | CallToUnknown | ExternalBug,IntegerUO,Reentrancy | — | ✓ |
+| 03_mev_arbitrage | vulnerable | TransactionOrderDependence | — | — | — | TransactionOrderDependence | ✗ |
+| 03_multi_call_hub | vulnerable | MishandledException | CallToUnknown,ExternalBug,IntegerUO,MishandledException,Reentrancy | MishandledException | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | — | ✓ |
+| 03_nested_dynamic_array | vulnerable | GasException | — | — | — | GasException | ✗ |
+| 03_openzeppelin_managed | safe | — | ExternalBug,IntegerUO | — | ExternalBug,IntegerUO | — | ✗ |
+| 03_randomness_seed | vulnerable | Timestamp | CallToUnknown,ExternalBug,Reentrancy,Timestamp | Timestamp | CallToUnknown,ExternalBug,Reentrancy | — | ✓ |
+| 03_read_only_reentrancy | vulnerable | Reentrancy | — | — | — | Reentrancy | ✗ |
+| 03_safe_math_bypass | vulnerable | IntegerUO | ExternalBug,IntegerUO,Reentrancy | IntegerUO | ExternalBug,Reentrancy | — | ✓ |
+| 04_bccc_gas_injected_nested | vulnerable | GasException,DenialOfService | — | — | — | DenialOfService,GasException | ✗ |
+| 04_erc777_callback_reentrancy | vulnerable | Reentrancy | ExternalBug,IntegerUO,Reentrancy,UnusedReturn | Reentrancy | ExternalBug,IntegerUO,UnusedReturn | — | ✓ |
+| 04_ico_phase_gate | vulnerable | Timestamp | — | — | — | Timestamp | ✗ |
+| 04_nested_call_chain | vulnerable | UnusedReturn | CallToUnknown,ExternalBug,IntegerUO,MishandledException,Reentrancy,UnusedReturn | UnusedReturn | CallToUnknown,ExternalBug,IntegerUO,MishandledException,Reentrancy | — | ✓ |
+| 04_opaque_contract_factory | vulnerable | CallToUnknown | ExternalBug | — | ExternalBug | CallToUnknown | ✗ |
+| 04_pausable_circuit_breaker | safe | — | ExternalBug,IntegerUO | — | ExternalBug,IntegerUO | — | ✗ |
+| 04_permit_sig_frontrun | vulnerable | TransactionOrderDependence | — | — | — | TransactionOrderDependence | ✗ |
+| 04_sig_replay_attack | vulnerable | ExternalBug | CallToUnknown,ExternalBug,IntegerUO,Reentrancy,UnusedReturn | ExternalBug | CallToUnknown,IntegerUO,Reentrancy,UnusedReturn | — | ✓ |
+| 04_storage_growth_dos | vulnerable | DenialOfService | CallToUnknown,ExternalBug,Timestamp | — | CallToUnknown,ExternalBug,Timestamp | DenialOfService | ✗ |
+| 04_time_calc_overflow | vulnerable | IntegerUO | CallToUnknown,ExternalBug,IntegerUO,Reentrancy,Timestamp | IntegerUO | CallToUnknown,ExternalBug,Reentrancy,Timestamp | — | ✓ |
+| 04_transfer_stipend_exhaustion | vulnerable | GasException | DenialOfService,ExternalBug,GasException,IntegerUO | GasException | DenialOfService,ExternalBug,IntegerUO | — | ✓ |
+| 04_withdrawal_fails_silent | vulnerable | MishandledException | — | — | — | MishandledException | ✗ |
+| 05_approval_race_swallow | vulnerable | MishandledException | ExternalBug,IntegerUO,Reentrancy,Timestamp,UnusedReturn | — | ExternalBug,IntegerUO,Reentrancy,Timestamp,UnusedReturn | MishandledException | ✗ |
+| 05_batch_transfer_wrapping | vulnerable | IntegerUO | CallToUnknown,ExternalBug | — | CallToUnknown,ExternalBug | IntegerUO | ✗ |
+| 05_bccc_externalbug_injected_flashloan | vulnerable | ExternalBug,UnusedReturn | — | — | — | ExternalBug,UnusedReturn | ✗ |
+| 05_dutch_auction_race | vulnerable | TransactionOrderDependence | — | — | — | TransactionOrderDependence | ✗ |
+| 05_emergency_stop_controlled | safe | — | ExternalBug,IntegerUO,Timestamp | — | ExternalBug,IntegerUO,Timestamp | — | ✗ |
+| 05_eth_bank_multi_withdraw | vulnerable | Reentrancy | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | Reentrancy | CallToUnknown,ExternalBug,IntegerUO | — | ✓ |
+| 05_logic_contract_selfdestruct | vulnerable | ExternalBug | ExternalBug,IntegerUO,Reentrancy | ExternalBug | IntegerUO,Reentrancy | — | ✓ |
+| 05_staticcall_gas_bomb | vulnerable | GasException | — | — | — | GasException | ✗ |
+| 05_time_lock_governance | vulnerable | Timestamp | ExternalBug,IntegerUO,Reentrancy,Timestamp | Timestamp | ExternalBug,IntegerUO,Reentrancy | — | ✓ |
+| 05_unexpected_revert_dos | vulnerable | DenialOfService | ExternalBug,IntegerUO,Reentrancy,UnusedReturn | — | ExternalBug,IntegerUO,Reentrancy,UnusedReturn | DenialOfService | ✗ |
+| 05_upgrade_proxy_selfdestruct | vulnerable | CallToUnknown | ExternalBug,Timestamp | — | ExternalBug,Timestamp | CallToUnknown | ✗ |
+| 05_wrapped_eth_deposit | vulnerable | UnusedReturn | — | — | — | UnusedReturn | ✗ |
+| 06_bccc_timestamp_injected_vesting | vulnerable | Timestamp,TransactionOrderDependence | — | — | — | Timestamp,TransactionOrderDependence | ✗ |
+| 06_tricky_call_in_fallback | vulnerable | CallToUnknown | CallToUnknown,ExternalBug | CallToUnknown | ExternalBug | — | ✓ |
+| 06_tricky_dos_in_constructor | vulnerable | DenialOfService | — | — | — | DenialOfService | ✗ |
+| 06_tricky_externalbug_callback_chain | vulnerable | ExternalBug,MishandledException | CallToUnknown,ExternalBug,IntegerUO,MishandledException | ExternalBug,MishandledException | CallToUnknown,IntegerUO | — | ✓ |
+| 06_tricky_gas_in_loop_condition | vulnerable | GasException | Timestamp | — | Timestamp | GasException | ✗ |
+| 06_tricky_mishandled_internal_chain | vulnerable | MishandledException | — | — | — | MishandledException | ✗ |
+| 06_tricky_overflow_in_interest_rate | vulnerable | IntegerUO | CallToUnknown,ExternalBug,IntegerUO,Timestamp | IntegerUO | CallToUnknown,ExternalBug,Timestamp | — | ✓ |
+| 06_tricky_reentrancy_in_modifier | vulnerable | Reentrancy | CallToUnknown,ExternalBug,IntegerUO,Reentrancy | Reentrancy | CallToUnknown,ExternalBug,IntegerUO | — | ✓ |
+| 06_tricky_timestamp_in_pricing | vulnerable | Timestamp | ExternalBug,IntegerUO,Reentrancy,Timestamp,UnusedReturn | Timestamp | ExternalBug,IntegerUO,Reentrancy,UnusedReturn | — | ✓ |
+| 06_tricky_tod_mempool_sniping | vulnerable | TransactionOrderDependence | CallToUnknown,ExternalBug,Reentrancy | — | CallToUnknown,ExternalBug,Reentrancy | TransactionOrderDependence | ✗ |
+| 06_tricky_unused_return_in_callchain | vulnerable | UnusedReturn,CallToUnknown | ExternalBug,IntegerUO,Reentrancy,Timestamp,UnusedReturn | UnusedReturn | ExternalBug,IntegerUO,Reentrancy,Timestamp | CallToUnknown | ✓ |
+| 07_bccc_mishandled_injected_multicall | vulnerable | MishandledException,CallToUnknown | — | — | — | CallToUnknown,MishandledException | ✗ |
+| 07_multivuln_call_reentrancy | vulnerable | CallToUnknown,Reentrancy,Timestamp | CallToUnknown,ExternalBug,IntegerUO,MishandledException,Reentrancy,Timestamp | CallToUnknown,Reentrancy,Timestamp | ExternalBug,IntegerUO,MishandledException | — | ✓ |
+| 07_multivuln_dos_exception | vulnerable | DenialOfService,GasException | — | — | — | DenialOfService,GasException | ✗ |
+| 07_multivuln_externalbug_mishandled | vulnerable | ExternalBug,MishandledException,GasException | ExternalBug,Reentrancy,UnusedReturn | ExternalBug | Reentrancy,UnusedReturn | GasException,MishandledException | ✓ |
+| 07_multivuln_overflow_unused_return | vulnerable | IntegerUO,UnusedReturn | ExternalBug,IntegerUO,Reentrancy,UnusedReturn | IntegerUO,UnusedReturn | ExternalBug,Reentrancy | — | ✓ |
+| 07_multivuln_reentrancy_tod | vulnerable | Reentrancy,TransactionOrderDependence | CallToUnknown,DenialOfService,ExternalBug,GasException,IntegerUO,Reentrancy | Reentrancy | CallToUnknown,DenialOfService,ExternalBug,GasException,IntegerUO | TransactionOrderDependence | ✓ |
+| 07_multivuln_timestamp_call | vulnerable | Timestamp,CallToUnknown | CallToUnknown,ExternalBug,IntegerUO,MishandledException,Reentrancy,Timestamp | CallToUnknown,Timestamp | ExternalBug,IntegerUO,MishandledException,Reentrancy | — | ✓ |
+| 08_bccc_unusedreturn_injected_batch | vulnerable | UnusedReturn,ExternalBug | — | — | — | ExternalBug,UnusedReturn | ✗ |
+| 09_bccc_tod_injected_approve | vulnerable | TransactionOrderDependence,IntegerUO | — | — | — | IntegerUO,TransactionOrderDependence | ✗ |
+| 10_bccc_weakaccess_injected_ownable | vulnerable | CallToUnknown,Timestamp | — | — | — | CallToUnknown,Timestamp | ✗ |
+| 11_bccc_multivuln_oracle_borrow | vulnerable | ExternalBug,Reentrancy,Timestamp,CallToUnknown | — | — | — | CallToUnknown,ExternalBug,Reentrancy,Timestamp | ✗ |
+| 12_bccc_dos_reentrancy_combo | vulnerable | DenialOfService,Reentrancy,UnusedReturn | — | — | — | DenialOfService,Reentrancy,UnusedReturn | ✗ |
+| edge_borderline_no_corroboration | vulnerable | Timestamp | Timestamp | Timestamp | — | — | ✓ |
+| edge_debate_timeout | vulnerable | Reentrancy | Reentrancy,UnusedReturn | Reentrancy | UnusedReturn | — | ✓ |
+| edge_long_contract_truncated | vulnerable | Reentrancy | — | — | — | Reentrancy | ✗ |
+| edge_multi_bug | vulnerable | Reentrancy,Timestamp | Reentrancy,Timestamp | Reentrancy,Timestamp | — | — | ✓ |
+| edge_safe_rag_resembles_exploit | safe | — | ExternalBug,IntegerUO,Reentrancy | — | ExternalBug,IntegerUO,Reentrancy | — | ✗ |

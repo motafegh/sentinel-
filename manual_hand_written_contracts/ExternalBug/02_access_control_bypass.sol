@@ -1,4 +1,4 @@
-// expect: ExternalBug
+// expect: ExternalBug,CallToUnknown
 // Access control system that uses tx.origin for authentication.
 // tx.origin is the original sender of the transaction — NOT the msg.sender.
 // A malicious contract can call this contract on behalf of a victim user

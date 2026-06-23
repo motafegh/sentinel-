@@ -53,7 +53,7 @@ Two-signal gate: fast path requires ML **and** static analysis to agree. If Slit
 
 | File | Purpose |
 |------|---------|
-| `state.py` | `AuditState` TypedDict — 26 fields flowing through the graph |
+| `state.py` | `AuditState` TypedDict — 29 fields flowing through the graph |
 | `routing.py` | Per-class thresholds, tool routing, verdict computation |
 | `nodes.py` | 13 node implementations (the core logic) |
 | `graph.py` | StateGraph builder, conditional edges, lazy `audit_graph`, SqliteSaver checkpointing |
@@ -134,24 +134,89 @@ Maps each vulnerability class to the relevant Slither detector names. Used by `s
 
 ### Verdict Computation
 
-**Rule-based** (`compute_verdict`):
+**FN/FP Asymmetry Principle (WS1, 2026-06-21):**
+A missed vulnerability (false negative) can cost millions; a wasted review
+(false positive) costs time. This asymmetry is the governing design rule for
+the verdict chain:
+
+1. **A flagged class (prob ≥ `DEEP_THRESHOLDS[cls]`) may never be silently
+   marked SAFE without a recorded reason.** "No corroboration" is a reason to
+   investigate further, not a reason to clear.
+2. **"No corroboration" ≠ "cleared."** A flagged class with no tool hits is
+   *uncorroborated*, which is `DISPUTED` — not `SAFE`.
+3. **"We couldn't check" ≠ "we checked and found nothing."** A debate timeout
+   or evidence unavailability is `INCONCLUSIVE` — not `SAFE`.
+4. **The cheap signals (ML, Slither, Aderyn) are the LEAST trustworthy.**
+   "Looks safe by cheap signals" is the worst reason to skip the careful
+   check. The debate (when it runs) reads the actual source; the cheap
+   signals only point at what to investigate.
+
+This principle was implicitly present in two routing decisions
+(`DEEP_THRESHOLDS` set below the model's confident cutoff; the two-signal
+fast-path gate requires BOTH ML and quick_screen to agree safe) but was never
+named. It is now an explicit checklist for auditing the verdict chain.
+
+**Verdict values (6):** `CONFIRMED` | `LIKELY` | `DISPUTED` | `WATCH` | `SAFE` | `INCONCLUSIVE`
+
+**Rule-based** (`compute_verdict`, last resort):
 - `CONFIRMED` — prob >= 0.50 AND (Slither match OR RAG score >= 0.80)
 - `LIKELY` — prob >= 0.50 AND RAG score >= 0.50
 - `DISPUTED` — prob >= 0.50 AND no corroborating evidence
-- `SAFE` — below threshold
+- `INCONCLUSIVE` — prob >= `DEEP_THRESHOLDS[cls]` AND prob < 0.50 (flagged but no evidence either way)
+- `SAFE` — prob < `DEEP_THRESHOLDS[cls]` (genuinely not flagged)
+
+**Consensus vote** (`consensus_engine` node, A.6/A.7, **sole verdict authority** per WS1):
+Votes on EVERY class that crossed its `DEEP_THRESHOLDS` (not just prob >= 0.50).
+If the weighted vote returns `SAFE` for a flagged class, it is overridden to
+`DISPUTED` (uncorroborated ≠ cleared). Weights ML/Slither/Aderyn by per-class
+reliability (`consensus.py:ACCURACY_WEIGHTS`), with ML's weight discounted by
+`ML_WEIGHT_SCALE` (default 0.5) — **ML alone cannot reach CONFIRMED**, it needs
+at least one corroborating static-tool hit. Also computes a Bayesian-updated
+`confidence_by_class` (`confidence.py:track_confidence`).
 
 **LLM-adjudicated** (`cross_validator` node, A.4): when `DEBATE_MODE=on` (default),
 runs three sequential calls — Prosecutor (reads the source, argues vulnerable) →
-Defender (argues false-positive) → Judge (renders verdicts as JSON). Single-pass
-classification if `DEBATE_MODE=off`. Falls back silently to rule-based on LLM failure
-or when `AGENTS_DISABLE_LLM=1`.
+Defender (argues false-positive) → Judge (renders verdicts as JSON, 6 options
+including `INCONCLUSIVE` for debate timeout). Single-pass classification if
+`DEBATE_MODE=off`. Falls back to consensus vote on LLM failure or when
+`AGENTS_DISABLE_LLM=1`.
 
-**Consensus vote** (`consensus_engine` node, A.6/A.7): per flagged class, weights ML/
-Slither/Aderyn signals by per-class reliability (`consensus.py:ACCURACY_WEIGHTS`), with
-ML's weight discounted by `ML_WEIGHT_SCALE` (default 0.5) — **ML alone cannot reach
-CONFIRMED**, it needs at least one corroborating static-tool hit. Also computes a
-Bayesian-updated `confidence_by_class` (`confidence.py:track_confidence`) that nudges
-the ML probability up/down as Slither/Aderyn/RAG evidence arrives.
+**Verdict reconciliation** (synthesizer, **WS1.5 2026-06-22**):
+This is **not** a priority chain. It is an 8-case reconciliation function
+(`nodes.py:_reconcile_verdicts`, one per class) that respects the **FN/FP
+asymmetry principle**: a missed vulnerability can cost millions; a wasted
+review costs time. The old 3-tier chain ("debate > consensus > compute_verdict")
+that this section previously documented was the broken mechanism that caused
+Finding #14 (debate silently SAFEd 13 consensus-flagged classes, 4 at
+confidence=1.0). Anyone reading the docs for "how do verdicts get decided"
+should look at the function, not at a priority list.
+
+The 8 cases (full table in `docs/plan/agents/2026-06-21-agents-redesign/
+05_VERDICT_RECONCILIATION_PLAN.md`):
+
+| Consensus | Debate   | → Outcome      | Why |
+|-----------|----------|----------------|-----|
+| (none)    | (none)   | `compute_verdict()` (rule-based last resort) | Neither ran — use evidence to decide |
+| (none)    | LIKELY+  | Debate wins    | Debate saw something the cheap tools didn't |
+| (none)    | ≤ WATCH  | `compute_verdict()` | Both weak, fall through to rules |
+| SAFE      | SAFE     | SAFE           | Both agree no bug |
+| SAFE      | > SAFE   | Debate wins    | Debate escalated from "no cheap evidence" |
+| non-SAFE  | SAFE     | **DISPUTED**   | Debate CANNOT clear a flagged class — only the cheap tools' agreement can |
+| non-SAFE  | DISPUTED | DISPUTED       | Surface uncertainty; the cheap tools saw something but can't confirm |
+| non-SAFE  | CONFIRMED/LIKELY | Consensus | Cheap tools already at the same band; nothing to escalate |
+| non-SAFE  | WATCH/INCONCLUSIVE | Consensus | Cheap tools' verdict stands when they have tool corroboration |
+| non-SAFE  | non-SAFE | More-severe-wins (debate upgrade path) | Debate can find things the tools missed |
+
+**Invariants** (covered by `tests/test_verdict_reconciliation.py`):
+- A class flagged by `consensus_engine` (prob >= `DEEP_THRESHOLDS[cls]` OR a
+  tool hit) **cannot** be cleared to `SAFE` by the debate — at most `DISPUTED`.
+- A class with consensus `confidence == 1.0` is never downgraded to `SAFE`.
+- The "debate can upgrade" path requires the more-severe verdict to be strictly
+  higher in the rank order; equal-rank cases stay with consensus.
+
+19 tests in `tests/test_verdict_reconciliation.py` cover the full case table
+plus the invariants (one test per case, plus degenerate cases like empty
+inputs, both-missing, and case 1b CONFIRMED+DISPUTED→DISPUTED split).
 
 ## `nodes.py` — Node Implementations
 
@@ -218,15 +283,42 @@ Slither/Aderyn/RAG evidence arrives. Output: `consensus_verdict`, `confidence_by
 false positive). The agent layer treats ML as a *hint* and requires independent
 corroboration — `consensus_vote(0.99, slither=False, aderyn=False)` always returns SAFE.
 
-### cross_validator (upgraded to debate, A.4, 2026-06-21)
+### cross_validator (upgraded to debate, A.4, 2026-06-21; WS3+WS4.2 2026-06-22)
 
 When `DEBATE_MODE=on` (default), runs three sequential LLM calls instead of one:
-1. **Prosecutor** — reads per-class evidence AND the contract source (first 2000 chars),
-   argues why the contract HAS the vulnerabilities.
+1. **Prosecutor** — reads per-class evidence AND **hotspot-guided code excerpts**
+   (WS3) instead of a blind `[:2000]` prefix, argues why the contract HAS the
+   vulnerabilities.
 2. **Defender** — given the prosecutor's case, argues why findings may be false
    positives (the ML model is explicitly named as over-prediction-prone in the prompt).
 3. **Judge** — given both arguments, renders `{class: verdict}` as JSON, verdict ∈
-   `CONFIRMED | LIKELY | DISPUTED | WATCH | SAFE`.
+   `CONFIRMED | LIKELY | DISPUTED | WATCH | SAFE | INCONCLUSIVE`.
+
+**What the debate sees (WS3, 2026-06-22):** the debate prompt includes a
+"Focused code excerpts" block built from `ml_hotspots` (one section per
+flagged class, with function name, line numbers, score, signals, and the
+actual source lines extracted). The full contract source is appended below
+as reference (capped at 4000 chars). When `ml_hotspots` is empty, the old
+`[:2000]` fallback is used, with a note about ML sliding-window count if
+the contract was multi-windowed. The 4-eyes auxiliary predictions
+(`gnn`/`transformer`/`fused`/`phase2`) are added as "Eye clues" hints in
+the per-class evidence block — they reveal *which* reasoning drives the
+model's suspicion but are NOT votes (D4: don't quadruple-count the
+already-discounted ML signal).
+
+**Selective gating (WS4.2, 2026-06-22):** the debate is **skipped** when
+all flagged classes are CONFIRMED by `consensus_engine` with **≥2 of 3
+tools** (ML, Slither, Aderyn) voting positive. The consensus verdict is
+used directly as the LLM verdict. The gating is **asymmetric** per the
+FN/FP principle: the debate is NEVER skipped because cheap signals say
+"safe" — only because they confidently agree "vulnerable." When the
+debate is skipped, the result has the same shape as a normal run
+(`verdicts`, `confirmations`, `contradictions`) so downstream synthesis is
+unchanged. 9 tests in `tests/test_ws4_2_selective_gating.py` cover the
+asymmetric cases (skipped when all CONFIRMED+2tools; runs when any class
+is LIKELY/DISPUTED/SAFE; runs when only 1 tool agrees; runs when no
+consensus state). 8 tests in `tests/test_ws3_hotspot_excerpts.py` cover
+the prompt-construction changes.
 
 Set `DEBATE_MODE=off` to fall back to the original single classification call.
 Default model: FAST (`CROSS_VALIDATOR_LLM_MODEL=fast`); transcript stored in

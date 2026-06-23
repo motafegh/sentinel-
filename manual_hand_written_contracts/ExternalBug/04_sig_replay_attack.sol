@@ -1,4 +1,4 @@
-// expect: ExternalBug
+// expect: ExternalBug,MishandledException
 // Meta-transaction relayer that does not track nonces or used signatures.
 // A valid signed message can be replayed multiple times across different
 // relayers or even on the same contract — the signature check passes

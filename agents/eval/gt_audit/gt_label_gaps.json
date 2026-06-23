@@ -1,0 +1,1245 @@
+[
+  {
+    "stem": "01_proxy_delegatecall",
+    "path": "CallToUnknown/01_proxy_delegatecall.sol",
+    "gt_labels": [
+      "CallToUnknown"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "02_dynamic_dispatch",
+    "path": "CallToUnknown/02_dynamic_dispatch.sol",
+    "gt_labels": [
+      "CallToUnknown"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "03_low_level_forwarder",
+    "path": "CallToUnknown/03_low_level_forwarder.sol",
+    "gt_labels": [
+      "CallToUnknown"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ]
+  },
+  {
+    "stem": "04_opaque_contract_factory",
+    "path": "CallToUnknown/04_opaque_contract_factory.sol",
+    "gt_labels": [
+      "CallToUnknown"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "05_upgrade_proxy_selfdestruct",
+    "path": "CallToUnknown/05_upgrade_proxy_selfdestruct.sol",
+    "gt_labels": [
+      "CallToUnknown"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "06_tricky_call_in_fallback",
+    "path": "CallToUnknown/06_tricky_call_in_fallback.sol",
+    "gt_labels": [
+      "CallToUnknown"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "07_multivuln_call_reentrancy",
+    "path": "CallToUnknown/07_multivuln_call_reentrancy.sol",
+    "gt_labels": [
+      "CallToUnknown",
+      "Reentrancy",
+      "Timestamp"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "01_unbounded_refund",
+    "path": "DenialOfService/01_unbounded_refund.sol",
+    "gt_labels": [
+      "DenialOfService"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "02_push_payment_failure",
+    "path": "DenialOfService/02_push_payment_failure.sol",
+    "gt_labels": [
+      "DenialOfService"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "03_dynamic_loop_gas_bomb",
+    "path": "DenialOfService/03_dynamic_loop_gas_bomb.sol",
+    "gt_labels": [
+      "DenialOfService"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "04_storage_growth_dos",
+    "path": "DenialOfService/04_storage_growth_dos.sol",
+    "gt_labels": [
+      "DenialOfService"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "ExternalBug",
+      "GasException",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "05_unexpected_revert_dos",
+    "path": "DenialOfService/05_unexpected_revert_dos.sol",
+    "gt_labels": [
+      "DenialOfService"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "07_multivuln_dos_exception",
+    "path": "DenialOfService/07_multivuln_dos_exception.sol",
+    "gt_labels": [
+      "DenialOfService",
+      "GasException"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "GasException",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "01_flash_loan_oracle_manipulation",
+    "path": "ExternalBug/01_flash_loan_oracle_manipulation.sol",
+    "gt_labels": [
+      "ExternalBug"
+    ],
+    "gaps": [
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy"
+    ],
+    "detected_classes": [
+      "ExternalBug",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy"
+    ]
+  },
+  {
+    "stem": "02_access_control_bypass",
+    "path": "ExternalBug/02_access_control_bypass.sol",
+    "gt_labels": [
+      "ExternalBug"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "GasException",
+      "MishandledException",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ]
+  },
+  {
+    "stem": "03_delegatecall_injection",
+    "path": "ExternalBug/03_delegatecall_injection.sol",
+    "gt_labels": [
+      "ExternalBug"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "GasException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "04_sig_replay_attack",
+    "path": "ExternalBug/04_sig_replay_attack.sol",
+    "gt_labels": [
+      "ExternalBug"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "05_logic_contract_selfdestruct",
+    "path": "ExternalBug/05_logic_contract_selfdestruct.sol",
+    "gt_labels": [
+      "ExternalBug"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "06_tricky_externalbug_callback_chain",
+    "path": "ExternalBug/06_tricky_externalbug_callback_chain.sol",
+    "gt_labels": [
+      "ExternalBug",
+      "MishandledException"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "GasException",
+      "IntegerUO",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "07_multivuln_externalbug_mishandled",
+    "path": "ExternalBug/07_multivuln_externalbug_mishandled.sol",
+    "gt_labels": [
+      "ExternalBug",
+      "MishandledException",
+      "GasException"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "Reentrancy",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ]
+  },
+  {
+    "stem": "01_massive_storage_loop",
+    "path": "GasException/01_massive_storage_loop.sol",
+    "gt_labels": [
+      "GasException"
+    ],
+    "gaps": [
+      "Timestamp"
+    ],
+    "detected_classes": [
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "02_calldata_expansion_dos",
+    "path": "GasException/02_calldata_expansion_dos.sol",
+    "gt_labels": [
+      "GasException"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "GasException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "04_transfer_stipend_exhaustion",
+    "path": "GasException/04_transfer_stipend_exhaustion.sol",
+    "gt_labels": [
+      "GasException"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "06_tricky_gas_in_loop_condition",
+    "path": "GasException/06_tricky_gas_in_loop_condition.sol",
+    "gt_labels": [
+      "GasException"
+    ],
+    "gaps": [
+      "Reentrancy",
+      "Timestamp"
+    ],
+    "detected_classes": [
+      "Reentrancy",
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "03_safe_math_bypass",
+    "path": "IntegerUO/03_safe_math_bypass.sol",
+    "gt_labels": [
+      "IntegerUO"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy"
+    ]
+  },
+  {
+    "stem": "04_time_calc_overflow",
+    "path": "IntegerUO/04_time_calc_overflow.sol",
+    "gt_labels": [
+      "IntegerUO"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "05_batch_transfer_wrapping",
+    "path": "IntegerUO/05_batch_transfer_wrapping.sol",
+    "gt_labels": [
+      "IntegerUO"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy"
+    ]
+  },
+  {
+    "stem": "06_tricky_overflow_in_interest_rate",
+    "path": "IntegerUO/06_tricky_overflow_in_interest_rate.sol",
+    "gt_labels": [
+      "IntegerUO"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "07_multivuln_overflow_unused_return",
+    "path": "IntegerUO/07_multivuln_overflow_unused_return.sol",
+    "gt_labels": [
+      "IntegerUO",
+      "UnusedReturn"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "02_delegatecall_muted",
+    "path": "MishandledException/02_delegatecall_muted.sol",
+    "gt_labels": [
+      "MishandledException"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "Reentrancy",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ]
+  },
+  {
+    "stem": "03_multi_call_hub",
+    "path": "MishandledException/03_multi_call_hub.sol",
+    "gt_labels": [
+      "MishandledException"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "05_approval_race_swallow",
+    "path": "MishandledException/05_approval_race_swallow.sol",
+    "gt_labels": [
+      "MishandledException"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "01_cei_violation_erc721",
+    "path": "Reentrancy/01_cei_violation_erc721.sol",
+    "gt_labels": [
+      "Reentrancy"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "02_cross_function_reentrancy",
+    "path": "Reentrancy/02_cross_function_reentrancy.sol",
+    "gt_labels": [
+      "Reentrancy"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Timestamp"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "04_erc777_callback_reentrancy",
+    "path": "Reentrancy/04_erc777_callback_reentrancy.sol",
+    "gt_labels": [
+      "Reentrancy"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "05_eth_bank_multi_withdraw",
+    "path": "Reentrancy/05_eth_bank_multi_withdraw.sol",
+    "gt_labels": [
+      "Reentrancy"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "06_tricky_reentrancy_in_modifier",
+    "path": "Reentrancy/06_tricky_reentrancy_in_modifier.sol",
+    "gt_labels": [
+      "Reentrancy"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "07_multivuln_reentrancy_tod",
+    "path": "Reentrancy/07_multivuln_reentrancy_tod.sol",
+    "gt_labels": [
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "01_checks_effects_interactions",
+    "path": "Safe/01_checks_effects_interactions.sol",
+    "gt_labels": [],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException"
+    ]
+  },
+  {
+    "stem": "02_pull_over_push_payment",
+    "path": "Safe/02_pull_over_push_payment.sol",
+    "gt_labels": [],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "03_openzeppelin_managed",
+    "path": "Safe/03_openzeppelin_managed.sol",
+    "gt_labels": [],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException"
+    ]
+  },
+  {
+    "stem": "04_pausable_circuit_breaker",
+    "path": "Safe/04_pausable_circuit_breaker.sol",
+    "gt_labels": [],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException"
+    ]
+  },
+  {
+    "stem": "05_emergency_stop_controlled",
+    "path": "Safe/05_emergency_stop_controlled.sol",
+    "gt_labels": [],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Timestamp"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "01_vesting_schedule",
+    "path": "Timestamp/01_vesting_schedule.sol",
+    "gt_labels": [
+      "Timestamp"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "02_auction_deadline",
+    "path": "Timestamp/02_auction_deadline.sol",
+    "gt_labels": [
+      "Timestamp"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "03_randomness_seed",
+    "path": "Timestamp/03_randomness_seed.sol",
+    "gt_labels": [
+      "Timestamp"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "05_time_lock_governance",
+    "path": "Timestamp/05_time_lock_governance.sol",
+    "gt_labels": [
+      "Timestamp"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "06_tricky_timestamp_in_pricing",
+    "path": "Timestamp/06_tricky_timestamp_in_pricing.sol",
+    "gt_labels": [
+      "Timestamp"
+    ],
+    "gaps": [
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy"
+    ],
+    "detected_classes": [
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp"
+    ]
+  },
+  {
+    "stem": "07_multivuln_timestamp_call",
+    "path": "Timestamp/07_multivuln_timestamp_call.sol",
+    "gt_labels": [
+      "Timestamp",
+      "CallToUnknown"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "02_mempool_sniping",
+    "path": "TransactionOrderDependence/02_mempool_sniping.sol",
+    "gt_labels": [
+      "TransactionOrderDependence"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "06_tricky_tod_mempool_sniping",
+    "path": "TransactionOrderDependence/06_tricky_tod_mempool_sniping.sol",
+    "gt_labels": [
+      "TransactionOrderDependence"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "02_liquidation_ignore",
+    "path": "UnusedReturn/02_liquidation_ignore.sol",
+    "gt_labels": [
+      "UnusedReturn"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ]
+  },
+  {
+    "stem": "04_nested_call_chain",
+    "path": "UnusedReturn/04_nested_call_chain.sol",
+    "gt_labels": [
+      "UnusedReturn"
+    ],
+    "gaps": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ]
+  },
+  {
+    "stem": "06_tricky_unused_return_in_callchain",
+    "path": "UnusedReturn/06_tricky_unused_return_in_callchain.sol",
+    "gt_labels": [
+      "UnusedReturn",
+      "CallToUnknown"
+    ],
+    "gaps": [
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence"
+    ],
+    "detected_classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ]
+  }
+]

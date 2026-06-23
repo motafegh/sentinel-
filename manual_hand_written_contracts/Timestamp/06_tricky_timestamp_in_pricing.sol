@@ -1,4 +1,4 @@
-// expect: Timestamp
+// expect: Timestamp,MishandledException
 // TRICKY: Timestamp dependence hidden inside a dynamic pricing algorithm.
 // The contract appears to use a "fair" TWAP-like oracle, but the formula
 // uses block.timestamp directly in a way that a miner can manipulate by

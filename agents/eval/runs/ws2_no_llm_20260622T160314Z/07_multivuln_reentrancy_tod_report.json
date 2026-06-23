@@ -1,0 +1,655 @@
+{
+  "contract": "07_multivuln_reentrancy_tod.sol",
+  "contract_address": "0xd15ce2f96f4190ce5d258c1cd3b6beeb87fcc479",
+  "timestamp": "2026-06-22T12:34:14.709458+00:00",
+  "total_wall_s": 1.1915595531463623,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['arbitrary-send-eth', 'reentrancy-eth'] aderyn=['eth-send-unchecked-address', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "arbitrary-send-eth",
+      "reentrancy-eth"
+    ],
+    "aderyn": [
+      "eth-send-unchecked-address",
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 18,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "arbitrary-send-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "MultiVulnBank.owner (../../../../../tmp/sentinel_static_hylphr_a.sol#11) should be immutable \n",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_hylphr_a.sol#6)\n",
+      "lines": [
+        6
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42):\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_hylphr_a.sol#27)\n",
+      "lines": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42) has external calls inside a loop: (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42):\n\tExternal calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n\tState variables written after the call(s):\n\t- balances[users[i]] -= amounts[i] (../../../../../tmp/sentinel_static_hylphr_a.sol#39)\n\tMultiVulnBank.balances (../../../../../tmp/sentinel_static_hylphr_a.sol#9) can be used in cross function reentrancies:\n\t- MultiVulnBank.balances (../../../../../tmp/sentinel_static_hylphr_a.sol#9)\n\t- MultiVulnBank.batchTransfer(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#65-70)\n\t- MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42)\n\t- MultiVulnBank.deposit() (../../../../../tmp/sentinel_static_hylphr_a.sol#20-23)\n\t- MultiVulnBank.transfer(address,uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#58-63)\n\t- MultiVulnBank.transferFrom(address,address,uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#49-56)\n\t- MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_hylphr_a.sol#27)\n\tState variables written after the call(s):\n\t- balances[msg.sender] -= amount (../../../../../tmp/sentinel_static_hylphr_a.sol#29)\n\tMultiVulnBank.balances (../../../../../tmp/sentinel_static_hylphr_a.sol#9) can be used in cross function reentrancies:\n\t- MultiVulnBank.balances (../../../../../tmp/sentinel_static_hylphr_a.sol#9)\n\t- MultiVulnBank.batchTransfer(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#65-70)\n\t- MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42)\n\t- MultiVulnBank.deposit() (../../../../../tmp/sentinel_static_hylphr_a.sol#20-23)\n\t- MultiVulnBank.transfer(address,uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#58-63)\n\t- MultiVulnBank.transferFrom(address,address,uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#49-56)\n\t- MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31)\n",
+      "lines": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_hylphr_a.sol#27)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,amount) (../../../../../tmp/sentinel_static_hylphr_a.sol#30)\n",
+      "lines": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42):\n\tExternal calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n\tEvent emitted after the call(s):\n\t- Withdrawn(users[i],amounts[i]) (../../../../../tmp/sentinel_static_hylphr_a.sol#40)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "eth-send-unchecked-address",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+      "lines": [
+        25,
+        33
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        27,
+        37
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        35,
+        66
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        6
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        35
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        44,
+        49,
+        58,
+        65
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        6
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xd15ce2f96f4190ce5d258c1cd3b6beeb87fcc479",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "arbitrary-send-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "MultiVulnBank.owner (../../../../../tmp/sentinel_static_hylphr_a.sol#11) should be immutable \n",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_hylphr_a.sol#6)\n",
+        "lines": [
+          6
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42):\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_hylphr_a.sol#27)\n",
+        "lines": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42) has external calls inside a loop: (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42):\n\tExternal calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n\tState variables written after the call(s):\n\t- balances[users[i]] -= amounts[i] (../../../../../tmp/sentinel_static_hylphr_a.sol#39)\n\tMultiVulnBank.balances (../../../../../tmp/sentinel_static_hylphr_a.sol#9) can be used in cross function reentrancies:\n\t- MultiVulnBank.balances (../../../../../tmp/sentinel_static_hylphr_a.sol#9)\n\t- MultiVulnBank.batchTransfer(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#65-70)\n\t- MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42)\n\t- MultiVulnBank.deposit() (../../../../../tmp/sentinel_static_hylphr_a.sol#20-23)\n\t- MultiVulnBank.transfer(address,uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#58-63)\n\t- MultiVulnBank.transferFrom(address,address,uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#49-56)\n\t- MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_hylphr_a.sol#27)\n\tState variables written after the call(s):\n\t- balances[msg.sender] -= amount (../../../../../tmp/sentinel_static_hylphr_a.sol#29)\n\tMultiVulnBank.balances (../../../../../tmp/sentinel_static_hylphr_a.sol#9) can be used in cross function reentrancies:\n\t- MultiVulnBank.balances (../../../../../tmp/sentinel_static_hylphr_a.sol#9)\n\t- MultiVulnBank.batchTransfer(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#65-70)\n\t- MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42)\n\t- MultiVulnBank.deposit() (../../../../../tmp/sentinel_static_hylphr_a.sol#20-23)\n\t- MultiVulnBank.transfer(address,uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#58-63)\n\t- MultiVulnBank.transferFrom(address,address,uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#49-56)\n\t- MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31)\n",
+        "lines": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_hylphr_a.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_hylphr_a.sol#27)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,amount) (../../../../../tmp/sentinel_static_hylphr_a.sol#30)\n",
+        "lines": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_hylphr_a.sol#33-42):\n\tExternal calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_hylphr_a.sol#37)\n\tEvent emitted after the call(s):\n\t- Withdrawn(users[i],amounts[i]) (../../../../../tmp/sentinel_static_hylphr_a.sol#40)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          25,
+          33
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          27,
+          37
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          35,
+          66
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          6
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          35
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          44,
+          49,
+          58,
+          65
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          6
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['arbitrary-send-eth', 'reentrancy-eth'] aderyn=['eth-send-unchecked-address', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "5 High/Medium static finding(s) not tied to a verdict: arbitrary-send-eth, reentrancy-eth, reentrancy-eth, eth-send-unchecked-address, reentrancy-state-change"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

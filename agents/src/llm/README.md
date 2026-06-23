@@ -6,7 +6,7 @@ LM Studio connection and model router for SENTINEL agents. Provides LangChain-co
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `client.py` | 184 | LLM client factory with model routing |
+| `client.py` | 233 | LLM client factory with model routing |
 
 ## Models
 

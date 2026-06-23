@@ -621,6 +621,7 @@ class Predictor:
             "windows_used":  0,
             "num_nodes":     0,
             "num_edges":     0,
+            "eye_predictions": {},
             "warning":       f"no_contracts_found: {reason}",
         }
 
@@ -677,10 +678,22 @@ class Predictor:
         ).unsqueeze(0)   # [1, W, 512]
 
         with torch.no_grad():
-            logits = self.model(batch, stacked_ids, stacked_mask)   # [1, num_classes]
+            output = self.model(batch, stacked_ids, stacked_mask, return_aux=True)
+        if isinstance(output, tuple):
+            logits, aux_dict = output
+        else:
+            logits = output
+            aux_dict = {}
 
         probs = torch.sigmoid(logits.float()).squeeze(0)   # [num_classes]
-        return self._format_result(graph, probs, windows[0], n_real)
+
+        eye_probs: dict[str, list[float]] = {}
+        for eye_name in ("gnn", "transformer", "fused", "phase2"):
+            eye_logits = aux_dict.get(eye_name)
+            if eye_logits is not None:
+                eye_probs[eye_name] = torch.sigmoid(eye_logits.float()).squeeze(0).tolist()
+
+        return self._format_result(graph, probs, windows[0], n_real, eye_probs=eye_probs or None)
 
     def _score(self, graph, tokens: dict) -> dict:
         """
@@ -707,6 +720,7 @@ class Predictor:
         probs: torch.Tensor,   # [num_classes] CPU or GPU
         tokens: dict,
         windows_used: int,
+        eye_probs: dict[str, list[float]] | None = None,
     ) -> dict:
         """
         Convert probability tensor + metadata into the three-tier result dict.
@@ -785,7 +799,7 @@ class Predictor:
             f"truncated={tokens.get('truncated', False)} windows={windows_used}"
         )
 
-        return {
+        result: dict = {
             "label":            label,
             "probabilities":    probabilities,
             "confirmed":        confirmed,
@@ -802,3 +816,15 @@ class Predictor:
             "num_nodes":     int(graph.num_nodes),
             "num_edges":     int(graph.num_edges),
         }
+
+        # D4: expose per-eye auxiliary predictions as discountable CLUES
+        if eye_probs:
+            eye_predictions: dict[str, dict[str, float]] = {}
+            for eye_name, eye_probs_list in eye_probs.items():
+                eye_predictions[eye_name] = {
+                    cls_name: round(float(prob), 4)
+                    for cls_name, prob in zip(self._class_names, eye_probs_list)
+                }
+            result["eye_predictions"] = eye_predictions
+
+        return result

@@ -1,0 +1,1078 @@
+{
+  "contract": "01_vesting_schedule.sol",
+  "contract_address": "0xd21af254276b3510cff9c821c99e8b1d11ee2d12",
+  "timestamp": "2026-06-22T12:34:21.474815+00:00",
+  "total_wall_s": 1.0829997062683105,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-no-eth",
+      "unchecked-transfer"
+    ],
+    "aderyn": [
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 26,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampVesting.token (../../../../../tmp/sentinel_static_90vk616m.sol#26) should be immutable \n",
+      "lines": [
+        26
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampVesting.owner (../../../../../tmp/sentinel_static_90vk616m.sol#25) should be immutable \n",
+      "lines": [
+        25
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_90vk616m.sol#7)\n",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89) has external calls inside a loop: token.transfer(beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#85)\n",
+      "lines": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
+      "function_names": [
+        "batchRelease"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampVesting.release(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#52-68):\n\tExternal calls:\n\t- token.transfer(g.beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#66)\n\tEvent emitted after the call(s):\n\t- TokensReleased(grantId,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#67)\n",
+      "lines": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "function_names": [
+        "release"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89):\n\tExternal calls:\n\t- token.transfer(beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#85)\n\tEvent emitted after the call(s):\n\t- TokensReleased(ids[i],releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#86)\n",
+      "lines": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
+      "function_names": [
+        "batchRelease"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampVesting.createGrant(address,uint256,uint256,uint256,bool) (../../../../../tmp/sentinel_static_90vk616m.sol#43-50):\n\tExternal calls:\n\t- token.transferFrom(msg.sender,address(this),totalAmount) (../../../../../tmp/sentinel_static_90vk616m.sol#47)\n\tEvent emitted after the call(s):\n\t- GrantCreated(id,beneficiary,totalAmount) (../../../../../tmp/sentinel_static_90vk616m.sol#48)\n",
+      "lines": [
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "function_names": [
+        "createGrant"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89):\n\tExternal calls:\n\t- token.transfer(beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#85)\n\tState variables written after the call(s):\n\t- g.released += releasable (../../../../../tmp/sentinel_static_90vk616m.sol#84)\n\tTimestampVesting.grants (../../../../../tmp/sentinel_static_90vk616m.sol#27) can be used in cross function reentrancies:\n\t- TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89)\n\t- TimestampVesting.createGrant(address,uint256,uint256,uint256,bool) (../../../../../tmp/sentinel_static_90vk616m.sol#43-50)\n\t- TimestampVesting.getVestedAmount(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#99-105)\n\t- TimestampVesting.grants (../../../../../tmp/sentinel_static_90vk616m.sol#27)\n\t- TimestampVesting.release(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#52-68)\n\t- TimestampVesting.revoke(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#91-97)\n",
+      "lines": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
+      "function_names": [
+        "batchRelease"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampVesting.revoke(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#91-97) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(g.revocable,not revocable) (../../../../../tmp/sentinel_static_90vk616m.sol#93)\n",
+      "lines": [
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97
+      ],
+      "function_names": [
+        "revoke"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- elapsed < g.cliffDuration (../../../../../tmp/sentinel_static_90vk616m.sol#76)\n\t- elapsed >= g.vestingDuration (../../../../../tmp/sentinel_static_90vk616m.sol#78)\n\t- releasable > 0 (../../../../../tmp/sentinel_static_90vk616m.sol#83)\n",
+      "lines": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
+      "function_names": [
+        "batchRelease"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampVesting.getVestedAmount(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#99-105) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- elapsed < g.cliffDuration (../../../../../tmp/sentinel_static_90vk616m.sol#102)\n\t- elapsed >= g.vestingDuration (../../../../../tmp/sentinel_static_90vk616m.sol#103)\n",
+      "lines": [
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105
+      ],
+      "function_names": [
+        "getVestedAmount"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampVesting.release(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#52-68) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(msg.sender == g.beneficiary || msg.sender == owner,not authorized) (../../../../../tmp/sentinel_static_90vk616m.sol#54)\n\t- elapsed < g.cliffDuration (../../../../../tmp/sentinel_static_90vk616m.sol#57)\n\t- elapsed >= g.vestingDuration (../../../../../tmp/sentinel_static_90vk616m.sol#59)\n\t- require(bool,string)(releasable > 0,nothing to release) (../../../../../tmp/sentinel_static_90vk616m.sol#64)\n",
+      "lines": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "function_names": [
+        "release"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "TimestampVesting.release(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#52-68) ignores return value by token.transfer(g.beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#66)\n",
+      "lines": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "function_names": [
+        "release"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "TimestampVesting.createGrant(address,uint256,uint256,uint256,bool) (../../../../../tmp/sentinel_static_90vk616m.sol#43-50) ignores return value by token.transferFrom(msg.sender,address(this),totalAmount) (../../../../../tmp/sentinel_static_90vk616m.sol#47)\n",
+      "lines": [
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "function_names": [
+        "createGrant"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89) ignores return value by token.transfer(beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#85)\n",
+      "lines": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
+      "function_names": [
+        "batchRelease"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "TimestampVesting.revoke(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#91-97) ignores return value by token.transfer(owner,remaining) (../../../../../tmp/sentinel_static_90vk616m.sol#96)\n",
+      "lines": [
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97
+      ],
+      "function_names": [
+        "revoke"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        85
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        43,
+        91
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        72
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        91
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        40
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        25,
+        26
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unchecked-return",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Function returns a value but it is ignored. Consider checking the return value.",
+      "lines": [
+        47,
+        66,
+        85,
+        96
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unsafe-erc20-operation",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+      "lines": [
+        47,
+        66,
+        85,
+        96
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xd21af254276b3510cff9c821c99e8b1d11ee2d12",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampVesting.token (../../../../../tmp/sentinel_static_90vk616m.sol#26) should be immutable \n",
+        "lines": [
+          26
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampVesting.owner (../../../../../tmp/sentinel_static_90vk616m.sol#25) should be immutable \n",
+        "lines": [
+          25
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_90vk616m.sol#7)\n",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89) has external calls inside a loop: token.transfer(beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#85)\n",
+        "lines": [
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89
+        ],
+        "function_names": [
+          "batchRelease"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampVesting.release(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#52-68):\n\tExternal calls:\n\t- token.transfer(g.beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#66)\n\tEvent emitted after the call(s):\n\t- TokensReleased(grantId,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#67)\n",
+        "lines": [
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ],
+        "function_names": [
+          "release"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89):\n\tExternal calls:\n\t- token.transfer(beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#85)\n\tEvent emitted after the call(s):\n\t- TokensReleased(ids[i],releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#86)\n",
+        "lines": [
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89
+        ],
+        "function_names": [
+          "batchRelease"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampVesting.createGrant(address,uint256,uint256,uint256,bool) (../../../../../tmp/sentinel_static_90vk616m.sol#43-50):\n\tExternal calls:\n\t- token.transferFrom(msg.sender,address(this),totalAmount) (../../../../../tmp/sentinel_static_90vk616m.sol#47)\n\tEvent emitted after the call(s):\n\t- GrantCreated(id,beneficiary,totalAmount) (../../../../../tmp/sentinel_static_90vk616m.sol#48)\n",
+        "lines": [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50
+        ],
+        "function_names": [
+          "createGrant"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89):\n\tExternal calls:\n\t- token.transfer(beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#85)\n\tState variables written after the call(s):\n\t- g.released += releasable (../../../../../tmp/sentinel_static_90vk616m.sol#84)\n\tTimestampVesting.grants (../../../../../tmp/sentinel_static_90vk616m.sol#27) can be used in cross function reentrancies:\n\t- TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89)\n\t- TimestampVesting.createGrant(address,uint256,uint256,uint256,bool) (../../../../../tmp/sentinel_static_90vk616m.sol#43-50)\n\t- TimestampVesting.getVestedAmount(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#99-105)\n\t- TimestampVesting.grants (../../../../../tmp/sentinel_static_90vk616m.sol#27)\n\t- TimestampVesting.release(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#52-68)\n\t- TimestampVesting.revoke(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#91-97)\n",
+        "lines": [
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89
+        ],
+        "function_names": [
+          "batchRelease"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampVesting.revoke(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#91-97) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(g.revocable,not revocable) (../../../../../tmp/sentinel_static_90vk616m.sol#93)\n",
+        "lines": [
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97
+        ],
+        "function_names": [
+          "revoke"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- elapsed < g.cliffDuration (../../../../../tmp/sentinel_static_90vk616m.sol#76)\n\t- elapsed >= g.vestingDuration (../../../../../tmp/sentinel_static_90vk616m.sol#78)\n\t- releasable > 0 (../../../../../tmp/sentinel_static_90vk616m.sol#83)\n",
+        "lines": [
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89
+        ],
+        "function_names": [
+          "batchRelease"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampVesting.getVestedAmount(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#99-105) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- elapsed < g.cliffDuration (../../../../../tmp/sentinel_static_90vk616m.sol#102)\n\t- elapsed >= g.vestingDuration (../../../../../tmp/sentinel_static_90vk616m.sol#103)\n",
+        "lines": [
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105
+        ],
+        "function_names": [
+          "getVestedAmount"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampVesting.release(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#52-68) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(msg.sender == g.beneficiary || msg.sender == owner,not authorized) (../../../../../tmp/sentinel_static_90vk616m.sol#54)\n\t- elapsed < g.cliffDuration (../../../../../tmp/sentinel_static_90vk616m.sol#57)\n\t- elapsed >= g.vestingDuration (../../../../../tmp/sentinel_static_90vk616m.sol#59)\n\t- require(bool,string)(releasable > 0,nothing to release) (../../../../../tmp/sentinel_static_90vk616m.sol#64)\n",
+        "lines": [
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ],
+        "function_names": [
+          "release"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "TimestampVesting.release(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#52-68) ignores return value by token.transfer(g.beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#66)\n",
+        "lines": [
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ],
+        "function_names": [
+          "release"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "TimestampVesting.createGrant(address,uint256,uint256,uint256,bool) (../../../../../tmp/sentinel_static_90vk616m.sol#43-50) ignores return value by token.transferFrom(msg.sender,address(this),totalAmount) (../../../../../tmp/sentinel_static_90vk616m.sol#47)\n",
+        "lines": [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50
+        ],
+        "function_names": [
+          "createGrant"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "TimestampVesting.batchRelease(address) (../../../../../tmp/sentinel_static_90vk616m.sol#70-89) ignores return value by token.transfer(beneficiary,releasable) (../../../../../tmp/sentinel_static_90vk616m.sol#85)\n",
+        "lines": [
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89
+        ],
+        "function_names": [
+          "batchRelease"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "TimestampVesting.revoke(uint256) (../../../../../tmp/sentinel_static_90vk616m.sol#91-97) ignores return value by token.transfer(owner,remaining) (../../../../../tmp/sentinel_static_90vk616m.sol#96)\n",
+        "lines": [
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97
+        ],
+        "function_names": [
+          "revoke"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          85
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          43,
+          91
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          72
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          91
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          40
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          25,
+          26
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          47,
+          66,
+          85,
+          96
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unsafe-erc20-operation",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+        "lines": [
+          47,
+          66,
+          85,
+          96
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "6 High/Medium static finding(s) not tied to a verdict: reentrancy-no-eth, unchecked-transfer, unchecked-transfer, unchecked-transfer, unchecked-transfer"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

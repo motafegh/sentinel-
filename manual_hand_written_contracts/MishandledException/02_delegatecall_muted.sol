@@ -1,4 +1,4 @@
-// expect: MishandledException
+// expect: MishandledException,CallToUnknown
 // Contract that makes delegatecall to upgrade its logic without checking
 // the return value. If the delegatecall fails (e.g., target has no code,
 // or execution reverts), the function continues as if nothing happened.

@@ -3,7 +3,7 @@
 > **Scope:** `agents/src/ingestion/` — keeps the RAG knowledge base fresh
 > by fetching new DeFiHackLabs exploits and feeding high-confidence audit
 > findings back from Sepolia's AuditRegistry. Source-of-truth: the code.
-> Last verified: 2026-06-21.
+> Last verified: 2026-06-23.
 
 ---
 
@@ -190,10 +190,10 @@
   │                                  FIX-6  hardcoded paths → imported constants
   │                                  BRIDGE reads data/reports/{address}.json
   │
-  ├── scheduler_cron.py       ~30 lines   host cron entry
-  │                                  0 2 * * * → pipeline.py
+  ├── scheduler_cron.py       200 lines   cron install/remove/status/run-now
+  │                                   0 2 * * * → pipeline.py
   │
-  └── scheduler_dagster.py    ~80 lines   Dagster asset + schedule
+  └── scheduler_dagster.py    140 lines   Dagster asset + schedule
                                      rag_index asset, daily_ingestion_schedule
                                      cron 0 2 * * *  (02:00 UTC)
 ```

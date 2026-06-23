@@ -1,0 +1,1 @@
+/home/motafeq/projects/sentinel/manual_hand_written_contracts/DenialOfService/02_push_payment_failure.sol

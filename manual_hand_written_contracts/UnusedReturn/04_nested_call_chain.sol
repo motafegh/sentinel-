@@ -1,4 +1,4 @@
-// expect: UnusedReturn
+// expect: UnusedReturn,MishandledException,Reentrancy
 // DeFi strategy contract that chains multiple operations together.
 // The return value of each intermediate step is discarded — only the final
 // result is checked. If any intermediate token transfer or approval fails

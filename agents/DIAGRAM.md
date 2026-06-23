@@ -2,7 +2,7 @@
 
 > **Scope:** whole-module reference for `~/projects/sentinel/agents/`.
 > Source-of-truth is the code; this is a single-page visual index.
-> Last verified: 2026-06-21 (post Phase A — 13 nodes).
+> Last verified: 2026-06-23.
 
 ---
 
@@ -50,7 +50,7 @@
 ```
                                   ┌──────────────────────────────────────────────┐
                                   │   13-node StateGraph (orchestration/nodes.py) │
-                                  │   AuditState TypedDict, 26 fields            │
+                                   │   AuditState TypedDict, 29 fields            │
                                   └──────────────────────────────────────────────┘
                                                           │
    START                                                  ▼
@@ -516,22 +516,27 @@
 ## 11. Test + Smoke Surface
 
 ```
-  scripts/  (smoke tests)
+  scripts/  (smoke tests + utilities)
   ─────────
   smoke_langgraph.py          # mock + --live modes for the full graph
   smoke_inference_mcp.py      # SSE smoke :8010
   smoke_rag_mcp.py            # SSE smoke :8011
   smoke_audit_mcp.py          # SSE smoke :8012
-  smoke_audit_mcp.py          # (duplicate? verify)
+  test_k_cap.py               # RAG server k-cap test
   run_real_audit.py           # real-LLM E2E harness (--no-llm / --profile)
+  audit_gt_labels.py          # ground-truth labels for eval
+  eval_benchmark.py           # evaluation benchmark runner
 
-  tests/  (276 unit + integration tests, 2026-06-21)
+  tests/  (402 unit + integration tests, 26 files, ~6,135 lines)
   ──────
-  test_graph_routing.py       # includes TestMlAssessmentNode
-  test_inference_server.py    # :8010 unit tests
-  test_routing_phase0.py      # routing + verdict logic
-  test_smoke_e2e.py           # end-to-end with fixtures
-  ... (9 files, ~3,293 lines per README)
+  test_graph_routing.py       # 1,075L — full graph, all 13 nodes
+  test_eval_framework.py      # 471L — eval harness scoring
+  test_ws4_2_selective_gating.py # 383L — WS4.2 asymmetric debate gating
+  test_representation_server.py  # 356L — GNN embedding MCP server
+  test_ws3_hotspot_excerpts.py   # 310L — WS3 hotspot-guided debate prompts
+  test_verdict_reconciliation.py # 268L — 8-case reconciliation table
+  test_verdict_integrity.py   # 204L — FN/FP invariants
+  ... (+ 18 more files)
 ```
 
 ---
@@ -541,7 +546,7 @@
 ```
   agents/
   ├── src/orchestration/
-  │   ├── state.py            AuditState TypedDict, 26 fields, reducers
+  │   ├── state.py            AuditState TypedDict, 29 fields, 1 append-reducer
   │   ├── routing.py          DEEP_THRESHOLDS, ROUTING_RULES, CLASS_TO_DETECTORS,
   │   │                       compute_active_tools, compute_verdict, prob_to_severity
   │   ├── nodes.py            13 async node functions (the core logic)
@@ -550,41 +555,43 @@
   │   ├── consensus.py        A.6 — weighted vote, ML_WEIGHT_SCALE
   │   ├── confidence.py       A.7 — Bayesian staged confidence tracking
   │   ├── attribution.py      A.8 — LIME-style per-class evidence % breakdown
-  │   └── visualizer.py       A.9 — interactive HTML hotspot report
+  │   ├── visualizer.py       A.9 — interactive HTML hotspot report
+  │   ├── timeouts.py         Centralized timeout defaults (2026-06-21)
+  │   └── timing.py           step_timer() / timed_node() (2026-06-21)
   │
   ├── src/mcp/servers/
-  │   ├── inference_server.py       :8010  predict, batch_predict
-  │   ├── rag_server.py             :8011  search
-  │   ├── audit_server.py           :8012  get_audit_history, get_latest_audit
-  │   └── graph_inspector_server.py :8013  get_graph_hotspots (real GNN)
+  │   ├── inference_server.py       :8010  predict, batch_predict (501L)
+  │   ├── rag_server.py             :8011  search (353L)
+  │   ├── audit_server.py           :8012  get_audit_history, get_latest_audit (717L)
+  │   └── graph_inspector_server.py :8013  get_graph_hotspots (real GNN) (544L)
   │
   ├── src/rag/
-  │   ├── retriever.py        HybridRetriever (FAISS + BM25 + RRF)
-  │   ├── chunker.py          RecursiveCharacterTextSplitter (1536 chars)
-  │   ├── embedder.py         Nomic-embed-text via LM Studio
-  │   ├── build_index.py      Full rebuild (atomic write + rollback)
+  │   ├── retriever.py        HybridRetriever (FAISS + BM25 + RRF) (334L)
+  │   ├── chunker.py          RecursiveCharacterTextSplitter (1536 chars) (199L)
+  │   ├── embedder.py         Nomic-embed-text via LM Studio (228L)
+  │   ├── build_index.py      Full rebuild, atomic + rollback (661L)
   │   └── fetchers/
-  │       ├── base_fetcher.py        Abstract
-  │       ├── github_fetcher.py      DeFiHackLabs .sol
-  │       ├── json_corpus_fetcher.py Shared base
-  │       ├── code4rena_fetcher.py   C4 contest findings
-  │       ├── sherlock_fetcher.py    Sherlock contest findings
-  │       ├── solodit_fetcher.py     Solodit aggregated
-  │       ├── immunefi_fetcher.py    Immunefi bounties
-  │       └── swc_registry_fetcher.py SWC registry
+  │       ├── base_fetcher.py        Abstract (94L)
+  │       ├── github_fetcher.py      DeFiHackLabs .sol (478L)
+  │       ├── json_corpus_fetcher.py Shared base (131L)
+  │       ├── code4rena_fetcher.py   C4 (17L)  ⚠ DISABLED (WS2)
+  │       ├── sherlock_fetcher.py    Sherlock (15L) ⚠ DISABLED (WS2)
+  │       ├── solodit_fetcher.py     Solodit (15L)  ⚠ DISABLED (WS2)
+  │       ├── immunefi_fetcher.py    Immunefi (15L) ⚠ DISABLED (WS2)
+  │       └── swc_registry_fetcher.py SWC (18L)     ⚠ DISABLED (WS2)
   │
   ├── src/ingestion/
-  │   ├── pipeline.py         Dedup → chunk → embed → atomic write
-  │   ├── deduplicator.py     SHA256 hash dedup
-  │   ├── feedback_loop.py    Sepolia AuditRegistry event poll → RAG
-  │   ├── scheduler_cron.py
-  │   └── scheduler_dagster.py
+  │   ├── pipeline.py         Dedup → chunk → embed → atomic write (313L)
+  │   ├── deduplicator.py     SHA256 hash dedup (136L)
+  │   ├── feedback_loop.py    Sepolia AuditRegistry event poll → RAG (470L)
+  │   ├── scheduler_cron.py   Cron install/remove/status (60L)
+  │   └── scheduler_dagster.py Dagster asset + schedule (77L)
   │
   ├── src/llm/
-  │   └── client.py           LM Studio (httpx), 4 model roles
+  │   └── client.py           LM Studio (httpx), 4 model roles (233L)
   │
-  ├── scripts/                Smoke + E2E harnesses
-  ├── tests/                  9 files, 276 tests
+  ├── scripts/                Smoke + E2E + eval harnesses (8 files)
+  ├── tests/                  26 files, 402 tests, ~6,135 lines
   ├── data/                   index/, reports/, checkpoints.db, feedback_state.json
   └── README.md               user-facing quickstart
 ```

@@ -6,7 +6,7 @@
 > agent layer is the consumer, Module 1's FastAPI is the producer.
 >
 > **Source-of-truth is the code** in `src/orchestration/`, `src/mcp/servers/`,
-> and `ml/api.py`. Verified: 2026-06-21 (post Phase A — 13 nodes).
+> and `ml/api.py`. Verified: 2026-06-23.
 
 ---
 

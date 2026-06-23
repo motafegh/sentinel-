@@ -1,0 +1,205 @@
+flowchart TB
+  subgraph OVERVIEW["RAG Knowledge Base"]
+    OV["Grounds ML risk scores in historical precedent
+'Has this vulnerability pattern been exploited before?'
+752 chunks from 726 DeFiHackLabs PoCs + audit-firm corpora
+Hybrid semantic (FAISS) + keyword (BM25) retrieval"]
+  end
+
+  subgraph FETCHERS["6 Source Fetchers (rag/fetchers/)"]
+    direction TB
+
+    subgraph ACTIVE["Active"]
+      GH["github_fetcher.py
+DeFiHackLabs
+3 comment formats: @Summary / @KeyInfo / free-form
+726 .sol PoC files"]
+    end
+
+    subgraph DISABLED["⚠ DISABLED (WS2)"]
+      C4["code4rena_fetcher.py — Code4rena contests"]
+      SH["sherlock_fetcher.py — Sherlock contests"]
+      SL["solodit_fetcher.py — Solodit aggregated"]
+      IM["immunefi_fetcher.py — Immunefi bounties"]
+      SWC["swc_registry_fetcher.py — SWC weakness registry"]
+    end
+
+    BASE["base_fetcher.py
+Abstract BaseFetcher + Document dataclass
+Interfaces: fetch(), fetch_since(since),
+source_name, health_check()"]
+  end
+
+  subgraph PIPELINE["Build Pipeline — End-to-End"]
+    direction TB
+    FETCHERS --> CHUNKER["Chunker (chunker.py)
+RecursiveCharacterTextSplitter
+DEFAULT_CHUNK_SIZE=1536, DEFAULT_CHUNK_OVERLAP=128
+Split priority: ¶ → ↵ → '. ' → ' ' → ''"]
+
+    CHUNKER --> EMBEDDER["Embedder (embedder.py)
+LM Studio /v1/embeddings
+text-embedding-nomic-embed-text-v1.5 (768-dim)
+3-attempt retry (1s, 2s exponential backoff)
+Count validation: len(vectors)==len(chunks) or raise RuntimeError"]
+
+    EMBEDDER --> BUILD["Build / Update Index
+rag/build_index.py (full rebuild)
+OR ingestion/pipeline.py (incremental)
+
+FileLock (data/index/.index.lock, 300s timeout)
+Atomic write: .tmp → replace()
+Rollback snapshot: backups/{build_id}/
+SHA256 checksums in metadata
+config_hash: chunk_size, overlap, model, faiss_type"]
+  end
+
+  subgraph INDEX["Index (data/index/)"]
+    direction TB
+    I1["faiss.index — 768-dim vectors, IndexFlatL2"]
+    I2["bm25.pkl — BM25Okapi (pickled)"]
+    I3["chunks.pkl — list[Chunk] (pickled)"]
+    I4["index_metadata.json — build_id, config_hash, SHA256s"]
+    I5["seen_hashes.json — source file dedup"]
+    I6[".index.lock — FileLock"]
+    I7["backups/{build_id}/ — rollback snapshots"]
+  end
+
+  subgraph RETRIEVER["HybridRetriever — The Retrieval Engine"]
+    direction TB
+
+    subgraph ALGORITHM["Search Algorithm (RRF Fusion)"]
+      direction TB
+      QUERY["query: '{ML top class} exploit pattern in {snippet}'"] --> FAISS["① FAISS semantic
+embed query → top-20 by L2 distance"]
+      QUERY --> BM25["② BM25 keyword
+tokenize → top-20 by BM25 score"]
+
+      FAISS --> RRF["③ Reciprocal Rank Fusion (RRF)
+score(chunk) = Σ 1/(rank + RRF_K)
+RRF_K = 60"]
+      BM25 --> RRF
+
+      RRF --> FILTER["④ Optional metadata filter
+vuln_type | date_gte | loss_gte
+source | has_summary"]
+      FILTER --> RERANK["⑤ Optional cross-encoder rerank
+cross-encoder/ms-marco-MiniLM-L-6-v2
+(off by default, slower but more accurate)"]
+      RERANK --> TOPK["⑥ Slice to top-k
+→ ranked chunks with RRF score"]
+    end
+
+    subgraph WHY_HYBRID["Why Hybrid?"]
+      direction TB
+      WHY1["FAISS: synonyms, paraphrases, conceptual similarity
+'borrowing exploit' → 'flash loan attack'"]
+      WHY2["BM25: exact terms, CVE numbers, tx hashes, addresses
+'Euler Finance 0xc310a0af'"]
+      WHY3["RRF: chunks ranking high in EITHER get boosted"]
+    end
+
+    subgraph METADATA["Metadata Filters"]
+      direction TB
+      MF1["vuln_type: str — exact match on metadata.vuln_type"]
+      MF2["date_gte: str (ISO) — '2023-01-01'"]
+      MF3["loss_gte: int (USD) — 1_000_000"]
+      MF4["source: str — 'DeFiHackLabs'"]
+      MF5["has_summary: bool — only @Summary documents"]
+    end
+
+    subgraph VALIDATION["Init Validation (FIX-10)"]
+      V1["HybridRetriever.__init__:
+1. Load all 5 artifacts (FAISS, BM25, chunks, metadata, embedder)
+2. Validate FAISS.ntotal == len(chunks)
+   → if mismatch: RuntimeError 'Index corruption'
+   → fail loud at startup, not during search
+3. Tolerate both 'built_at' and 'last_run' keys (FIX-5)"]
+    end
+  end
+
+  subgraph CONSUMERS["Consumers"]
+    direction TB
+    CONS1["rag_research node (orchestration/nodes.py) — primary
+Deep path only, via MCP :8011
+Query: '{ML top class} exploit pattern in {snippet}'
+Filters: {vuln_type: top_class, loss_gte: 100_000}
+k: AUDIT_RAG_K (default 5)"]
+    CONS2["rag_server :8011 (mcp/servers/rag_server.py)
+Exposes search() as MCP tool
+Lazy-loaded HybridRetriever (Bug 10 fix)"]
+  end
+
+  subgraph SAFETY["Index Write Safety (5 Safety Nets)"]
+    direction TB
+    S1["1. FileLock (data/index/.index.lock, 300s timeout)
+Prevents concurrent writes, shared by build_index + pipeline"]
+    S2["2. Atomic writes
+.tmp → Path.replace() — POSIX-atomic
+Readers never see half-written file"]
+    S3["3. Rollback snapshot
+Copy current artifacts to backups/{build_id}/
+Manual recovery if build fails mid-write"]
+    S4["4. SHA256 checksums
+Each artifact's hash in index_metadata.json
+Corruption detection on next startup"]
+    S5["5. config_hash
+Hash of: chunk_size, overlap, embedding_model, faiss_type
+If config changes → rebuild forced"]
+  end
+
+  subgraph BUILD_VS_INGEST["Build vs Ingest"]
+    direction TB
+    BV1["build_index.py (full rebuild)
+All 6 fetchers, re-chunk, re-embed
+new build_id
+Used after schema changes / recovery"]
+    BV2["ingestion/pipeline.py (incremental)
+DeFiHackLabs only, only new docs
+no new build_id
+Used by cron / Dagster schedulers"]
+  end
+
+  subgraph DEFIHACKLABS["DeFiHackLabsFetcher — The Heavy Lifter"]
+    direction TB
+    DL1["Input: DeFiHackLabs/src/test/*.sol + past/*.sol"]
+    DL2["Per-file extraction:
+_extract_date() → '2023-03-01'
+_extract_summary_block() → Format A (~25 files)
+_extract_keyinfo_block() → Format B (~473 files)
+_extract_all_analysis_urls() → post-mortem links
+_extract_root_cause() → root cause string
+_extract_loss() → '$197M' → 197000000
+_infer_vuln_type() → one of 11 categories"]
+    DL3["Format C (free-form, ~159 files): plain text / bare URLs"]
+  end
+
+  subgraph CHUNK["Chunk Dataclass"]
+    CD["@dataclass
+Chunk:
+  content: str
+  doc_id: str
+  chunk_id: int
+  total_chunks: int
+  metadata: dict
+  score: float = 0.0"]
+  end
+
+  subgraph CONFIG["Configuration"]
+    C1["LM_STUDIO_BASE_URL: http://<gateway>:4567/v1"]
+    C2["LM_STUDIO_TIMEOUT: 60"]
+    C3["MCP_RAG_PORT: 8011"]
+    C4["RAG_DEFAULT_K: 5 | RAG_MAX_K: 20 (hardcoded)"]
+    C5["AUDIT_RAG_K: 5 (for rag_research node)"]
+  end
+
+  subgraph FAILURES["Failure Modes"]
+    F1["Index files missing → FileNotFoundError 'Run build_index'"]
+    F2["FAISS count ≠ chunks count → RuntimeError 'Index corruption'"]
+    F3["concurrent build_index + pipeline → FileLock blocks (300s)"]
+    F4["Write fails mid-build → rollback snapshot in backups/{id}/"]
+    F5["LM Studio down → Embedder retries 3× then raises"]
+    F6["Embedder wrong vector count → RuntimeError 'vector count mismatch'"]
+    F7["Filters too aggressive → returns [], logs warning (FIX-12)"]
+    F8["Cross-encoder not installed → silent fallback to RRF"]
+  end

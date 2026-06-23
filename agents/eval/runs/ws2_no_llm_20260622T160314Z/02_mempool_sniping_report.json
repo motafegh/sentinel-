@@ -1,0 +1,1314 @@
+{
+  "contract": "02_mempool_sniping.sol",
+  "contract_address": "0x72eec602657236fa6d43468ea94ccc6992716c4d",
+  "timestamp": "2026-06-22T12:34:31.133763+00:00",
+  "total_wall_s": 1.223897933959961,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['reentrancy-eth'] aderyn=['eth-send-unchecked-address', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-eth"
+    ],
+    "aderyn": [
+      "eth-send-unchecked-address",
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 31,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "costly-loop",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85) has costly operations inside a loop:\n\t- delete listings[tokenIds[j]] (../../../../../tmp/sentinel_static_kcwgwdbo.sol#79)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "NFTSnipeMarket.owner (../../../../../tmp/sentinel_static_kcwgwdbo.sol#22) should be immutable \n",
+      "lines": [
+        22
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "NFTSnipeMarket.nft (../../../../../tmp/sentinel_static_kcwgwdbo.sol#21) should be immutable \n",
+      "lines": [
+        21
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_kcwgwdbo.sol#7)\n",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NFTSnipeMarket.withdrawFees() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#112-115):\n\t- (ok,None) = owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#113)\n",
+      "lines": [
+        112,
+        113,
+        114,
+        115
+      ],
+      "function_names": [
+        "withdrawFees"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85):\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#95-106):\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#103)\n",
+      "lines": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "function_names": [
+        "buyWithPermit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#49-67):\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#62)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "buy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85) has external calls inside a loop: nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#80)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85) has external calls inside a loop: (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#44)\n\tState variables written after the call(s):\n\t- listings[tokenId] = Listing(msg.sender,price,block.timestamp) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#45)\n",
+      "lines": [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "list"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#80)\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n\tExternal calls sending eth:\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n\tState variables written after the call(s):\n\t- delete listings[tokenIds[j]] (../../../../../tmp/sentinel_static_kcwgwdbo.sol#79)\n\tNFTSnipeMarket.listings (../../../../../tmp/sentinel_static_kcwgwdbo.sol#23) can be used in cross function reentrancies:\n\t- NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85)\n\t- NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#49-67)\n\t- NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#95-106)\n\t- NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#87-93)\n\t- NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#40-47)\n\t- NFTSnipeMarket.listings (../../../../../tmp/sentinel_static_kcwgwdbo.sol#23)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#44)\n\tEvent emitted after the call(s):\n\t- TokenListed(tokenId,price) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#46)\n",
+      "lines": [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "list"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#87-93):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#91)\n\tEvent emitted after the call(s):\n\t- ListingCanceled(tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#92)\n",
+      "lines": [
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93
+      ],
+      "function_names": [
+        "cancel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#49-67):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#56)\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#62)\n\tExternal calls sending eth:\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#62)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenId,msg.sender,msg.value) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#66)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "buy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#80)\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n\tExternal calls sending eth:\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenIds[j],msg.sender,l_scope_0.price) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#83)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#95-106):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#102)\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#103)\n\tExternal calls sending eth:\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#103)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenId,msg.sender,l.price) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#105)\n",
+      "lines": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "function_names": [
+        "buyWithPermit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#87-93) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.seller == msg.sender,not seller) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#89)\n",
+      "lines": [
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93
+      ],
+      "function_names": [
+        "cancel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#95-106) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#97)\n\t- require(bool,string)(msg.value >= l.price,insufficient payment) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#98)\n\t- require(bool,string)(l.price <= maxPrice,price exceeded max) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#99)\n",
+      "lines": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "function_names": [
+        "buyWithPermit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#73)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#49-67) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#51)\n\t- require(bool,string)(msg.value >= l.price,insufficient payment) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#52)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "buy"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "eth-send-unchecked-address",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+      "lines": [
+        49,
+        69,
+        95
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        42,
+        44,
+        80,
+        81
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        108,
+        112
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        77
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        71,
+        77
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        108
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        36
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        21,
+        22
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x72eec602657236fa6d43468ea94ccc6992716c4d",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "costly-loop",
+        "impact": "Informational",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85) has costly operations inside a loop:\n\t- delete listings[tokenIds[j]] (../../../../../tmp/sentinel_static_kcwgwdbo.sol#79)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "NFTSnipeMarket.owner (../../../../../tmp/sentinel_static_kcwgwdbo.sol#22) should be immutable \n",
+        "lines": [
+          22
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "NFTSnipeMarket.nft (../../../../../tmp/sentinel_static_kcwgwdbo.sol#21) should be immutable \n",
+        "lines": [
+          21
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_kcwgwdbo.sol#7)\n",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NFTSnipeMarket.withdrawFees() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#112-115):\n\t- (ok,None) = owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#113)\n",
+        "lines": [
+          112,
+          113,
+          114,
+          115
+        ],
+        "function_names": [
+          "withdrawFees"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85):\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#95-106):\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#103)\n",
+        "lines": [
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106
+        ],
+        "function_names": [
+          "buyWithPermit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#49-67):\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#62)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "buy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85) has external calls inside a loop: nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#80)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85) has external calls inside a loop: (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#44)\n\tState variables written after the call(s):\n\t- listings[tokenId] = Listing(msg.sender,price,block.timestamp) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#45)\n",
+        "lines": [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "list"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#80)\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n\tExternal calls sending eth:\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n\tState variables written after the call(s):\n\t- delete listings[tokenIds[j]] (../../../../../tmp/sentinel_static_kcwgwdbo.sol#79)\n\tNFTSnipeMarket.listings (../../../../../tmp/sentinel_static_kcwgwdbo.sol#23) can be used in cross function reentrancies:\n\t- NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85)\n\t- NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#49-67)\n\t- NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#95-106)\n\t- NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#87-93)\n\t- NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#40-47)\n\t- NFTSnipeMarket.listings (../../../../../tmp/sentinel_static_kcwgwdbo.sol#23)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#44)\n\tEvent emitted after the call(s):\n\t- TokenListed(tokenId,price) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#46)\n",
+        "lines": [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "list"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#87-93):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#91)\n\tEvent emitted after the call(s):\n\t- ListingCanceled(tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#92)\n",
+        "lines": [
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93
+        ],
+        "function_names": [
+          "cancel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#49-67):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#56)\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#62)\n\tExternal calls sending eth:\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#62)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenId,msg.sender,msg.value) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#66)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "buy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#80)\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n\tExternal calls sending eth:\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#81)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenIds[j],msg.sender,l_scope_0.price) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#83)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#95-106):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#102)\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#103)\n\tExternal calls sending eth:\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_kcwgwdbo.sol#103)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenId,msg.sender,l.price) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#105)\n",
+        "lines": [
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106
+        ],
+        "function_names": [
+          "buyWithPermit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#87-93) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.seller == msg.sender,not seller) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#89)\n",
+        "lines": [
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93
+        ],
+        "function_names": [
+          "cancel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#95-106) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#97)\n\t- require(bool,string)(msg.value >= l.price,insufficient payment) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#98)\n\t- require(bool,string)(l.price <= maxPrice,price exceeded max) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#99)\n",
+        "lines": [
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106
+        ],
+        "function_names": [
+          "buyWithPermit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#69-85) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#73)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#49-67) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#51)\n\t- require(bool,string)(msg.value >= l.price,insufficient payment) (../../../../../tmp/sentinel_static_kcwgwdbo.sol#52)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "buy"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          49,
+          69,
+          95
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          42,
+          44,
+          80,
+          81
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          108,
+          112
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          77
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          71,
+          77
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          108
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          36
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          21,
+          22
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['reentrancy-eth'] aderyn=['eth-send-unchecked-address', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "3 High/Medium static finding(s) not tied to a verdict: reentrancy-eth, eth-send-unchecked-address, reentrancy-state-change"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

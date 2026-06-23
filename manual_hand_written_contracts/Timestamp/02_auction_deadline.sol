@@ -1,4 +1,4 @@
-// expect: Timestamp
+// expect: Timestamp,Reentrancy
 // Dutch auction contract where the price declines linearly with block.timestamp.
 // A miner can choose to include the transaction in a block with a slightly
 // earlier or later timestamp to influence the clearing price.

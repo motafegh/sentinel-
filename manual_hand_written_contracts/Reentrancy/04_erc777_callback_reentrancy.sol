@@ -1,4 +1,4 @@
-// expect: Reentrancy
+// expect: Reentrancy,MishandledException
 // Staking contract that uses ERC777 token hooks (tokensReceived callback).
 // When the contract transfers ERC777 tokens to a user, the user's
 // tokensReceived hook fires BEFORE the staking contract updates its

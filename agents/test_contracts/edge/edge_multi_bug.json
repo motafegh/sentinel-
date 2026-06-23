@@ -1,0 +1,10 @@
+{
+  "labels": ["Reentrancy", "Timestamp"],
+  "source": "sentinel_edge_case",
+  "category": "multi_bug_reentrancy_timestamp",
+  "original_name": "edge_multi_bug.sol",
+  "tier": "edge",
+  "ground_truth": "vulnerable",
+  "edge_case_for": "per-class independence",
+  "notes": "Two independent bugs in one contract: Reentrancy (withdraw CEI violation) + Timestamp (auctionEnd derived from block.timestamp). Tests that the system flags BOTH classes, not just one."
+}

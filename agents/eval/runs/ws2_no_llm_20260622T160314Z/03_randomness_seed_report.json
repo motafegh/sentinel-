@@ -1,0 +1,1480 @@
+{
+  "contract": "03_randomness_seed.sol",
+  "contract_address": "0x360e58d558888e30e61b195ca9c2ab306b4e8720",
+  "timestamp": "2026-06-22T12:34:25.990989+00:00",
+  "total_wall_s": 3.2429981231689453,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['reentrancy-eth'] aderyn=['reentrancy-state-change', 'weak-randomness'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-eth"
+    ],
+    "aderyn": [
+      "reentrancy-state-change",
+      "weak-randomness"
+    ]
+  },
+  "static_findings_count": 33,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "weak-prng",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53) uses a weak PRNG: \"winnerIndex = seed % tickets.length (../../../../../tmp/sentinel_static_56as2xqp.sol#44)\" \n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "function_names": [
+        "drawWinner"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "weak-prng",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) uses a weak PRNG: \"winnerIndex = seed % tickets.length (../../../../../tmp/sentinel_static_56as2xqp.sol#77)\" \n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "function_names": [
+        "multiRoundDraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "weak-prng",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71) uses a weak PRNG: \"winnerIndex = seed % tickets.length (../../../../../tmp/sentinel_static_56as2xqp.sol#62)\" \n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "drawWinnerWithHash"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "costly-loop",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) has costly operations inside a loop:\n\t- delete tickets[winnerIndex] (../../../../../tmp/sentinel_static_56as2xqp.sol#82)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "function_names": [
+        "multiRoundDraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "costly-loop",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) has costly operations inside a loop:\n\t- roundNumber ++ (../../../../../tmp/sentinel_static_56as2xqp.sol#84)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "function_names": [
+        "multiRoundDraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "costly-loop",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) has costly operations inside a loop:\n\t- tickets.pop() (../../../../../tmp/sentinel_static_56as2xqp.sol#83)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "function_names": [
+        "multiRoundDraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "constable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampLottery.ticketPrice (../../../../../tmp/sentinel_static_56as2xqp.sol#11) should be constant \n",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampLottery.owner (../../../../../tmp/sentinel_static_56as2xqp.sol#10) should be immutable \n",
+      "lines": [
+        10
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_56as2xqp.sol#7)\n",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "incorrect-equality",
+      "impact": "Medium",
+      "confidence": "High",
+      "description": "TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71) uses a dangerous strict equality:\n\t- blockHash == bytes32(0) (../../../../../tmp/sentinel_static_56as2xqp.sol#58)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "drawWinnerWithHash"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71):\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#65)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "drawWinnerWithHash"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87):\n\t- (ok,None) = winner.call{value: share}() (../../../../../tmp/sentinel_static_56as2xqp.sol#80)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "function_names": [
+        "multiRoundDraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53):\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#47)\n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "function_names": [
+        "drawWinner"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) has external calls inside a loop: (ok,None) = winner.call{value: share}() (../../../../../tmp/sentinel_static_56as2xqp.sol#80)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "function_names": [
+        "multiRoundDraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#65)\n\tState variables written after the call(s):\n\t- roundNumber ++ (../../../../../tmp/sentinel_static_56as2xqp.sol#67)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "drawWinnerWithHash"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#47)\n\tState variables written after the call(s):\n\t- roundNumber ++ (../../../../../tmp/sentinel_static_56as2xqp.sol#49)\n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "function_names": [
+        "drawWinner"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#47)\n\tState variables written after the call(s):\n\t- delete tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#50)\n\tTimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12) can be used in cross function reentrancies:\n\t- TimestampLottery.buyTicket(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#30-39)\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.getTicketCount() (../../../../../tmp/sentinel_static_56as2xqp.sol#93-95)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12)\n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "function_names": [
+        "drawWinner"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#65)\n\tState variables written after the call(s):\n\t- delete tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#68)\n\tTimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12) can be used in cross function reentrancies:\n\t- TimestampLottery.buyTicket(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#30-39)\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.getTicketCount() (../../../../../tmp/sentinel_static_56as2xqp.sol#93-95)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "drawWinnerWithHash"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: share}() (../../../../../tmp/sentinel_static_56as2xqp.sol#80)\n\tState variables written after the call(s):\n\t- roundNumber ++ (../../../../../tmp/sentinel_static_56as2xqp.sol#84)\n\tTimestampLottery.roundNumber (../../../../../tmp/sentinel_static_56as2xqp.sol#14) can be used in cross function reentrancies:\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.roundNumber (../../../../../tmp/sentinel_static_56as2xqp.sol#14)\n\t- delete tickets[winnerIndex] (../../../../../tmp/sentinel_static_56as2xqp.sol#82)\n\tTimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12) can be used in cross function reentrancies:\n\t- TimestampLottery.buyTicket(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#30-39)\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.getTicketCount() (../../../../../tmp/sentinel_static_56as2xqp.sol#93-95)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12)\n\t- tickets.pop() (../../../../../tmp/sentinel_static_56as2xqp.sol#83)\n\tTimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12) can be used in cross function reentrancies:\n\t- TimestampLottery.buyTicket(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#30-39)\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.getTicketCount() (../../../../../tmp/sentinel_static_56as2xqp.sol#93-95)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "function_names": [
+        "multiRoundDraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: share}() (../../../../../tmp/sentinel_static_56as2xqp.sol#80)\n\tEvent emitted after the call(s):\n\t- WinnerSelected(winner,share) (../../../../../tmp/sentinel_static_56as2xqp.sol#85)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "function_names": [
+        "multiRoundDraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#65)\n\tEvent emitted after the call(s):\n\t- RoundReset(roundNumber) (../../../../../tmp/sentinel_static_56as2xqp.sol#70)\n\t- WinnerSelected(winner,prize) (../../../../../tmp/sentinel_static_56as2xqp.sol#69)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "drawWinnerWithHash"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#47)\n\tEvent emitted after the call(s):\n\t- RoundReset(roundNumber) (../../../../../tmp/sentinel_static_56as2xqp.sol#52)\n\t- WinnerSelected(winner,prize) (../../../../../tmp/sentinel_static_56as2xqp.sol#51)\n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "function_names": [
+        "drawWinner"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- blockHash == bytes32(0) (../../../../../tmp/sentinel_static_56as2xqp.sol#58)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "drawWinnerWithHash"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        47,
+        65,
+        80
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "weak-randomness",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "The use of keccak256 hash functions on predictable values like block.timestamp, block.number, or similar data, including modulo operations on these values, should be avoided for generating randomness, as they are easily predictable and manipulable. The `PREVRANDAO` opcode also should not be used as a source of randomness. Instead, utilize Chainlink VRF for cryptographically secure and provably random values to ensure protocol integrity.",
+      "lines": [
+        43,
+        59,
+        61,
+        76
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        41,
+        55,
+        73,
+        89
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        34,
+        74
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        74
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        89
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-constant",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are not updated following deployment should be declared constant to save gas. Add the `constant` attribute to state variables that never change.",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        10
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x360e58d558888e30e61b195ca9c2ab306b4e8720",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "weak-prng",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53) uses a weak PRNG: \"winnerIndex = seed % tickets.length (../../../../../tmp/sentinel_static_56as2xqp.sol#44)\" \n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "function_names": [
+          "drawWinner"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "weak-prng",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) uses a weak PRNG: \"winnerIndex = seed % tickets.length (../../../../../tmp/sentinel_static_56as2xqp.sol#77)\" \n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87
+        ],
+        "function_names": [
+          "multiRoundDraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "weak-prng",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71) uses a weak PRNG: \"winnerIndex = seed % tickets.length (../../../../../tmp/sentinel_static_56as2xqp.sol#62)\" \n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "drawWinnerWithHash"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "costly-loop",
+        "impact": "Informational",
+        "confidence": "Medium",
+        "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) has costly operations inside a loop:\n\t- delete tickets[winnerIndex] (../../../../../tmp/sentinel_static_56as2xqp.sol#82)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87
+        ],
+        "function_names": [
+          "multiRoundDraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "costly-loop",
+        "impact": "Informational",
+        "confidence": "Medium",
+        "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) has costly operations inside a loop:\n\t- roundNumber ++ (../../../../../tmp/sentinel_static_56as2xqp.sol#84)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87
+        ],
+        "function_names": [
+          "multiRoundDraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "costly-loop",
+        "impact": "Informational",
+        "confidence": "Medium",
+        "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) has costly operations inside a loop:\n\t- tickets.pop() (../../../../../tmp/sentinel_static_56as2xqp.sol#83)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87
+        ],
+        "function_names": [
+          "multiRoundDraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "constable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampLottery.ticketPrice (../../../../../tmp/sentinel_static_56as2xqp.sol#11) should be constant \n",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampLottery.owner (../../../../../tmp/sentinel_static_56as2xqp.sol#10) should be immutable \n",
+        "lines": [
+          10
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_56as2xqp.sol#7)\n",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "incorrect-equality",
+        "impact": "Medium",
+        "confidence": "High",
+        "description": "TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71) uses a dangerous strict equality:\n\t- blockHash == bytes32(0) (../../../../../tmp/sentinel_static_56as2xqp.sol#58)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "drawWinnerWithHash"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71):\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#65)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "drawWinnerWithHash"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87):\n\t- (ok,None) = winner.call{value: share}() (../../../../../tmp/sentinel_static_56as2xqp.sol#80)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87
+        ],
+        "function_names": [
+          "multiRoundDraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53):\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#47)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "function_names": [
+          "drawWinner"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87) has external calls inside a loop: (ok,None) = winner.call{value: share}() (../../../../../tmp/sentinel_static_56as2xqp.sol#80)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87
+        ],
+        "function_names": [
+          "multiRoundDraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#65)\n\tState variables written after the call(s):\n\t- roundNumber ++ (../../../../../tmp/sentinel_static_56as2xqp.sol#67)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "drawWinnerWithHash"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#47)\n\tState variables written after the call(s):\n\t- roundNumber ++ (../../../../../tmp/sentinel_static_56as2xqp.sol#49)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "function_names": [
+          "drawWinner"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#47)\n\tState variables written after the call(s):\n\t- delete tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#50)\n\tTimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12) can be used in cross function reentrancies:\n\t- TimestampLottery.buyTicket(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#30-39)\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.getTicketCount() (../../../../../tmp/sentinel_static_56as2xqp.sol#93-95)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "function_names": [
+          "drawWinner"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#65)\n\tState variables written after the call(s):\n\t- delete tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#68)\n\tTimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12) can be used in cross function reentrancies:\n\t- TimestampLottery.buyTicket(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#30-39)\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.getTicketCount() (../../../../../tmp/sentinel_static_56as2xqp.sol#93-95)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "drawWinnerWithHash"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: share}() (../../../../../tmp/sentinel_static_56as2xqp.sol#80)\n\tState variables written after the call(s):\n\t- roundNumber ++ (../../../../../tmp/sentinel_static_56as2xqp.sol#84)\n\tTimestampLottery.roundNumber (../../../../../tmp/sentinel_static_56as2xqp.sol#14) can be used in cross function reentrancies:\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.roundNumber (../../../../../tmp/sentinel_static_56as2xqp.sol#14)\n\t- delete tickets[winnerIndex] (../../../../../tmp/sentinel_static_56as2xqp.sol#82)\n\tTimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12) can be used in cross function reentrancies:\n\t- TimestampLottery.buyTicket(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#30-39)\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.getTicketCount() (../../../../../tmp/sentinel_static_56as2xqp.sol#93-95)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12)\n\t- tickets.pop() (../../../../../tmp/sentinel_static_56as2xqp.sol#83)\n\tTimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12) can be used in cross function reentrancies:\n\t- TimestampLottery.buyTicket(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#30-39)\n\t- TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53)\n\t- TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71)\n\t- TimestampLottery.getTicketCount() (../../../../../tmp/sentinel_static_56as2xqp.sol#93-95)\n\t- TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87)\n\t- TimestampLottery.tickets (../../../../../tmp/sentinel_static_56as2xqp.sol#12)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87
+        ],
+        "function_names": [
+          "multiRoundDraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampLottery.multiRoundDraw(uint256) (../../../../../tmp/sentinel_static_56as2xqp.sol#73-87):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: share}() (../../../../../tmp/sentinel_static_56as2xqp.sol#80)\n\tEvent emitted after the call(s):\n\t- WinnerSelected(winner,share) (../../../../../tmp/sentinel_static_56as2xqp.sol#85)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87
+        ],
+        "function_names": [
+          "multiRoundDraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#65)\n\tEvent emitted after the call(s):\n\t- RoundReset(roundNumber) (../../../../../tmp/sentinel_static_56as2xqp.sol#70)\n\t- WinnerSelected(winner,prize) (../../../../../tmp/sentinel_static_56as2xqp.sol#69)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "drawWinnerWithHash"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampLottery.drawWinner() (../../../../../tmp/sentinel_static_56as2xqp.sol#41-53):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: prize}() (../../../../../tmp/sentinel_static_56as2xqp.sol#47)\n\tEvent emitted after the call(s):\n\t- RoundReset(roundNumber) (../../../../../tmp/sentinel_static_56as2xqp.sol#52)\n\t- WinnerSelected(winner,prize) (../../../../../tmp/sentinel_static_56as2xqp.sol#51)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "function_names": [
+          "drawWinner"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampLottery.drawWinnerWithHash() (../../../../../tmp/sentinel_static_56as2xqp.sol#55-71) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- blockHash == bytes32(0) (../../../../../tmp/sentinel_static_56as2xqp.sol#58)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "drawWinnerWithHash"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          47,
+          65,
+          80
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "weak-randomness",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "The use of keccak256 hash functions on predictable values like block.timestamp, block.number, or similar data, including modulo operations on these values, should be avoided for generating randomness, as they are easily predictable and manipulable. The `PREVRANDAO` opcode also should not be used as a source of randomness. Instead, utilize Chainlink VRF for cryptographically secure and provably random values to ensure protocol integrity.",
+        "lines": [
+          43,
+          59,
+          61,
+          76
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          41,
+          55,
+          73,
+          89
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          34,
+          74
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          74
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          89
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-constant",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are not updated following deployment should be declared constant to save gas. Add the `constant` attribute to state variables that never change.",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          10
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['reentrancy-eth'] aderyn=['reentrancy-state-change', 'weak-randomness'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "9 High/Medium static finding(s) not tied to a verdict: weak-prng, weak-prng, weak-prng, incorrect-equality, reentrancy-eth"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

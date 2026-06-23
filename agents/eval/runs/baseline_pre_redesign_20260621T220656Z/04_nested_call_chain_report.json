@@ -1,0 +1,1463 @@
+{
+  "contract": "04_nested_call_chain.sol",
+  "contract_address": "0xe6be9d5c24a0692c2a974b6976a6f829d8a5f74c",
+  "timestamp": "2026-06-21T18:39:15.307322+00:00",
+  "total_wall_s": 2.304863214492798,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "CallToUnknown prob=0.299 < threshold=0.4 \u2192 skip",
+    "DenialOfService prob=0.330 >= threshold=0.3 \u2192 static_analysis+rag_research",
+    "ExternalBug prob=0.470 >= threshold=0.4 \u2192 static_analysis+rag_research",
+    "GasException prob=0.298 < threshold=0.4 \u2192 skip",
+    "IntegerUO prob=0.703 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "MishandledException prob=0.298 < threshold=0.4 \u2192 skip",
+    "Reentrancy prob=0.513 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "Timestamp prob=0.356 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "TransactionOrderDependence prob=0.310 < threshold=0.35 \u2192 skip",
+    "UnusedReturn prob=0.352 < threshold=0.45 \u2192 skip",
+    "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change', 'unchecked-low-level-call'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {
+    "label": "confirmed_vulnerable",
+    "probabilities": {
+      "CallToUnknown": 0.2987,
+      "DenialOfService": 0.3303,
+      "ExternalBug": 0.4697,
+      "GasException": 0.298,
+      "IntegerUO": 0.7026,
+      "MishandledException": 0.298,
+      "Reentrancy": 0.5134,
+      "Timestamp": 0.3564,
+      "TransactionOrderDependence": 0.3097,
+      "UnusedReturn": 0.3517
+    },
+    "confirmed": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7026,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5134,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.4697,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.298,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.3564,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.3517,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3303,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.3097,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2987,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.298,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7026,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5134,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.4697,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.298,
+        "tier": null
+      }
+    ],
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "thresholds": [
+      0.4000000059604645,
+      0.5,
+      0.44999998807907104,
+      0.05000000074505806,
+      0.44999998807907104,
+      0.3499999940395355,
+      0.44999998807907104,
+      0.5,
+      0.3499999940395355,
+      0.4000000059604645
+    ],
+    "truncated": true,
+    "windows_used": 4,
+    "num_nodes": 83,
+    "num_edges": 287
+  },
+  "verdicts": {
+    "IntegerUO": "CONFIRMED",
+    "Reentrancy": "CONFIRMED",
+    "ExternalBug": "CONFIRMED",
+    "GasException": "DISPUTED",
+    "Timestamp": "SAFE",
+    "UnusedReturn": "CONFIRMED",
+    "DenialOfService": "DISPUTED",
+    "TransactionOrderDependence": "DISPUTED",
+    "CallToUnknown": "CONFIRMED",
+    "MishandledException": "CONFIRMED"
+  },
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-no-eth",
+      "unchecked-transfer"
+    ],
+    "aderyn": [
+      "reentrancy-state-change",
+      "unchecked-low-level-call"
+    ]
+  },
+  "static_findings_count": 28,
+  "rag_results_count": 5,
+  "audit_history_count": 2,
+  "graph_explanations_classes": [
+    "graph_stats",
+    "analysis_mode",
+    "hotspots_by_class"
+  ],
+  "confirmations": {
+    "IntegerUO": [
+      "ml:0.703",
+      "consensus:confidence=1.00"
+    ],
+    "Reentrancy": [
+      "ml:0.513",
+      "consensus:confidence=1.00"
+    ],
+    "ExternalBug": [
+      "ml:0.470",
+      "consensus:confidence=0.81"
+    ],
+    "GasException": [
+      "ml:0.298",
+      "consensus:confidence=0.39"
+    ],
+    "Timestamp": [
+      "ml:0.356"
+    ],
+    "UnusedReturn": [
+      "ml:0.352",
+      "consensus:confidence=0.84"
+    ],
+    "DenialOfService": [
+      "ml:0.330",
+      "consensus:confidence=0.36"
+    ],
+    "TransactionOrderDependence": [
+      "ml:0.310",
+      "consensus:confidence=0.32"
+    ],
+    "CallToUnknown": [
+      "ml:0.299",
+      "consensus:confidence=0.81"
+    ],
+    "MishandledException": [
+      "ml:0.298",
+      "consensus:confidence=0.83"
+    ]
+  },
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xe6be9d5c24a0692c2a974b6976a6f829d8a5f74c",
+    "overall_label": "confirmed_vulnerable",
+    "overall_verdict": "CONFIRMED",
+    "risk_probability": 0.7026,
+    "top_vulnerability": "IntegerUO",
+    "confirmed": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7026,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5134,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.4697,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.298,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.3564,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.3517,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3303,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.3097,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2987,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.298,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7026,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5134,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.4697,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.298,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.3564,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.3517,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3303,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.3097,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2987,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.298,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "probabilities": {
+      "CallToUnknown": 0.2987,
+      "DenialOfService": 0.3303,
+      "ExternalBug": 0.4697,
+      "GasException": 0.298,
+      "IntegerUO": 0.7026,
+      "MishandledException": 0.298,
+      "Reentrancy": 0.5134,
+      "Timestamp": 0.3564,
+      "TransactionOrderDependence": 0.3097,
+      "UnusedReturn": 0.3517
+    },
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "vulnerability_verdicts": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7026,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml:0.703",
+          "consensus:confidence=1.00"
+        ],
+        "severity": "HIGH",
+        "attribution": {
+          "ml_pct": 41.3,
+          "slither_pct": 58.7,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.8115
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5134,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml:0.513",
+          "consensus:confidence=1.00"
+        ],
+        "severity": "MEDIUM",
+        "attribution": {
+          "ml_pct": 33.9,
+          "slither_pct": 66.1,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.593
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.4697,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml:0.470",
+          "consensus:confidence=0.81"
+        ],
+        "severity": "LOW",
+        "attribution": {
+          "ml_pct": 32.0,
+          "slither_pct": 68.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.5425
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.298,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml:0.298",
+          "consensus:confidence=0.39"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.2816
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.3564,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.356"
+        ],
+        "severity": "LOW",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.3517,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml:0.352",
+          "consensus:confidence=0.84"
+        ],
+        "severity": "LOW",
+        "attribution": {
+          "ml_pct": 26.0,
+          "slither_pct": 74.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.4062
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3303,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml:0.330",
+          "consensus:confidence=0.36"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.3121
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.3097,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml:0.310",
+          "consensus:confidence=0.32"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.2927
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2987,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml:0.299",
+          "consensus:confidence=0.81"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 23.0,
+          "slither_pct": 77.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.345
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.298,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml:0.298",
+          "consensus:confidence=0.83"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 23.0,
+          "slither_pct": 77.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.3442
+      }
+    ],
+    "threshold": 0.5,
+    "ml_truncated": true,
+    "num_nodes": 83,
+    "num_edges": 287,
+    "rag_evidence": [
+      {
+        "content": "DeFi Security Incident: Phoenix\nDate: 2023-03-01\nVulnerability type: access_control\n\nAttack summary:\nPhxProxy contract delegateCallSwap() function lack of access control and can be passed in any parameter\nThe lost money is mainly USDC in the d028 contract which the attacker converts into WETH in the 65ba contract through the buyLeverage function\nand then swaps it into his own tokens by the delegateCallSwap function, making a profit from it\n\nPost-mortem references:\nhttps://twitter.com/HypernativeLabs/status/1633090456157401088",
+        "doc_id": "855be0354478d3a6",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Phoenix",
+          "date": "2023-03-01",
+          "vuln_type": "access_control",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/HypernativeLabs/status/1633090456157401088"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-03/Phoenix_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "855be0354478d3a6"
+        },
+        "score": 0.028985507246376812
+      },
+      {
+        "content": "DeFi Security Incident: NST\nDate: 2023-06-01\nVulnerability type: other\n\nAttack summary:\nMilktech is a software company that explores Polygon web3 technologies and recently ventured into\ntokens and token payments. They created a token called NST, which maintains a constant price based\non USD. Several contracts were developed, with the main one being the swap contract. This contract\nfacilitates a straightforward exchange between two tokens: NST (the internal company token) and USDT,\nensuring a consistent price ratio. NST is an ERC-20 token with an additional role called the Minter,\nallowing specific addresses to mint new tokens. Only the owner of the contract can assign this\nrole. The swap contract is ownable and features two primary functions: buyNST, which takes USDT as input,\nand sellNST, which takes NST as input. Additionally, the contract includes the ability to pause trading\nbetween the tokens. While the token itself was verified, the swap contract was not.",
+        "doc_id": "8ef8ce5ab3ff8f6f",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "NST",
+          "date": "2023-06-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-06/NST_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "8ef8ce5ab3ff8f6f"
+        },
+        "score": 0.028438886647841874
+      },
+      {
+        "content": "DeFi Security Incident: OSN\nDate: 2024-05-01\nVulnerability type: other\nEstimated loss: $109,000\n\nDetailed notes:\nTX : https://app.blocksec.com/explorer/tx/bsc/0xc7927a68464ebab1c0b1af58a5466da88f09ba9b30e6c255b46b1bc2e7d1bf09\nGUY : https://twitter.com/SlowMist_Team/status/1787330586857861564\nProfit : ~109K USD\nHere is only one tx,total you can see here :https://bscscan.com/address/0x835b45d38cbdccf99e609436ff38e31ac05bc502#tokentxns\nREASON : Reward Distribution Problem\nDistribution contract did not check the LP hold time or whether the reciever is contract or not\nActually there are 3 steps\nTX1:create help contract,split money : https://app.blocksec.com/explorer/tx/bsc/0xbf22eabb5db8785642ba17930bddef48d0d1bb94ebd1e03e7faa6f2a3d1a5540\nTX2:help contract add Liq : https://app.blocksec.com/explorer/tx/bsc/0x69c64b226f8bf06216cc665ad5e3777ad1b120909326f120f0816ac65a9099c0\nTX3:attack tx\nborrow_amount = 500_000 ether;\nstep1 transfer money to the money contract\nstep2 create contract & add liq\nstep 3 attack logic\nActivate divided\ncollect reward\nconsole.log(hack_contract);\nUse create2 to send money first.",
+        "doc_id": "23aa56acc7273387",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "OSN",
+          "date": "2024-05-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": 109000,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2024-05/OSN_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "23aa56acc7273387"
+        },
+        "score": 0.027242401779095628
+      },
+      {
+        "content": "DeFi Security Incident: HarvestFinance\nDate: 2020-10-01\nVulnerability type: other\n\nDetailed notes:\nCONTRACTS\nUniswap ETH/USDC LP (UNI-V2)\nUniswap ETH/USDT LP (UNI-V2)\nCurve y swap\nHarvest USDC pool\nERC20s\n6 decimals on usdt\n6 decimals on usdc\n6 decimals on yusdc\n6 decimals on yusdt\n6 decimals on fUSDT\n6 decimals on fUSDC",
+        "doc_id": "478054398069ede5",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "HarvestFinance",
+          "date": "2020-10-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2020-10/HarvestFinance_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "478054398069ede5"
+        },
+        "score": 0.016666666666666666
+      },
+      {
+        "content": "SWC-104: Unchecked Call Return Value\n\nThe return value of a message call (call/send) is not checked. Execution resumes even if the call fails, which can lead to inconsistent state. Remediation: always check the return value of low-level calls, or use transfer/require(success).",
+        "doc_id": "SWC-104",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "unknown",
+          "date": "2020-01-01",
+          "vuln_type": "unchecked_return",
+          "severity": "medium",
+          "loss_usd": 0,
+          "chain": "",
+          "url": "https://swcregistry.io/docs/SWC-104",
+          "source": "swc_registry",
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "SWC-104"
+        },
+        "score": 0.016666666666666666
+      }
+    ],
+    "audit_history": [
+      {
+        "contract_address": "0xE6Be9D5c24A0692C2A974b6976a6f829d8A5f74C",
+        "score": 0.7314,
+        "score_field_element": 5993,
+        "label": "vulnerable",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1713200000,
+        "timestamp_iso": "2026-04-15T12:00:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      },
+      {
+        "contract_address": "0xE6Be9D5c24A0692C2A974b6976a6f829d8A5f74C",
+        "score": 0.4102,
+        "score_field_element": 3362,
+        "label": "safe",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1712900000,
+        "timestamp_iso": "2026-04-12T03:20:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      }
+    ],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NestedCallStrategy.rescueETH() (../../../../../tmp/sentinel_static__orl1_ia.sol#102-104):\n\t- owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static__orl1_ia.sol#103)\n",
+        "lines": [
+          102,
+          103,
+          104
+        ],
+        "function_names": [
+          "rescueETH"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NestedCallStrategy.reinvest() (../../../../../tmp/sentinel_static__orl1_ia.sol#57-60):\n\t- owner.call{value: profit}() (../../../../../tmp/sentinel_static__orl1_ia.sol#59)\n",
+        "lines": [
+          57,
+          58,
+          59,
+          60
+        ],
+        "function_names": [
+          "reinvest"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#41-47):\n\tExternal calls:\n\t- IERC20(token).transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#42)\n\t- IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#43)\n\t- shares = strategy.deposit(token,amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#44)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][token] += shares (../../../../../tmp/sentinel_static__orl1_ia.sol#45)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#41-47):\n\tExternal calls:\n\t- IERC20(token).transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#42)\n\t- IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#43)\n\t- shares = strategy.deposit(token,amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#44)\n\tEvent emitted after the call(s):\n\t- Deposited(msg.sender,token,amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#46)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#73-82):\n\tExternal calls:\n\t- amount = strategy.withdraw(tokens[i],shares[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#77)\n\t- IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#79)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,tokens[i],amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#80)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "multiAssetWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#62-71):\n\tExternal calls:\n\t- IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#65)\n\t- IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#66)\n\t- shares = strategy.deposit(tokens[i],amounts[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#67)\n\tEvent emitted after the call(s):\n\t- Deposited(msg.sender,tokens[i],amounts[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#69)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#49-55):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static__orl1_ia.sol#51)\n\t- IERC20(token).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#53)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,token,amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#54)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static__orl1_ia.sol#93-100):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static__orl1_ia.sol#96)\n\tState variables written after the call(s):\n\t- depositedShares[owner][token] = 0 (../../../../../tmp/sentinel_static__orl1_ia.sol#97)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static__orl1_ia.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static__orl1_ia.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static__orl1_ia.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#49-55)\n",
+        "lines": [
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100
+        ],
+        "function_names": [
+          "emergencyWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#73-82):\n\tExternal calls:\n\t- amount = strategy.withdraw(tokens[i],shares[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#77)\n\t- IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#79)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][tokens[i]] -= shares[i] (../../../../../tmp/sentinel_static__orl1_ia.sol#78)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static__orl1_ia.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static__orl1_ia.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static__orl1_ia.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#49-55)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "multiAssetWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#62-71):\n\tExternal calls:\n\t- IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#65)\n\t- IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#66)\n\t- shares = strategy.deposit(tokens[i],amounts[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#67)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][tokens[i]] += shares (../../../../../tmp/sentinel_static__orl1_ia.sol#68)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static__orl1_ia.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static__orl1_ia.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static__orl1_ia.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#49-55)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#49-55):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static__orl1_ia.sol#51)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][token] -= shares (../../../../../tmp/sentinel_static__orl1_ia.sol#52)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static__orl1_ia.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static__orl1_ia.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static__orl1_ia.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#49-55)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.reinvest() (../../../../../tmp/sentinel_static__orl1_ia.sol#57-60) ignores return value by owner.call{value: profit}() (../../../../../tmp/sentinel_static__orl1_ia.sol#59)\n",
+        "lines": [
+          57,
+          58,
+          59,
+          60
+        ],
+        "function_names": [
+          "reinvest"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.rescueETH() (../../../../../tmp/sentinel_static__orl1_ia.sol#102-104) ignores return value by owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static__orl1_ia.sol#103)\n",
+        "lines": [
+          102,
+          103,
+          104
+        ],
+        "function_names": [
+          "rescueETH"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unused-return",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static__orl1_ia.sol#62-71) ignores return value by IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static__orl1_ia.sol#66)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unused-return",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static__orl1_ia.sol#41-47) ignores return value by IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static__orl1_ia.sol#43)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          42,
+          43,
+          44,
+          51,
+          65,
+          66,
+          67,
+          77,
+          79,
+          96
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-low-level-call",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "The return value of the low-level call is not checked, so if the call fails, the Ether will be locked in the contract. If the low level is used to prevent blocking operations, consider logging failed calls. Ensure that the return value of a low-level call is checked or logged.",
+        "lines": [
+          59,
+          103
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          57,
+          84,
+          93,
+          102
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          64,
+          75
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "missing-inheritance",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There is an interface / abstract contract that is potentially missing (not included in) the inheritance of this contract.",
+        "lines": [
+          23
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          75
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          93
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          38
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          24,
+          25
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          42,
+          43,
+          53,
+          65,
+          66,
+          79,
+          88,
+          98
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unsafe-erc20-operation",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+        "lines": [
+          42,
+          43,
+          53,
+          65,
+          66,
+          79,
+          88,
+          98
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "deposit",
+        "callee_contract": "IStrategy",
+        "callee_function": "TMP_7(uint256) = HIGH_LEVEL_CALL, dest:strategy(IStrategy), function:deposit, arguments:['token', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "deposit",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_3(bool) = HIGH_LEVEL_CALL, dest:TMP_1(IERC20), function:transferFrom, arguments:['msg.sender', 'TMP_2', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "deposit",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_6(bool) = HIGH_LEVEL_CALL, dest:TMP_4(IERC20), function:approve, arguments:['TMP_5', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "withdraw",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_13(bool) = HIGH_LEVEL_CALL, dest:TMP_12(IERC20), function:transfer, arguments:['msg.sender', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "withdraw",
+        "callee_contract": "IStrategy",
+        "callee_function": "TMP_11(uint256) = HIGH_LEVEL_CALL, dest:strategy(IStrategy), function:withdraw, arguments:['token', 'shares']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "reinvest",
+        "callee_contract": "IStrategy",
+        "callee_function": "TMP_15(uint256) = HIGH_LEVEL_CALL, dest:strategy(IStrategy), function:reinvest, arguments:[]  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "multiAssetDeposit",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_25(bool) = HIGH_LEVEL_CALL, dest:TMP_23(IERC20), function:approve, arguments:['TMP_24', 'REF_21']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "multiAssetDeposit",
+        "callee_contract": "IStrategy",
+        "callee_function": "TMP_26(uint256) = HIGH_LEVEL_CALL, dest:strategy(IStrategy), function:deposit, arguments:['REF_23', 'REF_24']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "multiAssetDeposit",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_22(bool) = HIGH_LEVEL_CALL, dest:TMP_20(IERC20), function:transferFrom, arguments:['msg.sender', 'TMP_21', 'REF_18']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "multiAssetWithdraw",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_36(bool) = HIGH_LEVEL_CALL, dest:TMP_35(IERC20), function:transfer, arguments:['msg.sender', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "multiAssetWithdraw",
+        "callee_contract": "IStrategy",
+        "callee_function": "TMP_34(uint256) = HIGH_LEVEL_CALL, dest:strategy(IStrategy), function:withdraw, arguments:['REF_38', 'REF_39']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "harvestAndTransfer",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_42(uint256) = HIGH_LEVEL_CALL, dest:TMP_40(IERC20), function:balanceOf, arguments:['TMP_41']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "harvestAndTransfer",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_45(bool) = HIGH_LEVEL_CALL, dest:TMP_44(IERC20), function:transfer, arguments:['recipient', 'balance']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "emergencyWithdraw",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_51(bool) = HIGH_LEVEL_CALL, dest:TMP_50(IERC20), function:transfer, arguments:['owner', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NestedCallStrategy",
+        "caller_function": "emergencyWithdraw",
+        "callee_contract": "IStrategy",
+        "callee_function": "TMP_49(uint256) = HIGH_LEVEL_CALL, dest:strategy(IStrategy), function:withdraw, arguments:['token', 'shares']  ",
+        "callee_is_interface": true
+      }
+    ],
+    "routing_decisions": [
+      "CallToUnknown prob=0.299 < threshold=0.4 \u2192 skip",
+      "DenialOfService prob=0.330 >= threshold=0.3 \u2192 static_analysis+rag_research",
+      "ExternalBug prob=0.470 >= threshold=0.4 \u2192 static_analysis+rag_research",
+      "GasException prob=0.298 < threshold=0.4 \u2192 skip",
+      "IntegerUO prob=0.703 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "MishandledException prob=0.298 < threshold=0.4 \u2192 skip",
+      "Reentrancy prob=0.513 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "Timestamp prob=0.356 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "TransactionOrderDependence prob=0.310 < threshold=0.35 \u2192 skip",
+      "UnusedReturn prob=0.352 < threshold=0.45 \u2192 skip",
+      "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change', 'unchecked-low-level-call'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "recommendation": "HIGH RISK \u2014 top vulnerability: IntegerUO (probability 70.3%, CONFIRMED tier). 5 similar exploit pattern(s) found in DeFiHackLabs corpus. 10 Slither High/Medium finding(s). 2 prior on-chain audit(s). Recommend full manual audit before deployment.\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens \u2014 tail code was not analysed. Manual review of the unanalysed portion is recommended.",
+    "narrative": null,
+    "error": null,
+    "path_taken": "deep",
+    "metric_attribution": {
+      "IntegerUO": {
+        "ml_pct": 41.3,
+        "slither_pct": 58.7,
+        "rag_pct": 0.0
+      },
+      "Reentrancy": {
+        "ml_pct": 33.9,
+        "slither_pct": 66.1,
+        "rag_pct": 0.0
+      },
+      "ExternalBug": {
+        "ml_pct": 32.0,
+        "slither_pct": 68.0,
+        "rag_pct": 0.0
+      },
+      "GasException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "Timestamp": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "UnusedReturn": {
+        "ml_pct": 26.0,
+        "slither_pct": 74.0,
+        "rag_pct": 0.0
+      },
+      "DenialOfService": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "TransactionOrderDependence": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "CallToUnknown": {
+        "ml_pct": 23.0,
+        "slither_pct": 77.0,
+        "rag_pct": 0.0
+      },
+      "MishandledException": {
+        "ml_pct": 23.0,
+        "slither_pct": 77.0,
+        "rag_pct": 0.0
+      }
+    },
+    "confidence_by_class": {
+      "CallToUnknown": 0.345,
+      "DenialOfService": 0.3121,
+      "ExternalBug": 0.5425,
+      "GasException": 0.2816,
+      "IntegerUO": 0.8115,
+      "MishandledException": 0.3442,
+      "Reentrancy": 0.593,
+      "TransactionOrderDependence": 0.2927,
+      "UnusedReturn": 0.4062
+    },
+    "consensus_verdict": {
+      "CallToUnknown": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.3,
+        "confidence": 0.8125,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.3,
+          "slither": 0.7,
+          "aderyn": 0.6
+        }
+      },
+      "DenialOfService": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.5,
+        "confidence": 0.3636,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.325,
+          "slither": 0.55,
+          "aderyn": 0.5
+        }
+      },
+      "ExternalBug": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 0.95,
+        "confidence": 0.8085,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.225,
+          "slither": 0.5,
+          "aderyn": 0.45
+        }
+      },
+      "GasException": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.55,
+        "confidence": 0.3929,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.2,
+          "slither": 0.65,
+          "aderyn": 0.55
+        }
+      },
+      "IntegerUO": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.81,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.31,
+          "slither": 0.8,
+          "aderyn": 0.7
+        }
+      },
+      "MishandledException": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.34,
+        "confidence": 0.8297,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.72,
+          "aderyn": 0.62
+        }
+      },
+      "Reentrancy": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.81,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.39,
+          "slither": 0.82,
+          "aderyn": 0.6
+        }
+      },
+      "TransactionOrderDependence": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.45,
+        "confidence": 0.3214,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.35,
+          "slither": 0.6,
+          "aderyn": 0.45
+        }
+      },
+      "UnusedReturn": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.4,
+        "confidence": 0.8358,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.75,
+          "aderyn": 0.65
+        }
+      }
+    },
+    "reflection_notes": {
+      "unused_evidence": [
+        "2 High/Medium static finding(s) not tied to a verdict: reentrancy-state-change, unchecked-low-level-call"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [
+        "Reentrancy: confidence 59% below 0.70",
+        "ExternalBug: confidence 54% below 0.70",
+        "GasException: verdict DISPUTED",
+        "UnusedReturn: confidence 41% below 0.70",
+        "DenialOfService: verdict DISPUTED",
+        "TransactionOrderDependence: verdict DISPUTED",
+        "CallToUnknown: confidence 34% below 0.70",
+        "MishandledException: confidence 34% below 0.70"
+      ],
+      "failure_modes": [
+        "Contract exceeded 512 CodeBERT tokens \u2014 tail code unanalysed; verdicts may miss vulnerabilities in the truncated region.",
+        "ExternalBug flagged \u2014 the ML model is known to over-predict this class (Run 12 class-definition mismatch); treat as lower confidence unless corroborated by an inter-contract call finding."
+      ],
+      "summary": "Self-critique: 8 verdict(s) are uncertain; 1 evidence item(s) unused; 2 failure mode(s) noted.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": null
+}

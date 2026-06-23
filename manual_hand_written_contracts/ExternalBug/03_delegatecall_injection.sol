@@ -1,4 +1,4 @@
-// expect: ExternalBug
+// expect: ExternalBug,CallToUnknown
 // Contract that uses delegatecall to a user-supplied library address.
 // The library address is stored in state and set by the owner.
 // If the owner is a multisig that gets compromised, or if the library

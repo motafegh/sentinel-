@@ -1,0 +1,885 @@
+{
+  "contract": "edge_debate_timeout.sol",
+  "contract_address": "0x0cf4739e942a7012b5bfdd064bb01a527cb7e822",
+  "timestamp": "2026-06-22T12:34:41.213274+00:00",
+  "total_wall_s": 1.0599720478057861,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['reentrancy-no-eth'] aderyn=['contract-locks-ether', 'reentrancy-state-change', 'yul-return'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-no-eth"
+    ],
+    "aderyn": [
+      "contract-locks-ether",
+      "reentrancy-state-change",
+      "yul-return"
+    ]
+  },
+  "static_findings_count": 28,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "assembly",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "VaultProxy.fallback() (../../../../../tmp/sentinel_static_qnciynpz.sol#52-62) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_qnciynpz.sol#54-61)\n",
+      "lines": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "function_names": [
+        "fallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "UpgradeableVault.token (../../../../../tmp/sentinel_static_qnciynpz.sol#74) should be immutable \n",
+      "lines": [
+        74
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "VaultProxy.proxyAdmin (../../../../../tmp/sentinel_static_qnciynpz.sol#42) should be immutable \n",
+      "lines": [
+        42
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "VaultProxy.admin (../../../../../tmp/sentinel_static_qnciynpz.sol#40) should be immutable \n",
+      "lines": [
+        40
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "UpgradeableVault.owner (../../../../../tmp/sentinel_static_qnciynpz.sol#73) should be immutable \n",
+      "lines": [
+        73
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_qnciynpz.sol#2)\n",
+      "lines": [
+        2
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "locked-ether",
+      "impact": "Medium",
+      "confidence": "High",
+      "description": "Contract locking ether found:\n\tContract VaultProxy (../../../../../tmp/sentinel_static_qnciynpz.sol#39-69) has payable functions:\n\t - VaultProxy.fallback() (../../../../../tmp/sentinel_static_qnciynpz.sol#52-62)\n\tBut does not have a function to withdraw the ether\n",
+      "lines": [
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "function_names": [
+        "fallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "ProxyAdmin.setAdmin(address).newAdmin (../../../../../tmp/sentinel_static_qnciynpz.sol#28) lacks a zero-check on :\n\t\t- admin = newAdmin (../../../../../tmp/sentinel_static_qnciynpz.sol#30)\n",
+      "lines": [
+        28,
+        30
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "VaultProxy.constructor(address,address)._impl (../../../../../tmp/sentinel_static_qnciynpz.sol#46) lacks a zero-check on :\n\t\t- implementation = _impl (../../../../../tmp/sentinel_static_qnciynpz.sol#47)\n",
+      "lines": [
+        46,
+        47
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "VaultProxy.upgradeTo(address).newImpl (../../../../../tmp/sentinel_static_qnciynpz.sol#64) lacks a zero-check on :\n\t\t- implementation = newImpl (../../../../../tmp/sentinel_static_qnciynpz.sol#66)\n",
+      "lines": [
+        64,
+        66
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "VaultProxy.constructor(address,address)._admin (../../../../../tmp/sentinel_static_qnciynpz.sol#46) lacks a zero-check on :\n\t\t- admin = _admin (../../../../../tmp/sentinel_static_qnciynpz.sol#48)\n",
+      "lines": [
+        46,
+        48
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in UpgradeableVault.deposit(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#89-93):\n\tExternal calls:\n\t- require(bool,string)(token.transferFrom(msg.sender,address(this),amount),tf fail) (../../../../../tmp/sentinel_static_qnciynpz.sol#90)\n\tState variables written after the call(s):\n\t- balances[msg.sender] += amount (../../../../../tmp/sentinel_static_qnciynpz.sol#91)\n",
+      "lines": [
+        89,
+        90,
+        91,
+        92,
+        93
+      ],
+      "function_names": [
+        "deposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in UpgradeableVault.withdraw(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#95-103):\n\tExternal calls:\n\t- require(bool,string)(token.transfer(msg.sender,amount),transfer failed) (../../../../../tmp/sentinel_static_qnciynpz.sol#100)\n\tEvent emitted after the call(s):\n\t- Withdraw(msg.sender,amount) (../../../../../tmp/sentinel_static_qnciynpz.sol#102)\n",
+      "lines": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in UpgradeableVault.deposit(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#89-93):\n\tExternal calls:\n\t- require(bool,string)(token.transferFrom(msg.sender,address(this),amount),tf fail) (../../../../../tmp/sentinel_static_qnciynpz.sol#90)\n\tEvent emitted after the call(s):\n\t- Deposit(msg.sender,amount) (../../../../../tmp/sentinel_static_qnciynpz.sol#92)\n",
+      "lines": [
+        89,
+        90,
+        91,
+        92,
+        93
+      ],
+      "function_names": [
+        "deposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in UpgradeableVault.withdraw(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#95-103):\n\tExternal calls:\n\t- require(bool,string)(token.transfer(msg.sender,amount),transfer failed) (../../../../../tmp/sentinel_static_qnciynpz.sol#100)\n\tState variables written after the call(s):\n\t- balances[msg.sender] -= amount (../../../../../tmp/sentinel_static_qnciynpz.sol#101)\n\tUpgradeableVault.balances (../../../../../tmp/sentinel_static_qnciynpz.sol#72) can be used in cross function reentrancies:\n\t- UpgradeableVault.balanceOf(address) (../../../../../tmp/sentinel_static_qnciynpz.sol#105-107)\n\t- UpgradeableVault.balances (../../../../../tmp/sentinel_static_qnciynpz.sol#72)\n\t- UpgradeableVault.deposit(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#89-93)\n\t- UpgradeableVault.withdraw(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#95-103)\n",
+      "lines": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unindexed-event-address",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Event VaultProxy.Upgraded(address) (../../../../../tmp/sentinel_static_qnciynpz.sol#44) has address parameters but no indexed parameters\n",
+      "lines": [
+        44
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "unindexed-event-address",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Event ProxyAdmin.AdminChanged(address,address) (../../../../../tmp/sentinel_static_qnciynpz.sol#15) has address parameters but no indexed parameters\n",
+      "lines": [
+        15
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "unindexed-event-address",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Event ProxyAdmin.Authorized(address,bool) (../../../../../tmp/sentinel_static_qnciynpz.sol#16) has address parameters but no indexed parameters\n",
+      "lines": [
+        16
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "contract-locks-ether",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "It appears that the contract includes a payable function to accept Ether but lacks a corresponding function to withdraw it, which leads to the Ether being locked in the contract. To resolve this issue, please implement a public or external function that allows for the withdrawal of Ether from the contract.",
+      "lines": [
+        39
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        90,
+        100
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "yul-return",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "This causes the transaction execution to halt, and nothing after that call will execute including code following the assembly block.",
+      "lines": [
+        60
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        109
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "modifier-used-only-once",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider removing the modifier or inlining the logic into the calling function.",
+      "lines": [
+        79
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        2
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        30,
+        47,
+        48,
+        66,
+        86
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        40,
+        42,
+        73,
+        74
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unsafe-erc20-operation",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+      "lines": [
+        90,
+        100,
+        111
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        2
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x0cf4739e942a7012b5bfdd064bb01a527cb7e822",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "assembly",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "VaultProxy.fallback() (../../../../../tmp/sentinel_static_qnciynpz.sol#52-62) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_qnciynpz.sol#54-61)\n",
+        "lines": [
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62
+        ],
+        "function_names": [
+          "fallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "UpgradeableVault.token (../../../../../tmp/sentinel_static_qnciynpz.sol#74) should be immutable \n",
+        "lines": [
+          74
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "VaultProxy.proxyAdmin (../../../../../tmp/sentinel_static_qnciynpz.sol#42) should be immutable \n",
+        "lines": [
+          42
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "VaultProxy.admin (../../../../../tmp/sentinel_static_qnciynpz.sol#40) should be immutable \n",
+        "lines": [
+          40
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "UpgradeableVault.owner (../../../../../tmp/sentinel_static_qnciynpz.sol#73) should be immutable \n",
+        "lines": [
+          73
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_qnciynpz.sol#2)\n",
+        "lines": [
+          2
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "locked-ether",
+        "impact": "Medium",
+        "confidence": "High",
+        "description": "Contract locking ether found:\n\tContract VaultProxy (../../../../../tmp/sentinel_static_qnciynpz.sol#39-69) has payable functions:\n\t - VaultProxy.fallback() (../../../../../tmp/sentinel_static_qnciynpz.sol#52-62)\n\tBut does not have a function to withdraw the ether\n",
+        "lines": [
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69
+        ],
+        "function_names": [
+          "fallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ProxyAdmin.setAdmin(address).newAdmin (../../../../../tmp/sentinel_static_qnciynpz.sol#28) lacks a zero-check on :\n\t\t- admin = newAdmin (../../../../../tmp/sentinel_static_qnciynpz.sol#30)\n",
+        "lines": [
+          28,
+          30
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "VaultProxy.constructor(address,address)._impl (../../../../../tmp/sentinel_static_qnciynpz.sol#46) lacks a zero-check on :\n\t\t- implementation = _impl (../../../../../tmp/sentinel_static_qnciynpz.sol#47)\n",
+        "lines": [
+          46,
+          47
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "VaultProxy.upgradeTo(address).newImpl (../../../../../tmp/sentinel_static_qnciynpz.sol#64) lacks a zero-check on :\n\t\t- implementation = newImpl (../../../../../tmp/sentinel_static_qnciynpz.sol#66)\n",
+        "lines": [
+          64,
+          66
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "VaultProxy.constructor(address,address)._admin (../../../../../tmp/sentinel_static_qnciynpz.sol#46) lacks a zero-check on :\n\t\t- admin = _admin (../../../../../tmp/sentinel_static_qnciynpz.sol#48)\n",
+        "lines": [
+          46,
+          48
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in UpgradeableVault.deposit(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#89-93):\n\tExternal calls:\n\t- require(bool,string)(token.transferFrom(msg.sender,address(this),amount),tf fail) (../../../../../tmp/sentinel_static_qnciynpz.sol#90)\n\tState variables written after the call(s):\n\t- balances[msg.sender] += amount (../../../../../tmp/sentinel_static_qnciynpz.sol#91)\n",
+        "lines": [
+          89,
+          90,
+          91,
+          92,
+          93
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in UpgradeableVault.withdraw(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#95-103):\n\tExternal calls:\n\t- require(bool,string)(token.transfer(msg.sender,amount),transfer failed) (../../../../../tmp/sentinel_static_qnciynpz.sol#100)\n\tEvent emitted after the call(s):\n\t- Withdraw(msg.sender,amount) (../../../../../tmp/sentinel_static_qnciynpz.sol#102)\n",
+        "lines": [
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in UpgradeableVault.deposit(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#89-93):\n\tExternal calls:\n\t- require(bool,string)(token.transferFrom(msg.sender,address(this),amount),tf fail) (../../../../../tmp/sentinel_static_qnciynpz.sol#90)\n\tEvent emitted after the call(s):\n\t- Deposit(msg.sender,amount) (../../../../../tmp/sentinel_static_qnciynpz.sol#92)\n",
+        "lines": [
+          89,
+          90,
+          91,
+          92,
+          93
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in UpgradeableVault.withdraw(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#95-103):\n\tExternal calls:\n\t- require(bool,string)(token.transfer(msg.sender,amount),transfer failed) (../../../../../tmp/sentinel_static_qnciynpz.sol#100)\n\tState variables written after the call(s):\n\t- balances[msg.sender] -= amount (../../../../../tmp/sentinel_static_qnciynpz.sol#101)\n\tUpgradeableVault.balances (../../../../../tmp/sentinel_static_qnciynpz.sol#72) can be used in cross function reentrancies:\n\t- UpgradeableVault.balanceOf(address) (../../../../../tmp/sentinel_static_qnciynpz.sol#105-107)\n\t- UpgradeableVault.balances (../../../../../tmp/sentinel_static_qnciynpz.sol#72)\n\t- UpgradeableVault.deposit(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#89-93)\n\t- UpgradeableVault.withdraw(uint256) (../../../../../tmp/sentinel_static_qnciynpz.sol#95-103)\n",
+        "lines": [
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unindexed-event-address",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Event VaultProxy.Upgraded(address) (../../../../../tmp/sentinel_static_qnciynpz.sol#44) has address parameters but no indexed parameters\n",
+        "lines": [
+          44
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "unindexed-event-address",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Event ProxyAdmin.AdminChanged(address,address) (../../../../../tmp/sentinel_static_qnciynpz.sol#15) has address parameters but no indexed parameters\n",
+        "lines": [
+          15
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "unindexed-event-address",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Event ProxyAdmin.Authorized(address,bool) (../../../../../tmp/sentinel_static_qnciynpz.sol#16) has address parameters but no indexed parameters\n",
+        "lines": [
+          16
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "contract-locks-ether",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "It appears that the contract includes a payable function to accept Ether but lacks a corresponding function to withdraw it, which leads to the Ether being locked in the contract. To resolve this issue, please implement a public or external function that allows for the withdrawal of Ether from the contract.",
+        "lines": [
+          39
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          90,
+          100
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "yul-return",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "This causes the transaction execution to halt, and nothing after that call will execute including code following the assembly block.",
+        "lines": [
+          60
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          109
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "modifier-used-only-once",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider removing the modifier or inlining the logic into the calling function.",
+        "lines": [
+          79
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          2
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          30,
+          47,
+          48,
+          66,
+          86
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          40,
+          42,
+          73,
+          74
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unsafe-erc20-operation",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+        "lines": [
+          90,
+          100,
+          111
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          2
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['reentrancy-no-eth'] aderyn=['contract-locks-ether', 'reentrancy-state-change', 'yul-return'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "5 High/Medium static finding(s) not tied to a verdict: locked-ether, reentrancy-no-eth, contract-locks-ether, reentrancy-state-change, yul-return"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

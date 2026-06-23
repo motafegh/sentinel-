@@ -1,0 +1,797 @@
+{
+  "contract": "01_unbounded_refund.sol",
+  "contract_address": "0xd5eac5e368acc180e9c887d6996694001fe085a7",
+  "timestamp": "2026-06-22T12:33:33.336067+00:00",
+  "total_wall_s": 1.5557639598846436,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['msg-value-loop', 'reentrancy-eth'] aderyn=['msg-value-in-loop', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "msg-value-loop",
+      "reentrancy-eth"
+    ],
+    "aderyn": [
+      "msg-value-in-loop",
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 23,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "cache-array-length",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "Loop condition i < participants.length (../../../../../tmp/sentinel_static_3rzy7ljf.sol#72) should use cached array length instead of referencing `length` member of the storage array.\n ",
+      "lines": [
+        72
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "cache-array-length",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "Loop condition i < participants.length (../../../../../tmp/sentinel_static_3rzy7ljf.sol#37) should use cached array length instead of referencing `length` member of the storage array.\n ",
+      "lines": [
+        37
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "cache-array-length",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "Loop condition i < participants.length (../../../../../tmp/sentinel_static_3rzy7ljf.sol#57) should use cached array length instead of referencing `length` member of the storage array.\n ",
+      "lines": [
+        57
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "RefundDistributor.owner (../../../../../tmp/sentinel_static_3rzy7ljf.sol#14) should be immutable \n",
+      "lines": [
+        14
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_3rzy7ljf.sol#6)\n",
+      "lines": [
+        6
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67):\n\t- (ok,None) = p.call{value: amount}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#61)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "processRefunds"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79):\n\t- (ok,None) = p.call{value: share}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#75)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79
+      ],
+      "function_names": [
+        "refundAll"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "msg-value-loop",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "RefundDistributor.contribute() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#32-47) use msg.value in a loop: participants[i].contribution += msg.value (../../../../../tmp/sentinel_static_3rzy7ljf.sol#39)\n",
+      "lines": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "contribute"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67) has external calls inside a loop: (ok,None) = p.call{value: amount}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#61)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "processRefunds"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79) has external calls inside a loop: (ok,None) = p.call{value: share}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#75)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79
+      ],
+      "function_names": [
+        "refundAll"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67):\n\tExternal calls:\n\t- (ok,None) = p.call{value: amount}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#61)\n\tState variables written after the call(s):\n\t- participants[i].contribution = 0 (../../../../../tmp/sentinel_static_3rzy7ljf.sol#60)\n\tRefundDistributor.participants (../../../../../tmp/sentinel_static_3rzy7ljf.sol#15) can be used in cross function reentrancies:\n\t- RefundDistributor.contribute() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#32-47)\n\t- RefundDistributor.openRefund() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#49-53)\n\t- RefundDistributor.participants (../../../../../tmp/sentinel_static_3rzy7ljf.sol#15)\n\t- RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67)\n\t- RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79)\n\t- participants[i].contribution = amount (../../../../../tmp/sentinel_static_3rzy7ljf.sol#63)\n\tRefundDistributor.participants (../../../../../tmp/sentinel_static_3rzy7ljf.sol#15) can be used in cross function reentrancies:\n\t- RefundDistributor.contribute() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#32-47)\n\t- RefundDistributor.openRefund() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#49-53)\n\t- RefundDistributor.participants (../../../../../tmp/sentinel_static_3rzy7ljf.sol#15)\n\t- RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67)\n\t- RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79)\n\t- refundOpen = false (../../../../../tmp/sentinel_static_3rzy7ljf.sol#66)\n\tRefundDistributor.refundOpen (../../../../../tmp/sentinel_static_3rzy7ljf.sol#18) can be used in cross function reentrancies:\n\t- RefundDistributor.openRefund() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#49-53)\n\t- RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67)\n\t- RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79)\n\t- RefundDistributor.refundOpen (../../../../../tmp/sentinel_static_3rzy7ljf.sol#18)\n",
+      "lines": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "processRefunds"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79):\n\tExternal calls:\n\t- (ok,None) = p.call{value: share}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#75)\n\tState variables written after the call(s):\n\t- refundOpen = false (../../../../../tmp/sentinel_static_3rzy7ljf.sol#78)\n\tRefundDistributor.refundOpen (../../../../../tmp/sentinel_static_3rzy7ljf.sol#18) can be used in cross function reentrancies:\n\t- RefundDistributor.openRefund() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#49-53)\n\t- RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67)\n\t- RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79)\n\t- RefundDistributor.refundOpen (../../../../../tmp/sentinel_static_3rzy7ljf.sol#18)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79
+      ],
+      "function_names": [
+        "refundAll"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "msg-value-in-loop",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Provide an explicit array of amounts alongside the receivers array, and check that the sum of all amounts matches `msg.value`.",
+      "lines": [
+        37
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        61,
+        75
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        49,
+        55,
+        69,
+        81
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        37,
+        57
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "empty-block",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider removing empty blocks.",
+      "lines": [
+        81
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        6
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        72
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        55,
+        69
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        14
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "storage-array-length-not-cached",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Calling `.length` on a storage array in a loop condition is expensive. Consider caching the length in a local variable in memory before the loop and reusing it.",
+      "lines": [
+        72
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        6
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xd5eac5e368acc180e9c887d6996694001fe085a7",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "cache-array-length",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "Loop condition i < participants.length (../../../../../tmp/sentinel_static_3rzy7ljf.sol#72) should use cached array length instead of referencing `length` member of the storage array.\n ",
+        "lines": [
+          72
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "cache-array-length",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "Loop condition i < participants.length (../../../../../tmp/sentinel_static_3rzy7ljf.sol#37) should use cached array length instead of referencing `length` member of the storage array.\n ",
+        "lines": [
+          37
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "cache-array-length",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "Loop condition i < participants.length (../../../../../tmp/sentinel_static_3rzy7ljf.sol#57) should use cached array length instead of referencing `length` member of the storage array.\n ",
+        "lines": [
+          57
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "RefundDistributor.owner (../../../../../tmp/sentinel_static_3rzy7ljf.sol#14) should be immutable \n",
+        "lines": [
+          14
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_3rzy7ljf.sol#6)\n",
+        "lines": [
+          6
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67):\n\t- (ok,None) = p.call{value: amount}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#61)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "processRefunds"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79):\n\t- (ok,None) = p.call{value: share}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#75)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79
+        ],
+        "function_names": [
+          "refundAll"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "msg-value-loop",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "RefundDistributor.contribute() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#32-47) use msg.value in a loop: participants[i].contribution += msg.value (../../../../../tmp/sentinel_static_3rzy7ljf.sol#39)\n",
+        "lines": [
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "contribute"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67) has external calls inside a loop: (ok,None) = p.call{value: amount}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#61)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "processRefunds"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79) has external calls inside a loop: (ok,None) = p.call{value: share}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#75)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79
+        ],
+        "function_names": [
+          "refundAll"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67):\n\tExternal calls:\n\t- (ok,None) = p.call{value: amount}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#61)\n\tState variables written after the call(s):\n\t- participants[i].contribution = 0 (../../../../../tmp/sentinel_static_3rzy7ljf.sol#60)\n\tRefundDistributor.participants (../../../../../tmp/sentinel_static_3rzy7ljf.sol#15) can be used in cross function reentrancies:\n\t- RefundDistributor.contribute() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#32-47)\n\t- RefundDistributor.openRefund() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#49-53)\n\t- RefundDistributor.participants (../../../../../tmp/sentinel_static_3rzy7ljf.sol#15)\n\t- RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67)\n\t- RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79)\n\t- participants[i].contribution = amount (../../../../../tmp/sentinel_static_3rzy7ljf.sol#63)\n\tRefundDistributor.participants (../../../../../tmp/sentinel_static_3rzy7ljf.sol#15) can be used in cross function reentrancies:\n\t- RefundDistributor.contribute() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#32-47)\n\t- RefundDistributor.openRefund() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#49-53)\n\t- RefundDistributor.participants (../../../../../tmp/sentinel_static_3rzy7ljf.sol#15)\n\t- RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67)\n\t- RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79)\n\t- refundOpen = false (../../../../../tmp/sentinel_static_3rzy7ljf.sol#66)\n\tRefundDistributor.refundOpen (../../../../../tmp/sentinel_static_3rzy7ljf.sol#18) can be used in cross function reentrancies:\n\t- RefundDistributor.openRefund() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#49-53)\n\t- RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67)\n\t- RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79)\n\t- RefundDistributor.refundOpen (../../../../../tmp/sentinel_static_3rzy7ljf.sol#18)\n",
+        "lines": [
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "processRefunds"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79):\n\tExternal calls:\n\t- (ok,None) = p.call{value: share}() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#75)\n\tState variables written after the call(s):\n\t- refundOpen = false (../../../../../tmp/sentinel_static_3rzy7ljf.sol#78)\n\tRefundDistributor.refundOpen (../../../../../tmp/sentinel_static_3rzy7ljf.sol#18) can be used in cross function reentrancies:\n\t- RefundDistributor.openRefund() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#49-53)\n\t- RefundDistributor.processRefunds() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#55-67)\n\t- RefundDistributor.refundAll() (../../../../../tmp/sentinel_static_3rzy7ljf.sol#69-79)\n\t- RefundDistributor.refundOpen (../../../../../tmp/sentinel_static_3rzy7ljf.sol#18)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79
+        ],
+        "function_names": [
+          "refundAll"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "msg-value-in-loop",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Provide an explicit array of amounts alongside the receivers array, and check that the sum of all amounts matches `msg.value`.",
+        "lines": [
+          37
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          61,
+          75
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          49,
+          55,
+          69,
+          81
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          37,
+          57
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "empty-block",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider removing empty blocks.",
+        "lines": [
+          81
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          6
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          72
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          55,
+          69
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          14
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "storage-array-length-not-cached",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Calling `.length` on a storage array in a loop condition is expensive. Consider caching the length in a local variable in memory before the loop and reusing it.",
+        "lines": [
+          72
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          6
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['msg-value-loop', 'reentrancy-eth'] aderyn=['msg-value-in-loop', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "5 High/Medium static finding(s) not tied to a verdict: msg-value-loop, reentrancy-eth, reentrancy-eth, msg-value-in-loop, reentrancy-state-change"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

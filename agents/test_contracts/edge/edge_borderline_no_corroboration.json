@@ -1,0 +1,10 @@
+{
+  "labels": ["Timestamp"],
+  "source": "sentinel_edge_case",
+  "category": "timestamp_business_logic",
+  "original_name": "edge_borderline_no_corroboration.sol",
+  "tier": "edge",
+  "ground_truth": "vulnerable",
+  "edge_case_for": "WS1",
+  "notes": "Borderline ML signal + no tool corroboration. Tests that the verdict chain does not silently mark this SAFE."
+}

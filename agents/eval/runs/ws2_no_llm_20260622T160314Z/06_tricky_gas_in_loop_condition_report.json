@@ -1,0 +1,785 @@
+{
+  "contract": "06_tricky_gas_in_loop_condition.sol",
+  "contract_address": "0x63c6b147b466687b6cda093a169d41d32758bdc1",
+  "timestamp": "2026-06-22T12:33:57.887214+00:00",
+  "total_wall_s": 1.244166374206543,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=[] aderyn=['contract-locks-ether'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [],
+    "aderyn": [
+      "contract-locks-ether"
+    ]
+  },
+  "static_findings_count": 19,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "cache-array-length",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "Loop condition i < candidates.length (../../../../../tmp/sentinel_static_t8fw789y.sol#82) should use cached array length instead of referencing `length` member of the storage array.\n ",
+      "lines": [
+        82
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "cache-array-length",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "Loop condition i < candidates.length (../../../../../tmp/sentinel_static_t8fw789y.sol#71) should use cached array length instead of referencing `length` member of the storage array.\n ",
+      "lines": [
+        71
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "cache-array-length",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "Loop condition i < candidates.length (../../../../../tmp/sentinel_static_t8fw789y.sol#57) should use cached array length instead of referencing `length` member of the storage array.\n ",
+      "lines": [
+        57
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "BallotBox.owner (../../../../../tmp/sentinel_static_t8fw789y.sol#18) should be immutable \n",
+      "lines": [
+        18
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_t8fw789y.sol#9)\n",
+      "lines": [
+        9
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "locked-ether",
+      "impact": "Medium",
+      "confidence": "High",
+      "description": "Contract locking ether found:\n\tContract BallotBox (../../../../../tmp/sentinel_static_t8fw789y.sol#11-105) has payable functions:\n\t - BallotBox.receive() (../../../../../tmp/sentinel_static_t8fw789y.sol#103)\n\tBut does not have a function to withdraw the ether\n",
+      "lines": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105
+      ],
+      "function_names": [
+        "receive"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "events-maths",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "BallotBox.extendDeadline(uint256) (../../../../../tmp/sentinel_static_t8fw789y.sol#98-101) should emit an event for: \n\t- votingDeadline += additionalTime (../../../../../tmp/sentinel_static_t8fw789y.sol#100) \n",
+      "lines": [
+        98,
+        99,
+        100,
+        101
+      ],
+      "function_names": [
+        "extendDeadline"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "BallotBox.extendDeadline(uint256) (../../../../../tmp/sentinel_static_t8fw789y.sol#98-101) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp < votingDeadline,voting ended) (../../../../../tmp/sentinel_static_t8fw789y.sol#99)\n",
+      "lines": [
+        98,
+        99,
+        100,
+        101
+      ],
+      "function_names": [
+        "extendDeadline"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "BallotBox.vote(uint256) (../../../../../tmp/sentinel_static_t8fw789y.sol#52-64) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp < votingDeadline,voting ended) (../../../../../tmp/sentinel_static_t8fw789y.sol#53)\n",
+      "lines": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "function_names": [
+        "vote"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "BallotBox.batchVote(uint256[]) (../../../../../tmp/sentinel_static_t8fw789y.sol#66-79) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp < votingDeadline,voting ended) (../../../../../tmp/sentinel_static_t8fw789y.sol#67)\n",
+      "lines": [
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79
+      ],
+      "function_names": [
+        "batchVote"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "contract-locks-ether",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "It appears that the contract includes a payable function to accept Ether but lacks a corresponding function to withdraw it, which leads to the Ether being locked in the contract. To resolve this issue, please implement a public or external function that allows for the withdrawal of Ether from the contract.",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        94,
+        98
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        45,
+        57,
+        68,
+        71
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        9
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        45,
+        68
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        94,
+        98
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        18
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "storage-array-length-not-cached",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Calling `.length` on a storage array in a loop condition is expensive. Consider caching the length in a local variable in memory before the loop and reusing it.",
+      "lines": [
+        82
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        9
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x63c6b147b466687b6cda093a169d41d32758bdc1",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "cache-array-length",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "Loop condition i < candidates.length (../../../../../tmp/sentinel_static_t8fw789y.sol#82) should use cached array length instead of referencing `length` member of the storage array.\n ",
+        "lines": [
+          82
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "cache-array-length",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "Loop condition i < candidates.length (../../../../../tmp/sentinel_static_t8fw789y.sol#71) should use cached array length instead of referencing `length` member of the storage array.\n ",
+        "lines": [
+          71
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "cache-array-length",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "Loop condition i < candidates.length (../../../../../tmp/sentinel_static_t8fw789y.sol#57) should use cached array length instead of referencing `length` member of the storage array.\n ",
+        "lines": [
+          57
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "BallotBox.owner (../../../../../tmp/sentinel_static_t8fw789y.sol#18) should be immutable \n",
+        "lines": [
+          18
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_t8fw789y.sol#9)\n",
+        "lines": [
+          9
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "locked-ether",
+        "impact": "Medium",
+        "confidence": "High",
+        "description": "Contract locking ether found:\n\tContract BallotBox (../../../../../tmp/sentinel_static_t8fw789y.sol#11-105) has payable functions:\n\t - BallotBox.receive() (../../../../../tmp/sentinel_static_t8fw789y.sol#103)\n\tBut does not have a function to withdraw the ether\n",
+        "lines": [
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105
+        ],
+        "function_names": [
+          "receive"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "events-maths",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "BallotBox.extendDeadline(uint256) (../../../../../tmp/sentinel_static_t8fw789y.sol#98-101) should emit an event for: \n\t- votingDeadline += additionalTime (../../../../../tmp/sentinel_static_t8fw789y.sol#100) \n",
+        "lines": [
+          98,
+          99,
+          100,
+          101
+        ],
+        "function_names": [
+          "extendDeadline"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "BallotBox.extendDeadline(uint256) (../../../../../tmp/sentinel_static_t8fw789y.sol#98-101) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp < votingDeadline,voting ended) (../../../../../tmp/sentinel_static_t8fw789y.sol#99)\n",
+        "lines": [
+          98,
+          99,
+          100,
+          101
+        ],
+        "function_names": [
+          "extendDeadline"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "BallotBox.vote(uint256) (../../../../../tmp/sentinel_static_t8fw789y.sol#52-64) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp < votingDeadline,voting ended) (../../../../../tmp/sentinel_static_t8fw789y.sol#53)\n",
+        "lines": [
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64
+        ],
+        "function_names": [
+          "vote"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "BallotBox.batchVote(uint256[]) (../../../../../tmp/sentinel_static_t8fw789y.sol#66-79) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp < votingDeadline,voting ended) (../../../../../tmp/sentinel_static_t8fw789y.sol#67)\n",
+        "lines": [
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79
+        ],
+        "function_names": [
+          "batchVote"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "contract-locks-ether",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "It appears that the contract includes a payable function to accept Ether but lacks a corresponding function to withdraw it, which leads to the Ether being locked in the contract. To resolve this issue, please implement a public or external function that allows for the withdrawal of Ether from the contract.",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          94,
+          98
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          45,
+          57,
+          68,
+          71
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          9
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          45,
+          68
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          94,
+          98
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          18
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "storage-array-length-not-cached",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Calling `.length` on a storage array in a loop condition is expensive. Consider caching the length in a local variable in memory before the loop and reusing it.",
+        "lines": [
+          82
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          9
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=[] aderyn=['contract-locks-ether'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "2 High/Medium static finding(s) not tied to a verdict: locked-ether, contract-locks-ether"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

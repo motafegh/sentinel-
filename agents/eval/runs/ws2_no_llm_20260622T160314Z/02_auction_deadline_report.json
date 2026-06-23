@@ -1,0 +1,828 @@
+{
+  "contract": "02_auction_deadline.sol",
+  "contract_address": "0xd420552a4dce1f97ba1c0fe350185eb2cd322f2b",
+  "timestamp": "2026-06-22T12:34:22.718052+00:00",
+  "total_wall_s": 1.2121143341064453,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['arbitrary-send-eth', 'reentrancy-eth'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "arbitrary-send-eth",
+      "reentrancy-eth"
+    ],
+    "aderyn": [
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 22,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "arbitrary-send-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = winner.call{value: refund}() (../../../../../tmp/sentinel_static_2c22amdl.sol#53)\n",
+      "lines": [
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      "function_names": [
+        "bid"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampAuction.seller (../../../../../tmp/sentinel_static_2c22amdl.sol#11) should be immutable \n",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampAuction.startTime (../../../../../tmp/sentinel_static_2c22amdl.sol#13) should be immutable \n",
+      "lines": [
+        13
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampAuction.priceDropPerSecond (../../../../../tmp/sentinel_static_2c22amdl.sol#17) should be immutable \n",
+      "lines": [
+        17
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampAuction.startPrice (../../../../../tmp/sentinel_static_2c22amdl.sol#15) should be immutable \n",
+      "lines": [
+        15
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "TimestampAuction.reservePrice (../../../../../tmp/sentinel_static_2c22amdl.sol#16) should be immutable \n",
+      "lines": [
+        16
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_2c22amdl.sol#8)\n",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59):\n\t- (ok,None) = winner.call{value: refund}() (../../../../../tmp/sentinel_static_2c22amdl.sol#53)\n",
+      "lines": [
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      "function_names": [
+        "bid"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69):\n\t- (ok,None) = seller.call{value: sellerProceeds}() (../../../../../tmp/sentinel_static_2c22amdl.sol#66)\n",
+      "lines": [
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "function_names": [
+        "settle"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "events-maths",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampAuction.extendAuction(uint256) (../../../../../tmp/sentinel_static_2c22amdl.sol#76-80) should emit an event for: \n\t- endTime = block.timestamp + additionalTime (../../../../../tmp/sentinel_static_2c22amdl.sol#79) \n",
+      "lines": [
+        76,
+        77,
+        78,
+        79,
+        80
+      ],
+      "function_names": [
+        "extendAuction"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: refund}() (../../../../../tmp/sentinel_static_2c22amdl.sol#53)\n\tState variables written after the call(s):\n\t- winner = msg.sender (../../../../../tmp/sentinel_static_2c22amdl.sol#56)\n\tTimestampAuction.winner (../../../../../tmp/sentinel_static_2c22amdl.sol#12) can be used in cross function reentrancies:\n\t- TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59)\n\t- TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69)\n\t- TimestampAuction.winner (../../../../../tmp/sentinel_static_2c22amdl.sol#12)\n\t- winningBid = msg.value (../../../../../tmp/sentinel_static_2c22amdl.sol#57)\n\tTimestampAuction.winningBid (../../../../../tmp/sentinel_static_2c22amdl.sol#19) can be used in cross function reentrancies:\n\t- TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59)\n\t- TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69)\n\t- TimestampAuction.winningBid (../../../../../tmp/sentinel_static_2c22amdl.sol#19)\n",
+      "lines": [
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      "function_names": [
+        "bid"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: refund}() (../../../../../tmp/sentinel_static_2c22amdl.sol#53)\n\tEvent emitted after the call(s):\n\t- BidPlaced(msg.sender,msg.value) (../../../../../tmp/sentinel_static_2c22amdl.sol#58)\n",
+      "lines": [
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      "function_names": [
+        "bid"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69):\n\tExternal calls:\n\t- (ok,None) = seller.call{value: sellerProceeds}() (../../../../../tmp/sentinel_static_2c22amdl.sol#66)\n\tEvent emitted after the call(s):\n\t- AuctionSettled(winner,price) (../../../../../tmp/sentinel_static_2c22amdl.sol#68)\n",
+      "lines": [
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "function_names": [
+        "settle"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp >= endTime || msg.sender == seller,auction still active) (../../../../../tmp/sentinel_static_2c22amdl.sol#62)\n",
+      "lines": [
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "function_names": [
+        "settle"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp <= endTime,auction ended) (../../../../../tmp/sentinel_static_2c22amdl.sol#47)\n\t- require(bool,string)(block.timestamp >= startTime,auction not started) (../../../../../tmp/sentinel_static_2c22amdl.sol#48)\n\t- require(bool,string)(msg.value >= currentPrice,bid too low) (../../../../../tmp/sentinel_static_2c22amdl.sol#50)\n",
+      "lines": [
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      "function_names": [
+        "bid"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampAuction.getCurrentPrice() (../../../../../tmp/sentinel_static_2c22amdl.sol#38-44) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- priceDrop >= startPrice (../../../../../tmp/sentinel_static_2c22amdl.sol#41)\n\t- price < reservePrice (../../../../../tmp/sentinel_static_2c22amdl.sol#43)\n",
+      "lines": [
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44
+      ],
+      "function_names": [
+        "getCurrentPrice"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "TimestampAuction.getTimeRemaining() (../../../../../tmp/sentinel_static_2c22amdl.sol#71-74) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- block.timestamp >= endTime (../../../../../tmp/sentinel_static_2c22amdl.sol#72)\n",
+      "lines": [
+        71,
+        72,
+        73,
+        74
+      ],
+      "function_names": [
+        "getTimeRemaining"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        53
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        76
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        11,
+        13,
+        15,
+        16,
+        17
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xd420552a4dce1f97ba1c0fe350185eb2cd322f2b",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "arbitrary-send-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = winner.call{value: refund}() (../../../../../tmp/sentinel_static_2c22amdl.sol#53)\n",
+        "lines": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59
+        ],
+        "function_names": [
+          "bid"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampAuction.seller (../../../../../tmp/sentinel_static_2c22amdl.sol#11) should be immutable \n",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampAuction.startTime (../../../../../tmp/sentinel_static_2c22amdl.sol#13) should be immutable \n",
+        "lines": [
+          13
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampAuction.priceDropPerSecond (../../../../../tmp/sentinel_static_2c22amdl.sol#17) should be immutable \n",
+        "lines": [
+          17
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampAuction.startPrice (../../../../../tmp/sentinel_static_2c22amdl.sol#15) should be immutable \n",
+        "lines": [
+          15
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "TimestampAuction.reservePrice (../../../../../tmp/sentinel_static_2c22amdl.sol#16) should be immutable \n",
+        "lines": [
+          16
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_2c22amdl.sol#8)\n",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59):\n\t- (ok,None) = winner.call{value: refund}() (../../../../../tmp/sentinel_static_2c22amdl.sol#53)\n",
+        "lines": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59
+        ],
+        "function_names": [
+          "bid"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69):\n\t- (ok,None) = seller.call{value: sellerProceeds}() (../../../../../tmp/sentinel_static_2c22amdl.sol#66)\n",
+        "lines": [
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69
+        ],
+        "function_names": [
+          "settle"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "events-maths",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampAuction.extendAuction(uint256) (../../../../../tmp/sentinel_static_2c22amdl.sol#76-80) should emit an event for: \n\t- endTime = block.timestamp + additionalTime (../../../../../tmp/sentinel_static_2c22amdl.sol#79) \n",
+        "lines": [
+          76,
+          77,
+          78,
+          79,
+          80
+        ],
+        "function_names": [
+          "extendAuction"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: refund}() (../../../../../tmp/sentinel_static_2c22amdl.sol#53)\n\tState variables written after the call(s):\n\t- winner = msg.sender (../../../../../tmp/sentinel_static_2c22amdl.sol#56)\n\tTimestampAuction.winner (../../../../../tmp/sentinel_static_2c22amdl.sol#12) can be used in cross function reentrancies:\n\t- TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59)\n\t- TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69)\n\t- TimestampAuction.winner (../../../../../tmp/sentinel_static_2c22amdl.sol#12)\n\t- winningBid = msg.value (../../../../../tmp/sentinel_static_2c22amdl.sol#57)\n\tTimestampAuction.winningBid (../../../../../tmp/sentinel_static_2c22amdl.sol#19) can be used in cross function reentrancies:\n\t- TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59)\n\t- TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69)\n\t- TimestampAuction.winningBid (../../../../../tmp/sentinel_static_2c22amdl.sol#19)\n",
+        "lines": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59
+        ],
+        "function_names": [
+          "bid"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59):\n\tExternal calls:\n\t- (ok,None) = winner.call{value: refund}() (../../../../../tmp/sentinel_static_2c22amdl.sol#53)\n\tEvent emitted after the call(s):\n\t- BidPlaced(msg.sender,msg.value) (../../../../../tmp/sentinel_static_2c22amdl.sol#58)\n",
+        "lines": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59
+        ],
+        "function_names": [
+          "bid"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69):\n\tExternal calls:\n\t- (ok,None) = seller.call{value: sellerProceeds}() (../../../../../tmp/sentinel_static_2c22amdl.sol#66)\n\tEvent emitted after the call(s):\n\t- AuctionSettled(winner,price) (../../../../../tmp/sentinel_static_2c22amdl.sol#68)\n",
+        "lines": [
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69
+        ],
+        "function_names": [
+          "settle"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampAuction.settle() (../../../../../tmp/sentinel_static_2c22amdl.sol#61-69) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp >= endTime || msg.sender == seller,auction still active) (../../../../../tmp/sentinel_static_2c22amdl.sol#62)\n",
+        "lines": [
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69
+        ],
+        "function_names": [
+          "settle"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampAuction.bid() (../../../../../tmp/sentinel_static_2c22amdl.sol#46-59) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp <= endTime,auction ended) (../../../../../tmp/sentinel_static_2c22amdl.sol#47)\n\t- require(bool,string)(block.timestamp >= startTime,auction not started) (../../../../../tmp/sentinel_static_2c22amdl.sol#48)\n\t- require(bool,string)(msg.value >= currentPrice,bid too low) (../../../../../tmp/sentinel_static_2c22amdl.sol#50)\n",
+        "lines": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59
+        ],
+        "function_names": [
+          "bid"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampAuction.getCurrentPrice() (../../../../../tmp/sentinel_static_2c22amdl.sol#38-44) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- priceDrop >= startPrice (../../../../../tmp/sentinel_static_2c22amdl.sol#41)\n\t- price < reservePrice (../../../../../tmp/sentinel_static_2c22amdl.sol#43)\n",
+        "lines": [
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
+        "function_names": [
+          "getCurrentPrice"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "TimestampAuction.getTimeRemaining() (../../../../../tmp/sentinel_static_2c22amdl.sol#71-74) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- block.timestamp >= endTime (../../../../../tmp/sentinel_static_2c22amdl.sol#72)\n",
+        "lines": [
+          71,
+          72,
+          73,
+          74
+        ],
+        "function_names": [
+          "getTimeRemaining"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          53
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          76
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          11,
+          13,
+          15,
+          16,
+          17
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['arbitrary-send-eth', 'reentrancy-eth'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "3 High/Medium static finding(s) not tied to a verdict: arbitrary-send-eth, reentrancy-eth, reentrancy-state-change"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

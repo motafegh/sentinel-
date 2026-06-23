@@ -214,6 +214,10 @@ class PredictResponse(BaseModel):
     num_nodes:    int
     num_edges:    int
 
+    # D4 (WS3, 2026-06-22): per-eye auxiliary predictions as discountable CLUES.
+    # Each eye: {class_name: probability}. Only present for four_eye architectures.
+    eye_predictions: dict[str, dict[str, float]] | None = None
+
 
 # ------------------------------------------------------------------
 # Endpoints
@@ -343,6 +347,7 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
         windows_used=result.get("windows_used", 1),
         num_nodes=result["num_nodes"],
         num_edges=result["num_edges"],
+        eye_predictions=result.get("eye_predictions"),
     )
 
 

@@ -1,0 +1,1 @@
+/home/motafeq/projects/sentinel/manual_hand_written_contracts/DenialOfService/06_tricky_dos_in_constructor.sol

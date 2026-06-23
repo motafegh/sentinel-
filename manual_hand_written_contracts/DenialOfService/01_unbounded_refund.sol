@@ -1,4 +1,4 @@
-// expect: DenialOfService
+// expect: DenialOfService,Reentrancy
 // Refund system where each participant receives ETH back via a loop.
 // The participants array grows unboundedly with each deposit.
 // Once enough users join, the refund loop exceeds block gas limit.

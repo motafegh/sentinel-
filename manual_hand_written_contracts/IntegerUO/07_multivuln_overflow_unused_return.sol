@@ -1,4 +1,4 @@
-// expect: IntegerUO,UnusedReturn
+// expect: IntegerUO,UnusedReturn,MishandledException
 // Multi-vuln: Integer overflow in fee calculation + UnusedReturn in token transfer.
 // The fee computation uses unchecked multiplication that can overflow,
 // and the actual token transfer return value is silently discarded.

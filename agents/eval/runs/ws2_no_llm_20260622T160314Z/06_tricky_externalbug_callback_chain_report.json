@@ -1,0 +1,842 @@
+{
+  "contract": "06_tricky_externalbug_callback_chain.sol",
+  "contract_address": "0xb1254471d7aad0dcad48ba7ae7bd6b5ed1a8fee2",
+  "timestamp": "2026-06-22T12:33:51.964293+00:00",
+  "total_wall_s": 3.6908774375915527,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=[] aderyn=['unchecked-low-level-call', 'weak-randomness'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [],
+    "aderyn": [
+      "unchecked-low-level-call",
+      "weak-randomness"
+    ]
+  },
+  "static_findings_count": 23,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "CallbackRegistry.owner (../../../../../tmp/sentinel_static_78mv5tl8.sol#18) should be immutable \n",
+      "lines": [
+        18
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_78mv5tl8.sol#8)\n",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in CallbackRegistry.executeAllCallbacks() (../../../../../tmp/sentinel_static_78mv5tl8.sol#53-62):\n\t- cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#59)\n",
+      "lines": [
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "function_names": [
+        "executeAllCallbacks"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in CallbackRegistry.executeCallback(bytes32) (../../../../../tmp/sentinel_static_78mv5tl8.sol#45-51):\n\t- cb.target.call{gas: gasToForward}(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#50)\n",
+      "lines": [
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      "function_names": [
+        "executeCallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in CallbackRegistry.executeDelegateCallback(bytes32,bytes) (../../../../../tmp/sentinel_static_78mv5tl8.sol#64-70):\n\t- cb.target.delegatecall(fullData) (../../../../../tmp/sentinel_static_78mv5tl8.sol#68)\n",
+      "lines": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "executeDelegateCallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in CallbackRegistry.withdrawFees() (../../../../../tmp/sentinel_static_78mv5tl8.sol#94-97):\n\t- (ok,None) = owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_78mv5tl8.sol#95)\n",
+      "lines": [
+        94,
+        95,
+        96,
+        97
+      ],
+      "function_names": [
+        "withdrawFees"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in CallbackRegistry.batchExecuteCallbacks(bytes32[]) (../../../../../tmp/sentinel_static_78mv5tl8.sol#72-81):\n\t- cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#77)\n",
+      "lines": [
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ],
+      "function_names": [
+        "batchExecuteCallbacks"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "CallbackRegistry.executeAllCallbacks() (../../../../../tmp/sentinel_static_78mv5tl8.sol#53-62) has external calls inside a loop: cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#59)\n",
+      "lines": [
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "function_names": [
+        "executeAllCallbacks"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "CallbackRegistry.batchExecuteCallbacks(bytes32[]) (../../../../../tmp/sentinel_static_78mv5tl8.sol#72-81) has external calls inside a loop: cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#77)\n",
+      "lines": [
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ],
+      "function_names": [
+        "batchExecuteCallbacks"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in CallbackRegistry.batchExecuteCallbacks(bytes32[]) (../../../../../tmp/sentinel_static_78mv5tl8.sol#72-81):\n\tExternal calls:\n\t- cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#77)\n\tEvent emitted after the call(s):\n\t- CallbackExecuted(ids[i],true) (../../../../../tmp/sentinel_static_78mv5tl8.sol#78)\n",
+      "lines": [
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ],
+      "function_names": [
+        "batchExecuteCallbacks"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in CallbackRegistry.executeDelegateCallback(bytes32,bytes) (../../../../../tmp/sentinel_static_78mv5tl8.sol#64-70):\n\tExternal calls:\n\t- cb.target.delegatecall(fullData) (../../../../../tmp/sentinel_static_78mv5tl8.sol#68)\n\tEvent emitted after the call(s):\n\t- CallbackExecuted(id,true) (../../../../../tmp/sentinel_static_78mv5tl8.sol#69)\n",
+      "lines": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "executeDelegateCallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "CallbackRegistry.executeAllCallbacks() (../../../../../tmp/sentinel_static_78mv5tl8.sol#53-62) ignores return value by cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#59)\n",
+      "lines": [
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "function_names": [
+        "executeAllCallbacks"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "CallbackRegistry.executeDelegateCallback(bytes32,bytes) (../../../../../tmp/sentinel_static_78mv5tl8.sol#64-70) ignores return value by cb.target.delegatecall(fullData) (../../../../../tmp/sentinel_static_78mv5tl8.sol#68)\n",
+      "lines": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "executeDelegateCallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "CallbackRegistry.executeCallback(bytes32) (../../../../../tmp/sentinel_static_78mv5tl8.sol#45-51) ignores return value by cb.target.call{gas: gasToForward}(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#50)\n",
+      "lines": [
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      "function_names": [
+        "executeCallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "CallbackRegistry.batchExecuteCallbacks(bytes32[]) (../../../../../tmp/sentinel_static_78mv5tl8.sol#72-81) ignores return value by cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#77)\n",
+      "lines": [
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ],
+      "function_names": [
+        "batchExecuteCallbacks"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unchecked-low-level-call",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "The return value of the low-level call is not checked, so if the call fails, the Ether will be locked in the contract. If the low level is used to prevent blocking operations, consider logging failed calls. Ensure that the return value of a low-level call is checked or logged.",
+      "lines": [
+        50,
+        59,
+        68,
+        77
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "weak-randomness",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "The use of keccak256 hash functions on predictable values like block.timestamp, block.number, or similar data, including modulo operations on these values, should be avoided for generating randomness, as they are easily predictable and manipulable. The `PREVRANDAO` opcode also should not be used as a source of randomness. Instead, utilize Chainlink VRF for cryptographically secure and provably random values to ensure protocol integrity.",
+      "lines": [
+        38
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        94
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "modifier-used-only-once",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider removing the modifier or inlining the logic into the calling function.",
+      "lines": [
+        27
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        90
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        18
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xb1254471d7aad0dcad48ba7ae7bd6b5ed1a8fee2",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "CallbackRegistry.owner (../../../../../tmp/sentinel_static_78mv5tl8.sol#18) should be immutable \n",
+        "lines": [
+          18
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_78mv5tl8.sol#8)\n",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in CallbackRegistry.executeAllCallbacks() (../../../../../tmp/sentinel_static_78mv5tl8.sol#53-62):\n\t- cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#59)\n",
+        "lines": [
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62
+        ],
+        "function_names": [
+          "executeAllCallbacks"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in CallbackRegistry.executeCallback(bytes32) (../../../../../tmp/sentinel_static_78mv5tl8.sol#45-51):\n\t- cb.target.call{gas: gasToForward}(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#50)\n",
+        "lines": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51
+        ],
+        "function_names": [
+          "executeCallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in CallbackRegistry.executeDelegateCallback(bytes32,bytes) (../../../../../tmp/sentinel_static_78mv5tl8.sol#64-70):\n\t- cb.target.delegatecall(fullData) (../../../../../tmp/sentinel_static_78mv5tl8.sol#68)\n",
+        "lines": [
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "executeDelegateCallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in CallbackRegistry.withdrawFees() (../../../../../tmp/sentinel_static_78mv5tl8.sol#94-97):\n\t- (ok,None) = owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_78mv5tl8.sol#95)\n",
+        "lines": [
+          94,
+          95,
+          96,
+          97
+        ],
+        "function_names": [
+          "withdrawFees"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in CallbackRegistry.batchExecuteCallbacks(bytes32[]) (../../../../../tmp/sentinel_static_78mv5tl8.sol#72-81):\n\t- cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#77)\n",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81
+        ],
+        "function_names": [
+          "batchExecuteCallbacks"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "CallbackRegistry.executeAllCallbacks() (../../../../../tmp/sentinel_static_78mv5tl8.sol#53-62) has external calls inside a loop: cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#59)\n",
+        "lines": [
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62
+        ],
+        "function_names": [
+          "executeAllCallbacks"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "CallbackRegistry.batchExecuteCallbacks(bytes32[]) (../../../../../tmp/sentinel_static_78mv5tl8.sol#72-81) has external calls inside a loop: cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#77)\n",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81
+        ],
+        "function_names": [
+          "batchExecuteCallbacks"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in CallbackRegistry.batchExecuteCallbacks(bytes32[]) (../../../../../tmp/sentinel_static_78mv5tl8.sol#72-81):\n\tExternal calls:\n\t- cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#77)\n\tEvent emitted after the call(s):\n\t- CallbackExecuted(ids[i],true) (../../../../../tmp/sentinel_static_78mv5tl8.sol#78)\n",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81
+        ],
+        "function_names": [
+          "batchExecuteCallbacks"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in CallbackRegistry.executeDelegateCallback(bytes32,bytes) (../../../../../tmp/sentinel_static_78mv5tl8.sol#64-70):\n\tExternal calls:\n\t- cb.target.delegatecall(fullData) (../../../../../tmp/sentinel_static_78mv5tl8.sol#68)\n\tEvent emitted after the call(s):\n\t- CallbackExecuted(id,true) (../../../../../tmp/sentinel_static_78mv5tl8.sol#69)\n",
+        "lines": [
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "executeDelegateCallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "CallbackRegistry.executeAllCallbacks() (../../../../../tmp/sentinel_static_78mv5tl8.sol#53-62) ignores return value by cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#59)\n",
+        "lines": [
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62
+        ],
+        "function_names": [
+          "executeAllCallbacks"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "CallbackRegistry.executeDelegateCallback(bytes32,bytes) (../../../../../tmp/sentinel_static_78mv5tl8.sol#64-70) ignores return value by cb.target.delegatecall(fullData) (../../../../../tmp/sentinel_static_78mv5tl8.sol#68)\n",
+        "lines": [
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "executeDelegateCallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "CallbackRegistry.executeCallback(bytes32) (../../../../../tmp/sentinel_static_78mv5tl8.sol#45-51) ignores return value by cb.target.call{gas: gasToForward}(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#50)\n",
+        "lines": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51
+        ],
+        "function_names": [
+          "executeCallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "CallbackRegistry.batchExecuteCallbacks(bytes32[]) (../../../../../tmp/sentinel_static_78mv5tl8.sol#72-81) ignores return value by cb.target.call(data) (../../../../../tmp/sentinel_static_78mv5tl8.sol#77)\n",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81
+        ],
+        "function_names": [
+          "batchExecuteCallbacks"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-low-level-call",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "The return value of the low-level call is not checked, so if the call fails, the Ether will be locked in the contract. If the low level is used to prevent blocking operations, consider logging failed calls. Ensure that the return value of a low-level call is checked or logged.",
+        "lines": [
+          50,
+          59,
+          68,
+          77
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "weak-randomness",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "The use of keccak256 hash functions on predictable values like block.timestamp, block.number, or similar data, including modulo operations on these values, should be avoided for generating randomness, as they are easily predictable and manipulable. The `PREVRANDAO` opcode also should not be used as a source of randomness. Instead, utilize Chainlink VRF for cryptographically secure and provably random values to ensure protocol integrity.",
+        "lines": [
+          38
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          94
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "modifier-used-only-once",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider removing the modifier or inlining the logic into the calling function.",
+        "lines": [
+          27
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          90
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          18
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=[] aderyn=['unchecked-low-level-call', 'weak-randomness'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "6 High/Medium static finding(s) not tied to a verdict: unchecked-lowlevel, unchecked-lowlevel, unchecked-lowlevel, unchecked-lowlevel, unchecked-low-level-call"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

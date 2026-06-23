@@ -82,6 +82,16 @@ C.4 System monitoring (health checks + alerts)
 
 ## C.2: Pipeline Evaluation Framework (6-8 days)
 
+**Dataset decision (Ali, 2026-06-22):** use the existing WS0 88-contract corpus
+(`agents/eval/corpus_combined/` — 83 manual hand-written contracts across all 10
+classes + 5 crafted edge cases, GT-audited) as C.2's evaluation set for now.
+Expanding to the originally-scoped 100-200 real-world contracts (sourcing +
+contamination-checking + manual relabeling — see the "How we'd get the dataset"
+discussion in the redesign chat, 2026-06-22) is explicitly **deferred**, not
+abandoned. C.2's code (metrics, benchmark loader) should be written against the
+existing 88-contract format so swapping in a larger corpus later is a data change,
+not a code change.
+
 **Files to create:**
 - `agents/src/eval/pipeline_metrics.py` (NEW, ~150 lines)
 - `agents/src/eval/benchmarks.py` (NEW, ~100 lines)

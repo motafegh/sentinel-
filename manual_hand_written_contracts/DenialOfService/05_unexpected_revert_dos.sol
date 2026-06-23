@@ -1,4 +1,4 @@
-// expect: DenialOfService
+// expect: DenialOfService,MishandledException
 // Airdrop contract that mints tokens to multiple recipients in a single call.
 // If any recipient is a contract that reverts on ERC20 transfer,
 // the entire airdrop transaction reverts — all recipients fail.

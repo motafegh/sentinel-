@@ -1,4 +1,4 @@
-// expect: CallToUnknown
+// expect: CallToUnknown,ExternalBug
 // Upgradeable proxy pattern with a timelock governance mechanism.
 // The proxy can delegatecall to any implementation address after timelock expires.
 // A malicious or compromised governance can point to a contract with SELFDESTRUCT

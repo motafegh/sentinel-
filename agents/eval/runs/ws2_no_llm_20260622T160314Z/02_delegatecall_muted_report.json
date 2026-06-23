@@ -1,0 +1,1287 @@
+{
+  "contract": "02_delegatecall_muted.sol",
+  "contract_address": "0x14c54041764ce41573f4a78df7b0d401e1bbc5c2",
+  "timestamp": "2026-06-22T12:34:05.351852+00:00",
+  "total_wall_s": 1.1677541732788086,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['controlled-delegatecall'] aderyn=['unchecked-low-level-call'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "controlled-delegatecall"
+    ],
+    "aderyn": [
+      "unchecked-low-level-call"
+    ]
+  },
+  "static_findings_count": 39,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "controlled-delegatecall",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.initialize(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#32-37) uses delegatecall to a input-controlled function id\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#34)\n",
+      "lines": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ],
+      "function_names": [
+        "initialize"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "controlled-delegatecall",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.mutedDelegateCall(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#45-48) uses delegatecall to a input-controlled function id\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#47)\n",
+      "lines": [
+        45,
+        46,
+        47,
+        48
+      ],
+      "function_names": [
+        "mutedDelegateCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "controlled-delegatecall",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.tryDelegateCallBatch(bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#50-54) uses delegatecall to a input-controlled function id\n\t- implementation.delegatecall(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#52)\n",
+      "lines": [
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "tryDelegateCallBatch"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "controlled-delegatecall",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.upgradeAndCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#39-43) uses delegatecall to a input-controlled function id\n\t- newImpl.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#42)\n",
+      "lines": [
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "function_names": [
+        "upgradeAndCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "MutedDelegatecall.owner (../../../../../tmp/sentinel_static_lkt69n8h.sol#11) should be immutable \n",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_lkt69n8h.sol#7)\n",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MutedDelegatecall.tryMulticall(address[],bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#72-77):\n\t- targets[i].call(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#75)\n",
+      "lines": [
+        72,
+        73,
+        74,
+        75,
+        76,
+        77
+      ],
+      "function_names": [
+        "tryMulticall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MutedDelegatecall.forwardCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#68-70):\n\t- target.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+      "lines": [
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "forwardCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MutedDelegatecall.upgradeAndCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#39-43):\n\t- newImpl.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#42)\n",
+      "lines": [
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "function_names": [
+        "upgradeAndCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MutedDelegatecall.mutedDelegateCall(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#45-48):\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#47)\n",
+      "lines": [
+        45,
+        46,
+        47,
+        48
+      ],
+      "function_names": [
+        "mutedDelegateCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MutedDelegatecall.batchSetValues(address[],uint256[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#61-66):\n\t- users[i].call(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#64)\n",
+      "lines": [
+        61,
+        62,
+        63,
+        64,
+        65,
+        66
+      ],
+      "function_names": [
+        "batchSetValues"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MutedDelegatecall.tryDelegateCallBatch(bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#50-54):\n\t- implementation.delegatecall(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#52)\n",
+      "lines": [
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "tryDelegateCallBatch"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MutedDelegatecall.recoverFunds() (../../../../../tmp/sentinel_static_lkt69n8h.sol#79-81):\n\t- owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_lkt69n8h.sol#80)\n",
+      "lines": [
+        79,
+        80,
+        81
+      ],
+      "function_names": [
+        "recoverFunds"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MutedDelegatecall.initialize(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#32-37):\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#34)\n",
+      "lines": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ],
+      "function_names": [
+        "initialize"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.upgradeAndCall(address,bytes).newImpl (../../../../../tmp/sentinel_static_lkt69n8h.sol#39) lacks a zero-check on :\n\t\t- implementation = newImpl (../../../../../tmp/sentinel_static_lkt69n8h.sol#40)\n\t\t- newImpl.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#42)\n",
+      "lines": [
+        39,
+        40,
+        42
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.setImplementation(address).impl (../../../../../tmp/sentinel_static_lkt69n8h.sol#27) lacks a zero-check on :\n\t\t- implementation = impl (../../../../../tmp/sentinel_static_lkt69n8h.sol#28)\n",
+      "lines": [
+        27,
+        28
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.forwardCall(address,bytes).target (../../../../../tmp/sentinel_static_lkt69n8h.sol#68) lacks a zero-check on :\n\t\t- target.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+      "lines": [
+        68,
+        69
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.batchSetValues(address[],uint256[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#61-66) has external calls inside a loop: users[i].call(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#64)\n",
+      "lines": [
+        61,
+        62,
+        63,
+        64,
+        65,
+        66
+      ],
+      "function_names": [
+        "batchSetValues"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.tryMulticall(address[],bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#72-77) has external calls inside a loop: targets[i].call(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#75)\n",
+      "lines": [
+        72,
+        73,
+        74,
+        75,
+        76,
+        77
+      ],
+      "function_names": [
+        "tryMulticall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.tryDelegateCallBatch(bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#50-54) has external calls inside a loop: implementation.delegatecall(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#52)\n",
+      "lines": [
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "tryDelegateCallBatch"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in MutedDelegatecall.initialize(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#32-37):\n\tExternal calls:\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#34)\n\tState variables written after the call(s):\n\t- initialized = true (../../../../../tmp/sentinel_static_lkt69n8h.sol#36)\n",
+      "lines": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ],
+      "function_names": [
+        "initialize"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "return-bomb",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.forwardCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#68-70) tries to limit the gas of an external call that controls implicit decoding\n\ttarget.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+      "lines": [
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "forwardCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "too-many-digits",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.forwardCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#68-70) uses literals with too many digits:\n\t- target.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+      "lines": [
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "forwardCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.batchSetValues(address[],uint256[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#61-66) ignores return value by users[i].call(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#64)\n",
+      "lines": [
+        61,
+        62,
+        63,
+        64,
+        65,
+        66
+      ],
+      "function_names": [
+        "batchSetValues"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.tryDelegateCallBatch(bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#50-54) ignores return value by implementation.delegatecall(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#52)\n",
+      "lines": [
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "tryDelegateCallBatch"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.recoverFunds() (../../../../../tmp/sentinel_static_lkt69n8h.sol#79-81) ignores return value by owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_lkt69n8h.sol#80)\n",
+      "lines": [
+        79,
+        80,
+        81
+      ],
+      "function_names": [
+        "recoverFunds"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.initialize(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#32-37) ignores return value by implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#34)\n",
+      "lines": [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ],
+      "function_names": [
+        "initialize"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.forwardCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#68-70) ignores return value by target.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+      "lines": [
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "forwardCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.mutedDelegateCall(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#45-48) ignores return value by implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#47)\n",
+      "lines": [
+        45,
+        46,
+        47,
+        48
+      ],
+      "function_names": [
+        "mutedDelegateCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.upgradeAndCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#39-43) ignores return value by newImpl.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#42)\n",
+      "lines": [
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "function_names": [
+        "upgradeAndCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "MutedDelegatecall.tryMulticall(address[],bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#72-77) ignores return value by targets[i].call(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#75)\n",
+      "lines": [
+        72,
+        73,
+        74,
+        75,
+        76,
+        77
+      ],
+      "function_names": [
+        "tryMulticall"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unchecked-low-level-call",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "The return value of the low-level call is not checked, so if the call fails, the Ether will be locked in the contract. If the low level is used to prevent blocking operations, consider logging failed calls. Ensure that the return value of a low-level call is checked or logged.",
+      "lines": [
+        34,
+        42,
+        47,
+        52,
+        64,
+        69,
+        75,
+        80
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        27,
+        32,
+        39,
+        45,
+        50,
+        61,
+        68,
+        72,
+        79
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "delegatecall-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Using `delegatecall` in loop may consume excessive gas, or worse, lead to more severe issues.",
+      "lines": [
+        51
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        32
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        28,
+        40
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x14c54041764ce41573f4a78df7b0d401e1bbc5c2",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.initialize(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#32-37) uses delegatecall to a input-controlled function id\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#34)\n",
+        "lines": [
+          32,
+          33,
+          34,
+          35,
+          36,
+          37
+        ],
+        "function_names": [
+          "initialize"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.mutedDelegateCall(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#45-48) uses delegatecall to a input-controlled function id\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#47)\n",
+        "lines": [
+          45,
+          46,
+          47,
+          48
+        ],
+        "function_names": [
+          "mutedDelegateCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.tryDelegateCallBatch(bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#50-54) uses delegatecall to a input-controlled function id\n\t- implementation.delegatecall(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#52)\n",
+        "lines": [
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "tryDelegateCallBatch"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.upgradeAndCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#39-43) uses delegatecall to a input-controlled function id\n\t- newImpl.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#42)\n",
+        "lines": [
+          39,
+          40,
+          41,
+          42,
+          43
+        ],
+        "function_names": [
+          "upgradeAndCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "MutedDelegatecall.owner (../../../../../tmp/sentinel_static_lkt69n8h.sol#11) should be immutable \n",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_lkt69n8h.sol#7)\n",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MutedDelegatecall.tryMulticall(address[],bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#72-77):\n\t- targets[i].call(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#75)\n",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77
+        ],
+        "function_names": [
+          "tryMulticall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MutedDelegatecall.forwardCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#68-70):\n\t- target.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+        "lines": [
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "forwardCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MutedDelegatecall.upgradeAndCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#39-43):\n\t- newImpl.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#42)\n",
+        "lines": [
+          39,
+          40,
+          41,
+          42,
+          43
+        ],
+        "function_names": [
+          "upgradeAndCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MutedDelegatecall.mutedDelegateCall(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#45-48):\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#47)\n",
+        "lines": [
+          45,
+          46,
+          47,
+          48
+        ],
+        "function_names": [
+          "mutedDelegateCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MutedDelegatecall.batchSetValues(address[],uint256[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#61-66):\n\t- users[i].call(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#64)\n",
+        "lines": [
+          61,
+          62,
+          63,
+          64,
+          65,
+          66
+        ],
+        "function_names": [
+          "batchSetValues"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MutedDelegatecall.tryDelegateCallBatch(bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#50-54):\n\t- implementation.delegatecall(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#52)\n",
+        "lines": [
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "tryDelegateCallBatch"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MutedDelegatecall.recoverFunds() (../../../../../tmp/sentinel_static_lkt69n8h.sol#79-81):\n\t- owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_lkt69n8h.sol#80)\n",
+        "lines": [
+          79,
+          80,
+          81
+        ],
+        "function_names": [
+          "recoverFunds"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MutedDelegatecall.initialize(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#32-37):\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#34)\n",
+        "lines": [
+          32,
+          33,
+          34,
+          35,
+          36,
+          37
+        ],
+        "function_names": [
+          "initialize"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.upgradeAndCall(address,bytes).newImpl (../../../../../tmp/sentinel_static_lkt69n8h.sol#39) lacks a zero-check on :\n\t\t- implementation = newImpl (../../../../../tmp/sentinel_static_lkt69n8h.sol#40)\n\t\t- newImpl.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#42)\n",
+        "lines": [
+          39,
+          40,
+          42
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.setImplementation(address).impl (../../../../../tmp/sentinel_static_lkt69n8h.sol#27) lacks a zero-check on :\n\t\t- implementation = impl (../../../../../tmp/sentinel_static_lkt69n8h.sol#28)\n",
+        "lines": [
+          27,
+          28
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.forwardCall(address,bytes).target (../../../../../tmp/sentinel_static_lkt69n8h.sol#68) lacks a zero-check on :\n\t\t- target.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+        "lines": [
+          68,
+          69
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.batchSetValues(address[],uint256[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#61-66) has external calls inside a loop: users[i].call(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#64)\n",
+        "lines": [
+          61,
+          62,
+          63,
+          64,
+          65,
+          66
+        ],
+        "function_names": [
+          "batchSetValues"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.tryMulticall(address[],bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#72-77) has external calls inside a loop: targets[i].call(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#75)\n",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77
+        ],
+        "function_names": [
+          "tryMulticall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.tryDelegateCallBatch(bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#50-54) has external calls inside a loop: implementation.delegatecall(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#52)\n",
+        "lines": [
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "tryDelegateCallBatch"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in MutedDelegatecall.initialize(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#32-37):\n\tExternal calls:\n\t- implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#34)\n\tState variables written after the call(s):\n\t- initialized = true (../../../../../tmp/sentinel_static_lkt69n8h.sol#36)\n",
+        "lines": [
+          32,
+          33,
+          34,
+          35,
+          36,
+          37
+        ],
+        "function_names": [
+          "initialize"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "return-bomb",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.forwardCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#68-70) tries to limit the gas of an external call that controls implicit decoding\n\ttarget.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+        "lines": [
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "forwardCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "too-many-digits",
+        "impact": "Informational",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.forwardCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#68-70) uses literals with too many digits:\n\t- target.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+        "lines": [
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "forwardCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.batchSetValues(address[],uint256[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#61-66) ignores return value by users[i].call(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#64)\n",
+        "lines": [
+          61,
+          62,
+          63,
+          64,
+          65,
+          66
+        ],
+        "function_names": [
+          "batchSetValues"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.tryDelegateCallBatch(bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#50-54) ignores return value by implementation.delegatecall(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#52)\n",
+        "lines": [
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "tryDelegateCallBatch"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.recoverFunds() (../../../../../tmp/sentinel_static_lkt69n8h.sol#79-81) ignores return value by owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_lkt69n8h.sol#80)\n",
+        "lines": [
+          79,
+          80,
+          81
+        ],
+        "function_names": [
+          "recoverFunds"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.initialize(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#32-37) ignores return value by implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#34)\n",
+        "lines": [
+          32,
+          33,
+          34,
+          35,
+          36,
+          37
+        ],
+        "function_names": [
+          "initialize"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.forwardCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#68-70) ignores return value by target.call{gas: 100000}(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#69)\n",
+        "lines": [
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "forwardCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.mutedDelegateCall(bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#45-48) ignores return value by implementation.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#47)\n",
+        "lines": [
+          45,
+          46,
+          47,
+          48
+        ],
+        "function_names": [
+          "mutedDelegateCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.upgradeAndCall(address,bytes) (../../../../../tmp/sentinel_static_lkt69n8h.sol#39-43) ignores return value by newImpl.delegatecall(data) (../../../../../tmp/sentinel_static_lkt69n8h.sol#42)\n",
+        "lines": [
+          39,
+          40,
+          41,
+          42,
+          43
+        ],
+        "function_names": [
+          "upgradeAndCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "MutedDelegatecall.tryMulticall(address[],bytes[]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#72-77) ignores return value by targets[i].call(calldatas[i]) (../../../../../tmp/sentinel_static_lkt69n8h.sol#75)\n",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77
+        ],
+        "function_names": [
+          "tryMulticall"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-low-level-call",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "The return value of the low-level call is not checked, so if the call fails, the Ether will be locked in the contract. If the low level is used to prevent blocking operations, consider logging failed calls. Ensure that the return value of a low-level call is checked or logged.",
+        "lines": [
+          34,
+          42,
+          47,
+          52,
+          64,
+          69,
+          75,
+          80
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          27,
+          32,
+          39,
+          45,
+          50,
+          61,
+          68,
+          72,
+          79
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "delegatecall-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Using `delegatecall` in loop may consume excessive gas, or worse, lead to more severe issues.",
+        "lines": [
+          51
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          32
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          28,
+          40
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['controlled-delegatecall'] aderyn=['unchecked-low-level-call'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "13 High/Medium static finding(s) not tied to a verdict: controlled-delegatecall, controlled-delegatecall, controlled-delegatecall, controlled-delegatecall, unchecked-lowlevel"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

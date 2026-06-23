@@ -1,0 +1,1222 @@
+{
+  "contract": "02_liquidation_ignore.sol",
+  "contract_address": "0x5138e91a60019b44d6c7a5db60eb315c4cc0fc0c",
+  "timestamp": "2026-06-22T12:34:33.841421+00:00",
+  "total_wall_s": 1.1933419704437256,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-no-eth",
+      "unchecked-transfer"
+    ],
+    "aderyn": [
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 31,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "constable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "LiquidationEngine.liquidationThreshold (../../../../../tmp/sentinel_static_muo2sf67.sol#33) should be constant \n",
+      "lines": [
+        33
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "LiquidationEngine.owner (../../../../../tmp/sentinel_static_muo2sf67.sol#29) should be immutable \n",
+      "lines": [
+        29
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "LiquidationEngine.oracle (../../../../../tmp/sentinel_static_muo2sf67.sol#30) should be immutable \n",
+      "lines": [
+        30
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_muo2sf67.sol#8)\n",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) has external calls inside a loop: debtPrice = oracle.getPrice(p.debtToken) (../../../../../tmp/sentinel_static_muo2sf67.sol#73)\n",
+      "lines": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchLiquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) has external calls inside a loop: IERC20(p.debtToken).transferFrom(msg.sender,address(this),debtValue) (../../../../../tmp/sentinel_static_muo2sf67.sol#80)\n",
+      "lines": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchLiquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) has external calls inside a loop: collateralPrice = oracle.getPrice(p.collateralToken) (../../../../../tmp/sentinel_static_muo2sf67.sol#72)\n",
+      "lines": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchLiquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) has external calls inside a loop: IERC20(p.collateralToken).transfer(msg.sender,seizedCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#81)\n",
+      "lines": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchLiquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in LiquidationEngine.openPosition(address,address,uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#45-50):\n\tExternal calls:\n\t- IERC20(collateralToken).transferFrom(msg.sender,address(this),collateralAmount) (../../../../../tmp/sentinel_static_muo2sf67.sol#46)\n\tState variables written after the call(s):\n\t- positions.push(Position(msg.sender,collateralToken,debtToken,collateralAmount,debtAmount)) (../../../../../tmp/sentinel_static_muo2sf67.sol#48)\n\t- userPositions[msg.sender].push(id) (../../../../../tmp/sentinel_static_muo2sf67.sol#49)\n",
+      "lines": [
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "function_names": [
+        "openPosition"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85):\n\tExternal calls:\n\t- IERC20(p.debtToken).transferFrom(msg.sender,address(this),debtValue) (../../../../../tmp/sentinel_static_muo2sf67.sol#80)\n\t- IERC20(p.collateralToken).transfer(msg.sender,seizedCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#81)\n\tState variables written after the call(s):\n\t- p.collateralAmount = 0 (../../../../../tmp/sentinel_static_muo2sf67.sol#78)\n\tLiquidationEngine.positions (../../../../../tmp/sentinel_static_muo2sf67.sol#31) can be used in cross function reentrancies:\n\t- LiquidationEngine.adjustCollateral(uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#87-92)\n\t- LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85)\n\t- LiquidationEngine.closePosition(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#94-101)\n\t- LiquidationEngine.liquidate(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#52-66)\n\t- LiquidationEngine.openPosition(address,address,uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#45-50)\n\t- LiquidationEngine.positions (../../../../../tmp/sentinel_static_muo2sf67.sol#31)\n\t- p.debtAmount = 0 (../../../../../tmp/sentinel_static_muo2sf67.sol#79)\n\tLiquidationEngine.positions (../../../../../tmp/sentinel_static_muo2sf67.sol#31) can be used in cross function reentrancies:\n\t- LiquidationEngine.adjustCollateral(uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#87-92)\n\t- LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85)\n\t- LiquidationEngine.closePosition(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#94-101)\n\t- LiquidationEngine.liquidate(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#52-66)\n\t- LiquidationEngine.openPosition(address,address,uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#45-50)\n\t- LiquidationEngine.positions (../../../../../tmp/sentinel_static_muo2sf67.sol#31)\n",
+      "lines": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchLiquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.adjustCollateral(uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#87-92) ignores return value by IERC20(p.collateralToken).transferFrom(msg.sender,address(this),additionalCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#91)\n",
+      "lines": [
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ],
+      "function_names": [
+        "adjustCollateral"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.closePosition(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#94-101) ignores return value by IERC20(p.collateralToken).transfer(msg.sender,collateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#100)\n",
+      "lines": [
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101
+      ],
+      "function_names": [
+        "closePosition"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.liquidate(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#52-66) ignores return value by IERC20(p.debtToken).transferFrom(msg.sender,address(this),debtCovered) (../../../../../tmp/sentinel_static_muo2sf67.sol#64)\n",
+      "lines": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66
+      ],
+      "function_names": [
+        "liquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) ignores return value by IERC20(p.collateralToken).transfer(msg.sender,seizedCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#81)\n",
+      "lines": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchLiquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.openPosition(address,address,uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#45-50) ignores return value by IERC20(collateralToken).transferFrom(msg.sender,address(this),collateralAmount) (../../../../../tmp/sentinel_static_muo2sf67.sol#46)\n",
+      "lines": [
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "function_names": [
+        "openPosition"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.liquidate(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#52-66) ignores return value by IERC20(p.collateralToken).transfer(msg.sender,seizedCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#65)\n",
+      "lines": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66
+      ],
+      "function_names": [
+        "liquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_muo2sf67.sol#103-106) ignores return value by IERC20(token).transfer(owner,balance) (../../../../../tmp/sentinel_static_muo2sf67.sol#105)\n",
+      "lines": [
+        103,
+        104,
+        105,
+        106
+      ],
+      "function_names": [
+        "emergencyWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) ignores return value by IERC20(p.debtToken).transferFrom(msg.sender,address(this),debtValue) (../../../../../tmp/sentinel_static_muo2sf67.sol#80)\n",
+      "lines": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchLiquidate"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        46,
+        55,
+        56,
+        72,
+        73,
+        80,
+        81
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        103
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        69
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "literal-instead-of-constant",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Define and use `constant` variables instead of using literals. If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract.",
+      "lines": [
+        59,
+        76
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "modifier-used-only-once",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider removing the modifier or inlining the logic into the calling function.",
+      "lines": [
+        35
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        45,
+        52,
+        68,
+        87,
+        94
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        42
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-constant",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are not updated following deployment should be declared constant to save gas. Add the `constant` attribute to state variables that never change.",
+      "lines": [
+        33
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        29,
+        30
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unchecked-return",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Function returns a value but it is ignored. Consider checking the return value.",
+      "lines": [
+        46,
+        64,
+        65,
+        80,
+        81,
+        91,
+        100,
+        105
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unsafe-erc20-operation",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+      "lines": [
+        46,
+        64,
+        65,
+        80,
+        81,
+        91,
+        100,
+        105
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x5138e91a60019b44d6c7a5db60eb315c4cc0fc0c",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "constable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "LiquidationEngine.liquidationThreshold (../../../../../tmp/sentinel_static_muo2sf67.sol#33) should be constant \n",
+        "lines": [
+          33
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "LiquidationEngine.owner (../../../../../tmp/sentinel_static_muo2sf67.sol#29) should be immutable \n",
+        "lines": [
+          29
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "LiquidationEngine.oracle (../../../../../tmp/sentinel_static_muo2sf67.sol#30) should be immutable \n",
+        "lines": [
+          30
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_muo2sf67.sol#8)\n",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) has external calls inside a loop: debtPrice = oracle.getPrice(p.debtToken) (../../../../../tmp/sentinel_static_muo2sf67.sol#73)\n",
+        "lines": [
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchLiquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) has external calls inside a loop: IERC20(p.debtToken).transferFrom(msg.sender,address(this),debtValue) (../../../../../tmp/sentinel_static_muo2sf67.sol#80)\n",
+        "lines": [
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchLiquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) has external calls inside a loop: collateralPrice = oracle.getPrice(p.collateralToken) (../../../../../tmp/sentinel_static_muo2sf67.sol#72)\n",
+        "lines": [
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchLiquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) has external calls inside a loop: IERC20(p.collateralToken).transfer(msg.sender,seizedCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#81)\n",
+        "lines": [
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchLiquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in LiquidationEngine.openPosition(address,address,uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#45-50):\n\tExternal calls:\n\t- IERC20(collateralToken).transferFrom(msg.sender,address(this),collateralAmount) (../../../../../tmp/sentinel_static_muo2sf67.sol#46)\n\tState variables written after the call(s):\n\t- positions.push(Position(msg.sender,collateralToken,debtToken,collateralAmount,debtAmount)) (../../../../../tmp/sentinel_static_muo2sf67.sol#48)\n\t- userPositions[msg.sender].push(id) (../../../../../tmp/sentinel_static_muo2sf67.sol#49)\n",
+        "lines": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50
+        ],
+        "function_names": [
+          "openPosition"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85):\n\tExternal calls:\n\t- IERC20(p.debtToken).transferFrom(msg.sender,address(this),debtValue) (../../../../../tmp/sentinel_static_muo2sf67.sol#80)\n\t- IERC20(p.collateralToken).transfer(msg.sender,seizedCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#81)\n\tState variables written after the call(s):\n\t- p.collateralAmount = 0 (../../../../../tmp/sentinel_static_muo2sf67.sol#78)\n\tLiquidationEngine.positions (../../../../../tmp/sentinel_static_muo2sf67.sol#31) can be used in cross function reentrancies:\n\t- LiquidationEngine.adjustCollateral(uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#87-92)\n\t- LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85)\n\t- LiquidationEngine.closePosition(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#94-101)\n\t- LiquidationEngine.liquidate(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#52-66)\n\t- LiquidationEngine.openPosition(address,address,uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#45-50)\n\t- LiquidationEngine.positions (../../../../../tmp/sentinel_static_muo2sf67.sol#31)\n\t- p.debtAmount = 0 (../../../../../tmp/sentinel_static_muo2sf67.sol#79)\n\tLiquidationEngine.positions (../../../../../tmp/sentinel_static_muo2sf67.sol#31) can be used in cross function reentrancies:\n\t- LiquidationEngine.adjustCollateral(uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#87-92)\n\t- LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85)\n\t- LiquidationEngine.closePosition(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#94-101)\n\t- LiquidationEngine.liquidate(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#52-66)\n\t- LiquidationEngine.openPosition(address,address,uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#45-50)\n\t- LiquidationEngine.positions (../../../../../tmp/sentinel_static_muo2sf67.sol#31)\n",
+        "lines": [
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchLiquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.adjustCollateral(uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#87-92) ignores return value by IERC20(p.collateralToken).transferFrom(msg.sender,address(this),additionalCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#91)\n",
+        "lines": [
+          87,
+          88,
+          89,
+          90,
+          91,
+          92
+        ],
+        "function_names": [
+          "adjustCollateral"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.closePosition(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#94-101) ignores return value by IERC20(p.collateralToken).transfer(msg.sender,collateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#100)\n",
+        "lines": [
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101
+        ],
+        "function_names": [
+          "closePosition"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.liquidate(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#52-66) ignores return value by IERC20(p.debtToken).transferFrom(msg.sender,address(this),debtCovered) (../../../../../tmp/sentinel_static_muo2sf67.sol#64)\n",
+        "lines": [
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66
+        ],
+        "function_names": [
+          "liquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) ignores return value by IERC20(p.collateralToken).transfer(msg.sender,seizedCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#81)\n",
+        "lines": [
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchLiquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.openPosition(address,address,uint256,uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#45-50) ignores return value by IERC20(collateralToken).transferFrom(msg.sender,address(this),collateralAmount) (../../../../../tmp/sentinel_static_muo2sf67.sol#46)\n",
+        "lines": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50
+        ],
+        "function_names": [
+          "openPosition"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.liquidate(uint256) (../../../../../tmp/sentinel_static_muo2sf67.sol#52-66) ignores return value by IERC20(p.collateralToken).transfer(msg.sender,seizedCollateral) (../../../../../tmp/sentinel_static_muo2sf67.sol#65)\n",
+        "lines": [
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66
+        ],
+        "function_names": [
+          "liquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_muo2sf67.sol#103-106) ignores return value by IERC20(token).transfer(owner,balance) (../../../../../tmp/sentinel_static_muo2sf67.sol#105)\n",
+        "lines": [
+          103,
+          104,
+          105,
+          106
+        ],
+        "function_names": [
+          "emergencyWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "LiquidationEngine.batchLiquidate(uint256[]) (../../../../../tmp/sentinel_static_muo2sf67.sol#68-85) ignores return value by IERC20(p.debtToken).transferFrom(msg.sender,address(this),debtValue) (../../../../../tmp/sentinel_static_muo2sf67.sol#80)\n",
+        "lines": [
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchLiquidate"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          46,
+          55,
+          56,
+          72,
+          73,
+          80,
+          81
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          103
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          69
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "literal-instead-of-constant",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Define and use `constant` variables instead of using literals. If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract.",
+        "lines": [
+          59,
+          76
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "modifier-used-only-once",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider removing the modifier or inlining the logic into the calling function.",
+        "lines": [
+          35
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          45,
+          52,
+          68,
+          87,
+          94
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          42
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-constant",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are not updated following deployment should be declared constant to save gas. Add the `constant` attribute to state variables that never change.",
+        "lines": [
+          33
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          29,
+          30
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          46,
+          64,
+          65,
+          80,
+          81,
+          91,
+          100,
+          105
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unsafe-erc20-operation",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+        "lines": [
+          46,
+          64,
+          65,
+          80,
+          81,
+          91,
+          100,
+          105
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "10 High/Medium static finding(s) not tied to a verdict: reentrancy-no-eth, unchecked-transfer, unchecked-transfer, unchecked-transfer, unchecked-transfer"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

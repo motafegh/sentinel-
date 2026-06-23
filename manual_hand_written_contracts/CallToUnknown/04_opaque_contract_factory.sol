@@ -1,4 +1,4 @@
-// expect: CallToUnknown
+// expect: CallToUnknown,ExternalBug
 // Factory contract that creates child contracts via CREATE2 and stores them.
 // Later interactions with the created contracts use low-level calls.
 // The bytecode at creation time is known, but the factory owner can set

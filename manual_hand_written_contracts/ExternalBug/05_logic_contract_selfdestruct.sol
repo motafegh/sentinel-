@@ -1,4 +1,4 @@
-// expect: ExternalBug
+// expect: ExternalBug,CallToUnknown
 // Upgradeable vault that stores user funds in the logic contract's storage.
 // The proxy delegates to an implementation that has a selfdestruct function.
 // If the implementation is swapped to a contract with SELFDESTRUCT and called,

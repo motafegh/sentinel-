@@ -1,0 +1,2241 @@
+{
+  "contract_count": 88,
+  "positive_verdicts": [
+    "CONFIRMED",
+    "LIKELY"
+  ],
+  "macro_f1": 0.2840660728160728,
+  "micro_f1": 0.3294117647058824,
+  "contract_accuracy_loose": 0.4772727272727273,
+  "contract_accuracy_exact": 0.022727272727272728,
+  "per_class": {
+    "CallToUnknown": {
+      "cls": "CallToUnknown",
+      "tp": 10,
+      "fp": 23,
+      "fn": 7,
+      "tn": 48,
+      "precision": 0.30303030303030304,
+      "recall": 0.5882352941176471,
+      "f1": 0.39999999999999997,
+      "support": 17
+    },
+    "DenialOfService": {
+      "cls": "DenialOfService",
+      "tp": 1,
+      "fp": 3,
+      "fn": 9,
+      "tn": 75,
+      "precision": 0.25,
+      "recall": 0.1,
+      "f1": 0.14285714285714288,
+      "support": 10
+    },
+    "ExternalBug": {
+      "cls": "ExternalBug",
+      "tp": 10,
+      "fp": 41,
+      "fn": 3,
+      "tn": 34,
+      "precision": 0.19607843137254902,
+      "recall": 0.7692307692307693,
+      "f1": 0.31250000000000006,
+      "support": 13
+    },
+    "GasException": {
+      "cls": "GasException",
+      "tp": 1,
+      "fp": 3,
+      "fn": 8,
+      "tn": 76,
+      "precision": 0.25,
+      "recall": 0.1111111111111111,
+      "f1": 0.15384615384615383,
+      "support": 9
+    },
+    "IntegerUO": {
+      "cls": "IntegerUO",
+      "tp": 4,
+      "fp": 32,
+      "fn": 5,
+      "tn": 47,
+      "precision": 0.1111111111111111,
+      "recall": 0.4444444444444444,
+      "f1": 0.17777777777777776,
+      "support": 9
+    },
+    "MishandledException": {
+      "cls": "MishandledException",
+      "tp": 4,
+      "fp": 1,
+      "fn": 15,
+      "tn": 68,
+      "precision": 0.8,
+      "recall": 0.21052631578947367,
+      "f1": 0.3333333333333333,
+      "support": 19
+    },
+    "Reentrancy": {
+      "cls": "Reentrancy",
+      "tp": 13,
+      "fp": 24,
+      "fn": 5,
+      "tn": 46,
+      "precision": 0.35135135135135137,
+      "recall": 0.7222222222222222,
+      "f1": 0.4727272727272727,
+      "support": 18
+    },
+    "Timestamp": {
+      "cls": "Timestamp",
+      "tp": 9,
+      "fp": 12,
+      "fn": 5,
+      "tn": 62,
+      "precision": 0.42857142857142855,
+      "recall": 0.6428571428571429,
+      "f1": 0.5142857142857143,
+      "support": 14
+    },
+    "TransactionOrderDependence": {
+      "cls": "TransactionOrderDependence",
+      "tp": 0,
+      "fp": 7,
+      "fn": 9,
+      "tn": 72,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 9
+    },
+    "UnusedReturn": {
+      "cls": "UnusedReturn",
+      "tp": 4,
+      "fp": 10,
+      "fn": 6,
+      "tn": 68,
+      "precision": 0.2857142857142857,
+      "recall": 0.4,
+      "f1": 0.3333333333333333,
+      "support": 10
+    }
+  },
+  "gates": [
+    {
+      "gate_id": "WS1a_silent_safe_on_flagged",
+      "description": "No consensus-flagged class ends SAFE (debate cannot clear consensus verdict)",
+      "passed": true,
+      "detail": "0 violation(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS1b_inconclusive_on_timeout",
+      "description": "edge_debate_timeout emits INCONCLUSIVE (LLM-on mode only)",
+      "passed": true,
+      "detail": "N/A in --no-llm mode (no debate to time out)",
+      "value": "skipped"
+    },
+    {
+      "gate_id": "WS1c_no_missing_consensus_votes",
+      "description": "No consensus vote is missing from final verdicts (Finding #15)",
+      "passed": true,
+      "detail": "0 missing vote(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS1d_confidence_1_0_not_downgraded",
+      "description": "No consensus confidence=1.0 class ends in SAFE (Finding #14 worst case)",
+      "passed": true,
+      "detail": "0 violation(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS1e_no_vulnerable_label_with_safe_verdict",
+      "description": "No contract has overall_label=vulnerable + overall_verdict=SAFE (Finding #19)",
+      "passed": true,
+      "detail": "0 violation(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS2_false_positives_on_safe",
+      "description": "Zero false-positive verdicts on the safe subset",
+      "passed": false,
+      "detail": "6 FP(s) on 6 safe contract(s): 01_checks_effects_interactions: ['CallToUnknown', 'ExternalBug', 'IntegerUO']; 02_pull_over_push_payment: ['CallToUnknown', 'ExternalBug', 'IntegerUO', 'Reentrancy']; 03_openzeppelin_managed: ['ExternalBug', 'IntegerUO']; 04_pausable_circuit_breaker: ['ExternalBug', 'IntegerUO']; 05_emergency_stop_controlled: ['ExternalBug', 'IntegerUO', 'Timestamp']",
+      "value": 6
+    },
+    {
+      "gate_id": "WS3_long_contract_bug_detected",
+      "description": "edge_long_contract_truncated Reentrancy flagged (bug is past 2000-char cutoff)",
+      "passed": false,
+      "detail": "Reentrancy verdict = DISPUTED (positive set = ['CONFIRMED', 'LIKELY'])",
+      "value": "DISPUTED"
+    },
+    {
+      "gate_id": "macro_f1_vs_baseline",
+      "description": "macro_F1 >= baseline (0.2455)",
+      "passed": true,
+      "detail": "macro_F1 = 0.2841 (delta +0.0386 vs baseline 0.2455)",
+      "value": 0.2840660728160728
+    }
+  ],
+  "per_contract": [
+    {
+      "stem": "01_approve_frontrun",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_batch_payout_swallow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "01_bccc_reentrancy_injected_erc20",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy",
+        "IntegerUO"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "static_analysis: Invalid compilation: \nInvalid solc compilation Error: Source file requires different compiler version (current compiler is 0.8.19+commit.7dd6d404.Linux.g++) - note that nightly builds are considered to be strictly less than the released version\n --> /tmp/sentinel_static_l0lcmu0_.sol:6:1:\n  |\n6 | pragma solidity ^0.4.24;\n  | ^^^^^^^^^^^^^^^^^^^^^^^^\n\n"
+    },
+    {
+      "stem": "01_cei_violation_erc721",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_checks_effects_interactions",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_erc20_underflow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "IntegerUO"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_flash_loan_oracle_manipulation",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_massive_storage_loop",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "Timestamp"
+      ],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_multi_asset_transfer",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "01_proxy_delegatecall",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_unbounded_refund",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_vesting_schedule",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_access_control_bypass",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [
+        "CallToUnknown"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_auction_deadline",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp",
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_bccc_dos_injected_loop",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "Timestamp"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService",
+        "Timestamp"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "02_calldata_expansion_dos",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "Timestamp"
+      ],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_cross_function_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_delegatecall_muted",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_dynamic_dispatch",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "UnusedReturn"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_liquidation_ignore",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn"
+      ],
+      "predicted_positive": [
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "UnusedReturn"
+      ],
+      "false_positive": [
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_mempool_sniping",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_pull_over_push_payment",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_push_payment_failure",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_unchecked_auction_bid",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "IntegerUO"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "03_bccc_calltounknown_injected_delegate",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "03_delegatecall_injection",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_dynamic_loop_gas_bomb",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "DenialOfService"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_failed_batch_approve",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "03_low_level_forwarder",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_mev_arbitrage",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "03_multi_call_hub",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "MishandledException"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_nested_dynamic_array",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_openzeppelin_managed",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_randomness_seed",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_read_only_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "Reentrancy"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "03_safe_math_bypass",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "IntegerUO"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_bccc_gas_injected_nested",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException",
+        "DenialOfService"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService",
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "04_erc777_callback_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_ico_phase_gate",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "Timestamp"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "04_nested_call_chain",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "MishandledException",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_opaque_contract_factory",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_pausable_circuit_breaker",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_permit_sig_frontrun",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "04_sig_replay_attack",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_storage_growth_dos",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Timestamp"
+      ],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_time_calc_overflow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "IntegerUO"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_transfer_stipend_exhaustion",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO"
+      ],
+      "true_positive": [
+        "GasException"
+      ],
+      "false_positive": [
+        "DenialOfService",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_withdrawal_fails_silent",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "05_approval_race_swallow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_batch_transfer_wrapping",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_negative": [
+        "IntegerUO"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_bccc_externalbug_injected_flashloan",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "ExternalBug",
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "static_analysis: Invalid compilation: \nInvalid solc compilation Error: Source file requires different compiler version (current compiler is 0.8.19+commit.7dd6d404.Linux.g++) - note that nightly builds are considered to be strictly less than the released version\n --> /tmp/sentinel_static_b7j2gt30.sol:6:1:\n  |\n6 | pragma solidity ^0.4.24;\n  | ^^^^^^^^^^^^^^^^^^^^^^^^\n\n"
+    },
+    {
+      "stem": "05_dutch_auction_race",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "05_emergency_stop_controlled",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_eth_bank_multi_withdraw",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_logic_contract_selfdestruct",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "CallToUnknown"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_staticcall_gas_bomb",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "05_time_lock_governance",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_unexpected_revert_dos",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "DenialOfService",
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_upgrade_proxy_selfdestruct",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "Timestamp"
+      ],
+      "false_negative": [
+        "CallToUnknown"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_wrapped_eth_deposit",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "06_bccc_timestamp_injected_vesting",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp",
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "Timestamp",
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "static_analysis: Invalid compilation: \nInvalid solc compilation Error: Source file requires different compiler version (current compiler is 0.8.19+commit.7dd6d404.Linux.g++) - note that nightly builds are considered to be strictly less than the released version\n --> /tmp/sentinel_static_9rz7f6gj.sol:6:1:\n  |\n6 | pragma solidity ^0.4.24;\n  | ^^^^^^^^^^^^^^^^^^^^^^^^\n\n"
+    },
+    {
+      "stem": "06_tricky_call_in_fallback",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_dos_in_constructor",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "06_tricky_externalbug_callback_chain",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "true_positive": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_gas_in_loop_condition",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "Timestamp"
+      ],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_mishandled_internal_chain",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "06_tricky_overflow_in_interest_rate",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "IntegerUO"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_reentrancy_in_modifier",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_timestamp_in_pricing",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_tod_mempool_sniping",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_unused_return_in_callchain",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn",
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "UnusedReturn"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_bccc_mishandled_injected_multicall",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "07_multivuln_call_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_dos_exception",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "GasException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService",
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_externalbug_mishandled",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "MishandledException",
+        "GasException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "GasException",
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_overflow_unused_return",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO",
+        "UnusedReturn",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "IntegerUO",
+        "UnusedReturn"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_reentrancy_tod",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO"
+      ],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_timestamp_call",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp",
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "MishandledException",
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "08_bccc_unusedreturn_injected_batch",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn",
+        "ExternalBug"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "ExternalBug",
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "static_analysis: Invalid compilation: \nInvalid solc compilation Error: Source file requires different compiler version (current compiler is 0.8.19+commit.7dd6d404.Linux.g++) - note that nightly builds are considered to be strictly less than the released version\n --> /tmp/sentinel_static_amtxa1ae.sol:6:1:\n  |\n6 | pragma solidity ^0.4.24;\n  | ^^^^^^^^^^^^^^^^^^^^^^^^\n\n"
+    },
+    {
+      "stem": "09_bccc_tod_injected_approve",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence",
+        "IntegerUO"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "10_bccc_weakaccess_injected_ownable",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "Timestamp"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "CallToUnknown",
+        "Timestamp"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "11_bccc_multivuln_oracle_borrow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "12_bccc_dos_reentrancy_combo",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "edge_borderline_no_corroboration",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": true,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "edge_debate_timeout",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "UnusedReturn"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "edge_long_contract_truncated",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "Reentrancy"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "edge_multi_bug",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_positive": [],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": true,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "edge_safe_rag_resembles_exploit",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    }
+  ]
+}

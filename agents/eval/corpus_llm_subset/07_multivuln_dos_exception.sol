@@ -1,0 +1,1 @@
+/home/motafeq/projects/sentinel/manual_hand_written_contracts/DenialOfService/07_multivuln_dos_exception.sol

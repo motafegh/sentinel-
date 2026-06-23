@@ -1,0 +1,10 @@
+{
+  "labels": ["Reentrancy"],
+  "source": "sentinel_edge_case",
+  "category": "reentrancy_truncated",
+  "original_name": "edge_long_contract_truncated.sol",
+  "tier": "edge",
+  "ground_truth": "vulnerable",
+  "edge_case_for": "WS3",
+  "notes": "The VulnerableVault.withdraw() reentrancy bug is PAST the 2000-char truncation cutoff. With current raw truncation the debate sees only the safe preamble. WS3's hotspot+windowing fallback should make the debate see the actual bug."
+}

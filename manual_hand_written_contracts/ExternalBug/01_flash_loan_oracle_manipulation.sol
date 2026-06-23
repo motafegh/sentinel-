@@ -1,4 +1,4 @@
-// expect: ExternalBug
+// expect: ExternalBug,MishandledException
 // Lending protocol that uses a spot-price oracle from a single DEX.
 // The oracle returns the instantaneous pool price which can be manipulated
 // via a flash loan: borrow large amount, swap on the DEX to move the price,

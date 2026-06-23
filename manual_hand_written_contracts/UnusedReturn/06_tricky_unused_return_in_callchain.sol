@@ -1,4 +1,4 @@
-// expect: UnusedReturn,CallToUnknown
+// expect: UnusedReturn,CallToUnknown,MishandledException
 // TRICKY: Unused return values hidden in a complex multi-step DeFi operation.
 // The contract chains 5 external calls together. The first 4 calls have
 // their return values properly checked. The 5th call — a token transfer

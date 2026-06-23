@@ -1,0 +1,142 @@
+flowchart TB
+  subgraph OVERVIEW["Single File: client.py (204 lines)"]
+    OV["Factory for ChatOpenAI / OpenAIEmbeddings
+→ pointed at local LM Studio server
+4 model roles, each a thin factory wrapper"]
+  end
+
+  subgraph ROLES["The 4 Model Roles"]
+    direction TB
+
+    subgraph FAST["MODEL_FAST — gemma-4-e2b-it (2B)"]
+      FA["Speed: ~12 tok/s on RTX 3070 (3.18 GB VRAM)
+Used by: cross_validator debate (A.4)
+  reflection optional LLM (A.3)
+  consensus_engine LLM assist (A.6)
+Default: temperature=0.0"]
+    end
+
+    subgraph STRONG["MODEL_STRONG — gemma-4-e2b-it (2B) ← was qwen3.5-9B"]
+      ST["Speed: ~17-30s per task (was 23min for 9B!)
+Used by: synthesizer narrative
+  RAG synthesis, report generation
+FIX-18 (2026-06-17): swapped from qwen3.5-9b-ud
+  (2.91 tok/s → 23min for 4096 tok)
+⚠ BOTH FAST and STRONG now point to same model"]
+    end
+
+    subgraph CODER["MODEL_CODER — qwen2.5-coder-7b-instruct"]
+      CO["Used by: Solidity analysis, code logic review
+  cross_validator debate when reading source
+Understands: access control, state machines
+  reentrancy patterns, upgrade proxies"]
+    end
+
+    subgraph EMBED["MODEL_EMBED — nomic-embed-text-v1.5"]
+      EM["Used by: RAG index building + query embedding
+Output: 768-dim vectors
+Note: OpenAIEmbeddings() not ChatOpenAI()
+Why text embed not code embed:
+  we embed natural language descriptions, not Solidity"]
+    end
+  end
+
+  subgraph FACTORY["Factory Pattern (client.py:75-108)"]
+    direction TB
+    GEN["get_llm(model, temperature=0.0, max_tokens=None)
+→ ChatOpenAI(base_url=LM_STUDIO_BASE_URL,
+              api_key=LM_STUDIO_API_KEY,
+              timeout=LM_STUDIO_TIMEOUT)"]
+    F1["get_fast_llm() → get_llm(MODEL_FAST)"]
+    F2["get_strong_llm(max_tokens) → get_llm(MODEL_STRONG, max_tokens)"]
+    F3["get_coder_llm() → get_llm(MODEL_CODER)"]
+    F4["get_embedding_model() → OpenAIEmbeddings(model=MODEL_EMBED)"]
+    GEN --> F1
+    GEN --> F2
+    GEN --> F3
+    GEN --> F4
+  end
+
+  subgraph CONNECTION["LM Studio Connection"]
+    direction LR
+    LC["LangChain
+ChatOpenAI()
+OpenAIEmbeddings()"] -- "httpx
+/v1/chat/completions
+/v1/embeddings" --> LMS["LM Studio
+http://<gateway>:4567/v1
+OpenAI-compatible API
+4 GGUF models on RTX 3070 8GB"]
+  end
+
+  subgraph TIMEOUTS["Timeout Hierarchy (cross-ref orchestration)"]
+    direction TB
+    T1["LM_STUDIO_TIMEOUT: 60s
+innermost — every get_llm() call"]
+    T2["CROSS_VALIDATOR_TIMEOUT_S: 90s
+single-pass cross_validator"]
+    T3["DEBATE_TIMEOUT_S: 240s
+entire 3-role debate (outer)"]
+    T4["SYNTHESIZER_TIMEOUT_S: 120s
+final narrative"]
+    T5["SYNTHESIZER_MAX_TOKENS: 4096"]
+  end
+
+  subgraph CONSUMERS["Consumers — Who Calls the LLM"]
+    direction TB
+    C1["consensus_engine — LLM-assisted (STRONG, A.6)"]
+    C2["cross_validator — LLM debate (FAST × 3 sequential, A.4)"]
+    C3["synthesizer — LLM narrative (STRONG, 4096 tok)"]
+    C4["reflection — LLM self-critique (STRONG, A.3) optional"]
+    C5["rag/embedder.py — get_embedding_model() (EMBED)"]
+    C6["ingestion/pipeline.py — via embedder.py (EMBED)"]
+
+    NO["Nodes that do NOT call LLM:
+ml_assessment | evidence_router | rag_research
+static_analysis | graph_explain | audit_check
+explainer | visualizer"]
+  end
+
+  subgraph FIX_HISTORY["FIX History"]
+    direction TB
+    FX15["FIX-15 (2026-04-11): LM_STUDIO_BASE_URL from env
+→ hardcoded WSL2 IP broke on every reboot"]
+    FX16["FIX-16 (2026-04-11): timeout=60 on all models
+→ LM Studio hang blocked caller forever"]
+    FX17["FIX-17 (2026-06-17): max_tokens pass-through
+→ LM Studio default too low → finish_reason='length'"]
+    FX18["FIX-18 (2026-06-17): MODEL_STRONG → gemma-4-e2b-it
+→ qwen3.5-9B ran at 2.91 tok/s (23min for 4096 tok)"]
+  end
+
+  subgraph KILLSWITCH["Test-Mode Kill-Switch"]
+    KS["AGENTS_DISABLE_LLM=1
+→ all LLM-calling nodes fall back to rule-based
+  (cross_validator, synthesizer, reflection, consensus_engine)
+→ graph runs fast + deterministic
+→ no LM Studio needed (ideal for CI)"]
+  end
+
+  subgraph AGENT_MAP["AGENT_MODEL_MAP — Forward Declaration (M4.x)"]
+    direction TB
+    AM1["static_analyzer → MODEL_CODER"]
+    AM2["ml_intelligence → MODEL_FAST"]
+    AM3["rag_researcher → MODEL_STRONG"]
+    AM4["code_logic → MODEL_CODER"]
+    AM5["synthesizer → MODEL_STRONG"]
+  end
+
+  subgraph CONFIG["Configuration"]
+    CFG1["LM_STUDIO_BASE_URL: http://<gateway>:4567/v1"]
+    CFG2["LM_STUDIO_API_KEY: 'lm-studio' (any non-empty)"]
+    CFG3["LM_STUDIO_TIMEOUT: 60"]
+  end
+
+  subgraph WSL2["WSL2 Gateway IP Gotcha (FIX-15)"]
+    WSL["WSL2 gateway IP changes on every reboot
+Old code: hardcoded http://172.21.16.1:1234/v1
+Fix: read from LM_STUDIO_BASE_URL env var
+Find current IP:
+  cat /etc/resolv.conf | grep nameserver | awk '{print $2}'
+→ 172.21.x.x (changes on reboot)"]
+  end

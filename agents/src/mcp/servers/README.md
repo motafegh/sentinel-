@@ -24,10 +24,10 @@ GET  /health       → liveness probe for Docker / monitoring
 
 | File | Lines | Port | Purpose |
 |------|-------|------|---------|
-| `inference_server.py` | 481 | 8010 | Wraps Module 1 `/predict` as MCP tools |
+| `inference_server.py` | 501 | 8010 | Wraps Module 1 `/predict` as MCP tools |
 | `rag_server.py` | 353 | 8011 | Wraps `HybridRetriever.search()` as MCP tool |
-| `audit_server.py` | 707 | 8012 | Reads AuditRegistry on Sepolia via Web3 |
-| `graph_inspector_server.py` | 527 | 8013 | GNN attention hotspots or Slither fallback |
+| `audit_server.py` | 717 | 8012 | Reads AuditRegistry on Sepolia via Web3 |
+| `graph_inspector_server.py` | 544 | 8013 | GNN attention hotspots or Slither fallback |
 
 ## Server Details
 

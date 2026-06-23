@@ -1,0 +1,649 @@
+{
+  "contract": "06_tricky_call_in_fallback.sol",
+  "contract_address": "0x042912e96108863a243688c61098ba12bd04fe76",
+  "timestamp": "2026-06-22T12:33:30.254197+00:00",
+  "total_wall_s": 1.4403276443481445,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['controlled-delegatecall'] aderyn=['contract-locks-ether'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "controlled-delegatecall"
+    ],
+    "aderyn": [
+      "contract-locks-ether"
+    ]
+  },
+  "static_findings_count": 18,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "assembly",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "InnocentForwarder._splitSignature(bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#74-82) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_0bjbbpil.sol#76-80)\n",
+      "lines": [
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "function_names": [
+        "_splitSignature"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "assembly",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "InnocentForwarder.fallback(bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#84-92) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_0bjbbpil.sol#87-89)\n",
+      "lines": [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ],
+      "function_names": [
+        "fallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "controlled-delegatecall",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "InnocentForwarder.fallback(bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#84-92) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = msg.sender.delegatecall(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#85)\n",
+      "lines": [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ],
+      "function_names": [
+        "fallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_0bjbbpil.sol#7)\n",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in InnocentForwarder.whitelistedCall(address,bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#40-45):\n\t- (ok,ret) = target.call(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#42)\n",
+      "lines": [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45
+      ],
+      "function_names": [
+        "whitelistedCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in InnocentForwarder.fallback(bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#84-92):\n\t- (ok,ret) = msg.sender.delegatecall(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#85)\n",
+      "lines": [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ],
+      "function_names": [
+        "fallback"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in InnocentForwarder.batchWhitelistedCall(address[],bytes[]) (../../../../../tmp/sentinel_static_0bjbbpil.sol#47-54):\n\t- (ok,None) = targets[i].call(datas[i]) (../../../../../tmp/sentinel_static_0bjbbpil.sol#51)\n",
+      "lines": [
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "batchWhitelistedCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in InnocentForwarder.executeMetaTx(address,bytes,uint256,bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#56-65):\n\t- (ok,ret) = target.call(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#62)\n",
+      "lines": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ],
+      "function_names": [
+        "executeMetaTx"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-zero-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "InnocentForwarder.executeMetaTx(address,bytes,uint256,bytes).target (../../../../../tmp/sentinel_static_0bjbbpil.sol#56) lacks a zero-check on :\n\t\t- (ok,ret) = target.call(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#62)\n",
+      "lines": [
+        56,
+        62
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "InnocentForwarder.batchWhitelistedCall(address[],bytes[]) (../../../../../tmp/sentinel_static_0bjbbpil.sol#47-54) has external calls inside a loop: (ok,None) = targets[i].call(datas[i]) (../../../../../tmp/sentinel_static_0bjbbpil.sol#51)\n",
+      "lines": [
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "batchWhitelistedCall"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "contract-locks-ether",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "It appears that the contract includes a payable function to accept Ether but lacks a corresponding function to withdraw it, which leads to the Ether being locked in the contract. To resolve this issue, please implement a public or external function that allows for the withdrawal of Ether from the contract.",
+      "lines": [
+        9
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        26,
+        32,
+        36,
+        40,
+        47
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "ecrecover",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "The `ecrecover` function is susceptible to signature malleability. This means that the same message can be signed in multiple ways, allowing an attacker to change the message signature without invalidating it. This can lead to unexpected behavior in smart contracts, such as the loss of funds or the ability to bypass access control. Consider using OpenZeppelin's ECDSA library instead of the built-in function.",
+      "lines": [
+        71
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "literal-instead-of-constant",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Define and use `constant` variables instead of using literals. If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract.",
+      "lines": [
+        81
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        49
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        32,
+        36,
+        56
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x042912e96108863a243688c61098ba12bd04fe76",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "assembly",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "InnocentForwarder._splitSignature(bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#74-82) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_0bjbbpil.sol#76-80)\n",
+        "lines": [
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "_splitSignature"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "assembly",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "InnocentForwarder.fallback(bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#84-92) uses assembly\n\t- INLINE ASM (../../../../../tmp/sentinel_static_0bjbbpil.sol#87-89)\n",
+        "lines": [
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92
+        ],
+        "function_names": [
+          "fallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "InnocentForwarder.fallback(bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#84-92) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = msg.sender.delegatecall(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#85)\n",
+        "lines": [
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92
+        ],
+        "function_names": [
+          "fallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_0bjbbpil.sol#7)\n",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in InnocentForwarder.whitelistedCall(address,bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#40-45):\n\t- (ok,ret) = target.call(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#42)\n",
+        "lines": [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        "function_names": [
+          "whitelistedCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in InnocentForwarder.fallback(bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#84-92):\n\t- (ok,ret) = msg.sender.delegatecall(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#85)\n",
+        "lines": [
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92
+        ],
+        "function_names": [
+          "fallback"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in InnocentForwarder.batchWhitelistedCall(address[],bytes[]) (../../../../../tmp/sentinel_static_0bjbbpil.sol#47-54):\n\t- (ok,None) = targets[i].call(datas[i]) (../../../../../tmp/sentinel_static_0bjbbpil.sol#51)\n",
+        "lines": [
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "batchWhitelistedCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in InnocentForwarder.executeMetaTx(address,bytes,uint256,bytes) (../../../../../tmp/sentinel_static_0bjbbpil.sol#56-65):\n\t- (ok,ret) = target.call(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#62)\n",
+        "lines": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65
+        ],
+        "function_names": [
+          "executeMetaTx"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-zero-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "InnocentForwarder.executeMetaTx(address,bytes,uint256,bytes).target (../../../../../tmp/sentinel_static_0bjbbpil.sol#56) lacks a zero-check on :\n\t\t- (ok,ret) = target.call(data) (../../../../../tmp/sentinel_static_0bjbbpil.sol#62)\n",
+        "lines": [
+          56,
+          62
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "InnocentForwarder.batchWhitelistedCall(address[],bytes[]) (../../../../../tmp/sentinel_static_0bjbbpil.sol#47-54) has external calls inside a loop: (ok,None) = targets[i].call(datas[i]) (../../../../../tmp/sentinel_static_0bjbbpil.sol#51)\n",
+        "lines": [
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "batchWhitelistedCall"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "contract-locks-ether",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "It appears that the contract includes a payable function to accept Ether but lacks a corresponding function to withdraw it, which leads to the Ether being locked in the contract. To resolve this issue, please implement a public or external function that allows for the withdrawal of Ether from the contract.",
+        "lines": [
+          9
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          26,
+          32,
+          36,
+          40,
+          47
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "ecrecover",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "The `ecrecover` function is susceptible to signature malleability. This means that the same message can be signed in multiple ways, allowing an attacker to change the message signature without invalidating it. This can lead to unexpected behavior in smart contracts, such as the loss of funds or the ability to bypass access control. Consider using OpenZeppelin's ECDSA library instead of the built-in function.",
+        "lines": [
+          71
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "literal-instead-of-constant",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Define and use `constant` variables instead of using literals. If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract.",
+        "lines": [
+          81
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          49
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          32,
+          36,
+          56
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['controlled-delegatecall'] aderyn=['contract-locks-ether'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "2 High/Medium static finding(s) not tied to a verdict: controlled-delegatecall, contract-locks-ether"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

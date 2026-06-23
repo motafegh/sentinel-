@@ -116,13 +116,34 @@ def get_llm(model: str = MODEL_FAST, temperature: float = 0.0, max_tokens: int |
     )
 
 
-def get_fast_llm() -> ChatOpenAI:
+def get_fast_llm(max_tokens: int | None = None) -> ChatOpenAI:
     """
     Gemma-4-E2B — fast, lightweight.
-    Use for: MLIntelligenceAgent (API calls only, no code reasoning needed).
+    Use for: MLIntelligenceAgent (API calls only, no code reasoning needed),
+    cross_validator debate (Prosecutor/Defender/Judge).
     Speed: ~12 tokens/sec on RTX 3070 (fully on GPU, 3.18 GB VRAM).
+
+    WS4.1 (2026-06-22): max_tokens pass-through. The 3 debate roles previously
+    had no output-length cap — each could generate unlimited text, contributing
+    to 75-115s per role. After a 384/512/768/1024 sweep on vulnerable_reentrant.sol:
+
+      384/512 → LM Studio returns content="" (model's internal preamble hits the
+                cap before producing output). Debate effectively doesn't run —
+                verdict falls through to consensus.
+      768    → Sweet spot. Prosecutor 657 chars, defender 900 chars, both
+                non-empty, judge produces valid JSON. ~28s debate.
+      1024   → Verbose (2021/1682 chars), no verdict improvement over 768.
+
+    Actual defaults live in `nodes.py` cross_validator:
+      DEBATE_PROSECUTOR_MAX_TOKENS = 768
+      DEBATE_DEFENDER_MAX_TOKENS  = 768
+      DEBATE_JUDGE_MAX_TOKENS     = 0    (0 = uncapped — judge needs the room
+                                            for its reasoning before the JSON;
+                                            capping makes it return empty)
+
+    Overridable per call via this `max_tokens` parameter.
     """
-    return get_llm(model=MODEL_FAST, temperature=0.0)
+    return get_llm(model=MODEL_FAST, temperature=0.0, max_tokens=max_tokens)
 
 
 def get_strong_llm(max_tokens: int | None = None) -> ChatOpenAI:

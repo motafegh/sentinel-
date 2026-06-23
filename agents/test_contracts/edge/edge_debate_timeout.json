@@ -1,0 +1,10 @@
+{
+  "labels": ["Reentrancy"],
+  "source": "sentinel_edge_case",
+  "category": "reentrancy_proxy_complex",
+  "original_name": "edge_debate_timeout.sol",
+  "tier": "edge",
+  "ground_truth": "vulnerable",
+  "edge_case_for": "WS1.3",
+  "notes": "Long, multi-contract file. In LLM-on mode the debate should run long; tests the INCONCLUSIVE-on-timeout path. The reentrancy bug is in UpgradeableVault.withdraw() (state updated after external call)."
+}

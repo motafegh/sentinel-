@@ -1,0 +1,1 @@
+/home/motafeq/projects/sentinel/manual_hand_written_contracts/CallToUnknown/06_tricky_call_in_fallback.sol

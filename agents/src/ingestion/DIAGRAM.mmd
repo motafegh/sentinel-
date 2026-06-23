@@ -1,0 +1,179 @@
+flowchart TB
+  subgraph TITLE["Two Data-In Paths into RAG Knowledge Base"]
+    T["Path A: IngestionPipeline — DeFiHackLabs → dedup → chunk → embed → index
+Path B: FeedbackLoop — Sepolia AuditRegistry → embed → index
+Three schedulers for Path A: cron / Dagster / GitHub Actions"]
+  end
+
+  subgraph PATHA["Path A — IngestionPipeline (DeFiHackLabs)"]
+    direction TB
+    DHL["DeFiHackLabs GitHub
+sunWeb3Sec/DeFiHackLabs
+src/test/*.sol + src/past/*.sol
+726 files"] --> FETCH["DeFiHackLabsFetcher.fetch()
+parses 3 comment formats:
+@Summary / @KeyInfo / free-form
+→ list[Document]"]
+
+    FETCH --> DEDUP1["Deduplicator
+filter_new(docs)
+SHA256(file_path)[:16] in seen_hashes.json
+→ returns only new docs"]
+
+    DEDUP1 --> CHUNK1["Chunker
+RecursiveCharacterTextSplitter
+1536-char chunks, 128 overlap"]
+
+    CHUNK1 --> EMBED1["Embedder
+LM Studio → nomic-embed-text-v1.5
+768-dim, 3-attempt retry (1s, 2s)"]
+
+    EMBED1 --> WRITE1["Write under FileLock
+(data/index/.index.lock, 300s timeout)
+
+1. Append to FAISS (faiss.index)
+2. Append chunks.pkl
+3. FULL rebuild BM25 (bm25.pkl)
+   — BM25Okapi doesn't support incremental
+4. Mark new hashes in seen_hashes.json
+5. Update index_metadata.json
+
+All writes: _atomic_write_binary()
+  .tmp → tmp.replace(path) — POSIX-atomic"]
+  end
+
+  subgraph PATHB["Path B — FeedbackLoop (On-Chain AuditRegistry)"]
+    direction TB
+    SEP["Sepolia
+AuditRegistry (UUPS proxy)
+0x14E5...fAf
+AuditSubmitted events"] --> POLL["OnChainListener
+polls every 30s
+eth_getLogs (chunks of 1999 blocks, FIX-4)
+exponential backoff on RPC failure (FIX-5)
+state in data/feedback_state.json"]
+
+    POLL --> SCORE["Score threshold:
+scoreFieldElement ≥ 5734
+(= 0.70 × 8192 EZKL scale)
+Only high-confidence findings enter KB"]
+
+    SCORE --> RECOVER["Recover vulnerability_class:
+read data/reports/{address}.json
+(written by synthesizer, BRIDGE fix)
+fallback 'unknown' for legacy"]
+
+    RECOVER --> INGEST["FeedbackIngester
+construct Document from event payload
+metadata: {vuln_type, date, severity, source: 'OnChainAudit'}"]
+
+    INGEST --> DEDUP2["Deduplicator (single instance, FIX-2)
+dedup by contract_address + tx_hash"]
+
+    DEDUP2 --> CHUNK2["Chunker + Embedder
+~1-2 short chunks per finding"]
+
+    CHUNK2 --> WRITE2["Write under FileLock (same lock as Path A)
+Same atomic write pattern
+BM25 FULLY REBUILT (FIX-1: on-chain findings
+were invisible to keyword search forever)"]
+  end
+
+  subgraph SCHEDULERS["Three Schedulers for Path A"]
+    direction TB
+    S1["① scheduler_cron.py
+host-level cron: 0 2 * * *
+poetry run python -m src.ingestion.pipeline"]
+    S2["② scheduler_dagster.py
+Dagster asset: rag_index
+schedule: daily_ingestion_schedule
+cron: 0 2 * * * (02:00 UTC)"]
+    S3["③ GitHub Actions
+.github/workflows/ (top-level config)"]
+  end
+
+  subgraph BRIDGE["The REPORTS_DIR Bridge"]
+    direction TB
+    B1["synthesizer (orchestration/nodes.py)
+writes final_report JSON"] --> REP["data/reports/{address}.json"]
+    REP --> B2["FeedbackIngester (feedback_loop.py)
+reads by contract_address
+recovers vulnerability_class
+→ metadata gets real Track 3 class name
+(was hardcoded 'unknown' before BRIDGE)"]
+  end
+
+  subgraph STATE["State Files"]
+    direction TB
+    S_FILE1["data/index/faiss.index — FAISS vector index"]
+    S_FILE2["data/index/bm25.pkl — BM25 keyword index (FULL REBUILD)"]
+    S_FILE3["data/index/chunks.pkl — chunk list"]
+    S_FILE4["data/index/seen_hashes.json — Deduplicator state"]
+    S_FILE5["data/index/index_metadata.json — build_id, last_run"]
+    S_FILE6["data/index/.index.lock — FileLock"]
+    S_FILE7["data/reports/{address}.json — final_report (BRIDGE)"]
+    S_FILE8["data/feedback_state.json — last_block, last_run_at"]
+  end
+
+  subgraph DEDUP_ANATOMY["Deduplicator — How It Works"]
+    direction TB
+    D1["First run: seen_hashes.json missing
+→ _load() returns {}
+→ filter_new(726 docs) → all 726 returned
+→ 726 docs chunked, embedded, indexed"]
+    D2["Subsequent runs: seen_hashes.json has 726 entries
+→ DeFiHackLabs has 4 new files
+→ filter_new(730 docs) → 4 new returned
+→ 4 docs chunked, embedded, appended
+→ ~0.5s embedding (vs 12s full re-embed)"]
+  end
+
+  subgraph SAFETY["FileLock + Atomic Writes — Safety Pattern"]
+    direction TB
+    SF1["Step 1: Acquire FileLock(data/index/.index.lock, timeout=300s)
+blocks if another process is mid-write"]
+    SF2["Step 2: _atomic_write_binary(path, write_fn)
+write to .tmp sibling → tmp.replace(path) POSIX-atomic
+on exception: tmp.unlink(missing_ok=True)"]
+    SF3["Step 3: Release FileLock (context manager exit)
+Why safe: concurrent writes → FileLock blocks
+Crash mid-write → only .tmp orphaned, real file intact"]
+  end
+
+  subgraph CONFIG["Configuration"]
+    CFG1["SEPOLIA_RPC: RPC endpoint for event polling"]
+    CFG2["AUDIT_REGISTRY: 0x14E5...fAf (contract address)"]
+    CFG3["LM_STUDIO_BASE_URL: embedding endpoint"]
+    CFG4["SCORE_THRESHOLD: 5734 (=0.70×8192) hardcoded"]
+    CFG5["POLL_INTERVAL_SECONDS: 30 hardcoded"]
+    CFG6["MAX_BLOCK_RANGE: 1999 hardcoded (FIX-4)"]
+    CFG7["MAX_BACKOFF_SECONDS: 300 hardcoded (FIX-5)"]
+    CFG8["INDEX_LOCK_TIMEOUT: 300 hardcoded"]
+  end
+
+  subgraph RETURN["Pipeline Return Value"]
+    RTN["IngestionPipeline.run() returns:
+{fetched: 726, new_docs: 12, new_chunks: 15,
+ new_vectors: 15, skipped: 714, errors: [],
+ duration_sec: 12.3}
+Same shape used by all 3 schedulers"]
+  end
+
+  WRITE1 --> IDX["data/index/"]
+  WRITE2 --> IDX
+  POLL -. "reads/writes" .-> FSTATE["data/feedback_state.json"]
+  SILO["FileLock serializes concurrent writes
+Path A and Path B share the same lock
+→ No data corruption"]
+
+  subgraph FAILURES["Failure Modes"]
+    DIR TB
+    F1["concurrent build_index + pipeline → FileLock blocks (300s timeout)"]
+    F2["Write fails mid-pipeline → .tmp orphaned, real file intact"]
+    F3["LM Studio down → Embedder retries 3× then raises"]
+    F4["DeFiHackLabs GitHub unreachable → pipeline fails"]
+    F5["BM25 rebuild fails → bm25.pkl left as old (atomic write)"]
+    F6["Sepolia RPC down → exponential backoff 30s → 300s max"]
+    F7["No report file for on-chain event → vuln_type='unknown'"]
+    F8["seen_hashes.json corrupted → _load() returns {} → all re-embedded"]
+  end

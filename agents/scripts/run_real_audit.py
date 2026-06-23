@@ -32,6 +32,7 @@ CLI FLAGS (all have env-var fallbacks)
     --mcp-rag-url URL         default: http://localhost:$MCP_RAG_PORT (8011)
     --mcp-audit-url URL       default: http://localhost:$MCP_AUDIT_PORT (8012)
     --mcp-graph-url URL       default: http://localhost:$MCP_GRAPH_INSPECTOR_PORT (8013)
+    --mcp-representation-url URL  default: http://localhost:$MCP_REPRESENTATION_PORT (8014)
     --output-dir DIR          default: ./test_audit_reports
     --timeout-s N             default: 300 (per-audit wall-clock limit)
     --no-llm                  skip cross_validator + synthesizer LLM calls (fast path)
@@ -103,6 +104,7 @@ _DEFAULT_ENV = {
     "MCP_RAG_PORT":           os.getenv("MCP_RAG_PORT", "8011"),
     "MCP_AUDIT_PORT":         os.getenv("MCP_AUDIT_PORT", "8012"),
     "MCP_GRAPH_INSPECTOR_PORT": os.getenv("MCP_GRAPH_INSPECTOR_PORT", "8013"),
+    "MCP_REPRESENTATION_PORT":  os.getenv("MCP_REPRESENTATION_PORT", "8014"),
 }
 
 # Make agents/ importable for src.* modules — set BEFORE any src import
@@ -135,14 +137,23 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "contracts", nargs="*", type=Path,
-        help="Path(s) to .sol contract(s). Default: test_contracts/{vulnerable_reentrant,safe_storage}.sol",
+        help="Path(s) to .sol contract(s). Default: test_contracts/{vulnerable_reentrant,safe_storage}.sol. "
+             "Mutually exclusive with --corpus (if --corpus is given, positional contracts are ignored).",
     )
+    p.add_argument("--corpus", type=Path, default=None, metavar="DIR",
+                   help="Run every *.sol under DIR (recursive) as a corpus batch. "
+                        "Used by the WS0 gate infra (see docs/plan/agents/2026-06-21-agents-redesign/"
+                        "03_GATE_INFRASTRUCTURE_PLAN.md). Per-contract reports land in --output-dir. "
+                        "Intended use: the 66-contract benchmark at "
+                        "data_module/benchmarks/benchmark_v0.1_quickstart/contracts/by_class/ "
+                        "or agents/test_contracts/edge/. Combine with --no-llm for a fast deterministic gate.")
     p.add_argument("--lm-studio-url",     metavar="URL", help="LM Studio OpenAI-compatible base URL")
     p.add_argument("--ml-api-url",        metavar="URL", help="SENTINEL ML inference API URL")
     p.add_argument("--mcp-inference-url", metavar="URL", help="MCP inference server URL")
     p.add_argument("--mcp-rag-url",       metavar="URL", help="MCP RAG server URL")
     p.add_argument("--mcp-audit-url",     metavar="URL", help="MCP audit server URL")
     p.add_argument("--mcp-graph-url",     metavar="URL", help="MCP graph inspector server URL")
+    p.add_argument("--mcp-representation-url", metavar="URL", help="MCP representation server URL (data_module CFG wrapper, port 8014)")
     p.add_argument("--output-dir",        type=Path, default=Path("test_audit_reports"),
                    help="Where to save JSON reports and run log")
     p.add_argument("--timeout-s",         type=float, metavar="S", default=None,
@@ -199,6 +210,7 @@ def _resolve_urls(args: argparse.Namespace) -> dict[str, str]:
         "mcp_rag":       args.mcp_rag_url       or f"http://localhost:{_DEFAULT_ENV['MCP_RAG_PORT']}",
         "mcp_audit":     args.mcp_audit_url     or f"http://localhost:{_DEFAULT_ENV['MCP_AUDIT_PORT']}",
         "mcp_graph":     args.mcp_graph_url     or f"http://localhost:{_DEFAULT_ENV['MCP_GRAPH_INSPECTOR_PORT']}",
+        "mcp_representation": args.mcp_representation_url or f"http://localhost:{_DEFAULT_ENV['MCP_REPRESENTATION_PORT']}",
     }
     # Push into os.environ so the agents module sees them at import time
     os.environ["LM_STUDIO_BASE_URL"]    = urls["lm_studio"]
@@ -329,6 +341,7 @@ def _check_services(urls: dict[str, str]) -> dict[str, tuple[bool, str]]:
         ("mcp_rag",       urls["mcp_rag"]       + "/health"),
         ("mcp_audit",     urls["mcp_audit"]     + "/health"),
         ("mcp_graph",     urls["mcp_graph"]     + "/health"),
+        ("mcp_representation", urls["mcp_representation"] + "/health"),
         ("lm_studio",     urls["lm_studio"]     + "/models"),
     ]
     results = {}
@@ -596,9 +609,12 @@ async def run_audit(contract_path: Path, urls: dict[str, str], args: argparse.Na
         "verdicts":                 verdicts,
         "quick_screen_hits":        result.get("quick_screen_hits", {}),
         "static_findings_count":    len(result.get("static_findings", []) or []),
+        "static_findings":          result.get("static_findings", []) or [],
         "rag_results_count":        len(result.get("rag_results", []) or []),
         "audit_history_count":      len(result.get("audit_history", []) or []),
         "graph_explanations_classes": list((result.get("graph_explanations", {}) or {}).keys()),
+        "consensus_verdict":         result.get("consensus_verdict", {}),
+        "debate_transcript":         result.get("debate_transcript", {}),
         "confirmations":            result.get("confirmations", {}),
         "contradictions":           result.get("contradictions", {}),
         "final_report":             final_report,
@@ -676,7 +692,37 @@ async def main():
         _patch_no_llm()
 
     # Contracts
-    if args.contracts:
+    if args.corpus:
+        # --corpus mode (WS0 gate infra): walk every *.sol under the dir,
+        # recursively (following symlinks — the combined corpus uses
+        # symlinked class dirs), sorted for deterministic ordering. The
+        # by_class/<CLASS>/ directory structure is the label source for the
+        # comparator (eval_benchmark.py); the per-contract .json sidecar
+        # alongside each .sol carries labels + ground_truth (or `// expect:`
+        # header in the .sol itself for the manual_hand_written_contracts
+        # corpus).
+        if not args.corpus.is_dir():
+            _loguru.error(f"--corpus dir does not exist: {args.corpus}")
+            sys.exit(1)
+        import os as _os
+        _sol_paths = [
+            Path(root) / f
+            for root, _dirs, files in _os.walk(args.corpus, followlinks=True)
+            for f in files
+            if f.endswith(".sol")
+        ]
+        contracts = sorted(_sol_paths)
+        if not contracts:
+            _loguru.error(f"--corpus dir contains no .sol files: {args.corpus}")
+            sys.exit(1)
+        # Class breakdown from the parent dir name (by_class/<CLASS>/<file>.sol).
+        from collections import Counter
+        class_counts = Counter(c.parent.name for c in contracts)
+        _loguru.info(
+            f"--corpus mode: {len(contracts)} contract(s) under {args.corpus} | "
+            f"class breakdown: {dict(class_counts)}"
+        )
+    elif args.contracts:
         contracts = args.contracts
     else:
         contracts = [

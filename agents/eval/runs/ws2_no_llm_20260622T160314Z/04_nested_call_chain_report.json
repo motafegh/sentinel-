@@ -1,0 +1,1819 @@
+{
+  "contract": "04_nested_call_chain.sol",
+  "contract_address": "0xe6be9d5c24a0692c2a974b6976a6f829d8a5f74c",
+  "timestamp": "2026-06-22T12:34:35.170005+00:00",
+  "total_wall_s": 1.2229180335998535,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change', 'unchecked-low-level-call'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-no-eth",
+      "unchecked-transfer"
+    ],
+    "aderyn": [
+      "reentrancy-state-change",
+      "unchecked-low-level-call"
+    ]
+  },
+  "static_findings_count": 45,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "NestedCallStrategy.strategy (../../../../../tmp/sentinel_static_a549la_6.sol#25) should be immutable \n",
+      "lines": [
+        25
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "NestedCallStrategy.owner (../../../../../tmp/sentinel_static_a549la_6.sol#24) should be immutable \n",
+      "lines": [
+        24
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_a549la_6.sol#8)\n",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NestedCallStrategy.rescueETH() (../../../../../tmp/sentinel_static_a549la_6.sol#102-104):\n\t- owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_a549la_6.sol#103)\n",
+      "lines": [
+        102,
+        103,
+        104
+      ],
+      "function_names": [
+        "rescueETH"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NestedCallStrategy.reinvest() (../../../../../tmp/sentinel_static_a549la_6.sol#57-60):\n\t- owner.call{value: profit}() (../../../../../tmp/sentinel_static_a549la_6.sol#59)\n",
+      "lines": [
+        57,
+        58,
+        59,
+        60
+      ],
+      "function_names": [
+        "reinvest"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "missing-inheritance",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "NestedCallStrategy (../../../../../tmp/sentinel_static_a549la_6.sol#23-108) should inherit from IStrategy (../../../../../tmp/sentinel_static_a549la_6.sol#17-21)\n",
+      "lines": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82) has external calls inside a loop: IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#79)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "function_names": [
+        "multiAssetWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.harvestAndTransfer(address[],address) (../../../../../tmp/sentinel_static_a549la_6.sol#84-91) has external calls inside a loop: IERC20(tokens[i]).transfer(recipient,balance) (../../../../../tmp/sentinel_static_a549la_6.sol#88)\n",
+      "lines": [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91
+      ],
+      "function_names": [
+        "harvestAndTransfer"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) has external calls inside a loop: IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#66)\n",
+      "lines": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "multiAssetDeposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82) has external calls inside a loop: amount = strategy.withdraw(tokens[i],shares[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#77)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "function_names": [
+        "multiAssetWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.harvestAndTransfer(address[],address) (../../../../../tmp/sentinel_static_a549la_6.sol#84-91) has external calls inside a loop: balance = IERC20(tokens[i]).balanceOf(address(this)) (../../../../../tmp/sentinel_static_a549la_6.sol#86)\n",
+      "lines": [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91
+      ],
+      "function_names": [
+        "harvestAndTransfer"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) has external calls inside a loop: shares = strategy.deposit(tokens[i],amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#67)\n",
+      "lines": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "multiAssetDeposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) has external calls inside a loop: IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#65)\n",
+      "lines": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "multiAssetDeposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47):\n\tExternal calls:\n\t- IERC20(token).transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#42)\n\t- IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#43)\n\t- shares = strategy.deposit(token,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#44)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][token] += shares (../../../../../tmp/sentinel_static_a549la_6.sol#45)\n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "deposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47):\n\tExternal calls:\n\t- IERC20(token).transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#42)\n\t- IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#43)\n\t- shares = strategy.deposit(token,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#44)\n\tEvent emitted after the call(s):\n\t- Deposited(msg.sender,token,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#46)\n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "deposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82):\n\tExternal calls:\n\t- amount = strategy.withdraw(tokens[i],shares[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#77)\n\t- IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#79)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,tokens[i],amount) (../../../../../tmp/sentinel_static_a549la_6.sol#80)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "function_names": [
+        "multiAssetWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71):\n\tExternal calls:\n\t- IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#65)\n\t- IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#66)\n\t- shares = strategy.deposit(tokens[i],amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#67)\n\tEvent emitted after the call(s):\n\t- Deposited(msg.sender,tokens[i],amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#69)\n",
+      "lines": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "multiAssetDeposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static_a549la_6.sol#51)\n\t- IERC20(token).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#53)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,token,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#54)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static_a549la_6.sol#51)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][token] -= shares (../../../../../tmp/sentinel_static_a549la_6.sol#52)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static_a549la_6.sol#96)\n\tState variables written after the call(s):\n\t- depositedShares[owner][token] = 0 (../../../../../tmp/sentinel_static_a549la_6.sol#97)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55)\n",
+      "lines": [
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100
+      ],
+      "function_names": [
+        "emergencyWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71):\n\tExternal calls:\n\t- IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#65)\n\t- IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#66)\n\t- shares = strategy.deposit(tokens[i],amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#67)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][tokens[i]] += shares (../../../../../tmp/sentinel_static_a549la_6.sol#68)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55)\n",
+      "lines": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "multiAssetDeposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82):\n\tExternal calls:\n\t- amount = strategy.withdraw(tokens[i],shares[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#77)\n\t- IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#79)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][tokens[i]] -= shares[i] (../../../../../tmp/sentinel_static_a549la_6.sol#78)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "function_names": [
+        "multiAssetWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.reinvest() (../../../../../tmp/sentinel_static_a549la_6.sol#57-60) ignores return value by owner.call{value: profit}() (../../../../../tmp/sentinel_static_a549la_6.sol#59)\n",
+      "lines": [
+        57,
+        58,
+        59,
+        60
+      ],
+      "function_names": [
+        "reinvest"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-lowlevel",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.rescueETH() (../../../../../tmp/sentinel_static_a549la_6.sol#102-104) ignores return value by owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_a549la_6.sol#103)\n",
+      "lines": [
+        102,
+        103,
+        104
+      ],
+      "function_names": [
+        "rescueETH"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82) ignores return value by IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#79)\n",
+      "lines": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "function_names": [
+        "multiAssetWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.harvestAndTransfer(address[],address) (../../../../../tmp/sentinel_static_a549la_6.sol#84-91) ignores return value by IERC20(tokens[i]).transfer(recipient,balance) (../../../../../tmp/sentinel_static_a549la_6.sol#88)\n",
+      "lines": [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91
+      ],
+      "function_names": [
+        "harvestAndTransfer"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) ignores return value by IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#65)\n",
+      "lines": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "multiAssetDeposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100) ignores return value by IERC20(token).transfer(owner,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#98)\n",
+      "lines": [
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100
+      ],
+      "function_names": [
+        "emergencyWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47) ignores return value by IERC20(token).transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#42)\n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "deposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unchecked-transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55) ignores return value by IERC20(token).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#53)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unused-return",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) ignores return value by IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#66)\n",
+      "lines": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "function_names": [
+        "multiAssetDeposit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "unused-return",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47) ignores return value by IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#43)\n",
+      "lines": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "deposit"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        42,
+        43,
+        44,
+        51,
+        65,
+        66,
+        67,
+        77,
+        79,
+        96
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unchecked-low-level-call",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "The return value of the low-level call is not checked, so if the call fails, the Ether will be locked in the contract. If the low level is used to prevent blocking operations, consider logging failed calls. Ensure that the return value of a low-level call is checked or logged.",
+      "lines": [
+        59,
+        103
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        57,
+        84,
+        93,
+        102
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        64,
+        75
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "missing-inheritance",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There is an interface / abstract contract that is potentially missing (not included in) the inheritance of this contract.",
+      "lines": [
+        23
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        75
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        93
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        38
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        24,
+        25
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unchecked-return",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Function returns a value but it is ignored. Consider checking the return value.",
+      "lines": [
+        42,
+        43,
+        53,
+        65,
+        66,
+        79,
+        88,
+        98
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unsafe-erc20-operation",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+      "lines": [
+        42,
+        43,
+        53,
+        65,
+        66,
+        79,
+        88,
+        98
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xe6be9d5c24a0692c2a974b6976a6f829d8a5f74c",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "NestedCallStrategy.strategy (../../../../../tmp/sentinel_static_a549la_6.sol#25) should be immutable \n",
+        "lines": [
+          25
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "NestedCallStrategy.owner (../../../../../tmp/sentinel_static_a549la_6.sol#24) should be immutable \n",
+        "lines": [
+          24
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_a549la_6.sol#8)\n",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NestedCallStrategy.rescueETH() (../../../../../tmp/sentinel_static_a549la_6.sol#102-104):\n\t- owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_a549la_6.sol#103)\n",
+        "lines": [
+          102,
+          103,
+          104
+        ],
+        "function_names": [
+          "rescueETH"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NestedCallStrategy.reinvest() (../../../../../tmp/sentinel_static_a549la_6.sol#57-60):\n\t- owner.call{value: profit}() (../../../../../tmp/sentinel_static_a549la_6.sol#59)\n",
+        "lines": [
+          57,
+          58,
+          59,
+          60
+        ],
+        "function_names": [
+          "reinvest"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "missing-inheritance",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "NestedCallStrategy (../../../../../tmp/sentinel_static_a549la_6.sol#23-108) should inherit from IStrategy (../../../../../tmp/sentinel_static_a549la_6.sol#17-21)\n",
+        "lines": [
+          17,
+          18,
+          19,
+          20,
+          21,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82) has external calls inside a loop: IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#79)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "multiAssetWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.harvestAndTransfer(address[],address) (../../../../../tmp/sentinel_static_a549la_6.sol#84-91) has external calls inside a loop: IERC20(tokens[i]).transfer(recipient,balance) (../../../../../tmp/sentinel_static_a549la_6.sol#88)\n",
+        "lines": [
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91
+        ],
+        "function_names": [
+          "harvestAndTransfer"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) has external calls inside a loop: IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#66)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82) has external calls inside a loop: amount = strategy.withdraw(tokens[i],shares[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#77)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "multiAssetWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.harvestAndTransfer(address[],address) (../../../../../tmp/sentinel_static_a549la_6.sol#84-91) has external calls inside a loop: balance = IERC20(tokens[i]).balanceOf(address(this)) (../../../../../tmp/sentinel_static_a549la_6.sol#86)\n",
+        "lines": [
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91
+        ],
+        "function_names": [
+          "harvestAndTransfer"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) has external calls inside a loop: shares = strategy.deposit(tokens[i],amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#67)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) has external calls inside a loop: IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#65)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47):\n\tExternal calls:\n\t- IERC20(token).transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#42)\n\t- IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#43)\n\t- shares = strategy.deposit(token,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#44)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][token] += shares (../../../../../tmp/sentinel_static_a549la_6.sol#45)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47):\n\tExternal calls:\n\t- IERC20(token).transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#42)\n\t- IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#43)\n\t- shares = strategy.deposit(token,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#44)\n\tEvent emitted after the call(s):\n\t- Deposited(msg.sender,token,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#46)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82):\n\tExternal calls:\n\t- amount = strategy.withdraw(tokens[i],shares[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#77)\n\t- IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#79)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,tokens[i],amount) (../../../../../tmp/sentinel_static_a549la_6.sol#80)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "multiAssetWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71):\n\tExternal calls:\n\t- IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#65)\n\t- IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#66)\n\t- shares = strategy.deposit(tokens[i],amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#67)\n\tEvent emitted after the call(s):\n\t- Deposited(msg.sender,tokens[i],amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#69)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static_a549la_6.sol#51)\n\t- IERC20(token).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#53)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,token,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#54)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static_a549la_6.sol#51)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][token] -= shares (../../../../../tmp/sentinel_static_a549la_6.sol#52)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100):\n\tExternal calls:\n\t- amount = strategy.withdraw(token,shares) (../../../../../tmp/sentinel_static_a549la_6.sol#96)\n\tState variables written after the call(s):\n\t- depositedShares[owner][token] = 0 (../../../../../tmp/sentinel_static_a549la_6.sol#97)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55)\n",
+        "lines": [
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100
+        ],
+        "function_names": [
+          "emergencyWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71):\n\tExternal calls:\n\t- IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#65)\n\t- IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#66)\n\t- shares = strategy.deposit(tokens[i],amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#67)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][tokens[i]] += shares (../../../../../tmp/sentinel_static_a549la_6.sol#68)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82):\n\tExternal calls:\n\t- amount = strategy.withdraw(tokens[i],shares[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#77)\n\t- IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#79)\n\tState variables written after the call(s):\n\t- depositedShares[msg.sender][tokens[i]] -= shares[i] (../../../../../tmp/sentinel_static_a549la_6.sol#78)\n\tNestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26) can be used in cross function reentrancies:\n\t- NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47)\n\t- NestedCallStrategy.depositedShares (../../../../../tmp/sentinel_static_a549la_6.sol#26)\n\t- NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100)\n\t- NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71)\n\t- NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82)\n\t- NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "multiAssetWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.reinvest() (../../../../../tmp/sentinel_static_a549la_6.sol#57-60) ignores return value by owner.call{value: profit}() (../../../../../tmp/sentinel_static_a549la_6.sol#59)\n",
+        "lines": [
+          57,
+          58,
+          59,
+          60
+        ],
+        "function_names": [
+          "reinvest"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-lowlevel",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.rescueETH() (../../../../../tmp/sentinel_static_a549la_6.sol#102-104) ignores return value by owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_a549la_6.sol#103)\n",
+        "lines": [
+          102,
+          103,
+          104
+        ],
+        "function_names": [
+          "rescueETH"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#73-82) ignores return value by IERC20(tokens[i]).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#79)\n",
+        "lines": [
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "multiAssetWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.harvestAndTransfer(address[],address) (../../../../../tmp/sentinel_static_a549la_6.sol#84-91) ignores return value by IERC20(tokens[i]).transfer(recipient,balance) (../../../../../tmp/sentinel_static_a549la_6.sol#88)\n",
+        "lines": [
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91
+        ],
+        "function_names": [
+          "harvestAndTransfer"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) ignores return value by IERC20(tokens[i]).transferFrom(msg.sender,address(this),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#65)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.emergencyWithdraw(address) (../../../../../tmp/sentinel_static_a549la_6.sol#93-100) ignores return value by IERC20(token).transfer(owner,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#98)\n",
+        "lines": [
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100
+        ],
+        "function_names": [
+          "emergencyWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47) ignores return value by IERC20(token).transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#42)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unchecked-transfer",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.withdraw(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#49-55) ignores return value by IERC20(token).transfer(msg.sender,amount) (../../../../../tmp/sentinel_static_a549la_6.sol#53)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unused-return",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.multiAssetDeposit(address[],uint256[]) (../../../../../tmp/sentinel_static_a549la_6.sol#62-71) ignores return value by IERC20(tokens[i]).approve(address(strategy),amounts[i]) (../../../../../tmp/sentinel_static_a549la_6.sol#66)\n",
+        "lines": [
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "function_names": [
+          "multiAssetDeposit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "unused-return",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "NestedCallStrategy.deposit(address,uint256) (../../../../../tmp/sentinel_static_a549la_6.sol#41-47) ignores return value by IERC20(token).approve(address(strategy),amount) (../../../../../tmp/sentinel_static_a549la_6.sol#43)\n",
+        "lines": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "deposit"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          42,
+          43,
+          44,
+          51,
+          65,
+          66,
+          67,
+          77,
+          79,
+          96
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-low-level-call",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "The return value of the low-level call is not checked, so if the call fails, the Ether will be locked in the contract. If the low level is used to prevent blocking operations, consider logging failed calls. Ensure that the return value of a low-level call is checked or logged.",
+        "lines": [
+          59,
+          103
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          57,
+          84,
+          93,
+          102
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          64,
+          75
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "missing-inheritance",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There is an interface / abstract contract that is potentially missing (not included in) the inheritance of this contract.",
+        "lines": [
+          23
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          75
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          93
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          38
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          24,
+          25
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          42,
+          43,
+          53,
+          65,
+          66,
+          79,
+          88,
+          98
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unsafe-erc20-operation",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+        "lines": [
+          42,
+          43,
+          53,
+          65,
+          66,
+          79,
+          88,
+          98
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change', 'unchecked-low-level-call'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "16 High/Medium static finding(s) not tied to a verdict: reentrancy-no-eth, reentrancy-no-eth, reentrancy-no-eth, reentrancy-no-eth, unchecked-lowlevel"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

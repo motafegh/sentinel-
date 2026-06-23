@@ -1,4 +1,4 @@
-// expect: CallToUnknown
+// expect: CallToUnknown,ExternalBug
 // TRICKY: CallToUnknown vulnerability hidden in the fallback function.
 // The contract looks like a simple forwarding wallet, but the fallback
 // makes a delegatecall to the sender's address — an arbitrary, untrusted

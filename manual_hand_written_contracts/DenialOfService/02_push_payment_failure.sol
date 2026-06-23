@@ -1,4 +1,4 @@
-// expect: DenialOfService
+// expect: DenialOfService,Reentrancy
 // Push-payment dividend system that distributes rewards to all token holders.
 // Every distribution iterates the entire holder array and sends ETH.
 // A single holder with a malicious fallback (reverting or consuming 100% gas)

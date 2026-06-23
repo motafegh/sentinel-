@@ -30,8 +30,8 @@ HybridRetriever.search()     → list[Chunk]        (RRF-fused top-k)
 | `retriever.py` | 334 | `HybridRetriever` — FAISS semantic + BM25 keyword + Reciprocal Rank Fusion |
 | `chunker.py` | 199 | `Chunker` — RecursiveCharacterTextSplitter wrapper |
 | `embedder.py` | 228 | `Embedder` — LM Studio embedding with retry logic |
-| `build_index.py` | 604 | Full index rebuild with atomic writes and rollback |
-| `fetchers/base_fetcher.py` | 95 | Abstract `BaseFetcher` + `Document` dataclass |
+| `build_index.py` | 661 | Full index rebuild with atomic writes and rollback |
+| `fetchers/base_fetcher.py` | 94 | Abstract `BaseFetcher` + `Document` dataclass |
 | `fetchers/github_fetcher.py` | 478 | `DeFiHackLabsFetcher` — .sol exploit PoC parser |
 
 ## Knowledge Base
@@ -189,6 +189,12 @@ Step 6: Save      → atomic writes with FileLock + rollback snapshot
 3. Source file count in DeFiHackLabs matches `source_file_count` in metadata
 
 ## `fetchers/` — Data Fetchers
+
+> **⚠ WS2 (2026-06-22):** Only `DeFiHackLabsFetcher` is active. The 5 Phase A.5
+> corpus fetchers (Code4rena/Sherlock/Solodit/Immunefi/SWC) are **disabled** in
+> `build_index.py:_extra_fetchers()` — their seed corpora were synthetic hand-written
+> placeholders, and one caused a hallucinated verdict (Finding #2). Re-enable with
+> real data per `02_RAG_BUILD_PLAN.md`.
 
 ### BaseFetcher (Abstract)
 

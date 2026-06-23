@@ -1,7 +1,7 @@
 # RAG — Retrieval-Augmented Generation
 
 > **Scope:** `agents/src/rag/` — hybrid FAISS + BM25 retriever over DeFi
-> exploit history. Source-of-truth: the code. Last verified: 2026-06-21.
+> exploit history. Source-of-truth: the code. Last verified: 2026-06-23.
 
 ---
 
@@ -16,16 +16,18 @@
   │  corpora (Phase A) using hybrid semantic + keyword retrieval.           │
   └─────────────────────────────────────────────────────────────────────────┘
 
-  ┌─── 6 FETCHERS (rag/fetchers/) ──────────────────────────────────────────┐
+  ┌─── FETCHERS (rag/fetchers/) ────────────────────────────────────────────┐
   │  base_fetcher.py        abstract BaseFetcher + Document dataclass       │
   │                                                                         │
   │  github_fetcher.py      DeFiHackLabs .sol PoCs (3 comment formats)    │
-  │  json_corpus_fetcher.py shared base for curated JSON corpora (A.5)    │
-  │    └─ code4rena_fetcher.py    C4 contest findings                      │
-  │    └─ sherlock_fetcher.py     Sherlock contest findings                │
-  │    └─ solodit_fetcher.py      Solodit aggregated findings              │
-  │    └─ immunefi_fetcher.py     Immunefi bounty disclosures              │
-  │    └─ swc_registry_fetcher.py SWC weakness-classification registry     │
+  │                                                                         │
+  │  ⚠ 5 Phase A.5 fetchers DISABLED (WS2):                                │
+  │    json_corpus_fetcher.py    shared base for curated JSON corpora       │
+  │    code4rena_fetcher.py      C4 — disabled, synthetic seed data        │
+  │    sherlock_fetcher.py       Sherlock — disabled, synthetic seed data  │
+  │    solodit_fetcher.py        Solodit — disabled (caused F-inding #2)    │
+  │    immunefi_fetcher.py       Immunefi — disabled                        │
+  │    swc_registry_fetcher.py   SWC — disabled                             │
   └─────────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼  list[Document]
@@ -534,8 +536,9 @@ queries (e.g. "Euler Finance 0xc310a0af specific transaction").
   ├── embedder.py             228 lines  LM Studio embeddings + 3-attempt retry
   │                                       count validation (RuntimeError, not assert)
   │
-  ├── build_index.py          604 lines  Full rebuild (FileLock + atomic + rollback)
-  │                                       Calls all 6 fetchers (Phase A)
+  ├── build_index.py          661 lines  Full rebuild (FileLock + atomic + rollback)
+  │                                       Calls DeFiHackLabsFetcher only (WS2)
+  │                                       _extra_fetchers() returns [] ⚠
   │
   └── fetchers/
       ├── base_fetcher.py      95 lines  Abstract BaseFetcher + Document dataclass

@@ -11,6 +11,9 @@ Quick connectivity and integration tests for MCP servers and the full audit grap
 | `smoke_audit_mcp.py` | 144 | Tests audit MCP server — all three tools, bad address handling |
 | `smoke_langgraph.py` | 189 | Full audit graph — mock or live mode (`--live` flag) |
 | `test_k_cap.py` | 39 | Quick k=99 cap test for RAG server |
+| `run_real_audit.py` | — | Real-LLM E2E harness with `--no-llm`, `--profile`, `--unbounded-timeouts` |
+| `audit_gt_labels.py` | — | Ground-truth labels for evaluation benchmark |
+| `eval_benchmark.py` | — | Evaluation benchmark runner, scores against ground truth |
 
 ## Usage
 

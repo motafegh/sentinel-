@@ -249,6 +249,15 @@ def compute_verdict(
         return "LIKELY", sources
     if prob >= 0.50:
         return "DISPUTED", sources
+    # WS1 (2026-06-21): a class that crossed its DEEP_THRESHOLD (warranted
+    # investigation) but has no corroborating evidence is NOT "cleared" — it's
+    # "inconclusive." The FN/FP asymmetry principle forbids silently marking
+    # a flagged class SAFE. Only classes genuinely below the investigation
+    # threshold get SAFE here. compute_verdict() is the last resort; with
+    # WS1's consensus_engine change, this path is only reached for classes
+    # consensus_engine didn't vote on (below DEEP_THRESHOLD with no tools).
+    if prob >= DEEP_THRESHOLDS.get(cls, 0.40):
+        return "INCONCLUSIVE", sources
     return "SAFE", sources
 
 
@@ -260,7 +269,10 @@ def prob_to_severity(prob: float) -> str:
     return "INFO"
 
 
-OVERALL_VERDICT_RANK = {"CONFIRMED": 4, "LIKELY": 3, "DISPUTED": 2, "SAFE": 1}
+OVERALL_VERDICT_RANK = {
+    "CONFIRMED": 5, "LIKELY": 4, "DISPUTED": 3, "WATCH": 2,
+    "INCONCLUSIVE": 1, "SAFE": 0,
+}
 
 
 def compute_overall_verdict(verdicts: dict[str, str]) -> str:

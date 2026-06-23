@@ -2,7 +2,7 @@
 
 > **Scope:** `agents/src/llm/` — LangChain-compatible wrapper around
 > LM Studio. 4 model roles (FAST / STRONG / CODER / EMBED), all
-> OpenAI-compatible. Source-of-truth: the code. Last verified: 2026-06-21.
+> OpenAI-compatible. Source-of-truth: the code. Last verified: 2026-06-23.
 
 ---
 
@@ -341,9 +341,9 @@ caller code doesn't change when the model swaps.
 ```
   agents/src/llm/
   │
-  └── client.py            204 lines  the entire module
+  └── client.py            233 lines  the entire module
                                   get_llm()                generic factory
-                                  get_fast_llm()           gemma-4-e2b-it (FAST)
+                                  get_fast_llm(max_t)      gemma-4-e2b-it (FAST)
                                   get_strong_llm(max_t)    gemma-4-e2b-it (STRONG, FIX-18)
                                   get_coder_llm()          qwen2.5-coder-7b (CODER)
                                   get_embedding_model()    nomic-embed-text-v1.5 (EMBED)

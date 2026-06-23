@@ -59,6 +59,8 @@ from src.orchestration.routing import (
     compute_overall_verdict,
     compute_verdict,
     prob_to_severity,
+    DEEP_THRESHOLDS,
+    OVERALL_VERDICT_RANK,
 )
 from src.orchestration.timing import step_timer
 from src.orchestration.timeouts import (
@@ -282,7 +284,10 @@ async def quick_screen(state: AuditState) -> dict[str, Any]:
     # silently swallowed) — Aderyn never escalated anything here either.
     try:
         for finding in _run_aderyn_on_file(contract_code):
-            if finding["impact"] == "High" and finding["detector"] not in aderyn_hits:
+            # WS1 (2026-06-21): align Aderyn escalation to Slither's levels.
+            # Previously only "High" — Medium/Critical were silently ignored,
+            # an inconsistency introduced during the Aderyn fix (Finding #11).
+            if finding["impact"] in ("High", "Medium", "Critical") and finding["detector"] not in aderyn_hits:
                 aderyn_hits.append(finding["detector"])
     except Exception as exc:
         logger.warning("quick_screen | aderyn error (non-fatal): {}", exc)
@@ -1053,11 +1058,31 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
     # CROSS_VALIDATOR_TIMEOUT_S (3 sequential calls) on a tiny RTX 3070 box.
     # Cap to the top-N most probable classes; the rest fall back to rule-based
     # verdicts in synthesizer (they're weak signals anyway).
+    #
+    # WS1.5 (2026-06-21, Finding #13): the OLD sort was by raw ML probability
+    # only — a class with strong tool corroboration but low ML score (e.g.
+    # CallToUnknown at prob=0.249 with Slither+Aderyn agreeing) was excluded
+    # from the debate even though consensus_engine (which already ran) had it
+    # at CONFIRMED. Now sort by consensus confidence (which incorporates tool
+    # corroboration) with ML prob as fallback, AND guarantee any class with a
+    # tool hit is included regardless of rank.
     _max_classes = int(os.getenv("CROSS_VALIDATOR_MAX_CLASSES", "5"))
+    consensus_verdict_state = state.get("consensus_verdict", {}) or {}
     if len(all_flagged) > _max_classes:
-        all_flagged = sorted(
-            all_flagged, key=lambda v: v.get("probability", 0.0), reverse=True
-        )[:_max_classes]
+        all_flagged = sorted(all_flagged, key=lambda v: (
+            consensus_verdict_state.get(v.get("vulnerability_class", ""), {}).get("confidence", 0.0),
+            v.get("probability", 0.0),
+        ), reverse=True)
+        # Guarantee any class with a tool hit is adjudicated, regardless of rank.
+        tool_classes = {
+            c for c, v in consensus_verdict_state.items()
+            if v.get("slither_match") or v.get("aderyn_match")
+        }
+        top = all_flagged[:_max_classes]
+        for v in all_flagged[_max_classes:]:
+            if v.get("vulnerability_class") in tool_classes:
+                top.append(v)
+        all_flagged = top
 
     logger.info("cross_validator | adjudicating {} class(es)", len(all_flagged))
 
@@ -1082,13 +1107,33 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
     prior_count = len(audit_history)
 
     class_lines = []
+    eye_predictions = ml_result.get("eye_predictions", {}) or {}
     for vuln in all_flagged:
         cls    = vuln.get("vulnerability_class", "?")
         prob   = vuln.get("probability", 0.0)
         tier   = vuln.get("tier", "CONFIRMED")
         slither_hits = slither_by_class.get(cls, ["(no Slither findings)"])
+
+        # D4 (WS3, 2026-06-22): per-eye clues — discountable hints showing
+        # what kind of reasoning drives suspicion for this class.
+        eye_line = ""
+        if eye_predictions:
+            per_eye = {
+                eye: vals.get(cls, 0.0)
+                for eye, vals in eye_predictions.items()
+                if cls in vals
+            }
+            if per_eye:
+                top_eye = max(per_eye, key=per_eye.get)
+                eye_line = (
+                    f"  Eye clues: "
+                    f"{' '.join(f'{k}={v:.2f}' for k, v in sorted(per_eye.items()))} "
+                    f"({top_eye} eye driving)\n"
+                )
+
         class_lines.append(
             f"- {cls} [{tier}] prob={prob:.3f}\n"
+            f"{eye_line}"
             f"  Slither: {'; '.join(slither_hits[:3])}\n"
             f"  RAG topics matched: {', '.join(rag_topics) or '(none)'}\n"
             f"  Prior audits: {prior_count}"
@@ -1104,20 +1149,115 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
         # Override via CROSS_VALIDATOR_LLM_MODEL env var (model ID string).
         from src.llm.client import get_fast_llm, get_strong_llm
         _cv_model = os.getenv("CROSS_VALIDATOR_LLM_MODEL", "fast").lower()
+
+        # WS4.1 (2026-06-21, Finding #6): per-role max_tokens cap. Previously
+        # the 3 debate roles had NO output-length cap — each could generate
+        # unlimited text, contributing to 75-115s per role (the prosecutor
+        # alone took 178s on one contract). Caps + "be concise" instruction
+        # cut the rambling while keeping the output complete.
+        #
+        # Tuning (2026-06-22 sweep on vulnerable_reentrant.sol):
+        #   384/512 → LM Studio returns content="" (model's internal preamble
+        #             hits the cap before producing output). Debate effectively
+        #             doesn't run — verdict comes from consensus fallback.
+        #   768    → Sweet spot. Prosecutor 657 chars, defender 900 chars,
+        #             both non-empty, judge produces valid JSON. 28s debate
+        #             (was 47s uncapped, 37s at 1024).
+        #   1024   → Verbose (2021/1682 chars), 37s debate — no verdict
+        #             improvement over 768.
+        # The JUDGE is left uncapped (0) — LM Studio returns content="" when
+        # the judge is capped (it generates reasoning before the JSON, hitting
+        # the cap). Judge output is naturally short (~128 chars JSON).
+        # Configurable via env vars.
+        _prosecutor_max = int(os.getenv("DEBATE_PROSECUTOR_MAX_TOKENS", "768"))
+        _defender_max = int(os.getenv("DEBATE_DEFENDER_MAX_TOKENS", "768"))
+        _judge_max = int(os.getenv("DEBATE_JUDGE_MAX_TOKENS", "0"))  # 0 = uncapped
         if _cv_model == "strong":
-            llm = get_strong_llm()
+            _llm_prosecutor = get_strong_llm(max_tokens=_prosecutor_max or None)
+            _llm_defender = get_strong_llm(max_tokens=_defender_max or None)
+            _llm_judge = get_strong_llm(max_tokens=_judge_max or None)
         else:
-            llm = get_fast_llm()
+            _llm_prosecutor = get_fast_llm(max_tokens=_prosecutor_max or None)
+            _llm_defender = get_fast_llm(max_tokens=_defender_max or None)
+            _llm_judge = get_fast_llm(max_tokens=_judge_max or None)
 
         evidence_block = "\n".join(class_lines)
-        # Ali directive (2026-06-21): the ML model is only a HINT. Give the
-        # debate the actual SOURCE so the LLM forms an INDEPENDENT judgement
-        # from the code, rather than rubber-stamping the ML/tool summary.
-        _code_for_debate = (state.get("contract_code", "") or "")[:2000].strip()
-        code_block = (
-            f"\n\nContract source (analyse it yourself — the ML signal is only a hint):\n"
-            f"```solidity\n{_code_for_debate}\n```" if _code_for_debate else ""
-        )
+
+        # ── WS3 (2026-06-22): hotspot-guided source excerpt ──────────────
+        # Replace the raw [:2000] char truncation with the specific functions
+        # flagged by graph_explain's hotspot analysis. The debate gets the
+        # vulnerable lines directly, PLUS the full source as reference.
+        #
+        # D3 resolved: hotspot-guided excerpt + sliding-window fallback.
+        contract_code = state.get("contract_code", "") or ""
+        ml_hotspots = state.get("ml_hotspots", []) or []
+
+        hotspot_excerpt_lines: list[str] = []
+        if ml_hotspots and contract_code:
+            source_lines = contract_code.splitlines()
+            hotspots_by_cls: dict[str, list[dict]] = {}
+            for h in ml_hotspots:
+                c = h.get("class", "")
+                if c:
+                    hotspots_by_cls.setdefault(c, []).append(h)
+
+            for vuln in all_flagged:
+                cls = vuln.get("vulnerability_class", "")
+                cls_hotspots = hotspots_by_cls.get(cls, [])
+                if not cls_hotspots:
+                    cls_hotspots = [
+                        h for h in ml_hotspots
+                        if cls in h.get("vulnerability_classes", [])
+                    ]
+                if not cls_hotspots:
+                    continue
+
+                hotspot_excerpt_lines.append(f"\n── {cls} ──")
+                for h in cls_hotspots:
+                    fn = h.get("fn_name", "?")
+                    lines = h.get("lines", [])
+                    score = h.get("score", 0.0)
+                    signals = h.get("signals", [])
+                    if lines:
+                        label = f"lines {lines[0]}-{lines[-1]}"
+                    else:
+                        label = f"function {fn}"
+                    hotspot_excerpt_lines.append(
+                        f"  {fn} ({label}, score={score:.2f})"
+                    )
+                    if signals:
+                        hotspot_excerpt_lines.append(
+                            f"  Signals: {', '.join(signals)}"
+                        )
+                    if lines and source_lines:
+                        block = ""
+                        for ln in lines:
+                            if 1 <= ln <= len(source_lines):
+                                block += f"{ln:4d}: {source_lines[ln - 1]}\n"
+                        if block:
+                            hotspot_excerpt_lines.append(
+                                f"```solidity\n{block}```"
+                            )
+
+        if hotspot_excerpt_lines:
+            _full_for_ref = contract_code[:4000].strip()
+            code_block = (
+                "\n\nFocused code excerpts (flagged regions):"
+                + "".join(hotspot_excerpt_lines)
+                + ("\n\nFull contract source (for reference):\n"
+                   f"```solidity\n{_full_for_ref}\n```" if _full_for_ref else "")
+            )
+        else:
+            _code_raw = contract_code[:2000].strip()
+            ml_windows = ml_result.get("windows_used", 1)
+            fallback_note = (
+                f"\nNote: ML used {ml_windows} sliding window(s) — "
+                "no hotspot data to narrow the excerpt."
+            ) if ml_windows > 1 else ""
+            code_block = (
+                "\n\nContract source (analyse it yourself — the ML signal is only a hint):\n"
+                f"```solidity\n{_code_raw}\n```" + fallback_note
+            ) if _code_raw else ""
         # ── A.4 Multi-LLM debate (Prosecutor → Defender → Judge) ─────────────
         # DEBATE_MODE (default on) runs three role-specific passes so the final
         # verdict reflects an adversarial exchange rather than one classification
@@ -1137,13 +1277,15 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
         _debate_on = os.getenv("DEBATE_MODE", "on").strip().lower() in ("1", "true", "on", "yes")
         _address = state.get("contract_address", "unknown")
 
-        async def _ask(role: str, system: str, user: str) -> str:
+        async def _ask(role: str, system: str, user: str, *, llm_instance=None) -> str:
             # Per-role timing (2026-06-21): each debate role is individually
             # logged so a live run shows exactly which of the 3 sequential
             # calls is slow, rather than only the aggregate debate duration.
+            # WS4.1: per-role LLM instance with max_tokens cap.
+            _llm = llm_instance or _llm_judge  # fallback for single-pass mode
             with step_timer(f"cross_validator.{role}", address=_address):
                 resp = await asyncio.to_thread(
-                    llm.invoke,
+                    _llm.invoke,
                     [SystemMessage(content=system), HumanMessage(content=user)],
                 )
             return resp.content.strip()
@@ -1153,13 +1295,14 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
             "You have heard the prosecutor (argues vulnerable) and the defender "
             "(argues false-positive). For each vulnerability class below, return a "
             "JSON object mapping class name → verdict string.\n"
-            "Verdict options: CONFIRMED | LIKELY | DISPUTED | WATCH | SAFE\n"
+            "Verdict options: CONFIRMED | LIKELY | DISPUTED | WATCH | SAFE | INCONCLUSIVE\n"
             "Rules:\n"
-            "  CONFIRMED: ML ≥ 0.55 AND Slither finding(s) agree\n"
-            "  LIKELY:    ML ≥ 0.35 AND at least one corroborating signal\n"
-            "  DISPUTED:  ML flagged but Slither/RAG contradicts or is absent\n"
-            "  WATCH:     ML 0.25–0.34, single weak signal; monitor only\n"
-            "  SAFE:      evidence points to false positive\n"
+            "  CONFIRMED:    ML ≥ 0.55 AND Slither finding(s) agree\n"
+            "  LIKELY:       ML ≥ 0.35 AND at least one corroborating signal\n"
+            "  DISPUTED:     ML flagged but Slither/RAG contradicts or is absent\n"
+            "  WATCH:        ML 0.25–0.34, single weak signal; monitor only\n"
+            "  SAFE:         evidence points to false positive\n"
+            "  INCONCLUSIVE: debate timed out or could not adjudicate — do not guess\n"
             "Return ONLY valid JSON, no markdown fences, no explanation.\n"
             'Example: {"Reentrancy": "CONFIRMED", "IntegerUO": "LIKELY"}'
         )
@@ -1171,8 +1314,10 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
                 "argue concisely why it HAS the vulnerabilities below. Ground each "
                 "claim in the actual code; cite supporting evidence (Slither detector, "
                 "RAG match) where it agrees. Treat the ML probability as a weak hint "
-                "only — do not assert a vulnerability the code does not support.",
+                "only — do not assert a vulnerability the code does not support. "
+                "Be concise: at most 3-4 sentences per class.",
                 "Vulnerability evidence:\n" + evidence_block + code_block,
+                llm_instance=_llm_prosecutor,
             )
             defender = await _ask(
                 "defender",
@@ -1180,23 +1325,58 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
                 "Given the prosecutor's case, argue concisely why these findings may be "
                 "false positives or low severity (e.g. typed interface calls, benign "
                 "timestamp use, guarded external calls). The ML model is known to "
-                "over-predict — challenge claims the code does not justify.",
+                "over-predict — challenge claims the code does not justify. "
+                "Be concise: at most 3-4 sentences per class.",
                 f"Prosecutor's case:\n{prosecutor}\n\nEvidence:\n{evidence_block}{code_block}",
+                llm_instance=_llm_defender,
             )
             judge_raw = await _ask(
                 "judge",
                 judge_system,
                 f"Prosecutor:\n{prosecutor}\n\nDefender:\n{defender}\n\n"
                 f"Evidence:\n{evidence_block}",
+                llm_instance=_llm_judge,
             )
             transcript = {"prosecutor": prosecutor, "defender": defender, "judge": judge_raw}
             return judge_raw, transcript
 
-        if _debate_on:
+        # WS4.2 (2026-06-22): selective debate gating. Skip the LLM debate
+        # when multiple independent tools (2+ of {ML, Slither, Aderyn}) already
+        # agree every flagged class is CONFIRMED by consensus. NEVER skip because
+        # cheap signals say "safe" (FN/FP asymmetry principle — Finding #8).
+        _skip_debate = False
+        if _debate_on and consensus_verdict_state:
+            _all_confirmed = True
+            for _vuln in all_flagged:
+                _cls = _vuln.get("vulnerability_class", "")
+                _cv = consensus_verdict_state.get(_cls, {})
+                if _cv.get("verdict") != "CONFIRMED":
+                    _all_confirmed = False
+                    break
+                _tool_count = (
+                    (_cv.get("ml_signal", 0) or 0)
+                    + (_cv.get("slither_match", 0) or 0)
+                    + (_cv.get("aderyn_match", 0) or 0)
+                )
+                if _tool_count < 2:
+                    _all_confirmed = False
+                    break
+            _skip_debate = _all_confirmed
+
+        if _debate_on and not _skip_debate:
             _debate_timeout = get_timeout(ENV_DEBATE_TIMEOUT_S, DEFAULT_DEBATE_TIMEOUT_S)
             with step_timer("cross_validator.debate_total", address=_address, budget_s=_debate_timeout):
                 raw, debate_transcript = await asyncio.wait_for(_run_debate(), timeout=_debate_timeout)
             logger.info("cross_validator | debate complete (3 roles)")
+        elif _debate_on and _skip_debate:
+            logger.info(
+                "cross_validator | debate skipped — {} class(es) CONFIRMED by multi-tool consensus",
+                len(all_flagged),
+            )
+            raw = json.dumps({
+                v.get("vulnerability_class", ""): "CONFIRMED"
+                for v in all_flagged
+            })
         else:
             # Legacy single-pass classification (retained for perf/tests).
             _single_pass_timeout = get_timeout(
@@ -1266,12 +1446,127 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
         logger.warning(
             "cross_validator | failed (synthesizer will use rule-based fallback): {}", exc
         )
-        return {}
+        # WS4.1: preserve the debate transcript even on JSON parse failure —
+        # it's valuable for debugging (can see what the 3 roles actually said
+        # even when the judge's JSON was malformed/truncated).
+        fallback: dict[str, Any] = {}
+        if debate_transcript:
+            fallback["debate_transcript"] = debate_transcript
+        return fallback
 
 
 # ---------------------------------------------------------------------------
 # Node: synthesizer
 # ---------------------------------------------------------------------------
+
+def _reconcile_verdicts(
+    cls: str,
+    prob: float,
+    consensus_vote: dict | None,
+    debate_verdict: str | None,
+    static_findings: list,
+    rag_results: list,
+    path_taken: str,
+) -> tuple[str, list[str]]:
+    """
+    Reconcile consensus_engine's vote and the debate's verdict into one final
+    verdict. Implements the FN/FP asymmetry principle (WS1.5, 2026-06-21):
+    the debate can UPGRADE (e.g. DISPUTED → CONFIRMED) but can only DOWNGRADE
+    to DISPUTED, never to SAFE, when consensus voted non-SAFE. The only way
+    a flagged class reaches SAFE is if BOTH consensus AND debate agree it's
+    safe (or if neither voted and compute_verdict() says SAFE for a
+    below-threshold class).
+
+    See `docs/plan/agents/2026-06-21-agents-redesign/05_VERDICT_RECONCILIATION_PLAN.md`
+    for the 8-case table + the full design rationale.
+
+    Args:
+        cls:             vulnerability class name
+        prob:            ML probability for this class
+        consensus_vote:  consensus_verdict[cls] dict or None (consensus didn't vote)
+        debate_verdict:  pre_verdicts[cls] string or None (debate was silent)
+        static_findings: full Slither/Aderyn findings list
+        rag_results:     RAG chunks from state
+        path_taken:      "fast" or "deep"
+
+    Returns:
+        (verdict_str, evidence_sources_list)
+    """
+    cv_verdict = consensus_vote.get("verdict") if consensus_vote else None
+    cv_conf = consensus_vote.get("confidence", 0.0) if consensus_vote else 0.0
+
+    # Case 7: no consensus vote → debate is the only signal
+    if consensus_vote is None:
+        if debate_verdict is not None:
+            return debate_verdict, [f"ml:{prob:.3f}", "debate"]
+        # Case 8: neither → compute_verdict (last resort, returns INCONCLUSIVE
+        # for flagged classes per WS1's change to routing.py)
+        return compute_verdict(cls, prob, static_findings, rag_results, path_taken)
+
+    # Case 6: consensus voted, debate was silent (empty/timeout) → consensus stands
+    if debate_verdict is None:
+        return cv_verdict, [f"ml:{prob:.3f}", f"consensus:{cv_verdict}(conf={cv_conf:.2f})"]
+
+    # Both voted — apply the reconciliation rules
+    sources = [
+        f"ml:{prob:.3f}",
+        f"consensus:{cv_verdict}(conf={cv_conf:.2f})",
+        f"debate:{debate_verdict}",
+    ]
+
+    # Case 1a: consensus CONFIRMED (conf >= 0.70, all tools agreed) + debate
+    # SAFE/WATCH/INCONCLUSIVE → keep CONFIRMED. The debate cannot CLEAR or
+    # ignore a unanimously tool-corroborated class. SAFE = "I checked, it's
+    # not a bug" (blocked — the debate was systematically wrong at this per
+    # Finding #14). WATCH/INCONCLUSIVE = "weak/no signal" (the debate had
+    # nothing useful to add — consensus stands).
+    if cv_verdict == "CONFIRMED" and debate_verdict in ("SAFE", "WATCH", "INCONCLUSIVE"):
+        return cv_verdict, sources + ["rule:consensus_confirmed_debate_cannot_clear"]
+
+    # Case 1b: consensus CONFIRMED + debate DISPUTED → DISPUTED. The debate
+    # read the source and expresses uncertainty — this is valuable semantic
+    # signal the tools can't provide (they're syntactic pattern matchers;
+    # they fire on "state change after external call" whether the state is a
+    # balance or an index). DISPUTED is NOT "cleared" — the class is still
+    # flagged, still in the report, still contributes to overall_verdict.
+    # This surfaces the disagreement honestly: "tools agree, but the
+    # source-reading debate is uncertain — investigate further."
+    # Fixes the FP on 05_unexpected_revert_dos/Reentrancy (syntactic CEI on
+    # a non-balance index — all 3 tools agreed CONFIRMED, debate correctly
+    # said DISPUTED, Case 1a would have kept CONFIRMED).
+    if cv_verdict == "CONFIRMED" and debate_verdict == "DISPUTED":
+        return "DISPUTED", sources + ["rule:confirmed_surfaces_debate_uncertainty"]
+
+    # Case 5: consensus DISPUTED + debate CONFIRMED/LIKELY → take debate (upgrade)
+    if cv_verdict == "DISPUTED" and debate_verdict in ("CONFIRMED", "LIKELY"):
+        return debate_verdict, sources + ["rule:debate_upgrade"]
+
+    # Case 2: consensus LIKELY + debate SAFE → DISPUTED (surface the disagreement)
+    if cv_verdict == "LIKELY" and debate_verdict == "SAFE":
+        return "DISPUTED", sources + ["rule:disagreement_surfaces_as_disputed"]
+
+    # Case 3: consensus LIKELY + debate DISPUTED → DISPUTED (agreement on "not confirmed")
+    if cv_verdict == "LIKELY" and debate_verdict == "DISPUTED":
+        return "DISPUTED", sources + ["rule:likely_downgraded_to_disputed"]
+
+    # Case 4: consensus DISPUTED + debate SAFE → DISPUTED (uncorroborated ≠ cleared)
+    if cv_verdict == "DISPUTED" and debate_verdict == "SAFE":
+        return "DISPUTED", sources + ["rule:disputed_not_cleared_by_debate"]
+
+    # Both agree (same verdict) → return the agreement
+    if cv_verdict == debate_verdict:
+        return cv_verdict, sources + ["rule:both_agree"]
+
+    # Default: take the more severe (higher rank). Covers cases not explicitly
+    # above (e.g. consensus WATCH + debate CONFIRMED → CONFIRMED; consensus
+    # SAFE + debate CONFIRMED → CONFIRMED; consensus INCONCLUSIVE + debate
+    # LIKELY → LIKELY). This is the "debate can upgrade" path.
+    cv_rank = OVERALL_VERDICT_RANK.get(cv_verdict, 0)
+    debate_rank = OVERALL_VERDICT_RANK.get(debate_verdict, 0)
+    if debate_rank > cv_rank:
+        return debate_verdict, sources + ["rule:more_severe_wins_debate"]
+    return cv_verdict, sources + ["rule:more_severe_wins_consensus"]
+
 
 async def synthesizer(state: AuditState) -> dict[str, Any]:
     """
@@ -1347,21 +1642,23 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # Determine which path was taken.
     path_taken = "deep" if (rag_results or static_findings) else "fast"
 
-    # ── Per-class verdict computation ────────────────────────────────────────
-    # Verdict source priority (fixed 2026-06-21 — see "Verdict fallback gap"
-    # incident, docs/changes/2026-06-21-agents-manual-verification-real-bugs-found.md):
-    #   1. cross_validator's debate verdict — read the actual source, strictly
-    #      the most informed source when it succeeds.
-    #   2. consensus_engine's vote — ML-discounted (ML_WEIGHT_SCALE), already
-    #      tool-corroborated, computed on EVERY deep-path run regardless of LLM
-    #      availability. This is the correct fallback when the debate fails —
-    #      NOT compute_verdict() (see #3), which predates the ML-as-hint design
-    #      and disagreed with consensus_engine in production (verified live:
-    #      consensus_engine said ExternalBug=SAFE on safe_storage.sol while
-    #      compute_verdict() said DISPUTED for the identical evidence).
-    #   3. compute_verdict() — last resort, for classes consensus_engine never
-    #      scored (it only votes when ML prob >= 0.50 or a tool hit exists;
-    #      weaker SUSPICIOUS-tier noise below that bar still needs an answer).
+    # ── Per-class verdict computation (WS1.5 reconciliation rewrite) ──────────
+    # The verdict chain now uses an 8-case reconciliation function
+    # (_reconcile_verdicts above) instead of the old "debate wins, then
+    # consensus, then compute_verdict" priority chain. The key change:
+    # the debate can UPGRADE but can only DOWNGRADE to DISPUTED, never to
+    # SAFE, when consensus voted non-SAFE. A flagged class reaches SAFE only
+    # if BOTH consensus AND debate agree.
+    #
+    # Fixes Findings #13, #14, #15 from 04_LIVE_BASELINE_FINDINGS.md:
+    #   #14: debate was checked FIRST and could silently SAFE a consensus-
+    #        corroborated class (13 live instances, 4 at conf=1.0).
+    #   #15: the loop iterated all_flagged (ML ≥ 0.25) only, so consensus
+    #        votes on tool-hit classes with ML < 0.25 were silently dropped
+    #        (7 live instances, 2 were GT classes).
+    #
+    # See `docs/plan/agents/2026-06-21-agents-redesign/05_VERDICT_RECONCILIATION_PLAN.md`
+    # for the full 8-case table + design rationale.
     pre_verdicts:      dict[str, str]       = state.get("verdicts",      {})
     pre_confirmations: dict[str, list[str]] = state.get("confirmations", {})
     consensus_verdict: dict[str, dict]      = state.get("consensus_verdict", {})
@@ -1370,22 +1667,23 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     confirmations: dict[str, list[str]] = {}
     vuln_verdicts: list[dict]           = []
 
-    for vuln in all_flagged:
-        cls  = vuln.get("vulnerability_class", "?")
-        prob = vuln.get("probability", 0.0)
-        if cls in pre_verdicts:
-            verdict = pre_verdicts[cls]
-            sources = pre_confirmations.get(cls, [f"ml:{prob:.3f}"])
-        elif cls in consensus_verdict:
-            verdict = consensus_verdict[cls]["verdict"]
-            sources = [
-                f"ml:{prob:.3f}",
-                f"consensus:confidence={consensus_verdict[cls]['confidence']:.2f}",
-            ]
-        else:
-            verdict, sources = compute_verdict(
-                cls, prob, static_findings, rag_results, path_taken
-            )
+    # WS1.5 / Finding #15: iterate the UNION of ML-flagged classes and
+    # consensus-voted classes. Previously iterated all_flagged only (ML ≥ 0.25),
+    # so a class with ML < 0.25 + tool corroboration that consensus_engine
+    # correctly voted on never reached this loop.
+    flagged_by_cls = {v.get("vulnerability_class"): v for v in all_flagged}
+    all_classes = set(flagged_by_cls.keys()) | set(consensus_verdict.keys())
+
+    for cls in sorted(all_classes):
+        vuln = flagged_by_cls.get(cls, {"vulnerability_class": cls, "probability": 0.0})
+        prob = float(vuln.get("probability", 0.0))
+        consensus_vote = consensus_verdict.get(cls)
+        debate_verdict = pre_verdicts.get(cls)
+
+        verdict, sources = _reconcile_verdicts(
+            cls, prob, consensus_vote, debate_verdict,
+            static_findings, rag_results, path_taken,
+        )
         verdicts[cls]      = verdict
         confirmations[cls] = sources
         vuln_verdicts.append({
@@ -1593,6 +1891,8 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         "static_findings":        static_findings,
         "external_call_summary":  state.get("external_call_summary", []),
         "routing_decisions":      routing_decisions,
+        "consensus_verdict":      state.get("consensus_verdict", {}),
+        "debate_transcript":      state.get("debate_transcript", {}),
         "recommendation":         final_recommendation,
         "narrative":              narrative,
         "error":                  error,
@@ -1699,6 +1999,7 @@ async def consensus_engine(state: AuditState) -> dict[str, Any]:
     """
     from src.orchestration.consensus import consensus_vote
     from src.orchestration.confidence import track_confidence
+    from src.orchestration.routing import DEEP_THRESHOLDS
 
     ml_result = state.get("ml_result", {})
     probabilities: dict[str, float] = ml_result.get("probabilities", {}) or {}
@@ -1720,10 +2021,23 @@ async def consensus_engine(state: AuditState) -> dict[str, Any]:
 
     for cls, prob in probabilities.items():
         slither_found, aderyn_found = _signals_for_class(cls, static_findings)
-        # Only emit a row when at least one tool has a positive signal.
-        if prob < 0.50 and not slither_found and not aderyn_found:
-            continue
+        deep_threshold = DEEP_THRESHOLDS.get(cls, 0.40)
+        # WS1 (2026-06-21): consensus_engine is the sole verdict authority.
+        # Vote on EVERY class that warranted investigation (crossed its
+        # DEEP_THRESHOLD) OR has a tool hit. Previously skipped classes in
+        # the 0.35-0.49 band with no tools — causing them to fall through to
+        # compute_verdict() which silently SAFEd them (Finding #9/#10).
+        if prob < deep_threshold and not slither_found and not aderyn_found:
+            continue  # genuinely not flagged — below investigation threshold
         vote = consensus_vote(float(prob), slither_found, aderyn_found, cls)
+        # WS1 (2026-06-21): a flagged class (crossed DEEP_THRESHOLD) that got
+        # no positive signals is NOT "cleared" — it's "uncorroborated." The
+        # FN/FP asymmetry principle says we must not silently SAFE it. Override
+        # SAFE → DISPUTED so downstream consumers see the distinction. This is
+        # the cheap-signal verdict; the debate (if it runs) can still clear it.
+        if vote["verdict"] == "SAFE" and float(prob) >= deep_threshold:
+            vote["verdict"] = "DISPUTED"
+            vote["overridden_from_safe"] = True
         consensus_verdict[cls] = vote
         confidence_by_class[cls] = track_confidence(
             float(prob),

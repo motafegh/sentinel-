@@ -1,4 +1,4 @@
-// expect: Timestamp,CallToUnknown
+// expect: Timestamp,CallToUnknown,MishandledException
 // Multi-vuln: Timestamp dependence in rate limiter + CallToUnknown in execute.
 // The rate limiter resets based on block.timestamp allowing miner manipulation,
 // and the execute function calls arbitrary targets from a dynamically updated whitelist.

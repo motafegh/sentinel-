@@ -63,7 +63,7 @@ trusting the ML model as ground truth. Full details:
 agents/
 ├── src/
 │   ├── orchestration/       LangGraph workflow (13 nodes, conditional routing)
-│   │   ├── state.py         AuditState TypedDict (26 fields incl. Phase A/B placeholders)
+│   │   ├── state.py         AuditState TypedDict (29 fields incl. Phase A/B placeholders)
 │   │   ├── routing.py       Per-class thresholds, tool routing, verdict computation
 │   │   ├── nodes.py         13 node implementations (consensus_engine, cross_validator
 │   │   │                    debate, reflection, explainer, visualizer added 2026-06-21)
@@ -394,32 +394,43 @@ cd agents
 poetry run pytest tests/ -v
 ```
 
-| Test file | Coverage |
-|-----------|---------|
-| `test_graph_routing.py` | Routing logic, all node paths, graph compilation, full graph integration (931 lines) |
-| `test_smoke_e2e.py` | End-to-end smoke tests — deep/fast/screen-escalated/ML-failure paths (375 lines) |
-| `test_audit_server.py` | On-chain history decoding, mock mode, address validation, hard caps (345 lines) |
-| `test_inference_server.py` | MCP tool schemas, mock/live transport, batch predict, partial failure (336 lines) |
-| `test_routing_phase0.py` | Per-class thresholds, tool matrix, verdict logic, DETECTOR_TO_CLASSES (345 lines) |
-| `test_retriever_filters.py` | FAISS+BM25+RRF filter behaviour, score validation, sync validation (236 lines) |
-| `test_github_fetcher.py` | DeFiHackLabs parsing (3 comment formats, FIX-20/21/22b) (211 lines) |
-| `test_deduplicator.py` | SHA256 hash deduplication, persistence, checkpoint pattern (159 lines) |
-| `test_chunker.py` | Chunk size, overlap, metadata inheritance, edge cases (155 lines) |
-| `test_consensus_voting.py` | A.6 weighted vote, ML-weight discount, `consensus_engine` node |
-| `test_confidence_tracking.py` | A.7 Bayesian confidence updating, bounds, bands |
-| `test_metric_attribution.py` | A.8 LIME-style attribution, `explainer` node, report folding |
-| `test_reflection.py` | A.3 reflection (rule-based + LLM) and A.4 debate (3-role mock) |
-| `test_visualizer.py` | A.9 hotspot HTML generation, escaping, `visualizer` node |
-| `test_rag_fetchers.py` | A.5 Code4rena/Sherlock/Solodit/Immunefi/SWC fetchers + JSON corpus base |
-| `test_static_analysis_real_slither.py` | (2026-06-21) REAL Slither — catches detector-registration regressions |
-| `test_static_analysis_real_aderyn.py` | (2026-06-21) REAL Aderyn — catches dir/output-path/schema regressions |
-| `test_timeouts_and_timing.py` | (2026-06-21) Centralized timeout config + uniform step timing |
+**402 tests** (26 files, ~6,135 lines). `conftest.py` sets `AGENTS_DISABLE_LLM=1`
+session-wide so the suite never depends on a live LM Studio.
 
-`tests/conftest.py` sets `AGENTS_DISABLE_LLM=1` for the whole session so the suite
-never depends on a live LM Studio — LLM-calling nodes consult `_llm_enabled()` and
-fall back to rule-based logic. Tests that exercise the LLM path explicitly mock it
-and re-enable LLM via an autouse fixture (see `TestCrossValidatorNode` in
-`test_graph_routing.py`).
+| Key test files | What they cover |
+|---|---|
+| `test_graph_routing.py` (1,075L) | Full graph: routing, all 13 nodes, graph compilation, integration |
+| `test_eval_framework.py` (471L) | Evaluation harness: benchmark scoring, gt comparison |
+| `test_smoke_e2e.py` (375L) | End-to-end deep/fast/screen-escalated/ML-failure paths |
+| `test_ws4_2_selective_gating.py` (383L) | WS4.2 — asymmetric debate gating (CONFIRMED+2tools skip) |
+| `test_representation_server.py` (356L) | GNN embedding MCP server |
+| `test_ws3_hotspot_excerpts.py` (310L) | WS3 — hotspot-guided code excerpts in debate prompts |
+| `test_verdict_reconciliation.py` (268L) | 8-case reconciliation table + invariants |
+| `test_verdict_integrity.py` (204L) | FN/FP invariants, DISPUTED floor enforcement |
+| `test_consensus_voting.py` (161L) | A.6 — ML-discounted weighted vote |
+| `test_reflection.py` (154L) | A.3 self-critique + A.4 3-role debate (mocked) |
+| `test_visualizer.py` (90L) | A.9 hotspot HTML generation |
+| `test_metric_attribution.py` (70L) | A.8 LIME-style attribution |
+| `test_confidence_tracking.py` (49L) | A.7 Bayesian confidence |
+| `test_retriever_filters.py` (236L) | FAISS+BM25+RRF filter behaviour |
+| `test_audit_server.py` (345L) | On-chain history, mock mode, address validation |
+| `test_inference_server.py` (335L) | MCP tool schemas, mock/live transport |
+| `test_routing_phase0.py` (345L) | Per-class thresholds, tool matrix, verdict logic |
+| `test_github_fetcher.py` (211L) | DeFiHackLabs parsing (3 formats) |
+| `test_deduplicator.py` (159L) | SHA256 dedup, persistence |
+| `test_chunker.py` (155L) | Chunk size, overlap, metadata |
+| `test_static_analysis_real_slither.py` (88L) | REAL (non-mocked) Slither |
+| `test_static_analysis_real_aderyn.py` (86L) | REAL (non-mocked) Aderyn |
+| `test_timeouts_and_timing.py` (97L) | Centralized timeouts + `step_timer`/`timed_node` |
+| `test_rag_fetchers.py` (96L) | **WS2:** 5 corpus fetchers exist but **disabled** in `build_index.py` |
+
+`conftest.py` sets `AGENTS_DISABLE_LLM=1` for the whole session so LLM-calling nodes
+fall back to rule-based. Tests that exercise the LLM path mock it locally.
+
+**WS2 note (2026-06-22):** The 5 Phase A.5 corpus fetchers (Code4rena/Sherlock/Solodit/
+Immunefi/SWC) are **disabled** — their seed corpora were synthetic hand-written placeholders
+and one caused a hallucinated verdict. `build_index.py:_extra_fetchers()` returns `[]`.
+Fetcher code is kept for when real data is wired per `02_RAG_BUILD_PLAN.md`.
 
 ## Environment Variables
 

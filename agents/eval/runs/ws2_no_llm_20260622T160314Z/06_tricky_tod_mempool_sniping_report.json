@@ -1,0 +1,663 @@
+{
+  "contract": "06_tricky_tod_mempool_sniping.sol",
+  "contract_address": "0x99d2c811c88424bb0ff0d58327e4f075a9bdd173",
+  "timestamp": "2026-06-22T12:34:32.544174+00:00",
+  "total_wall_s": 1.1597764492034912,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: slither=['reentrancy-eth'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {},
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-eth"
+    ],
+    "aderyn": [
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 16,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "costly-loop",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "description": "FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73) has costly operations inside a loop:\n\t- currentIndex ++ (../../../../../tmp/sentinel_static_3nlogixq.sol#70)\n",
+      "lines": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "processQueue"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "costly-loop",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "description": "FIFOPayoutQueue.enqueueAll(address[],uint256[]) (../../../../../tmp/sentinel_static_3nlogixq.sol#46-54) has costly operations inside a loop:\n\t- priority = nonce ++ (../../../../../tmp/sentinel_static_3nlogixq.sol#49)\n",
+      "lines": [
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "enqueueAll"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "immutable-states",
+      "impact": "Optimization",
+      "confidence": "High",
+      "description": "FIFOPayoutQueue.owner (../../../../../tmp/sentinel_static_3nlogixq.sol#19) should be immutable \n",
+      "lines": [
+        19
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "solc-version",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_3nlogixq.sol#9)\n",
+      "lines": [
+        9
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73):\n\t- (ok,None) = item.recipient.call{value: item.amount}() (../../../../../tmp/sentinel_static_3nlogixq.sol#63)\n",
+      "lines": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "processQueue"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in FIFOPayoutQueue.emergencyWithdraw() (../../../../../tmp/sentinel_static_3nlogixq.sol#85-88):\n\t- (ok,None) = owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_3nlogixq.sol#86)\n",
+      "lines": [
+        85,
+        86,
+        87,
+        88
+      ],
+      "function_names": [
+        "emergencyWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73) has external calls inside a loop: (ok,None) = item.recipient.call{value: item.amount}() (../../../../../tmp/sentinel_static_3nlogixq.sol#63)\n",
+      "lines": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "processQueue"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73):\n\tExternal calls:\n\t- (ok,None) = item.recipient.call{value: item.amount}() (../../../../../tmp/sentinel_static_3nlogixq.sol#63)\n\tState variables written after the call(s):\n\t- currentIndex ++ (../../../../../tmp/sentinel_static_3nlogixq.sol#70)\n\tFIFOPayoutQueue.currentIndex (../../../../../tmp/sentinel_static_3nlogixq.sol#22) can be used in cross function reentrancies:\n\t- FIFOPayoutQueue.currentIndex (../../../../../tmp/sentinel_static_3nlogixq.sol#22)\n\t- FIFOPayoutQueue.getRemaining() (../../../../../tmp/sentinel_static_3nlogixq.sol#79-81)\n\t- FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73)\n\t- pendingPayouts[item.recipient] -= item.amount (../../../../../tmp/sentinel_static_3nlogixq.sol#62)\n\tFIFOPayoutQueue.pendingPayouts (../../../../../tmp/sentinel_static_3nlogixq.sol#21) can be used in cross function reentrancies:\n\t- FIFOPayoutQueue.enqueue(address,uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#37-44)\n\t- FIFOPayoutQueue.enqueueAll(address[],uint256[]) (../../../../../tmp/sentinel_static_3nlogixq.sol#46-54)\n\t- FIFOPayoutQueue.pendingPayouts (../../../../../tmp/sentinel_static_3nlogixq.sol#21)\n\t- FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73)\n\t- pendingPayouts[item.recipient] += item.amount (../../../../../tmp/sentinel_static_3nlogixq.sol#67)\n\tFIFOPayoutQueue.pendingPayouts (../../../../../tmp/sentinel_static_3nlogixq.sol#21) can be used in cross function reentrancies:\n\t- FIFOPayoutQueue.enqueue(address,uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#37-44)\n\t- FIFOPayoutQueue.enqueueAll(address[],uint256[]) (../../../../../tmp/sentinel_static_3nlogixq.sol#46-54)\n\t- FIFOPayoutQueue.pendingPayouts (../../../../../tmp/sentinel_static_3nlogixq.sol#21)\n\t- FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73)\n",
+      "lines": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "processQueue"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73):\n\tExternal calls:\n\t- (ok,None) = item.recipient.call{value: item.amount}() (../../../../../tmp/sentinel_static_3nlogixq.sol#63)\n\tEvent emitted after the call(s):\n\t- Processed(item.recipient,item.amount) (../../../../../tmp/sentinel_static_3nlogixq.sol#65)\n",
+      "lines": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73
+      ],
+      "function_names": [
+        "processQueue"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        63
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        56,
+        85
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        48,
+        59
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "empty-block",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider removing empty blocks.",
+      "lines": [
+        83
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        9
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        19
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        9
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0x99d2c811c88424bb0ff0d58327e4f075a9bdd173",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "costly-loop",
+        "impact": "Informational",
+        "confidence": "Medium",
+        "description": "FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73) has costly operations inside a loop:\n\t- currentIndex ++ (../../../../../tmp/sentinel_static_3nlogixq.sol#70)\n",
+        "lines": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "processQueue"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "costly-loop",
+        "impact": "Informational",
+        "confidence": "Medium",
+        "description": "FIFOPayoutQueue.enqueueAll(address[],uint256[]) (../../../../../tmp/sentinel_static_3nlogixq.sol#46-54) has costly operations inside a loop:\n\t- priority = nonce ++ (../../../../../tmp/sentinel_static_3nlogixq.sol#49)\n",
+        "lines": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "enqueueAll"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "immutable-states",
+        "impact": "Optimization",
+        "confidence": "High",
+        "description": "FIFOPayoutQueue.owner (../../../../../tmp/sentinel_static_3nlogixq.sol#19) should be immutable \n",
+        "lines": [
+          19
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "solc-version",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess\n\t- AbiReencodingHeadOverflowWithStaticArrayCleanup\n\t- DirtyBytesArrayToStorage\n\t- DataLocationChangeInInternalOverride\n\t- NestedCalldataArrayAbiReencodingSizeValidation\n\t- SignedImmutables\n\t- ABIDecodeTwoDimensionalArrayMemory\n\t- KeccakCaching.\nIt is used by:\n\t- ^0.8.0 (../../../../../tmp/sentinel_static_3nlogixq.sol#9)\n",
+        "lines": [
+          9
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73):\n\t- (ok,None) = item.recipient.call{value: item.amount}() (../../../../../tmp/sentinel_static_3nlogixq.sol#63)\n",
+        "lines": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "processQueue"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in FIFOPayoutQueue.emergencyWithdraw() (../../../../../tmp/sentinel_static_3nlogixq.sol#85-88):\n\t- (ok,None) = owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_3nlogixq.sol#86)\n",
+        "lines": [
+          85,
+          86,
+          87,
+          88
+        ],
+        "function_names": [
+          "emergencyWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73) has external calls inside a loop: (ok,None) = item.recipient.call{value: item.amount}() (../../../../../tmp/sentinel_static_3nlogixq.sol#63)\n",
+        "lines": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "processQueue"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73):\n\tExternal calls:\n\t- (ok,None) = item.recipient.call{value: item.amount}() (../../../../../tmp/sentinel_static_3nlogixq.sol#63)\n\tState variables written after the call(s):\n\t- currentIndex ++ (../../../../../tmp/sentinel_static_3nlogixq.sol#70)\n\tFIFOPayoutQueue.currentIndex (../../../../../tmp/sentinel_static_3nlogixq.sol#22) can be used in cross function reentrancies:\n\t- FIFOPayoutQueue.currentIndex (../../../../../tmp/sentinel_static_3nlogixq.sol#22)\n\t- FIFOPayoutQueue.getRemaining() (../../../../../tmp/sentinel_static_3nlogixq.sol#79-81)\n\t- FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73)\n\t- pendingPayouts[item.recipient] -= item.amount (../../../../../tmp/sentinel_static_3nlogixq.sol#62)\n\tFIFOPayoutQueue.pendingPayouts (../../../../../tmp/sentinel_static_3nlogixq.sol#21) can be used in cross function reentrancies:\n\t- FIFOPayoutQueue.enqueue(address,uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#37-44)\n\t- FIFOPayoutQueue.enqueueAll(address[],uint256[]) (../../../../../tmp/sentinel_static_3nlogixq.sol#46-54)\n\t- FIFOPayoutQueue.pendingPayouts (../../../../../tmp/sentinel_static_3nlogixq.sol#21)\n\t- FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73)\n\t- pendingPayouts[item.recipient] += item.amount (../../../../../tmp/sentinel_static_3nlogixq.sol#67)\n\tFIFOPayoutQueue.pendingPayouts (../../../../../tmp/sentinel_static_3nlogixq.sol#21) can be used in cross function reentrancies:\n\t- FIFOPayoutQueue.enqueue(address,uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#37-44)\n\t- FIFOPayoutQueue.enqueueAll(address[],uint256[]) (../../../../../tmp/sentinel_static_3nlogixq.sol#46-54)\n\t- FIFOPayoutQueue.pendingPayouts (../../../../../tmp/sentinel_static_3nlogixq.sol#21)\n\t- FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73)\n",
+        "lines": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "processQueue"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in FIFOPayoutQueue.processQueue(uint256) (../../../../../tmp/sentinel_static_3nlogixq.sol#56-73):\n\tExternal calls:\n\t- (ok,None) = item.recipient.call{value: item.amount}() (../../../../../tmp/sentinel_static_3nlogixq.sol#63)\n\tEvent emitted after the call(s):\n\t- Processed(item.recipient,item.amount) (../../../../../tmp/sentinel_static_3nlogixq.sol#65)\n",
+        "lines": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73
+        ],
+        "function_names": [
+          "processQueue"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          63
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          56,
+          85
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          48,
+          59
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "empty-block",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider removing empty blocks.",
+        "lines": [
+          83
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          9
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          19
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          9
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: slither=['reentrancy-eth'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)",
+    "path_taken": "deep",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [
+        "2 High/Medium static finding(s) not tied to a verdict: reentrancy-eth, reentrancy-state-change"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [],
+      "summary": "Self-critique: 1 evidence item(s) unused.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "audit_check: unhandled errors in a TaskGroup (1 sub-exception)"
+}

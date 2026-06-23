@@ -1,0 +1,873 @@
+{
+  "contract": "edge_long_contract_truncated.sol",
+  "contract_address": "0xace9065683ccf23b56296e91f366d85df85676b1",
+  "timestamp": "2026-06-21T18:39:29.273207+00:00",
+  "total_wall_s": 2.1941072940826416,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 60.0
+  },
+  "routing_decisions": [
+    "CallToUnknown prob=0.268 < threshold=0.4 \u2192 skip",
+    "DenialOfService prob=0.299 < threshold=0.3 \u2192 skip",
+    "ExternalBug prob=0.781 >= threshold=0.4 \u2192 static_analysis+rag_research",
+    "GasException prob=0.280 < threshold=0.4 \u2192 skip",
+    "IntegerUO prob=0.681 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "MishandledException prob=0.280 < threshold=0.4 \u2192 skip",
+    "Reentrancy prob=0.279 < threshold=0.35 \u2192 skip",
+    "Timestamp prob=0.206 < threshold=0.35 \u2192 skip",
+    "TransactionOrderDependence prob=0.267 < threshold=0.35 \u2192 skip",
+    "UnusedReturn prob=0.260 < threshold=0.45 \u2192 skip",
+    "quick_screen: slither=['reentrancy-no-eth'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {
+    "label": "confirmed_vulnerable",
+    "probabilities": {
+      "CallToUnknown": 0.2682,
+      "DenialOfService": 0.2992,
+      "ExternalBug": 0.7806,
+      "GasException": 0.2796,
+      "IntegerUO": 0.681,
+      "MishandledException": 0.2801,
+      "Reentrancy": 0.2794,
+      "Timestamp": 0.2063,
+      "TransactionOrderDependence": 0.2666,
+      "UnusedReturn": 0.26
+    },
+    "confirmed": [
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7806,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.681,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2796,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.2992,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2801,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.2794,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2682,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2666,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.26,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7806,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.681,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2796,
+        "tier": null
+      }
+    ],
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "thresholds": [
+      0.4000000059604645,
+      0.5,
+      0.44999998807907104,
+      0.05000000074505806,
+      0.44999998807907104,
+      0.3499999940395355,
+      0.44999998807907104,
+      0.5,
+      0.3499999940395355,
+      0.4000000059604645
+    ],
+    "truncated": true,
+    "windows_used": 4,
+    "num_nodes": 140,
+    "num_edges": 237
+  },
+  "verdicts": {
+    "ExternalBug": "SAFE",
+    "IntegerUO": "SAFE",
+    "GasException": "SAFE",
+    "DenialOfService": "SAFE",
+    "MishandledException": "SAFE",
+    "Reentrancy": "DISPUTED",
+    "CallToUnknown": "SAFE",
+    "TransactionOrderDependence": "SAFE",
+    "UnusedReturn": "SAFE"
+  },
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-no-eth"
+    ],
+    "aderyn": [
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 8,
+  "rag_results_count": 5,
+  "audit_history_count": 2,
+  "graph_explanations_classes": [
+    "graph_stats",
+    "analysis_mode",
+    "hotspots_by_class"
+  ],
+  "confirmations": {
+    "ExternalBug": [
+      "ml:0.781",
+      "consensus:confidence=0.19"
+    ],
+    "IntegerUO": [
+      "ml:0.681",
+      "consensus:confidence=0.17"
+    ],
+    "GasException": [
+      "ml:0.280"
+    ],
+    "DenialOfService": [
+      "ml:0.299"
+    ],
+    "MishandledException": [
+      "ml:0.280"
+    ],
+    "Reentrancy": [
+      "ml:0.279",
+      "consensus:confidence=0.33"
+    ],
+    "CallToUnknown": [
+      "ml:0.268"
+    ],
+    "TransactionOrderDependence": [
+      "ml:0.267"
+    ],
+    "UnusedReturn": [
+      "ml:0.260"
+    ]
+  },
+  "contradictions": {},
+  "final_report": {
+    "contract_address": "0xace9065683ccf23b56296e91f366d85df85676b1",
+    "overall_label": "confirmed_vulnerable",
+    "overall_verdict": "DISPUTED",
+    "risk_probability": 0.7806,
+    "top_vulnerability": "ExternalBug",
+    "confirmed": [
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7806,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.681,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2796,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.2992,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2801,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.2794,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2682,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2666,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.26,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7806,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.681,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2796,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.2992,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2801,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.2794,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2682,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2666,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.26,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "probabilities": {
+      "CallToUnknown": 0.2682,
+      "DenialOfService": 0.2992,
+      "ExternalBug": 0.7806,
+      "GasException": 0.2796,
+      "IntegerUO": 0.681,
+      "MishandledException": 0.2801,
+      "Reentrancy": 0.2794,
+      "Timestamp": 0.2063,
+      "TransactionOrderDependence": 0.2666,
+      "UnusedReturn": 0.26
+    },
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "vulnerability_verdicts": [
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7806,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.781",
+          "consensus:confidence=0.19"
+        ],
+        "severity": "HIGH",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.6815
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.681,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.681",
+          "consensus:confidence=0.17"
+        ],
+        "severity": "MEDIUM",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.5945
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2796,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.280"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.2992,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.299"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2801,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.280"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.2794,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml:0.279",
+          "consensus:confidence=0.33"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        },
+        "confidence": 0.264
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2682,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.268"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2666,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.267"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.26,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "ml:0.260"
+        ],
+        "severity": "INFO",
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      }
+    ],
+    "threshold": 0.5,
+    "ml_truncated": true,
+    "num_nodes": 140,
+    "num_edges": 237,
+    "rag_evidence": [
+      {
+        "content": "DeFi Security Incident: DKP\nDate: 2023-03-01\nVulnerability type: flash_loan\n\nAttack summary:\nThere is an exchange method in the 0x89257 closed source contract for users to swap USDT for DKP tokens,\nbut the price Oracle used is the ratio of the balance of the two tokens in the USDT-DKP pair,\nand the attacker manipulates this price through flashLoan, swapping a very small amount of USDT for a large amount of DKP and selling it for a profit\n\nPost-mortem references:\nhttps://twitter.com/CertiKAlert/status/1633421908996763648",
+        "doc_id": "eb34a4ef21d5d13f",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "DKP",
+          "date": "2023-03-01",
+          "vuln_type": "flash_loan",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/CertiKAlert/status/1633421908996763648"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-03/DKP_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "eb34a4ef21d5d13f"
+        },
+        "score": 0.0288981288981289
+      },
+      {
+        "content": "DeFi Security Incident: Novo\nDate: 2022-05-01\nVulnerability type: other\n\nDetailed notes:\nExploit Alert ref: https://www.panewslab.com/zh_hk/articledetails/f40t9xb4.html\nOrigin Attack Transaction: 0xc346adf14e5082e6df5aeae650f3d7f606d7e08247c2b856510766b4dfcdc57f\nBlocksec Txinfo: https://versatile.blocksecteam.com/tx/bsc/0xc346adf14e5082e6df5aeae650f3d7f606d7e08247c2b856510766b4dfcdc57f\nAttack Addr: 0x31a7cc04987520cefacd46f734943a105b29186e\nAttack Contract: 0x3463a663de4ccc59c8b21190f81027096f18cf2a\nVulnerable Contract: https://bscscan.com/address/0xa0787daad6062349f63b7c228cbfd5d8a3db08f1#code\nBrrow 17.2 WBNB\n\u653b\u64ca\u8005\u5148\u8cb7\u5165 NOVO Token\n\u900f\u904e NOVO Token \u7684 transferFrom \u672a\u904e\u6ffe `from`\n`from` \u6307\u5b9a\u70ba NOVO/WBNB \u7684 LP pool, \u5373\u53ef\u64cd\u7e31 PancakeSwap NOVO/WBNB \u7684\u50f9\u683c\n\u653b\u64ca\u8005\u518d\u8ce3\u51fa flashswap \u501f\u4f86\u7684 NOVO Token \u5373\u53ef\u7372\u5229\nUse borrow WBNB to swap some NOVO token\nSync NOVO token balance before exploit\nManipulate the LP of NOVO/WBNB => Manipulate the NOVO/WBNB price\nSync NOVO/WBNB price\nSwap NOVO to WBNB, make attacker profit\nPayback the flashswap, will be `BorrowAmount` + 0.25% fee",
+        "doc_id": "1e2f3f7e7793311d",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Novo",
+          "date": "2022-05-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2022-05/Novo_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "1e2f3f7e7793311d"
+        },
+        "score": 0.02715098147128967
+      },
+      {
+        "content": "DeFi Security Incident: Phoenix\nDate: 2023-03-01\nVulnerability type: access_control\n\nAttack summary:\nPhxProxy contract delegateCallSwap() function lack of access control and can be passed in any parameter\nThe lost money is mainly USDC in the d028 contract which the attacker converts into WETH in the 65ba contract through the buyLeverage function\nand then swaps it into his own tokens by the delegateCallSwap function, making a profit from it\n\nPost-mortem references:\nhttps://twitter.com/HypernativeLabs/status/1633090456157401088",
+        "doc_id": "855be0354478d3a6",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Phoenix",
+          "date": "2023-03-01",
+          "vuln_type": "access_control",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/HypernativeLabs/status/1633090456157401088"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-03/Phoenix_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "855be0354478d3a6"
+        },
+        "score": 0.016666666666666666
+      },
+      {
+        "content": "DeFi Security Incident: BIGFI\nDate: 2023-03-01\nVulnerability type: other\n\nDetailed notes:\n@TX\nhttps://bscscan.com/tx/0x9fe19093a62a7037d04617b3ac4fbf5cb2d75d8cb6057e7e1b3c75cbbd5a5adc\nRelated Events\nhttps://github.com/SunWeb3Sec/DeFiHackLabs/#20230207---fdp---reflection-token\nhttps://github.com/SunWeb3Sec/DeFiHackLabs/#20230126---tinu---reflection-token\nhttps://github.com/SunWeb3Sec/DeFiHackLabs#20230210---sheep---reflection-token\nCalculate the number of burns\nbeforebalanceOf(Pair) == (_rOwned(Pair) * before_tTotal / _rTotal)\nto reduce the balanceOf(Pair) to 1 , the amount of _tTotal to burn = _tTotal - (_rTotal / _rOwned(Pair)) = _tTotal - (before_tTotal / beforebalanceOf(Pair))",
+        "doc_id": "127592ffc2157ed0",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "BIGFI",
+          "date": "2023-03-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-03/BIGFI_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "127592ffc2157ed0"
+        },
+        "score": 0.016666666666666666
+      },
+      {
+        "content": "SWC-107: Reentrancy\n\nOne of the major dangers of calling external contracts is that they can take over the control flow. In the reentrancy attack, a malicious contract calls back into the calling contract before the first invocation of the function is finished, so changes to state that should have prevented the re-call have not yet occurred. Remediation: finish all internal work (state changes) before calling external functions; use a reentrancy guard (mutex).",
+        "doc_id": "SWC-107",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "unknown",
+          "date": "2020-01-01",
+          "vuln_type": "reentrancy",
+          "severity": "high",
+          "loss_usd": 0,
+          "chain": "",
+          "url": "https://swcregistry.io/docs/SWC-107",
+          "source": "swc_registry",
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "SWC-107"
+        },
+        "score": 0.01639344262295082
+      }
+    ],
+    "audit_history": [
+      {
+        "contract_address": "0xacE9065683Ccf23B56296e91F366d85DF85676B1",
+        "score": 0.7314,
+        "score_field_element": 5993,
+        "label": "vulnerable",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1713200000,
+        "timestamp_iso": "2026-04-15T12:00:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      },
+      {
+        "contract_address": "0xacE9065683Ccf23B56296e91F366d85DF85676B1",
+        "score": 0.4102,
+        "score_field_element": 3362,
+        "label": "safe",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1712900000,
+        "timestamp_iso": "2026-04-12T03:20:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      }
+    ],
+    "static_findings": [
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          153,
+          160
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          63,
+          68,
+          80
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "large-numeric-literal",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Large literal values multiples of 10000 can be replaced with scientific notation.Use `e` notation, for example: `1e18`, instead of its full numeric value.",
+        "lines": [
+          90
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          2
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          152,
+          157
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          74,
+          149
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          84,
+          85,
+          145
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unsafe-erc20-operation",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+        "lines": [
+          153,
+          160
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [
+      {
+        "caller_contract": "VulnerableVault",
+        "caller_function": "deposit",
+        "callee_contract": "SafeMath",
+        "callee_function": "TMP_72(uint256) = LIBRARY_CALL, dest:SafeMath, function:SafeMath.add(uint256,uint256), arguments:['REF_13', 'amount'] ",
+        "callee_is_interface": false
+      },
+      {
+        "caller_contract": "VulnerableVault",
+        "caller_function": "deposit",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_70(bool) = HIGH_LEVEL_CALL, dest:token(IERC20), function:transferFrom, arguments:['msg.sender', 'TMP_69', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "VulnerableVault",
+        "caller_function": "withdraw",
+        "callee_contract": "SafeMath",
+        "callee_function": "TMP_77(uint256) = LIBRARY_CALL, dest:SafeMath, function:SafeMath.sub(uint256,uint256), arguments:['REF_18', 'amount'] ",
+        "callee_is_interface": false
+      },
+      {
+        "caller_contract": "VulnerableVault",
+        "caller_function": "withdraw",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_75(bool) = HIGH_LEVEL_CALL, dest:token(IERC20), function:transfer, arguments:['msg.sender', 'amount']  ",
+        "callee_is_interface": true
+      }
+    ],
+    "routing_decisions": [
+      "CallToUnknown prob=0.268 < threshold=0.4 \u2192 skip",
+      "DenialOfService prob=0.299 < threshold=0.3 \u2192 skip",
+      "ExternalBug prob=0.781 >= threshold=0.4 \u2192 static_analysis+rag_research",
+      "GasException prob=0.280 < threshold=0.4 \u2192 skip",
+      "IntegerUO prob=0.681 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "MishandledException prob=0.280 < threshold=0.4 \u2192 skip",
+      "Reentrancy prob=0.279 < threshold=0.35 \u2192 skip",
+      "Timestamp prob=0.206 < threshold=0.35 \u2192 skip",
+      "TransactionOrderDependence prob=0.267 < threshold=0.35 \u2192 skip",
+      "UnusedReturn prob=0.260 < threshold=0.45 \u2192 skip",
+      "quick_screen: slither=['reentrancy-no-eth'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "recommendation": "HIGH RISK \u2014 top vulnerability: ExternalBug (probability 78.1%, CONFIRMED tier). 5 similar exploit pattern(s) found in DeFiHackLabs corpus. 1 Slither High/Medium finding(s). 2 prior on-chain audit(s). Recommend full manual audit before deployment.\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens \u2014 tail code was not analysed. Manual review of the unanalysed portion is recommended.",
+    "narrative": null,
+    "error": null,
+    "path_taken": "deep",
+    "metric_attribution": {
+      "ExternalBug": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "IntegerUO": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "GasException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "DenialOfService": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "MishandledException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "Reentrancy": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "CallToUnknown": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "TransactionOrderDependence": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "UnusedReturn": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      }
+    },
+    "confidence_by_class": {
+      "ExternalBug": 0.6815,
+      "IntegerUO": 0.5945,
+      "Reentrancy": 0.264
+    },
+    "consensus_verdict": {
+      "ExternalBug": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.225,
+        "confidence": 0.1915,
+        "verdict": "SAFE",
+        "weights": {
+          "ml": 0.225,
+          "slither": 0.5,
+          "aderyn": 0.45
+        }
+      },
+      "IntegerUO": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.31,
+        "confidence": 0.1713,
+        "verdict": "SAFE",
+        "weights": {
+          "ml": 0.31,
+          "slither": 0.8,
+          "aderyn": 0.7
+        }
+      },
+      "Reentrancy": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.6,
+        "confidence": 0.3315,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.39,
+          "slither": 0.82,
+          "aderyn": 0.6
+        }
+      }
+    },
+    "reflection_notes": {
+      "unused_evidence": [
+        "1 High/Medium static finding(s) not tied to a verdict: reentrancy-state-change"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [
+        "ExternalBug: confidence 68% below 0.70",
+        "IntegerUO: confidence 59% below 0.70",
+        "Reentrancy: verdict DISPUTED"
+      ],
+      "failure_modes": [
+        "Contract exceeded 512 CodeBERT tokens \u2014 tail code unanalysed; verdicts may miss vulnerabilities in the truncated region.",
+        "ExternalBug flagged \u2014 the ML model is known to over-predict this class (Run 12 class-definition mismatch); treat as lower confidence unless corroborated by an inter-contract call finding."
+      ],
+      "summary": "Self-critique: 3 verdict(s) are uncertain; 1 evidence item(s) unused; 2 failure mode(s) noted.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": null
+}

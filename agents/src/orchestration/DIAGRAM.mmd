@@ -1,0 +1,165 @@
+flowchart TB
+  subgraph PRODUCER["Module 1 (ml/) — Producer"]
+    API["ml/api.py FastAPI
+/predict → per-class probabilities (10 classes)
+/hotspots → function-level GNN attention
+/health → liveness"]
+  end
+
+  subgraph CONSUMER["Agents ML Module — Consumer"]
+    direction TB
+    N2["② ml_assessment
+calls MCP :8010 predict"]
+    N6["⑥ graph_explain
+calls MCP :8013 get_graph_hotspots"]
+  end
+
+  subgraph ROUTING["Routing — ML Signal → Path Decision"]
+    direction TB
+    ML["ml_result
+10-class probability vector"] --> ITER["_iter_class_probs"]
+    ITER --> BUILD["build_routing_decisions
+→ list of human-readable decisions"]
+    BUILD --> ACTIVE["compute_active_tools
+→ sorted tool node names"]
+    ACTIVE --> GATE["evidence_router
+Two-signal fast-path gate"]
+    GATE --> THRESH{"ML all < DEEP_THRESHOLDS
+AND quick_screen zero
+High/Critical hits?"}
+    THRESH -- Yes --> FAST["FAST PATH
+→ synthesizer directly"]
+    THRESH -- No --> DEEP["DEEP PATH
+→ fan-out to evidence tools"]
+  end
+
+  subgraph THRESHOLDS["Per-Class DEEP_THRESHOLDS (routing.py:23-54)"]
+    direction TB
+    T1["Reentrancy: 0.35 | IntegerUO: 0.35"]
+    T2["GasException: 0.40 | Timestamp: 0.35"]
+    T3["TransactionOrderDependence: 0.35"]
+    T4["ExternalBug: 0.40 | CallToUnknown: 0.40"]
+    T5["MishandledException: 0.40"]
+    T6["UnusedReturn: 0.45 | DenialOfService: 0.30"]
+  end
+
+  subgraph MLRESULT["ml_result 3-Tier Schema (state.py:55-74)"]
+    direction TB
+    LABEL["label: safe | suspicious | confirmed_vulnerable"]
+    PROBS["probabilities: dict[str, float]
+full 10-class vector"]
+    CONF["confirmed: list[dict]
+prob ≥ 0.55"]
+    SUSP["suspicious: list[dict]
+0.25 ≤ prob < 0.55"]
+    META["tier_thresholds, thresholds
+truncated, windows_used
+num_nodes, num_edges"]
+  end
+
+  subgraph VERDICT["Verdict Computation — 3 Algorithms"]
+    direction TB
+    subgraph ALGO1["A.1 Rule-based (routing.py:187)"]
+      direction TB
+      RV1["prob ≥ 0.50 + slither_match → CONFIRMED"]
+      RV2["prob ≥ 0.50 + rag≥0.80 → CONFIRMED"]
+      RV3["prob ≥ 0.50 + rag≥0.50 → LIKELY"]
+      RV4["prob ≥ 0.50 alone → DISPUTED"]
+      RV5["fast path → LIKELY"]
+    end
+    subgraph ALGO2["A.4 LLM Debate (cross_validator)"]
+      direction TB
+      PROS["① Prosecutor
+argues VULNERABLE"]
+      DEF["② Defender
+argues FALSE POSITIVE"]
+      JUDGE["③ Judge
+renders JSON verdict"]
+      PROS --> DEF --> JUDGE
+    end
+    subgraph ALGO3["A.6/A.7 Consensus (consensus_engine)"]
+      direction TB
+      CV["weighted vote:
+ML (×0.5) + Slither + Aderyn"]
+      CI["Key invariant:
+ML alone NEVER → CONFIRMED"]
+    end
+  end
+
+  subgraph FALLBACK["GNN Hotspots Fallback Chain"]
+    direction TB
+    T1_G["Tier 1: _analyze_hotspots_gnn()
+POST /hotspots → real GNN attention"]
+    T2_G["Tier 2: _analyze_hotspots_slither()
+Slither structural scoring"]
+    T3_G["Tier 3: Mock data
+deterministic stub"]
+    T1_G -- "non-200 / conn err" --> T2_G
+    T2_G -- "error" --> T3_G
+  end
+
+  subgraph MITIGATION["Why ML is a HINT — 7 Mitigation Layers"]
+    direction TB
+    M1["1. ML_WEIGHT_SCALE = 0.5
+consensus can't CONFIRM w/o corroboration"]
+    M2["2. Two-signal fast-path gate
+ML OR Slither must flag"]
+    M3["3. Per-class thresholds LOWER than 0.50
+catch borderline cases"]
+    M4["4. Prosecutor/Defender/Judge
+LLM debate reads source weights ML as one signal"]
+    M5["5. cross_validator prompt
+explicitly names ML over-prediction"]
+    M6["6. reflection (A.3)
+flags known ML failure modes"]
+    M7["7. explainer (A.8)
+LIME attribution shows ml_pct vs others"]
+  end
+
+  subgraph CONFIG["Env Config for ML Integration"]
+    direction TB
+    C1["MODULE1_INFERENCE_URL: http://localhost:8001"]
+    C2["SENTINEL_ML_API_URL: http://localhost:8000"]
+    C3["MODULE1_TIMEOUT: 30.0 | GRAPH_INSPECTOR_HOTSPOTS_TIMEOUT: 60"]
+    C4["MODULE1_MOCK: false | GRAPH_INSPECTOR_MOCK: false"]
+    C5["ML_WEIGHT_SCALE: 0.5 | ACCURACY_WEIGHTS: per-class"]
+    C6["AGENTS_DISABLE_LLM: 0 | DEBATE_MODE: on"]
+  end
+
+  subgraph PATHS["Two Integration Paths"]
+    direction TB
+    subgraph PATHA["Path A — via MCP (default)"]
+      direction LR
+      A1["② ml_assessment node"] -- SSE :8010/sse --> A2["sentinel-inference MCP
+inference_server.py"]
+      A2 -- "POST /predict" --> A3["Module 1
+ml/api.py"]
+      A3 -- ml_result dict --> A1
+    end
+    subgraph PATHB["Path B — direct HTTP (graph_inspector)"]
+      direction LR
+      B1["⑥ graph_explain node"] -- SSE :8013/sse --> B2["sentinel-graph-inspector MCP
+graph_inspector_server.py"]
+      B2 -- "POST /hotspots" --> B3["Module 1
+ml/api.py"]
+      B3 -- hotspots list --> B1
+    end
+  end
+
+  PRODUCER -- HTTP --> CONSUMER
+  CONSUMER --> PATHS
+  PATHS --> ROUTING
+  MLRESULT --> ML
+  ROUTING --> VERDICT
+  N6 --> FALLBACK
+  THRESHOLDS --> ROUTING
+  MITIGATION -.-> VERDICT
+
+  subgraph INFOCARD["Key Design Decisions"]
+    D1["• DoS threshold 0.30 (rare → investigate)
+• UnusedReturn threshold 0.45 (noisy → avoid FP)
+• Thresholds lower than 0.50 inference boundary
+  (deliberately catch borderline cases)"]
+    D2["• CLASS_TO_DETECTORS bridges ML classes → Slither detectors
+  (3-8x faster than running all 90+ detectors)"]
+  end

@@ -1,0 +1,172 @@
+flowchart TB
+  subgraph OVERVIEW["MCP Server Mesh — 4 SSE/HTTP Servers"]
+    direction TB
+    OV["All 4 servers share the same SSE transport pattern:
+Route /sse + Mount /messages/ + Route /health
+Each = Starlette app + uvicorn
+Shared httpx.AsyncClient lifespan-managed (A-20)"]
+  end
+
+  subgraph INFERENCE["① sentinel-inference :8010 (501 lines)"]
+    direction TB
+    INF_TOOLS["Tools: predict, batch_predict"]
+    INF_LOGIC["_call_inference_api()
+→ POST {MODULE1_INFERENCE_URL}/predict
+→ body: {source_code: contract_code}"]
+    INF_MOCK["_mock_prediction()
+→ MODULE1_MOCK=true OR timeout/RequestError
+→ NOT on 4xx/5xx (those RAISE)"]
+    INF_CLIENT["Shared httpx.AsyncClient
+lifespan-managed (A-20)
+created in _on_startup, closed in _on_shutdown"]
+    INF_TOOLS --> INF_LOGIC
+    INF_LOGIC -. "fallback" .-> INF_MOCK
+    INF_LOGIC --> INF_CLIENT
+  end
+
+  subgraph RAG_SERVER["② sentinel-rag :8011 (353 lines)"]
+    direction TB
+    RAG_TOOLS["Tool: search(query, k=5, filters)"]
+    RAG_LOGIC["_handle_search()
+→ _retriever.search(query, k, filters)
+→ synchronous, CPU-bound (<100ms)"]
+    RAG_INIT["Lazy-loaded HybridRetriever
+in _on_startup() (Bug 10 fix: not at module import)
+FAISS + BM25 + chunks from data/index/"]
+    RAG_HEALTH["/health returns {chunks_indexed, default_k}"]
+    RAG_TOOLS --> RAG_LOGIC
+    RAG_LOGIC --> RAG_INIT
+  end
+
+  subgraph AUDIT["③ sentinel-audit :8012 (717 lines)"]
+    direction TB
+    AUDIT_TOOLS["Tools: get_latest_audit, get_audit_history, check_audit_exists"]
+    AUDIT_LOGIC["Web3.py → Sepolia
+AuditRegistry proxy
+0x14E5...fAf"]
+    AUDIT_ABI["ABI loaded LAZILY in _on_startup()
+= None at module level (Bug 2 fix)"]
+    AUDIT_SCORE["Score decoding:
+score = scoreFieldElement / 8192.0
+8192 = 2¹³ = EZKL scale factor"]
+    AUDIT_VALID["Address validation:
+Web3.to_checksum_address() (EIP-55)"]
+    AUDIT_MOCK["Mock mode:
+auto if SEPOLIA_RPC_URL empty
+OR AUDIT_MOCK=true"]
+    AUDIT_TOOLS --> AUDIT_LOGIC
+    AUDIT_LOGIC --> AUDIT_ABI
+    AUDIT_LOGIC --> AUDIT_SCORE
+    AUDIT_LOGIC --> AUDIT_VALID
+    AUDIT_LOGIC -. "fallback" .-> AUDIT_MOCK
+  end
+
+  subgraph GRAPH["④ sentinel-graph-inspector :8013 (544 lines)"]
+    direction TB
+    GRAPH_TOOLS["Tool: get_graph_hotspots
+(contract_code, flagged_classes=[])"]
+    subgraph FALLBACK["Three-Tier Fallback Chain"]
+      direction TB
+      T1["Tier 1: _analyze_hotspots_gnn()
+POST {SENTINEL_ML_API_URL}/hotspots
+→ real GNN attention (L2 norm scores)
+analysis_mode='gnn_attention'"]
+      T2["Tier 2: _analyze_hotspots_slither()
+Runs Slither on temp file
+scoped to CLASS_TO_DETECTORS
+score = detector_hits×weight + structural_counts
+analysis_mode='slither'"]
+      T3["Tier 3: Mock data
+deterministic stub
+analysis_mode='mock'"]
+      T1 -- "non-200 / conn err → None" --> T2
+      T2 -- "Slither error" --> T3
+    end
+    GRAPH_TOOLS --> FALLBACK
+  end
+
+  subgraph PROTOCOL["Common MCP Protocol Patterns"]
+    direction TB
+    SKEL["Server Skeleton:"]
+    S1["① Server instance: Server('sentinel-<name>')"]
+    S2["② @server.list_tools() → list[Tool]"]
+    S3["③ @server.call_tool() → dispatcher"]
+    S4["④ lifespan: _on_startup → serve → _on_shutdown"]
+    S5["⑤ Starlette(app) + uvicorn
+routes: /sse, /messages/, /health"]
+    SKEL --> S1 --> S2 --> S3 --> S4 --> S5
+
+    subgraph TRANSPORT["SSE + JSON-RPC Transport"]
+      direction TB
+      X1["GET /sse: persistent HTTP connection (event-stream)
+server pushes initialized, tools/list, tools/call results"]
+      X2["POST /messages/: client sends JSON-RPC requests
+initialize, tools/list, tools/call"]
+      X3["GET /health: plain JSON (NOT MCP)
+for Docker/Prometheus healthchecks"]
+    end
+
+    subgraph CLIENT["Client Connection Pattern"]
+      direction TB
+      C1["async with sse_client(url) as (read, write)"]
+      C2["async with ClientSession(read, write) as session"]
+      C3["await session.initialize()"]
+      C4["result = await session.call_tool(name, args)"]
+      C5["await session.close()"]
+      C1 --> C2 --> C3 --> C4 --> C5
+    end
+  end
+
+  subgraph TOOL_INV["Tool Inventory"]
+    direction LR
+    TI1[":8010 predict
+contract_code → ml_result"]
+    TI2[":8010 batch_predict
+contracts (≤20) → results[]"]
+    TI3[":8011 search
+query, k, filters → ranked chunks"]
+    TI4[":8012 get_latest_audit
+contract_address → AuditResult"]
+    TI5[":8012 get_audit_history
+addr, limit → {count, records}"]
+    TI6[":8012 check_audit_exists
+addr → {exists, count}"]
+    TI7[":8013 get_graph_hotspots
+code, classes → {hotspots, mode}"]
+  end
+
+  subgraph LIFECYCLES["Server Lifecycles"]
+    direction TB
+    LC1["inference_server: _on_startup → create httpx client → serve → _on_shutdown → close client"]
+    LC2["rag_server: _on_startup → load retriever → serve (sync CPU-bound)
+(loads BEFORE Starlette, fail-fast if index missing)"]
+    LC3["audit_server: module import (_ABI=None) → _on_startup → load ABI if !mock → serve
+(Web3 provider per-call, no persistent connection)"]
+    LC4["graph_inspector: module import (no IO) → serve (no startup work, per-call fresh client)
+(NO shared httpx client — fallback chain needs isolation)"]
+  end
+
+  subgraph CONFIG["Configuration Surface"]
+    C1["MODULE1_INFERENCE_URL: http://localhost:8001 | MODULE1_TIMEOUT: 30"]
+    C2["SENTINEL_ML_API_URL: http://localhost:8000"]
+    C3["MCP_{INFERENCE,RAG,AUDIT,GRAPH_INSPECTOR}_PORT: 8010-8013"]
+    C4["SEPOLIA_RPC_URL | AUDIT_REGISTRY_ADDRESS | AUDIT_MOCK"]
+    C5["RAG_DEFAULT_K: 5 | RAG_MAX_K: 20"]
+  end
+
+  subgraph FAILURES["Failure Modes"]
+    direction TB
+    F1["Module 1 unreachable → inference falls back to _mock_prediction()"]
+    F2["Module 1 4xx/5xx → inference RAISES → graph captures as state error"]
+    F3["RAG index missing → rag_server fails to start (fail-fast)"]
+    F4["Sepolia RPC down → audit returns error dict (no auto-mock unless _MOCK_MODE)"]
+    F5["/hotspots unreachable → graph_inspector falls back to slither or mock"]
+    F6["batch_predict > 20 → returns error 'batch size exceeds max 20'"]
+  end
+
+  subgraph HEALTH["/health Endpoints"]
+    H1["inference: {status, server, mock_mode, module1_url}"]
+    H2["rag: {status, server, chunks_indexed, default_k}"]
+    H3["audit: {status, server, mock_mode, registry_address}"]
+    H4["graph_inspector: {status, server, mock_mode, ml_api_url, fallback}"]
+  end

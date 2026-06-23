@@ -1,0 +1,570 @@
+{
+  "contract_count": 16,
+  "positive_verdicts": [
+    "CONFIRMED",
+    "LIKELY"
+  ],
+  "macro_f1": 0.37564102564102564,
+  "micro_f1": 0.393939393939394,
+  "contract_accuracy_loose": 0.6875,
+  "contract_accuracy_exact": 0.0,
+  "per_class": {
+    "CallToUnknown": {
+      "cls": "CallToUnknown",
+      "tp": 7,
+      "fp": 4,
+      "fn": 0,
+      "tn": 5,
+      "precision": 0.6363636363636364,
+      "recall": 1.0,
+      "f1": 0.7777777777777778,
+      "support": 7
+    },
+    "DenialOfService": {
+      "cls": "DenialOfService",
+      "tp": 3,
+      "fp": 0,
+      "fn": 4,
+      "tn": 9,
+      "precision": 1.0,
+      "recall": 0.42857142857142855,
+      "f1": 0.6,
+      "support": 7
+    },
+    "ExternalBug": {
+      "cls": "ExternalBug",
+      "tp": 1,
+      "fp": 10,
+      "fn": 1,
+      "tn": 4,
+      "precision": 0.09090909090909091,
+      "recall": 0.5,
+      "f1": 0.15384615384615385,
+      "support": 2
+    },
+    "GasException": {
+      "cls": "GasException",
+      "tp": 0,
+      "fp": 2,
+      "fn": 1,
+      "tn": 13,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 1
+    },
+    "IntegerUO": {
+      "cls": "IntegerUO",
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "tn": 15,
+      "precision": 0.0,
+      "recall": NaN,
+      "f1": 0.0,
+      "support": 0
+    },
+    "MishandledException": {
+      "cls": "MishandledException",
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "tn": 15,
+      "precision": 0.0,
+      "recall": NaN,
+      "f1": 0.0,
+      "support": 0
+    },
+    "Reentrancy": {
+      "cls": "Reentrancy",
+      "tp": 1,
+      "fp": 7,
+      "fn": 0,
+      "tn": 8,
+      "precision": 0.125,
+      "recall": 1.0,
+      "f1": 0.2222222222222222,
+      "support": 1
+    },
+    "Timestamp": {
+      "cls": "Timestamp",
+      "tp": 1,
+      "fp": 2,
+      "fn": 0,
+      "tn": 13,
+      "precision": 0.3333333333333333,
+      "recall": 1.0,
+      "f1": 0.5,
+      "support": 1
+    },
+    "TransactionOrderDependence": {
+      "cls": "TransactionOrderDependence",
+      "tp": 0,
+      "fp": 5,
+      "fn": 0,
+      "tn": 11,
+      "precision": 0.0,
+      "recall": NaN,
+      "f1": 0.0,
+      "support": 0
+    },
+    "UnusedReturn": {
+      "cls": "UnusedReturn",
+      "tp": 0,
+      "fp": 2,
+      "fn": 0,
+      "tn": 14,
+      "precision": 0.0,
+      "recall": NaN,
+      "f1": 0.0,
+      "support": 0
+    }
+  },
+  "gates": [
+    {
+      "gate_id": "WS1a_silent_safe_on_flagged",
+      "description": "No consensus-flagged class ends SAFE (debate cannot clear consensus verdict)",
+      "passed": true,
+      "detail": "0 violation(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS1b_inconclusive_on_timeout",
+      "description": "edge_debate_timeout emits INCONCLUSIVE (LLM-on mode only)",
+      "passed": false,
+      "detail": "edge_debate_timeout present=False, INCONCLUSIVE emitted=False",
+      "value": false
+    },
+    {
+      "gate_id": "WS1c_no_missing_consensus_votes",
+      "description": "No consensus vote is missing from final verdicts (Finding #15)",
+      "passed": true,
+      "detail": "0 missing vote(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS1d_confidence_1_0_not_downgraded",
+      "description": "No consensus confidence=1.0 class ends in SAFE (Finding #14 worst case)",
+      "passed": true,
+      "detail": "0 violation(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS1e_no_vulnerable_label_with_safe_verdict",
+      "description": "No contract has overall_label=vulnerable + overall_verdict=SAFE (Finding #19)",
+      "passed": true,
+      "detail": "0 violation(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS2_false_positives_on_safe",
+      "description": "Zero false-positive verdicts on the safe subset",
+      "passed": true,
+      "detail": "0 FP(s) on 0 safe contract(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS3_long_contract_bug_detected",
+      "description": "edge_long_contract_truncated Reentrancy flagged (bug is past 2000-char cutoff)",
+      "passed": false,
+      "detail": "edge_long_contract_truncated not in corpus",
+      "value": "missing"
+    },
+    {
+      "gate_id": "macro_f1_vs_baseline",
+      "description": "macro_F1 >= baseline (0.2455)",
+      "passed": true,
+      "detail": "macro_F1 = 0.3756 (delta +0.1302 vs baseline 0.2455)",
+      "value": 0.37564102564102564
+    }
+  ],
+  "per_contract": [
+    {
+      "stem": "01_flash_loan_oracle_manipulation",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug"
+      ],
+      "predicted_positive": [
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "ExternalBug"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_proxy_delegatecall",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_unbounded_refund",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_access_control_bypass",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_dynamic_dispatch",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_push_payment_failure",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "DenialOfService"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_dynamic_loop_gas_bomb",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "DenialOfService"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_low_level_forwarder",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_opaque_contract_factory",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "TransactionOrderDependence",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "TransactionOrderDependence",
+        "UnusedReturn"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_storage_growth_dos",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "DenialOfService"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_unexpected_revert_dos",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_upgrade_proxy_selfdestruct",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_call_in_fallback",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_dos_in_constructor",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed.\"}"
+    },
+    {
+      "stem": "07_multivuln_call_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_dos_exception",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "GasException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService",
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    }
+  ]
+}

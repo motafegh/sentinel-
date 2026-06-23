@@ -2,7 +2,7 @@
 
 > **Scope:** `agents/src/mcp/servers/` — 4 SSE/HTTP servers that expose
 > SENTINEL's capabilities as MCP tools. Source-of-truth: the code, not
-> this file. Last verified: 2026-06-21.
+> this file. Last verified: 2026-06-23.
 
 ---
 
@@ -569,7 +569,7 @@ healthchecks and Prometheus blackbox monitoring.
 
 ```
   agents/src/mcp/servers/
-  ├── inference_server.py         491 lines   :8010
+  ├── inference_server.py         501 lines   :8010
   │   ├─ _on_startup() / _on_shutdown()       shared httpx client
   │   ├─ _call_inference_api()                HTTP bridge to Module 1
   │   ├─ _mock_prediction()                   3-tier schema, deterministic
@@ -587,7 +587,7 @@ healthchecks and Prometheus blackbox monitoring.
   │   ├─ get_latest_audit() / get_audit_history() / check_audit_exists()
   │   └─ mock helpers (auto-enabled if RPC missing)
   │
-  ├── graph_inspector_server.py   527 lines   :8013
+  ├── graph_inspector_server.py   544 lines   :8013
   │   ├─ _analyze_hotspots_gnn()              Tier 1: POST /hotspots
   │   ├─ _analyze_hotspots_slither()          Tier 2: Slither structural
   │   └─ mock data                            Tier 3: deterministic stub

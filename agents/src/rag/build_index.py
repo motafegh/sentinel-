@@ -89,14 +89,25 @@ def _extra_fetchers() -> list[Any]:
     Phase A (A.5) corpus-expansion fetchers. Each reads a curated JSON corpus
     under data/knowledge/ and returns [] gracefully if its file is absent, so
     the index build degrades to DeFiHackLabs-only when corpora are missing.
+
+    WS2 (2026-06-22): the 5 extra fetchers (Code4rena/Sherlock/Solodit/Immunefi/
+    SWC) are DISABLED — their seed corpora are synthetic placeholder data I
+    hand-wrote during Phase A (no live API connection was ever built), and one
+    directly caused a hallucinated verdict (the Solodit Multicall chunk made
+    the narrative describe a Reentrancy risk on a contract with zero external
+    calls — see 00_FINDINGS.md Finding #2). An empty source is honest; a fake
+    one is a liability. The fetcher code is kept for when real data is wired
+    (per 02_RAG_BUILD_PLAN.md); the index build simply excludes them now.
+    Re-enable by returning the list below after real data sources are built.
     """
-    return [
-        Code4renaFetcher(),
-        SherlockFetcher(),
-        SoloditFetcher(),
-        ImmunefiFetcher(),
-        SWCRegistryFetcher(),
-    ]
+    return []  # WS2: disabled — see 02_RAG_BUILD_PLAN.md for the real build
+    # return [
+    #     Code4renaFetcher(),
+    #     SherlockFetcher(),
+    #     SoloditFetcher(),
+    #     ImmunefiFetcher(),
+    #     SWCRegistryFetcher(),
+    # ]
 
 
 def _collect_extra_documents() -> tuple[list[Any], list[str]]:

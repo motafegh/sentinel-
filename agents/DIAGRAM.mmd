@@ -1,0 +1,129 @@
+flowchart TB
+  subgraph AGENTS["SENTINEL Agents Module"]
+    direction TB
+    title["LangGraph orchestration of 13-node audit pipeline
+backed by 4 MCP servers, hybrid RAG, and LLM client"]
+  end
+
+  AGENTS --> ORCH
+  AGENTS --> MCP
+  AGENTS --> RAG
+
+  subgraph ORCH["src/orchestration/ - 13 LangGraph nodes"]
+    direction TB
+    N1["① quick_screen
+Slither + Aderyn"] --> N2["② ml_assessment
+MCP :8010 POST /predict"]
+    N2 --> N3["③ evidence_router
+Two-signal fast/deep gate"]
+
+    N3 -- deep path --> FANOUT["④⑤⑥ Parallel Fan-out
+asyncio.gather"]
+    N3 -- fast path --> FAST["→ synthesizer directly"]
+
+    FANOUT --> N4["④ rag_research
+MCP :8011 search"]
+    FANOUT --> N5["⑤ static_analysis
+Slither scoped to ML classes"]
+    FANOUT --> N6["⑥ graph_explain
+MCP :8013 hotspots"]
+
+    N4 --> N7
+    N5 --> N7
+    N6 --> N7
+
+    N7["⑦ audit_check
+MCP :8012 get_audit_history"] --> N8["⑧ consensus_engine
+A.6 weighted vote"]
+    N8 --> N9["⑨ cross_validator
+A.4 Prosecutor/Defender/Judge debate"]
+    N9 --> FAST
+
+    FAST --> N10["⑩ synthesizer
+assembles final_report"]
+    N10 --> N11["⑪ reflection
+A.3 self-critique"]
+    N11 --> N12["⑫ explainer
+A.8 LIME attribution"]
+    N12 --> N13["⑬ visualizer
+A.9 interactive HTML"]
+    N13 --> END["END"]
+  end
+
+  subgraph MCP["src/mcp/servers/ - 4 SSE MCP Servers"]
+    direction TB
+    M1[":8010 sentinel-inference
+predict, batch_predict
+→ Module 1 /predict"]
+    M2[":8011 sentinel-rag
+search
+→ HybridRetriever FAISS+BM25"]
+    M3[":8012 sentinel-audit
+get_audit_history
+→ Sepolia AuditRegistry"]
+    M4[":8013 sentinel-graph-inspector
+get_graph_hotspots
+→ Module 1 /hotspots"]
+  end
+
+  subgraph RAG["src/rag/ - Hybrid Retriever"]
+    RET["HybridRetriever
+FAISS + BM25 + RRF
+6 fetchers"]
+  end
+
+  subgraph INGESTION["src/ingestion/"]
+    PIP["Ingestion Pipeline
+DeFiHackLabs → dedup → chunk → embed"]
+    FB["Feedback Loop
+polls Sepolia AuditRegistry"]
+  end
+
+  subgraph LLM["src/llm/client.py"]
+    LM["LM Studio
+httpx → OpenAI-compat
+4 model roles:
+FAST / STRONG / CODER / EMBED"]
+  end
+
+  subgraph MODULE1["Module 1 (ml/)"]
+    M1API["FastAPI
+/predict → per-class probabilities
+/hotspots → GNN attention scores
+/health → liveness"]
+  end
+
+  subgraph SEPOLIA["Sepolia Blockchain"]
+    AR["AuditRegistry (UUPS proxy)
+0x14E5...fAf
+AuditSubmitted events"]
+  end
+
+  ORCH -- SSE --> MCP
+  M1 -- HTTP --> M1API
+  M4 -- HTTP --> M1API
+  M3 -- RPC --> SEPOLIA
+  LLM -- httpx --> LMS["LM Studio
+http://gateway:4567/v1"]
+  M2 -- reads --> RET
+  PIP -- writes --> RET
+  FB -- polls --> SEPOLIA
+  FB -- writes --> RET
+
+  subgraph DATA["agents/data/"]
+    IDX["index/
+faiss.index, bm25.pkl, chunks.pkl
+seen_hashes.json, index_metadata.json"]
+    RPT["reports/
+{address}.json
+{address}_hotspot.html"]
+    CK["checkpoints.db
+SqliteSaver"]
+  end
+
+  N10 -- writes --> RPT
+  N13 -- writes --> RPT
+  ORCH -- checkpoints --> CK
+  PIP -- writes --> IDX
+  FB -- writes --> IDX
+  RET -- reads --> IDX
