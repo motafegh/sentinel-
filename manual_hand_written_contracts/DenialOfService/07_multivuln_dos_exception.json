@@ -1,0 +1,8 @@
+{
+  "ground_truth": "vulnerable",
+  "labels": [
+    "DenialOfService",
+    "GasException"
+  ],
+  "source": "expect_header"
+}

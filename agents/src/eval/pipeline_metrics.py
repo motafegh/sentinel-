@@ -22,22 +22,22 @@ from dataclasses import dataclass, field, asdict
 from typing import Any
 
 
-# Verdicts that count as "flagged vulnerable" (positive). A class in this
-# set on a contract means the pipeline said it has the bug.
-DEFAULT_POSITIVE_VERDICTS: frozenset[str] = frozenset({"CONFIRMED", "LIKELY"})
+def __getattr__(name: str):
+    from src.config import get_config as _get_cfg
+
+    _map = {
+        "DEFAULT_POSITIVE_VERDICTS": lambda c: frozenset(c.eval.positive_verdicts),
+        "BORDERLINE_BAND":           lambda c: (c.eval.borderline_band_low, c.eval.borderline_band_high),
+    }
+    if name in _map:
+        return _map[name](_get_cfg())
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # All valid verdict strings (6 of them per WS1.5).
 VALID_VERDICTS: frozenset[str] = frozenset({
     "CONFIRMED", "LIKELY", "DISPUTED", "WATCH", "SAFE", "INCONCLUSIVE",
 })
-
-
-# Borderline band for WS1's silent-SAFE gate: a class flagged by ML
-# (prob in this range, i.e. crossed DEEP_THRESHOLD ~0.35 but below the 0.50
-# consensus cutoff) that ends in verdict SAFE with no corroboration is the
-# exact failure mode Finding #9/#10 describes.
-BORDERLINE_BAND: tuple[float, float] = (0.35, 0.50)
 
 
 # ---------------------------------------------------------------------------
@@ -62,24 +62,35 @@ class ClassMetrics:
     precision: float = 0.0
     recall:    float = 0.0
     f1:         float = 0.0
+    fbeta:      float = 0.0
     support:   int = 0   # number of contracts with this class in labels
 
-    def compute(self) -> None:
-        """Derive precision/recall/F1 from the raw counts in place."""
+    def compute(self, beta: float | None = None) -> None:
+        """
+        Derive precision/recall/F1/F-beta from the raw counts in place.
+
+        Args:
+            beta: F-beta parameter (default from config.eval.fbeta_beta).
+        """
+        if beta is None:
+            from src.config import get_config as _get_cfg
+            beta = _get_cfg().eval.fbeta_beta
         self.precision = (
             self.tp / (self.tp + self.fp) if (self.tp + self.fp) > 0 else float("nan")
         )
         self.recall = (
             self.tp / (self.tp + self.fn) if (self.tp + self.fn) > 0 else float("nan")
         )
-        if (
-            not math.isnan(self.precision)
-            and not math.isnan(self.recall)
-            and (self.precision + self.recall) > 0
-        ):
-            self.f1 = 2 * self.precision * self.recall / (self.precision + self.recall)
+        p = self.precision
+        r = self.recall
+        if not math.isnan(p) and not math.isnan(r) and (p + r) > 0:
+            self.f1 = 2 * p * r / (p + r)
+            b2 = beta * beta
+            denom = b2 * p + r
+            self.fbeta = (1 + b2) * p * r / denom if denom > 0 else 0.0
         else:
             self.f1 = 0.0
+            self.fbeta = 0.0
 
     def as_dict(self) -> dict[str, Any]:
         """JSON-serialisable view (NaN → 0.0 since JSON has no NaN)."""
@@ -92,6 +103,7 @@ class ClassMetrics:
             "precision": 0.0 if math.isnan(self.precision) else self.precision,
             "recall":    0.0 if math.isnan(self.recall)    else self.recall,
             "f1":        self.f1,
+            "fbeta":     self.fbeta,
             "support":   self.support,
         }
 
@@ -148,14 +160,18 @@ class PipelineMetrics:
     def __init__(
         self,
         contracts: list[ContractMetrics],
-        positive_verdicts: frozenset[str] | set[str] = DEFAULT_POSITIVE_VERDICTS,
+        positive_verdicts: frozenset[str] | set[str] | None = None,
     ):
+        if positive_verdicts is None:
+            from src.config import get_config as _get_cfg
+            positive_verdicts = frozenset(_get_cfg().eval.positive_verdicts)
         self.contracts = list(contracts)
         self.positive_verdicts = frozenset(positive_verdicts)
 
         # Will be populated by `compute()`.
         self.class_metrics: dict[str, ClassMetrics] = {}
         self.macro_f1:      float = 0.0
+        self.macro_fbeta:   float = 0.0
         self.micro_f1:      float = 0.0
         self.contract_accuracy_loose: float = 0.0
         self.contract_accuracy_exact: float = 0.0
@@ -237,10 +253,11 @@ class PipelineMetrics:
         if not self.class_metrics:
             self.compute_class_metrics()
 
-        # Macro-F1: mean of per-class F1, NaN-aware (skip classes with no
-        # support in either predicted or labelled).
+        # Macro-F1 and macro-Fbeta: NaN-aware mean over classes with support>0.
         per_class_f1s = [m.f1 for m in self.class_metrics.values() if m.support > 0]
         self.macro_f1 = sum(per_class_f1s) / len(per_class_f1s) if per_class_f1s else 0.0
+        per_class_fbetas = [m.fbeta for m in self.class_metrics.values() if m.support > 0]
+        self.macro_fbeta = sum(per_class_fbetas) / len(per_class_fbetas) if per_class_fbetas else 0.0
 
         # Micro-F1: from the sum TP/FP/FN.
         total_tp = sum(m.tp for m in self.class_metrics.values())
@@ -275,6 +292,7 @@ class PipelineMetrics:
             "contract_count":           len(self.contracts),
             "positive_verdicts":        sorted(self.positive_verdicts),
             "macro_f1":                 self.macro_f1,
+            "macro_fbeta":              self.macro_fbeta,
             "micro_f1":                 self.micro_f1,
             "contract_accuracy_loose":  self.contract_accuracy_loose,
             "contract_accuracy_exact":  self.contract_accuracy_exact,
@@ -290,7 +308,7 @@ class PipelineMetrics:
 
 def metrics_from_contracts(
     contracts: list[ContractMetrics],
-    positive_verdicts: frozenset[str] | set[str] = DEFAULT_POSITIVE_VERDICTS,
+    positive_verdicts: frozenset[str] | set[str] | None = None,
 ) -> PipelineMetrics:
     """
     Build + compute a PipelineMetrics in one call. The most common entry

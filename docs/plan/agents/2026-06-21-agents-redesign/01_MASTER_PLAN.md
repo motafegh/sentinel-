@@ -1,5 +1,12 @@
 # Agents Module — Redesign Master Plan (2026-06-21)
 
+> **⚠️ SUPERSEDED (2026-06-23) for architecture & forward plan.** The architecture of record
+> is now `docs/proposal/2026-06-23_proposal_SYSTEM_architecture-finalization.md` (decisions
+> D-A…D-G + B-1…B-6, phases P0–P10). The D1–D4 decisions and the WS-ordering below are
+> **replaced** by it. This document remains accurate **only as the record of shipped work**
+> (WS1–WS5, WS6a/C.1–C.2 — what was built and tested). For *what to build next*, follow the
+> proposal, not this file.
+
 **Status (2026-06-22):** WS1-WS5 complete + retro-tested. WS6a is next (Phase C).
 **WS6b/c tool installs DONE (2026-06-22)** — Halmos+Z3 (pip, agents venv), Gigahorse
 (souffle binary + boost headers + souffle-addon hand-built, no root except

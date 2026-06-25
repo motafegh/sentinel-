@@ -61,9 +61,11 @@ class TestConsensusVote:
         assert w["slither"] == ACCURACY_WEIGHTS["Reentrancy"]["slither"]
 
     def test_ml_scale_one_restores_weight(self, monkeypatch):
-        monkeypatch.setenv("ML_WEIGHT_SCALE", "1.0")
+        from src.config.loader import reload_config
+        cfg = reload_config()
+        cfg.consensus.ml_weight_scale = 1.0
         w = get_weights("Reentrancy")
-        assert w["ml"] == pytest.approx(ACCURACY_WEIGHTS["Reentrancy"]["ml"], abs=1e-3)
+        assert w["ml"] == pytest.approx(cfg.consensus.accuracy_weights["Reentrancy"]["ml"], abs=1e-3)
 
 
 class TestConsensusEngineNode:

@@ -239,7 +239,7 @@ class TestBuildGraph:
 class TestMlAssessmentNode:
     @pytest.mark.asyncio
     async def test_happy_path(self, base_state, ml_high):
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=ml_high)):
             result = await ml_assessment(base_state)
 
@@ -249,7 +249,7 @@ class TestMlAssessmentNode:
     @pytest.mark.asyncio
     async def test_mcp_error_dict_sets_error(self, base_state):
         error_response = {"error": "inference timeout", "detail": "GPU busy"}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=error_response)):
             result = await ml_assessment(base_state)
 
@@ -259,7 +259,7 @@ class TestMlAssessmentNode:
 
     @pytest.mark.asyncio
     async def test_exception_sets_error_and_empty_result(self, base_state):
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(side_effect=ConnectionError("MCP server down"))):
             result = await ml_assessment(base_state)
 
@@ -270,7 +270,7 @@ class TestMlAssessmentNode:
     @pytest.mark.asyncio
     async def test_missing_contract_code_still_calls_mcp(self, ml_high):
         state: AuditState = {"contract_code": "", "contract_address": "0xabc"}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=ml_high)):
             result = await ml_assessment(state)
         assert result["ml_result"] == ml_high
@@ -284,7 +284,7 @@ class TestRagResearchNode:
     @pytest.mark.asyncio
     async def test_happy_path_list_response(self, base_state, ml_high, rag_chunks):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=rag_chunks)):
             result = await rag_research(state)
 
@@ -295,7 +295,7 @@ class TestRagResearchNode:
     async def test_happy_path_dict_with_results_key(self, base_state, ml_high, rag_chunks):
         state = {**base_state, "ml_result": ml_high}
         response = {"results": rag_chunks}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=response)):
             result = await rag_research(state)
 
@@ -304,7 +304,7 @@ class TestRagResearchNode:
     @pytest.mark.asyncio
     async def test_rag_error_dict(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value={"error": "index empty"})):
             result = await rag_research(state)
 
@@ -314,7 +314,7 @@ class TestRagResearchNode:
     @pytest.mark.asyncio
     async def test_exception_returns_empty_results(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(side_effect=RuntimeError("FAISS died"))):
             result = await rag_research(state)
 
@@ -329,7 +329,7 @@ class TestRagResearchNode:
         async def capture(server_url, tool_name, arguments):
             captured.update(arguments)
             return rag_chunks
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=capture):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
         assert "Reentrancy" in captured.get("query", "")
 
@@ -351,7 +351,7 @@ class TestRagResearchNode:
         async def capture(server_url, tool_name, arguments):
             captured.update(arguments)
             return rag_chunks
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=capture):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
         # Query must reference ExternalBug and the oracle contract name
         assert "ExternalBug" in captured.get("query", "")
@@ -372,7 +372,7 @@ class TestRagResearchNode:
         async def capture(server_url, tool_name, arguments):
             captured.update(arguments)
             return rag_chunks
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=capture):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
         assert "Reentrancy" in captured.get("query", "")
         assert "ChainlinkOracle" not in captured.get("query", "")
@@ -387,7 +387,7 @@ class TestAuditCheckNode:
         state = {**base_state}
         response = {"contract_address": state["contract_address"],
                     "count": 1, "records": audit_records}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=response)):
             result = await audit_check(state)
 
@@ -402,7 +402,7 @@ class TestAuditCheckNode:
 
     @pytest.mark.asyncio
     async def test_exception_returns_empty_history(self, base_state):
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(side_effect=ConnectionError("Sepolia RPC down"))):
             result = await audit_check(base_state)
 
@@ -411,7 +411,7 @@ class TestAuditCheckNode:
 
     @pytest.mark.asyncio
     async def test_registry_error_dict(self, base_state):
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value={"error": "contract not found"})):
             result = await audit_check(base_state)
 
@@ -596,7 +596,7 @@ class TestFullGraphIntegration:
             "contract_code": "pragma solidity ^0.8.0;\ncontract Vault {}",
             "contract_address": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
         }
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=_mock_mcp):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp):
             result = await graph.ainvoke(initial_state)
 
         report = result["final_report"]
@@ -619,7 +619,7 @@ class TestFullGraphIntegration:
             "contract_code": "pragma solidity ^0.8.0;\ncontract Safe {}",
             "contract_address": "0xDEAD",
         }
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=mock_fast):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=mock_fast):
             result = await graph.ainvoke(initial_state)
 
         report = result["final_report"]
@@ -636,7 +636,7 @@ class TestFullGraphIntegration:
             "contract_code": "contract X {}",
             "contract_address": "0xFACE",
         }
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=mock_failing):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=mock_failing):
             result = await graph.ainvoke(initial_state)
 
         report = result.get("final_report")
@@ -676,7 +676,7 @@ class TestGraphExplainNode:
     @pytest.mark.asyncio
     async def test_happy_path_returns_hotspots(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=self._MOCK_INSPECTOR_RESPONSE)):
             result = await graph_explain(state)
 
@@ -688,7 +688,7 @@ class TestGraphExplainNode:
     @pytest.mark.asyncio
     async def test_returns_graph_explanations(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=self._MOCK_INSPECTOR_RESPONSE)):
             result = await graph_explain(state)
 
@@ -700,7 +700,7 @@ class TestGraphExplainNode:
     @pytest.mark.asyncio
     async def test_inspector_error_returns_empty(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value={"error": "slither failed"})):
             result = await graph_explain(state)
 
@@ -710,7 +710,7 @@ class TestGraphExplainNode:
     @pytest.mark.asyncio
     async def test_exception_returns_empty(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._call_mcp_tool",
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(side_effect=ConnectionError("inspector down"))):
             result = await graph_explain(state)
 
@@ -732,7 +732,7 @@ class TestGraphExplainNode:
             captured_args.append(arguments)
             return self._MOCK_INSPECTOR_RESPONSE
 
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=capture):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await graph_explain(state)
 
         assert len(captured_args) == 1
@@ -985,7 +985,7 @@ class TestQuickScreenNode:
     @pytest.mark.asyncio
     async def test_slither_exception_is_non_fatal(self, base_state):
         # Slither raises an unexpected exception → node returns empty hits, no raise.
-        with patch("src.orchestration.nodes.tempfile.NamedTemporaryFile",
+        with patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile",
                    side_effect=OSError("disk full")):
             result = await quick_screen(base_state)
         assert "quick_screen_hits" in result
@@ -1029,8 +1029,8 @@ class TestQuickScreenNode:
     @pytest.mark.asyncio
     async def test_aderyn_not_installed_is_non_fatal(self, base_state):
         # FileNotFoundError from aderyn subprocess → ignored, returns empty aderyn list.
-        with patch("src.orchestration.nodes.tempfile.NamedTemporaryFile") as mock_tmp, \
-             patch("src.orchestration.nodes.os.unlink"), \
+        with patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile") as mock_tmp, \
+             patch("os.unlink"), \
              patch("subprocess.run", side_effect=FileNotFoundError("aderyn not found")):
             mock_file = type("MockTmpFile", (), {"name": "/tmp/x.sol", "write": lambda s, t: None})()
             mock_tmp.return_value.__enter__ = lambda s: mock_file

@@ -200,3 +200,16 @@ class AuditState(TypedDict, total=False):
     # Dataflow: {source, sink, path} from taint analyzer.
     permission_graph: dict[str, list[str]]
     # Access control: {role: [callable_functions]}.
+
+    # ── P2 evidence / fusion (2026-06-24) ────────────────────────────────────
+    evidence_list: Annotated[list[Any], operator.add]
+    # Append-reducer: every node appends Evidence items. fuse() consumes this.
+    # {source, vuln_class, polarity, strength, reliability, kind, deterministic, detail}
+
+    verdict_provable: dict[str, str]
+    # {vulnerability_class: verdict} — fused from deterministic evidence only.
+    # Set by synthesizer via fuse(). The ZK-anchorable tier (D-B).
+
+    verdict_full: dict[str, str]
+    # {vulnerability_class: verdict} — fused from ALL evidence.
+    # Set by synthesizer via fuse(). The human-report tier.

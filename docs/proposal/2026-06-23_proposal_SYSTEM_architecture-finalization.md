@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-23
 **Scope:** Whole system (agents-led, but reaches ml, data_module, zkml/on-chain).
-**Status:** PROPOSAL — decisions made, reasoned, and ready for execution on Ali's go.
+**Status:** EXECUTING — P0 FOUNDATION (P0.0 + P1 + P0.1) COMPLETE; P2 (D-A + D-E + D-B) 87% COMPLETE (T2.7 flip gated on Ali decision). Remaining phases: P2.5, P3-P10 still per §10 plan.
 **Author:** Ali + Claude (debate session 2026-06-23).
 **Source of truth:** derived from a live design debate
 (`docs/debating/agents_module/2026-06-23_AGENTS_debate_architecture-design-review_live.md`)
@@ -59,6 +59,13 @@ hardens the wrong shape.
 - **Out of scope here (named, not solved):** the data-corruption remediation itself (a
   `data_module` deliverable), and the full real-world RAG corpus sourcing (its own sub-project,
   `02_RAG_BUILD_PLAN.md`).
+- **Supersession.** This proposal is the **architecture of record** as of 2026-06-23. It
+  **supersedes the architectural decisions** in
+  `docs/plan/agents/2026-06-21-agents-redesign/01_MASTER_PLAN.md` (its D1–D4 and the
+  WS-numbered plan): D1–D4 are folded into and replaced by D-A…D-G + B-1…B-6 here. The master
+  plan remains valid only as the **record of shipped work** (WS1–WS5, WS6a/C.1–C.2 — what was
+  built and tested); for *what to build next*, this proposal governs. The companion
+  `2026-06-23_proposal_BUILD_questions.md` tracks the open build-time questions.
 
 ---
 
@@ -95,23 +102,42 @@ and would be hardened by Phase B into an unmaintainable shape. Generalizing firs
 later channel an "append," not a "rewrite." This is the single highest-leverage refactor and
 it gates the roadmap. Spec in §5.1–§5.2.
 
-### D-B — ZK / determinism boundary. → **Option A now (prove the deterministic core), Option C as the decentralization path.**
-*Reasoning:* ZKML proves a *fixed, deterministic* function — the ML model. It cannot
-realistically prove a multi-billion-parameter, non-deterministic LLM. Therefore:
-- **Keep ZKML, scoped to the model.** It is genuinely provable and is the project thesis.
-- **Define the on-chain provable verdict = the deterministic tier** (ZKML-proven inference +
-  deterministic fusion math). The LLM debate is **advisory enrichment**, part of the
-  human-facing report, *not* part of the cryptographic claim.
-- **Future decentralization (Option C):** if the LLM verdict must become trustworthy on-chain,
-  use input/output commitment + multi-node staked consensus (verifiable inference by
-  attestation), *not* ZK over the LLM. This fits a *decentralised* oracle better than ZK does.
-- This is implemented "for free" by the `deterministic` flag on `Evidence` (§5.1): `fuse()`
-  emits `verdict_provable` (deterministic evidence only) and `verdict_full` (all evidence).
-  We anchor the former, report the latter. **No trade-off between "smart" and "provable" — we
-  produce both.**
-- **Reject Option B** (strip the LLM from the decision entirely): it would discard real
-  semantic value the debate demonstrably adds (e.g. catching syntactic-CEI false positives on
-  a non-balance index that all three static tools flagged).
+### D-B — ZK / determinism boundary.
+
+**The problem.** The product goal is a ZK-proved, on-chain audit oracle, which requires the
+anchored verdict to be **reproducible**. But the system's richest signal — the LLM debate — is
+**non-deterministic** (temperature=0 reduces, but does not guarantee, identical output across
+model versions, quantizations, or hardware). ZKML (EZKL/Groth16) can prove a *fixed,
+deterministic* function (the ML model); it **cannot** realistically prove a multi-billion-
+parameter, non-deterministic LLM. So we must decide what the oracle cryptographically attests.
+
+**The three options considered:**
+- **Option A — Prove only the deterministic core.** The on-chain provable verdict = the
+  deterministic tier (ZKML-proven model inference + the deterministic fusion math over
+  deterministic evidence only). The LLM debate is **advisory enrichment**: it shapes the
+  human-facing report but is **not** part of the cryptographic claim. ZKML is kept, scoped to
+  the model.
+- **Option B — Make the verdict fully deterministic.** Strip the LLM from the *decision* role
+  entirely (keep it only for narrative), so the whole verdict is reproducible and provable.
+- **Option C — Don't prove the LLM; *commit* to it.** Hash the LLM's input+output on-chain
+  and/or run the LLM on multiple independent oracle nodes that stake on agreement — i.e.
+  *verifiable inference by attestation/consensus*, not ZK. This is a decentralisation mechanism,
+  not a ZK one.
+
+**Decision → Option A now; Option C as the future decentralization path; reject Option B.**
+*Reasoning:*
+- **Option A** keeps ZKML where it is genuinely provable (the model — the project thesis) and
+  draws the trust boundary at the deterministic tier. It is implemented **for free** by the
+  `deterministic` flag on `Evidence` (§5.1): `fuse()` emits `verdict_provable` (deterministic
+  evidence only → ZK-anchored) and `verdict_full` (all evidence → reported). We anchor the
+  former, report the latter — **no trade-off between "smart" and "provable"; we produce both.**
+- **Reject Option B:** stripping the LLM from the decision would discard real semantic value the
+  debate demonstrably adds (e.g. catching a syntactic-CEI false positive on a non-balance index
+  that all three static tools flagged). We keep that value in `verdict_full`.
+- **Option C is the eventual answer** *if* the LLM verdict itself must become trustworthy
+  on-chain: input/output commitment + multi-node staked consensus fits a *decentralised* oracle
+  better than ZK-proving an LLM ever could. Deferred to EXT (§13) — not needed for the first
+  on-chain milestone, which anchors only `verdict_provable`.
 
 ### D-C — Does the agent layer thin as the model improves, or is it permanent? → **Both: ML's weight thins automatically; the layer persists to a floor.**
 *Reasoning:* make each source's `reliability` **data-derived from measured per-class precision**
@@ -204,16 +230,33 @@ def fuse(evidence: list[Evidence], cls: str) -> ClassVerdict
 ```
 
 1. **Group** evidence for `cls`.
-2. **De-correlate:** group correlated sources by `kind`/family (e.g. the 4 ML "eyes", or
-   ml+gnn) into one witness family and down-weight within it — the principled generalization of
-   today's "don't quadruple-count ML" rule.
-3. **Aggregate** by `reliability × strength × polarity` into a confidence in [0,1].
-4. **Apply FN/FP asymmetry as ONE rule** (not 8 cases): a `REFUTES` cannot *clear* a strong
-   `SUPPORTS` — it can only move a class to `DISPUTED`/`INCONCLUSIVE`. A flagged class never
-   silently reaches SAFE.
-5. **Emit two verdicts from the same list:** `verdict_provable` (only `deterministic=True`
-   evidence → ZK-anchored) and `verdict_full` (all evidence → human report). Plus the driving
-   evidence list (attribution).
+2. **De-correlate** by witness family, so correlated sources don't multiply-count. The default
+   families and within-family discount (tunable per Rule B):
+   - `ML` (all ML eyes/heads are one family — they are correlated views of one model, not
+     independent witnesses), `STATIC_SYNTAX` (Slither + Aderyn — overlapping detector sets),
+     `RAG`, `LLM_DEBATE` (all debate roles are one family), `FORMAL` (Halmos/Z3/Gigahorse),
+     `ECONOMIC` (ItyFuzz/Anvil).
+   - Within a family of N positive sources, each source's reliability is scaled by `1/N`. This
+     makes today's implicit "don't quadruple-count ML" rule explicit and general.
+3. **Aggregate** the post-discount `reliability × strength`, signed by `polarity`, into a
+   confidence in [0,1].
+4. **Apply FN/FP asymmetry as ONE rule** (not 8 cases): a `REFUTES` can never *clear* a **strong
+   SUPPORTS** — it can only move the class to `DISPUTED`/`INCONCLUSIVE`, never to `SAFE`.
+   **"strong SUPPORTS"** is defined (tunable default) as ANY of: (a) one `SUPPORTS` with
+   `reliability × strength ≥ 0.5`; (b) two or more `SUPPORTS` each `≥ 0.3` (cross-source
+   corroboration); (c) one `SUPPORTS` with `kind = FORMAL` (a proven invariant violation).
+5. **Map confidence to a verdict band** (default = current `consensus.py` bands, tunable per
+   Rule B): `CONFIRMED ≥ 0.70`, `LIKELY ≥ 0.50`, `DISPUTED ≥ 0.30`, else `SAFE` — with the
+   asymmetry rule in step 4 overriding any drop to `SAFE` when a strong SUPPORTS is present
+   (→ `DISPUTED`, or `INCONCLUSIVE` if total confidence is low). A flagged class never silently
+   reaches `SAFE`.
+6. **Emit two verdicts from the same list:** `verdict_provable` (recomputed over
+   `deterministic=True` evidence only → ZK-anchored) and `verdict_full` (all evidence → human
+   report), plus the driving evidence list (attribution for free).
+
+> All numeric defaults above (family discount `1/N`, the `0.5`/`0.3` strong-SUPPORTS cutoffs,
+> the band boundaries) are **decision-numbers under Rule B** — they ship in the versioned config
+> (B-2) and are calibrated against the eval (D-D), not frozen here.
 
 **Consequence:** `consensus_engine` becomes "ML/Slither/Aderyn emit Evidence"; the debate
 becomes "debate emits Evidence with `deterministic=False`"; Phase B/D channels just emit
@@ -222,6 +265,30 @@ Evidence. **Fusion code never changes when a channel is added.**
 **Migration discipline (non-negotiable):** *characterize first.* Pin current verdicts on the
 test corpus with golden tests, build `fuse()` to reproduce them, prove equivalence via the eval
 (D-D), *then* extend. Behavior preservation before capability.
+
+**State shape — DECIDED: target Shape A, reached via a transitional dual-write.**
+*The two shapes:*
+- **Shape A (target):** every channel appends to one `state["evidence_list"]`
+  (`Annotated[list, operator.add]` reducer); channels stop writing their own per-channel
+  verdict fields; `fuse()` is the **sole** verdict producer, emitting
+  `state["verdict_provable"]` and `state["verdict_full"]`.
+- **Shape B:** keep all existing per-channel verdict fields *and* add the evidence list +
+  fused verdicts alongside — two parallel verdict paths.
+
+*Decision & reasoning:* **Shape A is the end state.** A permanent Shape B keeps two sources of
+truth for a verdict, which rots — they drift, and "which one is real?" becomes a recurring bug.
+But we do **not** big-bang to A, because a cutover can't be characterized. The migration path:
+1. **Transitional dual-write** — each channel emits `Evidence` *and* keeps its old verdict
+   writes. This is mechanically Shape B, used **only as scaffolding** to prove equivalence.
+2. **Characterize** — golden tests assert `fuse(evidence_list)` reproduces the legacy per-class
+   verdicts on all 83 contracts (§5.2 migration discipline; strictness = exact per-class match).
+3. **Flip & delete** — once equivalence holds in the eval (D-D), `synthesizer` switches to
+   consume `evidence_list`, and the legacy per-channel verdict writes are **deleted**. End state
+   is pure Shape A — one source of truth, no dual path.
+
+So Shape B exists only as a temporary equivalence-proving harness inside P2, never as a shipped
+end state. `metric_attribution` and `confidence_by_class` become *derivations* of the evidence
+list (kept in `final_report` for backward-compat), not independently-stored fields.
 
 ### 5.3 Model strategy (cascade — D-F)
 
@@ -244,9 +311,19 @@ test corpus with golden tests, build `fuse()` to reproduce them, prove equivalen
 
 ## 6. Cross-cutting: the measurement loop (keystone — D-D)
 
-- Wire C.2 (`src/eval/`) to score a **named configuration** end-to-end on a held-out labeled set
-  (manual_hand_written_contracts + SmartBugs subset), emitting precision/recall/F1 **per class**
-  and overall, **recall-weighted** to honor the FN/FP asymmetry.
+- Wire C.2 (`src/eval/`) to score a **named configuration** end-to-end on a held-out labeled set,
+  emitting precision/recall/F1 **per class** and overall.
+- **Held-out corpus (recommended; confirm at P0 kickoff):** the **83 `manual_hand_written_contracts/`**
+  (hand-written, fully ground-truth-labeled). **Exclude** the SmartBugs `ExternalBug`/`Reentrancy`
+  slices that are known-broken under the DIVE crosswalk issue until v3.1 lands; other SmartBugs
+  classes may be added as a second tier. A label-completion pass precedes scoring so the corpus
+  is honest (any contracts that cannot be labeled honestly are dropped, lowering the count
+  rather than guessing).
+- **"Recall-weighted" defined:** the primary headline metric is **per-class Fβ with β=2**
+  (recall weighted 2× precision), aggregated as a **macro average across classes** so rare
+  classes are not drowned out. β and the aggregation are decision-numbers under Rule B (tunable
+  with a measured justification), but β=2 is the committed default — it operationalizes the
+  FN/FP asymmetry (a miss hurts 2× a false alarm).
 - Persist a **regression baseline**; every config/model/code change reports a **delta vs.
   baseline**. A change to any decision-number is accepted only if the delta is favorable (Rule B).
 - This single loop powers: weight calibration (B-3), threshold selection from PR curves (Rule B
@@ -295,21 +372,123 @@ test corpus with golden tests, build `fuse()` to reproduce them, prove equivalen
 > Ordering rule: **measurement first**, then the **generalization + ZK boundary** (because Phase
 > B must not harden the wrong shape), then **security**, then **new capability**, then **scale**.
 
-| Phase | Work | Depends on | Why here |
+| Phase | Work | Depends on | Status |
 |------|------|-----------|----------|
-| **P0** | **Close the measurement loop** (D-D): wire C.2 to score a config; recall-weighted P/R/F1 per class; regression baseline. | — | Keystone; everything else cites it. |
-| **P1** | **Externalize decision-numbers** into one versioned config (B-2). | P0 | Rule B L1; prerequisite to calibrate. |
-| **P2** | **Uniform Evidence model + `fuse()`** (D-A) with **nodes.py/verdict split** (D-E). Characterize-first: golden tests → reproduce current verdicts → prove equivalence via P0. Emit `verdict_provable` + `verdict_full` (D-B). | P0, P1 | Highest leverage; gates Phase B. |
-| **P3** | **Data-derived reliability** (B-3, D-C): fit per-(source,class) reliability from a confusion matrix; ML reliability as a function of measured model precision. | P0, P2 | Replaces hand-set weights; auto-thinning. |
-| **P4** | **Prompt-injection guards** (B-1 / C.3) + adversarial benchmark cases. | P0 | Security hole; cheap; independent. |
-| **P5** | **Reproducibility test + model-hash binding** (B-4); finalize the ZK boundary contract (what gets anchored). | P2 | Makes D-B real and testable. |
-| **P6** | **Model cascade** (D-F) + **reflection keep/drop** (D-G) — both decided by P0 measurements. | P0, P2 | Quality tuning, now justified by data. |
-| **P7** | **RAG**: diagnose zero-match; ship canonical definitions; go/no-go via P0 (B-5, `02_RAG_BUILD_PLAN.md`). | P0 | Gated; cheap win first. |
-| **P8** | **Phase B** (symbolic/bytecode/taint/access-control): each new channel emits `Evidence` — no fusion changes. | P2, P3 | New capability on the generalized shape. |
-| **P9** | **Phase D** (economic/on-chain/ZKML wiring) anchoring `verdict_provable`. | P2, P5, P8 | Furthest; depends on the boundary. |
-| **P10** | **Production hardening** (gateway persistence, C.4 monitoring, pooling, scale). | runs alongside from P4 | Required for "production-ready"; not gating correctness. |
-| **EXT** | **Decentralization (Option C)**: commit + multi-node staked consensus for the LLM tier, if/when the LLM verdict must be trustworthy on-chain. | P9 | Future; explicitly deferred. |
-| **CROSS** | **Clean-data retrain** (`data_module`) → raises ML measured precision → P3 auto-raises ML reliability. | external | Trigger for D-C; not an agents deliverable. |
+| **P0.0** | **Label completion + hygiene:** finish ground-truth labels on the 83-contract corpus (drop any that can't be labeled honestly); project-wide stale-docstring purge (Rule 4); read `00_FINDINGS.md`/`04_LIVE_BASELINE_FINDINGS.md` to confirm what's still open. | — | **DONE 2026-06-24** |
+| **P1** | **Externalize decision-numbers** into one versioned YAML config (B-2), Pydantic-validated, eager-load. | P0.0 | **DONE 2026-06-24** |
+| **P0.1** | **Close the measurement loop** (D-D): wire C.2 to score a *named config* end-to-end; macro Fβ(β=2) per class; persist a regression baseline. | P0.0, P1 | **DONE 2026-06-24** |
+| **P2** | **Uniform Evidence model + `fuse()`** (D-A) with **nodes.py/verdict split** (D-E, one file per node). Characterize-first via transitional dual-write → golden tests reproduce current verdicts → prove equivalence via P0.1 → flip to Shape A & delete legacy path. Emit `verdict_provable` + `verdict_full` (D-B). Also fix the `asyncio.to_thread` non-cancellability bug here. | P0.1, P1 | **87% DONE 2026-06-25** (T2.7 flip pending Ali decision) |
+| **P2.5** | **Rule-A audit of other long files** (`audit_server.py` 717, `build_index.py` 661): split only where a file has >1 reason to change. | P2 | PLANNED |
+| **P3** | **Data-derived reliability** (B-3, D-C): fit per-(source,class) reliability from a confusion matrix; ML reliability as a function of measured model precision. | P0, P2 | PLANNED |
+| **P4** | **Prompt-injection guards** (B-1 / C.3) + adversarial benchmark cases. | P0 | PLANNED |
+| **P5** | **Reproducibility test + model-hash binding** (B-4); finalize the ZK boundary contract (what gets anchored). | P2 | PLANNED |
+| **P6** | **Model cascade** (D-F) + **reflection keep/drop** (D-G) — both decided by P0 measurements. | P0, P2 | PLANNED |
+| **P7** | **RAG**: diagnose zero-match; ship canonical definitions; go/no-go via P0 (B-5, `02_RAG_BUILD_PLAN.md`). | P0 | PLANNED |
+| **P8** | **Phase B** (symbolic/bytecode/taint/access-control): each new channel emits `Evidence` — no fusion changes. | P2, P3 | PLANNED |
+| **P9** | **Phase D** (economic/on-chain/ZKML wiring) anchoring `verdict_provable`. | P2, P5, P8 | PLANNED |
+| **P10** | **Production hardening** (gateway persistence, C.4 monitoring, pooling, scale). | runs alongside from P4 | PLANNED |
+| **EXT** | **Decentralization (Option C)**: commit + multi-node staked consensus for the LLM tier, if/when the LLM verdict must be trustworthy on-chain. | P9 | DEFERRED |
+| **CROSS** | **Clean-data retrain** (`data_module`) → raises ML measured precision → P3 auto-raises ML reliability. | external | DEFERRED |
+
+### 10.1 Build-decision register (all open build questions resolved — nothing deferred)
+
+Resolves every `[I]`/`[T]` question from `2026-06-23_proposal_BUILD_questions.md`. Each is a
+decision with a one-line rationale; per-channel/per-phase *detail* still expands into that
+phase's design doc, but **no decision is left open**.
+
+**P0.0 — labels & hygiene**
+- *Label format:* `// expect:` header is the **source of truth**; a `<stem>.json` sidecar is
+  **generated from it** (machine-readable, but one canonical source).
+- *Label audit process:* **Ali decides, with Slither output as the opinionated default + manual
+  override.** LLM-as-judge rejected — biased on the very task we measure.
+- *Post-P0.0 size:* accept a **lower N** (≈73–78) by dropping unresolvable contracts; the eval
+  reports actual N. Honesty over count.
+- *Stale docstrings:* one project-wide grep+fix batch (e.g. `qwen3.5-9b` mentions in
+  `llm/client.py`).
+
+**P1 — config**
+- *Format:* **YAML** (comments, human-edit), validated by **Pydantic**.
+- *Loading:* **eager at import, fail-fast** on invalid config, cached for the process. No
+  hot-reload (reproducibility).
+- *Contents:* the decision-numbers only — `ML_WEIGHT_SCALE`, bands, `ML_POSITIVE_THRESHOLD`,
+  `ACCURACY_WEIGHTS`→`reliability`, `DEEP_THRESHOLDS`, `ROUTING_RULES`, confidence nudges,
+  `RAG_RELEVANCE`(+floor), `OVERALL_VERDICT_RANK`, `BORDERLINE_BAND`, severity cutoffs, and the
+  `fuse()` numbers (family `1/N`, strong-SUPPORTS cutoffs, bands). **Stays put:** ML three-tier
+  thresholds (model-side, in `ml/`); timeouts (operational env vars, not decision-numbers).
+
+**P0.1 — eval**
+- *Runner:* `python -m src.eval.run_benchmark --name … --config …`; keep
+  `scripts/eval_benchmark.py` as a thin wrapper.
+- *Per-run storage:* `agents/eval/runs/<timestamp>_<name>/` (history kept, git-diffable; no DB).
+
+**P2 — evidence/fuse/split**
+- *State shape:* **Shape A** via transitional dual-write (see §5.2).
+- *`nodes/` layout:* **one file per node** (13 files) — maximal SRP.
+- *`verdict/` layout:* `evidence.py`, `fuse.py`, `reliability.py`, `verdict.py`, `emit.py`.
+- *`Evidence`:* `frozen=True`. `polarity=NEUTRAL` = ran but nothing dispositive. `strength`
+  per-source: ML=class prob; Slither/Aderyn=impact-map (High 1.0 / Med 0.6 / Low 0.3);
+  RAG=similarity; debate=judge confidence. `kind` set is the 5 (quick_screen is `SYNTACTIC`;
+  no `HEURISTIC`). `deterministic` set by per-source `emit.py` helpers. `detail` schema
+  documented per-source in `evidence.py`.
+- *Golden tests:* **all 83, exact per-class verdict match** (strictest; tolerance hides drift).
+- *`to_thread` bug:* fixed via `run_in_executor` + `wait_for` so timeouts actually cancel.
+
+**P3 — reliability**
+- *Source:* fit on the **train split**, measure on the **test split** of the labeled eval.
+- *Cadence:* refit **after each model retrain + on-demand** (`scripts/fit_reliability.py`,
+  version-bumped, test-gated: fail on >5pp unjustified drop). Not per-eval (churn).
+- *Zero-sample prior:* **Bayesian shrinkage** `(n·measured + α·prior)/(n+α)`, α=5, prior = the
+  current principled defaults.
+
+**P4 — injection**
+- *Depth:* **three layers** — strip comments → delimit (`<<CONTRACT_SOURCE>>…` + "data, not
+  instructions") → pattern-detect (log-only canary).
+- *Routing isolation:* enforced by tests asserting `routing.py`/`evidence_router` import no LLM
+  client and never read `contract_code`.
+- *Adversarial corpus:* the 8 patterns (comment/string/role-swap/extraction/identifier/NatSpec/
+  multi/import); ground truth = the clean contract's verdict.
+
+**P5 — reproducibility**
+- *Mode:* `SENTINEL_DETERMINISTIC=1` → skip LLM debate + RAG, `torch.use_deterministic_algorithms`.
+- *Hash:* **SHA-256 of the `.pt` file**, computed at audit start, in the report + on-chain anchor.
+
+**P6 — cascade / reflection**
+- *Cascade go/no-go:* build only if a strong Judge improves F on **DISPUTED/uncertain** classes
+  by **>2pp** (measured in P0.1).
+- *Strong model (if go):* try **local `qwen2.5-coder-7b`** on hotspot-only ambiguous cases
+  first (keeps the local property); hosted endpoint only as fallback.
+- *`reflection`:* keep only if eval shows **>1pp** gain; else **default-off, opt-in**.
+
+**P7 — RAG**
+- *Diagnosis first:* the 7-step embed-and-inspect procedure → classify no-overlap vs chunking
+  vs embedding-space, then act.
+- *SWC:* 10 entries in `configs/swc_definitions.yaml`, prepended **only for flagged classes**.
+
+**P8 — Phase B channels**
+- *Architecture:* **MCP** servers for Halmos/Z3/Gigahorse; **direct Python** (reuse
+  representation server :8014) for taint/access-control. All `kind=FORMAL`,
+  `deterministic=True`, `reliability≈1.0` (fitted in P3). Per-channel invariant detail → P8
+  design docs. *Estimate note:* P8 may split into P8a (Halmos/Z3) / P8b (Gigahorse/taint/AC).
+
+**P9 — ZKML / on-chain**
+- *Tool:* **EZKL** (most mature, Python, battle-tested).
+- *Scope:* prove **model + `fuse()` deterministic math** (fusion is cheap; stronger guarantee).
+- *AuditRegistry record:* `verdict_provable` hash, `model_hash`, `contract_address`,
+  `verifier_signature` (the "I ran it" attestation), `zk_proof` (the "model produced it"
+  attestation).
+
+**P10 — gateway**
+- *Persistence:* **SQLite** (single-host, survives restart; Redis deferred to multi-host need).
+- *Health:* probe ML API + 5 MCP servers + LM Studio every **30s**; alert on **3 consecutive
+  failures** → log + webhook (Slack optional).
+- *MCP pooling:* **measurement-gated** — pool only if p95 MCP RTT exceeds threshold.
+
+**Cross-cutting**
+- *DoD tests* are written **during the P-phase that delivers each property** (a test for unbuilt
+  behavior is vacuous).
+- *Cadence:* one P-phase per session (~12 sessions); §16.2 estimates accepted.
+- *Run 13 trigger:* external (`data_module`, after v3.1 DIVE fix); landing it refits reliability
+  → auto-thins the agent layer (D-C).
 
 ---
 
@@ -371,3 +550,26 @@ test corpus with golden tests, build `fuse()` to reproduce them, prove equivalen
 - **2026-06-23** — Proposal created from the 2026-06-23 architecture debate. All open decisions
   (D-A…D-G) resolved with reasoning; beyond-debate items (B-1…B-6) added; full phased plan,
   risks, and definition of done specified.
+- **2026-06-23 (rev 3)** — "Nothing deferred" pass (Ali directive). **State shape DECIDED:
+  Shape A via transitional dual-write (§5.2)** — no longer deferred to P2 kickoff. Added
+  **§10.1 Build-decision register** resolving every `[I]`/`[T]` question from
+  `2026-06-23_proposal_BUILD_questions.md` (label format, config YAML/eager, nodes one-file-per-node,
+  golden exact-match, reliability train/test+α=5, 3-layer injection, SHA-256 hash, cascade >2pp
+  trigger, EZKL+model+fuse() scope, SQLite, etc.). Refined P0 into P0.0/P1/P0.1 for the
+  config-before-eval dependency; added P2.5 long-file audit; folded the `to_thread` fix into P2.
+  BUILD_questions §16 M-table and §19 log flipped to fully RESOLVED.
+- **2026-06-23 (rev 2)** — Self-containment pass after review against
+  `2026-06-23_proposal_BUILD_questions.md`: (1) **D-B** now defines Options A/B/C inline (was
+  referencing them undefined); (2) **§5.2 `fuse()`** now specifies the de-correlation families +
+  `1/N` discount, the precise definition of "strong SUPPORTS", and the verdict bands — all
+  flagged as Rule-B-tunable; (3) **§5.2** explicitly records the **deferred P2 state-shape**
+  decision (Shape A vs B); (4) **§6** pins the P0 held-out corpus (83 `manual_hand_written_contracts`,
+  SmartBugs EB/RE excluded until v3.1) and defines "recall-weighted" (macro-averaged Fβ, β=2);
+  (5) **§2** adds a supersession statement re: `01_MASTER_PLAN.md` (and that file now carries a
+  superseded header). No decisions changed — only ambiguities removed.
+- **2026-06-25 (execution)** — P0 FOUNDATION executed 2026-06-24 (P0.0 labels+hygiene, P1 config,
+  P0.1 eval loop; first honest baseline macro_F1=0.1958/macro_Fbeta=0.2515). P2 executed
+  2026-06-24/25 (T2.1 verdict/ package, T2.2 nodes.py split, T2.3 dual-write, T2.4 golden
+  characterization, T2.5 P2 eval: macro_F1=0.1998+0.0041/macro_Fbeta=0.2246-0.0269, T2.6
+  to_thread fix, T2.8/9 integration tests). 549 tests green. T2.7 (flip to Shape A) pending
+  Ali decision on Fbeta tradeoff.

@@ -1,0 +1,8 @@
+{
+  "ground_truth": "vulnerable",
+  "labels": [
+    "ExternalBug",
+    "UnusedReturn"
+  ],
+  "source": "expect_header"
+}

@@ -1,0 +1,10 @@
+{
+  "ground_truth": "vulnerable",
+  "labels": [
+    "ExternalBug",
+    "Reentrancy",
+    "Timestamp",
+    "CallToUnknown"
+  ],
+  "source": "expect_header"
+}

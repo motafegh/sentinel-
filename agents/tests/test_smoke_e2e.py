@@ -189,7 +189,7 @@ class TestSmokePaths:
             "contract_address": "0xVAULT",
         }
 
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=_mock_mcp):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp):
             result = await graph.ainvoke(initial_state)
 
         report = result.get("final_report")
@@ -223,7 +223,7 @@ class TestSmokePaths:
             "contract_address": "0xVAULT",
         }
 
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=_mock_mcp):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp):
             result = await graph.ainvoke(initial_state)
 
         assert "quick_screen_hits" in result, "quick_screen_hits must be in final state"
@@ -242,7 +242,7 @@ class TestSmokePaths:
             "contract_address": "0xVAULT",
         }
 
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=_mock_mcp):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp):
             result = await graph.ainvoke(initial_state)
 
         assert "graph_explanations" in result
@@ -260,7 +260,7 @@ class TestSmokePaths:
             "contract_address": "0xVAULT",
         }
 
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=_mock_mcp):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp):
             result = await graph.ainvoke(initial_state)
 
         decisions = result.get("routing_decisions", [])
@@ -281,9 +281,9 @@ class TestSmokePaths:
             "contract_address": "0xSAFE",
         }
 
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=_mock_mcp_safe), \
-             patch("src.orchestration.nodes.tempfile.NamedTemporaryFile") as mock_tmp, \
-             patch("src.orchestration.nodes.os.unlink"):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp_safe), \
+             patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile") as mock_tmp, \
+             patch("os.unlink"):
             # Stub quick_screen temp file to avoid real Slither on safe contract
             mock_file = type("TmpFile", (), {"name": "/tmp/sentinel_smoke_safe.sol", "write": lambda s, t: None})()
             mock_tmp.return_value.__enter__ = lambda s: mock_file
@@ -337,7 +337,7 @@ class TestSmokePaths:
             "contract_address": "0xTRICKY",
         }
 
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=mock_safe_ml), \
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=mock_safe_ml), \
              patch.object(_slither_module, "Slither", mock_slither_cls), \
              patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
             result = await graph.ainvoke(initial_state)
@@ -364,7 +364,7 @@ class TestSmokePaths:
             "contract_address": "0xERROR",
         }
 
-        with patch("src.orchestration.nodes._call_mcp_tool", side_effect=ml_down), \
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=ml_down), \
              patch.dict("sys.modules", {"slither": None}), \
              patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
             result = await graph.ainvoke(initial_state)

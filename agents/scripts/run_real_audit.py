@@ -77,6 +77,7 @@ import sys
 import time
 import traceback
 import urllib.error
+from dataclasses import asdict
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -490,6 +491,11 @@ def _patch_no_llm() -> None:
 # Main audit runner
 # ══════════════════════════════════════════════════════════════════════════
 
+def _serialize_evidence(evidence_list: list) -> list[dict]:
+    """Convert Evidence dataclass objects to plain dicts for JSON serialization."""
+    return [asdict(e) for e in evidence_list]
+
+
 async def run_audit(contract_path: Path, urls: dict[str, str], args: argparse.Namespace) -> dict:
     contract_code = contract_path.read_text()
     # Generate a valid 20-byte (40 hex chars) Ethereum address for E2E.
@@ -620,6 +626,10 @@ async def run_audit(contract_path: Path, urls: dict[str, str], args: argparse.Na
         "final_report":             final_report,
         "narrative":                narrative,
         "error":                    result.get("error"),
+        # ── P2 dual-write (2026-06-24) ────────────────────────────────────
+        "evidence_list":            _serialize_evidence(result.get("evidence_list", []) or []),
+        "verdict_provable":         result.get("verdict_provable", {}),
+        "verdict_full":             result.get("verdict_full", {}),
     }
     out_path.write_text(json.dumps(report, indent=2, default=str))
     _loguru.info(f"report saved → {out_path}")

@@ -20,81 +20,49 @@ AuditState and calls `consensus_vote()` per flagged class.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
-# ---------------------------------------------------------------------------
-# Per-class reliability weights for {ml, slither, aderyn}.
+# ── Config-backed module "constants" ───────────────────────────────────────
+# All decision-numbers are read from the YAML config at call time (not import
+# time) so existing imports like `consensus.CONFIRMED_BAND` still work and
+# tests can monkeypatch get_config()'s return value.
 #
-# These are PRINCIPLED DEFAULTS derived from SENTINEL Run 12 evaluation
-# findings (MEMORY.md: 47K SmartBugs-Wild eval + manual inspection + DIVE
-# crosswalk audit), NOT a fitted confusion-matrix table. Rationale per class:
-#
-#   Reentrancy   — ML true-positive confirmed; Slither reentrancy-eth strong;
-#                  Aderyn corroborates but is mostly a Slither superset.
-#   Timestamp    — ML authoritative (static tools miss business-logic misuse
-#                  of block.timestamp by design) → up-weight ML, down tools.
-#   ExternalBug  — ML FP-prone (s_Form001 p=0.96 FP); DIVE/Slither/Aderyn give
-#                  NO independent precision signal (3-way precision 3.0%) →
-#                  flatten all three; require strong agreement to confirm.
-#   IntegerUO    — Slither/Aderyn syntactic detectors reliable; ML moderate.
-#   The rest     — balanced defaults; refine when a per-tool benchmark exists.
-#
-# Weights need not sum to 1; consensus_vote normalises by the active sum.
-# ---------------------------------------------------------------------------
-
-ACCURACY_WEIGHTS: dict[str, dict[str, float]] = {
-    "Reentrancy":                 {"ml": 0.78, "slither": 0.82, "aderyn": 0.60},
-    "IntegerUO":                  {"ml": 0.62, "slither": 0.80, "aderyn": 0.70},
-    "GasException":               {"ml": 0.40, "slither": 0.65, "aderyn": 0.55},
-    "Timestamp":                  {"ml": 0.80, "slither": 0.45, "aderyn": 0.40},
-    "TransactionOrderDependence": {"ml": 0.70, "slither": 0.60, "aderyn": 0.45},
-    "ExternalBug":                {"ml": 0.45, "slither": 0.50, "aderyn": 0.45},
-    "CallToUnknown":              {"ml": 0.60, "slither": 0.70, "aderyn": 0.60},
-    "MishandledException":        {"ml": 0.55, "slither": 0.72, "aderyn": 0.62},
-    "UnusedReturn":               {"ml": 0.55, "slither": 0.75, "aderyn": 0.65},
-    "DenialOfService":            {"ml": 0.65, "slither": 0.55, "aderyn": 0.50},
-}
-
-# Used when a class is not in the table above (forward-compatible with new
-# classes / a renamed taxonomy). Balanced, slightly ML-leaning.
-DEFAULT_WEIGHTS: dict[str, float] = {"ml": 0.60, "slither": 0.65, "aderyn": 0.55}
-
-# ── ML-as-a-HINT discount (Ali directive 2026-06-21) ────────────────────────
-# SENTINEL's Run 12 ML model is not yet reliable (known FP behaviour, e.g.
-# ExternalBug). The agent layer must do its OWN analysis (static tools + LLM
-# debate) and treat the ML prediction as a clue, NOT an authority. We therefore
-# scale every class's ML reliability weight by ML_WEIGHT_SCALE (default 0.5)
-# before voting, so the ML signal ALONE can never reach the CONFIRMED band —
-# corroboration from Slither/Aderyn (and the LLM debate downstream) is required.
-# Raise this toward 1.0 once a better-calibrated model ships.
-DEFAULT_ML_WEIGHT_SCALE: float = 0.5
+# P1 (2026-06-23): old env-var override ML_WEIGHT_SCALE removed — decision-
+# numbers come from config now (reproducibility > convenience).
 
 
-def _ml_scale() -> float:
-    """ML weight discount, read at call time so it is tunable / monkeypatchable."""
-    try:
-        return float(os.getenv("ML_WEIGHT_SCALE", str(DEFAULT_ML_WEIGHT_SCALE)))
-    except ValueError:
-        return DEFAULT_ML_WEIGHT_SCALE
+def __getattr__(name: str):
+    # Lazy import to avoid circular dep at import time.
+    from src.config import get_config as _get_cfg
 
-# ML probability at/above which the ML signal counts as a positive vote.
-ML_POSITIVE_THRESHOLD: float = 0.50
-
-# Confidence → verdict band boundaries.
-CONFIRMED_BAND: float = 0.70
-LIKELY_BAND: float = 0.50
-DISPUTED_BAND: float = 0.30  # below this → SAFE
+    _map = {
+        "ACCURACY_WEIGHTS":     lambda c: c.consensus.accuracy_weights,
+        "DEFAULT_WEIGHTS":      lambda c: c.consensus.default_weights,
+        "DEFAULT_ML_WEIGHT_SCALE": lambda c: c.consensus.ml_weight_scale,
+        "ML_POSITIVE_THRESHOLD": lambda c: c.consensus.ml_positive_threshold,
+        "CONFIRMED_BAND":       lambda c: c.consensus.confirmed_band,
+        "LIKELY_BAND":          lambda c: c.consensus.likely_band,
+        "DISPUTED_BAND":        lambda c: c.consensus.disputed_band,
+    }
+    if name in _map:
+        return _map[name](_get_cfg())
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def get_weights(class_name: str) -> dict[str, float]:
     """
     Return the {ml, slither, aderyn} reliability weights for a class, with the
-    ML weight discounted by ML_WEIGHT_SCALE (ML treated as a hint, not authority).
+    ML weight discounted by ml_weight_scale (ML treated as a hint, not authority).
     """
-    base = ACCURACY_WEIGHTS.get(class_name, DEFAULT_WEIGHTS)
+    from src.config import get_config as _get_cfg
+
+    cfg = _get_cfg()
+    base = cfg.consensus.accuracy_weights.get(
+        class_name, cfg.consensus.default_weights
+    )
+    scale = cfg.consensus.ml_weight_scale
     return {
-        "ml":      round(base["ml"] * _ml_scale(), 4),
+        "ml":      round(base["ml"] * scale, 4),
         "slither": base["slither"],
         "aderyn":  base["aderyn"],
     }
@@ -106,7 +74,7 @@ def consensus_vote(
     aderyn_found: bool,
     class_name: str,
     *,
-    ml_threshold: float = ML_POSITIVE_THRESHOLD,
+    ml_threshold: float | None = None,
 ) -> dict[str, Any]:
     """
     Weighted per-class consensus over {ML, Slither, Aderyn}.
@@ -132,6 +100,11 @@ def consensus_vote(
     positive, so a lone but highly-reliable tool can still confirm, while two
     weak agreeing tools may not. Confidence is always clamped to [0, 1].
     """
+    from src.config import get_config as _get_cfg
+
+    if ml_threshold is None:
+        ml_threshold = _get_cfg().consensus.ml_positive_threshold
+    cfg = _get_cfg()
     w = get_weights(class_name)
 
     signals = {
@@ -144,11 +117,11 @@ def consensus_vote(
     score = sum(signals[k] * w[k] for k in signals)
     confidence = 0.0 if total_weight <= 0 else max(0.0, min(1.0, score / total_weight))
 
-    if confidence >= CONFIRMED_BAND:
+    if confidence >= cfg.consensus.confirmed_band:
         verdict = "CONFIRMED"
-    elif confidence >= LIKELY_BAND:
+    elif confidence >= cfg.consensus.likely_band:
         verdict = "LIKELY"
-    elif confidence >= DISPUTED_BAND:
+    elif confidence >= cfg.consensus.disputed_band:
         verdict = "DISPUTED"
     else:
         verdict = "SAFE"

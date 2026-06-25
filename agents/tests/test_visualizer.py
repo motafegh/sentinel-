@@ -71,8 +71,9 @@ class TestGenerateHotspotHtml:
 class TestVisualizerNode:
     @pytest.mark.asyncio
     async def test_node_sets_html_and_writes_file(self, tmp_path, monkeypatch):
-        import src.orchestration.nodes as nodes_mod
-        monkeypatch.setattr(nodes_mod, "REPORTS_DIR", tmp_path)
+        import importlib
+        viz_mod = importlib.import_module("src.orchestration.nodes.visualizer")
+        monkeypatch.setattr(viz_mod, "REPORTS_DIR", tmp_path)
         out = await visualizer(_state())
         assert out["hotspot_visualization"].startswith("<!DOCTYPE html>")
         written = tmp_path / "0xABC_hotspot.html"
@@ -81,8 +82,9 @@ class TestVisualizerNode:
 
     @pytest.mark.asyncio
     async def test_node_no_address_no_file(self, tmp_path, monkeypatch):
-        import src.orchestration.nodes as nodes_mod
-        monkeypatch.setattr(nodes_mod, "REPORTS_DIR", tmp_path)
+        import importlib
+        viz_mod = importlib.import_module("src.orchestration.nodes.visualizer")
+        monkeypatch.setattr(viz_mod, "REPORTS_DIR", tmp_path)
         st = _state()
         st["contract_address"] = ""
         out = await visualizer(st)

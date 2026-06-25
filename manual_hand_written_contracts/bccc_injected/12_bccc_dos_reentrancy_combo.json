@@ -1,0 +1,9 @@
+{
+  "ground_truth": "vulnerable",
+  "labels": [
+    "DenialOfService",
+    "Reentrancy",
+    "UnusedReturn"
+  ],
+  "source": "expect_header"
+}

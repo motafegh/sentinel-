@@ -1,0 +1,9 @@
+{
+  "ground_truth": "vulnerable",
+  "labels": [
+    "ExternalBug",
+    "MishandledException",
+    "GasException"
+  ],
+  "source": "expect_header"
+}

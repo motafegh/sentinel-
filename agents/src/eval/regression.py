@@ -42,6 +42,8 @@ class RegressionResult:
     """
     baseline_macro_f1:    float
     current_macro_f1:     float
+    baseline_macro_fbeta: float
+    current_macro_fbeta:  float
     baseline_micro_f1:    float
     current_micro_f1:     float
     regressed:            bool
@@ -73,6 +75,10 @@ class RegressionBaseline:
     @property
     def macro_f1(self) -> float:
         return float(self.data.get("macro_f1", 0.0))
+
+    @property
+    def macro_fbeta(self) -> float:
+        return float(self.data.get("macro_fbeta", self.macro_f1))
 
     @property
     def micro_f1(self) -> float:
@@ -125,6 +131,7 @@ class RegressionBaseline:
         """
         cur = current.as_dict()
         cur_macro = float(cur.get("macro_f1", 0.0))
+        cur_macro_fbeta = float(cur.get("macro_fbeta", cur_macro))
         cur_micro = float(cur.get("micro_f1", 0.0))
 
         regressed = cur_macro < self.macro_f1
@@ -157,6 +164,11 @@ class RegressionBaseline:
                 "current":  cur_macro,
                 "delta":    cur_macro - self.macro_f1,
             },
+            "macro_fbeta": {
+                "baseline": self.macro_fbeta,
+                "current":  cur_macro_fbeta,
+                "delta":    cur_macro_fbeta - self.macro_fbeta,
+            },
             "micro_f1": {
                 "baseline": self.micro_f1,
                 "current":  cur_micro,
@@ -172,6 +184,8 @@ class RegressionBaseline:
         return RegressionResult(
             baseline_macro_f1=self.macro_f1,
             current_macro_f1=cur_macro,
+            baseline_macro_fbeta=self.macro_fbeta,
+            current_macro_fbeta=cur_macro_fbeta,
             baseline_micro_f1=self.micro_f1,
             current_micro_f1=cur_micro,
             regressed=regressed,

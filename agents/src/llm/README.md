@@ -13,7 +13,7 @@ LM Studio connection and model router for SENTINEL agents. Provides LangChain-co
 | Role | Model ID | Use Case | Speed (RTX 3070) |
 |------|----------|----------|-------------------|
 | `FAST` | `gemma-4-e2b-it` | Simple tasks, tool selection, API calls | ~12 tok/s |
-| `STRONG` | `qwen3.5-9b-ud` | Reasoning, RAG synthesis, report generation | ~37 tok/s |
+| `STRONG` | `gemma-4-e2b-it` | Reasoning, RAG synthesis, report generation (was qwen3.5-9b-ud, see FIX-18) | ~17-30s/task |
 | `CODER` | `qwen2.5-coder-7b-instruct` | Solidity analysis, code logic review | — |
 | `EMBED` | `text-embedding-nomic-embed-text-v1.5` | RAG embeddings (text descriptions) | — |
 
@@ -36,7 +36,7 @@ from src.llm.client import get_fast_llm, get_strong_llm, get_coder_llm, get_embe
 
 # Chat models (all return LangChain ChatOpenAI)
 fast_llm   = get_fast_llm()    # gemma-4-e2b-it
-strong_llm = get_strong_llm()  # qwen3.5-9b-ud
+strong_llm = get_strong_llm()  # gemma-4-e2b-it (was qwen3.5-9b-ud, see FIX-18)
 coder_llm  = get_coder_llm()   # qwen2.5-coder-7b-instruct
 
 # Embedding model (LangChain OpenAIEmbeddings)

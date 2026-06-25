@@ -20,8 +20,16 @@ state["metric_attribution"] and final_report.
 
 from __future__ import annotations
 
-# Only RAG similarity above this floor counts as evidence (below = noise).
-RAG_RELEVANCE_FLOOR: float = 0.30
+
+def __getattr__(name: str):
+    from src.config import get_config as _get_cfg
+
+    _map = {
+        "RAG_RELEVANCE_FLOOR": lambda c: c.attribution.rag_relevance_floor,
+    }
+    if name in _map:
+        return _map[name](_get_cfg())
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def attribute_verdict(
@@ -29,23 +37,12 @@ def attribute_verdict(
     slither_match: bool,
     rag_score: float,
 ) -> dict[str, float]:
-    """
-    Attribute a verdict's evidence across {ML, Slither, RAG}.
+    from src.config import get_config as _get_cfg
 
-    Args:
-        ml_prob:       ML probability for the class, [0, 1].
-        slither_match: True if a Slither detector for this class fired.
-        rag_score:     best RAG similarity for the class, [0, 1].
-
-    Returns:
-        {ml_pct, slither_pct, rag_pct} rounded to 1 dp, summing to ~100.0.
-        If NO source contributed (no ML mass, no Slither, sub-floor RAG),
-        returns all zeros — the caller can treat that as "no attributable
-        evidence" rather than dividing by zero.
-    """
+    floor = _get_cfg().attribution.rag_relevance_floor
     ml_contrib = max(0.0, min(1.0, ml_prob))
     slither_contrib = 1.0 if slither_match else 0.0
-    rag_contrib = max(0.0, rag_score - RAG_RELEVANCE_FLOOR)
+    rag_contrib = max(0.0, rag_score - floor)
 
     total = ml_contrib + slither_contrib + rag_contrib
     if total <= 0:

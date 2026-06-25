@@ -18,13 +18,21 @@ Design choices:
 
 from __future__ import annotations
 
-# Multiplicative nudge factors. Tunable; kept conservative on purpose.
-SLITHER_AGREE = 1.10
-SLITHER_DISAGREE = 0.90
-ADERYN_AGREE = 1.05
-ADERYN_DISAGREE = 0.97
-RAG_AGREE = 1.05          # applied when rag_score >= RAG_RELEVANCE
-RAG_RELEVANCE = 0.70
+
+def __getattr__(name: str):
+    from src.config import get_config as _get_cfg
+
+    _map = {
+        "SLITHER_AGREE":    lambda c: c.confidence.slither_agree,
+        "SLITHER_DISAGREE": lambda c: c.confidence.slither_disagree,
+        "ADERYN_AGREE":     lambda c: c.confidence.aderyn_agree,
+        "ADERYN_DISAGREE":  lambda c: c.confidence.aderyn_disagree,
+        "RAG_AGREE":        lambda c: c.confidence.rag_agree,
+        "RAG_RELEVANCE":    lambda c: c.confidence.rag_relevance,
+    }
+    if name in _map:
+        return _map[name](_get_cfg())
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _clamp(x: float) -> float:
@@ -49,21 +57,20 @@ def track_confidence(
 
     Returns:
         Updated confidence in [0, 1], rounded to 4 dp.
-
-    Each available signal applies one multiplicative nudge. Absent signals
-    (None) are skipped so a fast-path verdict with only ML evidence simply
-    returns the (clamped) ML probability unchanged.
     """
+    from src.config import get_config as _get_cfg
+
+    cfg = _get_cfg()
     conf = _clamp(ml_prob)
 
     if slither_found is not None:
-        conf *= SLITHER_AGREE if slither_found else SLITHER_DISAGREE
+        conf *= cfg.confidence.slither_agree if slither_found else cfg.confidence.slither_disagree
 
     if aderyn_found is not None:
-        conf *= ADERYN_AGREE if aderyn_found else ADERYN_DISAGREE
+        conf *= cfg.confidence.aderyn_agree if aderyn_found else cfg.confidence.aderyn_disagree
 
-    if rag_score is not None and rag_score >= RAG_RELEVANCE:
-        conf *= RAG_AGREE
+    if rag_score is not None and rag_score >= cfg.confidence.rag_relevance:
+        conf *= cfg.confidence.rag_agree
 
     return round(_clamp(conf), 4)
 

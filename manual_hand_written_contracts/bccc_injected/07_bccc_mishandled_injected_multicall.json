@@ -1,0 +1,8 @@
+{
+  "ground_truth": "vulnerable",
+  "labels": [
+    "MishandledException",
+    "CallToUnknown"
+  ],
+  "source": "expect_header"
+}

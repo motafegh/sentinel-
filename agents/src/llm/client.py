@@ -7,8 +7,8 @@ via ChatOpenAI pointed at localhost instead of api.openai.com.
 
 Model routing strategy (match model to task):
   FAST   — gemma-4-e2b-it          — simple tasks, tool selection, API calls
-  STRONG — qwen3.5-9b-ud           — reasoning, RAG synthesis, report generation
-  CODER  — qwen2.5-coder-7b        — Solidity analysis, code logic review
+  STRONG — gemma-4-e2b-it           — reasoning, RAG synthesis, report generation
+  CODER  — qwen2.5-coder-7b-instruct        — Solidity analysis, code logic review
   EMBED  — nomic-embed-text-v1.5   — RAG embeddings (text descriptions)
 
 CHANGES (2026-04-11):
@@ -148,9 +148,8 @@ def get_fast_llm(max_tokens: int | None = None) -> ChatOpenAI:
 
 def get_strong_llm(max_tokens: int | None = None) -> ChatOpenAI:
     """
-    Qwen3.5-9B — strong reasoning.
+    Gemma-4-e2b-it — strong reasoning (same model as FAST post-FIX-18).
     Use for: RAGResearcherAgent, SynthesizerAgent.
-    Speed: ~37 tokens/sec on RTX 3070 (most layers on GPU).
 
     FIX-17 (2026-06-17): max_tokens pass-through. Synthesizer needs 4096+ for
     the 4-section narrative. Without it, LM Studio truncates mid-response.

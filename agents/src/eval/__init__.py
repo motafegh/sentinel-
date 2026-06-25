@@ -16,8 +16,8 @@ Modules:
   - regression:    load/save a stored baseline + diff against current run.
                    Used by the comparator's --baseline flag and the
                    "regression" gate.
-  - gates:         the 9 workstream gate assertions (WS1a/b/c/d/e, WS2,
-                   WS3, D4, macro_f1). Reused by scripts/eval_benchmark.py.
+  - gates:         (created in P0.1 T0.1.2) 9 gate assertions from
+                   scripts/eval_benchmark.py, moved here for importability.
 
 Dataset decision (Ali, 2026-06-22): use the existing 88-contract WS0 corpus
 for now. The classes here are written against the existing format so
@@ -38,6 +38,19 @@ from src.eval.regression import (
     RegressionBaseline,
     RegressionResult,
 )
+from src.eval.gates import (
+    ContractEval,
+    GateResult,
+    gate_d4_eye_predictions_present,
+    gate_macro_f1_vs_baseline,
+    gate_ws1a_silent_safe_on_flagged,
+    gate_ws1b_inconclusive_on_timeout,
+    gate_ws1c_no_missing_consensus_votes,
+    gate_ws1d_confidence_1_0_not_downgraded,
+    gate_ws1e_no_vulnerable_label_with_safe_verdict,
+    gate_ws2_false_positives_on_safe,
+    gate_ws3_long_contract_bug_detected,
+)
 
 __all__ = [
     # pipeline_metrics
@@ -53,4 +66,16 @@ __all__ = [
     # regression
     "RegressionBaseline",
     "RegressionResult",
+    # gates
+    "GateResult",
+    "ContractEval",
+    "gate_ws1a_silent_safe_on_flagged",
+    "gate_ws1b_inconclusive_on_timeout",
+    "gate_ws1c_no_missing_consensus_votes",
+    "gate_ws1d_confidence_1_0_not_downgraded",
+    "gate_ws1e_no_vulnerable_label_with_safe_verdict",
+    "gate_ws2_false_positives_on_safe",
+    "gate_ws3_long_contract_bug_detected",
+    "gate_d4_eye_predictions_present",
+    "gate_macro_f1_vs_baseline",
 ]

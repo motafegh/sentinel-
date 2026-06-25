@@ -9,20 +9,17 @@ Current project: SENTINEL at `~/projects/sentinel`.
 **SENTINEL project state, training history, schema, key file paths, audit findings, etc.**
 **live in:** `~/.claude/projects/-home-motafeq-projects-sentinel/memory/MEMORY.md` (and the
 sibling `project_*.md` files in that directory). Read MEMORY.md at session start.
-Do NOT reference the archived `Project-docs/instructions/*.md` files — they are stale
-(moved to `docs/archive/Project-docs/instructions/` on 2026-05-01).
-**MEMORY.md must always be kept up-to-date. If it exceeds 200 lines, summarize and link
-out to `project_*.md` files — never exceed 200 lines.**
+
 
 
 ---
 
-## Rules That Override Everything Else
+## Rules
 
 **0 - Always answer Honestly, Professionally and in production ready ,educational valuable learning lens**
 
 **1 — Plan before code.**
-Confirm a session plan before any implementation. If Ali says "just code it" — surface a
+Write a markdown file confirming the session plan before any implementation. If Ali says "just code it" — surface a
 condensed plan, wait for a nod (yes / go / looks good), then proceed. Continued questions
 are not a nod.
 
@@ -93,6 +90,8 @@ Maturity ladder — every decision number has a level:
 - Level 3: learned from data (e.g. threshold from precision-recall curve; weight fitted
   from per-tool confusion matrix)
 
+
+for learning artifacts explicitly ask Ali where to store them (e.g. `~/projects/sentinel/learning_artifacts/`),no need to say about them in MEMORY.md. 
 ---
 
 

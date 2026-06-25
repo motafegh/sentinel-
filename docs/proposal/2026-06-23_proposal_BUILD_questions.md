@@ -2,7 +2,8 @@
 
 **Date:** 2026-06-23
 **Companion to:** `docs/proposal/2026-06-23_proposal_SYSTEM_architecture-finalization.md`
-**Status:** LIVING DOCUMENT — questions get marked RESOLVED with date + decision as Ali answers them.
+**Status:** ✅ **ALL RESOLVED (2026-06-23)** — every question is decided; see §19 resolution log
+and proposal §10.1. No item is deferred. The doc remains as the question→decision audit trail.
 **Source:** derived from (a) direct reading of the proposal, (b) source verification on 2026-06-23
 (`nodes.py:1462` 8-case table, `consensus.py:46-57` ACCURACY_WEIGHTS, `confidence.py:22-27` nudges,
 `routing.py:23-34` DEEP_THRESHOLDS, `llm/client.py:65-80` MODEL_*, `graph.py:91-137` topology,
@@ -18,22 +19,6 @@
 
 ---
 
-## 1. Pre-P0 showstoppers (must resolve before P0 starts)
-
-### 1.1 [S] M1 — Commit the uncommitted C.1 + C.2 + eval state
-**Question:** `git status` showed ~28 modified + 4 untracked files (C.1 gateway, C.2 eval,
-`audit_gt_labels.py`, `agents/eval/`) that had never been committed since the WIP-snapshot
-commit `f52b1e2ec`. Should we commit them FIRST as a "post-WS6a C.1+C.2 baseline"?
-
-**Why it matters:** P0's regression baseline must be replayable from a known SHA. If we build
-on top of WIP, the baseline is contaminated.
-
-**Status (2026-06-23):** RESOLVED — commit `b55182a16` "chore(agents): post-WS6a C.1+C.2
-baseline" captured 731 files (47 modified + 49 untracked, plus eval run reports), 559,648
-insertions. Working tree clean. .env / agents/data / __pycache__ correctly gitignored.
-
----
-
 ### 1.2 [S] M2 — Mark `01_MASTER_PLAN.md` as superseded
 **Question:** `docs/plan/agents/2026-06-21-agents-redesign/01_MASTER_PLAN.md` lists
 WS1-WS5 done and D1-D4 resolved. The 2026-06-23 finalization proposal supersedes its
@@ -44,7 +29,7 @@ the architecture of record. The new D-A…D-G + B-1…B-6 decisions supersede th
 
 ---
 
-### 1.3 [S] M4 (deferred) — P2 state shape: Shape A or Shape B
+### 1.3 [S] M4  — P2 state shape: Shape A or Shape B
 **Question:** Under D-B (LLM is advisory, deterministic tier is the provable one), how does
 `fuse()` get the LLM signal? The proposal §5.2 says fuse() consumes a list of Evidence.
 The current state has `consensus_verdict` (deterministic tier) AND `verdicts` (from
@@ -711,20 +696,20 @@ either resolved by an answer in this doc or remains open:
 | # | Finding | Status | Where addressed |
 |---|---------|--------|-----------------|
 | M1 | Uncommitted state (28 modified + 4 untracked) | RESOLVED (commit b55182a16) | §1.1 |
-| M2 | Master plan needs supersession header | OPEN | §1.2 |
-| M3 | P0 corpus under-specified | OPEN | §1.4, §3 |
-| M4 | P2 state shape (Shape A vs B) | OPEN (deferred) | §1.3, §5.1 |
-| M5 | P0 metric under-specified | OPEN | §1.4, §3 |
-| M6 | P2 needs Shape A decision | OPEN | §1.3, §5.1 |
-| M7 | P5 reproducibility needs deterministic mode | OPEN | §8.1 |
-| M8 | P6 model cascade eval-driven go/no-go | OPEN | §9.1 |
-| M9 | P7 RAG diagnose first | OPEN | §10.1 |
-| M10 | P10 gateway hardening scope | OPEN | §13 |
-| M11 | CROSS clean-data retrain tracking | OPEN | §14 |
-| M12 | DoD needs test files (one per property) | OPEN | See below |
-| M13 | Effort estimates per P-phase | OPEN | §16.2 |
-| M14 | First deliverable per P-phase | OPEN | See below |
-| M16 | Edge cases as separate eval tier | OPEN | §3.1 |
+| M2 | Master plan needs supersession header | RESOLVED (header added; proposal §2) | §1.2 |
+| M3 | P0 corpus under-specified | RESOLVED (83 hand-written; proposal §6) | §1.4, §3 |
+| M4 | P2 state shape (Shape A vs B) | RESOLVED (Shape A via dual-write; proposal §5.2) | §1.3, §5.1 |
+| M5 | P0 metric under-specified | RESOLVED (macro Fβ, β=2; proposal §6) | §1.4, §3 |
+| M6 | P2 needs Shape A decision | RESOLVED (Shape A) | §1.3, §5.1 |
+| M7 | P5 reproducibility needs deterministic mode | RESOLVED (proposal §10.1) | §8.1 |
+| M8 | P6 model cascade eval-driven go/no-go | RESOLVED (>2pp on DISPUTED) | §9.1 |
+| M9 | P7 RAG diagnose first | RESOLVED (7-step) | §10.1 |
+| M10 | P10 gateway hardening scope | RESOLVED (proposal §10.1) | §13 |
+| M11 | CROSS clean-data retrain tracking | RESOLVED (external gate; proposal §10.1) | §14 |
+| M12 | DoD needs test files (one per property) | RESOLVED (per-phase delivery) | §16.1 |
+| M13 | Effort estimates per P-phase | RESOLVED (accepted; P8 may split) | §16.2 |
+| M14 | First deliverable per P-phase | RESOLVED (per-phase design docs) | §16.1 |
+| M16 | Edge cases as separate eval tier | RESOLVED (second corpus tier; proposal §6) | §3.1 |
 
 ### 16.1 [I] DoD test files (M12)
 The proposal's §12 Definition of Done lists properties. Each needs a test:
@@ -796,8 +781,35 @@ don't change the headline capability.
 
 ## 19. Resolution log
 
-| # | Question | Decision | Date |
-|---|----------|----------|------|
-| 1.1 | M1 commit uncommitted state | Commit `b55182a16` "chore(agents): post-WS6a C.1+C.2 baseline" | 2026-06-23 |
+**2026-06-23 — ALL QUESTIONS RESOLVED. Nothing deferred.** Per Ali's directive ("we have
+nothing to defer; fix them now and properly"), every question in §1–§17 is decided. The
+decisions live in the proposal:
+- **Architectural / showstopper** (`[S]`/`[A]`): proposal §4 (D-A…D-G, B-1…B-6), §5 (Evidence
+  + `fuse()` + state Shape A), §6 (corpus + macro-Fβ metric).
+- **Implementation / taste** (`[I]`/`[T]`): proposal **§10.1 Build-decision register** —
+  one decision + rationale per question, organized by P-phase.
 
-(More rows get added as Ali answers the remaining questions.)
+| # | Question | Decision | Where |
+|---|----------|----------|-------|
+| 1.1 | M1 uncommitted state | Committed `b55182a16` | — |
+| 1.2 | M2 master plan supersession | Superseded header added to `01_MASTER_PLAN.md`; proposal §2 | proposal §2 |
+| 1.3 / 5.1 | M4 state shape A vs B | **Shape A** via transitional dual-write | proposal §5.2 |
+| 1.4 | M3+M5 P0 corpus + metric | 83 hand-written contracts (SmartBugs EB/RE excluded); macro **Fβ, β=2** | proposal §6 |
+| 2.1–2.3 | Label format / audit / size | header-canonical + JSON sidecar; Ali+Slither-default; accept lower N | proposal §10.1 |
+| 3.1–3.3 | Eval runner / named config / storage | `-m src.eval.run_benchmark`; P1-before-P0.1; `eval/runs/<ts>_<name>/` | proposal §10.1, §10 |
+| 4.1–4.3 | Config format / contents / loading | YAML+Pydantic; decision-numbers only; eager fail-fast | proposal §10.1 |
+| 5.2–5.4 | nodes/ , verdict/ , Evidence shape | one-file-per-node; 5-module verdict pkg; frozen + per-source semantics | proposal §10.1, §5.1 |
+| 5.5–5.7 | de-correlate / strong SUPPORTS / bands | families+`1/N`; 3-condition "strong"; current bands | proposal §5.2 |
+| 5.8 | Golden-test strictness | all 83, exact per-class match | proposal §10.1, §5.2 |
+| 6.1–6.3 | Reliability source / cadence / prior | train/test split; refit per-retrain+on-demand; Bayesian α=5 | proposal §10.1 |
+| 7.1–7.3 | Sanitization / routing isolation / corpus | 3 layers; import+contract_code tests; 8 patterns | proposal §10.1, §7 |
+| 8.1–8.2 | Deterministic mode / hash | `SENTINEL_DETERMINISTIC=1`; SHA-256 of `.pt` | proposal §10.1 |
+| 9.1–9.3 | Cascade go/no-go / model / reflection | >2pp on DISPUTED; local qwen-coder-7b first; reflection opt-in if <1pp | proposal §10.1 |
+| 10.1–10.2 | RAG diagnose / SWC | 7-step diagnosis; 10-entry YAML, flagged-class-only | proposal §10.1 |
+| 11.1–11.2 | Phase B channel arch / per-channel | MCP for formal solvers, direct Python for taint/AC; detail→P8 docs | proposal §10.1 |
+| 12.1–12.3 | ZKML tool / scope / registry | EZKL; model+fuse() math; 5-field record | proposal §10.1 |
+| 13.1–13.3 | Persistence / health / pooling | SQLite; 30s probe, 3-fail alert; pooling measurement-gated | proposal §10.1 |
+| 14.1 | Run 13 trigger | external (`data_module`, post-v3.1); refits reliability | proposal §10.1 |
+| 15.1–15.4 | Long files / docstrings / findings / to_thread | P2.5 audit; P0.0 batch purge; read in P0.0; fix in P2 | proposal §10, §10.1 |
+| 16.1–16.2 | DoD test files / estimates | per-phase delivery; estimates accepted (P8 may split) | proposal §10.1, §12 |
+| 17.1 | Cadence | one phase/session (~12) | proposal §10.1 |

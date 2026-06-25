@@ -1,0 +1,99 @@
+# SENTINEL decision-number configuration (P1, 2026-06-23)
+# All thresholds/weights/bands externalised. Change a value here and
+# the next run picks it up (eager fail-fast on validation).
+#
+# Maturity (Rule B):
+#   L1 = externalised (this file)
+#   L2 = measured against baseline before any change
+#   L3 = learned from data (confusion-matrix-fitted weights, PR-curve thresholds)
+schema_version: "1"
+
+consensus:
+  # Per-class {ml, slither, aderyn} reliability weights. L3 target.
+  accuracy_weights:
+    Reentrancy:                 {ml: 0.78, slither: 0.82, aderyn: 0.60}
+    IntegerUO:                  {ml: 0.62, slither: 0.80, aderyn: 0.70}
+    GasException:               {ml: 0.40, slither: 0.65, aderyn: 0.55}
+    Timestamp:                  {ml: 0.80, slither: 0.45, aderyn: 0.40}
+    TransactionOrderDependence: {ml: 0.70, slither: 0.60, aderyn: 0.45}
+    ExternalBug:                {ml: 0.45, slither: 0.50, aderyn: 0.45}
+    CallToUnknown:              {ml: 0.60, slither: 0.70, aderyn: 0.60}
+    MishandledException:        {ml: 0.55, slither: 0.72, aderyn: 0.62}
+    UnusedReturn:               {ml: 0.55, slither: 0.75, aderyn: 0.65}
+    DenialOfService:            {ml: 0.65, slither: 0.55, aderyn: 0.50}
+  # Fallback for unknown classes. L3 target.
+  default_weights: {ml: 0.60, slither: 0.65, aderyn: 0.55}
+  # ML weight discount — ML treated as a hint, not authority. L2.
+  ml_weight_scale: 0.5
+  # ML probability at/above which ML votes positive. L2.
+  ml_positive_threshold: 0.50
+  # Verdict band boundaries. L2 (PR-curve selection).
+  confirmed_band: 0.70
+  likely_band: 0.50
+  disputed_band: 0.30
+
+confidence:
+  slither_agree: 1.10
+  slither_disagree: 0.90
+  aderyn_agree: 1.05
+  aderyn_disagree: 0.97
+  rag_agree: 1.05
+  rag_relevance: 0.70
+
+routing:
+  # Per-class ML probability thresholds for deep analysis. L2.
+  deep_thresholds:
+    Reentrancy: 0.35
+    IntegerUO: 0.35
+    GasException: 0.40
+    Timestamp: 0.35
+    TransactionOrderDependence: 0.35
+    ExternalBug: 0.40
+    CallToUnknown: 0.40
+    MishandledException: 0.40
+    UnusedReturn: 0.45
+    DenialOfService: 0.30
+  # Which tool nodes activate per class. L1 (structural).
+  routing_rules:
+    Reentrancy: [static_analysis, rag_research]
+    IntegerUO: [static_analysis, rag_research]
+    GasException: [static_analysis]
+    Timestamp: [static_analysis, rag_research]
+    TransactionOrderDependence: [static_analysis, rag_research]
+    ExternalBug: [static_analysis, rag_research]
+    CallToUnknown: [static_analysis, rag_research]
+    MishandledException: [static_analysis]
+    UnusedReturn: [static_analysis]
+    DenialOfService: [static_analysis, rag_research]
+  # Probability → severity label mapping. L1 (display).
+  prob_to_severity:
+    CRITICAL: 0.85
+    HIGH: 0.70
+    MEDIUM: 0.50
+    LOW: 0.35
+  # Verdict → rank for overall verdict computation. L1 (structural order).
+  overall_verdict_rank:
+    CONFIRMED: 5
+    LIKELY: 4
+    DISPUTED: 3
+    WATCH: 2
+    INCONCLUSIVE: 1
+    SAFE: 0
+  # Hardcoded cutoffs in compute_verdict (routing.py:244-248).
+  # Not listed in proposal §4.2 — surfaced by source audit (P0 scratch file).
+  compute_verdict_prob_cutoff: 0.50
+  compute_verdict_rag_confirmed_cutoff: 0.80
+  compute_verdict_rag_likely_cutoff: 0.50
+
+attribution:
+  # Only RAG similarity above this floor counts as evidence. L2.
+  rag_relevance_floor: 0.30
+
+eval:
+  # Verdicts that count as "flagged vulnerable" (positive). L1.
+  positive_verdicts: [CONFIRMED, LIKELY]
+  # Borderline probability band for the silent-SAFE gate. L1.
+  borderline_band_low: 0.35
+  borderline_band_high: 0.50
+  # F-beta beta parameter (proposal §6, default β=2 for recall-weighting). L1.
+  fbeta_beta: 2.0

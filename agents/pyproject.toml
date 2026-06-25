@@ -22,7 +22,7 @@ sentence-transformers = "^5.5"   # Cross-encoder reranking (cross-encoder/ms-mar
 slither-analyzer = "^0.11.5"     # static_analysis node — Slither direct call
 
 # Structured outputs
-pydantic = "^2.0"                # Type-safe schemas
+pydantic = "^2.0"                # Type-safe schemas; pyyaml is a transitive dep (already available)
 
 # MCP
 mcp = "^1.0"                     # Model Context Protocol
