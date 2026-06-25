@@ -20,7 +20,6 @@ from src.orchestration.nodes.visualizer import visualizer
 
 # Re-export helpers for backward-compat (tests import these directly)
 from src.orchestration.nodes._helpers import _run_aderyn_on_file
-from src.orchestration.nodes._reconcile_shim import _reconcile_verdicts
 
 __all__ = [
     "quick_screen",
@@ -37,5 +36,4 @@ __all__ = [
     "explainer",
     "visualizer",
     "_run_aderyn_on_file",
-    "_reconcile_verdicts",
 ]

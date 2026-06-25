@@ -110,7 +110,10 @@ class TestDebateMode:
         with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
             out = await cross_validator(state)
         assert mock_llm.invoke.call_count == 3
-        assert out["verdicts"]["Reentrancy"] == "CONFIRMED"
+        assert "evidence_list" in out
+        reent_ev = [e for e in out["evidence_list"] if e.vuln_class == "Reentrancy"]
+        assert len(reent_ev) == 1
+        assert reent_ev[0].detail.get("debate_verdict") == "CONFIRMED"
         assert "debate_transcript" in out
         assert set(out["debate_transcript"]) == {"prosecutor", "defender", "judge"}
 

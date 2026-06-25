@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.orchestration.state import AuditState
 from src.orchestration.nodes._helpers import _llm_enabled
-from src.orchestration.nodes._reconcile_shim import _reconcile_verdicts
 from src.orchestration.routing import compute_overall_verdict, prob_to_severity
 from src.orchestration.timing import step_timer
 from src.orchestration.timeouts import (
@@ -98,87 +97,69 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # Determine which path was taken.
     path_taken = "deep" if (rag_results or static_findings) else "fast"
 
-    # ── Per-class verdict computation (WS1.5 reconciliation rewrite) ──────────
-    # The verdict chain now uses an 8-case reconciliation function
-    # (_reconcile_verdicts above) instead of the old "debate wins, then
-    # consensus, then compute_verdict" priority chain. The key change:
-    # the debate can UPGRADE but can only DOWNGRADE to DISPUTED, never to
-    # SAFE, when consensus voted non-SAFE. A flagged class reaches SAFE only
-    # if BOTH consensus AND debate agree.
-    #
-    # Fixes Findings #13, #14, #15 from 04_LIVE_BASELINE_FINDINGS.md:
-    #   #14: debate was checked FIRST and could silently SAFE a consensus-
-    #        corroborated class (13 live instances, 4 at conf=1.0).
-    #   #15: the loop iterated all_flagged (ML ≥ 0.25) only, so consensus
-    #        votes on tool-hit classes with ML < 0.25 were silently dropped
-    #        (7 live instances, 2 were GT classes).
-    #
-    # See `docs/plan/agents/2026-06-21-agents-redesign/05_VERDICT_RECONCILIATION_PLAN.md`
-    # for the full 8-case table + design rationale.
-    pre_verdicts:      dict[str, str]       = state.get("verdicts",      {})
-    pre_confirmations: dict[str, list[str]] = state.get("confirmations", {})
-    consensus_verdict: dict[str, dict]      = state.get("consensus_verdict", {})
+    # ── P2 Shape A: fuse() is the sole verdict producer ───────────────────────
+    # Every channel upstream (consensus_engine, cross_validator) emits Evidence
+    # objects to state["evidence_list"] (append-reducer). This node adds RAG
+    # evidence, then fuse() de-correlates, aggregates, and applies FN/FP asymmetry
+    # to produce verdict_provable (deterministic-only → ZK-anchorable) and
+    # verdict_full (all evidence → human report).
+    from src.orchestration.verdict.emit import emit_rag_evidence
+    from src.orchestration.verdict.fuse import fuse
+    from src.orchestration.verdict.evidence import Polarity
 
-    verdicts:      dict[str, str]       = {}
+    evidence_list: list[Any] = list(state.get("evidence_list", []) or [])
+    evidence_list.extend(emit_rag_evidence(rag_results))
+
+    fused = fuse(evidence_list)
+    verdict_provable: dict[str, str] = {}
+    verdict_full: dict[str, str] = {}
+    class_confidences: dict[str, float] = {}
+    for cls, cv in fused.items():
+        verdict_provable[cls] = cv.verdict_provable
+        verdict_full[cls] = cv.verdict_full
+        class_confidences[cls] = cv.confidence
+
+    verdicts = verdict_full
+
     confirmations: dict[str, list[str]] = {}
-    vuln_verdicts: list[dict]           = []
+    for ev in evidence_list:
+        if ev.polarity == Polarity.SUPPORTS:
+            confirmations.setdefault(ev.vuln_class, []).append(ev.source)
 
-    # WS1.5 / Finding #15: iterate the UNION of ML-flagged classes and
-    # consensus-voted classes. Previously iterated all_flagged only (ML ≥ 0.25),
-    # so a class with ML < 0.25 + tool corroboration that consensus_engine
-    # correctly voted on never reached this loop.
+    has_supports: set[str] = set()
+    has_refutes: set[str] = set()
+    for ev in evidence_list:
+        if ev.polarity == Polarity.SUPPORTS:
+            has_supports.add(ev.vuln_class)
+        elif ev.polarity == Polarity.REFUTES:
+            has_refutes.add(ev.vuln_class)
+    contradictions: dict[str, list[str]] = {
+        cls: ["conflicting SUPPORTS/REFUTES evidence"]
+        for cls in (has_supports & has_refutes)
+    }
+
     flagged_by_cls = {v.get("vulnerability_class"): v for v in all_flagged}
-    all_classes = set(flagged_by_cls.keys()) | set(consensus_verdict.keys())
+    consensus_verdict: dict[str, dict] = state.get("consensus_verdict", {})
 
+    all_classes = set(flagged_by_cls.keys()) | set(verdict_full.keys()) | set(consensus_verdict.keys())
+    vuln_verdicts: list[dict] = []
     for cls in sorted(all_classes):
         vuln = flagged_by_cls.get(cls, {"vulnerability_class": cls, "probability": 0.0})
         prob = float(vuln.get("probability", 0.0))
-        consensus_vote = consensus_verdict.get(cls)
-        debate_verdict = pre_verdicts.get(cls)
-
-        verdict, sources = _reconcile_verdicts(
-            cls, prob, consensus_vote, debate_verdict,
-            static_findings, rag_results, path_taken,
-        )
-        verdicts[cls]      = verdict
-        confirmations[cls] = sources
+        verdict = verdict_full.get(cls, "SAFE")
+        ev_sources = list(dict.fromkeys(
+            ev.source for ev in evidence_list if ev.vuln_class == cls
+        ))
         vuln_verdicts.append({
             "vulnerability_class": cls,
             "probability":         prob,
             "verdict":             verdict,
-            "evidence_sources":    sources,
+            "evidence_sources":    ev_sources,
             "severity":            prob_to_severity(prob),
+            "confidence":          class_confidences.get(cls, 0.0),
         })
 
     overall_verdict = compute_overall_verdict(verdicts)
-
-    # ── P2 dual-write: fuse evidence alongside legacy _reconcile_verdicts ──
-    from src.orchestration.verdict.emit import emit_rag_evidence
-    from src.orchestration.verdict.fuse import fuse
-
-    # Gather evidence accumulated from upstream nodes (consensus_engine, cross_validator)
-    evidence_list: list[Any] = list(state.get("evidence_list", []) or [])
-    # Add RAG evidence (synthesizer is the only node that reaches RAG results directly)
-    evidence_list.extend(emit_rag_evidence(rag_results))
-
-    # Fuse: produce provable + full verdicts
-    fused = fuse(evidence_list)
-    verdict_provable: dict[str, str] = {}
-    verdict_full: dict[str, str] = {}
-    for cls, cv in fused.items():
-        verdict_provable[cls] = cv.verdict_provable
-        verdict_full[cls] = cv.verdict_full
-
-    # Compare fuse() output vs legacy _reconcile_verdicts output — log mismatches
-    # (golden tests in T2.4 will pin exact equivalence)
-    for cls in set(verdicts.keys()) | set(verdict_full.keys()):
-        legacy_v = verdicts.get(cls)
-        fused_v = verdict_full.get(cls)
-        if legacy_v != fused_v:
-            logger.warning(
-                "synthesizer | P2 dual-write mismatch | cls={} legacy={} fused={}",
-                cls, legacy_v, fused_v,
-            )
 
     # ── Rule-based recommendation (fallback) ─────────────────────────────────
     # Used when the LLM is unavailable or times out.
@@ -420,9 +401,11 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     )
 
     return {
-        "final_report":       report,
-        "verdicts":           verdicts,
-        "confirmations":      confirmations,
-        "verdict_provable":   verdict_provable,
-        "verdict_full":       verdict_full,
+        "final_report":        report,
+        "verdicts":            verdicts,
+        "confirmations":       confirmations,
+        "contradictions":      contradictions,
+        "confidence_by_class": class_confidences,
+        "verdict_provable":    verdict_provable,
+        "verdict_full":        verdict_full,
     }

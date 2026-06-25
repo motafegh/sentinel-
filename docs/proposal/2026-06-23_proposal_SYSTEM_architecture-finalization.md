@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-23
 **Scope:** Whole system (agents-led, but reaches ml, data_module, zkml/on-chain).
-**Status:** EXECUTING — P0 FOUNDATION (P0.0 + P1 + P0.1) COMPLETE; P2 (D-A + D-E + D-B) 87% COMPLETE (T2.7 flip gated on Ali decision). Remaining phases: P2.5, P3-P10 still per §10 plan.
+**Status:** EXECUTING — P0 FOUNDATION COMPLETE; P2 COMPLETE (Shape A active, `fuse()` sole verdict producer). Remaining: P2.5-P10 per §10 plan.
 **Author:** Ali + Claude (debate session 2026-06-23).
 **Source of truth:** derived from a live design debate
 (`docs/debating/agents_module/2026-06-23_AGENTS_debate_architecture-design-review_live.md`)
@@ -377,7 +377,7 @@ list (kept in `final_report` for backward-compat), not independently-stored fiel
 | **P0.0** | **Label completion + hygiene:** finish ground-truth labels on the 83-contract corpus (drop any that can't be labeled honestly); project-wide stale-docstring purge (Rule 4); read `00_FINDINGS.md`/`04_LIVE_BASELINE_FINDINGS.md` to confirm what's still open. | — | **DONE 2026-06-24** |
 | **P1** | **Externalize decision-numbers** into one versioned YAML config (B-2), Pydantic-validated, eager-load. | P0.0 | **DONE 2026-06-24** |
 | **P0.1** | **Close the measurement loop** (D-D): wire C.2 to score a *named config* end-to-end; macro Fβ(β=2) per class; persist a regression baseline. | P0.0, P1 | **DONE 2026-06-24** |
-| **P2** | **Uniform Evidence model + `fuse()`** (D-A) with **nodes.py/verdict split** (D-E, one file per node). Characterize-first via transitional dual-write → golden tests reproduce current verdicts → prove equivalence via P0.1 → flip to Shape A & delete legacy path. Emit `verdict_provable` + `verdict_full` (D-B). Also fix the `asyncio.to_thread` non-cancellability bug here. | P0.1, P1 | **87% DONE 2026-06-25** (T2.7 flip pending Ali decision) |
+| **P2** | **Uniform Evidence model + `fuse()`** (D-A) with **nodes.py/verdict split** (D-E, one file per node). Characterize-first via transitional dual-write → golden tests reproduce current verdicts → prove equivalence via P0.1 → flip to Shape A & delete legacy path. Emit `verdict_provable` + `verdict_full` (D-B). Also fix the `asyncio.to_thread` non-cancellability bug here. | P0.1, P1 | **DONE 2026-06-25** (Shape A active, fuse() sole verdict producer) |
 | **P2.5** | **Rule-A audit of other long files** (`audit_server.py` 717, `build_index.py` 661): split only where a file has >1 reason to change. | P2 | PLANNED |
 | **P3** | **Data-derived reliability** (B-3, D-C): fit per-(source,class) reliability from a confusion matrix; ML reliability as a function of measured model precision. | P0, P2 | PLANNED |
 | **P4** | **Prompt-injection guards** (B-1 / C.3) + adversarial benchmark cases. | P0 | PLANNED |
@@ -571,5 +571,5 @@ phase's design doc, but **no decision is left open**.
   P0.1 eval loop; first honest baseline macro_F1=0.1958/macro_Fbeta=0.2515). P2 executed
   2026-06-24/25 (T2.1 verdict/ package, T2.2 nodes.py split, T2.3 dual-write, T2.4 golden
   characterization, T2.5 P2 eval: macro_F1=0.1998+0.0041/macro_Fbeta=0.2246-0.0269, T2.6
-  to_thread fix, T2.8/9 integration tests). 549 tests green. T2.7 (flip to Shape A) pending
-  Ali decision on Fbeta tradeoff.
+  to_thread fix, T2.7 flip to Shape A, T2.8/9 integration tests). P2 COMPLETE — Shape A
+  active, `fuse()` sole verdict producer. 530 tests green, 3 skipped.

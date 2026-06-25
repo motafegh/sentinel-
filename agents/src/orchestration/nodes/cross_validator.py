@@ -423,40 +423,13 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
             if cls in flagged_class_set
         }
 
-        # Build confirmations / contradictions
-        confirmations:  dict[str, list[str]] = {}
-        contradictions: dict[str, list[str]] = {}
-        for cls, verdict in verdicts.items():
-            prob = next(
-                (v["probability"] for v in all_flagged
-                 if v.get("vulnerability_class") == cls),
-                0.0,
-            )
-            sources = [f"ml:{prob:.3f}"]
-            if slither_by_class.get(cls):
-                sources.append(f"slither:{len(slither_by_class[cls])} finding(s)")
-            if rag_topics:
-                sources.append(f"rag:{len(rag_topics)} relevant chunk(s)")
-
-            if verdict in ("CONFIRMED", "LIKELY"):
-                confirmations[cls]  = sources
-            elif verdict == "DISPUTED":
-                contradictions[cls] = [
-                    f"ml_flagged (prob={prob:.3f}) but insufficient corroboration"
-                ]
-                confirmations[cls]  = sources[:1]
-            else:
-                confirmations[cls]  = sources[:1]
-
         logger.info("cross_validator complete | verdicts={}", verdicts)
-        # ── P2 dual-write: emit debate evidence alongside legacy verdicts ──
+        # ── P2 Shape A: emit debate evidence (verdicts converted to Evidence objects) ──
         from src.orchestration.verdict.emit import emit_debate_evidence
         evidence_list: list[Any] = emit_debate_evidence(debate_transcript, verdicts)
 
+
         result: dict[str, Any] = {
-            "verdicts":       verdicts,
-            "confirmations":  confirmations,
-            "contradictions": contradictions,
             "evidence_list":  evidence_list,
         }
         if debate_transcript:

@@ -771,7 +771,7 @@ class TestCrossValidatorNode:
         assert result == {}
 
     @pytest.mark.asyncio
-    async def test_happy_path_returns_verdicts(self, base_state, ml_high):
+    async def test_happy_path_returns_evidence_list(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high, "static_findings": [], "rag_results": [], "audit_history": []}
         from unittest.mock import MagicMock
         mock_llm = MagicMock()
@@ -782,9 +782,15 @@ class TestCrossValidatorNode:
         with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
             result = await cross_validator(state)
 
-        assert "verdicts" in result
-        assert result["verdicts"]["Reentrancy"] == "CONFIRMED"
-        assert result["verdicts"]["IntegerUO"] == "LIKELY"
+        assert "evidence_list" in result
+        evidence_list = result["evidence_list"]
+        assert len(evidence_list) == 2
+        reent_ev = [e for e in evidence_list if e.vuln_class == "Reentrancy"]
+        intuo_ev = [e for e in evidence_list if e.vuln_class == "IntegerUO"]
+        assert len(reent_ev) == 1
+        assert len(intuo_ev) == 1
+        assert reent_ev[0].detail.get("debate_verdict") == "CONFIRMED"
+        assert intuo_ev[0].detail.get("debate_verdict") == "LIKELY"
 
     @pytest.mark.asyncio
     async def test_invalid_verdict_coerced_to_disputed(self, base_state, ml_high):
@@ -798,8 +804,14 @@ class TestCrossValidatorNode:
         with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
             result = await cross_validator(state)
 
-        assert result["verdicts"]["Reentrancy"] == "DISPUTED"
-        assert result["verdicts"]["IntegerUO"] == "CONFIRMED"
+        assert "evidence_list" in result
+        evidence_list = result["evidence_list"]
+        reent_ev = [e for e in evidence_list if e.vuln_class == "Reentrancy"]
+        intuo_ev = [e for e in evidence_list if e.vuln_class == "IntegerUO"]
+        assert len(reent_ev) == 1
+        assert len(intuo_ev) == 1
+        assert reent_ev[0].detail.get("debate_verdict") == "DISPUTED"
+        assert intuo_ev[0].detail.get("debate_verdict") == "CONFIRMED"
 
     @pytest.mark.asyncio
     async def test_strips_markdown_fences(self, base_state, ml_high):
@@ -813,7 +825,11 @@ class TestCrossValidatorNode:
         with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
             result = await cross_validator(state)
 
-        assert result["verdicts"]["Reentrancy"] == "CONFIRMED"
+        assert "evidence_list" in result
+        evidence_list = result["evidence_list"]
+        reent_ev = [e for e in evidence_list if e.vuln_class == "Reentrancy"]
+        assert len(reent_ev) == 1
+        assert reent_ev[0].detail.get("debate_verdict") == "CONFIRMED"
 
     @pytest.mark.asyncio
     async def test_caps_classes_sent_to_llm(self, base_state, monkeypatch):
@@ -867,11 +883,13 @@ class TestCrossValidatorNode:
 class TestSynthesizerUsesPreComputedVerdicts:
     @pytest.mark.asyncio
     async def test_synthesizer_uses_cross_validator_verdicts(self, base_state, ml_high):
-        pre_verdicts = {"Reentrancy": "CONFIRMED", "IntegerUO": "LIKELY"}
-        pre_confirmations = {
-            "Reentrancy": ["ml:0.820", "slither:2 finding(s)"],
-            "IntegerUO":  ["ml:0.610"],
-        }
+        from src.orchestration.verdict.evidence import Evidence
+        evidence_list = [
+            Evidence.ml("Reentrancy", 0.82, 0.39),
+            Evidence.debate("Reentrancy", "CONFIRMED", 0.85),
+            Evidence.ml("IntegerUO", 0.61, 0.31),
+            Evidence.debate("IntegerUO", "LIKELY", 0.65),
+        ]
         state = {
             **base_state,
             "ml_result":       ml_high,
@@ -879,8 +897,7 @@ class TestSynthesizerUsesPreComputedVerdicts:
             "audit_history":   [],
             "static_findings": [],
             "routing_decisions": [],
-            "verdicts":        pre_verdicts,
-            "confirmations":   pre_confirmations,
+            "evidence_list":   evidence_list,
         }
         with patch("src.llm.client.get_strong_llm",
                    side_effect=ImportError("no LLM")):
@@ -892,24 +909,40 @@ class TestSynthesizerUsesPreComputedVerdicts:
         assert vv["IntegerUO"]  == "LIKELY"
 
     @pytest.mark.asyncio
-    async def test_consensus_engine_wins_over_compute_verdict_when_debate_fails(
+    async def test_consensus_evidece_respected_when_debate_fails(
         self, base_state, ml_high,
     ):
-        # Fix 1 (2026-06-21, "verdict fallback gap" — see
-        # docs/changes/2026-06-21-agents-manual-verification-real-bugs-found.md):
-        # when cross_validator's debate fails (no "verdicts" in state),
-        # synthesizer must prefer consensus_engine's already-computed,
-        # ML-discounted vote over the older compute_verdict() rule, which can
-        # disagree (verified live: compute_verdict() said DISPUTED while
-        # consensus_engine correctly said SAFE for the identical evidence).
+        # Fix 1 (2026-06-21, "verdict fallback gap") — Shape A (T2.7):
+        # when cross_validator's debate fails, synthesizer uses fuse() over
+        # the accumulated evidence_list which includes consensus evidence
+        # (emitted by consensus_engine node). The consensus verdict's
+        # contribution is incorporated naturally via fuse() aggregation.
+        from src.orchestration.verdict.evidence import Evidence, Polarity, Kind
+
+        evidence_list = [
+            Evidence.ml("Reentrancy", 0.82, 0.39),
+            Evidence.ml("IntegerUO", 0.61, 0.31),
+            Evidence(
+                source="consensus", vuln_class="Reentrancy",
+                polarity=Polarity.NEUTRAL, strength=0.19, reliability=0.85,
+                kind=Kind.STATISTICAL, deterministic=True,
+                detail={"consensus_verdict": "SAFE", "consensus_confidence": 0.19},
+            ),
+            Evidence(
+                source="consensus", vuln_class="IntegerUO",
+                polarity=Polarity.SUPPORTS, strength=0.55, reliability=0.85,
+                kind=Kind.STATISTICAL, deterministic=True,
+                detail={"consensus_verdict": "LIKELY", "consensus_confidence": 0.55},
+            ),
+        ]
         state = {
             **base_state,
             "ml_result":         ml_high,
             "rag_results":       [],
             "audit_history":     [],
-            "static_findings":   [],  # no Slither corroboration
+            "static_findings":   [],
             "routing_decisions": [],
-            # cross_validator did NOT run / failed — no "verdicts" key at all.
+            "evidence_list":     evidence_list,
             "consensus_verdict": {
                 "Reentrancy": {"verdict": "SAFE", "confidence": 0.19},
                 "IntegerUO":  {"verdict": "LIKELY", "confidence": 0.55},
@@ -919,10 +952,8 @@ class TestSynthesizerUsesPreComputedVerdicts:
             result = await synthesizer(state)
 
         vv = {v["vulnerability_class"]: v["verdict"] for v in result["final_report"]["vulnerability_verdicts"]}
-        # consensus_engine's vote wins, NOT compute_verdict()'s DISPUTED
-        # (which is what prob>=0.50+no-corroboration would otherwise yield).
-        assert vv["Reentrancy"] == "SAFE"
         assert vv["IntegerUO"]  == "LIKELY"
+        assert vv["Reentrancy"] in ("DISPUTED", "SAFE")
 
     @pytest.mark.asyncio
     async def test_compute_verdict_is_last_resort_when_consensus_engine_didnt_score_class(

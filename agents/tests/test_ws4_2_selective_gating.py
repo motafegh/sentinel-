@@ -73,7 +73,7 @@ class TestDebateSkipped:
         """
         Setup: Reentrancy flagged, consensus CONFIRMED, ml_signal=1, slither_match=1.
         Tool count = 2 → satisfies the "multi-tool" condition.
-        Expected: debate is skipped (LLM not called), verdict is CONFIRMED.
+        Expected: debate is skipped (LLM not called), evidence_list has CONFIRMED.
         """
         monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
         monkeypatch.setenv("DEBATE_MODE", "on")
@@ -104,8 +104,11 @@ class TestDebateSkipped:
 
         # Debate was NOT called.
         assert mock_get_fast.return_value.invoke.call_count == 0
-        # But the verdict was still emitted (CONFIRMED, from consensus).
-        assert out["verdicts"]["Reentrancy"] == "CONFIRMED"
+        # But the evidence_list was still emitted (CONFIRMED, from consensus).
+        assert "evidence_list" in out
+        reent_ev = [e for e in out["evidence_list"] if e.vuln_class == "Reentrancy"]
+        assert len(reent_ev) == 1
+        assert reent_ev[0].detail.get("debate_verdict") == "CONFIRMED"
         # No debate_transcript because the debate didn't run.
         assert "debate_transcript" not in out
 
@@ -136,13 +139,16 @@ class TestDebateSkipped:
             out = await cross_validator(state)
 
         assert mock_get_fast.return_value.invoke.call_count == 0
-        assert out["verdicts"]["Reentrancy"] == "CONFIRMED"
+        assert "evidence_list" in out
+        reent_ev = [e for e in out["evidence_list"] if e.vuln_class == "Reentrancy"]
+        assert len(reent_ev) == 1
+        assert reent_ev[0].detail.get("debate_verdict") == "CONFIRMED"
 
     @pytest.mark.asyncio
     async def test_debate_skipped_with_multiple_classes(self, monkeypatch):
         """
         Setup: TWO flagged classes, BOTH CONFIRMED with 2+ tools each.
-        Expected: both debate-skipped, both verdicts are CONFIRMED.
+        Expected: both debate-skipped, both evidence shows CONFIRMED.
         """
         monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
         monkeypatch.setenv("DEBATE_MODE", "on")
@@ -165,8 +171,11 @@ class TestDebateSkipped:
             out = await cross_validator(state)
 
         assert mock_get_fast.return_value.invoke.call_count == 0
-        assert out["verdicts"]["Reentrancy"] == "CONFIRMED"
-        assert out["verdicts"]["IntegerUO"]  == "CONFIRMED"
+        assert "evidence_list" in out
+        reent_ev = [e for e in out["evidence_list"] if e.vuln_class == "Reentrancy"]
+        intuo_ev = [e for e in out["evidence_list"] if e.vuln_class == "IntegerUO"]
+        assert len(reent_ev) == 1 and reent_ev[0].detail.get("debate_verdict") == "CONFIRMED"
+        assert len(intuo_ev) == 1 and intuo_ev[0].detail.get("debate_verdict") == "CONFIRMED"
 
 
 # ---------------------------------------------------------------------------
@@ -213,9 +222,12 @@ class TestDebateRuns:
 
         # Debate ran (3 LLM calls: prosecutor, defender, judge).
         assert mock_get_fast.return_value.invoke.call_count == 3
-        # Both verdicts came from the LLM, not the consensus.
-        assert out["verdicts"]["Reentrancy"] == "CONFIRMED"
-        assert out["verdicts"]["Timestamp"]  == "DISPUTED"
+        # Both verdicts came from the LLM, via evidence_list.
+        assert "evidence_list" in out
+        reent_ev = [e for e in out["evidence_list"] if e.vuln_class == "Reentrancy"]
+        ts_ev = [e for e in out["evidence_list"] if e.vuln_class == "Timestamp"]
+        assert len(reent_ev) == 1 and reent_ev[0].detail.get("debate_verdict") == "CONFIRMED"
+        assert len(ts_ev) == 1 and ts_ev[0].detail.get("debate_verdict") == "DISPUTED"
 
     @pytest.mark.asyncio
     async def test_debate_runs_when_one_class_disputed(self, monkeypatch):
@@ -248,7 +260,10 @@ class TestDebateRuns:
             out = await cross_validator(state)
 
         assert mock_get_fast.return_value.invoke.call_count == 3
-        assert out["verdicts"]["ExternalBug"] == "DISPUTED"
+        assert "evidence_list" in out
+        ebug_ev = [e for e in out["evidence_list"] if e.vuln_class == "ExternalBug"]
+        assert len(ebug_ev) == 1
+        assert ebug_ev[0].detail.get("debate_verdict") == "DISPUTED"
 
     @pytest.mark.asyncio
     async def test_debate_runs_when_consensus_says_safe(self, monkeypatch):
@@ -353,10 +368,11 @@ class TestSkippedDebateVerdictShape:
     """
 
     @pytest.mark.asyncio
-    async def test_skipped_debate_emits_confirmations(self, monkeypatch):
+    async def test_skipped_debate_emits_evidence_list(self, monkeypatch):
         """
-        The skipped-debate path still builds the `confirmations` dict that
-        synthesizer and explainer nodes consume.
+        The skipped-debate path emits evidence_list with an Evidence item
+        per class (confirmations/contradictions are now derived by
+        synthesizer from evidence_list).
         """
         monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
         monkeypatch.setenv("DEBATE_MODE", "on")
@@ -374,10 +390,8 @@ class TestSkippedDebateVerdictShape:
             mock_get_strong.return_value = _mock_llm_with_response("X")
             out = await cross_validator(state)
 
-        assert "verdicts" in out
-        assert "confirmations" in out
-        assert "contradictions" in out
-        # Reentrancy has a confirmation entry since verdict is CONFIRMED.
-        assert "Reentrancy" in out["confirmations"]
-        # And it should mention ML as a source.
-        assert any("ml" in s.lower() for s in out["confirmations"]["Reentrancy"])
+        assert "evidence_list" in out
+        reent_ev = [e for e in out["evidence_list"] if e.vuln_class == "Reentrancy"]
+        assert len(reent_ev) == 1
+        assert reent_ev[0].source == "debate"
+        assert reent_ev[0].detail.get("debate_verdict") == "CONFIRMED"
