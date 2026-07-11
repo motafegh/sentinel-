@@ -21,6 +21,7 @@ from src.orchestration.timeouts import (
     DEFAULT_DEBATE_TIMEOUT_S,
     get_timeout,
 )
+from src.security import sanitize_for_prompt
 
 
 async def cross_validator(state: AuditState) -> dict[str, Any]:
@@ -202,7 +203,10 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
         # vulnerable lines directly, PLUS the full source as reference.
         #
         # D3 resolved: hotspot-guided excerpt + sliding-window fallback.
-        contract_code = state.get("contract_code", "") or ""
+        # P4 (2026-06-26): sanitize contract source before embedding in LLM prompt.
+        raw_contract_code = state.get("contract_code", "") or ""
+        sanitized_code, injection_matches = sanitize_for_prompt(raw_contract_code)
+        contract_code = sanitized_code
         ml_hotspots = state.get("ml_hotspots", []) or []
 
         hotspot_excerpt_lines: list[str] = []
@@ -423,6 +427,65 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
             if cls in flagged_class_set
         }
 
+        # ── P6 Model Cascade: Strong model re-judges ambiguous cases ──
+        # If CASCADE_ENABLED=true, use qwen2.5-coder-7b-instruct (strong model)
+        # to re-judge classes with DISPUTED/WATCH verdict or confidence < 0.7.
+        # This improves accuracy on ambiguous cases at the cost of latency.
+        _cascade_enabled = os.getenv("CASCADE_ENABLED", "false").lower() in ("1", "true", "yes")
+        if _cascade_enabled:
+            from src.llm.client import get_coder_llm
+            _cascade_threshold = float(os.getenv("CASCADE_CONFIDENCE_THRESHOLD", "0.7"))
+            _cascade_verdicts = set(os.getenv("CASCADE_VERDICTS", "DISPUTED,WATCH").split(","))
+
+            ambiguous_classes = []
+            for cls, verdict in verdicts.items():
+                confidence = consensus_verdict_state.get(cls, {}).get("confidence", 1.0)
+                if verdict in _cascade_verdicts or confidence < _cascade_threshold:
+                    ambiguous_classes.append(cls)
+
+            if ambiguous_classes:
+                logger.info("cross_validator | cascade: {} ambiguous class(es) → {}", len(ambiguous_classes), ambiguous_classes)
+                _cascade_llm = get_coder_llm()
+
+                for cls in ambiguous_classes:
+                    # Build focused prompt with hotspot excerpts
+                    cls_evidence = [line for line in class_lines if cls in line]
+                    cls_evidence_str = "\n".join(cls_evidence) if cls_evidence else evidence_block
+
+                    cascade_prompt = (
+                        f"You are a smart contract security expert. Analyze the evidence and code below, "
+                        f"then determine if the contract has a {cls} vulnerability.\n\n"
+                        f"Evidence:\n{cls_evidence_str}\n\n"
+                        f"Code:\n{code_block}\n\n"
+                        f"Answer with a single verdict: CONFIRMED, LIKELY, DISPUTED, WATCH, or SAFE."
+                    )
+
+                    try:
+                        with step_timer(f"cross_validator.cascade.{cls}", address=_address):
+                            loop = asyncio.get_running_loop()
+                            fut = loop.run_in_executor(
+                                None,
+                                _cascade_llm.invoke,
+                                [SystemMessage(content="You are a smart contract security expert."),
+                                 HumanMessage(content=cascade_prompt)],
+                            )
+                            cascade_resp = await asyncio.wait_for(fut, timeout=30.0)
+
+                        cascade_verdict = cascade_resp.content.strip().upper()
+                        # Extract verdict from response (might have extra text)
+                        for v in valid_verdicts:
+                            if v in cascade_verdict:
+                                cascade_verdict = v
+                                break
+                        else:
+                            cascade_verdict = "DISPUTED"  # Fallback if parsing fails
+
+                        old_verdict = verdicts[cls]
+                        verdicts[cls] = cascade_verdict
+                        logger.info("cross_validator | cascade {} → {} (was {})", cls, cascade_verdict, old_verdict)
+                    except Exception as exc:
+                        logger.warning("cross_validator | cascade failed for {}: {} — keeping fast-model verdict", cls, exc)
+
         logger.info("cross_validator complete | verdicts={}", verdicts)
         # ── P2 Shape A: emit debate evidence (verdicts converted to Evidence objects) ──
         from src.orchestration.verdict.emit import emit_debate_evidence
@@ -431,6 +494,7 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
 
         result: dict[str, Any] = {
             "evidence_list":  evidence_list,
+            "injection_matches": injection_matches,
         }
         if debate_transcript:
             result["debate_transcript"] = debate_transcript

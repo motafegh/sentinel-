@@ -41,11 +41,14 @@ Output:
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import numpy as np
 import torch
 from loguru import logger
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from zkml.src.distillation.proxy_model import CIRCUIT_VERSION, ProxyModel
 

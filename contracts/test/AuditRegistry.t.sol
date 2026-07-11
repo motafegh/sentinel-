@@ -15,7 +15,7 @@ contract AuditRegistryTest is Test {
     address owner;
     address agent;
     address other;
-    address targetContract;
+    address targetContract_;
 
     uint256 constant MIN_STAKE = 1000 * 10 ** 18;
 
@@ -26,10 +26,10 @@ contract AuditRegistryTest is Test {
     uint256[] public  signals;
 
     function setUp() public {
-        owner          = address(this);
-        agent          = makeAddr("agent");
-        other          = makeAddr("other");
-        targetContract = makeAddr("targetContract");
+        owner           = address(this);
+        agent           = makeAddr("agent");
+        other           = makeAddr("other");
+        targetContract_ = makeAddr("targetContract");
 
         // Deploy token and fund agent
         token = new SentinelToken();
@@ -63,12 +63,12 @@ contract AuditRegistryTest is Test {
 
     function test_submit_audit_happy_path() public {
         vm.prank(agent);
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
 
-        assertTrue(registry.hasAudit(targetContract), "audit should be recorded");
-        assertEq(registry.getAuditCount(targetContract), 1);
+        assertTrue(registry.hasAudit(targetContract_), "audit should be recorded");
+        assertEq(registry.getAuditCount(targetContract_), 1);
 
-        AuditRegistry.AuditResult memory result = registry.getLatestAudit(targetContract);
+        AuditRegistry.AuditResult memory result = registry.getLatestAudit(targetContract_);
         assertEq(result.scoreFieldElement, SCORE);
         assertEq(result.proofHash, keccak256(PROOF));
         assertEq(result.agent, agent);
@@ -77,18 +77,18 @@ contract AuditRegistryTest is Test {
 
     function test_submit_audit_emits_event() public {
         vm.expectEmit(true, false, true, true);
-        emit AuditRegistry.AuditSubmitted(targetContract, keccak256(PROOF), agent, SCORE);
+        emit AuditRegistry.AuditSubmitted(targetContract_, keccak256(PROOF), agent, SCORE);
         vm.prank(agent);
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
     }
 
     function test_get_audit_history_multiple_submissions() public {
         vm.startPrank(agent);
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
-        registry.submitAudit(targetContract, SCORE + 1, PROOF, _buildSignals(SCORE + 1));
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
+        registry.submitAudit(targetContract_, SCORE + 1, PROOF, _buildSignals(SCORE + 1));
         vm.stopPrank();
 
-        AuditRegistry.AuditResult[] memory history = registry.getAuditHistory(targetContract);
+        AuditRegistry.AuditResult[] memory history = registry.getAuditHistory(targetContract_);
         assertEq(history.length, 2);
         assertEq(history[0].scoreFieldElement, SCORE);
         assertEq(history[1].scoreFieldElement, SCORE + 1);
@@ -100,7 +100,7 @@ contract AuditRegistryTest is Test {
         // `other` has never staked
         vm.prank(other);
         vm.expectRevert("AuditRegistry: insufficient stake");
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
     }
 
     function test_guard1_partial_stake_reverts() public {
@@ -111,7 +111,7 @@ contract AuditRegistryTest is Test {
         token.approve(address(token), MIN_STAKE - 1);
         token.stake(MIN_STAKE - 1);
         vm.expectRevert("AuditRegistry: insufficient stake");
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
         vm.stopPrank();
     }
 
@@ -122,7 +122,7 @@ contract AuditRegistryTest is Test {
 
         vm.prank(agent);
         vm.expectRevert("AuditRegistry: invalid ZK proof");
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
     }
 
     // --- guard 3: score mismatch ------------------------------------------
@@ -133,12 +133,12 @@ contract AuditRegistryTest is Test {
         vm.prank(agent);
         vm.expectRevert("AuditRegistry: score mismatch with proof");
         // Pass signals where index 64 == SCORE, but tell registry score == wrongScore
-        registry.submitAudit(targetContract, wrongScore, PROOF, signals);
+        registry.submitAudit(targetContract_, wrongScore, PROOF, signals);
     }
 
     // --- queries ----------------------------------------------------------
 
-    function test_has_audit_returns_false_for_unknown() public view {
+    function test_has_audit_returns_false_for_unknown() public {
         assertFalse(registry.hasAudit(makeAddr("unknown")));
     }
 
@@ -148,15 +148,15 @@ contract AuditRegistryTest is Test {
     }
 
     function test_audit_count_increments() public {
-        assertEq(registry.getAuditCount(targetContract), 0);
+        assertEq(registry.getAuditCount(targetContract_), 0);
 
         vm.prank(agent);
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
-        assertEq(registry.getAuditCount(targetContract), 1);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
+        assertEq(registry.getAuditCount(targetContract_), 1);
 
         vm.prank(agent);
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
-        assertEq(registry.getAuditCount(targetContract), 2);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
+        assertEq(registry.getAuditCount(targetContract_), 2);
     }
 
     // --- pause / unpause --------------------------------------------------
@@ -166,7 +166,7 @@ contract AuditRegistryTest is Test {
 
         vm.prank(agent);
         vm.expectRevert();
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
     }
 
     function test_unpause_restores_submission() public {
@@ -174,8 +174,8 @@ contract AuditRegistryTest is Test {
         registry.unpause();
 
         vm.prank(agent);
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
-        assertTrue(registry.hasAudit(targetContract));
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
+        assertTrue(registry.hasAudit(targetContract_));
     }
 
     function test_pause_by_non_owner_reverts() public {
@@ -194,8 +194,8 @@ contract AuditRegistryTest is Test {
 
         // State survives upgrade
         vm.prank(agent);
-        registry.submitAudit(targetContract, SCORE, PROOF, signals);
-        assertEq(registry.getAuditCount(targetContract), 1);
+        registry.submitAudit(targetContract_, SCORE, PROOF, signals);
+        assertEq(registry.getAuditCount(targetContract_), 1);
     }
 
     function test_upgrade_by_non_owner_reverts() public {

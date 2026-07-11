@@ -315,6 +315,7 @@ def _mock_prediction(contract_code: str) -> dict[str, Any]:
         "windows_used":    1,
         "num_nodes":       42,
         "num_edges":       58,
+        "model_hash":      "mock_model_hash_" + "0" * 46,
     }
 
 # ---------------------------------------------------------------------------

@@ -73,6 +73,7 @@ from src.orchestration.nodes import (
     cross_validator,
     evidence_router,
     explainer,
+    formal_verification,
     graph_explain,
     ml_assessment,
     quick_screen,
@@ -132,7 +133,8 @@ def _route_from_evidence_router(state: AuditState) -> str | list[str]:
         active = ["static_analysis"]
 
     # graph_explain always joins the deep-path fan-out (Phase 1 hotspot analysis).
-    deep_nodes = sorted(set(active + ["graph_explain"]))
+    # formal_verification (P8a) joins the deep-path fan-out for symbolic execution.
+    deep_nodes = sorted(set(active + ["graph_explain", "formal_verification"]))
     logger.info("_route_from_evidence_router | deep path → {}", deep_nodes)
     return deep_nodes
 
@@ -173,6 +175,7 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     graph.add_node("rag_research",    timed_node("rag_research", rag_research))
     graph.add_node("static_analysis", timed_node("static_analysis", static_analysis))
     graph.add_node("graph_explain",   timed_node("graph_explain", graph_explain))
+    graph.add_node("formal_verification", timed_node("formal_verification", formal_verification))
     graph.add_node("audit_check",     timed_node("audit_check", audit_check))
     graph.add_node("consensus_engine", timed_node("consensus_engine", consensus_engine))  # A.6/A.7
     graph.add_node("cross_validator", timed_node("cross_validator", cross_validator))
@@ -201,6 +204,7 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     graph.add_edge("rag_research",    "audit_check")
     graph.add_edge("static_analysis", "audit_check")
     graph.add_edge("graph_explain",   "audit_check")
+    graph.add_edge("formal_verification", "audit_check")
 
     # ── Deep path: audit_check → consensus_engine → cross_validator → synthesizer
     # consensus_engine (A.6/A.7) weights ML/Slither/Aderyn per class and tracks
@@ -247,7 +251,8 @@ def build_graph(use_checkpointer: bool = True) -> Any:
         "Audit graph compiled | checkpointer={} | nodes={}",
         type(checkpointer).__name__ if checkpointer else "None",
         ["ml_assessment", "quick_screen", "evidence_router", "rag_research",
-         "static_analysis", "graph_explain", "audit_check", "consensus_engine",
+         "static_analysis", "graph_explain", "formal_verification",
+         "audit_check", "consensus_engine",
          "cross_validator", "synthesizer", "reflection", "explainer", "visualizer"],
     )
     return compiled

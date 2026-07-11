@@ -1,5 +1,11 @@
 """
 rag_research node — Search the RAG knowledge base for exploit patterns.
+
+P7 (2026-06-26): Fixed zero-match issue.
+  - Skip RAG when no classes flagged (topic="unknown")
+  - Map ML class names to RAG-friendly keywords
+  - Remove Solidity code from query (text embedder can't handle code)
+  - Add fallback query if first query returns 0 results
 """
 
 from __future__ import annotations
@@ -21,6 +27,19 @@ import src.orchestration.nodes._helpers as _h
 _RAG_URL: str = os.getenv("MCP_RAG_URL", "http://localhost:8011/sse")
 _RAG_K: int = int(os.getenv("AUDIT_RAG_K", "5"))
 
+_VULN_CLASS_TO_RAG_KEYWORDS: dict[str, str] = {
+    "Reentrancy":              "reentrancy reentrant call",
+    "IntegerUO":               "integer overflow underflow arithmetic",
+    "GasException":            "gas limit denial of service",
+    "Timestamp":               "timestamp manipulation time dependence",
+    "TransactionOrderDependence": "transaction ordering front running MEV",
+    "ExternalBug":             "external call oracle price manipulation",
+    "CallToUnknown":           "unknown external call untrusted contract",
+    "MishandledException":     "exception handling error propagation",
+    "UnusedReturn":            "unchecked return value ignored",
+    "DenialOfService":         "denial of service DoS griefing",
+}
+
 
 async def rag_research(state: AuditState) -> dict[str, Any]:
     """
@@ -38,27 +57,42 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
         primary topic anchor. Falls back to label if vulnerabilities empty.
         The code snippet (first 200 chars) gives lexical context.
 
+    P5 (2026-06-26): Skip RAG when SENTINEL_DETERMINISTIC=1.
+        RAG uses embedding models which are non-deterministic. In deterministic
+        mode, we skip RAG to ensure reproducible verdicts.
+
+    P7 (2026-06-26): Fixed zero-match issue.
+        - Skip RAG entirely when no classes are flagged (topic="unknown")
+        - Map ML class names to RAG-friendly keywords
+        - Remove Solidity code from query (confuses text embedder)
+        - Add fallback query if first query returns 0 results
+
     State updates:
         rag_results → list of ranked exploit chunk dicts
         error       → set on failure (does not replace existing error)
     """
+    if os.getenv("SENTINEL_DETERMINISTIC", "").strip().lower() in ("1", "true", "yes"):
+        logger.info("rag_research | skipped (SENTINEL_DETERMINISTIC mode)")
+        return {"rag_results": []}
+
     ml_result  = state.get("ml_result", {})
     confirmed  = ml_result.get("confirmed",  [])
     suspicious = ml_result.get("suspicious", [])
-    # Prefer highest-probability confirmed class, then suspicious, then legacy field.
     flagged = confirmed or suspicious or ml_result.get("vulnerabilities", [])
 
-    if flagged:
-        top_class = max(flagged, key=lambda v: v.get("probability", 0.0))
-        topic = top_class.get("vulnerability_class", ml_result.get("label", "unknown"))
-    else:
-        topic = ml_result.get("label", "unknown")
+    if not flagged:
+        logger.info("rag_research | skipped (no flagged classes — nothing to search for)")
+        return {"rag_results": []}
 
-    contract_snippet = state.get("contract_code", "")[:200].strip()
+    top_class = max(flagged, key=lambda v: v.get("probability", 0.0))
+    topic = top_class.get("vulnerability_class", ml_result.get("label", "unknown"))
 
-    # ExternalBug enrichment: include callee contracts/functions so the RAG
-    # query targets the specific oracle/price-feed pattern rather than generic
-    # "ExternalBug" (which retrieves low-signal chunks).
+    if topic == "unknown":
+        logger.info("rag_research | skipped (topic unknown — nothing to search for)")
+        return {"rag_results": []}
+
+    rag_keywords = _VULN_CLASS_TO_RAG_KEYWORDS.get(topic, topic)
+
     ext_calls = state.get("external_call_summary", [])
     if topic == "ExternalBug" and ext_calls:
         call_str = "; ".join(
@@ -66,15 +100,15 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
             for c in ext_calls[:6]
         )
         query = (
-            f"smart contract ExternalBug oracle manipulation price manipulation "
-            f"external dependency vulnerability: {call_str}"
+            f"smart contract external dependency oracle manipulation "
+            f"price feed vulnerability: {call_str}"
         )
     else:
         query = (
-            f"smart contract {topic} vulnerability "
-            f"exploit attack pattern: {contract_snippet}"
+            f"smart contract {rag_keywords} "
+            f"vulnerability exploit attack pattern"
         )
-    logger.info("rag_research | query_prefix='{}…'", query[:80])
+    logger.info("rag_research | query='{}…'", query[:80])
 
     try:
         result = await _h._call_mcp_tool(
@@ -92,6 +126,19 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
 
         chunks = result if isinstance(result, list) else result.get("results", [])
         logger.info("rag_research complete | {} chunks retrieved", len(chunks))
+
+        if not chunks:
+            logger.info("rag_research | zero results — trying fallback query")
+            fallback_query = f"{topic} vulnerability exploit"
+            fallback_result = await _h._call_mcp_tool(
+                server_url=_RAG_URL,
+                tool_name="search",
+                arguments={"query": fallback_query, "k": _RAG_K},
+            )
+            if "error" not in fallback_result:
+                chunks = fallback_result if isinstance(fallback_result, list) else fallback_result.get("results", [])
+                logger.info("rag_research fallback | {} chunks retrieved", len(chunks))
+
         return {"rag_results": chunks}
 
     except Exception as exc:

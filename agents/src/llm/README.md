@@ -13,7 +13,7 @@ LM Studio connection and model router for SENTINEL agents. Provides LangChain-co
 | Role | Model ID | Use Case | Speed (RTX 3070) |
 |------|----------|----------|-------------------|
 | `FAST` | `gemma-4-e2b-it` | Simple tasks, tool selection, API calls | ~12 tok/s |
-| `STRONG` | `gemma-4-e2b-it` | Reasoning, RAG synthesis, report generation (was qwen3.5-9b-ud, see FIX-18) | ~17-30s/task |
+| `STRONG` | `gemma-4-e2b-it` | Reasoning, RAG synthesis, report generation | ~17-30s/task |
 | `CODER` | `qwen2.5-coder-7b-instruct` | Solidity analysis, code logic review | — |
 | `EMBED` | `text-embedding-nomic-embed-text-v1.5` | RAG embeddings (text descriptions) | — |
 
@@ -36,7 +36,7 @@ from src.llm.client import get_fast_llm, get_strong_llm, get_coder_llm, get_embe
 
 # Chat models (all return LangChain ChatOpenAI)
 fast_llm   = get_fast_llm()    # gemma-4-e2b-it
-strong_llm = get_strong_llm()  # gemma-4-e2b-it (was qwen3.5-9b-ud, see FIX-18)
+strong_llm = get_strong_llm()  # gemma-4-e2b-it
 coder_llm  = get_coder_llm()   # qwen2.5-coder-7b-instruct
 
 # Embedding model (LangChain OpenAIEmbeddings)
@@ -48,6 +48,8 @@ llm = get_llm(model=MODEL_FAST, temperature=0.0)
 ```
 
 All models use `temperature=0.0` by default — deterministic output correct for security audit tasks.
+
+**Deterministic mode (`SENTINEL_DETERMINISTIC=1`):** When this env var is set, `_llm_enabled()` returns `False` for all nodes. No LLM calls are made. All verdict paths fall back to rule-based computation. Use this mode for ZK proof generation or reproducible CI runs.
 
 ## Agent Model Routing
 
@@ -61,7 +63,7 @@ AGENT_MODEL_MAP = {
 }
 ```
 
-Forward declaration — agent classes not yet implemented (M4.x milestone). Change a model here and all agents using that role update automatically.
+Forward declaration. Change a model here and all agents using that role update automatically.
 
 ## Configuration (`.env`)
 

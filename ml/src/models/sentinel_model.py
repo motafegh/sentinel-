@@ -589,6 +589,7 @@ class SentinelModel(nn.Module):
             "fused":       aux_fused,
             "phase2":      aux_phase2_logits, # [B, num_classes] — CEI aux loss target
             "jk_entropy":  _jk_entropy,
+            "fusion_embedding": fused_eye,    # [B, 128] — CrossAttentionFusion output (ZKML boundary)
         }
         return logits, aux
 

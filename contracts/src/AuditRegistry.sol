@@ -35,11 +35,41 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
 
     mapping(address => AuditResult[]) private _audits;
 
+    // --- V2: multi-class audit result (10-class) ---
+    // CLASS_NAMES index mapping (must match graph_schema.py):
+    //   0: CallToUnknown          5: MishandledException
+    //   1: DenialOfService         6: Reentrancy
+    //   2: ExternalBug             7: Timestamp
+    //   3: GasException            8: TransactionOrderDependence
+    //   4: IntegerUO               9: UnusedReturn
+
+    uint256 public constant NUM_CLASSES = 10;
+    uint256 public constant INPUT_OFFSET = 128;  // CrossAttentionFusion output dim
+
+    struct AuditResultV2 {
+        uint256[10] classScores;  // each = round(prob * 8192), little-endian field element
+        bytes32 proofHash;
+        bytes32 modelHash;        // SHA-256 of teacher checkpoint (from provenance manifest)
+        uint256 timestamp;
+        address agent;
+        bool verified;
+    }
+
+    mapping(address => AuditResultV2[]) private _auditsV2;
+
     event AuditSubmitted(
         address indexed contractAddress,
         bytes32 proofHash,
         address indexed agent,
         uint256 scoreFieldElement
+    );
+
+    event AuditSubmittedV2(
+        address indexed contractAddress,
+        bytes32 proofHash,
+        address indexed agent,
+        uint256[10] classScores,
+        bytes32 modelHash
     );
 
     event ImplementationUpgraded(address indexed newImplementation);
@@ -109,6 +139,51 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         emit AuditSubmitted(contractAddress, keccak256(proof), msg.sender, scoreFieldElement);
     }
 
+    // --- V2: multi-class submission --------------------------------------
+
+    // Guard 3 for V2 verifies ALL 10 class scores against publicSignals.
+    // publicSignals layout: [fusion_0..fusion_127, class_score_0..class_score_9]
+    function submitAuditV2(
+        address contractAddress,
+        uint256[10] calldata classScores,
+        bytes calldata proof,
+        uint256[] calldata publicSignals,
+        bytes32 modelHash
+    ) external whenNotPaused {
+        require(
+            sentinelToken.stakedBalance(msg.sender) >= sentinelToken.MIN_STAKE(),
+            "AuditRegistry: insufficient stake"
+        );
+
+        require(
+            publicSignals.length >= INPUT_OFFSET + NUM_CLASSES,
+            "AuditRegistry: insufficient publicSignals"
+        );
+
+        require(
+            zkmlVerifier.verifyProof(proof, publicSignals),
+            "AuditRegistry: invalid ZK proof"
+        );
+
+        for (uint256 i = 0; i < NUM_CLASSES; i++) {
+            require(
+                publicSignals[INPUT_OFFSET + i] == classScores[i],
+                "AuditRegistry: class score mismatch"
+            );
+        }
+
+        _auditsV2[contractAddress].push(AuditResultV2({
+            classScores: classScores,
+            proofHash: keccak256(proof),
+            modelHash: modelHash,
+            timestamp: block.timestamp,
+            agent: msg.sender,
+            verified: true
+        }));
+
+        emit AuditSubmittedV2(contractAddress, keccak256(proof), msg.sender, classScores, modelHash);
+    }
+
     // --- Queries ----------------------------------------------------------
 
     function hasAudit(address contractAddress) external view returns (bool) {
@@ -133,6 +208,32 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         address contractAddress
     ) external view returns (uint256) {
         return _audits[contractAddress].length;
+    }
+
+    // --- V2 queries -------------------------------------------------------
+
+    function hasAuditV2(address contractAddress) external view returns (bool) {
+        return _auditsV2[contractAddress].length > 0;
+    }
+
+    function getLatestAuditV2(
+        address contractAddress
+    ) external view returns (AuditResultV2 memory) {
+        AuditResultV2[] storage audits = _auditsV2[contractAddress];
+        require(audits.length > 0, "AuditRegistry: no V2 audits found");
+        return audits[audits.length - 1];
+    }
+
+    function getAuditHistoryV2(
+        address contractAddress
+    ) external view returns (AuditResultV2[] memory) {
+        return _auditsV2[contractAddress];
+    }
+
+    function getAuditCountV2(
+        address contractAddress
+    ) external view returns (uint256) {
+        return _auditsV2[contractAddress].length;
     }
 
     // --- Upgrade ----------------------------------------------------------

@@ -1,0 +1,2679 @@
+{
+  "contract": "02_mempool_sniping.sol",
+  "contract_address": "0x72eec602657236fa6d43468ea94ccc6992716c4d",
+  "timestamp": "2026-06-26T13:24:13.374441+00:00",
+  "total_wall_s": 13.508798599243164,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 300.0
+  },
+  "routing_decisions": [
+    "CallToUnknown prob=0.292 < threshold=0.4 \u2192 skip",
+    "DenialOfService prob=0.328 >= threshold=0.3 \u2192 static_analysis+rag_research",
+    "ExternalBug prob=0.688 >= threshold=0.4 \u2192 static_analysis+rag_research",
+    "GasException prob=0.294 < threshold=0.4 \u2192 skip",
+    "IntegerUO prob=0.754 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "MishandledException prob=0.293 < threshold=0.4 \u2192 skip",
+    "Reentrancy prob=0.563 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "Timestamp prob=0.439 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "TransactionOrderDependence prob=0.309 < threshold=0.35 \u2192 skip",
+    "UnusedReturn prob=0.582 >= threshold=0.45 \u2192 static_analysis",
+    "quick_screen: slither=['reentrancy-eth'] aderyn=['eth-send-unchecked-address', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {
+    "label": "confirmed_vulnerable",
+    "probabilities": {
+      "CallToUnknown": 0.2924,
+      "DenialOfService": 0.3275,
+      "ExternalBug": 0.6881,
+      "GasException": 0.2942,
+      "IntegerUO": 0.7542,
+      "MishandledException": 0.2929,
+      "Reentrancy": 0.5632,
+      "Timestamp": 0.4387,
+      "TransactionOrderDependence": 0.3091,
+      "UnusedReturn": 0.582
+    },
+    "confirmed": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7542,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6881,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.582,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5632,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2942,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.4387,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3275,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.3091,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2929,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2924,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7542,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6881,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.582,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5632,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2942,
+        "tier": null
+      }
+    ],
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "thresholds": [
+      0.4000000059604645,
+      0.5,
+      0.44999998807907104,
+      0.05000000074505806,
+      0.44999998807907104,
+      0.3499999940395355,
+      0.44999998807907104,
+      0.5,
+      0.3499999940395355,
+      0.4000000059604645
+    ],
+    "truncated": true,
+    "windows_used": 4,
+    "num_nodes": 93,
+    "num_edges": 321,
+    "eye_predictions": {
+      "gnn": {
+        "CallToUnknown": 0.0838,
+        "DenialOfService": 0.2233,
+        "ExternalBug": 0.7648,
+        "GasException": 0.0878,
+        "IntegerUO": 0.7093,
+        "MishandledException": 0.0911,
+        "Reentrancy": 0.6343,
+        "Timestamp": 0.3834,
+        "TransactionOrderDependence": 0.0841,
+        "UnusedReturn": 0.7493
+      },
+      "transformer": {
+        "CallToUnknown": 0.0331,
+        "DenialOfService": 0.0717,
+        "ExternalBug": 0.9525,
+        "GasException": 0.0491,
+        "IntegerUO": 0.7114,
+        "MishandledException": 0.0443,
+        "Reentrancy": 0.8744,
+        "Timestamp": 0.0896,
+        "TransactionOrderDependence": 0.1285,
+        "UnusedReturn": 0.9524
+      },
+      "fused": {
+        "CallToUnknown": 0.0885,
+        "DenialOfService": 0.083,
+        "ExternalBug": 0.7743,
+        "GasException": 0.0868,
+        "IntegerUO": 0.8488,
+        "MishandledException": 0.0805,
+        "Reentrancy": 0.6221,
+        "Timestamp": 0.2831,
+        "TransactionOrderDependence": 0.1064,
+        "UnusedReturn": 0.5277
+      },
+      "phase2": {
+        "CallToUnknown": 0.1195,
+        "DenialOfService": 0.1159,
+        "ExternalBug": 0.7906,
+        "GasException": 0.0602,
+        "IntegerUO": 0.7103,
+        "MishandledException": 0.0337,
+        "Reentrancy": 0.5104,
+        "Timestamp": 0.388,
+        "TransactionOrderDependence": 0.0389,
+        "UnusedReturn": 0.6974
+      }
+    }
+  },
+  "verdicts": {
+    "CallToUnknown": "CONFIRMED",
+    "DenialOfService": "DISPUTED",
+    "ExternalBug": "CONFIRMED",
+    "GasException": "DISPUTED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "CONFIRMED",
+    "Timestamp": "DISPUTED",
+    "TransactionOrderDependence": "SAFE",
+    "UnusedReturn": "DISPUTED"
+  },
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-eth"
+    ],
+    "aderyn": [
+      "eth-send-unchecked-address",
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 25,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67):\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#62)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "buy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NFTSnipeMarket.withdrawFees() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#112-115):\n\t- (ok,None) = owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#113)\n",
+      "lines": [
+        112,
+        113,
+        114,
+        115
+      ],
+      "function_names": [
+        "withdrawFees"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#95-106):\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#103)\n",
+      "lines": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "function_names": [
+        "buyWithPermit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85):\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#44)\n\tState variables written after the call(s):\n\t- listings[tokenId] = Listing(msg.sender,price,block.timestamp) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#45)\n",
+      "lines": [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "list"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#80)\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n\tExternal calls sending eth:\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n\tState variables written after the call(s):\n\t- delete listings[tokenIds[j]] (../../../../../tmp/sentinel_static_ypdu4_hf.sol#79)\n\tNFTSnipeMarket.listings (../../../../../tmp/sentinel_static_ypdu4_hf.sol#23) can be used in cross function reentrancies:\n\t- NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85)\n\t- NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67)\n\t- NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#95-106)\n\t- NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#87-93)\n\t- NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#40-47)\n\t- NFTSnipeMarket.listings (../../../../../tmp/sentinel_static_ypdu4_hf.sol#23)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#87-93):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#91)\n\tEvent emitted after the call(s):\n\t- ListingCanceled(tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#92)\n",
+      "lines": [
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93
+      ],
+      "function_names": [
+        "cancel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#56)\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#62)\n\tExternal calls sending eth:\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#62)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenId,msg.sender,msg.value) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#66)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "buy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#95-106):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#102)\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#103)\n\tExternal calls sending eth:\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#103)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenId,msg.sender,l.price) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#105)\n",
+      "lines": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "function_names": [
+        "buyWithPermit"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#80)\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n\tExternal calls sending eth:\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenIds[j],msg.sender,l_scope_0.price) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#83)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#44)\n\tEvent emitted after the call(s):\n\t- TokenListed(tokenId,price) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#46)\n",
+      "lines": [
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47
+      ],
+      "function_names": [
+        "list"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#51)\n\t- require(bool,string)(msg.value >= l.price,insufficient payment) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#52)\n",
+      "lines": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "function_names": [
+        "buy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#73)\n",
+      "lines": [
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "batchBuy"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#87-93) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.seller == msg.sender,not seller) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#89)\n",
+      "lines": [
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93
+      ],
+      "function_names": [
+        "cancel"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#95-106) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#97)\n\t- require(bool,string)(msg.value >= l.price,insufficient payment) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#98)\n\t- require(bool,string)(l.price <= maxPrice,price exceeded max) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#99)\n",
+      "lines": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "function_names": [
+        "buyWithPermit"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "eth-send-unchecked-address",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+      "lines": [
+        49,
+        69,
+        95
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        42,
+        44,
+        80,
+        81
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        108,
+        112
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        77
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        71,
+        77
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        108
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        36
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        21,
+        22
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 2,
+  "graph_explanations_classes": [
+    "graph_stats",
+    "analysis_mode",
+    "hotspots_by_class"
+  ],
+  "consensus_verdict": {
+    "CallToUnknown": {
+      "ml_signal": 0,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.3,
+      "confidence": 0.8125,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.3,
+        "slither": 0.7,
+        "aderyn": 0.6
+      }
+    },
+    "DenialOfService": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.5,
+      "confidence": 0.3636,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.325,
+        "slither": 0.55,
+        "aderyn": 0.5
+      }
+    },
+    "ExternalBug": {
+      "ml_signal": 1,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.175,
+      "confidence": 1.0,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.225,
+        "slither": 0.5,
+        "aderyn": 0.45
+      }
+    },
+    "GasException": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.55,
+      "confidence": 0.3929,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.2,
+        "slither": 0.65,
+        "aderyn": 0.55
+      }
+    },
+    "IntegerUO": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 1.01,
+      "confidence": 0.558,
+      "verdict": "LIKELY",
+      "weights": {
+        "ml": 0.31,
+        "slither": 0.8,
+        "aderyn": 0.7
+      }
+    },
+    "MishandledException": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.62,
+      "confidence": 0.3839,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.72,
+        "aderyn": 0.62
+      }
+    },
+    "Reentrancy": {
+      "ml_signal": 1,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.81,
+      "confidence": 1.0,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.39,
+        "slither": 0.82,
+        "aderyn": 0.6
+      }
+    },
+    "Timestamp": {
+      "ml_signal": 0,
+      "slither_match": 1,
+      "aderyn_match": 0,
+      "score": 0.45,
+      "confidence": 0.36,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.4,
+        "slither": 0.45,
+        "aderyn": 0.4
+      }
+    },
+    "TransactionOrderDependence": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.45,
+      "confidence": 0.3214,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.35,
+        "slither": 0.6,
+        "aderyn": 0.45
+      }
+    },
+    "UnusedReturn": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 0,
+      "score": 0.275,
+      "confidence": 0.1642,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.75,
+        "aderyn": 0.65
+      },
+      "overridden_from_safe": true
+    }
+  },
+  "debate_transcript": {},
+  "confirmations": {
+    "ExternalBug": [
+      "ml",
+      "slither",
+      "aderyn",
+      "consensus"
+    ],
+    "IntegerUO": [
+      "ml",
+      "aderyn",
+      "consensus"
+    ],
+    "Reentrancy": [
+      "ml",
+      "slither",
+      "slither",
+      "slither",
+      "aderyn",
+      "consensus"
+    ],
+    "UnusedReturn": [
+      "ml",
+      "consensus"
+    ],
+    "CallToUnknown": [
+      "slither",
+      "consensus"
+    ],
+    "Timestamp": [
+      "slither",
+      "consensus"
+    ],
+    "MishandledException": [
+      "aderyn",
+      "consensus"
+    ],
+    "DenialOfService": [
+      "consensus"
+    ],
+    "GasException": [
+      "consensus"
+    ],
+    "TransactionOrderDependence": [
+      "consensus"
+    ]
+  },
+  "contradictions": {},
+  "tool_status": {
+    "ml": {
+      "ran": true,
+      "label": "confirmed_vulnerable"
+    },
+    "aderyn": {
+      "ran": true,
+      "n_findings": 10
+    }
+  },
+  "final_report": {
+    "contract_address": "0x72eec602657236fa6d43468ea94ccc6992716c4d",
+    "overall_label": "confirmed_vulnerable",
+    "overall_verdict": "CONFIRMED",
+    "risk_probability": 0.7542,
+    "top_vulnerability": "IntegerUO",
+    "confirmed": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7542,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6881,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.582,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5632,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2942,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.4387,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3275,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.3091,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2929,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2924,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7542,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6881,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.582,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5632,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2942,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.4387,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3275,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.3091,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2929,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2924,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "probabilities": {
+      "CallToUnknown": 0.2924,
+      "DenialOfService": 0.3275,
+      "ExternalBug": 0.6881,
+      "GasException": 0.2942,
+      "IntegerUO": 0.7542,
+      "MishandledException": 0.2929,
+      "Reentrancy": 0.5632,
+      "Timestamp": 0.4387,
+      "TransactionOrderDependence": 0.3091,
+      "UnusedReturn": 0.582
+    },
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "vulnerability_verdicts": [
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2924,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "slither",
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.7079,
+        "attribution": {
+          "ml_pct": 22.6,
+          "slither_pct": 77.4,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3275,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.3091,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6881,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "slither",
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 40.8,
+          "slither_pct": 59.2,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2942,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.334,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7542,
+        "verdict": "LIKELY",
+        "evidence_sources": [
+          "ml",
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "HIGH",
+        "confidence": 0.6686,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2929,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.7001,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.5632,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "slither",
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 36.0,
+          "slither_pct": 64.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.4387,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "slither",
+          "consensus"
+        ],
+        "severity": "LOW",
+        "confidence": 0.4127,
+        "attribution": {
+          "ml_pct": 30.5,
+          "slither_pct": 69.5,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.3091,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.2732,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.582,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml",
+          "consensus"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 0.2885,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      }
+    ],
+    "threshold": 0.5,
+    "ml_truncated": true,
+    "num_nodes": 93,
+    "num_edges": 321,
+    "rag_evidence": [],
+    "audit_history": [
+      {
+        "contract_address": "0x72EEc602657236fA6d43468eA94ccc6992716c4d",
+        "score": 0.7314,
+        "score_field_element": 5993,
+        "label": "vulnerable",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1713200000,
+        "timestamp_iso": "2026-04-15T12:00:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      },
+      {
+        "contract_address": "0x72EEc602657236fA6d43468eA94ccc6992716c4d",
+        "score": 0.4102,
+        "score_field_element": 3362,
+        "label": "safe",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1712900000,
+        "timestamp_iso": "2026-04-12T03:20:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      }
+    ],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67):\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#62)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "buy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NFTSnipeMarket.withdrawFees() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#112-115):\n\t- (ok,None) = owner.call{value: address(this).balance}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#113)\n",
+        "lines": [
+          112,
+          113,
+          114,
+          115
+        ],
+        "function_names": [
+          "withdrawFees"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#95-106):\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#103)\n",
+        "lines": [
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106
+        ],
+        "function_names": [
+          "buyWithPermit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85):\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#44)\n\tState variables written after the call(s):\n\t- listings[tokenId] = Listing(msg.sender,price,block.timestamp) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#45)\n",
+        "lines": [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "list"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#80)\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n\tExternal calls sending eth:\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n\tState variables written after the call(s):\n\t- delete listings[tokenIds[j]] (../../../../../tmp/sentinel_static_ypdu4_hf.sol#79)\n\tNFTSnipeMarket.listings (../../../../../tmp/sentinel_static_ypdu4_hf.sol#23) can be used in cross function reentrancies:\n\t- NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85)\n\t- NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67)\n\t- NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#95-106)\n\t- NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#87-93)\n\t- NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#40-47)\n\t- NFTSnipeMarket.listings (../../../../../tmp/sentinel_static_ypdu4_hf.sol#23)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#87-93):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#91)\n\tEvent emitted after the call(s):\n\t- ListingCanceled(tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#92)\n",
+        "lines": [
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93
+        ],
+        "function_names": [
+          "cancel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#56)\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#62)\n\tExternal calls sending eth:\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#58)\n\t- (okRefund,None) = msg.sender.call{value: excess}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#62)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenId,msg.sender,msg.value) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#66)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "buy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#95-106):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#102)\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#103)\n\tExternal calls sending eth:\n\t- (ok,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#103)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenId,msg.sender,l.price) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#105)\n",
+        "lines": [
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106
+        ],
+        "function_names": [
+          "buyWithPermit"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#80)\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n\tExternal calls sending eth:\n\t- (ok,None) = l_scope_0.seller.call{value: l_scope_0.price}() (../../../../../tmp/sentinel_static_ypdu4_hf.sol#81)\n\tEvent emitted after the call(s):\n\t- TokenBought(tokenIds[j],msg.sender,l_scope_0.price) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#83)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#44)\n\tEvent emitted after the call(s):\n\t- TokenListed(tokenId,price) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#46)\n",
+        "lines": [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "function_names": [
+          "list"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#51)\n\t- require(bool,string)(msg.value >= l.price,insufficient payment) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#52)\n",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "function_names": [
+          "buy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#73)\n",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "batchBuy"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#87-93) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.seller == msg.sender,not seller) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#89)\n",
+        "lines": [
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93
+        ],
+        "function_names": [
+          "cancel"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "NFTSnipeMarket.buyWithPermit(uint256,uint256,bytes) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#95-106) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#97)\n\t- require(bool,string)(msg.value >= l.price,insufficient payment) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#98)\n\t- require(bool,string)(l.price <= maxPrice,price exceeded max) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#99)\n",
+        "lines": [
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106
+        ],
+        "function_names": [
+          "buyWithPermit"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          49,
+          69,
+          95
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          42,
+          44,
+          80,
+          81
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          108,
+          112
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          77
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          71,
+          77
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          108
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          36
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          21,
+          22
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [
+      {
+        "caller_contract": "NFTSnipeMarket",
+        "caller_function": "list",
+        "callee_contract": "IERC721",
+        "callee_function": "HIGH_LEVEL_CALL, dest:nft(IERC721), function:transferFrom, arguments:['msg.sender', 'TMP_8', 'tokenId']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NFTSnipeMarket",
+        "caller_function": "list",
+        "callee_contract": "IERC721",
+        "callee_function": "TMP_3(address) = HIGH_LEVEL_CALL, dest:nft(IERC721), function:ownerOf, arguments:['tokenId']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NFTSnipeMarket",
+        "caller_function": "buy",
+        "callee_contract": "IERC721",
+        "callee_function": "HIGH_LEVEL_CALL, dest:nft(IERC721), function:transferFrom, arguments:['TMP_17', 'msg.sender', 'tokenId']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NFTSnipeMarket",
+        "caller_function": "batchBuy",
+        "callee_contract": "IERC721",
+        "callee_function": "HIGH_LEVEL_CALL, dest:nft(IERC721), function:transferFrom, arguments:['TMP_30', 'msg.sender', 'REF_24']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NFTSnipeMarket",
+        "caller_function": "cancel",
+        "callee_contract": "IERC721",
+        "callee_function": "HIGH_LEVEL_CALL, dest:nft(IERC721), function:transferFrom, arguments:['TMP_37', 'msg.sender', 'tokenId']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "NFTSnipeMarket",
+        "caller_function": "buyWithPermit",
+        "callee_contract": "IERC721",
+        "callee_function": "HIGH_LEVEL_CALL, dest:nft(IERC721), function:transferFrom, arguments:['TMP_46', 'msg.sender', 'tokenId']  ",
+        "callee_is_interface": true
+      }
+    ],
+    "routing_decisions": [
+      "CallToUnknown prob=0.292 < threshold=0.4 \u2192 skip",
+      "DenialOfService prob=0.328 >= threshold=0.3 \u2192 static_analysis+rag_research",
+      "ExternalBug prob=0.688 >= threshold=0.4 \u2192 static_analysis+rag_research",
+      "GasException prob=0.294 < threshold=0.4 \u2192 skip",
+      "IntegerUO prob=0.754 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "MishandledException prob=0.293 < threshold=0.4 \u2192 skip",
+      "Reentrancy prob=0.563 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "Timestamp prob=0.439 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "TransactionOrderDependence prob=0.309 < threshold=0.35 \u2192 skip",
+      "UnusedReturn prob=0.582 >= threshold=0.45 \u2192 static_analysis",
+      "quick_screen: slither=['reentrancy-eth'] aderyn=['eth-send-unchecked-address', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {
+      "CallToUnknown": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.3,
+        "confidence": 0.8125,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.3,
+          "slither": 0.7,
+          "aderyn": 0.6
+        }
+      },
+      "DenialOfService": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.5,
+        "confidence": 0.3636,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.325,
+          "slither": 0.55,
+          "aderyn": 0.5
+        }
+      },
+      "ExternalBug": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.175,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.225,
+          "slither": 0.5,
+          "aderyn": 0.45
+        }
+      },
+      "GasException": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.55,
+        "confidence": 0.3929,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.2,
+          "slither": 0.65,
+          "aderyn": 0.55
+        }
+      },
+      "IntegerUO": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 1.01,
+        "confidence": 0.558,
+        "verdict": "LIKELY",
+        "weights": {
+          "ml": 0.31,
+          "slither": 0.8,
+          "aderyn": 0.7
+        }
+      },
+      "MishandledException": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.62,
+        "confidence": 0.3839,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.72,
+          "aderyn": 0.62
+        }
+      },
+      "Reentrancy": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.81,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.39,
+          "slither": 0.82,
+          "aderyn": 0.6
+        }
+      },
+      "Timestamp": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 0,
+        "score": 0.45,
+        "confidence": 0.36,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.4,
+          "slither": 0.45,
+          "aderyn": 0.4
+        }
+      },
+      "TransactionOrderDependence": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.45,
+        "confidence": 0.3214,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.35,
+          "slither": 0.6,
+          "aderyn": 0.45
+        }
+      },
+      "UnusedReturn": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.275,
+        "confidence": 0.1642,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.75,
+          "aderyn": 0.65
+        },
+        "overridden_from_safe": true
+      }
+    },
+    "debate_transcript": {},
+    "recommendation": "HIGH RISK \u2014 top vulnerability: IntegerUO (probability 75.4%, CONFIRMED tier). 0 similar exploit pattern(s) found in DeFiHackLabs corpus. 3 Slither High/Medium finding(s). 2 prior on-chain audit(s). Recommend full manual audit before deployment.\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens \u2014 tail code was not analysed. Manual review of the unanalysed portion is recommended.",
+    "narrative": null,
+    "error": "rag_research: retriever_error",
+    "path_taken": "deep",
+    "metric_attribution": {
+      "CallToUnknown": {
+        "ml_pct": 22.6,
+        "slither_pct": 77.4,
+        "rag_pct": 0.0
+      },
+      "DenialOfService": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "ExternalBug": {
+        "ml_pct": 40.8,
+        "slither_pct": 59.2,
+        "rag_pct": 0.0
+      },
+      "GasException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "IntegerUO": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "MishandledException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "Reentrancy": {
+        "ml_pct": 36.0,
+        "slither_pct": 64.0,
+        "rag_pct": 0.0
+      },
+      "Timestamp": {
+        "ml_pct": 30.5,
+        "slither_pct": 69.5,
+        "rag_pct": 0.0
+      },
+      "TransactionOrderDependence": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "UnusedReturn": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      }
+    },
+    "confidence_by_class": {
+      "CallToUnknown": 0.7079,
+      "DenialOfService": 0.3091,
+      "ExternalBug": 1.0,
+      "GasException": 0.334,
+      "IntegerUO": 0.6686,
+      "MishandledException": 0.7001,
+      "Reentrancy": 1.0,
+      "Timestamp": 0.4127,
+      "TransactionOrderDependence": 0.2732,
+      "UnusedReturn": 0.2885
+    },
+    "reflection_notes": {
+      "unused_evidence": [
+        "2 High/Medium static finding(s) not tied to a verdict: eth-send-unchecked-address, reentrancy-state-change"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [
+        "DenialOfService: verdict DISPUTED",
+        "GasException: verdict DISPUTED",
+        "IntegerUO: confidence 67% below 0.70",
+        "Timestamp: verdict DISPUTED",
+        "TransactionOrderDependence: confidence 27% below 0.70",
+        "UnusedReturn: verdict DISPUTED"
+      ],
+      "failure_modes": [
+        "Contract exceeded 512 CodeBERT tokens \u2014 tail code unanalysed; verdicts may miss vulnerabilities in the truncated region.",
+        "ExternalBug flagged \u2014 the ML model is known to over-predict this class (Run 12 class-definition mismatch); treat as lower confidence unless corroborated by an inter-contract call finding."
+      ],
+      "summary": "Self-critique: 6 verdict(s) are uncertain; 1 evidence item(s) unused; 2 failure mode(s) noted.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "rag_research: retriever_error",
+  "evidence_list": [
+    {
+      "source": "ml",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.6881,
+      "reliability": 0.1038,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.6881
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.7542,
+      "reliability": 0.0766,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7542
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.5632,
+      "reliability": 0.127,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.5632
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.582,
+      "reliability": 0.0575,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.582
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.15,
+      "reliability": 0.217,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "description": "Low level call in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67):\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 0.15,
+      "reliability": 0.3463,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "description": "Low level call in NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67):\n\t- (okSeller,None) = l.seller.call{value: l.price}() (../../../../../tmp/sentinel_static_ypdu4_hf",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.343,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "description": "Reentrancy in NFTSnipeMarket.list(uint256,uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#40-47):\n\tExternal calls:\n\t- nft.transferFrom(msg.sender,address(this),tokenId) (../../../../../tmp/s",
+        "lines": [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.343,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "description": "Reentrancy in NFTSnipeMarket.batchBuy(uint256[]) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#69-85):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenIds[j]) (../../../../../tmp",
+        "lines": [
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.343,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "description": "Reentrancy in NFTSnipeMarket.cancel(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#87-93):\n\tExternal calls:\n\t- nft.transferFrom(address(this),msg.sender,tokenId) (../../../../../tmp/sentine",
+        "lines": [
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Timestamp",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.3557,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "timestamp",
+        "impact": "Low",
+        "description": "NFTSnipeMarket.buy(uint256) (../../../../../tmp/sentinel_static_ypdu4_hf.sol#49-67) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(l.price > 0,not listed) (../../../../",
+        "lines": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.1365,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          49,
+          69,
+          95
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.2096,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          49,
+          69,
+          95
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.3738,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          49,
+          69,
+          95
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.3606,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          42,
+          44,
+          80,
+          81
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "GasException",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.178,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "costly-loop",
+        "impact": "Low",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          77
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1076,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "costly-loop",
+        "impact": "Low",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          77
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "CallToUnknown",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.2348,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "costly-loop",
+        "impact": "Low",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          77
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "DenialOfService",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1542,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "costly-loop",
+        "impact": "Low",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          77
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "GasException",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.178,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          71,
+          77
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1076,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          71,
+          77
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "CallToUnknown",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.2348,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          71,
+          77
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "DenialOfService",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1542,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          71,
+          77
+        ]
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 0.8125,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 0.8125,
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "DenialOfService",
+      "polarity": "SUPPORTS",
+      "strength": 0.3636,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3636,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 1.0,
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "GasException",
+      "polarity": "SUPPORTS",
+      "strength": 0.3929,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3929,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.558,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "LIKELY",
+        "consensus_confidence": 0.558,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 0.3839,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3839,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 1.0,
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "Timestamp",
+      "polarity": "SUPPORTS",
+      "strength": 0.36,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.36,
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "SUPPORTS",
+      "strength": 0.3214,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3214,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.1642,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0
+      }
+    }
+  ],
+  "verdict_provable": {
+    "CallToUnknown": "CONFIRMED",
+    "DenialOfService": "DISPUTED",
+    "ExternalBug": "CONFIRMED",
+    "GasException": "DISPUTED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "CONFIRMED",
+    "Timestamp": "DISPUTED",
+    "TransactionOrderDependence": "SAFE",
+    "UnusedReturn": "DISPUTED"
+  },
+  "verdict_full": {
+    "CallToUnknown": "CONFIRMED",
+    "DenialOfService": "DISPUTED",
+    "ExternalBug": "CONFIRMED",
+    "GasException": "DISPUTED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "CONFIRMED",
+    "Timestamp": "DISPUTED",
+    "TransactionOrderDependence": "SAFE",
+    "UnusedReturn": "DISPUTED"
+  }
+}

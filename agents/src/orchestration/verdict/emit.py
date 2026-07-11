@@ -202,6 +202,47 @@ def emit_quick_screen_evidence(
     return evidence
 
 
+def emit_halmos_evidence(
+    symbolic_findings: list[dict[str, Any]],
+) -> list[Evidence]:
+    """
+    Halmos symbolic execution findings → Evidence list.
+
+    Each finding has:
+        - tool: "halmos"
+        - vulnerability_class: mapped ML class name
+        - invariant: the invariant checked
+        - proven: True if invariant holds, False if violated
+        - counterexample: model output if violated
+
+    Evidence polarity:
+        - SUPPORTS: invariant violated → vulnerability confirmed
+        - REFUTES: invariant holds → vulnerability refuted
+    """
+    evidence: list[Evidence] = []
+    for finding in symbolic_findings:
+        if finding.get("tool", "") != "halmos":
+            continue
+
+        cls = finding.get("vulnerability_class", "")
+        if not cls:
+            continue
+
+        proven = finding.get("proven", False)
+        polarity = Polarity.REFUTES if proven else Polarity.SUPPORTS
+
+        evidence.append(Evidence.formal(
+            source="halmos",
+            vuln_class=cls,
+            polarity=polarity,
+            invariant=finding.get("invariant", ""),
+            proven=proven,
+            counterexample=finding.get("counterexample", ""),
+            reliability=get_reliability("halmos", cls),
+        ))
+    return evidence
+
+
 def emit_consensus_evidence(
     consensus_verdict: dict[str, dict[str, Any]],
 ) -> list[Evidence]:

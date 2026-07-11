@@ -1,0 +1,438 @@
+schema_version: '1'
+fit_metadata:
+  matrix_path: '?'
+  matrix_n_contracts: 83
+  n_contracts_used: 30
+  alpha: 5.0
+  prior_schema_version: '1'
+  fit_at: '2026-06-25T23:04:45.139730+00:00'
+  drop_gate_pct: 0.05
+  justifications:
+    aderyn|CallToUnknown: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|DenialOfService: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|ExternalBug: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|GasException: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|IntegerUO: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|MishandledException: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from\
+      \ confusion_matrix_v2 (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|Reentrancy: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|Timestamp: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|TransactionOrderDependence: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5\
+      \ from confusion_matrix_v2 (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    aderyn|UnusedReturn: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|CallToUnknown: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|DenialOfService: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|ExternalBug: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|GasException: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|IntegerUO: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|MishandledException: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|Reentrancy: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|Timestamp: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|TransactionOrderDependence: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from\
+      \ confusion_matrix_v2 (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    ml|UnusedReturn: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|CallToUnknown: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|DenialOfService: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|ExternalBug: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|GasException: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|IntegerUO: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|MishandledException: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from\
+      \ confusion_matrix_v2 (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|Reentrancy: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|Timestamp: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|TransactionOrderDependence: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5\
+      \ from confusion_matrix_v2 (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+    slither|UnusedReturn: "P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2\
+      \ (83 contracts). Drop is intentional \u2014 L1 priors were never measured before P3."
+  n_cells: 30
+  n_zero_sample: 0
+  n_cells_over_gate: 0
+table:
+  aderyn:
+    CallToUnknown: 0.234768
+    DenialOfService: 0.154167
+    ExternalBug: 0.209604
+    GasException: 0.177967
+    IntegerUO: 0.136509
+    MishandledException: 0.373805
+    Reentrancy: 0.360577
+    Timestamp: 0.022727
+    TransactionOrderDependence: 0.107584
+    UnusedReturn: 0.327142
+  ml:
+    CallToUnknown: 0.977273
+    DenialOfService: 0.036932
+    ExternalBug: 0.207586
+    GasException: 0.022727
+    IntegerUO: 0.153125
+    MishandledException: 0.03125
+    Reentrancy: 0.253914
+    Timestamp: 0.38843
+    TransactionOrderDependence: 0.039773
+    UnusedReturn: 0.115088
+  slither:
+    CallToUnknown: 0.346307
+    DenialOfService: 0.219886
+    ExternalBug: 0.217045
+    GasException: 0.225568
+    IntegerUO: 0.045455
+    MishandledException: 0.795455
+    Reentrancy: 0.343019
+    Timestamp: 0.355682
+    TransactionOrderDependence: 0.034091
+    UnusedReturn: 0.671402
+cells_detail:
+- source: aderyn
+  cls: CallToUnknown
+  n: 83
+  tp: 10
+  fp: 37
+  fn: 7
+  tn: 29
+  measured_precision: 0.212766
+  prior: 0.6
+  fitted: 0.234768
+  n_zero_sample: false
+- source: aderyn
+  cls: DenialOfService
+  n: 83
+  tp: 6
+  fp: 39
+  fn: 4
+  tn: 34
+  measured_precision: 0.133333
+  prior: 0.5
+  fitted: 0.154167
+  n_zero_sample: false
+- source: aderyn
+  cls: ExternalBug
+  n: 83
+  tp: 8
+  fp: 33
+  fn: 5
+  tn: 37
+  measured_precision: 0.195122
+  prior: 0.45
+  fitted: 0.209604
+  n_zero_sample: false
+- source: aderyn
+  cls: GasException
+  n: 83
+  tp: 7
+  fp: 38
+  fn: 2
+  tn: 36
+  measured_precision: 0.155556
+  prior: 0.55
+  fitted: 0.177967
+  n_zero_sample: false
+- source: aderyn
+  cls: IntegerUO
+  n: 83
+  tp: 4
+  fp: 35
+  fn: 5
+  tn: 39
+  measured_precision: 0.102564
+  prior: 0.7
+  fitted: 0.136509
+  n_zero_sample: false
+- source: aderyn
+  cls: MishandledException
+  n: 83
+  tp: 14
+  fp: 25
+  fn: 5
+  tn: 39
+  measured_precision: 0.358974
+  prior: 0.62
+  fitted: 0.373805
+  n_zero_sample: false
+- source: aderyn
+  cls: Reentrancy
+  n: 83
+  tp: 9
+  fp: 17
+  fn: 6
+  tn: 51
+  measured_precision: 0.346154
+  prior: 0.6
+  fitted: 0.360577
+  n_zero_sample: false
+- source: aderyn
+  cls: Timestamp
+  n: 83
+  tp: 0
+  fp: 0
+  fn: 12
+  tn: 71
+  measured_precision: 0.0
+  prior: 0.4
+  fitted: 0.022727
+  n_zero_sample: false
+- source: aderyn
+  cls: TransactionOrderDependence
+  n: 83
+  tp: 4
+  fp: 42
+  fn: 5
+  tn: 32
+  measured_precision: 0.086957
+  prior: 0.45
+  fitted: 0.107584
+  n_zero_sample: false
+- source: aderyn
+  cls: UnusedReturn
+  n: 83
+  tp: 4
+  fp: 9
+  fn: 6
+  tn: 64
+  measured_precision: 0.307692
+  prior: 0.65
+  fitted: 0.327142
+  n_zero_sample: false
+- source: ml
+  cls: CallToUnknown
+  n: 83
+  tp: 1
+  fp: 0
+  fn: 16
+  tn: 66
+  measured_precision: 1.0
+  prior: 0.6
+  fitted: 0.977273
+  n_zero_sample: false
+- source: ml
+  cls: DenialOfService
+  n: 83
+  tp: 0
+  fp: 1
+  fn: 10
+  tn: 72
+  measured_precision: 0.0
+  prior: 0.65
+  fitted: 0.036932
+  n_zero_sample: false
+- source: ml
+  cls: ExternalBug
+  n: 83
+  tp: 11
+  fp: 46
+  fn: 2
+  tn: 24
+  measured_precision: 0.192982
+  prior: 0.45
+  fitted: 0.207586
+  n_zero_sample: false
+- source: ml
+  cls: GasException
+  n: 83
+  tp: 0
+  fp: 0
+  fn: 9
+  tn: 74
+  measured_precision: 0.0
+  prior: 0.4
+  fitted: 0.022727
+  n_zero_sample: false
+- source: ml
+  cls: IntegerUO
+  n: 83
+  tp: 6
+  fp: 42
+  fn: 3
+  tn: 32
+  measured_precision: 0.125
+  prior: 0.62
+  fitted: 0.153125
+  n_zero_sample: false
+- source: ml
+  cls: MishandledException
+  n: 83
+  tp: 0
+  fp: 0
+  fn: 19
+  tn: 64
+  measured_precision: 0.0
+  prior: 0.55
+  fitted: 0.03125
+  n_zero_sample: false
+- source: ml
+  cls: Reentrancy
+  n: 83
+  tp: 12
+  fp: 42
+  fn: 3
+  tn: 26
+  measured_precision: 0.222222
+  prior: 0.78
+  fitted: 0.253914
+  n_zero_sample: false
+- source: ml
+  cls: Timestamp
+  n: 83
+  tp: 8
+  fp: 14
+  fn: 4
+  tn: 57
+  measured_precision: 0.363636
+  prior: 0.8
+  fitted: 0.38843
+  n_zero_sample: false
+- source: ml
+  cls: TransactionOrderDependence
+  n: 83
+  tp: 0
+  fp: 0
+  fn: 9
+  tn: 74
+  measured_precision: 0.0
+  prior: 0.7
+  fitted: 0.039773
+  n_zero_sample: false
+- source: ml
+  cls: UnusedReturn
+  n: 83
+  tp: 4
+  fp: 41
+  fn: 6
+  tn: 32
+  measured_precision: 0.088889
+  prior: 0.55
+  fitted: 0.115088
+  n_zero_sample: false
+- source: slither
+  cls: CallToUnknown
+  n: 83
+  tp: 13
+  fp: 27
+  fn: 4
+  tn: 39
+  measured_precision: 0.325
+  prior: 0.7
+  fitted: 0.346307
+  n_zero_sample: false
+- source: slither
+  cls: DenialOfService
+  n: 83
+  tp: 1
+  fp: 4
+  fn: 9
+  tn: 69
+  measured_precision: 0.2
+  prior: 0.55
+  fitted: 0.219886
+  n_zero_sample: false
+- source: slither
+  cls: ExternalBug
+  n: 83
+  tp: 8
+  fp: 32
+  fn: 5
+  tn: 38
+  measured_precision: 0.2
+  prior: 0.5
+  fitted: 0.217045
+  n_zero_sample: false
+- source: slither
+  cls: GasException
+  n: 83
+  tp: 1
+  fp: 4
+  fn: 8
+  tn: 70
+  measured_precision: 0.2
+  prior: 0.65
+  fitted: 0.225568
+  n_zero_sample: false
+- source: slither
+  cls: IntegerUO
+  n: 83
+  tp: 0
+  fp: 5
+  fn: 9
+  tn: 69
+  measured_precision: 0.0
+  prior: 0.8
+  fitted: 0.045455
+  n_zero_sample: false
+- source: slither
+  cls: MishandledException
+  n: 83
+  tp: 4
+  fp: 1
+  fn: 15
+  tn: 63
+  measured_precision: 0.8
+  prior: 0.72
+  fitted: 0.795455
+  n_zero_sample: false
+- source: slither
+  cls: Reentrancy
+  n: 83
+  tp: 11
+  fp: 24
+  fn: 4
+  tn: 44
+  measured_precision: 0.314286
+  prior: 0.82
+  fitted: 0.343019
+  n_zero_sample: false
+- source: slither
+  cls: Timestamp
+  n: 83
+  tp: 7
+  fp: 13
+  fn: 5
+  tn: 58
+  measured_precision: 0.35
+  prior: 0.45
+  fitted: 0.355682
+  n_zero_sample: false
+- source: slither
+  cls: TransactionOrderDependence
+  n: 83
+  tp: 0
+  fp: 9
+  fn: 9
+  tn: 65
+  measured_precision: 0.0
+  prior: 0.6
+  fitted: 0.034091
+  n_zero_sample: false
+- source: slither
+  cls: UnusedReturn
+  n: 83
+  tp: 2
+  fp: 1
+  fn: 8
+  tn: 72
+  measured_precision: 0.666667
+  prior: 0.75
+  fitted: 0.671402
+  n_zero_sample: false

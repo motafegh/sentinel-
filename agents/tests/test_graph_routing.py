@@ -248,24 +248,44 @@ class TestMlAssessmentNode:
 
     @pytest.mark.asyncio
     async def test_mcp_error_dict_sets_error(self, base_state):
+        # Rule 5C (CLAUDE.md, 2026-06-25): ML service error must surface as
+        # an explicit unavailable payload (ml_result.ran=False + reason +
+        # detail), NOT an empty dict — an empty dict is indistinguishable
+        # from a successful run that produced no findings. Downstream
+        # consumers must be able to distinguish the two.
         error_response = {"error": "inference timeout", "detail": "GPU busy"}
         with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(return_value=error_response)):
             result = await ml_assessment(base_state)
 
-        assert result["ml_result"] == {}
+        # Old contract was: result["ml_result"] == {}  — silent-skip
+        # New contract is: result["ml_result"] = {"ran": False, ...}
+        assert result["ml_result"]["ran"] is False
+        assert result["ml_result"]["reason"] == "inference timeout"
+        assert "GPU busy" in result["ml_result"]["detail"]
+        # Error is still surfaced in the report's top-level error field.
         assert "ml_assessment" in result["error"]
         assert "inference timeout" in result["error"]
+        # Tool status also carries the failure forward (Rule 5C).
+        assert "tool_status" in result
+        assert result["tool_status"]["ml"]["ran"] is False
+        assert result["tool_status"]["ml"]["reason"] == "inference timeout"
 
     @pytest.mark.asyncio
     async def test_exception_sets_error_and_empty_result(self, base_state):
+        # Rule 5C: a raised exception (e.g., MCP transport failure) must
+        # also surface as the unavailable payload, not an empty dict.
         with patch("src.orchestration.nodes._helpers._call_mcp_tool",
                    new=AsyncMock(side_effect=ConnectionError("MCP server down"))):
             result = await ml_assessment(base_state)
 
-        assert result["ml_result"] == {}
+        assert result["ml_result"]["ran"] is False
+        assert result["ml_result"]["reason"] == "exception"
+        assert "MCP server down" in result["ml_result"]["detail"]
         assert "ml_assessment" in result["error"]
         assert "MCP server down" in result["error"]
+        assert result["tool_status"]["ml"]["ran"] is False
+        assert result["tool_status"]["ml"]["reason"] == "exception"
 
     @pytest.mark.asyncio
     async def test_missing_contract_code_still_calls_mcp(self, ml_high):
@@ -331,7 +351,7 @@ class TestRagResearchNode:
             return rag_chunks
         with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
-        assert "Reentrancy" in captured.get("query", "")
+        assert "reentrancy" in captured.get("query", "").lower()
 
 
 # ---------------------------------------------------------------------------
@@ -353,8 +373,8 @@ class TestRagResearchNode:
             return rag_chunks
         with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
-        # Query must reference ExternalBug and the oracle contract name
-        assert "ExternalBug" in captured.get("query", "")
+        # Query must reference external dependency/oracle and the oracle contract name
+        assert "oracle" in captured.get("query", "").lower()
         assert "ChainlinkOracle" in captured.get("query", "")
 
     @pytest.mark.asyncio
@@ -374,7 +394,7 @@ class TestRagResearchNode:
             return rag_chunks
         with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
-        assert "Reentrancy" in captured.get("query", "")
+        assert "reentrancy" in captured.get("query", "").lower()
         assert "ChainlinkOracle" not in captured.get("query", "")
 
 
@@ -628,7 +648,12 @@ class TestFullGraphIntegration:
 
     @pytest.mark.asyncio
     async def test_ml_failure_still_produces_report(self):
-        async def mock_failing(url, tool, args):
+        # Rule 5C (CLAUDE.md, 2026-06-25): an ML failure must NOT silently
+        # produce a "LOW RISK" recommendation. The synthesizer's rule-based
+        # recommendation explicitly notes ML failure, and `tool_status.ml`
+        # surfaces the failure so the eval layer can distinguish "ML ran
+        # clean" from "ML never ran."
+        async def mock_failing(server_url, tool_name, arguments):
             raise ConnectionError("inference server unreachable")
 
         graph = build_graph(use_checkpointer=False)
@@ -641,8 +666,13 @@ class TestFullGraphIntegration:
 
         report = result.get("final_report")
         assert report is not None
+        # ML failure must be called out — not buried as "LOW RISK" silence.
         assert "ML assessment failed" in report["recommendation"]
         assert report["error"] is not None
+        # Rule 5C: tool_status carries the failure forward to the eval layer.
+        ts = result.get("tool_status", {}) or {}
+        assert ts.get("ml", {}).get("ran") is False
+        assert "inference server unreachable" in ts["ml"]["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -1058,8 +1088,12 @@ class TestQuickScreenNode:
         assert "reentrancy-eth" in hits["slither"]
 
     @pytest.mark.asyncio
-    async def test_aderyn_not_installed_is_non_fatal(self, base_state):
-        # FileNotFoundError from aderyn subprocess → ignored, returns empty aderyn list.
+    async def test_aderyn_not_installed_surfaces_status(self, base_state):
+        # Rule 5C (CLAUDE.md, 2026-06-25): when Aderyn is unresolvable, the
+        # node MUST stay non-fatal (intentional) but the failure MUST surface
+        # in `tool_status["aderyn"]` with ran=False and a precise reason.
+        # An empty aderyn list alone is no longer sufficient — that is the
+        # exact ambiguity that produced the silent-skip rabbit hole.
         with patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile") as mock_tmp, \
              patch("os.unlink"), \
              patch("subprocess.run", side_effect=FileNotFoundError("aderyn not found")):
@@ -1070,7 +1104,15 @@ class TestQuickScreenNode:
             with patch.dict("sys.modules", {"slither": None}):
                 result = await quick_screen(base_state)
 
+        # Node stays non-fatal — empty aderyn hits are still valid output.
         assert result["quick_screen_hits"]["aderyn"] == []
+        # ...but the failure MUST be visible in tool_status (Rule 5C).
+        assert "tool_status" in result
+        assert "aderyn" in result["tool_status"]
+        status = result["tool_status"]["aderyn"]
+        assert status["ran"] is False
+        assert status["reason"] == "binary_not_found"
+        assert "aderyn" in status["detail"]
 
     @pytest.mark.asyncio
     async def test_result_always_has_both_keys(self, base_state):
@@ -1084,6 +1126,10 @@ class TestQuickScreenNode:
         assert "aderyn"  in hits
         assert isinstance(hits["slither"], list)
         assert isinstance(hits["aderyn"],  list)
+        # Rule 5C: tool_status must also be present (carries Aderyn's ran=False).
+        assert "tool_status" in result
+        assert "aderyn" in result["tool_status"]
+        assert result["tool_status"]["aderyn"]["ran"] is False
 
     @pytest.mark.asyncio
     async def test_synthesizer_falls_back_without_precomputed_verdicts(self, base_state, ml_high):

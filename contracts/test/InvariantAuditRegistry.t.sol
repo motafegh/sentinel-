@@ -25,12 +25,17 @@ contract AuditRegistryHandler is Test {
         registry = _registry;
         token    = _token;
 
-        // Set up a fixed pool of actors
+        // Set up a fixed pool of actors (addresses only, no transfers yet).
+        // Funding happens in fundActors() after the handler itself receives
+        // tokens from the test setUp().
         for (uint256 i = 0; i < 5; i++) {
-            address a = makeAddr(string(abi.encode("actor", i)));
-            actors.push(a);
-            // Fund each actor
-            _token.transfer(a, 10_000 * 10 ** 18);
+            actors.push(makeAddr(string(abi.encode("actor", i))));
+        }
+    }
+
+    function fundActors() external {
+        for (uint256 i = 0; i < actors.length; i++) {
+            token.transfer(actors[i], 10_000 * 10 ** 18);
         }
     }
 
@@ -105,6 +110,9 @@ contract InvariantAuditRegistryTest is Test {
         // Transfer a large supply budget to the handler for actor funding
         token.transfer(address(handler), 500_000 * 10 ** 18);
 
+        // Fund actors now that the handler has tokens
+        handler.fundActors();
+
         // Pre-populate some fixed target addresses for submitAudit calls
         for (uint256 i = 0; i < 3; i++) {
             _targets.push(makeAddr(string(abi.encode("target", i))));
@@ -136,7 +144,7 @@ contract InvariantAuditRegistryTest is Test {
     }
 
     /// @dev Token contract holds exactly the sum of all staked balances.
-    function invariant_contract_balance_matches_staked() public view {
+    function invariant_contract_balance_matches_staked() public {
         address[] memory actors = new address[](5);
         for (uint256 i = 0; i < 5; i++) {
             actors[i] = makeAddr(string(abi.encode("actor", i)));
@@ -147,6 +155,6 @@ contract InvariantAuditRegistryTest is Test {
             sumStaked += token.stakedBalance(actors[i]);
         }
 
-        assertEq(token.balanceOf(address(token)), sumStaked, "contract balance ≠ sum of staked");
+        assertEq(token.balanceOf(address(token)), sumStaked, "contract balance != sum of staked");
     }
 }

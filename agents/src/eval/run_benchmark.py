@@ -140,6 +140,10 @@ def _load_contract_eval(
             vv.get("vulnerability_class", "") for vv in final_report.get("vulnerability_verdicts", []) or []
         },
         eye_predictions=ml_result.get("eye_predictions"),
+        # Rule 5C (CLAUDE.md, 2026-06-25): load tool_status so the matrix
+        # builder can exclude contracts where a tool didn't run from that
+        # tool's confusion-matrix counts.
+        tool_status=raw.get("tool_status", {}) or {},
     )
 
 

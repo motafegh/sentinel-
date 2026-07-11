@@ -302,3 +302,76 @@ class TestHotspotsEndpoint:
         assert client.post("/hotspots", json={"source_code": ""}).status_code          == 422
         assert client.post("/hotspots", json={"source_code": "not solidity"}).status_code == 422
         assert client.post("/hotspots", json={}).status_code                            == 422
+
+
+# ------------------------------------------------------------------
+# P5 — model_hash reproducibility tracking (2026-06-26)
+# ------------------------------------------------------------------
+
+class TestModelHash:
+    """Tests for model hash exposure via /health and /predict endpoints."""
+
+    def test_health_returns_model_hash(self, client):
+        """
+        /health must return model_hash — a 64-char hex string (SHA-256).
+
+        This hash is used for reproducibility tracking and ZK anchoring.
+        """
+        response = client.get("/health")
+        assert response.status_code == 200
+
+        body = response.json()
+        assert "model_hash" in body, "/health must include model_hash"
+
+        model_hash = body["model_hash"]
+        assert isinstance(model_hash, str), "model_hash must be a string"
+        assert len(model_hash) == 64, f"model_hash must be 64 chars (SHA-256 hex), got {len(model_hash)}"
+        assert all(c in "0123456789abcdef" for c in model_hash), "model_hash must be lowercase hex"
+
+    def test_predict_returns_model_hash(self, client):
+        """
+        /predict must return model_hash in the response.
+
+        This allows the agents pipeline to propagate the hash through state
+        and include it in the final audit report.
+        """
+        response = client.post(
+            "/predict",
+            json={"source_code": VAULT_CONTRACT},
+        )
+        assert response.status_code == 200
+
+        body = response.json()
+        assert "model_hash" in body, "/predict must include model_hash"
+
+        model_hash = body["model_hash"]
+        assert isinstance(model_hash, str), "model_hash must be a string"
+        assert len(model_hash) == 64, f"model_hash must be 64 chars (SHA-256 hex), got {len(model_hash)}"
+
+    def test_model_hash_consistent_across_requests(self, client):
+        """
+        model_hash must be identical across /health and /predict calls.
+
+        The hash is computed once at startup from the checkpoint file.
+        It should not change between requests.
+        """
+        health_hash = client.get("/health").json()["model_hash"]
+        predict_hash = client.post("/predict", json={"source_code": VAULT_CONTRACT}).json()["model_hash"]
+
+        assert health_hash == predict_hash, "model_hash must be consistent across endpoints"
+
+    def test_model_hash_stable_across_restarts(self, client):
+        """
+        model_hash must be stable across API restarts (same checkpoint).
+
+        This test verifies that the hash is computed from the checkpoint file,
+        not from in-memory state that might vary.
+
+        Note: This test runs in the same process, so it only verifies that
+        the hash is computed deterministically. A true restart test would
+        require spawning a new process.
+        """
+        hash1 = client.get("/health").json()["model_hash"]
+        hash2 = client.get("/health").json()["model_hash"]
+
+        assert hash1 == hash2, "model_hash must be stable within the same process"

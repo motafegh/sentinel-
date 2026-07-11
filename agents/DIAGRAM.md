@@ -2,7 +2,7 @@
 
 > **Scope:** whole-module reference for `~/projects/sentinel/agents/`.
 > Source-of-truth is the code; this is a single-page visual index.
-> Last verified: 2026-06-23.
+> Last verified: 2026-06-27.
 
 ---
 
@@ -11,8 +11,8 @@
 ```
                           ┌──────────────────────────────────────────────────────────────┐
                           │              SENTINEL Agents module                         │
-                          │   LangGraph orchestration of a 13-node audit pipeline      │
-                          │   backed by 4 MCP servers, a hybrid RAG, and an LLM client │
+                          │   LangGraph orchestration of a 14-node audit pipeline      │
+                          │   backed by 5 MCP servers, a hybrid RAG, and an LLM client │
                           └──────────────────────────────────────────────────────────────┘
                                                   │
    ┌──────────────────────────────────────────────┼────────────────────────────────────────┐
@@ -20,8 +20,8 @@
    ▼                                              ▼                                        ▼
 ┌──────────────────────┐               ┌──────────────────────┐                ┌──────────────────────┐
 │  src/orchestration/  │               │     src/mcp/servers/ │                │      src/rag/        │
-│  13 LangGraph nodes  │               │  4 SSE MCP servers   │                │  Hybrid retriever    │
-│  AuditState schema   │◄────SSE──────►│  :8010/11/12/13      │                │  FAISS + BM25        │
+│  14 LangGraph nodes  │               │  5 SSE MCP servers   │                │  Hybrid retriever    │
+│  AuditState schema   │◄────SSE──────►│  :8010/11/12/13/14   │                │  FAISS + BM25        │
 │  routing logic       │               │  Tool definitions    │                │  6 fetchers          │
 └──────────────────────┘               └──────────┬───────────┘                └──────────┬───────────┘
             │                                     │                                        │
@@ -45,20 +45,20 @@
 
 ---
 
-## 2. Orchestration — The 13-Node LangGraph
+## 2. Orchestration — The 14-Node LangGraph
 
 ```
                                   ┌──────────────────────────────────────────────┐
-                                  │   13-node StateGraph (orchestration/nodes.py) │
-                                   │   AuditState TypedDict, 29 fields            │
+                                  │   14-node StateGraph (orchestration/nodes/)   │
+                                   │   AuditState TypedDict                       │
                                   └──────────────────────────────────────────────┘
                                                           │
    START                                                  ▼
      │         ┌──────────────────────────────────────────────────────────────────────┐
      │         │  TIER 0 — every contract (always runs, no shortcuts)                │
      │         ├──────────────────────────────────────────────────────────────────────┤
-     │         │  ① quick_screen          Slither + Aderyn, High/Critical only        │
-     │         │  ② ml_assessment         MCP :8010 → POST /predict  (Module 1)      │
+     │         │  ① ml_assessment         MCP :8010 → POST /predict  (Module 1)      │
+     │         │  ② quick_screen          Slither + Aderyn, High/Critical only        │
      │         └──────────────────────────────────────────────────────────────────────┘
      │                                       │
      ▼                                       ▼
@@ -76,32 +76,33 @@
    │      (scoped to ML-flagged classes)     │                         │
    │  ⑥ graph_explain  MCP :8013  hotspots   │                         │
    │      (real GNN attention, Slither fallback)                       │
+   │  ⑦ formal_verification  Halmos symbolic execution                 │
    └─────────────────────────────────────────┘                         │
                   │                                                    │
                   ▼                                                    │
-              ⑦ audit_check        MCP :8012  get_audit_history        │
+              ⑧ audit_check        MCP :8012  get_audit_history
                   │                  (Sepolia AuditRegistry)            │
                   ▼                                                    │
-              ⑧ consensus_engine   A.6/A.7 — weighted vote (ML        │
+              ⑨ consensus_engine   A.6/A.7 — weighted vote (ML
                   │                  discounted, ML_WEIGHT_SCALE=0.5); │
                   │                  Bayesian confidence                │
                   ▼                                                    │
-              ⑨ cross_validator    A.4 — Prosecutor/Defender/Judge    │
+              ⑩ cross_validator    A.4 — Prosecutor/Defender/Judge
                   │                  debate (LLM, 3 sequential calls)  │
-                  ├────────────────────────────────────────────────────┤
+                  ├────────────────────────────────────────────┤
                   │                       [fast path rejoins here]    │
                   ▼                                                    ▼
-                          ⑩ synthesizer
+                          ⑪ synthesizer
                           Assembles final_report (JSON + LLM narrative)
                                           │
                                           ▼
-                          ⑪ reflection       A.3 — self-critique (LLM optional)
+                          ⑫ reflection       A.3 — self-critique (LLM optional)
                                           │
                                           ▼
-                          ⑫ explainer        A.8 — LIME attribution (ml/slither/rag %)
+                          ⑬ explainer        A.8 — LIME attribution (ml/slither/rag %)
                                           │
                                           ▼
-                          ⑬ visualizer       A.9 — interactive HTML (hotspot map)
+                          ⑭ visualizer       A.9 — interactive HTML (hotspot map)
                                           │
                                           ▼
                                          END
@@ -122,9 +123,10 @@
 ### Parallel vs Sequential
 
 ```
-  evidence_router ──┬─► rag_research  ─┐
-                    ├─► static_analysis ┤
-                    └─► graph_explain   ┴─► audit_check ─► consensus ─► cross_validator ─► synthesizer
+  evidence_router ──┬─► rag_research        ┐
+                    ├─► static_analysis      ┤
+                    ├─► graph_explain        ┤
+                    └─► formal_verification  ┴─► audit_check ─► consensus ─► cross_validator ─► synthesizer
                                                                                               │
                                                                                        (rejoins fast path)
 ```
@@ -135,7 +137,7 @@
 
 ```
   ┌────────────────────────────────────────────────────────────────────────────────┐
-  │  src/mcp/servers/        4 SSE/HTTP servers, each a Starlette app + uvicorn   │
+  │  src/mcp/servers/        5 SSE/HTTP servers, each a Starlette app + uvicorn   │
   │  Pattern: SseServerTransport("/messages/")  +  Route("/sse")  +  Route("/health")│
   │  Shared httpx.AsyncClient (lifespan-managed) — avoids per-call TCP handshake   │
   └────────────────────────────────────────────────────────────────────────────────┘
@@ -150,14 +152,17 @@
                                                               (FAISS + BM25, Nomic embed)
                                                               5 fetchers (Phase A) + DeFiHackLabs
 
-  :8012  sentinel-audit             get_audit_history        Sepolia AuditRegistry
-                                     get_latest_audit         (0x14E5...fAf)
-                                     check_audit_exists
+  :8012  sentinel-audit             get_audit_history        audit/ package
+                                     get_latest_audit         (Sepolia AuditRegistry,
+                                     check_audit_exists        0x14E5...fAf)
 
   :8013  sentinel-graph-inspector   get_graph_hotspots       Module 1 FastAPI /hotspots
                                                               (real GNN attention)
                                                               Fallback chain:
                                                               ML API → Slither → mock
+
+  :8014  sentinel-representation    get_embeddings           Module 1 FastAPI /embeddings
+                                                              (GNN node embedding vectors)
 ```
 
 ### Connection Pattern (per node call)
@@ -213,18 +218,26 @@
   │  confidence_by_class  dict[str, float]     │  ← consensus_engine (A.7)
   │  metric_attribution   dict[str, dict]      │  ← explainer (A.8)
   │  debate_transcript    dict[str, str]       │  ← cross_validator (A.4 debate)
-  └────────────────────────────────────────────┘
+  │  evidence_list        list (append-reducer) │  ← any node (P2)
+  │  verdict_provable     dict[str, str]        │  ← synthesizer (ZK-anchorable)
+  │  verdict_full         dict[str, str]        │  ← synthesizer (all evidence)
+  └──────────────────────────────────────────┘
   ┌─── FINAL OUTPUT ───────────────────────────┐
   │  final_report         dict                 │  ← synthesizer (full enrichment)
   │  narrative            str | None           │  ← synthesizer (LLM Markdown)
   │  hotspot_visualization str | None          │  ← visualizer (A.9)
   │  reflection_notes     dict                 │  ← reflection (A.3)
   └────────────────────────────────────────────┘
-  ┌─── ERROR ──────────────────────────────────┐
+  ┌─── ERROR ───────────────────────────────────┐
   │  error                str | None           │  ← any node (non-fatal)
-  └────────────────────────────────────────────┘
+  └──────────────────────────────────────────┘
+  ┌─── RULE 5C / SECURITY / PROVENANCE (P2–P5) ────┐
+  │  tool_status         dict (merge-reducer)      │  ← any node (ran/reason per tool)
+  │  injection_matches   list (append-reducer)     │  ← cross_validator, synthesizer (P4)
+  │  model_hash          str                       │  ← ml_assessment (SHA-256, P5)
+  └──────────────────────────────────────────────┘
   ┌─── PHASE B PLACEHOLDERS (no node yet) ─────┐
-  │  symbolic_findings    list[dict]           │  ← Halmos/Z3
+  │  symbolic_findings    list[dict]           │  ← formal_verification (P8a)
   │  bytecode_analysis    dict                 │  ← Gigahorse
   │  taint_flows          list[dict]           │  ← Taint analyzer
   │  permission_graph     dict                 │  ← Access control
@@ -384,12 +397,14 @@
   └────────────────────────────────────────────────────────────────────┘
 
   4 model roles (env-configurable):
-  ┌─────────────────┬────────────────────────────────────────┐
-  │ FAST            │  gemma-4-e2b-it          (2 tok/s up)  │  debate, validation
-  │ STRONG          │  qwen2.5-coder-7b-inst   (slow)        │  narrative, synthesis
-  │ EMBED           │  nomic-embed-text-v1.5                 │  RAG embeddings
-  │ SYNTHESIZER     │  STRONG by default                     │  final narrative
-  └─────────────────┴────────────────────────────────────────┘
+  ┌─────────────────┬──────────────────────────┬──────────────────────────────┐
+  │ FAST            │  gemma-4-e2b-it           │  debate, validation, reflection
+  │ STRONG          │  gemma-4-e2b-it           │  narrative, synthesis (FIX-18)
+  │ CODER           │  qwen2.5-coder-7b-instruct│  Solidity analysis, P/D/J debate
+  │ EMBED           │  nomic-embed-text-v1.5   │  RAG embeddings (768-dim)
+  └─────────────────┴──────────────────────────┴──────────────────────────────┘
+
+  SENTINEL_DETERMINISTIC=1 → disables all LLM calls + RAG (P5 / ZK mode)
 
   Timeouts (env-configurable, 2026-06-21 retune):
     CROSS_VALIDATOR_TIMEOUT_S  = 90    (single-pass fallback)
@@ -409,7 +424,7 @@
 
 ```
   ml_result ─────┐
-  static_findings┼─►  ⑧ consensus_engine
+  static_findings┼─►  ⑨ consensus_engine
   aderyn_hits   ─┘    A.6 weighted vote  (per-class reliability, ML discounted)
                           │  ACCURACY_WEIGHTS × ML_WEIGHT_SCALE (0.5)
                           ▼
@@ -418,7 +433,7 @@
                                                  confidence, verdict}}
                           │
                           ▼
-                    ⑨ cross_validator  (A.4)
+                    ⑩ cross_validator  (A.4)
                     DEBATE_MODE=on  →  3 sequential LLM calls:
                       ┌──────────────────────────────────────────┐
                       │  Prosecutor   reads source + evidence   │
@@ -440,7 +455,8 @@
                     confirmations, contradictions
                           │
                           ▼
-                    ⑩ synthesizer
+                    ⑪ synthesizer
+                       • fuse(evidence_list) → verdict_provable + verdict_full  (P2)
                        • assembles final_report (JSON)
                        • risk_probability, top_vulnerability
                        • overall_verdict = max(verdicts by rank)
@@ -448,17 +464,17 @@
                        • persists to data/reports/{address}.json
                           │
                           ▼
-                    ⑪ reflection (A.3)   unused evidence, contradictions,
+                    ⑫ reflection (A.3)   unused evidence, contradictions,
                        uncertain verdicts, known failure modes
                           │
                           ▼
-                    ⑫ explainer (A.8)    per-class {ml_pct, slither_pct,
+                    ⑬ explainer (A.8)    per-class {ml_pct, slither_pct,
                        rag_pct} attribution (sums to ~100)
                        Folds confidence_by_class + consensus_verdict +
                        reflection_notes INTO final_report
                           │
                           ▼
-                    ⑬ visualizer (A.9)   interactive HTML hotspot map
+                    ⑭ visualizer (A.9)   interactive HTML hotspot map
                        data/reports/{address}_hotspot.html
 ```
 
@@ -526,17 +542,28 @@
   run_real_audit.py           # real-LLM E2E harness (--no-llm / --profile)
   audit_gt_labels.py          # ground-truth labels for eval
   eval_benchmark.py           # evaluation benchmark runner
+  build_reliability_matrix.py # P3: builds per-tool reliability matrix from eval run
+  audit_labels.py             # extended label set
 
-  tests/  (402 unit + integration tests, 26 files, ~6,135 lines)
+  tests/  (631 passing, 3 skipped — ~42 test files)
   ──────
-  test_graph_routing.py       # 1,075L — full graph, all 13 nodes
-  test_eval_framework.py      # 471L — eval harness scoring
-  test_ws4_2_selective_gating.py # 383L — WS4.2 asymmetric debate gating
-  test_representation_server.py  # 356L — GNN embedding MCP server
-  test_ws3_hotspot_excerpts.py   # 310L — WS3 hotspot-guided debate prompts
-  test_verdict_reconciliation.py # 268L — 8-case reconciliation table
-  test_verdict_integrity.py   # 204L — FN/FP invariants
-  ... (+ 18 more files)
+  test_graph_routing.py            # full graph, all 14 nodes
+  test_smoke_e2e.py                # end-to-end deep/fast/screen-escalated paths
+  test_eval_framework.py           # eval harness + Fbeta scoring
+  test_ws4_2_selective_gating.py   # WS4.2 asymmetric debate gating
+  test_ws3_hotspot_excerpts.py     # WS3 hotspot-guided debate prompts
+  test_verdict_fuse.py             # fuse() dual-tier verdict (P2)
+  test_verdict_evidence.py         # Evidence dataclass + emit (P2)
+  test_verdict_reliability.py      # L1/L3/schema-mismatch paths (P3)
+  test_verdict_integrity.py        # FN/FP invariants
+  test_comment_strip.py            # Layer 1 injection defense (P4)
+  test_injection_detect.py         # Layer 3 — 8 patterns (P4)
+  test_adversarial_corpus.py       # 8 adversarial contracts, P4
+  test_deterministic_mode.py       # SENTINEL_DETERMINISTIC=1 (P5)
+  test_formal_verification.py      # Halmos node (P8a)
+  test_p10_gateway.py              # SQLite JobStore + crash recovery (P10)
+  test_routing_isolation.py        # routing nodes have no LLM imports
+  ... (+ 27 more files covering MCP, RAG, config, eval, etc.)
 ```
 
 ---
@@ -549,7 +576,16 @@
   │   ├── state.py            AuditState TypedDict, 29 fields, 1 append-reducer
   │   ├── routing.py          DEEP_THRESHOLDS, ROUTING_RULES, CLASS_TO_DETECTORS,
   │   │                       compute_active_tools, compute_verdict, prob_to_severity
-  │   ├── nodes.py            13 async node functions (the core logic)
+  │   ├── nodes/              14 async node implementations (package, P2)
+  │   │   ├── ml_assessment.py, quick_screen.py, evidence_router.py
+  │   │   ├── rag_research.py, static_analysis.py, graph_explain.py
+  │   │   ├── formal_verification.py (P8a Halmos), audit_check.py
+  │   │   ├── consensus_engine.py, cross_validator.py, synthesizer.py
+  │   │   ├── reflection.py, explainer.py, visualizer.py
+  │   │   └── _helpers.py     shared: _call_mcp_tool, _llm_enabled, AderynRunError
+  │   ├── verdict/            verdict package (P2)
+  │   │   ├── fuse.py         sole verdict producer → verdict_provable + verdict_full
+  │   │   ├── evidence.py, reliability.py, emit.py, verdict.py
   │   ├── graph.py            build_graph(), conditional edges, lazy audit_graph,
   │   │                       SqliteSaver checkpointing (PEP 562)
   │   ├── consensus.py        A.6 — weighted vote, ML_WEIGHT_SCALE
@@ -560,16 +596,18 @@
   │   └── timing.py           step_timer() / timed_node() (2026-06-21)
   │
   ├── src/mcp/servers/
-  │   ├── inference_server.py       :8010  predict, batch_predict (501L)
-  │   ├── rag_server.py             :8011  search (353L)
-  │   ├── audit_server.py           :8012  get_audit_history, get_latest_audit (717L)
-  │   └── graph_inspector_server.py :8013  get_graph_hotspots (real GNN) (544L)
+  │   ├── inference_server.py       :8010  predict, batch_predict
+  │   ├── rag_server.py             :8011  search
+  │   ├── audit/                    :8012  get_audit_history, get_latest_audit, check_audit_exists (package, P2.5)
+  │   ├── graph_inspector_server.py :8013  get_graph_hotspots (GNN attention / Slither fallback)
+  │   └── representation_server.py  :8014  get_embeddings (GNN node vectors, NEW)
   │
   ├── src/rag/
   │   ├── retriever.py        HybridRetriever (FAISS + BM25 + RRF) (334L)
   │   ├── chunker.py          RecursiveCharacterTextSplitter (1536 chars) (199L)
   │   ├── embedder.py         Nomic-embed-text via LM Studio (228L)
-  │   ├── build_index.py      Full rebuild, atomic + rollback (661L)
+  │   ├── build_index/        Full rebuild package (was build_index.py 661L, split P2.5)
+  │   │   └── __main__.py, _orchestrator.py, _pipeline.py, _io.py, _metadata.py, _paths.py
   │   └── fetchers/
   │       ├── base_fetcher.py        Abstract (94L)
   │       ├── github_fetcher.py      DeFiHackLabs .sol (478L)
@@ -590,8 +628,31 @@
   ├── src/llm/
   │   └── client.py           LM Studio (httpx), 4 model roles (233L)
   │
+  ├── src/security/           Prompt-injection defense (P4)
+  │   ├── comment_strip.py    Layer 1: state-machine comment stripper
+  │   ├── prompt_delimit.py   Layer 2: <<CONTRACT_SOURCE>> structural delimiter
+  │   ├── injection_detect.py Layer 3: 8-pattern injection scanner
+  │   └── prompt_sanitize.py  Orchestrator
+  │
+  ├── src/api/                Audit gateway (P10)
+  │   ├── gateway.py          FastAPI /audit + /health + background health monitor
+  │   ├── sqlite_job_store.py SQLite-backed jobs (crash recovery, survives restart)
+  │   ├── job_store.py        Abstract interface
+  │   └── models.py           Pydantic request/response models
+  │
+  ├── src/eval/               Evaluation framework (P0/P3)
+  │   ├── pipeline_metrics.py Fbeta(β=2), macro/per-class confusion matrix
+  │   ├── gates.py            9 gate assertions (must all pass for run to count)
+  │   ├── reliability_matrix.py P3: per-tool TP/FP/FN/TN builder
+  │   ├── reliability_fit.py  P3: Bayesian shrinkage fitter (α=5)
+  │   └── run_benchmark.py, benchmarks.py, regression.py
+  │
+  ├── src/config/             Externalized decision numbers (P1)
+  │   ├── schema.py           SentinelConfig Pydantic model
+  │   └── loader.py           get_config() singleton
+  │
   ├── scripts/                Smoke + E2E + eval harnesses (8 files)
-  ├── tests/                  26 files, 402 tests, ~6,135 lines
+  ├── tests/                  ~42 files, 631 passing, 3 skipped
   ├── data/                   index/, reports/, checkpoints.db, feedback_state.json
   └── README.md               user-facing quickstart
 ```

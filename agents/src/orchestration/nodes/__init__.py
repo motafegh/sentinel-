@@ -17,6 +17,7 @@ from src.orchestration.nodes.synthesizer import synthesizer
 from src.orchestration.nodes.reflection import reflection
 from src.orchestration.nodes.explainer import explainer
 from src.orchestration.nodes.visualizer import visualizer
+from src.orchestration.nodes.formal_verification import formal_verification
 
 # Re-export helpers for backward-compat (tests import these directly)
 from src.orchestration.nodes._helpers import _run_aderyn_on_file
@@ -35,5 +36,6 @@ __all__ = [
     "reflection",
     "explainer",
     "visualizer",
+    "formal_verification",
     "_run_aderyn_on_file",
 ]

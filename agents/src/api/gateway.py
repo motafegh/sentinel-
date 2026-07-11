@@ -98,7 +98,7 @@ AUDIT_NO_LLM_DEFAULT = os.getenv("AUDIT_NO_LLM", "false").lower() in ("1", "true
 
 # ── App factory ──────────────────────────────────────────────────────────
 def create_app(
-    store: JobStore | None = None,
+    store: Any | None = None,
     *,
     graph_factory: Any | None = None,
     no_llm: bool | None = None,
@@ -139,17 +139,26 @@ def create_app(
             return build_graph(use_checkpointer=False)
         graph_factory = _default_graph_factory
 
-    # One JobStore per app instance.
+    # One JobStore per app instance — SQLite by default (P10), in-memory for tests.
     if store is None:
-        store = JobStore()
+        from src.api.sqlite_job_store import SqliteJobStore
+        _db_path = os.getenv("SENTINEL_JOBS_DB", "data/jobs.db")
+        store = SqliteJobStore(db_path=_db_path, max_completed=500)
 
-    # ── Lifespan: probe services at startup, log gateway version ──────
+    # ── Lifespan: probe services at startup, recover crashed jobs, start health monitor ──
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         logger.info(f"SENTINEL gateway v{GATEWAY_VERSION} starting up")
         logger.info(f"  no_llm={no_llm} | skip_service_probes={skip_service_probes}")
+
+        # P10: Recover jobs left in RUNNING state after a crash.
+        if hasattr(store, "recover_pending"):
+            pending = store.recover_pending()
+            for job in pending:
+                store.mark_failed(job.job_id, "gateway restart (crash recovery)")
+                logger.warning("Recovered job {} → FAILED (crash recovery)", job.job_id[:8])
+
         if not skip_service_probes and not no_llm:
-            # Best-effort probe — don't block startup on it.
             try:
                 services = await _probe_services()
                 app.state.services = services
@@ -158,7 +167,30 @@ def create_app(
                 app.state.services = []
         else:
             app.state.services = []
+
+        # P10: Background health monitor — probe every 30s.
+        _health_task: asyncio.Task | None = None
+        if not skip_service_probes:
+            async def _health_loop():
+                while True:
+                    await asyncio.sleep(30)
+                    try:
+                        services = await _probe_services()
+                        app.state.services = services
+                        down = [s for s in services if not s.ok]
+                        if down:
+                            logger.warning("Health check: {} service(s) down: {}",
+                                          len(down), [s.name for s in down])
+                    except Exception as e:
+                        logger.debug(f"Health loop error: {e}")
+
+            _health_task = asyncio.create_task(_health_loop())
+            logger.info("Background health monitor started (30s interval)")
+
         yield
+
+        if _health_task:
+            _health_task.cancel()
         logger.info("SENTINEL gateway shutting down")
 
     app = FastAPI(
@@ -189,13 +221,23 @@ def create_app(
     async def health():
         counts = store.count_by_status()
         services: list[ServiceHealth] = list(getattr(app.state, "services", []) or [])
-        if not skip_service_probes:
+        # P10: Use cached services from background monitor (no per-request probe).
+        # The background loop refreshes every 30s. Only probe on-demand if
+        # no cached results exist (first request before monitor ran).
+        if not services and not skip_service_probes:
             try:
                 services = await _probe_services()
+                app.state.services = services
             except Exception as e:
                 logger.debug(f"/health service probe failed: {e}")
+
+        # P10: Status considers BOTH job failures AND service health.
+        job_degraded = counts.get("failed", 0) >= max(counts.get("completed", 1), 1)
+        service_down = any(not s.ok for s in services)
+        status = "degraded" if (job_degraded or service_down) else "ok"
+
         return HealthResponse(
-            status="ok" if counts.get("failed", 0) < max(counts.get("completed", 1), 1) else "degraded",
+            status=status,
             gateway=GATEWAY_VERSION,
             jobs=counts,
             services=services,

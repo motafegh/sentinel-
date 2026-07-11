@@ -155,3 +155,30 @@ class Evidence:
             deterministic=True,
             detail={"detector": detector, "impact": impact},
         )
+
+    @staticmethod
+    def formal(source: str, vuln_class: str, polarity: "Polarity",
+               invariant: str, proven: bool, counterexample: str = "",
+               reliability: float = 0.95) -> Evidence:
+        """
+        Formal verification evidence (Halmos, Z3, Gigahorse).
+
+        - polarity=SUPPORTS: invariant violation found (vulnerability confirmed)
+        - polarity=REFUTES: invariant proven to hold (vulnerability refuted)
+        - strength: 1.0 for SUPPORTS (formal proof of violation),
+                   0.9 for REFUTES (formal proof of safety, but limited by tool coverage)
+        """
+        return Evidence(
+            source=source,
+            vuln_class=vuln_class,
+            polarity=polarity,
+            strength=1.0 if polarity == Polarity.SUPPORTS else 0.9,
+            reliability=round(float(reliability), 4),
+            kind=Kind.FORMAL,
+            deterministic=True,
+            detail={
+                "invariant": invariant,
+                "proven": proven,
+                "counterexample": counterexample[:200] if counterexample else "",
+            },
+        )

@@ -92,7 +92,48 @@ Maturity ladder — every decision number has a level:
 
 
 for learning artifacts explicitly ask Ali where to store them (e.g. `~/projects/sentinel/learning_artifacts/`),no need to say about them in MEMORY.md. 
----
+
+**C — No silent failures. No silent skips. No "fail-soft that hides the failure."**
+
+While we are building and trying different things, the system must never swallow a failure and
+continue as if nothing happened. A silent skip is a lie told to the next layer, which then
+computes a number against an absent witness (the Aderyn bug: `FileNotFoundError` caught,
+logged at `DEBUG`, `[]` returned indistinguishable from "ran clean" → 83 contracts of zero
+Aderyn findings → biased reliability matrix → biased macro-F1). **A silent failure
+manufactures a rabbit hole.**
+
+Applies to (non-exhaustive): subprocess tool calls (slither, aderyn, halmos, gigahorse,
+ityfuzz, anvil), MCP tool calls, external HTTP, optional dependency imports, fallback paths,
+default-return-on-exception, env-var substituters, "tool not installed" branches, and any
+`except Exception: return []` / `return {}` / `return None` pattern.
+
+**The contract — any of these is acceptable, none of them is silent:**
+1. **Eager error** — `raise` with a precise message naming the tool, the resolved path
+   (or `shutil.which` == None), and the exact precondition that failed.
+2. **Structured degraded return** — return a value that **carries the failure**, not one
+   that hides it: a finding dict with `detail={"skipped": True, "reason": …, "resolved": …,
+   "exit": …}` OR a sentinel whose `skipped` flag downstream code MUST check. Audit report
+   MUST serialise this so the eval layer sees it.
+3. **Explicit node-status field** — `state["tool_status"][tool] = {"ran": False, "reason": …}`,
+   and synthesizer / eval MUST treat absent `ran=True` consistently. An empty return is no
+   longer "tool absent"; `ran=False` is.
+
+**NOT acceptable:**
+- `except FileNotFoundError: logger.debug("not installed — skipping"); return []`
+- `except Exception: return [] or {}` with no status mutation
+- Logging only (log lines drop at thresholds, gone by report time)
+- A debug log + empty return that, from the caller's view, is identical to "ran clean"
+
+**Migration:** apply to new code immediately. For existing silent-skip sites found during
+other work, stop and record a `file:line` finding in the scratch `.md` (what fails silently,
+what downstream measurement it contaminates, intentional-or-not), but do NOT refactor all in
+one sweep — surface to Ali one at a time. The Aderyn site (`_helpers.py:80-118`) is the
+first finding.
+
+**Tests:** a unit test mocking a subprocess to raise `FileNotFoundError` MUST assert the
+code surfaces a status field or raises — it must NOT assert `result == []` against a value
+indistinguishable from "ran clean." Audit the existing tests when a silent-skip site is
+refactored.
 
 
 

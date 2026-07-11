@@ -77,11 +77,11 @@ def _parse(content_list) -> dict:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_list_tools_returns_three_tools():
-    """Audit server must expose exactly 3 tools."""
+async def test_list_tools_returns_four_tools():
+    """Audit server must expose exactly 4 tools (3 read + 1 write)."""
     tools = await list_tools()
     names = {t.name for t in tools}
-    assert names == {"get_latest_audit", "get_audit_history", "check_audit_exists"}
+    assert names == {"get_latest_audit", "get_audit_history", "check_audit_exists", "submit_audit"}
 
 
 @pytest.mark.asyncio

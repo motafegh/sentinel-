@@ -1,0 +1,1545 @@
+{
+  "contract": "05_emergency_stop_controlled.sol",
+  "contract_address": "0xa5fb1e1c95857dc85c4da2d312f8261ad79c4ac9",
+  "timestamp": "2026-06-26T13:22:30.008820+00:00",
+  "total_wall_s": 11.768845319747925,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 300.0
+  },
+  "routing_decisions": [
+    "CallToUnknown prob=0.273 < threshold=0.4 \u2192 skip",
+    "DenialOfService prob=0.311 >= threshold=0.3 \u2192 static_analysis+rag_research",
+    "ExternalBug prob=0.753 >= threshold=0.4 \u2192 static_analysis+rag_research",
+    "GasException prob=0.284 < threshold=0.4 \u2192 skip",
+    "IntegerUO prob=0.856 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "MishandledException prob=0.286 < threshold=0.4 \u2192 skip",
+    "Reentrancy prob=0.769 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "Timestamp prob=0.731 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "TransactionOrderDependence prob=0.286 < threshold=0.35 \u2192 skip",
+    "UnusedReturn prob=0.645 >= threshold=0.45 \u2192 static_analysis",
+    "quick_screen: slither=[] aderyn=['eth-send-unchecked-address'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {
+    "label": "confirmed_vulnerable",
+    "probabilities": {
+      "CallToUnknown": 0.2729,
+      "DenialOfService": 0.3114,
+      "ExternalBug": 0.7531,
+      "GasException": 0.2845,
+      "IntegerUO": 0.8557,
+      "MishandledException": 0.286,
+      "Reentrancy": 0.7695,
+      "Timestamp": 0.7308,
+      "TransactionOrderDependence": 0.2858,
+      "UnusedReturn": 0.6447
+    },
+    "confirmed": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.8557,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7695,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7531,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.7308,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.6447,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2845,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3114,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.286,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2858,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2729,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.8557,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7695,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7531,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.7308,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.6447,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2845,
+        "tier": null
+      }
+    ],
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "thresholds": [
+      0.4000000059604645,
+      0.5,
+      0.44999998807907104,
+      0.05000000074505806,
+      0.44999998807907104,
+      0.3499999940395355,
+      0.44999998807907104,
+      0.5,
+      0.3499999940395355,
+      0.4000000059604645
+    ],
+    "truncated": true,
+    "windows_used": 4,
+    "num_nodes": 103,
+    "num_edges": 259,
+    "eye_predictions": {
+      "gnn": {
+        "CallToUnknown": 0.0943,
+        "DenialOfService": 0.1439,
+        "ExternalBug": 0.7787,
+        "GasException": 0.1015,
+        "IntegerUO": 0.5759,
+        "MishandledException": 0.0997,
+        "Reentrancy": 0.7384,
+        "Timestamp": 0.542,
+        "TransactionOrderDependence": 0.1082,
+        "UnusedReturn": 0.7392
+      },
+      "transformer": {
+        "CallToUnknown": 0.0425,
+        "DenialOfService": 0.0537,
+        "ExternalBug": 0.8788,
+        "GasException": 0.0565,
+        "IntegerUO": 0.8975,
+        "MishandledException": 0.0598,
+        "Reentrancy": 0.8662,
+        "Timestamp": 0.8715,
+        "TransactionOrderDependence": 0.0997,
+        "UnusedReturn": 0.7695
+      },
+      "fused": {
+        "CallToUnknown": 0.0444,
+        "DenialOfService": 0.0566,
+        "ExternalBug": 0.8795,
+        "GasException": 0.0596,
+        "IntegerUO": 0.9831,
+        "MishandledException": 0.0527,
+        "Reentrancy": 0.9173,
+        "Timestamp": 0.7191,
+        "TransactionOrderDependence": 0.0768,
+        "UnusedReturn": 0.5559
+      },
+      "phase2": {
+        "CallToUnknown": 0.0371,
+        "DenialOfService": 0.0598,
+        "ExternalBug": 0.5196,
+        "GasException": 0.0421,
+        "IntegerUO": 0.7685,
+        "MishandledException": 0.0292,
+        "Reentrancy": 0.7267,
+        "Timestamp": 0.9462,
+        "TransactionOrderDependence": 0.0324,
+        "UnusedReturn": 0.7874
+      }
+    }
+  },
+  "verdicts": {
+    "CallToUnknown": "DISPUTED",
+    "DenialOfService": "SAFE",
+    "ExternalBug": "CONFIRMED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "DISPUTED",
+    "Timestamp": "CONFIRMED",
+    "UnusedReturn": "DISPUTED"
+  },
+  "quick_screen_hits": {
+    "slither": [],
+    "aderyn": [
+      "eth-send-unchecked-address"
+    ]
+  },
+  "static_findings_count": 7,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in RateLimitedVault.withdraw(uint256) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#67-82):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_m1gtl2d1.sol#80)\n",
+      "lines": [
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in RateLimitedVault.emergencyWithdraw() (../../../../../tmp/sentinel_static_m1gtl2d1.sol#102-106):\n\t- (ok,None) = owner.call{value: balance}() (../../../../../tmp/sentinel_static_m1gtl2d1.sol#104)\n",
+      "lines": [
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "function_names": [
+        "emergencyWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "timestamp",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "RateLimitedVault.withdraw(uint256) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#67-82) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- block.timestamp >= limit.lastReset + limit.periodDuration (../../../../../tmp/sentinel_static_m1gtl2d1.sol#70)\n\t- require(bool,string)(limit.usedInPeriod + amount <= limit.periodAmount,rate limit exceeded) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#75)\n",
+      "lines": [
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "eth-send-unchecked-address",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+      "lines": [
+        67
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        48,
+        84,
+        92,
+        97,
+        102
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 0,
+  "audit_history_count": 2,
+  "graph_explanations_classes": [
+    "graph_stats",
+    "analysis_mode",
+    "hotspots_by_class"
+  ],
+  "consensus_verdict": {
+    "CallToUnknown": {
+      "ml_signal": 0,
+      "slither_match": 1,
+      "aderyn_match": 0,
+      "score": 0.7,
+      "confidence": 0.4375,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.3,
+        "slither": 0.7,
+        "aderyn": 0.6
+      }
+    },
+    "DenialOfService": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 0,
+      "score": 0.0,
+      "confidence": 0.0,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.325,
+        "slither": 0.55,
+        "aderyn": 0.5
+      },
+      "overridden_from_safe": true
+    },
+    "ExternalBug": {
+      "ml_signal": 1,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.175,
+      "confidence": 1.0,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.225,
+        "slither": 0.5,
+        "aderyn": 0.45
+      }
+    },
+    "IntegerUO": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 1.01,
+      "confidence": 0.558,
+      "verdict": "LIKELY",
+      "weights": {
+        "ml": 0.31,
+        "slither": 0.8,
+        "aderyn": 0.7
+      }
+    },
+    "MishandledException": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.62,
+      "confidence": 0.3839,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.72,
+        "aderyn": 0.62
+      }
+    },
+    "Reentrancy": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 0,
+      "score": 0.39,
+      "confidence": 0.2155,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.39,
+        "slither": 0.82,
+        "aderyn": 0.6
+      },
+      "overridden_from_safe": true
+    },
+    "Timestamp": {
+      "ml_signal": 1,
+      "slither_match": 1,
+      "aderyn_match": 0,
+      "score": 0.85,
+      "confidence": 0.68,
+      "verdict": "LIKELY",
+      "weights": {
+        "ml": 0.4,
+        "slither": 0.45,
+        "aderyn": 0.4
+      }
+    },
+    "UnusedReturn": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 0,
+      "score": 0.275,
+      "confidence": 0.1642,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.75,
+        "aderyn": 0.65
+      },
+      "overridden_from_safe": true
+    }
+  },
+  "debate_transcript": {},
+  "confirmations": {
+    "ExternalBug": [
+      "ml",
+      "slither",
+      "aderyn",
+      "consensus"
+    ],
+    "IntegerUO": [
+      "ml",
+      "aderyn",
+      "consensus"
+    ],
+    "Reentrancy": [
+      "ml",
+      "consensus"
+    ],
+    "Timestamp": [
+      "ml",
+      "slither",
+      "consensus"
+    ],
+    "UnusedReturn": [
+      "ml",
+      "consensus"
+    ],
+    "CallToUnknown": [
+      "slither",
+      "consensus"
+    ],
+    "MishandledException": [
+      "aderyn",
+      "consensus"
+    ],
+    "DenialOfService": [
+      "consensus"
+    ]
+  },
+  "contradictions": {},
+  "tool_status": {
+    "ml": {
+      "ran": true,
+      "label": "confirmed_vulnerable"
+    },
+    "aderyn": {
+      "ran": true,
+      "n_findings": 4
+    }
+  },
+  "final_report": {
+    "contract_address": "0xa5fb1e1c95857dc85c4da2d312f8261ad79c4ac9",
+    "overall_label": "confirmed_vulnerable",
+    "overall_verdict": "CONFIRMED",
+    "risk_probability": 0.8557,
+    "top_vulnerability": "IntegerUO",
+    "confirmed": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.8557,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7695,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7531,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.7308,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.6447,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2845,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3114,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.286,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2858,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2729,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.8557,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7695,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7531,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.7308,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.6447,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2845,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3114,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.286,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2858,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2729,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "probabilities": {
+      "CallToUnknown": 0.2729,
+      "DenialOfService": 0.3114,
+      "ExternalBug": 0.7531,
+      "GasException": 0.2845,
+      "IntegerUO": 0.8557,
+      "MishandledException": 0.286,
+      "Reentrancy": 0.7695,
+      "Timestamp": 0.7308,
+      "TransactionOrderDependence": 0.2858,
+      "UnusedReturn": 0.6447
+    },
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "vulnerability_verdicts": [
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2729,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "slither",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.4238,
+        "attribution": {
+          "ml_pct": 21.4,
+          "slither_pct": 78.6,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3114,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.255,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7531,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "slither",
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "HIGH",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 43.0,
+          "slither_pct": 57.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2845,
+        "verdict": "SAFE",
+        "evidence_sources": [],
+        "severity": "INFO",
+        "confidence": 0.0,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.8557,
+        "verdict": "LIKELY",
+        "evidence_sources": [
+          "ml",
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "CRITICAL",
+        "confidence": 0.6763,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.286,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.7001,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7695,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml",
+          "consensus"
+        ],
+        "severity": "HIGH",
+        "confidence": 0.3527,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "Timestamp",
+        "probability": 0.7308,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "slither",
+          "consensus"
+        ],
+        "severity": "HIGH",
+        "confidence": 0.8266,
+        "attribution": {
+          "ml_pct": 42.2,
+          "slither_pct": 57.8,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2858,
+        "verdict": "SAFE",
+        "evidence_sources": [],
+        "severity": "INFO",
+        "confidence": 0.0,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.6447,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml",
+          "consensus"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 0.2921,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      }
+    ],
+    "threshold": 0.5,
+    "ml_truncated": true,
+    "num_nodes": 103,
+    "num_edges": 259,
+    "rag_evidence": [],
+    "audit_history": [
+      {
+        "contract_address": "0xa5fb1E1c95857dc85c4dA2D312F8261Ad79C4aC9",
+        "score": 0.7314,
+        "score_field_element": 5993,
+        "label": "vulnerable",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1713200000,
+        "timestamp_iso": "2026-04-15T12:00:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      },
+      {
+        "contract_address": "0xa5fb1E1c95857dc85c4dA2D312F8261Ad79C4aC9",
+        "score": 0.4102,
+        "score_field_element": 3362,
+        "label": "safe",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1712900000,
+        "timestamp_iso": "2026-04-12T03:20:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      }
+    ],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in RateLimitedVault.withdraw(uint256) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#67-82):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_m1gtl2d1.sol#80)\n",
+        "lines": [
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in RateLimitedVault.emergencyWithdraw() (../../../../../tmp/sentinel_static_m1gtl2d1.sol#102-106):\n\t- (ok,None) = owner.call{value: balance}() (../../../../../tmp/sentinel_static_m1gtl2d1.sol#104)\n",
+        "lines": [
+          102,
+          103,
+          104,
+          105,
+          106
+        ],
+        "function_names": [
+          "emergencyWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "timestamp",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "RateLimitedVault.withdraw(uint256) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#67-82) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- block.timestamp >= limit.lastReset + limit.periodDuration (../../../../../tmp/sentinel_static_m1gtl2d1.sol#70)\n\t- require(bool,string)(limit.usedInPeriod + amount <= limit.periodAmount,rate limit exceeded) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#75)\n",
+        "lines": [
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          67
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          48,
+          84,
+          92,
+          97,
+          102
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "CallToUnknown prob=0.273 < threshold=0.4 \u2192 skip",
+      "DenialOfService prob=0.311 >= threshold=0.3 \u2192 static_analysis+rag_research",
+      "ExternalBug prob=0.753 >= threshold=0.4 \u2192 static_analysis+rag_research",
+      "GasException prob=0.284 < threshold=0.4 \u2192 skip",
+      "IntegerUO prob=0.856 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "MishandledException prob=0.286 < threshold=0.4 \u2192 skip",
+      "Reentrancy prob=0.769 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "Timestamp prob=0.731 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "TransactionOrderDependence prob=0.286 < threshold=0.35 \u2192 skip",
+      "UnusedReturn prob=0.645 >= threshold=0.45 \u2192 static_analysis",
+      "quick_screen: slither=[] aderyn=['eth-send-unchecked-address'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {
+      "CallToUnknown": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 0,
+        "score": 0.7,
+        "confidence": 0.4375,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.3,
+          "slither": 0.7,
+          "aderyn": 0.6
+        }
+      },
+      "DenialOfService": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.0,
+        "confidence": 0.0,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.325,
+          "slither": 0.55,
+          "aderyn": 0.5
+        },
+        "overridden_from_safe": true
+      },
+      "ExternalBug": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.175,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.225,
+          "slither": 0.5,
+          "aderyn": 0.45
+        }
+      },
+      "IntegerUO": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 1.01,
+        "confidence": 0.558,
+        "verdict": "LIKELY",
+        "weights": {
+          "ml": 0.31,
+          "slither": 0.8,
+          "aderyn": 0.7
+        }
+      },
+      "MishandledException": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.62,
+        "confidence": 0.3839,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.72,
+          "aderyn": 0.62
+        }
+      },
+      "Reentrancy": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.39,
+        "confidence": 0.2155,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.39,
+          "slither": 0.82,
+          "aderyn": 0.6
+        },
+        "overridden_from_safe": true
+      },
+      "Timestamp": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 0,
+        "score": 0.85,
+        "confidence": 0.68,
+        "verdict": "LIKELY",
+        "weights": {
+          "ml": 0.4,
+          "slither": 0.45,
+          "aderyn": 0.4
+        }
+      },
+      "UnusedReturn": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.275,
+        "confidence": 0.1642,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.75,
+          "aderyn": 0.65
+        },
+        "overridden_from_safe": true
+      }
+    },
+    "debate_transcript": {},
+    "recommendation": "HIGH RISK \u2014 top vulnerability: IntegerUO (probability 85.6%, CONFIRMED tier). 0 similar exploit pattern(s) found in DeFiHackLabs corpus. 1 Slither High/Medium finding(s). 2 prior on-chain audit(s). Recommend full manual audit before deployment.\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens \u2014 tail code was not analysed. Manual review of the unanalysed portion is recommended.",
+    "narrative": null,
+    "error": "rag_research: retriever_error",
+    "path_taken": "deep",
+    "metric_attribution": {
+      "CallToUnknown": {
+        "ml_pct": 21.4,
+        "slither_pct": 78.6,
+        "rag_pct": 0.0
+      },
+      "DenialOfService": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "ExternalBug": {
+        "ml_pct": 43.0,
+        "slither_pct": 57.0,
+        "rag_pct": 0.0
+      },
+      "GasException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "IntegerUO": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "MishandledException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "Reentrancy": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "Timestamp": {
+        "ml_pct": 42.2,
+        "slither_pct": 57.8,
+        "rag_pct": 0.0
+      },
+      "TransactionOrderDependence": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "UnusedReturn": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      }
+    },
+    "confidence_by_class": {
+      "CallToUnknown": 0.4238,
+      "DenialOfService": 0.255,
+      "ExternalBug": 1.0,
+      "IntegerUO": 0.6763,
+      "MishandledException": 0.7001,
+      "Reentrancy": 0.3527,
+      "Timestamp": 0.8266,
+      "UnusedReturn": 0.2921
+    },
+    "reflection_notes": {
+      "unused_evidence": [
+        "1 High/Medium static finding(s) not tied to a verdict: eth-send-unchecked-address"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [
+        "CallToUnknown: verdict DISPUTED",
+        "DenialOfService: confidence 26% below 0.70",
+        "IntegerUO: confidence 68% below 0.70",
+        "Reentrancy: verdict DISPUTED",
+        "UnusedReturn: verdict DISPUTED"
+      ],
+      "failure_modes": [
+        "Contract exceeded 512 CodeBERT tokens \u2014 tail code unanalysed; verdicts may miss vulnerabilities in the truncated region.",
+        "ExternalBug flagged \u2014 the ML model is known to over-predict this class (Run 12 class-definition mismatch); treat as lower confidence unless corroborated by an inter-contract call finding."
+      ],
+      "summary": "Self-critique: 5 verdict(s) are uncertain; 1 evidence item(s) unused; 2 failure mode(s) noted.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "rag_research: retriever_error",
+  "evidence_list": [
+    {
+      "source": "ml",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.7531,
+      "reliability": 0.1038,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7531
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.8557,
+      "reliability": 0.0766,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.8557
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.7695,
+      "reliability": 0.127,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7695
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "Timestamp",
+      "polarity": "SUPPORTS",
+      "strength": 0.7308,
+      "reliability": 0.1942,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7308
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.6447,
+      "reliability": 0.0575,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.6447
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.15,
+      "reliability": 0.217,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "description": "Low level call in RateLimitedVault.withdraw(uint256) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#67-82):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_m1gtl2",
+        "lines": [
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 0.15,
+      "reliability": 0.3463,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "description": "Low level call in RateLimitedVault.withdraw(uint256) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#67-82):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_m1gtl2",
+        "lines": [
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Timestamp",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.3557,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "timestamp",
+        "impact": "Low",
+        "description": "RateLimitedVault.withdraw(uint256) (../../../../../tmp/sentinel_static_m1gtl2d1.sol#67-82) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- block.timestamp >= limit.lastReset + limit.periodDu",
+        "lines": [
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.1365,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          67
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.2096,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          67
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.3738,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          67
+        ]
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 0.4375,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.4375,
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "DenialOfService",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.0,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 1.0,
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.558,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "LIKELY",
+        "consensus_confidence": 0.558,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 0.3839,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3839,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.2155,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "Timestamp",
+      "polarity": "SUPPORTS",
+      "strength": 0.68,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "LIKELY",
+        "consensus_confidence": 0.68,
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.1642,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0
+      }
+    }
+  ],
+  "verdict_provable": {
+    "CallToUnknown": "DISPUTED",
+    "DenialOfService": "SAFE",
+    "ExternalBug": "CONFIRMED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "DISPUTED",
+    "Timestamp": "CONFIRMED",
+    "UnusedReturn": "DISPUTED"
+  },
+  "verdict_full": {
+    "CallToUnknown": "DISPUTED",
+    "DenialOfService": "SAFE",
+    "ExternalBug": "CONFIRMED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "DISPUTED",
+    "Timestamp": "CONFIRMED",
+    "UnusedReturn": "DISPUTED"
+  }
+}

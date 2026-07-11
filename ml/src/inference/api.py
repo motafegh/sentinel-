@@ -104,6 +104,16 @@ async def lifespan(app: FastAPI):
             "Check SENTINEL_CHECKPOINT env var or run: dvc pull"
         )
 
+    # P5 (2026-06-26): Enable deterministic mode if requested
+    # This ensures reproducible inference across runs (for ZK proof generation)
+    _deterministic_mode = os.getenv("SENTINEL_DETERMINISTIC", "").lower() in ("1", "true", "yes")
+    if _deterministic_mode:
+        logger.info("SENTINEL_DETERMINISTIC mode enabled — setting torch deterministic algorithms")
+        torch.use_deterministic_algorithms(True)
+        torch.manual_seed(42)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(42)
+
     app.state.predictor = Predictor(checkpoint=CHECKPOINT)
     _gauge_model_loaded.set(1)
 
@@ -218,6 +228,19 @@ class PredictResponse(BaseModel):
     # Each eye: {class_name: probability}. Only present for four_eye architectures.
     eye_predictions: dict[str, dict[str, float]] | None = None
 
+    # P5 (2026-06-26): model hash for reproducibility tracking.
+    # SHA-256 of the checkpoint file — stable across restarts unless checkpoint is replaced.
+    model_hash: str = Field(..., description="SHA-256 hash of the checkpoint file (64 hex chars)")
+
+
+class FusionEmbeddingResponse(BaseModel):
+    fusion_embedding: list[float] = Field(..., min_length=128, max_length=128,
+                                          description="128-dim CrossAttentionFusion output — ZKML circuit input")
+    num_nodes: int
+    num_edges: int
+    model_hash: str = Field(..., description="SHA-256 hash of the teacher checkpoint file (64 hex chars)")
+    windows_used: int = Field(default=1, ge=1)
+
 
 # ------------------------------------------------------------------
 # Endpoints
@@ -247,6 +270,7 @@ async def health(request: Request) -> dict:
             },
             "model_epoch":  cfg.get("epoch",    "?"),
             "model_f1_val": cfg.get("best_f1", None),
+            "model_hash":   predictor.model_hash,
         }
 
     return {
@@ -293,8 +317,18 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
         raise HTTPException(status_code=413, detail="Contract too large for GPU memory.")
 
     except Exception as exc:
+        # Rule 5C (CLAUDE.md, 2026-06-25): surface the actual failure reason
+        # to the caller, not a generic "Inference failed." that hides whether
+        # the cause was a solc compile error, a model OOM, a Slither AST
+        # bug, or a network timeout. The exception type + message is the
+        # minimum information the audit pipeline needs to surface the
+        # failure correctly (without it, 22 specific contracts silently
+        # returned "unknown" labels).
         logger.exception(f"Inference error: {exc}")  # exception() logs full traceback
-        raise HTTPException(status_code=500, detail="Inference failed.")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Inference failed: {type(exc).__name__}: {str(exc)[:500]}",
+        )
 
     try:
         if torch.cuda.is_available():
@@ -348,6 +382,7 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
         num_nodes=result["num_nodes"],
         num_edges=result["num_edges"],
         eye_predictions=result.get("eye_predictions"),
+        model_hash=predictor.model_hash,
     )
 
 
@@ -434,4 +469,52 @@ async def hotspots(request: Request, body: HotspotsRequest) -> HotspotsResponse:
         probabilities=result.get("probabilities", {}),
         confirmed=_vuln_results(result.get("confirmed", [])),
         suspicious=_vuln_results(result.get("suspicious", [])),
+    )
+
+
+@app.post("/fusion-embedding", response_model=FusionEmbeddingResponse)
+async def fusion_embedding(request: Request, body: PredictRequest) -> FusionEmbeddingResponse:
+    """
+    Return the 128-dim CrossAttentionFusion embedding for ZKML proof generation.
+
+    This is the ZK boundary: the proxy model maps this 128-dim vector to
+    10 class scores, and the EZKL circuit proves proxy(fusion_128) = scores[10].
+    Does NOT return probabilities or verdicts — just the raw fusion vector.
+    """
+    predictor: Predictor | None = getattr(request.app.state, "predictor", None)
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="Model not loaded.")
+
+    source_bytes = len(body.source_code.encode())
+    if source_bytes > MAX_SOURCE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"source_code too large ({source_bytes:,} bytes > {MAX_SOURCE_BYTES:,} limit).",
+        )
+
+    try:
+        result: dict = await asyncio.wait_for(
+            asyncio.to_thread(predictor.predict_fusion_embedding, body.source_code),
+            timeout=PREDICT_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail=f"Inference timeout after {PREDICT_TIMEOUT:.0f} s.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except torch.cuda.OutOfMemoryError:
+        torch.cuda.empty_cache()
+        raise HTTPException(status_code=413, detail="Contract too large for GPU memory.")
+    except Exception as exc:
+        logger.exception(f"Fusion embedding error: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fusion embedding failed: {type(exc).__name__}: {str(exc)[:500]}",
+        )
+
+    return FusionEmbeddingResponse(
+        fusion_embedding=result["fusion_embedding"],
+        num_nodes=result["num_nodes"],
+        num_edges=result["num_edges"],
+        model_hash=result["model_hash"],
+        windows_used=result["windows_used"],
     )

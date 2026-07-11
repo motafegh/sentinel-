@@ -1,0 +1,324 @@
+{
+  "n_contracts": 83,
+  "classes": [
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "GasException",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+    "UnusedReturn"
+  ],
+  "sources": [
+    "aderyn",
+    "ml",
+    "slither"
+  ],
+  "reports_dir": "test_audit_reports_post_aderyn_fix",
+  "corpus_dir": "../manual_hand_written_contracts",
+  "cells": [
+    {
+      "source": "aderyn",
+      "cls": "CallToUnknown",
+      "tp": 10,
+      "fp": 37,
+      "fn": 7,
+      "tn": 29,
+      "n": 83,
+      "measured_precision": 0.2127659574468085
+    },
+    {
+      "source": "aderyn",
+      "cls": "DenialOfService",
+      "tp": 6,
+      "fp": 39,
+      "fn": 4,
+      "tn": 34,
+      "n": 83,
+      "measured_precision": 0.13333333333333333
+    },
+    {
+      "source": "aderyn",
+      "cls": "ExternalBug",
+      "tp": 8,
+      "fp": 33,
+      "fn": 5,
+      "tn": 37,
+      "n": 83,
+      "measured_precision": 0.1951219512195122
+    },
+    {
+      "source": "aderyn",
+      "cls": "GasException",
+      "tp": 7,
+      "fp": 38,
+      "fn": 2,
+      "tn": 36,
+      "n": 83,
+      "measured_precision": 0.15555555555555556
+    },
+    {
+      "source": "aderyn",
+      "cls": "IntegerUO",
+      "tp": 4,
+      "fp": 35,
+      "fn": 5,
+      "tn": 39,
+      "n": 83,
+      "measured_precision": 0.10256410256410256
+    },
+    {
+      "source": "aderyn",
+      "cls": "MishandledException",
+      "tp": 14,
+      "fp": 25,
+      "fn": 5,
+      "tn": 39,
+      "n": 83,
+      "measured_precision": 0.358974358974359
+    },
+    {
+      "source": "aderyn",
+      "cls": "Reentrancy",
+      "tp": 9,
+      "fp": 17,
+      "fn": 6,
+      "tn": 51,
+      "n": 83,
+      "measured_precision": 0.34615384615384615
+    },
+    {
+      "source": "aderyn",
+      "cls": "Timestamp",
+      "tp": 0,
+      "fp": 0,
+      "fn": 12,
+      "tn": 71,
+      "n": 83,
+      "measured_precision": 0.0
+    },
+    {
+      "source": "aderyn",
+      "cls": "TransactionOrderDependence",
+      "tp": 4,
+      "fp": 42,
+      "fn": 5,
+      "tn": 32,
+      "n": 83,
+      "measured_precision": 0.08695652173913043
+    },
+    {
+      "source": "aderyn",
+      "cls": "UnusedReturn",
+      "tp": 4,
+      "fp": 9,
+      "fn": 6,
+      "tn": 64,
+      "n": 83,
+      "measured_precision": 0.3076923076923077
+    },
+    {
+      "source": "ml",
+      "cls": "CallToUnknown",
+      "tp": 1,
+      "fp": 0,
+      "fn": 16,
+      "tn": 66,
+      "n": 83,
+      "measured_precision": 1.0
+    },
+    {
+      "source": "ml",
+      "cls": "DenialOfService",
+      "tp": 0,
+      "fp": 1,
+      "fn": 10,
+      "tn": 72,
+      "n": 83,
+      "measured_precision": 0.0
+    },
+    {
+      "source": "ml",
+      "cls": "ExternalBug",
+      "tp": 11,
+      "fp": 46,
+      "fn": 2,
+      "tn": 24,
+      "n": 83,
+      "measured_precision": 0.19298245614035087
+    },
+    {
+      "source": "ml",
+      "cls": "GasException",
+      "tp": 0,
+      "fp": 0,
+      "fn": 9,
+      "tn": 74,
+      "n": 83,
+      "measured_precision": 0.0
+    },
+    {
+      "source": "ml",
+      "cls": "IntegerUO",
+      "tp": 6,
+      "fp": 42,
+      "fn": 3,
+      "tn": 32,
+      "n": 83,
+      "measured_precision": 0.125
+    },
+    {
+      "source": "ml",
+      "cls": "MishandledException",
+      "tp": 0,
+      "fp": 0,
+      "fn": 19,
+      "tn": 64,
+      "n": 83,
+      "measured_precision": 0.0
+    },
+    {
+      "source": "ml",
+      "cls": "Reentrancy",
+      "tp": 12,
+      "fp": 42,
+      "fn": 3,
+      "tn": 26,
+      "n": 83,
+      "measured_precision": 0.2222222222222222
+    },
+    {
+      "source": "ml",
+      "cls": "Timestamp",
+      "tp": 8,
+      "fp": 14,
+      "fn": 4,
+      "tn": 57,
+      "n": 83,
+      "measured_precision": 0.36363636363636365
+    },
+    {
+      "source": "ml",
+      "cls": "TransactionOrderDependence",
+      "tp": 0,
+      "fp": 0,
+      "fn": 9,
+      "tn": 74,
+      "n": 83,
+      "measured_precision": 0.0
+    },
+    {
+      "source": "ml",
+      "cls": "UnusedReturn",
+      "tp": 4,
+      "fp": 41,
+      "fn": 6,
+      "tn": 32,
+      "n": 83,
+      "measured_precision": 0.08888888888888889
+    },
+    {
+      "source": "slither",
+      "cls": "CallToUnknown",
+      "tp": 13,
+      "fp": 27,
+      "fn": 4,
+      "tn": 39,
+      "n": 83,
+      "measured_precision": 0.325
+    },
+    {
+      "source": "slither",
+      "cls": "DenialOfService",
+      "tp": 1,
+      "fp": 4,
+      "fn": 9,
+      "tn": 69,
+      "n": 83,
+      "measured_precision": 0.2
+    },
+    {
+      "source": "slither",
+      "cls": "ExternalBug",
+      "tp": 8,
+      "fp": 32,
+      "fn": 5,
+      "tn": 38,
+      "n": 83,
+      "measured_precision": 0.2
+    },
+    {
+      "source": "slither",
+      "cls": "GasException",
+      "tp": 1,
+      "fp": 4,
+      "fn": 8,
+      "tn": 70,
+      "n": 83,
+      "measured_precision": 0.2
+    },
+    {
+      "source": "slither",
+      "cls": "IntegerUO",
+      "tp": 0,
+      "fp": 5,
+      "fn": 9,
+      "tn": 69,
+      "n": 83,
+      "measured_precision": 0.0
+    },
+    {
+      "source": "slither",
+      "cls": "MishandledException",
+      "tp": 4,
+      "fp": 1,
+      "fn": 15,
+      "tn": 63,
+      "n": 83,
+      "measured_precision": 0.8
+    },
+    {
+      "source": "slither",
+      "cls": "Reentrancy",
+      "tp": 11,
+      "fp": 24,
+      "fn": 4,
+      "tn": 44,
+      "n": 83,
+      "measured_precision": 0.3142857142857143
+    },
+    {
+      "source": "slither",
+      "cls": "Timestamp",
+      "tp": 7,
+      "fp": 13,
+      "fn": 5,
+      "tn": 58,
+      "n": 83,
+      "measured_precision": 0.35
+    },
+    {
+      "source": "slither",
+      "cls": "TransactionOrderDependence",
+      "tp": 0,
+      "fp": 9,
+      "fn": 9,
+      "tn": 65,
+      "n": 83,
+      "measured_precision": 0.0
+    },
+    {
+      "source": "slither",
+      "cls": "UnusedReturn",
+      "tp": 2,
+      "fp": 1,
+      "fn": 8,
+      "tn": 72,
+      "n": 83,
+      "measured_precision": 0.6666666666666666
+    }
+  ]
+}

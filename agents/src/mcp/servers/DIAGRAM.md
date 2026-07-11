@@ -1,8 +1,8 @@
 # MCP Servers — Model Context Protocol SSE Servers
 
-> **Scope:** `agents/src/mcp/servers/` — 4 SSE/HTTP servers that expose
+> **Scope:** `agents/src/mcp/servers/` — 5 SSE/HTTP servers that expose
 > SENTINEL's capabilities as MCP tools. Source-of-truth: the code, not
-> this file. Last verified: 2026-06-23.
+> this file. Last verified: 2026-06-25.
 
 ---
 
@@ -15,8 +15,9 @@
    ④ rag_research        ── :8011 ──►  rag_server.py           (HybridRetriever proxy)
    ⑦ audit_check         ── :8012 ──►  audit_server.py         (Sepolia AuditRegistry Web3)
    ⑥ graph_explain       ── :8013 ──►  graph_inspector_server.py (GNN attention / Slither)
+   ⑧ explainer          ── :8014 ──►  representation_server.py  (GNN node embeddings)
 
-   All 4 servers share the same SSE transport pattern:
+   All 5 servers share the same SSE transport pattern:
    ┌────────────────────────────────────────────────────┐
    │  Route("/sse",       handle_sse)   — persistent SSE │
    │  Mount("/messages/", handle_post)  — JSON-RPC POST  │
@@ -33,10 +34,11 @@
 | 8011 | `rag_server.py` | `HybridRetriever` (FAISS + BM25) | `MCP_RAG_PORT` | — (always real if index exists) |
 | 8012 | `audit_server.py` | Sepolia `AuditRegistry.sol` via Web3.py | `SEPOLIA_RPC_URL` | `AUDIT_MOCK` (auto if no RPC) |
 | 8013 | `graph_inspector_server.py` | Module 1 FastAPI `/hotspots` + Slither fallback | `SENTINEL_ML_API_URL` | `GRAPH_INSPECTOR_MOCK` |
+| 8014 | `representation_server.py` | Module 1 GNN node embedding vectors | `MCP_REPRESENTATION_PORT` | `REPRESENTATION_MOCK` |
 
 ---
 
-## 2. Per-Server Architecture — The 4 Servers
+## 2. Per-Server Architecture — The 5 Servers
 
 ### 2.1 sentinel-inference `:8010` (`inference_server.py`, 491 lines)
 
@@ -129,7 +131,7 @@
   └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.3 sentinel-audit `:8012` (`audit_server.py`, 717 lines)
+### 2.3 sentinel-audit `:8012` (`audit/` package — P2.5 split)
 
 ```
   ┌─────────────────────────────────────────────────────────────────────────┐
@@ -236,6 +238,25 @@
   │  │  └───────────────────────────────────────────────────────────┘   │   │
   │  └─────────────────────────────────────────────────────────────────┘   │
   │                                                                         │
+  │  Transport: Route("/sse") + Mount("/messages/") + Route("/health")      │
+  └─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.5 sentinel-representation `:8014` (`representation_server.py`)
+
+```
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  Listens:  http://0.0.0.0:8014                                          │
+  │  Tool:     get_embeddings                                               │
+  │                                                                         │
+  │  Returns raw GNN node embedding vectors for a given contract. Used by   │
+  │  the explainer node (A.8) for LIME-style attribution — which AST nodes  │
+  │  contributed most to the model's decision.                              │
+  │                                                                         │
+  │  Tool: get_embeddings(contract_code, node_ids=[])                       │
+  │    → per-node {node_id, embedding: list[float], fn_name}                │
+  │                                                                         │
+  │  Mock mode: REPRESENTATION_MOCK=true                                    │
   │  Transport: Route("/sse") + Mount("/messages/") + Route("/health")      │
   └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -459,6 +480,10 @@ handshakes, but lower risk of one bad call breaking the next.)
   8013  sentinel-graph-         get_graph_hotspots      contract_code,      {hotspots, graph_*
         inspector                                       flagged_classes     stats, analysis_*
                                                           (optional)         mode}
+
+  8014  sentinel-             get_embeddings          contract_code,      {node_id,
+        representation                                 node_ids (opt)      embedding,
+                                                                            fn_name}[]
 ```
 
 ---
@@ -474,10 +499,11 @@ handshakes, but lower risk of one bad call breaking the next.)
   │ audit        │ {status, server, mock_mode, registry_address}              │
   │ graph_       │ {status, server, mock_mode, ml_api_url, fallback}         │
   │  inspector   │   fallback = "gnn_attention" | "slither" | "mock"         │
+  │ representation│ {status, server, mock_mode, ml_api_url}                  │
   └──────────────┴────────────────────────────────────────────────────────────┘
 ```
 
-All 4 `/health` endpoints are plain JSON (no MCP), suitable for Docker
+All 5 `/health` endpoints are plain JSON (no MCP), suitable for Docker
 healthchecks and Prometheus blackbox monitoring.
 
 ---
@@ -498,6 +524,7 @@ healthchecks and Prometheus blackbox monitoring.
   │ MCP_RAG_PORT                           │ 8011                           │
   │ MCP_AUDIT_PORT                         │ 8012                           │
   │ MCP_GRAPH_INSPECTOR_PORT               │ 8013                           │
+  │ MCP_REPRESENTATION_PORT               │ 8014                           │
   └────────────────────────────────────────┴────────────────────────────────┘
   ┌─── Audit (Web3) ───────────────────────┬────────────────────────────────┐
   │ SEPOLIA_RPC_URL                        │ <alchemy/infura endpoint>      │
@@ -581,17 +608,21 @@ healthchecks and Prometheus blackbox monitoring.
   │   ├─ _handle_search()                     retriever.search() sync call
   │   └─ run_server()                         calls _on_startup() before Starlette
   │
-  ├── audit_server.py             717 lines   :8012
-  │   ├─ _load_abi()                          lazy (Bug 2 fix)
-  │   ├─ _validate_address()                  Web3.to_checksum_address
-  │   ├─ get_latest_audit() / get_audit_history() / check_audit_exists()
-  │   └─ mock helpers (auto-enabled if RPC missing)
+  ├── audit/                               :8012  (package, P2.5 split — 2026-06-25)
+  │   ├─ __init__.py                        re-exports public API
+  │   ├─ _config.py                         env vars, port, registry address
+  │   ├─ _decode.py                         score decoding (8192 scale factor)
+  │   ├─ _handlers.py                       tool handlers (get_latest_audit etc.)
+  │   ├─ _lifecycle.py                      lifespan: Web3 + ABI init
+  │   └─ _server.py                         Starlette app + run_server()
+  │   (audit_server.py shim retained for backwards compatibility)
   │
   ├── graph_inspector_server.py   544 lines   :8013
   │   ├─ _analyze_hotspots_gnn()              Tier 1: POST /hotspots
   │   ├─ _analyze_hotspots_slither()          Tier 2: Slither structural
   │   └─ mock data                            Tier 3: deterministic stub
   │
+  ├── representation_server.py              :8014  get_embeddings (GNN node vectors)
   └── __init__.py                 (empty)
 ```
 
@@ -612,15 +643,18 @@ healthchecks and Prometheus blackbox monitoring.
 | `search` tool inputSchema | `rag_server.py:124-195` |
 | Lazy retriever init (Bug 10) | `rag_server.py:97-111` |
 | `_handle_search()` | `rag_server.py:219-283` |
-| `sentinel-audit` server identity | `audit_server.py` (search for `server = Server`) |
-| Bug 2 fix — lazy ABI | `audit_server.py:116-...` |
-| AuditRegistry struct (in docstring) | `audit_server.py:17-28` |
-| Score decoding (8192 scale) | `audit_server.py:24-28` |
+| `sentinel-audit` server identity | `audit/_server.py` (search for `server = Server`) |
+| Bug 2 fix — lazy ABI | `audit/_lifecycle.py` |
+| AuditRegistry struct (in docstring) | `audit/_config.py` |
+| Score decoding (8192 scale) | `audit/_decode.py` |
+| `get_latest_audit` / `get_audit_history` / `check_audit_exists` | `audit/_handlers.py` |
 | `sentinel-graph-inspector` server identity | `graph_inspector_server.py:106` |
 | `get_graph_hotspots` tool inputSchema | `graph_inspector_server.py:115-146` |
 | `_analyze_hotspots_gnn()` (Tier 1) | `graph_inspector_server.py:153-232` |
 | `_analyze_hotspots_slither()` (Tier 2) | `graph_inspector_server.py:253-...` |
 | Phase 2 transition note | `graph_inspector_server.py:5-32` |
+| `sentinel-representation` server | `agents/src/mcp/servers/representation_server.py` |
+| `get_embeddings` tool | `representation_server.py` |
 
 ---
 

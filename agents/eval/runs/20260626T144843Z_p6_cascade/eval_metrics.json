@@ -1,0 +1,2153 @@
+{
+  "contract_count": 79,
+  "positive_verdicts": [
+    "CONFIRMED",
+    "LIKELY"
+  ],
+  "macro_f1": 0.28768960995864423,
+  "macro_fbeta": 0.36538862007939715,
+  "micro_f1": 0.3240223463687151,
+  "contract_accuracy_loose": 0.4936708860759494,
+  "contract_accuracy_exact": 0.0,
+  "per_class": {
+    "CallToUnknown": {
+      "cls": "CallToUnknown",
+      "tp": 13,
+      "fp": 22,
+      "fn": 4,
+      "tn": 40,
+      "precision": 0.37142857142857144,
+      "recall": 0.7647058823529411,
+      "f1": 0.5,
+      "fbeta": 0.6310679611650486,
+      "support": 17
+    },
+    "DenialOfService": {
+      "cls": "DenialOfService",
+      "tp": 1,
+      "fp": 4,
+      "fn": 9,
+      "tn": 65,
+      "precision": 0.2,
+      "recall": 0.1,
+      "f1": 0.13333333333333333,
+      "fbeta": 0.11111111111111112,
+      "support": 10
+    },
+    "ExternalBug": {
+      "cls": "ExternalBug",
+      "tp": 10,
+      "fp": 41,
+      "fn": 1,
+      "tn": 27,
+      "precision": 0.19607843137254902,
+      "recall": 0.9090909090909091,
+      "f1": 0.3225806451612903,
+      "fbeta": 0.5263157894736842,
+      "support": 11
+    },
+    "GasException": {
+      "cls": "GasException",
+      "tp": 2,
+      "fp": 7,
+      "fn": 7,
+      "tn": 63,
+      "precision": 0.2222222222222222,
+      "recall": 0.2222222222222222,
+      "f1": 0.2222222222222222,
+      "fbeta": 0.2222222222222222,
+      "support": 9
+    },
+    "IntegerUO": {
+      "cls": "IntegerUO",
+      "tp": 4,
+      "fp": 31,
+      "fn": 4,
+      "tn": 40,
+      "precision": 0.11428571428571428,
+      "recall": 0.5,
+      "f1": 0.18604651162790695,
+      "fbeta": 0.2985074626865672,
+      "support": 8
+    },
+    "MishandledException": {
+      "cls": "MishandledException",
+      "tp": 6,
+      "fp": 23,
+      "fn": 13,
+      "tn": 37,
+      "precision": 0.20689655172413793,
+      "recall": 0.3157894736842105,
+      "f1": 0.25,
+      "fbeta": 0.2857142857142857,
+      "support": 19
+    },
+    "Reentrancy": {
+      "cls": "Reentrancy",
+      "tp": 11,
+      "fp": 28,
+      "fn": 3,
+      "tn": 37,
+      "precision": 0.28205128205128205,
+      "recall": 0.7857142857142857,
+      "f1": 0.4150943396226415,
+      "fbeta": 0.5789473684210525,
+      "support": 14
+    },
+    "Timestamp": {
+      "cls": "Timestamp",
+      "tp": 7,
+      "fp": 12,
+      "fn": 4,
+      "tn": 56,
+      "precision": 0.3684210526315789,
+      "recall": 0.6363636363636364,
+      "f1": 0.4666666666666667,
+      "fbeta": 0.5555555555555556,
+      "support": 11
+    },
+    "TransactionOrderDependence": {
+      "cls": "TransactionOrderDependence",
+      "tp": 0,
+      "fp": 8,
+      "fn": 8,
+      "tn": 63,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fbeta": 0.0,
+      "support": 8
+    },
+    "UnusedReturn": {
+      "cls": "UnusedReturn",
+      "tp": 4,
+      "fp": 9,
+      "fn": 4,
+      "tn": 62,
+      "precision": 0.3076923076923077,
+      "recall": 0.5,
+      "f1": 0.380952380952381,
+      "fbeta": 0.4444444444444445,
+      "support": 8
+    }
+  },
+  "gates": [
+    {
+      "gate_id": "WS1a_silent_safe_on_flagged",
+      "description": "No consensus-flagged class ends SAFE (debate cannot clear consensus verdict)",
+      "passed": false,
+      "detail": "67 violation(s): 01_approve_frontrun/IntegerUO (consensus=DISPUTED conf=0.00 \u2192 final=SAFE); 01_approve_frontrun/TransactionOrderDependence (consensus=DISPUTED conf=0.32 \u2192 final=SAFE); 01_cei_violation_erc721/TransactionOrderDependence (consensus=DISPUTED conf=0.32 \u2192 final=SAFE); 01_checks_effects_interactions/DenialOfService (consensus=DISPUTED conf=0.36 \u2192 final=SAFE); 01_checks_effects_interactions/GasException (consensus=DISPUTED conf=0.39 \u2192 final=SAFE)",
+      "value": 67
+    },
+    {
+      "gate_id": "WS1b_inconclusive_on_timeout",
+      "description": "edge_debate_timeout emits INCONCLUSIVE (LLM-on mode only)",
+      "passed": true,
+      "detail": "N/A in --no-llm mode",
+      "value": "skipped"
+    },
+    {
+      "gate_id": "WS1c_no_missing_consensus_votes",
+      "description": "No consensus vote is missing from final verdicts (Finding #15)",
+      "passed": true,
+      "detail": "0 missing vote(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS1d_confidence_1_0_not_downgraded",
+      "description": "No consensus confidence=1.0 class ends in SAFE (Finding #14 worst case)",
+      "passed": true,
+      "detail": "0 violation(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS1e_no_vulnerable_label_with_safe_verdict",
+      "description": "No contract has overall_label=vulnerable + overall_verdict=SAFE (Finding #19)",
+      "passed": true,
+      "detail": "0 violation(s)",
+      "value": 0
+    },
+    {
+      "gate_id": "WS2_false_positives_on_safe",
+      "description": "Zero false-positive verdicts on the safe subset",
+      "passed": false,
+      "detail": "5 FP(s) on 5 safe contract(s): 01_checks_effects_interactions: ['CallToUnknown', 'ExternalBug', 'IntegerUO', 'MishandledException']; 02_pull_over_push_payment: ['CallToUnknown', 'ExternalBug', 'IntegerUO', 'MishandledException', 'Reentrancy']; 03_openzeppelin_managed: ['ExternalBug', 'IntegerUO', 'MishandledException']; 04_pausable_circuit_breaker: ['ExternalBug', 'IntegerUO', 'MishandledException']; 05_emergency_stop_controlled: ['ExternalBug', 'IntegerUO', 'MishandledException', 'Timestamp']",
+      "value": 5
+    },
+    {
+      "gate_id": "WS3_long_contract_bug_detected",
+      "description": "edge_long_contract_truncated Reentrancy flagged (bug is past 2000-char cutoff)",
+      "passed": false,
+      "detail": "edge_long_contract_truncated not in corpus",
+      "value": "missing"
+    },
+    {
+      "gate_id": "D4_eye_predictions_present",
+      "description": "eye_predictions field present in all ml_results",
+      "passed": false,
+      "detail": "eye_predictions present in 57/79 reports",
+      "value": 57
+    },
+    {
+      "gate_id": "macro_f1_vs_baseline",
+      "description": "macro_F1 >= baseline (no baseline given \u2014 informational)",
+      "passed": true,
+      "detail": "macro_F1 = 0.2877 (no baseline to compare)",
+      "value": 0.28768960995864423
+    }
+  ],
+  "per_contract": [
+    {
+      "stem": "01_approve_frontrun",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "01_batch_payout_swallow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_2q7hnx6z.sol': Slither failed to parse 'sentinel_prep_2q7hnx6z.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "01_cei_violation_erc721",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_checks_effects_interactions",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_erc20_underflow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "ExternalBug"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug"
+      ],
+      "false_negative": [
+        "IntegerUO"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_flash_loan_oracle_manipulation",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_massive_storage_loop",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "Timestamp"
+      ],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_multi_asset_transfer",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_w7eugm66.sol': Slither failed to parse 'sentinel_prep_w7eugm66.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "01_proxy_delegatecall",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_unbounded_refund",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException"
+      ],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "01_vesting_schedule",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "02_access_control_bypass",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "IntegerUO",
+        "MishandledException",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_auction_deadline",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp",
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "02_bccc_dos_injected_loop",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "Timestamp"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService",
+        "Timestamp"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_k_153499.sol': Slither failed to parse 'sentinel_prep_k_153499.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "02_calldata_expansion_dos",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [
+        "DenialOfService",
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "DenialOfService",
+        "Timestamp"
+      ],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_cross_function_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_delegatecall_muted",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_dynamic_dispatch",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "UnusedReturn"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_liquidation_ignore",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn"
+      ],
+      "predicted_positive": [
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "UnusedReturn"
+      ],
+      "false_positive": [
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "02_mempool_sniping",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "02_pull_over_push_payment",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_push_payment_failure",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "02_unchecked_auction_bid",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "IntegerUO"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_75fi4mv5.sol': Slither failed to parse 'sentinel_prep_75fi4mv5.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "03_bccc_calltounknown_injected_delegate",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_dqquw9ej.sol': Slither failed to parse 'sentinel_prep_dqquw9ej.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "03_delegatecall_injection",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_dynamic_loop_gas_bomb",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "DenialOfService"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_failed_batch_approve",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_i7kkure6.sol': Slither failed to parse 'sentinel_prep_i7kkure6.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "03_low_level_forwarder",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_mev_arbitrage",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_p8wo5anu.sol': Slither failed to parse 'sentinel_prep_p8wo5anu.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "03_multi_call_hub",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "MishandledException"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_nested_dynamic_array",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "03_openzeppelin_managed",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "03_randomness_seed",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "03_read_only_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "Reentrancy"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_6lcph37b.sol': Slither failed to parse 'sentinel_prep_6lcph37b.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "03_safe_math_bypass",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "IntegerUO"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_bccc_gas_injected_nested",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException",
+        "DenialOfService"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService",
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_ppwpn_1o.sol': Slither failed to parse 'sentinel_prep_ppwpn_1o.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "04_erc777_callback_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_ico_phase_gate",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "Timestamp"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_3f13apcx.sol': Slither failed to parse 'sentinel_prep_3f13apcx.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "04_nested_call_chain",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "MishandledException",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "04_opaque_contract_factory",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_pausable_circuit_breaker",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "04_permit_sig_frontrun",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_iwumzz2s.sol': Slither failed to parse 'sentinel_prep_iwumzz2s.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "04_sig_replay_attack",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_storage_growth_dos",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "Timestamp"
+      ],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_time_calc_overflow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "IntegerUO"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_transfer_stipend_exhaustion",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "GasException"
+      ],
+      "false_positive": [
+        "DenialOfService",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "04_withdrawal_fails_silent",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_2gyyjqqk.sol': Slither failed to parse 'sentinel_prep_2gyyjqqk.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "05_approval_race_swallow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_batch_transfer_wrapping",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException"
+      ],
+      "false_negative": [
+        "IntegerUO"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_dutch_auction_race",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_odm2lxla.sol': Slither failed to parse 'sentinel_prep_odm2lxla.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "05_emergency_stop_controlled",
+      "ground_truth": "safe",
+      "labels": [],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "05_eth_bank_multi_withdraw",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_logic_contract_selfdestruct",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_staticcall_gas_bomb",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_zdllk1e3.sol': Slither failed to parse 'sentinel_prep_zdllk1e3.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "05_time_lock_governance",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "05_unexpected_revert_dos",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "DenialOfService",
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_upgrade_proxy_selfdestruct",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "05_wrapped_eth_deposit",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_313d6471.sol': Slither failed to parse 'sentinel_prep_313d6471.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "06_tricky_call_in_fallback",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "ExternalBug"
+      ],
+      "false_positive": [
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_dos_in_constructor",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_ep827sxl.sol': Slither failed to parse 'sentinel_prep_ep827sxl.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "06_tricky_externalbug_callback_chain",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "true_positive": [
+        "ExternalBug",
+        "MishandledException"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "IntegerUO"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_gas_in_loop_condition",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "GasException"
+      ],
+      "predicted_positive": [
+        "Timestamp"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "Timestamp"
+      ],
+      "false_negative": [
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_mishandled_internal_chain",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_v25_cmac.sol': Slither failed to parse 'sentinel_prep_v25_cmac.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "06_tricky_overflow_in_interest_rate",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO",
+        "MishandledException",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "IntegerUO"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "GasException",
+        "MishandledException",
+        "Timestamp"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_reentrancy_in_modifier",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "06_tricky_timestamp_in_pricing",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "06_tricky_tod_mempool_sniping",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "06_tricky_unused_return_in_callchain",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "UnusedReturn",
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "UnusedReturn"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "07_bccc_mishandled_injected_multicall",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "MishandledException",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_8dal5rbs.sol': Slither failed to parse 'sentinel_prep_8dal5rbs.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "07_multivuln_call_reentrancy",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_dos_exception",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "GasException"
+      ],
+      "predicted_positive": [
+        "Reentrancy"
+      ],
+      "true_positive": [],
+      "false_positive": [
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "DenialOfService",
+        "GasException"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_externalbug_mishandled",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "MishandledException",
+        "GasException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "GasException",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "ExternalBug",
+        "GasException"
+      ],
+      "false_positive": [
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_overflow_unused_return",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "IntegerUO",
+        "UnusedReturn",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "true_positive": [
+        "IntegerUO",
+        "UnusedReturn"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "Reentrancy"
+      ],
+      "false_negative": [
+        "MishandledException"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_reentrancy_tod",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Reentrancy",
+        "TransactionOrderDependence"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy"
+      ],
+      "true_positive": [
+        "Reentrancy"
+      ],
+      "false_positive": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO",
+        "MishandledException"
+      ],
+      "false_negative": [
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": null
+    },
+    {
+      "stem": "07_multivuln_timestamp_call",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "Timestamp",
+        "CallToUnknown",
+        "MishandledException"
+      ],
+      "predicted_positive": [
+        "CallToUnknown",
+        "ExternalBug",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "true_positive": [
+        "CallToUnknown",
+        "MishandledException",
+        "Timestamp"
+      ],
+      "false_positive": [
+        "ExternalBug",
+        "IntegerUO",
+        "Reentrancy"
+      ],
+      "false_negative": [],
+      "contract_correct": true,
+      "contract_exact": false,
+      "path_taken": "deep",
+      "error": "rag_research: retriever_error"
+    },
+    {
+      "stem": "09_bccc_tod_injected_approve",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "TransactionOrderDependence",
+        "IntegerUO"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "IntegerUO",
+        "TransactionOrderDependence"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_rx92jtyl.sol': Slither failed to parse 'sentinel_prep_rx92jtyl.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "10_bccc_weakaccess_injected_ownable",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "CallToUnknown",
+        "Timestamp"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "CallToUnknown",
+        "Timestamp"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_8we39x25.sol': Slither failed to parse 'sentinel_prep_8we39x25.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "11_bccc_multivuln_oracle_borrow",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp",
+        "CallToUnknown"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "CallToUnknown",
+        "ExternalBug",
+        "Reentrancy",
+        "Timestamp"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_3h3k7y8t.sol': Slither failed to parse 'sentinel_prep_3h3k7y8t.sol': Invalid compilation: \\nInvali"
+    },
+    {
+      "stem": "12_bccc_dos_reentrancy_combo",
+      "ground_truth": "vulnerable",
+      "labels": [
+        "DenialOfService",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "predicted_positive": [],
+      "true_positive": [],
+      "false_positive": [],
+      "false_negative": [
+        "DenialOfService",
+        "Reentrancy",
+        "UnusedReturn"
+      ],
+      "contract_correct": false,
+      "contract_exact": false,
+      "path_taken": "fast",
+      "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_d1c0vgxp.sol': Slither failed to parse 'sentinel_prep_d1c0vgxp.sol': Invalid compilation: \\nInvali"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "contract": "04_permit_sig_frontrun.sol",
+  "contract_address": "0xe5d5bc2b790736c7c3663fbb792d0516f7fc3657",
+  "timestamp": "2026-06-26T13:25:07.584458+00:00",
+  "total_wall_s": 0.06645393371582031,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 300.0
+  },
+  "routing_decisions": [
+    "all classes below per-class threshold \u2192 fast path",
+    "quick_screen: no hits, ML safe \u2192 fast path confirmed"
+  ],
+  "ml_result": {
+    "ran": false,
+    "reason": "inference_api_error",
+    "detail": "{\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_iwumzz2s.sol': Slither failed to parse 'sentinel_prep_iwumzz2s.sol': Invalid compilation: \\nInvali"
+  },
+  "verdicts": {},
+  "quick_screen_hits": {
+    "slither": [],
+    "aderyn": []
+  },
+  "static_findings_count": 0,
+  "static_findings": [],
+  "rag_results_count": 0,
+  "audit_history_count": 0,
+  "graph_explanations_classes": [],
+  "consensus_verdict": {},
+  "debate_transcript": {},
+  "confirmations": {},
+  "contradictions": {},
+  "tool_status": {
+    "ml": {
+      "ran": false,
+      "reason": "inference_api_error",
+      "detail": "{\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_iwumzz2s.sol': Slither failed to parse 'sentinel_prep_iwumzz2s.sol': Invalid compilation: \\nInvali"
+    },
+    "aderyn": {
+      "ran": false,
+      "reason": "run_error",
+      "detail": "aderyn exited with code 1 (stderr first 200 chars: 'Compilation Error: \\x1b[1;31mError (7576)\\x1b[0m\\x1b[1;37m: Undeclared identifier. \"permit\" is not (or not yet) visible at this point.\\x1b[0m\\n  \\x1b[34m-->\\x1b[0m contract.sol:82:9:\\n\\x1b[34m   |\\x1b[0m\\n\\x1b[34m82 |\\x1b[0m         ')",
+      "fallback": "slither-only"
+    }
+  },
+  "final_report": {
+    "contract_address": "0xe5d5bc2b790736c7c3663fbb792d0516f7fc3657",
+    "overall_label": "unknown",
+    "overall_verdict": "SAFE",
+    "risk_probability": 0.0,
+    "top_vulnerability": null,
+    "confirmed": [],
+    "suspicious": [],
+    "vulnerabilities": [],
+    "probabilities": {},
+    "tier_thresholds": {},
+    "vulnerability_verdicts": [],
+    "threshold": 0.5,
+    "ml_truncated": false,
+    "num_nodes": 0,
+    "num_edges": 0,
+    "rag_evidence": [],
+    "audit_history": [],
+    "static_findings": [],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "all classes below per-class threshold \u2192 fast path",
+      "quick_screen: no hits, ML safe \u2192 fast path confirmed"
+    ],
+    "consensus_verdict": {},
+    "debate_transcript": {},
+    "recommendation": "ML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+    "narrative": null,
+    "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_iwumzz2s.sol': Slither failed to parse 'sentinel_prep_iwumzz2s.sol': Invalid compilation: \\nInvali",
+    "path_taken": "fast",
+    "metric_attribution": {},
+    "confidence_by_class": {},
+    "reflection_notes": {
+      "unused_evidence": [],
+      "contradictions": [],
+      "uncertain_verdicts": [],
+      "failure_modes": [
+        "No static-analysis findings available (tool unavailable or fast path) \u2014 verdicts rest on the ML signal alone."
+      ],
+      "summary": "Self-critique: 1 failure mode(s) noted.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": "ml_assessment: inference_api_error \u2014 {\"detail\":\"Inference failed: RuntimeError: Graph extraction infrastructure failure for 'sentinel_prep_iwumzz2s.sol': Slither failed to parse 'sentinel_prep_iwumzz2s.sol': Invalid compilation: \\nInvali",
+  "evidence_list": [],
+  "verdict_provable": {},
+  "verdict_full": {}
+}

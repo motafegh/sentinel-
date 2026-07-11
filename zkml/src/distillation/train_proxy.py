@@ -58,7 +58,7 @@ from loguru import logger
 from torch.utils.data import DataLoader, TensorDataset
 from torch_geometric.loader import DataLoader as PyGDataLoader
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
 from ml.src.models.sentinel_model import SentinelModel
@@ -68,7 +68,7 @@ from zkml.src.distillation.proxy_model import CIRCUIT_VERSION, ProxyModel
 # Config
 # ------------------------------------------------------------------
 
-TEACHER_CHECKPOINT = "ml/checkpoints/multilabel_crossattn_best.pt"
+TEACHER_CHECKPOINT = "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt"
 PROXY_CHECKPOINT   = "zkml/models/proxy_best.pt"
 
 GRAPHS_DIR  = "ml/data/graphs"
@@ -118,13 +118,14 @@ def extract_features(
 
     RECALL — multi-label distillation target (ADR-025, Track 3):
         teacher.classifier gives [B, 10] raw logits.
-        sigmoid([B, 10]) → per-class probabilities.
-        mean(dim=1) → [B] scalar: average confidence across all 10 classes.
-        This single scalar is the proxy's training target.
+        sigmoid([B, 10]) → per-class probabilities [B, 10].
+        The proxy learns to reproduce the full per-class probability vector,
+        not a collapsed scalar mean. This is required for multi-class ZK proofs
+        — each class score must be individually provable on-chain (P11, 2026-07).
 
     Returns:
         features: [B, 128] — CrossAttentionFusion outputs (proxy inputs)
-        scores:   [B]      — teacher's mean sigmoid score (proxy distillation target)
+        scores:   [B, 10]  — teacher's sigmoid probabilities per class (proxy distillation target)
     """
     teacher.eval()
 
@@ -142,9 +143,9 @@ def extract_features(
     # Returns [B, 128]
     features = teacher.fusion(node_embs, batch, transformer_out, attention_mask)
 
-    # Multi-label teacher score: sigmoid([B, 10]).mean(dim=1) → [B]
-    # This is the proxy's training target — teacher's mean confidence.
-    scores = torch.sigmoid(teacher.classifier(features)).mean(dim=1)  # [B]
+    # Multi-label teacher score: sigmoid([B, 10]) → [B, 10] per-class probabilities.
+    # Each of the 10 classes is an independent distillation target.
+    scores = torch.sigmoid(teacher.classifier(features))  # [B, 10]
 
     return features.cpu(), scores.cpu()
 
@@ -154,23 +155,24 @@ def extract_features(
 # ------------------------------------------------------------------
 
 def compute_agreement(
-    proxy_scores: torch.Tensor,
-    teacher_scores: torch.Tensor,
+    proxy_scores: torch.Tensor,    # [B, 10]
+    teacher_scores: torch.Tensor,  # [B, 10]
     threshold: float = THRESHOLD,
 ) -> float:
     """
-    Fraction of contracts where proxy and teacher produce the same label.
+    Per-class agreement rate between proxy and teacher.
 
-    RECALL — why this is the real metric, not MSE:
-        MSE going down means the proxy scores are numerically closer.
-        But what we care about for the ZK system is: do proxy and teacher
-        agree on the binary decision — vulnerable or safe?
-        Agreement rate = fraction of contracts where both labels match.
-        Target ≥95% means at most 5% of audits get a different label.
+    For multi-label distillation, agreement is computed per-class then averaged:
+    fraction of (contract, class) pairs where proxy and teacher agree on the
+    binary decision at the given threshold.
+
+    Returns:
+        Mean agreement across all 10 classes (float 0..1).
     """
-    proxy_labels   = (proxy_scores   >= threshold).long()
-    teacher_labels = (teacher_scores >= threshold).long()
-    return (proxy_labels == teacher_labels).float().mean().item()
+    proxy_labels   = (proxy_scores   >= threshold).long()    # [B, 10]
+    teacher_labels = (teacher_scores >= threshold).long()    # [B, 10]
+    matches = (proxy_labels == teacher_labels).float()       # [B, 10]
+    return matches.mean().item()  # scalar: mean across B*10 pairs
 
 
 # ------------------------------------------------------------------

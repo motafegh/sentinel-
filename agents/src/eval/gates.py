@@ -46,6 +46,11 @@ class ContractEval:
     false_negative_classes: list[str] = field(default_factory=list)
     contract_correct: bool = False
     contract_exact: bool = False
+    # Per-tool status (Rule 5C). E.g. {"ml": {"ran": True, "label": "..."},
+    #                                    "aderyn": {"ran": False, "reason": "..."}}.
+    # Used by the matrix builder to exclude contracts where a tool didn't
+    # run from that tool's TP+FP+FN+TN counts.
+    tool_status: dict[str, dict] = field(default_factory=dict)
 
 
 @dataclass

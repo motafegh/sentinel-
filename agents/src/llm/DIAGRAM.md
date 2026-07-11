@@ -222,7 +222,7 @@ timeouts (90s, 240s, 120s) wrap multiple LLM calls.
 
 ```
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │  Consumed by graph nodes (orchestration/nodes.py):                       │
+  │  Consumed by graph nodes (orchestration/nodes/):                         │
   │                                                                          │
   │  • ml_assessment          NO direct LLM call (calls Module 1 via MCP)    │
   │                                                                          │
@@ -251,7 +251,7 @@ timeouts (90s, 240s, 120s) wrap multiple LLM calls.
   │  Consumed by other modules:                                              │
   │                                                                          │
   │  • rag/embedder.py        get_embedding_model() — wraps OpenAIEmbeddings │
-  │  • rag/build_index.py     (via embedder.py)                                │
+  │  • rag/build_index/       (via embedder.py)                                │
   │  • ingestion/pipeline.py  (via embedder.py)                                │
   │  • mcp/servers/rag_server.py (via HybridRetriever)                         │
   └──────────────────────────────────────────────────────────────────────────┘
@@ -274,7 +274,7 @@ rule-based logic. The graph runs:
 - **deterministic** — same input → same output (great for tests)
 - **without LM Studio running** — useful in CI
 
-See `orchestration/nodes.py:_llm_enabled()` for the exact check.
+See `orchestration/nodes/_helpers.py:_llm_enabled()` for the exact check.
 
 ---
 
@@ -372,9 +372,9 @@ caller code doesn't change when the model swaps.
 | `get_embedding_model()` | `client.py:148-168` |
 | `AGENT_MODEL_MAP` (forward decl) | `client.py:177-183` |
 | Smoke test | `client.py:186-203` |
-| LLM enable guard (`_llm_enabled()`) | `agents/src/orchestration/nodes.py:90-92` |
-| Cross_validator debate | `agents/src/orchestration/nodes.py` (search for `cross_validator`) |
-| Synthesizer narrative | `agents/src/orchestration/nodes.py` (search for `synthesizer`) |
+| LLM enable guard (`_llm_enabled()`) | `agents/src/orchestration/nodes/_helpers.py` |
+| Cross_validator debate | `agents/src/orchestration/nodes/cross_validator.py` |
+| Synthesizer narrative | `agents/src/orchestration/nodes/synthesizer.py` |
 | RAG embedder | `agents/src/rag/embedder.py` |
 
 ---

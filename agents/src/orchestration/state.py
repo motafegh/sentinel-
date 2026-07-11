@@ -34,6 +34,24 @@ import operator
 from typing import Annotated, Any, TypedDict
 
 
+def _merge_tool_status(
+    left: dict[str, dict[str, Any]] | None,
+    right: dict[str, dict[str, Any]] | None,
+) -> dict[str, dict[str, Any]]:
+    """
+    Reducer for `tool_status`: one-level-deep merge per tool key.
+
+    Nodes return partial updates like `{"aderyn": {"ran": False, ...}}`;
+    they merge into the running dict without overwriting sibling tools.
+    A node that re-runs a tool overwrites that tool's entry (last write wins
+    within a tool key) — which is the intended semantics.
+    """
+    merged: dict[str, dict[str, Any]] = dict(left or {})
+    for tool, status in (right or {}).items():
+        merged[tool] = {**merged.get(tool, {}), **status}
+    return merged
+
+
 class AuditState(TypedDict, total=False):
     """
     Shared mutable state for the SENTINEL audit graph.
@@ -213,3 +231,24 @@ class AuditState(TypedDict, total=False):
     verdict_full: dict[str, str]
     # {vulnerability_class: verdict} — fused from ALL evidence.
     # Set by synthesizer via fuse(). The human-report tier.
+
+    # ── Rule 5C: explicit tool-status field (2026-06-25) ──────────────────────
+    # Per CLAUDE.md Rule 5C: any subprocess / external tool failure MUST surface
+    # here with {"ran": bool, "reason": str, ...}, never silently return [] /
+    # {} / None. Synthesizer / eval MUST treat absent `ran=True` consistently —
+    # `ran=False` carries the failure; an empty list is no longer the signal
+    # for "tool absent". Reducer merges one level deep per tool key.
+    tool_status: Annotated[dict[str, dict[str, Any]], _merge_tool_status]
+
+    # ── P4: prompt-injection defense (2026-06-26) ─────────────────────────────
+    injection_matches: Annotated[list[Any], operator.add]
+    # Append-reducer: cross_validator and synthesizer each run detection and
+    # append matches. Surfaces in final_report["security"]["injection_detections"].
+    # Each item: InjectionMatch(pattern, location, snippet, confidence).
+
+    # ── P5: reproducibility tracking (2026-06-26) ─────────────────────────────
+    model_hash: str
+    # SHA-256 hash of the ML checkpoint file (64 hex chars).
+    # Set by ml_assessment from the ML API response.
+    # Propagated to final_report["model_provenance"]["model_hash"].
+    # Used for ZK anchoring — binds the verdict to the specific model version.

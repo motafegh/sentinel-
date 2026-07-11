@@ -1,0 +1,1886 @@
+{
+  "contract": "01_flash_loan_oracle_manipulation.sol",
+  "contract_address": "0xbb7b2e117a9dd0e1dc69d675faf70d2a84fea642",
+  "timestamp": "2026-06-26T13:06:28.856138+00:00",
+  "total_wall_s": 30.29179310798645,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 300.0
+  },
+  "routing_decisions": [
+    "CallToUnknown prob=0.259 < threshold=0.4 \u2192 skip",
+    "DenialOfService prob=0.292 < threshold=0.3 \u2192 skip",
+    "ExternalBug prob=0.681 >= threshold=0.4 \u2192 static_analysis+rag_research",
+    "GasException prob=0.272 < threshold=0.4 \u2192 skip",
+    "IntegerUO prob=0.529 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "MishandledException prob=0.272 < threshold=0.4 \u2192 skip",
+    "Reentrancy prob=0.777 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "Timestamp prob=0.191 < threshold=0.35 \u2192 skip",
+    "TransactionOrderDependence prob=0.246 < threshold=0.35 \u2192 skip",
+    "UnusedReturn prob=0.547 >= threshold=0.45 \u2192 static_analysis",
+    "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {
+    "label": "confirmed_vulnerable",
+    "probabilities": {
+      "CallToUnknown": 0.259,
+      "DenialOfService": 0.2917,
+      "ExternalBug": 0.6815,
+      "GasException": 0.2717,
+      "IntegerUO": 0.5287,
+      "MishandledException": 0.2718,
+      "Reentrancy": 0.7771,
+      "Timestamp": 0.1908,
+      "TransactionOrderDependence": 0.2461,
+      "UnusedReturn": 0.547
+    },
+    "confirmed": [
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7771,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6815,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.547,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.5287,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2717,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.2917,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2718,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.259,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7771,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6815,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.547,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.5287,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2717,
+        "tier": null
+      }
+    ],
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "thresholds": [
+      0.4000000059604645,
+      0.5,
+      0.44999998807907104,
+      0.05000000074505806,
+      0.44999998807907104,
+      0.3499999940395355,
+      0.44999998807907104,
+      0.5,
+      0.3499999940395355,
+      0.4000000059604645
+    ],
+    "truncated": true,
+    "windows_used": 4,
+    "num_nodes": 71,
+    "num_edges": 234,
+    "eye_predictions": {
+      "gnn": {
+        "CallToUnknown": 0.0997,
+        "DenialOfService": 0.0728,
+        "ExternalBug": 0.6101,
+        "GasException": 0.0372,
+        "IntegerUO": 0.5226,
+        "MishandledException": 0.0398,
+        "Reentrancy": 0.5793,
+        "Timestamp": 0.0212,
+        "TransactionOrderDependence": 0.0136,
+        "UnusedReturn": 0.1153
+      },
+      "transformer": {
+        "CallToUnknown": 0.0437,
+        "DenialOfService": 0.0704,
+        "ExternalBug": 0.8742,
+        "GasException": 0.0523,
+        "IntegerUO": 0.3674,
+        "MishandledException": 0.049,
+        "Reentrancy": 0.8619,
+        "Timestamp": 0.0249,
+        "TransactionOrderDependence": 0.1435,
+        "UnusedReturn": 0.9211
+      },
+      "fused": {
+        "CallToUnknown": 0.0406,
+        "DenialOfService": 0.0696,
+        "ExternalBug": 0.7546,
+        "GasException": 0.0537,
+        "IntegerUO": 0.5572,
+        "MishandledException": 0.0503,
+        "Reentrancy": 0.9174,
+        "Timestamp": 0.0218,
+        "TransactionOrderDependence": 0.0491,
+        "UnusedReturn": 0.4735
+      },
+      "phase2": {
+        "CallToUnknown": 0.0193,
+        "DenialOfService": 0.0632,
+        "ExternalBug": 0.9362,
+        "GasException": 0.0287,
+        "IntegerUO": 0.7851,
+        "MishandledException": 0.0254,
+        "Reentrancy": 0.7258,
+        "Timestamp": 0.1067,
+        "TransactionOrderDependence": 0.0243,
+        "UnusedReturn": 0.7821
+      }
+    }
+  },
+  "verdicts": {
+    "ExternalBug": "CONFIRMED",
+    "IntegerUO": "CONFIRMED",
+    "MishandledException": "DISPUTED",
+    "Reentrancy": "CONFIRMED",
+    "UnusedReturn": "LIKELY"
+  },
+  "quick_screen_hits": {
+    "slither": [
+      "reentrancy-no-eth",
+      "unchecked-transfer"
+    ],
+    "aderyn": [
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 17,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in FlashLendingPool.depositCollateral(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#45-48):\n\tExternal calls:\n\t- collateralToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#46)\n\tState variables written after the call(s):\n\t- depositedCollateral[msg.sender] += amount (../../../../../tmp/sentinel_static_mwybz0ei.sol#47)\n",
+      "lines": [
+        45,
+        46,
+        47,
+        48
+      ],
+      "function_names": [
+        "depositCollateral"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in FlashLendingPool.addLiquidity(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#86-89):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#87)\n\tState variables written after the call(s):\n\t- totalLiquidity += amount (../../../../../tmp/sentinel_static_mwybz0ei.sol#88)\n",
+      "lines": [
+        86,
+        87,
+        88,
+        89
+      ],
+      "function_names": [
+        "addLiquidity"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-benign",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#66)\n\tState variables written after the call(s):\n\t- totalLiquidity += amount (../../../../../tmp/sentinel_static_mwybz0ei.sol#68)\n",
+      "lines": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "repayLoan"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#66)\n\tEvent emitted after the call(s):\n\t- LoanRepaid(msg.sender,amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#69)\n",
+      "lines": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "repayLoan"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in FlashLendingPool.getLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#50-62):\n\tExternal calls:\n\t- loanToken.transfer(msg.sender,loanAmount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#60)\n\tEvent emitted after the call(s):\n\t- LoanTaken(msg.sender,loanAmount,collateral) (../../../../../tmp/sentinel_static_mwybz0ei.sol#61)\n",
+      "lines": [
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "function_names": [
+        "getLoan"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),borrowed) (../../../../../tmp/sentinel_static_mwybz0ei.sol#80)\n\tState variables written after the call(s):\n\t- borrowedAmount[borrower] = 0 (../../../../../tmp/sentinel_static_mwybz0ei.sol#81)\n\tFlashLendingPool.borrowedAmount (../../../../../tmp/sentinel_static_mwybz0ei.sol#26) can be used in cross function reentrancies:\n\t- FlashLendingPool.borrowedAmount (../../../../../tmp/sentinel_static_mwybz0ei.sol#26)\n\t- FlashLendingPool.getAccountHealth(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#91-98)\n\t- FlashLendingPool.getLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#50-62)\n\t- FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84)\n\t- FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70)\n\t- depositedCollateral[borrower] = 0 (../../../../../tmp/sentinel_static_mwybz0ei.sol#82)\n\tFlashLendingPool.depositedCollateral (../../../../../tmp/sentinel_static_mwybz0ei.sol#25) can be used in cross function reentrancies:\n\t- FlashLendingPool.depositCollateral(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#45-48)\n\t- FlashLendingPool.depositedCollateral (../../../../../tmp/sentinel_static_mwybz0ei.sol#25)\n\t- FlashLendingPool.getAccountHealth(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#91-98)\n\t- FlashLendingPool.getLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#50-62)\n\t- FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84)\n",
+      "lines": [
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84
+      ],
+      "function_names": [
+        "liquidate"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-no-eth",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "description": "Reentrancy in FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#66)\n\tState variables written after the call(s):\n\t- borrowedAmount[msg.sender] -= amount (../../../../../tmp/sentinel_static_mwybz0ei.sol#67)\n\tFlashLendingPool.borrowedAmount (../../../../../tmp/sentinel_static_mwybz0ei.sol#26) can be used in cross function reentrancies:\n\t- FlashLendingPool.borrowedAmount (../../../../../tmp/sentinel_static_mwybz0ei.sol#26)\n\t- FlashLendingPool.getAccountHealth(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#91-98)\n\t- FlashLendingPool.getLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#50-62)\n\t- FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84)\n\t- FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70)\n",
+      "lines": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70
+      ],
+      "function_names": [
+        "repayLoan"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        46,
+        53,
+        66,
+        76,
+        80,
+        87
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "literal-instead-of-constant",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Define and use `constant` variables instead of using literals. If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract.",
+      "lines": [
+        54,
+        55,
+        77,
+        79,
+        93,
+        96,
+        97
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        45,
+        72,
+        86
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        39,
+        40,
+        41
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-constant",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are not updated following deployment should be declared constant to save gas. Add the `constant` attribute to state variables that never change.",
+      "lines": [
+        28
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unchecked-return",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Function returns a value but it is ignored. Consider checking the return value.",
+      "lines": [
+        46,
+        60,
+        66,
+        80,
+        83,
+        87
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unsafe-erc20-operation",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+      "lines": [
+        46,
+        60,
+        66,
+        80,
+        83,
+        87
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        7
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 5,
+  "audit_history_count": 2,
+  "graph_explanations_classes": [
+    "graph_stats",
+    "analysis_mode",
+    "hotspots_by_class"
+  ],
+  "consensus_verdict": {
+    "ExternalBug": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.675,
+      "confidence": 0.5745,
+      "verdict": "LIKELY",
+      "weights": {
+        "ml": 0.225,
+        "slither": 0.5,
+        "aderyn": 0.45
+      }
+    },
+    "IntegerUO": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 1.01,
+      "confidence": 0.558,
+      "verdict": "LIKELY",
+      "weights": {
+        "ml": 0.31,
+        "slither": 0.8,
+        "aderyn": 0.7
+      }
+    },
+    "MishandledException": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.62,
+      "confidence": 0.3839,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.72,
+        "aderyn": 0.62
+      }
+    },
+    "Reentrancy": {
+      "ml_signal": 1,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.81,
+      "confidence": 1.0,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.39,
+        "slither": 0.82,
+        "aderyn": 0.6
+      }
+    },
+    "UnusedReturn": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.925,
+      "confidence": 0.5522,
+      "verdict": "LIKELY",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.75,
+        "aderyn": 0.65
+      }
+    }
+  },
+  "debate_transcript": {
+    "prosecutor": "### Reentrancy [CONFIRMED]\nThe `liquidate` function exhibits a high risk of reentrancy because it performs external token transfers (`loanToken.transferFrom`, `collateralToken.transfer`) after reading state variables but before fully updating all related balances, creating an opportunity for recursive calls. Specifically, the sequence in `liquidate` where debt is repaid and collateral is transferred must be protected by checks or reentrancy guards to prevent external code from re-entering the function before state updates are finalized.\n\n### ExternalBug [CONFIRMED]\nThe `liquidate` function relies on an external price oracle (`priceOracle.getPrice`) to determine collateral value, which is a known attack vector in lending protocols. The calculation of `collateralValue` uses this potentially manipulated price directly to determine liquidation eligibility, making the system vulnerable if the oracle provides incorrect pricing information. This vulnerability is highlighted by the high-risk signals associated with external calls and state writes within this function.\n\n### IntegerUO [CONFIRMED]",
+    "defender": "**Reentrancy [CONFIRMED]**",
+    "judge": "{\"Reentrancy\": \"CONFIRMED\", \"ExternalBug\": \"LIKELY\", \"IntegerUO\": \"LIKELY\"}"
+  },
+  "confirmations": {
+    "ExternalBug": [
+      "ml",
+      "consensus",
+      "debate"
+    ],
+    "IntegerUO": [
+      "ml",
+      "consensus",
+      "debate"
+    ],
+    "Reentrancy": [
+      "ml",
+      "slither",
+      "slither",
+      "slither",
+      "aderyn",
+      "consensus",
+      "debate"
+    ],
+    "UnusedReturn": [
+      "ml",
+      "consensus"
+    ],
+    "MishandledException": [
+      "consensus"
+    ]
+  },
+  "contradictions": {},
+  "tool_status": {
+    "ml": {
+      "ran": true,
+      "label": "confirmed_vulnerable"
+    },
+    "aderyn": {
+      "ran": true,
+      "n_findings": 10
+    }
+  },
+  "final_report": {
+    "contract_address": "0xbb7b2e117a9dd0e1dc69d675faf70d2a84fea642",
+    "overall_label": "confirmed_vulnerable",
+    "overall_verdict": "CONFIRMED",
+    "risk_probability": 0.7771,
+    "top_vulnerability": "Reentrancy",
+    "confirmed": [
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7771,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6815,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.547,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.5287,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2717,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.2917,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2718,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.259,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7771,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6815,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.547,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.5287,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2717,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.2917,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2718,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.259,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "probabilities": {
+      "CallToUnknown": 0.259,
+      "DenialOfService": 0.2917,
+      "ExternalBug": 0.6815,
+      "GasException": 0.2717,
+      "IntegerUO": 0.5287,
+      "MishandledException": 0.2718,
+      "Reentrancy": 0.7771,
+      "Timestamp": 0.1908,
+      "TransactionOrderDependence": 0.2461,
+      "UnusedReturn": 0.547
+    },
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "vulnerability_verdicts": [
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.259,
+        "verdict": "SAFE",
+        "evidence_sources": [],
+        "severity": "INFO",
+        "confidence": 0.0,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.2917,
+        "verdict": "SAFE",
+        "evidence_sources": [],
+        "severity": "INFO",
+        "confidence": 0.0,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.6815,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 0.9166,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2717,
+        "verdict": "SAFE",
+        "evidence_sources": [],
+        "severity": "INFO",
+        "confidence": 0.0,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.5287,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 0.8723,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2718,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.3263,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.7771,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "slither",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "HIGH",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 43.7,
+          "slither_pct": 56.3,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.547,
+        "verdict": "LIKELY",
+        "evidence_sources": [
+          "ml",
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 0.5008,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      }
+    ],
+    "threshold": 0.5,
+    "ml_truncated": true,
+    "num_nodes": 71,
+    "num_edges": 234,
+    "rag_evidence": [
+      {
+        "content": "Detailed notes:\nThe Vulnerability\nThe hack took advantage of our pre-bridge swap feature. Our smart contract allows a caller to pass an array of multiple swaps using any address with arbitrary calldata.\nThis design gave us maximum flexibility in what DEXs we could call and what methods we could call. This also allowed anyone to call other contracts, not just DEXs. Our contract checks to make sure that the result of the swap or swaps is enough tokens to continue the bridging operation.\nThe attacker started by passing a legitimate swap of a small amount followed by multiple calls directly to various token contracts. Specifically, they called the `transferFrom` method which allowed the attacker to transfer funds from users\u2019 wallets that had previously given infinite approval to our contract for that specific token.\nsellToUniswap(address[],uint256,uint256,bool)\n\"tokens\":[\n0:\"0xdac17f958d2ee523a2206206994597c13d831ec7\"\n1:\"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\"\n]\n\"sellAmount\":\"50000000\"\n\"minBuyAmount\":\"40000000\"\n\"isSushi\":false\nif (!LibAsset.isNativeAsset(fromAssetId) && LibAsset.getOwnBalance(fromAssetId) < fromAmount) {\nLibAsset.transferFromERC20(_swapData.sendingAssetId, msg.sender, address(this), fromAmount);\nif (!LibAsset.isNativeAsset(fromAssetId)) {\nLibAsset.approveERC20(IERC20(fromAssetId), _swapData.approveTo, fromAmount);\n// solhint-disable-next-line avoid-low-level-calls\n(bool success, bytes memory res) = _swapData.callTo.call{ value: msg.value }(_swapData.callData);",
+        "doc_id": "ef6a16568df7943a",
+        "chunk_id": 1,
+        "total_chunks": 2,
+        "metadata": {
+          "protocol": "LiFi",
+          "date": "2022-03-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2022-03/LiFi_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 1,
+          "total_chunks": 2,
+          "doc_id": "ef6a16568df7943a"
+        },
+        "score": 0.03225806451612903
+      },
+      {
+        "content": "DeFi Security Incident: DKP\nDate: 2023-03-01\nVulnerability type: flash_loan\n\nAttack summary:\nThere is an exchange method in the 0x89257 closed source contract for users to swap USDT for DKP tokens,\nbut the price Oracle used is the ratio of the balance of the two tokens in the USDT-DKP pair,\nand the attacker manipulates this price through flashLoan, swapping a very small amount of USDT for a large amount of DKP and selling it for a profit\n\nPost-mortem references:\nhttps://twitter.com/CertiKAlert/status/1633421908996763648",
+        "doc_id": "eb34a4ef21d5d13f",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "DKP",
+          "date": "2023-03-01",
+          "vuln_type": "flash_loan",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/CertiKAlert/status/1633421908996763648"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-03/DKP_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "eb34a4ef21d5d13f"
+        },
+        "score": 0.03076923076923077
+      },
+      {
+        "content": "DeFi Security Incident: Phoenix\nDate: 2023-03-01\nVulnerability type: access_control\n\nAttack summary:\nPhxProxy contract delegateCallSwap() function lack of access control and can be passed in any parameter\nThe lost money is mainly USDC in the d028 contract which the attacker converts into WETH in the 65ba contract through the buyLeverage function\nand then swaps it into his own tokens by the delegateCallSwap function, making a profit from it\n\nPost-mortem references:\nhttps://twitter.com/HypernativeLabs/status/1633090456157401088",
+        "doc_id": "855be0354478d3a6",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Phoenix",
+          "date": "2023-03-01",
+          "vuln_type": "access_control",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/HypernativeLabs/status/1633090456157401088"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-03/Phoenix_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "855be0354478d3a6"
+        },
+        "score": 0.029910714285714284
+      },
+      {
+        "content": "DeFi Security Incident: IRouterTokenHelper\nDate: 2023-11-01\nVulnerability type: other\n\nDetailed notes:\n@notice Unwraps the contract's WETH balance and sends it to recipient as ETH.\n@dev The minAmount parameter prevents malicious contracts from stealing WETH from users.\n@param minAmount The minimum amount of WETH to unwrap\n@param recipient The address receiving ETH\n@notice Refunds any ETH balance held by this contract to the `msg.sender`\n@dev Useful for bundling with mint or increase liquidity that uses ether, or exact output swaps\nthat use ether for the input amount\n@notice Transfers the full amount of a token held by this contract to recipient\n@dev The minAmount parameter prevents malicious contracts from stealing the token from users\n@param token The contract address of the token which will be transferred to `recipient`\n@param minAmount The minimum amount of token required for a transfer\n@param recipient The destination address of the token",
+        "doc_id": "c3a95017325158de",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "IRouterTokenHelper",
+          "date": "2023-11-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-11/KyberSwap/interfaces/periphery/IRouterTokenHelper.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "c3a95017325158de"
+        },
+        "score": 0.028577260665441927
+      },
+      {
+        "content": "DeFi Security Incident: Paribus\nDate: 2023-04-01\nVulnerability type: reentrancy\n\nAttack summary:\na known reentrancy issue from the forked old version of CompoundV2\n\nPost-mortem references:\nhttps://twitter.com/Phalcon_xyz/status/1645742620897955842\nhttps://twitter.com/BlockSecTeam/status/1645744655357575170\nhttps://twitter.com/peckshield/status/1645742296904929280",
+        "doc_id": "0e81817326aa8fa5",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Paribus",
+          "date": "2023-04-01",
+          "vuln_type": "reentrancy",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/Phalcon_xyz/status/1645742620897955842",
+            "https://twitter.com/BlockSecTeam/status/1645744655357575170",
+            "https://twitter.com/peckshield/status/1645742296904929280"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-04/Paribus_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "0e81817326aa8fa5"
+        },
+        "score": 0.028258706467661692
+      }
+    ],
+    "audit_history": [
+      {
+        "contract_address": "0xBb7b2e117a9dD0e1Dc69d675FaF70D2A84Fea642",
+        "score": 0.7314,
+        "score_field_element": 5993,
+        "label": "vulnerable",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1713200000,
+        "timestamp_iso": "2026-04-15T12:00:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      },
+      {
+        "contract_address": "0xBb7b2e117a9dD0e1Dc69d675FaF70D2A84Fea642",
+        "score": 0.4102,
+        "score_field_element": 3362,
+        "label": "safe",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1712900000,
+        "timestamp_iso": "2026-04-12T03:20:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      }
+    ],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in FlashLendingPool.depositCollateral(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#45-48):\n\tExternal calls:\n\t- collateralToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#46)\n\tState variables written after the call(s):\n\t- depositedCollateral[msg.sender] += amount (../../../../../tmp/sentinel_static_mwybz0ei.sol#47)\n",
+        "lines": [
+          45,
+          46,
+          47,
+          48
+        ],
+        "function_names": [
+          "depositCollateral"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in FlashLendingPool.addLiquidity(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#86-89):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#87)\n\tState variables written after the call(s):\n\t- totalLiquidity += amount (../../../../../tmp/sentinel_static_mwybz0ei.sol#88)\n",
+        "lines": [
+          86,
+          87,
+          88,
+          89
+        ],
+        "function_names": [
+          "addLiquidity"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#66)\n\tState variables written after the call(s):\n\t- totalLiquidity += amount (../../../../../tmp/sentinel_static_mwybz0ei.sol#68)\n",
+        "lines": [
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "repayLoan"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#66)\n\tEvent emitted after the call(s):\n\t- LoanRepaid(msg.sender,amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#69)\n",
+        "lines": [
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "repayLoan"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in FlashLendingPool.getLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#50-62):\n\tExternal calls:\n\t- loanToken.transfer(msg.sender,loanAmount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#60)\n\tEvent emitted after the call(s):\n\t- LoanTaken(msg.sender,loanAmount,collateral) (../../../../../tmp/sentinel_static_mwybz0ei.sol#61)\n",
+        "lines": [
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62
+        ],
+        "function_names": [
+          "getLoan"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),borrowed) (../../../../../tmp/sentinel_static_mwybz0ei.sol#80)\n\tState variables written after the call(s):\n\t- borrowedAmount[borrower] = 0 (../../../../../tmp/sentinel_static_mwybz0ei.sol#81)\n\tFlashLendingPool.borrowedAmount (../../../../../tmp/sentinel_static_mwybz0ei.sol#26) can be used in cross function reentrancies:\n\t- FlashLendingPool.borrowedAmount (../../../../../tmp/sentinel_static_mwybz0ei.sol#26)\n\t- FlashLendingPool.getAccountHealth(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#91-98)\n\t- FlashLendingPool.getLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#50-62)\n\t- FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84)\n\t- FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70)\n\t- depositedCollateral[borrower] = 0 (../../../../../tmp/sentinel_static_mwybz0ei.sol#82)\n\tFlashLendingPool.depositedCollateral (../../../../../tmp/sentinel_static_mwybz0ei.sol#25) can be used in cross function reentrancies:\n\t- FlashLendingPool.depositCollateral(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#45-48)\n\t- FlashLendingPool.depositedCollateral (../../../../../tmp/sentinel_static_mwybz0ei.sol#25)\n\t- FlashLendingPool.getAccountHealth(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#91-98)\n\t- FlashLendingPool.getLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#50-62)\n\t- FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84)\n",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84
+        ],
+        "function_names": [
+          "liquidate"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "confidence": "Medium",
+        "description": "Reentrancy in FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../tmp/sentinel_static_mwybz0ei.sol#66)\n\tState variables written after the call(s):\n\t- borrowedAmount[msg.sender] -= amount (../../../../../tmp/sentinel_static_mwybz0ei.sol#67)\n\tFlashLendingPool.borrowedAmount (../../../../../tmp/sentinel_static_mwybz0ei.sol#26) can be used in cross function reentrancies:\n\t- FlashLendingPool.borrowedAmount (../../../../../tmp/sentinel_static_mwybz0ei.sol#26)\n\t- FlashLendingPool.getAccountHealth(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#91-98)\n\t- FlashLendingPool.getLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#50-62)\n\t- FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84)\n\t- FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70)\n",
+        "lines": [
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "function_names": [
+          "repayLoan"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          46,
+          53,
+          66,
+          76,
+          80,
+          87
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "literal-instead-of-constant",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Define and use `constant` variables instead of using literals. If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract.",
+        "lines": [
+          54,
+          55,
+          77,
+          79,
+          93,
+          96,
+          97
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          45,
+          72,
+          86
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          39,
+          40,
+          41
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-constant",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are not updated following deployment should be declared constant to save gas. Add the `constant` attribute to state variables that never change.",
+        "lines": [
+          28
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          20,
+          21,
+          22,
+          23
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          46,
+          60,
+          66,
+          80,
+          83,
+          87
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unsafe-erc20-operation",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "ERC20 functions may not behave as expected. For example: return values are not always meaningful. It is recommended to use OpenZeppelin's SafeERC20 library.",
+        "lines": [
+          46,
+          60,
+          66,
+          80,
+          83,
+          87
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          7
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "depositCollateral",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_4(bool) = HIGH_LEVEL_CALL, dest:collateralToken(IERC20), function:transferFrom, arguments:['msg.sender', 'TMP_3', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "getLoan",
+        "callee_contract": "IOracle",
+        "callee_function": "TMP_8(uint256) = HIGH_LEVEL_CALL, dest:priceOracle(IOracle), function:getPrice, arguments:['TMP_7']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "getLoan",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_17(bool) = HIGH_LEVEL_CALL, dest:loanToken(IERC20), function:transfer, arguments:['msg.sender', 'loanAmount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "repayLoan",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_22(bool) = HIGH_LEVEL_CALL, dest:loanToken(IERC20), function:transferFrom, arguments:['msg.sender', 'TMP_21', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "liquidate",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_35(bool) = HIGH_LEVEL_CALL, dest:loanToken(IERC20), function:transferFrom, arguments:['msg.sender', 'TMP_34', 'borrowed']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "liquidate",
+        "callee_contract": "IOracle",
+        "callee_function": "TMP_27(uint256) = HIGH_LEVEL_CALL, dest:priceOracle(IOracle), function:getPrice, arguments:['TMP_26']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "liquidate",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_36(bool) = HIGH_LEVEL_CALL, dest:collateralToken(IERC20), function:transfer, arguments:['msg.sender', 'collateral']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "addLiquidity",
+        "callee_contract": "IERC20",
+        "callee_function": "TMP_38(bool) = HIGH_LEVEL_CALL, dest:loanToken(IERC20), function:transferFrom, arguments:['msg.sender', 'TMP_37', 'amount']  ",
+        "callee_is_interface": true
+      },
+      {
+        "caller_contract": "FlashLendingPool",
+        "caller_function": "getAccountHealth",
+        "callee_contract": "IOracle",
+        "callee_function": "TMP_41(uint256) = HIGH_LEVEL_CALL, dest:priceOracle(IOracle), function:getPrice, arguments:['TMP_40']  ",
+        "callee_is_interface": true
+      }
+    ],
+    "routing_decisions": [
+      "CallToUnknown prob=0.259 < threshold=0.4 \u2192 skip",
+      "DenialOfService prob=0.292 < threshold=0.3 \u2192 skip",
+      "ExternalBug prob=0.681 >= threshold=0.4 \u2192 static_analysis+rag_research",
+      "GasException prob=0.272 < threshold=0.4 \u2192 skip",
+      "IntegerUO prob=0.529 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "MishandledException prob=0.272 < threshold=0.4 \u2192 skip",
+      "Reentrancy prob=0.777 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "Timestamp prob=0.191 < threshold=0.35 \u2192 skip",
+      "TransactionOrderDependence prob=0.246 < threshold=0.35 \u2192 skip",
+      "UnusedReturn prob=0.547 >= threshold=0.45 \u2192 static_analysis",
+      "quick_screen: slither=['reentrancy-no-eth', 'unchecked-transfer'] aderyn=['reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {
+      "ExternalBug": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.675,
+        "confidence": 0.5745,
+        "verdict": "LIKELY",
+        "weights": {
+          "ml": 0.225,
+          "slither": 0.5,
+          "aderyn": 0.45
+        }
+      },
+      "IntegerUO": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 1.01,
+        "confidence": 0.558,
+        "verdict": "LIKELY",
+        "weights": {
+          "ml": 0.31,
+          "slither": 0.8,
+          "aderyn": 0.7
+        }
+      },
+      "MishandledException": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.62,
+        "confidence": 0.3839,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.72,
+          "aderyn": 0.62
+        }
+      },
+      "Reentrancy": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.81,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.39,
+          "slither": 0.82,
+          "aderyn": 0.6
+        }
+      },
+      "UnusedReturn": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.925,
+        "confidence": 0.5522,
+        "verdict": "LIKELY",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.75,
+          "aderyn": 0.65
+        }
+      }
+    },
+    "debate_transcript": {
+      "prosecutor": "### Reentrancy [CONFIRMED]\nThe `liquidate` function exhibits a high risk of reentrancy because it performs external token transfers (`loanToken.transferFrom`, `collateralToken.transfer`) after reading state variables but before fully updating all related balances, creating an opportunity for recursive calls. Specifically, the sequence in `liquidate` where debt is repaid and collateral is transferred must be protected by checks or reentrancy guards to prevent external code from re-entering the function before state updates are finalized.\n\n### ExternalBug [CONFIRMED]\nThe `liquidate` function relies on an external price oracle (`priceOracle.getPrice`) to determine collateral value, which is a known attack vector in lending protocols. The calculation of `collateralValue` uses this potentially manipulated price directly to determine liquidation eligibility, making the system vulnerable if the oracle provides incorrect pricing information. This vulnerability is highlighted by the high-risk signals associated with external calls and state writes within this function.\n\n### IntegerUO [CONFIRMED]",
+      "defender": "**Reentrancy [CONFIRMED]**",
+      "judge": "{\"Reentrancy\": \"CONFIRMED\", \"ExternalBug\": \"LIKELY\", \"IntegerUO\": \"LIKELY\"}"
+    },
+    "recommendation": "HIGH RISK \u2014 top vulnerability: Reentrancy (probability 77.7%, CONFIRMED tier). 5 similar exploit pattern(s) found in DeFiHackLabs corpus. 3 Slither High/Medium finding(s). 2 prior on-chain audit(s). Recommend full manual audit before deployment.\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens \u2014 tail code was not analysed. Manual review of the unanalysed portion is recommended.",
+    "narrative": null,
+    "error": null,
+    "path_taken": "deep",
+    "metric_attribution": {
+      "CallToUnknown": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "DenialOfService": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "ExternalBug": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "GasException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "IntegerUO": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "MishandledException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "Reentrancy": {
+        "ml_pct": 43.7,
+        "slither_pct": 56.3,
+        "rag_pct": 0.0
+      },
+      "UnusedReturn": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      }
+    },
+    "confidence_by_class": {
+      "ExternalBug": 0.9166,
+      "IntegerUO": 0.8723,
+      "MishandledException": 0.3263,
+      "Reentrancy": 1.0,
+      "UnusedReturn": 0.5008
+    },
+    "reflection_notes": {
+      "unused_evidence": [
+        "1 High/Medium static finding(s) not tied to a verdict: reentrancy-state-change"
+      ],
+      "contradictions": [],
+      "uncertain_verdicts": [
+        "MishandledException: verdict DISPUTED",
+        "UnusedReturn: confidence 50% below 0.70"
+      ],
+      "failure_modes": [
+        "Contract exceeded 512 CodeBERT tokens \u2014 tail code unanalysed; verdicts may miss vulnerabilities in the truncated region.",
+        "ExternalBug flagged \u2014 the ML model is known to over-predict this class (Run 12 class-definition mismatch); treat as lower confidence unless corroborated by an inter-contract call finding."
+      ],
+      "summary": "Self-critique: 2 verdict(s) are uncertain; 1 evidence item(s) unused; 2 failure mode(s) noted.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": null,
+  "evidence_list": [
+    {
+      "source": "ml",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.6815,
+      "reliability": 0.1038,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.6815
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.5287,
+      "reliability": 0.0766,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.5287
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.7771,
+      "reliability": 0.127,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7771
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.547,
+      "reliability": 0.0575,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.547
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.343,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-benign",
+        "impact": "Low",
+        "description": "Reentrancy in FlashLendingPool.depositCollateral(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#45-48):\n\tExternal calls:\n\t- collateralToken.transferFrom(msg.sender,address(this),amount) (..",
+        "lines": [
+          45,
+          46,
+          47,
+          48
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.343,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "description": "Reentrancy in FlashLendingPool.repayLoan(uint256) (../../../../../tmp/sentinel_static_mwybz0ei.sol#64-70):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),amount) (../../../../../t",
+        "lines": [
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.6,
+      "reliability": 0.343,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-no-eth",
+        "impact": "Medium",
+        "description": "Reentrancy in FlashLendingPool.liquidate(address) (../../../../../tmp/sentinel_static_mwybz0ei.sol#72-84):\n\tExternal calls:\n\t- loanToken.transferFrom(msg.sender,address(this),borrowed) (../../../../..",
+        "lines": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.3606,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          46,
+          53,
+          66,
+          76,
+          80,
+          87
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "IntegerUO",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1365,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          46,
+          60,
+          66,
+          80,
+          83,
+          87
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "ExternalBug",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.2096,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          46,
+          60,
+          66,
+          80,
+          83,
+          87
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "MishandledException",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.3738,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          46,
+          60,
+          66,
+          80,
+          83,
+          87
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "UnusedReturn",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.3271,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "unchecked-return",
+        "impact": "Low",
+        "description": "Function returns a value but it is ignored. Consider checking the return value.",
+        "lines": [
+          46,
+          60,
+          66,
+          80,
+          83,
+          87
+        ]
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.5745,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "LIKELY",
+        "consensus_confidence": 0.5745,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.558,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "LIKELY",
+        "consensus_confidence": 0.558,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 0.3839,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3839,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 1.0,
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.5522,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "LIKELY",
+        "consensus_confidence": 0.5522,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.85,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "CONFIRMED",
+        "rationale": "{\"Reentrancy\": \"CONFIRMED\", \"ExternalBug\": \"LIKELY\", \"IntegerUO\": \"LIKELY\"}"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.65,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "LIKELY",
+        "rationale": "{\"Reentrancy\": \"CONFIRMED\", \"ExternalBug\": \"LIKELY\", \"IntegerUO\": \"LIKELY\"}"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.65,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "LIKELY",
+        "rationale": "{\"Reentrancy\": \"CONFIRMED\", \"ExternalBug\": \"LIKELY\", \"IntegerUO\": \"LIKELY\"}"
+      }
+    }
+  ],
+  "verdict_provable": {
+    "ExternalBug": "LIKELY",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "DISPUTED",
+    "Reentrancy": "CONFIRMED",
+    "UnusedReturn": "LIKELY"
+  },
+  "verdict_full": {
+    "ExternalBug": "CONFIRMED",
+    "IntegerUO": "CONFIRMED",
+    "MishandledException": "DISPUTED",
+    "Reentrancy": "CONFIRMED",
+    "UnusedReturn": "LIKELY"
+  }
+}

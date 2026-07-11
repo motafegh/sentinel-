@@ -50,7 +50,7 @@
   ┌─────────────────────────────────────────────────────────────────────────────┐
   │ Path A — via MCP (default for the audit graph)                             │
   │                                                                             │
-  │  ② ml_assessment node (orchestration/nodes.py:348)                          │
+  │  ② ml_assessment node (orchestration/nodes/ml_assessment.py)               │
   │       │                                                                     │
   │       │  async with sse_client("http://localhost:8010/sse")                 │
   │       │      await session.call_tool("predict", {"contract_code": ...})     │
@@ -82,7 +82,7 @@
   ┌─────────────────────────────────────────────────────────────────────────────┐
   │ Path B — direct HTTP (graph_inspector_server, for GNN attention)            │
   │                                                                             │
-  │  ⑥ graph_explain node (orchestration/nodes.py)                              │
+  │  ⑦ graph_explain node (orchestration/nodes/graph_explain.py)               │
   │       │                                                                     │
   │       │  async with sse_client("http://localhost:8013/sse")                 │
   │       │      await session.call_tool("get_graph_hotspots",                 │
@@ -224,7 +224,7 @@ not blind trust in either direction.
                           │      uses confirmed/suspicious + per-class reliability
                           │
                           ├──► cross_validator  (A.4 — debate prompt)
-                          │      src/orchestration/nodes.py (debate prompts)
+                          │      src/orchestration/nodes/cross_validator.py
                           │      uses confirmed + top probabilities
                           │
                           ├──► explainer  (A.8 — LIME attribution)
@@ -232,11 +232,11 @@ not blind trust in either direction.
                           │      uses per-class probabilities
                           │
                           ├──► synthesizer  (top_vulnerability, risk_probability)
-                          │      src/orchestration/nodes.py:synthesizer()
+                          │      src/orchestration/nodes/synthesizer.py
                           │      uses max(probabilities) for top vuln
                           │
                           └──► reflection  (A.3 — failure-mode detection)
-                                 src/orchestration/nodes.py:reflection()
+                                 src/orchestration/nodes/reflection.py
                                  flags known failure modes (truncated, ExternalBug FP)
 ```
 
@@ -397,7 +397,7 @@ This inverted map is used by `static_analysis` to scope Slither to only the rele
   │    4. Prosecutor/Defender/Judge    (LLM debate reads source,        │
   │                                    weighs ML as one signal)         │
   │    5. cross_validator prompt       (explicitly tells LLM that       │
-  │      (nodes.py:1112-1120)            ML is over-prediction-prone)  │
+  (nodes/cross_validator.py)      ML is over-prediction-prone)  │
   │    6. reflection (A.3)             (flags known ML failure modes)  │
   │    7. explainer (A.8)               (LIME attribution so consumer   │
   │                                    can see ml_pct vs others)        │
@@ -652,22 +652,28 @@ These are **two different defaults pointing to the same service** in local dev (
   │   │                        prob_to_severity, compute_overall_verdict
   │   │                        (line 23-34: DEEP_THRESHOLDS)
   │   │
-  │   ├── nodes.py            13 async nodes
-  │   │                        (line 348-414: ml_assessment — calls predict)
-  │   │                        (line 170-214: _route_from_evidence_router)
-  │   │                        (line 425-490: rag_research — uses ml_result)
-  │   │                        (line 700-820: static_analysis — uses ml_result
-  │   │                         for Slither detector scoping)
-  │   │                        (line 860-940: graph_explain — calls get_graph_hotspots)
-  │   │                        (line 956-1200: cross_validator — uses ml_result
-  │   │                         in Prosecutor/Defender/Judge debate prompts)
-  │   │                        (line 1058-1063: Ali directive — ML is a HINT)
-  │   │                        (line 1112-1120: cross_validator prompt — names
-  │   │                         ML over-prediction explicitly)
-  │   │                        (line 1225-1300: synthesizer — uses ml_result
-  │   │                         for top_vulnerability, risk_probability)
-  │   │                        (line 1400-1500: reflection — flags ML failure modes)
-  │   │                        (line 1500-1600: explainer — LIME attribution)
+  │   ├── nodes/              14 async node implementations (P2 split from nodes.py)
+  │   │   ├── ml_assessment.py       calls MCP :8010 /predict; sets ml_result + model_hash
+  │   │   ├── quick_screen.py        Tier 0: Slither + Aderyn High/Critical scan
+  │   │   ├── evidence_router.py     logs routing_decisions (no LLM, no contract_code)
+  │   │   ├── rag_research.py        calls MCP :8011 search; uses ml_result
+  │   │   ├── static_analysis.py     Slither + Aderyn scoped to ML-flagged classes
+  │   │   ├── graph_explain.py       calls MCP :8013 get_graph_hotspots
+  │   │   ├── formal_verification.py Halmos symbolic execution (P8a)
+  │   │   ├── audit_check.py         calls MCP :8012 get_audit_history
+  │   │   ├── consensus_engine.py    A.6/A.7 weighted vote; ML discounted
+  │   │   ├── cross_validator.py     A.4 P/D/J debate; P4 injection guard
+  │   │   ├── synthesizer.py         fuse() verdicts; P4 injection guard; final_report
+  │   │   ├── reflection.py          A.3 self-critique
+  │   │   ├── explainer.py           A.8 LIME attribution
+  │   │   ├── visualizer.py          A.9 interactive HTML hotspot report
+  │   │   └── _helpers.py            _call_mcp_tool, _llm_enabled, AderynRunError
+  │   ├── verdict/                   verdict production package (P2)
+  │   │   ├── fuse.py                sole verdict producer → verdict_provable + verdict_full
+  │   │   ├── evidence.py            Evidence dataclass + constructors
+  │   │   ├── reliability.py         L3→L1 fallback reliability weights
+  │   │   ├── emit.py                emit_evidence(), emit_halmos_evidence()
+  │   │   └── verdict.py             verdict constants
   │   │
   │   ├── consensus.py        A.6 — consensus_vote (weighted ML/Slither/Aderyn)
   │   ├── confidence.py       A.7 — track_confidence (Bayesian staged)
@@ -766,7 +772,7 @@ These are **two different defaults pointing to the same service** in local dev (
 
 | Concept | File:Line |
 |---------|-----------|
-| `ml_assessment` node | `agents/src/orchestration/nodes.py:348-414` |
+| `ml_assessment` node | `agents/src/orchestration/nodes/ml_assessment.py` |
 | `ml_result` schema (3-tier) | `agents/src/orchestration/state.py:55-74` |
 | `DEEP_THRESHOLDS` | `agents/src/orchestration/routing.py:23-34` |
 | `ROUTING_RULES` | `agents/src/orchestration/routing.py:43-54` |
@@ -777,12 +783,20 @@ These are **two different defaults pointing to the same service** in local dev (
 | `compute_verdict()` (rule-based) | `agents/src/orchestration/routing.py:187-245` |
 | `prob_to_severity()` | `agents/src/orchestration/routing.py:248-253` |
 | `compute_overall_verdict()` | `agents/src/orchestration/routing.py:259-263` |
-| Two-signal fast-path gate | `agents/src/orchestration/nodes.py:170-214` + `orchestration/README.md` |
+| Two-signal fast-path gate | `agents/src/orchestration/graph.py` + `orchestration/README.md` |
+| `rag_research` node | `agents/src/orchestration/nodes/rag_research.py` |
+| `static_analysis` node | `agents/src/orchestration/nodes/static_analysis.py` |
+| `graph_explain` node | `agents/src/orchestration/nodes/graph_explain.py` |
+| `cross_validator` node | `agents/src/orchestration/nodes/cross_validator.py` |
+| Ali directive (ML = HINT) | `agents/src/orchestration/nodes/cross_validator.py` |
+| Cross_validator prompt (names ML over-prediction) | `agents/src/orchestration/nodes/cross_validator.py` |
+| `synthesizer` node | `agents/src/orchestration/nodes/synthesizer.py` |
+| `reflection` node | `agents/src/orchestration/nodes/reflection.py` |
+| `explainer` node (LIME attribution) | `agents/src/orchestration/nodes/explainer.py` |
+| `fuse()` (P2 sole verdict producer) | `agents/src/orchestration/verdict/fuse.py` |
 | `consensus_vote()` (A.6) | `agents/src/orchestration/consensus.py` |
 | `track_confidence()` (A.7) | `agents/src/orchestration/confidence.py` |
 | `attribute_verdict()` (A.8) | `agents/src/orchestration/attribution.py` |
-| Ali directive (ML = HINT) | `agents/src/orchestration/nodes.py:1058-1063` |
-| Cross_validator prompt (names ML over-prediction) | `agents/src/orchestration/nodes.py:1112-1120` |
 | Inference MCP HTTP bridge | `agents/src/mcp/servers/inference_server.py:174-237` |
 | `_mock_prediction()` (3-tier) | `agents/src/mcp/servers/inference_server.py:240-313` |
 | Shared httpx client (lifespan) | `agents/src/mcp/servers/inference_server.py:147-167` |

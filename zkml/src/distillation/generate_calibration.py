@@ -41,7 +41,7 @@ import numpy as np
 import torch
 from loguru import logger
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
 from ml.src.models.sentinel_model import SentinelModel
@@ -51,7 +51,7 @@ from torch_geometric.loader import DataLoader
 # Config
 # ------------------------------------------------------------------
 
-TEACHER_CHECKPOINT  = "ml/checkpoints/multilabel_crossattn_best.pt"
+TEACHER_CHECKPOINT  = "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt"
 GRAPHS_DIR          = "ml/data/graphs"
 TOKENS_DIR          = "ml/data/tokens"
 SPLITS_DIR          = "ml/data/splits"

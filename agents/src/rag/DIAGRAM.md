@@ -483,7 +483,7 @@ queries (e.g. "Euler Finance 0xc310a0af specific transaction").
 
 ```
   ┌─────────────────────────────────────────────────────────────────────┐
-  │  1. rag_research node (orchestration/nodes.py) — primary consumer   │
+  │  1. rag_research node (orchestration/nodes/rag_research.py)          │
   │     Deep path only. Called via MCP :8011.                           │
   │     Query: "{ML top class} exploit pattern in {contract snippet}"   │
   │     Filters: {vuln_type: top_class, loss_gte: 100_000}              │
@@ -536,7 +536,13 @@ queries (e.g. "Euler Finance 0xc310a0af specific transaction").
   ├── embedder.py             228 lines  LM Studio embeddings + 3-attempt retry
   │                                       count validation (RuntimeError, not assert)
   │
-  ├── build_index.py          661 lines  Full rebuild (FileLock + atomic + rollback)
+  ├── build_index/                       Full rebuild package (was build_index.py 661L, split P2.5)
+  │   ├── __main__.py                    CLI entry: python -m src.rag.build_index
+  │   ├── _orchestrator.py               Top-level pipeline coordinator
+  │   ├── _pipeline.py                   Fetch → chunk → embed → FAISS + BM25 steps
+  │   ├── _io.py                         Atomic write helpers + FileLock
+  │   ├── _metadata.py                   index_metadata.json build/read/staleness
+  │   └── _paths.py                      Centralized path constants
   │                                       Calls DeFiHackLabsFetcher only (WS2)
   │                                       _extra_fetchers() returns [] ⚠
   │
@@ -611,18 +617,18 @@ queries (e.g. "Euler Finance 0xc310a0af specific transaction").
 | DEFAULT_CHUNK_SIZE / OVERLAP | `chunker.py:14-15` |
 | Embedder retry logic | `agents/src/rag/embedder.py` |
 | Vector count validation (RuntimeError) | `embedder.py` (search for RuntimeError) |
-| `build_index.py` orchestration | `agents/src/rag/build_index.py` |
-| FileLock | `build_index.py` (search for FileLock) |
-| Atomic write pattern | `build_index.py` (search for `.tmp` + `replace()`) |
-| 6 fetchers imported | `build_index.py:60-68` |
-| Phase A fetchers helper | `build_index.py:87-100` |
+| `build_index/` orchestration | `agents/src/rag/build_index/_orchestrator.py` |
+| FileLock | `build_index/_io.py` (search for FileLock) |
+| Atomic write pattern | `build_index/_io.py` (search for `.tmp` + `replace()`) |
+| 6 fetchers imported | `build_index/_pipeline.py` |
+| Phase A fetchers helper | `build_index/_pipeline.py` |
 | `BaseFetcher` abstract | `agents/src/rag/fetchers/base_fetcher.py` |
 | `Document` dataclass | `fetchers/base_fetcher.py:19-39` |
 | `DeFiHackLabsFetcher` | `fetchers/github_fetcher.py` |
 | `_infer_vuln_type()` | `fetchers/github_fetcher.py` |
 | RAG server (consumer MCP) | `agents/src/mcp/servers/rag_server.py` |
 | Lazy retriever init (Bug 10 fix) | `mcp/servers/rag_server.py:97-111` |
-| `rag_research` node (consumer) | `agents/src/orchestration/nodes.py:421-...` |
+| `rag_research` node (consumer) | `agents/src/orchestration/nodes/rag_research.py` |
 | Index directory | `agents/data/index/` |
 
 ---

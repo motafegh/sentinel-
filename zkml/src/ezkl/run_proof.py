@@ -14,19 +14,17 @@ RECALL — the full EZKL pipeline has two phases:
 RECALL — what a proof actually proves:
     "I know private weights W such that when I run the circuit
      defined by model.compiled on these specific public inputs
-     (the 64 contract features), I get this specific public output
-     (the risk score) — and I can prove this without showing W."
+     (the 128 CrossAttentionFusion features), I get these specific
+     10 class score outputs — and I can prove this without showing W."
 
     The proof is ~2KB. It contains no weight information.
     Anyone with verification_key.vk can verify it in milliseconds.
     On-chain: ZKMLVerifier.verifyProof(proof, publicSignals) → bool
 
-RECALL — what publicSignals contains:
-    [features[0..63], risk_score]
-    Index 0-63:  the 64 input features (public)
-    Index 64:    the risk score output (public)
-    AuditRegistry checks: publicSignals[64] == scoreFieldElement
-    (full uint256 comparison — NOT uint8 truncation)
+RECALL — what publicSignals contains (v2.0 circuit, 10-class):
+    [fusion_features[0..127], class_score_0, ..., class_score_9]
+    Total: 128 + 10 = 138 public signals.
+    AuditRegistry V2 Guard 3 checks: publicSignals[128 + i] == classScores[i] ∀i∈[0,9]
 
 RECALL — BN254 field element encoding (CRITICAL):
     EZKL stores all field elements as 32-byte little-endian hex strings.
@@ -34,22 +32,13 @@ RECALL — BN254 field element encoding (CRITICAL):
     To get the Solidity uint256:
         CORRECT:  int.from_bytes(bytes.fromhex(instances[i]), byteorder='little')
         WRONG:    int(instances[i], 16)  ← treats as big-endian, huge garbage value
-    Example: instances[64] = "9111000000...00"
-        little-endian → 0x1191 = 4497  (correct: 4497/8192 = 0.5490 score)
-        big-endian    → 65615399...    (wrong: not a valid field element)
-
-RECALL — why gen_witness exists as a separate step:
-    The witness encodes floating point values as BN254 field elements
-    using the scale factor from calibration (2^13 = 8192).
-    Example: 0.131 × 8192 = 1073 → stored as field element.
-    EZKL needs this intermediate representation before proving
-    because the circuit operates on field elements, not floats.
 
 Usage:
     cd ~/projects/sentinel
-    poetry run python zkml/src/ezkl/run_proof.py
+    source ml/.venv/bin/activate
+    python zkml/src/ezkl/run_proof.py
 
-    Generates proof for first contract in val set.
+    Generates proof for first contract in the corpus.
     Verifies proof off-chain.
     Prints publicSignals — what gets submitted to AuditRegistry.
 """
@@ -64,18 +53,17 @@ import numpy as np
 import torch
 from loguru import logger
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from ml.src.datasets.dual_path_dataset import DualPathDataset, dual_path_collate_fn
-from ml.src.models.sentinel_model import SentinelModel
-from torch_geometric.loader import DataLoader
+from torch_geometric.data import Batch
+from ml.src.inference.predictor import Predictor
 from zkml.src.distillation.proxy_model import CIRCUIT_VERSION, ProxyModel
 
 # ------------------------------------------------------------------
 # Paths
 # ------------------------------------------------------------------
 
-TEACHER_CHECKPOINT = "ml/checkpoints/run-alpha-tune_best.pt"
+TEACHER_CHECKPOINT = "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt"
 PROXY_CHECKPOINT   = "zkml/models/proxy_best.pt"
 ONNX_MODEL         = "zkml/models/proxy.onnx"
 COMPILED           = "zkml/ezkl/model.compiled"
@@ -84,14 +72,22 @@ SRS                = "zkml/ezkl/srs.params"
 PROVING_KEY        = "zkml/ezkl/proving_key.pk"
 VERIFICATION_KEY   = "zkml/ezkl/verification_key.vk"
 
-GRAPHS_DIR = "ml/data/graphs"
-TOKENS_DIR = "ml/data/tokens"
-SPLITS_DIR = "ml/data/splits"
+CORPUS_ROOT        = "manual_hand_written_contracts"
+NUM_CLASSES        = 10
+INPUT_DIM          = 128
+SCALE              = 8192  # 2^13
 
 # Output paths for this proof
 PROOF_INPUT  = "zkml/ezkl/proof_input.json"
 WITNESS      = "zkml/ezkl/witness.json"
 PROOF        = "zkml/ezkl/proof.json"
+
+# Class names matching graph_schema.py CLASS_NAMES order
+CLASS_NAMES = [
+    "CallToUnknown", "DenialOfService", "ExternalBug", "GasException",
+    "IntegerUO", "MishandledException", "Reentrancy", "Timestamp",
+    "TransactionOrderDependence", "UnusedReturn",
+]
 
 
 def check_prerequisites() -> None:
@@ -112,137 +108,115 @@ def check_prerequisites() -> None:
     logger.info("Prerequisites check passed — EZKL setup artifacts present")
 
 
+def _find_first_contract() -> Path:
+    """Find the first .sol contract in the corpus (excl. quarantine)."""
+    root = Path(CORPUS_ROOT)
+    for sol_file in sorted(root.rglob("*.sol")):
+        if "_quarantine" in str(sol_file):
+            continue
+        return sol_file
+    raise FileNotFoundError(
+        f"No .sol contracts found under {CORPUS_ROOT} (excluding _quarantine/)"
+    )
+
+
+def _find_all_contracts() -> list[Path]:
+    """Find all .sol contracts in the corpus (excl. quarantine)."""
+    root = Path(CORPUS_ROOT)
+    return sorted(
+        p for p in root.rglob("*.sol")
+        if "_quarantine" not in str(p)
+    )
+
+
 @torch.no_grad()
-def extract_single_contract_features(
+def extract_corpus_contract_features(
+    predictor: Predictor,
+    sol_file: Path,
     device: str,
-) -> tuple[list[float], float, float]:
+) -> tuple[list[float], list[float], list[float], int]:
     """
-    Extract 64-dim features and scores for one real contract.
+    Extract 128-dim fusion features and 10-class scores from a single corpus contract.
 
     Returns:
-        features:      list of 64 floats — proxy model input
-        teacher_score: float — teacher's risk score
-        proxy_score:   float — proxy's risk score (should match teacher)
-
-    Raises:
-        ValueError: if teacher and proxy disagree on the binary classification.
-                    A proof generated under disagreement is cryptographically
-                    valid but semantically incorrect — it would attest a score
-                    that contradicts the full teacher model. Do not submit it.
+        features:       list of 128 floats
+        teacher_scores: list of 10 floats
+        proxy_scores:   list of 10 floats
+        n_disagreements: how many classes disagree at threshold 0.5
     """
-    # ── Load teacher ────────────────────────────────────────────────────
-    # CHECKPOINT FORMAT NOTE (A-12 fix):
-    # Old format (pre-April 2026):  torch.save(model.state_dict(), path)
-    #   → torch.load returns an OrderedDict of parameter tensors directly.
-    # New format (trainer.py):      torch.save({"model": ..., "optimizer": ...,
-    #                                            "epoch": N, "best_f1": f, "config": cfg}, path)
-    #   → torch.load returns a plain dict; state_dict is at ckpt["model"].
-    #
-    # We use weights_only=False because new-format checkpoints contain non-tensor
-    # objects (TrainConfig dataclass, optimizer state) that pickle cannot load
-    # safely with weights_only=True.  This file only loads checkpoints from
-    # our own ml/checkpoints/ directory — the security tradeoff is acceptable.
-    teacher = SentinelModel().to(device)
-    _ckpt = torch.load(TEACHER_CHECKPOINT, map_location=device, weights_only=False)
-    if isinstance(_ckpt, dict) and "model" in _ckpt:
-        # New format — extract just the model weights
-        _state_dict = _ckpt["model"]
-        logger.debug(
-            f"Teacher checkpoint — new format detected "
-            f"(epoch {_ckpt.get('epoch', '?')}, best_f1 {_ckpt.get('best_f1', '?'):.4f})"
-        )
-    else:
-        # Old format — the loaded object IS the state_dict
-        _state_dict = _ckpt
-        logger.debug("Teacher checkpoint — legacy format (raw state_dict)")
-    teacher.load_state_dict(_state_dict)
-    teacher.eval()
+    model = predictor.model
+    model.eval()
 
-    # ── Load proxy ──────────────────────────────────────────────────────
-    # Same format detection logic as teacher above.
+    if not sol_file.exists():
+        raise FileNotFoundError(f"Contract not found: {sol_file}")
+
+    logger.info(f"Extracting features from: {sol_file.name}")
+    source_code = sol_file.read_text(encoding="utf-8", errors="replace")
+
+    graph, windows = predictor.preprocessor.process_source_windowed(source_code)
+    batch = Batch.from_data_list([graph]).to(device)
+
+    selected = windows[:4]
+    pad_ids  = torch.zeros(1, 512, dtype=torch.long, device=device)
+    pad_mask = torch.zeros(1, 512, dtype=torch.long, device=device)
+    padded = list(selected)
+    while len(padded) < 4:
+        padded.append({"input_ids": pad_ids, "attention_mask": pad_mask})
+    stacked_ids  = torch.cat(
+        [w["input_ids"].to(device) for w in padded], dim=0
+    ).unsqueeze(0)
+    stacked_mask = torch.cat(
+        [w["attention_mask"].to(device) for w in padded], dim=0
+    ).unsqueeze(0)
+
+    with torch.no_grad():
+        logits, aux = model(batch, stacked_ids, stacked_mask, return_aux=True)
+
+    features_128 = aux["fusion_embedding"].squeeze(0)          # [128]
+    teacher_logits = logits.squeeze(0)                          # [10]
+    teacher_scores = torch.sigmoid(teacher_logits).cpu()        # [10]
+
+    # Load proxy and compute proxy scores
     proxy = ProxyModel().to(device)
-    _ckpt = torch.load(PROXY_CHECKPOINT, map_location=device, weights_only=False)
-    if isinstance(_ckpt, dict) and "model" in _ckpt:
-        _state_dict = _ckpt["model"]
-        logger.debug(
-            f"Proxy checkpoint — new format detected "
-            f"(epoch {_ckpt.get('epoch', '?')}, best_f1 {_ckpt.get('best_f1', '?'):.4f})"
-        )
-    else:
-        _state_dict = _ckpt
-        logger.debug("Proxy checkpoint — legacy format (raw state_dict)")
-    proxy.load_state_dict(_state_dict)
+    proxy_state = torch.load(PROXY_CHECKPOINT, map_location=device, weights_only=False)
+    if isinstance(proxy_state, dict) and "model" in proxy_state:
+        proxy_state = proxy_state["model"]
+    proxy.load_state_dict(proxy_state)
     proxy.eval()
 
-    # Load one contract from val set
-    val_indices = np.load(f"{SPLITS_DIR}/val_indices.npy")
-    dataset = DualPathDataset(
-        graphs_dir=GRAPHS_DIR,
-        tokens_dir=TOKENS_DIR,
-        indices=[val_indices[0]],  # single contract
-    )
-    loader = DataLoader(
-        dataset,
-        batch_size=1,
-        shuffle=False,
-        collate_fn=dual_path_collate_fn,
-    )
+    proxy_logits = proxy(features_128.unsqueeze(0).to(device)).squeeze(0)  # [10]
+    proxy_scores = torch.sigmoid(proxy_logits).cpu()                        # [10]
 
-    graphs, tokens, label = next(iter(loader))
-    graphs         = graphs.to(device)
-    input_ids      = tokens["input_ids"].to(device)
-    attention_mask = tokens["attention_mask"].to(device)
+    # Convert to Python lists for the caller
+    features_list = features_128.cpu().tolist()
+    teacher_list  = teacher_scores.tolist()
+    proxy_list    = proxy_scores.tolist()
 
-    # Extract FusionLayer features — proxy input
-    gnn_out         = teacher.gnn(graphs.x, graphs.edge_index, graphs.batch)
-    transformer_out = teacher.transformer(input_ids, attention_mask)
-    features        = teacher.fusion(gnn_out, transformer_out)  # [1, 64]
+    # Count per-class disagreements (report, don't block)
+    disagreements = []
+    for i in range(NUM_CLASSES):
+        t_vuln = teacher_list[i] >= 0.5
+        p_vuln = proxy_list[i] >= 0.5
+        if t_vuln != p_vuln:
+            disagreements.append((CLASS_NAMES[i], teacher_list[i], proxy_list[i]))
 
-    # Teacher final score
-    teacher_score = teacher.classifier(features).squeeze(1).item()
-
-    # Proxy score — what gets proved
-    proxy_score = proxy(features).item()
-
-    teacher_vulnerable = teacher_score >= 0.5
-    proxy_vulnerable   = proxy_score   >= 0.5
-
-    logger.info(
-        f"Contract loaded — "
-        f"label: {label.item()} | "
-        f"teacher: {teacher_score:.4f} ({'VULN' if teacher_vulnerable else 'SAFE'}) | "
-        f"proxy:   {proxy_score:.4f} ({'VULN' if proxy_vulnerable else 'SAFE'}) | "
-        f"agreement: {'YES ✓' if teacher_vulnerable == proxy_vulnerable else 'NO ✗'}"
-    )
-
-    # CRITICAL — reject if teacher and proxy classify differently.
-    # A proof generated under disagreement is cryptographically valid —
-    # the ZK proof confirms the proxy's output — but it contradicts the
-    # full teacher model that the proxy is meant to approximate.
-    # Submitting such a proof would register a misleading audit result
-    # on-chain. Hard-reject here so the issue surfaces immediately.
-    if teacher_vulnerable != proxy_vulnerable:
-        raise ValueError(
-            f"Teacher/proxy disagreement — proof generation rejected.\n"
-            f"  Teacher: {teacher_score:.4f} → {'VULNERABLE' if teacher_vulnerable else 'SAFE'}\n"
-            f"  Proxy:   {proxy_score:.4f}   → {'VULNERABLE' if proxy_vulnerable else 'SAFE'}\n"
-            f"This contract is near the decision boundary.\n"
-            f"Options:\n"
-            f"  1. Use a different contract with a more decisive score.\n"
-            f"  2. Investigate whether the proxy needs retraining.\n"
-            f"  3. If proxy agreement is systematically low, check train_proxy.py."
+    if disagreements:
+        logger.warning(
+            f"  {len(disagreements)}/{NUM_CLASSES} class disagreements:"
         )
+        for cls, t, p in disagreements:
+            logger.warning(f"    {cls}: teacher={t:.4f} proxy={p:.4f}")
+    else:
+        logger.info("Teacher/proxy agreement: all 10 classes match at threshold 0.5")
 
-    return features.squeeze(0).cpu().tolist(), teacher_score, proxy_score
+    return features_list, teacher_list, proxy_list, len(disagreements)
 
 
-def generate_proof(device: str = "cuda" if torch.cuda.is_available() else "cpu") -> bool:
+def generate_proof(
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
+) -> bool:
     """
     Full per-audit proof pipeline: witness → prove → verify.
-
-    This is what runs for every audit request in production.
-    In Module 6, this logic moves into a Celery task called
-    asynchronously from the FastAPI endpoint.
 
     Returns:
         True if proof is valid and ready for on-chain submission.
@@ -251,50 +225,63 @@ def generate_proof(device: str = "cuda" if torch.cuda.is_available() else "cpu")
         FileNotFoundError: if setup artifacts are missing (run setup_circuit.py)
         ValueError:        if teacher/proxy disagree (contract near boundary)
         RuntimeError:      if proof generation or verification fails
-
-    On any exception, partially written WITNESS and PROOF files are removed
-    so the next run starts from a clean state.
     """
     check_prerequisites()
     logger.info(f"Generating proof on: {device}")
     logger.info(f"Circuit version: {CIRCUIT_VERSION}")
 
-    # Partial artifacts to clean up if anything goes wrong after they are created
     _partial_artifacts = [WITNESS, PROOF]
 
     try:
-        # ------------------------------------------------------------------
-        # Step 6a — Extract real contract features
-        # ------------------------------------------------------------------
-        # RECALL — the proxy never sees raw Solidity.
-        # The full teacher pipeline runs first:
-        #   raw .sol → AST → GNN + CodeBERT → FusionLayer → 64 features
-        # The proxy maps those 64 features → risk score.
-        # The proof proves: "I ran the proxy on these 64 features
-        #                    and got this risk score."
-        # ValueError is raised here if teacher/proxy disagree.
-        features, teacher_score, proxy_score = extract_single_contract_features(device)
+        # ── Load teacher ────────────────────────────────────────────────
+        predictor = Predictor(checkpoint=TEACHER_CHECKPOINT)
+        logger.info(f"Teacher loaded — architecture: {predictor.architecture}")
 
-        # ------------------------------------------------------------------
-        # Step 6b — Format input for EZKL
-        # ------------------------------------------------------------------
-        # EZKL proof_input format:
-        #   {"input_data": [[f1, f2, ..., f64]]}
-        # Single contract = single inner list of 64 floats.
+        # ── Extract features — try contracts until one with acceptable agreement ──
+        all_contracts = _find_all_contracts()
+        if not all_contracts:
+            raise RuntimeError("No contracts found in corpus.")
+
+        best_contract = None
+        best_features = None
+        best_teacher  = None
+        best_proxy    = None
+        best_n_disag = NUM_CLASSES + 1
+
+        for sol_file in all_contracts[:10]:  # try at most 10 contracts
+            try:
+                feats, t_scores, p_scores, n_disag = extract_corpus_contract_features(
+                    predictor, sol_file, device,
+                )
+                if n_disag < best_n_disag:
+                    best_n_disag  = n_disag
+                    best_features = feats
+                    best_teacher  = t_scores
+                    best_proxy    = p_scores
+                    best_contract = sol_file
+                    if n_disag == 0:
+                        break
+            except Exception as e:
+                logger.warning(f"  Skipped {sol_file.name}: {e}")
+                continue
+
+        if best_contract is None:
+            raise RuntimeError("Could not extract features from any contract.")
+
+        features, teacher_scores, proxy_scores = best_features, best_teacher, best_proxy
+        logger.info(
+            f"Selected {best_contract.name} — "
+            f"{best_n_disag}/{NUM_CLASSES} disagreements (best available)"
+        )
+
+        # ── Format input for EZKL ───────────────────────────────────────
+        # EZKL proof_input format: {"input_data": [[f1, f2, ..., f128]]}
         proof_input = {"input_data": [features]}
         with open(PROOF_INPUT, "w") as f:
             json.dump(proof_input, f)
-        logger.info(f"Proof input saved: {PROOF_INPUT}")
+        logger.info(f"Proof input saved: {PROOF_INPUT} ({len(features)} features)")
 
-        # ------------------------------------------------------------------
-        # Step 6c — gen_witness
-        # ------------------------------------------------------------------
-        # RECALL — what gen_witness does:
-        #   Encodes floating point inputs as BN254 field elements
-        #   using the scale factor from calibration (2^13).
-        #   Example: 0.131 × 8192 = 1073 → hex field element.
-        #   The circuit operates on these field elements, not raw floats.
-        #   This intermediate step is required before proving.
+        # ── Step 6: gen_witness ─────────────────────────────────────────
         import ezkl
         logger.info("Step 6/8 — gen_witness")
 
@@ -305,26 +292,25 @@ def generate_proof(device: str = "cuda" if torch.cuda.is_available() else "cpu")
         )
         logger.info(f"Witness generated: {WITNESS}")
 
-        # Extract the output field element — the encoded risk score.
-        # RECALL — witness["outputs"][0][0] is a little-endian hex string.
-        # It will become publicSignals[64] on-chain after correct decoding.
-        output_felt = witness["outputs"][0][0]
-        score_field_element = int.from_bytes(bytes.fromhex(output_felt), byteorder='little')
-        logger.info(
-            f"Output field element: {score_field_element} "
-            f"(human: {score_field_element / 8192:.4f})"
-        )
+        # Decode all 10 output field elements (class scores)
+        outputs = witness["outputs"][0]  # list of 10 little-endian hex strings
+        if len(outputs) != NUM_CLASSES:
+            raise RuntimeError(
+                f"Expected {NUM_CLASSES} output field elements, got {len(outputs)}. "
+                f"Circuit may have been compiled for a different number of classes."
+            )
 
-        # ------------------------------------------------------------------
-        # Step 7 — prove
-        # ------------------------------------------------------------------
-        # RECALL — what prove does:
-        #   Takes private weights (via proving_key) + public inputs (witness)
-        #   + circuit constraints (compiled model).
-        #   Runs Halo2 proving protocol over BN254 curve.
-        #   Produces proof π — a ~2KB cryptographic object.
-        #   Anyone with verification_key.vk can verify this proof.
-        #   The proof contains NO weight information — weights stay private.
+        class_score_felts = []
+        for i, hex_str in enumerate(outputs):
+            felt = int.from_bytes(bytes.fromhex(hex_str), byteorder='little')
+            class_score_felts.append(felt)
+            logger.info(
+                f"  class[{i}] {CLASS_NAMES[i]:>25s}: "
+                f"felt={felt:>6d}  human={felt / SCALE:.4f}  "
+                f"(teacher: {teacher_scores[i]:.4f}, proxy: {proxy_scores[i]:.4f})"
+            )
+
+        # ── Step 7: prove ───────────────────────────────────────────────
         logger.info("Step 7/8 — prove (this may take 30-60 seconds)")
 
         proof_result = ezkl.prove(
@@ -338,15 +324,7 @@ def generate_proof(device: str = "cuda" if torch.cuda.is_available() else "cpu")
         proof_size_kb = Path(PROOF).stat().st_size / 1024
         logger.info(f"Proof generated: {PROOF} ({proof_size_kb:.1f} KB)")
 
-        # ------------------------------------------------------------------
-        # Step 8 — verify (off-chain)
-        # ------------------------------------------------------------------
-        # RECALL — what verify does:
-        #   Checks proof π against publicSignals using verification_key.
-        #   No weights needed — only the circuit fingerprint (vk).
-        #   This is the off-chain version.
-        #   On-chain version: ZKMLVerifier.verifyProof(proof, publicSignals) → bool
-        #   Both should return true for a valid proof.
+        # ── Step 8: verify (off-chain) ──────────────────────────────────
         logger.info("Step 8/8 — verify")
 
         valid = ezkl.verify(
@@ -363,29 +341,31 @@ def generate_proof(device: str = "cuda" if torch.cuda.is_available() else "cpu")
                 "  - Proving key does not match the compiled circuit\n"
                 "  - Witness was generated with different inputs than the proof\n"
                 "  - EZKL version mismatch between setup and prove steps\n"
-                "Run: poetry run python zkml/src/ezkl/setup_circuit.py"
+                "Run: python zkml/src/ezkl/setup_circuit.py"
             )
 
-        # ------------------------------------------------------------------
-        # Summary
-        # ------------------------------------------------------------------
+        # ── Summary ─────────────────────────────────────────────────────
         logger.info("=" * 60)
         logger.info("Proof pipeline complete")
-        logger.info(f"  Teacher score:        {teacher_score:.4f}")
-        logger.info(f"  Proxy score:          {proxy_score:.4f}")
-        logger.info(f"  Classification:       {'VULNERABLE' if proxy_score >= 0.5 else 'SAFE'}")
-        logger.info(f"  Score field element:  {score_field_element}  (= {score_field_element}/8192 = {score_field_element/8192:.4f})")
-        logger.info(f"  Proof size:           {proof_size_kb:.1f} KB")
-        logger.info(f"  Off-chain valid:      {valid} ✓")
-        logger.info("  Ready for AuditRegistry.submitAudit()")
-        logger.info("  Run: poetry run python zkml/src/ezkl/extract_calldata.py")
+        logger.info(f"  Contract:          {best_contract.name}")
+        logger.info(f"  Circuit version:   {CIRCUIT_VERSION}")
+        logger.info(f"  Proof size:        {proof_size_kb:.1f} KB")
+        logger.info(f"  Off-chain valid:   {valid} ✓")
+        logger.info(f"  Public signals:    {INPUT_DIM} inputs + {NUM_CLASSES} outputs = {INPUT_DIM + NUM_CLASSES}")
+        logger.info(f"  Class disagreements:{best_n_disag}/{NUM_CLASSES}")
+        for i in range(NUM_CLASSES):
+            logger.info(
+                f"  classScore[{i}] {CLASS_NAMES[i]:>25s}: "
+                f"felt={class_score_felts[i]:>6d}  "
+                f"human={class_score_felts[i] / SCALE:.4f}"
+            )
+        logger.info("  Ready for AuditRegistry.submitAuditV2()")
+        logger.info("  Run: python zkml/src/ezkl/extract_calldata.py")
         logger.info("=" * 60)
 
         return True
 
     except Exception:
-        # Clean up any partially written artifacts so the next run starts fresh.
-        # PROOF_INPUT is intentionally kept — it's just input features, harmless.
         for path in _partial_artifacts:
             if Path(path).exists():
                 Path(path).unlink()

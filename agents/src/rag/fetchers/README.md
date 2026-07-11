@@ -1,12 +1,14 @@
 # Fetchers — RAG Data Sources
 
-Strategy-pattern fetchers that supply documents to the RAG ingestion pipeline. Each fetcher implements `BaseFetcher` — the pipeline talks to the abstract interface, never to concrete implementations. Swap data sources without changing pipeline code.
+Strategy-pattern fetchers that supply documents to the RAG ingestion pipeline. Each
+fetcher implements `BaseFetcher` — the pipeline talks to the abstract interface, never
+to concrete implementations. Swap data sources without changing pipeline code.
 
-> **⚠ WS2 (2026-06-22):** Only `DeFiHackLabsFetcher` is active in
-> `build_index.py`. The 5 Phase A.5 corpus fetchers below are **disabled**
-> (`_extra_fetchers()` returns `[]`) — their seed corpora were synthetic
-> hand-written placeholders, and `SoloditFetcher` directly caused a hallucinated
-> verdict. Re-enable per `02_RAG_BUILD_PLAN.md` when real data sources are built.
+> **WS2 (2026-06-22):** Only `DeFiHackLabsFetcher` is active in `build_index/`.
+> The 5 Phase A.5 corpus fetchers below are **disabled** (`_extra_fetchers()` returns
+> `[]`) — their seed corpora were synthetic hand-written placeholders, and
+> `SoloditFetcher` directly caused a hallucinated verdict.
+> Re-enable with real data per `02_RAG_BUILD_PLAN.md`.
 
 ## Files
 
@@ -14,12 +16,12 @@ Strategy-pattern fetchers that supply documents to the RAG ingestion pipeline. E
 |------|---------|--------|
 | `base_fetcher.py` | Abstract `BaseFetcher` + `Document` dataclass | Active |
 | `github_fetcher.py` | `DeFiHackLabsFetcher` — .sol exploit PoC parser (726 docs) | Active |
-| `json_corpus_fetcher.py` | **(A.5)** Shared base for curated JSON-backed corpora | ⚠ Disabled |
-| `code4rena_fetcher.py` | **(A.5)** Code4rena contest findings | ⚠ Disabled |
-| `sherlock_fetcher.py` | **(A.5)** Sherlock contest findings | ⚠ Disabled |
-| `solodit_fetcher.py` | **(A.5)** Solodit aggregated findings | ⚠ Disabled |
-| `immunefi_fetcher.py` | **(A.5)** Immunefi bug-bounty disclosures | ⚠ Disabled |
-| `swc_registry_fetcher.py` | **(A.5)** SWC weakness-classification registry | ⚠ Disabled |
+| `json_corpus_fetcher.py` | **(A.5)** Shared base for curated JSON-backed corpora | Disabled |
+| `code4rena_fetcher.py` | **(A.5)** Code4rena contest findings | Disabled |
+| `sherlock_fetcher.py` | **(A.5)** Sherlock contest findings | Disabled |
+| `solodit_fetcher.py` | **(A.5)** Solodit aggregated findings | Disabled |
+| `immunefi_fetcher.py` | **(A.5)** Immunefi bug-bounty disclosures | Disabled |
+| `swc_registry_fetcher.py` | **(A.5)** SWC weakness-classification registry | Disabled |
 
 ## `base_fetcher.py` — BaseFetcher
 
@@ -34,24 +36,21 @@ class Document:
     metadata:  dict   # protocol, date, vuln_type, severity, loss_usd, chain, url
 ```
 
-Every piece of knowledge in SENTINEL's RAG system is a Document. The `metadata` dict enables filtered retrieval: "find reentrancy exploits from 2023 only."
-
 ### BaseFetcher Interface
 
 ```python
 class BaseFetcher(ABC):
-    def __init__(self, data_dir: Path): ...
     def fetch(self) -> list[Document]: ...           # all documents (full rebuild)
     def fetch_since(self, since: datetime) -> list[Document]: ...  # incremental
-    def source_name(self) -> str: ...                 # human-readable name
-    def health_check(self) -> bool: ...               # verify source reachable
+    def source_name(self) -> str: ...
+    def health_check(self) -> bool: ...
 ```
 
-Fetchers are stateless workers. State (`last_run`, `seen_hashes`) lives in the pipeline, not in individual fetchers.
+Fetchers are stateless. State (`last_run`, `seen_hashes`) lives in the pipeline.
 
 ## `github_fetcher.py` — DeFiHackLabsFetcher
 
-Parses Solidity PoC files from the DeFiHackLabs repository. Each `.sol` file becomes one Document.
+Parses Solidity PoC files from the DeFiHackLabs repository.
 
 ### Comment Formats
 
@@ -74,63 +73,38 @@ Parses Solidity PoC files from the DeFiHackLabs repository. Each `.sol` file bec
 8. _infer_vuln_type()           → "reentrancy", "flash_loan", etc.
 ```
 
-### Vulnerability Type Inference
+`_infer_vuln_type()` pattern-matches on `root_cause` + `summary_block` + `keyinfo`
+(not raw file content — the first 1000 chars of any .sol file are always SPDX/pragma).
 
-`_infer_vuln_type()` pattern-matches on `root_cause` + `summary_block` + `keyinfo` (not raw file content — the first 1000 chars of any .sol file are always SPDX/pragma/imports). Returns one of: `reentrancy`, `flash_loan`, `oracle_manipulation`, `access_control`, `integer_overflow`, `front_running`, `logic_error`, `timestamp_dependence`, `delegatecall`, `denial_of_service`, `other`.
+Returns one of: `reentrancy`, `flash_loan`, `oracle_manipulation`, `access_control`,
+`integer_overflow`, `front_running`, `logic_error`, `timestamp_dependence`,
+`delegatecall`, `denial_of_service`, `other`.
 
-### Directory Scanning (FIX-20)
+### Key Fixes
 
-`fetch()` scans both `src/test/` (main corpus) AND `past/` (archived exploits). Old code only scanned `src/test/` — `past_path` was declared but unused.
+- **FIX-20:** `fetch()` now scans both `src/test/` AND `past/` — `past_path` was
+  declared but unused in older code.
+- **FIX-21:** Undated files are always included in `fetch_since()` — old code silently
+  dropped docs with no YYYY-MM directory.
+- **FIX-22b:** `_infer_vuln_type()` does not slice the raw `.sol` file (first 1000 chars
+  are always SPDX/pragma/imports); matches only against extracted metadata fields.
 
-### fetch_since (FIX-21)
+## `json_corpus_fetcher.py` — JsonCorpusFetcher (A.5, **DISABLED**)
 
-Undated files are always included in `fetch_since()` results. Old code silently dropped docs with no YYYY-MM directory, systematically excluding historically significant exploits from incremental updates.
+Shared base for the 5 corpus-expansion fetchers. Each reads a curated JSON corpus from
+`data/knowledge/<corpus_key>.json`. Design is deterministic, offline, and unit-testable
+— no network flakiness in CI.
 
-### Usage
-
-```python
-from src.rag.fetchers.github_fetcher import DeFiHackLabsFetcher
-
-fetcher = DeFiHackLabsFetcher(
-    repo_path=Path("data/defihacklabs"),
-    data_dir=Path("data/exploits"),
-)
-docs = fetcher.fetch()           # 726 documents
-recent = fetcher.fetch_since(datetime(2024, 1, 1))  # incremental
-```
-
-## `json_corpus_fetcher.py` — JsonCorpusFetcher (A.5, 2026-06-21, **DISABLED WS2**)
-
-Shared base for the 5 corpus-expansion fetchers. Each reads a curated JSON corpus
-from `data/knowledge/<corpus_key>.json` — a list of `{title, content, vuln_type,
-severity, protocol, date, url, chain, loss_usd}` records — and converts each record to
-a `Document`. Design rationale: **deterministic, offline, unit-testable** — no network
-flakiness in CI. Production scale-up means replacing the JSON file with a full export;
-the fetcher contract (and all calling code) does not change.
-
-**⚠ Disabled per WS2 (2026-06-22):** `build_index.py:_extra_fetchers()` returns `[]`.
-Seed corpora were synthetic placeholders; Solodit's data caused a hallucinated verdict.
-Fetcher code kept for when real data sources are wired.
-
-```python
-class Code4renaFetcher(JsonCorpusFetcher):
-    corpus_key = "code4rena"        # → data/knowledge/code4rena.json
-    _source_name = "code4rena"
-```
-
-| Concrete fetcher | Corpus file | Seed doc count | Focus |
-|---|---|---|---|
-| `Code4renaFetcher` | `code4rena.json` | 5 | Contest-graded High/Medium findings |
-| `SherlockFetcher` | `sherlock.json` | 4 | Oracle manipulation, MEV, state bugs |
-| `SoloditFetcher` | `solodit.json` | 5 | Cross-firm aggregated findings |
-| `ImmunefiFetcher` | `immunefi.json` | 3 | Paid bounty post-mortems (incl. `loss_usd`) |
-| `SWCRegistryFetcher` | `swc_registry.json` | 7 | Canonical SWC-1xx weakness definitions |
+| Concrete fetcher | Corpus file | Focus |
+|---|---|---|
+| `Code4renaFetcher` | `code4rena.json` | Contest-graded High/Medium findings |
+| `SherlockFetcher` | `sherlock.json` | Oracle manipulation, MEV, state bugs |
+| `SoloditFetcher` | `solodit.json` | Cross-firm aggregated findings |
+| `ImmunefiFetcher` | `immunefi.json` | Paid bounty post-mortems |
+| `SWCRegistryFetcher` | `swc_registry.json` | Canonical SWC-1xx weakness definitions |
 
 Missing corpus file → `health_check()` returns `False`, `fetch()` returns `[]`
-(degrades gracefully; `build_index.py` continues with DeFiHackLabs + whichever
-corpora ARE present). Malformed JSON → logged warning, `[]`, never raises.
+(degrades gracefully). Malformed JSON → logged warning, `[]`, never raises.
 
-Wired into `src/rag/build_index.py:_collect_extra_documents()` — runs after the
-DeFiHackLabs fetch and adds its documents to the same chunk/embed/FAISS/BM25 pipeline.
-Live rebuild (2026-06-21): 750 total documents / 776 chunks (726 DeFiHackLabs + 24 from
-the 5 new corpora).
+Wired into `src/rag/build_index/_pipeline.py:_collect_extra_documents()` — currently
+disabled via `_extra_fetchers()` returning `[]`.

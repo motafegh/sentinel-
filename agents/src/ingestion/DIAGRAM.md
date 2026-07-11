@@ -140,7 +140,7 @@
   ┌─────────────────────────────────────────────────────────────────────────┐
   │  Issue #1 (2026-04-29) — BRIDGE between orchestrator and feedback loop  │
   │                                                                         │
-  │  synthesizer (orchestration/nodes.py)                                  │
+  │  synthesizer (orchestration/nodes/synthesizer.py)                      │
   │       │                                                                 │
   │       │  write final_report JSON                                        │
   │       ▼                                                                 │
@@ -155,7 +155,7 @@
   │  document metadata gets real Track 3 class name                         │
   │                                                                         │
   │  This is why pipeline.py defines REPORTS_DIR — it's imported by both:  │
-  │     • nodes.py: REPORTS_DIR from src.ingestion.pipeline (for writes)  │
+  │     • nodes/synthesizer.py: REPORTS_DIR from src.ingestion.pipeline    │
   │     • feedback_loop.py: REPORTS_DIR from .pipeline (for reads)          │
   └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -507,8 +507,8 @@ this to track pipeline health.
 | DeFiHackLabsFetcher (source) | `agents/src/rag/fetchers/github_fetcher.py` |
 | Document dataclass | `agents/src/rag/fetchers/base_fetcher.py:19-39` |
 | HybridRetriever (consumer) | `agents/src/rag/retriever.py` |
-| Build_index (sister pipeline) | `agents/src/rag/build_index.py` |
-| rag_research node (consumer) | `agents/src/orchestration/nodes.py:421-...` |
+| Build_index (sister pipeline) | `agents/src/rag/build_index/` |
+| rag_research node (consumer) | `agents/src/orchestration/nodes/rag_research.py` |
 
 ---
 

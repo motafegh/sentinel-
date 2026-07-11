@@ -1,0 +1,2002 @@
+{
+  "contract": "02_access_control_bypass.sol",
+  "contract_address": "0x355615041a3d42f95034c7d2ec1016355888217a",
+  "timestamp": "2026-06-26T11:50:34.704304+00:00",
+  "total_wall_s": 48.40489935874939,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": false,
+    "profile": false,
+    "timeout_s": 300.0
+  },
+  "routing_decisions": [
+    "CallToUnknown prob=0.282 < threshold=0.4 \u2192 skip",
+    "DenialOfService prob=0.309 >= threshold=0.3 \u2192 static_analysis+rag_research",
+    "ExternalBug prob=0.721 >= threshold=0.4 \u2192 static_analysis+rag_research",
+    "GasException prob=0.292 < threshold=0.4 \u2192 skip",
+    "IntegerUO prob=0.603 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "MishandledException prob=0.294 < threshold=0.4 \u2192 skip",
+    "Reentrancy prob=0.592 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "Timestamp prob=0.227 < threshold=0.35 \u2192 skip",
+    "TransactionOrderDependence prob=0.296 < threshold=0.35 \u2192 skip",
+    "UnusedReturn prob=0.727 >= threshold=0.45 \u2192 static_analysis",
+    "quick_screen: slither=['arbitrary-send-eth', 'controlled-delegatecall', 'tx-origin'] aderyn=['eth-send-unchecked-address', 'tx-origin-used-for-auth'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {
+    "label": "confirmed_vulnerable",
+    "probabilities": {
+      "CallToUnknown": 0.282,
+      "DenialOfService": 0.3087,
+      "ExternalBug": 0.7205,
+      "GasException": 0.2916,
+      "IntegerUO": 0.6033,
+      "MishandledException": 0.2938,
+      "Reentrancy": 0.592,
+      "Timestamp": 0.2273,
+      "TransactionOrderDependence": 0.296,
+      "UnusedReturn": 0.7273
+    },
+    "confirmed": [
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.7273,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7205,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.6033,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.592,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2916,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3087,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.296,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2938,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.282,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.7273,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7205,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.6033,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.592,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2916,
+        "tier": null
+      }
+    ],
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "thresholds": [
+      0.4000000059604645,
+      0.5,
+      0.44999998807907104,
+      0.05000000074505806,
+      0.44999998807907104,
+      0.3499999940395355,
+      0.44999998807907104,
+      0.5,
+      0.3499999940395355,
+      0.4000000059604645
+    ],
+    "truncated": true,
+    "windows_used": 4,
+    "num_nodes": 79,
+    "num_edges": 203,
+    "eye_predictions": {
+      "gnn": {
+        "CallToUnknown": 0.0694,
+        "DenialOfService": 0.0903,
+        "ExternalBug": 0.8568,
+        "GasException": 0.078,
+        "IntegerUO": 0.2387,
+        "MishandledException": 0.0746,
+        "Reentrancy": 0.4995,
+        "Timestamp": 0.1447,
+        "TransactionOrderDependence": 0.072,
+        "UnusedReturn": 0.7437
+      },
+      "transformer": {
+        "CallToUnknown": 0.0371,
+        "DenialOfService": 0.1167,
+        "ExternalBug": 0.9515,
+        "GasException": 0.0542,
+        "IntegerUO": 0.4668,
+        "MishandledException": 0.0564,
+        "Reentrancy": 0.258,
+        "Timestamp": 0.0111,
+        "TransactionOrderDependence": 0.0612,
+        "UnusedReturn": 0.7534
+      },
+      "fused": {
+        "CallToUnknown": 0.0685,
+        "DenialOfService": 0.0866,
+        "ExternalBug": 0.8605,
+        "GasException": 0.0803,
+        "IntegerUO": 0.6031,
+        "MishandledException": 0.0732,
+        "Reentrancy": 0.6895,
+        "Timestamp": 0.0232,
+        "TransactionOrderDependence": 0.0791,
+        "UnusedReturn": 0.7521
+      },
+      "phase2": {
+        "CallToUnknown": 0.0582,
+        "DenialOfService": 0.046,
+        "ExternalBug": 0.4511,
+        "GasException": 0.0456,
+        "IntegerUO": 0.1982,
+        "MishandledException": 0.0152,
+        "Reentrancy": 0.6992,
+        "Timestamp": 0.0069,
+        "TransactionOrderDependence": 0.0338,
+        "UnusedReturn": 0.6708
+      }
+    }
+  },
+  "verdicts": {
+    "CallToUnknown": "LIKELY",
+    "DenialOfService": "SAFE",
+    "ExternalBug": "CONFIRMED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "DISPUTED",
+    "TransactionOrderDependence": "CONFIRMED",
+    "UnusedReturn": "DISPUTED"
+  },
+  "quick_screen_hits": {
+    "slither": [
+      "arbitrary-send-eth",
+      "controlled-delegatecall",
+      "tx-origin"
+    ],
+    "aderyn": [
+      "eth-send-unchecked-address",
+      "tx-origin-used-for-auth"
+    ]
+  },
+  "static_findings_count": 15,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "arbitrary-send-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_uzdczqfr.sol#63-68) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = owner.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr.sol#66)\n",
+      "lines": [
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "function_names": [
+        "operatorWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "controlled-delegatecall",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#77-85) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = owner.delegatecall(data) (../../../../../tmp/sentinel_static_uzdczqfr.sol#78)\n",
+      "lines": [
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "delegateExecute"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.withdrawAll() (../../../../../tmp/sentinel_static_uzdczqfr.sol#48-54):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr.sol#52)\n",
+      "lines": [
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "function_names": [
+        "withdrawAll"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_uzdczqfr.sol#63-68):\n\t- (ok,None) = owner.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr.sol#66)\n",
+      "lines": [
+        63,
+        64,
+        65,
+        66,
+        67,
+        68
+      ],
+      "function_names": [
+        "operatorWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.withdrawTo(address,uint256) (../../../../../tmp/sentinel_static_uzdczqfr.sol#56-61):\n\t- (ok,None) = recipient.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr.sol#59)\n",
+      "lines": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "function_names": [
+        "withdrawTo"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.guardedCall(address,bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#70-75):\n\t- (ok,ret) = target.call{gas: 50000}(data) (../../../../../tmp/sentinel_static_uzdczqfr.sol#72)\n",
+      "lines": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        75
+      ],
+      "function_names": [
+        "guardedCall"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#77-85):\n\t- (ok,ret) = owner.delegatecall(data) (../../../../../tmp/sentinel_static_uzdczqfr.sol#78)\n",
+      "lines": [
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "function_names": [
+        "delegateExecute"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "eth-send-unchecked-address",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+      "lines": [
+        48,
+        56,
+        63
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "tx-origin-used-for-auth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Using `tx.origin` may lead to problems when users are interacting via smart contract with your protocol. It is recommended to use `msg.sender` for authentication.",
+      "lines": [
+        92
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "centralization-risk",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+      "lines": [
+        35,
+        39,
+        70,
+        77,
+        87
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "modifier-used-only-once",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider removing the modifier or inlining the logic into the calling function.",
+      "lines": [
+        21
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        35,
+        39,
+        43,
+        48,
+        56,
+        63,
+        87,
+        91
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-no-address-check",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Check for `address(0)` when assigning values to address state variables.",
+      "lines": [
+        93
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        8
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 5,
+  "audit_history_count": 2,
+  "graph_explanations_classes": [
+    "graph_stats",
+    "analysis_mode",
+    "hotspots_by_class"
+  ],
+  "consensus_verdict": {
+    "CallToUnknown": {
+      "ml_signal": 0,
+      "slither_match": 1,
+      "aderyn_match": 0,
+      "score": 0.7,
+      "confidence": 0.4375,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.3,
+        "slither": 0.7,
+        "aderyn": 0.6
+      }
+    },
+    "DenialOfService": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 0,
+      "score": 0.0,
+      "confidence": 0.0,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.325,
+        "slither": 0.55,
+        "aderyn": 0.5
+      },
+      "overridden_from_safe": true
+    },
+    "ExternalBug": {
+      "ml_signal": 1,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.175,
+      "confidence": 1.0,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.225,
+        "slither": 0.5,
+        "aderyn": 0.45
+      }
+    },
+    "IntegerUO": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 1.01,
+      "confidence": 0.558,
+      "verdict": "LIKELY",
+      "weights": {
+        "ml": 0.31,
+        "slither": 0.8,
+        "aderyn": 0.7
+      }
+    },
+    "MishandledException": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.62,
+      "confidence": 0.3839,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.72,
+        "aderyn": 0.62
+      }
+    },
+    "Reentrancy": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 0,
+      "score": 0.39,
+      "confidence": 0.2155,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.39,
+        "slither": 0.82,
+        "aderyn": 0.6
+      },
+      "overridden_from_safe": true
+    },
+    "TransactionOrderDependence": {
+      "ml_signal": 0,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.05,
+      "confidence": 0.75,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.35,
+        "slither": 0.6,
+        "aderyn": 0.45
+      }
+    },
+    "UnusedReturn": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 0,
+      "score": 0.275,
+      "confidence": 0.1642,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.75,
+        "aderyn": 0.65
+      },
+      "overridden_from_safe": true
+    }
+  },
+  "debate_transcript": {
+    "prosecutor": "### ExternalBug [CONFIRMED]\nThis vulnerability stems from the use of `delegatecall`",
+    "defender": "**ExternalBug [CONFIRMED]**\nThe finding points to `delegatecall`, which is used in `delegateExecute`. However, this function is strictly guarded by the `onlyOwner` modifier, meaning only the contract owner can execute it. The actual risk depends on whether an attacker can control the `owner` address or if the delegated code executes sensitive state-modifying operations outside of expected boundaries.\n\n**TransactionOrderDependence [SUSPICIOUS]**\nThis finding also targets `delegateExecute`. While transaction ordering is suspicious, the context shows this function is only callable by the owner. The dependency risk is mitigated because the execution flow is controlled internally by the contract logic rather than relying on external transaction sequencing for critical state changes.\n\n**IntegerUO [CONFIRMED]**\nThere are no immediate integer overflow vulnerabilities evident in the provided code snippets related to balance manipulation or arithmetic operations. The use of `uint256` for balances and amounts appears standard, and the checks (`require`) are present on all relevant functions.\n\n**CallToUnknown [SUSPICIOUS]**\nThis relates to external calls like `operatorWithdraw` and `delegateExecute`. These functions involve external calls (`owner.call`, `target.call`), which is inherent to smart contract interaction. The low-level calls are informational, and the execution flow is gated by access control modifiers, suggesting these calls are intended operations rather than arbitrary exploits.\n\n**MishandledException [SUSPICIOUS]**\nThis suspicion likely arises from the use of low-level assembly for error handling in `delegateExecute`. While assembly code exists, it appears to be a standard way to revert execution upon failure, which is a common pattern in Solidity development. The exception handling seems functionally implemented rather than maliciously",
+    "judge": "{\"ExternalBug\": \"CONFIRMED\", \"TransactionOrderDependence\": \"LIKELY\", \"IntegerUO\": \"SAFE\", \"CallToUnknown\": \"WATCH\", \"MishandledException\": \"WATCH\"}"
+  },
+  "confirmations": {
+    "ExternalBug": [
+      "ml",
+      "slither",
+      "slither",
+      "slither",
+      "aderyn",
+      "consensus",
+      "debate"
+    ],
+    "IntegerUO": [
+      "ml",
+      "aderyn",
+      "consensus"
+    ],
+    "Reentrancy": [
+      "ml",
+      "consensus"
+    ],
+    "UnusedReturn": [
+      "ml",
+      "consensus"
+    ],
+    "TransactionOrderDependence": [
+      "slither",
+      "aderyn",
+      "consensus",
+      "debate"
+    ],
+    "CallToUnknown": [
+      "slither",
+      "slither",
+      "consensus"
+    ],
+    "MishandledException": [
+      "aderyn",
+      "consensus"
+    ],
+    "DenialOfService": [
+      "consensus"
+    ]
+  },
+  "contradictions": {
+    "IntegerUO": [
+      "conflicting SUPPORTS/REFUTES evidence"
+    ]
+  },
+  "tool_status": {
+    "ml": {
+      "ran": true,
+      "label": "confirmed_vulnerable"
+    },
+    "aderyn": {
+      "ran": true,
+      "n_findings": 8
+    }
+  },
+  "final_report": {
+    "contract_address": "0x355615041a3d42f95034c7d2ec1016355888217a",
+    "overall_label": "confirmed_vulnerable",
+    "overall_verdict": "CONFIRMED",
+    "risk_probability": 0.7273,
+    "top_vulnerability": "UnusedReturn",
+    "confirmed": [
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.7273,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7205,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.6033,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.592,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2916,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3087,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.296,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2938,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.282,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.7273,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7205,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.6033,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.592,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2916,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3087,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.296,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2938,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.282,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "probabilities": {
+      "CallToUnknown": 0.282,
+      "DenialOfService": 0.3087,
+      "ExternalBug": 0.7205,
+      "GasException": 0.2916,
+      "IntegerUO": 0.6033,
+      "MishandledException": 0.2938,
+      "Reentrancy": 0.592,
+      "Timestamp": 0.2273,
+      "TransactionOrderDependence": 0.296,
+      "UnusedReturn": 0.7273
+    },
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "vulnerability_verdicts": [
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.282,
+        "verdict": "LIKELY",
+        "evidence_sources": [
+          "slither",
+          "consensus",
+          "debate"
+        ],
+        "severity": "INFO",
+        "confidence": 0.571,
+        "attribution": {
+          "ml_pct": 22.0,
+          "slither_pct": 78.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3087,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.255,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7205,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "slither",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "HIGH",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 41.9,
+          "slither_pct": 58.1,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2916,
+        "verdict": "SAFE",
+        "evidence_sources": [],
+        "severity": "INFO",
+        "confidence": 0.0,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.6033,
+        "verdict": "LIKELY",
+        "evidence_sources": [
+          "ml",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 0.5745,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2938,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "INFO",
+        "confidence": 0.7001,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.592,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml",
+          "consensus"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 0.3302,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.296,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "slither",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "INFO",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 22.8,
+          "slither_pct": 77.2,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.7273,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml",
+          "consensus"
+        ],
+        "severity": "HIGH",
+        "confidence": 0.2968,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      }
+    ],
+    "threshold": 0.5,
+    "ml_truncated": true,
+    "num_nodes": 79,
+    "num_edges": 203,
+    "rag_evidence": [
+      {
+        "content": "Detailed notes:\nThe Vulnerability\nThe hack took advantage of our pre-bridge swap feature. Our smart contract allows a caller to pass an array of multiple swaps using any address with arbitrary calldata.\nThis design gave us maximum flexibility in what DEXs we could call and what methods we could call. This also allowed anyone to call other contracts, not just DEXs. Our contract checks to make sure that the result of the swap or swaps is enough tokens to continue the bridging operation.\nThe attacker started by passing a legitimate swap of a small amount followed by multiple calls directly to various token contracts. Specifically, they called the `transferFrom` method which allowed the attacker to transfer funds from users\u2019 wallets that had previously given infinite approval to our contract for that specific token.\nsellToUniswap(address[],uint256,uint256,bool)\n\"tokens\":[\n0:\"0xdac17f958d2ee523a2206206994597c13d831ec7\"\n1:\"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\"\n]\n\"sellAmount\":\"50000000\"\n\"minBuyAmount\":\"40000000\"\n\"isSushi\":false\nif (!LibAsset.isNativeAsset(fromAssetId) && LibAsset.getOwnBalance(fromAssetId) < fromAmount) {\nLibAsset.transferFromERC20(_swapData.sendingAssetId, msg.sender, address(this), fromAmount);\nif (!LibAsset.isNativeAsset(fromAssetId)) {\nLibAsset.approveERC20(IERC20(fromAssetId), _swapData.approveTo, fromAmount);\n// solhint-disable-next-line avoid-low-level-calls\n(bool success, bytes memory res) = _swapData.callTo.call{ value: msg.value }(_swapData.callData);",
+        "doc_id": "ef6a16568df7943a",
+        "chunk_id": 1,
+        "total_chunks": 2,
+        "metadata": {
+          "protocol": "LiFi",
+          "date": "2022-03-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2022-03/LiFi_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 1,
+          "total_chunks": 2,
+          "doc_id": "ef6a16568df7943a"
+        },
+        "score": 0.03306010928961749
+      },
+      {
+        "content": "DeFi Security Incident: Phoenix\nDate: 2023-03-01\nVulnerability type: access_control\n\nAttack summary:\nPhxProxy contract delegateCallSwap() function lack of access control and can be passed in any parameter\nThe lost money is mainly USDC in the d028 contract which the attacker converts into WETH in the 65ba contract through the buyLeverage function\nand then swaps it into his own tokens by the delegateCallSwap function, making a profit from it\n\nPost-mortem references:\nhttps://twitter.com/HypernativeLabs/status/1633090456157401088",
+        "doc_id": "855be0354478d3a6",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Phoenix",
+          "date": "2023-03-01",
+          "vuln_type": "access_control",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/HypernativeLabs/status/1633090456157401088"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-03/Phoenix_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "855be0354478d3a6"
+        },
+        "score": 0.03229166666666666
+      },
+      {
+        "content": "DeFi Security Incident: IRouterTokenHelper\nDate: 2023-11-01\nVulnerability type: other\n\nDetailed notes:\n@notice Unwraps the contract's WETH balance and sends it to recipient as ETH.\n@dev The minAmount parameter prevents malicious contracts from stealing WETH from users.\n@param minAmount The minimum amount of WETH to unwrap\n@param recipient The address receiving ETH\n@notice Refunds any ETH balance held by this contract to the `msg.sender`\n@dev Useful for bundling with mint or increase liquidity that uses ether, or exact output swaps\nthat use ether for the input amount\n@notice Transfers the full amount of a token held by this contract to recipient\n@dev The minAmount parameter prevents malicious contracts from stealing the token from users\n@param token The contract address of the token which will be transferred to `recipient`\n@param minAmount The minimum amount of token required for a transfer\n@param recipient The destination address of the token",
+        "doc_id": "c3a95017325158de",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "IRouterTokenHelper",
+          "date": "2023-11-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-11/KyberSwap/interfaces/periphery/IRouterTokenHelper.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "c3a95017325158de"
+        },
+        "score": 0.03177805800756621
+      },
+      {
+        "content": "DeFi Security Incident: NST\nDate: 2023-06-01\nVulnerability type: other\n\nAttack summary:\nMilktech is a software company that explores Polygon web3 technologies and recently ventured into\ntokens and token payments. They created a token called NST, which maintains a constant price based\non USD. Several contracts were developed, with the main one being the swap contract. This contract\nfacilitates a straightforward exchange between two tokens: NST (the internal company token) and USDT,\nensuring a consistent price ratio. NST is an ERC-20 token with an additional role called the Minter,\nallowing specific addresses to mint new tokens. Only the owner of the contract can assign this\nrole. The swap contract is ownable and features two primary functions: buyNST, which takes USDT as input,\nand sellNST, which takes NST as input. Additionally, the contract includes the ability to pause trading\nbetween the tokens. While the token itself was verified, the swap contract was not.",
+        "doc_id": "8ef8ce5ab3ff8f6f",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "NST",
+          "date": "2023-06-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-06/NST_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "8ef8ce5ab3ff8f6f"
+        },
+        "score": 0.02813852813852814
+      },
+      {
+        "content": "DeFi Security Incident: OSN\nDate: 2024-05-01\nVulnerability type: other\nEstimated loss: $109,000\n\nDetailed notes:\nTX : https://app.blocksec.com/explorer/tx/bsc/0xc7927a68464ebab1c0b1af58a5466da88f09ba9b30e6c255b46b1bc2e7d1bf09\nGUY : https://twitter.com/SlowMist_Team/status/1787330586857861564\nProfit : ~109K USD\nHere is only one tx,total you can see here :https://bscscan.com/address/0x835b45d38cbdccf99e609436ff38e31ac05bc502#tokentxns\nREASON : Reward Distribution Problem\nDistribution contract did not check the LP hold time or whether the reciever is contract or not\nActually there are 3 steps\nTX1:create help contract,split money : https://app.blocksec.com/explorer/tx/bsc/0xbf22eabb5db8785642ba17930bddef48d0d1bb94ebd1e03e7faa6f2a3d1a5540\nTX2:help contract add Liq : https://app.blocksec.com/explorer/tx/bsc/0x69c64b226f8bf06216cc665ad5e3777ad1b120909326f120f0816ac65a9099c0\nTX3:attack tx\nborrow_amount = 500_000 ether;\nstep1 transfer money to the money contract\nstep2 create contract & add liq\nstep 3 attack logic\nActivate divided\ncollect reward\nconsole.log(hack_contract);\nUse create2 to send money first.",
+        "doc_id": "23aa56acc7273387",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "OSN",
+          "date": "2024-05-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": 109000,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2024-05/OSN_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "23aa56acc7273387"
+        },
+        "score": 0.016129032258064516
+      }
+    ],
+    "audit_history": [
+      {
+        "contract_address": "0x355615041a3d42F95034C7D2ec1016355888217a",
+        "score": 0.7314,
+        "score_field_element": 5993,
+        "label": "vulnerable",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1713200000,
+        "timestamp_iso": "2026-04-15T12:00:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      },
+      {
+        "contract_address": "0x355615041a3d42F95034C7D2ec1016355888217a",
+        "score": 0.4102,
+        "score_field_element": 3362,
+        "label": "safe",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1712900000,
+        "timestamp_iso": "2026-04-12T03:20:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      }
+    ],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "arbitrary-send-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_uzdczqfr.sol#63-68) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = owner.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr.sol#66)\n",
+        "lines": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ],
+        "function_names": [
+          "operatorWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#77-85) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = owner.delegatecall(data) (../../../../../tmp/sentinel_static_uzdczqfr.sol#78)\n",
+        "lines": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "delegateExecute"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.withdrawAll() (../../../../../tmp/sentinel_static_uzdczqfr.sol#48-54):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr.sol#52)\n",
+        "lines": [
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "function_names": [
+          "withdrawAll"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_uzdczqfr.sol#63-68):\n\t- (ok,None) = owner.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr.sol#66)\n",
+        "lines": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ],
+        "function_names": [
+          "operatorWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.withdrawTo(address,uint256) (../../../../../tmp/sentinel_static_uzdczqfr.sol#56-61):\n\t- (ok,None) = recipient.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr.sol#59)\n",
+        "lines": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61
+        ],
+        "function_names": [
+          "withdrawTo"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.guardedCall(address,bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#70-75):\n\t- (ok,ret) = target.call{gas: 50000}(data) (../../../../../tmp/sentinel_static_uzdczqfr.sol#72)\n",
+        "lines": [
+          70,
+          71,
+          72,
+          73,
+          74,
+          75
+        ],
+        "function_names": [
+          "guardedCall"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#77-85):\n\t- (ok,ret) = owner.delegatecall(data) (../../../../../tmp/sentinel_static_uzdczqfr.sol#78)\n",
+        "lines": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "function_names": [
+          "delegateExecute"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          48,
+          56,
+          63
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "tx-origin-used-for-auth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Using `tx.origin` may lead to problems when users are interacting via smart contract with your protocol. It is recommended to use `msg.sender` for authentication.",
+        "lines": [
+          92
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "centralization-risk",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Contracts have owners with privileged rights to perform admin tasks and need to be trusted to not perform malicious updates or drain funds.",
+        "lines": [
+          35,
+          39,
+          70,
+          77,
+          87
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "modifier-used-only-once",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider removing the modifier or inlining the logic into the calling function.",
+        "lines": [
+          21
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          35,
+          39,
+          43,
+          48,
+          56,
+          63,
+          87,
+          91
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-no-address-check",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Check for `address(0)` when assigning values to address state variables.",
+        "lines": [
+          93
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          8
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "CallToUnknown prob=0.282 < threshold=0.4 \u2192 skip",
+      "DenialOfService prob=0.309 >= threshold=0.3 \u2192 static_analysis+rag_research",
+      "ExternalBug prob=0.721 >= threshold=0.4 \u2192 static_analysis+rag_research",
+      "GasException prob=0.292 < threshold=0.4 \u2192 skip",
+      "IntegerUO prob=0.603 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "MishandledException prob=0.294 < threshold=0.4 \u2192 skip",
+      "Reentrancy prob=0.592 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "Timestamp prob=0.227 < threshold=0.35 \u2192 skip",
+      "TransactionOrderDependence prob=0.296 < threshold=0.35 \u2192 skip",
+      "UnusedReturn prob=0.727 >= threshold=0.45 \u2192 static_analysis",
+      "quick_screen: slither=['arbitrary-send-eth', 'controlled-delegatecall', 'tx-origin'] aderyn=['eth-send-unchecked-address', 'tx-origin-used-for-auth'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {
+      "CallToUnknown": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 0,
+        "score": 0.7,
+        "confidence": 0.4375,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.3,
+          "slither": 0.7,
+          "aderyn": 0.6
+        }
+      },
+      "DenialOfService": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.0,
+        "confidence": 0.0,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.325,
+          "slither": 0.55,
+          "aderyn": 0.5
+        },
+        "overridden_from_safe": true
+      },
+      "ExternalBug": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.175,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.225,
+          "slither": 0.5,
+          "aderyn": 0.45
+        }
+      },
+      "IntegerUO": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 1.01,
+        "confidence": 0.558,
+        "verdict": "LIKELY",
+        "weights": {
+          "ml": 0.31,
+          "slither": 0.8,
+          "aderyn": 0.7
+        }
+      },
+      "MishandledException": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.62,
+        "confidence": 0.3839,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.72,
+          "aderyn": 0.62
+        }
+      },
+      "Reentrancy": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.39,
+        "confidence": 0.2155,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.39,
+          "slither": 0.82,
+          "aderyn": 0.6
+        },
+        "overridden_from_safe": true
+      },
+      "TransactionOrderDependence": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.05,
+        "confidence": 0.75,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.35,
+          "slither": 0.6,
+          "aderyn": 0.45
+        }
+      },
+      "UnusedReturn": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.275,
+        "confidence": 0.1642,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.75,
+          "aderyn": 0.65
+        },
+        "overridden_from_safe": true
+      }
+    },
+    "debate_transcript": {
+      "prosecutor": "### ExternalBug [CONFIRMED]\nThis vulnerability stems from the use of `delegatecall`",
+      "defender": "**ExternalBug [CONFIRMED]**\nThe finding points to `delegatecall`, which is used in `delegateExecute`. However, this function is strictly guarded by the `onlyOwner` modifier, meaning only the contract owner can execute it. The actual risk depends on whether an attacker can control the `owner` address or if the delegated code executes sensitive state-modifying operations outside of expected boundaries.\n\n**TransactionOrderDependence [SUSPICIOUS]**\nThis finding also targets `delegateExecute`. While transaction ordering is suspicious, the context shows this function is only callable by the owner. The dependency risk is mitigated because the execution flow is controlled internally by the contract logic rather than relying on external transaction sequencing for critical state changes.\n\n**IntegerUO [CONFIRMED]**\nThere are no immediate integer overflow vulnerabilities evident in the provided code snippets related to balance manipulation or arithmetic operations. The use of `uint256` for balances and amounts appears standard, and the checks (`require`) are present on all relevant functions.\n\n**CallToUnknown [SUSPICIOUS]**\nThis relates to external calls like `operatorWithdraw` and `delegateExecute`. These functions involve external calls (`owner.call`, `target.call`), which is inherent to smart contract interaction. The low-level calls are informational, and the execution flow is gated by access control modifiers, suggesting these calls are intended operations rather than arbitrary exploits.\n\n**MishandledException [SUSPICIOUS]**\nThis suspicion likely arises from the use of low-level assembly for error handling in `delegateExecute`. While assembly code exists, it appears to be a standard way to revert execution upon failure, which is a common pattern in Solidity development. The exception handling seems functionally implemented rather than maliciously",
+      "judge": "{\"ExternalBug\": \"CONFIRMED\", \"TransactionOrderDependence\": \"LIKELY\", \"IntegerUO\": \"SAFE\", \"CallToUnknown\": \"WATCH\", \"MishandledException\": \"WATCH\"}"
+    },
+    "recommendation": "## Severity\nHIGH\n\n## Vulnerability Summary\nThe contract exhibits critical access control vulnerabilities, specifically related to `controlled-delegatecall` and potential transaction order dependence. An attacker can exploit these flaws to execute arbitrary code or delegate execution to unintended addresses, potentially compromising contract state or funds.\n\n## Exploit Pattern\nAn attacker can exploit the `controlled-delegatecall` vulnerability by manipulating the input bytes passed to the `delegateExecute` function. If the owner or an external entity controls the address used for delegation, they can force the contract to execute arbitrary code within its context, leading to unauthorized state changes.\n\n## Recommended Fix\n1. **Restrict Delegate Calls:** Ensure that functions utilizing `delegatecall` or similar low-level calls are strictly controlled by the actual `msg.sender` and implement robust access control checks (e.g., using modifiers or explicit address checks) before execution.\n2. **Review Access Control Logic:** Audit all entry points, especially those involving external calls or delegation, to ensure that authentication relies solely on `msg.sender` and not on potentially manipulated values like `tx.origin`.\n3. **Address Transaction Order Dependence:** Implement checks within state-changing functions to prevent reliance on the order of transactions, mitigating risks associated with `TransactionOrderDependence`.\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens \u2014 tail code was not analysed. Manual review of the unanalysed portion is recommended.",
+    "narrative": "## Severity\nHIGH\n\n## Vulnerability Summary\nThe contract exhibits critical access control vulnerabilities, specifically related to `controlled-delegatecall` and potential transaction order dependence. An attacker can exploit these flaws to execute arbitrary code or delegate execution to unintended addresses, potentially compromising contract state or funds.\n\n## Exploit Pattern\nAn attacker can exploit the `controlled-delegatecall` vulnerability by manipulating the input bytes passed to the `delegateExecute` function. If the owner or an external entity controls the address used for delegation, they can force the contract to execute arbitrary code within its context, leading to unauthorized state changes.\n\n## Recommended Fix\n1. **Restrict Delegate Calls:** Ensure that functions utilizing `delegatecall` or similar low-level calls are strictly controlled by the actual `msg.sender` and implement robust access control checks (e.g., using modifiers or explicit address checks) before execution.\n2. **Review Access Control Logic:** Audit all entry points, especially those involving external calls or delegation, to ensure that authentication relies solely on `msg.sender` and not on potentially manipulated values like `tx.origin`.\n3. **Address Transaction Order Dependence:** Implement checks within state-changing functions to prevent reliance on the order of transactions, mitigating risks associated with `TransactionOrderDependence`.",
+    "error": null,
+    "path_taken": "deep",
+    "metric_attribution": {
+      "CallToUnknown": {
+        "ml_pct": 22.0,
+        "slither_pct": 78.0,
+        "rag_pct": 0.0
+      },
+      "DenialOfService": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "ExternalBug": {
+        "ml_pct": 41.9,
+        "slither_pct": 58.1,
+        "rag_pct": 0.0
+      },
+      "GasException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "IntegerUO": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "MishandledException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "Reentrancy": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "TransactionOrderDependence": {
+        "ml_pct": 22.8,
+        "slither_pct": 77.2,
+        "rag_pct": 0.0
+      },
+      "UnusedReturn": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      }
+    },
+    "confidence_by_class": {
+      "CallToUnknown": 0.571,
+      "DenialOfService": 0.255,
+      "ExternalBug": 1.0,
+      "IntegerUO": 0.5745,
+      "MishandledException": 0.7001,
+      "Reentrancy": 0.3302,
+      "TransactionOrderDependence": 1.0,
+      "UnusedReturn": 0.2968
+    },
+    "reflection_notes": {
+      "unused_evidence": [
+        "2 High/Medium static finding(s) not tied to a verdict: eth-send-unchecked-address, tx-origin-used-for-auth"
+      ],
+      "contradictions": [
+        "IntegerUO: conflicting SUPPORTS/REFUTES evidence"
+      ],
+      "uncertain_verdicts": [
+        "CallToUnknown: confidence 57% below 0.70",
+        "DenialOfService: confidence 26% below 0.70",
+        "IntegerUO: confidence 57% below 0.70",
+        "Reentrancy: verdict DISPUTED",
+        "UnusedReturn: verdict DISPUTED"
+      ],
+      "failure_modes": [
+        "Contract exceeded 512 CodeBERT tokens \u2014 tail code unanalysed; verdicts may miss vulnerabilities in the truncated region.",
+        "ExternalBug flagged \u2014 the ML model is known to over-predict this class (Run 12 class-definition mismatch); treat as lower confidence unless corroborated by an inter-contract call finding."
+      ],
+      "summary": "The audit exhibits significant internal inconsistency, particularly where high-confidence verdicts are juxtaposed with explicit uncertainties, such as the low confidence in CallToUnknown and DenialOfService. The system failed to fully integrate unused evidence regarding static findings like `eth-send-unchecked-address`, suggesting potential oversight or incomplete analysis. Furthermore, the noted contradiction surrounding IntegerUO indicates that the supporting and refuting evidence was not reconciled before finalizing the verdict. Finally, the failure modes suggest a systemic risk where model over-prediction for ExternalBug may lead to false positives if corroborating context is ignored.",
+      "llm_used": true
+    }
+  },
+  "narrative": "## Severity\nHIGH\n\n## Vulnerability Summary\nThe contract exhibits critical access control vulnerabilities, specifically related to `controlled-delegatecall` and potential transaction order dependence. An attacker can exploit these flaws to execute arbitrary code or delegate execution to unintended addresses, potentially compromising contract state or funds.\n\n## Exploit Pattern\nAn attacker can exploit the `controlled-delegatecall` vulnerability by manipulating the input bytes passed to the `delegateExecute` function. If the owner or an external entity controls the address used for delegation, they can force the contract to execute arbitrary code within its context, leading to unauthorized state changes.\n\n## Recommended Fix\n1. **Restrict Delegate Calls:** Ensure that functions utilizing `delegatecall` or similar low-level calls are strictly controlled by the actual `msg.sender` and implement robust access control checks (e.g., using modifiers or explicit address checks) before execution.\n2. **Review Access Control Logic:** Audit all entry points, especially those involving external calls or delegation, to ensure that authentication relies solely on `msg.sender` and not on potentially manipulated values like `tx.origin`.\n3. **Address Transaction Order Dependence:** Implement checks within state-changing functions to prevent reliance on the order of transactions, mitigating risks associated with `TransactionOrderDependence`.",
+  "error": null,
+  "evidence_list": [
+    {
+      "source": "ml",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.7205,
+      "reliability": 0.1038,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7205
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.6033,
+      "reliability": 0.0766,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.6033
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.592,
+      "reliability": 0.127,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.592
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.7273,
+      "reliability": 0.0575,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7273
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.217,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "arbitrary-send-eth",
+        "impact": "High",
+        "description": "AccessControlVault.operatorWithdraw(address,uint256) (../../../../../tmp/sentinel_static_uzdczqfr.sol#63-68) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = owner.call{value: amount}() (.",
+        "lines": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.0341,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#77-85) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = owner.delegatecall(data) (../../../.",
+        "lines": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.217,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#77-85) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = owner.delegatecall(data) (../../../.",
+        "lines": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.3463,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "controlled-delegatecall",
+        "impact": "High",
+        "description": "AccessControlVault.delegateExecute(bytes) (../../../../../tmp/sentinel_static_uzdczqfr.sol#77-85) uses delegatecall to a input-controlled function id\n\t- (ok,ret) = owner.delegatecall(data) (../../../.",
+        "lines": [
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.15,
+      "reliability": 0.217,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "description": "Low level call in AccessControlVault.withdrawAll() (../../../../../tmp/sentinel_static_uzdczqfr.sol#48-54):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr",
+        "lines": [
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 0.15,
+      "reliability": 0.3463,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "description": "Low level call in AccessControlVault.withdrawAll() (../../../../../tmp/sentinel_static_uzdczqfr.sol#48-54):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_uzdczqfr",
+        "lines": [
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.1365,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          48,
+          56,
+          63
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.2096,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          48,
+          56,
+          63
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.3738,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          48,
+          56,
+          63
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.1076,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "tx-origin-used-for-auth",
+        "impact": "High",
+        "description": "Using `tx.origin` may lead to problems when users are interacting via smart contract with your protocol. It is recommended to use `msg.sender` for authentication.",
+        "lines": [
+          92
+        ]
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 0.4375,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.4375,
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "DenialOfService",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.0,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 1.0,
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.558,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "LIKELY",
+        "consensus_confidence": 0.558,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 0.3839,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3839,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.2155,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "SUPPORTS",
+      "strength": 0.75,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 0.75,
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.1642,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.85,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "CONFIRMED",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"TransactionOrderDependence\": \"LIKELY\", \"IntegerUO\": \"SAFE\", \"CallToUnknown\": \"WATCH\", \"MishandledException\": \"WATCH\"}"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "SUPPORTS",
+      "strength": 0.65,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "LIKELY",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"TransactionOrderDependence\": \"LIKELY\", \"IntegerUO\": \"SAFE\", \"CallToUnknown\": \"WATCH\", \"MishandledException\": \"WATCH\"}"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "IntegerUO",
+      "polarity": "REFUTES",
+      "strength": 0.15,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "SAFE",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"TransactionOrderDependence\": \"LIKELY\", \"IntegerUO\": \"SAFE\", \"CallToUnknown\": \"WATCH\", \"MishandledException\": \"WATCH\"}"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "CallToUnknown",
+      "polarity": "NEUTRAL",
+      "strength": 0.25,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "WATCH",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"TransactionOrderDependence\": \"LIKELY\", \"IntegerUO\": \"SAFE\", \"CallToUnknown\": \"WATCH\", \"MishandledException\": \"WATCH\"}"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "MishandledException",
+      "polarity": "NEUTRAL",
+      "strength": 0.25,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "WATCH",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"TransactionOrderDependence\": \"LIKELY\", \"IntegerUO\": \"SAFE\", \"CallToUnknown\": \"WATCH\", \"MishandledException\": \"WATCH\"}"
+      }
+    }
+  ],
+  "verdict_provable": {
+    "CallToUnknown": "LIKELY",
+    "DenialOfService": "SAFE",
+    "ExternalBug": "CONFIRMED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "DISPUTED",
+    "TransactionOrderDependence": "CONFIRMED",
+    "UnusedReturn": "DISPUTED"
+  },
+  "verdict_full": {
+    "CallToUnknown": "LIKELY",
+    "DenialOfService": "SAFE",
+    "ExternalBug": "CONFIRMED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "DISPUTED",
+    "TransactionOrderDependence": "CONFIRMED",
+    "UnusedReturn": "DISPUTED"
+  }
+}

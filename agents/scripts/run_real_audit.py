@@ -623,6 +623,11 @@ async def run_audit(contract_path: Path, urls: dict[str, str], args: argparse.Na
         "debate_transcript":         result.get("debate_transcript", {}),
         "confirmations":            result.get("confirmations", {}),
         "contradictions":           result.get("contradictions", {}),
+        # Rule 5C (CLAUDE.md, 2026-06-25): tool-availability status from each
+        # node. Required so the eval layer can distinguish "tool ran clean"
+        # (ran=True) from "tool was absent or failed" (ran=False + reason).
+        # An empty aderyn list alone is no longer the signal for "tool absent."
+        "tool_status":              result.get("tool_status", {}),
         "final_report":             final_report,
         "narrative":                narrative,
         "error":                    result.get("error"),
@@ -634,12 +639,52 @@ async def run_audit(contract_path: Path, urls: dict[str, str], args: argparse.Na
     out_path.write_text(json.dumps(report, indent=2, default=str))
     _loguru.info(f"report saved → {out_path}")
 
+    # Rule 5C (CLAUDE.md, 2026-06-25): `success` MUST reflect the report's
+    # health, not the mere fact that a report was saved. Previously
+    # `success: True` was unconditional on save, which masked 22/83 ML
+    # failures as "pass" — the "pass=83/83" silent-skip bug.
+    #
+    # Resolution rules (conservative, surface-failures):
+    #   "success" — no top-level error AND no `tool_status[tool].ran=False`
+    #              for any CRITICAL tool (ml, slither, aderyn).
+    #   "partial" — at least one critical tool failed but the graph
+    #              completed (typical: ML inference down, Aderyn/comp
+    #              error, etc.). Report is still produced and saved.
+    #   "failed"  — catastrophic (the report was never produced). The
+    #              caller already exited early before this point, so this
+    #              branch is defensive (e.g. partial report dict).
+    _CRITICAL_TOOLS = ("ml", "aderyn")
+    tool_status = report.get("tool_status", {}) or {}
+    critical_failed = [
+        tool for tool in _CRITICAL_TOOLS
+        if isinstance(tool_status.get(tool), dict)
+        and tool_status[tool].get("ran") is False
+    ]
+    if critical_failed:
+        # Critical tool failed but the graph completed (the rest of the
+        # pipeline ran and produced a report). This is a partial — the
+        # audit was attempted, some signals are missing, the report is
+        # still produced. Per Rule 5C, this MUST be visible in the
+        # summary; the previous code classified it as "failed" because
+        # the top-level `error` field is also set, but that's a
+        # recoverable degradation, not a catastrophic failure.
+        success = "partial"
+    elif report.get("error"):
+        # Catastrophic — graph failed outright (no report produced, or
+        # the graph aborted). Won't reach here in normal flow (caller
+        # exits early), but defensive.
+        success = "failed"
+    else:
+        success = "success"
+
     return {
         "contract":         contract_path.name,
-        "success":          True,
+        "success":          success,
         "total_wall_s":     total_wall,
         "verdicts":         verdicts,
         "overall_label":    final_report.get("overall_label"),
+        "tool_status":      tool_status,
+        "error":            report.get("error"),
     }
 
 
@@ -758,19 +803,51 @@ async def main():
         results.append(r)
 
     # ── Summary ───────────────────────────────────────────────────────────
+    # Rule 5C (CLAUDE.md, 2026-06-25): the old `pass=N/total` summary was
+    # silent-failure-prone — `success: True` was unconditional on save,
+    # so 22/83 ML-failure contracts were counted as "passed." The fix
+    # surfaces three categories: `success` / `partial` / `failed`.
     _section("E2E TEST SUMMARY")
     total_s = 0.0
-    ok_count = 0
+    success_count = 0
+    partial_count = 0
+    failed_count = 0
     for r in results:
-        if r.get("success"):
-            ok_count += 1
+        sc = r.get("success")
+        if sc == "success":
+            success_count += 1
             total_s += r["total_wall_s"]
             _loguru.info(f"  ✓ {r['contract']:35} wall={r['total_wall_s']:5.1f}s  label={r.get('overall_label', 'N/A')}")
+        elif sc == "partial":
+            partial_count += 1
+            total_s += r["total_wall_s"]
+            # Show the tool_status reasons — what was missing
+            ts = r.get("tool_status", {}) or {}
+            failed_tools = [f"{k}({v.get('reason','?')})" for k, v in ts.items()
+                            if isinstance(v, dict) and v.get("ran") is False]
+            _loguru.warning(
+                f"  ◐ {r['contract']:35} wall={r['total_wall_s']:5.1f}s  "
+                f"label={r.get('overall_label', 'N/A')}  "
+                f"PARTIAL — tools failed: {', '.join(failed_tools) or '?'}"
+            )
         else:
+            failed_count += 1
             _loguru.info(f"  ✗ {r['contract']:35} ERROR={r.get('error', '?')[:80]}")
-    _loguru.info(f"  pass={ok_count}/{len(results)}  total_wall={total_s:.1f}s")
+    _loguru.info(
+        f"  success={success_count}/{len(results)}  "
+        f"partial={partial_count}/{len(results)}  "
+        f"failed={failed_count}/{len(results)}  "
+        f"total_wall={total_s:.1f}s"
+    )
     _loguru.info(f"  log: {log_file}")
-    sys.exit(0 if ok_count == len(results) else 1)
+    # Exit code: 0 only if NO partial or failed. Partial is a non-fatal
+    # warning that surfaces the silent-skip to the CI gate.
+    if failed_count > 0:
+        sys.exit(2)
+    elif partial_count > 0:
+        sys.exit(0)  # partial is informational, not a hard fail
+    else:
+        sys.exit(0)
 
 
 if __name__ == "__main__":

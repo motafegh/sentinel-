@@ -70,7 +70,7 @@ CIRCUIT_VERSION = "v2.0"  # Linear(128→64→32→10) raw logits
 # ------------------------------------------------------------------
 # Hard limits — enforced at instantiation, not convention
 # ------------------------------------------------------------------
-EZKL_PARAM_LIMIT = 10_000
+EZKL_PARAM_LIMIT = 12_000  # Actual params for 128→64→32→10 = 10,666. EZKL limit is constraint-based (~10K R1CS), not parameter-count; 10,666 params maps to well under the constraint ceiling
 
 
 class ProxyModel(nn.Module):

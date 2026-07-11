@@ -297,6 +297,9 @@ class TestSmokePaths:
         assert report is not None
         assert report["path_taken"] == "fast"
         assert report["rag_evidence"] == []
+        # Rule 5C (CLAUDE.md, 2026-06-25): the Aderyn skip MUST be visible in
+        # the graph state via tool_status, not silently passed as [].
+        assert result.get("tool_status", {}).get("aderyn", {}).get("ran") is False
 
     @pytest.mark.asyncio
     async def test_screen_escalated_path_when_ml_safe_but_screen_fires(self):
@@ -351,11 +354,13 @@ class TestSmokePaths:
         assert report["path_taken"] != "fast", (
             "Screen-escalated path must NOT be a fast path even though ML said safe"
         )
+        # Rule 5C: Aderyn skip must surface in tool_status.
+        assert result.get("tool_status", {}).get("aderyn", {}).get("ran") is False
 
     @pytest.mark.asyncio
     async def test_ml_failure_still_produces_report(self):
         """Graph must produce a final report even when ML inference is unavailable."""
-        async def ml_down(url, tool, args):
+        async def ml_down(server_url, tool_name, arguments):
             raise ConnectionError("inference server unreachable")
 
         graph = build_graph(use_checkpointer=False)
@@ -373,3 +378,8 @@ class TestSmokePaths:
         assert report is not None, "Must produce a report even with ML failure"
         assert "ML assessment failed" in report["recommendation"]
         assert report["error"] is not None
+        # Rule 5C: both ML and Aderyn skips must surface in tool_status.
+        ts = result.get("tool_status", {}) or {}
+        assert ts.get("aderyn", {}).get("ran") is False
+        assert ts.get("ml", {}).get("ran") is False
+        assert "inference server unreachable" in ts["ml"]["detail"]

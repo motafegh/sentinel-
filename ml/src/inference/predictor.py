@@ -57,6 +57,7 @@ IMPROVEMENTS:
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -349,6 +350,13 @@ class Predictor:
         # not on the first real request.
         # ------------------------------------------------------------------
         self._warmup()
+
+        # ------------------------------------------------------------------
+        # Compute model hash for reproducibility tracking (P5)
+        # ------------------------------------------------------------------
+        self.model_hash = self._compute_file_hash(Path(checkpoint))
+        logger.info(f"Model hash (SHA-256): {self.model_hash[:16]}...")
+
         logger.info(f"Predictor ready | {self.num_classes} classes | {architecture}")
 
     def _warmup(self) -> None:
@@ -428,6 +436,25 @@ class Predictor:
                 f"Model warmup failed — checkpoint may be incompatible with current code. "
                 f"Error: {exc}"
             ) from exc
+
+    def _compute_file_hash(self, path: Path) -> str:
+        """
+        Compute SHA-256 hash of the checkpoint file for reproducibility tracking.
+
+        This hash is stable across restarts (unless the checkpoint file is replaced)
+        and can be used to verify that the same model is being used across runs.
+
+        Args:
+            path: Path to the checkpoint file
+
+        Returns:
+            SHA-256 hex digest (64 characters)
+        """
+        h = hashlib.sha256()
+        with path.open("rb") as f:
+            for chunk in iter(lambda: f.read(8 * 1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
 
     def predict_with_hotspots(self, source_code: str) -> dict:
         """
@@ -828,3 +855,52 @@ class Predictor:
             result["eye_predictions"] = eye_predictions
 
         return result
+
+    def predict_fusion_embedding(self, source_code: str) -> dict:
+        """
+        Return the 128-dim CrossAttentionFusion embedding for a contract.
+
+        This is the ZKML boundary — the fusion embedding feeds into the proxy
+        model, and the ZK circuit proves proxy(fusion_128) = class_scores[10].
+        Does NOT run the classifier head (no probabilities/verdicts).
+
+        Returns:
+            {
+                "fusion_embedding": [float × 128],
+                "num_nodes": int,
+                "num_edges": int,
+                "model_hash": str,
+                "windows_used": int,
+            }
+        """
+        graph, windows = self.preprocessor.process_source_windowed(source_code)
+        batch = Batch.from_data_list([graph]).to(self.device)
+
+        n_real = len(windows)
+        selected = windows[:_TRAINING_MAX_WINDOWS]
+        pad_ids  = torch.zeros(1, 512, dtype=torch.long, device=self.device)
+        pad_mask = torch.zeros(1, 512, dtype=torch.long, device=self.device)
+        padded = list(selected)
+        while len(padded) < _TRAINING_MAX_WINDOWS:
+            padded.append({"input_ids": pad_ids, "attention_mask": pad_mask})
+
+        stacked_ids  = torch.cat(
+            [w["input_ids"].to(self.device) for w in padded], dim=0
+        ).unsqueeze(0)
+        stacked_mask = torch.cat(
+            [w["attention_mask"].to(self.device) for w in padded], dim=0
+        ).unsqueeze(0)
+
+        self.model.eval()
+        with torch.no_grad():
+            _, aux = self.model(batch, stacked_ids, stacked_mask, return_aux=True)
+
+        fusion = aux["fusion_embedding"].squeeze(0)  # [128]
+
+        return {
+            "fusion_embedding": fusion.float().cpu().tolist(),
+            "num_nodes": int(graph.num_nodes),
+            "num_edges": int(graph.num_edges),
+            "model_hash": self.model_hash,
+            "windows_used": n_real,
+        }

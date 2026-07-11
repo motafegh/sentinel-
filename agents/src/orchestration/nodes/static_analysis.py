@@ -12,7 +12,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.orchestration.state import AuditState
 from src.orchestration.routing import CLASS_TO_DETECTORS
-from src.orchestration.nodes._helpers import _run_aderyn_on_file, _extract_external_call_summary
+from src.orchestration.nodes._helpers import (
+    AderynRunError,
+    _run_aderyn_on_file,
+    _extract_external_call_summary,
+)
 
 
 async def static_analysis(state: AuditState) -> dict[str, Any]:
@@ -33,7 +37,13 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
 
         Aderyn (full scan — Aderyn has no per-class scoping):
             {tool="aderyn", detector, impact, confidence, description, lines, function_names}
-            Non-fatal: silently skipped if Aderyn is not installed.
+            Non-fatal AT THE NODE LEVEL (intentional — keep pipeline going on
+            Slither-only evidence) but the failure MUST surface in
+            `state["tool_status"]["aderyn"]` (Rule 5C, CLAUDE.md). The
+            `tool_status` reducer is `_merge_tool_status` in state.py —
+            one-level-deep merge per tool key. Eval layer reads `tool_status`
+            to distinguish "Aderyn ran clean" from "Aderyn was absent or
+            failed" — the two are NOT the same.
 
         Having both tool names in the findings lets cross_validator and synthesizer
         reason about corroboration: "Slither AND Aderyn both found X" is stronger
@@ -49,6 +59,8 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
 
     State updates:
         static_findings → combined Slither + Aderyn findings (may be empty)
+        tool_status     → {tool: {"ran": bool, "reason": str, ...}} for Aderyn
+                          (and Slither when relevant) — see Rule 5C.
         error           → set on Slither failure (non-fatal; returns empty list)
     """
     contract_code = state.get("contract_code", "")
@@ -80,6 +92,7 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
     )
 
     tmp_path: str | None = None
+    slither_status: dict = {"ran": False, "reason": "not_started"}
     try:
         import inspect
 
@@ -162,29 +175,80 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
                     "function_names": fn_names,
                 })
 
+        slither_status = {"ran": True, "n_findings": len(findings)}
+
         # Run Aderyn on the same source — adds findings with tool="aderyn".
-        # Non-fatal: _run_aderyn_on_file returns [] on any failure.
-        aderyn_findings = _run_aderyn_on_file(contract_code)
+        # Rule 5C (CLAUDE.md): this call may raise FileNotFoundError
+        # (binary unresolvable) or AderynRunError (timeout / non-zero exit /
+        # malformed report). The node stays non-fatal at the pipeline level
+        # (intentional — Slither-only evidence is still useful) but the
+        # failure MUST be visible in `state["tool_status"]["aderyn"]` so the
+        # eval layer can distinguish "Aderyn ran clean" from "Aderyn was
+        # absent or failed." An empty aderyn_findings list alone is no
+        # longer sufficient.
+        try:
+            aderyn_findings = _run_aderyn_on_file(contract_code)
+        except FileNotFoundError as exc:
+            logger.warning(
+                "static_analysis | aderyn unavailable — falling back to Slither only | {}",
+                exc,
+            )
+            aderyn_findings = []
+            aderyn_status = {
+                "ran": False,
+                "reason": "binary_not_found",
+                "detail": str(exc),
+                "fallback": "slither-only",
+            }
+        except AderynRunError as exc:
+            logger.warning(
+                "static_analysis | aderyn run failed — falling back to Slither only | {}",
+                exc,
+            )
+            aderyn_findings = []
+            aderyn_status = {
+                "ran": False,
+                "reason": "run_error",
+                "detail": str(exc),
+                "fallback": "slither-only",
+            }
+        else:
+            aderyn_status = {
+                "ran": True,
+                "n_findings": len(aderyn_findings),
+            }
         findings.extend(aderyn_findings)
 
         logger.info(
-            "static_analysis complete | slither={} aderyn={} external_calls={} | contract_address={}",
+            "static_analysis complete | slither={} aderyn={} aderyn_ran={} external_calls={} | contract_address={}",
             len(findings) - len(aderyn_findings),
             len(aderyn_findings),
+            aderyn_status.get("ran"),
             len(external_calls),
             state.get("contract_address", "unknown"),
         )
-        return {"static_findings": findings, "external_call_summary": external_calls}
+        return {
+            "static_findings": findings,
+            "external_call_summary": external_calls,
+            "tool_status": {"slither": slither_status, "aderyn": aderyn_status},
+        }
 
     except ImportError:
         logger.warning("static_analysis | slither not installed — skipping")
-        return {"static_findings": [], "external_call_summary": []}
-
-    except Exception as exc:
-        logger.error("static_analysis failed: {}", exc)
+        slither_status = {"ran": False, "reason": "not_installed"}
         return {
             "static_findings": [],
             "external_call_summary": [],
+            "tool_status": {"slither": slither_status},
+        }
+
+    except Exception as exc:
+        logger.error("static_analysis failed: {}", exc)
+        slither_status = {"ran": False, "reason": "error", "detail": str(exc)}
+        return {
+            "static_findings": [],
+            "external_call_summary": [],
+            "tool_status": {"slither": slither_status},
             "error": f"static_analysis: {exc}",
         }
 

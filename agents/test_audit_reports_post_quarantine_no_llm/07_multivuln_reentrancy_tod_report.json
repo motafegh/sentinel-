@@ -1,0 +1,2312 @@
+{
+  "contract": "07_multivuln_reentrancy_tod.sol",
+  "contract_address": "0xd15ce2f96f4190ce5d258c1cd3b6beeb87fcc479",
+  "timestamp": "2026-06-26T13:20:52.200370+00:00",
+  "total_wall_s": 40.498241901397705,
+  "config": {
+    "lm_studio_url": "http://127.0.0.1:12345/v1",
+    "ml_api_url": "http://localhost:8001",
+    "mcp_inference_url": "http://localhost:8010",
+    "mcp_rag_url": "http://localhost:8011",
+    "mcp_audit_url": "http://localhost:8012",
+    "mcp_graph_url": "http://localhost:8013",
+    "no_llm": true,
+    "profile": false,
+    "timeout_s": 300.0
+  },
+  "routing_decisions": [
+    "CallToUnknown prob=0.278 < threshold=0.4 \u2192 skip",
+    "DenialOfService prob=0.352 >= threshold=0.3 \u2192 static_analysis+rag_research",
+    "ExternalBug prob=0.762 >= threshold=0.4 \u2192 static_analysis+rag_research",
+    "GasException prob=0.289 < threshold=0.4 \u2192 skip",
+    "IntegerUO prob=0.777 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "MishandledException prob=0.290 < threshold=0.4 \u2192 skip",
+    "Reentrancy prob=0.657 >= threshold=0.35 \u2192 static_analysis+rag_research",
+    "Timestamp prob=0.181 < threshold=0.35 \u2192 skip",
+    "TransactionOrderDependence prob=0.286 < threshold=0.35 \u2192 skip",
+    "UnusedReturn prob=0.818 >= threshold=0.45 \u2192 static_analysis",
+    "quick_screen: slither=['arbitrary-send-eth', 'reentrancy-eth'] aderyn=['eth-send-unchecked-address', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+  ],
+  "ml_result": {
+    "label": "confirmed_vulnerable",
+    "probabilities": {
+      "CallToUnknown": 0.2775,
+      "DenialOfService": 0.3521,
+      "ExternalBug": 0.7625,
+      "GasException": 0.2886,
+      "IntegerUO": 0.7767,
+      "MishandledException": 0.2899,
+      "Reentrancy": 0.6569,
+      "Timestamp": 0.1812,
+      "TransactionOrderDependence": 0.2858,
+      "UnusedReturn": 0.8183
+    },
+    "confirmed": [
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.8183,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7767,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7625,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.6569,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2886,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3521,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2899,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2858,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2775,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.8183,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7767,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7625,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.6569,
+        "tier": null
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2886,
+        "tier": null
+      }
+    ],
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "thresholds": [
+      0.4000000059604645,
+      0.5,
+      0.44999998807907104,
+      0.05000000074505806,
+      0.44999998807907104,
+      0.3499999940395355,
+      0.44999998807907104,
+      0.5,
+      0.3499999940395355,
+      0.4000000059604645
+    ],
+    "truncated": true,
+    "windows_used": 3,
+    "num_nodes": 64,
+    "num_edges": 294,
+    "eye_predictions": {
+      "gnn": {
+        "CallToUnknown": 0.0664,
+        "DenialOfService": 0.2503,
+        "ExternalBug": 0.8661,
+        "GasException": 0.0755,
+        "IntegerUO": 0.3987,
+        "MishandledException": 0.0799,
+        "Reentrancy": 0.5334,
+        "Timestamp": 0.0436,
+        "TransactionOrderDependence": 0.0649,
+        "UnusedReturn": 0.7944
+      },
+      "transformer": {
+        "CallToUnknown": 0.0563,
+        "DenialOfService": 0.2133,
+        "ExternalBug": 0.7098,
+        "GasException": 0.0639,
+        "IntegerUO": 0.6269,
+        "MishandledException": 0.068,
+        "Reentrancy": 0.2086,
+        "Timestamp": 0.0124,
+        "TransactionOrderDependence": 0.0918,
+        "UnusedReturn": 0.8487
+      },
+      "fused": {
+        "CallToUnknown": 0.0481,
+        "DenialOfService": 0.15,
+        "ExternalBug": 0.9106,
+        "GasException": 0.0626,
+        "IntegerUO": 0.8625,
+        "MishandledException": 0.0568,
+        "Reentrancy": 0.75,
+        "Timestamp": 0.0075,
+        "TransactionOrderDependence": 0.0604,
+        "UnusedReturn": 0.9431
+      },
+      "phase2": {
+        "CallToUnknown": 0.0816,
+        "DenialOfService": 0.1337,
+        "ExternalBug": 0.5224,
+        "GasException": 0.0615,
+        "IntegerUO": 0.387,
+        "MishandledException": 0.0397,
+        "Reentrancy": 0.7654,
+        "Timestamp": 0.0032,
+        "TransactionOrderDependence": 0.0436,
+        "UnusedReturn": 0.4314
+      }
+    }
+  },
+  "verdicts": {
+    "CallToUnknown": "CONFIRMED",
+    "DenialOfService": "CONFIRMED",
+    "ExternalBug": "CONFIRMED",
+    "GasException": "CONFIRMED",
+    "IntegerUO": "CONFIRMED",
+    "MishandledException": "LIKELY",
+    "Reentrancy": "CONFIRMED",
+    "TransactionOrderDependence": "SAFE",
+    "UnusedReturn": "DISPUTED"
+  },
+  "quick_screen_hits": {
+    "slither": [
+      "arbitrary-send-eth",
+      "reentrancy-eth"
+    ],
+    "aderyn": [
+      "eth-send-unchecked-address",
+      "reentrancy-state-change"
+    ]
+  },
+  "static_findings_count": 16,
+  "static_findings": [
+    {
+      "tool": "slither",
+      "detector": "arbitrary-send-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42):\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "low-level-calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "description": "Low level call in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_jghaonbp.sol#27)\n",
+      "lines": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "calls-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42) has external calls inside a loop: (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_jghaonbp.sol#27)\n\tState variables written after the call(s):\n\t- balances[msg.sender] -= amount (../../../../../tmp/sentinel_static_jghaonbp.sol#29)\n\tMultiVulnBank.balances (../../../../../tmp/sentinel_static_jghaonbp.sol#9) can be used in cross function reentrancies:\n\t- MultiVulnBank.balances (../../../../../tmp/sentinel_static_jghaonbp.sol#9)\n\t- MultiVulnBank.batchTransfer(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#65-70)\n\t- MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42)\n\t- MultiVulnBank.deposit() (../../../../../tmp/sentinel_static_jghaonbp.sol#20-23)\n\t- MultiVulnBank.transfer(address,uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#58-63)\n\t- MultiVulnBank.transferFrom(address,address,uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#49-56)\n\t- MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31)\n",
+      "lines": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42):\n\tExternal calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n\tState variables written after the call(s):\n\t- balances[users[i]] -= amounts[i] (../../../../../tmp/sentinel_static_jghaonbp.sol#39)\n\tMultiVulnBank.balances (../../../../../tmp/sentinel_static_jghaonbp.sol#9) can be used in cross function reentrancies:\n\t- MultiVulnBank.balances (../../../../../tmp/sentinel_static_jghaonbp.sol#9)\n\t- MultiVulnBank.batchTransfer(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#65-70)\n\t- MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42)\n\t- MultiVulnBank.deposit() (../../../../../tmp/sentinel_static_jghaonbp.sol#20-23)\n\t- MultiVulnBank.transfer(address,uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#58-63)\n\t- MultiVulnBank.transferFrom(address,address,uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#49-56)\n\t- MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_jghaonbp.sol#27)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,amount) (../../../../../tmp/sentinel_static_jghaonbp.sol#30)\n",
+      "lines": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "function_names": [
+        "withdraw"
+      ]
+    },
+    {
+      "tool": "slither",
+      "detector": "reentrancy-events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Reentrancy in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42):\n\tExternal calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n\tEvent emitted after the call(s):\n\t- Withdrawn(users[i],amounts[i]) (../../../../../tmp/sentinel_static_jghaonbp.sol#40)\n",
+      "lines": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "function_names": [
+        "batchWithdraw"
+      ]
+    },
+    {
+      "tool": "aderyn",
+      "detector": "eth-send-unchecked-address",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+      "lines": [
+        25,
+        33
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "reentrancy-state-change",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+      "lines": [
+        27,
+        37
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "costly-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+      "lines": [
+        35,
+        66
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "push-zero-opcode",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+      "lines": [
+        6
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "require-revert-in-loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+      "lines": [
+        35
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-change-without-event",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+      "lines": [
+        44,
+        49,
+        58,
+        65
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "state-variable-could-be-immutable",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+      "lines": [
+        11
+      ],
+      "function_names": []
+    },
+    {
+      "tool": "aderyn",
+      "detector": "unspecific-solidity-pragma",
+      "impact": "Low",
+      "confidence": "Medium",
+      "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+      "lines": [
+        6
+      ],
+      "function_names": []
+    }
+  ],
+  "rag_results_count": 5,
+  "audit_history_count": 2,
+  "graph_explanations_classes": [
+    "graph_stats",
+    "analysis_mode",
+    "hotspots_by_class"
+  ],
+  "consensus_verdict": {
+    "CallToUnknown": {
+      "ml_signal": 0,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.3,
+      "confidence": 0.8125,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.3,
+        "slither": 0.7,
+        "aderyn": 0.6
+      }
+    },
+    "DenialOfService": {
+      "ml_signal": 0,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.05,
+      "confidence": 0.7636,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.325,
+        "slither": 0.55,
+        "aderyn": 0.5
+      }
+    },
+    "ExternalBug": {
+      "ml_signal": 1,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.175,
+      "confidence": 1.0,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.225,
+        "slither": 0.5,
+        "aderyn": 0.45
+      }
+    },
+    "GasException": {
+      "ml_signal": 0,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.2,
+      "confidence": 0.8571,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.2,
+        "slither": 0.65,
+        "aderyn": 0.55
+      }
+    },
+    "IntegerUO": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 1.01,
+      "confidence": 0.558,
+      "verdict": "LIKELY",
+      "weights": {
+        "ml": 0.31,
+        "slither": 0.8,
+        "aderyn": 0.7
+      }
+    },
+    "MishandledException": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.62,
+      "confidence": 0.3839,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.72,
+        "aderyn": 0.62
+      }
+    },
+    "Reentrancy": {
+      "ml_signal": 1,
+      "slither_match": 1,
+      "aderyn_match": 1,
+      "score": 1.81,
+      "confidence": 1.0,
+      "verdict": "CONFIRMED",
+      "weights": {
+        "ml": 0.39,
+        "slither": 0.82,
+        "aderyn": 0.6
+      }
+    },
+    "TransactionOrderDependence": {
+      "ml_signal": 0,
+      "slither_match": 0,
+      "aderyn_match": 1,
+      "score": 0.45,
+      "confidence": 0.3214,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.35,
+        "slither": 0.6,
+        "aderyn": 0.45
+      }
+    },
+    "UnusedReturn": {
+      "ml_signal": 1,
+      "slither_match": 0,
+      "aderyn_match": 0,
+      "score": 0.275,
+      "confidence": 0.1642,
+      "verdict": "DISPUTED",
+      "weights": {
+        "ml": 0.275,
+        "slither": 0.75,
+        "aderyn": 0.65
+      },
+      "overridden_from_safe": true
+    }
+  },
+  "debate_transcript": {
+    "prosecutor": "",
+    "defender": "**ExternalBug [CONFIRMED] prob=0.762**\nThe finding stems from using low-level `.call{value: amount}(\"\")` within `batchWithdraw`. While this pattern is inherently risky, it is a standard way to perform external transfers in Solidity. The risk is mitigated by the subsequent check (`require(ok, \"batch transfer failed\")`), which stops execution if any single transfer fails, preventing cascading state corruption.\n\n**Reentrancy [CONFIRMED] prob=0.657**\nThe reentrancy concern arises from the sequence of external calls followed by state updates in `withdraw` and `batchWithdraw`. However, the contract structure does not exhibit classic reentrancy vulnerabilities like external calls occurring before balance updates. The use of checks (`require(ok, \"transfer failed\")`) attempts to guard against this flow, although external calls remain a general risk.\n\n**GasException [CONFIRMED] prob=0.289**\nThe finding relates to invoking state-modifying operations within loops in `batchWithdraw`. This is not necessarily an exception but rather an efficiency concern regarding gas usage. The code does not perform complex, nested state writes inside the loop that would trigger a hard GasException, making this a low-severity optimization issue rather than a critical bug.\n\n**CopyToUnknown [SUSPICIOUS] prob=0.278**\nThis flags the use of `.call{value: amount}(\"\")` in both `withdraw` and `batchWithdraw`. This is a typed interface call used for external communication, which is expected behavior for a bank contract. The risk is low because the outcome depends entirely on the external contract's execution, not an",
+    "judge": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"TransactionOrderDependence\": \"WATCH\"}"
+  },
+  "confirmations": {
+    "ExternalBug": [
+      "ml",
+      "slither",
+      "slither",
+      "aderyn",
+      "consensus",
+      "debate"
+    ],
+    "IntegerUO": [
+      "ml",
+      "aderyn",
+      "consensus",
+      "debate"
+    ],
+    "Reentrancy": [
+      "ml",
+      "slither",
+      "slither",
+      "aderyn",
+      "consensus",
+      "debate"
+    ],
+    "UnusedReturn": [
+      "ml",
+      "consensus"
+    ],
+    "CallToUnknown": [
+      "slither",
+      "consensus"
+    ],
+    "GasException": [
+      "slither",
+      "consensus"
+    ],
+    "DenialOfService": [
+      "slither",
+      "consensus",
+      "debate"
+    ],
+    "MishandledException": [
+      "aderyn",
+      "consensus"
+    ],
+    "TransactionOrderDependence": [
+      "consensus"
+    ]
+  },
+  "contradictions": {
+    "MishandledException": [
+      "conflicting SUPPORTS/REFUTES evidence"
+    ]
+  },
+  "tool_status": {
+    "ml": {
+      "ran": true,
+      "label": "confirmed_vulnerable"
+    },
+    "aderyn": {
+      "ran": true,
+      "n_findings": 8
+    }
+  },
+  "final_report": {
+    "contract_address": "0xd15ce2f96f4190ce5d258c1cd3b6beeb87fcc479",
+    "overall_label": "confirmed_vulnerable",
+    "overall_verdict": "CONFIRMED",
+    "risk_probability": 0.8183,
+    "top_vulnerability": "UnusedReturn",
+    "confirmed": [
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.8183,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7767,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7625,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.6569,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2886,
+        "tier": "CONFIRMED"
+      }
+    ],
+    "suspicious": [
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3521,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2899,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2858,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2775,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.8183,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7767,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7625,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.6569,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2886,
+        "tier": "CONFIRMED"
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3521,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2899,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2858,
+        "tier": "SUSPICIOUS"
+      },
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2775,
+        "tier": "SUSPICIOUS"
+      }
+    ],
+    "probabilities": {
+      "CallToUnknown": 0.2775,
+      "DenialOfService": 0.3521,
+      "ExternalBug": 0.7625,
+      "GasException": 0.2886,
+      "IntegerUO": 0.7767,
+      "MishandledException": 0.2899,
+      "Reentrancy": 0.6569,
+      "Timestamp": 0.1812,
+      "TransactionOrderDependence": 0.2858,
+      "UnusedReturn": 0.8183
+    },
+    "tier_thresholds": {
+      "confirmed": [
+        0.4000000059604645,
+        0.5,
+        0.44999998807907104,
+        0.05000000074505806,
+        0.44999998807907104,
+        0.3499999940395355,
+        0.44999998807907104,
+        0.5,
+        0.3499999940395355,
+        0.4000000059604645
+      ],
+      "suspicious": 0.25,
+      "noteworthy": 0.1
+    },
+    "vulnerability_verdicts": [
+      {
+        "vulnerability_class": "CallToUnknown",
+        "probability": 0.2775,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "slither",
+          "aderyn",
+          "consensus"
+        ],
+        "severity": "INFO",
+        "confidence": 0.7079,
+        "attribution": {
+          "ml_pct": 21.7,
+          "slither_pct": 78.3,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "DenialOfService",
+        "probability": 0.3521,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "slither",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "LOW",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 26.0,
+          "slither_pct": 74.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "ExternalBug",
+        "probability": 0.7625,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "slither",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "HIGH",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 43.3,
+          "slither_pct": 56.7,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "GasException",
+        "probability": 0.2886,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "slither",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "INFO",
+        "confidence": 0.7511,
+        "attribution": {
+          "ml_pct": 22.4,
+          "slither_pct": 77.6,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "IntegerUO",
+        "probability": 0.7767,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "HIGH",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "MishandledException",
+        "probability": 0.2899,
+        "verdict": "LIKELY",
+        "evidence_sources": [
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "INFO",
+        "confidence": 0.6176,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "Reentrancy",
+        "probability": 0.6569,
+        "verdict": "CONFIRMED",
+        "evidence_sources": [
+          "ml",
+          "slither",
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "MEDIUM",
+        "confidence": 1.0,
+        "attribution": {
+          "ml_pct": 39.6,
+          "slither_pct": 60.4,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "TransactionOrderDependence",
+        "probability": 0.2858,
+        "verdict": "SAFE",
+        "evidence_sources": [
+          "aderyn",
+          "consensus",
+          "debate"
+        ],
+        "severity": "INFO",
+        "confidence": 0.2732,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      },
+      {
+        "vulnerability_class": "UnusedReturn",
+        "probability": 0.8183,
+        "verdict": "DISPUTED",
+        "evidence_sources": [
+          "ml",
+          "consensus"
+        ],
+        "severity": "HIGH",
+        "confidence": 0.3021,
+        "attribution": {
+          "ml_pct": 100.0,
+          "slither_pct": 0.0,
+          "rag_pct": 0.0
+        }
+      }
+    ],
+    "threshold": 0.5,
+    "ml_truncated": true,
+    "num_nodes": 64,
+    "num_edges": 294,
+    "rag_evidence": [
+      {
+        "content": "Detailed notes:\nThe Vulnerability\nThe hack took advantage of our pre-bridge swap feature. Our smart contract allows a caller to pass an array of multiple swaps using any address with arbitrary calldata.\nThis design gave us maximum flexibility in what DEXs we could call and what methods we could call. This also allowed anyone to call other contracts, not just DEXs. Our contract checks to make sure that the result of the swap or swaps is enough tokens to continue the bridging operation.\nThe attacker started by passing a legitimate swap of a small amount followed by multiple calls directly to various token contracts. Specifically, they called the `transferFrom` method which allowed the attacker to transfer funds from users\u2019 wallets that had previously given infinite approval to our contract for that specific token.\nsellToUniswap(address[],uint256,uint256,bool)\n\"tokens\":[\n0:\"0xdac17f958d2ee523a2206206994597c13d831ec7\"\n1:\"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\"\n]\n\"sellAmount\":\"50000000\"\n\"minBuyAmount\":\"40000000\"\n\"isSushi\":false\nif (!LibAsset.isNativeAsset(fromAssetId) && LibAsset.getOwnBalance(fromAssetId) < fromAmount) {\nLibAsset.transferFromERC20(_swapData.sendingAssetId, msg.sender, address(this), fromAmount);\nif (!LibAsset.isNativeAsset(fromAssetId)) {\nLibAsset.approveERC20(IERC20(fromAssetId), _swapData.approveTo, fromAmount);\n// solhint-disable-next-line avoid-low-level-calls\n(bool success, bytes memory res) = _swapData.callTo.call{ value: msg.value }(_swapData.callData);",
+        "doc_id": "ef6a16568df7943a",
+        "chunk_id": 1,
+        "total_chunks": 2,
+        "metadata": {
+          "protocol": "LiFi",
+          "date": "2022-03-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2022-03/LiFi_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 1,
+          "total_chunks": 2,
+          "doc_id": "ef6a16568df7943a"
+        },
+        "score": 0.03279569892473118
+      },
+      {
+        "content": "DeFi Security Incident: Grim\nDate: 2021-12-01\nVulnerability type: other\n\nDetailed notes:\nFlash Loan WFTM and \"BTC\" frm BeethovenX\nCalled after receiving Flash Loan Funds\nAdd Liquidity to SpiritSwap\nCall depositFor() in GrimBoostVault, reentrancy to this.transferFrom\nWithdraw LPs from GrimBoostVault\nRemove Liquidity from SpiritSwap\nRepay Flash Loan\nCalled by the reentrancy vulnerability in grimBoostVault.depositFor()\nCall depositFor() in GrimBoostVault with token==ATTACKER, user==ATTACKER\nIn the last step on reentrancy call depositFor() with token==SPIRIT-LP, user==ATTACKER",
+        "doc_id": "acebf2f76545dcb6",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Grim",
+          "date": "2021-12-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2021-12/Grim_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "acebf2f76545dcb6"
+        },
+        "score": 0.03205128205128205
+      },
+      {
+        "content": "DeFi Security Incident: Phoenix\nDate: 2023-03-01\nVulnerability type: access_control\n\nAttack summary:\nPhxProxy contract delegateCallSwap() function lack of access control and can be passed in any parameter\nThe lost money is mainly USDC in the d028 contract which the attacker converts into WETH in the 65ba contract through the buyLeverage function\nand then swaps it into his own tokens by the delegateCallSwap function, making a profit from it\n\nPost-mortem references:\nhttps://twitter.com/HypernativeLabs/status/1633090456157401088",
+        "doc_id": "855be0354478d3a6",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Phoenix",
+          "date": "2023-03-01",
+          "vuln_type": "access_control",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/HypernativeLabs/status/1633090456157401088"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-03/Phoenix_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "855be0354478d3a6"
+        },
+        "score": 0.031544957774465976
+      },
+      {
+        "content": "DeFi Security Incident: Novo\nDate: 2022-05-01\nVulnerability type: other\n\nDetailed notes:\nExploit Alert ref: https://www.panewslab.com/zh_hk/articledetails/f40t9xb4.html\nOrigin Attack Transaction: 0xc346adf14e5082e6df5aeae650f3d7f606d7e08247c2b856510766b4dfcdc57f\nBlocksec Txinfo: https://versatile.blocksecteam.com/tx/bsc/0xc346adf14e5082e6df5aeae650f3d7f606d7e08247c2b856510766b4dfcdc57f\nAttack Addr: 0x31a7cc04987520cefacd46f734943a105b29186e\nAttack Contract: 0x3463a663de4ccc59c8b21190f81027096f18cf2a\nVulnerable Contract: https://bscscan.com/address/0xa0787daad6062349f63b7c228cbfd5d8a3db08f1#code\nBrrow 17.2 WBNB\n\u653b\u64ca\u8005\u5148\u8cb7\u5165 NOVO Token\n\u900f\u904e NOVO Token \u7684 transferFrom \u672a\u904e\u6ffe `from`\n`from` \u6307\u5b9a\u70ba NOVO/WBNB \u7684 LP pool, \u5373\u53ef\u64cd\u7e31 PancakeSwap NOVO/WBNB \u7684\u50f9\u683c\n\u653b\u64ca\u8005\u518d\u8ce3\u51fa flashswap \u501f\u4f86\u7684 NOVO Token \u5373\u53ef\u7372\u5229\nUse borrow WBNB to swap some NOVO token\nSync NOVO token balance before exploit\nManipulate the LP of NOVO/WBNB => Manipulate the NOVO/WBNB price\nSync NOVO/WBNB price\nSwap NOVO to WBNB, make attacker profit\nPayback the flashswap, will be `BorrowAmount` + 0.25% fee",
+        "doc_id": "1e2f3f7e7793311d",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Novo",
+          "date": "2022-05-01",
+          "vuln_type": "other",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2022-05/Novo_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": false,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "1e2f3f7e7793311d"
+        },
+        "score": 0.03055037313432836
+      },
+      {
+        "content": "DeFi Security Incident: Paribus\nDate: 2023-04-01\nVulnerability type: reentrancy\n\nAttack summary:\na known reentrancy issue from the forked old version of CompoundV2\n\nPost-mortem references:\nhttps://twitter.com/Phalcon_xyz/status/1645742620897955842\nhttps://twitter.com/BlockSecTeam/status/1645744655357575170\nhttps://twitter.com/peckshield/status/1645742296904929280",
+        "doc_id": "0e81817326aa8fa5",
+        "chunk_id": 0,
+        "total_chunks": 1,
+        "metadata": {
+          "protocol": "Paribus",
+          "date": "2023-04-01",
+          "vuln_type": "reentrancy",
+          "root_cause": "unknown",
+          "loss_usd": null,
+          "analysis_urls": [
+            "https://twitter.com/Phalcon_xyz/status/1645742620897955842",
+            "https://twitter.com/BlockSecTeam/status/1645744655357575170",
+            "https://twitter.com/peckshield/status/1645742296904929280"
+          ],
+          "tx_url": "",
+          "file_path": "/home/motafeq/projects/sentinel/agents/data/defihacklabs/src/test/2023-04/Paribus_exp.sol",
+          "source": "DeFiHackLabs",
+          "has_summary": true,
+          "has_keyinfo": false,
+          "chunk_id": 0,
+          "total_chunks": 1,
+          "doc_id": "0e81817326aa8fa5"
+        },
+        "score": 0.02946236559139785
+      }
+    ],
+    "audit_history": [
+      {
+        "contract_address": "0xd15ce2f96f4190CE5D258C1cd3B6Beeb87FCC479",
+        "score": 0.7314,
+        "score_field_element": 5993,
+        "label": "vulnerable",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1713200000,
+        "timestamp_iso": "2026-04-15T12:00:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      },
+      {
+        "contract_address": "0xd15ce2f96f4190CE5D258C1cd3B6Beeb87FCC479",
+        "score": 0.4102,
+        "score_field_element": 3362,
+        "label": "safe",
+        "threshold": 0.5,
+        "proof_hash": "0xabababababababababababababababababababababababababababababababab",
+        "timestamp": 1712900000,
+        "timestamp_iso": "2026-04-12T03:20:00+00:00",
+        "agent": "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",
+        "verified": true
+      }
+    ],
+    "static_findings": [
+      {
+        "tool": "slither",
+        "detector": "arbitrary-send-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42):\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "confidence": "High",
+        "description": "Low level call in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31):\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_jghaonbp.sol#27)\n",
+        "lines": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "calls-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42) has external calls inside a loop: (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_jghaonbp.sol#27)\n\tState variables written after the call(s):\n\t- balances[msg.sender] -= amount (../../../../../tmp/sentinel_static_jghaonbp.sol#29)\n\tMultiVulnBank.balances (../../../../../tmp/sentinel_static_jghaonbp.sol#9) can be used in cross function reentrancies:\n\t- MultiVulnBank.balances (../../../../../tmp/sentinel_static_jghaonbp.sol#9)\n\t- MultiVulnBank.batchTransfer(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#65-70)\n\t- MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42)\n\t- MultiVulnBank.deposit() (../../../../../tmp/sentinel_static_jghaonbp.sol#20-23)\n\t- MultiVulnBank.transfer(address,uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#58-63)\n\t- MultiVulnBank.transferFrom(address,address,uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#49-56)\n\t- MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31)\n",
+        "lines": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Reentrancy in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42):\n\tExternal calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n\tState variables written after the call(s):\n\t- balances[users[i]] -= amounts[i] (../../../../../tmp/sentinel_static_jghaonbp.sol#39)\n\tMultiVulnBank.balances (../../../../../tmp/sentinel_static_jghaonbp.sol#9) can be used in cross function reentrancies:\n\t- MultiVulnBank.balances (../../../../../tmp/sentinel_static_jghaonbp.sol#9)\n\t- MultiVulnBank.batchTransfer(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#65-70)\n\t- MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42)\n\t- MultiVulnBank.deposit() (../../../../../tmp/sentinel_static_jghaonbp.sol#20-23)\n\t- MultiVulnBank.transfer(address,uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#58-63)\n\t- MultiVulnBank.transferFrom(address,address,uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#49-56)\n\t- MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_static_jghaonbp.sol#27)\n\tEvent emitted after the call(s):\n\t- Withdrawn(msg.sender,amount) (../../../../../tmp/sentinel_static_jghaonbp.sol#30)\n",
+        "lines": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "function_names": [
+          "withdraw"
+        ]
+      },
+      {
+        "tool": "slither",
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Reentrancy in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42):\n\tExternal calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentinel_static_jghaonbp.sol#37)\n\tEvent emitted after the call(s):\n\t- Withdrawn(users[i],amounts[i]) (../../../../../tmp/sentinel_static_jghaonbp.sol#40)\n",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        "function_names": [
+          "batchWithdraw"
+        ]
+      },
+      {
+        "tool": "aderyn",
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          25,
+          33
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "confidence": "Medium",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          27,
+          37
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "costly-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          35,
+          66
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "push-zero-opcode",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Solc compiler version 0.8.20 switches the default target EVM version to Shanghai, which means that the generated bytecode will include PUSH0 opcodes. Be sure to select the appropriate EVM version in case you intend to deploy on a chain other than mainnet like L2 chains that may not support PUSH0, otherwise deployment of your contracts will fail.",
+        "lines": [
+          6
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          35
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-change-without-event",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "There are state variable changes in this function but no event is emitted. Consider emitting an event to enable offchain indexers to track the changes.",
+        "lines": [
+          44,
+          49,
+          58,
+          65
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "state-variable-could-be-immutable",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "State variables that are only changed in the constructor should be declared immutable to save gas. Add the `immutable` attribute to state variables that are only changed in the constructor",
+        "lines": [
+          11
+        ],
+        "function_names": []
+      },
+      {
+        "tool": "aderyn",
+        "detector": "unspecific-solidity-pragma",
+        "impact": "Low",
+        "confidence": "Medium",
+        "description": "Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`",
+        "lines": [
+          6
+        ],
+        "function_names": []
+      }
+    ],
+    "external_call_summary": [],
+    "routing_decisions": [
+      "CallToUnknown prob=0.278 < threshold=0.4 \u2192 skip",
+      "DenialOfService prob=0.352 >= threshold=0.3 \u2192 static_analysis+rag_research",
+      "ExternalBug prob=0.762 >= threshold=0.4 \u2192 static_analysis+rag_research",
+      "GasException prob=0.289 < threshold=0.4 \u2192 skip",
+      "IntegerUO prob=0.777 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "MishandledException prob=0.290 < threshold=0.4 \u2192 skip",
+      "Reentrancy prob=0.657 >= threshold=0.35 \u2192 static_analysis+rag_research",
+      "Timestamp prob=0.181 < threshold=0.35 \u2192 skip",
+      "TransactionOrderDependence prob=0.286 < threshold=0.35 \u2192 skip",
+      "UnusedReturn prob=0.818 >= threshold=0.45 \u2192 static_analysis",
+      "quick_screen: slither=['arbitrary-send-eth', 'reentrancy-eth'] aderyn=['eth-send-unchecked-address', 'reentrancy-state-change'] \u2192 escalate to deep path (overrides fast-path even if ML safe)"
+    ],
+    "consensus_verdict": {
+      "CallToUnknown": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.3,
+        "confidence": 0.8125,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.3,
+          "slither": 0.7,
+          "aderyn": 0.6
+        }
+      },
+      "DenialOfService": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.05,
+        "confidence": 0.7636,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.325,
+          "slither": 0.55,
+          "aderyn": 0.5
+        }
+      },
+      "ExternalBug": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.175,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.225,
+          "slither": 0.5,
+          "aderyn": 0.45
+        }
+      },
+      "GasException": {
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.2,
+        "confidence": 0.8571,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.2,
+          "slither": 0.65,
+          "aderyn": 0.55
+        }
+      },
+      "IntegerUO": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 1.01,
+        "confidence": 0.558,
+        "verdict": "LIKELY",
+        "weights": {
+          "ml": 0.31,
+          "slither": 0.8,
+          "aderyn": 0.7
+        }
+      },
+      "MishandledException": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.62,
+        "confidence": 0.3839,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.72,
+          "aderyn": 0.62
+        }
+      },
+      "Reentrancy": {
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1,
+        "score": 1.81,
+        "confidence": 1.0,
+        "verdict": "CONFIRMED",
+        "weights": {
+          "ml": 0.39,
+          "slither": 0.82,
+          "aderyn": 0.6
+        }
+      },
+      "TransactionOrderDependence": {
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1,
+        "score": 0.45,
+        "confidence": 0.3214,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.35,
+          "slither": 0.6,
+          "aderyn": 0.45
+        }
+      },
+      "UnusedReturn": {
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0,
+        "score": 0.275,
+        "confidence": 0.1642,
+        "verdict": "DISPUTED",
+        "weights": {
+          "ml": 0.275,
+          "slither": 0.75,
+          "aderyn": 0.65
+        },
+        "overridden_from_safe": true
+      }
+    },
+    "debate_transcript": {
+      "prosecutor": "",
+      "defender": "**ExternalBug [CONFIRMED] prob=0.762**\nThe finding stems from using low-level `.call{value: amount}(\"\")` within `batchWithdraw`. While this pattern is inherently risky, it is a standard way to perform external transfers in Solidity. The risk is mitigated by the subsequent check (`require(ok, \"batch transfer failed\")`), which stops execution if any single transfer fails, preventing cascading state corruption.\n\n**Reentrancy [CONFIRMED] prob=0.657**\nThe reentrancy concern arises from the sequence of external calls followed by state updates in `withdraw` and `batchWithdraw`. However, the contract structure does not exhibit classic reentrancy vulnerabilities like external calls occurring before balance updates. The use of checks (`require(ok, \"transfer failed\")`) attempts to guard against this flow, although external calls remain a general risk.\n\n**GasException [CONFIRMED] prob=0.289**\nThe finding relates to invoking state-modifying operations within loops in `batchWithdraw`. This is not necessarily an exception but rather an efficiency concern regarding gas usage. The code does not perform complex, nested state writes inside the loop that would trigger a hard GasException, making this a low-severity optimization issue rather than a critical bug.\n\n**CopyToUnknown [SUSPICIOUS] prob=0.278**\nThis flags the use of `.call{value: amount}(\"\")` in both `withdraw` and `batchWithdraw`. This is a typed interface call used for external communication, which is expected behavior for a bank contract. The risk is low because the outcome depends entirely on the external contract's execution, not an",
+      "judge": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"TransactionOrderDependence\": \"WATCH\"}"
+    },
+    "recommendation": "HIGH RISK \u2014 top vulnerability: UnusedReturn (probability 81.8%, CONFIRMED tier). 5 similar exploit pattern(s) found in DeFiHackLabs corpus. 5 Slither High/Medium finding(s). 2 prior on-chain audit(s). Recommend full manual audit before deployment.\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens \u2014 tail code was not analysed. Manual review of the unanalysed portion is recommended.",
+    "narrative": null,
+    "error": null,
+    "path_taken": "deep",
+    "metric_attribution": {
+      "CallToUnknown": {
+        "ml_pct": 21.7,
+        "slither_pct": 78.3,
+        "rag_pct": 0.0
+      },
+      "DenialOfService": {
+        "ml_pct": 26.0,
+        "slither_pct": 74.0,
+        "rag_pct": 0.0
+      },
+      "ExternalBug": {
+        "ml_pct": 43.3,
+        "slither_pct": 56.7,
+        "rag_pct": 0.0
+      },
+      "GasException": {
+        "ml_pct": 22.4,
+        "slither_pct": 77.6,
+        "rag_pct": 0.0
+      },
+      "IntegerUO": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "MishandledException": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "Reentrancy": {
+        "ml_pct": 39.6,
+        "slither_pct": 60.4,
+        "rag_pct": 0.0
+      },
+      "TransactionOrderDependence": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      },
+      "UnusedReturn": {
+        "ml_pct": 100.0,
+        "slither_pct": 0.0,
+        "rag_pct": 0.0
+      }
+    },
+    "confidence_by_class": {
+      "CallToUnknown": 0.7079,
+      "DenialOfService": 1.0,
+      "ExternalBug": 1.0,
+      "GasException": 0.7511,
+      "IntegerUO": 1.0,
+      "MishandledException": 0.6176,
+      "Reentrancy": 1.0,
+      "TransactionOrderDependence": 0.2732,
+      "UnusedReturn": 0.3021
+    },
+    "reflection_notes": {
+      "unused_evidence": [
+        "2 High/Medium static finding(s) not tied to a verdict: eth-send-unchecked-address, reentrancy-state-change"
+      ],
+      "contradictions": [
+        "MishandledException: conflicting SUPPORTS/REFUTES evidence"
+      ],
+      "uncertain_verdicts": [
+        "MishandledException: confidence 62% below 0.70",
+        "TransactionOrderDependence: confidence 27% below 0.70",
+        "UnusedReturn: verdict DISPUTED"
+      ],
+      "failure_modes": [
+        "Contract exceeded 512 CodeBERT tokens \u2014 tail code unanalysed; verdicts may miss vulnerabilities in the truncated region.",
+        "ExternalBug flagged \u2014 the ML model is known to over-predict this class (Run 12 class-definition mismatch); treat as lower confidence unless corroborated by an inter-contract call finding."
+      ],
+      "summary": "Self-critique: 3 verdict(s) are uncertain; 1 evidence item(s) unused; 2 failure mode(s) noted.",
+      "llm_used": false
+    }
+  },
+  "narrative": null,
+  "error": null,
+  "evidence_list": [
+    {
+      "source": "ml",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.7625,
+      "reliability": 0.1038,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7625
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.7767,
+      "reliability": 0.0766,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.7767
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.6569,
+      "reliability": 0.127,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.6569
+      }
+    },
+    {
+      "source": "ml",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.8183,
+      "reliability": 0.0575,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "tier": "CONFIRMED",
+        "probability": 0.8183
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.217,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "arbitrary-send-eth",
+        "impact": "High",
+        "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42) sends eth to arbitrary user\n\tDangerous calls:\n\t- (ok,None) = users[i].call{value: amounts[i]}()",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.15,
+      "reliability": 0.217,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "description": "Low level call in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42):\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentin",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 0.15,
+      "reliability": 0.3463,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "low-level-calls",
+        "impact": "Informational",
+        "description": "Low level call in MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42):\n\t- (ok,None) = users[i].call{value: amounts[i]}() (../../../../../tmp/sentin",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "GasException",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.2256,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "calls-loop",
+        "impact": "Low",
+        "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42) has external calls inside a loop: (ok,None) = users[i].call{value: amounts[i]}() (../../../../.",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "DenialOfService",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.2199,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "calls-loop",
+        "impact": "Low",
+        "description": "MultiVulnBank.batchWithdraw(address[],uint256[]) (../../../../../tmp/sentinel_static_jghaonbp.sol#33-42) has external calls inside a loop: (ok,None) = users[i].call{value: amounts[i]}() (../../../../.",
+        "lines": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.343,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-eth",
+        "impact": "High",
+        "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_sta",
+        "lines": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ]
+      }
+    },
+    {
+      "source": "slither",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.343,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-events",
+        "impact": "Low",
+        "description": "Reentrancy in MultiVulnBank.withdraw(uint256) (../../../../../tmp/sentinel_static_jghaonbp.sol#25-31):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: amount}() (../../../../../tmp/sentinel_sta",
+        "lines": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.1365,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          25,
+          33
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.2096,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          25,
+          33
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.3738,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "eth-send-unchecked-address",
+        "impact": "High",
+        "description": "Consider introducing checks for `msg.sender` to ensure the recipient of the money is as intended.",
+        "lines": [
+          25,
+          33
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.3606,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "reentrancy-state-change",
+        "impact": "High",
+        "description": "Changing state after an external call can lead to re-entrancy attacks.Use the checks-effects-interactions pattern to avoid this issue.",
+        "lines": [
+          27,
+          37
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "GasException",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.178,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "costly-loop",
+        "impact": "Low",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          35,
+          66
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1076,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "costly-loop",
+        "impact": "Low",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          35,
+          66
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "CallToUnknown",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.2348,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "costly-loop",
+        "impact": "Low",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          35,
+          66
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "DenialOfService",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1542,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "costly-loop",
+        "impact": "Low",
+        "description": "Invoking `SSTORE` operations in loops may waste gas. Use a local variable to hold the loop computation result.",
+        "lines": [
+          35,
+          66
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "GasException",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.178,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          35
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1076,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          35
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "CallToUnknown",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.2348,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          35
+        ]
+      }
+    },
+    {
+      "source": "aderyn",
+      "vuln_class": "DenialOfService",
+      "polarity": "NEUTRAL",
+      "strength": 0.3,
+      "reliability": 0.1542,
+      "kind": "SYNTACTIC",
+      "deterministic": true,
+      "detail": {
+        "detector": "require-revert-in-loop",
+        "impact": "Low",
+        "description": "Avoid `require` / `revert` statements in a loop because a single bad item can cause the whole transaction to fail. It's better to forgive on fail and return failed elements post processing of the loop",
+        "lines": [
+          35
+        ]
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "CallToUnknown",
+      "polarity": "SUPPORTS",
+      "strength": 0.8125,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 0.8125,
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "DenialOfService",
+      "polarity": "SUPPORTS",
+      "strength": 0.7636,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 0.7636,
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 1.0,
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "GasException",
+      "polarity": "SUPPORTS",
+      "strength": 0.8571,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 0.8571,
+        "ml_signal": 0,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.558,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "LIKELY",
+        "consensus_confidence": 0.558,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "MishandledException",
+      "polarity": "SUPPORTS",
+      "strength": 0.3839,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3839,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 1.0,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "CONFIRMED",
+        "consensus_confidence": 1.0,
+        "ml_signal": 1,
+        "slither_match": 1,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "SUPPORTS",
+      "strength": 0.3214,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.3214,
+        "ml_signal": 0,
+        "slither_match": 0,
+        "aderyn_match": 1
+      }
+    },
+    {
+      "source": "consensus",
+      "vuln_class": "UnusedReturn",
+      "polarity": "SUPPORTS",
+      "strength": 0.3,
+      "reliability": 0.85,
+      "kind": "STATISTICAL",
+      "deterministic": true,
+      "detail": {
+        "consensus_verdict": "DISPUTED",
+        "consensus_confidence": 0.1642,
+        "ml_signal": 1,
+        "slither_match": 0,
+        "aderyn_match": 0
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "ExternalBug",
+      "polarity": "SUPPORTS",
+      "strength": 0.85,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "CONFIRMED",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"Transac"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "Reentrancy",
+      "polarity": "SUPPORTS",
+      "strength": 0.85,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "CONFIRMED",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"Transac"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "GasException",
+      "polarity": "NEUTRAL",
+      "strength": 0.25,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "WATCH",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"Transac"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "DenialOfService",
+      "polarity": "SUPPORTS",
+      "strength": 0.65,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "LIKELY",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"Transac"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "IntegerUO",
+      "polarity": "SUPPORTS",
+      "strength": 0.85,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "CONFIRMED",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"Transac"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "MishandledException",
+      "polarity": "REFUTES",
+      "strength": 0.15,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "SAFE",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"Transac"
+      }
+    },
+    {
+      "source": "debate",
+      "vuln_class": "TransactionOrderDependence",
+      "polarity": "NEUTRAL",
+      "strength": 0.25,
+      "reliability": 0.55,
+      "kind": "SEMANTIC",
+      "deterministic": false,
+      "detail": {
+        "debate_verdict": "WATCH",
+        "rationale": "{\"ExternalBug\": \"CONFIRMED\", \"Reentrancy\": \"CONFIRMED\", \"GasException\": \"WATCH\", \"CopyToUnknown\": \"SAFE\", \"DenialOfService\": \"LIKELY\", \"IntegerUO\": \"CONFIRMED\", \"MishandledException\": \"SAFE\", \"Transac"
+      }
+    }
+  ],
+  "verdict_provable": {
+    "CallToUnknown": "CONFIRMED",
+    "DenialOfService": "LIKELY",
+    "ExternalBug": "CONFIRMED",
+    "GasException": "CONFIRMED",
+    "IntegerUO": "LIKELY",
+    "MishandledException": "CONFIRMED",
+    "Reentrancy": "CONFIRMED",
+    "TransactionOrderDependence": "SAFE",
+    "UnusedReturn": "DISPUTED"
+  },
+  "verdict_full": {
+    "CallToUnknown": "CONFIRMED",
+    "DenialOfService": "CONFIRMED",
+    "ExternalBug": "CONFIRMED",
+    "GasException": "CONFIRMED",
+    "IntegerUO": "CONFIRMED",
+    "MishandledException": "LIKELY",
+    "Reentrancy": "CONFIRMED",
+    "TransactionOrderDependence": "SAFE",
+    "UnusedReturn": "DISPUTED"
+  }
+}

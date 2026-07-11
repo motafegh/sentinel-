@@ -11,7 +11,7 @@ from loguru import logger
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.orchestration.state import AuditState
-from src.orchestration.nodes._helpers import _run_aderyn_on_file
+from src.orchestration.nodes._helpers import AderynRunError, _run_aderyn_on_file
 
 
 # High/Critical-impact Slither detectors worth escalating on even if ML is safe.
@@ -56,17 +56,28 @@ async def quick_screen(state: AuditState) -> dict[str, Any]:
         Signal 2: quick_screen — zero High/Critical findings from Slither+Aderyn
 
     Slither: subset of High-impact detectors (_SCREEN_SLITHER_DETECTORS).
-    Aderyn:  subprocess call; parses JSON output; looks for H-* / C-* rule IDs.
-             Non-fatal if aderyn is not installed — only slither result used.
+    Aderyn:  subprocess call; parses JSON output; escalates on any finding
+             with impact in (High, Medium, Critical) — same as Slither.
+             Non-fatal at the NODE level (intentional — Slither-only is
+             still useful) but failure MUST surface in
+             `state["tool_status"]["aderyn"]` per Rule 5C (CLAUDE.md).
+             An empty aderyn list alone is no longer sufficient.
 
     State updates:
         quick_screen_hits → {"slither": [detector_name, ...], "aderyn": [rule_id, ...]}
                            Empty lists in each key when nothing fires or tool absent.
+        tool_status       → {"aderyn": {"ran": bool, "reason": str, ...}} — Rule 5C.
     """
     contract_code = state.get("contract_code", "")
     if not contract_code or not contract_code.strip():
         logger.warning("quick_screen | contract_code empty — skipping")
-        return {"quick_screen_hits": {"slither": [], "aderyn": []}}
+        return {
+            "quick_screen_hits": {"slither": [], "aderyn": []},
+            "tool_status": {
+                "slither": {"ran": False, "reason": "empty_contract_code"},
+                "aderyn":  {"ran": False, "reason": "empty_contract_code"},
+            },
+        }
 
     logger.info(
         "quick_screen | running Tier-0 screen | contract_address={}",
@@ -76,6 +87,7 @@ async def quick_screen(state: AuditState) -> dict[str, Any]:
     slither_hits: list[str] = []
     aderyn_hits:  list[str] = []
     tmp_path: str | None    = None
+    slither_status: dict = {"ran": False, "reason": "not_started"}
 
     try:
         import inspect
@@ -124,12 +136,15 @@ async def quick_screen(state: AuditState) -> dict[str, Any]:
             slither_hits,
             state.get("contract_address", "unknown"),
         )
+        slither_status = {"ran": True, "n_findings": len(slither_hits)}
 
     except ImportError:
         logger.warning("quick_screen | slither not installed — skipping slither screen")
+        slither_status = {"ran": False, "reason": "not_installed"}
 
     except Exception as exc:
         logger.warning("quick_screen | slither error (non-fatal): {}", exc)
+        slither_status = {"ran": False, "reason": "slither_error", "detail": str(exc)}
 
     # ── Aderyn ────────────────────────────────────────────────────────────────
     # Delegates to _run_aderyn_on_file (defined below) — fixed 2026-06-21 to use
@@ -137,15 +152,44 @@ async def quick_screen(state: AuditState) -> dict[str, Any]:
     # (see that function's docstring). Previously this block had its own
     # independent invocation that failed identically (file-not-directory error,
     # silently swallowed) — Aderyn never escalated anything here either.
+    #
+    # Rule 5C (CLAUDE.md, 2026-06-25): the helper now raises on missing
+    # binary / runtime failure instead of returning []. The node stays
+    # non-fatal at the pipeline level (intentional) but the failure MUST
+    # surface in `state["tool_status"]["aderyn"]` — an empty aderyn_hits
+    # list alone is no longer the signal for "tool absent."
     try:
-        for finding in _run_aderyn_on_file(contract_code):
-            # WS1 (2026-06-21): align Aderyn escalation to Slither's levels.
-            # Previously only "High" — Medium/Critical were silently ignored,
-            # an inconsistency introduced during the Aderyn fix (Finding #11).
-            if finding["impact"] in ("High", "Medium", "Critical") and finding["detector"] not in aderyn_hits:
-                aderyn_hits.append(finding["detector"])
-    except Exception as exc:
-        logger.warning("quick_screen | aderyn error (non-fatal): {}", exc)
+        aderyn_findings = _run_aderyn_on_file(contract_code)
+    except FileNotFoundError as exc:
+        logger.warning("quick_screen | aderyn unavailable — slither-only: {}", exc)
+        aderyn_findings = []
+        aderyn_status = {
+            "ran": False,
+            "reason": "binary_not_found",
+            "detail": str(exc),
+            "fallback": "slither-only",
+        }
+    except AderynRunError as exc:
+        logger.warning("quick_screen | aderyn run failed — slither-only: {}", exc)
+        aderyn_findings = []
+        aderyn_status = {
+            "ran": False,
+            "reason": "run_error",
+            "detail": str(exc),
+            "fallback": "slither-only",
+        }
+    else:
+        aderyn_status = {
+            "ran": True,
+            "n_findings": len(aderyn_findings),
+        }
+
+    # WS1 (2026-06-21): align Aderyn escalation to Slither's levels.
+    # Previously only "High" — Medium/Critical were silently ignored,
+    # an inconsistency introduced during the Aderyn fix (Finding #11).
+    for finding in aderyn_findings:
+        if finding["impact"] in ("High", "Medium", "Critical") and finding["detector"] not in aderyn_hits:
+            aderyn_hits.append(finding["detector"])
 
     # ── Cleanup ───────────────────────────────────────────────────────────────
     if tmp_path:
@@ -156,9 +200,13 @@ async def quick_screen(state: AuditState) -> dict[str, Any]:
 
     hits = {"slither": slither_hits, "aderyn": aderyn_hits}
     logger.info(
-        "quick_screen complete | slither_hits={} | aderyn_hits={} | contract_address={}",
+        "quick_screen complete | slither_hits={} | aderyn_hits={} | aderyn_ran={} | contract_address={}",
         len(slither_hits),
         len(aderyn_hits),
+        aderyn_status.get("ran"),
         state.get("contract_address", "unknown"),
     )
-    return {"quick_screen_hits": hits}
+    return {
+        "quick_screen_hits": hits,
+        "tool_status": {"slither": slither_status, "aderyn": aderyn_status},
+    }

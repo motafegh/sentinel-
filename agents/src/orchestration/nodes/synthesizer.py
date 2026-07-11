@@ -21,6 +21,7 @@ from src.orchestration.timeouts import (
     get_timeout,
 )
 from src.ingestion.pipeline import REPORTS_DIR
+from src.security import sanitize_for_prompt
 
 
 async def synthesizer(state: AuditState) -> dict[str, Any]:
@@ -163,7 +164,10 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
 
     # ── Rule-based recommendation (fallback) ─────────────────────────────────
     # Used when the LLM is unavailable or times out.
-    if not ml_result:
+    # Rule 5C (CLAUDE.md, 2026-06-25): ml_result may be `{}` (legacy /
+    # empty) or `{"ran": False, "reason": ...}` (Rule 5C unavailable
+    # payload). Either means ML is not contributing to the verdicts.
+    if not ml_result or ml_result.get("ran") is False:
         recommendation = (
             "ML assessment failed — manual review required. "
             "Check that the inference server (port 8001) is running."
@@ -205,6 +209,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # Falls back silently to the rule-based recommendation above on any failure
     # (LLM unavailable, timeout, malformed response).
     narrative: str | None = None
+    injection_matches: list[Any] = []
     if ml_result and _llm_enabled():
         try:
             from langchain_core.messages import HumanMessage, SystemMessage
@@ -241,7 +246,9 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
                 if f.get("impact") in ("High", "Medium")
             ) if static_findings else "  (no High/Medium static analysis findings)"
 
-            code_snippet = state.get("contract_code", "")[:500].strip()
+            code_snippet_raw = state.get("contract_code", "") or ""
+            sanitized_code, injection_matches = sanitize_for_prompt(code_snippet_raw)
+            code_snippet = sanitized_code[:500].strip()
 
             # ExternalBug: add inter-contract call graph to prompt so LLM can
             # reason about oracle/price-feed dependency risks explicitly.
@@ -361,6 +368,21 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         "narrative":              narrative,
         "error":                  error,
         "path_taken":             path_taken,
+        "security":               {"injection_detections": injection_matches},
+        "model_provenance":       {
+            "model_hash":         state.get("model_hash", ""),
+            "checkpoint_path":    os.getenv("SENTINEL_CHECKPOINT", ""),
+            "schema_version":     "v9",
+        },
+        "on_chain":               {
+            "submitted":          False,
+            "tx_hash":            None,
+            "proof_hash":         None,
+            "class_scores":       None,
+            "class_score_felts":  None,
+            "model_hash":         state.get("model_hash", ""),
+            "provenance":         None,
+        },
     }
 
     # ── BRIDGE (Issue #1): persist report for feedback_loop.py ──────────────
@@ -408,4 +430,5 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         "confidence_by_class": class_confidences,
         "verdict_provable":    verdict_provable,
         "verdict_full":        verdict_full,
+        "injection_matches":   injection_matches,
     }

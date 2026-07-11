@@ -1,0 +1,90 @@
+aderyn|CallToUnknown: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+aderyn|DenialOfService: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+aderyn|ExternalBug: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+aderyn|GasException: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+aderyn|IntegerUO: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+aderyn|MishandledException: P3 measured value supersedes hand-set L1 prior. Fitted
+  = Bayesian-shrinkage alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional
+  — L1 priors were never measured before P3.
+aderyn|Reentrancy: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+aderyn|Timestamp: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+aderyn|TransactionOrderDependence: P3 measured value supersedes hand-set L1 prior.
+  Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2 (83 contracts). Drop
+  is intentional — L1 priors were never measured before P3.
+aderyn|UnusedReturn: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|CallToUnknown: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|DenialOfService: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|ExternalBug: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|GasException: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|IntegerUO: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|MishandledException: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|Reentrancy: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|Timestamp: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+ml|TransactionOrderDependence: P3 measured value supersedes hand-set L1 prior. Fitted
+  = Bayesian-shrinkage alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional
+  — L1 priors were never measured before P3.
+ml|UnusedReturn: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+slither|CallToUnknown: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+slither|DenialOfService: P3 measured value supersedes hand-set L1 prior. Fitted =
+  Bayesian-shrinkage alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional
+  — L1 priors were never measured before P3.
+slither|ExternalBug: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+slither|GasException: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+slither|IntegerUO: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+slither|MishandledException: P3 measured value supersedes hand-set L1 prior. Fitted
+  = Bayesian-shrinkage alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional
+  — L1 priors were never measured before P3.
+slither|Reentrancy: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+slither|Timestamp: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
+slither|TransactionOrderDependence: P3 measured value supersedes hand-set L1 prior.
+  Fitted = Bayesian-shrinkage alpha=5 from confusion_matrix_v2 (83 contracts). Drop
+  is intentional — L1 priors were never measured before P3.
+slither|UnusedReturn: P3 measured value supersedes hand-set L1 prior. Fitted = Bayesian-shrinkage
+  alpha=5 from confusion_matrix_v2 (83 contracts). Drop is intentional — L1 priors
+  were never measured before P3.
