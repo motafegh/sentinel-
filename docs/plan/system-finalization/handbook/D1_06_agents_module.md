@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and the implemented [AGENTS chapters](../../../handbook/09_agents_orchestration.md).
+
 # D1.2e — Agents Module Doc
 
 **Doc target:** `docs/handbook/06_agents_module.md`

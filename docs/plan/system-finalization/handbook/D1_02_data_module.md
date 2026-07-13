@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and the implemented [DATA chapters](../../../handbook/03_data_pipeline.md).
+
 # D1.2a — Data Module Doc
 
 **Doc target:** `docs/handbook/02_data_module.md`

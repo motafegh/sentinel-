@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and the implemented [ZKML chapter](../../../handbook/07_zkml.md).
+
 # D1.2c — ZKML Module Doc
 
 **Doc target:** `docs/handbook/04_zkml_module.md`

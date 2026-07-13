@@ -1,0 +1,456 @@
+schema_version = 2
+handbook_version = "D1-v3"
+verified_date = "2026-07-13"
+verified_commit = "ac78c057b"
+status_page = "16_current_status.md"
+
+canonical_pages = [
+  "00_README.md",
+  "01_architecture.md",
+  "02_runtime_flows.md",
+  "03_data_pipeline.md",
+  "04_data_artifacts.md",
+  "05_ml_model_inference.md",
+  "06_ml_training_quality.md",
+  "07_zkml.md",
+  "08_contracts.md",
+  "09_agents_orchestration.md",
+  "10_agents_services.md",
+  "11_cross_module_contracts.md",
+  "12_security_and_trust.md",
+  "13_evaluation.md",
+  "14_operations.md",
+  "15_change_playbooks.md",
+  "16_current_status.md",
+  "17_reference.md",
+]
+
+required_sections = [
+  "Read this when",
+  "Skip this if",
+  "Estimated reading time",
+  "30-second summary",
+  "Just-enough mental model",
+  "Actual runtime/source walkthrough",
+  "Interfaces, data shapes, and configuration",
+  "Failure modes and current limitations",
+  "Common change recipe",
+  "Verification commands",
+  "Optional deep references",
+  "Technical mastery layer",
+  "Prerequisite knowledge",
+  "Source map and reading order",
+  "Execution trace and worked example",
+  "Implementation practice",
+  "Review and ownership check",
+]
+
+technical_required_sections = [
+  "Learning outcome",
+  "Prerequisites",
+  "Source map and reading order",
+  "Entry point and complete call chain",
+  "Important symbols and configuration",
+  "Annotated source excerpt",
+  "Worked example",
+  "Success trace",
+  "Failure trace",
+  "Design reasoning and rejected alternatives",
+  "Safe change walkthrough",
+  "Guided lab",
+  "Tests and expected results",
+  "Review questions",
+  "Ownership checklist",
+]
+
+lab_required_sections = [
+  "Learning objective",
+  "Prerequisites",
+  "Source reading order",
+  "Setup and artifact requirements",
+  "Initial observation",
+  "Controlled edit",
+  "Expected success output",
+  "Expected failure output",
+  "Verification",
+  "Reset and cleanup",
+  "Completion rubric",
+  "Review questions",
+  "Classification",
+]
+
+[critical]
+data_schema_version = "v9"
+node_feature_dim = 12
+node_types = 14
+edge_types = 12
+class_count = 10
+class_order = ["CallToUnknown", "DenialOfService", "ExternalBug", "GasException", "IntegerUO", "MishandledException", "Reentrancy", "Timestamp", "TransactionOrderDependence", "UnusedReturn"]
+data_stages = ["ingest", "preprocess", "represent", "label", "verify", "split", "register", "analyze", "export", "freshness"]
+langgraph_entry = "ml_assessment"
+langgraph_exit = "visualizer"
+langgraph_node_count = 14
+langgraph_nodes = ["ml_assessment", "quick_screen", "evidence_router", "rag_research", "static_analysis", "graph_explain", "formal_verification", "audit_check", "consensus_engine", "cross_validator", "synthesizer", "reflection", "explainer", "visualizer"]
+proxy_input_dim = 128
+proxy_hidden_dims = [64, 32]
+proxy_output_dim = 10
+proxy_parameter_count = 10666
+circuit_version = "v2.0"
+circuit_public_signals = 138
+input_visibility = "Public"
+output_visibility = "Public"
+parameter_visibility = "Fixed"
+check_mode = "UNSAFE"
+registry_num_classes = 10
+registry_input_offset = 128
+
+[services.gateway]
+port = 8000
+source = "agents/src/api/gateway.py::GATEWAY_DEFAULT_PORT"
+routes = ["GET /", "GET /health", "POST /audit", "GET /audit/{job_id}", "GET /audit"]
+
+[services.ml]
+port = 8001
+source = "ml/src/inference/api.py::app"
+routes = ["GET /health", "POST /predict", "POST /hotspots", "POST /fusion-embedding"]
+
+[services.mcp_inference]
+port = 8010
+source = "agents/src/mcp/servers/inference_server.py::_SERVER_PORT"
+tools = ["predict", "batch_predict"]
+
+[services.mcp_rag]
+port = 8011
+source = "agents/src/mcp/servers/rag_server.py::_SERVER_PORT"
+tools = ["search"]
+
+[services.mcp_audit]
+port = 8012
+source = "agents/src/mcp/servers/audit/_config.py::_SERVER_PORT"
+tools = ["get_latest_audit", "get_audit_history", "check_audit_exists", "submit_audit"]
+
+[services.mcp_graph_inspector]
+port = 8013
+source = "agents/src/mcp/servers/graph_inspector_server.py::_SERVER_PORT"
+tools = ["get_graph_hotspots"]
+
+[services.mcp_representation]
+port = 8014
+source = "agents/src/mcp/servers/representation_server.py::_SERVER_PORT"
+tools = ["get_function_cfgs"]
+
+[services.anvil]
+port = 8545
+source = "contracts/foundry.toml::rpc_endpoints.anvil"
+
+[[source_ownership]]
+page = "03_data_pipeline.md"
+paths = ["data_module/sentinel_data/cli.py", "data_module/sentinel_data/ingestion", "data_module/sentinel_data/preprocessing", "data_module/sentinel_data/labeling", "data_module/sentinel_data/verification", "data_module/sentinel_data/splitting", "data_module/sentinel_data/registry", "data_module/sentinel_data/analysis", "data_module/sentinel_data/export", "data_module/sentinel_data/ingestion/freshness.py"]
+
+[[source_ownership]]
+page = "04_data_artifacts.md"
+paths = ["data_module/sentinel_data/representation/graph_schema.py", "data_module/sentinel_data/representation/orchestrator.py", "ml/src/datasets/sentinel_dataset.py", "ml/src/datasets/collate.py"]
+
+[[source_ownership]]
+page = "05_ml_model_inference.md"
+paths = ["ml/src/models", "ml/src/inference", "ml/src/preprocessing"]
+
+[[source_ownership]]
+page = "06_ml_training_quality.md"
+paths = ["ml/src/training", "ml/src/inference/drift_detector.py", "ml/scripts/tune_threshold.py", "ml/scripts/calibrate_temperature.py", "ml/scripts/promote_model.py", "ml/scripts/interpretability"]
+
+[[source_ownership]]
+page = "07_zkml.md"
+paths = ["zkml/src/distillation", "zkml/src/ezkl", "zkml/ezkl/settings.json", "agents/src/mcp/servers/audit/_submit.py"]
+
+[[source_ownership]]
+page = "08_contracts.md"
+paths = ["contracts/src/AuditRegistry.sol", "contracts/src/SentinelToken.sol", "contracts/src/IZKMLVerifier.sol", "contracts/src/ZKMLVerifier.sol", "contracts/script"]
+
+[[source_ownership]]
+page = "09_agents_orchestration.md"
+paths = ["agents/src/orchestration/graph.py", "agents/src/orchestration/state.py", "agents/src/orchestration/nodes", "agents/src/orchestration/verdict"]
+
+[[source_ownership]]
+page = "10_agents_services.md"
+paths = ["agents/src/api", "agents/src/mcp", "agents/src/rag", "agents/src/ingestion"]
+
+[[source_ownership]]
+page = "13_evaluation.md"
+paths = ["agents/src/eval", "data_module/benchmarks", "data_module/sentinel_data/verification", "ml/testing_specs"]
+
+[[artifact]]
+name = "Run 12 teacher checkpoint"
+path = "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt"
+classification = "dvc-managed-local"
+fresh_clone = false
+owner = "ML"
+
+[[artifact]]
+name = "DATA v2 baseline export"
+path = "data_module/data/exports/sentinel-v2-baseline-2026-06-12"
+classification = "ignored-local"
+fresh_clone = false
+owner = "DATA"
+
+[[artifact]]
+name = "DATA v3 splits"
+path = "data_module/data/splits/v3"
+classification = "ignored-local"
+fresh_clone = false
+owner = "DATA"
+
+[[artifact]]
+name = "Proxy checkpoint"
+path = "zkml/models/proxy_best.pt"
+classification = "tracked"
+fresh_clone = true
+owner = "ZKML"
+
+[[artifact]]
+name = "Proxy ONNX"
+path = "zkml/models/proxy.onnx"
+classification = "tracked"
+fresh_clone = true
+owner = "ZKML"
+
+[[artifact]]
+name = "Compiled EZKL circuit"
+path = "zkml/ezkl/model.compiled"
+classification = "tracked"
+fresh_clone = true
+owner = "ZKML"
+
+[[artifact]]
+name = "EZKL settings"
+path = "zkml/ezkl/settings.json"
+classification = "tracked"
+fresh_clone = true
+owner = "ZKML"
+
+[[artifact]]
+name = "EZKL verification key"
+path = "zkml/ezkl/verification_key.vk"
+classification = "tracked"
+fresh_clone = true
+owner = "ZKML"
+
+[[artifact]]
+name = "EZKL proving key"
+path = "zkml/ezkl/proving_key.pk"
+classification = "ignored-private"
+fresh_clone = false
+owner = "operator"
+
+[[artifact]]
+name = "EZKL SRS"
+path = "zkml/ezkl/srs.params"
+classification = "ignored-private"
+fresh_clone = false
+owner = "operator"
+
+[[artifact]]
+name = "AuditRegistryV2 local test"
+path = "contracts/test/AuditRegistryV2.t.sol"
+classification = "ignored-local"
+fresh_clone = false
+owner = "Contracts"
+
+[test_tiers]
+smoke = "Fast imports, static handbook validation, health requests, and narrowly targeted tests."
+module = "A complete module test suite; may require module dependencies and local artifacts."
+live = "Real services, toolchains, GPU, EZKL, RPC, or deployed contracts; opt-in and never silently skipped."
+
+[test_commands]
+agents = "cd agents && poetry run pytest -q"
+ml = "ml/.venv/bin/python -m pytest ml/tests -q"
+data = "data_module/.venv/bin/python -m pytest data_module/tests -q"
+zkml = "ml/.venv/bin/python -m pytest zkml/tests -q"
+contracts = "cd contracts && forge test"
+
+[coverage]
+production_roots = ["data_module/sentinel_data", "ml/src", "ml/scripts", "zkml/src", "agents/src", "contracts/src", "contracts/script"]
+
+[[technical_guide]]
+id = "T01"
+path = "technical/01_data_pipeline_internals.md"
+owner_pages = ["03_data_pipeline.md", "14_operations.md", "15_change_playbooks.md"]
+objectives = ["Trace all ten DATA stages", "Change a stage without bypassing manifests, verification, or lineage"]
+source_paths = ["data_module/sentinel_data/cli.py", "data_module/sentinel_data/ingestion", "data_module/sentinel_data/preprocessing", "data_module/sentinel_data/labeling", "data_module/sentinel_data/verification", "data_module/sentinel_data/splitting", "data_module/sentinel_data/registry", "data_module/sentinel_data/analysis"]
+source_anchors = ["data_module/sentinel_data/cli.py::main", "data_module/sentinel_data/cli.py::_handle_run", "data_module/sentinel_data/representation/orchestrator.py::represent_source", "data_module/sentinel_data/splitting/splitters.py::apply_strategy", "data_module/sentinel_data/registry/catalog.py::Catalog"]
+
+[[technical_guide]]
+id = "T02"
+path = "technical/02_data_representation_export.md"
+owner_pages = ["04_data_artifacts.md", "11_cross_module_contracts.md"]
+objectives = ["Explain graph, token, label, split, and export shapes", "Trace hash and schema gates into SentinelDataset"]
+source_paths = ["data_module/sentinel_data/representation", "data_module/sentinel_data/export", "ml/src/datasets"]
+source_anchors = ["data_module/sentinel_data/export/export.py::SentinelDatasetExport", "data_module/sentinel_data/representation/graph_schema.py::CLASS_NAMES", "ml/src/datasets/sentinel_dataset.py::SentinelDataset", "ml/src/datasets/collate.py::sentinel_collate_fn"]
+
+[[technical_guide]]
+id = "T03"
+path = "technical/03_ml_model_inference_internals.md"
+owner_pages = ["05_ml_model_inference.md", "11_cross_module_contracts.md"]
+objectives = ["Trace the four-eye forward pass tensor by tensor", "Follow one HTTP prediction through preprocessing and thresholding"]
+source_paths = ["ml/src/models", "ml/src/inference", "ml/src/preprocessing", "ml/src/data_extraction"]
+source_anchors = ["ml/src/models/sentinel_model.py::SentinelModel.forward", "ml/src/models/gnn_encoder.py::GNNEncoder.forward", "ml/src/inference/predictor.py::Predictor.predict_source", "ml/src/inference/api.py::predict"]
+
+[[technical_guide]]
+id = "T04"
+path = "technical/04_ml_training_quality_mlops.md"
+owner_pages = ["06_ml_training_quality.md", "13_evaluation.md", "15_change_playbooks.md"]
+objectives = ["Explain trainer phases, losses, calibration, and thresholds", "Read promotion, interpretability, drift, and release evidence"]
+source_paths = ["ml/src/training", "ml/src/utils", "ml/scripts"]
+source_anchors = ["ml/src/training/trainer.py::TrainConfig", "ml/src/training/trainer.py::train", "ml/src/training/trainer.py::evaluate", "ml/scripts/tune_threshold.py::main", "ml/scripts/calibrate_temperature.py::main", "ml/scripts/promote_model.py::main"]
+
+[[technical_guide]]
+id = "T05"
+path = "technical/05_zkml_proof_lifecycle.md"
+owner_pages = ["07_zkml.md", "11_cross_module_contracts.md", "12_security_and_trust.md"]
+objectives = ["Trace distillation, ONNX, setup, witness, proof, and calldata", "State exactly what the proxy proof and provenance do not prove"]
+source_paths = ["zkml/src", "zkml/ezkl"]
+source_anchors = ["zkml/src/distillation/proxy_model.py::ProxyModel", "zkml/src/ezkl/run_proof.py::generate_proof", "zkml/src/ezkl/run_proof.py::extract_corpus_contract_features", "agents/src/mcp/servers/audit/_submit.py::_run_submit"]
+
+[[technical_guide]]
+id = "T06"
+path = "technical/06_contracts_storage_upgrades.md"
+owner_pages = ["08_contracts.md", "11_cross_module_contracts.md", "14_operations.md"]
+objectives = ["Trace verifier, stake, score, storage, and event guards", "Make a storage-safe UUPS change"]
+source_paths = ["contracts/src", "contracts/script"]
+source_anchors = ["contracts/src/AuditRegistry.sol::AuditRegistry", "contracts/src/AuditRegistry.sol::submitAudit", "contracts/src/AuditRegistry.sol::submitAuditV2", "contracts/src/SentinelToken.sol::SentinelToken", "contracts/src/IZKMLVerifier.sol::IZKMLVerifier"]
+
+[[technical_guide]]
+id = "T07"
+path = "technical/07_agents_orchestration_evidence.md"
+owner_pages = ["09_agents_orchestration.md", "11_cross_module_contracts.md", "13_evaluation.md"]
+objectives = ["Trace AuditState through all 14 nodes", "Explain reducers, routing, evidence, reliability, fuse, and dual verdicts"]
+source_paths = ["agents/src/orchestration"]
+source_anchors = ["agents/src/orchestration/state.py::AuditState", "agents/src/orchestration/state.py::_merge_tool_status", "agents/src/orchestration/graph.py::build_graph", "agents/src/orchestration/verdict/fuse.py::fuse"]
+
+[[technical_guide]]
+id = "T08"
+path = "technical/08_services_rag_gateway.md"
+owner_pages = ["10_agents_services.md", "02_runtime_flows.md", "14_operations.md"]
+objectives = ["Trace MCP schemas, RAG retrieval, and gateway jobs", "Diagnose SQLite recovery, health, and feedback ingestion"]
+source_paths = ["agents/src/api", "agents/src/mcp", "agents/src/rag", "agents/src/ingestion", "agents/src/llm"]
+source_anchors = ["agents/src/api/gateway.py::create_app", "agents/src/api/gateway.py::_run_job", "agents/src/api/sqlite_job_store.py::SqliteJobStore", "agents/src/rag/retriever.py::HybridRetriever", "agents/src/ingestion/feedback_loop.py::FeedbackIngester"]
+
+[[technical_guide]]
+id = "T09"
+path = "technical/09_security_evaluation_trust.md"
+owner_pages = ["12_security_and_trust.md", "13_evaluation.md", "16_current_status.md"]
+objectives = ["Trace injection detection, Rule 5C, and trust boundaries", "Compute reliability shrinkage and release gates"]
+source_paths = ["agents/src/security", "agents/src/eval", "agents/src/config"]
+source_anchors = ["agents/src/security/prompt_sanitize.py::sanitize_for_prompt", "agents/src/security/injection_detect.py::detect_injections", "agents/src/eval/reliability_fit.py::fit", "agents/src/eval/gates.py::gate_ws1a_silent_safe_on_flagged"]
+
+[[technical_guide]]
+id = "T10"
+path = "technical/10_end_to_end_debugging.md"
+owner_pages = ["01_architecture.md", "02_runtime_flows.md", "14_operations.md", "15_change_playbooks.md"]
+objectives = ["Trace one contract across DATA, ML, AGENTS, ZKML, and Contracts", "Localize failures by boundary and artifact"]
+source_paths = ["data_module/sentinel_data", "ml/src", "zkml/src", "agents/src", "contracts/src"]
+source_anchors = ["agents/src/api/gateway.py::create_app.submit_audit", "ml/src/inference/api.py::fusion_embedding", "zkml/src/ezkl/run_proof.py::generate_proof", "contracts/src/AuditRegistry.sol::submitAuditV2"]
+
+[[lab]]
+id = "L01"
+path = "labs/01_data_fixture_representation.md"
+guide = "T01"
+tier = "smoke"
+safe_preflight = true
+prerequisites = ["Python DATA environment or repository Python for source observation"]
+required_paths = ["data_module/tests/test_representation/test_orchestrator.py", "data_module/sentinel_data/representation/orchestrator.py"]
+artifact_requirements = ["Tracked test fixtures only"]
+
+[[lab]]
+id = "L02"
+path = "labs/02_export_dataset_seam.md"
+guide = "T02"
+tier = "module"
+safe_preflight = false
+prerequisites = ["DATA v2 export or a regenerated miniature export", "ML environment"]
+required_paths = ["ml/tests/test_sentinel_dataset.py", "ml/src/datasets/sentinel_dataset.py"]
+artifact_requirements = ["DATA v2 baseline export is ignored-local and absent in a fresh clone"]
+required_artifacts = ["DATA v2 baseline export"]
+
+[[lab]]
+id = "L03"
+path = "labs/03_ml_tensor_api_trace.md"
+guide = "T03"
+tier = "module"
+safe_preflight = false
+prerequisites = ["ML environment", "Teacher checkpoint for real inference"]
+required_paths = ["ml/tests/test_model.py", "ml/tests/test_api.py", "ml/src/models/sentinel_model.py"]
+artifact_requirements = ["Run 12 teacher checkpoint is DVC-managed-local"]
+required_artifacts = ["Run 12 teacher checkpoint"]
+
+[[lab]]
+id = "L04"
+path = "labs/04_training_calibration_promotion.md"
+guide = "T04"
+tier = "module"
+safe_preflight = true
+prerequisites = ["ML environment"]
+required_paths = ["ml/tests/test_trainer.py", "ml/tests/test_predictor.py", "ml/tests/test_promote_model.py"]
+artifact_requirements = ["Synthetic unit-test tensors; promotion inspection may use a local checkpoint"]
+
+[[lab]]
+id = "L05"
+path = "labs/05_zkml_witness_signals.md"
+guide = "T05"
+tier = "smoke"
+safe_preflight = true
+prerequisites = ["ML Python environment for unit tests"]
+required_paths = ["zkml/tests/test_proxy_model.py", "zkml/tests/test_run_proof.py", "zkml/ezkl/settings.json"]
+artifact_requirements = ["Tracked proxy and circuit artifacts for observation; proving key and SRS only for live proof"]
+
+[[lab]]
+id = "L06"
+path = "labs/06_contract_registry_invariant.md"
+guide = "T06"
+tier = "module"
+safe_preflight = true
+prerequisites = ["Foundry"]
+required_paths = ["contracts/test/AuditRegistry.t.sol", "contracts/src/AuditRegistry.sol"]
+artifact_requirements = ["Tracked Foundry sources; ignored V2 test is optional and is not fresh-clone coverage"]
+
+[[lab]]
+id = "L07"
+path = "labs/07_agents_state_fusion.md"
+guide = "T07"
+tier = "smoke"
+safe_preflight = true
+prerequisites = ["AGENTS Poetry environment"]
+required_paths = ["agents/tests/test_verdict_fuse.py", "agents/tests/test_routing_isolation.py", "agents/src/orchestration/state.py"]
+artifact_requirements = ["No model or chain artifact"]
+
+[[lab]]
+id = "L08"
+path = "labs/08_services_rag_gateway_recovery.md"
+guide = "T08"
+tier = "module"
+safe_preflight = true
+prerequisites = ["AGENTS Poetry environment"]
+required_paths = ["agents/tests/test_gateway.py", "agents/tests/test_p10_gateway.py", "agents/tests/test_inference_server.py"]
+artifact_requirements = ["Temporary SQLite database created by tests; live RAG requires an index"]
+
+[[lab]]
+id = "L09"
+path = "labs/09_injection_rule5c_reliability.md"
+guide = "T09"
+tier = "smoke"
+safe_preflight = true
+prerequisites = ["AGENTS Poetry environment"]
+required_paths = ["agents/tests/test_adversarial_corpus.py", "agents/tests/test_verdict_reliability.py", "agents/src/security/prompt_sanitize.py"]
+artifact_requirements = ["Tracked fixtures only"]
+
+[[lab]]
+id = "L10"
+path = "labs/10_end_to_end_capstone.md"
+guide = "T10"
+tier = "live"
+safe_preflight = false
+prerequisites = ["ML, AGENTS, EZKL, Foundry, and Anvil environments"]
+required_paths = ["agents/src/api/gateway.py", "agents/src/mcp/servers/audit/_submit.py", "zkml/src/ezkl/run_proof.py", "contracts/src/AuditRegistry.sol"]
+artifact_requirements = ["Teacher checkpoint, proving key, SRS, deployed contracts, and operator configuration"]
+required_artifacts = ["Run 12 teacher checkpoint", "EZKL proving key", "EZKL SRS"]
+required_executables = ["forge"]

@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and [evaluation](../../../handbook/13_evaluation.md).
+
 # D1.4b — Evaluation Doc
 
 **Doc target:** `docs/handbook/09_evaluation.md`

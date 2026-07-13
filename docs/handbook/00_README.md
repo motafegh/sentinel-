@@ -1,78 +1,129 @@
-# SENTINEL Developer Handbook
+# SENTINEL progressive developer handbook
 
-> **What this is:** A practical reference for understanding, running, and modifying the SENTINEL system. Every claim is verified against source code. Every test command is copy-pasteable.
+**Read this when:** you are learning, operating, changing, reviewing, or handing over SENTINEL.
 
----
+**Skip this if:** never on first use; it defines the handbook’s authority and shortest learning paths.
 
-## How to use this handbook
+**Estimated reading time:** 6 minutes, plus the selected path.
 
-Each doc has **three layers**:
+## 30-second summary
 
-1. **TL;DR** — 30-second skim. What this module does, where it runs, how to test it. Read this first.
-2. **The tour** — 1-2 pages. Key files, data flow, configuration. Enough to modify code without reading source.
-3. **Deep reference** — Links to `docs/learning/` deep dives and source files. Read only when you need to change something specific.
+This handbook explains SENTINEL progressively: a one-hour ownership path first, subsystem depth only when needed. Executable source is authoritative. Every page distinguishes implemented, degraded, planned, tracked, regenerated, ignored/private, and local-only behavior. Volatile test counts live only in [current status](16_current_status.md).
 
-Cross-references look like this: `→ 04_zkml.md §2` means "see doc 04, section 2".
+## Just-enough mental model
 
----
+SENTINEL turns Solidity into versioned DATA artifacts, a four-eye ML assessment, multi-tool agent evidence and dual verdicts, an optional proxy ZK proof, and an on-chain audit record. The off-chain gateway and direct proof/submission paths are currently separate.
 
-## Three learning paths
+### Authority rules
 
-| Path | For who | Docs in order | Time |
-|---|---|---|---|
-| **A — Run it** | Newcomer, operator | `01` → `06` → `07` → `10` | 30 min |
-| **B — ML/ZK** | ML engineer | `02` → `03` → `04` → `07` | 45 min |
-| **C — Blockchain** | Solidity dev | `05` → `07` → `10` | 30 min |
+1. Executable `.py`, `.sol`, `.sh`, and configuration behavior is current truth.
+2. This handbook is the canonical learning/navigation layer and is checked against selected source facts.
+3. ADRs explain decisions; reports/testing specs provide bound evidence; plans and experiments are historical unless explicitly active.
+4. A local file is not a fresh-clone artifact unless Git tracks it.
+5. A passing test proves the checked behavior, not product quality or end-to-end security.
+6. No `.env`, RPC credential, private key, or private endpoint value belongs in documentation.
 
----
+## Actual runtime/source walkthrough
 
-## Glossary
+Start at architecture, choose the runtime flow, then follow the producer-to-consumer boundary relevant to your task. Each chapter provides source-symbol anchors, current limitations, a change recipe, and smoke/module/live verification.
 
-| Term | Meaning | Where in source |
+### Page index
+
+| Page | Owns |
+|---|---|
+| [01 Architecture](01_architecture.md) | topology, processes, ports, trust boundaries |
+| [02 Runtime flows](02_runtime_flows.md) | off-chain, direct ZK/on-chain, feedback |
+| [03 DATA pipeline](03_data_pipeline.md) | ten stages and lineage |
+| [04 DATA artifacts](04_data_artifacts.md) | schema, exports, splits, dataset seam |
+| [05 ML model/inference](05_ml_model_inference.md) | four-eye teacher and HTTP API |
+| [06 ML training/quality](06_ml_training_quality.md) | loss, calibration, MLOps, interpretation |
+| [07 ZKML](07_zkml.md) | proxy, EZKL, proof semantics |
+| [08 Contracts](08_contracts.md) | token, registry, verifier, UUPS |
+| [09 AGENTS orchestration](09_agents_orchestration.md) | state, 14-node graph, evidence/verdicts |
+| [10 AGENTS services](10_agents_services.md) | five MCPs, RAG, gateway, feedback |
+| [11 Cross-module contracts](11_cross_module_contracts.md) | shapes, versions, hashes, boundaries |
+| [12 Security and trust](12_security_and_trust.md) | injection, Rule 5C, secrets, ZK limits |
+| [13 Evaluation](13_evaluation.md) | DATA/ML/AGENTS evidence and gates |
+| [14 Operations](14_operations.md) | setup, startup, smoke/live, troubleshooting |
+| [15 Change playbooks](15_change_playbooks.md) | blast-radius recipes |
+| [16 Current status](16_current_status.md) | commit-bound tests, gaps, availability |
+| [17 Reference](17_reference.md) | glossary, symbols, configs, artifacts, history |
+
+### Learning paths
+
+- Core ownership (~1 hour): `00 → 01 → 02 → 11 → 12 → 16`
+- Run the system: `01 → 02 → 14 → 16`
+- DATA/ML/ZK: `03 → 04 → 05 → 06 → 07 → 11 → 13`
+- Agents: `09 → 10 → 11 → 12 → 13`
+- Blockchain: `07 → 08 → 11 → 14`
+- Maintainer: `15 → 17`
+
+Read each page’s 30-second summary first. Stop after the mental model if you are not changing that subsystem. Read source walkthrough and interfaces before editing. Use deep references only when the task needs their depth.
+
+### Technical guide and lab map
+
+| Area | Deep guide | Ownership lab |
 |---|---|---|
-| **fusion_embedding** | 128-dim CrossAttentionFusion output — the ZK circuit's input | `sentinel_model.py:592` |
-| **verdict_provable** | Deterministic-only verdict (ML + static + fuse math), ZK-provable | `fuse.py:163` |
-| **verdict_full** | Full verdict including LLM debate + RAG, richer but non-deterministic | `fuse.py:166` |
-| **EZKL** | Zero-knowledge ML toolkit — compiles ONNX to Halo2 circuit | `setup_circuit.py` |
-| **MCP** | Model Context Protocol — how agents call external tools | `agents/src/mcp/` |
-| **CrossAttentionFusion** | Bidirectional cross-attention merging GNN + CodeBERT embeddings → 128-dim | `fusion_layer.py:198` |
-| **proxy** | Tiny model (128→64→32→10) that mimics the teacher, ZK-provable | `proxy_model.py:76` |
-| **AuditRegistry** | On-chain UUPS upgradeable contract storing audit results | `AuditRegistry.sol:16` |
-| **Guard 3** | On-chain check: publicSignals match submitted scores | `AuditRegistry.sol:96,163` |
-| **publicSignals** | 138 public values in the ZK proof (128 features + 10 scores) | `AuditRegistry.sol:83,164` |
-| **field element** | BN254 integer encoding — little-endian, scaled by 8192 | `extract_calldata.py:60` |
-| **SCALE** | 8192 (2^13) — fixed-point multiplier for float→integer conversion | `extract_calldata.py:46` |
-| **SENTINEL_DETERMINISTIC** | Env var enabling deterministic mode (disables LLM + RAG) | `api.py:109` |
-| **SentinelDataset** | PyTorch dataset loading the v2 export (sharded .pt files) | `sentinel_dataset.py:57` |
-| **tool_status** | Per-tool {ran, reason, detail} dict — Rule 5C: no silent failures | `quick_screen.py:69` |
-| **Rule 5C** | Project rule: every tool failure must surface structured status | `CLAUDE.md` §C |
-| **Bayesian shrinkage** | Per-tool reliability fitting with prior α=5 (small sample safety) | `reliability_fit.py` |
-| **Fbeta** | F-measure with β=2 (recall weighted 4× over precision) | `pipeline_metrics.py` |
-| **CIRCUIT_VERSION** | "v2.0" — tracks proxy architecture (bump = new EZKL keys) | `proxy_model.py:68` |
-| **provenance manifest** | EIP-191 signed JSON binding teacher hash to fusion embedding | `_submit.py:219` |
+| DATA lifecycle | [T01](technical/01_data_pipeline_internals.md) | [L01](labs/01_data_fixture_representation.md) |
+| DATA/ML artifact seam | [T02](technical/02_data_representation_export.md) | [L02](labs/02_export_dataset_seam.md) |
+| Model/inference | [T03](technical/03_ml_model_inference_internals.md) | [L03](labs/03_ml_tensor_api_trace.md) |
+| Training/quality | [T04](technical/04_ml_training_quality_mlops.md) | [L04](labs/04_training_calibration_promotion.md) |
+| ZKML | [T05](technical/05_zkml_proof_lifecycle.md) | [L05](labs/05_zkml_witness_signals.md) |
+| Contracts | [T06](technical/06_contracts_storage_upgrades.md) | [L06](labs/06_contract_registry_invariant.md) |
+| AGENTS orchestration | [T07](technical/07_agents_orchestration_evidence.md) | [L07](labs/07_agents_state_fusion.md) |
+| Services/RAG/gateway | [T08](technical/08_services_rag_gateway.md) | [L08](labs/08_services_rag_gateway_recovery.md) |
+| Security/evaluation | [T09](technical/09_security_evaluation_trust.md) | [L09](labs/09_injection_rule5c_reliability.md) |
+| End-to-end debugging | [T10](technical/10_end_to_end_debugging.md) | [L10](labs/10_end_to_end_capstone.md) |
 
----
+## Interfaces, data shapes, and configuration
 
-## File conventions
+[`_meta/handbook.toml`](_meta/handbook.toml) is the documentation interface: page registry, required sections, source ownership, ports/routes, critical constants, test tiers, and artifact classifications. [`tools/verify_handbook.py`](tools/verify_handbook.py) checks it without third-party packages.
 
-- `file:line` references throughout (e.g. `sentinel_model.py:592` means line 592 of that file)
-- Test commands are copy-pasteable — include `cd`, `source`, `activate` where needed
-- ASCII diagrams use box-drawing characters, render correctly in any monospace terminal
-- Paths are relative to the repo root (`~/projects/sentinel/`) unless stated otherwise
+## Failure modes and current limitations
 
----
+- Static checks cover declared critical facts, not every possible semantic drift.
+- The handbook documents real failing tests and disconnected behavior; it does not repair product defects.
+- Historical references may be stale even when useful.
+- Some commands require local artifacts not supplied by Git; read prerequisites before running them.
 
-## Doc index
+## Common change recipe
 
-| # | Doc | What it covers |
-|---|---|---|
-| 01 | `01_architecture.md` | System overview, diagram, module map, ports, dual-verdict design |
-| 02 | `02_data_module.md` | Solidity → graphs + tokens, v2 export, schema, splits |
-| 03 | `03_ml_module.md` | GNN+CodeBERT model, inference API, 3-tier output, deterministic mode |
-| 04 | `04_zkml_module.md` | Proxy distillation, EZKL pipeline, proof generation, calldata |
-| 05 | `05_contracts_module.md` | AuditRegistry V1/V2, SentinelToken, ZKMLVerifier, deployment |
-| 06 | `06_agents_module.md` | 14-node pipeline, evidence/fuse, MCP servers, gateway |
-| 07 | `07_cross_module.md` | ML→ZKML→Contracts→Chain integration, 3 boundaries |
-| 08 | `08_security.md` | 3-layer injection defense, routing isolation, provenance, Rule 5C |
-| 09 | `09_evaluation.md` | Fbeta, 9 gates, Bayesian shrinkage, L0→L3 maturity ladder |
-| 10 | `10_operations.md` | Start/stop services, Anvil testing, Sepolia deployment, debugging |
+When source changes, update the owning chapter, cross-module page if a boundary changed, status if evidence changed, and metadata if a declared fact/path changed. Run static and inventory checks before review.
+
+## Verification commands
+
+```bash
+python3 docs/handbook/tools/verify_handbook.py static
+python3 docs/handbook/tools/verify_handbook.py inventory
+python3 docs/handbook/tools/verify_handbook.py lab --list
+python3 docs/handbook/tools/verify_handbook.py lab --check-all-safe
+python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
+```
+
+## Optional deep references
+
+- [Reference registry](17_reference.md)
+- [Current status](16_current_status.md)
+- [`handbook.toml`](_meta/handbook.toml)
+
+## Technical mastery layer
+
+### Prerequisite knowledge
+
+Basic Python, shell, Git, HTTP/JSON, tensors, and Solidity are assumed. Each technical guide refreshes the difficult graph, PyTorch, ZK, distributed-state, or upgrade concepts it uses.
+
+### Source map and reading order
+
+Use the one-hour core path first. Then choose a subsystem pair: canonical chapter → matching guide in [`technical/`](technical/) → matching lab in [`labs/`](labs/). The ten guide/lab pairs are registered in [`handbook.toml`](_meta/handbook.toml), so the validator can detect missing learning coverage.
+
+### Execution trace and worked example
+
+The capstone trace is [T10](technical/10_end_to_end_debugging.md): one Solidity contract becomes an off-chain report and, through a separately invoked path, a proxy proof/on-chain record. It identifies every shape, hash, port, and current disconnection.
+
+### Implementation practice
+
+Labs make controlled changes in tests or temporary fixtures, run focused checks, show an intentional failure, and restore the edit. Start with [L01](labs/01_data_fixture_representation.md); run `python3 docs/handbook/tools/verify_handbook.py lab --list` to choose prerequisites honestly.
+
+### Review and ownership check
+
+You own a topic when you can trace inputs to outputs, name the source symbols, predict success/failure behavior, implement a test-first change, identify regenerated artifacts, and roll back without weakening a gate.

@@ -1,0 +1,82 @@
+name: Handbook
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/handbook/**"
+      - "data_module/sentinel_data/cli.py"
+      - "data_module/sentinel_data/representation/graph_schema.py"
+      - "ml/src/inference/api.py"
+      - "zkml/src/distillation/proxy_model.py"
+      - "zkml/ezkl/settings.json"
+      - "contracts/src/AuditRegistry.sol"
+      - "contracts/src/SentinelToken.sol"
+      - "agents/src/api/gateway.py"
+      - "agents/src/mcp/servers/**"
+      - "agents/src/orchestration/graph.py"
+      - "agents/src/orchestration/state.py"
+      - "agents/src/orchestration/verdict/**"
+      - "agents/src/security/**"
+      - "agents/src/eval/**"
+      - "agents/src/api/sqlite_job_store.py"
+      - "agents/src/rag/retriever.py"
+      - "agents/src/ingestion/feedback_loop.py"
+      - "ml/src/models/**"
+      - "ml/src/datasets/**"
+      - "ml/src/training/**"
+      - "ml/src/inference/predictor.py"
+      - "ml/scripts/tune_threshold.py"
+      - "ml/scripts/calibrate_temperature.py"
+      - "ml/scripts/promote_model.py"
+      - "data_module/sentinel_data/representation/orchestrator.py"
+      - "data_module/sentinel_data/export/**"
+      - "data_module/sentinel_data/splitting/**"
+      - "data_module/sentinel_data/registry/**"
+      - "zkml/src/ezkl/**"
+      - "contracts/src/IZKMLVerifier.sol"
+  push:
+    paths:
+      - "README.md"
+      - "docs/handbook/**"
+      - "data_module/sentinel_data/cli.py"
+      - "data_module/sentinel_data/representation/graph_schema.py"
+      - "ml/src/inference/api.py"
+      - "zkml/src/distillation/proxy_model.py"
+      - "zkml/ezkl/settings.json"
+      - "contracts/src/AuditRegistry.sol"
+      - "contracts/src/SentinelToken.sol"
+      - "agents/src/api/gateway.py"
+      - "agents/src/mcp/servers/**"
+      - "agents/src/orchestration/graph.py"
+      - "agents/src/orchestration/state.py"
+      - "agents/src/orchestration/verdict/**"
+      - "agents/src/security/**"
+      - "agents/src/eval/**"
+      - "agents/src/api/sqlite_job_store.py"
+      - "agents/src/rag/retriever.py"
+      - "agents/src/ingestion/feedback_loop.py"
+      - "ml/src/models/**"
+      - "ml/src/datasets/**"
+      - "ml/src/training/**"
+      - "ml/src/inference/predictor.py"
+      - "ml/scripts/tune_threshold.py"
+      - "ml/scripts/calibrate_temperature.py"
+      - "ml/scripts/promote_model.py"
+      - "data_module/sentinel_data/representation/orchestrator.py"
+      - "data_module/sentinel_data/export/**"
+      - "data_module/sentinel_data/splitting/**"
+      - "data_module/sentinel_data/registry/**"
+      - "zkml/src/ezkl/**"
+      - "contracts/src/IZKMLVerifier.sol"
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 docs/handbook/tools/verify_handbook.py static
+      - run: python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'

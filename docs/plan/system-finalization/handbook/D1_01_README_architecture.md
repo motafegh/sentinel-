@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and the implemented [handbook](../../../handbook/00_README.md).
+
 # D1.1 — Handbook README + Architecture
 
 **Doc targets:** `docs/handbook/00_README.md` + `docs/handbook/01_architecture.md`

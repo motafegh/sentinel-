@@ -1,216 +1,137 @@
-# 01 — Architecture
+# 01 — Current architecture
 
-## TL;DR
+**Read this when:** you need the whole-system topology, ownership boundaries, processes, ports, or deployment trust model.
 
-```
-What: Decentralised AI security oracle — Solidity contracts analyzed by
-      GNN+GraphCodeBERT, results ZK-proven and stored on-chain
-Modules: DATA → ML → ZKML → CONTRACTS ← AGENTS
-Ports: 8001 (ML API), 8010 (MCP inference), 8012 (MCP audit), 8545 (Anvil)
-Tests: see §6 below
-```
+**Skip this if:** never before operating or changing more than one module.
 
----
+**Estimated reading time:** 12 minutes.
 
-## 1. System diagram
+## 30-second summary
 
-```
-                    ┌─────────────────────────────────────────────────────┐
-                    │                   SENTINEL SYSTEM                     │
-                    │                                                     │
-  ┌──────────┐     │  ┌──────────┐    ┌──────────┐    ┌──────────┐       │
-  │  .sol    │─────┼─▶│  DATA    │───▶│   ML     │───▶│  ZKML    │       │
-  │  source  │     │  │ module   │    │ module   │    │ module   │       │
-  │  code    │     │  │          │    │          │    │          │       │
-  └──────────┘     │  │ graph    │    │ GNN+     │    │ proxy    │       │
-                    │  │ extractor│    │ CodeBERT │    │ (128→10) │       │
-                    │  │ + tokens │    │ →fusion  │    │ EZKL     │       │
-                    │  │          │    │ [128-dim]│    │ proof    │       │
-                    │  └──────────┘    └────┬─────┘    └────┬─────┘       │
-                    │                       │               │             │
-                    │                       │  ┌──────────┐ │             │
-                    │                       └─▶│  AGENTS  │─┘             │
-                    │                          │ module   │               │
-                    │                          │          │               │
-                    │                          │ LangGraph│               │
-                    │                          │ 14 nodes │               │
-                    │                          │ + MCP    │               │
-                    │                          │ + gateway│               │
-                    │                          └────┬─────┘               │
-                    │                               │                     │
-                    │                               ▼                     │
-                    │                          ┌──────────┐               │
-                    │                          │CONTRACTS │               │
-                    │                          │ module   │               │
-                    │                          │          │               │
-                    │                          │AuditReg  │               │
-                    │                          │ V1 + V2  │               │
-                    │                          │on-chain  │               │
-                    │                          └──────────┘               │
-                    └─────────────────────────────────────────────────────┘
+SENTINEL has five source modules and multiple runtime processes. DATA builds trustworthy versioned training artifacts. ML serves four-eye predictions and fusion embeddings. AGENTS orchestrates evidence and exposes gateway/MCP services. ZKML proves a small proxy computation. Contracts gate submissions by stake and proof and store audit history. The main architectural caveat is that gateway audits and direct ZK/on-chain submissions are separate paths.
+
+## Just-enough mental model
+
+```mermaid
+flowchart LR
+  U["Solidity / upstream data"] --> D["DATA: ten-stage pipeline"]
+  D --> A["Versioned graph/token/label export"]
+  A --> M["ML teacher training"]
+  U --> API["ML API :8001"]
+  M --> API
+  C["Client"] --> G["Gateway :8000"]
+  G --> L["14-node LangGraph"]
+  L --> API
+  L --> S["MCP services :8010–8014"]
+  API --> Z["Proxy + EZKL"]
+  Z --> R["AuditRegistry / verifier"]
+  S -. "explicit submit_audit only" .-> Z
 ```
 
-**Data flow** (what happens to a contract being audited):
+The dotted submission connection is not invoked by the normal gateway graph.
 
-```
-.sol source
-    │
-    ▼  DATA module: graph_extractor + windowed_tokenizer
-PyG graph [N nodes, 12 features] + tokens [4 windows × 512]
-    │
-    ▼  ML module: GNN (8-layer GAT) + CodeBERT + CrossAttentionFusion
-fusion_embedding [128-dim]  ←── the ZK boundary
-    │
-    ├──▶ AGENTS: probabilities, 3-tier label, verdicts (off-chain audit)
-    │
-    ▼  ZKML module: ProxyModel(fusion) → 10 logits → EZKL proof
-proof.json [hex_proof + 138 publicSignals]
-    │
-    ▼  AGENTS MCP submit_audit → web3.py transact
-AuditRegistry.submitAuditV2(classScores[10], proof, publicSignals[138], modelHash)
-    │
-    ▼  CONTRACTS module: on-chain storage
-AuditSubmittedV2 event → feedback_loop → RAG (closes the loop)
-```
+## Actual runtime/source walkthrough
 
-**Service flow** (what processes run and talk to each other):
+### Module ownership
 
-```
-User ──HTTP──▶ Gateway (:8011)
-                   │
-                   ├──▶ LangGraph pipeline (in-process)
-                   │        │
-                   │        ├──▶ MCP inference (:8010) ──▶ ML API (:8001)
-                   │        ├──▶ MCP audit (:8012) ─────▶ Anvil (:8545)
-                   │        ├──▶ MCP rag
-                   │        └──▶ MCP representation (:8014)
-                   │
-                   └──▶ SQLite JobStore (data/jobs.db)
-```
-
----
-
-## 2. Module map
-
-| Module | Language / framework | Code dir | Test command | Tests |
-|---|---|---|---|---|
-| **DATA** | Python, PyG, Slither | `data_module/` | `cd data_module && .venv/bin/python -m pytest` | 625 |
-| **ML** | Python, PyTorch, Transformers | `ml/src/` | `source ml/.venv/bin/activate && python -m pytest ml/tests/` | 217 |
-| **ZKML** | Python, EZKL, Halo2 | `zkml/src/` | `source ml/.venv/bin/activate && python -m pytest zkml/tests/` | 37 |
-| **CONTRACTS** | Solidity, Foundry | `contracts/src/` | `cd contracts && forge test` | 66 |
-| **AGENTS** | Python, LangGraph, MCP | `agents/src/` | `cd agents && poetry run pytest` | 634 |
-| **Total** | | | | **1,579** |
-
----
-
-## 3. Port map
-
-| Port | Service | Started by | Config location |
-|---|---|---|---|
-| 8001 | ML inference API (FastAPI + uvicorn) | `uvicorn ml.src.inference.api:app --port 8001` | `ml/src/inference/api.py:74-80` (checkpoint), `agents/.env` (MODULE1_INFERENCE_URL) |
-| 8010 | MCP inference proxy | `python -m src.mcp.servers.inference_server` | `agents/.env` (MCP_INFERENCE_PORT=8010) |
-| 8012 | MCP audit server (read + write) | `python -m src.mcp.servers.audit._server` | `agents/.env` (MCP_AUDIT_PORT=8012) |
-| 8014 | MCP representation server | `python -m src.mcp.servers.representation_server` | `agents/.env` (MCP_REPRESENTATION_PORT=8014) |
-| 8545 | Anvil local chain | `anvil --port 8545` | Anvil default |
-
----
-
-## 4. The dual-verdict design
-
-SENTINEL produces **two verdicts** per audit — one provable, one rich:
-
-**verdict_provable** — deterministic only
-- Computed from evidence where `deterministic=True`: ML predictions, Slither findings, Aderyn findings, fuse() math
-- Reproducible across runs (same input → same output)
-- This is what gets ZK-proved and anchored on-chain
-- Source: `fuse.py:163` — `_fuse_for_evidence(det_items)` where `det_items` are deterministic-only
-
-**verdict_full** — includes everything
-- Computed from ALL evidence: adds LLM debate (`cross_validator`), RAG research, consensus engine
-- Richer context, better narrative, but non-deterministic (LLM varies even at temp=0)
-- This is what the human-readable audit report uses
-- Source: `fuse.py:166` — `_fuse_for_evidence(items)` where `items` includes all evidence
-
-**Why split:** The ZK circuit can only prove deterministic computations. The LLM debate is non-deterministic (model internals, GPU non-determinism, batching effects). So we prove the deterministic tier and report the full tier separately.
-
-**Where in final_report:** `synthesizer.py:344-386` — both verdicts are included:
-- `final_report["vulnerability_verdicts"]` — per-class verdicts
-- `final_report["consensus_verdict"]` — overall
-- `final_report["model_provenance"]` — model_hash for ZK anchoring
-- `final_report["on_chain"]` — tx_hash after submission
-
----
-
-## 5. The 14-node pipeline
-
-The AGENTS module is a LangGraph with 14 nodes. The entry point is `ml_assessment`, the terminal node is `synthesizer` (or `reflection` → `explainer` → `visualizer` on the deep path).
-
-```
-ml_assessment → quick_screen → evidence_router ─┬─ (fast) ────────────→ synthesizer
-                                                 │
-                                                 └─ (deep) ─→ rag_research ─┐
-                                                              static_analysis ─┤
-                                                              graph_explain ────┤
-                                                              formal_verification┤
-                                                                              ↓
-                                                    audit_check → consensus_engine → cross_validator → synthesizer
-                                                                                                    │
-                                                                                                    ▼
-                                                                                              reflection
-                                                                                                    │
-                                                                                                    ▼
-                                                                                              explainer → visualizer
-```
-
-Source: `agents/src/orchestration/graph.py:172-221` — all node registrations and edges.
-
-**Fast path** (contract is clearly safe): `ml_assessment → quick_screen → evidence_router → synthesizer`
-**Deep path** (suspicious findings): all nodes fire, including LLM debate and formal verification
-
----
-
-## 6. Key configuration locations
-
-| What | File | Key contents |
+| Module | Primary responsibility | Runtime/build outputs |
 |---|---|---|
-| All env vars | `agents/.env` | Ports, RPC URL, operator key, LM Studio URL, timeouts |
-| L1 decision numbers | `agents/configs/verdicts_default.yaml` | Thresholds, weights, bands (hand-set, versioned) |
-| L3 fitted weights | `agents/configs/reliability_v3.yaml` | Per-tool reliability (Bayesian shrinkage, α=5) |
-| Solidity compiler | `contracts/foundry.toml` | solc=0.8.22, optimizer, OZ remappings |
-| Frozen proxy architecture | `zkml/src/distillation/proxy_model.py:104-108` | 128/64/32/10 — changing these = new circuit |
-| ML checkpoint path | `ml/src/inference/api.py:74-80` | 3-level: SENTINEL_CHECKPOINT env > mlops_config.json > default |
-| EZKL circuit settings | `zkml/ezkl/settings.json` | model_instance_shapes, scale=13, logrows |
-| Project rules | `CLAUDE.md` | Rule 5B (decision numbers), Rule 5C (no silent failures) |
+| [`data_module`](../../data_module) | acquire, normalize, represent, label, verify, split, register, analyze, export, freshness | ignored/local datasets, manifests, reports, catalogs |
+| [`ml`](../../ml) | teacher architecture, training, inference, calibration, drift, MLOps | checkpoint companions, API responses, metrics |
+| [`agents`](../../agents) | orchestration, evidence, RAG, MCP, gateway, feedback, eval | reports, jobs, indexes, state/eval evidence |
+| [`zkml`](../../zkml) | proxy distillation, ONNX, EZKL setup/proof | model/circuit/key/proof artifacts |
+| [`contracts`](../../contracts) | stake, verification, V1/V2 storage, upgrades/deployment | deployed token/verifier/registry and events |
 
----
+### Runtime processes and ports
 
-## 7. Test commands (copy-pasteable)
+| Process | Default port | Boundary |
+|---|---:|---|
+| Gateway | 8000 | public async job API |
+| ML FastAPI | 8001 | source inference and fusion embedding |
+| inference MCP | 8010 | MCP wrapper over ML |
+| RAG MCP | 8011 | hybrid retrieval |
+| audit MCP | 8012 | chain reads plus explicit proof/submission |
+| graph inspector MCP | 8013 | hotspot analysis |
+| representation MCP | 8014 | function CFG structural data |
+| Anvil | 8545 | optional local chain |
+
+Gateway jobs persist in SQLite. LangGraph has its own SQLite checkpointer when available. RAG indexes, caches, reports, and databases are local runtime artifacts unless explicitly promoted.
+
+### Trust boundaries
+
+- Solidity and external reports are untrusted inputs.
+- DATA validation/provenance controls corpus trust; they do not guarantee label truth.
+- ML outputs are learned evidence, not proof.
+- analyzers/formal tools have explicit availability/failure states.
+- RAG/LLM outputs are nondeterministic supporting evidence.
+- the operator supplies proof inputs, model hash, transaction authority, and provenance claims.
+- EZKL proves only proxy computation.
+- AuditRegistry is owner-upgradeable and economically gates the submitting address.
+
+## Interfaces, data shapes, and configuration
+
+The principal boundaries are:
+
+1. DATA export → `SentinelDataset`: v9, graph `[N,12]`, tokens `[4,512]`, labels `[10]`.
+2. ML → AGENTS: ten probabilities/tiers, eye signals, model hash, hotspots.
+3. ML → ZKML: fusion embedding `[128]`.
+4. ZKML → registry: proof plus 138 public signals and ten score fields.
+5. AGENTS → client: asynchronous job plus evidence-rich final report.
+
+Configuration is module-scoped. Shared compatibility values are mirrored in [`handbook.toml`](_meta/handbook.toml) and explained in [cross-module contracts](11_cross_module_contracts.md).
+
+## Failure modes and current limitations
+
+- Multiple services can be healthy independently while an end-to-end path is incomplete.
+- Gateway completion is off-chain only; on-chain placeholder fields are not transaction evidence.
+- Fresh clones lack several large/private/local artifacts.
+- Mock/fallback/degraded responses must not be mixed with live evidence.
+- Owner and operator keys remain centralized trust points.
+- Local databases and shared proof paths limit horizontal/concurrent production behavior.
+
+## Common change recipe
+
+For an architectural change:
+
+1. Name the module owner and cross-module interface.
+2. Update source producer/consumer with versioned compatibility tests.
+3. Re-evaluate process, port, artifact, failure, and trust boundaries.
+4. Run affected module and live flows.
+5. Update architecture, runtime flows, cross-module contracts, security, operations, metadata, and status.
+
+## Verification commands
 
 ```bash
-# AGENTS (634 tests, ~28s)
-cd ~/projects/sentinel/agents && poetry run pytest -q
-
-# ML (213 passed, 4 failed — pre-existing fixture issues, ~60s)
-cd ~/projects/sentinel && source ml/.venv/bin/activate
-TRANSFORMERS_OFFLINE=1 SENTINEL_CHECKPOINT=ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt \
-  python -m pytest ml/tests/ -q --tb=no
-
-# ZKML (37 tests, ~15s)
-cd ~/projects/sentinel && source ml/.venv/bin/activate
-TRANSFORMERS_OFFLINE=1 python -m pytest zkml/tests/ -q
-
-# DATA (616 passed, 9 failed — pre-existing, ~34s)
-cd ~/projects/sentinel/data_module && .venv/bin/python -m pytest -q --tb=no
-
-# CONTRACTS (66 tests, ~2s)
-cd ~/projects/sentinel/contracts && forge test
+python3 docs/handbook/tools/verify_handbook.py static
+python3 docs/handbook/tools/verify_handbook.py inventory
+python3 docs/handbook/tools/verify_handbook.py live --services
 ```
 
----
+## Optional deep references
 
-## Deep reference
+- [Runtime flows](02_runtime_flows.md)
+- [Cross-module contracts](11_cross_module_contracts.md)
+- [Security and trust](12_security_and_trust.md)
+- [Current status](16_current_status.md)
 
-- → `docs/learning/01_orchestration_pipeline.md` — deep dive on the 14-node pipeline
-- → `docs/learning/04_reproducibility_determinism.md` — deep dive on deterministic mode + ZK boundary
-- → `docs/learning/10_decision_numbers.md` — L0→L3 maturity ladder, Rule 5B/5C
-- → source: `graph.py`, `state.py`, `api.py`, `gateway.py`, `proxy_model.py`, `AuditRegistry.sol`
+## Technical mastery layer
+
+### Prerequisite knowledge
+
+Know process boundaries, ports, HTTP request lifecycles, artifacts, and trust boundaries. Read [the handbook workflow](00_README.md) first.
+
+### Source map and reading order
+
+Read gateway `agents/src/api/gateway.py::create_app`, graph `agents/src/orchestration/graph.py::build_graph`, ML `ml/src/inference/api.py::lifespan`, audit MCP `agents/src/mcp/servers/audit/_submit.py::_run_submit`, and registry `contracts/src/AuditRegistry.sol::submitAuditV2`. Continue with [T10](technical/10_end_to_end_debugging.md).
+
+### Execution trace and worked example
+
+A gateway request crosses process boundaries at gateway 8000 and ML 8001, then may call MCP services 8010–8014. It ends as an off-chain report. Only the separate audit-MCP flow crosses EZKL and registry/Anvil 8545. Drawing one arrow from gateway completion directly to registry is therefore incorrect current architecture.
+
+### Implementation practice
+
+Before adding a process, declare owner, port, routes/tools, health semantics, secrets, persistent state, upstream/downstream contracts, startup order, tests, and failure isolation. Exercise the complete map in [L10](labs/10_end_to_end_capstone.md).
+
+### Review and ownership check
+
+Can you identify which process owns each mutable state, which links are network versus files, and which boundaries are cryptographic versus operator-asserted?

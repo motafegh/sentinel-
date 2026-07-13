@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and [security and trust](../../../handbook/12_security_and_trust.md).
+
 # D1.4a — Security Doc
 
 **Doc target:** `docs/handbook/08_security.md`

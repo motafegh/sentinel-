@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and [cross-module contracts](../../../handbook/11_cross_module_contracts.md).
+
 # D1.3 — Cross-Module Integration Doc
 
 **Doc target:** `docs/handbook/07_cross_module.md`

@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and the implemented [ML chapters](../../../handbook/05_ml_model_inference.md).
+
 # D1.2b — ML Module Doc
 
 **Doc target:** `docs/handbook/03_ml_module.md`

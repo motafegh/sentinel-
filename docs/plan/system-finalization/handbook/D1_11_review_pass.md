@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and the source-grounded validator.
+
 # D1.6 — Final Review Pass
 
 **Target:** All 11 handbook docs in `docs/handbook/`

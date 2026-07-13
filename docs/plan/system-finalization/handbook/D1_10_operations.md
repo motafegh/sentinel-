@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and [operations](../../../handbook/14_operations.md).
+
 # D1.5 — Operations Doc
 
 **Doc target:** `docs/handbook/10_operations.md`

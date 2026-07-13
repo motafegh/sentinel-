@@ -1,3 +1,5 @@
+> **Superseded v1 plan:** retained for history. Use [D1 v2](../D1_developer_handbook.md) and the implemented [Contracts chapter](../../../handbook/08_contracts.md).
+
 # D1.2d — Contracts Module Doc
 
 **Doc target:** `docs/handbook/05_contracts_module.md`
