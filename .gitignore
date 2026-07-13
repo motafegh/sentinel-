@@ -154,3 +154,9 @@ ml/data/smartbugs_wild_eval_state.json
 docs/reports/**/per_contract*.json
 docs/reports/**/contamination_index.json
 .dvc/cache/
+
+# Runtime cruft
+tmp_*.py
+check_verify.sh
+submit_audit.sh
+sentinel_pipeline_comparison_audit.md:Zone.Identifier
