@@ -1,4 +1,6 @@
 {
+  "comparison_contract_version": "2",
+  "comparison_fingerprint": "c21fac2037ea8c47dfd9bfee5f5b96e69054468504fd2d7025b7eea8127eccc1",
   "environment_contract": "linux-x86_64-python-3.12",
   "kind": "r0_environment_manifest",
   "lockfiles": [
@@ -20,11 +22,51 @@
     "release": "6.18.33.2-microsoft-standard-WSL2",
     "system": "Linux"
   },
+  "probe_environment_policy": {
+    "forced": {
+      "NO_COLOR": "1",
+      "PYTHONHASHSEED": "0",
+      "SENTINEL_EVIDENCE_PROBE": "1"
+    },
+    "inherited_keys": [
+      "LANG",
+      "LC_ALL",
+      "PATH",
+      "REQUESTS_CA_BUNDLE",
+      "SSL_CERT_DIR",
+      "SSL_CERT_FILE",
+      "TEMP",
+      "TMP",
+      "TMPDIR"
+    ],
+    "isolated_home": true,
+    "version": "1"
+  },
   "python": {
     "implementation": "CPython",
     "version": "3.12.3"
   },
+  "runtimes": {
+    "agents_python": {
+      "implementation": "CPython",
+      "package_count": 200,
+      "packages_sha256": "801257b814caa118d68949e3ca4a46f7fb21c6b13697301497d51d34d586c65c",
+      "version": "3.12.3"
+    },
+    "data_python": {
+      "implementation": "CPython",
+      "package_count": 244,
+      "packages_sha256": "5bcda0810839367d16ba7cd2ca495200400bd96b265087f2c0a1385832cb9bd4",
+      "version": "3.12.3"
+    },
+    "harness_python": {
+      "implementation": "CPython",
+      "package_count": 244,
+      "packages_sha256": "5bcda0810839367d16ba7cd2ca495200400bd96b265087f2c0a1385832cb9bd4",
+      "version": "3.12.3"
+    }
+  },
   "schema_version": "1",
-  "workspace_commit": "caabefcbc6f2d422247c94fd9f5cb69ce84fdd3c",
+  "workspace_commit": "7d10da27fc6f2ad158b39d5d37b17fee6f640c2d",
   "workspace_dirty": false
 }
