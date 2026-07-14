@@ -67,7 +67,8 @@
       "properties": {
         "path": {"type": "string", "minLength": 1},
         "sha256": {"$ref": "#/$defs/sha256"},
-        "environment_contract": {"type": "string", "minLength": 1}
+        "environment_contract": {"type": "string", "minLength": 1},
+        "comparison_fingerprint": {"$ref": "#/$defs/sha256"}
       }
     },
     "execution": {

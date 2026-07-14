@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import platform
 import re
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from scripts.r0_evidence.environment import (
+    create_environment_manifest,
+    probe_environment,
+    validate_environment_manifest,
+    verify_runtime_bindings,
+)
 from scripts.r0_evidence.matrix import MATRIX_ROW_IDS
 from scripts.r0_evidence.model import (
     canonical_json_bytes,
@@ -61,6 +66,20 @@ def validate_command_manifest(manifest: Any) -> list[str]:
         errors.append("unsupported command manifest schema/kind")
     if not _FULL_GIT_SHA.fullmatch(str(manifest.get("baseline_commit", ""))):
         errors.append("baseline_commit must be a full lowercase Git SHA")
+    comparison_version = str(manifest.get("comparison_contract_version", "1"))
+    if comparison_version not in {"1", "2"}:
+        errors.append("comparison_contract_version must be 1 or 2")
+    runtime_bindings = manifest.get("runtime_bindings", {})
+    if not isinstance(runtime_bindings, dict) or not all(
+        isinstance(placeholder, str)
+        and placeholder
+        and isinstance(runtime_name, str)
+        and runtime_name
+        for placeholder, runtime_name in runtime_bindings.items()
+    ):
+        errors.append("runtime_bindings must map placeholders to runtime names")
+    if comparison_version == "2" and not runtime_bindings:
+        errors.append("comparison contract 2 requires runtime_bindings")
 
     fixtures = manifest.get("fixture_sha256", {})
     if not isinstance(fixtures, dict) or not all(
@@ -143,42 +162,6 @@ def _verify_command_fixtures(manifest: dict[str, Any], variables: dict[str, str]
             )
 
 
-def create_environment_manifest(workspace: Path) -> dict[str, Any]:
-    workspace = workspace.resolve()
-    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=workspace, text=True).strip()
-    status = subprocess.check_output(
-        ["git", "status", "--porcelain"], cwd=workspace, text=True
-    ).splitlines()
-
-    locks: list[dict[str, str]] = []
-    for relative in ("poetry.lock", "agents/poetry.lock", "ml/poetry.lock"):
-        path = workspace / relative
-        if path.is_file():
-            locks.append({"path": relative, "sha256": sha256_file(path)})
-
-    environment_contract = (
-        f"{platform.system().lower()}-{platform.machine().lower()}-"
-        f"python-{sys.version_info.major}.{sys.version_info.minor}"
-    )
-    return {
-        "schema_version": "1",
-        "kind": "r0_environment_manifest",
-        "environment_contract": environment_contract,
-        "workspace_commit": head,
-        "workspace_dirty": bool(status),
-        "python": {
-            "implementation": platform.python_implementation(),
-            "version": platform.python_version(),
-        },
-        "platform": {
-            "system": platform.system(),
-            "release": platform.release(),
-            "machine": platform.machine(),
-        },
-        "lockfiles": locks,
-    }
-
-
 def capture_probe(
     *,
     command_manifest_path: Path,
@@ -200,6 +183,9 @@ def capture_probe(
 
     workspace = workspace.resolve()
     environment = json.loads(environment_manifest_path.read_text(encoding="utf-8"))
+    environment_errors = validate_environment_manifest(environment)
+    if environment_errors:
+        raise ValueError("Invalid environment manifest: " + "; ".join(environment_errors))
     if environment.get("workspace_dirty") is not False:
         raise ValueError("Evidence capture requires a clean workspace manifest")
     expected_commit = (
@@ -219,6 +205,7 @@ def capture_probe(
         raise ValueError("Workspace changed after the environment manifest was created")
 
     _verify_command_fixtures(manifest, variables)
+    verify_runtime_bindings(manifest, environment, variables)
     substitutions = {"workspace": str(workspace), "python": sys.executable, **variables}
     argv = [_render_command_part(part, substitutions) for part in probe["argv"]]
     cwd = (workspace / probe.get("cwd", ".")).resolve()
@@ -226,14 +213,15 @@ def capture_probe(
         raise ValueError("Probe cwd must be an existing directory inside the workspace")
 
     started_at = _utc_now()
-    completed = subprocess.run(
-        argv,
-        cwd=cwd,
-        env=os.environ.copy(),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    with tempfile.TemporaryDirectory(prefix="sentinel-r0-probe-home-") as home:
+        completed = subprocess.run(
+            argv,
+            cwd=cwd,
+            env=probe_environment(Path(home)),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
     finished_at = _utc_now()
     stdout = redact_text(completed.stdout, workspace=workspace)
     stderr = redact_text(completed.stderr, workspace=workspace)
@@ -270,6 +258,7 @@ def capture_probe(
         )
 
     comparison_material = {
+        "comparison_contract_version": str(manifest.get("comparison_contract_version", "1")),
         "probe_id": probe["probe_id"],
         "contract_version": probe["contract_version"],
         "argv_template": probe["argv"],
@@ -279,7 +268,7 @@ def capture_probe(
             **manifest.get("fixture_sha256", {}),
             **probe.get("fixture_sha256", {}),
         },
-        "environment_contract": environment["environment_contract"],
+        "environment_fingerprint": environment["comparison_fingerprint"],
     }
     comparison_key = sha256_bytes(canonical_json_bytes(comparison_material))
     candidate_commit = current_commit if phase == "after" else None
@@ -305,6 +294,7 @@ def capture_probe(
             "path": redact_text(str(environment_manifest_path.resolve()), workspace=workspace),
             "sha256": sha256_file(environment_manifest_path),
             "environment_contract": environment["environment_contract"],
+            "comparison_fingerprint": environment["comparison_fingerprint"],
         },
         "execution": {
             "started_at": started_at,
@@ -346,6 +336,7 @@ def main(argv: list[str] | None = None) -> int:
     environment_parser = subparsers.add_parser("environment")
     environment_parser.add_argument("--workspace", type=Path, required=True)
     environment_parser.add_argument("--output", type=Path, required=True)
+    environment_parser.add_argument("--runtime", action="append", default=[])
 
     capture_parser = subparsers.add_parser("capture")
     capture_parser.add_argument("--command-manifest", type=Path, required=True)
@@ -362,7 +353,10 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "environment":
-        payload = create_environment_manifest(args.workspace)
+        payload = create_environment_manifest(
+            args.workspace,
+            runtimes=_parse_variables(args.runtime),
+        )
         _write_json(args.output, payload)
         print(json.dumps(payload, sort_keys=True))
         return 0

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
+import scripts.r0_evidence.environment as environment_module
 from scripts.r0_evidence.cli import (
     capture_probe,
     create_environment_manifest,
     validate_command_manifest,
 )
+from scripts.r0_evidence.environment import probe_environment, validate_environment_manifest
 from scripts.r0_evidence.matrix import MATRIX_ROWS, matrix_manifest
 from scripts.r0_evidence.model import redact_text, sha256_file, validate_coverage, validate_record
 
@@ -205,7 +208,64 @@ def test_environment_manifest_never_copies_process_environment(monkeypatch) -> N
     assert "R0_TEST_SECRET" not in serialized
     assert "must-not-appear" not in serialized
     assert manifest["environment_contract"]
+    assert manifest["comparison_fingerprint"]
+    assert "harness_python" in manifest["runtimes"]
+    assert validate_environment_manifest(manifest) == []
     assert manifest["workspace_commit"]
+
+
+def test_environment_manifest_detects_comparison_material_tampering() -> None:
+    workspace = Path(__file__).resolve().parents[2]
+    manifest = create_environment_manifest(workspace)
+    manifest["lockfiles"][0]["sha256"] = "0" * 64
+    assert (
+        "environment comparison_fingerprint does not match its material"
+        in validate_environment_manifest(manifest)
+    )
+
+
+def test_environment_manifest_rejects_malformed_identity_and_policy() -> None:
+    workspace = Path(__file__).resolve().parents[2]
+    manifest = create_environment_manifest(workspace)
+    manifest["runtimes"]["harness_python"]["packages_sha256"] = "short"
+    manifest["probe_environment_policy"]["inherited_keys"].append("HOME")
+    errors = validate_environment_manifest(manifest)
+    assert "environment runtime identities are invalid" in errors
+    assert "environment probe policy does not match the supported policy" in errors
+
+
+def test_runtime_identity_is_remeasured_instead_of_cached(monkeypatch) -> None:
+    inventories = iter(
+        [
+            {"implementation": "CPython", "version": "3.12.3", "packages": [["one", "1"]]},
+            {"implementation": "CPython", "version": "3.12.3", "packages": [["two", "2"]]},
+        ]
+    )
+    calls = []
+
+    def fake_run(*args, **kwargs):
+        calls.append(args)
+        return subprocess.CompletedProcess(
+            args[0], 0, stdout=json.dumps(next(inventories)), stderr=""
+        )
+
+    monkeypatch.setattr(environment_module.subprocess, "run", fake_run)
+    first = environment_module.runtime_identity(sys.executable)
+    second = environment_module.runtime_identity(sys.executable)
+    assert len(calls) == 2
+    assert first["packages_sha256"] != second["packages_sha256"]
+
+
+def test_probe_environment_drops_secrets_and_uses_an_isolated_home(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("SENTINEL_OPERATOR_KEY", "must-not-cross-boundary")
+    monkeypatch.setenv("OPENAI_API_KEY", "must-not-cross-boundary")
+    environment = probe_environment(tmp_path)
+    assert "SENTINEL_OPERATOR_KEY" not in environment
+    assert "OPENAI_API_KEY" not in environment
+    assert environment["HOME"] == str(tmp_path.resolve())
+    assert environment["PYTHONHASHSEED"] == "0"
 
 
 def test_capture_records_failed_baseline_without_marking_it_complete(tmp_path: Path) -> None:
@@ -318,10 +378,12 @@ def test_committed_command_manifest_covers_each_matrix_row_once() -> None:
     path = (
         workspace
         / "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment"
-        / "2026-07-14_SYSTEM_R0_EVIDENCE_command_manifest.json"
+        / "2026-07-14_SYSTEM_R0_EVIDENCE_command_manifest_v2.json"
     )
     manifest = json.loads(path.read_text(encoding="utf-8"))
     assert validate_command_manifest(manifest) == []
+    assert manifest["comparison_contract_version"] == "2"
+    assert set(manifest["runtime_bindings"]) == {"agents_python", "data_python", "python"}
     for relative, expected in manifest["fixture_sha256"].items():
         assert sha256_file(workspace / relative) == expected
 
@@ -368,3 +430,35 @@ def test_baseline_manifest_binds_each_expected_failing_record() -> None:
         assert record["matrix_row_id"] == item["matrix_row_id"]
         assert record["outcome"]["status"] == "fail"
         assert record["outcome"]["invariant_passed"] is False
+
+
+def test_baseline_v2_manifest_binds_the_full_environment_series() -> None:
+    workspace = Path(__file__).resolve().parents[2]
+    package = (
+        workspace / "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment"
+    )
+    manifest = json.loads(
+        (package / "2026-07-14_SYSTEM_R0_EVIDENCE_baseline_manifest_v2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert manifest["series_id"] == "r0-baseline-2"
+    assert manifest["comparison_contract_version"] == "2"
+    assert manifest["environment_manifest"]["comparison_fingerprint"]
+    assert {item["matrix_row_id"] for item in manifest["evidence_records"]} == {
+        row.row_id for row in MATRIX_ROWS
+    }
+    for item in [
+        manifest["command_manifest"],
+        manifest["matrix_manifest"],
+        manifest["environment_manifest"],
+        *manifest["evidence_records"],
+    ]:
+        assert sha256_file(package / item["path"]) == item["sha256"]
+    fingerprints = set()
+    for item in manifest["evidence_records"]:
+        record = json.loads((package / item["path"]).read_text(encoding="utf-8"))
+        fingerprints.add(record["environment_manifest"]["comparison_fingerprint"])
+        assert validate_record(record) == []
+        assert record["outcome"]["invariant_passed"] is False
+    assert fingerprints == {manifest["environment_manifest"]["comparison_fingerprint"]}

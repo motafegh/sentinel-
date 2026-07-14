@@ -127,6 +127,9 @@ def validate_record(record: Mapping[str, Any]) -> list[str]:
                 errors.append(f"environment_manifest.{field} is required")
         if not _SHA256.fullmatch(str(environment.get("sha256", ""))):
             errors.append("environment_manifest.sha256 must be a lowercase SHA-256")
+        fingerprint = environment.get("comparison_fingerprint")
+        if fingerprint is not None and not _SHA256.fullmatch(str(fingerprint)):
+            errors.append("environment_manifest.comparison_fingerprint must be a lowercase SHA-256")
 
     execution = record["execution"]
     if not isinstance(execution, Mapping):
