@@ -1,0 +1,89 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "capture_finished_at": "2026-07-14T12:28:26.203512+00:00",
+  "capture_started_at": "2026-07-14T12:28:25.514382+00:00",
+  "closure_status": "open",
+  "command_manifest": {
+    "path": "2026-07-14_SYSTEM_R0_EVIDENCE_command_manifest.json",
+    "sha256": "c31c9716d58cbc03d76dff361cf85a92603a61d7478ac99ed7bcaa5326decee7"
+  },
+  "dirty_state_guard": {
+    "capture_required_clean_workspace": true,
+    "workspace_dirty": false
+  },
+  "environment_manifest": {
+    "path": "baseline/2026-07-14_SYSTEM_R0_ENVIRONMENT_before.json",
+    "sha256": "cd11639d84080f7035a13dae144fd92da8dea1c49b11ce51eba95cfa0c6382f9"
+  },
+  "evidence_records": [
+    {
+      "matrix_row_id": "R0-EVIDENCE-OUTAGE",
+      "outcome": "fail",
+      "path": "baseline/2026-07-14_SYSTEM_R0-EVIDENCE-OUTAGE_before.json",
+      "review_status": "pending",
+      "sha256": "64aa172b6ae34ae22ba502eb2610c390c94a2e600f1da771437eebe93413aaa8"
+    },
+    {
+      "matrix_row_id": "R0-REPORT-CONTAINMENT",
+      "outcome": "fail",
+      "path": "baseline/2026-07-14_SYSTEM_R0-REPORT-CONTAINMENT_before.json",
+      "review_status": "pending",
+      "sha256": "a5a822e6648e1eac0949dfbea6a68ec0d701c5a1c55233fb176d1f2275d1bd59"
+    },
+    {
+      "matrix_row_id": "R0-ARCHIVE-CONTAINMENT",
+      "outcome": "fail",
+      "path": "baseline/2026-07-14_SYSTEM_R0-ARCHIVE-CONTAINMENT_before.json",
+      "review_status": "pending",
+      "sha256": "a28d964a7e6eab98714d8dd635aad89e744bf8d001474c476e21752cda6db5a1"
+    },
+    {
+      "matrix_row_id": "R0-DATA-RELEASE-TRUST",
+      "outcome": "fail",
+      "path": "baseline/2026-07-14_SYSTEM_R0-DATA-RELEASE-TRUST_before.json",
+      "review_status": "pending",
+      "sha256": "c4ca0591c7324ae56bd2eb42f7168ba9a07c2051ff56df9e0690777257fdd1f0"
+    },
+    {
+      "matrix_row_id": "R0-AUTHORIZATION-LIMITS",
+      "outcome": "fail",
+      "path": "baseline/2026-07-14_SYSTEM_R0-AUTHORIZATION-LIMITS_before.json",
+      "review_status": "pending",
+      "sha256": "308081acc4a02ccc35108ec52099691857627c7779886bff9eb693d8f603515b"
+    },
+    {
+      "matrix_row_id": "R0-SIGNER-ISOLATION",
+      "outcome": "fail",
+      "path": "baseline/2026-07-14_SYSTEM_R0-SIGNER-ISOLATION_before.json",
+      "review_status": "pending",
+      "sha256": "797ac0ac69ed18ff4bf60194a348806e009e6fb559249fb4246ad64d88242350"
+    },
+    {
+      "matrix_row_id": "R0-PROOF-IDENTITY",
+      "outcome": "fail",
+      "path": "baseline/2026-07-14_SYSTEM_R0-PROOF-IDENTITY_before.json",
+      "review_status": "pending",
+      "sha256": "e005fc9e5259b09dc27328a047951dd626cfc4c0438492d9c801e3aeb31ff915"
+    },
+    {
+      "matrix_row_id": "R0-TRANSACTION-TRUTH",
+      "outcome": "fail",
+      "path": "baseline/2026-07-14_SYSTEM_R0-TRANSACTION-TRUTH_before.json",
+      "review_status": "pending",
+      "sha256": "2b654c39c4256a725e80b17cdc7d84c2c97e42d33728b63904a166b6c662db76"
+    }
+  ],
+  "expected_baseline_result": "all eight invariants fail",
+  "kind": "r0_baseline_manifest",
+  "matrix_manifest": {
+    "path": "2026-07-14_SYSTEM_R0_EVIDENCE_matrix_rows.json",
+    "sha256": "88d0ee9521c0d96e4b6ea68af7e7d54283b7c49f71aa784e96258fe7863ef601"
+  },
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1"
+}

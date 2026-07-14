@@ -1,0 +1,6 @@
+schema_version: "1"
+profile: development
+dotenv:
+  mode: disabled
+  path: null
+mock_services: []

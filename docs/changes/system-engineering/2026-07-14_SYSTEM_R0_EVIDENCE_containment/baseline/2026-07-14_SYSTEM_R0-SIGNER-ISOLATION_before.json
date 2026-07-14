@@ -1,0 +1,68 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "846b1659149308d1152efcd84a72c62074a0416dc6f765ee211e4f9e40b34c31",
+  "environment_manifest": {
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "<HOME>/projects/sentinel-r0-0-evidence/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/baseline/2026-07-14_SYSTEM_R0_ENVIRONMENT_before.json",
+    "sha256": "cd11639d84080f7035a13dae144fd92da8dea1c49b11ce51eba95cfa0c6382f9"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-14T12:28:25.619587+00:00",
+    "started_at": "2026-07-14T12:28:25.519293+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"raw_key_path=True\", \"name\": \"analysis_process_has_no_raw_key\", \"passed\": false}, {\"detail\": \"advertised=True\", \"name\": \"mcp_does_not_advertise_signing\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "4d90eabdf26b11fa212c1460b24ef75d95b611c5f684c713b3ede6f7d23ce369"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-SIGNER-ISOLATION",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "raw_key_path=True",
+        "name": "analysis_process_has_no_raw_key",
+        "passed": false
+      },
+      {
+        "detail": "advertised=True",
+        "name": "mcp_does_not_advertise_signing",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "signer-boundary",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-signer-boundary",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-0-evidence/scripts/r0_evidence/baseline_probes.py",
+      "signer-boundary",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-SIGNER-ISOLATION:before:r0-signer-boundary:1256d9aab45a",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "environment_contract": "linux-x86_64-python-3.12",
+  "kind": "r0_environment_manifest",
+  "lockfiles": [
+    {
+      "path": "poetry.lock",
+      "sha256": "8c2d5dab098036bd8e7f72ce0d179eb53f9c9642a5d31ca470f6f0042605dabf"
+    },
+    {
+      "path": "agents/poetry.lock",
+      "sha256": "75a363634ef1951ac12c4823f6871adad50c6de66f6b390afef7e1372fbb3068"
+    },
+    {
+      "path": "ml/poetry.lock",
+      "sha256": "43069e3b9cf0973855ca111cc57138318347b5b1d1fd5a0495467dda49989c18"
+    }
+  ],
+  "platform": {
+    "machine": "x86_64",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "system": "Linux"
+  },
+  "python": {
+    "implementation": "CPython",
+    "version": "3.12.3"
+  },
+  "schema_version": "1",
+  "workspace_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "workspace_dirty": false
+}

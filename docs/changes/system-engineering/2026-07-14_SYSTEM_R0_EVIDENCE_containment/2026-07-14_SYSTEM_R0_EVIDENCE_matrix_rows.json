@@ -1,0 +1,54 @@
+{
+  "kind": "r0_matrix_manifest",
+  "rows": [
+    {
+      "canonical_ids": ["D2-AGT-001", "D2-AGT-012", "D2-AGT-016"],
+      "invariant": "ML/chain outage never becomes successful evidence",
+      "owner_package": "R0.1",
+      "row_id": "R0-EVIDENCE-OUTAGE"
+    },
+    {
+      "canonical_ids": ["D2-AGT-002"],
+      "invariant": "Report path cannot escape workspace",
+      "owner_package": "R0.2",
+      "row_id": "R0-REPORT-CONTAINMENT"
+    },
+    {
+      "canonical_ids": ["D2-DATA-001"],
+      "invariant": "Archive extraction cannot escape workspace",
+      "owner_package": "R0.2",
+      "row_id": "R0-ARCHIVE-CONTAINMENT"
+    },
+    {
+      "canonical_ids": ["D2-DATA-002"],
+      "invariant": "Dataset release commitment binds semantics and exact files",
+      "owner_package": "R0.5",
+      "row_id": "R0-DATA-RELEASE-TRUST"
+    },
+    {
+      "canonical_ids": ["D2-X-001", "D2-AGT-011"],
+      "invariant": "Public mutation and expensive routes require auth/scope/quota",
+      "owner_package": "R0.3",
+      "row_id": "R0-AUTHORIZATION-LIMITS"
+    },
+    {
+      "canonical_ids": ["D2-X-001", "D2-ZKC-014"],
+      "invariant": "Analysis process has no raw signing key",
+      "owner_package": "R0.3",
+      "row_id": "R0-SIGNER-ISOLATION"
+    },
+    {
+      "canonical_ids": ["D2-ZKC-001", "D2-ZKC-002"],
+      "invariant": "Proof cannot support a cross-identity verified claim",
+      "owner_package": "R0.4",
+      "row_id": "R0-PROOF-IDENTITY"
+    },
+    {
+      "canonical_ids": ["D2-ZKC-003"],
+      "invariant": "Failed/reverted transaction cannot be reported submitted",
+      "owner_package": "R0.4",
+      "row_id": "R0-TRANSACTION-TRUTH"
+    }
+  ],
+  "schema_version": "1"
+}

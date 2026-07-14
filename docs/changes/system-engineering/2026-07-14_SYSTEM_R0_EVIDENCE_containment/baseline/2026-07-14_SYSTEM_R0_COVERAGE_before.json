@@ -1,0 +1,73 @@
+{
+  "complete": false,
+  "kind": "r0_coverage_report",
+  "malformed_records": [],
+  "rows": [
+    {
+      "complete": false,
+      "issues": [
+        "missing after record"
+      ],
+      "owner_package": "R0.1",
+      "row_id": "R0-EVIDENCE-OUTAGE"
+    },
+    {
+      "complete": false,
+      "issues": [
+        "missing after record"
+      ],
+      "owner_package": "R0.2",
+      "row_id": "R0-REPORT-CONTAINMENT"
+    },
+    {
+      "complete": false,
+      "issues": [
+        "missing after record"
+      ],
+      "owner_package": "R0.2",
+      "row_id": "R0-ARCHIVE-CONTAINMENT"
+    },
+    {
+      "complete": false,
+      "issues": [
+        "missing after record"
+      ],
+      "owner_package": "R0.5",
+      "row_id": "R0-DATA-RELEASE-TRUST"
+    },
+    {
+      "complete": false,
+      "issues": [
+        "missing after record"
+      ],
+      "owner_package": "R0.3",
+      "row_id": "R0-AUTHORIZATION-LIMITS"
+    },
+    {
+      "complete": false,
+      "issues": [
+        "missing after record"
+      ],
+      "owner_package": "R0.3",
+      "row_id": "R0-SIGNER-ISOLATION"
+    },
+    {
+      "complete": false,
+      "issues": [
+        "missing after record"
+      ],
+      "owner_package": "R0.4",
+      "row_id": "R0-PROOF-IDENTITY"
+    },
+    {
+      "complete": false,
+      "issues": [
+        "missing after record"
+      ],
+      "owner_package": "R0.4",
+      "row_id": "R0-TRANSACTION-TRUTH"
+    }
+  ],
+  "schema_version": "1",
+  "unknown_matrix_rows": []
+}
