@@ -1,0 +1,22 @@
+{
+  "assertions": [
+    {
+      "detail": "HTTP 401",
+      "name": "unauthenticated_mutation_rejected",
+      "passed": true
+    },
+    {
+      "detail": "WWW-Authenticate='Bearer'",
+      "name": "authentication_challenge_present",
+      "passed": true
+    }
+  ],
+  "candidate_commit": "78acffc84",
+  "invariant": "Public mutation and expensive routes require auth/scope/quota",
+  "invariant_passed": true,
+  "phase": "after",
+  "probe": "gateway-auth",
+  "row_id": "R0-AUTHORIZATION-LIMITS",
+  "schema_version": "1",
+  "status": "pass"
+}
