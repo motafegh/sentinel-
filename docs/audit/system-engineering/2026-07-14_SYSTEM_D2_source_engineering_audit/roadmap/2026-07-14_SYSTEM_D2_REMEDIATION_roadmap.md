@@ -1,7 +1,7 @@
 # SENTINEL D2 remediation roadmap
 
 **Input:** unified D2 registry and V3 target architecture
-**Status:** proposed; implementation requires Ali approval
+**Status:** approved for R0 implementation planning; each wave requires matrix and before/after evidence
 **Ordering rule:** compatibility-preserving stabilization before protocol redesign
 
 ## Roadmap contract
@@ -215,4 +215,4 @@ Permissionless admission is not part of pilot launch. It requires separate measu
 
 ## Implementation authorization boundary
 
-This roadmap is ready to become per-package engineering plans only after Ali approves D2. Approval starts R0 planning; it does not waive measurement, security review, migration rehearsal, or production deployment gates.
+Ali approved D2 on 2026-07-14 with the condition that every R0–R4 wave closes only through the acceptance matrix and measured before/after evidence. Approval starts R0 planning; it does not waive plan review, measurement, security review, migration rehearsal, or production deployment gates.

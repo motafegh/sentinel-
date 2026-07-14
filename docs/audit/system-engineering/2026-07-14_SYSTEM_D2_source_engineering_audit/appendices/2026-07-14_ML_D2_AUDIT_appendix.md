@@ -346,7 +346,7 @@ Required rollback unit is an immutable bundle—not an independent file set—co
 
 ## 9. Acceptance decision
 
-**ML track verdict: `REVIEW_REQUIRED / IMPLEMENTATION_BLOCKED`.**
+**ML track verdict: `AUDIT_APPROVED / RUNTIME_REMEDIATION_REQUIRED`.**
 
 The source audit appendix is integrated into the registry, but ML runtime acceptance remains blocked until:
 
@@ -354,6 +354,6 @@ The source audit appendix is integrated into the registry, but ML runtime accept
 - clean artifact/compiler acquisition exists and the full 217-test suite reruns without hidden skips/errors;
 - corrected preprocessing/model behavior is bound to a checkpoint/retraining and calibration decision;
 - clean container, GPU, performance, drift and teacher/proxy probes are captured; and
-- Ali reviews the integrated D2 package.
+- every ML remediation wave closes through the acceptance matrix and measured before/after evidence.
 
-Primary adjudication is complete; Ali's package review remains outstanding. No runtime fix was made during this track.
+Primary adjudication is complete, and Ali approved D2 for R0 planning on 2026-07-14. No runtime fix was made during this track.

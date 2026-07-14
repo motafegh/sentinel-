@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-07-14
 **Runtime baseline:** `4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493`
-**Track status:** `TRACK_REPRODUCED`; integrated into canonical registry, package remains `REVIEW_REQUIRED`
+**Track status:** `TRACK_REPRODUCED`; integrated and `APPROVED_FOR_R0_PLANNING`
 **Scope:** DATA, ML, ZKML, Contracts, AGENTS, services, persistence, deployment, and their interfaces
 **Mutation policy:** audit documentation only; no runtime, configuration, test, model, circuit, or chain artifact was changed
 
@@ -521,4 +521,4 @@ The AST import/environment scripts were executed inline and did not write reposi
 
 This appendix satisfies the cross-system source trace and has been integrated into the unified registry. The registry assigns canonical IDs, owners, duplicate targets, and evidence status; the verification ledger records P0/P1 adjudication and explicit scientific/performance blockers; the V3 target architecture fixes types, encodings, state machines, governance, migration, and required gas/storage test evidence.
 
-The appendix does **not** authorize implementation or claim production readiness. Ali's review is the remaining D2 governance gate before status can change from `REVIEW_REQUIRED`.
+The appendix does **not** claim production readiness. Ali approved D2 for R0 planning on 2026-07-14; runtime code remains gated by a reviewed R0 plan and the mandatory acceptance-matrix/before-after evidence condition.

@@ -3,7 +3,7 @@
 **Audit baseline:** `4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493`
 **Registry version:** 1
 **Audit mode:** documentation-only
-**Decision state:** `REVIEW_REQUIRED`
+**Decision state:** `APPROVED_FOR_R0_PLANNING`
 
 ## Registry contract
 

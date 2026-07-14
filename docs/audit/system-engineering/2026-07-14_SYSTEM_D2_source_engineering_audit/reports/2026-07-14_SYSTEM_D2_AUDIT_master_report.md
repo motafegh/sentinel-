@@ -3,7 +3,7 @@
 **Baseline:** `4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493`
 **Audit branch:** `codex/source-engineering-audit`
 **Audit mode:** documentation and isolated verification only
-**Decision:** `REVIEW_REQUIRED`
+**Decision:** `APPROVED_FOR_R0_PLANNING`
 **Runtime remediation:** not performed
 
 ## Executive answer
@@ -118,11 +118,11 @@ No behavioral redesign should skip R0/R1 and jump directly to contracts. Quorum 
 | End-to-end deterministic audit commitment | **No** |
 | Proof bound to target/model/audit | **No** |
 | Decentralized quorum/finality | **No** |
-| Architecture ready for phased implementation planning | **Yes, pending Ali review** |
+| Architecture ready for phased implementation planning | **Yes, approved for R0 planning** |
 
-## Required review decision
+## Review decision
 
-Ali should review and either approve, request changes, or reject:
+Ali approved the following D2 decisions on 2026-07-14:
 
 1. the 84-item normalized registry and severity assignments;
 2. the six P0 containment blockers;
@@ -130,4 +130,4 @@ Ali should review and either approve, request changes, or reject:
 4. the governed 5–9 operator pilot with `ceil(2N/3)` quorum;
 5. the five-wave remediation order and no-runtime-change D2 closure.
 
-Approval authorizes a new implementation plan/branch beginning with R0. It does not authorize deployment, policy-number changes, or a production-readiness claim.
+The approval condition is mandatory: every R0–R4 wave closes only through the acceptance matrix and measured before/after evidence. Approval authorizes a new implementation plan/branch beginning with R0. It does not authorize deployment, unplanned runtime changes, policy-number changes, or a production-readiness claim.

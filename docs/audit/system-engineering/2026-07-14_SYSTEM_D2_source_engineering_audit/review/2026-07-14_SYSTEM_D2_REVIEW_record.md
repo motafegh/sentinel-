@@ -1,9 +1,9 @@
 # SENTINEL D2 review record
 
 **Package baseline:** `4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493`
-**Package state:** ready for Ali review
-**Current decision:** `PENDING_ALI_REVIEW`
-**Runtime implementation authorized:** no
+**Package state:** reviewed and approved
+**Current decision:** `APPROVE_D2`
+**Runtime implementation authorized:** R0 implementation planning only; code requires an approved R0 plan
 
 ## What this review decides
 
@@ -37,23 +37,24 @@ Package handoff evidence: review package commit `8c5820a26`; 86/86 appendix IDs 
 
 ## Ali decision
 
-Select exactly one decision in conversation; the record will then be updated with the decision, date, and any conditions.
+Ali approved D2 in conversation on 2026-07-14 with an explicit evidence condition.
 
 - `APPROVE_D2`: accept the audit package and authorize R0 implementation planning.
 - `APPROVE_WITH_CHANGES`: list required corrections; D2 remains `REVIEW_REQUIRED` until incorporated and revalidated.
 - `REJECT_D2`: state which architecture, finding, severity, or roadmap decisions must be reconsidered.
 
-**Decision:** `PENDING_ALI_REVIEW`
-**Decision date:** pending
-**Conditions/changes:** none recorded
-**Approved implementation boundary:** none until decision
+**Decision:** `APPROVE_D2`
+**Decision date:** 2026-07-14
+**Conditions/changes:** Every R0–R4 wave closes only through the acceptance matrix and measured before/after evidence.
+**Approved implementation boundary:** create the R0 implementation plan and remediation branch/worktree; no runtime code until the R0 plan is reviewed and approved
 
 ## Post-approval actions
 
-If approved, the next session must:
+Approval requires the next implementation session to:
 
-1. update this record and project memory with the explicit decision;
-2. mark D2 audit status `APPROVED_FOR_R0_PLANNING`, not “production ready”;
-3. create an R0 implementation plan before code;
-4. create a new remediation branch/worktree from the locked baseline or approved integration commit;
-5. keep D2 audit artifacts immutable except for review/errata records.
+1. treat D2 status as `APPROVED_FOR_R0_PLANNING`, never “production ready”;
+2. create an R0 implementation plan before code;
+3. create a new remediation branch/worktree from the approved integration point;
+4. map every R0 task to acceptance-matrix evidence and a before/after baseline;
+5. keep D2 audit artifacts immutable except for review/errata records;
+6. refuse to close any R0–R4 wave without the matrix evidence and measured comparison required by Ali's condition.

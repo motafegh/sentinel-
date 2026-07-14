@@ -4,10 +4,10 @@
 **Locked executable baseline:** `4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493`
 **Audit worktree:** `/home/motafeq/projects/sentinel-d2-audit`
 **Track:** AGENTS orchestration, gateway, jobs, MCP, RAG/feedback, LLM isolation, persistence, concurrency, and observability
-**Disposition:** `REVIEW_REQUIRED`
+**Disposition:** `APPROVED_FOR_R0_PLANNING`; runtime findings remain open
 **Runtime changes:** none
 
-> **Post-integration status:** This appendix preserves track-local `candidate` and `track-reproduced` labels as handoff evidence. The canonical registry has since adjudicated every accepted P1, merged `D2-AGT-013` into `D2-ZKC-004`, and records the final evidence state. Only Ali's package review remains; runtime remediation is still unauthorized.
+> **Post-integration status:** This appendix preserves track-local `candidate` and `track-reproduced` labels as handoff evidence. The canonical registry has since adjudicated every accepted P1, merged `D2-AGT-013` into `D2-ZKC-004`, and records the final evidence state. Ali approved D2 for R0 planning; runtime code still requires a reviewed R0 plan.
 
 ## 1. Executive conclusion
 
@@ -496,4 +496,4 @@ The deterministic commitment must exclude LLM narrative and raw RAG ordering unl
 
 The AGENTS/services source track is integrated but is not implementation-authorizing evidence by itself. The primary audit subsequently adjudicated the candidate P1s, merged exact duplicates, reconciled all 21 rows into the unified registry, and recorded missing live-service, performance, GPU, proof, and multi-worker evidence as explicit blockers rather than skips.
 
-Ali's review remains outstanding, so status stays `REVIEW_REQUIRED`. No runtime fix is authorized by this appendix.
+Ali approved D2 on 2026-07-14 with mandatory acceptance-matrix and before/after evidence. This appendix authorizes R0 planning only; no runtime fix is authorized without that reviewed plan.

@@ -1,7 +1,7 @@
 # SENTINEL D2 source-engineering audit package
 
 **Baseline:** `4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493`
-**Status:** `REVIEW_REQUIRED`
+**Status:** `APPROVED_FOR_R0_PLANNING`
 **Runtime changes:** none
 
 ## Decision path
@@ -34,4 +34,4 @@ Appendix status labels preserve each track's handoff state. They are intentional
 - Every accepted P1 adjudicated; missing live/hardware/artifact measurements remain explicit blockers.
 - Current and decision-complete V3 architectures are documented.
 - R0–R4 remediation and requirement-level acceptance gates are documented.
-- Final closure requires Ali's explicit review decision.
+- Ali approved D2 on 2026-07-14 with the condition that every R0–R4 wave closes only through the acceptance matrix and measured before/after evidence.

@@ -1,6 +1,6 @@
 # SENTINEL V3 decision-complete target architecture
 
-**Architecture state:** proposed for Ali review
+**Architecture state:** approved direction for phased R0–R4 implementation planning
 **Pilot:** 5–9 governed, staked independent operators
 **Evolution:** governed admission first; permissionless admission only after measured safety gates
 **Consensus object:** canonical deterministic audit commitment

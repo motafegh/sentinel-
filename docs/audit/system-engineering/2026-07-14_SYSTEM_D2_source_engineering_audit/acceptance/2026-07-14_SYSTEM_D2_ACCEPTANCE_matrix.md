@@ -1,7 +1,7 @@
 # SENTINEL D2 acceptance matrix
 
 **Baseline:** `4b5bd333c`
-**Matrix state:** prepared for review
+**Matrix state:** approved and mandatory for R0–R4 closure
 **Meaning of `complete`:** evidence exists for the audit deliverable; it does not mean the runtime defect is remediated
 
 ## D2 audit-package acceptance
@@ -15,22 +15,22 @@
 | ZKML/contracts source audit | Complete | ZKML/contracts appendix, 18 IDs | None |
 | AGENTS/services source audit | Complete | AGENTS appendix, 21 IDs | None |
 | Cross-system architecture/threat audit | Complete | Cross-system appendix, 11 IDs and 429-file disposition | None |
-| Stable unified registry | Complete | 86 raw rows normalized to 84 unique; two tombstoned duplicates | Ali confirms severities/merges |
+| Stable unified registry | Complete | 86 raw rows normalized to 84 unique; two tombstoned duplicates | None |
 | P0 independent verification | Complete | Six unique P0s in verification ledger | Runtime remediation belongs to R0 |
-| P1 adjudication | Complete for audit | Every accepted P1 reproduced, source-confirmed, or explicitly measurement-blocked | Ali confirms acceptance dispositions |
+| P1 adjudication | Complete for audit | Every accepted P1 reproduced, source-confirmed, or explicitly measurement-blocked | None |
 | Baseline test evidence | Complete | Exact DATA/ML/AGENTS/ZKML/Foundry counts and failure classification | Rerun against remediated release later |
 | Fresh-clone evidence | Complete as blocker | Missing DATA/checkpoint/compiler/proving/Foundry/knowledge chain explicitly recorded | Implement R1 bootstrap/release |
 | Scientific evidence | Complete as blocker | Leakage/calibration/proxy/fusion limitations recorded | Measure after R1 |
 | Performance evidence | Complete as blocker | Available point observations separated from missing acceptance measurements | Measure in R4 |
 | Current executable architecture | Complete | Current architecture artifact | None |
-| Decision-complete V3 architecture | Complete | Target architecture fixes types, states, quorum, trust, governance, migration | Ali architecture decision |
-| Master audit report | Complete | Answer-first master report | Ali review |
-| Remediation roadmap | Complete | R0–R4 packages, gates, dependencies, rollback | Ali ordering decision |
+| Decision-complete V3 architecture | Complete | Target architecture fixes types, states, quorum, trust, governance, migration | Apply through approved wave plans |
+| Master audit report | Complete | Answer-first master report | None |
+| Remediation roadmap | Complete | R0–R4 packages, gates, dependencies, rollback | Enforce Ali's evidence condition |
 | Runtime acceptance matrix | Complete | This matrix, sections below | Apply during implementation |
-| Review record | Prepared | Review artifact with explicit decisions | Ali must approve/request changes/reject |
+| Review record | Complete | `APPROVE_D2`, dated 2026-07-14, with mandatory matrix and before/after evidence condition | None |
 | Internal package validation | Complete | 86/86 IDs matched; 84 unique after two merges; 13 links resolve; no placeholders/unbalanced fences; `git diff --check` passed | Preserve through commit |
 | Documentation commit | Complete | Review package commit `8c5820a26` on `codex/source-engineering-audit` | Preserve with review follow-up |
-| D2 final status | `REVIEW_REQUIRED` | Review is a human governance gate | Ali decision |
+| D2 final status | `APPROVED_FOR_R0_PLANNING` | Ali approved D2 with mandatory evidence condition | Create and review the R0 plan before code |
 
 ## Runtime remediation acceptance
 
@@ -107,4 +107,4 @@
 
 ## Decision rule
 
-Production readiness requires every R0–R3 invariant to be `PASS` and every applicable R4 evidence gate to meet a measured, versioned acceptance policy. `BLOCKED`, `SKIPPED`, `UNAVAILABLE`, historical-only, or local-untracked evidence cannot satisfy a gate.
+Production readiness requires every R0–R3 invariant to be `PASS` and every applicable R4 evidence gate to meet a measured, versioned acceptance policy. `BLOCKED`, `SKIPPED`, `UNAVAILABLE`, historical-only, or local-untracked evidence cannot satisfy a gate. Per Ali's approval condition, every wave also requires an explicit before/after comparison against its locked baseline; this matrix is the mandatory closure authority.
