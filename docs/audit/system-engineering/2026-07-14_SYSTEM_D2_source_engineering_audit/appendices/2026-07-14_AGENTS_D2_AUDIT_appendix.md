@@ -7,6 +7,8 @@
 **Disposition:** `REVIEW_REQUIRED`
 **Runtime changes:** none
 
+> **Post-integration status:** This appendix preserves track-local `candidate` and `track-reproduced` labels as handoff evidence. The canonical registry has since adjudicated every accepted P1, merged `D2-AGT-013` into `D2-ZKC-004`, and records the final evidence state. Only Ali's package review remains; runtime remediation is still unauthorized.
+
 ## 1. Executive conclusion
 
 The AGENTS module is a capable single-host research pipeline, but it is not yet a reliable production or decentralized-operator execution layer. The graph has explicit evidence records, dual verdicts, configurable routing, fail-soft nodes, persistent job records, and broad unit coverage. Those strengths are undermined at the interfaces between components: outage fallback can fabricate successful ML evidence; user-controlled report identifiers reach filesystem paths; production RAG scores and metadata do not match fusion assumptions; the gateway removes the fields required to audit degraded runs; graph and job recovery are disconnected; and several concurrent-state paths are unsafe or unbounded.
@@ -492,11 +494,6 @@ The deterministic commitment must exclude LLM narrative and raw RAG ordering unl
 
 ## 10. Final disposition
 
-The AGENTS/services source track is complete enough for registry integration, but it is not implementation-authorizing evidence by itself. The primary audit must:
+The AGENTS/services source track is integrated but is not implementation-authorizing evidence by itself. The primary audit subsequently adjudicated the candidate P1s, merged exact duplicates, reconciled all 21 rows into the unified registry, and recorded missing live-service, performance, GPU, proof, and multi-worker evidence as explicit blockers rather than skips.
 
-- Reproduce or adjudicate all candidate P1s.
-- Merge cross-system duplicates, especially proof semantics, shared proof workspace, and operator transaction management.
-- Reconcile the 21 appendix records with the unified findings registry.
-- Record missing live-service, performance, GPU, proof, and multi-worker evidence as explicit D2 blockers rather than skips.
-
-Until those actions and Ali's review are complete, status remains `REVIEW_REQUIRED`. No runtime fix is authorized by this appendix.
+Ali's review remains outstanding, so status stays `REVIEW_REQUIRED`. No runtime fix is authorized by this appendix.

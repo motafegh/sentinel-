@@ -5,7 +5,9 @@
 **Audit worktree HEAD:** `b8e577fcd` (baseline plus recovered documentation only)
 **Scope:** `ml/` production source, ML-facing `data_module` representation source, deployment manifests, tracked model evidence, and `ml/tests`
 **Mode:** audit only; no runtime, configuration, test, or model artifact was modified
-**Track status:** `track-reproduced`; all accepted P0/P1 items still require independent primary reproduction
+**Track status:** `track-reproduced`; integrated into the canonical registry and verification ledger
+
+> **Post-integration status:** Detailed `primary verification pending` labels below preserve the ML track's handoff state. The primary audit has since adjudicated all accepted P1s through independent source/probe reconciliation or an explicit prerequisite-measurement blocker. The registry and verification ledger are authoritative.
 
 ## 1. Executive result
 
@@ -346,12 +348,12 @@ Required rollback unit is an immutable bundle—not an independent file set—co
 
 **ML track verdict: `REVIEW_REQUIRED / IMPLEMENTATION_BLOCKED`.**
 
-The source audit appendix is complete enough for registry normalization, but ML acceptance is blocked until:
+The source audit appendix is integrated into the registry, but ML runtime acceptance remains blocked until:
 
-- primary audit independently reproduces all 15 P1s or records evidence-backed rejection/downgrade;
+- remediated behavior is verified against the accepted P1 dispositions in the registry;
 - clean artifact/compiler acquisition exists and the full 217-test suite reruns without hidden skips/errors;
 - corrected preprocessing/model behavior is bound to a checkpoint/retraining and calibration decision;
 - clean container, GPU, performance, drift and teacher/proxy probes are captured; and
 - Ali reviews the integrated D2 package.
 
-No runtime fix was made during this track.
+Primary adjudication is complete; Ali's package review remains outstanding. No runtime fix was made during this track.

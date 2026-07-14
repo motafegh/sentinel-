@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-07-14
 **Runtime baseline:** `4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493`
-**Track status:** `TRACK_REPRODUCED`; registry integration and primary reproduction remain required
+**Track status:** `TRACK_REPRODUCED`; integrated into canonical registry, package remains `REVIEW_REQUIRED`
 **Scope:** DATA, ML, ZKML, Contracts, AGENTS, services, persistence, deployment, and their interfaces
 **Mutation policy:** audit documentation only; no runtime, configuration, test, model, circuit, or chain artifact was changed
 
@@ -431,7 +431,7 @@ All IDs are provisional until the unified registry deduplicates track findings. 
 
 ### D2-X-009 — P0 — Mock/degraded state can propagate as successful deterministic evidence
 
-- **Classification/status:** correctness/trust; `merged-duplicate` pending canonical AGENTS ID.
+- **Classification/status:** correctness/trust; `merged-duplicate` into canonical `D2-AGT-001`.
 - **Sources:** `agents/src/mcp/servers/inference_server.py::_call_module1`; MCP health routes; `agents/src/api/gateway.py::_probe_services`; `agents/src/orchestration/nodes/ml_assessment.py::ml_assessment`.
 - **Invariant:** unavailable live evidence must never become a successful evidence item or healthy dependency.
 - **Evidence:** inference MCP falls back to mock on ML failure; its health remains HTTP 200/`ok`; gateway checks HTTP status, and downstream call success can set `tool_status.ml.ran=True`.
@@ -519,12 +519,6 @@ The AST import/environment scripts were executed inline and did not write reposi
 
 ## 14. Track acceptance state
 
-This appendix satisfies the cross-system source trace and produces provisional findings. It does **not** authorize implementation or claim D2 completion.
+This appendix satisfies the cross-system source trace and has been integrated into the unified registry. The registry assigns canonical IDs, owners, duplicate targets, and evidence status; the verification ledger records P0/P1 adjudication and explicit scientific/performance blockers; the V3 target architecture fixes types, encodings, state machines, governance, migration, and required gas/storage test evidence.
 
-Remaining gates:
-
-- unified registry must assign canonical IDs, owners, duplicate targets, and primary-verification status;
-- every accepted P0/P1 needs independent reproduction beyond source trace;
-- scientific/performance measurements blocked by missing artifacts must remain explicitly blocked;
-- V3 types, encodings, state machines, gas/storage analysis, and test vectors must be finalized in the target-architecture artifact; and
-- Ali's review is required before status can change from `REVIEW_REQUIRED`.
+The appendix does **not** authorize implementation or claim production readiness. Ali's review is the remaining D2 governance gate before status can change from `REVIEW_REQUIRED`.

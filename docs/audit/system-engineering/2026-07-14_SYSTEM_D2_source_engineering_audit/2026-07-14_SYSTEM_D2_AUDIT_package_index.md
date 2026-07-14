@@ -23,6 +23,8 @@
 
 Recovered byte-preserved source reports are retained in `raw/` and are not canonical finding registries.
 
+Appendix status labels preserve each track's handoff state. They are intentionally not rewritten row by row after integration. The unified registry and verification ledger are authoritative for post-integration disposition, duplicate handling, and primary adjudication.
+
 ## Package result
 
 - 86 raw appendix rows.
