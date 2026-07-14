@@ -1,12 +1,12 @@
 # SENTINEL R0 containment implementation plan
 
-**Status:** `READY_FOR_ALI_REVIEW`
+**Status:** `APPROVED_FOR_LOCAL_IMPLEMENTATION`
 
 **Plan baseline:** `1256d9aab45add9cf2d23fe33aaa944303259012`
 
 **Integration branch:** `codex/r0-containment`
 
-**Authorization:** D2 is approved for R0 planning. Runtime implementation remains blocked until Ali explicitly approves this plan.
+**Authorization:** Ali approved this R0 plan on 2026-07-14 with the existing mandatory acceptance-matrix and measured before/after evidence condition. Approval authorizes local implementation and isolated testing only; deployment and external mutations remain separately gated.
 
 **Mandatory closure condition:** R0 closes only through the approved D2 acceptance matrix and committed, measured before/after evidence.
 
@@ -321,3 +321,12 @@ After approval, execution order is:
 `R0.0 → R0.1 → R0.2 → R0.5 → R0.3 → R0.4 → R0.6`
 
 Implementation remains sequential unless Ali separately authorizes parallel agent work.
+
+## 10. Review record
+
+- Decision: `APPROVE_R0_PLAN`
+- Reviewer: Ali
+- Date: 2026-07-14
+- Approved scope: local implementation and isolated tests for R0.0 through R0.6
+- Mandatory condition retained: every package and the R0 wave close only through the approved acceptance matrix and committed, measured before/after evidence
+- Not authorized: deployment, live-chain writes, key movement, contract administration, artifact deletion, or model promotion
