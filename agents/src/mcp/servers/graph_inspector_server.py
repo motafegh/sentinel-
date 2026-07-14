@@ -537,7 +537,7 @@ app = Starlette(routes=[
 
 def run_server() -> None:
     logger.info("sentinel-graph-inspector MCP server starting on port {} (Phase 2)", _SERVER_PORT)
-    uvicorn.run(app, host="0.0.0.0", port=_SERVER_PORT, log_level="warning")
+    uvicorn.run(app, host="127.0.0.1", port=_SERVER_PORT, log_level="warning")
 
 
 if __name__ == "__main__":

@@ -93,9 +93,10 @@ _execution_status: dict[str, Any] = failure_status(
 # ---------------------------------------------------------------------------
 # V2 / submission configuration (P11, 2026-07)
 # ---------------------------------------------------------------------------
-# Operator private key — hex-encoded (no 0x prefix). Used to sign on-chain
-# submitAuditV2 transactions. Must have Sepolia ETH for gas + >= MIN_STAKE SNTL.
-_OPERATOR_KEY: str = os.getenv("SENTINEL_OPERATOR_KEY", "")
+# R0.3: Signing key has been removed from the analysis/MCP process.
+# The policy-signer service owns the key and constructs transactions.
+# _OPERATOR_KEY is no longer read here; submission is disabled by default.
+_OPERATOR_KEY: str = ""
 
 # ABI for AuditRegistry V2 (includes submitAuditV2, AuditResultV2 tuple).
 # Same contract address — UUPS, V1 and V2 coexist on the same proxy.

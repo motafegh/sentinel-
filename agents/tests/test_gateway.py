@@ -133,7 +133,7 @@ def _make_client(
     # We need to control audit_timeout_s per-request, but the gateway's
     # AuditRequest already takes it as a field. So we just leave it to
     # the request body.
-    app = create_app(store=s, graph_factory=lambda: g, skip_service_probes=True)
+    app = create_app(store=s, graph_factory=lambda: g, skip_service_probes=True, auth_enabled=False)
     return TestClient(app), s, g
 
 

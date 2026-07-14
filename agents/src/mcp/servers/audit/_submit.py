@@ -268,73 +268,16 @@ def _run_submit(
         result["provenance"] = None
         logger.warning(f"submit_audit: provenance manifest skipped — {exc}")
 
-    # ── Step 4: submit on-chain ───────────────────────────────────────
-    if not _OPERATOR_KEY:
-        result["status"] = "partial"
-        result["failed_step"] = "transaction"
-        result["reason"] = "SENTINEL_OPERATOR_KEY not set — proof generated but not submitted"
-        return result
-
-    if _w3 is None or _REGISTRY_ADDRESS is None:
-        result["status"] = "partial"
-        result["failed_step"] = "transaction"
-        result["reason"] = "Web3 not initialised or registry address not configured"
-        return result
-
-    try:
-        account = _w3.eth.account.from_key(_OPERATOR_KEY)
-        operator_address = account.address
-
-        registry = _w3.eth.contract(
-            address=_REGISTRY_ADDRESS,
-            abi=_ABI_V2,
-        )
-
-        # Build classScores as Soldity uint256[10] array
-        class_score_felts = result["class_score_felts"]
-
-        tx = registry.functions.submitAuditV2(
-            contract_address,
-            class_score_felts,
-            (
-                bytes.fromhex(hex_proof[2:])
-                if hex_proof.startswith("0x")
-                else bytes.fromhex(hex_proof)
-            ),
-            all_public_signals,
-            bytes.fromhex(model_hash) if len(model_hash) == 64 else bytes(32),
-        ).build_transaction(
-            {
-                "from": operator_address,
-                "nonce": _w3.eth.get_transaction_count(operator_address),
-                "gas": 1_000_000,
-                "gasPrice": _w3.eth.gas_price,
-            }
-        )
-
-        signed = account.sign_transaction(tx)
-        tx_hash = _w3.eth.send_raw_transaction(signed.raw_transaction)
-
-        # Wait for confirmations
-        receipt = _w3.eth.wait_for_transaction_receipt(
-            tx_hash,
-            timeout=120,
-            poll_latency=2.0,
-        )
-
-        result["status"] = "submitted"
-        result["tx_hash"] = "0x" + tx_hash.hex()
-
-        logger.info(
-            f"submit_audit OK — tx: {result['tx_hash'][:18]}... "
-            f"block: {receipt.get('blockNumber', '?')}"
-        )
-    except Exception as exc:
-        result["status"] = "partial" if result["proof_hash"] else "failed"
-        result["failed_step"] = "transaction"
-        result["reason"] = f"Transaction failed: {type(exc).__name__}: {str(exc)[:300]}"
-        logger.error(f"submit_audit [{result['failed_step']}]: {result['reason']}")
-
+    # ── Step 4: submit on-chain (R0.3: disabled — signer isolation) ─────
+    # The raw operator key has been removed from the MCP/analysis process.
+    # On-chain submission is owned by the standalone policy-signer service.
+    # The proof and provenance manifest are preserved for the signer to consume.
+    result["status"] = "partial"
+    result["failed_step"] = "transaction"
+    result["reason"] = (
+        "On-chain submission is disabled (R0.3 signer isolation). "
+        "The proof and provenance manifest are available for the policy-signer service."
+    )
     return result
 
 
@@ -369,18 +312,15 @@ def build_provenance_manifest(
 
     try:
         from eth_account.messages import encode_defunct
-        from web3.auto import w3
 
-        from ._config import _OPERATOR_KEY
-
-        if _OPERATOR_KEY:
-            message = encode_defunct(text=json.dumps(manifest, sort_keys=True))
-            signed = w3.eth.account.sign_message(message, private_key=_OPERATOR_KEY)
-            manifest["signature"] = "0x" + signed.signature.hex()
-        else:
-            manifest["signature"] = None
+        manifest["signature"] = None
+        manifest["signature_reason"] = (
+            "R0.3: signing key removed from MCP process; "
+            "policy-signer service owns the signature."
+        )
     except ImportError:
         manifest["signature"] = None
+        manifest["signature_reason"] = "eth_account not installed"
         logger.warning("provenance: eth_account not installed — signature omitted")
 
     return manifest

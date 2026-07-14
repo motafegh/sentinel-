@@ -440,7 +440,7 @@ def run_server() -> None:
         _SERVER_PORT,
         _MOCK_MODE,
     )
-    uvicorn.run(starlette_app, host="0.0.0.0", port=_SERVER_PORT)
+    uvicorn.run(starlette_app, host="127.0.0.1", port=_SERVER_PORT)
 
 
 if __name__ == "__main__":

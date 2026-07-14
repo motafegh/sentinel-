@@ -113,4 +113,4 @@ def run_server() -> None:
         _as._MOCK_MODE,
         _as._REGISTRY_ADDRESS,
     )
-    uvicorn.run(starlette_app, host="0.0.0.0", port=_as._SERVER_PORT)
+    uvicorn.run(starlette_app, host="127.0.0.1", port=_as._SERVER_PORT)

@@ -138,34 +138,10 @@ async def list_tools() -> list[Tool]:
                 "required": ["contract_address"],
             },
         ),
-        Tool(
-            name="submit_audit",
-            description=(
-                "Submit the current audit result on-chain via AuditRegistry.submitAuditV2. "
-                "Generates a ZK proof from the contract's source code and ML fusion embedding, "
-                "then sends the signed transaction to Sepolia. Requires SENTINEL_OPERATOR_KEY "
-                "env var to be set with a funded, staked operator account. "
-                "Returns {status, tx_hash, class_scores, proof_hash, model_hash}."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "source_code": {
-                        "type": "string",
-                        "description": "Raw Solidity source code of the audited contract.",
-                    },
-                    "contract_address": {
-                        "type": "string",
-                        "description": "0x-prefixed on-chain address of the deployed contract.",
-                    },
-                    "model_hash": {
-                        "type": "string",
-                        "description": "SHA-256 of the teacher checkpoint (64 hex chars).",
-                    },
-                },
-                "required": ["source_code", "contract_address", "model_hash"],
-            },
-        ),
+        # R0.3: submit_audit is no longer advertised as an MCP tool.
+        # On-chain submission is owned by the standalone policy-signer service.
+        # The internal handler remains for backward compatibility but is not
+        # exposed to MCP clients.
     ]
 
 

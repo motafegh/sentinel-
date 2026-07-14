@@ -73,7 +73,7 @@ sys.path.insert(0, str(_AGENTS_DIR))
 # FastAPI imports (kept after dotenv so a missing FastAPI install doesn't
 # break agents module import paths).
 try:
-    from fastapi import FastAPI, HTTPException, Query
+    from fastapi import Depends, FastAPI, HTTPException, Query
     from fastapi.responses import JSONResponse
 
     HAVE_FASTAPI = True
@@ -85,7 +85,7 @@ from src.api.models import AuditRequest, ErrorResponse, HealthResponse, JobRespo
 
 # ── Module-level constants (configurable via env) ───────────────────────
 GATEWAY_VERSION = "0.1.0"
-GATEWAY_DEFAULT_HOST = os.getenv("GATEWAY_HOST", "0.0.0.0")
+GATEWAY_DEFAULT_HOST = os.getenv("GATEWAY_HOST", "127.0.0.1")
 GATEWAY_DEFAULT_PORT = int(os.getenv("GATEWAY_PORT", "8000"))
 AUDIT_NO_LLM_DEFAULT = os.getenv("AUDIT_NO_LLM", "false").lower() in ("1", "true", "yes")
 
@@ -97,6 +97,7 @@ def create_app(
     graph_factory: Any | None = None,
     no_llm: bool | None = None,
     skip_service_probes: bool = False,
+    auth_enabled: bool = True,
 ) -> Any:
     """Build and return a FastAPI app.
 
@@ -210,6 +211,10 @@ def create_app(
     app.state.no_llm = no_llm
     app.state.skip_service_probes = skip_service_probes
 
+    # R0.3: Bearer token auth on mutating routes.
+    from src.security.auth import BearerAuth
+    bearer_auth = BearerAuth(enabled=auth_enabled)
+
     # ── Routes ────────────────────────────────────────────────────────
     @app.get("/", response_model=None)
     async def root():
@@ -250,12 +255,14 @@ def create_app(
         response_model=JobResponse,
         status_code=202,
         responses={
+            401: {"description": "Authentication required"},
             422: {"model": ErrorResponse, "description": "Validation error"},
             503: {"model": ErrorResponse, "description": "All graph slots busy"},
         },
     )
     async def submit_audit(
         req: AuditRequest,
+        _auth: dict[str, Any] = Depends(bearer_auth),
         no_llm: bool = Query(
             default=False,
             description="If true, skip LLM calls (cross_validator debate, "
