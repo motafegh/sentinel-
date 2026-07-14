@@ -15,7 +15,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from sentinel_data.export.chunker import ExportManifest, _hash_export_data, _write_hash_cache, _HASH_EXCLUDED
+from sentinel_data.export.chunker import ExportManifest, _FILES_NOT_HASHED, _hash_export_data, _write_hash_cache
 
 
 class SentinelDatasetExport:
@@ -62,18 +62,23 @@ class SentinelDatasetExport:
 
     # ── verification ───────────────────────────────────────────────────────
 
-    def verify_artifact_hash(self) -> bool:
-        """Compare artifact hash to manifest.artifact_hash.
+    def verify_artifact_hash(self) -> dict[str, any]:
+        """Compare artifact hash to manifest.artifact_hash with structured result.
 
         Warm path (cache hit): stats each data file, compares mtime+size to
-        .hash_cache.json. If all match, trusts the cached hash — no disk reads
-        of shard data. Returns in milliseconds.
+        .hash_cache.json. Checks bidirectional file-set equality (both
+        cache→disk and disk→cache) so deleted or added shards are detected.
+        Returns in milliseconds.
 
         Cold path (cache miss or stale): falls back to full SHA-256 over all
         data files, then writes a fresh .hash_cache.json for the next call.
 
-        Returns True if hashes match; False if any data file was tampered with.
-        Manifest.json and .hash_cache.json are excluded from the hash (Fix A).
+        Returns a structured dict:
+            verified: bool — True if hashes match and file set is complete
+            reason: str — "ok" or a failure reason
+            files_checked: int — number of files verified
+            files_missing: list — files in cache but not on disk
+            files_extra: list — files on disk but not in cache
         """
         cache_path = self.export_dir / ".hash_cache.json"
         if cache_path.exists():
@@ -81,9 +86,27 @@ class SentinelDatasetExport:
                 cache = json.loads(cache_path.read_text())
                 cached_hash = cache.get("artifact_hash", "")
                 cached_files: dict = cache.get("files", {})
+
+                on_disk_files: set[str] = set()
+                for p in self.export_dir.rglob("*"):
+                    if p.is_file() and p.name not in _FILES_NOT_HASHED:
+                        on_disk_files.add(str(p.relative_to(self.export_dir)))
+
+                set_cached = set(cached_files)
+                missing = sorted(set_cached - on_disk_files)
+                extra = sorted(on_disk_files - set_cached)
+                if missing or extra:
+                    return {
+                        "verified": False,
+                        "reason": "file_set_mismatch",
+                        "files_checked": len(on_disk_files),
+                        "files_missing": missing,
+                        "files_extra": extra,
+                    }
+
                 all_match = True
                 for p in self.export_dir.rglob("*"):
-                    if not p.is_file() or p.name in _HASH_EXCLUDED:
+                    if not p.is_file() or p.name in _FILES_NOT_HASHED:
                         continue
                     rel = str(p.relative_to(self.export_dir))
                     entry = cached_files.get(rel)
@@ -94,14 +117,29 @@ class SentinelDatasetExport:
                     if stat.st_mtime != entry["mtime"] or stat.st_size != entry["size"]:
                         all_match = False
                         break
+
                 if all_match and cached_hash:
-                    return cached_hash == self.manifest.artifact_hash
+                    hash_ok = cached_hash == self.manifest.artifact_hash
+                    return {
+                        "verified": hash_ok,
+                        "reason": "ok" if hash_ok else "hash_mismatch",
+                        "files_checked": len(on_disk_files),
+                        "files_missing": [],
+                        "files_extra": [],
+                    }
             except Exception:
                 pass  # corrupt cache — fall through to full recompute
 
         actual = _hash_export_data(self.export_dir)
         _write_hash_cache(self.export_dir, actual)
-        return actual == self.manifest.artifact_hash
+        hash_ok = actual == self.manifest.artifact_hash
+        return {
+            "verified": hash_ok,
+            "reason": "ok" if hash_ok else "hash_mismatch",
+            "files_checked": len(list(self.export_dir.rglob("*"))),
+            "files_missing": [],
+            "files_extra": [],
+        }
 
     # ── split helpers ──────────────────────────────────────────────────────
 

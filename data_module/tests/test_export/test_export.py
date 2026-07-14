@@ -71,7 +71,8 @@ def test_sentinel_dataset_export_loads(tmp_path):
 def test_sentinel_dataset_export_verify_hash_true(tmp_path):
     out_dir = _build_export(tmp_path)
     export = SentinelDatasetExport(out_dir)
-    assert export.verify_artifact_hash() is True
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
 
 
 def test_sentinel_dataset_export_verify_hash_false_on_tamper(tmp_path):
@@ -80,14 +81,16 @@ def test_sentinel_dataset_export_verify_hash_false_on_tamper(tmp_path):
     labels_path = out_dir / "labels.parquet"
     labels_path.write_bytes(labels_path.read_bytes() + b"\xff")
     export = SentinelDatasetExport(out_dir)
-    assert export.verify_artifact_hash() is False
+    result = export.verify_artifact_hash()
+    assert result["verified"] is False
 
 
 def test_sentinel_dataset_export_manifest_tamper_does_not_affect_hash(tmp_path):
     """Fix A: modifying manifest.json must not break verify_artifact_hash."""
     out_dir = _build_export(tmp_path)
     export = SentinelDatasetExport(out_dir)
-    assert export.verify_artifact_hash() is True
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
 
     # Tamper manifest
     raw = json.loads((out_dir / "manifest.json").read_text())
@@ -96,7 +99,46 @@ def test_sentinel_dataset_export_manifest_tamper_does_not_affect_hash(tmp_path):
 
     # reload — still verifies OK because manifest is excluded from hash
     export2 = SentinelDatasetExport(out_dir)
-    assert export2.verify_artifact_hash() is True
+    result2 = export2.verify_artifact_hash()
+    assert result2["verified"] is True
+
+
+def test_sentinel_dataset_export_verify_detects_deleted_shard(tmp_path):
+    """R0.5: warm-cache must detect deleted shards (bidirectional file-set check)."""
+    out_dir = _build_export(tmp_path)
+    export = SentinelDatasetExport(out_dir)
+    # First call writes the cache
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
+
+    # Delete a shard file
+    shards = list((out_dir / "graphs").glob("*.pt"))
+    assert len(shards) > 0
+    shards[0].unlink()
+
+    # Warm path should detect the missing file
+    export2 = SentinelDatasetExport(out_dir)
+    result2 = export2.verify_artifact_hash()
+    assert result2["verified"] is False
+    assert result2["reason"] == "file_set_mismatch"
+    assert len(result2["files_missing"]) > 0
+
+
+def test_sentinel_dataset_export_verify_detects_extra_file(tmp_path):
+    """R0.5: warm-cache must detect extra files not in the cache."""
+    out_dir = _build_export(tmp_path)
+    export = SentinelDatasetExport(out_dir)
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
+
+    # Add an unexpected file
+    (out_dir / "graphs" / "evil_injected.pt").write_bytes(b"evil")
+
+    export2 = SentinelDatasetExport(out_dir)
+    result2 = export2.verify_artifact_hash()
+    assert result2["verified"] is False
+    assert result2["reason"] == "file_set_mismatch"
+    assert len(result2["files_extra"]) > 0
 
 
 def test_sentinel_dataset_export_get_split_ids(tmp_path):

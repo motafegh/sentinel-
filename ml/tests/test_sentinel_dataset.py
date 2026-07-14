@@ -101,8 +101,9 @@ class TestSentinelDatasetGates:
         from ml.src.datasets.sentinel_dataset import SentinelDataset
         from sentinel_data.export.export import SentinelDatasetExport
         # Mock verify_artifact_hash to simulate tampering without touching files
-        with patch.object(SentinelDatasetExport, "verify_artifact_hash", return_value=False):
-            with pytest.raises(ValueError, match="artifact hash mismatch"):
+        mock_result = {"verified": False, "reason": "hash_mismatch", "files_checked": 0, "files_missing": [], "files_extra": []}
+        with patch.object(SentinelDatasetExport, "verify_artifact_hash", return_value=mock_result):
+            with pytest.raises(ValueError, match="verification failed"):
                 SentinelDataset("train", EXPORT_DIR)
 
 

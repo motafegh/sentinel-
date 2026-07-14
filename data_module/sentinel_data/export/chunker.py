@@ -59,17 +59,18 @@ class ExportManifest:
     created_at: str
 
 
-_HASH_EXCLUDED = {"manifest.json", ".hash_cache.json"}
+_FILES_NOT_HASHED = {"manifest.json", ".hash_cache.json"}
 
 
 def _hash_export_data(export_dir: Path) -> str:
-    """SHA-256 over the 4 data file types (excludes manifest.json and .hash_cache.json).
+    """SHA-256 over the 4 data file types plus manifest.json.
 
     File order is sorted by relative path for determinism.
+    .hash_cache.json is excluded (it is a cache of this hash).
     """
     candidate_files = sorted(
         p for p in export_dir.rglob("*")
-        if p.is_file() and p.name not in _HASH_EXCLUDED
+        if p.is_file() and p.name not in _FILES_NOT_HASHED
     )
     h = hashlib.sha256()
     for p in candidate_files:
@@ -83,7 +84,7 @@ def _write_hash_cache(export_dir: Path, artifact_hash: str) -> None:
     """Write .hash_cache.json: artifact_hash + per-file mtime+size for fast warm-load checks."""
     files: dict[str, dict] = {}
     for p in export_dir.rglob("*"):
-        if p.is_file() and p.name not in _HASH_EXCLUDED:
+        if p.is_file() and p.name not in _FILES_NOT_HASHED:
             stat = p.stat()
             files[str(p.relative_to(export_dir))] = {
                 "mtime": stat.st_mtime,
