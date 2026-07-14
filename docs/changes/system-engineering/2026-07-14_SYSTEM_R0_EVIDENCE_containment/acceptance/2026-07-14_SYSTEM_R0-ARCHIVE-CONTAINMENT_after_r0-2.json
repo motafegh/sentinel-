@@ -1,0 +1,22 @@
+{
+  "assertions": [
+    {
+      "detail": "exception='ConnectorError'",
+      "name": "traversal_rejected",
+      "passed": true
+    },
+    {
+      "detail": "escaped=False",
+      "name": "no_outside_write",
+      "passed": true
+    }
+  ],
+  "candidate_commit": "b102559e36480a5dcd676487292deeca84c9a52b",
+  "invariant": "Archive extraction cannot escape workspace",
+  "invariant_passed": true,
+  "phase": "after",
+  "probe": "zip-containment",
+  "row_id": "R0-ARCHIVE-CONTAINMENT",
+  "schema_version": "1",
+  "status": "pass"
+}

@@ -1,0 +1,86 @@
+{
+  "acceptance_rows": [
+    {
+      "evidence": {
+        "after": "synthesizer.py no longer contains 'REPORTS_DIR / f\"{contract_address}.json\"'. Reports are persisted to data/reports/{job_id}/report.json via the persistence package with UUID-validated job-scoped paths and atomic writes.",
+        "before": "synthesizer.py:489 contained 'REPORTS_DIR / f\"{contract_address}.json\"' — address used directly as filename, enabling path escape with malformed addresses.",
+        "measurement": "After-evidence probe 'report-path' returns invariant_passed=true with unsafe_expression=False. 24 persistence path/writer/adapter tests pass."
+      },
+      "row_id": "R0.2-REPORT-PATH-CONTAINED",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "manual_connector._extract_zip delegates to archive_safety.extract_zip_safe which uses Path.is_relative_to containment, rejects symlinks/special files/absolute paths/NUL/control chars, enforces size/count/ratio/depth limits, and extracts atomically.",
+        "before": "manual_connector._extract_zip used str.startswith for containment — '../repo_evil/pwned.txt' escaped because 'repo_evil' starts with 'repo'.",
+        "measurement": "After-evidence probe 'zip-containment' returns invariant_passed=true with exception='ConnectorError' and escaped=False. 17 archive safety tests pass."
+      },
+      "row_id": "R0.2-ARCHIVE-PATH-CONTAINED",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "synthesizer persistence failure now surfaces as state['tool_status']['report_persistence'] = {ran, reason, detail} instead of a log-only warning. Visualizer persistence follows the same pattern.",
+        "before": "synthesizer.py:492-493 caught Exception with logger.warning only — a missing report file was indistinguishable from 'ran clean' downstream.",
+        "measurement": "test_visualizer.py::test_node_persistence_status_surfaces asserts tool_status.report_persistence.ran is True. test_persistence_report_writer.py asserts structured skip on missing/invalid job_id."
+      },
+      "row_id": "R0.2-RULE5C-PERSISTENCE-STATUS",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "New reports use data/reports/{job_id}/ directory layout. Old address-keyed reports remain readable through legacy_adapter.find_legacy_report for the feedback loop bridge.",
+        "before": "All reports used data/reports/{contract_address}.json — concurrent audits of the same address collided.",
+        "measurement": "test_persistence_report_writer.py::test_concurrent_same_address_different_jobs verifies two jobs for the same address get separate directories."
+      },
+      "row_id": "R0.2-JOB-SCOPED-ISOLATION",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "The canonical AGENTS suite at candidate b102559e produced 704 passes and 9 failures out of 713.",
+        "before": "The R0.1 baseline produced 665 passes and 9 failures out of 674.",
+        "measurement": "Newly introduced failure count is zero. The retained set is six absent RAG seed-corpus assertions plus three unavailable-solc assertions. 39 new tests were added (47 focused R0.2 - 8 existing visualizer)."
+      },
+      "row_id": "R0.2-REGRESSION-DELTA",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Python compileall for AGENTS and DATA, git diff --check, and focused R0.2 suite all pass.",
+        "before": "The R0.2 modules and tests did not exist.",
+        "measurement": "Available quality-gate classes pass; flake8/black unavailable in venv (consistent with R0.0/R0.1 — recorded as toolchain-unavailable, not silently claimed as passing)."
+      },
+      "row_id": "R0.2-QUALITY-GATES",
+      "status": "PASS"
+    }
+  ],
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "b102559e36480a5dcd676487292deeca84c9a52b",
+  "global_r0_coverage_complete": false,
+  "global_r0_rows_closed": 3,
+  "global_r0_rows_total": 8,
+  "kind": "r0_package_acceptance_ledger",
+  "limitations": [
+    {
+      "classification": "PRE_EXISTING_CHECKOUT_PREREQUISITE",
+      "detail": "Five source corpora and the canonical SWC corpus are absent; six RAG fetcher assertions fail identically outside the R0.2 surface."
+    },
+    {
+      "classification": "PRE_EXISTING_TOOLCHAIN_PREREQUISITE",
+      "detail": "solc is absent from PATH; two real-Slither assertions and one dependent smoke assertion fail identically outside the R0.2 surface."
+    },
+    {
+      "classification": "POLICY_CHECKPOINT_PENDING",
+      "detail": "Archive extraction limits are Level 0 prototype defaults (generous). Production limit proposal requires measuring existing archive characteristics and Ali's approval before enforcement."
+    }
+  ],
+  "package": "R0.2",
+  "review": {
+    "decided_at": "2026-07-14T18:00:00Z",
+    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "status": "ACCEPTED"
+}
