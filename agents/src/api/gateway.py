@@ -57,14 +57,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
-from pydantic import ValidationError
-
 # ── CRITICAL: load .env BEFORE any agents module is imported ────────────
 # client.py reads LM_STUDIO_BASE_URL etc. at IMPORT time. We must populate
 # them from .env first. We deliberately do this BEFORE importing FastAPI
 # so the import side effects of the agents module see the right URLs.
 from dotenv import load_dotenv
+from loguru import logger
+from pydantic import ValidationError
+
 _AGENTS_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(_AGENTS_DIR / ".env", override=True)
 sys.path.insert(0, str(_AGENTS_DIR))
@@ -75,19 +75,13 @@ sys.path.insert(0, str(_AGENTS_DIR))
 try:
     from fastapi import FastAPI, HTTPException, Query
     from fastapi.responses import JSONResponse
+
     HAVE_FASTAPI = True
 except ImportError:  # pragma: no cover
     HAVE_FASTAPI = False
 
 from src.api.job_store import JobRecord, JobStatus, JobStore
-from src.api.models import (
-    AuditRequest,
-    ErrorResponse,
-    HealthResponse,
-    JobResponse,
-    ServiceHealth,
-)
-
+from src.api.models import AuditRequest, ErrorResponse, HealthResponse, JobResponse, ServiceHealth
 
 # ── Module-level constants (configurable via env) ───────────────────────
 GATEWAY_VERSION = "0.1.0"
@@ -134,14 +128,18 @@ def create_app(
 
     # Resolve the graph factory.
     if graph_factory is None:
+
         def _default_graph_factory():
             from src.orchestration.graph import build_graph
+
             return build_graph(use_checkpointer=False)
+
         graph_factory = _default_graph_factory
 
     # One JobStore per app instance — SQLite by default (P10), in-memory for tests.
     if store is None:
         from src.api.sqlite_job_store import SqliteJobStore
+
         _db_path = os.getenv("SENTINEL_JOBS_DB", "data/jobs.db")
         store = SqliteJobStore(db_path=_db_path, max_completed=500)
 
@@ -171,6 +169,7 @@ def create_app(
         # P10: Background health monitor — probe every 30s.
         _health_task: asyncio.Task | None = None
         if not skip_service_probes:
+
             async def _health_loop():
                 while True:
                     await asyncio.sleep(30)
@@ -179,8 +178,11 @@ def create_app(
                         app.state.services = services
                         down = [s for s in services if not s.ok]
                         if down:
-                            logger.warning("Health check: {} service(s) down: {}",
-                                          len(down), [s.name for s in down])
+                            logger.warning(
+                                "Health check: {} service(s) down: {}",
+                                len(down),
+                                [s.name for s in down],
+                            )
                     except Exception as e:
                         logger.debug(f"Health loop error: {e}")
 
@@ -257,7 +259,7 @@ def create_app(
         no_llm: bool = Query(
             default=False,
             description="If true, skip LLM calls (cross_validator debate, "
-                        "synthesizer narrative). Faster, lower verdict quality.",
+            "synthesizer narrative). Faster, lower verdict quality.",
         ),
     ):
         # Generate a deterministic address from the contract code if the
@@ -346,8 +348,10 @@ async def _run_job(
 
     store.mark_running(job_id)
     t0 = time.time()
-    logger.info(f"job running | id={job_id} | addr={record.contract_address} | "
-                f"timeout={audit_timeout_s:.0f}s")
+    logger.info(
+        f"job running | id={job_id} | addr={record.contract_address} | "
+        f"timeout={audit_timeout_s:.0f}s"
+    )
 
     try:
         # Build the graph INSIDE the task so the compile cost only hits
@@ -394,6 +398,8 @@ async def _run_job(
         "confirmations": result.get("confirmations", {}),
         "contradictions": result.get("contradictions", {}),
         "narrative": result.get("narrative"),
+        "tool_status": result.get("tool_status", final_report.get("tool_status", {})),
+        "finality": result.get("finality", final_report.get("finality", {})),
         "error": result.get("error"),
     }
     store.mark_completed(job_id, report)
@@ -406,12 +412,15 @@ async def _run_job(
 def _probe_urls() -> list[tuple[str, str]]:
     """Return (name, url) for every upstream service we want to probe."""
     return [
-        ("ml_api",        os.getenv("MODULE1_INFERENCE_URL", "http://localhost:8001") + "/health"),
+        ("ml_api", os.getenv("MODULE1_INFERENCE_URL", "http://localhost:8001") + "/health"),
         ("mcp_inference", f"http://localhost:{os.getenv('MCP_INFERENCE_PORT', '8010')}/health"),
-        ("mcp_rag",       f"http://localhost:{os.getenv('MCP_RAG_PORT', '8011')}/health"),
-        ("mcp_audit",     f"http://localhost:{os.getenv('MCP_AUDIT_PORT', '8012')}/health"),
-        ("mcp_graph",     f"http://localhost:{os.getenv('MCP_GRAPH_INSPECTOR_PORT', '8013')}/health"),
-        ("mcp_representation", f"http://localhost:{os.getenv('MCP_REPRESENTATION_PORT', '8014')}/health"),
+        ("mcp_rag", f"http://localhost:{os.getenv('MCP_RAG_PORT', '8011')}/health"),
+        ("mcp_audit", f"http://localhost:{os.getenv('MCP_AUDIT_PORT', '8012')}/health"),
+        ("mcp_graph", f"http://localhost:{os.getenv('MCP_GRAPH_INSPECTOR_PORT', '8013')}/health"),
+        (
+            "mcp_representation",
+            f"http://localhost:{os.getenv('MCP_REPRESENTATION_PORT', '8014')}/health",
+        ),
     ]
 
 
@@ -424,20 +433,47 @@ async def _probe_services(timeout: float = 1.5) -> list[ServiceHealth]:
     every service is down.
     """
     import httpx
+
     results: list[ServiceHealth] = []
     async with httpx.AsyncClient(timeout=timeout) as client:
         for name, url in _probe_urls():
             try:
                 resp = await client.get(url)
-                results.append(ServiceHealth(
-                    name=name, url=url, ok=resp.status_code < 500,
-                    detail=f"HTTP {resp.status_code}",
-                ))
+                try:
+                    payload = resp.json()
+                except (TypeError, ValueError):
+                    payload = {}
+                raw_state = str(
+                    payload.get("state", payload.get("availability", payload.get("status", "")))
+                ).lower()
+                if raw_state in {"ok", "healthy", "ready"}:
+                    state = "live"
+                elif raw_state in {"live", "degraded", "mock", "unavailable"}:
+                    state = raw_state
+                else:
+                    state = "live" if 200 <= resp.status_code < 300 else "unavailable"
+                ready = payload.get("ready")
+                ok = 200 <= resp.status_code < 300 and ready is not False and state == "live"
+                results.append(
+                    ServiceHealth(
+                        name=name,
+                        url=url,
+                        ok=ok,
+                        state=state,
+                        detail=f"HTTP {resp.status_code}; state={state}; ready={ready}",
+                    )
+                )
             except Exception as e:
                 short = str(e).splitlines()[0][:120] if str(e) else "unreachable"
-                results.append(ServiceHealth(
-                    name=name, url=url, ok=False, detail=f"UNREACHABLE: {short}",
-                ))
+                results.append(
+                    ServiceHealth(
+                        name=name,
+                        url=url,
+                        ok=False,
+                        state="unavailable",
+                        detail=f"UNREACHABLE: {short}",
+                    )
+                )
     return results
 
 
@@ -461,12 +497,12 @@ def _patch_no_llm() -> None:
     llm_client.get_strong_llm = _stub_strong_llm
     import src.orchestration.graph as graph_mod
     import src.orchestration.nodes as nodes_mod
+
     for mod in (graph_mod, nodes_mod):
         if hasattr(mod, "get_strong_llm"):
             mod.get_strong_llm = _stub_strong_llm
     logger.warning(
-        "--no-llm MODE: cross_validator → rule-based verdicts; "
-        "synthesizer narrative → None"
+        "--no-llm MODE: cross_validator → rule-based verdicts; " "synthesizer narrative → None"
     )
 
 
@@ -490,11 +526,26 @@ def _shrink_ml_result(ml_result: dict | None) -> dict:
     """
     if not ml_result:
         return {}
+    if "execution_status" in ml_result:
+        # A provenance-bound payload must remain semantically complete;
+        # dropping fields would make its output digest unverifiable by eval.
+        return dict(ml_result)
     keep_keys = {
-        "label", "probabilities", "confirmed", "suspicious",
-        "vulnerabilities", "tier_thresholds", "thresholds",
-        "truncated", "windows_used", "num_nodes", "num_edges",
+        "label",
+        "probabilities",
+        "confirmed",
+        "suspicious",
+        "vulnerabilities",
+        "tier_thresholds",
+        "thresholds",
+        "truncated",
+        "windows_used",
+        "num_nodes",
+        "num_edges",
         "eye_predictions",
+        "execution_status",
+        "error",
+        "detail",
     }
     return {k: v for k, v in ml_result.items() if k in keep_keys}
 
@@ -507,6 +558,7 @@ def _shrink_ml_result(ml_result: dict | None) -> dict:
 def run() -> None:
     """Start the gateway via uvicorn. Used by `python -m src.api.gateway`."""
     import uvicorn
+
     app = create_app()
     uvicorn.run(
         app,

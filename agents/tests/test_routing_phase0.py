@@ -43,11 +43,12 @@ from src.orchestration.routing import (
     compute_verdict,
     prob_to_severity,
 )
-
+from tests.provenance_fixtures import live_ml_state
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _ml(vulns: list[tuple[str, float]]) -> dict:
     """Build a minimal ml_result dict from (class, prob) pairs (three-tier schema)."""
@@ -56,29 +57,37 @@ def _ml(vulns: list[tuple[str, float]]) -> dict:
     probs = dict(vulns)
     confirmed = [
         {"vulnerability_class": c, "probability": p, "tier": "CONFIRMED"}
-        for c, p in vulns if p >= CONF_THR
+        for c, p in vulns
+        if p >= CONF_THR
     ]
     suspicious = [
         {"vulnerability_class": c, "probability": p, "tier": "SUSPICIOUS"}
-        for c, p in vulns if SUSP_THR <= p < CONF_THR
+        for c, p in vulns
+        if SUSP_THR <= p < CONF_THR
     ]
-    if confirmed:     label = "confirmed_vulnerable"
-    elif suspicious:  label = "suspicious"
-    else:             label = "safe"
+    if confirmed:
+        label = "confirmed_vulnerable"
+    elif suspicious:
+        label = "suspicious"
+    else:
+        label = "safe"
     return {
-        "label":           label,
-        "probabilities":   probs,
-        "confirmed":       confirmed,
-        "suspicious":      suspicious,
-        "vulnerabilities": [{"vulnerability_class": c, "probability": p} for c, p in vulns if p >= CONF_THR],
+        "label": label,
+        "probabilities": probs,
+        "confirmed": confirmed,
+        "suspicious": suspicious,
+        "vulnerabilities": [
+            {"vulnerability_class": c, "probability": p} for c, p in vulns if p >= CONF_THR
+        ],
         "tier_thresholds": {"confirmed": CONF_THR, "suspicious": SUSP_THR, "noteworthy": 0.10},
-        "threshold":       0.50,
+        "threshold": 0.50,
     }
 
 
 # ---------------------------------------------------------------------------
 # compute_active_tools
 # ---------------------------------------------------------------------------
+
 
 class TestComputeActiveTools:
     def test_all_below_threshold_returns_empty(self):
@@ -134,17 +143,31 @@ class TestComputeActiveTools:
 
     def test_all_ten_classes_covered_in_routing_rules(self):
         expected = {
-            "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TransactionOrderDependence",
-            "ExternalBug", "CallToUnknown", "MishandledException",
-            "UnusedReturn", "DenialOfService",
+            "Reentrancy",
+            "IntegerUO",
+            "GasException",
+            "Timestamp",
+            "TransactionOrderDependence",
+            "ExternalBug",
+            "CallToUnknown",
+            "MishandledException",
+            "UnusedReturn",
+            "DenialOfService",
         }
         assert set(ROUTING_RULES.keys()) == expected
 
     def test_all_ten_classes_covered_in_thresholds(self):
         expected = {
-            "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TransactionOrderDependence",
-            "ExternalBug", "CallToUnknown", "MishandledException",
-            "UnusedReturn", "DenialOfService",
+            "Reentrancy",
+            "IntegerUO",
+            "GasException",
+            "Timestamp",
+            "TransactionOrderDependence",
+            "ExternalBug",
+            "CallToUnknown",
+            "MishandledException",
+            "UnusedReturn",
+            "DenialOfService",
         }
         assert set(DEEP_THRESHOLDS.keys()) == expected
 
@@ -152,6 +175,7 @@ class TestComputeActiveTools:
 # ---------------------------------------------------------------------------
 # build_routing_decisions
 # ---------------------------------------------------------------------------
+
 
 class TestBuildRoutingDecisions:
     def test_fast_path_decision_string(self):
@@ -179,6 +203,7 @@ class TestBuildRoutingDecisions:
 # ---------------------------------------------------------------------------
 # compute_verdict
 # ---------------------------------------------------------------------------
+
 
 class TestComputeVerdict:
     def test_fast_path_always_likely(self):
@@ -228,6 +253,7 @@ class TestComputeVerdict:
 # compute_overall_verdict
 # ---------------------------------------------------------------------------
 
+
 class TestComputeOverallVerdict:
     def test_confirmed_beats_likely(self):
         assert compute_overall_verdict({"A": "CONFIRMED", "B": "LIKELY"}) == "CONFIRMED"
@@ -249,20 +275,37 @@ class TestComputeOverallVerdict:
 # prob_to_severity
 # ---------------------------------------------------------------------------
 
+
 class TestProbToSeverity:
-    def test_critical(self):   assert prob_to_severity(0.90) == "CRITICAL"
-    def test_high(self):       assert prob_to_severity(0.75) == "HIGH"
-    def test_medium(self):     assert prob_to_severity(0.55) == "MEDIUM"
-    def test_low(self):        assert prob_to_severity(0.40) == "LOW"
-    def test_info(self):       assert prob_to_severity(0.10) == "INFO"
-    def test_boundary_85(self): assert prob_to_severity(0.85) == "CRITICAL"
-    def test_boundary_70(self): assert prob_to_severity(0.70) == "HIGH"
-    def test_boundary_50(self): assert prob_to_severity(0.50) == "MEDIUM"
+    def test_critical(self):
+        assert prob_to_severity(0.90) == "CRITICAL"
+
+    def test_high(self):
+        assert prob_to_severity(0.75) == "HIGH"
+
+    def test_medium(self):
+        assert prob_to_severity(0.55) == "MEDIUM"
+
+    def test_low(self):
+        assert prob_to_severity(0.40) == "LOW"
+
+    def test_info(self):
+        assert prob_to_severity(0.10) == "INFO"
+
+    def test_boundary_85(self):
+        assert prob_to_severity(0.85) == "CRITICAL"
+
+    def test_boundary_70(self):
+        assert prob_to_severity(0.70) == "HIGH"
+
+    def test_boundary_50(self):
+        assert prob_to_severity(0.50) == "MEDIUM"
 
 
 # ---------------------------------------------------------------------------
 # DETECTOR_TO_CLASSES inverted map
 # ---------------------------------------------------------------------------
+
 
 class TestDetectorToClasses:
     def test_reentrancy_eth_maps_to_reentrancy(self):
@@ -277,29 +320,31 @@ class TestDetectorToClasses:
     def test_all_detectors_in_class_map_are_inverted(self):
         for cls, dets in CLASS_TO_DETECTORS.items():
             for det in dets:
-                assert cls in DETECTOR_TO_CLASSES[det], (
-                    f"detector '{det}' missing '{cls}' in DETECTOR_TO_CLASSES"
-                )
+                assert (
+                    cls in DETECTOR_TO_CLASSES[det]
+                ), f"detector '{det}' missing '{cls}' in DETECTOR_TO_CLASSES"
 
 
 # ---------------------------------------------------------------------------
 # evidence_router node (async)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestEvidenceRouterNode:
     async def test_deep_path_logs_routing_decisions(self):
         from src.orchestration.nodes import evidence_router
-        state = {
-            "contract_code": "pragma solidity ^0.8.0;",
-            "contract_address": "0xABC",
-            "ml_result": {
-                "label": "vulnerable",
-                "vulnerabilities": [
-                    {"vulnerability_class": "Reentrancy", "probability": 0.87}
-                ],
-            },
-        }
+
+        state = live_ml_state(
+            {
+                "contract_code": "pragma solidity ^0.8.0;",
+                "contract_address": "0xABC",
+                "ml_result": {
+                    "label": "vulnerable",
+                    "vulnerabilities": [{"vulnerability_class": "Reentrancy", "probability": 0.87}],
+                },
+            }
+        )
         update = await evidence_router(state)
         decisions = update.get("routing_decisions", [])
         assert len(decisions) > 0
@@ -307,20 +352,22 @@ class TestEvidenceRouterNode:
 
     async def test_fast_path_logs_fast_path_decision(self):
         from src.orchestration.nodes import evidence_router
-        state = {
-            "ml_result": {
-                "label": "safe",
-                "vulnerabilities": [
-                    {"vulnerability_class": "Reentrancy", "probability": 0.10}
-                ],
-            },
-        }
+
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "label": "safe",
+                    "vulnerabilities": [{"vulnerability_class": "Reentrancy", "probability": 0.10}],
+                },
+            }
+        )
         update = await evidence_router(state)
         decisions = update.get("routing_decisions", [])
         assert any("fast path" in d for d in decisions)
 
     async def test_empty_ml_result_returns_decisions(self):
         from src.orchestration.nodes import evidence_router
+
         update = await evidence_router({"ml_result": {}})
         assert "routing_decisions" in update
 
@@ -329,9 +376,11 @@ class TestEvidenceRouterNode:
 # graph compilation
 # ---------------------------------------------------------------------------
 
+
 class TestGraphCompilation:
     def test_graph_compiles_with_evidence_router_node(self):
         from src.orchestration.graph import build_graph
+
         graph = build_graph(use_checkpointer=False)
         # CompiledStateGraph exposes .nodes as a dict of node names
         node_names = list(graph.nodes.keys())
@@ -341,5 +390,6 @@ class TestGraphCompilation:
 
     def test_graph_compiles_without_checkpointer(self):
         from src.orchestration.graph import build_graph
+
         graph = build_graph(use_checkpointer=False)
         assert graph is not None

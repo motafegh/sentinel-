@@ -28,6 +28,8 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
 from dotenv import load_dotenv
+from src.contracts.execution import ExecutionState, failure_status
+
 load_dotenv(override=True)
 
 # ---------------------------------------------------------------------------
@@ -51,13 +53,8 @@ _REGISTRY_ADDRESS: str = os.getenv(
 # Agents can override per call via the `limit` argument.
 _DEFAULT_HISTORY_LIMIT: int = int(os.getenv("AUDIT_HISTORY_DEFAULT_LIMIT", "10"))
 
-# Mock mode — return realistic fake on-chain data when RPC is not configured.
-# Set AUDIT_MOCK=true in agents/.env during development / CI.
-# Must be false in M6 production.
-_MOCK_MODE: bool = (
-    os.getenv("AUDIT_MOCK", "false").lower() == "true"
-    or not _RPC_URL  # auto-mock if no RPC configured at all
-)
+# Mock mode is explicit. Missing RPC remains unavailable and can never become mock evidence.
+_MOCK_MODE: bool = os.getenv("AUDIT_MOCK", "false").lower() == "true"
 
 # ---------------------------------------------------------------------------
 # ABI — path resolution only at module level; actual load deferred to startup
@@ -85,6 +82,13 @@ EZKL_SCALE_FACTOR = 8192  # 2^13 — must match calibration from setup_circuit.p
 _ABI: list | None = None
 _w3: Any | None = None
 _registry: Any | None = None
+_execution_status: dict[str, Any] = failure_status(
+    ExecutionState.UNAVAILABLE,
+    dependency="audit-registry",
+    reason_code="not_started",
+    detail="audit MCP server has not started",
+    attempted=False,
+)
 
 # ---------------------------------------------------------------------------
 # V2 / submission configuration (P11, 2026-07)
@@ -106,7 +110,7 @@ _PROXY_CHECKPOINT = _PROJECT_ROOT / "zkml/models/proxy_best.pt"
 
 # EZKL paths (for proof generation subprocess).
 _EZKL_RUN_PROOF = _PROJECT_ROOT / "zkml/src/ezkl/run_proof.py"
-_EZKL_CALLDATA  = _PROJECT_ROOT / "zkml/src/ezkl/extract_calldata.py"
+_EZKL_CALLDATA = _PROJECT_ROOT / "zkml/src/ezkl/extract_calldata.py"
 
 # Minimum block confirmations to wait after submission.
 _SUBMIT_CONFIRM_BLOCKS: int = int(os.getenv("SENTINEL_CONFIRM_BLOCKS", "2"))

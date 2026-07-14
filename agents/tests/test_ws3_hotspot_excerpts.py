@@ -30,11 +30,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.orchestration.nodes import cross_validator
-
+from tests.provenance_fixtures import live_ml_result
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_state(
     flagged: list[dict],
@@ -51,12 +52,12 @@ def _make_state(
     if eye_predictions is not None:
         ml_result["eye_predictions"] = eye_predictions
     return {
-        "ml_result":      ml_result,
+        "ml_result": live_ml_result(ml_result, contract_code=contract_code),
         "static_findings": static_findings or [],
-        "rag_results":     [],
-        "audit_history":   [],
-        "contract_code":   contract_code,
-        "ml_hotspots":     ml_hotspots or [],
+        "rag_results": [],
+        "audit_history": [],
+        "contract_code": contract_code,
+        "ml_hotspots": ml_hotspots or [],
     }
 
 
@@ -86,24 +87,29 @@ def _capture_prompts(monkeypatch, state) -> tuple[str, list[str]]:
     ]
     mock_llm.invoke.side_effect = responses
 
-    with patch("src.llm.client.get_fast_llm", return_value=mock_llm), \
-         patch("src.llm.client.get_strong_llm", return_value=mock_llm):
+    with (
+        patch("src.llm.client.get_fast_llm", return_value=mock_llm),
+        patch("src.llm.client.get_strong_llm", return_value=mock_llm),
+    ):
         import asyncio
+
         asyncio.run(cross_validator(state))
 
     # 3 calls: prosecutor, defender, judge
-    assert mock_llm.invoke.call_count == 3, \
-        f"expected 3 LLM calls, got {mock_llm.invoke.call_count}"
+    assert (
+        mock_llm.invoke.call_count == 3
+    ), f"expected 3 LLM calls, got {mock_llm.invoke.call_count}"
     system = mock_llm.invoke.call_args_list[0][0][0][0].content
     prosecutor = mock_llm.invoke.call_args_list[0][0][0][1].content
-    defender   = mock_llm.invoke.call_args_list[1][0][0][1].content
-    judge      = mock_llm.invoke.call_args_list[2][0][0][1].content
+    defender = mock_llm.invoke.call_args_list[1][0][0][1].content
+    judge = mock_llm.invoke.call_args_list[2][0][0][1].content
     return system, {"prosecutor": prosecutor, "defender": defender, "judge": judge}
 
 
 # ---------------------------------------------------------------------------
 # Hotspot excerpts (the main WS3.1/D3 fix)
 # ---------------------------------------------------------------------------
+
 
 class TestHotspotExcerpts:
     """
@@ -117,7 +123,9 @@ class TestHotspotExcerpts:
         a "Focused code excerpts" block, NOT just a 2000-char prefix.
         """
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             ml_hotspots=[
                 {
                     "class": "Reentrancy",
@@ -127,7 +135,7 @@ class TestHotspotExcerpts:
                     "signals": ["external_call", "state_write_after_call"],
                 },
             ],
-            contract_code="pragma solidity ^0.8.0;\n// line 2\n// line 3\n// line 4\n// line 5\n// line 6\n// line 7\n// line 8\n// line 9\nfunction withdraw() public { msg.sender.call(\"\"); balances[msg.sender] = 0; }\n",
+            contract_code='pragma solidity ^0.8.0;\n// line 2\n// line 3\n// line 4\n// line 5\n// line 6\n// line 7\n// line 8\n// line 9\nfunction withdraw() public { msg.sender.call(""); balances[msg.sender] = 0; }\n',
         )
         _, prompts = _capture_prompts(monkeypatch, state)
 
@@ -148,16 +156,28 @@ class TestHotspotExcerpts:
         state = _make_state(
             flagged=[
                 {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"},
-                {"vulnerability_class": "Timestamp",  "probability": 0.75, "tier": "CONFIRMED"},
+                {"vulnerability_class": "Timestamp", "probability": 0.75, "tier": "CONFIRMED"},
             ],
             ml_hotspots=[
-                {"class": "Reentrancy", "fn_name": "withdraw", "lines": [10, 11, 12], "score": 0.85, "signals": []},
-                {"class": "Timestamp",  "fn_name": "getPrice", "lines": [20, 21],    "score": 0.72, "signals": []},
+                {
+                    "class": "Reentrancy",
+                    "fn_name": "withdraw",
+                    "lines": [10, 11, 12],
+                    "score": 0.85,
+                    "signals": [],
+                },
+                {
+                    "class": "Timestamp",
+                    "fn_name": "getPrice",
+                    "lines": [20, 21],
+                    "score": 0.72,
+                    "signals": [],
+                },
             ],
             contract_code=(
                 "pragma solidity ^0.8.0;\n"
                 + "\n".join(f"// filler line {i}" for i in range(30))
-                + "\nfunction withdraw() public { msg.sender.call(\"\"); balances[msg.sender] = 0; }\n"
+                + '\nfunction withdraw() public { msg.sender.call(""); balances[msg.sender] = 0; }\n'
                 + "function getPrice() public view returns (uint) { return uint(block.timestamp) % 100; }\n"
             ),
         )
@@ -172,11 +192,21 @@ class TestHotspotExcerpts:
         reference (capped at 4000 chars).
         """
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
-            ml_hotspots=[
-                {"class": "Reentrancy", "fn_name": "withdraw", "lines": [10, 11, 12], "score": 0.85, "signals": []},
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
             ],
-            contract_code="pragma solidity ^0.8.0;\n" + "\n".join(f"// line {i}" for i in range(50)) + "\nfunction withdraw() public { msg.sender.call(\"\"); }\n",
+            ml_hotspots=[
+                {
+                    "class": "Reentrancy",
+                    "fn_name": "withdraw",
+                    "lines": [10, 11, 12],
+                    "score": 0.85,
+                    "signals": [],
+                },
+            ],
+            contract_code="pragma solidity ^0.8.0;\n"
+            + "\n".join(f"// line {i}" for i in range(50))
+            + '\nfunction withdraw() public { msg.sender.call(""); }\n',
         )
         _, prompts = _capture_prompts(monkeypatch, state)
         # Source/excerpts are seen by prosecutor + defender (not judge)
@@ -191,7 +221,9 @@ class TestHotspotExcerpts:
         """
         long_source = "pragma solidity ^0.8.0;\n" + "\n".join(f"// filler {i}" for i in range(50))
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             ml_hotspots=[],  # no hotspots
             contract_code=long_source,
         )
@@ -199,6 +231,9 @@ class TestHotspotExcerpts:
         # so the fallback note is triggered.
         state["ml_result"]["windows_used"] = 3
         state["ml_result"]["truncated"] = True
+        state["ml_result"] = live_ml_result(
+            state["ml_result"], contract_code=state["contract_code"]
+        )
 
         _, prompts = _capture_prompts(monkeypatch, state)
         # Source/excerpts are seen by prosecutor + defender (not judge)
@@ -216,11 +251,16 @@ class TestHotspotExcerpts:
         is suppressed (no useful info to add).
         """
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             ml_hotspots=[],
             contract_code="pragma solidity ^0.8.0;\ncontract C {}",
         )
         state["ml_result"]["windows_used"] = 1
+        state["ml_result"] = live_ml_result(
+            state["ml_result"], contract_code=state["contract_code"]
+        )
 
         _, prompts = _capture_prompts(monkeypatch, state)
         # Source/excerpts are seen by prosecutor + defender (not judge)
@@ -234,6 +274,7 @@ class TestHotspotExcerpts:
 # ---------------------------------------------------------------------------
 # D4 per-eye clues
 # ---------------------------------------------------------------------------
+
 
 class TestD4EyeClues:
     """
@@ -249,12 +290,14 @@ class TestD4EyeClues:
         eye is driving.
         """
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             eye_predictions={
-                "gnn":         {"Reentrancy": 0.81, "Timestamp": 0.12},
+                "gnn": {"Reentrancy": 0.81, "Timestamp": 0.12},
                 "transformer": {"Reentrancy": 0.32, "Timestamp": 0.45},
-                "fused":       {"Reentrancy": 0.72, "Timestamp": 0.21},
-                "phase2":      {"Reentrancy": 0.55, "Timestamp": 0.10},
+                "fused": {"Reentrancy": 0.72, "Timestamp": 0.21},
+                "phase2": {"Reentrancy": 0.55, "Timestamp": 0.10},
             },
         )
         _, prompts = _capture_prompts(monkeypatch, state)
@@ -275,7 +318,9 @@ class TestD4EyeClues:
         is omitted (graceful degradation, not a crash).
         """
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             # eye_predictions NOT in ml_result
         )
         _, prompts = _capture_prompts(monkeypatch, state)
@@ -290,13 +335,13 @@ class TestD4EyeClues:
         state = _make_state(
             flagged=[
                 {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"},
-                {"vulnerability_class": "Timestamp",  "probability": 0.60, "tier": "SUSPICIOUS"},
+                {"vulnerability_class": "Timestamp", "probability": 0.60, "tier": "SUSPICIOUS"},
             ],
             eye_predictions={
-                "gnn":         {"Reentrancy": 0.81, "Timestamp": 0.12},
+                "gnn": {"Reentrancy": 0.81, "Timestamp": 0.12},
                 "transformer": {"Reentrancy": 0.32, "Timestamp": 0.45},
-                "fused":       {"Reentrancy": 0.72, "Timestamp": 0.21},
-                "phase2":      {"Reentrancy": 0.55, "Timestamp": 0.10},
+                "fused": {"Reentrancy": 0.72, "Timestamp": 0.21},
+                "phase2": {"Reentrancy": 0.55, "Timestamp": 0.10},
             },
         )
         _, prompts = _capture_prompts(monkeypatch, state)
@@ -306,5 +351,5 @@ class TestD4EyeClues:
             # And the Timestamp class line should mention transformer=0.45
             assert "0.45" in prompt
             # The driving eyes are different per class
-            assert "gnn eye driving" in prompt   # for Reentrancy
+            assert "gnn eye driving" in prompt  # for Reentrancy
             assert "transformer eye driving" in prompt  # for Timestamp

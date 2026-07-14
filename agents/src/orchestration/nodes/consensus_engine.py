@@ -8,8 +8,9 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
+from src.orchestration.nodes._helpers import _best_rag_score, _signals_for_class
+from src.orchestration.provenance import eligible_ml_result
 from src.orchestration.state import AuditState
-from src.orchestration.nodes._helpers import _signals_for_class, _best_rag_score
 
 
 async def consensus_engine(state: AuditState) -> dict[str, Any]:
@@ -25,24 +26,32 @@ async def consensus_engine(state: AuditState) -> dict[str, Any]:
                                        score, confidence, verdict, weights}}
         confidence_by_class → {class: confidence in [0,1]}
     """
-    from src.orchestration.consensus import consensus_vote
     from src.orchestration.confidence import track_confidence
+    from src.orchestration.consensus import consensus_vote
     from src.orchestration.routing import DEEP_THRESHOLDS
 
-    ml_result = state.get("ml_result", {})
-    probabilities: dict[str, float] = ml_result.get("probabilities", {}) or {}
+    ml_result = eligible_ml_result(state, purpose="consensus")
+    ml_eligible = bool(ml_result)
+
+    probabilities: dict[str, float] = (
+        ml_result.get("probabilities", {}) or {} if ml_eligible else {}
+    )
     static_findings = state.get("static_findings", []) or []
     rag_results = state.get("rag_results", []) or []
 
     # Fall back to flagged-class probabilities if the full vector is absent.
-    if not probabilities:
-        for v in (ml_result.get("confirmed", []) + ml_result.get("suspicious", [])
-                  or ml_result.get("vulnerabilities", [])):
+    if ml_eligible and not probabilities:
+        for v in ml_result.get("confirmed", []) + ml_result.get("suspicious", []) or ml_result.get(
+            "vulnerabilities", []
+        ):
             probabilities[v.get("vulnerability_class", "?")] = v.get("probability", 0.0)
 
     if not probabilities:
-        logger.info("consensus_engine | no ML probabilities — skipping")
-        return {}
+        logger.info("consensus_engine | ML provenance ineligible — static evidence only")
+        from src.orchestration.verdict.emit import emit_static_evidence
+
+        static_evidence = emit_static_evidence(static_findings)
+        return {"evidence_list": static_evidence} if static_evidence else {}
 
     consensus_verdict: dict[str, dict[str, Any]] = {}
     confidence_by_class: dict[str, float] = {}
@@ -74,13 +83,14 @@ async def consensus_engine(state: AuditState) -> dict[str, Any]:
             rag_score=_best_rag_score(cls, rag_results),
         )
 
-    logger.info(
-        "consensus_engine complete | voted {} class(es)", len(consensus_verdict)
-    )
+    logger.info("consensus_engine complete | voted {} class(es)", len(consensus_verdict))
     # ── P2 dual-write: emit evidence alongside legacy verdicts ──
     from src.orchestration.verdict.emit import (
-        emit_ml_evidence, emit_static_evidence, emit_consensus_evidence,
+        emit_consensus_evidence,
+        emit_ml_evidence,
+        emit_static_evidence,
     )
+
     evidence_list: list[Any] = []
     evidence_list.extend(emit_ml_evidence(ml_result))
     evidence_list.extend(emit_static_evidence(static_findings))
@@ -89,7 +99,7 @@ async def consensus_engine(state: AuditState) -> dict[str, Any]:
     evidence_list.extend(emit_consensus_evidence(consensus_verdict))
 
     return {
-        "consensus_verdict":   consensus_verdict,
+        "consensus_verdict": consensus_verdict,
         "confidence_by_class": confidence_by_class,
-        "evidence_list":       evidence_list,
+        "evidence_list": evidence_list,
     }

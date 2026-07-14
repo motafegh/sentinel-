@@ -17,6 +17,7 @@ RECALL — AuditRegistry.sol tools (read-only phase):
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from loguru import logger
@@ -33,7 +34,27 @@ from mcp.types import TextContent, Tool
 def _shim():
     """Return the audit_server shim module (state holder)."""
     from src.mcp.servers import audit_server as _as
+
     return _as
+
+
+def _text(payload: dict[str, Any]) -> list[TextContent]:
+    return [TextContent(type="text", text=json.dumps(payload))]
+
+
+def _invalid_result(operation: str, arguments: dict[str, Any], detail: str) -> list[TextContent]:
+    from ._status import failed_result
+
+    return _text(
+        failed_result(
+            {"error": "invalid_request", "detail": detail},
+            operation=operation,
+            arguments=arguments,
+            reason_code="invalid_request",
+            detail=detail,
+            attempted=False,
+        )
+    )
 
 
 server = Server("sentinel-audit")
@@ -41,6 +62,7 @@ server = Server("sentinel-audit")
 # ---------------------------------------------------------------------------
 # Tool definitions
 # ---------------------------------------------------------------------------
+
 
 @server.list_tools()
 async def list_tools() -> list[Tool]:
@@ -151,6 +173,7 @@ async def list_tools() -> list[Tool]:
 # Tool call dispatcher
 # ---------------------------------------------------------------------------
 
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Route tool calls to their handlers."""
@@ -166,15 +189,18 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return await _handle_submit_audit(arguments)
     else:
         logger.error("call_tool received unknown tool name: {}", name)
-        return [TextContent(
-            type="text",
-            text=json.dumps({"error": f"Unknown tool: {name}"}),
-        )]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps({"error": f"Unknown tool: {name}"}),
+            )
+        ]
 
 
 # ---------------------------------------------------------------------------
 # Address validation
 # ---------------------------------------------------------------------------
+
 
 def _validate_address(raw: str) -> str:
     """
@@ -188,17 +214,18 @@ def _validate_address(raw: str) -> str:
     """
     try:
         from web3 import Web3
+
         return Web3.to_checksum_address(raw)
     except Exception:
         raise ValueError(
-            f"Invalid Ethereum address: '{raw}'. "
-            "Must be a 0x-prefixed 20-byte hex string."
+            f"Invalid Ethereum address: '{raw}'. " "Must be a 0x-prefixed 20-byte hex string."
         )
 
 
 # ---------------------------------------------------------------------------
 # Tool handlers
 # ---------------------------------------------------------------------------
+
 
 async def _handle_get_latest_audit(
     arguments: dict[str, Any],
@@ -213,20 +240,43 @@ async def _handle_get_latest_audit(
     # the import graph acyclic (decode imports config; handlers import decode
     # via the shim, not via a top-level import that could cycle with _config).
     from ._decode import _decode_audit_result, _mock_audit_result
+
     _as = _shim()
 
     raw_address: str = arguments["contract_address"]
 
+    operation = "get_latest_audit"
     try:
         address = _validate_address(raw_address)
     except ValueError as exc:
-        return [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
+        return _invalid_result(operation, arguments, str(exc))
 
     if _as._MOCK_MODE:
-        logger.debug("get_latest_audit | mock mode | address={}", address)
-        result = _mock_audit_result(address)
-        return [TextContent(type="text", text=json.dumps(result))]
+        from ._status import explicit_mock_result
 
+        logger.debug("get_latest_audit | mock mode | address={}", address)
+        return _text(
+            explicit_mock_result(
+                _mock_audit_result(address),
+                operation=operation,
+                arguments=arguments,
+            )
+        )
+    if _as._registry is None:
+        from ._status import unavailable_result
+
+        return _text(
+            unavailable_result(
+                {"error": "rpc_unavailable", "contract_address": address},
+                operation=operation,
+                arguments=arguments,
+                reason_code="rpc_not_ready",
+                detail="AuditRegistry client is not initialized",
+                attempted=False,
+            )
+        )
+
+    started = time.monotonic()
     try:
         # RECALL — getLatestAudit returns AuditResult tuple:
         # (scoreFieldElement, proofHash, timestamp, agent, verified)
@@ -235,15 +285,22 @@ async def _handle_get_latest_audit(
 
         # Detect "no audit" by checking timestamp == 0 (Solidity zero default)
         if raw[2] == 0:
+            from ._status import live_result
+
             logger.info("get_latest_audit | no audit found | address={}", address)
-            return [TextContent(
-                type="text",
-                text=json.dumps({
-                    "contract_address": address,
-                    "exists": False,
-                    "message": "No audit has been submitted for this contract address.",
-                }),
-            )]
+            return _text(
+                live_result(
+                    {
+                        "contract_address": address,
+                        "exists": False,
+                        "message": "No audit has been submitted for this contract address.",
+                    },
+                    operation=operation,
+                    arguments=arguments,
+                    duration_ms=(time.monotonic() - started) * 1000,
+                    clean=True,
+                )
+            )
 
         decoded = _decode_audit_result(raw, address)
         logger.info(
@@ -252,19 +309,37 @@ async def _handle_get_latest_audit(
             decoded["score"],
             decoded["label"],
         )
-        return [TextContent(type="text", text=json.dumps(decoded))]
+        from ._status import live_result
+
+        return _text(
+            live_result(
+                decoded,
+                operation=operation,
+                arguments=arguments,
+                duration_ms=(time.monotonic() - started) * 1000,
+            )
+        )
 
     except Exception as exc:
+        from ._status import unavailable_result
+
         logger.error("get_latest_audit RPC error | address={} | error: {}", address, exc)
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "error": "rpc_error",
-                "contract_address": address,
-                "detail": str(exc),
-                "suggestion": "Check SEPOLIA_RPC_URL and network connectivity.",
-            }),
-        )]
+        return _text(
+            unavailable_result(
+                {
+                    "error": "rpc_error",
+                    "contract_address": address,
+                    "detail": str(exc),
+                    "suggestion": "Check SEPOLIA_RPC_URL and network connectivity.",
+                },
+                operation=operation,
+                arguments=arguments,
+                reason_code="rpc_error",
+                detail=str(exc),
+                attempted=True,
+                duration_ms=(time.monotonic() - started) * 1000,
+            )
+        )
 
 
 async def _handle_get_audit_history(
@@ -277,6 +352,7 @@ async def _handle_get_audit_history(
     so the most recent audit is at index 0 (natural reading order).
     """
     from ._decode import _decode_audit_result, _mock_history
+
     _as = _shim()
 
     raw_address: str = arguments["contract_address"]
@@ -285,33 +361,60 @@ async def _handle_get_audit_history(
         50,  # hard cap — prevents agents pulling enormous histories
     )
 
+    operation = "get_audit_history"
     try:
         address = _validate_address(raw_address)
     except ValueError as exc:
-        return [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
+        return _invalid_result(operation, arguments, str(exc))
 
     if _as._MOCK_MODE:
+        from ._status import explicit_mock_result
+
         logger.debug("get_audit_history | mock mode | address={} | limit={}", address, limit)
         records = _mock_history(address, limit)
-        return [TextContent(
-            type="text",
-            text=json.dumps({"contract_address": address, "count": len(records), "records": records}),
-        )]
+        return _text(
+            explicit_mock_result(
+                {"contract_address": address, "count": len(records), "records": records},
+                operation=operation,
+                arguments=arguments,
+            )
+        )
+    if _as._registry is None:
+        from ._status import unavailable_result
 
+        return _text(
+            unavailable_result(
+                {"error": "rpc_unavailable", "contract_address": address},
+                operation=operation,
+                arguments=arguments,
+                reason_code="rpc_not_ready",
+                detail="AuditRegistry client is not initialized",
+                attempted=False,
+            )
+        )
+
+    started = time.monotonic()
     try:
         # getAuditHistory returns AuditResult[] — all audits for the address.
         raw_list = await _as._registry.functions.getAuditHistory(address).call()
 
         if not raw_list:
-            return [TextContent(
-                type="text",
-                text=json.dumps({
-                    "contract_address": address,
-                    "count": 0,
-                    "records": [],
-                    "message": "No audit history found for this contract address.",
-                }),
-            )]
+            from ._status import live_result
+
+            return _text(
+                live_result(
+                    {
+                        "contract_address": address,
+                        "count": 0,
+                        "records": [],
+                        "message": "No audit history found for this contract address.",
+                    },
+                    operation=operation,
+                    arguments=arguments,
+                    duration_ms=(time.monotonic() - started) * 1000,
+                    clean=True,
+                )
+            )
 
         # Reverse so newest is first (contract appends in submission order)
         decoded_list = [_decode_audit_result(r, address) for r in reversed(raw_list)]
@@ -323,26 +426,41 @@ async def _handle_get_audit_history(
             len(raw_list),
             len(limited),
         )
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "contract_address": address,
-                "count":            len(raw_list),
-                "returned":         len(limited),
-                "records":          limited,
-            }),
-        )]
+        from ._status import live_result
+
+        return _text(
+            live_result(
+                {
+                    "contract_address": address,
+                    "count": len(raw_list),
+                    "returned": len(limited),
+                    "records": limited,
+                },
+                operation=operation,
+                arguments=arguments,
+                duration_ms=(time.monotonic() - started) * 1000,
+            )
+        )
 
     except Exception as exc:
+        from ._status import unavailable_result
+
         logger.error("get_audit_history RPC error | address={} | error: {}", address, exc)
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "error": "rpc_error",
-                "contract_address": address,
-                "detail": str(exc),
-            }),
-        )]
+        return _text(
+            unavailable_result(
+                {
+                    "error": "rpc_error",
+                    "contract_address": address,
+                    "detail": str(exc),
+                },
+                operation=operation,
+                arguments=arguments,
+                reason_code="rpc_error",
+                detail=str(exc),
+                attempted=True,
+                duration_ms=(time.monotonic() - started) * 1000,
+            )
+        )
 
 
 async def _handle_check_audit_exists(
@@ -358,46 +476,84 @@ async def _handle_check_audit_exists(
 
     raw_address: str = arguments["contract_address"]
 
+    operation = "check_audit_exists"
     try:
         address = _validate_address(raw_address)
     except ValueError as exc:
-        return [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
+        return _invalid_result(operation, arguments, str(exc))
 
     if _as._MOCK_MODE:
-        return [TextContent(
-            type="text",
-            text=json.dumps({"contract_address": address, "exists": True, "count": 2}),
-        )]
+        from ._status import explicit_mock_result
 
+        return _text(
+            explicit_mock_result(
+                {"contract_address": address, "exists": True, "count": 2},
+                operation=operation,
+                arguments=arguments,
+            )
+        )
+    if _as._registry is None:
+        from ._status import unavailable_result
+
+        return _text(
+            unavailable_result(
+                {"error": "rpc_unavailable", "contract_address": address},
+                operation=operation,
+                arguments=arguments,
+                reason_code="rpc_not_ready",
+                detail="AuditRegistry client is not initialized",
+                attempted=False,
+            )
+        )
+
+    started = time.monotonic()
     try:
         # Two read calls — both are cheap SLOAD operations.
         # Run sequentially (not concurrently) for simplicity; they're fast.
         exists: bool = await _as._registry.functions.hasAudit(address).call()
-        count:  int  = await _as._registry.functions.getAuditCount(address).call()
+        count: int = await _as._registry.functions.getAuditCount(address).call()
 
         logger.info(
             "check_audit_exists | address={} | exists={} | count={}",
-            address, exists, count,
+            address,
+            exists,
+            count,
         )
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "contract_address": address,
-                "exists":           exists,
-                "count":            int(count),
-            }),
-        )]
+        from ._status import live_result
+
+        return _text(
+            live_result(
+                {
+                    "contract_address": address,
+                    "exists": exists,
+                    "count": int(count),
+                },
+                operation=operation,
+                arguments=arguments,
+                duration_ms=(time.monotonic() - started) * 1000,
+                clean=not exists,
+            )
+        )
 
     except Exception as exc:
+        from ._status import unavailable_result
+
         logger.error("check_audit_exists RPC error | address={} | error: {}", address, exc)
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "error":            "rpc_error",
-                "contract_address": address,
-                "detail":           str(exc),
-            }),
-        )]
+        return _text(
+            unavailable_result(
+                {
+                    "error": "rpc_error",
+                    "contract_address": address,
+                    "detail": str(exc),
+                },
+                operation=operation,
+                arguments=arguments,
+                reason_code="rpc_error",
+                detail=str(exc),
+                attempted=True,
+                duration_ms=(time.monotonic() - started) * 1000,
+            )
+        )
 
 
 async def _handle_submit_audit(arguments: dict[str, Any]) -> list[TextContent]:
@@ -409,23 +565,46 @@ async def _handle_submit_audit(arguments: dict[str, Any]) -> list[TextContent]:
     model_hash = arguments.get("model_hash", "")
 
     if not source_code:
-        return [TextContent(type="text", text=json.dumps({
-            "status": "failed", "failed_step": "validation",
-            "reason": "source_code is required",
-        }))]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "status": "failed",
+                        "failed_step": "validation",
+                        "reason": "source_code is required",
+                    }
+                ),
+            )
+        ]
     if not contract_address:
-        return [TextContent(type="text", text=json.dumps({
-            "status": "failed", "failed_step": "validation",
-            "reason": "contract_address is required",
-        }))]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "status": "failed",
+                        "failed_step": "validation",
+                        "reason": "contract_address is required",
+                    }
+                ),
+            )
+        ]
     if not model_hash or len(model_hash) != 64:
-        return [TextContent(type="text", text=json.dumps({
-            "status": "failed", "failed_step": "validation",
-            "reason": "model_hash must be a 64-character hex string",
-        }))]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "status": "failed",
+                        "failed_step": "validation",
+                        "reason": "model_hash must be a 64-character hex string",
+                    }
+                ),
+            )
+        ]
 
-    logger.info("submit_audit — contract: {}, model: {}...",
-                contract_address[:18], model_hash[:16])
+    logger.info("submit_audit — contract: {}, model: {}...", contract_address[:18], model_hash[:16])
 
     result = _run_submit(source_code, contract_address, model_hash)
     return [TextContent(type="text", text=json.dumps(result))]

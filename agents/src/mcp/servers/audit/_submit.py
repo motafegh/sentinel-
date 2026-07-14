@@ -52,9 +52,14 @@ def _run_submit(
         On failed:  an earlier step (ML API, proxy, proof) failed.
     """
     from ._config import (
-        _ML_API_URL, _OPERATOR_KEY, _PROXY_CHECKPOINT,
-        _EZKL_RUN_PROOF, _SUBMIT_CONFIRM_BLOCKS,
-        _w3, _REGISTRY_ADDRESS, _ABI_V2,
+        _ABI_V2,
+        _EZKL_RUN_PROOF,
+        _ML_API_URL,
+        _OPERATOR_KEY,
+        _PROXY_CHECKPOINT,
+        _REGISTRY_ADDRESS,
+        _SUBMIT_CONFIRM_BLOCKS,
+        _w3,
     )
 
     result: dict[str, Any] = {
@@ -71,6 +76,8 @@ def _run_submit(
     # ── Step 1: call /fusion-embedding ─────────────────────────────────
     try:
         import requests
+        from src.contracts.execution import require_eligible_payload
+
         resp = requests.post(
             f"{_ML_API_URL}/fusion-embedding",
             json={"source_code": source_code},
@@ -78,8 +85,31 @@ def _run_submit(
         )
         resp.raise_for_status()
         ml_result = resp.json()
+        try:
+            require_eligible_payload(
+                ml_result,
+                purpose="proof/submission",
+                input_payload={"source_code": source_code},
+            )
+        except (TypeError, ValueError) as exc:
+            result["failed_step"] = "ml_provenance"
+            result["reason"] = f"fusion embedding is ineligible: {exc}"
+            logger.error(f"submit_audit [{result['failed_step']}]: {result['reason']}")
+            return result
+        live_model_hash = ml_result.get("model_hash")
+        if (
+            not isinstance(live_model_hash, str)
+            or len(live_model_hash) != 64
+            or any(char not in "0123456789abcdef" for char in live_model_hash)
+            or live_model_hash != model_hash
+        ):
+            result["failed_step"] = "ml_provenance"
+            result["reason"] = "fusion model hash does not match the requested model identity"
+            logger.error(f"submit_audit [{result['failed_step']}]: {result['reason']}")
+            return result
+        model_hash = live_model_hash
         fusion_embedding = ml_result["fusion_embedding"]
-        result["model_hash"] = ml_result.get("model_hash", model_hash)
+        result["model_hash"] = model_hash
     except Exception as exc:
         result["failed_step"] = "ml_api"
         result["reason"] = f"/fusion-embedding failed: {exc}"
@@ -89,6 +119,7 @@ def _run_submit(
     # ── Step 2: run proxy model locally → 10 class scores ─────────────
     try:
         import torch
+
         # Lazy import — only needed when submit tool is actually called
         sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
         from zkml.src.distillation.proxy_model import ProxyModel
@@ -116,16 +147,16 @@ def _run_submit(
     # ── Step 3: generate EZKL proof (inline, not subprocess) ──────────
     # The proof is generated for the ACTUAL contract's fusion embedding —
     # NOT from a corpus contract (unlike run_proof.py CLI mode).
-    COMPILED      = Path(__file__).resolve().parents[5] / "zkml/ezkl/model.compiled"
-    SETTINGS      = Path(__file__).resolve().parents[5] / "zkml/ezkl/settings.json"
-    SRS           = Path(__file__).resolve().parents[5] / "zkml/ezkl/srs.params"
-    PROVING_KEY   = Path(__file__).resolve().parents[5] / "zkml/ezkl/proving_key.pk"
-    VERIFY_KEY    = Path(__file__).resolve().parents[5] / "zkml/ezkl/verification_key.vk"
-    PROOF_INPUT   = Path(__file__).resolve().parents[5] / "zkml/ezkl/proof_input.json"
-    WITNESS       = Path(__file__).resolve().parents[5] / "zkml/ezkl/witness.json"
-    PROOF         = Path(__file__).resolve().parents[5] / "zkml/ezkl/proof.json"
+    COMPILED = Path(__file__).resolve().parents[5] / "zkml/ezkl/model.compiled"
+    SETTINGS = Path(__file__).resolve().parents[5] / "zkml/ezkl/settings.json"
+    SRS = Path(__file__).resolve().parents[5] / "zkml/ezkl/srs.params"
+    PROVING_KEY = Path(__file__).resolve().parents[5] / "zkml/ezkl/proving_key.pk"
+    VERIFY_KEY = Path(__file__).resolve().parents[5] / "zkml/ezkl/verification_key.vk"
+    PROOF_INPUT = Path(__file__).resolve().parents[5] / "zkml/ezkl/proof_input.json"
+    WITNESS = Path(__file__).resolve().parents[5] / "zkml/ezkl/witness.json"
+    PROOF = Path(__file__).resolve().parents[5] / "zkml/ezkl/proof.json"
     _INPUT_OFFSET = 128
-    _NUM_CLASSES  = 10
+    _NUM_CLASSES = 10
 
     for f in (COMPILED, SETTINGS, SRS, PROVING_KEY, VERIFY_KEY):
         if not f.exists():
@@ -152,7 +183,7 @@ def _run_submit(
         outputs = witness["outputs"][0]
         public_signals_decoded = []
         for hex_str in outputs:
-            felt = int.from_bytes(bytes.fromhex(hex_str), byteorder='little')
+            felt = int.from_bytes(bytes.fromhex(hex_str), byteorder="little")
             public_signals_decoded.append(felt)
 
         if len(public_signals_decoded) != _NUM_CLASSES:
@@ -185,8 +216,7 @@ def _run_submit(
         # Parse ALL publicSignals from proof.json instances
         instances = proof_data["instances"][0]
         all_public_signals = [
-            int.from_bytes(bytes.fromhex(h), byteorder='little')
-            for h in instances
+            int.from_bytes(bytes.fromhex(h), byteorder="little") for h in instances
         ]
         if len(all_public_signals) != _INPUT_OFFSET + _NUM_CLASSES:
             raise RuntimeError(
@@ -200,9 +230,12 @@ def _run_submit(
         # guarantees classScores[i] == publicSignals[128+i] on every class.
         result["class_score_felts"] = all_public_signals[_INPUT_OFFSET:]
 
-        result["proof_hash"] = "0x" + __import__("hashlib").sha256(
-            bytes.fromhex(hex_proof[2:] if hex_proof.startswith("0x") else hex_proof)
-        ).hexdigest()
+        result["proof_hash"] = (
+            "0x"
+            + __import__("hashlib")
+            .sha256(bytes.fromhex(hex_proof[2:] if hex_proof.startswith("0x") else hex_proof))
+            .hexdigest()
+        )
 
         # Clean up temp files
         for tmp in (PROOF_INPUT, WITNESS, PROOF):
@@ -221,6 +254,7 @@ def _run_submit(
     # ── Step 3b: build provenance manifest ───────────────────────────
     try:
         import hashlib
+
         proxy_hash = hashlib.sha256(_PROXY_CHECKPOINT.read_bytes()).hexdigest()
         provenance = build_provenance_manifest(
             teacher_model_hash=result["model_hash"],
@@ -262,15 +296,21 @@ def _run_submit(
         tx = registry.functions.submitAuditV2(
             contract_address,
             class_score_felts,
-            bytes.fromhex(hex_proof[2:]) if hex_proof.startswith("0x") else bytes.fromhex(hex_proof),
+            (
+                bytes.fromhex(hex_proof[2:])
+                if hex_proof.startswith("0x")
+                else bytes.fromhex(hex_proof)
+            ),
             all_public_signals,
             bytes.fromhex(model_hash) if len(model_hash) == 64 else bytes(32),
-        ).build_transaction({
-            "from": operator_address,
-            "nonce": _w3.eth.get_transaction_count(operator_address),
-            "gas": 1_000_000,
-            "gasPrice": _w3.eth.gas_price,
-        })
+        ).build_transaction(
+            {
+                "from": operator_address,
+                "nonce": _w3.eth.get_transaction_count(operator_address),
+                "gas": 1_000_000,
+                "gasPrice": _w3.eth.gas_price,
+            }
+        )
 
         signed = account.sign_transaction(tx)
         tx_hash = _w3.eth.send_raw_transaction(signed.raw_transaction)
@@ -316,9 +356,7 @@ def build_provenance_manifest(
     import hashlib
     from datetime import datetime, timezone
 
-    fusion_hash = hashlib.sha256(
-        json.dumps(fusion_embedding, sort_keys=True).encode()
-    ).hexdigest()
+    fusion_hash = hashlib.sha256(json.dumps(fusion_embedding, sort_keys=True).encode()).hexdigest()
 
     manifest: dict[str, Any] = {
         "teacher_model_hash": teacher_model_hash,
@@ -331,8 +369,9 @@ def build_provenance_manifest(
 
     try:
         from eth_account.messages import encode_defunct
-        from ._config import _OPERATOR_KEY
         from web3.auto import w3
+
+        from ._config import _OPERATOR_KEY
 
         if _OPERATOR_KEY:
             message = encode_defunct(text=json.dumps(manifest, sort_keys=True))

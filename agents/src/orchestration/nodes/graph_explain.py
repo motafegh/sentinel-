@@ -9,8 +9,9 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.orchestration.state import AuditState
 import src.orchestration.nodes._helpers as _h
+from src.orchestration.provenance import eligible_ml_result
+from src.orchestration.state import AuditState
 
 _GRAPH_INSPECTOR_URL: str = os.getenv("MCP_GRAPH_INSPECTOR_URL", "http://localhost:8013/sse")
 
@@ -40,14 +41,12 @@ async def graph_explain(state: AuditState) -> dict[str, Any]:
         logger.info("graph_explain | contract_code empty — skipping")
         return {"ml_hotspots": [], "graph_explanations": {}}
 
-    ml_result  = state.get("ml_result", {})
-    confirmed  = ml_result.get("confirmed",  [])
+    ml_result = eligible_ml_result(state, purpose="graph explanation")
+    confirmed = ml_result.get("confirmed", [])
     suspicious = ml_result.get("suspicious", [])
-    flagged    = confirmed + suspicious or ml_result.get("vulnerabilities", [])
+    flagged = confirmed + suspicious or ml_result.get("vulnerabilities", [])
     flagged_classes = [
-        v.get("vulnerability_class", "")
-        for v in flagged
-        if v.get("vulnerability_class")
+        v.get("vulnerability_class", "") for v in flagged if v.get("vulnerability_class")
     ]
 
     logger.info("graph_explain | classes={}", flagged_classes or ["all"])
@@ -57,7 +56,7 @@ async def graph_explain(state: AuditState) -> dict[str, Any]:
             server_url=_GRAPH_INSPECTOR_URL,
             tool_name="get_graph_hotspots",
             arguments={
-                "contract_code":   contract_code,
+                "contract_code": contract_code,
                 "flagged_classes": flagged_classes,
             },
         )
@@ -66,32 +65,31 @@ async def graph_explain(state: AuditState) -> dict[str, Any]:
             logger.warning("graph_explain | inspector error: {}", result["error"])
             return {"ml_hotspots": [], "graph_explanations": {}}
 
-        hotspots    = result.get("hotspots",    [])
+        hotspots = result.get("hotspots", [])
         graph_stats = result.get("graph_stats", {})
-        mode        = result.get("analysis_mode", "unknown")
+        mode = result.get("analysis_mode", "unknown")
 
         # Build per-class breakdown for state.graph_explanations
         hotspots_by_class: dict[str, list[dict]] = {}
         for cls in flagged_classes:
             hotspots_by_class[cls] = [
-                h for h in hotspots
-                if cls in h.get("vulnerability_classes", [])
+                h for h in hotspots if cls in h.get("vulnerability_classes", [])
             ]
 
         graph_explanations: dict[str, Any] = {
-            "graph_stats":       graph_stats,
-            "analysis_mode":     mode,
+            "graph_stats": graph_stats,
+            "analysis_mode": mode,
             "hotspots_by_class": hotspots_by_class,
         }
 
         # ml_hotspots: flat list matching AuditState schema
         ml_hotspots = [
             {
-                "class":   h["vulnerability_classes"][0] if h["vulnerability_classes"] else "?",
+                "class": h["vulnerability_classes"][0] if h["vulnerability_classes"] else "?",
                 "fn_name": h["function"],
-                "lines":   h["lines"],
+                "lines": h["lines"],
                 "node_ids": [],  # Phase 2: populated from GNN attention
-                "score":   h["score"],
+                "score": h["score"],
                 "signals": h.get("signals", []),
             }
             for h in hotspots

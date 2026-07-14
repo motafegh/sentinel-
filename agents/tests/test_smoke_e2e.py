@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.orchestration.graph import build_graph
 from src.orchestration.state import AuditState
-
+from tests.provenance_fixtures import live_audit_result, live_ml_result
 
 # ---------------------------------------------------------------------------
 # Fixtures — contract sources and ML responses
@@ -82,47 +82,71 @@ contract SafeStorage {
 
 def _ml_result_vault() -> dict:
     """Three-tier ML result for Vault — Reentrancy confirmed."""
-    return {
-        "label": "confirmed_vulnerable",
-        "probabilities": {
-            "Reentrancy": 0.82, "IntegerUO": 0.15, "GasException": 0.05,
-            "Timestamp": 0.08, "TransactionOrderDependence": 0.04, "ExternalBug": 0.11,
-            "CallToUnknown": 0.09, "MishandledException": 0.06,
-            "UnusedReturn": 0.03, "DenialOfService": 0.04,
+    return live_ml_result(
+        {
+            "label": "confirmed_vulnerable",
+            "probabilities": {
+                "Reentrancy": 0.82,
+                "IntegerUO": 0.15,
+                "GasException": 0.05,
+                "Timestamp": 0.08,
+                "TransactionOrderDependence": 0.04,
+                "ExternalBug": 0.11,
+                "CallToUnknown": 0.09,
+                "MishandledException": 0.06,
+                "UnusedReturn": 0.03,
+                "DenialOfService": 0.04,
+            },
+            "confirmed": [
+                {"vulnerability_class": "Reentrancy", "probability": 0.82, "tier": "CONFIRMED"}
+            ],
+            "suspicious": [],
+            "vulnerabilities": [
+                {"vulnerability_class": "Reentrancy", "probability": 0.82, "tier": "CONFIRMED"}
+            ],
+            "tier_thresholds": {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10},
+            "thresholds": [0.5] * 10,
+            "truncated": False,
+            "windows_used": 1,
+            "num_nodes": 42,
+            "num_edges": 58,
+            "model_hash": "a" * 64,
         },
-        "confirmed":  [{"vulnerability_class": "Reentrancy", "probability": 0.82, "tier": "CONFIRMED"}],
-        "suspicious": [],
-        "vulnerabilities": [{"vulnerability_class": "Reentrancy", "probability": 0.82, "tier": "CONFIRMED"}],
-        "tier_thresholds": {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10},
-        "thresholds": [0.5] * 10,
-        "truncated": False,
-        "windows_used": 1,
-        "num_nodes": 42,
-        "num_edges": 58,
-    }
+        contract_code=VAULT_CONTRACT,
+    )
 
 
 def _ml_result_safe() -> dict:
     """Three-tier ML result — all classes well below DEEP_THRESHOLDS."""
     probs = {
-        "Reentrancy": 0.04, "IntegerUO": 0.03, "GasException": 0.02,
-        "Timestamp": 0.05, "TransactionOrderDependence": 0.01, "ExternalBug": 0.03,
-        "CallToUnknown": 0.02, "MishandledException": 0.02,
-        "UnusedReturn": 0.01, "DenialOfService": 0.01,
+        "Reentrancy": 0.04,
+        "IntegerUO": 0.03,
+        "GasException": 0.02,
+        "Timestamp": 0.05,
+        "TransactionOrderDependence": 0.01,
+        "ExternalBug": 0.03,
+        "CallToUnknown": 0.02,
+        "MishandledException": 0.02,
+        "UnusedReturn": 0.01,
+        "DenialOfService": 0.01,
     }
-    return {
-        "label": "safe",
-        "probabilities": probs,
-        "confirmed":  [],
-        "suspicious": [],
-        "vulnerabilities": [],
-        "tier_thresholds": {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10},
-        "thresholds": [0.5] * 10,
-        "truncated": False,
-        "windows_used": 1,
-        "num_nodes": 18,
-        "num_edges": 22,
-    }
+    return live_ml_result(
+        {
+            "label": "safe",
+            "probabilities": probs,
+            "confirmed": [],
+            "suspicious": [],
+            "vulnerabilities": [],
+            "tier_thresholds": {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10},
+            "thresholds": [0.5] * 10,
+            "truncated": False,
+            "windows_used": 1,
+            "num_nodes": 18,
+            "num_edges": 22,
+            "model_hash": "a" * 64,
+        },
+        contract_code=SAFE_CONTRACT,
+    )
 
 
 _MOCK_RAG_CHUNKS = [
@@ -146,30 +170,52 @@ _MOCK_INSPECTOR_RESPONSE = {
             "signals": ["reentrancy-eth(High)"],
         }
     ],
-    "graph_stats": {"num_contracts": 1, "num_functions": 2, "has_interfaces": False, "num_hotspots": 1},
+    "graph_stats": {
+        "num_contracts": 1,
+        "num_functions": 2,
+        "has_interfaces": False,
+        "num_hotspots": 1,
+    },
     "analysis_mode": "gnn",
 }
 
 
 async def _mock_mcp(server_url: str, tool_name: str, arguments: dict) -> dict:
-    if tool_name == "predict":           return _ml_result_vault()
-    if tool_name == "search":            return _MOCK_RAG_CHUNKS
-    if tool_name == "get_audit_history": return _MOCK_AUDIT_RESPONSE
-    if tool_name == "get_graph_hotspots": return _MOCK_INSPECTOR_RESPONSE
+    if tool_name == "predict":
+        return _ml_result_vault()
+    if tool_name == "search":
+        return _MOCK_RAG_CHUNKS
+    if tool_name == "get_audit_history":
+        return live_audit_result(
+            {**_MOCK_AUDIT_RESPONSE, "contract_address": arguments["contract_address"]},
+            operation=tool_name,
+            arguments=arguments,
+        )
+    if tool_name == "get_graph_hotspots":
+        return _MOCK_INSPECTOR_RESPONSE
     return {"error": f"unexpected tool: {tool_name}"}
 
 
 async def _mock_mcp_safe(server_url: str, tool_name: str, arguments: dict) -> dict:
-    if tool_name == "predict":           return _ml_result_safe()
-    if tool_name == "search":            return []
-    if tool_name == "get_audit_history": return _MOCK_AUDIT_RESPONSE
-    if tool_name == "get_graph_hotspots": return _MOCK_INSPECTOR_RESPONSE
+    if tool_name == "predict":
+        return _ml_result_safe()
+    if tool_name == "search":
+        return []
+    if tool_name == "get_audit_history":
+        return live_audit_result(
+            {**_MOCK_AUDIT_RESPONSE, "contract_address": arguments["contract_address"]},
+            operation=tool_name,
+            arguments=arguments,
+        )
+    if tool_name == "get_graph_hotspots":
+        return _MOCK_INSPECTOR_RESPONSE
     return {"error": f"unexpected tool: {tool_name}"}
 
 
 # ---------------------------------------------------------------------------
 # Smoke Tests
 # ---------------------------------------------------------------------------
+
 
 class TestSmokePaths:
     """
@@ -185,7 +231,7 @@ class TestSmokePaths:
         """
         graph = build_graph(use_checkpointer=False)
         initial_state = {
-            "contract_code":    VAULT_CONTRACT,
+            "contract_code": VAULT_CONTRACT,
             "contract_address": "0xVAULT",
         }
 
@@ -199,11 +245,24 @@ class TestSmokePaths:
 
         # Required Phase 1 fields
         required = [
-            "contract_address", "overall_label", "risk_probability",
-            "top_vulnerability", "confirmed", "suspicious", "probabilities",
-            "tier_thresholds", "threshold", "ml_truncated", "num_nodes", "num_edges",
-            "rag_evidence", "audit_history", "static_findings", "recommendation",
-            "error", "path_taken",
+            "contract_address",
+            "overall_label",
+            "risk_probability",
+            "top_vulnerability",
+            "confirmed",
+            "suspicious",
+            "probabilities",
+            "tier_thresholds",
+            "threshold",
+            "ml_truncated",
+            "num_nodes",
+            "num_edges",
+            "rag_evidence",
+            "audit_history",
+            "static_findings",
+            "recommendation",
+            "error",
+            "path_taken",
         ]
         for f in required:
             assert f in report, f"Missing required field: {f}"
@@ -219,7 +278,7 @@ class TestSmokePaths:
         """
         graph = build_graph(use_checkpointer=False)
         initial_state = {
-            "contract_code":    VAULT_CONTRACT,
+            "contract_code": VAULT_CONTRACT,
             "contract_address": "0xVAULT",
         }
 
@@ -229,16 +288,16 @@ class TestSmokePaths:
         assert "quick_screen_hits" in result, "quick_screen_hits must be in final state"
         hits = result["quick_screen_hits"]
         assert "slither" in hits
-        assert "aderyn"  in hits
+        assert "aderyn" in hits
         assert isinstance(hits["slither"], list)
-        assert isinstance(hits["aderyn"],  list)
+        assert isinstance(hits["aderyn"], list)
 
     @pytest.mark.asyncio
     async def test_deep_path_graph_explanations_present(self):
         """graph_explanations must be non-empty after a deep-path run."""
         graph = build_graph(use_checkpointer=False)
         initial_state = {
-            "contract_code":    VAULT_CONTRACT,
+            "contract_code": VAULT_CONTRACT,
             "contract_address": "0xVAULT",
         }
 
@@ -256,7 +315,7 @@ class TestSmokePaths:
         """
         graph = build_graph(use_checkpointer=False)
         initial_state = {
-            "contract_code":    VAULT_CONTRACT,
+            "contract_code": VAULT_CONTRACT,
             "contract_address": "0xVAULT",
         }
 
@@ -277,20 +336,26 @@ class TestSmokePaths:
         """
         graph = build_graph(use_checkpointer=False)
         initial_state = {
-            "contract_code":    SAFE_CONTRACT,
+            "contract_code": SAFE_CONTRACT,
             "contract_address": "0xSAFE",
         }
 
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp_safe), \
-             patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile") as mock_tmp, \
-             patch("os.unlink"):
+        with (
+            patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp_safe),
+            patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile") as mock_tmp,
+            patch("os.unlink"),
+        ):
             # Stub quick_screen temp file to avoid real Slither on safe contract
-            mock_file = type("TmpFile", (), {"name": "/tmp/sentinel_smoke_safe.sol", "write": lambda s, t: None})()
+            mock_file = type(
+                "TmpFile", (), {"name": "/tmp/sentinel_smoke_safe.sol", "write": lambda s, t: None}
+            )()
             mock_tmp.return_value.__enter__ = lambda s: mock_file
-            mock_tmp.return_value.__exit__  = lambda s, *a: None
+            mock_tmp.return_value.__exit__ = lambda s, *a: None
             # Stub Slither import so quick_screen returns clean screen
-            with patch.dict("sys.modules", {"slither": None}), \
-                 patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
+            with (
+                patch.dict("sys.modules", {"slither": None}),
+                patch("subprocess.run", side_effect=FileNotFoundError("aderyn")),
+            ):
                 result = await graph.ainvoke(initial_state)
 
         report = result.get("final_report")
@@ -310,22 +375,30 @@ class TestSmokePaths:
         The final report must NOT show path_taken=="fast".
         """
         from unittest.mock import MagicMock
+
         import slither as _slither_module
 
         # ML says safe
         ml_safe = _ml_result_safe()
 
         async def mock_safe_ml(server_url, tool_name, arguments):
-            if tool_name == "predict":           return ml_safe
-            if tool_name == "search":            return []
-            if tool_name == "get_audit_history": return _MOCK_AUDIT_RESPONSE
-            if tool_name == "get_graph_hotspots": return _MOCK_INSPECTOR_RESPONSE
+            if tool_name == "predict":
+                return ml_safe
+            if tool_name == "search":
+                return []
+            if tool_name == "get_audit_history":
+                return _MOCK_AUDIT_RESPONSE
+            if tool_name == "get_graph_hotspots":
+                return _MOCK_INSPECTOR_RESPONSE
             return {}
 
         # Slither finds a reentrancy-eth hit despite ML saying safe
         mock_finding = {
-            "check": "reentrancy-eth", "impact": "High",
-            "confidence": "High", "description": "Reentrancy found", "elements": [],
+            "check": "reentrancy-eth",
+            "impact": "High",
+            "confidence": "High",
+            "description": "Reentrancy found",
+            "elements": [],
         }
         mock_detector = MagicMock()
         mock_detector.ARGUMENT = "reentrancy-eth"
@@ -336,42 +409,47 @@ class TestSmokePaths:
 
         graph = build_graph(use_checkpointer=False)
         initial_state = {
-            "contract_code":    SAFE_CONTRACT,
+            "contract_code": SAFE_CONTRACT,
             "contract_address": "0xTRICKY",
         }
 
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=mock_safe_ml), \
-             patch.object(_slither_module, "Slither", mock_slither_cls), \
-             patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
+        with (
+            patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=mock_safe_ml),
+            patch.object(_slither_module, "Slither", mock_slither_cls),
+            patch("subprocess.run", side_effect=FileNotFoundError("aderyn")),
+        ):
             result = await graph.ainvoke(initial_state)
 
         hits = result.get("quick_screen_hits", {})
-        assert "reentrancy-eth" in hits.get("slither", []), (
-            "quick_screen must record the Slither hit"
-        )
+        assert "reentrancy-eth" in hits.get(
+            "slither", []
+        ), "quick_screen must record the Slither hit"
         report = result.get("final_report")
         assert report is not None
-        assert report["path_taken"] != "fast", (
-            "Screen-escalated path must NOT be a fast path even though ML said safe"
-        )
+        assert (
+            report["path_taken"] != "fast"
+        ), "Screen-escalated path must NOT be a fast path even though ML said safe"
         # Rule 5C: Aderyn skip must surface in tool_status.
         assert result.get("tool_status", {}).get("aderyn", {}).get("ran") is False
 
     @pytest.mark.asyncio
     async def test_ml_failure_still_produces_report(self):
         """Graph must produce a final report even when ML inference is unavailable."""
+
         async def ml_down(server_url, tool_name, arguments):
             raise ConnectionError("inference server unreachable")
 
         graph = build_graph(use_checkpointer=False)
         initial_state = {
-            "contract_code":    VAULT_CONTRACT,
+            "contract_code": VAULT_CONTRACT,
             "contract_address": "0xERROR",
         }
 
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=ml_down), \
-             patch.dict("sys.modules", {"slither": None}), \
-             patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
+        with (
+            patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=ml_down),
+            patch.dict("sys.modules", {"slither": None}),
+            patch("subprocess.run", side_effect=FileNotFoundError("aderyn")),
+        ):
             result = await graph.ainvoke(initial_state)
 
         report = result.get("final_report")

@@ -30,7 +30,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient
-
 from src.api.gateway import _derive_address, create_app
 from src.api.job_store import JobRecord, JobStatus, JobStore
 from src.api.models import (
@@ -40,7 +39,7 @@ from src.api.models import (
     HealthResponse,
     JobResponse,
 )
-
+from src.contracts.execution import ExecutionState, failure_status
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Test helpers
@@ -54,7 +53,7 @@ VALID_SOLIDITY = (
     "    function deposit() public payable { balances[msg.sender] += msg.value; }\n"
     "    function withdraw(uint256 amount) public {\n"
     "        require(balances[msg.sender] >= amount);\n"
-    "        (bool ok, ) = msg.sender.call{value: amount}(\"\");\n"
+    '        (bool ok, ) = msg.sender.call{value: amount}("");\n'
     "        require(ok);\n"
     "        balances[msg.sender] -= amount;\n"
     "    }\n"
@@ -142,6 +141,7 @@ def _make_client(
 # Model-level tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestAuditRequestValidation:
     def test_valid_solidity_passes(self):
         req = AuditRequest(contract_code=VALID_SOLIDITY)
@@ -177,6 +177,7 @@ class TestAuditRequestValidation:
     def test_extra_fields_rejected(self):
         # `extra="forbid"` is set on AuditRequest.
         import json
+
         with pytest.raises(Exception):
             AuditRequest.model_validate_json(
                 json.dumps({"contract_code": VALID_SOLIDITY, "rogue_field": "evil"})
@@ -192,11 +193,13 @@ class TestAuditRequestValidation:
 # JobStore tests (unit tests, no FastAPI)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestJobStore:
     def test_create_returns_queued_record(self):
         store = JobStore()
-        r = store.create(contract_code=VALID_SOLIDITY, contract_address="0xa",
-                         audit_timeout_s=300.0)
+        r = store.create(
+            contract_code=VALID_SOLIDITY, contract_address="0xa", audit_timeout_s=300.0
+        )
         assert r.status == JobStatus.QUEUED
         assert r.started_at is None
         assert r.finished_at is None
@@ -205,8 +208,9 @@ class TestJobStore:
 
     def test_full_lifecycle(self):
         store = JobStore()
-        r = store.create(contract_code=VALID_SOLIDITY, contract_address="0xa",
-                         audit_timeout_s=300.0)
+        r = store.create(
+            contract_code=VALID_SOLIDITY, contract_address="0xa", audit_timeout_s=300.0
+        )
         store.mark_running(r.job_id)
         assert store.get(r.job_id).status == JobStatus.RUNNING
         assert store.get(r.job_id).started_at is not None
@@ -219,15 +223,17 @@ class TestJobStore:
     def test_mark_completed_requires_running(self):
         """Can't mark COMPLETED from QUEUED — must transition through RUNNING."""
         store = JobStore()
-        r = store.create(contract_code=VALID_SOLIDITY, contract_address="0xa",
-                         audit_timeout_s=300.0)
+        r = store.create(
+            contract_code=VALID_SOLIDITY, contract_address="0xa", audit_timeout_s=300.0
+        )
         store.mark_completed(r.job_id, {})  # should be no-op
         assert store.get(r.job_id).status == JobStatus.QUEUED  # unchanged
 
     def test_mark_failed_from_queued(self):
         store = JobStore()
-        r = store.create(contract_code=VALID_SOLIDITY, contract_address="0xa",
-                         audit_timeout_s=300.0)
+        r = store.create(
+            contract_code=VALID_SOLIDITY, contract_address="0xa", audit_timeout_s=300.0
+        )
         store.mark_failed(r.job_id, "boom")
         rec = store.get(r.job_id)
         assert rec.status == JobStatus.FAILED
@@ -236,8 +242,9 @@ class TestJobStore:
 
     def test_mark_failed_from_running(self):
         store = JobStore()
-        r = store.create(contract_code=VALID_SOLIDITY, contract_address="0xa",
-                         audit_timeout_s=300.0)
+        r = store.create(
+            contract_code=VALID_SOLIDITY, contract_address="0xa", audit_timeout_s=300.0
+        )
         store.mark_running(r.job_id)
         store.mark_failed(r.job_id, "graph exploded")
         assert store.get(r.job_id).status == JobStatus.FAILED
@@ -298,12 +305,14 @@ class TestJobStore:
         store = JobStore()
         ids = []
         errors = []
+
         def worker():
             try:
                 r = store.create(contract_code="c", contract_address="0x", audit_timeout_s=300)
                 ids.append(r.job_id)
             except Exception as e:
                 errors.append(e)
+
         threads = [threading.Thread(target=worker) for _ in range(50)]
         for t in threads:
             t.start()
@@ -315,8 +324,7 @@ class TestJobStore:
 
     def test_to_dict_drops_contract_code(self):
         store = JobStore()
-        r = store.create(contract_code="huge-source", contract_address="0xa",
-                         audit_timeout_s=300)
+        r = store.create(contract_code="huge-source", contract_address="0xa", audit_timeout_s=300)
         d = r.to_dict()
         assert "contract_code" not in d
         assert d["contract_address"] == "0xa"
@@ -324,8 +332,7 @@ class TestJobStore:
 
     def test_to_full_dict_keeps_contract_code(self):
         store = JobStore()
-        r = store.create(contract_code="huge-source", contract_address="0xa",
-                         audit_timeout_s=300)
+        r = store.create(contract_code="huge-source", contract_address="0xa", audit_timeout_s=300)
         d = r.to_full_dict()
         assert d["contract_code"] == "huge-source"
 
@@ -342,6 +349,7 @@ class TestJobStore:
 # ═══════════════════════════════════════════════════════════════════════════
 # Address derivation
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestAddressDerivation:
     def test_deterministic(self):
@@ -365,13 +373,52 @@ class TestAddressDerivation:
 # Gateway HTTP tests (use TestClient as context manager for lifespan)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestGatewayE2E:
+    def test_terminal_status_and_finality_are_preserved(self):
+        status = failure_status(
+            ExecutionState.UNAVAILABLE,
+            dependency="inference",
+            reason_code="connection_refused",
+            detail="inference unavailable",
+            attempted=True,
+        )
+        graph = _StubGraph(
+            result={
+                "final_report": {
+                    "overall_label": "unknown",
+                    "overall_verdict": "SAFE",
+                    "tool_status": {"ml": status},
+                    "finality": {"eligible": False, "status_gate": "blocked"},
+                },
+                "ml_result": {"error": "inference_unavailable", "execution_status": status},
+                "tool_status": {"ml": status},
+                "finality": {"eligible": False, "status_gate": "blocked"},
+            }
+        )
+        with _make_client(graph=graph)[0] as client:
+            response = client.post("/audit", json={"contract_code": VALID_SOLIDITY})
+            job_id = response.json()["job_id"]
+            for _ in range(50):
+                response = client.get(f"/audit/{job_id}")
+                if response.json()["status"] in ("completed", "failed"):
+                    break
+                time.sleep(0.05)
+
+            report = response.json()["report"]
+            assert report["tool_status"]["ml"] == status
+            assert report["finality"]["eligible"] is False
+            assert report["ml_result"]["execution_status"] == status
+
     def test_submit_returns_202_and_job_id(self):
         with _make_client()[0] as client:
-            resp = client.post("/audit", json={
-                "contract_code": VALID_SOLIDITY,
-                "contract_address": "0xtest",
-            })
+            resp = client.post(
+                "/audit",
+                json={
+                    "contract_code": VALID_SOLIDITY,
+                    "contract_address": "0xtest",
+                },
+            )
             assert resp.status_code == 202
             data = resp.json()
             assert "job_id" in data
@@ -417,10 +464,13 @@ class TestGatewayE2E:
         # Stub sleeps longer than the audit_timeout_s we send.
         graph = _StubGraph(sleep_s=0.5)
         with _make_client(graph=graph)[0] as client:
-            resp = client.post("/audit", json={
-                "contract_code": VALID_SOLIDITY,
-                "audit_timeout_s": 0.1,  # 100ms — less than the 500ms sleep
-            })
+            resp = client.post(
+                "/audit",
+                json={
+                    "contract_code": VALID_SOLIDITY,
+                    "audit_timeout_s": 0.1,  # 100ms — less than the 500ms sleep
+                },
+            )
             job_id = resp.json()["job_id"]
             for _ in range(50):
                 resp = client.get(f"/audit/{job_id}")
@@ -459,10 +509,13 @@ class TestGatewayE2E:
 
     def test_validation_extra_field_rejected(self):
         with _make_client()[0] as client:
-            resp = client.post("/audit", json={
-                "contract_code": VALID_SOLIDITY,
-                "rogue_field": "evil",
-            })
+            resp = client.post(
+                "/audit",
+                json={
+                    "contract_code": VALID_SOLIDITY,
+                    "rogue_field": "evil",
+                },
+            )
             assert resp.status_code == 422
 
     def test_address_derived_when_omitted(self):
@@ -576,11 +629,18 @@ class TestGatewayE2E:
             graph1.raise_exc = None
             graph1.result = {
                 "final_report": {"overall_label": "safe", "overall_verdict": "SAFE"},
-                "verdicts": {}, "ml_result": {}, "static_findings": [],
-                "rag_results": [], "audit_history": [], "routing_decisions": [],
-                "consensus_verdict": {}, "debate_transcript": {},
-                "confirmations": {}, "contradictions": {},
-                "narrative": None, "error": None,
+                "verdicts": {},
+                "ml_result": {},
+                "static_findings": [],
+                "rag_results": [],
+                "audit_history": [],
+                "routing_decisions": [],
+                "consensus_verdict": {},
+                "debate_transcript": {},
+                "confirmations": {},
+                "contradictions": {},
+                "narrative": None,
+                "error": None,
             }
             resp = client.post("/audit", json={"contract_code": VALID_SOLIDITY})
             job_id2 = resp.json()["job_id"]
@@ -597,6 +657,7 @@ class TestGatewayE2E:
 # Convenience: __init__ exports
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestPackageExports:
     def test_lazy_imports(self):
         # The __init__.py uses PEP 562 __getattr__ to defer submodule imports.
@@ -604,13 +665,14 @@ class TestPackageExports:
             AuditRequest,
             ErrorResponse,
             HealthResponse,
-            JobResponse,
-            ServiceHealth,
             JobRecord,
-            JobStore,
+            JobResponse,
             JobStatus,
+            JobStore,
+            ServiceHealth,
             create_app,
         )
+
         assert AuditRequest is not None
         assert JobStore is not None
         assert JobStatus.QUEUED.value == "queued"

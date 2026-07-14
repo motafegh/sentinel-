@@ -21,10 +21,9 @@ implementations) but blocks abuse (a 1 GB POST would DoS the job store).
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 
 # ── Sizing limits ────────────────────────────────────────────────────────
 MAX_CONTRACT_CHARS = 200_000
@@ -58,25 +57,28 @@ class AuditRequest(BaseModel):
     )
 
     contract_code: str = Field(
-        ..., min_length=1, max_length=MAX_CONTRACT_CHARS,
+        ...,
+        min_length=1,
+        max_length=MAX_CONTRACT_CHARS,
         description="Solidity source code to audit. Capped at "
-                    f"{MAX_CONTRACT_CHARS:,} chars to prevent DoS.",
+        f"{MAX_CONTRACT_CHARS:,} chars to prevent DoS.",
     )
     contract_address: str | None = Field(
         default=None,
         description="On-chain address. Optional — if omitted, a deterministic "
-                    "0x... address is derived from a hash of contract_code.",
+        "0x... address is derived from a hash of contract_code.",
     )
     audit_timeout_s: float = Field(
         default=DEFAULT_AUDIT_TIMEOUT_S,
-        gt=0, le=MAX_AUDIT_TIMEOUT_S,
+        gt=0,
+        le=MAX_AUDIT_TIMEOUT_S,
         description="Per-audit wall-clock timeout in seconds. Default 300s. "
-                    f"Max {MAX_AUDIT_TIMEOUT_S:.0f}s.",
+        f"Max {MAX_AUDIT_TIMEOUT_S:.0f}s.",
     )
     metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Free-form metadata stored alongside the job. NOT used by "
-                    "the audit pipeline — purely for caller bookkeeping.",
+        "the audit pipeline — purely for caller bookkeeping.",
     )
 
     @field_validator("contract_code")
@@ -108,17 +110,21 @@ class JobResponse(BaseModel):
 
     job_id: str = Field(..., description="Server-assigned UUID for this job.")
     status: str = Field(
-        ..., description="One of: queued, running, completed, failed.",
+        ...,
+        description="One of: queued, running, completed, failed.",
     )
     submitted_at: str = Field(..., description="ISO-8601 UTC timestamp.")
     started_at: str | None = Field(
-        default=None, description="ISO-8601 UTC timestamp; null until status=running.",
+        default=None,
+        description="ISO-8601 UTC timestamp; null until status=running.",
     )
     finished_at: str | None = Field(
-        default=None, description="ISO-8601 UTC timestamp; null until status=completed or failed.",
+        default=None,
+        description="ISO-8601 UTC timestamp; null until status=completed or failed.",
     )
     contract_address: str | None = Field(
-        default=None, description="Echoed from the request (or generated).",
+        default=None,
+        description="Echoed from the request (or generated).",
     )
     audit_timeout_s: float = Field(
         default=300.0,
@@ -129,11 +135,12 @@ class JobResponse(BaseModel):
         description="Echoed from request.metadata — caller bookkeeping only.",
     )
     error: str | None = Field(
-        default=None, description="Failure reason; null unless status=failed.",
+        default=None,
+        description="Failure reason; null unless status=failed.",
     )
     report: dict[str, Any] | None = Field(
-        default=None, description="Audit report dict (final_report) — present "
-                                  "only when status=completed.",
+        default=None,
+        description="Audit report dict (final_report) — present " "only when status=completed.",
     )
 
 
@@ -145,6 +152,7 @@ class ServiceHealth(BaseModel):
     name: str
     url: str
     ok: bool
+    state: Literal["live", "degraded", "mock", "unavailable", "unknown"] = "unknown"
     detail: str = ""
 
 
@@ -156,12 +164,13 @@ class HealthResponse(BaseModel):
     status: str = Field(..., description="'ok' or 'degraded'.")
     gateway: str = Field(..., description="Gateway version string.")
     jobs: dict[str, int] = Field(
-        ..., description="Live job counts: {queued, running, completed, failed}.",
+        ...,
+        description="Live job counts: {queued, running, completed, failed}.",
     )
     services: list[ServiceHealth] = Field(
         default_factory=list,
         description="Upstream health checks (ml_api, mcp_*, lm_studio). "
-                    "Empty list if --no-services was used at startup.",
+        "Empty list if --no-services was used at startup.",
     )
 
 
