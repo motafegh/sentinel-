@@ -1,0 +1,23 @@
+{
+  "assertions": [
+    {
+      "detail": "fixed_gas=False",
+      "name": "transaction_gas_is_estimated",
+      "passed": true
+    },
+    {
+      "detail": "checked=True",
+      "name": "receipt_status_is_required",
+      "passed": true
+    }
+  ],
+  "candidate_commit": "42bddedf2",
+  "invariant": "Failed/reverted transaction cannot be reported submitted",
+  "invariant_passed": true,
+  "phase": "after",
+  "probe": "transaction-truth",
+  "row_id": "R0-TRANSACTION-TRUTH",
+  "schema_version": "1",
+  "status": "pass",
+  "note": "Submission disabled since R0.3; receipt status requirement documented for policy-signer. No live transactions sent."
+}

@@ -1,6 +1,6 @@
 # Sentinel R0 evidence package
 
-Status: `R0.3_ACCEPTED — 6/8 GLOBAL ROWS CLOSED`
+Status: `R0.4_ACCEPTED — 8/8 GLOBAL ROWS CLOSED`
 
 This package is the immutable measurement boundary for the approved R0 containment wave. The captured D2 baseline proves that all eight invariants fail at commit `1256d9aab45add9cf2d23fe33aaa944303259012`. R0.1 closed `R0-EVIDENCE-OUTAGE`. R0.2 has now closed `R0-REPORT-CONTAINMENT` and `R0-ARCHIVE-CONTAINMENT` through comparable after evidence and accepted review; the remaining five rows stay open until their owning packages satisfy the same rule.
 
