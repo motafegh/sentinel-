@@ -2,10 +2,16 @@
 """
 On-chain audit submission for the sentinel-audit MCP server (P11, 2026-07).
 
-Implements the submit_audit MCP tool: fetches the 128-dim fusion embedding
-from the ML inference API, runs the proxy model to get 10 class scores,
-generates a ZK proof via EZKL, and submits the audit result on-chain via
-AuditRegistry.submitAuditV2().
+R0.3/R0.4: On-chain submission is DISABLED. The raw operator key has been
+removed from this process. The policy-signer service owns transaction
+construction and must enforce:
+  - chain_id and round_id binding (proof identity — no cross-identity replay)
+  - estimated gas (never fixed 1,000,000)
+  - receipt["status"] == 1 before reporting submitted (transaction truth)
+  - pending/mined/finalized/failed states remain distinguishable
+
+This module now generates the ZK proof and provenance manifest only.
+The proof and manifest are preserved for the policy-signer to consume.
 
 Rule 5C: every subprocess/web3 failure returns a structured degraded return
 with 'status', 'failed_step', and 'reason' — never silent empty return.
