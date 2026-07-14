@@ -1,0 +1,61 @@
+{
+  "acceptance_rows": [
+    {
+      "evidence": "All 8 frozen baseline probes return invariant_passed=true on integrated commit c39de51ac.",
+      "row_id": "R0.6-ALL-PROBES-PASS",
+      "status": "PASS"
+    },
+    {
+      "evidence": "716 AGENTS tests passed, 9 failed (6 missing RAG seed corpora + 3 missing solc — all pre-existing, zero new regressions). 91 DATA focused tests passed (export + archive safety + ingestion).",
+      "row_id": "R0.6-REGRESSION-DELTA",
+      "status": "PASS"
+    },
+    {
+      "evidence": "8/8 after-evidence records exist: R0-EVIDENCE-OUTAGE, R0-REPORT-CONTAINMENT, R0-ARCHIVE-CONTAINMENT, R0-DATA-RELEASE-TRUST, R0-AUTHORIZATION-LIMITS, R0-SIGNER-ISOLATION, R0-PROOF-IDENTITY, R0-TRANSACTION-TRUTH.",
+      "row_id": "R0.6-EVIDENCE-COMPLETENESS",
+      "status": "PASS"
+    },
+    {
+      "evidence": "git diff --check clean. Python compileall passes for all new modules. Worktree clean before commit.",
+      "row_id": "R0.6-CLEAN-WORKTREE",
+      "status": "PASS"
+    },
+    {
+      "evidence": "Packages compose: R0.1 execution status + R0.2 persistence + R0.3 auth + R0.4 submission disabled + R0.5 DATA verification — all coexist without conflict. Gateway tests pass with auth_enabled=False (test mode) and auth_enabled=True (production mode).",
+      "row_id": "R0.6-PACKAGE-COMPOSITION",
+      "status": "PASS"
+    }
+  ],
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "c39de51ac",
+  "global_r0_coverage_complete": true,
+  "global_r0_rows_closed": 8,
+  "global_r0_rows_total": 8,
+  "kind": "r0_package_acceptance_ledger",
+  "limitations": [
+    {
+      "classification": "PRE_EXISTING_CHECKOUT_PREREQUISITE",
+      "detail": "Five source corpora and the canonical SWC corpus are absent; six RAG fetcher assertions fail identically outside the R0 surface."
+    },
+    {
+      "classification": "PRE_EXISTING_TOOLCHAIN_PREREQUISITE",
+      "detail": "solc is absent from PATH; two real-Slither assertions and one dependent smoke assertion fail identically outside the R0 surface."
+    },
+    {
+      "classification": "SCOPE_RETAINED_FOR_R1_R3",
+      "detail": "Full V3 typed identity, proof replay prevention, durable jobs, quorum, governance, and on-chain finality remain R1-R3 scope. R0 closes the containment slice only."
+    },
+    {
+      "classification": "POLICY_CHECKPOINTS",
+      "detail": "Archive extraction limits set to L2 measured values (checkpoint #1 closed). Gateway body/rate/concurrency limits (checkpoint #2) and transaction gas/confirmation policy (checkpoint #3) remain for future hardening or R0.6 supplement."
+    }
+  ],
+  "package": "R0.6",
+  "review": {
+    "decided_at": "2026-07-14T21:00:00Z",
+    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "status": "ACCEPTED"
+}
