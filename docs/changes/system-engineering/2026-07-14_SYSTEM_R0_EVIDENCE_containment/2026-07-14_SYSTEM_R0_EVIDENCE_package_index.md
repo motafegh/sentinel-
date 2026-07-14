@@ -1,6 +1,6 @@
 # Sentinel R0 evidence package
 
-Status: `R0.0_IMPLEMENTATION_IN_PROGRESS`
+Status: `R0.0_READY_FOR_REVIEW`
 
 This package is the immutable measurement boundary for the approved R0 containment wave. It does not claim that any R0 security invariant is fixed. The captured D2 baseline proves that all eight invariants fail at commit `1256d9aab45add9cf2d23fe33aaa944303259012`; every row therefore remains open until a comparable after record and an explicit reviewer decision exist.
 
@@ -12,6 +12,9 @@ This package is the immutable measurement boundary for the approved R0 containme
 - `baseline/2026-07-14_SYSTEM_R0_ENVIRONMENT_before.json` records the redacted execution environment and dependency-lock digests.
 - `baseline/*_before.json` contains one expected-failing record for each matrix row.
 - `baseline/2026-07-14_SYSTEM_R0_COVERAGE_before.json` proves closure is currently false because after records do not yet exist.
+- `acceptance/2026-07-14_SYSTEM_R0_ENVIRONMENT_r0-0_candidate.json` proves the R0.0 candidate was measured from a clean committed worktree.
+- `acceptance/2026-07-14_SYSTEM_R0_EVIDENCE_r0-0_acceptance.json` is the measured package acceptance ledger; its reviewer decision remains pending.
+- `acceptance/2026-07-14_SYSTEM_R0_REVIEW_r0-0_handoff.md` explains the evidence and retained limitations for review.
 - `schemas/r0/evidence_record_v1.schema.json` and `schemas/r0/runtime_config_v1.schema.json` are the versioned interchange schemas.
 
 ## Closure rule

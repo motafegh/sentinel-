@@ -1,0 +1,90 @@
+{
+  "acceptance_rows": [
+    {
+      "evidence": {
+        "after": "Eight fixture-bound baseline records validate structurally and all reproduce invariant_passed=false with process exit code 0.",
+        "before": "The approved D2 commit contains neither scripts/r0_evidence nor an R0 evidence record contract.",
+        "measurement": "8/8 expected unsafe invariants reproduced; 0/8 global rows closed; coverage reports missing after record for every row."
+      },
+      "row_id": "R0.0-BASELINE-REPRODUCTION",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Coverage requires comparable before/after records, a failing baseline, a passing zero-exit candidate, test references, full commit identities, valid digests, and accepted reviewer decisions.",
+        "before": "No executable R0 coverage gate existed at the approved D2 commit.",
+        "measurement": "18/18 evidence-harness tests pass; after-only, changed contract, pending review, malformed digest, nonpassing candidate, missing commit, and missing reference cases stay open."
+      },
+      "row_id": "R0.0-FALSE-CLOSURE-PREVENTION",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Command fixtures are SHA-256-bound and verified before execution; capture requires the declared clean commit; output redacts credential-shaped values and local paths.",
+        "before": "The approved D2 commit had no stable command manifest, environment manifest, or evidence schema.",
+        "measurement": "Probe source digest 23e4461e7d44b1e4dc8c5f8969e145b23dd574bacab8a54eb3a23a8fb8d10232 is frozen; baseline ledger verifies 11 bound artifact digests."
+      },
+      "row_id": "R0.0-EVIDENCE-INTEGRITY",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Runtime schema v1 provides test/development/production profiles, strict unknown-key rejection, explicit precedence, explicit dotenv policy, stable digesting, and production rejection of dotenv override or mock services.",
+        "before": "The approved D2 commit contains no agents/src/config/runtime.py runtime-profile owner.",
+        "measurement": "13/13 new runtime-boundary tests and 13/13 existing config tests pass."
+      },
+      "row_id": "R0.0-RUNTIME-BOUNDARY",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "The complete AGENTS suite on candidate caabefcbc produced 638 passes and 9 failures.",
+        "before": "The identical 21-test affected subset on clean D2 baseline 1256d9aab produced the same 9 failures and 12 passes.",
+        "measurement": "Newly introduced failure count: 0. The retained failures are six missing RAG-corpus assertions and three missing-solc downstream assertions."
+      },
+      "row_id": "R0.0-REGRESSION-DELTA",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Black, isort, flake8, JSON parsing, Python compilation, and git diff checks pass.",
+        "before": "No R0.0 candidate files existed.",
+        "measurement": "6 available quality checks pass; mypy is explicitly unavailable because the existing tool environment has an incompatible mypy_extensions installation."
+      },
+      "row_id": "R0.0-QUALITY-GATES",
+      "status": "PASS"
+    }
+  ],
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "caabefcbc6f2d422247c94fd9f5cb69ce84fdd3c",
+  "candidate_environment": {
+    "path": "acceptance/2026-07-14_SYSTEM_R0_ENVIRONMENT_r0-0_candidate.json",
+    "sha256": "9a26d5ba0982ed753a2c3100b07c0aa1b34ab840758afa998a5f99b5cbe34fdd"
+  },
+  "global_r0_coverage_complete": false,
+  "global_r0_rows_closed": 0,
+  "global_r0_rows_total": 8,
+  "kind": "r0_package_acceptance_ledger",
+  "limitations": [
+    {
+      "classification": "PRE_EXISTING_CHECKOUT_PREREQUISITE",
+      "detail": "Five source corpora and the canonical SWC corpus are absent from the isolated worktrees; six RAG fetcher assertions fail identically on baseline and candidate."
+    },
+    {
+      "classification": "PRE_EXISTING_TOOLCHAIN_PREREQUISITE",
+      "detail": "solc is absent from PATH; two real-Slither assertions and one dependent smoke assertion fail identically on baseline and candidate."
+    },
+    {
+      "classification": "QUALITY_TOOL_UNAVAILABLE",
+      "detail": "The installed mypy cannot import u8 from the installed mypy_extensions; no type-check pass is claimed."
+    }
+  ],
+  "package": "R0.0",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "status": "READY_FOR_REVIEW"
+}
