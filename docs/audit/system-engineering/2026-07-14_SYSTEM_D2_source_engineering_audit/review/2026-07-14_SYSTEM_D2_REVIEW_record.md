@@ -33,6 +33,8 @@ The audit recommends approval of the package with these decisions:
 - No performance or scientific acceptance claim is inferred from unavailable prerequisites.
 - Audit branch contains documentation only; final validation/commit evidence is recorded at package handoff.
 
+Package handoff evidence: review package commit `8c5820a26`; 86/86 appendix IDs matched the registry; 84 unique items after two merges; 13 relative links resolved; no placeholder or unbalanced fence was found; staged `git diff --check` passed; executable/configuration delta from `4b5bd333c` was empty.
+
 ## Ali decision
 
 Select exactly one decision in conversation; the record will then be updated with the decision, date, and any conditions.

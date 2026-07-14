@@ -29,7 +29,7 @@
 | Runtime acceptance matrix | Complete | This matrix, sections below | Apply during implementation |
 | Review record | Prepared | Review artifact with explicit decisions | Ali must approve/request changes/reject |
 | Internal package validation | Complete | 86/86 IDs matched; 84 unique after two merges; 13 links resolve; no placeholders/unbalanced fences; `git diff --check` passed | Preserve through commit |
-| Documentation commit | Pending | Git commit on audit branch | Commit after validation |
+| Documentation commit | Complete | Review package commit `8c5820a26` on `codex/source-engineering-audit` | Preserve with review follow-up |
 | D2 final status | `REVIEW_REQUIRED` | Review is a human governance gate | Ali decision |
 
 ## Runtime remediation acceptance
