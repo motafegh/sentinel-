@@ -123,22 +123,23 @@ AUDIT_REGISTRY_ABI = [
 
 def _read_vuln_type_from_report(contract_address: str) -> str:
     """
-    BRIDGE (Issue #1): read vulnerability_class from the shared report store.
-
-    The orchestrator (synthesizer in nodes.py) writes the final_report to
-    data/reports/{contract_address}.json before returning. This function
-    reads that file to recover the Track 3 vulnerability class name.
+    R0.2: read vulnerability_class from the shared report store via the
+    legacy read-only adapter. New reports are job-scoped, but the feedback
+    loop runs as a separate process that only knows the on-chain address,
+    so it uses the legacy adapter to find old address-keyed reports.
 
     Returns the top_vulnerability string if found, else "unknown".
     "unknown" is the correct fallback for:
       - Legacy events ingested before the bridge was deployed
       - Safe contracts where top_vulnerability is None / label == "safe"
       - Any I/O failure reading the report file
+      - Malformed address (validation rejects before filesystem access)
     """
-    report_path = REPORTS_DIR / f"{contract_address}.json"
     try:
-        if report_path.exists():
-            report = json.loads(report_path.read_text())
+        from src.persistence.legacy_adapter import find_legacy_report
+
+        report = find_legacy_report(REPORTS_DIR, contract_address)
+        if report is not None:
             vuln_type = report.get("top_vulnerability") or "unknown"
             logger.debug(
                 "bridge | recovered vuln_type='{}' for {}",
@@ -146,6 +147,8 @@ def _read_vuln_type_from_report(contract_address: str) -> str:
                 contract_address[:10],
             )
             return vuln_type
+    except ValueError:
+        logger.debug("bridge | invalid address {}, skipping", contract_address[:10])
     except Exception as exc:
         logger.warning(
             "bridge | could not read report for {} (non-fatal): {}",

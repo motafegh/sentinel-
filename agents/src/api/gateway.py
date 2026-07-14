@@ -361,6 +361,7 @@ async def _run_job(
         initial_state = {
             "contract_code": record.contract_code,
             "contract_address": record.contract_address,
+            "job_id": record.job_id,
         }
         result = await asyncio.wait_for(
             graph.ainvoke(initial_state),

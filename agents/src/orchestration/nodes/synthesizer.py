@@ -28,6 +28,7 @@ from src.orchestration.timeouts import (
     get_timeout,
 )
 from src.orchestration.timing import step_timer
+from src.persistence import persist_report
 from src.security import sanitize_for_prompt
 
 
@@ -473,24 +474,13 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         },
     }
 
-    # ── BRIDGE (Issue #1): persist report for feedback_loop.py ──────────────
-    # feedback_loop.py has no access to in-memory state — it runs as a
-    # separate process listening to on-chain events. Writing the report to
-    # disk by contract_address gives it the vulnerability_class it needs to
-    # index on-chain findings with a meaningful vuln_type instead of "unknown".
-    #
-    # Only write if contract_address is known (it may be empty in test runs).
-    # Failures are logged but never raise — the report is still returned
-    # to the caller; a missing file only degrades RAG quality, not correctness.
-    contract_address = state.get("contract_address", "").strip()
-    if contract_address:
-        try:
-            REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-            report_path = REPORTS_DIR / f"{contract_address}.json"
-            report_path.write_text(json.dumps(report, indent=2))
-            logger.debug("synthesizer | report persisted → {}", report_path)
-        except Exception as exc:
-            logger.warning("synthesizer | could not persist report for bridge (non-fatal): {}", exc)
+    # ── R0.2: persist report to job-scoped directory ──────────────────────
+    # Replaces the old address-as-filename pattern (D2-AGT-002).
+    # The report is written to data/reports/{job_id}/report.json using
+    # atomic publication. Failures surface as structured tool_status
+    # (Rule 5C) instead of silent log-only warnings.
+    persistence_status = persist_report(state, report, REPORTS_DIR)
+    tool_status.update(persistence_status)
 
     logger.info(
         "synthesizer complete | label={} | verdict={} | risk_prob={:.3f} | "

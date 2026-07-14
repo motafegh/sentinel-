@@ -159,31 +159,19 @@ def materialize_staging(staging: Path, repo_dir: Path, extra: dict, source_name:
 
 
 def _extract_zip(zip_path: Path, dest: Path, source_name: str) -> None:
-    """Extract a zip to `dest`, stripping macOS metadata (`__MACOSX/`, `.DS_Store`).
+    """Extract a zip to *dest* safely.
 
-    These are the noise directories the DIVE zip was full of (~44,687 files
-    were in the zip but only 22,332 were actual .sol; the rest were macOS
-    resource forks). Skipping them keeps the downstream find_sol_files
-    output clean.
+    R0.2: delegates to ``archive_safety.extract_zip_safe`` which uses
+    ``Path.is_relative_to`` containment (fixes the broken ``str.startswith``
+    check), rejects symlinks/special files/absolute paths/traversal,
+    enforces size/count/ratio limits, and extracts atomically.
     """
+    from sentinel_data.ingestion.archive_safety import (
+        ArchiveSafetyError,
+        extract_zip_safe,
+    )
+
     try:
-        with zipfile.ZipFile(zip_path) as zf:
-            for member in zf.namelist():
-                # Skip macOS metadata noise
-                if "__MACOSX/" in member or member.endswith(".DS_Store"):
-                    continue
-                # Extract, preserving relative path within dest
-                target = dest / member
-                # Defend against zip-slip
-                if not str(target.resolve()).startswith(str(dest.resolve())):
-                    raise ConnectorError(
-                        f"[{source_name}] zip-slip attempt: {member}"
-                    )
-                if member.endswith("/"):
-                    target.mkdir(parents=True, exist_ok=True)
-                else:
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    with zf.open(member) as src, open(target, "wb") as dst:
-                        shutil.copyfileobj(src, dst)
-    except zipfile.BadZipFile as e:
-        raise ConnectorError(f"[{source_name}] not a valid zip: {zip_path} ({e})")
+        extract_zip_safe(zip_path, dest, source_name=source_name)
+    except ArchiveSafetyError as e:
+        raise ConnectorError(str(e)) from e
