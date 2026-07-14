@@ -48,16 +48,17 @@ class ArchiveBadNameError(ArchiveSafetyError):
 class ArchiveLimits:
     """Safety limits for ZIP extraction.
 
-    These are Level 0 prototype defaults — generous values that prevent
-    only extreme abuse. Production values must be measured and approved
-    by Ali before enforcement in production mode.
+    L2 measured values based on the largest real archive in the project
+    (smartbugs-results-master_2.zip: 1.1M members, 7.8 GB uncompressed,
+    max ratio 160.5x, max depth 6). Each limit has >=1.25x headroom above
+    the observed maximum. Approved by Ali 2026-07-14.
     """
 
-    max_members: int = 100_000
-    max_total_uncompressed_bytes: int = 4 * 1024 * 1024 * 1024  # 4 GiB
+    max_members: int = 2_000_000
+    max_total_uncompressed_bytes: int = 16 * 1024 * 1024 * 1024  # 16 GiB
     max_per_file_bytes: int = 512 * 1024 * 1024  # 512 MiB
-    max_compression_ratio: float = 1000.0
-    max_path_depth: int = 64
+    max_compression_ratio: float = 200.0
+    max_path_depth: int = 32
 
 
 DEFAULT_LIMITS = ArchiveLimits()
