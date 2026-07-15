@@ -274,6 +274,17 @@ def validate_coverage(
                         f"!= expected {expected_candidate[:12]}"
                     )
 
+            # R0-F1: probe bundle check — both before and after must match
+            if expected_probe_bundle_sha256:
+                for label, record in (("before", left), ("after", right)):
+                    actual = record.get("probe_bundle_sha256", "")
+                    if actual != expected_probe_bundle_sha256:
+                        issues.append(
+                            f"{label} probe_bundle_sha256 "
+                            f"{actual[:16] if actual else 'MISSING'} "
+                            f"!= expected {expected_probe_bundle_sha256[:16]}"
+                        )
+
             if left.get("baseline_commit") == right.get("candidate_commit"):
                 issues.append("before and after records must be from different commits")
 

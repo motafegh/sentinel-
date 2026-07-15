@@ -88,24 +88,24 @@ def evaluate_submission(
             },
         )
 
-    # Future: typed_identity_bound_v3 passes through
-    if proof_scope == "typed_identity_bound_v3":
-        return PolicyResult(
-            decision=PolicyDecision.ACCEPTED,
-            details={
-                "proof_scope": proof_scope,
-                "contract_address": contract_address,
-                "chain_id": chain_id,
-                "round_id": round_id,
-                "model_hash": model_hash,
-                "note": "V3 identity-bound proof — accepted for submission (R4 signing)",
-            },
-        )
-
+    # R0-F3: No scope is eligible until V3 circuit and contract validation exist.
+    # A caller cannot self-declare 'typed_identity_bound_v3' and bypass rejection.
+    # The string is caller-provided and unverified. Full V3 validation requires
+    # circuit-level public inputs, Solidity digest verification, and deployment
+    # governance — none of which exist in R0.
     return PolicyResult(
         decision=PolicyDecision.REJECTED,
-        reason=f"unknown_proof_scope:{proof_scope}",
-        details={"proof_scope": proof_scope},
+        reason=f"proof_scope_not_accepted:{proof_scope}",
+        details={
+            "proof_scope": proof_scope,
+            "contract_address": contract_address,
+            "chain_id": chain_id,
+            "round_id": round_id,
+            "model_hash": model_hash,
+            "note": "All proof scopes are rejected pending V3 circuit and contract "
+                    "validation. No caller-provided scope string bypasses this check. "
+                    "Full identity binding is R3 V3 protocol work.",
+        },
     )
 
 

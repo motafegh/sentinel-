@@ -532,3 +532,33 @@ def test_baseline_v2_manifest_binds_the_full_environment_series() -> None:
         assert validate_record(record) == []
         assert record["outcome"]["invariant_passed"] is False
     assert fingerprints == {manifest["environment_manifest"]["comparison_fingerprint"]}
+
+
+def test_validate_rejects_wrong_bundle_sha256() -> None:
+    """R0-F1: wrong probe_bundle_sha256 makes coverage incomplete."""
+    records = _complete_records()
+    # Add probe_bundle_sha256 to both records
+    for r in records:
+        r["probe_bundle_sha256"] = "a" * 64
+    report = validate_coverage(
+        records,
+        expected_baseline=None,  # don't check baseline in this test
+        expected_probe_bundle_sha256="b" * 64,
+    )
+    assert report["complete"] is False
+    for row in report["rows"]:
+        assert not row["complete"]
+        assert any("probe_bundle_sha256" in issue for issue in row["issues"])
+
+
+def test_validate_accepts_matching_bundle_sha256() -> None:
+    """R0-F1: matching probe_bundle_sha256 should pass."""
+    records = _complete_records()
+    for r in records:
+        r["probe_bundle_sha256"] = "c" * 64
+    report = validate_coverage(
+        records,
+        expected_baseline=None,
+        expected_probe_bundle_sha256="c" * 64,
+    )
+    assert report["complete"] is True

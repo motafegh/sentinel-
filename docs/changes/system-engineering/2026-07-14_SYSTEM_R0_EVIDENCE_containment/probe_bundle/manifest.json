@@ -1,9 +1,8 @@
 {
   "bundle_version": "1",
-  "file_count": 2,
+  "file_count": 1,
   "files": {
-    "baseline_probes.py": "f2862f6817e742b9da4fb268c4c3a4ed5ae9a8789f3d74592ef426c77405e208",
-    "manifest.json": "b72a95e8895dbbfa3b1af01a0d8c84330eb9a45712cc20aacf15100ee3b4bc5b"
+    "baseline_probes.py": "320f5e675b2378d33c58b8feee0c248d1a13d0c99e3399fa1f30e76981dfd24f"
   },
   "kind": "r0_probe_bundle_manifest",
   "python": "/usr/bin/python3",

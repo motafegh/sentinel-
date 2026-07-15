@@ -101,6 +101,181 @@ def _estimate_gas(
     buffer = int(estimated * 1.2)
     logger.debug("gas_estimate: raw={} buffered={}", estimated, buffer)
     return buffer
+
+
+# R0-F4: Validated transition table
+_ALLOWED_TRANSITIONS: dict[TxState, set[TxState]] = {
+    TxState.NOT_REQUESTED: {TxState.POLICY_REJECTED, TxState.PREPARED},
+    TxState.POLICY_REJECTED: set(),  # terminal
+    TxState.PREPARED: {TxState.SIGNED, TxState.FAILED},
+    TxState.SIGNED: {TxState.BROADCAST, TxState.FAILED},
+    TxState.BROADCAST: {TxState.PENDING, TxState.REVERTED, TxState.DROPPED, TxState.REPLACED, TxState.FAILED},
+    TxState.PENDING: {TxState.CONFIRMED, TxState.REVERTED, TxState.DROPPED},
+    TxState.CONFIRMED: set(),  # terminal
+    TxState.REVERTED: set(),   # terminal
+    TxState.DROPPED: {TxState.PREPARED},  # can re-prepare
+    TxState.REPLACED: {TxState.PENDING, TxState.CONFIRMED, TxState.REVERTED},
+    TxState.FAILED: set(),     # terminal
+}
+
+
+class TxEngine:
+    """R0-F4: Validated transaction state machine engine."""
+
+    def __init__(self, lifecycle: TxLifecycle | None = None):
+        self._lc = lifecycle or TxLifecycle()
+
+    @property
+    def state(self) -> TxState:
+        return self._lc.state
+
+    @property
+    def lifecycle(self) -> TxLifecycle:
+        return self._lc
+
+    def transition(self, to: TxState, *, reason: str | None = None) -> TxLifecycle:
+        allowed = _ALLOWED_TRANSITIONS.get(self._lc.state, set())
+        if to not in allowed:
+            raise ValueError(
+                f"invalid transition: {self._lc.state.value} -> {to.value}. "
+                f"Allowed: {[s.value for s in sorted(allowed, key=lambda s: s.value)]}"
+            )
+        self._lc.state = to
+        if reason:
+            self._lc.error = reason
+        return self._lc
+
+    def policy_reject(self, reason: str) -> TxLifecycle:
+        if self._lc.state != TxState.NOT_REQUESTED:
+            raise ValueError(f"policy_reject only valid from NOT_REQUESTED, got {self._lc.state.value}")
+        return self.transition(TxState.POLICY_REJECTED, reason=reason)
+
+    def prepare(self) -> TxLifecycle:
+        return self.transition(TxState.PREPARED)
+
+    def sign(self) -> TxLifecycle:
+        return self.transition(TxState.SIGNED)
+
+    def broadcast(self, tx_hash: str) -> TxLifecycle:
+        self._lc.tx_hash = tx_hash
+        return self.transition(TxState.BROADCAST)
+
+    def mined(self, block_number: int) -> TxLifecycle:
+        self._lc.block_number = block_number
+        return self.transition(TxState.PENDING)
+
+    def confirm(self, block_number: int, gas_used: int, confirmations: int = 1) -> TxLifecycle:
+        self._lc.state = TxState.CONFIRMED
+        self._lc.receipt_status = 1
+        self._lc.block_number = block_number
+        self._lc.gas_used = gas_used
+        self._lc.confirmations = confirmations
+        return self._lc
+
+    def revert(self, reason: str) -> TxLifecycle:
+        self._lc.receipt_status = 0
+        self._lc.error = reason
+        self._lc.state = TxState.REVERTED
+        return self._lc
+
+    def drop(self, reason: str) -> TxLifecycle:
+        return self.transition(TxState.DROPPED, reason=reason)
+
+    def replace(self, new_tx_hash: str, reason: str) -> TxLifecycle:
+        self._lc.tx_hash = new_tx_hash
+        return self.transition(TxState.REPLACED, reason=reason)
+
+    def fail(self, reason: str) -> TxLifecycle:
+        return self.transition(TxState.FAILED, reason=reason)
+
+    def ingest_receipt(self, receipt: dict[str, Any]) -> TxLifecycle:
+        """R0-F4: ingest an on-chain receipt and update state."""
+        status = receipt.get("status", 1)
+        block = receipt.get("blockNumber", 0)
+        gas = receipt.get("gasUsed", 0)
+        if status == 0:
+            return self.revert(receipt.get("revertReason", "receipt status zero"))
+        return self.confirm(block, gas, confirmations=receipt.get("confirmations", 1))
+
+
+# R0-F4: FakeChain - deterministic behavioral test double
+class FakeChain:
+    """Simulates transaction lifecycle for testing without live RPC."""
+
+    def __init__(self, *, confirm_blocks: int = 2):
+        self.confirm_blocks = confirm_blocks
+        self._tx_counter = 0
+        self._mempool: dict[str, dict[str, Any]] = {}
+        self._durable: dict[str, dict[str, Any]] = {}
+
+    def _next_hash(self) -> str:
+        self._tx_counter += 1
+        return f"0x{self._tx_counter:064x}"
+
+    def estimate_gas(self) -> int:
+        return 100_000
+
+    def send(self, engine: TxEngine) -> TxLifecycle:
+        if engine.state != TxState.SIGNED:
+            raise ValueError(f"send requires SIGNED state, got {engine.state.value}")
+        tx_hash = self._next_hash()
+        self._mempool[tx_hash] = {"engine": engine, "nonce": len(self._mempool)}
+        return engine.broadcast(tx_hash)
+
+    def mine_block(self) -> list[str]:
+        confirmed = []
+        for tx_hash in list(self._mempool):
+            entry = self._mempool[tx_hash]
+            engine: TxEngine = entry["engine"]
+            if engine.state == TxState.BROADCAST:
+                engine.mined(len(self._mempool))
+                self._durable[tx_hash] = self._mempool.pop(tx_hash)
+                confirmed.append(tx_hash)
+        return confirmed
+
+    def confirm_tx(self, tx_hash: str) -> TxLifecycle:
+        entry = self._durable.get(tx_hash)
+        if not entry:
+            raise ValueError(f"tx {tx_hash[:16]} not in durable state")
+        engine: TxEngine = entry["engine"]
+        if engine.state != TxState.PENDING:
+            raise ValueError(f"tx {tx_hash[:16]} in {engine.state.value}, need PENDING")
+        return engine.confirm(42, 80_000, confirmations=self.confirm_blocks)
+
+    def revert_tx(self, tx_hash: str, reason: str = "reverted on-chain") -> TxLifecycle:
+        entry = self._durable.get(tx_hash)
+        if not entry:
+            raise ValueError(f"tx {tx_hash[:16]} not in durable state")
+        engine: TxEngine = entry["engine"]
+        return engine.revert(reason)
+
+    def drop_tx(self, tx_hash: str, reason: str = "timed out") -> TxLifecycle:
+        entry = self._mempool.pop(tx_hash, None) or self._durable.pop(tx_hash, None)
+        if not entry:
+            raise ValueError(f"tx {tx_hash[:16]} not found")
+        return entry["engine"].drop(reason)
+
+    def replace_tx(self, old_hash: str, engine: TxEngine) -> tuple[str, TxLifecycle]:
+        if engine.state != TxState.SIGNED:
+            raise ValueError("replacement requires SIGNED state")
+        # Drop old, broadcast new with higher nonce
+        self.drop_tx(old_hash, "replaced by higher-gas tx")
+        tx_hash = self._next_hash()
+        return tx_hash, engine.broadcast(tx_hash)
+
+
+__all__ = [
+    "FakeChain",
+    "TxEngine",
+    "TxLifecycle",
+    "TxState",
+    "_ALLOWED_TRANSITIONS",
+    "_estimate_gas",
+    "_run_submit",
+    "build_provenance_manifest",
+]
+
+
 def _run_submit(
     source_code: str,
     contract_address: str,

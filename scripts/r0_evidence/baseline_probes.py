@@ -787,16 +787,16 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         result_none.decision == PolicyDecision.REJECTED,
         f"decision={result_none.decision.value} reason={result_none.reason}",
     ))
-    # typed_identity_bound_v3 should be accepted (future path)
+    # typed_identity_bound_v3 is also rejected — no caller can self-declare
     result_v3 = evaluate_submission(
         proof_scope="typed_identity_bound_v3",
         contract_address="0x0000000000000000000000000000000000000001",
         chain_id=1, round_id=42, model_hash="a"*64,
     )
     assertions.append(_assertion(
-        "policy_accepts_v3_identity_bound",
-        result_v3.decision == PolicyDecision.ACCEPTED,
-        f"decision={result_v3.decision.value}",
+        "policy_rejects_all_scopes_including_v3",
+        result_v3.decision == PolicyDecision.REJECTED,
+        f"decision={result_v3.decision.value} reason={result_v3.reason}",
     ))
 
     all_passed = all(a["passed"] for a in assertions)

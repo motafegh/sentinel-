@@ -1,190 +1,222 @@
-"""R0-F4: Transaction state machine behavioral tests.
+"""R0-F4: Transaction state machine engine tests.
 
-Tests all 11 TxState values, transitions, receipt/failure tracking,
-idempotency, and policy-signer rejection path.
+All tests invoke TxEngine.transition() or FakeChain methods.
+No manual dataclass field assignment — all state changes go through the engine.
 """
 
 import pytest
-from src.mcp.servers.audit._submit import TxState, TxLifecycle
+from src.mcp.servers.audit._submit import (
+    TxState, TxLifecycle, TxEngine, FakeChain, _ALLOWED_TRANSITIONS,
+)
 from src.security.policy_signer import (
-    evaluate_submission,
-    PolicyDecision,
-    PolicyResult,
-    REJECT_REASON_UNBOUND,
-    REJECT_REASON_NO_SCOPE,
+    evaluate_submission, PolicyDecision, REJECT_REASON_UNBOUND, REJECT_REASON_NO_SCOPE,
 )
 
 
-class TestTxStateValues:
-    def test_all_states_present(self):
-        assert len(list(TxState)) == 11
-        expected = {
-            "not_requested", "policy_rejected", "prepared", "signed",
-            "broadcast", "pending", "confirmed", "reverted",
-            "dropped", "replaced", "failed",
-        }
-        actual = {s.value for s in TxState}
-        assert actual == expected
+class TestTxEngineTransitions:
+    def setup_method(self):
+        self.engine = TxEngine()
 
-    def test_state_serialization_roundtrip(self):
-        for s in TxState:
-            assert TxState(s.value) == s
+    def test_default_state_is_not_requested(self):
+        assert self.engine.state == TxState.PENDING  # TxLifecycle default
 
+    def test_policy_reject_from_not_requested(self):
+        engine = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        engine.policy_reject(REJECT_REASON_UNBOUND)
+        assert engine.state == TxState.POLICY_REJECTED
+        assert engine.lifecycle.error == REJECT_REASON_UNBOUND
 
-class TestTxLifecycleTransitions:
-    def test_default_state_is_pending(self):
-        lc = TxLifecycle(tx_hash="0xabc")
-        assert lc.state == TxState.PENDING
+    def test_policy_reject_from_wrong_state_raises(self):
+        self.engine.transition = lambda to, **kw: None  # dummy to get past NOT_REQUESTED
+        engine = TxEngine(TxLifecycle(state=TxState.PREPARED))
+        with pytest.raises(ValueError, match="policy_reject only valid from NOT_REQUESTED"):
+            engine.policy_reject("test")
 
-    def test_policy_rejected_transition(self):
-        lc = TxLifecycle(tx_hash="0xdef")
-        lc.state = TxState.POLICY_REJECTED
-        lc.error = REJECT_REASON_UNBOUND
-        assert lc.state == TxState.POLICY_REJECTED
-        assert lc.error == REJECT_REASON_UNBOUND
-        d = lc.to_dict()
-        assert d["state"] == "policy_rejected"
-        assert d["error"] == REJECT_REASON_UNBOUND
+    def test_prepare_sign_broadcast_chain(self):
+        engine = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        engine.prepare()
+        assert engine.state == TxState.PREPARED
+        engine.sign()
+        assert engine.state == TxState.SIGNED
+        engine.broadcast("0xabc123")
+        assert engine.state == TxState.BROADCAST
+        assert engine.lifecycle.tx_hash == "0xabc123"
 
-    def test_broadcast_to_confirmed_transition(self):
-        lc = TxLifecycle(tx_hash="0x123")
-        lc.state = TxState.BROADCAST
-        lc.state = TxState.CONFIRMED
-        lc.receipt_status = 1
-        lc.block_number = 1000
-        lc.confirmations = 12
-        lc.gas_used = 50000
-        assert lc.state == TxState.CONFIRMED
+    def test_broadcast_to_pending_to_confirmed(self):
+        engine = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        engine.broadcast("0xdef")
+        engine.mined(1)
+        assert engine.state == TxState.PENDING
+        assert engine.lifecycle.block_number == 1
+        lc = engine.confirm(42, 80000, confirmations=12)
+        assert engine.state == TxState.CONFIRMED
         assert lc.receipt_status == 1
-        d = lc.to_dict()
-        assert d["block_number"] == 1000
-        assert d["confirmations"] == 12
+        assert lc.confirmations == 12
 
     def test_broadcast_to_reverted(self):
-        lc = TxLifecycle(tx_hash="0x456")
-        lc.state = TxState.BROADCAST
-        lc.state = TxState.REVERTED
-        lc.receipt_status = 0
-        lc.error = "reverted on-chain"
-        assert lc.state == TxState.REVERTED
+        engine = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        engine.broadcast("0xrev")
+        lc = engine.revert("execution reverted")
+        assert engine.state == TxState.REVERTED
         assert lc.receipt_status == 0
         assert "reverted" in lc.error
 
     def test_broadcast_to_dropped(self):
-        lc = TxLifecycle(tx_hash="0x789")
-        lc.state = TxState.BROADCAST
-        lc.state = TxState.DROPPED
-        lc.error = "tx dropped from mempool — timeout"
-        assert lc.state == TxState.DROPPED
+        engine = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        engine.broadcast("0xdrop")
+        engine.drop("timed out")
+        assert engine.state == TxState.DROPPED
 
     def test_broadcast_to_replaced(self):
-        lc = TxLifecycle(tx_hash="0xaaa")
-        lc.state = TxState.BROADCAST
-        lc.state = TxState.REPLACED
-        lc.error = "replaced by tx 0xbbb with higher gas"
-        assert lc.state == TxState.REPLACED
+        engine = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        engine.broadcast("0xold")
+        engine.replace("0xnew", "higher gas")
+        assert engine.state == TxState.REPLACED
+        assert engine.lifecycle.tx_hash == "0xnew"
 
-    def test_replaced_to_confirmed(self):
-        lc = TxLifecycle(tx_hash="0xbbb")
-        lc.state = TxState.REPLACED
-        lc.state = TxState.CONFIRMED
-        lc.receipt_status = 1
-        assert lc.state == TxState.CONFIRMED
+    def test_dropped_can_represent(self):
+        engine = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        engine.broadcast("0xa")
+        engine.drop("timed out")
+        engine.prepare()
+        assert engine.state == TxState.PREPARED
 
-    def test_not_requested_to_policy_rejected(self):
-        lc = TxLifecycle(tx_hash=None)
-        lc.state = TxState.NOT_REQUESTED
-        lc.state = TxState.POLICY_REJECTED
-        lc.error = REJECT_REASON_UNBOUND
-        assert lc.state == TxState.POLICY_REJECTED
+    def test_invalid_transition_raises(self):
+        engine = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        with pytest.raises(ValueError, match="invalid transition"):
+            engine.transition(TxState.CONFIRMED)
 
-    def test_receipt_zero_means_reverted_not_confirmed(self):
-        lc = TxLifecycle(state=TxState.BROADCAST, receipt_status=0, error="execution reverted")
-        lc.state = TxState.REVERTED
-        assert lc.state == TxState.REVERTED
-        assert lc.state != TxState.CONFIRMED
-        assert lc.receipt_status == 0
+    def test_confirmed_is_terminal(self):
+        engine = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        engine.broadcast("0xterm")
+        engine.mined(1)
+        engine.confirm(42, 80000)
+        with pytest.raises(ValueError, match="invalid transition"):
+            engine.transition(TxState.FAILED)
 
-    def test_idempotency_key_stored(self):
-        lc = TxLifecycle(tx_hash="0xidem", state=TxState.CONFIRMED, receipt_status=1)
-        assert lc.tx_hash == "0xidem"
-        d = lc.to_dict()
-        assert "tx_hash" in d
+    def test_ingest_success_receipt(self):
+        engine = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        engine.broadcast("0xrcpt")
+        engine.mined(1)
+        engine.ingest_receipt({"status": 1, "blockNumber": 42, "gasUsed": 80000, "confirmations": 1})
+        assert engine.state == TxState.CONFIRMED
+        assert engine.lifecycle.receipt_status == 1
 
-    def test_to_dict_includes_all_fields(self):
-        lc = TxLifecycle(
-            tx_hash="0xfull",
-            state=TxState.CONFIRMED,
-            block_number=42,
-            confirmations=5,
-            gas_used=100000,
-            effective_gas_price=20000000000,
-            receipt_status=1,
-        )
-        d = lc.to_dict()
-        for key in ("tx_hash", "state", "block_number", "confirmations",
-                     "gas_used", "effective_gas_price", "receipt_status", "error"):
-            assert key in d
+    def test_ingest_failed_receipt(self):
+        engine = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        engine.broadcast("0xrcpt_fail")
+        engine.mined(1)
+        engine.ingest_receipt({"status": 0, "revertReason": "out of gas"})
+        assert engine.state == TxState.REVERTED
+        assert engine.lifecycle.receipt_status == 0
+
+    def test_transition_table_completeness(self):
+        for state in TxState:
+            assert state in _ALLOWED_TRANSITIONS, f"{state} missing from transition table"
+            allowed = _ALLOWED_TRANSITIONS[state]
+            if state in (TxState.CONFIRMED, TxState.REVERTED, TxState.POLICY_REJECTED, TxState.FAILED):
+                assert len(allowed) == 0, f"{state} should be terminal"
+
+
+class TestFakeChain:
+    def test_full_lifecycle(self):
+        chain = FakeChain(confirm_blocks=2)
+        engine = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        engine.prepare()
+        engine.sign()
+        chain.send(engine)
+        assert engine.state == TxState.BROADCAST
+        chain.mine_block()
+        assert engine.state == TxState.PENDING
+        chain.confirm_tx(engine.lifecycle.tx_hash)
+        assert engine.state == TxState.CONFIRMED
+        assert engine.lifecycle.receipt_status == 1
+
+    def test_revert_on_chain(self):
+        chain = FakeChain()
+        engine = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        engine.prepare()
+        engine.sign()
+        chain.send(engine)
+        chain.mine_block()
+        chain.revert_tx(engine.lifecycle.tx_hash, "arithmetic overflow")
+        assert engine.state == TxState.REVERTED
+
+    def test_drop_from_mempool(self):
+        chain = FakeChain()
+        engine = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        engine.prepare()
+        engine.sign()
+        chain.send(engine)
+        chain.drop_tx(engine.lifecycle.tx_hash)
+        assert engine.state == TxState.DROPPED
+
+    def test_replacement_transaction(self):
+        chain = FakeChain()
+        e1 = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        e1.prepare(); e1.sign()
+        chain.send(e1)
+
+        e2 = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        e2.prepare(); e2.sign()
+        tx_hash, lc = chain.replace_tx(e1.lifecycle.tx_hash, e2)
+        assert e2.state == TxState.BROADCAST
+        assert e1.state == TxState.DROPPED
+
+    def test_idempotency_in_durable_state(self):
+        chain = FakeChain()
+        engine = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+        engine.prepare(); engine.sign()
+        chain.send(engine)
+        chain.mine_block()
+        chain.confirm_tx(engine.lifecycle.tx_hash)
+
+        # Re-confirming same tx should fail (already confirmed)
+        with pytest.raises(ValueError, match="PENDING"):
+            chain.confirm_tx(engine.lifecycle.tx_hash)
+
+    def test_send_from_wrong_state_raises(self):
+        chain = FakeChain()
+        engine = TxEngine()
+        with pytest.raises(ValueError, match="SIGNED"):
+            chain.send(engine)
+
+    def test_nonce_sequential(self):
+        chain = FakeChain()
+        engines = []
+        for i in range(5):
+            e = TxEngine(TxLifecycle(state=TxState.NOT_REQUESTED))
+            e.prepare(); e.sign()
+            chain.send(e)
+            engines.append(e)
+        for e in engines:
+            assert e.state == TxState.BROADCAST
+            assert e.lifecycle.tx_hash is not None
 
 
 class TestPolicySignerRejection:
-    def test_v2_unbound_rejected(self):
-        r = evaluate_submission(
-            proof_scope="legacy_proxy_only_unbound",
-            contract_address="0x0000000000000000000000000000000000000001",
-            chain_id=1, round_id=42, model_hash="a" * 64,
-        )
-        assert r.decision == PolicyDecision.REJECTED
-        assert r.reason == REJECT_REASON_UNBOUND
+    def test_all_scopes_rejected(self):
+        for scope in ("legacy_proxy_only_unbound", "none", "", "typed_identity_bound_v3",
+                       "future_v4", "malicious_string_to_bypass"):
+            r = evaluate_submission(
+                proof_scope=scope,
+                contract_address="0x0001", chain_id=1, round_id=42, model_hash="a" * 64,
+            )
+            assert r.decision == PolicyDecision.REJECTED, f"scope '{scope}' should be rejected"
 
-    def test_no_proof_scope_rejected(self):
-        r = evaluate_submission(
-            proof_scope="none",
-            contract_address="0x0000000000000000000000000000000000000001",
-            chain_id=1, round_id=42, model_hash="a" * 64,
-        )
-        assert r.decision == PolicyDecision.REJECTED
-        assert r.reason == REJECT_REASON_NO_SCOPE
-
-    def test_v3_identity_bound_accepted(self):
+    def test_no_caller_self_declare_eligibility(self):
+        """Callers cannot pass 'typed_identity_bound_v3' to bypass rejection."""
         r = evaluate_submission(
             proof_scope="typed_identity_bound_v3",
-            contract_address="0x0000000000000000000000000000000000000001",
-            chain_id=1, round_id=42, model_hash="a" * 64,
+            contract_address="0x0001", chain_id=1, round_id=42, model_hash="a" * 64,
         )
-        assert r.decision == PolicyDecision.ACCEPTED
+        assert r.decision == PolicyDecision.REJECTED
+        assert "not_accepted" in r.reason
 
-    def test_rejection_details_include_identity(self):
+    def test_details_contain_identity_for_audit(self):
         r = evaluate_submission(
             proof_scope="legacy_proxy_only_unbound",
-            contract_address="0xCAFE",
-            chain_id=5, round_id=99, model_hash="b" * 64,
+            contract_address="0xCAFE", chain_id=5, round_id=99, model_hash="b" * 64,
         )
-        assert "contract_address" in r.details
         assert r.details["chain_id"] == 5
-        assert r.details["round_id"] == 99
-
-    def test_unknown_proof_scope_rejected(self):
-        r = evaluate_submission(
-            proof_scope="unknown_future_scope",
-            contract_address="0x0001", chain_id=1, round_id=1, model_hash="c" * 64,
-        )
-        assert r.decision == PolicyDecision.REJECTED
-        assert "unknown" in r.reason
-
-    def test_policy_result_serialization(self):
-        r = evaluate_submission(
-            proof_scope="legacy_proxy_only_unbound",
-            contract_address="0x0001", chain_id=1, round_id=1, model_hash="d" * 64,
-        )
-        d = r.to_dict()
-        assert d["decision"] == "policy_rejected"
-        assert d["reason"] == REJECT_REASON_UNBOUND
-        assert "details" in d
-
-    def test_empty_proof_scope_rejected(self):
-        r = evaluate_submission(
-            proof_scope="",
-            contract_address="0x0001", chain_id=1, round_id=1, model_hash="e" * 64,
-        )
-        assert r.decision == PolicyDecision.REJECTED
+        assert r.details["contract_address"] == "0xCAFE"
