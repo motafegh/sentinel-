@@ -198,21 +198,29 @@ def validate_record(record: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+_APPROVED_BASELINE = "1256d9aab45add9cf2d23fe33aaa944303259012"
+
+
 def validate_coverage(
     records: Iterable[Mapping[str, Any]],
     *,
     rows: Iterable[MatrixRow] = MATRIX_ROWS,
     invalid_artifacts: Iterable[Mapping[str, Any]] = (),
+    expected_baseline: str | None = _APPROVED_BASELINE,
+    expected_candidate: str | None = None,
+    expected_probe_bundle: str | None = None,
+    expected_probe_bundle_sha256: str | None = None,
 ) -> dict[str, Any]:
-    """Prove whether every matrix row has an accepted comparable pair.
+    """R0 closure validator — single-tier exact comparison_key matching.
 
-    Comparison strategy (two-tier):
-    1. Exact match: comparison_key identical (same env fingerprint, same commit).
-    2. Contract match: same probe contract (probe_id, argv_template, cwd,
-       test_references, contract_version) but different environments.
-       Used when baseline and candidate are different commits.
+    Requires:
+    - before records at approved baseline commit
+    - after records at final candidate commit
+    - identical probe bundle (same comparison_key means same env + probe)
+    - approved reviewer decisions on both records
+
+    No metadata-only fallback. If comparison_keys differ, the row is not comparable.
     """
-
     by_row: dict[str, list[Mapping[str, Any]]] = {}
     malformed: list[dict[str, Any]] = []
     for record in records:
@@ -222,72 +230,61 @@ def validate_coverage(
             continue
         by_row.setdefault(str(record["matrix_row_id"]), []).append(record)
 
-    def _probe_contract(r: Mapping[str, Any]) -> str:
-        """Stable hash of the probe definition, excluding environment fingerprint."""
-        import hashlib as _hl
-        probe = r.get("probe", {})
-        payload = json.dumps(
-            {
-                "probe_id": probe.get("probe_id", ""),
-                "contract_version": probe.get("contract_version", ""),
-                "argv_template": probe.get("argv_template", []),
-                "cwd": probe.get("cwd", "."),
-                "test_references": r.get("test_references", []),
-            },
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-        return _hl.sha256(payload).hexdigest()
-
     row_reports: list[dict[str, Any]] = []
     for row in rows:
         candidates = by_row.get(row.row_id, [])
-        before = [r for r in candidates if r["phase"] == "before"]
-        after = [r for r in candidates if r["phase"] == "after"]
+        before_recs = [r for r in candidates if r["phase"] == "before"]
+        after_recs = [r for r in candidates if r["phase"] == "after"]
         issues: list[str] = []
-        if not before:
+        if not before_recs:
             issues.append("missing before record")
-        if not after:
+        if not after_recs:
             issues.append("missing after record")
 
-        # Tier 1: exact comparison_key match (prefer accepted before records)
         comparable_pair = None
-        for left in sorted(before, key=lambda r: int(r["review"]["status"] == "accepted"), reverse=True):
-            for right in sorted(after, key=lambda r: int(r["review"]["status"] == "accepted"), reverse=True):
+        for left in before_recs:
+            for right in after_recs:
                 if left["comparison_key"] == right["comparison_key"]:
                     comparable_pair = (left, right)
                     break
             if comparable_pair:
                 break
 
-        # Tier 2: probe contract match (different env fingerprints, same probe)
-        if comparable_pair is None:
-            for left in sorted(before, key=lambda r: int(r["review"]["status"] == "accepted"), reverse=True):
-                for right in sorted(after, key=lambda r: int(r["review"]["status"] == "accepted"), reverse=True):
-                    if _probe_contract(left) == _probe_contract(right):
-                        comparable_pair = (left, right)
-                        break
-                if comparable_pair:
-                    break
-
-        if before and after and comparable_pair is None:
-            issues.append("before/after comparison_key mismatch")
+        if before_recs and after_recs and comparable_pair is None:
+            issues.append("before/after comparison_key mismatch — not comparable")
 
         if comparable_pair:
             left, right = comparable_pair
+
+            # Baseline check
+            if expected_baseline:
+                actual = left.get("baseline_commit", "")
+                if actual != expected_baseline:
+                    issues.append(
+                        f"before baseline_commit {actual[:12] if actual else 'MISSING'} "
+                        f"!= approved {expected_baseline[:12]}"
+                    )
+
+            # Candidate check
+            if expected_candidate:
+                actual = right.get("candidate_commit", "")
+                if actual != expected_candidate:
+                    issues.append(
+                        f"after candidate_commit {actual[:12] if actual else 'MISSING'} "
+                        f"!= expected {expected_candidate[:12]}"
+                    )
+
+            if left.get("baseline_commit") == right.get("candidate_commit"):
+                issues.append("before and after records must be from different commits")
+
+            # Outcome checks
             if left["outcome"]["invariant_passed"] is not False:
                 issues.append("before record does not demonstrate the failing baseline")
             if right["outcome"]["status"] != "pass" or not right["outcome"]["invariant_passed"]:
                 issues.append("after record does not prove the invariant")
             if right["execution"]["exit_code"] != 0:
                 issues.append("after probe exited nonzero")
-            # R0.6: require distinct commits for cross-commit comparison
-            bc = left.get("baseline_commit") or left.get("candidate_commit", "")
-            cc = right.get("candidate_commit") or right.get("baseline_commit", "")
-            if bc and cc and bc == cc:
-                issues.append("before and after records must be from different commits")
-            if bc and not bc.startswith(left.get("baseline_commit", "")[:12]):
-                issues.append("before record baseline_commit mismatch")
+
             for label, record in (("before", left), ("after", right)):
                 review = record["review"]
                 if (

@@ -23,7 +23,7 @@ from scripts.r0_evidence.model import (
     validate_record,
 )
 
-BASELINE = "1" * 40
+BASELINE = "1256d9aab45add9cf2d23fe33aaa944303259012"
 CANDIDATE = "2" * 40
 
 
@@ -181,7 +181,7 @@ def test_changed_probe_contract_cannot_close_a_row() -> None:
     after["probe"]["argv_template"] = ["python", "different_probe.py"]
     report = validate_coverage(records)
     first = next(row for row in report["rows"] if row["row_id"] == MATRIX_ROWS[0].row_id)
-    assert "before/after comparison_key mismatch" in first["issues"]
+    assert any("comparison_key mismatch" in issue for issue in first["issues"])
 
 
 def test_pending_review_cannot_close_a_row() -> None:
