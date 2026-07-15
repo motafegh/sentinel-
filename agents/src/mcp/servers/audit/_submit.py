@@ -271,27 +271,14 @@ def _run_submit_inner(
         logger.error(f"submit_audit [{result['failed_step']}]: {result['reason']}")
         return result
 
-    # ── Step 1b: compute identity commitment (R0.6 proof-identity) ──
-    # Cryptographic commitment binding chain/round/contract/model identity
-    # into a verifiable hash. The XOR bias below makes the proxy model
-    # output (and hence the EZKL proof) numerically dependent on identity.
-    # The commitment hash is independently verifiable and stored in the
-    # provenance manifest and passed on-chain via the combined modelHash.
-    identity_commitment = hashlib.sha256(
-        f"{chain_id}|{round_id}|{contract_address}|{model_hash}".encode("utf-8")
-    ).hexdigest()
-    result["identity_commitment"] = identity_commitment
+    # ── Step 1b: record proof scope (R0-F3) ──
+    # V2 proofs are proxy inference over supplied fusion inputs. They do not
+    # bind chain/round/contract/model identity. Mark as legacy_proxy_only_unbound
+    # so the policy signer, gateway, report, and finality checks can reject them.
+    result["proof_scope"] = "legacy_proxy_only_unbound"
 
-    # XOR identity hash into last 8 fusion features for numerical binding
-    identity_hash_bytes = hashlib.sha256(
-        f"{chain_id}:{round_id}:{contract_address}:{model_hash}".encode("utf-8")
-    ).digest()
-    identity_felts = list(identity_hash_bytes[:16])
+    # Pass fusion embedding through unchanged — no feature perturbation
     fusion_embedding = list(fusion_embedding_raw)
-    bind_start = len(fusion_embedding) - 8
-    for i in range(8):
-        bias = identity_felts[i * 2] / 255.0 * 0.0001
-        fusion_embedding[bind_start + i] = fusion_embedding[bind_start + i] + bias
 
     # ── Step 2: run proxy model locally → 10 class scores ─────────────
     try:
@@ -414,59 +401,37 @@ def _run_submit_inner(
             proxy_checkpoint_hash=proxy_hash,
             fusion_embedding=fusion_embedding_raw,
             class_scores=result["class_scores"],
-            operator_address=_OPERATOR_KEY and "",
+            operator_address="",
             chain_id=chain_id,
             round_id=round_id,
             contract_address=contract_address,
             idempotency_key=idempotency_key,
             target_data_version=target_data_version,
-            identity_commitment=result.get("identity_commitment"),
+            proof_scope=result.get("proof_scope"),
         )
         result["provenance"] = provenance
     except Exception as exc:
         result["provenance"] = None
         logger.warning(f"submit_audit: provenance manifest skipped — {exc}")
 
-    # ── Step 4: transaction state machine (R0.3: disabled) ──────────
-    # The operator key has been removed from the MCP process (R0.3 signer
-    # isolation). The policy-signer service owns the actual transaction.
-    # We prepare the identity-bound proof and manifest and return partial
-    # so the policy-signer can consume them.
-    if _OPERATOR_KEY:
-        try:
-            lifecycle = _attempt_submit(
-                w3=_w3,
-                operator_key=_OPERATOR_KEY,
-                registry_address=_REGISTRY_ADDRESS,
-                abi=_ABI_V2,
-                contract_address=contract_address,
-                class_score_felts=result["class_score_felts"],
-                proof_bytes=result["proof_bytes"],
-                public_signals=result["public_signals"],
-                model_hash=result["model_hash"],
-                identity_commitment=result.get("identity_commitment"),
-                required_confirmations=_SUBMIT_CONFIRM_BLOCKS,
-                idempotency_key=idempotency_key,
-            )
-            result["tx_lifecycle"] = lifecycle.to_dict()
-            if lifecycle.state == TxState.CONFIRMED:
-                result["status"] = "submitted"
-                result["tx_hash"] = lifecycle.tx_hash
-            else:
-                result["status"] = "failed"
-                result["failed_step"] = "transaction"
-                result["reason"] = lifecycle.error or "transaction failed"
-        except Exception as exc:
-            result["status"] = "failed"
-            result["failed_step"] = "transaction"
-            result["reason"] = str(exc)
-    else:
-        result["status"] = "partial"
-        result["failed_step"] = "transaction"
-        result["reason"] = (
-            "On-chain submission is disabled (R0.3 signer isolation). "
-            "The proof and provenance manifest are available for the policy-signer service."
-        )
+    # ── Step 4: proof-scope eligibility check (R0-F3) ────────────────
+    # V2 proofs are legacy_proxy_only_unbound. The analysis process has no
+    # signing key (R0.3 signer isolation) and no raw transaction construction.
+    # The proof and manifest are prepared for the policy-signer service, which
+    # will reject any request with proof_scope != typed_identity_bound_v3.
+    result["status"] = "policy_rejected"
+    result["failed_step"] = "transaction"
+    result["reason"] = (
+        f"V2 proof scope '{result.get('proof_scope', 'none')}' is ineligible "
+        f"for on-chain submission. The policy-signer rejects legacy/unbound "
+        f"proofs. Full typed identity binding requires R3 V3 protocol work."
+    )
+    result["verified_audit_eligible"] = False
+    result["finality_ineligible_reason"] = (
+        "proof_scope_not_identity_bound"
+        if result.get("proof_scope") == "legacy_proxy_only_unbound"
+        else "no_proof_scope"
+    )
 
     return result
 
@@ -483,14 +448,15 @@ def _attempt_submit(
     model_hash: str,
     required_confirmations: int = 2,
     idempotency_key: str | None = None,
-    identity_commitment: str | None = None,
 ) -> TxLifecycle:
     """Build, sign, and monitor on-chain submission.
 
-    Matches Solidity AuditRegistry.submitAuditV2 with identity commitment:
-    The modelHash passed to the contract is a combined hash of the
-    original model_hash and the identity_commitment (binding chain,
-    round, and contract identity cryptographically).
+    Matches Solidity AuditRegistry.submitAuditV2:
+        submitAuditV2(address contractAddress, uint256[10] classScores,
+                      bytes proof, uint256[] publicSignals, bytes32 modelHash)
+
+    modelHash is the raw teacher model hash — no identity binding is added.
+    V2 proofs are legacy_proxy_only_unbound; identity binding belongs to R3.
     """
     from eth_account import Account
 
@@ -503,14 +469,7 @@ def _attempt_submit(
 
     contract = w3.eth.contract(address=w3.to_checksum_address(registry_address), abi=abi)
 
-    # Compute identity-bound model hash for on-chain storage
-    if identity_commitment and model_hash:
-        combined = hashlib.sha256(
-            (model_hash + identity_commitment).encode("utf-8")
-        ).hexdigest()
-        model_hash_bytes32 = bytes.fromhex(combined)
-    else:
-        model_hash_bytes32 = bytes.fromhex(model_hash)
+    model_hash_bytes32 = bytes.fromhex(model_hash)
 
     submit_data = contract.encodeABI(
         fn_name="submitAuditV2",
@@ -561,14 +520,15 @@ def build_provenance_manifest(
     contract_address: str | None = None,
     idempotency_key: str | None = None,
     target_data_version: str | None = None,
-    identity_commitment: str | None = None,
+    proof_scope: str | None = None,
 ) -> dict[str, Any]:
     """
-    Build and EIP-191-sign a provenance manifest binding ML model to ZK proof.
+    Build a provenance manifest binding ML model metadata to the proof.
 
-    R0.6: includes identity_commitment — a SHA-256 hash binding the
-    chain/round/contract/model identity. This commitment can be independently
-    recomputed and verified by any consumer of the proof.
+    R0-F3: includes proof_scope — the trust scope of the proof generation.
+    V2 proofs are 'legacy_proxy_only_unbound' (not identity-bound, not
+    eligible for verified audit finality). R3 V3 protocol work will
+    introduce 'typed_identity_bound_v3'.
     """
     fusion_hash = hashlib.sha256(json.dumps(fusion_embedding, sort_keys=True).encode()).hexdigest()
 
@@ -591,8 +551,8 @@ def build_provenance_manifest(
         manifest["idempotency_key"] = idempotency_key
     if target_data_version is not None:
         manifest["target_data_version"] = target_data_version
-    if identity_commitment is not None:
-        manifest["identity_commitment"] = identity_commitment
+    if proof_scope is not None:
+        manifest["proof_scope"] = proof_scope
 
     try:
         from eth_account.messages import encode_defunct

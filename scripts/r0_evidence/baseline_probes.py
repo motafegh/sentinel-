@@ -571,7 +571,7 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         round_id=42,
         contract_address="0x000000000000000000000000000000000000dEaD",
         target_data_version="v2026.1",
-        identity_commitment="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        proof_scope="legacy_proxy_only_unbound",
     )
 
     assertions.append(_assertion(
@@ -580,14 +580,9 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         f"keys={sorted(manifest)}",
     ))
     assertions.append(_assertion(
-        "provenance_manifest_has_identity_commitment",
-        "identity_commitment" in manifest and len(manifest["identity_commitment"]) == 64,
-        f"identity_commitment={manifest.get('identity_commitment', 'MISSING')!r}",
-    ))
-    assertions.append(_assertion(
-        "provenance_manifest_has_fusion_embedding_hash",
-        "fusion_embedding_hash" in manifest,
-        f"keys={sorted(manifest)}",
+        "proof_scope_is_legacy_unbound",
+        manifest.get("proof_scope") == "legacy_proxy_only_unbound",
+        f"proof_scope={manifest.get('proof_scope')!r}",
     ))
     assertions.append(_assertion(
         "proof_identity_bound_to_chain",
@@ -610,8 +605,11 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         "signing key removed from MCP process; policy-signer owns submission",
     ))
 
-    # R0.6: cross-identity proof rejection — two different identities
-    # produce provably different manifests with different identity commitments.
+    # R0-F3: V2 proof scope is always legacy_proxy_only_unbound regardless
+    # of identity. The chain/round/contract fields are informational metadata
+    # stored in the JSON manifest — they are NOT cryptographically enforced
+    # by the EZKL circuit or the Solidity verifier. Full typed identity
+    # binding requires R3 V3 protocol work.
     manifest_b = build_provenance_manifest(
         teacher_model_hash="c" * 64,
         proxy_checkpoint_hash="d" * 64,
@@ -622,22 +620,22 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         round_id=99,
         contract_address="0x000000000000000000000000000000000000BeEf",
         target_data_version="v2026.1",
-        identity_commitment="Z9Y8X7W6V5U4T3S2R1Q0P9O8N7M6L5K4J3I2H1G0F9E8D7C6B5A4Z9Y8X7W6V5",
+        proof_scope="legacy_proxy_only_unbound",
     )
     assertions.append(_assertion(
-        "cross_identity_chain_differs",
+        "v2_proof_scope_identical_across_identities",
+        manifest.get("proof_scope") == manifest_b.get("proof_scope") == "legacy_proxy_only_unbound",
+        "V2 proof scope is legacy_proxy_only_unbound regardless of identity",
+    ))
+    assertions.append(_assertion(
+        "cross_identity_different_chain_metadata",
         manifest.get("chain_id") != manifest_b.get("chain_id"),
         f"A={manifest.get('chain_id')} B={manifest_b.get('chain_id')}",
     ))
     assertions.append(_assertion(
-        "cross_identity_commitment_differs",
-        manifest.get("identity_commitment") != manifest_b.get("identity_commitment"),
-        f"A={manifest.get('identity_commitment')} B={manifest_b.get('identity_commitment')}",
-    ))
-    assertions.append(_assertion(
-        "cross_identity_model_hash_same",
-        manifest.get("teacher_model_hash") == manifest_b.get("teacher_model_hash"),
-        "same model, different identity — teacher hash unchanged",
+        "cross_identity_same_unbound_scope",
+        manifest.get("proof_scope") == manifest_b.get("proof_scope"),
+        "identity fields change but proof scope stays unbound — not crypto binding",
     ))
 
     all_passed = all(a["passed"] for a in assertions)
