@@ -3,7 +3,7 @@
   "comparison_contract_version": "2",
   "fixture_root_variable": "harness_workspace",
   "fixture_sha256": {
-    "scripts/r0_evidence/baseline_probes.py": "23e4461e7d44b1e4dc8c5f8969e145b23dd574bacab8a54eb3a23a8fb8d10232"
+    "scripts/r0_evidence/baseline_probes.py": "4e79ebe2f0d82a629535c9b1f37e4f4523fdd72646bd5760c8352bfbfb584094"
   },
   "kind": "r0_command_manifest",
   "runtime_bindings": {
