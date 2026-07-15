@@ -1,0 +1,70 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "beb8e52505775475d4c7496a27cb1aa25a3cbe19",
+  "comparison_key": "fc4e797597291d1edacf69788035dfa84f3da20a08fc74dcae5767aeef5c923e",
+  "environment_manifest": {
+    "comparison_fingerprint": "c33f199829aaa0e6a82c21770fcc23d9d998f8b9a24308e0be032fa5db8355a3",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_v3_env_current.json",
+    "sha256": "6ce6f25060001531f43b5bdb08ab1db15fe2c1169e28f8a404d3eb0077761786"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T14:34:52.477652+00:00",
+    "started_at": "2026-07-15T14:34:52.403416+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"excluded=False\", \"name\": \"semantic_manifest_is_committed\", \"passed\": true}, {\"detail\": \"exact_set_check_present=True\", \"name\": \"warm_cache_checks_exact_file_set\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "8989998d116c4757dd3eedcc6f0d3403dc37d51be838cc41c1f878bc1c6ead7a"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-DATA-RELEASE-TRUST",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "excluded=False",
+        "name": "semantic_manifest_is_committed",
+        "passed": true
+      },
+      {
+        "detail": "exact_set_check_present=True",
+        "name": "warm_cache_checks_exact_file_set",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "data-release",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-data-release",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
+      "data-release",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-DATA-RELEASE-TRUST:after:r0-data-release:beb8e5250577",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "data_module/tests/test_export/test_export.py",
+    "data_module/tests/test_export/test_chunker.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_DATA_D2_AUDIT_appendix.md"
+  ]
+}
