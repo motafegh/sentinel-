@@ -57,16 +57,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# ── CRITICAL: load .env BEFORE any agents module is imported ────────────
-# client.py reads LM_STUDIO_BASE_URL etc. at IMPORT time. We must populate
-# them from .env first. We deliberately do this BEFORE importing FastAPI
-# so the import side effects of the agents module see the right URLs.
+# ── Load .env in non-production environments ────────────────────────────
+# Production must set every required variable explicitly (env, secrets
+# manager, k8s secrets). Loading .env in production masks missing env
+# vars and is a security risk.
 from dotenv import load_dotenv
 from loguru import logger
 from pydantic import ValidationError
 
 _AGENTS_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(_AGENTS_DIR / ".env", override=True)
+_SENTINEL_ENV = os.getenv("SENTINEL_ENV", "development").lower()
+if _SENTINEL_ENV != "production":
+    load_dotenv(_AGENTS_DIR / ".env", override=True)
+    logger.info("R0.3: loaded .env (SENTINEL_ENV={})", _SENTINEL_ENV)
+else:
+    logger.info("R0.3: production mode — .env not loaded")
 sys.path.insert(0, str(_AGENTS_DIR))
 
 
@@ -211,9 +216,31 @@ def create_app(
     app.state.no_llm = no_llm
     app.state.skip_service_probes = skip_service_probes
 
-    # R0.3: Bearer token auth on mutating routes.
-    from src.security.auth import BearerAuth
-    bearer_auth = BearerAuth(enabled=auth_enabled)
+    # R0.3: JWT auth with scopes on mutating routes.
+    from src.security.auth import require_scope
+    write_auth = require_scope("write", enabled=auth_enabled)
+    read_auth = require_scope("read", enabled=auth_enabled)
+
+    # R0.3: Per-tenant rate limiter (token bucket, in-memory).
+    _rate_buckets: dict[str, dict[str, Any]] = {}
+    _RATE_LIMIT = int(os.getenv("SENTINEL_RATE_LIMIT", "100"))
+    _RATE_WINDOW_S = int(os.getenv("SENTINEL_RATE_WINDOW_S", "60"))
+
+    def _check_rate_limit(tenant_id: str) -> None:
+        now = time.time()
+        bucket = _rate_buckets.get(tenant_id)
+        if bucket is None or now - bucket["window_start"] > _RATE_WINDOW_S:
+            _rate_buckets[tenant_id] = {"tokens": _RATE_LIMIT - 1, "window_start": now}
+            return
+        if bucket["tokens"] <= 0:
+            retry_after = int(_RATE_WINDOW_S - (now - bucket["window_start"]))
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded for tenant '{tenant_id}'. "
+                       f"Retry after {retry_after}s.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        bucket["tokens"] -= 1
 
     # ── Routes ────────────────────────────────────────────────────────
     @app.get("/", response_model=None)
@@ -262,13 +289,17 @@ def create_app(
     )
     async def submit_audit(
         req: AuditRequest,
-        _auth: dict[str, Any] = Depends(bearer_auth),
+        _auth: dict[str, Any] = Depends(write_auth),
         no_llm: bool = Query(
             default=False,
             description="If true, skip LLM calls (cross_validator debate, "
             "synthesizer narrative). Faster, lower verdict quality.",
         ),
     ):
+        # R0.3: rate limit check before enqueueing.
+        tenant_id = _auth.get("tenant_id", "default") if isinstance(_auth, dict) else "default"
+        _check_rate_limit(tenant_id)
+
         # Generate a deterministic address from the contract code if the
         # client didn't supply one. Matches `run_real_audit.py` convention.
         contract_address = req.contract_address or _derive_address(req.contract_code)
@@ -276,11 +307,9 @@ def create_app(
         # Apply the per-request no_llm override.
         effective_no_llm = no_llm or app.state.no_llm
         if effective_no_llm and not app.state.no_llm:
-            # The per-request override only affects this one audit. We
-            # can't dynamically patch the LLM mid-graph (the graph is
-            # already compiled), so we just record the intent in metadata
-            # for downstream debugging.
             req.metadata["_effective_no_llm"] = True
+
+        req.metadata["tenant_id"] = tenant_id
 
         record = store.create(
             contract_code=req.contract_code,
@@ -320,14 +349,20 @@ def create_app(
         response_model=JobResponse,
         responses={404: {"model": ErrorResponse, "description": "Job not found"}},
     )
-    async def get_audit(job_id: str):
+    async def get_audit(
+        job_id: str,
+        _auth: dict[str, Any] = Depends(read_auth),
+    ):
         record = store.get(job_id)
         if record is None:
             raise HTTPException(status_code=404, detail=f"job_id not found: {job_id}")
         return JobResponse(**record.to_dict())
 
     @app.get("/audit", response_model=list[JobResponse])
-    async def list_audits(limit: int = Query(default=20, ge=1, le=100)):
+    async def list_audits(
+        limit: int = Query(default=20, ge=1, le=100),
+        _auth: dict[str, Any] = Depends(read_auth),
+    ):
         return [JobResponse(**r.to_dict()) for r in store.list_recent(n=limit)]
 
     return app
