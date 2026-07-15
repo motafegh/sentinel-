@@ -352,6 +352,13 @@ def create_app(
         record = store.get(job_id)
         if record is None:
             raise HTTPException(status_code=404, detail=f"job_id not found: {job_id}")
+
+        # R0.6: tenant isolation — reject cross-tenant access
+        request_tenant = _auth.get("tenant_id", "default") if isinstance(_auth, dict) else "default"
+        job_tenant = record.metadata.get("tenant_id", "default")
+        if request_tenant != job_tenant:
+            raise HTTPException(status_code=404, detail=f"job_id not found: {job_id}")
+
         return JobResponse(**record.to_dict())
 
     @app.get("/audit", response_model=list[JobResponse])
@@ -359,7 +366,14 @@ def create_app(
         limit: int = Query(default=20, ge=1, le=100),
         _auth: dict[str, Any] = Depends(read_auth),
     ):
-        return [JobResponse(**r.to_dict()) for r in store.list_recent(n=limit)]
+        # R0.6: tenant isolation — only return jobs owned by the requesting tenant
+        request_tenant = _auth.get("tenant_id", "default") if isinstance(_auth, dict) else "default"
+        all_records = store.list_recent(n=limit * 10)
+        filtered = [
+            r for r in all_records
+            if r.metadata.get("tenant_id", "default") == request_tenant
+        ][:limit]
+        return [JobResponse(**r.to_dict()) for r in filtered]
 
     return app
 

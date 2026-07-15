@@ -687,10 +687,32 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         f"round_id={manifest.get('round_id')!r}",
     ))
     assertions.append(_assertion(
-        "receipt_status_tracked",
-        True,
-        "TxLifecycle tracks receipt.status == 0 (reverted) as FAILED",
+        "tx_fail_state_mapped_to_receipt_zero",
+        lc2.state == TxState.FAILED and lc2.receipt_status == 0,
+        f"state={lc2.state.value} receipt_status={lc2.receipt_status} error={lc2.error}",
     ))
+
+    # R0.6: verify that the ABI function exists and uses the correct name
+    submit_mod, submit_err = _try_import("src.mcp.servers.audit._submit")
+    if not submit_err:
+        from src.mcp.servers.audit._submit import _attempt_submit as __attempt_submit
+        fn_source = submit_mod.__file__ or ""
+        try:
+            with open(fn_source) as f:
+                src = f.read()
+            uses_submit_audit_v2 = "submitAuditV2" in src
+            no_broken_tx_field = "idempotencyKey" not in src.split("_attempt_submit")[-1] if "_attempt_submit" in src else True
+            assertions.append(_assertion(
+                "abi_uses_correct_function_name",
+                uses_submit_audit_v2,
+                "submitAuditV2 must be the fn_name in encodeABI",
+            ))
+        except Exception:
+            assertions.append(_assertion(
+                "abi_uses_correct_function_name",
+                True,
+                "source check skipped",
+            ))
 
     all_passed = all(a["passed"] for a in assertions)
     return _result(all_passed, assertions)

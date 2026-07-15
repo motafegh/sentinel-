@@ -21,8 +21,15 @@ Scope = Literal["read", "write", "admin"]
 _SCOPE_HIERARCHY: dict[str, int] = {"read": 1, "write": 2, "admin": 3}
 
 
-def _jwt_secret() -> str:
-    return os.getenv("SENTINEL_JWT_SECRET") or ""
+def _jwt_secret() -> str | None:
+    raw = os.getenv("SENTINEL_JWT_SECRET")
+    if raw and raw.strip():
+        return raw
+    return None
+
+
+def _jwt_enabled() -> bool:
+    return _jwt_secret() is not None
 
 
 def _static_token() -> str | None:
@@ -39,6 +46,10 @@ def create_token(
 ) -> str:
     import jwt as pyjwt
 
+    actual_secret = secret or _jwt_secret()
+    if not actual_secret:
+        raise ValueError("SENTINEL_JWT_SECRET is not configured; cannot issue tokens")
+
     now = int(time.time())
     payload: dict[str, Any] = {
         "sub": principal,
@@ -47,16 +58,20 @@ def create_token(
         "iat": now,
         "exp": now + expiry_s,
     }
-    return pyjwt.encode(payload, secret or _jwt_secret(), algorithm="HS256")
+    return pyjwt.encode(payload, actual_secret, algorithm="HS256")
 
 
 def decode_token(token: str, *, secret: str | None = None) -> dict[str, Any] | None:
     import jwt as pyjwt
 
+    actual_secret = secret or _jwt_secret()
+    if not actual_secret:
+        return None
+
     try:
         return pyjwt.decode(
             token,
-            secret or _jwt_secret(),
+            actual_secret,
             algorithms=["HS256"],
             options={"require": ["sub", "scope", "tenant_id", "iat", "exp"]},
         )
@@ -143,5 +158,6 @@ __all__ = [
     "Scope",
     "create_token",
     "decode_token",
+    "_jwt_enabled",
     "require_scope",
 ]

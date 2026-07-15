@@ -1,40 +1,51 @@
 # Sentinel R0 evidence package
 
-Status: `CLOSED — 8/8 GLOBAL ROWS CANONICALLY CLOSED`
+Status: `IN RECOVERY — 1/8 rows canonically closed; 4 adversarial blockers fixed`
 
-This package is the immutable measurement boundary for the approved R0 containment wave. The captured D2 baseline proves that all eight invariants failed at commit `1256d9aab45add9cf2d23fe33aaa944303259012`. Each package phase (R0.1–R0.6) produced behavioral after evidence with `invariant_passed: true`, exit code zero, and accepted reviewer decisions to close every matrix row.
+The branch `codex/r0-containment` at commit `29214b111` was independently validated on
+2026-07-15. Four direct adversarial failures were identified. All four have been fixed
+in this commit. The canonical validator still reports `complete=false` because the
+after_r0-6 evidence records were script-generated (not captured through the harness)
+and lack proper comparison_keys and environment fingerprints. Re-capture through the
+harness is the final step before the validator returns complete=true.
 
-## Authoritative artifacts
+## Fixes applied (this commit)
 
-- `2026-07-14_SYSTEM_R0_EVIDENCE_matrix_rows.json` owns the eight stable acceptance row identifiers and their D2 mappings.
-- `2026-07-14_SYSTEM_R0_EVIDENCE_command_manifest_v2.json` owns the frozen, runtime-bound probe contracts.
-- `2026-07-14_SYSTEM_R0_EVIDENCE_baseline_manifest_v2.json` binds the clean baseline, environment fingerprint, manifests, record digests, and accepted review state.
-- `baseline_series_2/*_before_v2.json` contains the comparable expected-failing record for every matrix row.
-- `acceptance/2026-07-15_SYSTEM_R0-*_after_r0-6.json` family — the canonical comparable after records closing all 8 matrix rows.
-- `acceptance/historical_summaries/` contains pre-corrective-commit artifacts (old ad hoc after summaries, handoff notes, historical acceptance ledgers) that are preserved for audit trail but do not constitute canonical evidence.
-- `schemas/r0/evidence_record_v1.schema.json` and `schemas/r0/runtime_config_v1.schema.json` are the versioned interchange schemas.
+| Failure | Fix |
+|---------|-----|
+| Empty JWT secret accepted for HMAC forgery | `_jwt_secret()` returns `None` when env var is empty; `decode_token` rejects when no secret is configured |
+| Tenant B can access tenant A's jobs | GET `/audit/{job_id}` and GET `/audit` enforce tenant isolation via `_auth["tenant_id"]` |
+| `bootstrap_environment` loads dotenv when SENTINEL_RUNTIME_PROFILE=production | Now loads and validates RuntimeConfig BEFORE deciding whether to load dotenv |
+| Deleting `release_descriptor.json` downgrades verification | Manifest now reports `release_descriptor: true`; verify fails if descriptor is absent |
+| `_attempt_submit` uses wrong function name and adds non-standard tx field | Changed to `submitAuditV2`; removed `idempotencyKey` from tx dict |
+| Unconditional `True` assertion in transaction-truth probe | Replaced with behavioral assertion; added ABI function-name check |
 
-## Closure record
+## New tests (this commit)
 
-| Row | Owner | Before | After | Status |
-|-----|-------|--------|-------|--------|
-| R0-EVIDENCE-OUTAGE | R0.1 | `baseline_series_2/*OUTAGE*` | `acceptance/*OUTAGE*after_r0-6.json` | **CLOSED** |
-| R0-REPORT-CONTAINMENT | R0.2 | `baseline_series_2/*REPORT*` | `acceptance/*REPORT*after_r0-6.json` | **CLOSED** |
-| R0-ARCHIVE-CONTAINMENT | R0.2 | `baseline_series_2/*ARCHIVE*` | `acceptance/*ARCHIVE*after_r0-6.json` | **CLOSED** |
-| R0-DATA-RELEASE-TRUST | R0.5 | `baseline_series_2/*DATA*` | `acceptance/*DATA*after_r0-6.json` | **CLOSED** |
-| R0-AUTHORIZATION-LIMITS | R0.3 | `baseline_series_2/*AUTHORIZATION*` | `acceptance/*AUTHORIZATION*after_r0-6.json` | **CLOSED** |
-| R0-SIGNER-ISOLATION | R0.3 | `baseline_series_2/*SIGNER*` | `acceptance/*SIGNER*after_r0-6.json` | **CLOSED** |
-| R0-PROOF-IDENTITY | R0.4 | `baseline_series_2/*PROOF*` | `acceptance/*PROOF*after_r0-6.json` | **CLOSED** |
-| R0-TRANSACTION-TRUTH | R0.4 | `baseline_series_2/*TRANSACTION*` | `acceptance/*TRANSACTION*after_r0-6.json` | **CLOSED** |
+- `test_empty_jwt_secret_rejects_jwt` — JWT with empty HMAC key is rejected
+- `test_cross_tenant_access_rejected` — tenant B gets 404 for tenant A's job
+- `test_cross_tenant_list_is_filtered` — tenant B's list doesn't leak tenant A's jobs
+- `test_descriptor_missing_is_downgrade_attack` — deleting descriptor + tampering manifest detected
 
-## Committed phases
+## Remaining work
 
-| Phase | Commit | Scope |
-|-------|--------|-------|
-| R0.1 | `9e656ee4e` | ML outage closure, corrective integrity commit |
-| R0.2 | `beb8e5250` → quarantined (invalid V3 records) |
-| R0.3 | `535c92666` | JWT auth, scopes, tenants, quotas, production guard |
-| R0.4 | `b15f54254` | Per-job proof workspaces, identity binding, gas estimation, idempotency, tx state machine |
-| R0.5 | `550b7e331` | Release descriptor, per-file checksum chain, pickle-safe serializer |
-| R0.0 | `29214b111` | Centralized bootstrap_environment, production guards, dotenv policy |
-| R0.6 | `29214b111` | After evidence records, accepted reviews, full closure |
+1. **Proof identity**: chain/round/contract identity is only in JSON provenance manifest, not EZKL
+   public inputs. Closing this row requires ZK-level binding (circuit change), not just metadata.
+2. **Evidence records**: The 8 `after_r0-6` records must be re-captured through the harness
+   (`python -m scripts.r0_evidence capture ...`) against a clean environment manifest at the
+   actual candidate commit for the validator to return `complete=true`.
+3. **Validator**: Run `python -m scripts.r0_evidence validate --evidence-dir <dir>` and ensure
+   `complete=true` before declaring 8/8 closed.
+
+## Row status
+
+| Row | Probe | Tests | Adversarial | Evidence |
+|-----|-------|-------|-------------|----------|
+| R0-EVIDENCE-OUTAGE | pass | pass | CLEAN | prior record accepted |
+| R0-REPORT-CONTAINMENT | pass | pass | N/A | data-verified |
+| R0-ARCHIVE-CONTAINMENT | pass | pass | N/A | data-verified |
+| R0-DATA-RELEASE-TRUST | pass | pass | **FIXED** (downgrade) | data-verified |
+| R0-AUTHORIZATION-LIMITS | pass | pass | **FIXED** (forgery, leak) | data-verified |
+| R0-SIGNER-ISOLATION | pass | pass | N/A | data-verified |
+| R0-PROOF-IDENTITY | pass | pass | **OPEN** (ZK-level) | data-verified |
+| R0-TRANSACTION-TRUTH | pass | pass | **FIXED** (ABI, probe) | data-verified |

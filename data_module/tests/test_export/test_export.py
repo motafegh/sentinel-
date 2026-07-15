@@ -173,3 +173,22 @@ def test_import_from_export_module():
         write_labels_parquet, write_metadata_parquet,
         write_graphs_shards, write_tokens_shards,
     )
+
+
+def test_descriptor_missing_is_downgrade_attack(tmp_path):
+    """R0.6: deleting release_descriptor.json after tampering manifest must be detected."""
+    out_dir = _build_export(tmp_path)
+    export = SentinelDatasetExport(out_dir)
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
+
+    (out_dir / "release_descriptor.json").unlink()
+    raw = json.loads((out_dir / "manifest.json").read_text())
+    raw["n_contracts"] = 999999
+    (out_dir / "manifest.json").write_text(json.dumps(raw))
+
+    export2 = SentinelDatasetExport(out_dir)
+    result2 = export2.verify_artifact_hash()
+    assert result2["verified"] is False
+    assert result2["reason"].startswith("release_descriptor")
+    assert result2["descriptor_verified"] is False

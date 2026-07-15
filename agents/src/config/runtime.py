@@ -165,26 +165,27 @@ def bootstrap_environment(
 ) -> RuntimeConfig:
     """Centralised environment bootstrap for all SENTINEL entry points.
 
-    1. Checks ``SENTINEL_ENV`` (raw env var, not runtime config — we need it
-       to *load* the config).
-    2. In production: does NOT load ``.env`` (must use real env vars).
-    3. Non-production: loads ``.env`` via ``dotenv.load_dotenv``.
-    4. Loads and returns the validated ``RuntimeConfig`` singleton.
+    1. Validates the RuntimeConfig from env overrides + default YAML FIRST
+       (before any dotenv is loaded).
+    2. If the loaded profile is not production: loads ``.env`` via
+       ``dotenv.load_dotenv`` and reloads the config to pick up any env
+       vars defined in ``.env``.
+    3. If the loaded profile is production: does NOT load ``.env``.
 
     Call this once at the top of every ``main()`` or module-level startup
     **before** any service-specific ``os.getenv()`` or config reads.
     """
     source_env = os.environ if env is None else dict(env)
-    sentinel_env = source_env.get("SENTINEL_ENV", "").lower()
 
-    if sentinel_env != "production":
+    cfg = reload_runtime_config(env=source_env)
+
+    if cfg.profile is not RuntimeProfile.PRODUCTION:
         from dotenv import load_dotenv as _load_dotenv
 
         resolved_path: Path | None = None
         if dotenv_path is not None:
             resolved_path = Path(dotenv_path).expanduser().resolve()
         if resolved_path is None or not resolved_path.is_file():
-            # Walk up from CWD to find .env
             cwd = Path.cwd()
             for parent in [cwd, *cwd.parents]:
                 candidate = parent / ".env"
@@ -193,8 +194,9 @@ def bootstrap_environment(
                     break
         if resolved_path is not None and resolved_path.is_file():
             _load_dotenv(dotenv_path=resolved_path, override=override)
+            cfg = reload_runtime_config(env=source_env)
 
-    return reload_runtime_config(env=source_env)
+    return cfg
 
 
 def runtime_config_digest(config: RuntimeConfig) -> str:

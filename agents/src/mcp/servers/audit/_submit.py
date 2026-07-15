@@ -478,7 +478,7 @@ def _attempt_submit(
     contract = w3.eth.contract(address=w3.to_checksum_address(registry_address), abi=abi)
 
     submit_data = contract.encodeABI(
-        fn_name="submitAudit",
+        fn_name="submitAuditV2",
         args=[
             w3.to_checksum_address(contract_address),
             chain_id,
@@ -503,9 +503,6 @@ def _attempt_submit(
         "nonce": nonce,
         "chainId": chain_id,
     }
-
-    if idempotency_key:
-        tx["idempotencyKey"] = idempotency_key
 
     signed = account.sign_transaction(tx)
     tx_hash_bytes = w3.eth.send_raw_transaction(signed.raw_transaction)

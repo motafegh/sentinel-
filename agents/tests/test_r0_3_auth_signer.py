@@ -92,6 +92,141 @@ class TestGatewayAuth:
             r = client.get("/health")
             assert r.status_code == 200
 
+    def test_empty_jwt_secret_rejects_jwt(self):
+        """R0.6: JWT signed with empty HMAC key must be rejected."""
+        import json as _json
+        import jwt as _pyjwt
+        import base64
+
+        # Create JWT with empty secret (HMAC-SHA256 of "")
+        header = base64.urlsafe_b64encode(_json.dumps({"alg": "HS256", "typ": "JWT"}).encode()).rstrip(b"=").decode()
+        payload = _json.dumps({
+            "sub": "attacker", "scope": "write", "tenant_id": "default",
+            "iat": 1000000, "exp": 9999999999,
+        })
+        payload_enc = base64.urlsafe_b64encode(payload.encode()).rstrip(b"=").decode()
+        import hmac, hashlib
+        sig = base64.urlsafe_b64encode(
+            hmac.new(b"", f"{header}.{payload_enc}".encode(), hashlib.sha256).digest()
+        ).rstrip(b"=").decode()
+        token = f"{header}.{payload_enc}.{sig}"
+
+        old_secret = os.environ.pop("SENTINEL_JWT_SECRET", None)
+        old_token = os.environ.pop("SENTINEL_GATEWAY_TOKEN", None)
+        try:
+            app = self._make_app(auth_enabled=True)
+            with TestClient(app) as client:
+                r = client.post(
+                    "/audit",
+                    json={"contract_code": "contract C {}"},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                # Must be rejected: no JWT secret configured, and no static token
+                assert r.status_code == 401
+        finally:
+            if old_secret is not None:
+                os.environ["SENTINEL_JWT_SECRET"] = old_secret
+            if old_token is not None:
+                os.environ["SENTINEL_GATEWAY_TOKEN"] = old_token
+
+    def test_cross_tenant_access_rejected(self):
+        """R0.6: tenant B cannot GET tenant A's job."""
+        from src.security.auth import create_token
+
+        old_secret = os.environ.pop("SENTINEL_JWT_SECRET", None)
+        os.environ["SENTINEL_JWT_SECRET"] = "r0-6-test-secret"
+        try:
+            token_a = create_token("tenant-a", scope="write", tenant_id="tenant-a")
+            token_b = create_token("tenant-b", scope="read", tenant_id="tenant-b")
+
+            app = self._make_app(auth_enabled=True)
+            with TestClient(app) as client:
+                r = client.post(
+                    "/audit",
+                    json={"contract_code": "contract C {}"},
+                    headers={"Authorization": f"Bearer {token_a}"},
+                )
+                assert r.status_code == 202
+                job_id = r.json()["job_id"]
+
+                r2 = client.get(
+                    f"/audit/{job_id}",
+                    headers={"Authorization": f"Bearer {token_b}"},
+                )
+                assert r2.status_code == 404, f"tenant-b should not see tenant-a's job"
+
+                # Tenant A should still be able to get their own job
+                r3 = client.get(
+                    f"/audit/{job_id}",
+                    headers={"Authorization": f"Bearer {token_a}"},
+                )
+                assert r3.status_code == 200
+        finally:
+            os.environ["SENTINEL_JWT_SECRET"] = old_secret or ""
+
+    def test_cross_tenant_list_is_filtered(self):
+        """R0.6: tenant B's list does not leak tenant A's jobs."""
+        from src.security.auth import create_token
+
+        old_secret = os.environ.pop("SENTINEL_JWT_SECRET", None)
+        os.environ["SENTINEL_JWT_SECRET"] = "r0-6-test-list-secret"
+        try:
+            token_a = create_token("tenant-a", scope="write", tenant_id="tenant-a")
+            token_b = create_token("tenant-b", scope="read", tenant_id="tenant-b")
+
+            app = self._make_app(auth_enabled=True)
+            with TestClient(app) as client:
+                client.post(
+                    "/audit",
+                    json={"contract_code": "contract C {}"},
+                    headers={"Authorization": f"Bearer {token_a}"},
+                )
+                r = client.get(
+                    "/audit",
+                    headers={"Authorization": f"Bearer {token_b}"},
+                )
+                assert r.status_code == 200
+                assert len(r.json()) == 0, f"tenant-b list should be empty, got {len(r.json())}"
+        finally:
+            os.environ["SENTINEL_JWT_SECRET"] = old_secret or ""
+
+    def test_empty_jwt_secret_rejects_jwt(self):
+        """R0.6: JWT signed with empty HMAC key must be rejected."""
+        import json as _json
+        import jwt as _pyjwt
+        import base64
+
+        # Create JWT with empty secret (HMAC-SHA256 of "")
+        header = base64.urlsafe_b64encode(_json.dumps({"alg": "HS256", "typ": "JWT"}).encode()).rstrip(b"=").decode()
+        payload = _json.dumps({
+            "sub": "attacker", "scope": "write", "tenant_id": "default",
+            "iat": 1000000, "exp": 9999999999,
+        })
+        payload_enc = base64.urlsafe_b64encode(payload.encode()).rstrip(b"=").decode()
+        import hmac, hashlib
+        sig = base64.urlsafe_b64encode(
+            hmac.new(b"", f"{header}.{payload_enc}".encode(), hashlib.sha256).digest()
+        ).rstrip(b"=").decode()
+        token = f"{header}.{payload_enc}.{sig}"
+
+        old_secret = os.environ.pop("SENTINEL_JWT_SECRET", None)
+        old_token = os.environ.pop("SENTINEL_GATEWAY_TOKEN", None)
+        try:
+            app = self._make_app(auth_enabled=True)
+            with TestClient(app) as client:
+                r = client.post(
+                    "/audit",
+                    json={"contract_code": "contract C {}"},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                # Must be rejected: no JWT secret configured, and no static token
+                assert r.status_code == 401
+        finally:
+            if old_secret is not None:
+                os.environ["SENTINEL_JWT_SECRET"] = old_secret
+            if old_token is not None:
+                os.environ["SENTINEL_GATEWAY_TOKEN"] = old_token
+
 
 class TestSignerIsolation:
     def test_config_has_no_operator_key_env(self):

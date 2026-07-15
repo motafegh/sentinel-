@@ -99,6 +99,15 @@ class SentinelDatasetExport:
                     "descriptor_verified": False,
                 }
             descriptor_ok = True
+        elif self._manifest_raw.get("release_descriptor") is True:
+            return {
+                "verified": False,
+                "reason": "release_descriptor:missing",
+                "files_checked": 0,
+                "files_missing": [],
+                "files_extra": [],
+                "descriptor_verified": False,
+            }
         else:
             descriptor_ok = None
 
