@@ -6,7 +6,7 @@
   "closure_status": "open",
   "command_manifest": {
     "path": "2026-07-14_SYSTEM_R0_EVIDENCE_command_manifest_v2.json",
-    "sha256": "ef558ca736800319ab01c0e47ad33c524a98e154849b87cb2526d5735ee05785"
+    "sha256": "4fc2509d6754b4acb9b0965f824c735514e1245ca402adcbe8f9ba92e6f0835c"
   },
   "comparison_contract_version": "2",
   "dirty_state_guard": {

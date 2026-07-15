@@ -511,12 +511,27 @@ def probe_signer_boundary(workspace: Path) -> dict[str, Any]:
     if config_err:
         return _result(False, [_assertion("config_module_importable", False, config_err)])
 
-    from src.mcp.servers.audit._config import _OPERATOR_KEY
+    # R0-F3: analysis/MCP process must contain no signing key, no key import
+    # path, and no raw transaction construction code.
+    _submit_path = workspace / "agents/src/mcp/servers/audit/_submit.py"
+    _config_path = workspace / "agents/src/mcp/servers/audit/_config.py"
+    _submit_src = _submit_path.read_text() if _submit_path.exists() else ""
+    _config_src = _config_path.read_text() if _config_path.exists() else ""
 
     assertions.append(_assertion(
-        "operator_key_is_empty_in_config",
-        not _OPERATOR_KEY,
-        f"_OPERATOR_KEY length={len(_OPERATOR_KEY)}",
+        "operator_key_absent_from_config",
+        "_OPERATOR_KEY" not in _config_src,
+        "config no longer defines _OPERATOR_KEY",
+    ))
+    assertions.append(_assertion(
+        "no_raw_key_import_in_submit",
+        "from eth_account" not in _submit_src and "from_key" not in _submit_src,
+        "no eth_account import or from_key call in analysis process",
+    ))
+    assertions.append(_assertion(
+        "no_transaction_construction_in_submit",
+        "sign_transaction" not in _submit_src and "send_raw_transaction" not in _submit_src,
+        "no raw tx signing or broadcast code in MCP process",
     ))
 
     submit_mod, submit_err = _try_import("src.mcp.servers.audit._submit")
@@ -558,7 +573,6 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
     if config_err:
         return _result(False, [_assertion("config_module_importable", False, config_err)])
 
-    from src.mcp.servers.audit._config import _OPERATOR_KEY
     from src.mcp.servers.audit._submit import build_provenance_manifest
 
     manifest = build_provenance_manifest(
@@ -571,7 +585,7 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         round_id=42,
         contract_address="0x000000000000000000000000000000000000dEaD",
         target_data_version="v2026.1",
-        identity_commitment="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        proof_scope="legacy_proxy_only_unbound",
     )
 
     assertions.append(_assertion(
@@ -580,14 +594,9 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         f"keys={sorted(manifest)}",
     ))
     assertions.append(_assertion(
-        "provenance_manifest_has_identity_commitment",
-        "identity_commitment" in manifest and len(manifest["identity_commitment"]) == 64,
-        f"identity_commitment={manifest.get('identity_commitment', 'MISSING')!r}",
-    ))
-    assertions.append(_assertion(
-        "provenance_manifest_has_fusion_embedding_hash",
-        "fusion_embedding_hash" in manifest,
-        f"keys={sorted(manifest)}",
+        "proof_scope_is_legacy_unbound",
+        manifest.get("proof_scope") == "legacy_proxy_only_unbound",
+        f"proof_scope={manifest.get('proof_scope')!r}",
     ))
     assertions.append(_assertion(
         "proof_identity_bound_to_chain",
@@ -604,14 +613,20 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         "contract_address" in manifest,
         f"contract_address={manifest.get('contract_address')!r}",
     ))
+    # R0-F3: analysis process has no key
+    _config_check = workspace / "agents/src/mcp/servers/audit/_config.py"
+    _conf = _config_check.read_text() if _config_check.exists() else ""
     assertions.append(_assertion(
-        "no_operator_key_prevents_signature",
-        not _OPERATOR_KEY,
-        "signing key removed from MCP process; policy-signer owns submission",
+        "no_operator_key_in_process",
+        "_OPERATOR_KEY" not in _conf,
+        "signing key removed from MCP process — policy-signer owns submission",
     ))
 
-    # R0.6: cross-identity proof rejection — two different identities
-    # produce provably different manifests with different identity commitments.
+    # R0-F3: V2 proof scope is always legacy_proxy_only_unbound regardless
+    # of identity. The chain/round/contract fields are informational metadata
+    # stored in the JSON manifest — they are NOT cryptographically enforced
+    # by the EZKL circuit or the Solidity verifier. Full typed identity
+    # binding requires R3 V3 protocol work.
     manifest_b = build_provenance_manifest(
         teacher_model_hash="c" * 64,
         proxy_checkpoint_hash="d" * 64,
@@ -622,22 +637,22 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         round_id=99,
         contract_address="0x000000000000000000000000000000000000BeEf",
         target_data_version="v2026.1",
-        identity_commitment="Z9Y8X7W6V5U4T3S2R1Q0P9O8N7M6L5K4J3I2H1G0F9E8D7C6B5A4Z9Y8X7W6V5",
+        proof_scope="legacy_proxy_only_unbound",
     )
     assertions.append(_assertion(
-        "cross_identity_chain_differs",
+        "v2_proof_scope_identical_across_identities",
+        manifest.get("proof_scope") == manifest_b.get("proof_scope") == "legacy_proxy_only_unbound",
+        "V2 proof scope is legacy_proxy_only_unbound regardless of identity",
+    ))
+    assertions.append(_assertion(
+        "cross_identity_different_chain_metadata",
         manifest.get("chain_id") != manifest_b.get("chain_id"),
         f"A={manifest.get('chain_id')} B={manifest_b.get('chain_id')}",
     ))
     assertions.append(_assertion(
-        "cross_identity_commitment_differs",
-        manifest.get("identity_commitment") != manifest_b.get("identity_commitment"),
-        f"A={manifest.get('identity_commitment')} B={manifest_b.get('identity_commitment')}",
-    ))
-    assertions.append(_assertion(
-        "cross_identity_model_hash_same",
-        manifest.get("teacher_model_hash") == manifest_b.get("teacher_model_hash"),
-        "same model, different identity — teacher hash unchanged",
+        "cross_identity_same_unbound_scope",
+        manifest.get("proof_scope") == manifest_b.get("proof_scope"),
+        "identity fields change but proof scope stays unbound — not crypto binding",
     ))
 
     all_passed = all(a["passed"] for a in assertions)
@@ -657,7 +672,6 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         _estimate_gas,
         TxLifecycle,
         TxState,
-        build_provenance_manifest,
     )
 
     try:
@@ -672,137 +686,121 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         )
     except Exception as exc:
         assertions.append(_assertion(
-            "submit_pipeline_has_structure",
-            "failed_step" in str(exc) or "partial" in str(exc),
-            f"submit pipeline raised: {type(exc).__name__}: {exc}",
+            "submit_pipeline_returns_on_error",
+            "status" in str(exc) or "policy_rejected" in str(exc)
+            or "failed_step" in str(exc),
+            f"raised: {type(exc).__name__}: {exc}",
         ))
         all_passed = all(a["passed"] for a in assertions)
         return _result(all_passed, assertions)
 
     assertions.append(_assertion(
-        "submit_pipeline_returns_structured_result",
+        "submit_pipeline_returns_dict",
         isinstance(result, dict) and "status" in result,
-        f"type={type(result).__name__} keys={sorted(result) if isinstance(result, dict) else 'N/A'}",
+        f"keys={sorted(result) if isinstance(result, dict) else type(result).__name__}",
     ))
 
-    status = result.get("status", "unknown")
-    reached_tx = status in {"partial", "submitted"}
-    blocked_but_has_features = status == "failed" and result.get("failed_step") != "transaction"
+    # R0-F3: V2 proof scope is either legacy_proxy_only_unbound (ML API reached)
+    # or "none" when the pipeline is blocked before reaching proof generation.
+    # Both are ineligible for verified audit finality.
     assertions.append(_assertion(
-        "transaction_step_reachable_or_features_exist",
-        reached_tx or blocked_but_has_features,
-        f"status={status!r} failed_step={result.get('failed_step')!r} — "
-        f"{'tx step reached' if reached_tx else 'blocked before tx but features implemented'}",
+        "proof_scope_is_unbound_or_none",
+        result.get("proof_scope") in ("legacy_proxy_only_unbound", "none"),
+        f"proof_scope={result.get('proof_scope')!r}",
     ))
-
     assertions.append(_assertion(
-        "identity_binding_in_submit",
-        result.get("chain_id") == 1 and result.get("round_id") == 42,
-        f"chain_id={result.get('chain_id')} round_id={result.get('round_id')}",
+        "v2_not_submitted_or_confirmed",
+        result.get("status") in ("policy_rejected", "failed"),
+        f"status={result.get('status')!r}",
     ))
-
     assertions.append(_assertion(
-        "idempotency_key_propagated",
-        result.get("idempotency_key") == "test-ik-001",
-        f"idempotency_key={result.get('idempotency_key')!r}",
+        "verified_audit_ineligible",
+        not result.get("verified_audit_eligible", True),
+        f"eligible={result.get('verified_audit_eligible')} "
+        f"reason={result.get('finality_ineligible_reason')!r}",
     ))
-
-    # Test _estimate_gas directly (no web3 — returns fallback)
-    gas = _estimate_gas(None, "0x0000000000000000000000000000000000000001",
-                        "0x0000000000000000000000000000000000000002")
     assertions.append(_assertion(
-        "gas_estimation_uses_fallback_when_no_web3",
-        gas == 500_000,
-        f"gas={gas}",
+        "ineligible_reason_is_proof_scope",
+        "proof_scope" in str(result.get("finality_ineligible_reason", "")),
+        f"reason={result.get('finality_ineligible_reason')!r}",
     ))
 
-    # Test TxLifecycle state machine
+    # R0-F4: transaction state machine
+    all_states = set(s for s in TxState)
+    assert len(all_states) >= 10, f"TxState must have 11 values, got {len(all_states)}"
+    assertions.append(_assertion(
+        "tx_state_machine_has_all_required_states",
+        all(s in all_states for s in [TxState.PENDING, TxState.POLICY_REJECTED,
+              TxState.PREPARED, TxState.SIGNED, TxState.BROADCAST,
+              TxState.CONFIRMED, TxState.REVERTED, TxState.FAILED]),
+        f"states={sorted(s.value for s in all_states)}",
+    ))
+
     lc = TxLifecycle(tx_hash="0xabc")
     assertions.append(_assertion(
-        "tx_lifecycle_default_state_is_pending",
+        "tx_default_is_pending",
         lc.state == TxState.PENDING,
         f"state={lc.state.value}",
     ))
-    lc.state = TxState.CONFIRMED
-    lc.receipt_status = 1
+    lc.state = TxState.POLICY_REJECTED
+    lc.error = "proof_scope_not_identity_bound"
     assertions.append(_assertion(
-        "tx_lifecycle_tracks_confirmed_with_receipt",
-        lc.state == TxState.CONFIRMED and lc.receipt_status == 1,
-        f"state={lc.state.value} receipt_status={lc.receipt_status}",
+        "tx_policy_rejected_storable",
+        lc.state == TxState.POLICY_REJECTED and lc.error is not None,
+        f"state={lc.state.value} error={lc.error}",
     ))
-    lc2 = TxLifecycle(state=TxState.FAILED, receipt_status=0, error="reverted")
+    rlc = TxLifecycle(state=TxState.REVERTED, receipt_status=0, error="reverted on-chain")
     assertions.append(_assertion(
-        "tx_lifecycle_tracks_reverted_transaction",
-        lc2.state == TxState.FAILED and lc2.receipt_status == 0,
-        f"state={lc2.state.value} receipt_status={lc2.receipt_status} error={lc2.error}",
+        "tx_reverted_zero_receipt_status",
+        rlc.state == TxState.REVERTED and rlc.receipt_status == 0,
+        f"state={rlc.state.value} receipt_status={rlc.receipt_status}",
     ))
 
-    # Test build_provenance_manifest with identity binding
-    manifest = build_provenance_manifest(
-        teacher_model_hash="a" * 64,
-        proxy_checkpoint_hash="b" * 64,
-        fusion_embedding=[0.0] * 128,
-        class_scores=[0.0] * 10,
-        operator_address="",
-        chain_id=1,
-        round_id=42,
-        contract_address="0x000000000000000000000000000000000000dEaD",
-        idempotency_key="test-ik-001",
-        target_data_version="v2026.1",
+    # R0-F3: policy-signer boundary — V2/unbound proofs must be rejected
+    from src.security.policy_signer import (
+        evaluate_submission, PolicyDecision, REJECT_REASON_UNBOUND
+    )
+    # V2 proof should be rejected
+    result_v2 = evaluate_submission(
+        proof_scope="legacy_proxy_only_unbound",
+        contract_address="0x0000000000000000000000000000000000000001",
+        chain_id=1, round_id=42, model_hash="a"*64,
     )
     assertions.append(_assertion(
-        "manifest_has_chain_id",
-        manifest.get("chain_id") == 1,
-        f"chain_id={manifest.get('chain_id')!r}",
+        "policy_rejects_v2_unbound",
+        result_v2.decision == PolicyDecision.REJECTED,
+        f"decision={result_v2.decision.value} reason={result_v2.reason}",
     ))
     assertions.append(_assertion(
-        "manifest_has_round_id",
-        manifest.get("round_id") == 42,
-        f"round_id={manifest.get('round_id')!r}",
+        "policy_rejection_reason_is_proof_scope",
+        result_v2.reason == REJECT_REASON_UNBOUND,
+        f"reason={result_v2.reason}",
     ))
+    # Missing proof_scope should be rejected
+    result_none = evaluate_submission(
+        proof_scope="none",
+        contract_address="0x0000000000000000000000000000000000000001",
+        chain_id=1, round_id=42, model_hash="a"*64,
+    )
     assertions.append(_assertion(
-        "tx_fail_state_mapped_to_receipt_zero",
-        lc2.state == TxState.FAILED and lc2.receipt_status == 0,
-        f"state={lc2.state.value} receipt_status={lc2.receipt_status} error={lc2.error}",
+        "policy_rejects_no_proof_scope",
+        result_none.decision == PolicyDecision.REJECTED,
+        f"decision={result_none.decision.value} reason={result_none.reason}",
     ))
-
-    # R0.6: verify ABI compatibility — submitAuditV2 must have exactly 5 args
-    # matching the Solidity signature: (address, uint256[10], bytes, uint256[], bytes32)
-    submit_mod, submit_err = _try_import("src.mcp.servers.audit._submit")
-    if not submit_err:
-        from src.mcp.servers.audit._submit import _attempt_submit as __as
-        fn_source = submit_mod.__file__ or ""
-        try:
-            with open(fn_source) as f:
-                src = f.read()
-            # Extract the encodeABI args block
-            has_submit_audit_v2 = "submitAuditV2" in src
-            has_chain_in_tx_dict = "chainId" in src and "w3.eth.chain_id" in src.split("_attempt_submit")[-1] if "_attempt_submit" in src else False
-
-            assertions.append(_assertion(
-                "abi_fn_submitAuditV2",
-                has_submit_audit_v2,
-                "submitAuditV2 must be the fn_name in encodeABI",
-            ))
-            # Verify chain_id is NOT passed as a direct parameter
-            import inspect
-            params = list(inspect.signature(__as).parameters)
-            has_chain_param = "chain_id" in params
-            assertions.append(_assertion(
-                "abi_no_chain_id_param",
-                not has_chain_param,
-                f"_attempt_submit params: {params}",
-            ))
-        except Exception:
-            assertions.append(_assertion(
-                "abi_checks_skipped",
-                True,
-                "source inspection failed, skipping",
-            ))
+    # typed_identity_bound_v3 should be accepted (future path)
+    result_v3 = evaluate_submission(
+        proof_scope="typed_identity_bound_v3",
+        contract_address="0x0000000000000000000000000000000000000001",
+        chain_id=1, round_id=42, model_hash="a"*64,
+    )
+    assertions.append(_assertion(
+        "policy_accepts_v3_identity_bound",
+        result_v3.decision == PolicyDecision.ACCEPTED,
+        f"decision={result_v3.decision.value}",
+    ))
 
     all_passed = all(a["passed"] for a in assertions)
     return _result(all_passed, assertions)
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()

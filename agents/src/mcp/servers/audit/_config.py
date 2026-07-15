@@ -95,10 +95,9 @@ _execution_status: dict[str, Any] = failure_status(
 # ---------------------------------------------------------------------------
 # V2 / submission configuration (P11, 2026-07)
 # ---------------------------------------------------------------------------
-# R0.3: Signing key has been removed from the analysis/MCP process.
-# The policy-signer service owns the key and constructs transactions.
-# _OPERATOR_KEY is no longer read here; submission is disabled by default.
-_OPERATOR_KEY: str = ""
+# R0-F3: The analysis/MCP process contains no signing key, no key-import
+# path, and no transaction-construction code. The policy-signer service
+# (agents/src/security/policy_signer.py) owns all signing and submission.
 
 # ABI for AuditRegistry V2 (includes submitAuditV2, AuditResultV2 tuple).
 # Same contract address — UUPS, V1 and V2 coexist on the same proxy.

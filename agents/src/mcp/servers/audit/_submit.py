@@ -89,74 +89,18 @@ def _estimate_gas(
     from_address: str,
     to_address: str,
     data: str | None = None,
-    fallback_gas: int = 500_000,
 ) -> int:
-    try:
-        tx: dict[str, Any] = {
-            "from": from_address,
-            "to": to_address,
-        }
-        if data:
-            tx["data"] = data
-        estimated = w3.eth.estimate_gas(tx)
-        buffer = int(estimated * 1.2)
-        logger.debug("gas_estimate: raw={} buffered={} fallback={}", estimated, buffer, fallback_gas)
-        return buffer
-    except Exception as exc:
-        logger.warning("gas estimation failed, using fallback {}: {}", fallback_gas, exc)
-        return fallback_gas
-
-
-def _monitor_transaction(
-    w3: Any,
-    tx_hash: str,
-    required_confirmations: int = 2,
-    poll_interval_s: float = 2.0,
-    timeout_s: float = 120.0,
-) -> TxLifecycle:
-    lifecycle = TxLifecycle(tx_hash=tx_hash)
-    deadline = time.time() + timeout_s
-
-    while time.time() < deadline:
-        try:
-            receipt = w3.eth.get_transaction_receipt(tx_hash)
-        except Exception:
-            time.sleep(poll_interval_s)
-            continue
-
-        if receipt is None:
-            time.sleep(poll_interval_s)
-            continue
-
-        lifecycle.block_number = receipt.get("blockNumber")
-        lifecycle.gas_used = receipt.get("gasUsed")
-        lifecycle.effective_gas_price = receipt.get("effectiveGasPrice")
-        lifecycle.receipt_status = receipt.get("status")
-
-        if receipt.get("status") == 0:
-            lifecycle.state = TxState.FAILED
-            lifecycle.error = "transaction reverted (status=0)"
-            return lifecycle
-
-        lifecycle.state = TxState.MINED
-
-        try:
-            current_block = w3.eth.block_number
-            lifecycle.confirmations = current_block - lifecycle.block_number + 1
-        except Exception:
-            lifecycle.confirmations = 1
-
-        if lifecycle.confirmations >= required_confirmations:
-            lifecycle.state = TxState.CONFIRMED
-            return lifecycle
-
-        time.sleep(poll_interval_s)
-
-    lifecycle.state = TxState.FAILED
-    lifecycle.error = f"transaction did not reach {required_confirmations} confirmations within {timeout_s}s"
-    return lifecycle
-
-
+    """Estimate gas for a transaction. Raises on failure — no silent fallback."""
+    tx: dict[str, Any] = {
+        "from": from_address,
+        "to": to_address,
+    }
+    if data:
+        tx["data"] = data
+    estimated = w3.eth.estimate_gas(tx)
+    buffer = int(estimated * 1.2)
+    logger.debug("gas_estimate: raw={} buffered={}", estimated, buffer)
+    return buffer
 def _run_submit(
     source_code: str,
     contract_address: str,
@@ -187,7 +131,6 @@ def _run_submit(
         _ABI_V2,
         _EZKL_RUN_PROOF,
         _ML_API_URL,
-        _OPERATOR_KEY,
         _PROXY_CHECKPOINT,
         _REGISTRY_ADDRESS,
         _SUBMIT_CONFIRM_BLOCKS,
@@ -206,7 +149,7 @@ def _run_submit(
             idempotency_key=idempotency_key,
             target_data_version=target_data_version,
             proof_workspace=proof_workspace,
-            config=(_ABI_V2, _EZKL_RUN_PROOF, _ML_API_URL, _OPERATOR_KEY,
+            config=(_ABI_V2, _EZKL_RUN_PROOF, _ML_API_URL,
                     _PROXY_CHECKPOINT, _REGISTRY_ADDRESS, _SUBMIT_CONFIRM_BLOCKS, _w3),
         )
     finally:
@@ -226,7 +169,7 @@ def _run_submit_inner(
     proof_workspace: Path,
     config: tuple,
 ) -> dict[str, Any]:
-    _ABI_V2, _EZKL_RUN_PROOF, _ML_API_URL, _OPERATOR_KEY, _PROXY_CHECKPOINT, _REGISTRY_ADDRESS, _SUBMIT_CONFIRM_BLOCKS, _w3 = config
+    _ABI_V2, _EZKL_RUN_PROOF, _ML_API_URL, _PROXY_CHECKPOINT, _REGISTRY_ADDRESS, _SUBMIT_CONFIRM_BLOCKS, _w3 = config
 
     result: dict[str, Any] = {
         "status": "failed",
@@ -452,80 +395,19 @@ def _run_submit_inner(
         else "no_proof_scope"
     )
 
+    # R0-F3: evaluate against policy-signer boundary
+    from src.security.policy_signer import evaluate_submission, PolicyDecision
+    policy = evaluate_submission(
+        proof_scope=result.get("proof_scope", "none"),
+        contract_address=contract_address,
+        chain_id=chain_id,
+        round_id=round_id,
+        model_hash=result.get("model_hash", ""),
+    )
+    result["policy_decision"] = policy.decision.value
+    result["policy_reason"] = policy.reason
+
     return result
-
-
-def _attempt_submit(
-    w3: Any,
-    operator_key: str,
-    registry_address: str,
-    abi: list,
-    contract_address: str,
-    class_score_felts: list[int],
-    proof_bytes: bytes,
-    public_signals: list[int],
-    model_hash: str,
-    required_confirmations: int = 2,
-    idempotency_key: str | None = None,
-) -> TxLifecycle:
-    """Build, sign, and monitor on-chain submission.
-
-    Matches Solidity AuditRegistry.submitAuditV2:
-        submitAuditV2(address contractAddress, uint256[10] classScores,
-                      bytes proof, uint256[] publicSignals, bytes32 modelHash)
-
-    modelHash is the raw teacher model hash — no identity binding is added.
-    V2 proofs are legacy_proxy_only_unbound; identity binding belongs to R3.
-    """
-    from eth_account import Account
-
-    account = Account.from_key(operator_key)
-    from_address = account.address
-
-    if abi is None:
-        lifecycle = TxLifecycle(state=TxState.FAILED, error="ABI not loaded")
-        return lifecycle
-
-    contract = w3.eth.contract(address=w3.to_checksum_address(registry_address), abi=abi)
-
-    model_hash_bytes32 = bytes.fromhex(model_hash)
-
-    submit_data = contract.encodeABI(
-        fn_name="submitAuditV2",
-        args=[
-            w3.to_checksum_address(contract_address),
-            class_score_felts[:10] if len(class_score_felts) > 10 else class_score_felts,
-            proof_bytes,
-            public_signals,
-            model_hash_bytes32,
-        ],
-    )
-
-    gas_limit = _estimate_gas(w3, from_address, registry_address, data=submit_data)
-
-    nonce = w3.eth.get_transaction_count(from_address)
-    gas_price = w3.eth.gas_price
-
-    tx: dict[str, Any] = {
-        "from": from_address,
-        "to": w3.to_checksum_address(registry_address),
-        "data": submit_data,
-        "gas": gas_limit,
-        "gasPrice": gas_price,
-        "nonce": nonce,
-        "chainId": w3.eth.chain_id,
-    }
-
-    signed = account.sign_transaction(tx)
-    tx_hash_bytes = w3.eth.send_raw_transaction(signed.raw_transaction)
-    tx_hash = tx_hash_bytes.hex() if hasattr(tx_hash_bytes, "hex") else tx_hash_bytes.hex()
-
-    lifecycle = _monitor_transaction(
-        w3=w3,
-        tx_hash=tx_hash,
-        required_confirmations=required_confirmations,
-    )
-    return lifecycle
 
 
 def build_provenance_manifest(
@@ -573,33 +455,15 @@ def build_provenance_manifest(
     if proof_scope is not None:
         manifest["proof_scope"] = proof_scope
 
-    try:
-        from eth_account.messages import encode_defunct
-
-        data_to_sign = json.dumps(manifest, sort_keys=True)
-
-        if operator_address:
-            try:
-                from eth_account import Account
-                signed = Account.sign_message(
-                    encode_defunct(text=data_to_sign),
-                    operator_address,
-                )
-                manifest["signature"] = signed.signature.hex()
-                manifest["signature_scheme"] = "EIP-191"
-            except Exception:
-                manifest["signature"] = None
-                manifest["signature_reason"] = "signing failed"
-        else:
-            manifest["signature"] = None
-            manifest["signature_reason"] = (
-                "R0.3: signing key removed from MCP process; "
-                "policy-signer service owns the signature."
-            )
-    except ImportError:
-        manifest["signature"] = None
-        manifest["signature_reason"] = "eth_account not installed"
-        logger.warning("provenance: eth_account not installed — signature omitted")
+    # R0-F3: No raw signing key in the analysis/MCP process.
+    # The manifest is unsigned; the policy-signer service owns
+    # key management and signature production (R4).
+    manifest["signature"] = None
+    manifest["signature_reason"] = (
+        "R0-F3: analysis process has no key. "
+        "The policy-signer service (agents/src/security/policy_signer.py) "
+        "validates and signs submissions in a separate security domain."
+    )
 
     return manifest
 
@@ -607,9 +471,7 @@ def build_provenance_manifest(
 __all__ = [
     "TxLifecycle",
     "TxState",
-    "_attempt_submit",
     "_estimate_gas",
-    "_monitor_transaction",
     "_run_submit",
     "build_provenance_manifest",
 ]

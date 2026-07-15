@@ -511,12 +511,27 @@ def probe_signer_boundary(workspace: Path) -> dict[str, Any]:
     if config_err:
         return _result(False, [_assertion("config_module_importable", False, config_err)])
 
-    from src.mcp.servers.audit._config import _OPERATOR_KEY
+    # R0-F3: analysis/MCP process must contain no signing key, no key import
+    # path, and no raw transaction construction code.
+    _submit_path = workspace / "agents/src/mcp/servers/audit/_submit.py"
+    _config_path = workspace / "agents/src/mcp/servers/audit/_config.py"
+    _submit_src = _submit_path.read_text() if _submit_path.exists() else ""
+    _config_src = _config_path.read_text() if _config_path.exists() else ""
 
     assertions.append(_assertion(
-        "operator_key_is_empty_in_config",
-        not _OPERATOR_KEY,
-        f"_OPERATOR_KEY length={len(_OPERATOR_KEY)}",
+        "operator_key_absent_from_config",
+        "_OPERATOR_KEY" not in _config_src,
+        "config no longer defines _OPERATOR_KEY",
+    ))
+    assertions.append(_assertion(
+        "no_raw_key_import_in_submit",
+        "from eth_account" not in _submit_src and "from_key" not in _submit_src,
+        "no eth_account import or from_key call in analysis process",
+    ))
+    assertions.append(_assertion(
+        "no_transaction_construction_in_submit",
+        "sign_transaction" not in _submit_src and "send_raw_transaction" not in _submit_src,
+        "no raw tx signing or broadcast code in MCP process",
     ))
 
     submit_mod, submit_err = _try_import("src.mcp.servers.audit._submit")
@@ -558,7 +573,6 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
     if config_err:
         return _result(False, [_assertion("config_module_importable", False, config_err)])
 
-    from src.mcp.servers.audit._config import _OPERATOR_KEY
     from src.mcp.servers.audit._submit import build_provenance_manifest
 
     manifest = build_provenance_manifest(
@@ -599,10 +613,13 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
         "contract_address" in manifest,
         f"contract_address={manifest.get('contract_address')!r}",
     ))
+    # R0-F3: analysis process has no key
+    _config_check = workspace / "agents/src/mcp/servers/audit/_config.py"
+    _conf = _config_check.read_text() if _config_check.exists() else ""
     assertions.append(_assertion(
-        "no_operator_key_prevents_signature",
-        not _OPERATOR_KEY,
-        "signing key removed from MCP process; policy-signer owns submission",
+        "no_operator_key_in_process",
+        "_OPERATOR_KEY" not in _conf,
+        "signing key removed from MCP process — policy-signer owns submission",
     ))
 
     # R0-F3: V2 proof scope is always legacy_proxy_only_unbound regardless
@@ -739,25 +756,47 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         f"state={rlc.state.value} receipt_status={rlc.receipt_status}",
     ))
 
-    # R0-F3: _attempt_submit parameter check (no identity_commitment, no chain_id)
-    from src.mcp.servers.audit._submit import _attempt_submit as __as
-    import inspect
-    params = list(inspect.signature(__as).parameters)
+    # R0-F3: policy-signer boundary — V2/unbound proofs must be rejected
+    from src.security.policy_signer import (
+        evaluate_submission, PolicyDecision, REJECT_REASON_UNBOUND
+    )
+    # V2 proof should be rejected
+    result_v2 = evaluate_submission(
+        proof_scope="legacy_proxy_only_unbound",
+        contract_address="0x0000000000000000000000000000000000000001",
+        chain_id=1, round_id=42, model_hash="a"*64,
+    )
     assertions.append(_assertion(
-        "abi_has_5_core_params",
-        all(p in params for p in ["contract_address", "class_score_felts",
-              "proof_bytes", "public_signals", "model_hash"]),
-        f"_attempt_submit params: {params}",
+        "policy_rejects_v2_unbound",
+        result_v2.decision == PolicyDecision.REJECTED,
+        f"decision={result_v2.decision.value} reason={result_v2.reason}",
     ))
     assertions.append(_assertion(
-        "abi_no_identity_commitment_param",
-        "identity_commitment" not in params,
-        f"_attempt_submit params: {params}",
+        "policy_rejection_reason_is_proof_scope",
+        result_v2.reason == REJECT_REASON_UNBOUND,
+        f"reason={result_v2.reason}",
     ))
+    # Missing proof_scope should be rejected
+    result_none = evaluate_submission(
+        proof_scope="none",
+        contract_address="0x0000000000000000000000000000000000000001",
+        chain_id=1, round_id=42, model_hash="a"*64,
+    )
     assertions.append(_assertion(
-        "abi_no_chain_id_param",
-        "chain_id" not in params,
-        f"_attempt_submit params: {params}",
+        "policy_rejects_no_proof_scope",
+        result_none.decision == PolicyDecision.REJECTED,
+        f"decision={result_none.decision.value} reason={result_none.reason}",
+    ))
+    # typed_identity_bound_v3 should be accepted (future path)
+    result_v3 = evaluate_submission(
+        proof_scope="typed_identity_bound_v3",
+        contract_address="0x0000000000000000000000000000000000000001",
+        chain_id=1, round_id=42, model_hash="a"*64,
+    )
+    assertions.append(_assertion(
+        "policy_accepts_v3_identity_bound",
+        result_v3.decision == PolicyDecision.ACCEPTED,
+        f"decision={result_v3.decision.value}",
     ))
 
     all_passed = all(a["passed"] for a in assertions)
