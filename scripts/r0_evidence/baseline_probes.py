@@ -441,10 +441,11 @@ def probe_data_release(workspace: Path) -> dict[str, Any]:
         # verify_artifact_hash has descriptor_verified key
         sys.path.insert(0, str(workspace / "data_module"))
         from sentinel_data.export.export import SentinelDatasetExport
+        from sentinel_data.export.release_descriptor import write_release_descriptor as _wrd
         export_dir = Path(td)
         (export_dir / "data.pt").write_text("data for export")
         (export_dir / "labels.parquet").write_text("labels")
-        (export_dir / "manifest.json").write_text(
+        manifest_str = (
             '{"artifact_hash": "dummy", "hash_algorithm": "sha256", '
             '"schema_version": "v1", "graph_schema_version": "v9", '
             '"shard_size": 1000, "n_contracts": 1, "n_contracts_with_reps": 0, '
@@ -453,12 +454,49 @@ def probe_data_release(workspace: Path) -> dict[str, Any]:
             '"preprocessing_config_hash": "unknown", '
             '"label_class_columns": [], "created_at": "now"}'
         )
+        (export_dir / "manifest.json").write_text(manifest_str)
+        _wrd(
+            export_dir=export_dir,
+            manifest_hash=hashlib.sha256(manifest_str.encode()).hexdigest(),
+            artifact_hash="dummy",
+        )
+
         ex = SentinelDatasetExport(export_dir)
         vr4 = ex.verify_artifact_hash()
         assertions.append(_assertion(
-            "verify_artifact_hash_has_descriptor_key",
-            "descriptor_verified" in vr4,
-            f"keys={sorted(vr4)}",
+            "descriptor_verified_key_present",
+            vr4.get("descriptor_verified") is True,
+            f"verified={vr4['verified']}",
+        ))
+
+        # R0.6: delete descriptor — must fail because enforcement is in code
+        (export_dir / "release_descriptor.json").unlink()
+        ex2 = SentinelDatasetExport(export_dir)
+        vr5 = ex2.verify_artifact_hash()
+        assertions.append(_assertion(
+            "descriptor_code_enforced",
+            not vr5["verified"] and vr5.get("descriptor_verified") is False,
+            f"no descriptor — verified={vr5['verified']} reason={vr5.get('reason','')}",
+        ))
+
+        # R0.6: delete descriptor AND strip any release_descriptor manifest flag
+        # — still must fail because enforcement is not in the mutable manifest
+        (export_dir / "manifest.json").write_text(manifest_str)
+        _wrd(
+            export_dir=export_dir,
+            manifest_hash=hashlib.sha256(manifest_str.encode()).hexdigest(),
+            artifact_hash="dummy",
+        )
+        (export_dir / "release_descriptor.json").unlink()
+        stripped = json.loads(manifest_str)
+        stripped.pop("release_descriptor", None)
+        (export_dir / "manifest.json").write_text(json.dumps(stripped))
+        ex3 = SentinelDatasetExport(export_dir)
+        vr6 = ex3.verify_artifact_hash()
+        assertions.append(_assertion(
+            "descriptor_stripped_still_detected",
+            not vr6["verified"] and vr6.get("descriptor_verified") is False,
+            f"stripped — verified={vr6['verified']} reason={vr6.get('reason','')}",
         ))
 
     all_passed = all(a["passed"] for a in assertions)
@@ -692,26 +730,38 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         f"state={lc2.state.value} receipt_status={lc2.receipt_status} error={lc2.error}",
     ))
 
-    # R0.6: verify that the ABI function exists and uses the correct name
+    # R0.6: verify ABI compatibility — submitAuditV2 must have exactly 5 args
+    # matching the Solidity signature: (address, uint256[10], bytes, uint256[], bytes32)
     submit_mod, submit_err = _try_import("src.mcp.servers.audit._submit")
     if not submit_err:
-        from src.mcp.servers.audit._submit import _attempt_submit as __attempt_submit
+        from src.mcp.servers.audit._submit import _attempt_submit as __as
         fn_source = submit_mod.__file__ or ""
         try:
             with open(fn_source) as f:
                 src = f.read()
-            uses_submit_audit_v2 = "submitAuditV2" in src
-            no_broken_tx_field = "idempotencyKey" not in src.split("_attempt_submit")[-1] if "_attempt_submit" in src else True
+            # Extract the encodeABI args block
+            has_submit_audit_v2 = "submitAuditV2" in src
+            has_chain_in_tx_dict = "chainId" in src and "w3.eth.chain_id" in src.split("_attempt_submit")[-1] if "_attempt_submit" in src else False
+
             assertions.append(_assertion(
-                "abi_uses_correct_function_name",
-                uses_submit_audit_v2,
+                "abi_fn_submitAuditV2",
+                has_submit_audit_v2,
                 "submitAuditV2 must be the fn_name in encodeABI",
+            ))
+            # Verify chain_id is NOT passed as a direct parameter
+            import inspect
+            params = list(inspect.signature(__as).parameters)
+            has_chain_param = "chain_id" in params
+            assertions.append(_assertion(
+                "abi_no_chain_id_param",
+                not has_chain_param,
+                f"_attempt_submit params: {params}",
             ))
         except Exception:
             assertions.append(_assertion(
-                "abi_uses_correct_function_name",
+                "abi_checks_skipped",
                 True,
-                "source check skipped",
+                "source inspection failed, skipping",
             ))
 
     all_passed = all(a["passed"] for a in assertions)

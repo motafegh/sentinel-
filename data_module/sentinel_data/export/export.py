@@ -99,17 +99,24 @@ class SentinelDatasetExport:
                     "descriptor_verified": False,
                 }
             descriptor_ok = True
-        elif self._manifest_raw.get("release_descriptor") is True:
+        else:
+            # R0.6: release descriptor is a mandatory part of the export artifact.
+            # chunk_export always writes it. Its absence means either a legacy
+            # export (pre-R0.5) or tampering. In either case, verification fails
+            # because we cannot attest manifest integrity without the descriptor.
+            # The manifest is excluded from artifact_hash (Fix A), so without the
+            # descriptor the artifact_hash check alone cannot detect manifest
+            # tampering. The release_descriptor field in the manifest is NOT
+            # authoritative — it is informational. Enforcement is here in the
+            # verification code.
             return {
                 "verified": False,
-                "reason": "release_descriptor:missing",
+                "reason": "release_descriptor:file_missing",
                 "files_checked": 0,
-                "files_missing": [],
+                "files_missing": ["release_descriptor.json"],
                 "files_extra": [],
                 "descriptor_verified": False,
             }
-        else:
-            descriptor_ok = None
 
         # ── warm path via hash cache ──────────────────────────────────────
         cache_path = self.export_dir / ".hash_cache.json"

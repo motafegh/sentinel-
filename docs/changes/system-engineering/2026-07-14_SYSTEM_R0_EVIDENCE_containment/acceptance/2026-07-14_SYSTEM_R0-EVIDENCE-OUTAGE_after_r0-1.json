@@ -62,9 +62,9 @@
   },
   "record_id": "R0-EVIDENCE-OUTAGE:after:r0-ml-outage:9e656ee4eb0a",
   "review": {
-    "decided_at": "2026-07-14T13:39:17Z",
-    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
-    "status": "accepted"
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
   },
   "schema_version": "1",
   "test_references": [

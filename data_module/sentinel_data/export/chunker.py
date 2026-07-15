@@ -230,7 +230,6 @@ def chunk_export(
 
     # ── 8. write manifest.json LAST (Fix A) ──────────────────────────────
     manifest_dict = asdict(manifest)
-    manifest_dict["release_descriptor"] = True  # R0.6: signals descriptor must be present
     manifest_json = json.dumps(manifest_dict, indent=2, sort_keys=True)
     (output_dir / "manifest.json").write_text(manifest_json)
 

@@ -263,13 +263,28 @@ def _run_submit_inner(
             logger.error(f"submit_audit [{result['failed_step']}]: {result['reason']}")
             return result
         model_hash = live_model_hash
-        fusion_embedding = ml_result["fusion_embedding"]
+        fusion_embedding_raw = ml_result["fusion_embedding"]
         result["model_hash"] = model_hash
     except Exception as exc:
         result["failed_step"] = "ml_api"
         result["reason"] = f"/fusion-embedding failed: {exc}"
         logger.error(f"submit_audit [{result['failed_step']}]: {result['reason']}")
         return result
+
+    # ── Step 1b: bind identity to fusion embedding (R0.6 proof-identity) ─
+    # XOR identity hash into the last 8 features so the proxy model output
+    # and the EZKL proof both depend on chain/round/contract/model identity.
+    identity_payload = (
+        f"{chain_id}:{round_id}:{contract_address}:{model_hash}"
+    ).encode("utf-8")
+    identity_hash = hashlib.sha256(identity_payload).digest()
+    identity_felts = list(identity_hash[:16])  # 16 bytes for 8 float32 values
+    fusion_embedding = list(fusion_embedding_raw)
+    # XOR low bytes of identity hash into last 8 features
+    bind_start = len(fusion_embedding) - 8
+    for i in range(8):
+        bias = identity_felts[i * 2] / 255.0 * 0.0001
+        fusion_embedding[bind_start + i] = fusion_embedding[bind_start + i] + bias
 
     # ── Step 2: run proxy model locally → 10 class scores ─────────────
     try:
@@ -372,13 +387,11 @@ def _run_submit_inner(
             )
 
         result["class_score_felts"] = all_public_signals[_INPUT_OFFSET:]
+        result["proof_hex"] = hex_proof
+        result["proof_bytes"] = bytes.fromhex(hex_proof[2:] if hex_proof.startswith("0x") else hex_proof)
+        result["public_signals"] = all_public_signals
 
-        result["proof_hash"] = (
-            "0x"
-            + hashlib.sha256(
-                bytes.fromhex(hex_proof[2:] if hex_proof.startswith("0x") else hex_proof)
-            ).hexdigest()
-        )
+        result["proof_hash"] = "0x" + hashlib.sha256(result["proof_bytes"]).hexdigest()
 
     except Exception as exc:
         result["failed_step"] = "proof_generation"
@@ -392,7 +405,7 @@ def _run_submit_inner(
         provenance = build_provenance_manifest(
             teacher_model_hash=result["model_hash"],
             proxy_checkpoint_hash=proxy_hash,
-            fusion_embedding=fusion_embedding,
+            fusion_embedding=fusion_embedding_raw,
             class_scores=result["class_scores"],
             operator_address=_OPERATOR_KEY and "",
             chain_id=chain_id,
@@ -418,12 +431,11 @@ def _run_submit_inner(
                 operator_key=_OPERATOR_KEY,
                 registry_address=_REGISTRY_ADDRESS,
                 abi=_ABI_V2,
-                proof_hash=result["proof_hash"],
-                class_score_felts=result["class_score_felts"],
-                model_hash=result["model_hash"],
                 contract_address=contract_address,
-                chain_id=chain_id,
-                round_id=round_id,
+                class_score_felts=result["class_score_felts"],
+                proof_bytes=result["proof_bytes"],
+                public_signals=result["public_signals"],
+                model_hash=result["model_hash"],
                 required_confirmations=_SUBMIT_CONFIRM_BLOCKS,
                 idempotency_key=idempotency_key,
             )
@@ -455,18 +467,21 @@ def _attempt_submit(
     operator_key: str,
     registry_address: str,
     abi: list,
-    proof_hash: str,
-    class_score_felts: list[int],
-    model_hash: str,
     contract_address: str,
-    chain_id: int,
-    round_id: int,
+    class_score_felts: list[int],
+    proof_bytes: bytes,
+    public_signals: list[int],
+    model_hash: str,
     required_confirmations: int = 2,
     idempotency_key: str | None = None,
 ) -> TxLifecycle:
-    """Build, sign, and monitor on-chain submission."""
+    """Build, sign, and monitor on-chain submission.
+
+    Matches Solidity AuditRegistry.submitAuditV2:
+        submitAuditV2(address contractAddress, uint256[10] classScores,
+                      bytes proof, uint256[] publicSignals, bytes32 modelHash)
+    """
     from eth_account import Account
-    from eth_account.messages import encode_defunct
 
     account = Account.from_key(operator_key)
     from_address = account.address
@@ -477,15 +492,16 @@ def _attempt_submit(
 
     contract = w3.eth.contract(address=w3.to_checksum_address(registry_address), abi=abi)
 
+    model_hash_bytes32 = bytes.fromhex(model_hash)
+
     submit_data = contract.encodeABI(
         fn_name="submitAuditV2",
         args=[
             w3.to_checksum_address(contract_address),
-            chain_id,
-            round_id,
-            proof_hash,
-            class_score_felts,
-            model_hash,
+            class_score_felts[:10] if len(class_score_felts) > 10 else class_score_felts,
+            proof_bytes,
+            public_signals,
+            model_hash_bytes32,
         ],
     )
 
@@ -501,7 +517,7 @@ def _attempt_submit(
         "gas": gas_limit,
         "gasPrice": gas_price,
         "nonce": nonce,
-        "chainId": chain_id,
+        "chainId": w3.eth.chain_id,
     }
 
     signed = account.sign_transaction(tx)
