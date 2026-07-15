@@ -454,6 +454,13 @@ async def _run_job(
         "tool_status": result.get("tool_status", final_report.get("tool_status", {})),
         "finality": result.get("finality", final_report.get("finality", {})),
         "error": result.get("error"),
+        # R0-F3: proof scope and submission status propagation
+        "submission": {
+            "proof_scope": result.get("proof_scope", result.get("submission_result", {}).get("proof_scope", "none")),
+            "status": result.get("submission_result", {}).get("status", result.get("status", "unknown")),
+            "policy_decision": result.get("submission_result", {}).get("policy_decision", result.get("policy_decision", "unknown")),
+            "verified_audit_eligible": result.get("submission_result", {}).get("verified_audit_eligible", result.get("verified_audit_eligible", False)),
+        },
     }
     store.mark_completed(job_id, report)
     dt = time.time() - t0
