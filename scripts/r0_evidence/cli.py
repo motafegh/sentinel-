@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import subprocess
 import sys
@@ -11,6 +12,8 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from scripts.r0_evidence.environment import (
     create_environment_manifest,
@@ -27,6 +30,49 @@ from scripts.r0_evidence.model import (
     sha256_file,
     validate_coverage,
 )
+
+
+def _verify_probe_bundle(bundle_path: Path, expected_sha256: str | None = None) -> str:
+    """Verify the probe bundle manifest and return its aggregate digest.
+
+    Raises ValueError if files are missing or digests don't match.
+    """
+    bundle = bundle_path.resolve()
+    if not bundle.is_dir():
+        raise ValueError(f"probe bundle not found: {bundle}")
+
+    manifest_path = bundle / "manifest.json"
+    if not manifest_path.is_file():
+        raise ValueError(f"probe bundle manifest not found: {manifest_path}")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("kind") != "r0_probe_bundle_manifest":
+        raise ValueError("invalid probe bundle manifest kind")
+
+    for rel_path, expected in manifest.get("files", {}).items():
+        real = bundle / rel_path
+        if not real.is_file():
+            raise ValueError(f"probe bundle file missing: {rel_path}")
+        actual = sha256_file(real)
+        if actual != expected:
+            raise ValueError(f"probe bundle file hash mismatch: {rel_path}")
+        # Verify the file is executable by checking it can be read as text
+        try:
+            real.read_text(encoding="utf-8")
+        except Exception as exc:
+            raise ValueError(f"cannot read probe bundle file {rel_path}: {exc}")
+
+    aggregate = sha256_bytes(manifest_path.read_bytes())
+    digest_path = bundle / "aggregate_digest.txt"
+    if digest_path.is_file():
+        stored = digest_path.read_text().strip()
+        if stored != aggregate:
+            raise ValueError(f"aggregate digest mismatch: stored={stored[:16]} actual={aggregate[:16]}")
+
+    if expected_sha256 and expected_sha256 != aggregate:
+        raise ValueError(f"probe bundle sha256 does not match expected: expected={expected_sha256[:16]} actual={aggregate[:16]}")
+
+    return aggregate
 
 
 def _utc_now() -> str:
@@ -171,6 +217,7 @@ def capture_probe(
     environment_manifest_path: Path,
     output: Path,
     variables: dict[str, str],
+    probe_bundle_path: Path | None = None,
 ) -> dict[str, Any]:
     manifest = json.loads(command_manifest_path.read_text(encoding="utf-8"))
     manifest_errors = validate_command_manifest(manifest)
@@ -206,6 +253,13 @@ def capture_probe(
 
     _verify_command_fixtures(manifest, variables)
     verify_runtime_bindings(manifest, environment, variables)
+
+    # R0-F1: verify probe bundle integrity before capture
+    probe_bundle_digest: str | None = None
+    if probe_bundle_path:
+        probe_bundle_digest = _verify_probe_bundle(probe_bundle_path)
+        logger.info(f"Probe bundle verified: digest={probe_bundle_digest[:16]}")
+
     substitutions = {"workspace": str(workspace), "python": sys.executable, **variables}
     argv = [_render_command_part(part, substitutions) for part in probe["argv"]]
     cwd = (workspace / probe.get("cwd", ".")).resolve()
@@ -283,6 +337,7 @@ def capture_probe(
         "baseline_commit": manifest["baseline_commit"],
         "candidate_commit": candidate_commit,
         "comparison_key": comparison_key,
+        "probe_bundle_sha256": probe_bundle_digest,
         "probe": {
             "probe_id": probe["probe_id"],
             "contract_version": probe["contract_version"],
@@ -346,10 +401,15 @@ def main(argv: list[str] | None = None) -> int:
     capture_parser.add_argument("--environment-manifest", type=Path, required=True)
     capture_parser.add_argument("--output", type=Path, required=True)
     capture_parser.add_argument("--var", action="append", default=[])
+    capture_parser.add_argument("--probe-bundle", type=Path)
 
     validate_parser = subparsers.add_parser("validate")
     validate_parser.add_argument("--evidence-dir", type=Path, required=True)
     validate_parser.add_argument("--output", type=Path)
+    validate_parser.add_argument("--expected-baseline")
+    validate_parser.add_argument("--expected-candidate")
+    validate_parser.add_argument("--expected-probe-bundle")
+    validate_parser.add_argument("--expected-probe-bundle-sha256")
 
     args = parser.parse_args(argv)
     if args.command == "environment":
@@ -369,12 +429,20 @@ def main(argv: list[str] | None = None) -> int:
             environment_manifest_path=args.environment_manifest,
             output=args.output,
             variables=_parse_variables(args.var),
+            probe_bundle_path=args.probe_bundle,
         )
         print(json.dumps(record["outcome"], sort_keys=True))
         return 0
 
     records, invalid_artifacts = load_evidence_artifacts(args.evidence_dir)
-    report = validate_coverage(records, invalid_artifacts=invalid_artifacts)
+    report = validate_coverage(
+        records,
+        invalid_artifacts=invalid_artifacts,
+        expected_baseline=args.expected_baseline,
+        expected_candidate=args.expected_candidate,
+        expected_probe_bundle=args.expected_probe_bundle,
+        expected_probe_bundle_sha256=args.expected_probe_bundle_sha256,
+    )
     if args.output:
         _write_json(args.output, report)
     print(json.dumps(report, sort_keys=True))

@@ -1,0 +1,10 @@
+{
+  "bundle_version": "1",
+  "file_count": 1,
+  "files": {
+    "baseline_probes.py": "11a6c221a437791bb9640cf67e5e6820d4ff266ccd5859626b78acf7c3a6b120"
+  },
+  "kind": "r0_probe_bundle_manifest",
+  "python": "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+  "python_version": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]"
+}
