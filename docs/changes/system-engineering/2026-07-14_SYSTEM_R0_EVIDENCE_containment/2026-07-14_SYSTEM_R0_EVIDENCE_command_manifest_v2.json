@@ -1,9 +1,9 @@
 {
-  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "baseline_commit": "08470d84e2abc3ef96d4e3410c6d98563adbe2fd",
   "comparison_contract_version": "2",
   "fixture_root_variable": "harness_workspace",
   "fixture_sha256": {
-    "scripts/r0_evidence/baseline_probes.py": "4e79ebe2f0d82a629535c9b1f37e4f4523fdd72646bd5760c8352bfbfb584094"
+    "scripts/r0_evidence/baseline_probes.py": "5f6ea4e63e1ee84122b5c1d18285a3acb7076266086f1d7f0ecfea0480855d9c"
   },
   "kind": "r0_command_manifest",
   "runtime_bindings": {
