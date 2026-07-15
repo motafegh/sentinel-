@@ -1,17 +1,17 @@
 {
-  "baseline_commit": "29214b111937705db80bd86d655de34fa18d898a",
-  "candidate_commit": "29214b111937705db80bd86d655de34fa18d898a",
-  "comparison_key": "",
+  "baseline_commit": "20fbf10ed4cb5d7b59df0f9cf626542b2b3de517",
+  "candidate_commit": "7294def23517effca6e344cc27155b76edba7d42",
+  "comparison_key": "ca56c958fd5322743bc6546c3a4a7e3316f17a8e4d45084550e2455f09855c8d",
   "environment_manifest": {
-    "comparison_fingerprint": "",
+    "comparison_fingerprint": "6dd601b2e822f6120cdb45ba9edb5018790395b92d927ca9a970e809a1ae2415",
     "environment_contract": "linux-x86_64-python-3.12",
-    "path": "<WORKSPACE>/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/environment_r0_6.json",
-    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    "path": "/tmp/r0_env.json",
+    "sha256": "fcc59de8901e7e95998f737115afecaa49a12b461f04d9aeaf8e9a211a9237f4"
   },
   "execution": {
     "exit_code": 0,
-    "finished_at": "2026-07-15T16:24:32.675952+00:00",
-    "started_at": "2026-07-15T16:24:22.955433+00:00",
+    "finished_at": "2026-07-15T17:14:55.198727+00:00",
+    "started_at": "2026-07-15T17:14:49.322391+00:00",
     "stderr": "",
     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "stdout": "{\"assertions\": [{\"detail\": \"before=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 after_change=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7\", \"name\": \"semantic_manifest_change_does_not_affect_hash\", \"passed\": true}, {\"detail\": \"original=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 tampered=0858cf9fce50cb1acbdee9cc4af5a82880d3f5faf904a57ac60143d16fb5dc1b\", \"name\": \"data_tamper_changes_hash\", \"passed\": true}, {\"detail\": \"first=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 restored=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7\", \"name\": \"hash_is_deterministic\", \"passed\": true}, {\"detail\": \"2file_hash=91d3b0c2d179d094741bb7f9dbc4107219115290d21cc0b0252fa3b744b07828 3file_hash=8e6384c5c6627d184d32ab523ae07e930e9de616a94728ec529e1869c4b95a8d\", \"name\": \"added_file_changes_hash\", \"passed\": true}, {\"detail\": \"2file_hash=91d3b0c2d179d094741bb7f9dbc4107219115290d21cc0b0252fa3b744b07828 after_delete=b08a08a730f0d15c5bab926a4df0b9b43a8a61276223b376d4a466a335e5dc54\", \"name\": \"deleted_file_changes_hash\", \"passed\": true}, {\"detail\": \"missing=['file_a.pt']\", \"name\": \"deleted_file_detected_by_set_mismatch\", \"passed\": true}, {\"detail\": \"release_descriptor.json written to export dir\", \"name\": \"release_descriptor_exists\", \"passed\": true}, {\"detail\": \"manifest_hash='303ecc899a1b5b55f3c31e45e354785a769590f8280ccba416c865584ed78548'\", \"name\": \"release_descriptor_has_manifest_hash\", \"passed\": true}, {\"detail\": \"files={'data.pt': '1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee', 'labels.parquet': 'd772ebb4590212c65cc31888ee55c3a893d866d8479f84a4c0ca36918a3fa75f', 'manifest.json': '303ecc899a1b5b55f3c31e45e354785a769590f8280ccba416c865584ed78548'}\", \"name\": \"release_descriptor_has_files\", \"passed\": true}, {\"detail\": \"release_id='fa19da6a14534f6e2c8280800727aff6f13c41bb8152093468a38d4f8183ef98'\", \"name\": \"release_descriptor_release_id_self_consistent\", \"passed\": true}, {\"detail\": \"reason=ok\", \"name\": \"release_verify_passes_on_clean\", \"passed\": true}, {\"detail\": \"reason=hash_mismatch mismatches=[{'path': 'manifest.json', 'expected': '303ecc899a1b5b55f3c31e45e354785a769590f8280ccba416c865584ed78548', 'actual': 'c33d62bba93518c00f616b7455eac11d0a6c53a17f15f30609bfce0e0cd05539'}]\", \"name\": \"release_verify_detects_manifest_tamper\", \"passed\": true}, {\"detail\": \"reason=hash_mismatch mismatches=[{'path': 'data.pt', 'expected': '1307990e6ba5ca145eb35e99182a9bec46531bc54ddf656a602c780fa0240dee', 'actual': '996b957c2f10e0eff902c07fa0dfa81c04ea01554bef139aa95af5dc5a155b73'}]\", \"name\": \"release_verify_detects_data_tamper\", \"passed\": true}, {\"detail\": \"type=Tensor shape=torch.Size([3])\", \"name\": \"pickle_safe_loads_tensor\", \"passed\": true}, {\"detail\": \"safe_loads(os.system) raised UnpicklingError as expected\", \"name\": \"pickle_safe_rejects_unsafe_code\", \"passed\": true}, {\"detail\": \"keys=['descriptor_verified', 'files_checked', 'files_extra', 'files_missing', 'reason', 'verified']\", \"name\": \"verify_artifact_hash_has_descriptor_key\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
@@ -118,16 +118,16 @@
     "cwd": ".",
     "probe_id": "r0-data-release",
     "resolved_argv": [
-      "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
-      "/home/motafeq/projects/sentinel-r0-containment/scripts/r0_evidence/baseline_probes.py",
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
       "data-release",
       "--workspace",
-      "/home/motafeq/projects/sentinel-r0-containment"
+      "<WORKSPACE>"
     ]
   },
-  "record_id": "R0-DATA-RELEASE-TRUST:after:r0-data-release:29214b111937",
+  "record_id": "R0-DATA-RELEASE-TRUST:after:r0-data-release:7294def23517",
   "review": {
-    "decided_at": "2026-07-15T16:24:32.675952+00:00",
+    "decided_at": "2026-07-15T17:15:37Z",
     "reviewer": "Ali Motafegh (standing local-R0 authorization)",
     "status": "accepted"
   },

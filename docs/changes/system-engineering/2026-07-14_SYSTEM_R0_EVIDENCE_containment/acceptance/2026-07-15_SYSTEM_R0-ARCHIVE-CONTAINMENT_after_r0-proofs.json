@@ -1,17 +1,17 @@
 {
-  "baseline_commit": "29214b111937705db80bd86d655de34fa18d898a",
-  "candidate_commit": "29214b111937705db80bd86d655de34fa18d898a",
-  "comparison_key": "",
+  "baseline_commit": "20fbf10ed4cb5d7b59df0f9cf626542b2b3de517",
+  "candidate_commit": "7294def23517effca6e344cc27155b76edba7d42",
+  "comparison_key": "5b0b9a3c0363dd91edd89e0cb4affb76b8a0bc2815ee4ea0d2006e8fe2911669",
   "environment_manifest": {
-    "comparison_fingerprint": "",
+    "comparison_fingerprint": "6dd601b2e822f6120cdb45ba9edb5018790395b92d927ca9a970e809a1ae2415",
     "environment_contract": "linux-x86_64-python-3.12",
-    "path": "<WORKSPACE>/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/environment_r0_6.json",
-    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    "path": "/tmp/r0_env.json",
+    "sha256": "fcc59de8901e7e95998f737115afecaa49a12b461f04d9aeaf8e9a211a9237f4"
   },
   "execution": {
     "exit_code": 0,
-    "finished_at": "2026-07-15T16:24:22.955260+00:00",
-    "started_at": "2026-07-15T16:24:20.410260+00:00",
+    "finished_at": "2026-07-15T17:14:48.508130+00:00",
+    "started_at": "2026-07-15T17:14:47.169352+00:00",
     "stderr": "",
     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "stdout": "{\"assertions\": [{\"detail\": \"exception='ConnectorError'\", \"name\": \"traversal_rejected\", \"passed\": true}, {\"detail\": \"escaped=False\", \"name\": \"no_outside_write\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
@@ -48,16 +48,16 @@
     "cwd": ".",
     "probe_id": "r0-zip-containment",
     "resolved_argv": [
-      "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
-      "/home/motafeq/projects/sentinel-r0-containment/scripts/r0_evidence/baseline_probes.py",
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
       "zip-containment",
       "--workspace",
-      "/home/motafeq/projects/sentinel-r0-containment"
+      "<WORKSPACE>"
     ]
   },
-  "record_id": "R0-ARCHIVE-CONTAINMENT:after:r0-zip-containment:29214b111937",
+  "record_id": "R0-ARCHIVE-CONTAINMENT:after:r0-zip-containment:7294def23517",
   "review": {
-    "decided_at": "2026-07-15T16:24:22.955260+00:00",
+    "decided_at": "2026-07-15T17:15:37Z",
     "reviewer": "Ali Motafegh (standing local-R0 authorization)",
     "status": "accepted"
   },

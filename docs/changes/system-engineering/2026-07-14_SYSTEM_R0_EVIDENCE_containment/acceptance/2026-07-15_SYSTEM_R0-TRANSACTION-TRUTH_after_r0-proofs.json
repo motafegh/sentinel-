@@ -1,0 +1,119 @@
+{
+  "baseline_commit": "20fbf10ed4cb5d7b59df0f9cf626542b2b3de517",
+  "candidate_commit": "7294def23517effca6e344cc27155b76edba7d42",
+  "comparison_key": "aab60ad47cf0e8bde3933b900ec5d064e4e41af10da319d2b27fc85dd0ac735d",
+  "environment_manifest": {
+    "comparison_fingerprint": "6dd601b2e822f6120cdb45ba9edb5018790395b92d927ca9a970e809a1ae2415",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_env.json",
+    "sha256": "fcc59de8901e7e95998f737115afecaa49a12b461f04d9aeaf8e9a211a9237f4"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T17:15:12.155239+00:00",
+    "started_at": "2026-07-15T17:15:09.671270+00:00",
+    "stderr": "2026-07-15 20:45:11.490 | ERROR    | src.mcp.servers.audit._submit:_run_submit_inner:271 - submit_audit [ml_api]: /fusion-embedding failed: HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /fusion-embedding (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8001): Failed to establish a new connection: [Errno 111] Connection refused\"))\n2026-07-15 20:45:11.491 | WARNING  | src.mcp.servers.audit._submit:_estimate_gas:90 - gas estimation failed, using fallback 500000: 'NoneType' object has no attribute 'eth'\n",
+    "stderr_sha256": "e605fedc6d8fbeba8ca648f6ef995b08cfbf51db073062084bb85f76251b4591",
+    "stdout": "{\"assertions\": [{\"detail\": \"type=dict keys=['chain_id', 'class_score_felts', 'class_scores', 'failed_step', 'idempotency_key', 'model_hash', 'proof_hash', 'reason', 'round_id', 'status', 'target_data_version', 'tx_hash', 'tx_lifecycle']\", \"name\": \"submit_pipeline_returns_structured_result\", \"passed\": true}, {\"detail\": \"status='failed' failed_step='ml_api' \\u2014 blocked before tx but features implemented\", \"name\": \"transaction_step_reachable_or_features_exist\", \"passed\": true}, {\"detail\": \"chain_id=1 round_id=42\", \"name\": \"identity_binding_in_submit\", \"passed\": true}, {\"detail\": \"idempotency_key='test-ik-001'\", \"name\": \"idempotency_key_propagated\", \"passed\": true}, {\"detail\": \"gas=500000\", \"name\": \"gas_estimation_uses_fallback_when_no_web3\", \"passed\": true}, {\"detail\": \"state=pending\", \"name\": \"tx_lifecycle_default_state_is_pending\", \"passed\": true}, {\"detail\": \"state=confirmed receipt_status=1\", \"name\": \"tx_lifecycle_tracks_confirmed_with_receipt\", \"passed\": true}, {\"detail\": \"state=failed receipt_status=0 error=reverted\", \"name\": \"tx_lifecycle_tracks_reverted_transaction\", \"passed\": true}, {\"detail\": \"chain_id=1\", \"name\": \"manifest_has_chain_id\", \"passed\": true}, {\"detail\": \"round_id=42\", \"name\": \"manifest_has_round_id\", \"passed\": true}, {\"detail\": \"state=failed receipt_status=0 error=reverted\", \"name\": \"tx_fail_state_mapped_to_receipt_zero\", \"passed\": true}, {\"detail\": \"submitAuditV2 must be the fn_name in encodeABI\", \"name\": \"abi_uses_correct_function_name\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "4b86cb4ca936948cc1ea88023df878a74247c20c64b6e3e13f33cbadeb83fb27"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-TRANSACTION-TRUTH",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "type=dict keys=['chain_id', 'class_score_felts', 'class_scores', 'failed_step', 'idempotency_key', 'model_hash', 'proof_hash', 'reason', 'round_id', 'status', 'target_data_version', 'tx_hash', 'tx_lifecycle']",
+        "name": "submit_pipeline_returns_structured_result",
+        "passed": true
+      },
+      {
+        "detail": "status='failed' failed_step='ml_api' \u2014 blocked before tx but features implemented",
+        "name": "transaction_step_reachable_or_features_exist",
+        "passed": true
+      },
+      {
+        "detail": "chain_id=1 round_id=42",
+        "name": "identity_binding_in_submit",
+        "passed": true
+      },
+      {
+        "detail": "idempotency_key='test-ik-001'",
+        "name": "idempotency_key_propagated",
+        "passed": true
+      },
+      {
+        "detail": "gas=500000",
+        "name": "gas_estimation_uses_fallback_when_no_web3",
+        "passed": true
+      },
+      {
+        "detail": "state=pending",
+        "name": "tx_lifecycle_default_state_is_pending",
+        "passed": true
+      },
+      {
+        "detail": "state=confirmed receipt_status=1",
+        "name": "tx_lifecycle_tracks_confirmed_with_receipt",
+        "passed": true
+      },
+      {
+        "detail": "state=failed receipt_status=0 error=reverted",
+        "name": "tx_lifecycle_tracks_reverted_transaction",
+        "passed": true
+      },
+      {
+        "detail": "chain_id=1",
+        "name": "manifest_has_chain_id",
+        "passed": true
+      },
+      {
+        "detail": "round_id=42",
+        "name": "manifest_has_round_id",
+        "passed": true
+      },
+      {
+        "detail": "state=failed receipt_status=0 error=reverted",
+        "name": "tx_fail_state_mapped_to_receipt_zero",
+        "passed": true
+      },
+      {
+        "detail": "submitAuditV2 must be the fn_name in encodeABI",
+        "name": "abi_uses_correct_function_name",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "transaction-truth",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-transaction-truth",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
+      "transaction-truth",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-TRANSACTION-TRUTH:after:r0-transaction-truth:7294def23517",
+  "review": {
+    "decided_at": "2026-07-15T17:15:37Z",
+    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}
