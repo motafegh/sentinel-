@@ -202,6 +202,41 @@ def test_nonpassing_after_probe_cannot_close_a_row() -> None:
     assert "after record does not prove the invariant" in row["issues"]
 
 
+def test_invariant_passed_true_with_failed_assertion_is_rejected() -> None:
+    record = _record(MATRIX_ROWS[0].row_id, "after")
+    record["outcome"]["assertions"][0]["passed"] = False
+    errors = validate_record(record)
+    assert any("invariant_passed=true" in e and "passed=false" in e for e in errors)
+
+
+def test_status_pass_with_invariant_false_is_rejected() -> None:
+    record = _record(MATRIX_ROWS[0].row_id, "after")
+    record["outcome"]["status"] = "pass"
+    record["outcome"]["invariant_passed"] = False
+    errors = validate_record(record)
+    assert "outcome.status=pass requires invariant_passed=true" in errors
+
+
+def test_status_fail_with_invariant_true_is_rejected() -> None:
+    record = _record(MATRIX_ROWS[0].row_id, "before")
+    record["outcome"]["status"] = "fail"
+    record["outcome"]["invariant_passed"] = True
+    errors = validate_record(record)
+    assert "outcome.status=fail requires invariant_passed=false" in errors
+
+
+def test_contradictory_proof_identity_record_is_rejected() -> None:
+    record = _record("R0-PROOF-IDENTITY", "after")
+    record["outcome"]["invariant_passed"] = True
+    record["outcome"]["status"] = "pass"
+    record["outcome"]["assertions"] = [
+        {"name": "proof_binds_chain", "passed": False, "detail": "chain_binding=False"},
+        {"name": "proof_binds_round", "passed": False, "detail": "round_binding=False"},
+    ]
+    errors = validate_record(record)
+    assert any("invariant_passed=true" in e and "passed=false" in e for e in errors)
+
+
 def test_after_record_requires_candidate_commit() -> None:
     record = _record(MATRIX_ROWS[0].row_id, "after")
     record["candidate_commit"] = None

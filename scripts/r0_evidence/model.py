@@ -174,6 +174,16 @@ def validate_record(record: Mapping[str, Any]) -> list[str]:
                     errors.append(f"outcome.assertions[{index}].passed must be boolean")
                 if not isinstance(assertion.get("detail"), str):
                     errors.append(f"outcome.assertions[{index}].detail must be a string")
+            if outcome.get("invariant_passed") is True and any(
+                not a.get("passed") for a in assertions if isinstance(a, Mapping)
+            ):
+                errors.append(
+                    "outcome.invariant_passed=true but some required assertions have passed=false"
+                )
+        if outcome.get("status") == "pass" and outcome.get("invariant_passed") is not True:
+            errors.append("outcome.status=pass requires invariant_passed=true")
+        if outcome.get("status") == "fail" and outcome.get("invariant_passed") is not False:
+            errors.append("outcome.status=fail requires invariant_passed=false")
 
     review = record["review"]
     if not isinstance(review, Mapping):
