@@ -1,0 +1,74 @@
+{
+  "baseline_commit": "29214b111937705db80bd86d655de34fa18d898a",
+  "candidate_commit": "29214b111937705db80bd86d655de34fa18d898a",
+  "comparison_key": "",
+  "environment_manifest": {
+    "comparison_fingerprint": "",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "<WORKSPACE>/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/environment_r0_6.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T16:24:38.443908+00:00",
+    "started_at": "2026-07-15T16:24:35.422394+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"_OPERATOR_KEY length=0\", \"name\": \"operator_key_is_empty_in_config\", \"passed\": true}, {\"detail\": \"signature=None\", \"name\": \"provenance_manifest_signature_is_none\", \"passed\": true}, {\"detail\": \"advertised_tools=['get_latest_audit', 'get_audit_history', 'check_audit_exists']\", \"name\": \"mcp_does_not_advertise_submit_audit\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "2b464d8ac035d6ae358b56545488b0fd704f47f95133763350be1906e2f3f973"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-SIGNER-ISOLATION",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "_OPERATOR_KEY length=0",
+        "name": "operator_key_is_empty_in_config",
+        "passed": true
+      },
+      {
+        "detail": "signature=None",
+        "name": "provenance_manifest_signature_is_none",
+        "passed": true
+      },
+      {
+        "detail": "advertised_tools=['get_latest_audit', 'get_audit_history', 'check_audit_exists']",
+        "name": "mcp_does_not_advertise_submit_audit",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "signer-boundary",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-signer-boundary",
+    "resolved_argv": [
+      "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+      "/home/motafeq/projects/sentinel-r0-containment/scripts/r0_evidence/baseline_probes.py",
+      "signer-boundary",
+      "--workspace",
+      "/home/motafeq/projects/sentinel-r0-containment"
+    ]
+  },
+  "record_id": "R0-SIGNER-ISOLATION:after:r0-signer-boundary:29214b111937",
+  "review": {
+    "decided_at": "2026-07-15T16:24:38.443908+00:00",
+    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}

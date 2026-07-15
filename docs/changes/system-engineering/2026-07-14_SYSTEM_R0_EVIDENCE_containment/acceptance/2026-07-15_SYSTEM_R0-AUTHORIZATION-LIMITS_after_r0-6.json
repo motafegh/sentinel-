@@ -1,0 +1,69 @@
+{
+  "baseline_commit": "29214b111937705db80bd86d655de34fa18d898a",
+  "candidate_commit": "29214b111937705db80bd86d655de34fa18d898a",
+  "comparison_key": "",
+  "environment_manifest": {
+    "comparison_fingerprint": "",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "<WORKSPACE>/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/environment_r0_6.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T16:24:35.422225+00:00",
+    "started_at": "2026-07-15T16:24:32.676117+00:00",
+    "stderr": "2026-07-15 19:54:35.023 | INFO     | src.api.gateway:<module>:70 - R0.0: bootstrap_environment called\n2026-07-15 19:54:35.044 | INFO     | src.api.gateway:lifespan:151 - SENTINEL gateway v0.1.0 starting up\n2026-07-15 19:54:35.045 | INFO     | src.api.gateway:lifespan:152 -   no_llm=False | skip_service_probes=True\n2026-07-15 19:54:35.047 | INFO     | src.api.gateway:lifespan:198 - SENTINEL gateway shutting down\n",
+    "stderr_sha256": "703455cd4057137ef407f1608d20056970eb9d5ad3e973bb41aa9c00e22efa8c",
+    "stdout": "{\"assertions\": [{\"detail\": \"HTTP 401\", \"name\": \"unauthenticated_mutation_rejected\", \"passed\": true}, {\"detail\": \"WWW-Authenticate='Bearer'\", \"name\": \"authentication_challenge_present\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "702cf6036fbb9280ae5c00cfb5b958845d40a09b037d06bdf6be71a5cf17bf2b"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-AUTHORIZATION-LIMITS",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "HTTP 401",
+        "name": "unauthenticated_mutation_rejected",
+        "passed": true
+      },
+      {
+        "detail": "WWW-Authenticate='Bearer'",
+        "name": "authentication_challenge_present",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "gateway-auth",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-gateway-auth",
+    "resolved_argv": [
+      "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+      "/home/motafeq/projects/sentinel-r0-containment/scripts/r0_evidence/baseline_probes.py",
+      "gateway-auth",
+      "--workspace",
+      "/home/motafeq/projects/sentinel-r0-containment"
+    ]
+  },
+  "record_id": "R0-AUTHORIZATION-LIMITS:after:r0-gateway-auth:29214b111937",
+  "review": {
+    "decided_at": "2026-07-15T16:24:35.422225+00:00",
+    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/tests/test_gateway.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_SYSTEM_D2_AUDIT_cross_system.md"
+  ]
+}
