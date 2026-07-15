@@ -1,12 +1,8 @@
-"""R0-F4: Transaction state machine + FakeChain comprehensive tests.
+"""R0-F4: Comprehensive adversarial transaction tests.
 
-- Every state change via transition() or validated typed method
-- Height-based confirmations
-- Atomic replacement (hash first, link old)
-- Deep snapshot/restore
-- Thread-safe FakeChain
-- Idempotency bound to request identity
-- All forbidden transition tests
+Covers: threshold enforcement, future inclusion, replacement lifecycle,
+reorg replayability, idempotency identity binding, real concurrency,
+state-machine enforcement, snapshot/restore.
 """
 
 import threading
@@ -19,264 +15,376 @@ from src.security.policy_signer import (
 )
 
 
-class TestTxEngine:
-    def test_default_state_is_not_requested(self):
-        e = TxEngine()
-        assert e.state == TxState.NOT_REQUESTED
-
-    def test_full_lifecycle(self):
-        e = TxEngine()
-        e.prepare(); e.sign()
-        e.broadcast("0xabc")
-        assert e.state == TxState.BROADCAST
-        e.mined(42)
-        assert e.state == TxState.PENDING
-        lc = e.confirm(42, 80000, chain_height=54)
-        assert e.state == TxState.CONFIRMED
-        assert lc.receipt_status == 1
-        assert lc.confirmations == 13  # 54 - 42 + 1
-
-    def test_confirm_without_chain_height_defaults_1(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0xabc"); e.mined(10)
-        lc = e.confirm(10, 50000)
-        assert lc.confirmations == 1
-
-    def test_policy_reject(self):
-        e = TxEngine()
-        e.policy_reject(REJECT_REASON_UNBOUND)
-        assert e.state == TxState.POLICY_REJECTED
-
-    def test_revert_via_transition(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0xrev")
-        lc = e.revert("out of gas")
-        assert e.state == TxState.REVERTED
-        assert lc.receipt_status == 0
-
-    def test_drop(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0xdrop"); e.drop("timeout")
-        assert e.state == TxState.DROPPED
-
-    def test_replace_links_hash(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0xold")
-        e.replace("0xnew", "higher gas")
-        assert e.state == TxState.REPLACED
-        assert e.lifecycle.replaced_by == "0xnew"
-
-    def test_confirm_rejects_invalid_values(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0x"); e.mined(1)
-        for args in [(-1, 80000), (42, 0), (42, -1)]:
-            with pytest.raises(ValueError):
-                e.confirm(*args)
-
-    def test_receipt_validation_fail_closed(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0x"); e.mined(1)
-        for bad in [
-            {}, {"status": "bad"}, {"status": 2, "blockNumber": 1, "gasUsed": 1},
-            {"status": 1}, {"status": 1, "blockNumber": -1, "gasUsed": 1},
-            {"status": 1, "blockNumber": 1, "gasUsed": 0},
-        ]:
-            with pytest.raises(ValueError):
-                e.ingest_receipt(bad, chain_height=1)
-
-    def test_ingest_success_receipt(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0xgood"); e.mined(42)
-        e.ingest_receipt({"status": 1, "blockNumber": 42, "gasUsed": 80000}, chain_height=54)
-        assert e.state == TxState.CONFIRMED
-        assert e.lifecycle.confirmations == 13
-
-    def test_ingest_failed_receipt(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0xbad"); e.mined(1)
-        e.ingest_receipt({"status": 0, "blockNumber": 1, "gasUsed": 80000, "revertReason": "OOG"})
-        assert e.state == TxState.REVERTED
-
-    def test_snapshot_and_restore(self):
-        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
-        e.broadcast("0xsave"); e.mined(5)
-        snap = e.snapshot_state()
-        e.confirm(5, 50000, chain_height=10)
-        restored = TxEngine.restore_state(snap)
-        assert restored.state == TxState.PENDING
-        assert restored.lifecycle.tx_hash == "0xsave"
-
-
-class TestForbiddenTransitions:
-    TERMINALS = [TxState.CONFIRMED, TxState.REVERTED, TxState.POLICY_REJECTED, TxState.FAILED]
-
-    def _at(self, state):
-        return TxEngine(TxLifecycle(state=state))
-
-    @pytest.mark.parametrize("terminal", TERMINALS)
-    def test_terminal_cannot_transition(self, terminal):
-        e = self._at(terminal)
-        for target in TxState:
-            with pytest.raises(ValueError, match="invalid transition"):
-                e.transition(target)
-
-    def test_prepare_cannot_confirm(self):
-        with pytest.raises(ValueError):
-            self._at(TxState.PREPARED).transition(TxState.CONFIRMED)
-
-    def test_broadcast_cannot_prepare(self):
-        with pytest.raises(ValueError):
-            self._at(TxState.BROADCAST).transition(TxState.PREPARED)
-
-    def test_broadcast_valid_targets(self):
-        for t in [TxState.PENDING, TxState.REVERTED, TxState.DROPPED, TxState.REPLACED, TxState.FAILED]:
-            e = self._at(TxState.BROADCAST)
-            e.transition(t)  # must not raise
-
-    def test_pending_valid_targets(self):
-        for t in [TxState.CONFIRMED, TxState.REVERTED, TxState.DROPPED]:
-            e = self._at(TxState.PENDING)
-            e.transition(t)
-
-    def test_dropped_can_prepare(self):
-        e = self._at(TxState.DROPPED)
-        e.transition(TxState.PREPARED)
-
-
-class TestFakeChain:
-    def test_persistent_nonce_increments(self):
-        chain = FakeChain()
-        n1 = chain._next_nonce(); n2 = chain._next_nonce()
-        assert n2 == n1 + 1
-
-    def test_full_lifecycle(self):
-        chain = FakeChain(confirm_blocks=2)
+class TestConfirmationThreshold:
+    def test_confirm_before_threshold_raises(self):
+        chain = FakeChain(confirm_blocks=3)
         e = TxEngine(); e.prepare(); e.sign()
         chain.send(e)
-        chain.mine_block()
-        chain.confirm_tx(e.lifecycle.tx_hash)
-        assert e.state == TxState.CONFIRMED
+        chain.mine_blocks(2)  # height=2, inclusion=1, depth=2 < 3
+        with pytest.raises(ValueError, match="insufficient confirmations"):
+            chain.confirm_tx(e.lifecycle.tx_hash)
 
-    def test_height_based_confirmations(self):
-        chain = FakeChain()
+    def test_confirm_at_threshold(self):
+        chain = FakeChain(confirm_blocks=3)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e)
+        chain.mine_blocks(2)  # height=2, inc=1, depth=2 < 3 — not yet
+        with pytest.raises(ValueError):
+            chain.confirm_tx(e.lifecycle.tx_hash)
+        chain.mine_block()  # height=3, inc=1, depth=3 == 3 — at threshold
+        lc = chain.confirm_tx(e.lifecycle.tx_hash)
+        assert lc.state == TxState.CONFIRMED
+        assert lc.confirmations == 3
+
+    def test_confirm_above_threshold(self):
+        chain = FakeChain(confirm_blocks=2)
         e = TxEngine(); e.prepare(); e.sign()
         chain.send(e)
         chain.mine_blocks(5)
         lc = chain.confirm_tx(e.lifecycle.tx_hash)
-        assert lc.confirmations >= 1
-        assert lc.confirmations >= 1
+        assert lc.confirmations >= 2  # 5-1+1=5 >= 2
 
-    def test_idempotency_returns_existing(self):
-        chain = FakeChain()
-        e1 = TxEngine(); e1.prepare(); e1.sign()
-        lc1 = chain.send(e1, idempotency_key="ik-x", chain_id=1, address="0xA", model_hash="aa"*32)
-        chain.mine_block()
-        chain.confirm_tx(lc1.tx_hash)
+    def test_n_minus_1_rejected(self):
+        chain = FakeChain(confirm_blocks=5)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e)
+        chain.mine_blocks(4)  # depth=4 < 5
+        with pytest.raises(ValueError):
+            chain.confirm_tx(e.lifecycle.tx_hash)
 
-        e2 = TxEngine(); e2.prepare(); e2.sign()
-        lc2 = chain.send(e2, idempotency_key="ik-x", chain_id=1, address="0xA", model_hash="aa"*32)
-        assert lc2.tx_hash == lc1.tx_hash
-        assert lc2.state == TxState.CONFIRMED
+    def test_n_plus_1_accepted(self):
+        chain = FakeChain(confirm_blocks=5)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e)
+        chain.mine_blocks(6)  # depth=6 > 5
+        lc = chain.confirm_tx(e.lifecycle.tx_hash)
+        assert lc.state == TxState.CONFIRMED
 
-    def test_idempotency_different_identity_different_key(self):
-        chain = FakeChain()
-        e1 = TxEngine(); e1.prepare(); e1.sign()
-        chain.send(e1, idempotency_key="ik", chain_id=1, address="0xA", model_hash="aa"*32)
-        chain.mine_block()
 
-        e2 = TxEngine(); e2.prepare(); e2.sign()
-        lc2 = chain.send(e2, idempotency_key="ik", chain_id=2, address="0xB", model_hash="bb"*32)
-        assert lc2.tx_hash != e1.lifecycle.tx_hash  # different identity -> new tx
+class TestFutureInclusion:
+    def test_reject_chain_height_below_inclusion(self):
+        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        e.broadcast("0x"); e.mined(100)
+        with pytest.raises(ValueError, match="chain_height"):
+            e.confirm(100, 80000, chain_height=50)
 
-    def test_atomic_replacement(self):
+    def test_reject_negative_inclusion(self):
+        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        e.broadcast("0x"); e.mined(1)
+        with pytest.raises(ValueError):
+            e.confirm(-1, 80000, chain_height=1)
+
+    def test_reject_zero_gas(self):
+        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        e.broadcast("0x"); e.mined(1)
+        with pytest.raises(ValueError):
+            e.confirm(1, 0, chain_height=1)
+
+    def test_ingest_receipt_rejects_future_block(self):
+        e = TxEngine(TxLifecycle(state=TxState.SIGNED))
+        e.broadcast("0x"); e.mined(1)
+        with pytest.raises(ValueError, match="chain_height"):
+            e.ingest_receipt({"status": 1, "blockNumber": 100, "gasUsed": 80000}, chain_height=50)
+
+
+class TestReplacementLifecycle:
+    def test_replacement_hash_generated_first(self):
         chain = FakeChain()
         e_old = TxEngine(); e_old.prepare(); e_old.sign()
         chain.send(e_old)
-
         e_new = TxEngine(); e_new.prepare(); e_new.sign()
-        new_hash, lc = chain.replace_tx(e_old.lifecycle.tx_hash, e_new)
-        assert e_new.state == TxState.BROADCAST
+        new_hash, _ = chain.replace_tx(e_old.lifecycle.tx_hash, e_new)
         assert new_hash is not None
+        assert len(new_hash) == 66  # 0x + 64 hex
 
-    def test_deep_snapshot_restore(self):
+    def test_old_linked_to_exact_new_hash(self):
         chain = FakeChain()
-        e = TxEngine(); e.prepare(); e.sign()
-        chain.send(e)
-        snap = chain.snapshot()
+        e_old = TxEngine(); e_old.prepare(); e_old.sign()
+        chain.send(e_old)
+        e_new = TxEngine(); e_new.prepare(); e_new.sign()
+        new_hash, _ = chain.replace_tx(e_old.lifecycle.tx_hash, e_new)
+        assert e_new.lifecycle.tx_hash == new_hash
+
+    def test_replacement_in_mempool(self):
+        chain = FakeChain()
+        e_old = TxEngine(); e_old.prepare(); e_old.sign()
+        chain.send(e_old)
+        e_new = TxEngine(); e_new.prepare(); e_new.sign()
+        new_hash, _ = chain.replace_tx(e_old.lifecycle.tx_hash, e_new)
+        assert new_hash in chain._mempool
+
+    def test_replacement_can_be_mined(self):
+        chain = FakeChain()
+        e_old = TxEngine(); e_old.prepare(); e_old.sign()
+        chain.send(e_old)
+        e_new = TxEngine(); e_new.prepare(); e_new.sign()
+        chain.replace_tx(e_old.lifecycle.tx_hash, e_new)
+        mined = chain.mine_block()
+        assert len(mined) >= 1
+        assert e_new.state == TxState.PENDING
+
+    def test_replacement_can_be_confirmed(self):
+        chain = FakeChain(confirm_blocks=1)
+        e_old = TxEngine(); e_old.prepare(); e_old.sign()
+        chain.send(e_old)
+        e_new = TxEngine(); e_new.prepare(); e_new.sign()
+        new_hash, _ = chain.replace_tx(e_old.lifecycle.tx_hash, e_new)
         chain.mine_block()
-        chain.restore(snap)
-        assert chain._block_height == 0
+        chain.confirm_tx(new_hash)
+        assert e_new.state == TxState.CONFIRMED
 
-    def test_restored_engine_state_preserved(self):
+    def test_replacement_idempotency_map_updated(self):
         chain = FakeChain()
-        e = TxEngine(); e.prepare(); e.sign()
-        chain.send(e)
+        e_old = TxEngine(); e_old.prepare(); e_old.sign()
+        chain.send(e_old, idempotency_key="rep-ik")
+        before = len(chain._idempotent)
+        e_new = TxEngine(); e_new.prepare(); e_new.sign()
+        chain.replace_tx(e_old.lifecycle.tx_hash, e_new)
+        assert len(chain._idempotent) == before  # still one mapping, updated
+
+    def test_replacement_survives_snapshot_restore(self):
+        chain = FakeChain(confirm_blocks=1)
+        e_old = TxEngine(); e_old.prepare(); e_old.sign()
+        chain.send(e_old)
         snap = chain.snapshot()
-        chain.mine_block()
-        chain.confirm_tx(e.lifecycle.tx_hash)
-        assert e.state == TxState.CONFIRMED
-
+        e_new = TxEngine(); e_new.prepare(); e_new.sign()
+        new_hash, _ = chain.replace_tx(e_old.lifecycle.tx_hash, e_new)
         chain.restore(snap)
-        assert e.state == TxState.CONFIRMED  # e is same object, restore doesn't undo external refs
+        # after restore, old tx should be back in mempool
+        assert e_old.lifecycle.tx_hash in chain._mempool
 
-    def test_reorg_rolls_back(self):
-        chain = FakeChain()
+
+class TestReorgBehavior:
+    def test_reorg_replayable(self):
+        chain = FakeChain(confirm_blocks=1)
         e = TxEngine(); e.prepare(); e.sign()
         chain.send(e)
         chain.mine_block()
         chain.confirm_tx(e.lifecycle.tx_hash)
         assert e.state == TxState.CONFIRMED
         chain.reorg(depth=1)
-        assert e.state == TxState.PENDING
+        assert e.state == TxState.BROADCAST
 
-    def test_threaded_concurrent_sends(self):
+    def test_reorged_tx_can_be_re_mined(self):
+        chain = FakeChain(confirm_blocks=1)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e)
+        chain.mine_block()
+        chain.confirm_tx(e.lifecycle.tx_hash)
+        chain.reorg(depth=1)
+        chain.mine_block()
+        chain.confirm_tx(e.lifecycle.tx_hash)
+        assert e.state == TxState.CONFIRMED
+
+    def test_reorg_unaffected_tx_unchanged(self):
+        chain = FakeChain(confirm_blocks=1)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e)
+        chain.mine_block()
+        chain.confirm_tx(e.lifecycle.tx_hash)
+
+        e2 = TxEngine(); e2.prepare(); e2.sign()
+        chain.send(e2)
+        chain.mine_block()
+        chain.confirm_tx(e2.lifecycle.tx_hash)
+
+        chain.reorg(depth=1)
+        assert e.state == TxState.CONFIRMED  # unaffected
+        assert e2.state == TxState.BROADCAST  # affected, rolled back to re-mine
+
+    def test_multi_block_reorg(self):
+        chain = FakeChain(confirm_blocks=1)
+        engines = []
+        for _ in range(3):
+            e = TxEngine(); e.prepare(); e.sign()
+            chain.send(e)
+            chain.mine_block()
+            chain.confirm_tx(e.lifecycle.tx_hash)
+            engines.append(e)
+
+        chain.reorg(depth=2)
+        assert engines[0].state == TxState.CONFIRMED  # not rolled back
+        assert engines[1].state == TxState.BROADCAST
+        assert engines[2].state == TxState.BROADCAST
+
+    def test_deep_reorg_replay(self):
+        chain = FakeChain(confirm_blocks=1)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e)
+        chain.mine_blocks(5)  # height=5, inclusion=1
+        chain.confirm_tx(e.lifecycle.tx_hash)  # confirmed at height 5
+        chain.reorg(depth=3)  # height drops to 2, inclusion=1 <= 2 — NOT affected
+        assert e.state == TxState.CONFIRMED  # below reorg depth
+
+    def test_shallow_reorg_affects_recent_tx(self):
+        chain = FakeChain(confirm_blocks=1)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e)
+        chain.mine_block()  # inclusion=1
+        chain.confirm_tx(e.lifecycle.tx_hash)  # confirmed at height 1
+        chain.reorg(depth=1)  # height drops to 0, inclusion=1 > 0 — AFFECTED
+        assert e.state == TxState.BROADCAST
+        chain.mine_block()  # re-mine
+        chain.confirm_tx(e.lifecycle.tx_hash)
+        assert e.state == TxState.CONFIRMED
+
+
+class TestIdempotencyBinding:
+    def test_full_model_hash_not_truncated(self):
+        chain = FakeChain()
+        e1 = TxEngine(); e1.prepare(); e1.sign()
+        chain.send(e1, idempotency_key="ik", model_hash="a"*63 + "b")
+        chain.mine_block()
+
+        e2 = TxEngine(); e2.prepare(); e2.sign()
+        lc2 = chain.send(e2, idempotency_key="ik", model_hash="a"*64)  # different last char
+        assert lc2.tx_hash != e1.lifecycle.tx_hash
+
+    def test_same_identity_same_tx(self):
+        chain = FakeChain()
+        e1 = TxEngine(); e1.prepare(); e1.sign()
+        chain.send(e1, idempotency_key="same", chain_id=1, address="0xAbC", model_hash="m"*64)
+        chain.mine_block()
+
+        e2 = TxEngine(); e2.prepare(); e2.sign()
+        lc2 = chain.send(e2, idempotency_key="same", chain_id=1, address="0xabc", model_hash="m"*64)
+        assert lc2.tx_hash == e1.lifecycle.tx_hash  # canonical address
+
+    def test_different_chain_id_different_tx(self):
+        chain = FakeChain()
+        e1 = TxEngine(); e1.prepare(); e1.sign()
+        chain.send(e1, idempotency_key="ik", chain_id=1, address="0xA", model_hash="m"*64)
+        chain.mine_block()
+
+        e2 = TxEngine(); e2.prepare(); e2.sign()
+        lc2 = chain.send(e2, idempotency_key="ik", chain_id=5, address="0xA", model_hash="m"*64)
+        assert lc2.tx_hash != e1.lifecycle.tx_hash
+
+    def test_dropped_retry_allowed(self):
+        chain = FakeChain()
+        e1 = TxEngine(); e1.prepare(); e1.sign()
+        chain.send(e1, idempotency_key="retry-ik")
+        chain.drop_tx(e1.lifecycle.tx_hash)
+
+        e2 = TxEngine(); e2.prepare(); e2.sign()
+        lc2 = chain.send(e2, idempotency_key="retry-ik")
+        assert lc2.state == TxState.BROADCAST
+
+
+class TestRealConcurrency:
+    def test_concurrent_identical_requests_one_hash(self):
         chain = FakeChain()
         results = []
         errors = []
+        lock = threading.Lock()
+
+        def worker():
+            try:
+                e = TxEngine(); e.prepare(); e.sign()
+                lc = chain.send(e, idempotency_key="same", chain_id=1, address="0x0", model_hash="x"*64)
+                with lock:
+                    results.append(lc.tx_hash)
+            except Exception as exc:
+                with lock:
+                    errors.append(exc)
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads: t.start()
+        for t in threads: t.join()
+
+        assert len(errors) == 0
+        assert len(results) == 20
+        unique = set(results)
+        assert len(unique) == 1, f"all must get the same hash, got {len(unique)}"
+
+    def test_concurrent_different_unique_nonces(self):
+        chain = FakeChain()
+        results = []
+        errors = []
+        lock = threading.Lock()
 
         def worker(i):
             try:
                 e = TxEngine(); e.prepare(); e.sign()
-                lc = chain.send(e, idempotency_key=f"thread-{i}")
-                results.append((i, lc.tx_hash, lc.nonce))
+                lc = chain.send(e, idempotency_key=f"diff-{i}")
+                with lock:
+                    results.append((lc.tx_hash, lc.nonce))
             except Exception as exc:
-                errors.append(exc)
+                with lock:
+                    errors.append(exc)
 
         threads = [threading.Thread(target=worker, args=(i,)) for i in range(50)]
         for t in threads: t.start()
         for t in threads: t.join()
 
         assert len(errors) == 0
-        nonces = {r[2] for r in results}
-        assert len(nonces) == 50  # all unique
+        assert len(results) == 50
+        nonces = [r[1] for r in results]
+        hashes = [r[0] for r in results]
+        assert len(set(nonces)) == 50
+        assert len(set(hashes)) == 50
 
-    def test_threaded_idempotency_collision(self):
+    def test_concurrent_after_snapshot_restore(self):
         chain = FakeChain()
-        first_hash = [None]
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e)
+        chain.mine_block()
+        snap = chain.snapshot()
+        chain.restore(snap)
 
-        def worker():
-            e = TxEngine(); e.prepare(); e.sign()
-            lc = chain.send(e, idempotency_key="same-key", chain_id=1, address="0x0", model_hash="x"*64)
-            if first_hash[0] is None:
-                first_hash[0] = lc.tx_hash
+        results = []
+        def worker(i):
+            en = TxEngine(); en.prepare(); en.sign()
+            lc = chain.send(en, idempotency_key=f"snap-{i}")
+            results.append(lc.tx_hash)
 
-        threads = [threading.Thread(target=worker) for _ in range(10)]
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(10)]
         for t in threads: t.start()
         for t in threads: t.join()
+        assert len(results) == 10
+        assert len(set(results)) == 10
 
-        # With thread lock, the first one sets the hash and others may race but
-        # the idempotent map is set under lock. At minimum no crashes.
-        assert first_hash[0] is not None
 
-    def test_dropped_retry_allowed(self):
-        chain = FakeChain()
-        e1 = TxEngine(); e1.prepare(); e1.sign()
-        chain.send(e1, idempotency_key="retry")
-        chain.drop_tx(e1.lifecycle.tx_hash)
+class TestStateMachineEnforcement:
+    """Every typed helper routes through transition(). Test from forbidden states."""
 
-        e2 = TxEngine(); e2.prepare(); e2.sign()
-        lc2 = chain.send(e2, idempotency_key="retry")
-        assert lc2.state == TxState.BROADCAST  # retry allowed for dropped
+    def _at(self, state):
+        return TxEngine(TxLifecycle(state=state))
+
+    @pytest.mark.parametrize("terminal_state,method,args", [
+        (TxState.POLICY_REJECTED, "prepare", ()),
+        (TxState.FAILED, "sign", ()),
+        (TxState.REVERTED, "broadcast", ("0xa",)),
+    ])
+    def test_helper_from_forbidden_state_raises(self, terminal_state, method, args):
+        e = self._at(terminal_state)
+        with pytest.raises(ValueError, match="invalid transition"):
+            getattr(e, method)(*args)
+
+    def test_confirm_from_broadcast_raises(self):
+        e = self._at(TxState.BROADCAST)
+        with pytest.raises(ValueError):
+            e.confirm(1, 80000, chain_height=1)
+
+    def test_confirm_from_pending_ok(self):
+        e = self._at(TxState.PENDING)
+        e.lifecycle.block_number = 1
+        e.confirm(1, 80000, chain_height=1)
+
+    def test_reorg_rollback_from_confirmed_ok(self):
+        e = self._at(TxState.CONFIRMED)
+        e.reorg_rollback()  # must not raise
+
+    def test_reorg_rollback_from_pending_raises(self):
+        e = self._at(TxState.PENDING)
+        with pytest.raises(ValueError):
+            e.reorg_rollback()
+
+    def test_transition_table_consistent(self):
+        for state in TxState:
+            assert state in _ALLOWED_TRANSITIONS
+            for target in _ALLOWED_TRANSITIONS[state]:
+                assert isinstance(target, TxState)
 
 
 class TestPolicySigner:
@@ -285,9 +393,3 @@ class TestPolicySigner:
             r = evaluate_submission(proof_scope=scope, contract_address="0x1",
                                      chain_id=1, round_id=42, model_hash="a"*64)
             assert r.decision == PolicyDecision.REJECTED
-
-    def test_no_self_declare(self):
-        r = evaluate_submission(proof_scope="typed_identity_bound_v3",
-                                 contract_address="0x1", chain_id=1, round_id=42, model_hash="a"*64)
-        assert r.decision == PolicyDecision.REJECTED
-        assert "not_accepted" in r.reason

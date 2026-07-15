@@ -62,7 +62,10 @@ def _verify_probe_bundle(bundle_path: Path, expected_sha256: str | None = None) 
         except Exception as exc:
             raise ValueError(f"cannot read probe bundle file {rel_path}: {exc}")
 
-    aggregate = sha256_bytes(manifest_path.read_bytes())
+    # Aggregate digest = SHA-256 of canonical (compact, sorted) JSON bytes
+    # Same algorithm as the bundle generator: json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+    canonical_manifest = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+    aggregate = sha256_bytes(canonical_manifest.encode())
     digest_path = bundle / "aggregate_digest.txt"
     if digest_path.is_file():
         stored = digest_path.read_text().strip()
