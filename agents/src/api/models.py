@@ -25,6 +25,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from src.persistence.paths import validate_address
+
 # ── Sizing limits ────────────────────────────────────────────────────────
 MAX_CONTRACT_CHARS = 200_000
 MAX_AUDIT_TIMEOUT_S = 3_600.0  # matches timeouts.UNBOUNDED_TIMEOUT_S
@@ -49,7 +51,7 @@ class AuditRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "contract_code": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract Vault {}\n",
-                "contract_address": "0xdeadbeef",
+                "contract_address": "0x000000000000000000000000000000000000dEaD",
                 "audit_timeout_s": 300.0,
                 "metadata": {"source": "manual-paste"},
             }
@@ -100,6 +102,13 @@ class AuditRequest(BaseModel):
                 "(looks like binary, not source code)"
             )
         return v
+
+    @field_validator("contract_address")
+    @classmethod
+    def _valid_contract_address(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return validate_address(value)
 
 
 # ── Response ─────────────────────────────────────────────────────────────

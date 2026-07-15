@@ -188,6 +188,15 @@ class TestAuditRequestValidation:
         req = AuditRequest(contract_code=VALID_SOLIDITY)
         assert req.audit_timeout_s == 300.0
 
+    def test_contract_address_requires_canonical_shape(self):
+        valid = "0x000000000000000000000000000000000000dEaD"
+        assert (
+            AuditRequest(contract_code=VALID_SOLIDITY, contract_address=valid).contract_address
+            == valid
+        )
+        with pytest.raises(Exception):
+            AuditRequest(contract_code=VALID_SOLIDITY, contract_address="0xtest")
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # JobStore tests (unit tests, no FastAPI)
@@ -416,14 +425,14 @@ class TestGatewayE2E:
                 "/audit",
                 json={
                     "contract_code": VALID_SOLIDITY,
-                    "contract_address": "0xtest",
+                    "contract_address": "0x000000000000000000000000000000000000dEaD",
                 },
             )
             assert resp.status_code == 202
             data = resp.json()
             assert "job_id" in data
             assert data["status"] == "queued"
-            assert data["contract_address"] == "0xtest"
+            assert data["contract_address"] == "0x000000000000000000000000000000000000dEaD"
             assert "submitted_at" in data
 
     def test_full_lifecycle_success(self):

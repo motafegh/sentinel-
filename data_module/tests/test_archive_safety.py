@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import stat
+import unicodedata
 import zipfile
 from pathlib import Path
 
@@ -15,8 +15,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "data_module"))
 
 from sentinel_data.ingestion.archive_safety import (
     ArchiveBadNameError,
+    ArchiveCleanupError,
+    ArchiveCollisionError,
     ArchiveLimitError,
     ArchiveLimits,
+    ArchivePromotionError,
     ArchiveSafetyError,
     ArchiveSymlinkError,
     ArchiveTraversalError,
@@ -33,9 +36,7 @@ def _make_zip(path: Path, members: dict[str, str | bytes]) -> None:
                 zf.writestr(name, content)
 
 
-def _make_zip_with_attr(
-    path: Path, members: list[tuple[str, bytes, int]]
-) -> None:
+def _make_zip_with_attr(path: Path, members: list[tuple[str, bytes, int]]) -> None:
     with zipfile.ZipFile(path, "w") as zf:
         for name, content, attr in members:
             info = zipfile.ZipInfo(name)
@@ -124,6 +125,62 @@ class TestBadNameRejection:
         with pytest.raises(ArchiveBadNameError, match="control character"):
             extract_zip_safe(archive, dest)
 
+    @pytest.mark.parametrize("name", ["/absolute.sol", "\\absolute.sol"])
+    def test_absolute_member_rejected(self, tmp_path, name):
+        archive = tmp_path / "absolute.zip"
+        _make_zip(archive, {name: "bad"})
+        with pytest.raises(ArchiveBadNameError, match="absolute member"):
+            extract_zip_safe(archive, tmp_path / "dest")
+
+    def test_backslash_separator_rejected(self, tmp_path):
+        archive = tmp_path / "backslash.zip"
+        _make_zip(archive, {"..\\outside.sol": "bad"})
+        with pytest.raises(ArchiveBadNameError, match="backslash separator"):
+            extract_zip_safe(archive, tmp_path / "dest")
+        assert not (tmp_path / "outside.sol").exists()
+
+
+class TestCollisionRejection:
+    def test_duplicate_member_rejected(self, tmp_path):
+        archive = tmp_path / "duplicate.zip"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("same.txt", "first")
+            zf.writestr("same.txt", "second")
+        with pytest.raises(ArchiveCollisionError, match="colliding members"):
+            extract_zip_safe(archive, tmp_path / "dest")
+
+    def test_unicode_normalization_collision_rejected(self, tmp_path):
+        archive = tmp_path / "unicode.zip"
+        nfc = unicodedata.normalize("NFC", "e\N{COMBINING ACUTE ACCENT}.txt")
+        nfd = unicodedata.normalize("NFD", nfc)
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr(nfc, "first")
+            zf.writestr(nfd, "second")
+        with pytest.raises(ArchiveCollisionError, match="colliding members"):
+            extract_zip_safe(archive, tmp_path / "dest")
+
+    def test_casefold_collision_rejected(self, tmp_path):
+        archive = tmp_path / "case.zip"
+        _make_zip(archive, {"A.sol": "first", "a.sol": "second"})
+        with pytest.raises(ArchiveCollisionError, match="colliding members"):
+            extract_zip_safe(archive, tmp_path / "dest")
+
+    def test_file_parent_collision_rejected(self, tmp_path):
+        archive = tmp_path / "parent.zip"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("parent", "file")
+            zf.writestr("parent/child.sol", "child")
+        with pytest.raises(ArchiveCollisionError, match="descends from file"):
+            extract_zip_safe(archive, tmp_path / "dest")
+
+    def test_file_parent_collision_rejected_in_reverse_order(self, tmp_path):
+        archive = tmp_path / "parent-reverse.zip"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("parent/child.sol", "child")
+            zf.writestr("parent", "file")
+        with pytest.raises(ArchiveCollisionError, match="directory path"):
+            extract_zip_safe(archive, tmp_path / "dest")
+
     def test_windows_drive_letter_rejected(self, tmp_path):
         archive = tmp_path / "drive.zip"
         dest = tmp_path / "dest"
@@ -162,6 +219,24 @@ class TestLimitEnforcement:
         limits = ArchiveLimits(max_path_depth=10)
         with pytest.raises(ArchiveLimitError, match="path depth"):
             extract_zip_safe(archive, dest, limits=limits)
+
+    def test_total_uncompressed_size_limit(self, tmp_path):
+        archive = tmp_path / "total.zip"
+        _make_zip(archive, {"a.bin": b"a" * 60, "b.bin": b"b" * 60})
+        limits = ArchiveLimits(
+            max_total_uncompressed_bytes=100,
+            max_per_file_bytes=100,
+        )
+        with pytest.raises(ArchiveLimitError, match="total uncompressed size"):
+            extract_zip_safe(archive, tmp_path / "dest", limits=limits)
+
+    def test_compression_ratio_limit(self, tmp_path):
+        archive = tmp_path / "ratio.zip"
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("bomb.bin", b"0" * 20_000)
+        limits = ArchiveLimits(max_compression_ratio=5.0)
+        with pytest.raises(ArchiveLimitError, match="compression ratio"):
+            extract_zip_safe(archive, tmp_path / "dest", limits=limits)
 
 
 class TestNormalExtraction:
@@ -206,6 +281,7 @@ class TestNormalExtraction:
         archive.write_bytes(b"not a zip file")
         with pytest.raises(ArchiveSafetyError, match="not a valid zip"):
             extract_zip_safe(archive, dest)
+        assert not list(dest.parent.glob(".*__extraction_*"))
 
     def test_atomic_promotion_no_partial_state(self, tmp_path):
         archive = tmp_path / "good.zip"
@@ -215,4 +291,55 @@ class TestNormalExtraction:
         extract_zip_safe(archive, dest)
         assert (dest / "a.sol").exists()
         assert (dest / "b.sol").exists()
-        assert not list(dest.parent.glob(".*__extraction_tmp"))
+        assert not list(dest.parent.glob(".*__extraction_*"))
+
+    def test_preexisting_destination_symlink_rejected(self, tmp_path):
+        archive = tmp_path / "good.zip"
+        target = tmp_path / "outside"
+        target.mkdir()
+        dest = tmp_path / "dest"
+        dest.symlink_to(target, target_is_directory=True)
+        _make_zip(archive, {"a.sol": "// a"})
+        with pytest.raises(ArchiveSymlinkError, match="destination is a symlink"):
+            extract_zip_safe(archive, dest)
+        assert not (target / "a.sol").exists()
+
+    def test_promotion_failure_restores_previous_destination(self, tmp_path, monkeypatch):
+        archive = tmp_path / "good.zip"
+        dest = tmp_path / "dest"
+        dest.mkdir()
+        (dest / "old.sol").write_text("old", encoding="utf-8")
+        _make_zip(archive, {"new.sol": "new"})
+
+        original_replace = Path.replace
+
+        def fail_staging_promotion(path, target):
+            if "__extraction_" in path.name:
+                raise OSError("simulated promotion failure")
+            return original_replace(path, target)
+
+        monkeypatch.setattr(Path, "replace", fail_staging_promotion)
+        with pytest.raises(ArchivePromotionError, match="prior destination restored"):
+            extract_zip_safe(archive, dest)
+        assert (dest / "old.sol").read_text(encoding="utf-8") == "old"
+        assert not (dest / "new.sol").exists()
+        assert not list(dest.parent.glob(".*__extraction_*"))
+
+    def test_backup_cleanup_failure_is_explicit(self, tmp_path, monkeypatch):
+        archive = tmp_path / "good.zip"
+        dest = tmp_path / "dest"
+        dest.mkdir()
+        (dest / "old.sol").write_text("old", encoding="utf-8")
+        _make_zip(archive, {"new.sol": "new"})
+
+        original_rmtree = __import__("shutil").rmtree
+
+        def fail_backup_cleanup(path, *args, **kwargs):
+            if "__backup_" in Path(path).name:
+                raise OSError("simulated cleanup failure")
+            return original_rmtree(path, *args, **kwargs)
+
+        monkeypatch.setattr("shutil.rmtree", fail_backup_cleanup)
+        with pytest.raises(ArchiveCleanupError, match="previous-state cleanup failed"):
+            extract_zip_safe(archive, dest)
+        assert (dest / "new.sol").read_text(encoding="utf-8") == "new"

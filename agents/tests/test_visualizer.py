@@ -24,10 +24,17 @@ def _state():
             "overall_verdict": "LIKELY_VULNERABLE",
             "top_vulnerability": "Reentrancy",
             "vulnerability_verdicts": [
-                {"vulnerability_class": "Reentrancy", "probability": 0.8, "verdict": "LIKELY", "severity": "High"},
+                {
+                    "vulnerability_class": "Reentrancy",
+                    "probability": 0.8,
+                    "verdict": "LIKELY",
+                    "severity": "High",
+                },
             ],
             "confidence_by_class": {"Reentrancy": 0.85},
-            "metric_attribution": {"Reentrancy": {"ml_pct": 40.0, "slither_pct": 50.0, "rag_pct": 10.0}},
+            "metric_attribution": {
+                "Reentrancy": {"ml_pct": 40.0, "slither_pct": 50.0, "rag_pct": 10.0}
+            },
         },
     }
 
@@ -42,10 +49,10 @@ class TestGenerateHotspotHtml:
 
     def test_contains_code_and_verdict_panel(self):
         html = generate_hotspot_html(_state())
-        assert "withdraw" in html        # source rendered
-        assert "Reentrancy" in html      # verdict card
-        assert "LIKELY" in html          # verdict badge
-        assert "0xABC" in html           # address in header
+        assert "withdraw" in html  # source rendered
+        assert "Reentrancy" in html  # verdict card
+        assert "LIKELY" in html  # verdict badge
+        assert "0xABC" in html  # address in header
 
     def test_hotspot_lines_highlighted(self):
         html = generate_hotspot_html(_state())
@@ -74,6 +81,7 @@ class TestVisualizerNode:
     @pytest.mark.asyncio
     async def test_node_sets_html_and_writes_file(self, tmp_path, monkeypatch):
         import importlib
+
         viz_mod = importlib.import_module("src.orchestration.nodes.visualizer")
         monkeypatch.setattr(viz_mod, "REPORTS_DIR", tmp_path)
         st = _state()
@@ -86,6 +94,7 @@ class TestVisualizerNode:
     @pytest.mark.asyncio
     async def test_node_no_job_id_no_file(self, tmp_path, monkeypatch):
         import importlib
+
         viz_mod = importlib.import_module("src.orchestration.nodes.visualizer")
         monkeypatch.setattr(viz_mod, "REPORTS_DIR", tmp_path)
         st = _state()
@@ -97,9 +106,10 @@ class TestVisualizerNode:
     @pytest.mark.asyncio
     async def test_node_persistence_status_surfaces(self, tmp_path, monkeypatch):
         import importlib
+
         viz_mod = importlib.import_module("src.orchestration.nodes.visualizer")
         monkeypatch.setattr(viz_mod, "REPORTS_DIR", tmp_path)
         st = _state()
         out = await visualizer(st)
         assert "tool_status" in out
-        assert out["tool_status"]["report_persistence"]["ran"] is True
+        assert out["tool_status"]["hotspot_persistence"]["ran"] is True

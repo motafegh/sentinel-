@@ -21,7 +21,7 @@ from scripts.r0_evidence.environment import (
 from scripts.r0_evidence.matrix import MATRIX_ROW_IDS
 from scripts.r0_evidence.model import (
     canonical_json_bytes,
-    load_evidence_records,
+    load_evidence_artifacts,
     redact_text,
     sha256_bytes,
     sha256_file,
@@ -373,7 +373,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(record["outcome"], sort_keys=True))
         return 0
 
-    report = validate_coverage(load_evidence_records(args.evidence_dir))
+    records, invalid_artifacts = load_evidence_artifacts(args.evidence_dir)
+    report = validate_coverage(records, invalid_artifacts=invalid_artifacts)
     if args.output:
         _write_json(args.output, report)
     print(json.dumps(report, sort_keys=True))

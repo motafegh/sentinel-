@@ -14,13 +14,17 @@ from .paths import (
     validate_job_id,
 )
 from .report_writer import (
+    HOTSPOT_PERSISTENCE_TOOL_KEY,
     PERSISTENCE_TOOL_KEY,
+    REPORT_PERSISTENCE_TOOL_KEY,
     persist_hotspot,
     persist_report,
 )
 
 __all__ = [
     "PERSISTENCE_TOOL_KEY",
+    "HOTSPOT_PERSISTENCE_TOOL_KEY",
+    "REPORT_PERSISTENCE_TOOL_KEY",
     "assert_contained",
     "find_legacy_hotspot",
     "find_legacy_report",

@@ -192,6 +192,7 @@ def validate_coverage(
     records: Iterable[Mapping[str, Any]],
     *,
     rows: Iterable[MatrixRow] = MATRIX_ROWS,
+    invalid_artifacts: Iterable[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     """Prove whether every matrix row has an accepted comparable pair."""
 
@@ -253,28 +254,65 @@ def validate_coverage(
         )
 
     unknown_rows = sorted(set(by_row) - {row.row_id for row in rows})
-    complete = not malformed and not unknown_rows and all(row["complete"] for row in row_reports)
+    invalid_artifact_list = [dict(item) for item in invalid_artifacts]
+    complete = (
+        not malformed
+        and not invalid_artifact_list
+        and not unknown_rows
+        and all(row["complete"] for row in row_reports)
+    )
     return {
         "schema_version": "1",
         "kind": "r0_coverage_report",
         "complete": complete,
         "rows": row_reports,
         "malformed_records": malformed,
+        "invalid_artifacts": invalid_artifact_list,
         "unknown_matrix_rows": unknown_rows,
     }
 
 
-def load_evidence_records(root: Path) -> list[dict[str, Any]]:
+def load_evidence_artifacts(root: Path) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    """Load canonical records and surface invalid after-like evidence files.
+
+    Acceptance ledgers and manifests intentionally share the evidence directory, so
+    arbitrary JSON cannot be treated as a record. Files whose names claim to be an
+    ``after`` artifact are different: silently ignoring one can manufacture a false
+    closure narrative even though coverage remains open.
+    """
+
     records: list[dict[str, Any]] = []
+    invalid_artifacts: list[dict[str, str]] = []
     for path in sorted(root.rglob("*.json")):
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            invalid_artifacts.append(
+                {"path": str(path.relative_to(root)), "error": f"unreadable JSON: {exc}"}
+            )
+            continue
         if isinstance(payload, dict) and payload.get("kind") == "r0_evidence_record":
             records.append(payload)
+        elif "_after_" in path.name:
+            invalid_artifacts.append(
+                {
+                    "path": str(path.relative_to(root)),
+                    "error": "after-like artifact is not a canonical r0_evidence_record",
+                }
+            )
+    return records, invalid_artifacts
+
+
+def load_evidence_records(root: Path) -> list[dict[str, Any]]:
+    """Load canonical evidence records; prefer ``load_evidence_artifacts`` for closure."""
+
+    records, _ = load_evidence_artifacts(root)
     return records
 
 
 __all__ = [
     "canonical_json_bytes",
+    "load_evidence_artifacts",
     "load_evidence_records",
     "redact_text",
     "sha256_bytes",

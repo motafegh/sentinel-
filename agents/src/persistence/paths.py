@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import re
-import uuid
 from pathlib import Path
 
 _ADDRESS_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
-_UUID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 def validate_address(address: str) -> str:
@@ -21,9 +18,7 @@ def validate_address(address: str) -> str:
     """
     cleaned = (address or "").strip()
     if not _ADDRESS_RE.match(cleaned):
-        raise ValueError(
-            f"invalid Ethereum address: {address!r} — expected 0x + 40 hex chars"
-        )
+        raise ValueError(f"invalid Ethereum address: {address!r} — expected 0x + 40 hex chars")
     return cleaned
 
 
@@ -41,9 +36,7 @@ def validate_job_id(job_id: str) -> str:
     """
     cleaned = (job_id or "").strip().lower()
     if not is_valid_job_id(cleaned):
-        raise ValueError(
-            f"invalid job_id: {job_id!r} — expected canonical UUID"
-        )
+        raise ValueError(f"invalid job_id: {job_id!r} — expected canonical UUID")
     return cleaned
 
 
@@ -56,11 +49,9 @@ def job_report_dir(root: Path, job_id: str) -> Path:
     """
     safe_job = validate_job_id(job_id)
     resolved_root = root.resolve()
-    candidate = (resolved_root / safe_job).resolve()
-    if not candidate.is_relative_to(resolved_root):
-        raise ValueError(
-            f"job report path escapes root: {candidate} is not inside {resolved_root}"
-        )
+    candidate = resolved_root / safe_job
+    if candidate.is_symlink():
+        raise ValueError(f"job report directory must not be a symlink: {candidate}")
     return candidate
 
 
@@ -73,12 +64,7 @@ def job_report_path(root: Path, job_id: str, filename: str) -> Path:
     if not filename or "/" in filename or "\\" in filename or ".." in filename:
         raise ValueError(f"unsafe report filename: {filename!r}")
     base = job_report_dir(root, job_id)
-    candidate = (base / filename).resolve()
-    if not candidate.is_relative_to(base):
-        raise ValueError(
-            f"report path escapes job dir: {candidate} is not inside {base}"
-        )
-    return candidate
+    return base / filename
 
 
 def assert_contained(path: Path, root: Path) -> Path:
@@ -86,9 +72,7 @@ def assert_contained(path: Path, root: Path) -> Path:
     rp = path.resolve()
     rr = root.resolve()
     if not rp.is_relative_to(rr):
-        raise ValueError(
-            f"path containment violation: {rp} is not inside {rr}"
-        )
+        raise ValueError(f"path containment violation: {rp} is not inside {rr}")
     return rp
 
 

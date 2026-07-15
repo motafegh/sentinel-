@@ -15,7 +15,13 @@ from scripts.r0_evidence.cli import (
 )
 from scripts.r0_evidence.environment import probe_environment, validate_environment_manifest
 from scripts.r0_evidence.matrix import MATRIX_ROWS, matrix_manifest
-from scripts.r0_evidence.model import redact_text, sha256_file, validate_coverage, validate_record
+from scripts.r0_evidence.model import (
+    load_evidence_artifacts,
+    redact_text,
+    sha256_file,
+    validate_coverage,
+    validate_record,
+)
 
 BASELINE = "1" * 40
 CANDIDATE = "2" * 40
@@ -121,6 +127,34 @@ def test_complete_accepted_comparable_pairs_close_all_rows() -> None:
     report = validate_coverage(_complete_records())
     assert report["complete"] is True
     assert all(row["complete"] for row in report["rows"])
+
+
+def test_after_like_noncanonical_artifact_blocks_closure(tmp_path: Path) -> None:
+    path = tmp_path / "2026-07-15_SYSTEM_R0-PROOF-IDENTITY_after_r0-4.json"
+    path.write_text(
+        json.dumps({"row_id": "R0-PROOF-IDENTITY", "status": "pass"}),
+        encoding="utf-8",
+    )
+    records, invalid_artifacts = load_evidence_artifacts(tmp_path)
+    report = validate_coverage(
+        [*_complete_records(), *records], invalid_artifacts=invalid_artifacts
+    )
+    assert report["complete"] is False
+    assert report["invalid_artifacts"] == [
+        {
+            "path": path.name,
+            "error": "after-like artifact is not a canonical r0_evidence_record",
+        }
+    ]
+
+
+def test_unreadable_json_is_not_silently_skipped(tmp_path: Path) -> None:
+    path = tmp_path / "broken.json"
+    path.write_text("{", encoding="utf-8")
+    records, invalid_artifacts = load_evidence_artifacts(tmp_path)
+    assert records == []
+    assert invalid_artifacts[0]["path"] == path.name
+    assert invalid_artifacts[0]["error"].startswith("unreadable JSON:")
 
 
 def test_after_only_cannot_close_a_row() -> None:

@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import json
 import os
-import time
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
-from .paths import assert_contained, is_valid_job_id, job_report_dir, job_report_path, validate_job_id
+from .paths import is_valid_job_id, job_report_path
 
-PERSISTENCE_TOOL_KEY = "report_persistence"
+REPORT_PERSISTENCE_TOOL_KEY = "report_persistence"
+HOTSPOT_PERSISTENCE_TOOL_KEY = "hotspot_persistence"
+PERSISTENCE_TOOL_KEY = REPORT_PERSISTENCE_TOOL_KEY
 
 
 def _atomic_write(path: Path, content: str, encoding: str = "utf-8") -> None:
@@ -23,16 +25,23 @@ def _atomic_write(path: Path, content: str, encoding: str = "utf-8") -> None:
     must surface a structured status.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    descriptor, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    tmp = Path(tmp_name)
     try:
-        with open(tmp, "w", encoding=encoding) as f:
+        with os.fdopen(descriptor, "w", encoding=encoding) as f:
             f.write(content)
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, path)
-    except Exception:
+    except Exception as write_error:
         if tmp.exists():
-            tmp.unlink(missing_ok=True)
+            try:
+                tmp.unlink()
+            except OSError as cleanup_error:
+                raise RuntimeError(
+                    f"atomic write failed for {path} and temp cleanup failed for "
+                    f"{tmp}: write={write_error}; cleanup={cleanup_error}"
+                ) from cleanup_error
         raise
 
 
@@ -49,7 +58,7 @@ def persist_report(
     job_id = (state.get("job_id") or "").strip()
     if not job_id or not is_valid_job_id(job_id):
         return {
-            PERSISTENCE_TOOL_KEY: {
+            REPORT_PERSISTENCE_TOOL_KEY: {
                 "ran": False,
                 "reason": "missing_or_invalid_job_id",
                 "detail": f"job_id={job_id!r} is not a canonical UUID; report not persisted",
@@ -58,19 +67,22 @@ def persist_report(
 
     try:
         path = job_report_path(root, job_id, "report.json")
-        _atomic_write(path, json.dumps(report, indent=2))
-        logger.debug("persist_report | written → {}", path)
-        return {
-            PERSISTENCE_TOOL_KEY: {
-                "ran": True,
-                "reason": "ok",
-                "detail": str(path.relative_to(root.resolve())),
-            }
+        success_status = {
+            "ran": True,
+            "reason": "ok",
+            "detail": str(path.relative_to(root.resolve())),
         }
+        published_report = dict(report)
+        published_tool_status = dict(report.get("tool_status", {}) or {})
+        published_tool_status[REPORT_PERSISTENCE_TOOL_KEY] = success_status
+        published_report["tool_status"] = published_tool_status
+        _atomic_write(path, json.dumps(published_report, indent=2))
+        logger.debug("persist_report | written → {}", path)
+        return {REPORT_PERSISTENCE_TOOL_KEY: success_status}
     except Exception as exc:
         logger.warning("persist_report | failed (non-fatal to graph): {}", exc)
         return {
-            PERSISTENCE_TOOL_KEY: {
+            REPORT_PERSISTENCE_TOOL_KEY: {
                 "ran": False,
                 "reason": "write_failure",
                 "detail": str(exc),
@@ -90,7 +102,7 @@ def persist_hotspot(
     job_id = (state.get("job_id") or "").strip()
     if not job_id or not is_valid_job_id(job_id):
         return {
-            PERSISTENCE_TOOL_KEY: {
+            HOTSPOT_PERSISTENCE_TOOL_KEY: {
                 "ran": False,
                 "reason": "missing_or_invalid_job_id",
                 "detail": f"job_id={job_id!r} is not a canonical UUID; hotspot not persisted",
@@ -102,7 +114,7 @@ def persist_hotspot(
         _atomic_write(path, html_str)
         logger.info("persist_hotspot | written → {}", path)
         return {
-            PERSISTENCE_TOOL_KEY: {
+            HOTSPOT_PERSISTENCE_TOOL_KEY: {
                 "ran": True,
                 "reason": "ok",
                 "detail": str(path.relative_to(root.resolve())),
@@ -111,7 +123,7 @@ def persist_hotspot(
     except Exception as exc:
         logger.warning("persist_hotspot | failed (non-fatal): {}", exc)
         return {
-            PERSISTENCE_TOOL_KEY: {
+            HOTSPOT_PERSISTENCE_TOOL_KEY: {
                 "ran": False,
                 "reason": "write_failure",
                 "detail": str(exc),
@@ -121,6 +133,8 @@ def persist_hotspot(
 
 __all__ = [
     "PERSISTENCE_TOOL_KEY",
+    "HOTSPOT_PERSISTENCE_TOOL_KEY",
+    "REPORT_PERSISTENCE_TOOL_KEY",
     "persist_hotspot",
     "persist_report",
 ]
