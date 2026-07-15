@@ -38,9 +38,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
 
 class TxState(Enum):
+    """R0-F4: full transaction lifecycle states.
+
+    not_requested -> policy_rejected (analysis process has no key)
+    not_requested -> prepared -> signed -> broadcast -> pending -> confirmed
+                                                 |-> reverted
+                                                 |-> dropped
+                                                 |-> replaced -> pending -> confirmed/reverted
+                                                 |-> failed
+    """
+    NOT_REQUESTED = "not_requested"
+    POLICY_REJECTED = "policy_rejected"
+    PREPARED = "prepared"
+    SIGNED = "signed"
+    BROADCAST = "broadcast"
     PENDING = "pending"
-    MINED = "mined"
     CONFIRMED = "confirmed"
+    REVERTED = "reverted"
+    DROPPED = "dropped"
+    REPLACED = "replaced"
     FAILED = "failed"
 
 
@@ -226,6 +242,9 @@ def _run_submit_inner(
         "idempotency_key": idempotency_key,
         "target_data_version": target_data_version,
         "tx_lifecycle": None,
+        "proof_scope": "none",
+        "verified_audit_eligible": False,
+        "finality_ineligible_reason": "proof_scope_not_identity_bound",
     }
 
     # ── Step 1: call /fusion-embedding ─────────────────────────────────

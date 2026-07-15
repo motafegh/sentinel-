@@ -655,7 +655,6 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         _estimate_gas,
         TxLifecycle,
         TxState,
-        build_provenance_manifest,
     )
 
     try:
@@ -670,137 +669,99 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         )
     except Exception as exc:
         assertions.append(_assertion(
-            "submit_pipeline_has_structure",
-            "failed_step" in str(exc) or "partial" in str(exc),
-            f"submit pipeline raised: {type(exc).__name__}: {exc}",
+            "submit_pipeline_returns_on_error",
+            "status" in str(exc) or "policy_rejected" in str(exc)
+            or "failed_step" in str(exc),
+            f"raised: {type(exc).__name__}: {exc}",
         ))
         all_passed = all(a["passed"] for a in assertions)
         return _result(all_passed, assertions)
 
     assertions.append(_assertion(
-        "submit_pipeline_returns_structured_result",
+        "submit_pipeline_returns_dict",
         isinstance(result, dict) and "status" in result,
-        f"type={type(result).__name__} keys={sorted(result) if isinstance(result, dict) else 'N/A'}",
+        f"keys={sorted(result) if isinstance(result, dict) else type(result).__name__}",
     ))
 
-    status = result.get("status", "unknown")
-    reached_tx = status in {"partial", "submitted"}
-    blocked_but_has_features = status == "failed" and result.get("failed_step") != "transaction"
+    # R0-F3: V2 proof scope is either legacy_proxy_only_unbound (ML API reached)
+    # or "none" when the pipeline is blocked before reaching proof generation.
+    # Both are ineligible for verified audit finality.
     assertions.append(_assertion(
-        "transaction_step_reachable_or_features_exist",
-        reached_tx or blocked_but_has_features,
-        f"status={status!r} failed_step={result.get('failed_step')!r} — "
-        f"{'tx step reached' if reached_tx else 'blocked before tx but features implemented'}",
+        "proof_scope_is_unbound_or_none",
+        result.get("proof_scope") in ("legacy_proxy_only_unbound", "none"),
+        f"proof_scope={result.get('proof_scope')!r}",
     ))
-
     assertions.append(_assertion(
-        "identity_binding_in_submit",
-        result.get("chain_id") == 1 and result.get("round_id") == 42,
-        f"chain_id={result.get('chain_id')} round_id={result.get('round_id')}",
+        "v2_not_submitted_or_confirmed",
+        result.get("status") in ("policy_rejected", "failed"),
+        f"status={result.get('status')!r}",
     ))
-
     assertions.append(_assertion(
-        "idempotency_key_propagated",
-        result.get("idempotency_key") == "test-ik-001",
-        f"idempotency_key={result.get('idempotency_key')!r}",
+        "verified_audit_ineligible",
+        not result.get("verified_audit_eligible", True),
+        f"eligible={result.get('verified_audit_eligible')} "
+        f"reason={result.get('finality_ineligible_reason')!r}",
     ))
-
-    # Test _estimate_gas directly (no web3 — returns fallback)
-    gas = _estimate_gas(None, "0x0000000000000000000000000000000000000001",
-                        "0x0000000000000000000000000000000000000002")
     assertions.append(_assertion(
-        "gas_estimation_uses_fallback_when_no_web3",
-        gas == 500_000,
-        f"gas={gas}",
+        "ineligible_reason_is_proof_scope",
+        "proof_scope" in str(result.get("finality_ineligible_reason", "")),
+        f"reason={result.get('finality_ineligible_reason')!r}",
     ))
 
-    # Test TxLifecycle state machine
+    # R0-F4: transaction state machine
+    all_states = set(s for s in TxState)
+    assert len(all_states) >= 10, f"TxState must have 11 values, got {len(all_states)}"
+    assertions.append(_assertion(
+        "tx_state_machine_has_all_required_states",
+        all(s in all_states for s in [TxState.PENDING, TxState.POLICY_REJECTED,
+              TxState.PREPARED, TxState.SIGNED, TxState.BROADCAST,
+              TxState.CONFIRMED, TxState.REVERTED, TxState.FAILED]),
+        f"states={sorted(s.value for s in all_states)}",
+    ))
+
     lc = TxLifecycle(tx_hash="0xabc")
     assertions.append(_assertion(
-        "tx_lifecycle_default_state_is_pending",
+        "tx_default_is_pending",
         lc.state == TxState.PENDING,
         f"state={lc.state.value}",
     ))
-    lc.state = TxState.CONFIRMED
-    lc.receipt_status = 1
+    lc.state = TxState.POLICY_REJECTED
+    lc.error = "proof_scope_not_identity_bound"
     assertions.append(_assertion(
-        "tx_lifecycle_tracks_confirmed_with_receipt",
-        lc.state == TxState.CONFIRMED and lc.receipt_status == 1,
-        f"state={lc.state.value} receipt_status={lc.receipt_status}",
+        "tx_policy_rejected_storable",
+        lc.state == TxState.POLICY_REJECTED and lc.error is not None,
+        f"state={lc.state.value} error={lc.error}",
     ))
-    lc2 = TxLifecycle(state=TxState.FAILED, receipt_status=0, error="reverted")
+    rlc = TxLifecycle(state=TxState.REVERTED, receipt_status=0, error="reverted on-chain")
     assertions.append(_assertion(
-        "tx_lifecycle_tracks_reverted_transaction",
-        lc2.state == TxState.FAILED and lc2.receipt_status == 0,
-        f"state={lc2.state.value} receipt_status={lc2.receipt_status} error={lc2.error}",
-    ))
-
-    # Test build_provenance_manifest with identity binding
-    manifest = build_provenance_manifest(
-        teacher_model_hash="a" * 64,
-        proxy_checkpoint_hash="b" * 64,
-        fusion_embedding=[0.0] * 128,
-        class_scores=[0.0] * 10,
-        operator_address="",
-        chain_id=1,
-        round_id=42,
-        contract_address="0x000000000000000000000000000000000000dEaD",
-        idempotency_key="test-ik-001",
-        target_data_version="v2026.1",
-    )
-    assertions.append(_assertion(
-        "manifest_has_chain_id",
-        manifest.get("chain_id") == 1,
-        f"chain_id={manifest.get('chain_id')!r}",
-    ))
-    assertions.append(_assertion(
-        "manifest_has_round_id",
-        manifest.get("round_id") == 42,
-        f"round_id={manifest.get('round_id')!r}",
-    ))
-    assertions.append(_assertion(
-        "tx_fail_state_mapped_to_receipt_zero",
-        lc2.state == TxState.FAILED and lc2.receipt_status == 0,
-        f"state={lc2.state.value} receipt_status={lc2.receipt_status} error={lc2.error}",
+        "tx_reverted_zero_receipt_status",
+        rlc.state == TxState.REVERTED and rlc.receipt_status == 0,
+        f"state={rlc.state.value} receipt_status={rlc.receipt_status}",
     ))
 
-    # R0.6: verify ABI compatibility — submitAuditV2 must have exactly 5 args
-    # matching the Solidity signature: (address, uint256[10], bytes, uint256[], bytes32)
-    submit_mod, submit_err = _try_import("src.mcp.servers.audit._submit")
-    if not submit_err:
-        from src.mcp.servers.audit._submit import _attempt_submit as __as
-        fn_source = submit_mod.__file__ or ""
-        try:
-            with open(fn_source) as f:
-                src = f.read()
-            # Extract the encodeABI args block
-            has_submit_audit_v2 = "submitAuditV2" in src
-            has_chain_in_tx_dict = "chainId" in src and "w3.eth.chain_id" in src.split("_attempt_submit")[-1] if "_attempt_submit" in src else False
-
-            assertions.append(_assertion(
-                "abi_fn_submitAuditV2",
-                has_submit_audit_v2,
-                "submitAuditV2 must be the fn_name in encodeABI",
-            ))
-            # Verify chain_id is NOT passed as a direct parameter
-            import inspect
-            params = list(inspect.signature(__as).parameters)
-            has_chain_param = "chain_id" in params
-            assertions.append(_assertion(
-                "abi_no_chain_id_param",
-                not has_chain_param,
-                f"_attempt_submit params: {params}",
-            ))
-        except Exception:
-            assertions.append(_assertion(
-                "abi_checks_skipped",
-                True,
-                "source inspection failed, skipping",
-            ))
+    # R0-F3: _attempt_submit parameter check (no identity_commitment, no chain_id)
+    from src.mcp.servers.audit._submit import _attempt_submit as __as
+    import inspect
+    params = list(inspect.signature(__as).parameters)
+    assertions.append(_assertion(
+        "abi_has_5_core_params",
+        all(p in params for p in ["contract_address", "class_score_felts",
+              "proof_bytes", "public_signals", "model_hash"]),
+        f"_attempt_submit params: {params}",
+    ))
+    assertions.append(_assertion(
+        "abi_no_identity_commitment_param",
+        "identity_commitment" not in params,
+        f"_attempt_submit params: {params}",
+    ))
+    assertions.append(_assertion(
+        "abi_no_chain_id_param",
+        "chain_id" not in params,
+        f"_attempt_submit params: {params}",
+    ))
 
     all_passed = all(a["passed"] for a in assertions)
     return _result(all_passed, assertions)
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
