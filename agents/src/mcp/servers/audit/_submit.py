@@ -271,16 +271,23 @@ def _run_submit_inner(
         logger.error(f"submit_audit [{result['failed_step']}]: {result['reason']}")
         return result
 
-    # ── Step 1b: bind identity to fusion embedding (R0.6 proof-identity) ─
-    # XOR identity hash into the last 8 features so the proxy model output
-    # and the EZKL proof both depend on chain/round/contract/model identity.
-    identity_payload = (
-        f"{chain_id}:{round_id}:{contract_address}:{model_hash}"
-    ).encode("utf-8")
-    identity_hash = hashlib.sha256(identity_payload).digest()
-    identity_felts = list(identity_hash[:16])  # 16 bytes for 8 float32 values
+    # ── Step 1b: compute identity commitment (R0.6 proof-identity) ──
+    # Cryptographic commitment binding chain/round/contract/model identity
+    # into a verifiable hash. The XOR bias below makes the proxy model
+    # output (and hence the EZKL proof) numerically dependent on identity.
+    # The commitment hash is independently verifiable and stored in the
+    # provenance manifest and passed on-chain via the combined modelHash.
+    identity_commitment = hashlib.sha256(
+        f"{chain_id}|{round_id}|{contract_address}|{model_hash}".encode("utf-8")
+    ).hexdigest()
+    result["identity_commitment"] = identity_commitment
+
+    # XOR identity hash into last 8 fusion features for numerical binding
+    identity_hash_bytes = hashlib.sha256(
+        f"{chain_id}:{round_id}:{contract_address}:{model_hash}".encode("utf-8")
+    ).digest()
+    identity_felts = list(identity_hash_bytes[:16])
     fusion_embedding = list(fusion_embedding_raw)
-    # XOR low bytes of identity hash into last 8 features
     bind_start = len(fusion_embedding) - 8
     for i in range(8):
         bias = identity_felts[i * 2] / 255.0 * 0.0001
@@ -413,6 +420,7 @@ def _run_submit_inner(
             contract_address=contract_address,
             idempotency_key=idempotency_key,
             target_data_version=target_data_version,
+            identity_commitment=result.get("identity_commitment"),
         )
         result["provenance"] = provenance
     except Exception as exc:
@@ -436,6 +444,7 @@ def _run_submit_inner(
                 proof_bytes=result["proof_bytes"],
                 public_signals=result["public_signals"],
                 model_hash=result["model_hash"],
+                identity_commitment=result.get("identity_commitment"),
                 required_confirmations=_SUBMIT_CONFIRM_BLOCKS,
                 idempotency_key=idempotency_key,
             )
@@ -474,12 +483,14 @@ def _attempt_submit(
     model_hash: str,
     required_confirmations: int = 2,
     idempotency_key: str | None = None,
+    identity_commitment: str | None = None,
 ) -> TxLifecycle:
     """Build, sign, and monitor on-chain submission.
 
-    Matches Solidity AuditRegistry.submitAuditV2:
-        submitAuditV2(address contractAddress, uint256[10] classScores,
-                      bytes proof, uint256[] publicSignals, bytes32 modelHash)
+    Matches Solidity AuditRegistry.submitAuditV2 with identity commitment:
+    The modelHash passed to the contract is a combined hash of the
+    original model_hash and the identity_commitment (binding chain,
+    round, and contract identity cryptographically).
     """
     from eth_account import Account
 
@@ -492,7 +503,14 @@ def _attempt_submit(
 
     contract = w3.eth.contract(address=w3.to_checksum_address(registry_address), abi=abi)
 
-    model_hash_bytes32 = bytes.fromhex(model_hash)
+    # Compute identity-bound model hash for on-chain storage
+    if identity_commitment and model_hash:
+        combined = hashlib.sha256(
+            (model_hash + identity_commitment).encode("utf-8")
+        ).hexdigest()
+        model_hash_bytes32 = bytes.fromhex(combined)
+    else:
+        model_hash_bytes32 = bytes.fromhex(model_hash)
 
     submit_data = contract.encodeABI(
         fn_name="submitAuditV2",
@@ -543,13 +561,14 @@ def build_provenance_manifest(
     contract_address: str | None = None,
     idempotency_key: str | None = None,
     target_data_version: str | None = None,
+    identity_commitment: str | None = None,
 ) -> dict[str, Any]:
     """
     Build and EIP-191-sign a provenance manifest binding ML model to ZK proof.
 
-    R0.4: binds chain_id, round_id, contract_address, and target_data_version
-    into the manifest so the proof cannot be replayed across different chains,
-    rounds, or verified contracts.
+    R0.6: includes identity_commitment — a SHA-256 hash binding the
+    chain/round/contract/model identity. This commitment can be independently
+    recomputed and verified by any consumer of the proof.
     """
     fusion_hash = hashlib.sha256(json.dumps(fusion_embedding, sort_keys=True).encode()).hexdigest()
 
@@ -572,6 +591,8 @@ def build_provenance_manifest(
         manifest["idempotency_key"] = idempotency_key
     if target_data_version is not None:
         manifest["target_data_version"] = target_data_version
+    if identity_commitment is not None:
+        manifest["identity_commitment"] = identity_commitment
 
     try:
         from eth_account.messages import encode_defunct
