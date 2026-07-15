@@ -59,7 +59,10 @@ import numpy as np
 from loguru import logger
 from rank_bm25 import BM25Okapi
 
-from dotenv import load_dotenv
+# R0.0: production env must not load .env — real env vars only
+if os.environ.get("SENTINEL_ENV", "").lower() != "production":
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
 
 # FIX-6: Import canonical path constants from pipeline.py.
 from .pipeline import (
@@ -72,8 +75,6 @@ from .pipeline import (
     REPORTS_DIR,
     _atomic_write_binary,
 )
-
-load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 

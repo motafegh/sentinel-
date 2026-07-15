@@ -157,6 +157,46 @@ def apply_dotenv_policy(
     )
 
 
+def bootstrap_environment(
+    *,
+    dotenv_path: str | Path | None = None,
+    override: bool = True,
+    env: Mapping[str, str] | None = None,
+) -> RuntimeConfig:
+    """Centralised environment bootstrap for all SENTINEL entry points.
+
+    1. Checks ``SENTINEL_ENV`` (raw env var, not runtime config — we need it
+       to *load* the config).
+    2. In production: does NOT load ``.env`` (must use real env vars).
+    3. Non-production: loads ``.env`` via ``dotenv.load_dotenv``.
+    4. Loads and returns the validated ``RuntimeConfig`` singleton.
+
+    Call this once at the top of every ``main()`` or module-level startup
+    **before** any service-specific ``os.getenv()`` or config reads.
+    """
+    source_env = os.environ if env is None else dict(env)
+    sentinel_env = source_env.get("SENTINEL_ENV", "").lower()
+
+    if sentinel_env != "production":
+        from dotenv import load_dotenv as _load_dotenv
+
+        resolved_path: Path | None = None
+        if dotenv_path is not None:
+            resolved_path = Path(dotenv_path).expanduser().resolve()
+        if resolved_path is None or not resolved_path.is_file():
+            # Walk up from CWD to find .env
+            cwd = Path.cwd()
+            for parent in [cwd, *cwd.parents]:
+                candidate = parent / ".env"
+                if candidate.is_file():
+                    resolved_path = candidate
+                    break
+        if resolved_path is not None and resolved_path.is_file():
+            _load_dotenv(dotenv_path=resolved_path, override=override)
+
+    return reload_runtime_config(env=source_env)
+
+
 def runtime_config_digest(config: RuntimeConfig) -> str:
     """Return a deterministic SHA-256 digest of the non-secret runtime config."""
 
@@ -237,6 +277,7 @@ __all__ = [
     "RuntimeConfig",
     "RuntimeProfile",
     "apply_dotenv_policy",
+    "bootstrap_environment",
     "get_runtime_config",
     "load_runtime_config",
     "reload_runtime_config",

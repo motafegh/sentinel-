@@ -54,8 +54,10 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
-from dotenv import load_dotenv
-load_dotenv(override=True)
+# R0.0: production env must not load .env — real env vars only
+if os.environ.get("SENTINEL_ENV", "").lower() != "production":
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
 
 # A-15 fix: replace relative import with absolute path-anchored import.
 import sys

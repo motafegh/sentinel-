@@ -27,10 +27,12 @@ from typing import Any
 # parents[0]=audit  [1]=servers  [2]=mcp  [3]=src  [4]=agents
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
-from dotenv import load_dotenv
-from src.contracts.execution import ExecutionState, failure_status
+# R0.0: production env must not load .env — real env vars only
+if os.environ.get("SENTINEL_ENV", "").lower() != "production":
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
 
-load_dotenv(override=True)
+from src.contracts.execution import ExecutionState, failure_status
 
 # ---------------------------------------------------------------------------
 # Configuration — all values overridable via agents/.env

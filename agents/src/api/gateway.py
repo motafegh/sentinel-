@@ -61,17 +61,13 @@ from typing import Any
 # Production must set every required variable explicitly (env, secrets
 # manager, k8s secrets). Loading .env in production masks missing env
 # vars and is a security risk.
-from dotenv import load_dotenv
 from loguru import logger
 from pydantic import ValidationError
 
 _AGENTS_DIR = Path(__file__).resolve().parents[2]
-_SENTINEL_ENV = os.getenv("SENTINEL_ENV", "development").lower()
-if _SENTINEL_ENV != "production":
-    load_dotenv(_AGENTS_DIR / ".env", override=True)
-    logger.info("R0.3: loaded .env (SENTINEL_ENV={})", _SENTINEL_ENV)
-else:
-    logger.info("R0.3: production mode — .env not loaded")
+from src.config.runtime import bootstrap_environment
+bootstrap_environment(dotenv_path=_AGENTS_DIR / ".env", override=True)
+logger.info("R0.0: bootstrap_environment called")
 sys.path.insert(0, str(_AGENTS_DIR))
 
 
