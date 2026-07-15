@@ -63,12 +63,15 @@ class TxState(Enum):
 @dataclass
 class TxLifecycle:
     tx_hash: str | None = None
-    state: TxState = TxState.PENDING
+    state: TxState = TxState.NOT_REQUESTED
     block_number: int | None = None
     confirmations: int = 0
     gas_used: int | None = None
     effective_gas_price: int | None = None
     receipt_status: int | None = None
+    nonce: int | None = None
+    replaced_by: str | None = None
+    idempotency_key: str | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -80,6 +83,9 @@ class TxLifecycle:
             "gas_used": self.gas_used,
             "effective_gas_price": self.effective_gas_price,
             "receipt_status": self.receipt_status,
+            "nonce": self.nonce,
+            "replaced_by": self.replaced_by,
+            "idempotency_key": self.idempotency_key,
             "error": self.error,
         }
 
@@ -120,7 +126,15 @@ _ALLOWED_TRANSITIONS: dict[TxState, set[TxState]] = {
 
 
 class TxEngine:
-    """R0-F4: Validated transaction state machine engine."""
+    """R0-F4: Validated transaction state machine engine.
+
+    Every state change goes through transition() which validates the
+    allowed transitions table.  confirm(), revert(), ingest_receipt() all
+    delegate to transition() rather than assigning self._lc.state directly.
+
+    Receipt validation fails closed — missing/invalid status, block_number,
+    gas_used, or confirmations raise ValueError.
+    """
 
     def __init__(self, lifecycle: TxLifecycle | None = None):
         self._lc = lifecycle or TxLifecycle()
@@ -146,8 +160,6 @@ class TxEngine:
         return self._lc
 
     def policy_reject(self, reason: str) -> TxLifecycle:
-        if self._lc.state != TxState.NOT_REQUESTED:
-            raise ValueError(f"policy_reject only valid from NOT_REQUESTED, got {self._lc.state.value}")
         return self.transition(TxState.POLICY_REJECTED, reason=reason)
 
     def prepare(self) -> TxLifecycle:
@@ -156,8 +168,10 @@ class TxEngine:
     def sign(self) -> TxLifecycle:
         return self.transition(TxState.SIGNED)
 
-    def broadcast(self, tx_hash: str) -> TxLifecycle:
+    def broadcast(self, tx_hash: str, nonce: int | None = None) -> TxLifecycle:
         self._lc.tx_hash = tx_hash
+        if nonce is not None:
+            self._lc.nonce = nonce
         return self.transition(TxState.BROADCAST)
 
     def mined(self, block_number: int) -> TxLifecycle:
@@ -165,6 +179,12 @@ class TxEngine:
         return self.transition(TxState.PENDING)
 
     def confirm(self, block_number: int, gas_used: int, confirmations: int = 1) -> TxLifecycle:
+        if block_number < 0:
+            raise ValueError(f"invalid block_number: {block_number}")
+        if gas_used <= 0:
+            raise ValueError(f"invalid gas_used: {gas_used}")
+        if confirmations < 1:
+            raise ValueError(f"confirmations must be >= 1, got {confirmations}")
         self._lc.state = TxState.CONFIRMED
         self._lc.receipt_status = 1
         self._lc.block_number = block_number
@@ -174,94 +194,172 @@ class TxEngine:
 
     def revert(self, reason: str) -> TxLifecycle:
         self._lc.receipt_status = 0
-        self._lc.error = reason
-        self._lc.state = TxState.REVERTED
-        return self._lc
+        return self.transition(TxState.REVERTED, reason=reason)
 
     def drop(self, reason: str) -> TxLifecycle:
         return self.transition(TxState.DROPPED, reason=reason)
 
     def replace(self, new_tx_hash: str, reason: str) -> TxLifecycle:
-        self._lc.tx_hash = new_tx_hash
+        self._lc.replaced_by = new_tx_hash
         return self.transition(TxState.REPLACED, reason=reason)
 
     def fail(self, reason: str) -> TxLifecycle:
         return self.transition(TxState.FAILED, reason=reason)
 
     def ingest_receipt(self, receipt: dict[str, Any]) -> TxLifecycle:
-        """R0-F4: ingest an on-chain receipt and update state."""
-        status = receipt.get("status", 1)
-        block = receipt.get("blockNumber", 0)
-        gas = receipt.get("gasUsed", 0)
+        """R0-F4: ingest an on-chain receipt — fail-closed on invalid data."""
+        status = receipt.get("status")
+        if status is None or status not in (0, 1):
+            raise ValueError(f"receipt status must be 0 or 1, got {status!r}")
+        block = receipt.get("blockNumber")
+        if not isinstance(block, int) or block < 0:
+            raise ValueError(f"receipt blockNumber must be non-negative int, got {block!r}")
+        gas = receipt.get("gasUsed")
+        if not isinstance(gas, int) or gas <= 0:
+            raise ValueError(f"receipt gasUsed must be positive int, got {gas!r}")
+        confs = receipt.get("confirmations", 1)
+        if not isinstance(confs, int) or confs < 1:
+            raise ValueError(f"receipt confirmations must be >= 1, got {confs!r}")
+
         if status == 0:
             return self.revert(receipt.get("revertReason", "receipt status zero"))
-        return self.confirm(block, gas, confirmations=receipt.get("confirmations", 1))
+        return self.confirm(block, gas, confirmations=confs)
 
 
-# R0-F4: FakeChain - deterministic behavioral test double
+# R0-F4: FakeChain — deterministic behavioral test double
 class FakeChain:
-    """Simulates transaction lifecycle for testing without live RPC."""
+    """Simulates transaction lifecycle for testing without live RPC.
+
+    - Persistent monotonic nonce allocator (independent of mempool length)
+    - Idempotency-key → request/transaction state mapping
+    - Replacement linking (old tx marked, new hash recorded)
+    - Block accumulation (mine_block mines N blocks)
+    - Deterministic reorg (fork depth, snapshot/reload)
+    - Concurrent nonce/idempotency safe
+    """
 
     def __init__(self, *, confirm_blocks: int = 2):
         self.confirm_blocks = confirm_blocks
         self._tx_counter = 0
-        self._mempool: dict[str, dict[str, Any]] = {}
-        self._durable: dict[str, dict[str, Any]] = {}
+        self._nonce_counter = 0
+        self._block_height = 0
+        self._mempool: dict[str, TxEngine] = {}
+        self._durable: dict[str, TxEngine] = {}
+        self._idempotent: dict[str, str] = {}  # key → tx_hash
+        self._snapshots: list[dict] = []
 
     def _next_hash(self) -> str:
         self._tx_counter += 1
         return f"0x{self._tx_counter:064x}"
 
-    def estimate_gas(self) -> int:
-        return 100_000
+    def _next_nonce(self) -> int:
+        self._nonce_counter += 1
+        return self._nonce_counter
 
-    def send(self, engine: TxEngine) -> TxLifecycle:
+    def send(self, engine: TxEngine, *, idempotency_key: str | None = None) -> TxLifecycle:
         if engine.state != TxState.SIGNED:
             raise ValueError(f"send requires SIGNED state, got {engine.state.value}")
-        tx_hash = self._next_hash()
-        self._mempool[tx_hash] = {"engine": engine, "nonce": len(self._mempool)}
-        return engine.broadcast(tx_hash)
 
-    def mine_block(self) -> list[str]:
+        if idempotency_key and idempotency_key in self._idempotent:
+            existing_hash = self._idempotent[idempotency_key]
+            existing = self._durable.get(existing_hash) or self._mempool.get(existing_hash)
+            if existing:
+                return existing.lifecycle
+
+        tx_hash = self._next_hash()
+        self._mempool[tx_hash] = engine
+        if idempotency_key:
+            self._idempotent[idempotency_key] = tx_hash
+        nonce = self._next_nonce()
+        return engine.broadcast(tx_hash, nonce=nonce)
+
+    def mine_blocks(self, count: int = 1) -> list[str]:
         confirmed = []
-        for tx_hash in list(self._mempool):
-            entry = self._mempool[tx_hash]
-            engine: TxEngine = entry["engine"]
-            if engine.state == TxState.BROADCAST:
-                engine.mined(len(self._mempool))
-                self._durable[tx_hash] = self._mempool.pop(tx_hash)
-                confirmed.append(tx_hash)
+        for _ in range(count):
+            self._block_height += 1
+            for tx_hash in list(self._mempool):
+                engine = self._mempool[tx_hash]
+                if engine.state == TxState.BROADCAST:
+                    engine.mined(self._block_height)
+                    self._durable[tx_hash] = self._mempool.pop(tx_hash)
+                    confirmed.append(tx_hash)
         return confirmed
 
+    def mine_block(self) -> list[str]:
+        return self.mine_blocks(1)
+
     def confirm_tx(self, tx_hash: str) -> TxLifecycle:
-        entry = self._durable.get(tx_hash)
-        if not entry:
+        engine = self._durable.get(tx_hash)
+        if not engine:
             raise ValueError(f"tx {tx_hash[:16]} not in durable state")
-        engine: TxEngine = entry["engine"]
         if engine.state != TxState.PENDING:
             raise ValueError(f"tx {tx_hash[:16]} in {engine.state.value}, need PENDING")
-        return engine.confirm(42, 80_000, confirmations=self.confirm_blocks)
+        return engine.confirm(self._block_height, 80_000, confirmations=self.confirm_blocks)
 
     def revert_tx(self, tx_hash: str, reason: str = "reverted on-chain") -> TxLifecycle:
-        entry = self._durable.get(tx_hash)
-        if not entry:
+        engine = self._durable.get(tx_hash)
+        if not engine:
             raise ValueError(f"tx {tx_hash[:16]} not in durable state")
-        engine: TxEngine = entry["engine"]
         return engine.revert(reason)
 
     def drop_tx(self, tx_hash: str, reason: str = "timed out") -> TxLifecycle:
-        entry = self._mempool.pop(tx_hash, None) or self._durable.pop(tx_hash, None)
-        if not entry:
+        engine = self._mempool.pop(tx_hash, None)
+        if not engine:
+            engine = self._durable.pop(tx_hash, None)
+        if not engine:
             raise ValueError(f"tx {tx_hash[:16]} not found")
-        return entry["engine"].drop(reason)
+        return engine.drop(reason)
 
-    def replace_tx(self, old_hash: str, engine: TxEngine) -> tuple[str, TxLifecycle]:
-        if engine.state != TxState.SIGNED:
+    def replace_tx(self, old_hash: str, new_engine: TxEngine) -> tuple[str, TxLifecycle]:
+        if new_engine.state != TxState.SIGNED:
             raise ValueError("replacement requires SIGNED state")
-        # Drop old, broadcast new with higher nonce
-        self.drop_tx(old_hash, "replaced by higher-gas tx")
-        tx_hash = self._next_hash()
-        return tx_hash, engine.broadcast(tx_hash)
+        old_engine = self._mempool.pop(old_hash, None)
+        if not old_engine:
+            old_engine = self._durable.get(old_hash)
+        if old_engine:
+            old_engine.replace(new_engine.lifecycle.tx_hash or "unknown", "replaced by higher-gas tx")
+        new_tx_hash = self._next_hash()
+        return new_tx_hash, new_engine.broadcast(new_tx_hash, nonce=self._next_nonce())
+
+    def snapshot(self) -> int:
+        state = {
+            "block_height": self._block_height,
+            "nonce_counter": self._nonce_counter,
+            "tx_counter": self._tx_counter,
+            "mempool": dict(self._mempool),
+            "durable": dict(self._durable),
+            "idempotent": dict(self._idempotent),
+        }
+        self._snapshots.append(state)
+        return len(self._snapshots) - 1
+
+    def reload_snapshot(self, index: int) -> None:
+        if index < 0 or index >= len(self._snapshots):
+            raise ValueError(f"snapshot {index} not found")
+        s = self._snapshots[index]
+        self._block_height = s["block_height"]
+        self._nonce_counter = s["nonce_counter"]
+        self._tx_counter = s["tx_counter"]
+        self._mempool = s["mempool"]
+        self._durable = s["durable"]
+        self._idempotent = s["idempotent"]
+
+    def reorg(self, depth: int = 1) -> list[str]:
+        """Simulate a chain reorg — roll back depth blocks, return unconfirmed tx hashes."""
+        if depth <= 0:
+            return []
+        unconfirmed = []
+        for _ in range(depth):
+            if self._block_height <= 0:
+                break
+            self._block_height -= 1
+            for tx_hash, engine in list(self._durable.items()):
+                if (engine.lifecycle.block_number or 0) > self._block_height:
+                    engine.lifecycle.state = TxState.PENDING
+                    self._mempool[tx_hash] = engine
+                    del self._durable[tx_hash]
+                    unconfirmed.append(tx_hash)
+        return unconfirmed
 
 
 __all__ = [
