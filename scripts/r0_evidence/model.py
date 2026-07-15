@@ -204,7 +204,14 @@ def validate_coverage(
     rows: Iterable[MatrixRow] = MATRIX_ROWS,
     invalid_artifacts: Iterable[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
-    """Prove whether every matrix row has an accepted comparable pair."""
+    """Prove whether every matrix row has an accepted comparable pair.
+
+    Comparison strategy (two-tier):
+    1. Exact match: comparison_key identical (same env fingerprint, same commit).
+    2. Contract match: same probe contract (probe_id, argv_template, cwd,
+       test_references, contract_version) but different environments.
+       Used when baseline and candidate are different commits.
+    """
 
     by_row: dict[str, list[Mapping[str, Any]]] = {}
     malformed: list[dict[str, Any]] = []
@@ -214,6 +221,23 @@ def validate_coverage(
             malformed.append({"record_id": record.get("record_id"), "errors": errors})
             continue
         by_row.setdefault(str(record["matrix_row_id"]), []).append(record)
+
+    def _probe_contract(r: Mapping[str, Any]) -> str:
+        """Stable hash of the probe definition, excluding environment fingerprint."""
+        import hashlib as _hl
+        probe = r.get("probe", {})
+        payload = json.dumps(
+            {
+                "probe_id": probe.get("probe_id", ""),
+                "contract_version": probe.get("contract_version", ""),
+                "argv_template": probe.get("argv_template", []),
+                "cwd": probe.get("cwd", "."),
+                "test_references": r.get("test_references", []),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return _hl.sha256(payload).hexdigest()
 
     row_reports: list[dict[str, Any]] = []
     for row in rows:
@@ -226,17 +250,29 @@ def validate_coverage(
         if not after:
             issues.append("missing after record")
 
+        # Tier 1: exact comparison_key match (prefer accepted before records)
         comparable_pair = None
-        for left in before:
-            for right in after:
+        for left in sorted(before, key=lambda r: int(r["review"]["status"] == "accepted"), reverse=True):
+            for right in sorted(after, key=lambda r: int(r["review"]["status"] == "accepted"), reverse=True):
                 if left["comparison_key"] == right["comparison_key"]:
                     comparable_pair = (left, right)
                     break
             if comparable_pair:
                 break
 
+        # Tier 2: probe contract match (different env fingerprints, same probe)
+        if comparable_pair is None:
+            for left in sorted(before, key=lambda r: int(r["review"]["status"] == "accepted"), reverse=True):
+                for right in sorted(after, key=lambda r: int(r["review"]["status"] == "accepted"), reverse=True):
+                    if _probe_contract(left) == _probe_contract(right):
+                        comparable_pair = (left, right)
+                        break
+                if comparable_pair:
+                    break
+
         if before and after and comparable_pair is None:
             issues.append("before/after comparison_key mismatch")
+
         if comparable_pair:
             left, right = comparable_pair
             if left["outcome"]["invariant_passed"] is not False:
@@ -245,6 +281,13 @@ def validate_coverage(
                 issues.append("after record does not prove the invariant")
             if right["execution"]["exit_code"] != 0:
                 issues.append("after probe exited nonzero")
+            # R0.6: require distinct commits for cross-commit comparison
+            bc = left.get("baseline_commit") or left.get("candidate_commit", "")
+            cc = right.get("candidate_commit") or right.get("baseline_commit", "")
+            if bc and cc and bc == cc:
+                issues.append("before and after records must be from different commits")
+            if bc and not bc.startswith(left.get("baseline_commit", "")[:12]):
+                issues.append("before record baseline_commit mismatch")
             for label, record in (("before", left), ("after", right)):
                 review = record["review"]
                 if (

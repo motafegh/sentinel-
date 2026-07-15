@@ -178,6 +178,7 @@ def test_changed_probe_contract_cannot_close_a_row() -> None:
         if record["matrix_row_id"] == MATRIX_ROWS[0].row_id and record["phase"] == "after"
     )
     after["comparison_key"] = "b" * 64
+    after["probe"]["argv_template"] = ["python", "different_probe.py"]
     report = validate_coverage(records)
     first = next(row for row in report["rows"] if row["row_id"] == MATRIX_ROWS[0].row_id)
     assert "before/after comparison_key mismatch" in first["issues"]
