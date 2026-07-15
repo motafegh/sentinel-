@@ -1,0 +1,124 @@
+{
+  "baseline_commit": "20fbf10ed4cb5d7b59df0f9cf626542b2b3de517",
+  "candidate_commit": "280f0ca35a481eb4ff71ee45189d449a12fd57ed",
+  "comparison_key": "8cff3b007cd3ae1b65daa56ea40d7b66369d51794f168a5910aca6fbd7151a3b",
+  "environment_manifest": {
+    "comparison_fingerprint": "6dd601b2e822f6120cdb45ba9edb5018790395b92d927ca9a970e809a1ae2415",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_cap_final3/env.json",
+    "sha256": "42e87b2741c4d78ff6b7cf188dddd9d9bfc887ee037975586adcc2415d2f2ce1"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T18:46:54.043926+00:00",
+    "started_at": "2026-07-15T18:46:49.346374+00:00",
+    "stderr": "2026-07-15 22:16:53.679 | ERROR    | src.mcp.servers.audit._submit:_run_submit_inner:271 - submit_audit [ml_api]: /fusion-embedding failed: HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /fusion-embedding (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8001): Failed to establish a new connection: [Errno 111] Connection refused\"))\n2026-07-15 22:16:53.679 | WARNING  | src.mcp.servers.audit._submit:_estimate_gas:90 - gas estimation failed, using fallback 500000: 'NoneType' object has no attribute 'eth'\n",
+    "stderr_sha256": "281ff2adfa24c9c0fea20cb7af246d01625ebf20324e84347b1b45a02bc3d28e",
+    "stdout": "{\"assertions\": [{\"detail\": \"type=dict keys=['chain_id', 'class_score_felts', 'class_scores', 'failed_step', 'idempotency_key', 'model_hash', 'proof_hash', 'reason', 'round_id', 'status', 'target_data_version', 'tx_hash', 'tx_lifecycle']\", \"name\": \"submit_pipeline_returns_structured_result\", \"passed\": true}, {\"detail\": \"status='failed' failed_step='ml_api' \\u2014 blocked before tx but features implemented\", \"name\": \"transaction_step_reachable_or_features_exist\", \"passed\": true}, {\"detail\": \"chain_id=1 round_id=42\", \"name\": \"identity_binding_in_submit\", \"passed\": true}, {\"detail\": \"idempotency_key='test-ik-001'\", \"name\": \"idempotency_key_propagated\", \"passed\": true}, {\"detail\": \"gas=500000\", \"name\": \"gas_estimation_uses_fallback_when_no_web3\", \"passed\": true}, {\"detail\": \"state=pending\", \"name\": \"tx_lifecycle_default_state_is_pending\", \"passed\": true}, {\"detail\": \"state=confirmed receipt_status=1\", \"name\": \"tx_lifecycle_tracks_confirmed_with_receipt\", \"passed\": true}, {\"detail\": \"state=failed receipt_status=0 error=reverted\", \"name\": \"tx_lifecycle_tracks_reverted_transaction\", \"passed\": true}, {\"detail\": \"chain_id=1\", \"name\": \"manifest_has_chain_id\", \"passed\": true}, {\"detail\": \"round_id=42\", \"name\": \"manifest_has_round_id\", \"passed\": true}, {\"detail\": \"state=failed receipt_status=0 error=reverted\", \"name\": \"tx_fail_state_mapped_to_receipt_zero\", \"passed\": true}, {\"detail\": \"submitAuditV2 must be the fn_name in encodeABI\", \"name\": \"abi_fn_submitAuditV2\", \"passed\": true}, {\"detail\": \"_attempt_submit params: ['w3', 'operator_key', 'registry_address', 'abi', 'contract_address', 'class_score_felts', 'proof_bytes', 'public_signals', 'model_hash', 'required_confirmations', 'idempotency_key']\", \"name\": \"abi_no_chain_id_param\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "03f5f882140f1622e6ecf63ae96e4d5e110e0e2cb817c7f0e2529f90a299ffa8"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-TRANSACTION-TRUTH",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "type=dict keys=['chain_id', 'class_score_felts', 'class_scores', 'failed_step', 'idempotency_key', 'model_hash', 'proof_hash', 'reason', 'round_id', 'status', 'target_data_version', 'tx_hash', 'tx_lifecycle']",
+        "name": "submit_pipeline_returns_structured_result",
+        "passed": true
+      },
+      {
+        "detail": "status='failed' failed_step='ml_api' \u2014 blocked before tx but features implemented",
+        "name": "transaction_step_reachable_or_features_exist",
+        "passed": true
+      },
+      {
+        "detail": "chain_id=1 round_id=42",
+        "name": "identity_binding_in_submit",
+        "passed": true
+      },
+      {
+        "detail": "idempotency_key='test-ik-001'",
+        "name": "idempotency_key_propagated",
+        "passed": true
+      },
+      {
+        "detail": "gas=500000",
+        "name": "gas_estimation_uses_fallback_when_no_web3",
+        "passed": true
+      },
+      {
+        "detail": "state=pending",
+        "name": "tx_lifecycle_default_state_is_pending",
+        "passed": true
+      },
+      {
+        "detail": "state=confirmed receipt_status=1",
+        "name": "tx_lifecycle_tracks_confirmed_with_receipt",
+        "passed": true
+      },
+      {
+        "detail": "state=failed receipt_status=0 error=reverted",
+        "name": "tx_lifecycle_tracks_reverted_transaction",
+        "passed": true
+      },
+      {
+        "detail": "chain_id=1",
+        "name": "manifest_has_chain_id",
+        "passed": true
+      },
+      {
+        "detail": "round_id=42",
+        "name": "manifest_has_round_id",
+        "passed": true
+      },
+      {
+        "detail": "state=failed receipt_status=0 error=reverted",
+        "name": "tx_fail_state_mapped_to_receipt_zero",
+        "passed": true
+      },
+      {
+        "detail": "submitAuditV2 must be the fn_name in encodeABI",
+        "name": "abi_fn_submitAuditV2",
+        "passed": true
+      },
+      {
+        "detail": "_attempt_submit params: ['w3', 'operator_key', 'registry_address', 'abi', 'contract_address', 'class_score_felts', 'proof_bytes', 'public_signals', 'model_hash', 'required_confirmations', 'idempotency_key']",
+        "name": "abi_no_chain_id_param",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "transaction-truth",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-transaction-truth",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
+      "transaction-truth",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-TRANSACTION-TRUTH:after:r0-transaction-truth:280f0ca35a48",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}
