@@ -11,6 +11,8 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+import torch
+
 
 def _assertion(name: str, passed: bool, detail: str) -> dict[str, Any]:
     return {"name": name, "passed": passed, "detail": detail}
@@ -233,7 +235,7 @@ def probe_data_release(workspace: Path) -> dict[str, Any]:
     from pathlib import Path
     assertions: list[dict[str, Any]] = []
 
-    exclude = {"manifest.json", ".hash_cache.json"}
+    exclude = {"manifest.json", ".hash_cache.json", "release_descriptor.json"}
     with tempfile.TemporaryDirectory() as td:
         export_dir = Path(td)
 
@@ -318,6 +320,145 @@ def probe_data_release(workspace: Path) -> dict[str, Any]:
             "deleted_file_detected_by_set_mismatch",
             "file_a.pt" in missing,
             f"missing={missing}",
+        ))
+
+    # ── R0.5: release descriptor ──────────────────────────────────────────
+    with tempfile.TemporaryDirectory() as td:
+        export_dir = Path(td)
+
+        (export_dir / "data.pt").write_text("some data")
+        (export_dir / "labels.parquet").write_text("labels")
+        manifest_json = '{"artifact_hash": "abc123", "release": "test"}'
+        (export_dir / "manifest.json").write_text(manifest_json)
+
+        sys.path.insert(0, str(workspace / "data_module"))
+        from sentinel_data.export.release_descriptor import (
+            write_release_descriptor,
+            verify_release,
+        )
+
+        desc = write_release_descriptor(
+            export_dir=export_dir,
+            manifest_hash=hashlib.sha256(manifest_json.encode()).hexdigest(),
+            artifact_hash="abc123",
+        )
+
+        assertions.append(_assertion(
+            "release_descriptor_exists",
+            (export_dir / "release_descriptor.json").exists(),
+            "release_descriptor.json written to export dir",
+        ))
+
+        assertions.append(_assertion(
+            "release_descriptor_has_manifest_hash",
+            "manifest_hash" in desc and len(desc["manifest_hash"]) == 64,
+            f"manifest_hash={desc.get('manifest_hash', 'MISSING')!r}",
+        ))
+
+        assertions.append(_assertion(
+            "release_descriptor_has_files",
+            isinstance(desc.get("files"), dict) and len(desc["files"]) >= 2,
+            f"files={desc.get('files', {})}",
+        ))
+
+        assertions.append(_assertion(
+            "release_descriptor_release_id_self_consistent",
+            "release_id" in desc and len(desc["release_id"]) == 64,
+            f"release_id={desc.get('release_id', 'MISSING')!r}",
+        ))
+
+        # Verify succeeds on clean directory
+        vr = verify_release(export_dir)
+        assertions.append(_assertion(
+            "release_verify_passes_on_clean",
+            vr["verified"],
+            f"reason={vr['reason']}",
+        ))
+
+        # Tamper manifest — descriptor should detect it
+        (export_dir / "manifest.json").write_text('{"artifact_hash": "TAMPERED", "release": "evil"}')
+        vr2 = verify_release(export_dir)
+        assertions.append(_assertion(
+            "release_verify_detects_manifest_tamper",
+            not vr2["verified"],
+            f"reason={vr2['reason']} mismatches={vr2.get('mismatches', [])}",
+        ))
+
+        # Tamper data file — descriptor should detect it
+        (export_dir / "manifest.json").write_text(manifest_json)
+        (export_dir / "data.pt").write_text("EVIL DATA")
+        vr3 = verify_release(export_dir)
+        assertions.append(_assertion(
+            "release_verify_detects_data_tamper",
+            not vr3["verified"],
+            f"reason={vr3['reason']} mismatches={vr3.get('mismatches', [])}",
+        ))
+
+    # ── R0.5: pickle-safe serializer ──────────────────────────────────────
+    with tempfile.TemporaryDirectory() as td:
+        import pickle
+        import os
+        sys.path.insert(0, str(workspace / "data_module"))
+        from sentinel_data.export.pickle_safe import safe_loads, safe_torch_load
+
+        pt_path = Path(td) / "tensor.pt"
+        torch.save(torch.tensor([1.0, 2.0, 3.0]), pt_path)
+        try:
+            loaded = safe_torch_load(pt_path)
+            assertions.append(_assertion(
+                "pickle_safe_loads_tensor",
+                isinstance(loaded, torch.Tensor) and loaded.shape == (3,),
+                f"type={type(loaded).__name__} shape={getattr(loaded, 'shape', None)}",
+            ))
+        except Exception as exc:
+            assertions.append(_assertion(
+                "pickle_safe_loads_tensor",
+                False,
+                f"safe_torch_load(tensor) raised: {type(exc).__name__}: {exc}",
+            ))
+
+        unsafe_payload = pickle.dumps(os.system)
+        try:
+            safe_loads(unsafe_payload)
+            assertions.append(_assertion(
+                "pickle_safe_rejects_unsafe_code",
+                False,
+                "safe_loads(os.system) did NOT raise — code execution risk",
+            ))
+        except pickle.UnpicklingError:
+            assertions.append(_assertion(
+                "pickle_safe_rejects_unsafe_code",
+                True,
+                "safe_loads(os.system) raised UnpicklingError as expected",
+            ))
+        except Exception as exc:
+            assertions.append(_assertion(
+                "pickle_safe_rejects_unsafe_code",
+                False,
+                f"safe_loads(os.system) raised unexpected: {type(exc).__name__}: {exc}",
+            ))
+
+        # verify_artifact_hash has descriptor_verified key
+        sys.path.insert(0, str(workspace / "data_module"))
+        from sentinel_data.export.export import SentinelDatasetExport
+        export_dir = Path(td)
+        (export_dir / "data.pt").write_text("data for export")
+        (export_dir / "labels.parquet").write_text("labels")
+        (export_dir / "manifest.json").write_text(
+            '{"artifact_hash": "dummy", "hash_algorithm": "sha256", '
+            '"schema_version": "v1", "graph_schema_version": "v9", '
+            '"shard_size": 1000, "n_contracts": 1, "n_contracts_with_reps": 0, '
+            '"n_shards": 0, "splits": {"train": [], "val": [], "test": []}, '
+            '"shard_index": {}, "source_set": [], "skipped_sources": [], '
+            '"preprocessing_config_hash": "unknown", '
+            '"label_class_columns": [], "created_at": "now"}'
+        )
+        ex = SentinelDatasetExport(export_dir)
+        vr4 = ex.verify_artifact_hash()
+        assertions.append(_assertion(
+            "verify_artifact_hash_has_descriptor_key",
+            "descriptor_verified" in vr4,
+            f"keys={sorted(vr4)}",
         ))
 
     all_passed = all(a["passed"] for a in assertions)

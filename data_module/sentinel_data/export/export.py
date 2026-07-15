@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from sentinel_data.export.chunker import ExportManifest, _FILES_NOT_HASHED, _hash_export_data, _write_hash_cache
+from sentinel_data.export.release_descriptor import RELEASE_DESCRIPTOR_FILENAME, verify_release
 
 
 class SentinelDatasetExport:
@@ -57,6 +58,10 @@ class SentinelDatasetExport:
         return self.export_dir / "manifest.json"
 
     @property
+    def release_descriptor_path(self) -> Path:
+        return self.export_dir / RELEASE_DESCRIPTOR_FILENAME
+
+    @property
     def shard_index(self) -> dict[str, dict]:
         return self.manifest.shard_index
 
@@ -65,13 +70,13 @@ class SentinelDatasetExport:
     def verify_artifact_hash(self) -> dict[str, any]:
         """Compare artifact hash to manifest.artifact_hash with structured result.
 
-        Warm path (cache hit): stats each data file, compares mtime+size to
-        .hash_cache.json. Checks bidirectional file-set equality (both
-        cache→disk and disk→cache) so deleted or added shards are detected.
-        Returns in milliseconds.
+        R0.5: warm path first verifies the **release descriptor** (per-file
+        SHA-256 checksums including manifest.json), then falls back to the
+        mtime/size hash cache for speed.  If the descriptor is present,
+        manifest tampering is detected (descriptor carries ``manifest_hash``).
 
-        Cold path (cache miss or stale): falls back to full SHA-256 over all
-        data files, then writes a fresh .hash_cache.json for the next call.
+        Cold path (no descriptor and no cache): full SHA-256 over all data
+        files.
 
         Returns a structured dict:
             verified: bool — True if hashes match and file set is complete
@@ -79,7 +84,25 @@ class SentinelDatasetExport:
             files_checked: int — number of files verified
             files_missing: list — files in cache but not on disk
             files_extra: list — files on disk but not in cache
+            descriptor_verified: bool | None — whether descriptor checked out
         """
+        # ── warm path via release descriptor (R0.5) ──────────────────────
+        if self.release_descriptor_path.exists():
+            r = verify_release(self.export_dir)
+            if not r["verified"]:
+                return {
+                    "verified": False,
+                    "reason": f"release_descriptor:{r['reason']}",
+                    "files_checked": r["files_checked"],
+                    "files_missing": r["missing"],
+                    "files_extra": r["extra"],
+                    "descriptor_verified": False,
+                }
+            descriptor_ok = True
+        else:
+            descriptor_ok = None
+
+        # ── warm path via hash cache ──────────────────────────────────────
         cache_path = self.export_dir / ".hash_cache.json"
         if cache_path.exists():
             try:
@@ -102,6 +125,7 @@ class SentinelDatasetExport:
                         "files_checked": len(on_disk_files),
                         "files_missing": missing,
                         "files_extra": extra,
+                        "descriptor_verified": descriptor_ok,
                     }
 
                 all_match = True
@@ -126,6 +150,7 @@ class SentinelDatasetExport:
                         "files_checked": len(on_disk_files),
                         "files_missing": [],
                         "files_extra": [],
+                        "descriptor_verified": descriptor_ok,
                     }
             except Exception:
                 pass  # corrupt cache — fall through to full recompute
@@ -139,6 +164,7 @@ class SentinelDatasetExport:
             "files_checked": len(list(self.export_dir.rglob("*"))),
             "files_missing": [],
             "files_extra": [],
+            "descriptor_verified": descriptor_ok,
         }
 
     # ── split helpers ──────────────────────────────────────────────────────

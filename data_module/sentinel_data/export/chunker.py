@@ -29,6 +29,7 @@ from sentinel_data.export.label_writer import write_labels_parquet
 from sentinel_data.export.metadata_writer import write_metadata_parquet
 from sentinel_data.export.graph_writer import write_graphs_shards
 from sentinel_data.export.token_writer import write_tokens_shards
+from sentinel_data.export.release_descriptor import write_release_descriptor
 
 
 SCHEMA_VERSION = "v1"
@@ -59,7 +60,7 @@ class ExportManifest:
     created_at: str
 
 
-_FILES_NOT_HASHED = {"manifest.json", ".hash_cache.json"}
+_FILES_NOT_HASHED = {"manifest.json", ".hash_cache.json", "release_descriptor.json"}
 
 
 def _hash_export_data(export_dir: Path) -> str:
@@ -228,8 +229,16 @@ def chunk_export(
     )
 
     # ── 8. write manifest.json LAST (Fix A) ──────────────────────────────
-    (output_dir / "manifest.json").write_text(
-        json.dumps(asdict(manifest), indent=2, sort_keys=True)
+    manifest_json = json.dumps(asdict(manifest), indent=2, sort_keys=True)
+    (output_dir / "manifest.json").write_text(manifest_json)
+
+    # ── 9. write release_descriptor.json (R0.5) ──────────────────────────
+    import hashlib
+    manifest_hash = hashlib.sha256(manifest_json.encode()).hexdigest()
+    write_release_descriptor(
+        export_dir=output_dir,
+        manifest_hash=manifest_hash,
+        artifact_hash=artifact_hash,
     )
 
     return manifest
