@@ -63,6 +63,12 @@ SAMPLE_TUPLE = (
 ZERO_TUPLE = (0, b"\x00" * 32, 0, "0x0000000000000000000000000000000000000000", False)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_mock_mode(monkeypatch):
+    """Make audit-server tests independent of import and collection order."""
+    monkeypatch.setattr("src.mcp.servers.audit_server._MOCK_MODE", True)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
