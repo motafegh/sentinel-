@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 # R0.0: production env must not load .env — real env vars only
 if os.environ.get("SENTINEL_ENV", "").lower() != "production":
     from dotenv import load_dotenv
-    load_dotenv(override=True)
+    load_dotenv(override=False)
 
 from src.contracts.execution import ExecutionState, failure_status
 
