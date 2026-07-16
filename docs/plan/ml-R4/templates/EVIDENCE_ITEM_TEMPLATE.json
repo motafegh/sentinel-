@@ -1,0 +1,15 @@
+{
+  "evidence_id": "R4-EVID-...",
+  "contract_id": "",
+  "class_index": 0,
+  "evidence_type": "",
+  "producer": "",
+  "producer_version": "",
+  "independence_group": "",
+  "polarity": "SUPPORTS_POSITIVE|SUPPORTS_NEGATIVE|NEUTRAL|CONFLICTING",
+  "finding_summary": "",
+  "code_locations": [],
+  "artifact_id": "",
+  "historical_or_new": "HISTORICAL_RECOVERED|HISTORICAL_CONCLUSION_ONLY|NEW_REPRODUCTION|NEW_GAP_REVIEW",
+  "limitations": []
+}

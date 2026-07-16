@@ -1,0 +1,170 @@
+{
+  "run_id": "R4-P0-20260716-001",
+  "created_at": "2026-07-16T00:00:00Z",
+  "repository": {
+    "root": "/home/motafeq/projects/sentinel",
+    "branch": "main",
+    "commit": "4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493",
+    "dirty": true,
+    "dirty_note": "Untracked files only (docs/plan/ml-R4/, audit .md files, R0/R4 plan files). No modified or staged tracked files.",
+    "remotes": {
+      "origin": "https://github.com/motafegh/sentinel-"
+    },
+    "worktrees": [
+      {"path": "/home/motafeq/projects/sentinel", "branch": "main", "commit": "4b5bd333c"},
+      {"path": "/home/motafeq/projects/sentinel-d2-audit", "branch": "codex/source-engineering-audit", "commit": "1256d9aab"},
+      {"path": "/home/motafeq/projects/sentinel-r0-0-evidence", "branch": "codex/r0-0-evidence-harness", "commit": "9dfb92784"},
+      {"path": "/home/motafeq/projects/sentinel-r0-1-fail-closed", "branch": "codex/r0-1-fail-closed-evidence", "commit": "a4b4502f2"},
+      {"path": "/home/motafeq/projects/sentinel-r0-2-filesystem-containment", "branch": "codex/r0-2-filesystem-containment", "commit": "f476654ce"},
+      {"path": "/home/motafeq/projects/sentinel-r0-3-service-signer", "branch": "codex/r0-3-service-signer-boundaries", "commit": "df346835c"},
+      {"path": "/home/motafeq/projects/sentinel-r0-4-legacy-write", "branch": "codex/r0-4-legacy-write-containment", "commit": "c39de51ac"},
+      {"path": "/home/motafeq/projects/sentinel-r0-5-artifact-freeze", "branch": "codex/r0-5-artifact-release-freeze", "commit": "85744ebd9"},
+      {"path": "/home/motafeq/projects/sentinel-r0-6-integration", "branch": "codex/r0-6-containment-integration", "commit": "b30949171"},
+      {"path": "/home/motafeq/projects/sentinel-r0-containment", "branch": "codex/r0-containment", "commit": "5e45fbed7"}
+    ],
+    "submodules": "none",
+    "dvc": {
+      "status": "up_to_date",
+      "remote": "localbackup -> /mnt/d/sentinel-dvc-remote",
+      "tracked_files": [
+        "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt",
+        "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.state.json",
+        "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL_thresholds.json"
+      ]
+    },
+    "applicable_instructions": [
+      "CLAUDE.md (repo root)",
+      "ml/CLAUDE.md (ml module)",
+      "~/.claude/projects/-home-motafeq-projects-sentinel/memory/MEMORY.md"
+    ]
+  },
+  "active_bundle": {
+    "data_export": {
+      "name": "sentinel-v3-smartbugs-2026-06-13",
+      "path": "data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/",
+      "artifact_hash": "5cc5cfcbf42bef4ced58b963ef98241bcf3ec4ab3bea5d198f336ec763a4faa9",
+      "graph_schema_version": "v9",
+      "schema_version": "v1",
+      "n_contracts": 22493,
+      "n_contracts_with_reps": 21657,
+      "n_shards": 5,
+      "preprocessing_config_hash": "543e37cc8ccb42a5f20889014cc3a64ad0b1370f75ed4e4f13ab61a6a9436b3b",
+      "label_class_columns": [
+        "CallToUnknown", "DenialOfService", "ExternalBug", "GasException",
+        "IntegerUO", "MishandledException", "Reentrancy", "Timestamp",
+        "TransactionOrderDependence", "UnusedReturn"
+      ],
+      "labels_parquet": {
+        "path": "data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/labels.parquet",
+        "sha256": "26e739b5d82ba512e5a1830817d09609216e2184b79cf4ca7ec2d62ef34e32b5",
+        "rows": 22493,
+        "columns": ["contract_id", "source", "split", "class_0", "class_1", "class_2", "class_3", "class_4", "class_5", "class_6", "class_7", "class_8", "class_9", "confidence_tier"]
+      },
+      "metadata_parquet": {
+        "path": "data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/metadata.parquet",
+        "sha256": "ca65aa695cb1f03242d9485c4ade0e6c250d92fd6a714f4fb21c4c53087f3a03",
+        "rows": 22493,
+        "columns": ["contract_id", "source", "split", "solc_version", "version_bucket", "loc", "n_functions", "n_pos", "primary_class", "node_count", "edge_count", "has_unchecked_block", "dedup_group_id", "confidence_tier"]
+      },
+      "manifest_sha256": "142824d72277899f73c6b6797eae9665acea82f52b579113b1300997e2135008"
+    },
+    "split": {
+      "version": "v3",
+      "path": "data_module/data/splits/v3/",
+      "seed": 42,
+      "strategy": "stratified",
+      "ratios": [0.7, 0.15, 0.15],
+      "contract_counts": {"train": 18596, "val": 1983, "test": 1914},
+      "dedup_groups_resolved": 3036,
+      "split_manifest_sha256": "8b89c544871a6fec30a3489e6fbb2fad5c535dc92fb4e66399a5a3bac14e7b2e",
+      "train_sha256": "03f2a2376f630165d89615ef47a796ea01a015375313208b556d921dd7d6409b",
+      "val_sha256": "cf9a7b45fabbad2e3581282f69d5adf4fa4d09eb88bce3721544956a01b7506f",
+      "test_sha256": "b9bb4649283cc7ec1d39b6e4cee980140b1752aea1c1df69e4b17a498d6fd20c"
+    },
+    "checkpoint": {
+      "name": "GCB-P1-Run12-v3dospatched-20260613_FINAL",
+      "path": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt",
+      "sha256": "6a220c6b085a8e0b6b8ae8f5b7610d22bee931d56721000d17e3e304b2daa6cb",
+      "dvc_md5": "f1a04c12bda6ac4ebb0ba03b8b0b0cbc",
+      "size_bytes": 281562156,
+      "architecture": "four_eye_v8",
+      "state": {
+        "epoch": 51,
+        "patience_counter": 0,
+        "best_f1": 0.6800766276074683
+      },
+      "state_sha256": "6de3216c5ad388fcdececc90b490fd1260c3df839b07f18cac2c6dea8111871d"
+    },
+    "thresholds": {
+      "path": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL_thresholds.json",
+      "sha256": "ea3c762afcd4b820ac0e61d554f1ead3e6b840d2589696c327cd2580cfedd937",
+      "num_classes": 10,
+      "class_names": ["CallToUnknown", "DenialOfService", "ExternalBug", "GasException", "IntegerUO", "MishandledException", "Reentrancy", "Timestamp", "TransactionOrderDependence", "UnusedReturn"],
+      "per_class_thresholds": {
+        "CallToUnknown": 0.4, "DenialOfService": 0.5, "ExternalBug": 0.45,
+        "GasException": 0.05, "IntegerUO": 0.45, "MishandledException": 0.35,
+        "Reentrancy": 0.45, "Timestamp": 0.5,
+        "TransactionOrderDependence": 0.35, "UnusedReturn": 0.4
+      },
+      "overall_f1_macro": 0.6822959168981907
+    },
+    "calibration": {
+      "active_sidecar": null,
+      "note": "No calibration sidecar is referenced in mlops_config.json. Temperature scaling artifacts exist in ml/calibration/ (temperatures_run12.json) but are NOT loaded by the inference API. Explicit absence.",
+      "available_artifacts": {
+        "temperatures_run12_json_sha256": "8389edb13061f923876dfae1407a149b482cbfb200bf4a8fd5e20e2d453500d0",
+        "temperatures_run12_stats_json_sha256": "356c12fe72040b0048c56cc36a6dd44a13acba7cb011b4dc3b22de242d0248f1"
+      }
+    },
+    "mlops_config": {
+      "path": "ml/mlops_config.json",
+      "sha256": "6192953c1af8f592895fbcd0ee973e00597cb1a9281d3401fc3453fe06dd7ee4",
+      "checkpoint_ref": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt",
+      "thresholds_ref": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL_thresholds.json",
+      "experiment": "sentinel-retrain-v2",
+      "drift_baseline_ref": "ml/data/drift_baseline_run12.json",
+      "mlflow_uri": "sqlite:///mlruns.db"
+    },
+    "graph_schema": {
+      "schema_version": "v9",
+      "feature_schema_version": "v9",
+      "node_feature_dim": 12,
+      "num_node_types": 14,
+      "num_edge_types": 12,
+      "source_path": "ml/src/preprocessing/graph_schema.py",
+      "source_sha256": "7af67eb785cc9538bbefd02aaeadf88f3a0b7815fc356814597164f2ba3b0ea0",
+      "representations_version_registry_sha256": "8435a979329a685600ea2fdf9deb4e4c0e32b4d44a0ff50eabbb86b25f7b19cc",
+      "extractor_version": "v2.1-windowed-gcb"
+    },
+    "drift_baseline": {
+      "path": "ml/data/drift_baseline_run12.json",
+      "sha256": "73ad1e8447ca66b36b27ebe65760d1d4af53067a7ae61b8085a9aec5e5d1324d"
+    },
+    "data_config": {
+      "path": "data_module/config.yaml",
+      "sha256": "543e37cc8ccb42a5f20889014cc3a64ad0b1370f75ed4e4f13ab61a6a9436b3b",
+      "schema_version": "v9",
+      "sources_enabled": ["solidifi", "dive", "smartbugs_curated", "web3bugs", "disl"],
+      "sources_disabled": ["defihacklabs", "bastet", "forge", "scrawld", "defi_hacks_rekt", "openzeppelin_ethernaut", "openzeppelin_contracts", "solidity_defi_vulns", "defivulnlabs", "sc_bench", "smartbugs_wild", "slither_audited", "zenodo_clear", "messi_q", "scabench"],
+      "sources_deferred": ["bccc"],
+      "note": "web3bugs is declared enabled:true but has no crosswalk, parser, data, or connector — it is effectively UNAVAILABLE. disl is enabled for NonVulnerable pool only."
+    }
+  },
+  "artifacts": [
+    {"artifact_id": "R4-P0-CHK-001", "path": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt", "sha256": "6a220c6b085a8e0b6b8ae8f5b7610d22bee931d56721000d17e3e304b2daa6cb", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-CHK-002", "path": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL_thresholds.json", "sha256": "ea3c762afcd4b820ac0e61d554f1ead3e6b840d2589696c327cd2580cfedd937", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-CHK-003", "path": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.state.json", "sha256": "6de3216c5ad388fcdececc90b490fd1260c3df839b07f18cac2c6dea8111871d", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-MLO-001", "path": "ml/mlops_config.json", "sha256": "6192953c1af8f592895fbcd0ee973e00597cb1a9281d3401fc3453fe06dd7ee4", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-CFG-001", "path": "data_module/config.yaml", "sha256": "543e37cc8ccb42a5f20889014cc3a64ad0b1370f75ed4e4f13ab61a6a9436b3b", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-EXP-001", "path": "data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/manifest.json", "sha256": "142824d72277899f73c6b6797eae9665acea82f52b579113b1300997e2135008", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-EXP-002", "path": "data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/labels.parquet", "sha256": "26e739b5d82ba512e5a1830817d09609216e2184b79cf4ca7ec2d62ef34e32b5", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-EXP-003", "path": "data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/metadata.parquet", "sha256": "ca65aa695cb1f03242d9485c4ade0e6c250d92fd6a714f4fb21c4c53087f3a03", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-SPL-001", "path": "data_module/data/splits/v3/split_manifest.json", "sha256": "8b89c544871a6fec30a3489e6fbb2fad5c535dc92fb4e66399a5a3bac14e7b2e", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-SPL-002", "path": "data_module/data/splits/v3/train.jsonl", "sha256": "03f2a2376f630165d89615ef47a796ea01a015375313208b556d921dd7d6409b", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-SPL-003", "path": "data_module/data/splits/v3/val.jsonl", "sha256": "cf9a7b45fabbad2e3581282f69d5adf4fa4d09eb88bce3721544956a01b7506f", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-SPL-004", "path": "data_module/data/splits/v3/test.jsonl", "sha256": "b9bb4649283cc7ec1d39b6e4cee980140b1752aea1c1df69e4b17a498d6fd20c", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-SCH-001", "path": "ml/src/preprocessing/graph_schema.py", "sha256": "7af67eb785cc9538bbefd02aaeadf88f3a0b7815fc356814597164f2ba3b0ea0", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-MDL-001", "path": "ml/src/models/sentinel_model.py", "sha256": "4b13c65ed0d40ae4aa71a1e1e373747e02598046c85948dea2d76956429d76d3", "availability": "AVAILABLE_VERIFIED", "protected": true},
+    {"artifact_id": "R4-P0-DRF-001", "path": "ml/data/drift_baseline_run12.json", "sha256": "73ad1e8447ca66b36b27ebe65760d1d4af53067a7ae61b8085a9aec5e5d1324d", "availability": "AVAILABLE_VERIFIED", "protected": true}
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SENTINEL R4 Evidence Ledger Row",
+  "type": "object",
+  "required": [
+    "ledger_version",
+    "contract_id",
+    "class_index",
+    "historical_state",
+    "outcome_state"
+  ],
+  "properties": {
+    "ledger_version": {
+      "type": "string"
+    },
+    "contract_id": {
+      "type": "string"
+    },
+    "class_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9
+    },
+    "historical_state": {
+      "enum": [
+        "HISTORICAL_POSITIVE",
+        "HISTORICAL_ZERO",
+        "HISTORICAL_MISSING"
+      ]
+    },
+    "outcome_state": {
+      "enum": [
+        "CONFIRMED_POSITIVE",
+        "CONFIRMED_NEGATIVE",
+        "UNKNOWN",
+        "NOT_APPLICABLE",
+        "CONFLICTING_EVIDENCE",
+        "NOT_REVIEWED",
+        "INVALID_RECORD"
+      ]
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "role_eligibility": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dedup_group_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

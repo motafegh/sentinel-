@@ -1,0 +1,223 @@
+{
+  "package_name": "SENTINEL ML R4 Trustworthy-Label Recovery Package",
+  "package_version": "2.0.0",
+  "generated_date": "2026-07-16",
+  "intended_destination": "docs/plan/ml-R4",
+  "files": [
+    {
+      "path": "00_MASTER_PLAN.md",
+      "sha256": "2c987189894bd1a3d1f1204f4606209fcf9fc7997128400905ea72f8734644f5",
+      "bytes": 11079
+    },
+    {
+      "path": "ARTIFACT_INDEX.md",
+      "sha256": "84b5d75297f2160f1f0041f91d0efc367c513e72c553c1968339db7c1b9a4e5e",
+      "bytes": 547
+    },
+    {
+      "path": "CLAIM_STATUS_MATRIX.md",
+      "sha256": "2fd6ce289cd3aa1bb7b22effe3c3ca79c688ed4a18af9ec5d34eb96a7883291f",
+      "bytes": 1551
+    },
+    {
+      "path": "DECISION_REGISTER.md",
+      "sha256": "77bd6147f0eda35a266329d51f046476733c92470d52d41e3cd1361d2d51932b",
+      "bytes": 552
+    },
+    {
+      "path": "EVIDENCE_GAP_REGISTER.md",
+      "sha256": "2f85d69d29ddf0855a51807cce2b2a6ee3129e82082849f170e1cb2a8034e054",
+      "bytes": 822
+    },
+    {
+      "path": "EXECUTION_LOG.md",
+      "sha256": "fb6e0f852b0d8ed47522dbdb665de153a437d02a19800923c2a9c43f5800e1f7",
+      "bytes": 645
+    },
+    {
+      "path": "INSTALL.md",
+      "sha256": "dab8d730e655b287bb7c91bf0927ef189872624aa13b78aed024d09bbbc32904",
+      "bytes": 699
+    },
+    {
+      "path": "KNOWN_PREMISE_AND_NON_DUPLICATION_POLICY.md",
+      "sha256": "e94a14bb0776a473545c9084bb2fcb7707223b7e9a414c6936fc97cff6e32986",
+      "bytes": 3405
+    },
+    {
+      "path": "LABEL_STATE_AND_DATASET_ROLE_POLICY.md",
+      "sha256": "e44e0154b318c2a13d8ae07746f119a99981f4abc3a0afeda1fd49a19c2f75a9",
+      "bytes": 2695
+    },
+    {
+      "path": "MODEL_ARCHITECTURE_FREEZE.md",
+      "sha256": "d6d27a282eae5de5514775ae0c6303b67a6561337585b4a9d63bcac81b68d5c4",
+      "bytes": 1888
+    },
+    {
+      "path": "PLAN_STATUS_MATRIX.md",
+      "sha256": "8e292af030ec5e8ba93260a9fd4fe345c862a354e02d72b5aa46561c7f22c0bd",
+      "bytes": 1335
+    },
+    {
+      "path": "PREVIOUS_EVIDENCE_REGISTER.md",
+      "sha256": "5ce23fff6fd86327cb7e78e7f64c752864b1ea61b2c9d1f5217aa3b4eb6238bb",
+      "bytes": 762
+    },
+    {
+      "path": "README.md",
+      "sha256": "fa04117ab227ae53a222010079acfe5ca37154aaae1b64d09908235df25f61c0",
+      "bytes": 3366
+    },
+    {
+      "path": "RISK_AND_BLOCKER_REGISTER.md",
+      "sha256": "aca6d0eeb67e0fe81b7fe6219d7e23f9d29a8a41c30c4f32dcdb020ec0a496e7",
+      "bytes": 903
+    },
+    {
+      "path": "START_HERE_AGENT.md",
+      "sha256": "5007f425da0d9015dc3c7bea09c33ef101ad865c7e0fc1593efb9a6aa942120c",
+      "bytes": 3855
+    },
+    {
+      "path": "decisions/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "findings/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "manifests/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "phases/01_PHASE_0_BASELINE_AND_EVIDENCE_LOCATION.md",
+      "sha256": "44fcffd10d3a960a1a0987e175c63913072d432f881f9e026b1f4fdc307a90ab",
+      "bytes": 3148
+    },
+    {
+      "path": "phases/02_PHASE_1_PREVIOUS_EVIDENCE_RECOVERY.md",
+      "sha256": "8865cbc5e860549d2dd4eab65230966eefb44122d00b85ac635f7967dc379cc3",
+      "bytes": 1898
+    },
+    {
+      "path": "phases/03_PHASE_2_LABEL_CORRUPTION_RECONSTRUCTION.md",
+      "sha256": "02e9a34707da196afc891e06497b4badb18c8ea8012968cfa1f63a7df5d72ae7",
+      "bytes": 1581
+    },
+    {
+      "path": "phases/04_PHASE_3_EVIDENCE_LEDGER.md",
+      "sha256": "811996e1cf9b752df632bb6a22051478b429c1daa2e821d9a98d373c346352f7",
+      "bytes": 1289
+    },
+    {
+      "path": "phases/05_PHASE_4_TARGETED_GAP_ADJUDICATION.md",
+      "sha256": "7562bd2f3636834fea1db0c395b6b62c34f0a5058d09d7e3420cea64cbe068ff",
+      "bytes": 1366
+    },
+    {
+      "path": "phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md",
+      "sha256": "4cb51714fd3788f6c008a1f05c298e90c4c8a7d2050d3f85b96ff68c00d4f839",
+      "bytes": 1034
+    },
+    {
+      "path": "phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md",
+      "sha256": "935f9360621183678ac940bf3ead6d0b95fc2cae6025580bb03dccfc029476f9",
+      "bytes": 1068
+    },
+    {
+      "path": "phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md",
+      "sha256": "24a92d373384a597306d8cec4d932fad4c79efaa2e0e8a4c5bb50ddec457150e",
+      "bytes": 879
+    },
+    {
+      "path": "phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md",
+      "sha256": "244df8dc357e0e7e764d5c9b3738780dec55773abf8d5ac521d923a8262c4b65",
+      "bytes": 1116
+    },
+    {
+      "path": "phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md",
+      "sha256": "c396cc487a1c9061aa0aa9529589ea6a0aa6b54f8b7c2d61671822723d0ac820",
+      "bytes": 1389
+    },
+    {
+      "path": "phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md",
+      "sha256": "c44e1e4d58e61105d65a0147424b0ad0fe003765d65c999d375f4b2b48135345",
+      "bytes": 1021
+    },
+    {
+      "path": "runs/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "scripts/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "templates/ADR_TEMPLATE.md",
+      "sha256": "dfe45de2227ca4318ffaaa2921c2f487e3fe9f64168dcd36b309f95b59797371",
+      "bytes": 287
+    },
+    {
+      "path": "templates/CLASS_DEFINITION_CARD_TEMPLATE.md",
+      "sha256": "91a270d21414872458f230130e7ea8364c2e19a3b2a4e92df24dc155f980cac3",
+      "bytes": 465
+    },
+    {
+      "path": "templates/EVIDENCE_GAP_AUTHORIZATION_TEMPLATE.md",
+      "sha256": "533edc5338a3e0ae1e1f49d19b0b2bc92cf129ab4b6fe6d5afa6dfea9651b1fc",
+      "bytes": 344
+    },
+    {
+      "path": "templates/EVIDENCE_ITEM_TEMPLATE.json",
+      "sha256": "c9db4db0bd13e547aa90f7655390b63753521a1791715e996164b9a1fce8a04f",
+      "bytes": 441
+    },
+    {
+      "path": "templates/PHASE_FINDINGS_TEMPLATE.md",
+      "sha256": "f9a685ee80878556347a65b4859b33507c647f8ce491bd1cef6f6c8506bac1ca",
+      "bytes": 348
+    },
+    {
+      "path": "templates/REVIEW_BATCH_TEMPLATE.csv",
+      "sha256": "6e1fb6438db6f4310f018db785f064f88a455420da19543805fb9f03e260a3ab",
+      "bytes": 262
+    },
+    {
+      "path": "templates/SOURCE_SEMANTICS_CARD_TEMPLATE.md",
+      "sha256": "0f76fa1fde4f27909ef4b2b2f09ba3b193c54e7bda640775e85d2383f1e7a21a",
+      "bytes": 385
+    },
+    {
+      "path": "templates/baseline_manifest.schema.json",
+      "sha256": "55d85bcc9a79d9f7841ab9a8d0fcf45a2dfe85b55e3c47d585dd242f4891a907",
+      "bytes": 1666
+    },
+    {
+      "path": "templates/evidence_ledger_row.schema.json",
+      "sha256": "af5a9ec1e76217f275e7897f5499032db90b3a6d8fb02922a047be1da9311cfa",
+      "bytes": 1255
+    },
+    {
+      "path": "workstreams/BCCC_PREVIOUS_EVIDENCE_RECOVERY.md",
+      "sha256": "9b2155b0ea35d43d6c410756f712fdd9a1421f58fcdfe2cb733adf90a8322b95",
+      "bytes": 953
+    },
+    {
+      "path": "workstreams/DIVE_PREVIOUS_EVIDENCE_RECOVERY.md",
+      "sha256": "c40c194aafbb564a248bf4a51a7c66ed8c636e94d6605fcefc00da99a36ed5d4",
+      "bytes": 1436
+    },
+    {
+      "path": "workstreams/OTHER_SOURCES_AND_MANUAL_EVIDENCE_RECOVERY.md",
+      "sha256": "ec5270f27b69517a010553122cdcc7982ddbb1b4bb8651c4d9db14cc3e82c417",
+      "bytes": 820
+    }
+  ]
+}

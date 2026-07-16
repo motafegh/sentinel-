@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SENTINEL R4 Baseline Manifest",
+  "type": "object",
+  "required": [
+    "run_id",
+    "created_at",
+    "repository",
+    "active_bundle",
+    "artifacts"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "repository": {
+      "type": "object",
+      "required": [
+        "root",
+        "branch",
+        "commit",
+        "dirty"
+      ],
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      }
+    },
+    "active_bundle": {
+      "type": "object",
+      "required": [
+        "data_export",
+        "split",
+        "checkpoint",
+        "thresholds",
+        "calibration"
+      ],
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "path",
+          "availability",
+          "protected"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "availability": {
+            "type": "string"
+          },
+          "protected": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

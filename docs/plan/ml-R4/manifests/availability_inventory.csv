@@ -1,0 +1,42 @@
+artifact_id,category,path,availability,sha256,protected,notes
+R4-P0-CHK-001,checkpoint,ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt,AVAILABLE_VERIFIED,6a220c6b085a8e0b6b8ae8f5b7610d22bee931d56721000d17e3e304b2daa6cb,true,DVC-tracked; 281MB
+R4-P0-CHK-002,thresholds,ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL_thresholds.json,AVAILABLE_VERIFIED,ea3c762afcd4b820ac0e61d554f1ead3e6b840d2589696c327cd2580cfedd937,true,DVC-tracked; per-class F1-tuned thresholds
+R4-P0-CHK-003,checkpoint_state,ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.state.json,AVAILABLE_VERIFIED,6de3216c5ad388fcdececc90b490fd1260c3df839b07f18cac2c6dea8111871d,true,DVC-tracked; epoch=51 best_f1=0.6801
+R4-P0-MLO-001,mlops_config,ml/mlops_config.json,AVAILABLE_VERIFIED,6192953c1af8f592895fbcd0ee973e00597cb1a9281d3401fc3453fe06dd7ee4,true,Single source of truth for inference API
+R4-P0-CFG-001,data_config,data_module/config.yaml,AVAILABLE_VERIFIED,543e37cc8ccb42a5f20889014cc3a64ad0b1370f75ed4e4f13ab61a6a9436b3b,true,Sources/pins/thresholds/pipeline settings
+R4-P0-EXP-001,export_manifest,data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/manifest.json,AVAILABLE_VERIFIED,142824d72277899f73c6b6797eae9665acea82f52b579113b1300997e2135008,true,22493 contracts 5 shards v9
+R4-P0-EXP-002,export_labels,data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/labels.parquet,AVAILABLE_VERIFIED,26e739b5d82ba512e5a1830817d09609216e2184b79cf4ca7ec2d62ef34e32b5,true,22493 rows 14 cols
+R4-P0-EXP-003,export_metadata,data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/metadata.parquet,AVAILABLE_VERIFIED,ca65aa695cb1f03242d9485c4ade0e6c250d92fd6a714f4fb21c4c53087f3a03,true,22493 rows 14 cols
+R4-P0-EXP-004,export_graphs,data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/graphs/,AVAILABLE_UNVERIFIED,,true,5 shards + shard_index.json (~1.3GB total)
+R4-P0-EXP-005,export_tokens,data_module/data/exports/sentinel-v3-smartbugs-2026-06-13/tokens/,AVAILABLE_UNVERIFIED,,true,5 shards + shard_index.json (~349MB total)
+R4-P0-SPL-001,split_manifest,data_module/data/splits/v3/split_manifest.json,AVAILABLE_VERIFIED,8b89c544871a6fec30a3489e6fbb2fad5c535dc92fb4e66399a5a3bac14e7b2e,true,seed=42 stratified 3036 dedup groups
+R4-P0-SPL-002,split_train,data_module/data/splits/v3/train.jsonl,AVAILABLE_VERIFIED,03f2a2376f630165d89615ef47a796ea01a015375313208b556d921dd7d6409b,true,18596 contracts
+R4-P0-SPL-003,split_val,data_module/data/splits/v3/val.jsonl,AVAILABLE_VERIFIED,cf9a7b45fabbad2e3581282f69d5adf4fa4d09eb88bce3721544956a01b7506f,true,1983 contracts
+R4-P0-SPL-004,split_test,data_module/data/splits/v3/test.jsonl,AVAILABLE_VERIFIED,b9bb4649283cc7ec1d39b6e4cee980140b1752aea1c1df69e4b17a498d6fd20c,true,1914 contracts
+R4-P0-SCH-001,graph_schema,ml/src/preprocessing/graph_schema.py,AVAILABLE_VERIFIED,7af67eb785cc9538bbefd02aaeadf88f3a0b7815fc356814597164f2ba3b0ea0,true,v9 NODE_FEATURE_DIM=12 NUM_NODE_TYPES=14 NUM_EDGE_TYPES=12
+R4-P0-MDL-001,model_architecture,ml/src/models/sentinel_model.py,AVAILABLE_VERIFIED,4b13c65ed0d40ae4aa71a1e1e373747e02598046c85948dea2d76956429d76d3,true,Architecture frozen (four_eye_v8)
+R4-P0-MDL-002,model_encoder,ml/src/models/gnn_encoder.py,AVAILABLE_UNVERIFIED,8a3cb530c12406adce0d668bc4d3ec4e5bf0acf8cfdd63cc1827ef9f7fdd2da7,true,Architecture frozen
+R4-P0-DRF-001,drift_baseline,ml/data/drift_baseline_run12.json,AVAILABLE_VERIFIED,73ad1e8447ca66b36b27ebe65760d1d4af53067a7ae61b8085a9aec5e5d1324d,true,4 stats x 500 synthetic samples
+R4-P0-CAL-001,calibration_artifact,ml/calibration/temperatures_run12.json,AVAILABLE_UNVERIFIED,8389edb13061f923876dfae1407a149b482cbfb200bf4a8fd5e20e2d453500d0,false,NOT loaded by inference API; explicit absence of active calibration sidecar
+R4-P0-XWK-001,crosswalk,data_module/sentinel_data/labeling/crosswalks/dive.yaml,AVAILABLE_VERIFIED,f1a8ca8d8135012eb240be6441fb8bb4b80cc8d8d7b6ddf4f101a91038d1da49,true,8 DASP classes -> 10-class mapping
+R4-P0-XWK-002,crosswalk,data_module/sentinel_data/labeling/crosswalks/solidifi.yaml,AVAILABLE_VERIFIED,cd2cbf11e6f1a73fafc435df08a4466e670be7080ded0a8e0e2fc566ab39000e,true,Injection types -> 10-class
+R4-P0-XWK-003,crosswalk,data_module/sentinel_data/labeling/crosswalks/smartbugs_curated.yaml,AVAILABLE_VERIFIED,711506948c553bf532fd4e07ee1ffa9efd60800a34cdabb1a3e0d67cbd300542,true,DASP -> 10-class direct
+R4-P0-XWK-004,crosswalk,data_module/sentinel_data/labeling/crosswalks/web3bugs.yaml,UNAVAILABLE,,false,Referenced in config.yaml but file does not exist
+R4-P0-XWK-005,crosswalk,data_module/sentinel_data/labeling/crosswalks/defihacklabs.yaml,AVAILABLE_UNVERIFIED,,false,Exists but source disabled (Foundry compile issue)
+R4-P0-LBL-001,source_labels,data_module/data/raw_staging/dive_labels/DIVE_Labels.csv,AVAILABLE_VERIFIED,a260946ec7741ca4212648a0568f419a32e7cac96c9c0dca1fe3d812bb43f029,true,22330 rows (DIVE original automated labels)
+R4-P0-LBL-002,merged_labels,data_module/data/labels/merged/,AVAILABLE_UNVERIFIED,,true,22493 .labels.json files (merger output)
+R4-P0-LBL-003,source_labels,data_module/data/labels/dive/,AVAILABLE_UNVERIFIED,,true,22073 .labels.json files
+R4-P0-LBL-004,source_labels,data_module/data/labels/solidifi/,AVAILABLE_UNVERIFIED,,true,283 .labels.json files
+R4-P0-LBL-005,source_labels,data_module/data/labels/smartbugs_curated/,AVAILABLE_UNVERIFIED,,true,137 .labels.json files
+R4-P0-EVD-001,dive_evidence,data_module/audit/2026-06-18_dive_crosswalk_sample_validation.md,AVAILABLE_VERIFIED,e2071d7b525db22ba98e10dd08eb422ee0f2cdddaa7959af9e4347a70c62a0d0,true,150-contract manual review (75 EB + 75 RE seed=42)
+R4-P0-EVD-002,dive_evidence,data_module/audit/2026-06-18_dive_slither_agreed_subset_validation.md,AVAILABLE_VERIFIED,32a0a84cc3f2acf120f6ed5a59b142499998143776097368f8883065ac2af0d9,true,175-contract second-round review (100 EB + 75 RE seed=7)
+R4-P0-EVD-003,dive_evidence,data_module/audit/2026-06-18_dive_externalbug_reentrancy_slither_corroboration.json,AVAILABLE_VERIFIED,01c22e50127b530614f7c6165e7ca97481ead96eafd615a2ae7f992e1a60aa3c,true,2MB tool corroboration (6804 EB agreed 8258 RE agreed)
+R4-P0-EVD-004,bccc_evidence,data_module/docs/legacy/bccc_deep_dive/Phase5_LabelVerification_2026-06-08/outputs/contracts_clean_v1.4.csv,AVAILABLE_VERIFIED,93ec9ec7011fe0851d67fff10dbd75777f71d05cba090500b12c3df071e2098a,true,BCCC verified labels v1.4
+R4-P0-EVD-005,bccc_evidence,data_module/docs/legacy/bccc_deep_dive/2026-06-08_bccc_deep_dive_00_overview.md,AVAILABLE_VERIFIED,a0ac01a9b1aa7b80b9ee1c9dd7bc638467360860118cb854818b10fd22ca1816,true,BCCC 5-phase deep dive overview
+R4-P0-EVD-006,smartbugs_evidence,data_module/data/verification/smartbugs_curated_recall_test/report.json,AVAILABLE_VERIFIED,6f97760897fa4c9363e441e505dde102fd18178dd94e345f4f7a059dea50138c,true,94.4% aggregate recall gate
+R4-P0-EVD-007,data_audit,data_module/2026-06-13_DATA_MODULE_AUDIT_v2_45pct_leakage_finding.md,AVAILABLE_VERIFIED,a8c1cde25f7928e607e0c83b1f60e2a16df330f83cba3b4cd27c39197fe7c405,true,45% leakage finding + DoS patch
+R4-P0-MLP-001,ml_processed_index,ml/data/processed/multilabel_index.csv,AVAILABLE_UNVERIFIED,,false,41577 rows (legacy v2-era index; not the active export)
+R4-P0-MLP-002,ml_cached_dataset,ml/data/cached_dataset_v9.pkl,AVAILABLE_UNVERIFIED,,false,Legacy paired cache (v2 export era)
+R4-P0-REP-001,representations_registry,data_module/data/representations/_version_registry.json,AVAILABLE_VERIFIED,8435a979329a685600ea2fdf9deb4e4c0e32b4d44a0ff50eabbb86b25f7b19cc,false,v9 schema v2.1-windowed-gcb extractor
+R4-P0-DDP-001,dedup_groups,data_module/data/dedup_groups_graph_hash.json,AVAILABLE_UNVERIFIED,,false,3MB graph-hash dedup groups
+R4-P0-BMK-001,benchmark_manifest,data_module/benchmarks/benchmark_v0.1_quickstart/tier_a_manifest.json,AVAILABLE_VERIFIED,dd627f7012087b54b81855ade0273e43629df7d3ce9cb55da61b4227d26cf34f,false,66-contract 5-tier OOD benchmark
