@@ -33,6 +33,27 @@ closed, zero malformed records, zero invalid artifacts, and zero unknown matrix 
   fail-closed feedback metadata.
 - No merge, push, deployment, live-chain write, key movement, or model promotion occurred.
 
+## How the R0 boundaries work
+
+R0 separates an analysis result from a verified on-chain claim. The gateway authenticates public
+mutation, while the analysis/MCP process has no signing key or broadcast path. Analysis produces a
+canonical submission record containing proof scope, policy decision, transaction state, eligibility,
+and any ineligibility reason. That same record is retained by the final report, gateway response,
+content-addressed persisted report, and feedback metadata.
+
+Legacy V2 artifacts may still be generated for compatibility, but their scope is always
+`legacy_proxy_only_unbound`. Metadata such as chain, round, or contract address does not turn V2 into
+an identity-bound proof. The containment policy therefore rejects every submission scope until R3
+implements and validates the real V3 circuit, verifier, signer, and governance boundary.
+
+DATA releases use a mandatory authenticated descriptor that commits the exact inventory and semantic
+manifest before unsafe loading. R0 evidence uses one committed probe bundle, verified before and after
+execution, against both the approved baseline and candidate. This makes “the test changed” and “the
+artifact changed” detectable rather than silently comparable.
+
+The core maintainer rule is simple: unavailable or unbound evidence may be useful diagnostically, but
+it must never be upgraded into successful, verified, or final evidence by fallback behavior.
+
 ## Validation command
 
 Run from the repository root:
