@@ -71,10 +71,10 @@ The expected exit code is zero and the report must contain `"complete": true`.
 
 ## Integration state
 
-R0 is formally closed and integrated into `main` through merge commits `50fb5c5b9`, `fb4f37e28`, and
-`8e2a32a0e`. The latter two commits contain the bounded post-merge correction: explicit process
-configuration now takes precedence over local dotenv values, and audit mock tests no longer depend on
-pytest collection order.
+R0 is formally closed and integrated into `main` at merge commit `c11daaf247d295f41bebcad9896d6d3163d06c36`.
+The merged branch includes the bounded integration corrections `da6923df9` and `ddaecbd6e`: explicit
+process configuration takes precedence over local dotenv values, and audit mock tests no longer
+depend on pytest collection order.
 
 The complete post-merge R0 verification is green: 134 AGENTS boundary/report tests, 46 transaction
 tests, 34 evidence-harness tests, and 33 DATA export tests (247 total, zero failures). The validator
