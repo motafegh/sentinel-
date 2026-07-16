@@ -1,0 +1,106 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "comparison_key": "694c453a51b58052887b247c71a87d5ea046b9daf6e8732ef2fd54a8c460eb2a",
+  "environment_manifest": {
+    "comparison_fingerprint": "719974d3e8b1d34256c9eee252c471871c172a88176895a5cc9d3f3ea34c9f86",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/final_candidate_5e45/environment_after.json",
+    "sha256": "9d595a6aba260745c03df2cbabb9f678c6c5e416b3ba742b1548adba7e6d09fc"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-16T13:33:24.935044+00:00",
+    "started_at": "2026-07-16T13:33:24.773850+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"keys=['chain_id', 'class_scores', 'contract_address', 'fusion_embedding_hash', 'operator_address', 'proof_scope', 'proxy_checkpoint_hash', 'round_id', 'signature', 'signature_reason', 'target_data_version', 'teacher_model_hash', 'timestamp']\", \"name\": \"provenance_manifest_has_teacher_model_hash\", \"passed\": true}, {\"detail\": \"proof_scope='legacy_proxy_only_unbound'\", \"name\": \"proof_scope_is_legacy_unbound\", \"passed\": true}, {\"detail\": \"chain_id=1\", \"name\": \"proof_identity_bound_to_chain\", \"passed\": true}, {\"detail\": \"round_id=42\", \"name\": \"proof_identity_bound_to_round\", \"passed\": true}, {\"detail\": \"contract_address='0x000000000000000000000000000000000000dEaD'\", \"name\": \"proof_identity_bound_to_contract\", \"passed\": true}, {\"detail\": \"signing key removed from MCP process \\u2014 policy-signer owns submission\", \"name\": \"no_operator_key_in_process\", \"passed\": true}, {\"detail\": \"V2 proof scope is legacy_proxy_only_unbound regardless of identity\", \"name\": \"v2_proof_scope_identical_across_identities\", \"passed\": true}, {\"detail\": \"A=1 B=5\", \"name\": \"cross_identity_different_chain_metadata\", \"passed\": true}, {\"detail\": \"identity fields change but proof scope stays unbound \\u2014 not crypto binding\", \"name\": \"cross_identity_same_unbound_scope\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "392b599d4a0cce3f4b0360f424901d0e5467ccc3d17fc8287a2da1b40da9ec7e"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-PROOF-IDENTITY",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "keys=['chain_id', 'class_scores', 'contract_address', 'fusion_embedding_hash', 'operator_address', 'proof_scope', 'proxy_checkpoint_hash', 'round_id', 'signature', 'signature_reason', 'target_data_version', 'teacher_model_hash', 'timestamp']",
+        "name": "provenance_manifest_has_teacher_model_hash",
+        "passed": true
+      },
+      {
+        "detail": "proof_scope='legacy_proxy_only_unbound'",
+        "name": "proof_scope_is_legacy_unbound",
+        "passed": true
+      },
+      {
+        "detail": "chain_id=1",
+        "name": "proof_identity_bound_to_chain",
+        "passed": true
+      },
+      {
+        "detail": "round_id=42",
+        "name": "proof_identity_bound_to_round",
+        "passed": true
+      },
+      {
+        "detail": "contract_address='0x000000000000000000000000000000000000dEaD'",
+        "name": "proof_identity_bound_to_contract",
+        "passed": true
+      },
+      {
+        "detail": "signing key removed from MCP process \u2014 policy-signer owns submission",
+        "name": "no_operator_key_in_process",
+        "passed": true
+      },
+      {
+        "detail": "V2 proof scope is legacy_proxy_only_unbound regardless of identity",
+        "name": "v2_proof_scope_identical_across_identities",
+        "passed": true
+      },
+      {
+        "detail": "A=1 B=5",
+        "name": "cross_identity_different_chain_metadata",
+        "passed": true
+      },
+      {
+        "detail": "identity fields change but proof scope stays unbound \u2014 not crypto binding",
+        "name": "cross_identity_same_unbound_scope",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{probe_bundle}/baseline_probes.py",
+      "proof-identity",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-proof-identity",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/probe_bundle/baseline_probes.py",
+      "proof-identity",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "probe_bundle_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "probe_bundle_sha256": "f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c",
+  "record_id": "R0-PROOF-IDENTITY:after:r0-proof-identity:5e45fbed7e7a",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "2",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}

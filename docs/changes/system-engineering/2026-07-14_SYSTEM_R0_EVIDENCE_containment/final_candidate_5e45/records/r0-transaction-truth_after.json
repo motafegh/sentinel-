@@ -1,0 +1,136 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "comparison_key": "763b2132e69a3bafebcc913e7a1ddee2033098cf3f32a8060ae2983ef6bd57a9",
+  "environment_manifest": {
+    "comparison_fingerprint": "719974d3e8b1d34256c9eee252c471871c172a88176895a5cc9d3f3ea34c9f86",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/final_candidate_5e45/environment_after.json",
+    "sha256": "9d595a6aba260745c03df2cbabb9f678c6c5e416b3ba742b1548adba7e6d09fc"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-16T13:33:25.533519+00:00",
+    "started_at": "2026-07-16T13:33:25.337333+00:00",
+    "stderr": "2026-07-16 17:03:25.501 | ERROR    | src.mcp.servers.audit._submit:_run_submit_inner:641 - submit_audit [ml_api]: /fusion-embedding failed: HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /fusion-embedding (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8001): Failed to establish a new connection: [Errno 111] Connection refused\"))\n",
+    "stderr_sha256": "639a266eb48d00cbd2e85591b4c666290c81d15d9e6761d996706d6db4670bc4",
+    "stdout": "{\"assertions\": [{\"detail\": \"keys=['chain_id', 'class_score_felts', 'class_scores', 'failed_step', 'finality_ineligible_reason', 'idempotency_key', 'model_hash', 'proof_hash', 'proof_scope', 'reason', 'round_id', 'status', 'target_data_version', 'tx_hash', 'tx_lifecycle', 'verified_audit_eligible']\", \"name\": \"submit_pipeline_returns_dict\", \"passed\": true}, {\"detail\": \"proof_scope='none'\", \"name\": \"proof_scope_is_unbound_or_none\", \"passed\": true}, {\"detail\": \"status='failed'\", \"name\": \"v2_not_submitted_or_confirmed\", \"passed\": true}, {\"detail\": \"eligible=False reason='proof_scope_not_identity_bound'\", \"name\": \"verified_audit_ineligible\", \"passed\": true}, {\"detail\": \"reason='proof_scope_not_identity_bound'\", \"name\": \"ineligible_reason_is_proof_scope\", \"passed\": true}, {\"detail\": \"available=True\", \"name\": \"behavioral_transaction_engine_available\", \"passed\": true}, {\"detail\": \"state=not_requested unchanged=True\", \"name\": \"forbidden_helper_is_failure_atomic\", \"passed\": true}, {\"detail\": \"state=confirmed confirmations=3\", \"name\": \"confirmation_threshold_measured\", \"passed\": true}, {\"detail\": \"replaced_by=0x0000000000000000000000000000000000000000000000000000000000000002 new_state=confirmed\", \"name\": \"replacement_linked_mined_and_confirmed\", \"passed\": true}, {\"detail\": \"rolled=['0x0000000000000000000000000000000000000000000000000000000000000001'] clean_receipt=True state=confirmed\", \"name\": \"pending_reorg_is_truthful_and_replayable\", \"passed\": true}, {\"detail\": \"first=0x0000000000000000000000000000000000000000000000000000000000000001 second=0x0000000000000000000000000000000000000000000000000000000000000002\", \"name\": \"idempotency_binds_complete_request_identity\", \"passed\": true}, {\"detail\": \"decision=policy_rejected reason=proof_scope_not_identity_bound\", \"name\": \"policy_rejects_v2_unbound\", \"passed\": true}, {\"detail\": \"reason=proof_scope_not_identity_bound\", \"name\": \"policy_rejection_reason_is_proof_scope\", \"passed\": true}, {\"detail\": \"decision=policy_rejected reason=no_proof_scope\", \"name\": \"policy_rejects_no_proof_scope\", \"passed\": true}, {\"detail\": \"decision=policy_rejected reason=proof_scope_not_accepted:typed_identity_bound_v3\", \"name\": \"policy_rejects_all_scopes_including_v3\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "65f118e59511aa43cd0738497131623fee55bccd0e7f2a2e497960b9e3d93f3c"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-TRANSACTION-TRUTH",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "keys=['chain_id', 'class_score_felts', 'class_scores', 'failed_step', 'finality_ineligible_reason', 'idempotency_key', 'model_hash', 'proof_hash', 'proof_scope', 'reason', 'round_id', 'status', 'target_data_version', 'tx_hash', 'tx_lifecycle', 'verified_audit_eligible']",
+        "name": "submit_pipeline_returns_dict",
+        "passed": true
+      },
+      {
+        "detail": "proof_scope='none'",
+        "name": "proof_scope_is_unbound_or_none",
+        "passed": true
+      },
+      {
+        "detail": "status='failed'",
+        "name": "v2_not_submitted_or_confirmed",
+        "passed": true
+      },
+      {
+        "detail": "eligible=False reason='proof_scope_not_identity_bound'",
+        "name": "verified_audit_ineligible",
+        "passed": true
+      },
+      {
+        "detail": "reason='proof_scope_not_identity_bound'",
+        "name": "ineligible_reason_is_proof_scope",
+        "passed": true
+      },
+      {
+        "detail": "available=True",
+        "name": "behavioral_transaction_engine_available",
+        "passed": true
+      },
+      {
+        "detail": "state=not_requested unchanged=True",
+        "name": "forbidden_helper_is_failure_atomic",
+        "passed": true
+      },
+      {
+        "detail": "state=confirmed confirmations=3",
+        "name": "confirmation_threshold_measured",
+        "passed": true
+      },
+      {
+        "detail": "replaced_by=0x0000000000000000000000000000000000000000000000000000000000000002 new_state=confirmed",
+        "name": "replacement_linked_mined_and_confirmed",
+        "passed": true
+      },
+      {
+        "detail": "rolled=['0x0000000000000000000000000000000000000000000000000000000000000001'] clean_receipt=True state=confirmed",
+        "name": "pending_reorg_is_truthful_and_replayable",
+        "passed": true
+      },
+      {
+        "detail": "first=0x0000000000000000000000000000000000000000000000000000000000000001 second=0x0000000000000000000000000000000000000000000000000000000000000002",
+        "name": "idempotency_binds_complete_request_identity",
+        "passed": true
+      },
+      {
+        "detail": "decision=policy_rejected reason=proof_scope_not_identity_bound",
+        "name": "policy_rejects_v2_unbound",
+        "passed": true
+      },
+      {
+        "detail": "reason=proof_scope_not_identity_bound",
+        "name": "policy_rejection_reason_is_proof_scope",
+        "passed": true
+      },
+      {
+        "detail": "decision=policy_rejected reason=no_proof_scope",
+        "name": "policy_rejects_no_proof_scope",
+        "passed": true
+      },
+      {
+        "detail": "decision=policy_rejected reason=proof_scope_not_accepted:typed_identity_bound_v3",
+        "name": "policy_rejects_all_scopes_including_v3",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{probe_bundle}/baseline_probes.py",
+      "transaction-truth",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-transaction-truth",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/probe_bundle/baseline_probes.py",
+      "transaction-truth",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "probe_bundle_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "probe_bundle_sha256": "f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c",
+  "record_id": "R0-TRANSACTION-TRUTH:after:r0-transaction-truth:5e45fbed7e7a",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "2",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}
