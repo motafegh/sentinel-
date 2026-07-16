@@ -11,4 +11,7 @@
 | R4-R007 | Risk | GasException has zero support in the active split (0 positives in train/val/test). | Medium | Phase 0 finding F0.5; class is effectively unsupported. DATA vNext must address or explicitly disable. | OPEN | G5-G9 |
 | R4-R008 | Risk | 836 contracts have labels but no representations (cannot be loaded by ML). | Low | Phase 0 finding F0.8; recorded in export manifest n_contracts_with_reps=21657. | OPEN | G7 |
 | R4-R009 | Risk | locked_files.sha256 is stale (4/5 source file hashes do not match). | Low | Phase 0 finding F0.6; stale lock is NOT a protected R4 artifact. Current on-disk hashes are the baseline. | OPEN | — |
-| R4-B001 | Blocker | Active local DATA/ML bundle is not yet frozen. | Critical | Execute Phase 0. | CLOSED | G0 |
+| R4-R010 | Risk | 2,635-contract discrepancy between Run12 training population (19,858) and current export (22,493). Split version used by Run12 is unknown. | High | Query MLflow for Run12 export hash; determine if export was regenerated after training. UNRESOLVED at G1. | OPEN | G1-G7 |
+| R4-R011 | Risk | BCCC v1.4 verified labels exist but are DEFERRED in config; 90%+ label reduction for Reentrancy/CTU/DoS. | High | Config says DEFERRED; no pipeline change needed yet. Evidence exists for Phase 2 when KEEP/DROP decisions are made. | OPEN | G2 |
+| R4-R012 | Risk | DIVE EB TP count discrepancy: per-table shows 3 TP / 72 FP, tally claims 4 TP / 71 FP (off by 1). | Low | Verify against scratch file before DROP/KEEP decision. | OPEN | G2 |
+| R4-R013 | Risk | Benchmark manifest has 74 entries but documented as 66. Contamination risk if discrepancy indicates duplicate/overlap. | Low | Update documentation to match actual count; verify no duplicates. | OPEN | G7 |

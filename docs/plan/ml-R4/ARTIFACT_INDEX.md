@@ -30,6 +30,17 @@
 | R4-P0-EVD-006 | 0 | smartbugs_evidence | data_module/data/verification/smartbugs_curated_recall_test/report.json | 6f97760897fa4c9363e441e505dde102fd18178dd94e345f4f7a059dea50138c | 4b5bd333c | Historical | AVAILABLE_VERIFIED | YES | 94.4% recall gate |
 | R4-P0-EVD-007 | 0 | data_audit | data_module/2026-06-13_DATA_MODULE_AUDIT_v2_45pct_leakage_finding.md | a8c1cde25f7928e607e0c83b1f60e2a16df330f83cba3b4cd27c39197fe7c405 | 4b5bd333c | Historical | AVAILABLE_VERIFIED | YES | 45% leakage + DoS patch |
 
+## Phase 1 artifacts
+
+| Artifact ID | Phase | Type | Path/URI | SHA-256 | Source commit | Historical/New | Availability | Protected | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| R4-P1-FND-001 | 1 | findings | findings/02A_dive_previous_evidence_recovery.md | — | 6febb4283 | New | AVAILABLE | NO | DIVE evidence recovery report |
+| R4-P1-FND-002 | 1 | findings | findings/02B_bccc_previous_evidence_recovery.md | — | 6febb4283 | New | AVAILABLE | NO | BCCC evidence recovery report |
+| R4-P1-FND-003 | 1 | findings | findings/02C_other_sources_and_manual_evidence_recovery.md | — | 6febb4283 | New | AVAILABLE | NO | Other sources evidence recovery |
+| R4-P1-FND-004 | 1 | findings | findings/02D_model_run_and_export_lineage.md | — | 6febb4283 | New | AVAILABLE | NO | Run12 lineage investigation |
+| R4-P1-FND-005 | 1 | findings | findings/02_previous_evidence_recovery_summary.md | — | 6febb4283 | New | AVAILABLE | NO | Phase 1 summary + G1 report |
+| R4-P1-MAN-001 | 1 | evidence_inventory | manifests/evidence_inventory.jsonl | — | 6febb4283 | New | AVAILABLE | NO | 27 structured evidence items |
+
 ## Availability
 
 - `AVAILABLE_VERIFIED`
