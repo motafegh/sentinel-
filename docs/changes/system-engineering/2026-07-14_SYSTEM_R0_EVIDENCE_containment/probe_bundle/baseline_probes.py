@@ -11,8 +11,6 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-import torch
-
 
 def _assertion(name: str, passed: bool, detail: str) -> dict[str, Any]:
     return {"name": name, "passed": passed, "detail": detail}
@@ -332,10 +330,18 @@ def probe_data_release(workspace: Path) -> dict[str, Any]:
         (export_dir / "manifest.json").write_text(manifest_json)
 
         sys.path.insert(0, str(workspace / "data_module"))
-        from sentinel_data.export.release_descriptor import (
-            write_release_descriptor,
-            verify_release,
-        )
+        try:
+            from sentinel_data.export.release_descriptor import (
+                write_release_descriptor,
+                verify_release,
+            )
+        except (ImportError, ModuleNotFoundError) as exc:
+            assertions.append(_assertion(
+                "release_descriptor_available",
+                False,
+                f"{type(exc).__name__}: {exc}",
+            ))
+            return _result(False, assertions)
 
         desc = write_release_descriptor(
             export_dir=export_dir,
@@ -398,6 +404,7 @@ def probe_data_release(workspace: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as td:
         import pickle
         import os
+        import torch
         sys.path.insert(0, str(workspace / "data_module"))
         from sentinel_data.export.pickle_safe import safe_loads, safe_torch_load
 
@@ -575,18 +582,25 @@ def probe_proof_identity(workspace: Path) -> dict[str, Any]:
 
     from src.mcp.servers.audit._submit import build_provenance_manifest
 
-    manifest = build_provenance_manifest(
-        teacher_model_hash="c" * 64,
-        proxy_checkpoint_hash="d" * 64,
-        fusion_embedding=[0.1] * 128,
-        class_scores=[0.2] * 10,
-        operator_address="0x000000000000000000000000000000000000dEaD",
-        chain_id=1,
-        round_id=42,
-        contract_address="0x000000000000000000000000000000000000dEaD",
-        target_data_version="v2026.1",
-        proof_scope="legacy_proxy_only_unbound",
-    )
+    try:
+        manifest = build_provenance_manifest(
+            teacher_model_hash="c" * 64,
+            proxy_checkpoint_hash="d" * 64,
+            fusion_embedding=[0.1] * 128,
+            class_scores=[0.2] * 10,
+            operator_address="0x000000000000000000000000000000000000dEaD",
+            chain_id=1,
+            round_id=42,
+            contract_address="0x000000000000000000000000000000000000dEaD",
+            target_data_version="v2026.1",
+            proof_scope="legacy_proxy_only_unbound",
+        )
+    except TypeError as exc:
+        return _result(False, [_assertion(
+            "provenance_manifest_accepts_claim_identity",
+            False,
+            f"{type(exc).__name__}: {exc}",
+        )])
 
     assertions.append(_assertion(
         "provenance_manifest_has_teacher_model_hash",
@@ -667,12 +681,7 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
     if submit_err:
         return _result(False, [_assertion("submit_module_importable", False, submit_err)])
 
-    from src.mcp.servers.audit._submit import (
-        _run_submit,
-        _estimate_gas,
-        TxLifecycle,
-        TxState,
-    )
+    _run_submit = submit_mod._run_submit
 
     try:
         result = _run_submit(
@@ -725,35 +734,95 @@ def probe_transaction_truth(workspace: Path) -> dict[str, Any]:
         f"reason={result.get('finality_ineligible_reason')!r}",
     ))
 
-    # R0-F4: transaction state machine
-    all_states = set(s for s in TxState)
-    assert len(all_states) >= 10, f"TxState must have 11 values, got {len(all_states)}"
+    required = ("TxEngine", "TxLifecycle", "TxState", "FakeChain")
+    available = all(hasattr(submit_mod, name) for name in required)
     assertions.append(_assertion(
-        "tx_state_machine_has_all_required_states",
-        all(s in all_states for s in [TxState.PENDING, TxState.POLICY_REJECTED,
-              TxState.PREPARED, TxState.SIGNED, TxState.BROADCAST,
-              TxState.CONFIRMED, TxState.REVERTED, TxState.FAILED]),
-        f"states={sorted(s.value for s in all_states)}",
+        "behavioral_transaction_engine_available",
+        available,
+        f"available={available}",
+    ))
+    if not available:
+        return _result(False, assertions)
+
+    TxEngine = submit_mod.TxEngine
+    TxState = submit_mod.TxState
+    FakeChain = submit_mod.FakeChain
+
+    lifecycle = TxEngine()
+    before = lifecycle.snapshot_state()
+    try:
+        lifecycle.confirm(1, 80_000, chain_height=1)
+        atomic = False
+    except ValueError:
+        atomic = lifecycle.snapshot_state() == before
+    assertions.append(_assertion(
+        "forbidden_helper_is_failure_atomic",
+        atomic,
+        f"state={lifecycle.state.value} unchanged={lifecycle.snapshot_state() == before}",
     ))
 
-    lc = TxLifecycle(tx_hash="0xabc")
+    threshold_chain = FakeChain(confirm_blocks=3)
+    threshold_tx = TxEngine(); threshold_tx.prepare(); threshold_tx.sign()
+    threshold_hash = threshold_chain.send(threshold_tx).tx_hash
+    threshold_chain.mine_blocks(2)
+    try:
+        threshold_chain.confirm_tx(threshold_hash)
+        threshold_enforced = False
+    except ValueError:
+        threshold_chain.mine_block()
+        threshold_enforced = (
+            threshold_chain.confirm_tx(threshold_hash).confirmations == 3
+        )
     assertions.append(_assertion(
-        "tx_default_is_pending",
-        lc.state == TxState.PENDING,
-        f"state={lc.state.value}",
+        "confirmation_threshold_measured",
+        threshold_enforced,
+        f"state={threshold_tx.state.value} confirmations={threshold_tx.lifecycle.confirmations}",
     ))
-    lc.state = TxState.POLICY_REJECTED
-    lc.error = "proof_scope_not_identity_bound"
+
+    replacement_chain = FakeChain(confirm_blocks=1)
+    old_tx = TxEngine(); old_tx.prepare(); old_tx.sign()
+    old_hash = replacement_chain.send(old_tx).tx_hash
+    new_tx = TxEngine(); new_tx.prepare(); new_tx.sign()
+    new_hash, _ = replacement_chain.replace_tx(old_hash, new_tx)
+    replacement_chain.mine_block(); replacement_chain.confirm_tx(new_hash)
     assertions.append(_assertion(
-        "tx_policy_rejected_storable",
-        lc.state == TxState.POLICY_REJECTED and lc.error is not None,
-        f"state={lc.state.value} error={lc.error}",
+        "replacement_linked_mined_and_confirmed",
+        old_tx.lifecycle.replaced_by == new_hash and new_tx.state == TxState.CONFIRMED,
+        f"replaced_by={old_tx.lifecycle.replaced_by} new_state={new_tx.state.value}",
     ))
-    rlc = TxLifecycle(state=TxState.REVERTED, receipt_status=0, error="reverted on-chain")
+
+    reorg_chain = FakeChain(confirm_blocks=3)
+    reorg_tx = TxEngine(); reorg_tx.prepare(); reorg_tx.sign()
+    reorg_hash = reorg_chain.send(reorg_tx).tx_hash
+    reorg_chain.mine_block()
+    rolled = reorg_chain.reorg(1)
+    clean_receipt = (
+        reorg_tx.lifecycle.receipt_status is None
+        and reorg_tx.lifecycle.confirmations == 0
+        and reorg_tx.lifecycle.block_number is None
+    )
+    reorg_chain.mine_blocks(3); reorg_chain.confirm_tx(reorg_hash)
     assertions.append(_assertion(
-        "tx_reverted_zero_receipt_status",
-        rlc.state == TxState.REVERTED and rlc.receipt_status == 0,
-        f"state={rlc.state.value} receipt_status={rlc.receipt_status}",
+        "pending_reorg_is_truthful_and_replayable",
+        rolled == [reorg_hash] and clean_receipt and reorg_tx.state == TxState.CONFIRMED,
+        f"rolled={rolled} clean_receipt={clean_receipt} state={reorg_tx.state.value}",
+    ))
+
+    identity_chain = FakeChain()
+    first = TxEngine(); first.prepare(); first.sign()
+    first_hash = identity_chain.send(
+        first, idempotency_key="same", chain_id=1, round_id=1,
+        address="0x1", model_hash="a" * 64, request_digest="b" * 64,
+    ).tx_hash
+    second = TxEngine(); second.prepare(); second.sign()
+    second_hash = identity_chain.send(
+        second, idempotency_key="same", chain_id=1, round_id=2,
+        address="0x1", model_hash="a" * 64, request_digest="b" * 64,
+    ).tx_hash
+    assertions.append(_assertion(
+        "idempotency_binds_complete_request_identity",
+        first_hash != second_hash,
+        f"first={first_hash} second={second_hash}",
     ))
 
     # R0-F3: policy-signer boundary — V2/unbound proofs must be rejected

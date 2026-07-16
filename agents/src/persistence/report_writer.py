@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +17,7 @@ from .paths import is_valid_job_id, job_report_path
 REPORT_PERSISTENCE_TOOL_KEY = "report_persistence"
 HOTSPOT_PERSISTENCE_TOOL_KEY = "hotspot_persistence"
 PERSISTENCE_TOOL_KEY = REPORT_PERSISTENCE_TOOL_KEY
+_REPORT_PUBLISH_LOCK = threading.Lock()
 
 
 def _atomic_write(path: Path, content: str, encoding: str = "utf-8") -> None:
@@ -76,7 +79,27 @@ def persist_report(
         published_tool_status = dict(report.get("tool_status", {}) or {})
         published_tool_status[REPORT_PERSISTENCE_TOOL_KEY] = success_status
         published_report["tool_status"] = published_tool_status
-        _atomic_write(path, json.dumps(published_report, indent=2))
+        published_bytes = (
+            json.dumps(published_report, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+        digest = hashlib.sha256(published_bytes).hexdigest()
+        cas_root = (root.resolve() / ".cas" / "sha256").resolve()
+        if not cas_root.is_relative_to(root.resolve()):
+            raise ValueError("report CAS path escapes persistence root")
+        cas_path = cas_root / f"{digest}.json"
+        ref_path = job_report_path(root, job_id, "report.ref.json")
+        with _REPORT_PUBLISH_LOCK:
+            _atomic_write(cas_path, published_bytes.decode("utf-8"))
+            _atomic_write(path, published_bytes.decode("utf-8"))
+            _atomic_write(
+                ref_path,
+                json.dumps(
+                    {"schema_version": "1", "algorithm": "sha256", "digest": digest},
+                    sort_keys=True,
+                ) + "\n",
+            )
+        success_status["cas_sha256"] = digest
+        success_status["cas_path"] = str(cas_path.relative_to(root.resolve()))
         logger.debug("persist_report | written → {}", path)
         return {REPORT_PERSISTENCE_TOOL_KEY: success_status}
     except Exception as exc:

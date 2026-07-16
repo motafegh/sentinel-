@@ -26,6 +26,7 @@ from scripts.r0_evidence.model import (
     canonical_json_bytes,
     load_evidence_artifacts,
     redact_text,
+    probe_bundle_digest,
     sha256_bytes,
     sha256_file,
     validate_coverage,
@@ -48,6 +49,9 @@ def _verify_probe_bundle(bundle_path: Path, expected_sha256: str | None = None) 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("kind") != "r0_probe_bundle_manifest":
         raise ValueError("invalid probe bundle manifest kind")
+    entrypoint = manifest.get("entrypoint")
+    if not isinstance(entrypoint, str) or entrypoint not in manifest.get("files", {}):
+        raise ValueError("probe bundle entrypoint must name a manifested file")
 
     for rel_path, expected in manifest.get("files", {}).items():
         real = bundle / rel_path
@@ -64,8 +68,7 @@ def _verify_probe_bundle(bundle_path: Path, expected_sha256: str | None = None) 
 
     # Aggregate digest = SHA-256 of canonical (compact, sorted) JSON bytes
     # Same algorithm as the bundle generator: json.dumps(manifest, sort_keys=True, separators=(",", ":"))
-    canonical_manifest = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
-    aggregate = sha256_bytes(canonical_manifest.encode())
+    aggregate = probe_bundle_digest(manifest)
     digest_path = bundle / "aggregate_digest.txt"
     if digest_path.is_file():
         stored = digest_path.read_text().strip()
@@ -76,6 +79,32 @@ def _verify_probe_bundle(bundle_path: Path, expected_sha256: str | None = None) 
         raise ValueError(f"probe bundle sha256 does not match expected: expected={expected_sha256[:16]} actual={aggregate[:16]}")
 
     return aggregate
+
+
+def _probe_bundle_commit(bundle_path: Path) -> str:
+    """Return the last Git commit that contains the complete clean bundle."""
+    bundle = bundle_path.resolve()
+    top = Path(
+        subprocess.check_output(
+            ["git", "-C", str(bundle), "rev-parse", "--show-toplevel"], text=True
+        ).strip()
+    ).resolve()
+    paths = [bundle / "manifest.json", bundle / "aggregate_digest.txt"]
+    manifest = json.loads(paths[0].read_text(encoding="utf-8"))
+    paths.extend(bundle / relative for relative in manifest["files"])
+    relatives = [str(path.resolve().relative_to(top)) for path in paths]
+    dirty = subprocess.check_output(
+        ["git", "-C", str(top), "status", "--porcelain", "--", *relatives], text=True
+    ).strip()
+    if dirty:
+        raise ValueError("probe bundle contains uncommitted changes")
+    commit = subprocess.check_output(
+        ["git", "-C", str(top), "log", "-1", "--format=%H", "--", *relatives],
+        text=True,
+    ).strip()
+    if not _FULL_GIT_SHA.fullmatch(commit):
+        raise ValueError("probe bundle commit could not be resolved")
+    return commit
 
 
 def _utc_now() -> str:
@@ -220,7 +249,9 @@ def capture_probe(
     environment_manifest_path: Path,
     output: Path,
     variables: dict[str, str],
-    probe_bundle_path: Path | None = None,
+    probe_bundle_path: Path,
+    expected_probe_bundle_sha256: str,
+    expected_probe_bundle_commit: str,
 ) -> dict[str, Any]:
     manifest = json.loads(command_manifest_path.read_text(encoding="utf-8"))
     manifest_errors = validate_command_manifest(manifest)
@@ -254,17 +285,37 @@ def capture_probe(
     if current_commit != environment.get("workspace_commit") or current_dirty:
         raise ValueError("Workspace changed after the environment manifest was created")
 
-    _verify_command_fixtures(manifest, variables)
     verify_runtime_bindings(manifest, environment, variables)
 
-    # R0-F1: verify probe bundle integrity before capture
-    probe_bundle_digest: str | None = None
-    if probe_bundle_path:
-        probe_bundle_digest = _verify_probe_bundle(probe_bundle_path)
-        logger.info(f"Probe bundle verified: digest={probe_bundle_digest[:16]}")
+    probe_bundle_path = probe_bundle_path.resolve()
+    probe_bundle_digest = _verify_probe_bundle(
+        probe_bundle_path, expected_sha256=expected_probe_bundle_sha256
+    )
+    probe_bundle_commit = _probe_bundle_commit(probe_bundle_path)
+    if probe_bundle_commit != expected_probe_bundle_commit:
+        raise ValueError(
+            "probe bundle commit does not match expected: "
+            f"expected={expected_probe_bundle_commit[:12]} actual={probe_bundle_commit[:12]}"
+        )
+    logger.info(
+        "Probe bundle verified: digest={} commit={}",
+        probe_bundle_digest[:16],
+        probe_bundle_commit[:12],
+    )
 
-    substitutions = {"workspace": str(workspace), "python": sys.executable, **variables}
+    fixture_variables = {**variables, "probe_bundle": str(probe_bundle_path)}
+    _verify_command_fixtures(manifest, fixture_variables)
+    substitutions = {
+        "workspace": str(workspace),
+        "probe_bundle": str(probe_bundle_path),
+        "python": sys.executable,
+        **variables,
+    }
     argv = [_render_command_part(part, substitutions) for part in probe["argv"]]
+    bundle_manifest = json.loads((probe_bundle_path / "manifest.json").read_text())
+    expected_entrypoint = (probe_bundle_path / bundle_manifest["entrypoint"]).resolve()
+    if len(argv) < 2 or Path(argv[1]).resolve() != expected_entrypoint:
+        raise ValueError("probe command must execute the verified bundle entrypoint")
     cwd = (workspace / probe.get("cwd", ".")).resolve()
     if not cwd.is_relative_to(workspace) or not cwd.is_dir():
         raise ValueError("Probe cwd must be an existing directory inside the workspace")
@@ -280,6 +331,12 @@ def capture_probe(
             check=False,
         )
     finished_at = _utc_now()
+    post_digest = _verify_probe_bundle(
+        probe_bundle_path, expected_sha256=expected_probe_bundle_sha256
+    )
+    post_commit = _probe_bundle_commit(probe_bundle_path)
+    if post_digest != probe_bundle_digest or post_commit != probe_bundle_commit:
+        raise ValueError("probe bundle changed during execution")
     stdout = redact_text(completed.stdout, workspace=workspace)
     stderr = redact_text(completed.stderr, workspace=workspace)
 
@@ -326,13 +383,15 @@ def capture_probe(
             **probe.get("fixture_sha256", {}),
         },
         "environment_fingerprint": environment["comparison_fingerprint"],
+        "probe_bundle_sha256": probe_bundle_digest,
+        "probe_bundle_commit": probe_bundle_commit,
     }
     comparison_key = sha256_bytes(canonical_json_bytes(comparison_material))
     candidate_commit = current_commit if phase == "after" else None
 
     evidence_commit = candidate_commit or manifest["baseline_commit"]
     record = {
-        "schema_version": "1",
+        "schema_version": "2",
         "kind": "r0_evidence_record",
         "record_id": (f"{probe['matrix_row_id']}:{phase}:{probe_id}:{evidence_commit[:12]}"),
         "matrix_row_id": probe["matrix_row_id"],
@@ -341,6 +400,7 @@ def capture_probe(
         "candidate_commit": candidate_commit,
         "comparison_key": comparison_key,
         "probe_bundle_sha256": probe_bundle_digest,
+        "probe_bundle_commit": probe_bundle_commit,
         "probe": {
             "probe_id": probe["probe_id"],
             "contract_version": probe["contract_version"],
@@ -404,14 +464,16 @@ def main(argv: list[str] | None = None) -> int:
     capture_parser.add_argument("--environment-manifest", type=Path, required=True)
     capture_parser.add_argument("--output", type=Path, required=True)
     capture_parser.add_argument("--var", action="append", default=[])
-    capture_parser.add_argument("--probe-bundle", type=Path)
+    capture_parser.add_argument("--probe-bundle", type=Path, required=True)
+    capture_parser.add_argument("--expected-probe-bundle-sha256", required=True)
+    capture_parser.add_argument("--expected-probe-bundle-commit", required=True)
 
     validate_parser = subparsers.add_parser("validate")
     validate_parser.add_argument("--evidence-dir", type=Path, required=True)
     validate_parser.add_argument("--output", type=Path)
     validate_parser.add_argument("--expected-baseline")
     validate_parser.add_argument("--expected-candidate")
-    validate_parser.add_argument("--expected-probe-bundle")
+    validate_parser.add_argument("--expected-probe-bundle-commit")
     validate_parser.add_argument("--expected-probe-bundle-sha256")
 
     args = parser.parse_args(argv)
@@ -433,6 +495,8 @@ def main(argv: list[str] | None = None) -> int:
             output=args.output,
             variables=_parse_variables(args.var),
             probe_bundle_path=args.probe_bundle,
+            expected_probe_bundle_sha256=args.expected_probe_bundle_sha256,
+            expected_probe_bundle_commit=args.expected_probe_bundle_commit,
         )
         print(json.dumps(record["outcome"], sort_keys=True))
         return 0
@@ -443,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
         invalid_artifacts=invalid_artifacts,
         expected_baseline=args.expected_baseline,
         expected_candidate=args.expected_candidate,
-        expected_probe_bundle=args.expected_probe_bundle,
+        expected_probe_bundle_commit=args.expected_probe_bundle_commit,
         expected_probe_bundle_sha256=args.expected_probe_bundle_sha256,
     )
     if args.output:

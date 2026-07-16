@@ -18,6 +18,7 @@ from src.contracts.execution import (
     require_eligible_payload,
     status_allows_evidence,
 )
+from src.contracts.submission import normalize_submission
 from src.ingestion.pipeline import REPORTS_DIR
 from src.orchestration.nodes._helpers import _llm_enabled
 from src.orchestration.routing import compute_overall_verdict, prob_to_severity
@@ -457,6 +458,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         "path_taken": path_taken,
         "tool_status": tool_status,
         "finality": finality,
+        "submission": normalize_submission(state.get("submission_result")),
         "security": {"injection_detections": injection_matches},
         "model_provenance": {
             "model_hash": eligible_model_hash,

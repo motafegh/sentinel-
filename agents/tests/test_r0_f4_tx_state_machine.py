@@ -155,6 +155,37 @@ class TestReplacementLifecycle:
 
 
 class TestReorgBehavior:
+    def test_pending_receipt_orphaned_without_crash(self):
+        chain = FakeChain(confirm_blocks=3)
+        e = TxEngine(); e.prepare(); e.sign()
+        tx_hash = chain.send(e).tx_hash
+        chain.mine_block()
+        assert e.state == TxState.PENDING
+        assert chain.reorg(depth=1) == [tx_hash]
+        assert e.state == TxState.BROADCAST
+        assert e.lifecycle.block_number is None
+        assert e.lifecycle.receipt_status is None
+
+    def test_reorg_clears_orphaned_receipt_truth(self):
+        chain = FakeChain(confirm_blocks=1)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e); chain.mine_block(); chain.confirm_tx(e.lifecycle.tx_hash)
+        chain.reorg(depth=1)
+        assert e.state == TxState.BROADCAST
+        assert e.lifecycle.receipt_status is None
+        assert e.lifecycle.confirmations == 0
+        assert e.lifecycle.gas_used is None
+        assert e.lifecycle.block_number is None
+
+    def test_reorg_reduces_finality_for_still_included_receipt(self):
+        chain = FakeChain(confirm_blocks=3)
+        e = TxEngine(); e.prepare(); e.sign()
+        chain.send(e); chain.mine_blocks(3); chain.confirm_tx(e.lifecycle.tx_hash)
+        chain.reorg(depth=1)
+        assert e.state == TxState.PENDING
+        assert e.lifecycle.receipt_status == 1
+        assert e.lifecycle.confirmations == 2
+
     def test_reorg_replayable(self):
         chain = FakeChain(confirm_blocks=1)
         e = TxEngine(); e.prepare(); e.sign()
@@ -230,6 +261,22 @@ class TestReorgBehavior:
 
 
 class TestIdempotencyBinding:
+    def test_round_id_is_bound(self):
+        chain = FakeChain()
+        e1 = TxEngine(); e1.prepare(); e1.sign()
+        first = chain.send(e1, idempotency_key="ik", round_id=1)
+        e2 = TxEngine(); e2.prepare(); e2.sign()
+        second = chain.send(e2, idempotency_key="ik", round_id=2)
+        assert first.tx_hash != second.tx_hash
+
+    def test_request_digest_is_bound(self):
+        chain = FakeChain()
+        e1 = TxEngine(); e1.prepare(); e1.sign()
+        first = chain.send(e1, idempotency_key="ik", request_digest="a" * 64)
+        e2 = TxEngine(); e2.prepare(); e2.sign()
+        second = chain.send(e2, idempotency_key="ik", request_digest="b" * 64)
+        assert first.tx_hash != second.tx_hash
+
     def test_full_model_hash_not_truncated(self):
         chain = FakeChain()
         e1 = TxEngine(); e1.prepare(); e1.sign()
@@ -358,13 +405,29 @@ class TestStateMachineEnforcement:
     ])
     def test_helper_from_forbidden_state_raises(self, terminal_state, method, args):
         e = self._at(terminal_state)
+        before = e.snapshot_state()
         with pytest.raises(ValueError, match="invalid transition"):
             getattr(e, method)(*args)
+        assert e.snapshot_state() == before
 
     def test_confirm_from_broadcast_raises(self):
         e = self._at(TxState.BROADCAST)
+        before = e.snapshot_state()
         with pytest.raises(ValueError):
             e.confirm(1, 80000, chain_height=1)
+        assert e.snapshot_state() == before
+
+    @pytest.mark.parametrize("method,args", [
+        ("mined", (7,)),
+        ("revert", ("no receipt",)),
+        ("replace", ("0xnew", "not broadcast")),
+    ])
+    def test_all_mutating_helpers_are_failure_atomic(self, method, args):
+        e = self._at(TxState.NOT_REQUESTED)
+        before = e.snapshot_state()
+        with pytest.raises(ValueError):
+            getattr(e, method)(*args)
+        assert e.snapshot_state() == before
 
     def test_confirm_from_pending_ok(self):
         e = self._at(TxState.PENDING)
@@ -375,10 +438,14 @@ class TestStateMachineEnforcement:
         e = self._at(TxState.CONFIRMED)
         e.reorg_rollback()  # must not raise
 
-    def test_reorg_rollback_from_pending_raises(self):
+    def test_reorg_rollback_from_pending_clears_inclusion(self):
         e = self._at(TxState.PENDING)
-        with pytest.raises(ValueError):
-            e.reorg_rollback()
+        e.lifecycle.block_number = 9
+        e.lifecycle.receipt_status = 1
+        e.reorg_rollback()
+        assert e.state == TxState.SIGNED
+        assert e.lifecycle.block_number is None
+        assert e.lifecycle.receipt_status is None
 
     def test_transition_table_consistent(self):
         for state in TxState:

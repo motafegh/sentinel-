@@ -1,8 +1,9 @@
 {
   "bundle_version": "1",
+  "entrypoint": "baseline_probes.py",
   "file_count": 1,
   "files": {
-    "baseline_probes.py": "320f5e675b2378d33c58b8feee0c248d1a13d0c99e3399fa1f30e76981dfd24f"
+    "baseline_probes.py": "19f8f43ce9d13b7ef9f6620e9b08d860417b011cfc2171acbf34ffac2086bdb6"
   },
   "kind": "r0_probe_bundle_manifest",
   "python": "/usr/bin/python3",

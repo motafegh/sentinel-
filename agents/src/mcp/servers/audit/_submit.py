@@ -4,16 +4,16 @@ On-chain audit submission for the sentinel-audit MCP server (P11, 2026-07).
 
 R0.4:
   - Per-job proof workspaces (temp dir, cleaned after use)
-  - chain_id and round_id bound into provenance manifest (proof identity)
+  - chain_id and round_id recorded in provenance metadata
   - Gas estimation from web3 (never hardcoded)
   - Idempotency key prevents duplicate submissions
-  - Transaction state machine: pending -> mined -> confirmed -> failed
+  - Validated transaction lifecycle with receipt and reorg handling
   - Receipt status check before reporting submitted
 
 On-chain submission remains DISABLED because the operator key has been
 removed from the MCP process (R0.3 signer isolation). The policy-signer
-service owns transaction construction. This module prepares the identity-
-bound proof and manifest for the signer to consume.
+service owns transaction construction. Legacy V2 proof artifacts remain
+explicitly unbound and ineligible for submission.
 
 Rule 5C: every failure returns a structured degraded return with
 'status', 'failed_step', and 'reason' — never silent empty return.
@@ -116,9 +116,9 @@ _ALLOWED_TRANSITIONS: dict[TxState, set[TxState]] = {
     TxState.PREPARED: {TxState.SIGNED, TxState.FAILED},
     TxState.SIGNED: {TxState.BROADCAST, TxState.FAILED},
     TxState.BROADCAST: {TxState.PENDING, TxState.REVERTED, TxState.DROPPED, TxState.REPLACED, TxState.FAILED},
-    TxState.PENDING: {TxState.CONFIRMED, TxState.REVERTED, TxState.DROPPED},
-    TxState.CONFIRMED: {TxState.SIGNED},   # reorg: return to pre-broadcast to re-mine
-    TxState.REVERTED: set(),   # terminal
+    TxState.PENDING: {TxState.CONFIRMED, TxState.REVERTED, TxState.DROPPED, TxState.SIGNED},
+    TxState.CONFIRMED: {TxState.PENDING, TxState.SIGNED},
+    TxState.REVERTED: {TxState.SIGNED},
     TxState.DROPPED: {TxState.PREPARED},  # can re-prepare
     TxState.REPLACED: {TxState.PENDING, TxState.CONFIRMED, TxState.REVERTED},
     TxState.FAILED: set(),     # terminal
@@ -166,14 +166,20 @@ class TxEngine:
         return self.transition(TxState.SIGNED)
 
     def broadcast(self, tx_hash: str, nonce: int | None = None) -> TxLifecycle:
+        self.transition(TxState.BROADCAST)
         self._lc.tx_hash = tx_hash
         if nonce is not None:
             self._lc.nonce = nonce
-        return self.transition(TxState.BROADCAST)
+        self._lc.error = None
+        return self._lc
 
     def mined(self, inclusion_height: int) -> TxLifecycle:
+        if inclusion_height < 0:
+            raise ValueError(f"invalid inclusion_height: {inclusion_height}")
+        self.transition(TxState.PENDING)
         self._lc.block_number = inclusion_height
-        return self.transition(TxState.PENDING)
+        self._lc.confirmations = 0
+        return self._lc
 
     def confirm(self, inclusion_height: int, gas_used: int,
                 chain_height: int) -> TxLifecycle:
@@ -194,29 +200,46 @@ class TxEngine:
         depth = chain_height - inclusion_height + 1
         if depth < 1:
             raise ValueError(f"invalid confirmation depth: {depth}")
+        self.transition(TxState.CONFIRMED)
         self._lc.receipt_status = 1
         self._lc.block_number = inclusion_height
         self._lc.gas_used = gas_used
         self._lc.confirmations = depth
-        return self.transition(TxState.CONFIRMED)
+        return self._lc
 
     def revert(self, reason: str) -> TxLifecycle:
+        self.transition(TxState.REVERTED, reason=reason)
         self._lc.receipt_status = 0
-        return self.transition(TxState.REVERTED, reason=reason)
+        return self._lc
 
     def drop(self, reason: str) -> TxLifecycle:
         return self.transition(TxState.DROPPED, reason=reason)
 
     def replace(self, new_tx_hash: str, reason: str) -> TxLifecycle:
+        self.transition(TxState.REPLACED, reason=reason)
         self._lc.replaced_by = new_tx_hash
-        return self.transition(TxState.REPLACED, reason=reason)
+        return self._lc
 
     def fail(self, reason: str) -> TxLifecycle:
         return self.transition(TxState.FAILED, reason=reason)
 
     def reorg_rollback(self) -> TxLifecycle:
-        """R0-F4: reorg event — return to SIGNED for re-broadcast via validated transition."""
-        return self.transition(TxState.SIGNED, reason="chain reorganisation rollback")
+        """Roll an orphaned included transaction back for rebroadcast."""
+        self.transition(TxState.SIGNED, reason="chain reorganisation rollback")
+        self._lc.block_number = None
+        self._lc.confirmations = 0
+        self._lc.gas_used = None
+        self._lc.effective_gas_price = None
+        self._lc.receipt_status = None
+        return self._lc
+
+    def reorg_unfinalize(self, confirmations: int) -> TxLifecycle:
+        """Return a still-included receipt to pending after it loses finality."""
+        if confirmations < 1:
+            raise ValueError(f"confirmations must be positive, got {confirmations}")
+        self.transition(TxState.PENDING, reason="confirmation depth reduced by reorganisation")
+        self._lc.confirmations = confirmations
+        return self._lc
 
     def ingest_receipt(self, receipt: dict[str, Any],
                        chain_height: int | None = None) -> TxLifecycle:
@@ -287,7 +310,7 @@ class FakeChain:
     - Atomic replacement: hash first, link old, insert atomically
     - Idempotency: SHA-256 of canonical request identity
     - Deep snapshot/restore with serializable state
-    - Reorg via reorg_pending() validated transition (no direct state mutation)
+    - Reorg via validated engine transitions (no direct state mutation)
     """
 
     def __init__(self, *, confirm_blocks: int = 2):
@@ -311,7 +334,8 @@ class FakeChain:
         return self._nonce_counter
 
     def _request_identity(self, idempotency_key: str, chain_id: int,
-                          address: str, model_hash: str) -> str:
+                          address: str, model_hash: str, round_id: int,
+                          request_digest: str) -> str:
         """Cryptographic identity digest binding key to request."""
         address = address.lower()
         if not address.startswith("0x"):
@@ -320,7 +344,9 @@ class FakeChain:
             "ik": idempotency_key,
             "chain_id": chain_id,
             "address": address,
-            "model_hash": model_hash,
+            "model_hash": model_hash.lower(),
+            "round_id": round_id,
+            "request_digest": request_digest.lower(),
         }, sort_keys=True, separators=(",", ":"))
         return _hl_chain.sha256(payload.encode()).hexdigest()
 
@@ -328,13 +354,17 @@ class FakeChain:
              idempotency_key: str | None = None,
              chain_id: int = 1,
              address: str = "0x0",
-             model_hash: str = "") -> TxLifecycle:
+             model_hash: str = "",
+             round_id: int = 0,
+             request_digest: str = "") -> TxLifecycle:
         if engine.state != TxState.SIGNED:
             raise ValueError(f"send requires SIGNED state, got {engine.state.value}")
 
         with self._lock:
             if idempotency_key:
-                req_id = self._request_identity(idempotency_key, chain_id, address, model_hash)
+                req_id = self._request_identity(
+                    idempotency_key, chain_id, address, model_hash, round_id, request_digest
+                )
                 existing_hash = self._idempotent.get(req_id)
                 if existing_hash:
                     existing = self._durable.get(existing_hash) or self._mempool.get(existing_hash)
@@ -348,9 +378,13 @@ class FakeChain:
             tx_hash = self._next_hash()
             self._mempool[tx_hash] = engine
             if idempotency_key:
-                req_id = self._request_identity(idempotency_key, chain_id, address, model_hash)
+                req_id = self._request_identity(
+                    idempotency_key, chain_id, address, model_hash, round_id, request_digest
+                )
                 self._idempotent[req_id] = tx_hash
-            return engine.broadcast(tx_hash, nonce=self._next_nonce())
+            lifecycle = engine.broadcast(tx_hash, nonce=self._next_nonce())
+            lifecycle.idempotency_key = idempotency_key
+            return lifecycle
 
     def mine_blocks(self, count: int = 1) -> list[str]:
         with self._lock:
@@ -407,13 +441,13 @@ class FakeChain:
         with self._lock:
             new_hash = self._next_hash()
             old_engine = self._mempool.pop(old_hash, None)
-            if old_engine:
-                old_engine.replace(new_hash, "replaced by higher-gas tx")
-                self._durable[old_hash] = old_engine
-                # Update idempotency: find key pointing to old_hash and update
-                for k, v in list(self._idempotent.items()):
-                    if v == old_hash:
-                        self._idempotent[k] = new_hash
+            if old_engine is None:
+                raise ValueError(f"replacement target {old_hash[:16]} is not in the mempool")
+            old_engine.replace(new_hash, "replaced by higher-gas tx")
+            self._durable[old_hash] = old_engine
+            for k, v in list(self._idempotent.items()):
+                if v == old_hash:
+                    self._idempotent[k] = new_hash
             new_engine.broadcast(new_hash, nonce=self._next_nonce())
             self._mempool[new_hash] = new_engine
             return new_hash, new_engine.lifecycle
@@ -436,11 +470,18 @@ class FakeChain:
                 for tx_hash, engine in list(self._durable.items()):
                     bn = engine.lifecycle.block_number or 0
                     if bn > self._block_height:
-                        engine.reorg_rollback()  # CONFIRMED → SIGNED (validated)
-                        engine.broadcast(tx_hash)  # SIGNED → BROADCAST
+                        engine.reorg_rollback()
+                        engine.broadcast(tx_hash)
                         self._mempool[tx_hash] = engine
                         del self._durable[tx_hash]
                         unconfirmed.append(tx_hash)
+                    elif engine.state == TxState.CONFIRMED:
+                        confirmations = self._block_height - bn + 1
+                        if confirmations < self.confirm_blocks:
+                            engine.reorg_unfinalize(confirmations)
+                            unconfirmed.append(tx_hash)
+                        else:
+                            engine.lifecycle.confirmations = confirmations
             return unconfirmed
 
     def snapshot(self) -> dict:

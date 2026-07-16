@@ -437,7 +437,13 @@ async def _run_job(
     if not isinstance(result, dict):
         store.mark_failed(job_id, f"graph returned non-dict: {type(result).__name__}")
         return
-    final_report = result.get("final_report", {}) or {}
+    from src.contracts.submission import normalize_submission
+
+    final_report = dict(result.get("final_report", {}) or {})
+    submission = normalize_submission(
+        final_report.get("submission") or result.get("submission_result")
+    )
+    final_report["submission"] = submission
     report = {
         "final_report": final_report,
         "verdicts": result.get("verdicts", {}),
@@ -454,13 +460,7 @@ async def _run_job(
         "tool_status": result.get("tool_status", final_report.get("tool_status", {})),
         "finality": result.get("finality", final_report.get("finality", {})),
         "error": result.get("error"),
-        # R0-F3: proof scope and submission status propagation
-        "submission": {
-            "proof_scope": result.get("proof_scope", result.get("submission_result", {}).get("proof_scope", "none")),
-            "status": result.get("submission_result", {}).get("status", result.get("status", "unknown")),
-            "policy_decision": result.get("submission_result", {}).get("policy_decision", result.get("policy_decision", "unknown")),
-            "verified_audit_eligible": result.get("submission_result", {}).get("verified_audit_eligible", result.get("verified_audit_eligible", False)),
-        },
+        "submission": submission,
     }
     store.mark_completed(job_id, report)
     dt = time.time() - t0

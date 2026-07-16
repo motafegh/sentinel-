@@ -9,10 +9,13 @@ from pathlib import Path
 
 import scripts.r0_evidence.environment as environment_module
 from scripts.r0_evidence.cli import (
+    _probe_bundle_commit,
+    _verify_probe_bundle,
     capture_probe,
     create_environment_manifest,
     validate_command_manifest,
 )
+from scripts.r0_evidence.bundle import build_probe_bundle
 from scripts.r0_evidence.environment import probe_environment, validate_environment_manifest
 from scripts.r0_evidence.matrix import MATRIX_ROWS, matrix_manifest
 from scripts.r0_evidence.model import (
@@ -51,10 +54,32 @@ def _clean_git_workspace(tmp_path: Path) -> Path:
     return workspace
 
 
+def _committed_probe_bundle(workspace: Path) -> tuple[Path, str, str]:
+    bundle = workspace / "probe_bundle"
+    bundle.mkdir()
+    (bundle / "baseline_probes.py").write_text(
+        "import json\n"
+        "print(json.dumps({'status':'fail','invariant_passed':False,"
+        "'assertions':[{'name':'unsafe','passed':False,'detail':'baseline'}]}))\n",
+        encoding="utf-8",
+    )
+    digest = build_probe_bundle(bundle)
+    subprocess.run(["git", "add", "probe_bundle"], cwd=workspace, check=True)
+    subprocess.run(
+        [
+            "git", "-c", "user.name=Sentinel Tests", "-c",
+            "user.email=tests@sentinel.invalid", "commit", "-q", "-m", "probe bundle",
+        ],
+        cwd=workspace,
+        check=True,
+    )
+    return bundle, digest, _probe_bundle_commit(bundle)
+
+
 def _record(row_id: str, phase: str, *, comparison_key: str = "a" * 64) -> dict:
     after = phase == "after"
     return {
-        "schema_version": "1",
+        "schema_version": "2",
         "kind": "r0_evidence_record",
         "record_id": f"{row_id}:{phase}",
         "matrix_row_id": row_id,
@@ -62,6 +87,8 @@ def _record(row_id: str, phase: str, *, comparison_key: str = "a" * 64) -> dict:
         "baseline_commit": BASELINE,
         "candidate_commit": CANDIDATE if after else None,
         "comparison_key": comparison_key,
+        "probe_bundle_sha256": "6" * 64,
+        "probe_bundle_commit": "7" * 40,
         "probe": {
             "probe_id": "probe",
             "contract_version": "1",
@@ -340,6 +367,7 @@ def test_probe_environment_drops_secrets_and_uses_an_isolated_home(
 
 def test_capture_records_failed_baseline_without_marking_it_complete(tmp_path: Path) -> None:
     workspace = _clean_git_workspace(tmp_path)
+    bundle, bundle_digest, bundle_commit = _committed_probe_bundle(workspace)
     environment = create_environment_manifest(workspace)
     command_manifest = tmp_path / "commands.json"
     command_manifest.write_text(
@@ -354,16 +382,7 @@ def test_capture_records_failed_baseline_without_marking_it_complete(tmp_path: P
                         "matrix_row_id": row.row_id,
                         "contract_version": "1",
                         "argv": (
-                            [
-                                "{python}",
-                                "-c",
-                                (
-                                    "import json; print(json.dumps({"
-                                    "'status':'fail','invariant_passed':False,"
-                                    "'assertions':[{'name':'unsafe','passed':False,"
-                                    "'detail':'baseline'}]}))"
-                                ),
-                            ]
+                            ["{python}", "{probe_bundle}/baseline_probes.py"]
                             if index == 0
                             else ["{python}", "-c", "raise SystemExit('not selected')"]
                         ),
@@ -387,6 +406,9 @@ def test_capture_records_failed_baseline_without_marking_it_complete(tmp_path: P
         environment_manifest_path=environment_path,
         output=output,
         variables={},
+        probe_bundle_path=bundle,
+        expected_probe_bundle_sha256=bundle_digest,
+        expected_probe_bundle_commit=bundle_commit,
     )
     assert record["outcome"]["status"] == "fail"
     assert record["outcome"]["invariant_passed"] is False
@@ -397,6 +419,7 @@ def test_capture_records_failed_baseline_without_marking_it_complete(tmp_path: P
 
 def test_capture_rejects_an_undeclared_command_placeholder(tmp_path: Path) -> None:
     workspace = _clean_git_workspace(tmp_path)
+    bundle, bundle_digest, bundle_commit = _committed_probe_bundle(workspace)
     environment = create_environment_manifest(workspace)
     command_manifest = tmp_path / "commands.json"
     command_manifest.write_text(
@@ -411,7 +434,7 @@ def test_capture_rejects_an_undeclared_command_placeholder(tmp_path: Path) -> No
                         "matrix_row_id": row.row_id,
                         "contract_version": "1",
                         "argv": (
-                            ["{python}", "{undeclared}"]
+                            ["{python}", "{undeclared}/baseline_probes.py"]
                             if index == 0
                             else ["{python}", "-c", "raise SystemExit('not selected')"]
                         ),
@@ -436,6 +459,9 @@ def test_capture_rejects_an_undeclared_command_placeholder(tmp_path: Path) -> No
             environment_manifest_path=environment_path,
             output=tmp_path / "record.json",
             variables={},
+            probe_bundle_path=bundle,
+            expected_probe_bundle_sha256=bundle_digest,
+            expected_probe_bundle_commit=bundle_commit,
         )
     except ValueError as exc:
         assert str(exc) == "Unknown command placeholder {undeclared}"
@@ -454,8 +480,34 @@ def test_committed_command_manifest_covers_each_matrix_row_once() -> None:
     assert validate_command_manifest(manifest) == []
     assert manifest["comparison_contract_version"] == "2"
     assert set(manifest["runtime_bindings"]) == {"agents_python", "data_python", "python"}
+
+
+def test_v3_command_manifest_executes_the_bundle_entrypoint() -> None:
+    workspace = Path(__file__).resolve().parents[2]
+    package = (
+        workspace
+        / "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment"
+    )
+    bundle = package / "probe_bundle"
+    manifest = json.loads(
+        (package / "2026-07-16_SYSTEM_R0_EVIDENCE_command_manifest_v3.json").read_text()
+    )
+    assert validate_command_manifest(manifest) == []
+    assert manifest["fixture_root_variable"] == "probe_bundle"
+    for probe in manifest["probes"]:
+        assert probe["argv"][1] == "{probe_bundle}/baseline_probes.py"
     for relative, expected in manifest["fixture_sha256"].items():
-        assert sha256_file(workspace / relative) == expected
+        assert sha256_file(bundle / relative) == expected
+
+
+def test_committed_probe_bundle_generator_matches_verifier() -> None:
+    workspace = Path(__file__).resolve().parents[2]
+    bundle = (
+        workspace
+        / "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment"
+        / "probe_bundle"
+    )
+    assert _verify_probe_bundle(bundle) == (bundle / "aggregate_digest.txt").read_text().strip()
 
 
 def test_committed_matrix_manifest_matches_the_code_owner() -> None:
@@ -562,3 +614,19 @@ def test_validate_accepts_matching_bundle_sha256() -> None:
         expected_probe_bundle_sha256="c" * 64,
     )
     assert report["complete"] is True
+
+
+def test_validate_rejects_wrong_bundle_commit() -> None:
+    records = _complete_records()
+    for record in records:
+        record["probe_bundle_commit"] = "d" * 40
+    report = validate_coverage(
+        records,
+        expected_baseline=None,
+        expected_probe_bundle_commit="e" * 40,
+    )
+    assert report["complete"] is False
+    assert all(
+        any("probe_bundle_commit" in issue for issue in row["issues"])
+        for row in report["rows"]
+    )

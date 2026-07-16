@@ -37,6 +37,11 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def probe_bundle_digest(manifest: Mapping[str, Any]) -> str:
+    """Digest a probe manifest with the single canonical bundle algorithm."""
+    return sha256_bytes(canonical_json_bytes(manifest))
+
+
 def redact_text(text: str, *, workspace: Path | None = None) -> str:
     """Redact credential-shaped values and normalize local absolute paths."""
 
@@ -73,7 +78,7 @@ def validate_record(record: Mapping[str, Any]) -> list[str]:
         errors.append(f"missing fields: {', '.join(missing)}")
         return errors
 
-    if record["schema_version"] != "1" or record["kind"] != "r0_evidence_record":
+    if record["schema_version"] not in {"1", "2"} or record["kind"] != "r0_evidence_record":
         errors.append("unsupported evidence schema/kind")
     if not isinstance(record["record_id"], str) or not record["record_id"]:
         errors.append("record_id must be a non-empty string")
@@ -89,6 +94,11 @@ def validate_record(record: Mapping[str, Any]) -> list[str]:
         errors.append("before record candidate_commit must be null")
     if not _SHA256.fullmatch(str(record["comparison_key"])):
         errors.append("comparison_key must be a lowercase SHA-256")
+    if record["schema_version"] == "2":
+        if not _SHA256.fullmatch(str(record.get("probe_bundle_sha256", ""))):
+            errors.append("probe_bundle_sha256 must be a lowercase SHA-256")
+        if not _FULL_GIT_SHA.fullmatch(str(record.get("probe_bundle_commit", ""))):
+            errors.append("probe_bundle_commit must be a full lowercase Git SHA")
     if (
         not isinstance(record["test_references"], list)
         or not record["test_references"]
@@ -208,7 +218,7 @@ def validate_coverage(
     invalid_artifacts: Iterable[Mapping[str, Any]] = (),
     expected_baseline: str | None = _APPROVED_BASELINE,
     expected_candidate: str | None = None,
-    expected_probe_bundle: str | None = None,
+    expected_probe_bundle_commit: str | None = None,
     expected_probe_bundle_sha256: str | None = None,
 ) -> dict[str, Any]:
     """R0 closure validator — single-tier exact comparison_key matching.
@@ -284,6 +294,19 @@ def validate_coverage(
                             f"{actual[:16] if actual else 'MISSING'} "
                             f"!= expected {expected_probe_bundle_sha256[:16]}"
                         )
+            if expected_probe_bundle_commit:
+                for label, record in (("before", left), ("after", right)):
+                    actual = record.get("probe_bundle_commit", "")
+                    if actual != expected_probe_bundle_commit:
+                        issues.append(
+                            f"{label} probe_bundle_commit "
+                            f"{actual[:12] if actual else 'MISSING'} "
+                            f"!= expected {expected_probe_bundle_commit[:12]}"
+                        )
+            if left.get("probe_bundle_sha256") != right.get("probe_bundle_sha256"):
+                issues.append("before/after probe bundle digest mismatch")
+            if left.get("probe_bundle_commit") != right.get("probe_bundle_commit"):
+                issues.append("before/after probe bundle commit mismatch")
 
             if left.get("baseline_commit") == right.get("candidate_commit"):
                 issues.append("before and after records must be from different commits")

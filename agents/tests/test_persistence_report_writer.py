@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -82,7 +83,12 @@ class TestPersistReport:
                 )
             )
         assert all(status[PERSISTENCE_TOOL_KEY]["ran"] for status in statuses)
-        assert json.loads((tmp_path / jid / "report.json").read_text())["version"] in range(12)
+        report_path = tmp_path / jid / "report.json"
+        report_bytes = report_path.read_bytes()
+        assert json.loads(report_bytes)["version"] in range(12)
+        reference = json.loads((tmp_path / jid / "report.ref.json").read_text())
+        assert reference["digest"] == hashlib.sha256(report_bytes).hexdigest()
+        assert (tmp_path / ".cas" / "sha256" / f"{reference['digest']}.json").read_bytes() == report_bytes
         assert not list((tmp_path / jid).glob("*.tmp"))
 
 
