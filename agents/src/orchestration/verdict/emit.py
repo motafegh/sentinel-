@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.orchestration.verdict.evidence import Evidence, Polarity, Kind
+from src.contracts.execution import require_eligible_payload
+from src.orchestration.verdict.evidence import Evidence, Kind, Polarity
 from src.orchestration.verdict.reliability import get_reliability
 
 
@@ -22,6 +23,11 @@ def emit_ml_evidence(
     One Evidence per flagged class (probability ≥ ml_positive_threshold).
     """
     from src.config import get_config
+
+    try:
+        require_eligible_payload(ml_result, purpose="ML evidence emission")
+    except (TypeError, ValueError):
+        return []
 
     cfg = get_config()
     threshold = cfg.consensus.ml_positive_threshold
@@ -55,12 +61,15 @@ def emit_ml_evidence(
             elif not tier and prob >= 0.25:
                 tier = "SUSPICIOUS"
 
-            evidence.append(Evidence.ml(
-                cls, prob,
-                reliability=get_reliability("ml", cls),
-                tier=tier,
-                detail={"probability": prob, "tier": tier},
-            ))
+            evidence.append(
+                Evidence.ml(
+                    cls,
+                    prob,
+                    reliability=get_reliability("ml", cls),
+                    tier=tier,
+                    detail={"probability": prob, "tier": tier},
+                )
+            )
     return evidence
 
 
@@ -103,17 +112,27 @@ def emit_static_evidence(
             seen.add(key)
 
             if tool == "slither":
-                evidence.append(Evidence.slither(
-                    cls, impact, description,
-                    reliability=get_reliability("slither", cls),
-                    detector=detector, lines=lines,
-                ))
+                evidence.append(
+                    Evidence.slither(
+                        cls,
+                        impact,
+                        description,
+                        reliability=get_reliability("slither", cls),
+                        detector=detector,
+                        lines=lines,
+                    )
+                )
             else:
-                evidence.append(Evidence.aderyn(
-                    cls, impact, description,
-                    reliability=get_reliability("aderyn", cls),
-                    detector=detector, lines=lines,
-                ))
+                evidence.append(
+                    Evidence.aderyn(
+                        cls,
+                        impact,
+                        description,
+                        reliability=get_reliability("aderyn", cls),
+                        detector=detector,
+                        lines=lines,
+                    )
+                )
 
     return evidence
 
@@ -141,12 +160,15 @@ def emit_rag_evidence(
         if not vt:
             continue
 
-        evidence.append(Evidence.rag(
-            vt, score,
-            reliability=get_reliability("rag", vt),
-            chunk_id=chunk.get("id", chunk.get("chunk_id", "")),
-            title=metadata.get("title", metadata.get("name", "")),
-        ))
+        evidence.append(
+            Evidence.rag(
+                vt,
+                score,
+                reliability=get_reliability("rag", vt),
+                chunk_id=chunk.get("id", chunk.get("chunk_id", "")),
+                title=metadata.get("title", metadata.get("name", "")),
+            )
+        )
     return evidence
 
 
@@ -164,8 +186,12 @@ def emit_debate_evidence(
         # pre-verdicts dict (it's just the verdict string). We assign a
         # default strength based on the verdict.
         _strength = {
-            "CONFIRMED": 0.85, "LIKELY": 0.65, "DISPUTED": 0.40,
-            "WATCH": 0.25, "INCONCLUSIVE": 0.30, "SAFE": 0.15,
+            "CONFIRMED": 0.85,
+            "LIKELY": 0.65,
+            "DISPUTED": 0.40,
+            "WATCH": 0.25,
+            "INCONCLUSIVE": 0.30,
+            "SAFE": 0.15,
         }
         strength = _strength.get(verdict, 0.30)
 
@@ -173,10 +199,14 @@ def emit_debate_evidence(
         if debate_transcript:
             rationale = debate_transcript.get("judge", "")[:200]
 
-        evidence.append(Evidence.debate(
-            cls, verdict, strength,
-            judge_rationale=rationale,
-        ))
+        evidence.append(
+            Evidence.debate(
+                cls,
+                verdict,
+                strength,
+                judge_rationale=rationale,
+            )
+        )
     return evidence
 
 
@@ -231,15 +261,17 @@ def emit_halmos_evidence(
         proven = finding.get("proven", False)
         polarity = Polarity.REFUTES if proven else Polarity.SUPPORTS
 
-        evidence.append(Evidence.formal(
-            source="halmos",
-            vuln_class=cls,
-            polarity=polarity,
-            invariant=finding.get("invariant", ""),
-            proven=proven,
-            counterexample=finding.get("counterexample", ""),
-            reliability=get_reliability("halmos", cls),
-        ))
+        evidence.append(
+            Evidence.formal(
+                source="halmos",
+                vuln_class=cls,
+                polarity=polarity,
+                invariant=finding.get("invariant", ""),
+                proven=proven,
+                counterexample=finding.get("counterexample", ""),
+                reliability=get_reliability("halmos", cls),
+            )
+        )
     return evidence
 
 
@@ -279,20 +311,22 @@ def emit_consensus_evidence(
         if vote.get("overridden_from_safe") and strength < 0.30:
             strength = 0.30
 
-        evidence.append(Evidence(
-            source="consensus",
-            vuln_class=cls,
-            polarity=polarity,
-            strength=round(strength, 4),
-            reliability=0.85,
-            kind=Kind.STATISTICAL,
-            deterministic=True,
-            detail={
-                "consensus_verdict": verdict,
-                "consensus_confidence": conf,
-                "ml_signal": vote.get("ml_signal", 0),
-                "slither_match": vote.get("slither_match", 0),
-                "aderyn_match": vote.get("aderyn_match", 0),
-            },
-        ))
+        evidence.append(
+            Evidence(
+                source="consensus",
+                vuln_class=cls,
+                polarity=polarity,
+                strength=round(strength, 4),
+                reliability=0.85,
+                kind=Kind.STATISTICAL,
+                deterministic=True,
+                detail={
+                    "consensus_verdict": verdict,
+                    "consensus_confidence": conf,
+                    "ml_signal": vote.get("ml_signal", 0),
+                    "slither_match": vote.get("slither_match", 0),
+                    "aderyn_match": vote.get("aderyn_match", 0),
+                },
+            )
+        )
     return evidence

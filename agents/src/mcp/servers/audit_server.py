@@ -30,7 +30,6 @@ from __future__ import annotations
 #     tests do `monkeypatch.setattr("...audit_server._MOCK_MODE", False)` and
 #     handlers observe the rebound value via `_as._MOCK_MODE` at call time.
 from .audit._config import (
-    EZKL_SCALE_FACTOR,
     _ABI,
     _ABI_PATH,
     _DEFAULT_HISTORY_LIMIT,
@@ -39,38 +38,31 @@ from .audit._config import (
     _REGISTRY_ADDRESS,
     _RPC_URL,
     _SERVER_PORT,
-    _w3,
+    EZKL_SCALE_FACTOR,
+    _execution_status,
     _registry,
+    _w3,
 )
 
 # ── 2. Pure decode helpers ─────────────────────────────────────────────────────
-from .audit._decode import (
-    _decode_audit_result,
-    _mock_audit_result,
-    _mock_history,
-)
+from .audit._decode import _decode_audit_result, _mock_audit_result, _mock_history
 
 # ── 3. MCP `server` instance + tool declarations + handlers ──────────────────
 from .audit._handlers import (
-    call_tool,
-    list_tools,
-    server,
     _handle_check_audit_exists,
     _handle_get_audit_history,
     _handle_get_latest_audit,
     _validate_address,
+    call_tool,
+    list_tools,
+    server,
 )
 
 # ── 4. Web3 lifecycle ─────────────────────────────────────────────────────────
-from .audit._lifecycle import (
-    _load_abi,
-    _on_shutdown,
-    _on_startup,
-)
+from .audit._lifecycle import _load_abi, _on_shutdown, _on_startup
 
 # ── 5. Server entrypoint ──────────────────────────────────────────────────────
 from .audit._server import run_server
-
 
 if __name__ == "__main__":
     run_server()

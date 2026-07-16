@@ -9,6 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.contracts.execution import bind_status
 from src.eval.pipeline_metrics import ContractMetrics, PipelineMetrics
 from src.eval.run_benchmark import (
     build_arg_parser,
@@ -20,9 +21,22 @@ from src.eval.run_benchmark import (
 )
 
 
+def _live_report(report: dict) -> dict:
+    ml_result = bind_status(
+        report.get("ml_result", {}),
+        dependency="module1-inference",
+        input_payload={"source_code": "fixture"},
+        duration_ms=1,
+    )
+    report["ml_result"] = ml_result
+    report["tool_status"] = {"ml": ml_result["execution_status"]}
+    return report
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.fixture
 def contract_eval() -> dict:
@@ -55,8 +69,9 @@ def contract_eval() -> dict:
     }
 
 
-def make_contract_eval(stem: str, labels: list[str], verdicts: dict[str, str],
-                       gt: str = "vulnerable") -> dict:
+def make_contract_eval(
+    stem: str, labels: list[str], verdicts: dict[str, str], gt: str = "vulnerable"
+) -> dict:
     return {
         "stem": stem,
         "report_path": f"/fake/{stem}_report.json",
@@ -89,6 +104,7 @@ def make_contract_eval(stem: str, labels: list[str], verdicts: dict[str, str],
 # build_arg_parser
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestBuildArgParser:
     def test_parser_created(self):
         p = build_arg_parser()
@@ -105,11 +121,22 @@ class TestBuildArgParser:
 
     def test_optional_args(self):
         p = build_arg_parser()
-        args = p.parse_args([
-            "--name", "bar", "--reports", "/r", "--corpus", "/c",
-            "--config", "/cfg.yaml", "--baseline", "/bl.json",
-            "--output-dir", "/out",
-        ])
+        args = p.parse_args(
+            [
+                "--name",
+                "bar",
+                "--reports",
+                "/r",
+                "--corpus",
+                "/c",
+                "--config",
+                "/cfg.yaml",
+                "--baseline",
+                "/bl.json",
+                "--output-dir",
+                "/out",
+            ]
+        )
         assert str(args.config) == "/cfg.yaml"
         assert str(args.baseline) == "/bl.json"
         assert str(args.output_dir) == "/out"
@@ -119,21 +146,33 @@ class TestBuildArgParser:
 # load_corpus
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestLoadCorpus:
     def test_loads_contract_from_json_sidecar(self, tmp_path):
         corpus = tmp_path / "corpus"
         corpus.mkdir()
         # Sidecar JSON
-        (corpus / "c1.json").write_text(json.dumps({
-            "labels": ["Reentrancy"], "ground_truth": "vulnerable",
-        }))
+        (corpus / "c1.json").write_text(
+            json.dumps(
+                {
+                    "labels": ["Reentrancy"],
+                    "ground_truth": "vulnerable",
+                }
+            )
+        )
         reports = tmp_path / "reports"
         reports.mkdir()
-        (reports / "c1_report.json").write_text(json.dumps({
-            "verdicts": {"Reentrancy": "CONFIRMED"},
-            "ml_result": {"probabilities": {"Reentrancy": 0.95}},
-            "final_report": {"path_taken": "deep"},
-        }))
+        (reports / "c1_report.json").write_text(
+            json.dumps(
+                _live_report(
+                    {
+                        "verdicts": {"Reentrancy": "CONFIRMED"},
+                        "ml_result": {"probabilities": {"Reentrancy": 0.95}},
+                        "final_report": {"path_taken": "deep"},
+                    }
+                )
+            )
+        )
         rows = load_corpus(reports, corpus)
         assert len(rows) == 1
         assert rows[0].stem == "c1"
@@ -148,11 +187,17 @@ class TestLoadCorpus:
         )
         reports = tmp_path / "reports"
         reports.mkdir()
-        (reports / "c2_report.json").write_text(json.dumps({
-            "verdicts": {"Reentrancy": "CONFIRMED"},
-            "ml_result": {},
-            "final_report": {"path_taken": "deep"},
-        }))
+        (reports / "c2_report.json").write_text(
+            json.dumps(
+                _live_report(
+                    {
+                        "verdicts": {"Reentrancy": "CONFIRMED"},
+                        "ml_result": {},
+                        "final_report": {"path_taken": "deep"},
+                    }
+                )
+            )
+        )
         rows = load_corpus(reports, corpus)
         assert len(rows) == 1
         assert rows[0].stem == "c2"
@@ -165,9 +210,13 @@ class TestLoadCorpus:
         (corpus / "c3.sol").write_text("pragma solidity ^0.8.0;\ncontract C {}\n")
         reports = tmp_path / "reports"
         reports.mkdir()
-        (reports / "c3_report.json").write_text(json.dumps({
-            "verdicts": {"X": "CONFIRMED"},
-        }))
+        (reports / "c3_report.json").write_text(
+            json.dumps(
+                {
+                    "verdicts": {"X": "CONFIRMED"},
+                }
+            )
+        )
         with pytest.raises(SystemExit):
             load_corpus(reports, corpus)
 
@@ -183,17 +232,28 @@ class TestLoadCorpus:
         """JSON sidecar takes precedence over // expect: header."""
         corpus = tmp_path / "corpus"
         corpus.mkdir()
-        (corpus / "c4.json").write_text(json.dumps({
-            "labels": ["Reentrancy"], "ground_truth": "vulnerable",
-        }))
+        (corpus / "c4.json").write_text(
+            json.dumps(
+                {
+                    "labels": ["Reentrancy"],
+                    "ground_truth": "vulnerable",
+                }
+            )
+        )
         (corpus / "c4.sol").write_text("// expect: IntegerOverflow\ncontract C {}\n")
         reports = tmp_path / "reports"
         reports.mkdir()
-        (reports / "c4_report.json").write_text(json.dumps({
-            "verdicts": {"Reentrancy": "CONFIRMED"},
-            "ml_result": {},
-            "final_report": {},
-        }))
+        (reports / "c4_report.json").write_text(
+            json.dumps(
+                _live_report(
+                    {
+                        "verdicts": {"Reentrancy": "CONFIRMED"},
+                        "ml_result": {},
+                        "final_report": {},
+                    }
+                )
+            )
+        )
         rows = load_corpus(reports, corpus)
         assert len(rows) == 1
         assert rows[0].labels == ["Reentrancy"]  # from sidecar, not expect header
@@ -203,10 +263,13 @@ class TestLoadCorpus:
 # compute_per_contract
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def _as_dataclass(d: dict):
     """Convert a dict fixture back to ContractEval."""
     from dataclasses import make_dataclass
+
     from src.eval import ContractEval
+
     d2 = {k: v for k, v in d.items()}
     return ContractEval(**d2)
 
@@ -259,7 +322,7 @@ class TestComputePerContract:
         row = _as_dataclass(d)
         compute_per_contract([row], {"CONFIRMED", "LIKELY"})
         assert row.contract_correct is True  # at least one label found
-        assert row.contract_exact is False   # not all labels found
+        assert row.contract_exact is False  # not all labels found
         assert row.true_positive_classes == ["Reentrancy"]
         assert row.false_negative_classes == ["IntegerOverflow"]
 
@@ -267,6 +330,7 @@ class TestComputePerContract:
 # ═══════════════════════════════════════════════════════════════════════════
 # compute_metrics
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestComputeMetrics:
     def test_returns_pipeline_metrics(self, contract_eval):
@@ -298,6 +362,7 @@ class TestComputeMetrics:
 # render_markdown
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestRenderMarkdown:
     def test_contains_expected_sections(self, contract_eval):
         row = _as_dataclass(contract_eval)
@@ -324,6 +389,7 @@ class TestRenderMarkdown:
 # ═══════════════════════════════════════════════════════════════════════════
 # build_metrics_json
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestBuildMetricsJson:
     def test_structure(self, contract_eval):

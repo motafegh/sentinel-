@@ -1,0 +1,72 @@
+{
+  "comparison_contract_version": "2",
+  "comparison_fingerprint": "c21fac2037ea8c47dfd9bfee5f5b96e69054468504fd2d7025b7eea8127eccc1",
+  "environment_contract": "linux-x86_64-python-3.12",
+  "kind": "r0_environment_manifest",
+  "lockfiles": [
+    {
+      "path": "poetry.lock",
+      "sha256": "8c2d5dab098036bd8e7f72ce0d179eb53f9c9642a5d31ca470f6f0042605dabf"
+    },
+    {
+      "path": "agents/poetry.lock",
+      "sha256": "75a363634ef1951ac12c4823f6871adad50c6de66f6b390afef7e1372fbb3068"
+    },
+    {
+      "path": "ml/poetry.lock",
+      "sha256": "43069e3b9cf0973855ca111cc57138318347b5b1d1fd5a0495467dda49989c18"
+    }
+  ],
+  "platform": {
+    "machine": "x86_64",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "system": "Linux"
+  },
+  "probe_environment_policy": {
+    "forced": {
+      "NO_COLOR": "1",
+      "PYTHONHASHSEED": "0",
+      "SENTINEL_EVIDENCE_PROBE": "1"
+    },
+    "inherited_keys": [
+      "LANG",
+      "LC_ALL",
+      "PATH",
+      "REQUESTS_CA_BUNDLE",
+      "SSL_CERT_DIR",
+      "SSL_CERT_FILE",
+      "TEMP",
+      "TMP",
+      "TMPDIR"
+    ],
+    "isolated_home": true,
+    "version": "1"
+  },
+  "python": {
+    "implementation": "CPython",
+    "version": "3.12.3"
+  },
+  "runtimes": {
+    "agents_python": {
+      "implementation": "CPython",
+      "package_count": 200,
+      "packages_sha256": "801257b814caa118d68949e3ca4a46f7fb21c6b13697301497d51d34d586c65c",
+      "version": "3.12.3"
+    },
+    "data_python": {
+      "implementation": "CPython",
+      "package_count": 244,
+      "packages_sha256": "5bcda0810839367d16ba7cd2ca495200400bd96b265087f2c0a1385832cb9bd4",
+      "version": "3.12.3"
+    },
+    "harness_python": {
+      "implementation": "CPython",
+      "package_count": 244,
+      "packages_sha256": "5bcda0810839367d16ba7cd2ca495200400bd96b265087f2c0a1385832cb9bd4",
+      "version": "3.12.3"
+    }
+  },
+  "schema_version": "1",
+  "workspace_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "workspace_dirty": false
+}

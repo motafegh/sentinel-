@@ -78,7 +78,12 @@ def _load_checkpoint_meta(checkpoint: Path) -> dict:
 
 
 def _get_current_production_f1(client: "MlflowClient") -> float | None:
-    """Return val_f1_macro of the current Production model, or None if none exists."""
+    """Return val_f1_macro of the current Production model, or None if none exists.
+
+    R0.5: MLflow query failures are terminal — a failed query must not
+    silently skip the F1 gate (Rule 5C). Only the "no Production version
+    exists" case legitimately returns None.
+    """
     try:
         versions = client.get_latest_versions(MODEL_NAME, stages=["Production"])
         if not versions:
@@ -86,8 +91,12 @@ def _get_current_production_f1(client: "MlflowClient") -> float | None:
         run_id = versions[0].run_id
         run = client.get_run(run_id)
         return run.data.metrics.get("val_f1_macro")
-    except Exception:
-        return None
+    except Exception as exc:
+        raise RuntimeError(
+            f"MLflow query for current Production F1 failed: {type(exc).__name__}: {exc}. "
+            f"The F1 gate cannot be silently skipped — fix the MLflow connection "
+            f"or explicitly waive the gate with --waive-f1-gate."
+        ) from exc
 
 
 def _check_baseline(baseline_path: Path) -> None:

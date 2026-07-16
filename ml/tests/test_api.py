@@ -22,10 +22,10 @@ Test coverage:
 
 import pytest
 
-
 # ------------------------------------------------------------------
 # /health
 # ------------------------------------------------------------------
+
 
 def test_health_returns_ok(client):
     """
@@ -40,10 +40,19 @@ def test_health_returns_ok(client):
 
     body = response.json()
     assert body["status"] == "ok"
+    assert body["state"] == "live"
+    assert body["ready"] is True
 
     # predictor_loaded=True confirms lifespan() completed successfully.
     # If False, every /predict call will crash — catch it here first.
     assert body["predictor_loaded"] is True
+
+
+def test_liveness_and_readiness_are_separate(client):
+    assert client.get("/health/live").json()["state"] == "live"
+    readiness = client.get("/health/ready")
+    assert readiness.status_code == 200
+    assert readiness.json()["ready"] is True
 
 
 # ------------------------------------------------------------------
@@ -91,15 +100,24 @@ def test_predict_valid_contract(client):
     body = response.json()
 
     # Every field declared in PredictResponse must be present
-    required = {"label", "probabilities", "confirmed", "suspicious",
-                "vulnerabilities", "thresholds", "truncated", "num_nodes", "num_edges"}
+    required = {
+        "label",
+        "probabilities",
+        "confirmed",
+        "suspicious",
+        "vulnerabilities",
+        "thresholds",
+        "truncated",
+        "num_nodes",
+        "num_edges",
+    }
     assert required <= set(body.keys()), f"Missing keys: {required - set(body.keys())}"
 
     # Three-tier label values
     assert body["label"] in ("safe", "suspicious", "confirmed_vulnerable")
     assert isinstance(body["probabilities"], dict)
-    assert len(body["probabilities"]) == 10   # 10 classes, always present
-    assert isinstance(body["confirmed"],  list)
+    assert len(body["probabilities"]) == 10  # 10 classes, always present
+    assert isinstance(body["confirmed"], list)
     assert isinstance(body["suspicious"], list)
     assert isinstance(body["vulnerabilities"], list)
     assert isinstance(body["thresholds"], list)
@@ -151,7 +169,7 @@ contract Empty {
 
     body = response.json()
     assert body["label"] in ("safe", "suspicious", "confirmed_vulnerable")
-    assert isinstance(body["confirmed"],  list)
+    assert isinstance(body["confirmed"], list)
     assert isinstance(body["suspicious"], list)
 
 
@@ -159,26 +177,30 @@ contract Empty {
 # /predict — error cases
 # ------------------------------------------------------------------
 
-@pytest.mark.parametrize("payload,expected_status,description", [
-    (
-        # Empty string — fails min_length=10 in Pydantic → 422
-        {"source_code": ""},
-        422,
-        "empty string rejected by Pydantic validator",
-    ),
-    (
-        # Not Solidity — passes min_length but fails must_look_like_solidity → 422
-        {"source_code": "hello world this is not solidity code at all"},
-        422,
-        "non-Solidity text rejected by field validator",
-    ),
-    (
-        # Missing source_code field entirely → 422 (required field)
-        {},
-        422,
-        "missing required field rejected",
-    ),
-])
+
+@pytest.mark.parametrize(
+    "payload,expected_status,description",
+    [
+        (
+            # Empty string — fails min_length=10 in Pydantic → 422
+            {"source_code": ""},
+            422,
+            "empty string rejected by Pydantic validator",
+        ),
+        (
+            # Not Solidity — passes min_length but fails must_look_like_solidity → 422
+            {"source_code": "hello world this is not solidity code at all"},
+            422,
+            "non-Solidity text rejected by field validator",
+        ),
+        (
+            # Missing source_code field entirely → 422 (required field)
+            {},
+            422,
+            "missing required field rejected",
+        ),
+    ],
+)
 def test_predict_error_cases(client, payload, expected_status, description):
     """
     Invalid inputs must be rejected before reaching the model.
@@ -189,14 +211,14 @@ def test_predict_error_cases(client, payload, expected_status, description):
     """
     response = client.post("/predict", json=payload)
     assert response.status_code == expected_status, (
-        f"Failed: {description} — "
-        f"expected {expected_status}, got {response.status_code}"
+        f"Failed: {description} — " f"expected {expected_status}, got {response.status_code}"
     )
 
 
 # ------------------------------------------------------------------
 # /predict — determinism
 # ------------------------------------------------------------------
+
 
 def test_predict_consistent_on_same_input(client):
     """
@@ -207,16 +229,17 @@ def test_predict_consistent_on_same_input(client):
     active and scores become non-deterministic — different on every call.
     This test catches that bug directly.
     """
-    first  = client.post("/predict", json={"source_code": VAULT_CONTRACT}).json()
+    first = client.post("/predict", json={"source_code": VAULT_CONTRACT}).json()
     second = client.post("/predict", json={"source_code": VAULT_CONTRACT}).json()
 
-    assert first["label"]           == second["label"]
+    assert first["label"] == second["label"]
     assert first["vulnerabilities"] == second["vulnerabilities"]
 
 
 # ------------------------------------------------------------------
 # /hotspots — Phase 1: GNN attention-based function hotspots
 # ------------------------------------------------------------------
+
 
 class TestHotspotsEndpoint:
     """
@@ -235,7 +258,14 @@ class TestHotspotsEndpoint:
         """Response must contain all declared HotspotsResponse fields."""
         body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
 
-        required = {"hotspots", "hotspot_stats", "label", "probabilities", "confirmed", "suspicious"}
+        required = {
+            "hotspots",
+            "hotspot_stats",
+            "label",
+            "probabilities",
+            "confirmed",
+            "suspicious",
+        }
         assert required <= set(body.keys()), f"Missing keys: {required - set(body.keys())}"
 
     def test_hotspots_label_valid(self, client):
@@ -248,17 +278,17 @@ class TestHotspotsEndpoint:
         body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
 
         for h in body["hotspots"]:
-            assert "fn_name"   in h,  f"Missing fn_name in hotspot: {h}"
-            assert "node_id"   in h,  f"Missing node_id in hotspot: {h}"
-            assert "score"     in h,  f"Missing score in hotspot: {h}"
-            assert "lines"     in h,  f"Missing lines in hotspot: {h}"
-            assert "node_type" in h,  f"Missing node_type in hotspot: {h}"
+            assert "fn_name" in h, f"Missing fn_name in hotspot: {h}"
+            assert "node_id" in h, f"Missing node_id in hotspot: {h}"
+            assert "score" in h, f"Missing score in hotspot: {h}"
+            assert "lines" in h, f"Missing lines in hotspot: {h}"
+            assert "node_type" in h, f"Missing node_type in hotspot: {h}"
 
-            assert isinstance(h["fn_name"],   str),       "fn_name must be str"
-            assert isinstance(h["node_id"],   int),       "node_id must be int"
-            assert isinstance(h["score"],     float),     "score must be float"
-            assert isinstance(h["lines"],     list),      "lines must be list"
-            assert 0.0 <= h["score"] <= 1.0,              f"score out of range: {h['score']}"
+            assert isinstance(h["fn_name"], str), "fn_name must be str"
+            assert isinstance(h["node_id"], int), "node_id must be int"
+            assert isinstance(h["score"], float), "score must be float"
+            assert isinstance(h["lines"], list), "lines must be list"
+            assert 0.0 <= h["score"] <= 1.0, f"score out of range: {h['score']}"
 
     def test_hotspots_at_most_20(self, client):
         """Hotspot list is capped at 20 entries."""
@@ -277,8 +307,8 @@ class TestHotspotsEndpoint:
         stats = body["hotspot_stats"]
 
         assert "total_function_nodes" in stats
-        assert "num_nodes"            in stats
-        assert "attention_source"     in stats
+        assert "num_nodes" in stats
+        assert "attention_source" in stats
         assert stats["attention_source"] == "gnn_embedding_norm"
         assert isinstance(stats["num_nodes"], int)
         assert stats["num_nodes"] > 0
@@ -293,20 +323,21 @@ class TestHotspotsEndpoint:
         body = client.post("/hotspots", json={"source_code": VAULT_CONTRACT}).json()
         assert len(body["probabilities"]) == 10
         for cls, prob in body["probabilities"].items():
-            assert isinstance(cls,  str)
+            assert isinstance(cls, str)
             assert isinstance(prob, float)
             assert 0.0 <= prob <= 1.0
 
     def test_hotspots_error_cases(self, client):
         """Invalid inputs must be rejected the same way /predict rejects them."""
-        assert client.post("/hotspots", json={"source_code": ""}).status_code          == 422
+        assert client.post("/hotspots", json={"source_code": ""}).status_code == 422
         assert client.post("/hotspots", json={"source_code": "not solidity"}).status_code == 422
-        assert client.post("/hotspots", json={}).status_code                            == 422
+        assert client.post("/hotspots", json={}).status_code == 422
 
 
 # ------------------------------------------------------------------
 # P5 — model_hash reproducibility tracking (2026-06-26)
 # ------------------------------------------------------------------
+
 
 class TestModelHash:
     """Tests for model hash exposure via /health and /predict endpoints."""
@@ -325,7 +356,9 @@ class TestModelHash:
 
         model_hash = body["model_hash"]
         assert isinstance(model_hash, str), "model_hash must be a string"
-        assert len(model_hash) == 64, f"model_hash must be 64 chars (SHA-256 hex), got {len(model_hash)}"
+        assert (
+            len(model_hash) == 64
+        ), f"model_hash must be 64 chars (SHA-256 hex), got {len(model_hash)}"
         assert all(c in "0123456789abcdef" for c in model_hash), "model_hash must be lowercase hex"
 
     def test_predict_returns_model_hash(self, client):
@@ -346,7 +379,9 @@ class TestModelHash:
 
         model_hash = body["model_hash"]
         assert isinstance(model_hash, str), "model_hash must be a string"
-        assert len(model_hash) == 64, f"model_hash must be 64 chars (SHA-256 hex), got {len(model_hash)}"
+        assert (
+            len(model_hash) == 64
+        ), f"model_hash must be 64 chars (SHA-256 hex), got {len(model_hash)}"
 
     def test_model_hash_consistent_across_requests(self, client):
         """
@@ -356,7 +391,9 @@ class TestModelHash:
         It should not change between requests.
         """
         health_hash = client.get("/health").json()["model_hash"]
-        predict_hash = client.post("/predict", json={"source_code": VAULT_CONTRACT}).json()["model_hash"]
+        predict_hash = client.post("/predict", json={"source_code": VAULT_CONTRACT}).json()[
+            "model_hash"
+        ]
 
         assert health_hash == predict_hash, "model_hash must be consistent across endpoints"
 

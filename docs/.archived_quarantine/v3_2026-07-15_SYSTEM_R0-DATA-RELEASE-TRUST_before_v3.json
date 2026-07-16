@@ -1,0 +1,70 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "fc4e797597291d1edacf69788035dfa84f3da20a08fc74dcae5767aeef5c923e",
+  "environment_manifest": {
+    "comparison_fingerprint": "c33f199829aaa0e6a82c21770fcc23d9d998f8b9a24308e0be032fa5db8355a3",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_v3_env.json",
+    "sha256": "3db0e4e272c9615bdfafbef34cd1c061754b83c13d41905d2e42ce273cefe425"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T14:34:37.561114+00:00",
+    "started_at": "2026-07-15T14:34:37.493355+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"excluded=True\", \"name\": \"semantic_manifest_is_committed\", \"passed\": false}, {\"detail\": \"exact_set_check_present=False\", \"name\": \"warm_cache_checks_exact_file_set\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "41e4d1d132e3b8b2488bceac961504d53ce7f0b349244e539e375c2213f98ae4"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-DATA-RELEASE-TRUST",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "excluded=True",
+        "name": "semantic_manifest_is_committed",
+        "passed": false
+      },
+      {
+        "detail": "exact_set_check_present=False",
+        "name": "warm_cache_checks_exact_file_set",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "data-release",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-data-release",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-containment/scripts/r0_evidence/baseline_probes.py",
+      "data-release",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-DATA-RELEASE-TRUST:before:r0-data-release:1256d9aab45a",
+  "review": {
+    "decided_at": "2026-07-14T12:43:06Z",
+    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "data_module/tests/test_export/test_export.py",
+    "data_module/tests/test_export/test_chunker.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_DATA_D2_AUDIT_appendix.md"
+  ]
+}

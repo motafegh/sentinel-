@@ -8,8 +8,9 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.orchestration.state import AuditState
+from src.orchestration.provenance import eligible_ml_result
 from src.orchestration.routing import build_routing_decisions, compute_active_tools
+from src.orchestration.state import AuditState
 
 
 async def evidence_router(state: AuditState) -> dict[str, Any]:
@@ -24,15 +25,17 @@ async def evidence_router(state: AuditState) -> dict[str, Any]:
     State updates:
         routing_decisions → list of human-readable routing decision strings
     """
-    ml_result = state.get("ml_result", {})
+    ml_result = eligible_ml_result(state, purpose="routing")
     decisions = build_routing_decisions(ml_result)
 
     # Log quick_screen signal alongside ML per-class decisions.
     quick_screen_hits = state.get("quick_screen_hits", {})
     slither_hits = quick_screen_hits.get("slither", [])
-    aderyn_hits  = quick_screen_hits.get("aderyn",  [])
+    aderyn_hits = quick_screen_hits.get("aderyn", [])
 
     active = compute_active_tools(ml_result)
+    if not ml_result:
+        decisions.append("ML provenance unavailable or invalid → fail-closed deep analysis")
     if slither_hits or aderyn_hits:
         escalation = (
             f"quick_screen: slither={slither_hits[:3]} aderyn={aderyn_hits[:3]}"

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
-import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 import src.orchestration.nodes._helpers as _helpers_mod
-from src.orchestration.nodes.rag_research import rag_research, _VULN_CLASS_TO_RAG_KEYWORDS
+from src.orchestration.nodes.rag_research import _VULN_CLASS_TO_RAG_KEYWORDS, rag_research
+from tests.provenance_fixtures import live_ml_state
 
 
 class TestRagQueryConstruction:
@@ -16,10 +17,12 @@ class TestRagQueryConstruction:
     @pytest.mark.asyncio
     async def test_skip_when_no_flagged_classes(self):
         """RAG should skip when no classes are flagged (topic=unknown)."""
-        state = {
-            "ml_result": {"label": "safe", "confirmed": [], "suspicious": []},
-            "contract_code": "pragma solidity ^0.8.0;",
-        }
+        state = live_ml_state(
+            {
+                "ml_result": {"label": "safe", "confirmed": [], "suspicious": []},
+                "contract_code": "pragma solidity ^0.8.0;",
+            }
+        )
 
         result = await rag_research(state)
         assert result["rag_results"] == []
@@ -27,14 +30,16 @@ class TestRagQueryConstruction:
     @pytest.mark.asyncio
     async def test_skip_when_topic_unknown(self):
         """RAG should skip when topic is 'unknown'."""
-        state = {
-            "ml_result": {
-                "label": "unknown",
-                "confirmed": [],
-                "suspicious": [],
-            },
-            "contract_code": "pragma solidity ^0.8.0;",
-        }
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "label": "unknown",
+                    "confirmed": [],
+                    "suspicious": [],
+                },
+                "contract_code": "pragma solidity ^0.8.0;",
+            }
+        )
 
         result = await rag_research(state)
         assert result["rag_results"] == []
@@ -44,14 +49,16 @@ class TestRagQueryConstruction:
         """Reentrancy query should use RAG-friendly keywords, not raw class name."""
         mock_fn = AsyncMock(return_value={"results": [{"id": "1", "content": "test"}]})
 
-        state = {
-            "ml_result": {
-                "label": "confirmed_vulnerable",
-                "confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.85}],
-                "suspicious": [],
-            },
-            "contract_code": "pragma solidity ^0.8.0; contract Test {}",
-        }
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "label": "confirmed_vulnerable",
+                    "confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.85}],
+                    "suspicious": [],
+                },
+                "contract_code": "pragma solidity ^0.8.0; contract Test {}",
+            }
+        )
 
         with patch.object(_helpers_mod, "_call_mcp_tool", mock_fn):
             await rag_research(state)
@@ -67,14 +74,16 @@ class TestRagQueryConstruction:
         """IntegerUO query should use 'integer overflow underflow arithmetic'."""
         mock_fn = AsyncMock(return_value={"results": [{"id": "1", "content": "test"}]})
 
-        state = {
-            "ml_result": {
-                "label": "confirmed_vulnerable",
-                "confirmed": [{"vulnerability_class": "IntegerUO", "probability": 0.65}],
-                "suspicious": [],
-            },
-            "contract_code": "pragma solidity ^0.8.0;",
-        }
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "label": "confirmed_vulnerable",
+                    "confirmed": [{"vulnerability_class": "IntegerUO", "probability": 0.65}],
+                    "suspicious": [],
+                },
+                "contract_code": "pragma solidity ^0.8.0;",
+            }
+        )
 
         with patch.object(_helpers_mod, "_call_mcp_tool", mock_fn):
             await rag_research(state)
@@ -88,14 +97,16 @@ class TestRagQueryConstruction:
         """Query should NOT contain Solidity code (confuses text embedder)."""
         mock_fn = AsyncMock(return_value={"results": [{"id": "1", "content": "test"}]})
 
-        state = {
-            "ml_result": {
-                "label": "confirmed_vulnerable",
-                "confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.85}],
-                "suspicious": [],
-            },
-            "contract_code": "pragma solidity ^0.8.0; contract Vault { mapping(address => uint) balances; }",
-        }
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "label": "confirmed_vulnerable",
+                    "confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.85}],
+                    "suspicious": [],
+                },
+                "contract_code": "pragma solidity ^0.8.0; contract Vault { mapping(address => uint) balances; }",
+            }
+        )
 
         with patch.object(_helpers_mod, "_call_mcp_tool", mock_fn):
             await rag_research(state)
@@ -110,14 +121,16 @@ class TestRagQueryConstruction:
         """If first query returns 0 results, should try a fallback query."""
         mock_fn = AsyncMock(return_value={"results": []})
 
-        state = {
-            "ml_result": {
-                "label": "confirmed_vulnerable",
-                "confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.85}],
-                "suspicious": [],
-            },
-            "contract_code": "pragma solidity ^0.8.0;",
-        }
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "label": "confirmed_vulnerable",
+                    "confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.85}],
+                    "suspicious": [],
+                },
+                "contract_code": "pragma solidity ^0.8.0;",
+            }
+        )
 
         with patch.object(_helpers_mod, "_call_mcp_tool", mock_fn):
             await rag_research(state)
@@ -132,23 +145,25 @@ class TestRagQueryConstruction:
         """ExternalBug query should include external call summary."""
         mock_fn = AsyncMock(return_value={"results": [{"id": "1", "content": "test"}]})
 
-        state = {
-            "ml_result": {
-                "label": "confirmed_vulnerable",
-                "confirmed": [{"vulnerability_class": "ExternalBug", "probability": 0.7}],
-                "suspicious": [],
-            },
-            "contract_code": "pragma solidity ^0.8.0;",
-            "external_call_summary": [
-                {
-                    "caller_function": "getPrice",
-                    "caller_contract": "Oracle",
-                    "callee_contract": "Chainlink",
-                    "callee_function": "latestRoundData",
-                    "callee_is_interface": True,
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "label": "confirmed_vulnerable",
+                    "confirmed": [{"vulnerability_class": "ExternalBug", "probability": 0.7}],
+                    "suspicious": [],
                 },
-            ],
-        }
+                "contract_code": "pragma solidity ^0.8.0;",
+                "external_call_summary": [
+                    {
+                        "caller_function": "getPrice",
+                        "caller_contract": "Oracle",
+                        "callee_contract": "Chainlink",
+                        "callee_function": "latestRoundData",
+                        "callee_is_interface": True,
+                    },
+                ],
+            }
+        )
 
         with patch.object(_helpers_mod, "_call_mcp_tool", mock_fn):
             await rag_research(state)
@@ -164,9 +179,16 @@ class TestVulnClassMapping:
     def test_all_classes_mapped(self):
         """Every ML vulnerability class should have a RAG keyword mapping."""
         ml_classes = [
-            "Reentrancy", "IntegerUO", "GasException", "Timestamp",
-            "TransactionOrderDependence", "ExternalBug", "CallToUnknown",
-            "MishandledException", "UnusedReturn", "DenialOfService",
+            "Reentrancy",
+            "IntegerUO",
+            "GasException",
+            "Timestamp",
+            "TransactionOrderDependence",
+            "ExternalBug",
+            "CallToUnknown",
+            "MishandledException",
+            "UnusedReturn",
+            "DenialOfService",
         ]
 
         for cls in ml_classes:

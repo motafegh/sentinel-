@@ -57,41 +57,36 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# ── Load .env in non-production environments ────────────────────────────
+# Production must set every required variable explicitly (env, secrets
+# manager, k8s secrets). Loading .env in production masks missing env
+# vars and is a security risk.
 from loguru import logger
 from pydantic import ValidationError
 
-# ── CRITICAL: load .env BEFORE any agents module is imported ────────────
-# client.py reads LM_STUDIO_BASE_URL etc. at IMPORT time. We must populate
-# them from .env first. We deliberately do this BEFORE importing FastAPI
-# so the import side effects of the agents module see the right URLs.
-from dotenv import load_dotenv
 _AGENTS_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(_AGENTS_DIR / ".env", override=True)
+from src.config.runtime import bootstrap_environment
+bootstrap_environment(dotenv_path=_AGENTS_DIR / ".env", override=True)
+logger.info("R0.0: bootstrap_environment called")
 sys.path.insert(0, str(_AGENTS_DIR))
 
 
 # FastAPI imports (kept after dotenv so a missing FastAPI install doesn't
 # break agents module import paths).
 try:
-    from fastapi import FastAPI, HTTPException, Query
+    from fastapi import Depends, FastAPI, HTTPException, Query
     from fastapi.responses import JSONResponse
+
     HAVE_FASTAPI = True
 except ImportError:  # pragma: no cover
     HAVE_FASTAPI = False
 
 from src.api.job_store import JobRecord, JobStatus, JobStore
-from src.api.models import (
-    AuditRequest,
-    ErrorResponse,
-    HealthResponse,
-    JobResponse,
-    ServiceHealth,
-)
-
+from src.api.models import AuditRequest, ErrorResponse, HealthResponse, JobResponse, ServiceHealth
 
 # ── Module-level constants (configurable via env) ───────────────────────
 GATEWAY_VERSION = "0.1.0"
-GATEWAY_DEFAULT_HOST = os.getenv("GATEWAY_HOST", "0.0.0.0")
+GATEWAY_DEFAULT_HOST = os.getenv("GATEWAY_HOST", "127.0.0.1")
 GATEWAY_DEFAULT_PORT = int(os.getenv("GATEWAY_PORT", "8000"))
 AUDIT_NO_LLM_DEFAULT = os.getenv("AUDIT_NO_LLM", "false").lower() in ("1", "true", "yes")
 
@@ -103,6 +98,7 @@ def create_app(
     graph_factory: Any | None = None,
     no_llm: bool | None = None,
     skip_service_probes: bool = False,
+    auth_enabled: bool = True,
 ) -> Any:
     """Build and return a FastAPI app.
 
@@ -134,14 +130,18 @@ def create_app(
 
     # Resolve the graph factory.
     if graph_factory is None:
+
         def _default_graph_factory():
             from src.orchestration.graph import build_graph
+
             return build_graph(use_checkpointer=False)
+
         graph_factory = _default_graph_factory
 
     # One JobStore per app instance — SQLite by default (P10), in-memory for tests.
     if store is None:
         from src.api.sqlite_job_store import SqliteJobStore
+
         _db_path = os.getenv("SENTINEL_JOBS_DB", "data/jobs.db")
         store = SqliteJobStore(db_path=_db_path, max_completed=500)
 
@@ -171,6 +171,7 @@ def create_app(
         # P10: Background health monitor — probe every 30s.
         _health_task: asyncio.Task | None = None
         if not skip_service_probes:
+
             async def _health_loop():
                 while True:
                     await asyncio.sleep(30)
@@ -179,8 +180,11 @@ def create_app(
                         app.state.services = services
                         down = [s for s in services if not s.ok]
                         if down:
-                            logger.warning("Health check: {} service(s) down: {}",
-                                          len(down), [s.name for s in down])
+                            logger.warning(
+                                "Health check: {} service(s) down: {}",
+                                len(down),
+                                [s.name for s in down],
+                            )
                     except Exception as e:
                         logger.debug(f"Health loop error: {e}")
 
@@ -207,6 +211,32 @@ def create_app(
     app.state.graph_factory = graph_factory
     app.state.no_llm = no_llm
     app.state.skip_service_probes = skip_service_probes
+
+    # R0.3: JWT auth with scopes on mutating routes.
+    from src.security.auth import require_scope
+    write_auth = require_scope("write", enabled=auth_enabled)
+    read_auth = require_scope("read", enabled=auth_enabled)
+
+    # R0.3: Per-tenant rate limiter (token bucket, in-memory).
+    _rate_buckets: dict[str, dict[str, Any]] = {}
+    _RATE_LIMIT = int(os.getenv("SENTINEL_RATE_LIMIT", "100"))
+    _RATE_WINDOW_S = int(os.getenv("SENTINEL_RATE_WINDOW_S", "60"))
+
+    def _check_rate_limit(tenant_id: str) -> None:
+        now = time.time()
+        bucket = _rate_buckets.get(tenant_id)
+        if bucket is None or now - bucket["window_start"] > _RATE_WINDOW_S:
+            _rate_buckets[tenant_id] = {"tokens": _RATE_LIMIT - 1, "window_start": now}
+            return
+        if bucket["tokens"] <= 0:
+            retry_after = int(_RATE_WINDOW_S - (now - bucket["window_start"]))
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded for tenant '{tenant_id}'. "
+                       f"Retry after {retry_after}s.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        bucket["tokens"] -= 1
 
     # ── Routes ────────────────────────────────────────────────────────
     @app.get("/", response_model=None)
@@ -248,18 +278,24 @@ def create_app(
         response_model=JobResponse,
         status_code=202,
         responses={
+            401: {"description": "Authentication required"},
             422: {"model": ErrorResponse, "description": "Validation error"},
             503: {"model": ErrorResponse, "description": "All graph slots busy"},
         },
     )
     async def submit_audit(
         req: AuditRequest,
+        _auth: dict[str, Any] = Depends(write_auth),
         no_llm: bool = Query(
             default=False,
             description="If true, skip LLM calls (cross_validator debate, "
-                        "synthesizer narrative). Faster, lower verdict quality.",
+            "synthesizer narrative). Faster, lower verdict quality.",
         ),
     ):
+        # R0.3: rate limit check before enqueueing.
+        tenant_id = _auth.get("tenant_id", "default") if isinstance(_auth, dict) else "default"
+        _check_rate_limit(tenant_id)
+
         # Generate a deterministic address from the contract code if the
         # client didn't supply one. Matches `run_real_audit.py` convention.
         contract_address = req.contract_address or _derive_address(req.contract_code)
@@ -267,11 +303,9 @@ def create_app(
         # Apply the per-request no_llm override.
         effective_no_llm = no_llm or app.state.no_llm
         if effective_no_llm and not app.state.no_llm:
-            # The per-request override only affects this one audit. We
-            # can't dynamically patch the LLM mid-graph (the graph is
-            # already compiled), so we just record the intent in metadata
-            # for downstream debugging.
             req.metadata["_effective_no_llm"] = True
+
+        req.metadata["tenant_id"] = tenant_id
 
         record = store.create(
             contract_code=req.contract_code,
@@ -311,15 +345,35 @@ def create_app(
         response_model=JobResponse,
         responses={404: {"model": ErrorResponse, "description": "Job not found"}},
     )
-    async def get_audit(job_id: str):
+    async def get_audit(
+        job_id: str,
+        _auth: dict[str, Any] = Depends(read_auth),
+    ):
         record = store.get(job_id)
         if record is None:
             raise HTTPException(status_code=404, detail=f"job_id not found: {job_id}")
+
+        # R0.6: tenant isolation — reject cross-tenant access
+        request_tenant = _auth.get("tenant_id", "default") if isinstance(_auth, dict) else "default"
+        job_tenant = record.metadata.get("tenant_id", "default")
+        if request_tenant != job_tenant:
+            raise HTTPException(status_code=404, detail=f"job_id not found: {job_id}")
+
         return JobResponse(**record.to_dict())
 
     @app.get("/audit", response_model=list[JobResponse])
-    async def list_audits(limit: int = Query(default=20, ge=1, le=100)):
-        return [JobResponse(**r.to_dict()) for r in store.list_recent(n=limit)]
+    async def list_audits(
+        limit: int = Query(default=20, ge=1, le=100),
+        _auth: dict[str, Any] = Depends(read_auth),
+    ):
+        # R0.6: tenant isolation — only return jobs owned by the requesting tenant
+        request_tenant = _auth.get("tenant_id", "default") if isinstance(_auth, dict) else "default"
+        all_records = store.list_recent(n=limit * 10)
+        filtered = [
+            r for r in all_records
+            if r.metadata.get("tenant_id", "default") == request_tenant
+        ][:limit]
+        return [JobResponse(**r.to_dict()) for r in filtered]
 
     return app
 
@@ -346,8 +400,10 @@ async def _run_job(
 
     store.mark_running(job_id)
     t0 = time.time()
-    logger.info(f"job running | id={job_id} | addr={record.contract_address} | "
-                f"timeout={audit_timeout_s:.0f}s")
+    logger.info(
+        f"job running | id={job_id} | addr={record.contract_address} | "
+        f"timeout={audit_timeout_s:.0f}s"
+    )
 
     try:
         # Build the graph INSIDE the task so the compile cost only hits
@@ -357,6 +413,7 @@ async def _run_job(
         initial_state = {
             "contract_code": record.contract_code,
             "contract_address": record.contract_address,
+            "job_id": record.job_id,
         }
         result = await asyncio.wait_for(
             graph.ainvoke(initial_state),
@@ -380,7 +437,13 @@ async def _run_job(
     if not isinstance(result, dict):
         store.mark_failed(job_id, f"graph returned non-dict: {type(result).__name__}")
         return
-    final_report = result.get("final_report", {}) or {}
+    from src.contracts.submission import normalize_submission
+
+    final_report = dict(result.get("final_report", {}) or {})
+    submission = normalize_submission(
+        final_report.get("submission") or result.get("submission_result")
+    )
+    final_report["submission"] = submission
     report = {
         "final_report": final_report,
         "verdicts": result.get("verdicts", {}),
@@ -394,7 +457,10 @@ async def _run_job(
         "confirmations": result.get("confirmations", {}),
         "contradictions": result.get("contradictions", {}),
         "narrative": result.get("narrative"),
+        "tool_status": result.get("tool_status", final_report.get("tool_status", {})),
+        "finality": result.get("finality", final_report.get("finality", {})),
         "error": result.get("error"),
+        "submission": submission,
     }
     store.mark_completed(job_id, report)
     dt = time.time() - t0
@@ -406,12 +472,15 @@ async def _run_job(
 def _probe_urls() -> list[tuple[str, str]]:
     """Return (name, url) for every upstream service we want to probe."""
     return [
-        ("ml_api",        os.getenv("MODULE1_INFERENCE_URL", "http://localhost:8001") + "/health"),
+        ("ml_api", os.getenv("MODULE1_INFERENCE_URL", "http://localhost:8001") + "/health"),
         ("mcp_inference", f"http://localhost:{os.getenv('MCP_INFERENCE_PORT', '8010')}/health"),
-        ("mcp_rag",       f"http://localhost:{os.getenv('MCP_RAG_PORT', '8011')}/health"),
-        ("mcp_audit",     f"http://localhost:{os.getenv('MCP_AUDIT_PORT', '8012')}/health"),
-        ("mcp_graph",     f"http://localhost:{os.getenv('MCP_GRAPH_INSPECTOR_PORT', '8013')}/health"),
-        ("mcp_representation", f"http://localhost:{os.getenv('MCP_REPRESENTATION_PORT', '8014')}/health"),
+        ("mcp_rag", f"http://localhost:{os.getenv('MCP_RAG_PORT', '8011')}/health"),
+        ("mcp_audit", f"http://localhost:{os.getenv('MCP_AUDIT_PORT', '8012')}/health"),
+        ("mcp_graph", f"http://localhost:{os.getenv('MCP_GRAPH_INSPECTOR_PORT', '8013')}/health"),
+        (
+            "mcp_representation",
+            f"http://localhost:{os.getenv('MCP_REPRESENTATION_PORT', '8014')}/health",
+        ),
     ]
 
 
@@ -424,20 +493,47 @@ async def _probe_services(timeout: float = 1.5) -> list[ServiceHealth]:
     every service is down.
     """
     import httpx
+
     results: list[ServiceHealth] = []
     async with httpx.AsyncClient(timeout=timeout) as client:
         for name, url in _probe_urls():
             try:
                 resp = await client.get(url)
-                results.append(ServiceHealth(
-                    name=name, url=url, ok=resp.status_code < 500,
-                    detail=f"HTTP {resp.status_code}",
-                ))
+                try:
+                    payload = resp.json()
+                except (TypeError, ValueError):
+                    payload = {}
+                raw_state = str(
+                    payload.get("state", payload.get("availability", payload.get("status", "")))
+                ).lower()
+                if raw_state in {"ok", "healthy", "ready"}:
+                    state = "live"
+                elif raw_state in {"live", "degraded", "mock", "unavailable"}:
+                    state = raw_state
+                else:
+                    state = "live" if 200 <= resp.status_code < 300 else "unavailable"
+                ready = payload.get("ready")
+                ok = 200 <= resp.status_code < 300 and ready is not False and state == "live"
+                results.append(
+                    ServiceHealth(
+                        name=name,
+                        url=url,
+                        ok=ok,
+                        state=state,
+                        detail=f"HTTP {resp.status_code}; state={state}; ready={ready}",
+                    )
+                )
             except Exception as e:
                 short = str(e).splitlines()[0][:120] if str(e) else "unreachable"
-                results.append(ServiceHealth(
-                    name=name, url=url, ok=False, detail=f"UNREACHABLE: {short}",
-                ))
+                results.append(
+                    ServiceHealth(
+                        name=name,
+                        url=url,
+                        ok=False,
+                        state="unavailable",
+                        detail=f"UNREACHABLE: {short}",
+                    )
+                )
     return results
 
 
@@ -461,12 +557,12 @@ def _patch_no_llm() -> None:
     llm_client.get_strong_llm = _stub_strong_llm
     import src.orchestration.graph as graph_mod
     import src.orchestration.nodes as nodes_mod
+
     for mod in (graph_mod, nodes_mod):
         if hasattr(mod, "get_strong_llm"):
             mod.get_strong_llm = _stub_strong_llm
     logger.warning(
-        "--no-llm MODE: cross_validator → rule-based verdicts; "
-        "synthesizer narrative → None"
+        "--no-llm MODE: cross_validator → rule-based verdicts; " "synthesizer narrative → None"
     )
 
 
@@ -490,11 +586,26 @@ def _shrink_ml_result(ml_result: dict | None) -> dict:
     """
     if not ml_result:
         return {}
+    if "execution_status" in ml_result:
+        # A provenance-bound payload must remain semantically complete;
+        # dropping fields would make its output digest unverifiable by eval.
+        return dict(ml_result)
     keep_keys = {
-        "label", "probabilities", "confirmed", "suspicious",
-        "vulnerabilities", "tier_thresholds", "thresholds",
-        "truncated", "windows_used", "num_nodes", "num_edges",
+        "label",
+        "probabilities",
+        "confirmed",
+        "suspicious",
+        "vulnerabilities",
+        "tier_thresholds",
+        "thresholds",
+        "truncated",
+        "windows_used",
+        "num_nodes",
+        "num_edges",
         "eye_predictions",
+        "execution_status",
+        "error",
+        "detail",
     }
     return {k: v for k, v in ml_result.items() if k in keep_keys}
 
@@ -507,6 +618,7 @@ def _shrink_ml_result(ml_result: dict | None) -> dict:
 def run() -> None:
     """Start the gateway via uvicorn. Used by `python -m src.api.gateway`."""
     import uvicorn
+
     app = create_app()
     uvicorn.run(
         app,

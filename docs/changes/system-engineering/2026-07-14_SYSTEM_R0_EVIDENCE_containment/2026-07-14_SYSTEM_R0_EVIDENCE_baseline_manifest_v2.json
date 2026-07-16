@@ -1,0 +1,96 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "capture_finished_at": "2026-07-14T12:40:29.890513+00:00",
+  "capture_started_at": "2026-07-14T12:40:29.050016+00:00",
+  "closure_status": "open",
+  "command_manifest": {
+    "path": "2026-07-14_SYSTEM_R0_EVIDENCE_command_manifest_v2.json",
+    "sha256": "ecf042c154c61aa030782e11214df29c261bc3aff45f656eb9b7cf679fb3eaff"
+  },
+  "comparison_contract_version": "2",
+  "dirty_state_guard": {
+    "capture_required_clean_workspace": true,
+    "workspace_dirty": false
+  },
+  "environment_manifest": {
+    "comparison_fingerprint": "c21fac2037ea8c47dfd9bfee5f5b96e69054468504fd2d7025b7eea8127eccc1",
+    "path": "baseline_series_2/2026-07-14_SYSTEM_R0_ENVIRONMENT_before_v2.json",
+    "sha256": "336edbc3e48ce896143e23bde0a5cb8adc927b4c4a68afdacb0c9e052a1af4f4"
+  },
+  "evidence_records": [
+    {
+      "matrix_row_id": "R0-EVIDENCE-OUTAGE",
+      "outcome": "fail",
+      "path": "baseline_series_2/2026-07-14_SYSTEM_R0-EVIDENCE-OUTAGE_before_v2.json",
+      "review_status": "accepted",
+      "sha256": "1050ab1648a7ddd064e5d931f5d32eeaa6be74c403e3888196f7c8d2f6324cf2"
+    },
+    {
+      "matrix_row_id": "R0-REPORT-CONTAINMENT",
+      "outcome": "fail",
+      "path": "baseline_series_2/2026-07-14_SYSTEM_R0-REPORT-CONTAINMENT_before_v2.json",
+      "review_status": "accepted",
+      "sha256": "86ebb4d3cec3fd01b7065f18dc3eaa7a0dcab79e2feaefc39f20ec3f25b4ae61"
+    },
+    {
+      "matrix_row_id": "R0-ARCHIVE-CONTAINMENT",
+      "outcome": "fail",
+      "path": "baseline_series_2/2026-07-14_SYSTEM_R0-ARCHIVE-CONTAINMENT_before_v2.json",
+      "review_status": "accepted",
+      "sha256": "e04743e12a7730b438c2b6253284066ca7055e7c8e5f13f36646de849f58286a"
+    },
+    {
+      "matrix_row_id": "R0-DATA-RELEASE-TRUST",
+      "outcome": "fail",
+      "path": "baseline_series_2/2026-07-14_SYSTEM_R0-DATA-RELEASE-TRUST_before_v2.json",
+      "review_status": "accepted",
+      "sha256": "2b444f5be5f32184bdad4ddc01f0366dd3140fc4317d2256cb1b6ff10a58c4a9"
+    },
+    {
+      "matrix_row_id": "R0-AUTHORIZATION-LIMITS",
+      "outcome": "fail",
+      "path": "baseline_series_2/2026-07-14_SYSTEM_R0-AUTHORIZATION-LIMITS_before_v2.json",
+      "review_status": "accepted",
+      "sha256": "61e968dd747bcff5d4c35cf8deb04a34cb22c5c9d0e0a05c1b8f4bf2794b4742"
+    },
+    {
+      "matrix_row_id": "R0-SIGNER-ISOLATION",
+      "outcome": "fail",
+      "path": "baseline_series_2/2026-07-14_SYSTEM_R0-SIGNER-ISOLATION_before_v2.json",
+      "review_status": "accepted",
+      "sha256": "5eda57a33b71442705df39c45c7d9f9874f14fbcb3cc0aecd0049ab594ecd9d4"
+    },
+    {
+      "matrix_row_id": "R0-PROOF-IDENTITY",
+      "outcome": "fail",
+      "path": "baseline_series_2/2026-07-14_SYSTEM_R0-PROOF-IDENTITY_before_v2.json",
+      "review_status": "accepted",
+      "sha256": "47eba9513c4582adb9998a077b022aeaaab9f91c1cd41df25d7d97839a42c24f"
+    },
+    {
+      "matrix_row_id": "R0-TRANSACTION-TRUTH",
+      "outcome": "fail",
+      "path": "baseline_series_2/2026-07-14_SYSTEM_R0-TRANSACTION-TRUTH_before_v2.json",
+      "review_status": "accepted",
+      "sha256": "9705def6a03c261a9f7fd1066adc690685466bed604c12fd2fe5743f01a201b4"
+    }
+  ],
+  "expected_baseline_result": "all eight invariants fail",
+  "kind": "r0_baseline_manifest",
+  "matrix_manifest": {
+    "path": "2026-07-14_SYSTEM_R0_EVIDENCE_matrix_rows.json",
+    "sha256": "88d0ee9521c0d96e4b6ea68af7e7d54283b7c49f71aa784e96258fe7863ef601"
+  },
+  "review": {
+    "decided_at": "2026-07-14T12:43:06Z",
+    "reviewer": "Ali Motafegh",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "series_id": "r0-baseline-2",
+  "supersedes": {
+    "path": "2026-07-14_SYSTEM_R0_EVIDENCE_baseline_manifest.json",
+    "reason": "Series 1 did not bind lockfile and runtime package fingerprints into its comparison key."
+  }
+}

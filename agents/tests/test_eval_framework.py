@@ -23,22 +23,36 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.contracts.execution import bind_status
 from src.eval import (
+    BORDERLINE_BAND,
+    DEFAULT_POSITIVE_VERDICTS,
+    Benchmark,
     ClassMetrics,
     ContractMetrics,
     PipelineMetrics,
-    DEFAULT_POSITIVE_VERDICTS,
-    BORDERLINE_BAND,
-    metrics_from_contracts,
-    Benchmark,
     RegressionBaseline,
     RegressionResult,
+    metrics_from_contracts,
 )
+
+
+def _live_report(report: dict) -> dict:
+    ml_result = bind_status(
+        report.get("ml_result", {}),
+        dependency="module1-inference",
+        input_payload={"source_code": "fixture"},
+        duration_ms=1,
+    )
+    report["ml_result"] = ml_result
+    report["tool_status"] = {"ml": ml_result["execution_status"]}
+    return report
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # ClassMetrics
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestClassMetrics:
     def test_perfect_precision_recall_f1(self):
@@ -77,9 +91,9 @@ class TestClassMetrics:
         m = ClassMetrics(cls="X", tp=0, fp=0, fn=0, tn=10)
         m.compute()
         d = m.as_dict()
-        assert d["precision"] == 0.0   # not NaN
-        assert d["recall"]    == 0.0
-        assert d["f1"]        == 0.0
+        assert d["precision"] == 0.0  # not NaN
+        assert d["recall"] == 0.0
+        assert d["f1"] == 0.0
         # JSON-serialisable (NaN is not valid JSON).
         json.dumps(d)
 
@@ -88,20 +102,25 @@ class TestClassMetrics:
 # PipelineMetrics — small synthetic benchmarks
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def _contract(stem, labels, verdicts, gt="vulnerable"):
     return ContractMetrics(
-        stem=stem, report_path=f"/fake/{stem}.json",
-        labels=labels, ground_truth=gt, verdicts=verdicts, probabilities={},
+        stem=stem,
+        report_path=f"/fake/{stem}.json",
+        labels=labels,
+        ground_truth=gt,
+        verdicts=verdicts,
+        probabilities={},
     )
 
 
 class TestPipelineMetrics:
     def test_perfect_run(self):
         contracts = [
-            _contract("c1", ["Reentrancy"],       {"Reentrancy": "CONFIRMED"}),
-            _contract("c2", ["Reentrancy"],       {"Reentrancy": "CONFIRMED"}),
-            _contract("c3", ["ExternalBug"],      {"ExternalBug": "LIKELY"}),
-            _contract("c4", [],                   {}, gt="safe"),  # safe baseline
+            _contract("c1", ["Reentrancy"], {"Reentrancy": "CONFIRMED"}),
+            _contract("c2", ["Reentrancy"], {"Reentrancy": "CONFIRMED"}),
+            _contract("c3", ["ExternalBug"], {"ExternalBug": "LIKELY"}),
+            _contract("c4", [], {}, gt="safe"),  # safe baseline
         ]
         pm = metrics_from_contracts(contracts)
         assert pm.macro_f1 == 1.0
@@ -128,20 +147,18 @@ class TestPipelineMetrics:
     def test_custom_positive_verdicts(self):
         """A run that only counts CONFIRMED (not LIKELY) as positive."""
         contracts = [
-            _contract("c1", ["X"], {"X": "LIKELY"}),     # LIKELY ignored
+            _contract("c1", ["X"], {"X": "LIKELY"}),  # LIKELY ignored
             _contract("c2", ["X"], {"X": "CONFIRMED"}),
         ]
         # With default positives (CONFIRMED+LIKELY): both predicted → 1 TP, 0 FN.
         pm_default = metrics_from_contracts(contracts)
         assert pm_default.class_metrics["X"].tp == 2
         # With CONFIRMED-only: c1 is now a miss → 1 TP, 1 FN.
-        pm_strict = metrics_from_contracts(
-            contracts, positive_verdicts=frozenset({"CONFIRMED"})
-        )
+        pm_strict = metrics_from_contracts(contracts, positive_verdicts=frozenset({"CONFIRMED"}))
         assert pm_strict.class_metrics["X"].tp == 1
         assert pm_strict.class_metrics["X"].fn == 1
-        assert pm_strict.class_metrics["X"].precision == 1.0   # 1 TP / (1 TP + 0 FP)
-        assert pm_strict.class_metrics["X"].recall    == 0.5   # 1 TP / (1 TP + 1 FN)
+        assert pm_strict.class_metrics["X"].precision == 1.0  # 1 TP / (1 TP + 0 FP)
+        assert pm_strict.class_metrics["X"].recall == 0.5  # 1 TP / (1 TP + 1 FN)
 
     def test_micro_vs_macro(self):
         """Micro-F1 weights by class support; macro-F1 is unweighted mean."""
@@ -163,10 +180,10 @@ class TestPipelineMetrics:
         macro = pm.macro_f1
         micro = pm.micro_f1
         # Hand-computed: macro ≈ 0.564
-        expected_macro = (2*1.0*0.9/1.9 + 2*0.1*1.0/1.1) / 2
+        expected_macro = (2 * 1.0 * 0.9 / 1.9 + 2 * 0.1 * 1.0 / 1.1) / 2
         assert abs(macro - expected_macro) < 0.01
         # Micro ≈ 0.667
-        expected_micro = 2*(10/19)*(10/11) / ((10/19) + (10/11))
+        expected_micro = 2 * (10 / 19) * (10 / 11) / ((10 / 19) + (10 / 11))
         assert abs(micro - expected_micro) < 0.01
         # And the relationship: micro > macro when one small class dominates FPs
         assert micro > macro
@@ -187,9 +204,9 @@ class TestPipelineMetrics:
     def test_derive_per_contract_loose_vs_exact(self):
         """Loose: vuln→≥1 correct flag. Strict: predicted set == label set."""
         contracts = [
-            _contract("c1", ["A", "B"], {"A": "CONFIRMED"}),     # 1/2 correct
-            _contract("c2", ["A"],     {"A": "CONFIRMED"}),     # exact
-            _contract("c3", ["A"],     {"A": "LIKELY"}),        # exact
+            _contract("c1", ["A", "B"], {"A": "CONFIRMED"}),  # 1/2 correct
+            _contract("c2", ["A"], {"A": "CONFIRMED"}),  # exact
+            _contract("c3", ["A"], {"A": "LIKELY"}),  # exact
         ]
         pm = PipelineMetrics(contracts)
         pm.derive_per_contract()
@@ -242,33 +259,57 @@ class TestPipelineMetrics:
 # Benchmark — corpus loading
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestBenchmark:
     def test_load_with_json_sidecar(self, tmp_path):
         # Create a minimal corpus: one .sol + one .json sidecar
         corpus = tmp_path / "corpus"
         corpus.mkdir()
         (corpus / "vuln.sol").write_text("pragma solidity ^0.8.0;\n")
-        (corpus / "vuln.json").write_text(json.dumps({
-            "vulnerabilities": ["Reentrancy"],
-        }))
+        (corpus / "vuln.json").write_text(
+            json.dumps(
+                {
+                    "vulnerabilities": ["Reentrancy"],
+                }
+            )
+        )
         (corpus / "safe.sol").write_text("pragma solidity ^0.8.0;\n")
-        (corpus / "safe.json").write_text(json.dumps({
-            "vulnerabilities": [],
-        }))
+        (corpus / "safe.json").write_text(
+            json.dumps(
+                {
+                    "vulnerabilities": [],
+                }
+            )
+        )
 
         # Create matching reports
         reports = tmp_path / "reports"
         reports.mkdir()
-        (reports / "vuln_report.json").write_text(json.dumps({
-            "verdicts": {"Reentrancy": "CONFIRMED"},
-            "ml_result": {"probabilities": {"Reentrancy": 0.85}},
-            "final_report": {"path_taken": "deep", "verdicts": {"Reentrancy": "CONFIRMED"}},
-        }))
-        (reports / "safe_report.json").write_text(json.dumps({
-            "verdicts": {},
-            "ml_result": {"probabilities": {}},
-            "final_report": {"path_taken": "fast", "verdicts": {}},
-        }))
+        (reports / "vuln_report.json").write_text(
+            json.dumps(
+                _live_report(
+                    {
+                        "verdicts": {"Reentrancy": "CONFIRMED"},
+                        "ml_result": {"probabilities": {"Reentrancy": 0.85}},
+                        "final_report": {
+                            "path_taken": "deep",
+                            "verdicts": {"Reentrancy": "CONFIRMED"},
+                        },
+                    }
+                )
+            )
+        )
+        (reports / "safe_report.json").write_text(
+            json.dumps(
+                _live_report(
+                    {
+                        "verdicts": {},
+                        "ml_result": {"probabilities": {}},
+                        "final_report": {"path_taken": "fast", "verdicts": {}},
+                    }
+                )
+            )
+        )
 
         bench = Benchmark(name="test", corpus_dir=corpus, reports_dir=reports)
         contracts = bench.load()
@@ -281,17 +322,24 @@ class TestBenchmark:
         corpus.mkdir()
         # // expect: header in the .sol, no .json sidecar
         (corpus / "vuln.sol").write_text(
-            "// expect: Reentrancy\n"
-            "pragma solidity ^0.8.0;\n"
-            "contract C {}\n"
+            "// expect: Reentrancy\n" "pragma solidity ^0.8.0;\n" "contract C {}\n"
         )
         reports = tmp_path / "reports"
         reports.mkdir()
-        (reports / "vuln_report.json").write_text(json.dumps({
-            "verdicts": {"Reentrancy": "CONFIRMED"},
-            "ml_result": {"probabilities": {"Reentrancy": 0.85}},
-            "final_report": {"path_taken": "deep", "verdicts": {"Reentrancy": "CONFIRMED"}},
-        }))
+        (reports / "vuln_report.json").write_text(
+            json.dumps(
+                _live_report(
+                    {
+                        "verdicts": {"Reentrancy": "CONFIRMED"},
+                        "ml_result": {"probabilities": {"Reentrancy": 0.85}},
+                        "final_report": {
+                            "path_taken": "deep",
+                            "verdicts": {"Reentrancy": "CONFIRMED"},
+                        },
+                    }
+                )
+            )
+        )
         bench = Benchmark(name="test", corpus_dir=corpus, reports_dir=reports)
         contracts = bench.load()
         assert len(contracts) == 1
@@ -309,11 +357,15 @@ class TestBenchmark:
         )
         reports = tmp_path / "reports"
         reports.mkdir()
-        (reports / "no_labels_report.json").write_text(json.dumps({
-            "verdicts": {"X": "CONFIRMED"},
-            "ml_result": {},
-            "final_report": {"path_taken": "deep"},
-        }))
+        (reports / "no_labels_report.json").write_text(
+            json.dumps(
+                {
+                    "verdicts": {"X": "CONFIRMED"},
+                    "ml_result": {},
+                    "final_report": {"path_taken": "deep"},
+                }
+            )
+        )
         bench = Benchmark(name="test", corpus_dir=corpus, reports_dir=reports)
         contracts = bench.load()
         assert len(contracts) == 0
@@ -328,11 +380,17 @@ class TestBenchmark:
         (corpus / "real.json").write_text(json.dumps({"vulnerabilities": ["X"]}))
         reports = tmp_path / "reports"
         reports.mkdir()
-        (reports / "real_report.json").write_text(json.dumps({
-            "verdicts": {"X": "CONFIRMED"},
-            "ml_result": {},
-            "final_report": {"path_taken": "deep"},
-        }))
+        (reports / "real_report.json").write_text(
+            json.dumps(
+                _live_report(
+                    {
+                        "verdicts": {"X": "CONFIRMED"},
+                        "ml_result": {},
+                        "final_report": {"path_taken": "deep"},
+                    }
+                )
+            )
+        )
         bench = Benchmark(name="test", corpus_dir=corpus, reports_dir=reports)
         # Manifest files don't have matching reports, so 0 contracts.
         # But also doesn't crash on the manifest sidecar present.
@@ -364,6 +422,7 @@ class TestBenchmark:
 # ═══════════════════════════════════════════════════════════════════════════
 # RegressionBaseline
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestRegressionBaseline:
     def test_load_existing_pre_redesign(self):
@@ -418,7 +477,7 @@ class TestRegressionBaseline:
     def test_compare_improvement(self, tmp_path):
         """A run with better macro-F1 is NOT regressed; class is in improved_classes."""
         base_contracts = [
-            _contract("c1", ["A"], {}),                 # miss
+            _contract("c1", ["A"], {}),  # miss
             _contract("c2", ["A"], {"A": "CONFIRMED"}),  # hit
         ]
         baseline = RegressionBaseline.from_metrics(metrics_from_contracts(base_contracts))
@@ -464,8 +523,6 @@ class TestRegressionBaseline:
         ]
         baseline = RegressionBaseline.from_metrics(metrics_from_contracts(base_contracts))
         # Same prediction → delta=0
-        result = baseline.compare(
-            metrics_from_contracts(base_contracts), min_delta_pp=0.01
-        )
+        result = baseline.compare(metrics_from_contracts(base_contracts), min_delta_pp=0.01)
         assert result.regressed_classes == []
         assert result.improved_classes == []

@@ -1,0 +1,86 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "comparison_key": "c107022c2b885bf59ffc12d3b57c432bb0179f926e34ff3c8b96159b54c16504",
+  "environment_manifest": {
+    "comparison_fingerprint": "719974d3e8b1d34256c9eee252c471871c172a88176895a5cc9d3f3ea34c9f86",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/final_candidate_5e45/environment_after.json",
+    "sha256": "9d595a6aba260745c03df2cbabb9f678c6c5e416b3ba742b1548adba7e6d09fc"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-16T13:33:18.579412+00:00",
+    "started_at": "2026-07-16T13:33:18.495461+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"result=False\", \"name\": \"is_valid_job_id_rejects_path_traversal\", \"passed\": true}, {\"detail\": \"valid UUID accepted\", \"name\": \"is_valid_job_id_accepts_uuid\", \"passed\": true}, {\"detail\": \"persist_report ran=False for malicious job_id\", \"name\": \"persist_report_rejects_malicious_job_id\", \"passed\": true}, {\"detail\": \"rejected path traversal address\", \"name\": \"validate_address_rejects_path_traversal\", \"passed\": true}, {\"detail\": \"accepted valid address\", \"name\": \"validate_address_accepts_ethereum_address\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "94ca22aff58f82e5f23f8f0b652afcbe66f4a7d6360559d726a983e9eb85a87e"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-REPORT-CONTAINMENT",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "result=False",
+        "name": "is_valid_job_id_rejects_path_traversal",
+        "passed": true
+      },
+      {
+        "detail": "valid UUID accepted",
+        "name": "is_valid_job_id_accepts_uuid",
+        "passed": true
+      },
+      {
+        "detail": "persist_report ran=False for malicious job_id",
+        "name": "persist_report_rejects_malicious_job_id",
+        "passed": true
+      },
+      {
+        "detail": "rejected path traversal address",
+        "name": "validate_address_rejects_path_traversal",
+        "passed": true
+      },
+      {
+        "detail": "accepted valid address",
+        "name": "validate_address_accepts_ethereum_address",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{probe_bundle}/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-report-path",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/probe_bundle/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "probe_bundle_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "probe_bundle_sha256": "f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c",
+  "record_id": "R0-REPORT-CONTAINMENT:after:r0-report-path:5e45fbed7e7a",
+  "review": {
+    "decided_at": "2026-07-16T13:55:01Z",
+    "reviewer": "Ali (project owner)",
+    "status": "accepted"
+  },
+  "schema_version": "2",
+  "test_references": [
+    "agents/src/orchestration/nodes/synthesizer.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "1d907bff55382476fd4cdde1fa950d5088379107c5b2058938204c8cba6fa184",
+  "environment_manifest": {
+    "comparison_fingerprint": "719974d3e8b1d34256c9eee252c471871c172a88176895a5cc9d3f3ea34c9f86",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/final_candidate_5e45/environment_before.json",
+    "sha256": "f809eece8a100313d91eee70167b14ecb4eac8b6f3aff0f10e66a94bc7f3dfcb"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-16T13:33:14.506715+00:00",
+    "started_at": "2026-07-16T13:33:11.251528+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"before=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 after_change=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7\", \"name\": \"semantic_manifest_change_does_not_affect_hash\", \"passed\": true}, {\"detail\": \"original=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 tampered=0858cf9fce50cb1acbdee9cc4af5a82880d3f5faf904a57ac60143d16fb5dc1b\", \"name\": \"data_tamper_changes_hash\", \"passed\": true}, {\"detail\": \"first=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 restored=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7\", \"name\": \"hash_is_deterministic\", \"passed\": true}, {\"detail\": \"2file_hash=91d3b0c2d179d094741bb7f9dbc4107219115290d21cc0b0252fa3b744b07828 3file_hash=8e6384c5c6627d184d32ab523ae07e930e9de616a94728ec529e1869c4b95a8d\", \"name\": \"added_file_changes_hash\", \"passed\": true}, {\"detail\": \"2file_hash=91d3b0c2d179d094741bb7f9dbc4107219115290d21cc0b0252fa3b744b07828 after_delete=b08a08a730f0d15c5bab926a4df0b9b43a8a61276223b376d4a466a335e5dc54\", \"name\": \"deleted_file_changes_hash\", \"passed\": true}, {\"detail\": \"missing=['file_a.pt']\", \"name\": \"deleted_file_detected_by_set_mismatch\", \"passed\": true}, {\"detail\": \"ModuleNotFoundError: No module named 'sentinel_data.export.release_descriptor'\", \"name\": \"release_descriptor_available\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "c7e0fd31aa1efbd5f8b81a306ab2d52ecd8d35f714a5e5261665f9a2c81c0892"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-DATA-RELEASE-TRUST",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "before=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 after_change=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7",
+        "name": "semantic_manifest_change_does_not_affect_hash",
+        "passed": true
+      },
+      {
+        "detail": "original=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 tampered=0858cf9fce50cb1acbdee9cc4af5a82880d3f5faf904a57ac60143d16fb5dc1b",
+        "name": "data_tamper_changes_hash",
+        "passed": true
+      },
+      {
+        "detail": "first=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7 restored=1e5dbcc5dfbb45d1ae528edb1eb38f7ad986f7c86a97caf15476fd9116cd0ea7",
+        "name": "hash_is_deterministic",
+        "passed": true
+      },
+      {
+        "detail": "2file_hash=91d3b0c2d179d094741bb7f9dbc4107219115290d21cc0b0252fa3b744b07828 3file_hash=8e6384c5c6627d184d32ab523ae07e930e9de616a94728ec529e1869c4b95a8d",
+        "name": "added_file_changes_hash",
+        "passed": true
+      },
+      {
+        "detail": "2file_hash=91d3b0c2d179d094741bb7f9dbc4107219115290d21cc0b0252fa3b744b07828 after_delete=b08a08a730f0d15c5bab926a4df0b9b43a8a61276223b376d4a466a335e5dc54",
+        "name": "deleted_file_changes_hash",
+        "passed": true
+      },
+      {
+        "detail": "missing=['file_a.pt']",
+        "name": "deleted_file_detected_by_set_mismatch",
+        "passed": true
+      },
+      {
+        "detail": "ModuleNotFoundError: No module named 'sentinel_data.export.release_descriptor'",
+        "name": "release_descriptor_available",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{data_python}",
+      "{probe_bundle}/baseline_probes.py",
+      "data-release",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-data-release",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/data_module/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-containment/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/probe_bundle/baseline_probes.py",
+      "data-release",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "probe_bundle_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "probe_bundle_sha256": "f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c",
+  "record_id": "R0-DATA-RELEASE-TRUST:before:r0-data-release:1256d9aab45a",
+  "review": {
+    "decided_at": "2026-07-16T13:55:01Z",
+    "reviewer": "Ali (project owner)",
+    "status": "accepted"
+  },
+  "schema_version": "2",
+  "test_references": [
+    "data_module/tests/test_export/test_export.py",
+    "data_module/tests/test_export/test_chunker.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_DATA_D2_AUDIT_appendix.md"
+  ]
+}

@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from src.eval.pipeline_metrics import ContractMetrics
+from src.eval.provenance import validate_report_ml_provenance
 
 
 @dataclass
@@ -46,7 +47,8 @@ class Benchmark:
     Fields are intentionally simple so this can be constructed from CLI
     args, a config file, or a notebook.
     """
-    name:       str
+
+    name: str
     corpus_dir: Path
     reports_dir: Path
     positive_verdicts: frozenset[str] = field(
@@ -202,16 +204,13 @@ class Benchmark:
         labels, gt, _, _ = label_info
 
         raw = self._load_report(report_path)
+        validate_report_ml_provenance(raw, report_path=report_path)
         ml_result = raw.get("ml_result", {}) or {}
         probabilities = ml_result.get("probabilities", {}) or {}
         final_report = raw.get("final_report", {}) or {}
 
         # Verdicts live in two places depending on whether cross_validator ran.
-        verdicts: dict[str, str] = (
-            raw.get("verdicts")
-            or final_report.get("verdicts")
-            or {}
-        )
+        verdicts: dict[str, str] = raw.get("verdicts") or final_report.get("verdicts") or {}
         verdicts = {str(k): str(v) for k, v in verdicts.items()}
 
         return ContractMetrics(

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/r0/runtime_config_v1.schema.json",
+  "title": "Sentinel Runtime Configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile", "dotenv", "mock_services"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "profile": {"enum": ["test", "development", "production"]},
+    "dotenv": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "path"],
+      "properties": {
+        "mode": {"enum": ["disabled", "fill_missing", "override"]},
+        "path": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"enum": ["fill_missing", "override"]}}},
+          "then": {"properties": {"path": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "mock_services": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"profile": {"const": "production"}}},
+      "then": {
+        "properties": {
+          "dotenv": {"properties": {"mode": {"enum": ["disabled", "fill_missing"]}}},
+          "mock_services": {"maxItems": 0}
+        }
+      }
+    }
+  ]
+}

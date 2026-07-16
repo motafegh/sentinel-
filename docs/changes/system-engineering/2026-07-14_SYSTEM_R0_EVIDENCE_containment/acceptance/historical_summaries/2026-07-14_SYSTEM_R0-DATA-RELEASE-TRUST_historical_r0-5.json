@@ -1,0 +1,22 @@
+{
+  "assertions": [
+    {
+      "detail": "excluded=False",
+      "name": "semantic_manifest_is_committed",
+      "passed": true
+    },
+    {
+      "detail": "exact_set_check_present=True",
+      "name": "warm_cache_checks_exact_file_set",
+      "passed": true
+    }
+  ],
+  "candidate_commit": "1b1f3e18de13a3052d09b9441cea9c64df5c34ca",
+  "invariant": "Dataset release commitment binds semantics and exact files",
+  "invariant_passed": true,
+  "phase": "after",
+  "probe": "data-release",
+  "row_id": "R0-DATA-RELEASE-TRUST",
+  "schema_version": "1",
+  "status": "pass"
+}

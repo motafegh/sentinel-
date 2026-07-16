@@ -1,0 +1,69 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "ddc49aaed23a00e095d4aaf23e0bf596c57b14b5e1d23187fbaa5dc5107c37cf",
+  "environment_manifest": {
+    "comparison_fingerprint": "c33f199829aaa0e6a82c21770fcc23d9d998f8b9a24308e0be032fa5db8355a3",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_v3_env.json",
+    "sha256": "3db0e4e272c9615bdfafbef34cd1c061754b83c13d41905d2e42ce273cefe425"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T14:34:38.143504+00:00",
+    "started_at": "2026-07-15T14:34:38.079621+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"raw_key_path=True\", \"name\": \"analysis_process_has_no_raw_key\", \"passed\": false}, {\"detail\": \"advertised=True\", \"name\": \"mcp_does_not_advertise_signing\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "4d90eabdf26b11fa212c1460b24ef75d95b611c5f684c713b3ede6f7d23ce369"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-SIGNER-ISOLATION",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "raw_key_path=True",
+        "name": "analysis_process_has_no_raw_key",
+        "passed": false
+      },
+      {
+        "detail": "advertised=True",
+        "name": "mcp_does_not_advertise_signing",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "signer-boundary",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-signer-boundary",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-containment/scripts/r0_evidence/baseline_probes.py",
+      "signer-boundary",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-SIGNER-ISOLATION:before:r0-signer-boundary:1256d9aab45a",
+  "review": {
+    "decided_at": "2026-07-14T12:43:06Z",
+    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}

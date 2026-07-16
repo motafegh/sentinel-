@@ -63,10 +63,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from langgraph.graph import END, StateGraph
 from loguru import logger
-
-from src.orchestration.state import AuditState
-from src.orchestration.routing import compute_active_tools
-from src.orchestration.timing import timed_node
 from src.orchestration.nodes import (
     audit_check,
     consensus_engine,
@@ -83,11 +79,15 @@ from src.orchestration.nodes import (
     synthesizer,
     visualizer,
 )
-
+from src.orchestration.provenance import eligible_ml_result
+from src.orchestration.routing import compute_active_tools
+from src.orchestration.state import AuditState
+from src.orchestration.timing import timed_node
 
 # ---------------------------------------------------------------------------
 # Routing function (conditional edge — not a node)
 # ---------------------------------------------------------------------------
+
 
 def _route_from_evidence_router(state: AuditState) -> str | list[str]:
     """
@@ -111,14 +111,17 @@ def _route_from_evidence_router(state: AuditState) -> str | list[str]:
     it again (cheap — pure dict lookup) to produce the LangGraph branch target.
     The two calls must be consistent; routing.py is the single source of truth.
     """
-    ml_result = state.get("ml_result", {})
-    active    = compute_active_tools(ml_result)
+    ml_result = eligible_ml_result(state, purpose="routing")
+    active = compute_active_tools(ml_result)
 
     # Check quick_screen escalation signal.
     quick_hits = state.get("quick_screen_hits", {})
     has_screen_hits = bool(quick_hits.get("slither") or quick_hits.get("aderyn"))
 
-    if not active and not has_screen_hits:
+    if not ml_result:
+        logger.info("_route_from_evidence_router | invalid/unavailable ML → deep analysis")
+        active = ["static_analysis"]
+    elif not active and not has_screen_hits:
         logger.info("_route_from_evidence_router | fast path (ML safe + screen clean)")
         return "synthesizer"
 
@@ -128,7 +131,7 @@ def _route_from_evidence_router(state: AuditState) -> str | list[str]:
             "_route_from_evidence_router | screen-escalated deep path "
             "(ML safe but quick_screen hit: slither={} aderyn={})",
             quick_hits.get("slither", []),
-            quick_hits.get("aderyn",  []),
+            quick_hits.get("aderyn", []),
         )
         active = ["static_analysis"]
 
@@ -142,6 +145,7 @@ def _route_from_evidence_router(state: AuditState) -> str | list[str]:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_graph(use_checkpointer: bool = True) -> Any:
     """
@@ -169,20 +173,20 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     # context this graph runs in (production MCP-driven server,
     # run_real_audit.py, ad-hoc scripts) — not only when a caller happens to
     # add its own ad-hoc timing wrapper. See src/orchestration/timing.py.
-    graph.add_node("ml_assessment",   timed_node("ml_assessment", ml_assessment))
-    graph.add_node("quick_screen",    timed_node("quick_screen", quick_screen))
+    graph.add_node("ml_assessment", timed_node("ml_assessment", ml_assessment))
+    graph.add_node("quick_screen", timed_node("quick_screen", quick_screen))
     graph.add_node("evidence_router", timed_node("evidence_router", evidence_router))
-    graph.add_node("rag_research",    timed_node("rag_research", rag_research))
+    graph.add_node("rag_research", timed_node("rag_research", rag_research))
     graph.add_node("static_analysis", timed_node("static_analysis", static_analysis))
-    graph.add_node("graph_explain",   timed_node("graph_explain", graph_explain))
+    graph.add_node("graph_explain", timed_node("graph_explain", graph_explain))
     graph.add_node("formal_verification", timed_node("formal_verification", formal_verification))
-    graph.add_node("audit_check",     timed_node("audit_check", audit_check))
+    graph.add_node("audit_check", timed_node("audit_check", audit_check))
     graph.add_node("consensus_engine", timed_node("consensus_engine", consensus_engine))  # A.6/A.7
     graph.add_node("cross_validator", timed_node("cross_validator", cross_validator))
-    graph.add_node("synthesizer",     timed_node("synthesizer", synthesizer))
-    graph.add_node("reflection",      timed_node("reflection", reflection))               # A.3
-    graph.add_node("explainer",       timed_node("explainer", explainer))                 # A.8
-    graph.add_node("visualizer",      timed_node("visualizer", visualizer))                # A.9
+    graph.add_node("synthesizer", timed_node("synthesizer", synthesizer))
+    graph.add_node("reflection", timed_node("reflection", reflection))  # A.3
+    graph.add_node("explainer", timed_node("explainer", explainer))  # A.8
+    graph.add_node("visualizer", timed_node("visualizer", visualizer))  # A.9
 
     # ── Entry point ─────────────────────────────────────────────────────────
     graph.set_entry_point("ml_assessment")
@@ -191,7 +195,7 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     # quick_screen runs on EVERY contract (Tier 0) to catch cases where ML
     # is below all DEEP_THRESHOLDS but static analysis finds High/Critical issues.
     graph.add_edge("ml_assessment", "quick_screen")
-    graph.add_edge("quick_screen",  "evidence_router")
+    graph.add_edge("quick_screen", "evidence_router")
 
     # ── evidence_router → conditional fan-out ───────────────────────────────
     # _route_from_evidence_router returns either:
@@ -201,34 +205,36 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     graph.add_conditional_edges("evidence_router", _route_from_evidence_router)
 
     # ── Deep path fan-in: all parallel branches converge at audit_check ──────
-    graph.add_edge("rag_research",    "audit_check")
+    graph.add_edge("rag_research", "audit_check")
     graph.add_edge("static_analysis", "audit_check")
-    graph.add_edge("graph_explain",   "audit_check")
+    graph.add_edge("graph_explain", "audit_check")
     graph.add_edge("formal_verification", "audit_check")
 
     # ── Deep path: audit_check → consensus_engine → cross_validator → synthesizer
     # consensus_engine (A.6/A.7) weights ML/Slither/Aderyn per class and tracks
     # Bayesian confidence; cross_validator then runs the Prosecutor/Defender/Judge
     # debate (A.4). Both fail-soft → rule-based verdicts when the LLM is absent.
-    graph.add_edge("audit_check",      "consensus_engine")
+    graph.add_edge("audit_check", "consensus_engine")
     graph.add_edge("consensus_engine", "cross_validator")
-    graph.add_edge("cross_validator",  "synthesizer")
+    graph.add_edge("cross_validator", "synthesizer")
 
     # ── Post-synthesis enrichment: reflection → explainer → visualizer → END ──
     # A.3 self-critique → A.8 metric attribution (+ folds confidence/consensus
     # into final_report) → A.9 interactive hotspot HTML. The fast path also
     # reaches synthesizer, so every run gets the enrichment chain.
     graph.add_edge("synthesizer", "reflection")
-    graph.add_edge("reflection",  "explainer")
-    graph.add_edge("explainer",   "visualizer")
-    graph.add_edge("visualizer",  END)
+    graph.add_edge("reflection", "explainer")
+    graph.add_edge("explainer", "visualizer")
+    graph.add_edge("visualizer", END)
 
     # ── Checkpointer ────────────────────────────────────────────────────────
     checkpointer = None
     if use_checkpointer:
         try:
             import sqlite3
+
             from langgraph.checkpoint.sqlite import SqliteSaver
+
             db_path = Path(__file__).parents[2] / "data" / "checkpoints.db"
             db_path.parent.mkdir(parents=True, exist_ok=True)
             # SqliteSaver.from_conn_string() is a context manager in langgraph >= 1.2.
@@ -238,6 +244,7 @@ def build_graph(use_checkpointer: bool = True) -> Any:
             logger.debug("graph | checkpointer=SqliteSaver | db={}", db_path)
         except ImportError:
             from langgraph.checkpoint.memory import MemorySaver
+
             checkpointer = MemorySaver()
             logger.warning(
                 "graph | langgraph-checkpoint-sqlite not installed — "
@@ -250,10 +257,22 @@ def build_graph(use_checkpointer: bool = True) -> Any:
     logger.info(
         "Audit graph compiled | checkpointer={} | nodes={}",
         type(checkpointer).__name__ if checkpointer else "None",
-        ["ml_assessment", "quick_screen", "evidence_router", "rag_research",
-         "static_analysis", "graph_explain", "formal_verification",
-         "audit_check", "consensus_engine",
-         "cross_validator", "synthesizer", "reflection", "explainer", "visualizer"],
+        [
+            "ml_assessment",
+            "quick_screen",
+            "evidence_router",
+            "rag_research",
+            "static_analysis",
+            "graph_explain",
+            "formal_verification",
+            "audit_check",
+            "consensus_engine",
+            "cross_validator",
+            "synthesizer",
+            "reflection",
+            "explainer",
+            "visualizer",
+        ],
     )
     return compiled
 

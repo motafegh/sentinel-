@@ -69,6 +69,7 @@ class AuditState(TypedDict, total=False):
     # ── Input (set by caller, never changed by nodes) ──────────────────────
     contract_code:    str           # raw Solidity source to audit
     contract_address: str           # on-chain address (for audit registry lookup)
+    job_id:           str           # canonical UUID — safe filesystem key (R0.2)
 
     # ── ML evidence ─────────────────────────────────────────────────────────
     ml_result: dict[str, Any]

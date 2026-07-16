@@ -1,0 +1,86 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "f57e397dba5ec33c46df26653c65a79204d1f0de60ff0eb70cb2743fcd28c82b",
+  "environment_manifest": {
+    "comparison_fingerprint": "719974d3e8b1d34256c9eee252c471871c172a88176895a5cc9d3f3ea34c9f86",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/final_candidate_5e45/environment_before.json",
+    "sha256": "f809eece8a100313d91eee70167b14ecb4eac8b6f3aff0f10e66a94bc7f3dfcb"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-16T13:33:16.382617+00:00",
+    "started_at": "2026-07-16T13:33:15.661697+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"config no longer defines _OPERATOR_KEY\", \"name\": \"operator_key_absent_from_config\", \"passed\": false}, {\"detail\": \"no eth_account import or from_key call in analysis process\", \"name\": \"no_raw_key_import_in_submit\", \"passed\": false}, {\"detail\": \"no raw tx signing or broadcast code in MCP process\", \"name\": \"no_transaction_construction_in_submit\", \"passed\": false}, {\"detail\": \"signature=None\", \"name\": \"provenance_manifest_signature_is_none\", \"passed\": true}, {\"detail\": \"advertised_tools=['get_latest_audit', 'get_audit_history', 'check_audit_exists', 'submit_audit']\", \"name\": \"mcp_does_not_advertise_submit_audit\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "2dfd2412443209a88c9dc9597dfc92a3099279e280ae8b2c3aa2a1cb169965a5"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-SIGNER-ISOLATION",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "config no longer defines _OPERATOR_KEY",
+        "name": "operator_key_absent_from_config",
+        "passed": false
+      },
+      {
+        "detail": "no eth_account import or from_key call in analysis process",
+        "name": "no_raw_key_import_in_submit",
+        "passed": false
+      },
+      {
+        "detail": "no raw tx signing or broadcast code in MCP process",
+        "name": "no_transaction_construction_in_submit",
+        "passed": false
+      },
+      {
+        "detail": "signature=None",
+        "name": "provenance_manifest_signature_is_none",
+        "passed": true
+      },
+      {
+        "detail": "advertised_tools=['get_latest_audit', 'get_audit_history', 'check_audit_exists', 'submit_audit']",
+        "name": "mcp_does_not_advertise_submit_audit",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{probe_bundle}/baseline_probes.py",
+      "signer-boundary",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-signer-boundary",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-containment/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/probe_bundle/baseline_probes.py",
+      "signer-boundary",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "probe_bundle_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "probe_bundle_sha256": "f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c",
+  "record_id": "R0-SIGNER-ISOLATION:before:r0-signer-boundary:1256d9aab45a",
+  "review": {
+    "decided_at": "2026-07-16T13:55:01Z",
+    "reviewer": "Ali (project owner)",
+    "status": "accepted"
+  },
+  "schema_version": "2",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}

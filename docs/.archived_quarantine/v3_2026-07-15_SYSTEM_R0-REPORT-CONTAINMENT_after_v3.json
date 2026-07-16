@@ -1,0 +1,64 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "beb8e52505775475d4c7496a27cb1aa25a3cbe19",
+  "comparison_key": "2702e3c21799c81d1a8c864589e344e82a2285c24b8f4f383763566708b214a1",
+  "environment_manifest": {
+    "comparison_fingerprint": "c33f199829aaa0e6a82c21770fcc23d9d998f8b9a24308e0be032fa5db8355a3",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_v3_env_current.json",
+    "sha256": "6ce6f25060001531f43b5bdb08ab1db15fe2c1169e28f8a404d3eb0077761786"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T14:34:51.802928+00:00",
+    "started_at": "2026-07-15T14:34:51.725943+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"unsafe_expression=False\", \"name\": \"logical_address_not_used_as_filename\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "514f416a0e84899b5e26565cbe25ce69e0c946913ac8631614e38a8d8fb29e98"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-REPORT-CONTAINMENT",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "unsafe_expression=False",
+        "name": "logical_address_not_used_as_filename",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-report-path",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-REPORT-CONTAINMENT:after:r0-report-path:beb8e5250577",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/orchestration/nodes/synthesizer.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}

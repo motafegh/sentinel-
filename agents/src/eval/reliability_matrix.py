@@ -25,6 +25,8 @@ from math import isnan
 from pathlib import Path
 from typing import Any
 
+from src.contracts.execution import status_allows_evidence
+
 # Decision-number — the three sources the consensus_verdict schema exposes
 # today. P8 channels will add to the union of sources discovered per-report.
 KNOWN_SOURCES: tuple[str, ...] = ("ml", "slither", "aderyn")
@@ -33,6 +35,7 @@ KNOWN_SOURCES: tuple[str, ...] = ("ml", "slither", "aderyn")
 @dataclass
 class Cell:
     """One 2×2 confusion-matrix cell for (source, class)."""
+
     source: str
     cls: str
     tp: int = 0
@@ -69,6 +72,7 @@ class Cell:
 @dataclass
 class Matrix:
     """The full (source × class) confusion grid + provenance."""
+
     cells: dict[tuple[str, str], Cell] = field(default_factory=dict)
     n_contracts: int = 0
     classes: list[str] = field(default_factory=list)
@@ -97,10 +101,7 @@ class Matrix:
             "excluded_contracts": {
                 tool: sorted(stems) for tool, stems in self.excluded_contracts.items()
             },
-            "cells": [
-                self.cells[k].as_dict()
-                for k in sorted(self.cells.keys())
-            ],
+            "cells": [self.cells[k].as_dict() for k in sorted(self.cells.keys())],
         }
 
     def save(self, path: Path) -> None:
@@ -121,9 +122,12 @@ class Matrix:
             m.excluded_contracts[tool] = list(stems)
         for c in data.get("cells", []):
             cell = Cell(
-                source=c["source"], cls=c["cls"],
-                tp=int(c["tp"]), fp=int(c["fp"]),
-                fn=int(c["fn"]), tn=int(c["tn"]),
+                source=c["source"],
+                cls=c["cls"],
+                tp=int(c["tp"]),
+                fp=int(c["fp"]),
+                fn=int(c["fn"]),
+                tn=int(c["tn"]),
             )
             m.cells[(cell.source, cell.cls)] = cell
         return m
@@ -138,10 +142,13 @@ def _tool_ran(row: Any, source: str) -> bool:
     Per Rule 5C: a tool that did NOT run on a contract must be excluded from
     that tool's confusion-matrix counts. `row.tool_status` is the dataclass
     field loaded from `report["tool_status"]`; if it's missing (older rows)
-    or the source isn't in it, assume the tool ran (legacy behaviour).
+    or the source isn't in it, ML is excluded. Legacy static-tool status
+    remains compatible until those producers adopt the canonical contract.
     """
     ts = getattr(row, "tool_status", None) or {}
     entry = ts.get(source)
+    if source == "ml":
+        return status_allows_evidence(entry)
     if not isinstance(entry, dict):
         return True  # no entry → assume ran (legacy compat)
     return entry.get("ran") is not False

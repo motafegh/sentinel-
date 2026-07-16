@@ -28,17 +28,20 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import torch  # Bug 1 fix — was missing; needed for torch.cuda.OutOfMemoryError + empty_cache()
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from loguru import logger
 from prometheus_client import Gauge
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field, field_validator
 
 from ml.src.inference.drift_detector import DriftDetector
+from ml.src.inference.execution_status import bind_live_result
 from ml.src.inference.predictor import Predictor
 from ml.src.inference.preprocess import ContractPreprocessor
 
@@ -60,16 +63,18 @@ DRIFT_BASELINE_PATH: str = os.getenv(
     _CONFIG.get("drift_baseline", "ml/data/drift_baseline.json"),
 )
 # Run a KS check every N requests (balance: lower = more responsive, higher = cheaper).
-DRIFT_CHECK_INTERVAL: int = int(os.getenv(
-    "SENTINEL_DRIFT_CHECK_INTERVAL",
-    str(_CONFIG.get("drift_check_interval", 50)),
-))
+DRIFT_CHECK_INTERVAL: int = int(
+    os.getenv(
+        "SENTINEL_DRIFT_CHECK_INTERVAL",
+        str(_CONFIG.get("drift_check_interval", 50)),
+    )
+)
 
 # ---------------------------------------------------------------------------
 # Prometheus — custom gauges
 # ---------------------------------------------------------------------------
-_gauge_model_loaded  = Gauge("sentinel_model_loaded",      "1 if the predictor is loaded, 0 otherwise")
-_gauge_gpu_mem_bytes = Gauge("sentinel_gpu_memory_bytes",  "Current GPU memory allocated (bytes)")
+_gauge_model_loaded = Gauge("sentinel_model_loaded", "1 if the predictor is loaded, 0 otherwise")
+_gauge_gpu_mem_bytes = Gauge("sentinel_gpu_memory_bytes", "Current GPU memory allocated (bytes)")
 
 CHECKPOINT: str = os.getenv(
     "SENTINEL_CHECKPOINT",
@@ -80,10 +85,12 @@ CHECKPOINT: str = os.getenv(
 )
 
 # Inference timeout in seconds — override via SENTINEL_PREDICT_TIMEOUT env var.
-PREDICT_TIMEOUT: float = float(os.getenv(
-    "SENTINEL_PREDICT_TIMEOUT",
-    str(_CONFIG.get("predict_timeout", 60)),
-))
+PREDICT_TIMEOUT: float = float(
+    os.getenv(
+        "SENTINEL_PREDICT_TIMEOUT",
+        str(_CONFIG.get("predict_timeout", 60)),
+    )
+)
 
 # Hard upper bound on source_code size — imported from ContractPreprocessor so both
 # the HTTP boundary and the preprocessing layer share one definition.
@@ -93,6 +100,7 @@ MAX_SOURCE_BYTES: int = ContractPreprocessor.MAX_SOURCE_BYTES
 # ------------------------------------------------------------------
 # Lifespan — Predictor loaded once at startup
 # ------------------------------------------------------------------
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -118,7 +126,7 @@ async def lifespan(app: FastAPI):
     _gauge_model_loaded.set(1)
 
     app.state.drift_detector = DriftDetector(baseline_path=DRIFT_BASELINE_PATH)
-    app.state.request_count  = 0
+    app.state.request_count = 0
 
     logger.info("Predictor ready — API accepting requests")
     yield
@@ -144,6 +152,7 @@ Instrumentator().instrument(app).expose(app)
 # Schemas — unchanged from Track 3
 # ------------------------------------------------------------------
 
+
 class HotspotsRequest(BaseModel):
     source_code: str = Field(..., min_length=10)
 
@@ -159,21 +168,27 @@ class HotspotsRequest(BaseModel):
 
 
 class FunctionHotspot(BaseModel):
-    fn_name:   str         = Field(..., description="Canonical function name from Slither AST")
-    node_id:   int         = Field(..., description="PyG node index (0-based, stable per contract)")
-    score:     float       = Field(..., ge=0.0, le=1.0, description="Normalised GNN embedding norm [0,1]")
-    lines:     list[int]   = Field(default_factory=list, description="Source line numbers")
-    node_type: str         = Field(..., description="FUNCTION | MODIFIER | FALLBACK | RECEIVE | CONSTRUCTOR")
+    fn_name: str = Field(..., description="Canonical function name from Slither AST")
+    node_id: int = Field(..., description="PyG node index (0-based, stable per contract)")
+    score: float = Field(..., ge=0.0, le=1.0, description="Normalised GNN embedding norm [0,1]")
+    lines: list[int] = Field(default_factory=list, description="Source line numbers")
+    node_type: str = Field(
+        ..., description="FUNCTION | MODIFIER | FALLBACK | RECEIVE | CONSTRUCTOR"
+    )
 
 
 class HotspotsResponse(BaseModel):
-    hotspots:     list[FunctionHotspot] = Field(..., description="Top-20 function nodes by GNN attention score")
-    hotspot_stats: dict                 = Field(..., description="total_function_nodes, num_nodes, attention_source")
+    hotspots: list[FunctionHotspot] = Field(
+        ..., description="Top-20 function nodes by GNN attention score"
+    )
+    hotspot_stats: dict = Field(
+        ..., description="total_function_nodes, num_nodes, attention_source"
+    )
     # Also include the full prediction so callers get ML + hotspots in one round-trip
-    label:         str
+    label: str
     probabilities: dict[str, float]
-    confirmed:     list[VulnerabilityResult] = Field(default_factory=list)
-    suspicious:    list[VulnerabilityResult] = Field(default_factory=list)
+    confirmed: list[VulnerabilityResult] = Field(default_factory=list)
+    suspicious: list[VulnerabilityResult] = Field(default_factory=list)
 
 
 class PredictRequest(BaseModel):
@@ -191,14 +206,18 @@ class PredictRequest(BaseModel):
 
 
 class VulnerabilityResult(BaseModel):
-    vulnerability_class: str   = Field(..., description="Vulnerability class name")
-    probability:         float = Field(..., ge=0.0, le=1.0)
-    tier:                str | None = Field(None, description="CONFIRMED | SUSPICIOUS (None in legacy vulnerabilities field)")
+    vulnerability_class: str = Field(..., description="Vulnerability class name")
+    probability: float = Field(..., ge=0.0, le=1.0)
+    tier: str | None = Field(
+        None, description="CONFIRMED | SUSPICIOUS (None in legacy vulnerabilities field)"
+    )
 
 
 class PredictResponse(BaseModel):
     # Three-tier label: "safe" | "suspicious" | "confirmed_vulnerable"
-    label: str = Field(..., description="Highest active tier: safe | suspicious | confirmed_vulnerable")
+    label: str = Field(
+        ..., description="Highest active tier: safe | suspicious | confirmed_vulnerable"
+    )
 
     # Full NUM_CLASSES-class probability vector — always present, never filtered.
     # NUM_CLASSES is read from the loaded checkpoint config (10 in Run 12, 9 in Run 13).
@@ -206,8 +225,13 @@ class PredictResponse(BaseModel):
     probabilities: dict[str, float] = Field(..., description="Full per-class probability vector")
 
     # Tiered findings — sorted descending by probability within each tier.
-    confirmed:  list[VulnerabilityResult] = Field(default_factory=list, description="prob >= tier_confirmed_threshold (default 0.55)")
-    suspicious: list[VulnerabilityResult] = Field(default_factory=list, description="tier_suspicious_threshold <= prob < tier_confirmed_threshold")
+    confirmed: list[VulnerabilityResult] = Field(
+        default_factory=list, description="prob >= tier_confirmed_threshold (default 0.55)"
+    )
+    suspicious: list[VulnerabilityResult] = Field(
+        default_factory=list,
+        description="tier_suspicious_threshold <= prob < tier_confirmed_threshold",
+    )
 
     # Legacy field — backward compat alias for confirmed.
     # Old consumers reading vulnerabilities get CONFIRMED classes only.
@@ -218,11 +242,13 @@ class PredictResponse(BaseModel):
     # and "noteworthy" are scalar defaults.
     tier_thresholds: dict[str, float | list[float]] = Field(default_factory=dict)
 
-    thresholds:   list[float] = Field(..., description="Per-class tuned decision thresholds")
-    truncated:    bool
-    windows_used: int = Field(default=1, ge=1, description="Token windows scored (>1 for long contracts)")
-    num_nodes:    int
-    num_edges:    int
+    thresholds: list[float] = Field(..., description="Per-class tuned decision thresholds")
+    truncated: bool
+    windows_used: int = Field(
+        default=1, ge=1, description="Token windows scored (>1 for long contracts)"
+    )
+    num_nodes: int
+    num_edges: int
 
     # D4 (WS3, 2026-06-22): per-eye auxiliary predictions as discountable CLUES.
     # Each eye: {class_name: probability}. Only present for four_eye architectures.
@@ -234,17 +260,25 @@ class PredictResponse(BaseModel):
 
 
 class FusionEmbeddingResponse(BaseModel):
-    fusion_embedding: list[float] = Field(..., min_length=128, max_length=128,
-                                          description="128-dim CrossAttentionFusion output — ZKML circuit input")
+    fusion_embedding: list[float] = Field(
+        ...,
+        min_length=128,
+        max_length=128,
+        description="128-dim CrossAttentionFusion output — ZKML circuit input",
+    )
     num_nodes: int
     num_edges: int
-    model_hash: str = Field(..., description="SHA-256 hash of the teacher checkpoint file (64 hex chars)")
+    model_hash: str = Field(
+        ..., description="SHA-256 hash of the teacher checkpoint file (64 hex chars)"
+    )
     windows_used: int = Field(default=1, ge=1)
+    execution_status: dict[str, object]
 
 
 # ------------------------------------------------------------------
 # Endpoints
 # ------------------------------------------------------------------
+
 
 @app.get("/health")
 async def health(request: Request) -> dict:
@@ -258,33 +292,52 @@ async def health(request: Request) -> dict:
     if predictor_loaded:
         cfg = predictor._saved_cfg
         return {
-            "status":            "ok",
-            "predictor_loaded":  True,
-            "checkpoint":        CHECKPOINT,
-            "architecture":      predictor.architecture,
+            "status": "ok",
+            "state": "live",
+            "ready": True,
+            "predictor_loaded": True,
+            "checkpoint": CHECKPOINT,
+            "architecture": predictor.architecture,
             "thresholds_loaded": predictor.thresholds_loaded,
             "tier_thresholds": {
-                "confirmed":  predictor.tier_confirmed_threshold,
+                "confirmed": predictor.tier_confirmed_threshold,
                 "suspicious": predictor.tier_suspicious_threshold,
                 "noteworthy": 0.10,
             },
-            "model_epoch":  cfg.get("epoch",    "?"),
+            "model_epoch": cfg.get("epoch", "?"),
             "model_f1_val": cfg.get("best_f1", None),
-            "model_hash":   predictor.model_hash,
+            "model_hash": predictor.model_hash,
         }
 
     return {
-        "status":           "degraded",
+        "status": "degraded",
+        "state": "unavailable",
+        "ready": False,
         "predictor_loaded": False,
-        "checkpoint":       CHECKPOINT,
+        "checkpoint": CHECKPOINT,
     }
+
+
+@app.get("/health/live")
+async def health_live() -> dict:
+    """Process liveness is independent from model readiness."""
+
+    return {"status": "live", "state": "live"}
+
+
+@app.get("/health/ready")
+async def health_ready(request: Request) -> JSONResponse:
+    """Return 503 until the predictor is loaded and usable."""
+
+    payload = await health(request)
+    return JSONResponse(payload, status_code=200 if payload["ready"] else 503)
 
 
 @app.post("/predict", response_model=PredictResponse)
 async def predict(request: Request, body: PredictRequest) -> PredictResponse:
     """Score a Solidity contract for multi-label vulnerability detection."""
-    predictor:       Predictor | None       = getattr(request.app.state, "predictor", None)
-    drift_detector:  DriftDetector | None   = getattr(request.app.state, "drift_detector", None)
+    predictor: Predictor | None = getattr(request.app.state, "predictor", None)
+    drift_detector: DriftDetector | None = getattr(request.app.state, "drift_detector", None)
     if predictor is None:
         raise HTTPException(status_code=503, detail="Model not loaded.")
 
@@ -340,12 +393,14 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
     # Track confirmed+suspicious counts as additional drift signal alongside graph features.
     if drift_detector is not None:
         try:
-            drift_detector.update_stats({
-                "num_nodes":        float(result["num_nodes"]),
-                "num_edges":        float(result["num_edges"]),
-                "confirmed_count":  float(len(result.get("confirmed",  []))),
-                "suspicious_count": float(len(result.get("suspicious", []))),
-            })
+            drift_detector.update_stats(
+                {
+                    "num_nodes": float(result["num_nodes"]),
+                    "num_edges": float(result["num_edges"]),
+                    "confirmed_count": float(len(result.get("confirmed", []))),
+                    "suspicious_count": float(len(result.get("suspicious", []))),
+                }
+            )
             request.app.state.request_count += 1
             if request.app.state.request_count % DRIFT_CHECK_INTERVAL == 0:
                 drift_detector.check()
@@ -372,7 +427,7 @@ async def predict(request: Request, body: PredictRequest) -> PredictResponse:
     return PredictResponse(
         label=result["label"],
         probabilities=result.get("probabilities", {}),
-        confirmed=_vuln_results(result.get("confirmed",  [])),
+        confirmed=_vuln_results(result.get("confirmed", [])),
         suspicious=_vuln_results(result.get("suspicious", [])),
         vulnerabilities=_vuln_results(result.get("vulnerabilities", [])),
         tier_thresholds=result.get("tier_thresholds", {}),
@@ -492,13 +547,16 @@ async def fusion_embedding(request: Request, body: PredictRequest) -> FusionEmbe
             detail=f"source_code too large ({source_bytes:,} bytes > {MAX_SOURCE_BYTES:,} limit).",
         )
 
+    started = time.monotonic()
     try:
         result: dict = await asyncio.wait_for(
             asyncio.to_thread(predictor.predict_fusion_embedding, body.source_code),
             timeout=PREDICT_TIMEOUT,
         )
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail=f"Inference timeout after {PREDICT_TIMEOUT:.0f} s.")
+        raise HTTPException(
+            status_code=504, detail=f"Inference timeout after {PREDICT_TIMEOUT:.0f} s."
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except torch.cuda.OutOfMemoryError:
@@ -511,10 +569,16 @@ async def fusion_embedding(request: Request, body: PredictRequest) -> FusionEmbe
             detail=f"Fusion embedding failed: {type(exc).__name__}: {str(exc)[:500]}",
         )
 
-    return FusionEmbeddingResponse(
-        fusion_embedding=result["fusion_embedding"],
-        num_nodes=result["num_nodes"],
-        num_edges=result["num_edges"],
-        model_hash=result["model_hash"],
-        windows_used=result["windows_used"],
+    payload = bind_live_result(
+        {
+            "fusion_embedding": result["fusion_embedding"],
+            "num_nodes": result["num_nodes"],
+            "num_edges": result["num_edges"],
+            "model_hash": result["model_hash"],
+            "windows_used": result["windows_used"],
+        },
+        dependency="module1-fusion",
+        input_payload={"source_code": body.source_code},
+        duration_ms=(time.monotonic() - started) * 1000,
     )
+    return FusionEmbeddingResponse.model_validate(payload)

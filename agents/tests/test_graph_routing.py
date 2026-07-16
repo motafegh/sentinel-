@@ -28,7 +28,8 @@ import pytest_asyncio
 # ── Make agents/ importable ────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.orchestration.graph import build_graph, _route_from_evidence_router
+from src.contracts.execution import ExecutionState, bind_status, failure_status
+from src.orchestration.graph import _route_from_evidence_router, build_graph
 from src.orchestration.nodes import (
     audit_check,
     cross_validator,
@@ -40,12 +41,29 @@ from src.orchestration.nodes import (
 )
 from src.orchestration.state import AuditState
 
-
 # ---------------------------------------------------------------------------
 # Helpers / Fixtures
 # ---------------------------------------------------------------------------
 
-def _ml_three_tier(confirmed: list[tuple[str, float]] = (), suspicious: list[tuple[str, float]] = ()) -> dict:
+_DEFAULT_CONTRACT_CODE = "pragma solidity ^0.8.0;\ncontract T {}"
+
+
+def _bind_ml(payload: dict, contract_code: str = _DEFAULT_CONTRACT_CODE) -> dict:
+    material = {key: value for key, value in payload.items() if key != "execution_status"}
+    return bind_status(
+        material,
+        dependency="module1-inference",
+        input_payload={"source_code": contract_code},
+        duration_ms=1,
+    )
+
+
+def _ml_three_tier(
+    confirmed: list[tuple[str, float]] = (),
+    suspicious: list[tuple[str, float]] = (),
+    *,
+    contract_code: str = _DEFAULT_CONTRACT_CODE,
+) -> dict:
     """Build a three-tier ml_result from (class, prob) pairs."""
     CONF_THR = 0.55
     SUSP_THR = 0.25
@@ -53,31 +71,36 @@ def _ml_three_tier(confirmed: list[tuple[str, float]] = (), suspicious: list[tup
     probs = dict(all_items)
 
     confirmed_list = [
-        {"vulnerability_class": c, "probability": p, "tier": "CONFIRMED"}
-        for c, p in confirmed
+        {"vulnerability_class": c, "probability": p, "tier": "CONFIRMED"} for c, p in confirmed
     ]
     suspicious_list = [
-        {"vulnerability_class": c, "probability": p, "tier": "SUSPICIOUS"}
-        for c, p in suspicious
+        {"vulnerability_class": c, "probability": p, "tier": "SUSPICIOUS"} for c, p in suspicious
     ]
 
-    if confirmed_list:     label = "confirmed_vulnerable"
-    elif suspicious_list:  label = "suspicious"
-    else:                  label = "safe"
+    if confirmed_list:
+        label = "confirmed_vulnerable"
+    elif suspicious_list:
+        label = "suspicious"
+    else:
+        label = "safe"
 
-    return {
-        "label":           label,
-        "probabilities":   probs,
-        "confirmed":       confirmed_list,
-        "suspicious":      suspicious_list,
-        "vulnerabilities": [{"vulnerability_class": c, "probability": p} for c, p in confirmed],
-        "tier_thresholds": {"confirmed": CONF_THR, "suspicious": SUSP_THR, "noteworthy": 0.10},
-        "thresholds":      [0.5] * 10,
-        "truncated":       False,
-        "windows_used":    1,
-        "num_nodes":       42,
-        "num_edges":       58,
-    }
+    return _bind_ml(
+        {
+            "label": label,
+            "probabilities": probs,
+            "confirmed": confirmed_list,
+            "suspicious": suspicious_list,
+            "vulnerabilities": [{"vulnerability_class": c, "probability": p} for c, p in confirmed],
+            "tier_thresholds": {"confirmed": CONF_THR, "suspicious": SUSP_THR, "noteworthy": 0.10},
+            "thresholds": [0.5] * 10,
+            "truncated": False,
+            "windows_used": 1,
+            "num_nodes": 42,
+            "num_edges": 58,
+            "model_hash": "a" * 64,
+        },
+        contract_code,
+    )
 
 
 @pytest.fixture
@@ -114,23 +137,28 @@ def ml_safe():
 def rag_chunks() -> list:
     return [
         {"chunk_id": "x-1", "content": "Reentrancy in Compound…", "score": 0.91},
-        {"chunk_id": "x-2", "content": "Integer overflow…",       "score": 0.73},
+        {"chunk_id": "x-2", "content": "Integer overflow…", "score": 0.73},
     ]
 
 
 @pytest.fixture
 def audit_records() -> list:
     return [
-        {"score": 0.73, "label": "vulnerable", "timestamp": 1713200000,
-         "timestamp_iso": "2026-04-15T12:00:00+00:00",
-         "agent": "0xDead", "verified": True},
+        {
+            "score": 0.73,
+            "label": "vulnerable",
+            "timestamp": 1713200000,
+            "timestamp_iso": "2026-04-15T12:00:00+00:00",
+            "agent": "0xDead",
+            "verified": True,
+        },
     ]
 
 
 @pytest.fixture
 def base_state() -> AuditState:
     return {
-        "contract_code": "pragma solidity ^0.8.0;\ncontract T {}",
+        "contract_code": _DEFAULT_CONTRACT_CODE,
         "contract_address": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
     }
 
@@ -138,6 +166,7 @@ def base_state() -> AuditState:
 # ---------------------------------------------------------------------------
 # _route_from_evidence_router — conditional routing
 # ---------------------------------------------------------------------------
+
 
 class TestRouteFromEvidenceRouter:
     def test_high_prob_class_routes_deep(self, ml_high):
@@ -157,15 +186,15 @@ class TestRouteFromEvidenceRouter:
         result = _route_from_evidence_router(state)
         assert result == "synthesizer"
 
-    def test_empty_ml_result_routes_to_synthesizer(self):
+    def test_empty_ml_result_routes_to_fail_closed_deep_analysis(self):
         state: AuditState = {"ml_result": {}, "quick_screen_hits": {}}
         result = _route_from_evidence_router(state)
-        assert result == "synthesizer"
+        assert "static_analysis" in result
 
-    def test_missing_ml_result_key_routes_to_synthesizer(self):
+    def test_missing_ml_result_key_routes_to_fail_closed_deep_analysis(self):
         state: AuditState = {}
         result = _route_from_evidence_router(state)
-        assert result == "synthesizer"
+        assert "static_analysis" in result
 
     def test_quick_screen_escalates_ml_safe_to_deep(self, ml_low):
         # ML says safe but quick_screen found a High-impact Slither hit → deep path
@@ -214,6 +243,7 @@ class TestRouteFromEvidenceRouter:
 # build_graph — compilation
 # ---------------------------------------------------------------------------
 
+
 class TestBuildGraph:
     def test_builds_without_checkpointer(self):
         graph = build_graph(use_checkpointer=False)
@@ -226,9 +256,17 @@ class TestBuildGraph:
     def test_graph_has_correct_nodes(self):
         graph = build_graph(use_checkpointer=False)
         node_names = set(graph.nodes.keys())
-        for name in ("ml_assessment", "quick_screen", "evidence_router", "rag_research",
-                     "static_analysis", "graph_explain", "audit_check",
-                     "cross_validator", "synthesizer"):
+        for name in (
+            "ml_assessment",
+            "quick_screen",
+            "evidence_router",
+            "rag_research",
+            "static_analysis",
+            "graph_explain",
+            "audit_check",
+            "cross_validator",
+            "synthesizer",
+        ):
             assert name in node_names, f"missing node: {name}"
 
 
@@ -236,11 +274,13 @@ class TestBuildGraph:
 # ml_assessment node
 # ---------------------------------------------------------------------------
 
+
 class TestMlAssessmentNode:
     @pytest.mark.asyncio
     async def test_happy_path(self, base_state, ml_high):
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value=ml_high)):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool", new=AsyncMock(return_value=ml_high)
+        ):
             result = await ml_assessment(base_state)
 
         assert result["ml_result"] == ml_high
@@ -253,15 +293,29 @@ class TestMlAssessmentNode:
         # detail), NOT an empty dict — an empty dict is indistinguishable
         # from a successful run that produced no findings. Downstream
         # consumers must be able to distinguish the two.
-        error_response = {"error": "inference timeout", "detail": "GPU busy"}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value=error_response)):
+        status = failure_status(
+            ExecutionState.UNAVAILABLE,
+            dependency="module1-inference",
+            reason_code="timeout",
+            detail="GPU busy",
+            attempted=True,
+            input_payload={"source_code": base_state["contract_code"]},
+        )
+        error_response = {
+            "error": "inference timeout",
+            "detail": "GPU busy",
+            "execution_status": status,
+        }
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(return_value=error_response),
+        ):
             result = await ml_assessment(base_state)
 
         # Old contract was: result["ml_result"] == {}  — silent-skip
         # New contract is: result["ml_result"] = {"ran": False, ...}
-        assert result["ml_result"]["ran"] is False
-        assert result["ml_result"]["reason"] == "inference timeout"
+        assert result["ml_result"]["execution_status"]["ran"] is False
+        assert result["ml_result"]["execution_status"]["reason_code"] == "timeout"
         assert "GPU busy" in result["ml_result"]["detail"]
         # Error is still surfaced in the report's top-level error field.
         assert "ml_assessment" in result["error"]
@@ -269,43 +323,54 @@ class TestMlAssessmentNode:
         # Tool status also carries the failure forward (Rule 5C).
         assert "tool_status" in result
         assert result["tool_status"]["ml"]["ran"] is False
-        assert result["tool_status"]["ml"]["reason"] == "inference timeout"
+        assert result["tool_status"]["ml"]["reason_code"] == "timeout"
 
     @pytest.mark.asyncio
     async def test_exception_sets_error_and_empty_result(self, base_state):
         # Rule 5C: a raised exception (e.g., MCP transport failure) must
         # also surface as the unavailable payload, not an empty dict.
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(side_effect=ConnectionError("MCP server down"))):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(side_effect=ConnectionError("MCP server down")),
+        ):
             result = await ml_assessment(base_state)
 
-        assert result["ml_result"]["ran"] is False
-        assert result["ml_result"]["reason"] == "exception"
+        assert result["ml_result"]["execution_status"]["ran"] is False
+        assert result["ml_result"]["execution_status"]["reason_code"] == "exception"
         assert "MCP server down" in result["ml_result"]["detail"]
         assert "ml_assessment" in result["error"]
         assert "MCP server down" in result["error"]
         assert result["tool_status"]["ml"]["ran"] is False
-        assert result["tool_status"]["ml"]["reason"] == "exception"
+        assert result["tool_status"]["ml"]["reason_code"] == "exception"
 
     @pytest.mark.asyncio
     async def test_missing_contract_code_still_calls_mcp(self, ml_high):
         state: AuditState = {"contract_code": "", "contract_address": "0xabc"}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value=ml_high)):
+        bound_empty = _ml_three_tier(
+            confirmed=[("Reentrancy", 0.82), ("IntegerUO", 0.61)],
+            contract_code="",
+        )
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(return_value=bound_empty),
+        ):
             result = await ml_assessment(state)
-        assert result["ml_result"] == ml_high
+        assert result["ml_result"] == bound_empty
 
 
 # ---------------------------------------------------------------------------
 # rag_research node
 # ---------------------------------------------------------------------------
 
+
 class TestRagResearchNode:
     @pytest.mark.asyncio
     async def test_happy_path_list_response(self, base_state, ml_high, rag_chunks):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value=rag_chunks)):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(return_value=rag_chunks),
+        ):
             result = await rag_research(state)
 
         assert result["rag_results"] == rag_chunks
@@ -315,8 +380,9 @@ class TestRagResearchNode:
     async def test_happy_path_dict_with_results_key(self, base_state, ml_high, rag_chunks):
         state = {**base_state, "ml_result": ml_high}
         response = {"results": rag_chunks}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value=response)):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool", new=AsyncMock(return_value=response)
+        ):
             result = await rag_research(state)
 
         assert result["rag_results"] == rag_chunks
@@ -324,8 +390,10 @@ class TestRagResearchNode:
     @pytest.mark.asyncio
     async def test_rag_error_dict(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value={"error": "index empty"})):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(return_value={"error": "index empty"}),
+        ):
             result = await rag_research(state)
 
         assert result["rag_results"] == []
@@ -334,8 +402,10 @@ class TestRagResearchNode:
     @pytest.mark.asyncio
     async def test_exception_returns_empty_results(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(side_effect=RuntimeError("FAISS died"))):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(side_effect=RuntimeError("FAISS died")),
+        ):
             result = await rag_research(state)
 
         assert result["rag_results"] == []
@@ -346,15 +416,16 @@ class TestRagResearchNode:
         # ml_high has Reentrancy confirmed — query should reference it
         state = {**base_state, "ml_result": ml_high}
         captured = {}
+
         async def capture(server_url, tool_name, arguments):
             captured.update(arguments)
             return rag_chunks
+
         with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
         assert "reentrancy" in captured.get("query", "").lower()
 
-
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_externalbug_uses_call_summary_for_rag_query(self, base_state, rag_chunks):
         # When ExternalBug is the top class AND external_call_summary is present,
@@ -362,15 +433,21 @@ class TestRagResearchNode:
         # generic contract snippet.
         ml = _ml_three_tier(confirmed=[("ExternalBug", 0.71)])
         ext_calls = [
-            {"caller_contract": "Vault", "caller_function": "getPrice",
-             "callee_contract": "ChainlinkOracle", "callee_function": "latestRoundData",
-             "callee_is_interface": True},
+            {
+                "caller_contract": "Vault",
+                "caller_function": "getPrice",
+                "callee_contract": "ChainlinkOracle",
+                "callee_function": "latestRoundData",
+                "callee_is_interface": True,
+            },
         ]
         state = {**base_state, "ml_result": ml, "external_call_summary": ext_calls}
         captured = {}
+
         async def capture(server_url, tool_name, arguments):
             captured.update(arguments)
             return rag_chunks
+
         with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
         # Query must reference external dependency/oracle and the oracle contract name
@@ -383,15 +460,21 @@ class TestRagResearchNode:
         # if external_call_summary happens to be populated.
         ml = _ml_three_tier(confirmed=[("Reentrancy", 0.80)])
         ext_calls = [
-            {"caller_contract": "X", "caller_function": "f",
-             "callee_contract": "Y", "callee_function": "g",
-             "callee_is_interface": False},
+            {
+                "caller_contract": "X",
+                "caller_function": "f",
+                "callee_contract": "Y",
+                "callee_function": "g",
+                "callee_is_interface": False,
+            },
         ]
         state = {**base_state, "ml_result": ml, "external_call_summary": ext_calls}
         captured = {}
+
         async def capture(server_url, tool_name, arguments):
             captured.update(arguments)
             return rag_chunks
+
         with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=capture):
             await rag_research(state)
         assert "reentrancy" in captured.get("query", "").lower()
@@ -401,14 +484,28 @@ class TestRagResearchNode:
 # audit_check node
 # ---------------------------------------------------------------------------
 
+
 class TestAuditCheckNode:
     @pytest.mark.asyncio
     async def test_happy_path(self, base_state, audit_records):
         state = {**base_state}
-        response = {"contract_address": state["contract_address"],
-                    "count": 1, "records": audit_records}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value=response)):
+        response = {
+            "contract_address": state["contract_address"],
+            "count": 1,
+            "records": audit_records,
+        }
+        response = bind_status(
+            response,
+            dependency="audit-registry",
+            input_payload={
+                "operation": "get_audit_history",
+                "arguments": {"contract_address": state["contract_address"], "limit": 10},
+            },
+            duration_ms=1,
+        )
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool", new=AsyncMock(return_value=response)
+        ):
             result = await audit_check(state)
 
         assert result["audit_history"] == audit_records
@@ -422,8 +519,10 @@ class TestAuditCheckNode:
 
     @pytest.mark.asyncio
     async def test_exception_returns_empty_history(self, base_state):
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(side_effect=ConnectionError("Sepolia RPC down"))):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(side_effect=ConnectionError("Sepolia RPC down")),
+        ):
             result = await audit_check(base_state)
 
         assert result["audit_history"] == []
@@ -431,8 +530,10 @@ class TestAuditCheckNode:
 
     @pytest.mark.asyncio
     async def test_registry_error_dict(self, base_state):
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value={"error": "contract not found"})):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(return_value={"error": "contract not found"}),
+        ):
             result = await audit_check(base_state)
 
         assert result["audit_history"] == []
@@ -443,21 +544,22 @@ class TestAuditCheckNode:
 # synthesizer node
 # ---------------------------------------------------------------------------
 
+
 class TestSynthesizerNode:
     @pytest.mark.asyncio
     async def test_deep_path_recommendation(self, base_state, ml_high, rag_chunks, audit_records):
         state = {
             **base_state,
-            "ml_result":     ml_high,
-            "rag_results":   rag_chunks,
+            "ml_result": ml_high,
+            "rag_results": rag_chunks,
             "audit_history": audit_records,
         }
         result = await synthesizer(state)
         report = result["final_report"]
 
         assert report["overall_label"] == "confirmed_vulnerable"
-        assert report["path_taken"]    == "deep"
-        assert len(report["rag_evidence"])  == 2
+        assert report["path_taken"] == "deep"
+        assert len(report["rag_evidence"]) == 2
         assert len(report["audit_history"]) == 1
         assert "HIGH RISK" in report["recommendation"]
         assert report["error"] is None
@@ -481,7 +583,12 @@ class TestSynthesizerNode:
 
     @pytest.mark.asyncio
     async def test_narrative_prompt_grounds_each_class_with_its_verdict(
-        self, base_state, ml_high, rag_chunks, audit_records, monkeypatch,
+        self,
+        base_state,
+        ml_high,
+        rag_chunks,
+        audit_records,
+        monkeypatch,
     ):
         # Fix 2 (2026-06-21, "narrative hallucination" incident — see
         # docs/changes/2026-06-21-agents-manual-verification-real-bugs-found.md):
@@ -494,6 +601,7 @@ class TestSynthesizerNode:
         # classes and to treat RAG content as general background.
         monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
         from unittest.mock import MagicMock
+
         mock_llm = MagicMock()
         mock_resp = MagicMock()
         mock_resp.content = "## Severity\nHIGH\n## Vulnerability Summary\n...\n## Exploit Pattern\n...\n## Recommended Fix\n..."
@@ -501,8 +609,8 @@ class TestSynthesizerNode:
 
         state = {
             **base_state,
-            "ml_result":     ml_high,
-            "rag_results":   rag_chunks,
+            "ml_result": ml_high,
+            "rag_results": rag_chunks,
             "audit_history": audit_records,
         }
         with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
@@ -510,7 +618,7 @@ class TestSynthesizerNode:
 
         sent_messages = mock_llm.invoke.call_args[0][0]
         system_text = sent_messages[0].content
-        user_text   = sent_messages[1].content
+        user_text = sent_messages[1].content
 
         # System prompt grounds the model against hallucinating ungated classes.
         assert "CONFIRMED or LIKELY" in system_text
@@ -521,7 +629,10 @@ class TestSynthesizerNode:
 
         # RAG section is explicitly labeled as general background, not
         # site-specific evidence.
-        assert "general historical reference" in user_text or "NOT necessarily about this contract" in user_text
+        assert (
+            "general historical reference" in user_text
+            or "NOT necessarily about this contract" in user_text
+        )
 
     @pytest.mark.asyncio
     async def test_safe_label_recommendation(self, base_state, ml_safe):
@@ -533,7 +644,7 @@ class TestSynthesizerNode:
     async def test_ml_failure_path(self, base_state):
         state = {
             **base_state,
-            "ml_result":   {},
+            "ml_result": {},
             "rag_results": [],
             "audit_history": [],
             "error": "ml_assessment: Connection refused",
@@ -547,25 +658,53 @@ class TestSynthesizerNode:
 
     @pytest.mark.asyncio
     async def test_truncated_flag_appends_note(self, base_state):
-        ml = {**_ml_three_tier(confirmed=[("IntegerUO", 0.65)]), "truncated": True}
+        ml = _bind_ml(
+            {
+                **{
+                    key: value
+                    for key, value in _ml_three_tier(confirmed=[("IntegerUO", 0.65)]).items()
+                    if key != "execution_status"
+                },
+                "truncated": True,
+            }
+        )
         state = {**base_state, "ml_result": ml, "rag_results": [], "audit_history": []}
         result = await synthesizer(state)
         assert "NOTE" in result["final_report"]["recommendation"]
         assert "512" in result["final_report"]["recommendation"]
 
     @pytest.mark.asyncio
-    async def test_report_has_all_required_fields(self, base_state, ml_high, rag_chunks, audit_records):
-        state = {**base_state, "ml_result": ml_high,
-                 "rag_results": rag_chunks, "audit_history": audit_records}
+    async def test_report_has_all_required_fields(
+        self, base_state, ml_high, rag_chunks, audit_records
+    ):
+        state = {
+            **base_state,
+            "ml_result": ml_high,
+            "rag_results": rag_chunks,
+            "audit_history": audit_records,
+        }
         result = await synthesizer(state)
         report = result["final_report"]
 
         required_fields = [
-            "contract_address", "overall_label", "risk_probability",
-            "top_vulnerability", "confirmed", "suspicious", "probabilities",
-            "tier_thresholds", "threshold", "ml_truncated", "num_nodes", "num_edges",
-            "rag_evidence", "audit_history", "static_findings", "recommendation",
-            "error", "path_taken",
+            "contract_address",
+            "overall_label",
+            "risk_probability",
+            "top_vulnerability",
+            "confirmed",
+            "suspicious",
+            "probabilities",
+            "tier_thresholds",
+            "threshold",
+            "ml_truncated",
+            "num_nodes",
+            "num_edges",
+            "rag_evidence",
+            "audit_history",
+            "static_findings",
+            "recommendation",
+            "error",
+            "path_taken",
         ]
         for field in required_fields:
             assert field in report, f"Missing field: {field}"
@@ -595,16 +734,29 @@ _MOCK_RAG = [{"chunk_id": "c-1", "content": "Reentrancy…", "doc_id": "d-1", "s
 _MOCK_AUDIT = {
     "contract_address": "0xABC",
     "count": 1,
-    "records": [{"score": 0.73, "label": "vulnerable", "timestamp": 1713200000,
-                 "timestamp_iso": "2026-04-15T12:00:00+00:00",
-                 "agent": "0xDead", "verified": True}],
+    "records": [
+        {
+            "score": 0.73,
+            "label": "vulnerable",
+            "timestamp": 1713200000,
+            "timestamp_iso": "2026-04-15T12:00:00+00:00",
+            "agent": "0xDead",
+            "verified": True,
+        }
+    ],
 }
 
 
 async def _mock_mcp(server_url: str, tool_name: str, arguments: dict) -> dict:
-    if tool_name == "predict":           return _MOCK_ML
-    if tool_name == "search":            return _MOCK_RAG
-    if tool_name == "get_audit_history": return _MOCK_AUDIT
+    if tool_name == "predict":
+        return _ml_three_tier(
+            confirmed=[("Reentrancy", 0.82)],
+            contract_code=arguments["contract_code"],
+        )
+    if tool_name == "search":
+        return _MOCK_RAG
+    if tool_name == "get_audit_history":
+        return _MOCK_AUDIT
     return {"error": f"unexpected tool: {tool_name}"}
 
 
@@ -620,7 +772,7 @@ class TestFullGraphIntegration:
             result = await graph.ainvoke(initial_state)
 
         report = result["final_report"]
-        assert report["path_taken"]    == "deep"
+        assert report["path_taken"] == "deep"
         assert report["overall_label"] == "confirmed_vulnerable"
         assert len(report["rag_evidence"]) > 0
         assert report["recommendation"]
@@ -628,10 +780,12 @@ class TestFullGraphIntegration:
     @pytest.mark.asyncio
     async def test_fast_path_end_to_end(self):
         # ml_fast has all classes below DEEP_THRESHOLDS → fast path
-        ml_fast = _ml_three_tier(suspicious=[("Reentrancy", 0.10)])
-
         async def mock_fast(url, tool, args):
-            if tool == "predict": return ml_fast
+            if tool == "predict":
+                return _ml_three_tier(
+                    suspicious=[("Reentrancy", 0.10)],
+                    contract_code=args["contract_code"],
+                )
             return {"error": "should not be called on fast path"}
 
         graph = build_graph(use_checkpointer=False)
@@ -643,7 +797,7 @@ class TestFullGraphIntegration:
             result = await graph.ainvoke(initial_state)
 
         report = result["final_report"]
-        assert report["path_taken"]   == "fast"
+        assert report["path_taken"] == "fast"
         assert report["rag_evidence"] == []
 
     @pytest.mark.asyncio
@@ -673,11 +827,16 @@ class TestFullGraphIntegration:
         ts = result.get("tool_status", {}) or {}
         assert ts.get("ml", {}).get("ran") is False
         assert "inference server unreachable" in ts["ml"]["detail"]
+        assert report["tool_status"]["ml"] == ts["ml"]
+        assert report["finality"]["eligible"] is False
+        assert report["probabilities"] == {}
+        assert report["model_provenance"]["model_hash"] == ""
 
 
 # ---------------------------------------------------------------------------
 # graph_explain node
 # ---------------------------------------------------------------------------
+
 
 class TestGraphExplainNode:
     _MOCK_INSPECTOR_RESPONSE = {
@@ -699,15 +858,22 @@ class TestGraphExplainNode:
                 "signals": ["state_writes=3"],
             },
         ],
-        "graph_stats": {"num_contracts": 1, "num_functions": 4, "has_interfaces": False, "num_hotspots": 2},
+        "graph_stats": {
+            "num_contracts": 1,
+            "num_functions": 4,
+            "has_interfaces": False,
+            "num_hotspots": 2,
+        },
         "analysis_mode": "slither",
     }
 
     @pytest.mark.asyncio
     async def test_happy_path_returns_hotspots(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value=self._MOCK_INSPECTOR_RESPONSE)):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(return_value=self._MOCK_INSPECTOR_RESPONSE),
+        ):
             result = await graph_explain(state)
 
         assert "ml_hotspots" in result
@@ -718,8 +884,10 @@ class TestGraphExplainNode:
     @pytest.mark.asyncio
     async def test_returns_graph_explanations(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value=self._MOCK_INSPECTOR_RESPONSE)):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(return_value=self._MOCK_INSPECTOR_RESPONSE),
+        ):
             result = await graph_explain(state)
 
         ge = result["graph_explanations"]
@@ -730,8 +898,10 @@ class TestGraphExplainNode:
     @pytest.mark.asyncio
     async def test_inspector_error_returns_empty(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(return_value={"error": "slither failed"})):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(return_value={"error": "slither failed"}),
+        ):
             result = await graph_explain(state)
 
         assert result["ml_hotspots"] == []
@@ -740,8 +910,10 @@ class TestGraphExplainNode:
     @pytest.mark.asyncio
     async def test_exception_returns_empty(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high}
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   new=AsyncMock(side_effect=ConnectionError("inspector down"))):
+        with patch(
+            "src.orchestration.nodes._helpers._call_mcp_tool",
+            new=AsyncMock(side_effect=ConnectionError("inspector down")),
+        ):
             result = await graph_explain(state)
 
         assert result["ml_hotspots"] == []
@@ -775,6 +947,7 @@ class TestGraphExplainNode:
 # cross_validator node
 # ---------------------------------------------------------------------------
 
+
 class TestCrossValidatorNode:
     @pytest.fixture(autouse=True)
     def _enable_llm_single_pass(self, monkeypatch):
@@ -794,16 +967,22 @@ class TestCrossValidatorNode:
     @pytest.mark.asyncio
     async def test_llm_failure_returns_empty(self, base_state, ml_high):
         state = {**base_state, "ml_result": ml_high, "static_findings": [], "rag_results": []}
-        with patch("src.llm.client.get_strong_llm",
-                   side_effect=ImportError("LLM not configured")):
+        with patch("src.llm.client.get_strong_llm", side_effect=ImportError("LLM not configured")):
             result = await cross_validator(state)
 
         assert result == {}
 
     @pytest.mark.asyncio
     async def test_happy_path_returns_evidence_list(self, base_state, ml_high):
-        state = {**base_state, "ml_result": ml_high, "static_findings": [], "rag_results": [], "audit_history": []}
+        state = {
+            **base_state,
+            "ml_result": ml_high,
+            "static_findings": [],
+            "rag_results": [],
+            "audit_history": [],
+        }
         from unittest.mock import MagicMock
+
         mock_llm = MagicMock()
         mock_response = MagicMock()
         mock_response.content = '{"Reentrancy": "CONFIRMED", "IntegerUO": "LIKELY"}'
@@ -824,8 +1003,15 @@ class TestCrossValidatorNode:
 
     @pytest.mark.asyncio
     async def test_invalid_verdict_coerced_to_disputed(self, base_state, ml_high):
-        state = {**base_state, "ml_result": ml_high, "static_findings": [], "rag_results": [], "audit_history": []}
+        state = {
+            **base_state,
+            "ml_result": ml_high,
+            "static_findings": [],
+            "rag_results": [],
+            "audit_history": [],
+        }
         from unittest.mock import MagicMock
+
         mock_llm = MagicMock()
         mock_response = MagicMock()
         mock_response.content = '{"Reentrancy": "MAYBE", "IntegerUO": "CONFIRMED"}'
@@ -845,8 +1031,15 @@ class TestCrossValidatorNode:
 
     @pytest.mark.asyncio
     async def test_strips_markdown_fences(self, base_state, ml_high):
-        state = {**base_state, "ml_result": ml_high, "static_findings": [], "rag_results": [], "audit_history": []}
+        state = {
+            **base_state,
+            "ml_result": ml_high,
+            "static_findings": [],
+            "rag_results": [],
+            "audit_history": [],
+        }
         from unittest.mock import MagicMock
+
         mock_llm = MagicMock()
         mock_response = MagicMock()
         mock_response.content = '```json\n{"Reentrancy": "CONFIRMED"}\n```'
@@ -869,15 +1062,30 @@ class TestCrossValidatorNode:
         # cap keeps only the top-N most probable classes in the LLM prompt.
         monkeypatch.setenv("CROSS_VALIDATOR_MAX_CLASSES", "3")
         many_suspicious = [
-            {"vulnerability_class": f"Class{i}", "probability": 0.30 + i * 0.01, "tier": "SUSPICIOUS"}
+            {
+                "vulnerability_class": f"Class{i}",
+                "probability": 0.30 + i * 0.01,
+                "tier": "SUSPICIOUS",
+            }
             for i in range(9)
         ]
         state = {
             **base_state,
-            "ml_result": {"confirmed": [], "suspicious": many_suspicious},
-            "static_findings": [], "rag_results": [], "audit_history": [],
+            "ml_result": _bind_ml(
+                {
+                    "confirmed": [],
+                    "suspicious": many_suspicious,
+                    "probabilities": {
+                        item["vulnerability_class"]: item["probability"] for item in many_suspicious
+                    },
+                }
+            ),
+            "static_findings": [],
+            "rag_results": [],
+            "audit_history": [],
         }
         from unittest.mock import MagicMock
+
         mock_llm = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "{}"
@@ -893,8 +1101,15 @@ class TestCrossValidatorNode:
 
     @pytest.mark.asyncio
     async def test_llm_json_parse_error_returns_empty(self, base_state, ml_high):
-        state = {**base_state, "ml_result": ml_high, "static_findings": [], "rag_results": [], "audit_history": []}
+        state = {
+            **base_state,
+            "ml_result": ml_high,
+            "static_findings": [],
+            "rag_results": [],
+            "audit_history": [],
+        }
         from unittest.mock import MagicMock
+
         mock_llm = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "I cannot determine the verdicts."
@@ -910,10 +1125,12 @@ class TestCrossValidatorNode:
 # Synthesizer uses pre-computed verdicts from cross_validator
 # ---------------------------------------------------------------------------
 
+
 class TestSynthesizerUsesPreComputedVerdicts:
     @pytest.mark.asyncio
     async def test_synthesizer_uses_cross_validator_verdicts(self, base_state, ml_high):
         from src.orchestration.verdict.evidence import Evidence
+
         evidence_list = [
             Evidence.ml("Reentrancy", 0.82, 0.39),
             Evidence.debate("Reentrancy", "CONFIRMED", 0.85),
@@ -922,93 +1139,113 @@ class TestSynthesizerUsesPreComputedVerdicts:
         ]
         state = {
             **base_state,
-            "ml_result":       ml_high,
-            "rag_results":     [],
-            "audit_history":   [],
+            "ml_result": ml_high,
+            "rag_results": [],
+            "audit_history": [],
             "static_findings": [],
             "routing_decisions": [],
-            "evidence_list":   evidence_list,
+            "evidence_list": evidence_list,
         }
-        with patch("src.llm.client.get_strong_llm",
-                   side_effect=ImportError("no LLM")):
+        with patch("src.llm.client.get_strong_llm", side_effect=ImportError("no LLM")):
             result = await synthesizer(state)
 
         report = result["final_report"]
         vv = {v["vulnerability_class"]: v["verdict"] for v in report["vulnerability_verdicts"]}
         assert vv["Reentrancy"] == "CONFIRMED"
-        assert vv["IntegerUO"]  == "LIKELY"
+        assert vv["IntegerUO"] == "LIKELY"
 
     @pytest.mark.asyncio
     async def test_consensus_evidece_respected_when_debate_fails(
-        self, base_state, ml_high,
+        self,
+        base_state,
+        ml_high,
     ):
         # Fix 1 (2026-06-21, "verdict fallback gap") — Shape A (T2.7):
         # when cross_validator's debate fails, synthesizer uses fuse() over
         # the accumulated evidence_list which includes consensus evidence
         # (emitted by consensus_engine node). The consensus verdict's
         # contribution is incorporated naturally via fuse() aggregation.
-        from src.orchestration.verdict.evidence import Evidence, Polarity, Kind
+        from src.orchestration.verdict.evidence import Evidence, Kind, Polarity
 
         evidence_list = [
             Evidence.ml("Reentrancy", 0.82, 0.39),
             Evidence.ml("IntegerUO", 0.61, 0.31),
             Evidence(
-                source="consensus", vuln_class="Reentrancy",
-                polarity=Polarity.NEUTRAL, strength=0.19, reliability=0.85,
-                kind=Kind.STATISTICAL, deterministic=True,
+                source="consensus",
+                vuln_class="Reentrancy",
+                polarity=Polarity.NEUTRAL,
+                strength=0.19,
+                reliability=0.85,
+                kind=Kind.STATISTICAL,
+                deterministic=True,
                 detail={"consensus_verdict": "SAFE", "consensus_confidence": 0.19},
             ),
             Evidence(
-                source="consensus", vuln_class="IntegerUO",
-                polarity=Polarity.SUPPORTS, strength=0.55, reliability=0.85,
-                kind=Kind.STATISTICAL, deterministic=True,
+                source="consensus",
+                vuln_class="IntegerUO",
+                polarity=Polarity.SUPPORTS,
+                strength=0.55,
+                reliability=0.85,
+                kind=Kind.STATISTICAL,
+                deterministic=True,
                 detail={"consensus_verdict": "LIKELY", "consensus_confidence": 0.55},
             ),
         ]
         state = {
             **base_state,
-            "ml_result":         ml_high,
-            "rag_results":       [],
-            "audit_history":     [],
-            "static_findings":   [],
+            "ml_result": ml_high,
+            "rag_results": [],
+            "audit_history": [],
+            "static_findings": [],
             "routing_decisions": [],
-            "evidence_list":     evidence_list,
+            "evidence_list": evidence_list,
             "consensus_verdict": {
                 "Reentrancy": {"verdict": "SAFE", "confidence": 0.19},
-                "IntegerUO":  {"verdict": "LIKELY", "confidence": 0.55},
+                "IntegerUO": {"verdict": "LIKELY", "confidence": 0.55},
             },
         }
         with patch("src.llm.client.get_strong_llm", side_effect=ImportError("no LLM")):
             result = await synthesizer(state)
 
-        vv = {v["vulnerability_class"]: v["verdict"] for v in result["final_report"]["vulnerability_verdicts"]}
-        assert vv["IntegerUO"]  == "LIKELY"
+        vv = {
+            v["vulnerability_class"]: v["verdict"]
+            for v in result["final_report"]["vulnerability_verdicts"]
+        }
+        assert vv["IntegerUO"] == "LIKELY"
         assert vv["Reentrancy"] in ("DISPUTED", "SAFE")
 
     @pytest.mark.asyncio
     async def test_compute_verdict_is_last_resort_when_consensus_engine_didnt_score_class(
-        self, base_state,
+        self,
+        base_state,
     ):
         # A class consensus_engine never voted on (e.g. weak SUSPICIOUS-tier
         # noise below its scoring bar) still needs an answer — compute_verdict()
         # remains the correct final fallback for THOSE classes only.
-        ml_result = {
-            "confirmed":  [],
-            "suspicious": [{"vulnerability_class": "Timestamp", "probability": 0.30, "tier": "SUSPICIOUS"}],
-        }
+        ml_result = _bind_ml(
+            {
+                "confirmed": [],
+                "suspicious": [
+                    {"vulnerability_class": "Timestamp", "probability": 0.30, "tier": "SUSPICIOUS"}
+                ],
+            }
+        )
         state = {
             **base_state,
-            "ml_result":         ml_result,
-            "rag_results":       [],
-            "audit_history":     [],
-            "static_findings":   [],
+            "ml_result": ml_result,
+            "rag_results": [],
+            "audit_history": [],
+            "static_findings": [],
             "routing_decisions": [],
             "consensus_verdict": {},  # did not score Timestamp at all
         }
         with patch("src.llm.client.get_strong_llm", side_effect=ImportError("no LLM")):
             result = await synthesizer(state)
 
-        vv = {v["vulnerability_class"]: v["verdict"] for v in result["final_report"]["vulnerability_verdicts"]}
+        vv = {
+            v["vulnerability_class"]: v["verdict"]
+            for v in result["final_report"]["vulnerability_verdicts"]
+        }
         # compute_verdict()'s rule for prob < 0.50: falls through its own logic
         # (not asserting the exact label here, only that it didn't crash and
         # produced SOME verdict via the compute_verdict() path).
@@ -1018,6 +1255,7 @@ class TestSynthesizerUsesPreComputedVerdicts:
 # ---------------------------------------------------------------------------
 # quick_screen node
 # ---------------------------------------------------------------------------
+
 
 class TestQuickScreenNode:
     """
@@ -1041,13 +1279,15 @@ class TestQuickScreenNode:
             result = await quick_screen(base_state)
         assert "quick_screen_hits" in result
         assert isinstance(result["quick_screen_hits"]["slither"], list)
-        assert isinstance(result["quick_screen_hits"]["aderyn"],  list)
+        assert isinstance(result["quick_screen_hits"]["aderyn"], list)
 
     @pytest.mark.asyncio
     async def test_slither_exception_is_non_fatal(self, base_state):
         # Slither raises an unexpected exception → node returns empty hits, no raise.
-        with patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile",
-                   side_effect=OSError("disk full")):
+        with patch(
+            "src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile",
+            side_effect=OSError("disk full"),
+        ):
             result = await quick_screen(base_state)
         assert "quick_screen_hits" in result
         assert result["quick_screen_hits"]["slither"] == []
@@ -1080,8 +1320,11 @@ class TestQuickScreenNode:
 
         # Patch slither.Slither at the import location used inside quick_screen.
         import slither as _slither_module
-        with patch.object(_slither_module, "Slither", mock_slither_cls), \
-             patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
+
+        with (
+            patch.object(_slither_module, "Slither", mock_slither_cls),
+            patch("subprocess.run", side_effect=FileNotFoundError("aderyn")),
+        ):
             result = await quick_screen(base_state)
 
         hits = result["quick_screen_hits"]
@@ -1094,12 +1337,16 @@ class TestQuickScreenNode:
         # in `tool_status["aderyn"]` with ran=False and a precise reason.
         # An empty aderyn list alone is no longer sufficient — that is the
         # exact ambiguity that produced the silent-skip rabbit hole.
-        with patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile") as mock_tmp, \
-             patch("os.unlink"), \
-             patch("subprocess.run", side_effect=FileNotFoundError("aderyn not found")):
-            mock_file = type("MockTmpFile", (), {"name": "/tmp/x.sol", "write": lambda s, t: None})()
+        with (
+            patch("src.orchestration.nodes.quick_screen.tempfile.NamedTemporaryFile") as mock_tmp,
+            patch("os.unlink"),
+            patch("subprocess.run", side_effect=FileNotFoundError("aderyn not found")),
+        ):
+            mock_file = type(
+                "MockTmpFile", (), {"name": "/tmp/x.sol", "write": lambda s, t: None}
+            )()
             mock_tmp.return_value.__enter__ = lambda s: mock_file
-            mock_tmp.return_value.__exit__  = lambda s, *a: None
+            mock_tmp.return_value.__exit__ = lambda s, *a: None
             # Also stub out slither import to avoid needing it installed
             with patch.dict("sys.modules", {"slither": None}):
                 result = await quick_screen(base_state)
@@ -1117,15 +1364,17 @@ class TestQuickScreenNode:
     @pytest.mark.asyncio
     async def test_result_always_has_both_keys(self, base_state):
         """quick_screen_hits must always contain both 'slither' and 'aderyn' keys."""
-        with patch.dict("sys.modules", {"slither": None}), \
-             patch("subprocess.run", side_effect=FileNotFoundError("aderyn")):
+        with (
+            patch.dict("sys.modules", {"slither": None}),
+            patch("subprocess.run", side_effect=FileNotFoundError("aderyn")),
+        ):
             result = await quick_screen(base_state)
 
         hits = result["quick_screen_hits"]
         assert "slither" in hits
-        assert "aderyn"  in hits
+        assert "aderyn" in hits
         assert isinstance(hits["slither"], list)
-        assert isinstance(hits["aderyn"],  list)
+        assert isinstance(hits["aderyn"], list)
         # Rule 5C: tool_status must also be present (carries Aderyn's ran=False).
         assert "tool_status" in result
         assert "aderyn" in result["tool_status"]
@@ -1135,18 +1384,25 @@ class TestQuickScreenNode:
     async def test_synthesizer_falls_back_without_precomputed_verdicts(self, base_state, ml_high):
         state = {
             **base_state,
-            "ml_result":       ml_high,
-            "rag_results":     [],
-            "audit_history":   [],
+            "ml_result": ml_high,
+            "rag_results": [],
+            "audit_history": [],
             "static_findings": [],
             "routing_decisions": [],
         }
-        with patch("src.llm.client.get_strong_llm",
-                   side_effect=ImportError("no LLM")):
+        with patch("src.llm.client.get_strong_llm", side_effect=ImportError("no LLM")):
             result = await synthesizer(state)
 
         report = result["final_report"]
         assert len(report["vulnerability_verdicts"]) > 0
         for vv in report["vulnerability_verdicts"]:
-            assert vv["verdict"] in ("CONFIRMED", "LIKELY", "DISPUTED", "WATCH", "SAFE",
-                                     "CORROBORATED", "UNCONFIRMED", "ML_ONLY")
+            assert vv["verdict"] in (
+                "CONFIRMED",
+                "LIKELY",
+                "DISPUTED",
+                "WATCH",
+                "SAFE",
+                "CORROBORATED",
+                "UNCONFIRMED",
+                "ML_ONLY",
+            )

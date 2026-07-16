@@ -13,5 +13,26 @@ Usage:
 from __future__ import annotations
 
 from src.config.loader import get_config, SentinelConfig
+from src.config.runtime import (
+    DotenvConfig,
+    DotenvMode,
+    RuntimeConfig,
+    RuntimeProfile,
+    apply_dotenv_policy,
+    get_runtime_config,
+    load_runtime_config,
+    runtime_config_digest,
+)
 
-__all__ = ["get_config", "SentinelConfig"]
+__all__ = [
+    "DotenvConfig",
+    "DotenvMode",
+    "RuntimeConfig",
+    "RuntimeProfile",
+    "SentinelConfig",
+    "apply_dotenv_policy",
+    "get_config",
+    "get_runtime_config",
+    "load_runtime_config",
+    "runtime_config_digest",
+]

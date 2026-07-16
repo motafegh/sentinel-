@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/r0/environment_manifest_v1.schema.json",
+  "title": "Sentinel R0 Environment Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "comparison_contract_version",
+    "comparison_fingerprint",
+    "environment_contract",
+    "workspace_commit",
+    "workspace_dirty",
+    "python",
+    "platform",
+    "lockfiles",
+    "runtimes",
+    "probe_environment_policy"
+  ],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "kind": {"const": "r0_environment_manifest"},
+    "comparison_contract_version": {"const": "2"},
+    "comparison_fingerprint": {"$ref": "#/$defs/sha256"},
+    "environment_contract": {"type": "string", "minLength": 1},
+    "workspace_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "workspace_dirty": {"type": "boolean"},
+    "python": {"$ref": "#/$defs/python_version"},
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "release", "machine"],
+      "properties": {
+        "system": {"type": "string", "minLength": 1},
+        "release": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1}
+      }
+    },
+    "lockfiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "runtimes": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/runtime_identity"}
+    },
+    "probe_environment_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "inherited_keys", "isolated_home", "forced"],
+      "properties": {
+        "version": {"const": "1"},
+        "inherited_keys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "isolated_home": {"const": true},
+        "forced": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "python_version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "version"],
+      "properties": {
+        "implementation": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1}
+      }
+    },
+    "runtime_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "version", "package_count", "packages_sha256"],
+      "properties": {
+        "implementation": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "package_count": {"type": "integer", "minimum": 0},
+        "packages_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

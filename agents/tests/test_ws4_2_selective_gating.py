@@ -28,6 +28,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.orchestration.nodes import cross_validator
+from tests.provenance_fixtures import live_ml_result
 
 
 def _make_state(
@@ -38,11 +39,14 @@ def _make_state(
 ) -> dict:
     """Build a minimal AuditState for cross_validator."""
     return {
-        "ml_result": {
-            "confirmed": [v for v in flagged if v.get("tier") == "CONFIRMED"],
-            "suspicious": [v for v in flagged if v.get("tier") == "SUSPICIOUS"],
-            "vulnerabilities": [v for v in flagged if v.get("tier") in (None, "CONFIRMED")],
-        },
+        "ml_result": live_ml_result(
+            {
+                "confirmed": [v for v in flagged if v.get("tier") == "CONFIRMED"],
+                "suspicious": [v for v in flagged if v.get("tier") == "SUSPICIOUS"],
+                "vulnerabilities": [v for v in flagged if v.get("tier") in (None, "CONFIRMED")],
+            },
+            contract_code=contract_code,
+        ),
         "static_findings": static_findings or [],
         "rag_results": [],
         "audit_history": [],
@@ -62,6 +66,7 @@ def _mock_llm_with_response(verdict_json: str) -> MagicMock:
 # Test 1: debate is SKIPPED when all classes are CONFIRMED with ≥2 tools
 # ---------------------------------------------------------------------------
 
+
 class TestDebateSkipped:
     """
     The asymmetric skip case: 2+ tools agree on CONFIRMED for every flagged
@@ -79,7 +84,9 @@ class TestDebateSkipped:
         monkeypatch.setenv("DEBATE_MODE", "on")
 
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             consensus_verdict={
                 "Reentrancy": {
                     "verdict": "CONFIRMED",
@@ -92,14 +99,14 @@ class TestDebateSkipped:
         )
 
         # If the debate runs, this mock would be called 3 times. If skipped, never.
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
             mock_get_fast.return_value = _mock_llm_with_response(
                 '{"Reentrancy": "DISPUTED"}'  # if debate ran, this would be the result
             )
-            mock_get_strong.return_value = _mock_llm_with_response(
-                '{"Reentrancy": "DISPUTED"}'
-            )
+            mock_get_strong.return_value = _mock_llm_with_response('{"Reentrancy": "DISPUTED"}')
             out = await cross_validator(state)
 
         # Debate was NOT called.
@@ -122,18 +129,24 @@ class TestDebateSkipped:
         monkeypatch.setenv("DEBATE_MODE", "on")
 
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.95, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.95, "tier": "CONFIRMED"}
+            ],
             consensus_verdict={
                 "Reentrancy": {
                     "verdict": "CONFIRMED",
-                    "ml_signal": 1, "slither_match": 1, "aderyn_match": 1,
+                    "ml_signal": 1,
+                    "slither_match": 1,
+                    "aderyn_match": 1,
                     "confidence": 1.0,
                 },
             },
         )
 
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
             mock_get_fast.return_value = _mock_llm_with_response("X")
             mock_get_strong.return_value = _mock_llm_with_response("X")
             out = await cross_validator(state)
@@ -155,17 +168,31 @@ class TestDebateSkipped:
 
         state = _make_state(
             flagged=[
-                {"vulnerability_class": "Reentrancy",  "probability": 0.85, "tier": "CONFIRMED"},
-                {"vulnerability_class": "IntegerUO",  "probability": 0.80, "tier": "CONFIRMED"},
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"},
+                {"vulnerability_class": "IntegerUO", "probability": 0.80, "tier": "CONFIRMED"},
             ],
             consensus_verdict={
-                "Reentrancy": {"verdict": "CONFIRMED", "ml_signal": 1, "slither_match": 1, "aderyn_match": 0, "confidence": 0.78},
-                "IntegerUO":  {"verdict": "CONFIRMED", "ml_signal": 1, "slither_match": 0, "aderyn_match": 1, "confidence": 0.75},
+                "Reentrancy": {
+                    "verdict": "CONFIRMED",
+                    "ml_signal": 1,
+                    "slither_match": 1,
+                    "aderyn_match": 0,
+                    "confidence": 0.78,
+                },
+                "IntegerUO": {
+                    "verdict": "CONFIRMED",
+                    "ml_signal": 1,
+                    "slither_match": 0,
+                    "aderyn_match": 1,
+                    "confidence": 0.75,
+                },
             },
         )
 
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
             mock_get_fast.return_value = _mock_llm_with_response("X")
             mock_get_strong.return_value = _mock_llm_with_response("X")
             out = await cross_validator(state)
@@ -181,6 +208,7 @@ class TestDebateSkipped:
 # ---------------------------------------------------------------------------
 # Test 2: debate RUNS when ANY class is below CONFIRMED (asymmetric)
 # ---------------------------------------------------------------------------
+
 
 class TestDebateRuns:
     """
@@ -200,17 +228,31 @@ class TestDebateRuns:
 
         state = _make_state(
             flagged=[
-                {"vulnerability_class": "Reentrancy",  "probability": 0.85, "tier": "CONFIRMED"},
-                {"vulnerability_class": "Timestamp",   "probability": 0.60, "tier": "SUSPICIOUS"},
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"},
+                {"vulnerability_class": "Timestamp", "probability": 0.60, "tier": "SUSPICIOUS"},
             ],
             consensus_verdict={
-                "Reentrancy": {"verdict": "CONFIRMED", "ml_signal": 1, "slither_match": 1, "aderyn_match": 0, "confidence": 0.78},
-                "Timestamp":  {"verdict": "LIKELY",    "ml_signal": 1, "slither_match": 1, "aderyn_match": 0, "confidence": 0.55},
+                "Reentrancy": {
+                    "verdict": "CONFIRMED",
+                    "ml_signal": 1,
+                    "slither_match": 1,
+                    "aderyn_match": 0,
+                    "confidence": 0.78,
+                },
+                "Timestamp": {
+                    "verdict": "LIKELY",
+                    "ml_signal": 1,
+                    "slither_match": 1,
+                    "aderyn_match": 0,
+                    "confidence": 0.55,
+                },
             },
         )
 
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
             # Mock the debate to return a final verdict.
             mock_get_fast.return_value = _mock_llm_with_response(
                 '{"Reentrancy": "CONFIRMED", "Timestamp": "DISPUTED"}'
@@ -240,17 +282,31 @@ class TestDebateRuns:
 
         state = _make_state(
             flagged=[
-                {"vulnerability_class": "Reentrancy",  "probability": 0.85, "tier": "CONFIRMED"},
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"},
                 {"vulnerability_class": "ExternalBug", "probability": 0.55, "tier": "SUSPICIOUS"},
             ],
             consensus_verdict={
-                "Reentrancy":  {"verdict": "CONFIRMED", "ml_signal": 1, "slither_match": 1, "aderyn_match": 0, "confidence": 0.78},
-                "ExternalBug": {"verdict": "DISPUTED",  "ml_signal": 1, "slither_match": 0, "aderyn_match": 0, "confidence": 0.40},
+                "Reentrancy": {
+                    "verdict": "CONFIRMED",
+                    "ml_signal": 1,
+                    "slither_match": 1,
+                    "aderyn_match": 0,
+                    "confidence": 0.78,
+                },
+                "ExternalBug": {
+                    "verdict": "DISPUTED",
+                    "ml_signal": 1,
+                    "slither_match": 0,
+                    "aderyn_match": 0,
+                    "confidence": 0.40,
+                },
             },
         )
 
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
             mock_get_fast.return_value = _mock_llm_with_response(
                 '{"Reentrancy": "CONFIRMED", "ExternalBug": "DISPUTED"}'
             )
@@ -277,25 +333,27 @@ class TestDebateRuns:
 
         # Flagged class with consensus SAFE (no tools, ML below threshold).
         state = _make_state(
-            flagged=[{"vulnerability_class": "Timestamp", "probability": 0.45, "tier": "SUSPICIOUS"}],
+            flagged=[
+                {"vulnerability_class": "Timestamp", "probability": 0.45, "tier": "SUSPICIOUS"}
+            ],
             consensus_verdict={
                 "Timestamp": {
                     "verdict": "SAFE",
-                    "ml_signal": 0, "slither_match": 0, "aderyn_match": 0,
+                    "ml_signal": 0,
+                    "slither_match": 0,
+                    "aderyn_match": 0,
                     "confidence": 0.20,
                     "overridden_from_safe": False,
                 },
             },
         )
 
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
-            mock_get_fast.return_value = _mock_llm_with_response(
-                '{"Timestamp": "DISPUTED"}'
-            )
-            mock_get_strong.return_value = _mock_llm_with_response(
-                '{"Timestamp": "DISPUTED"}'
-            )
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
+            mock_get_fast.return_value = _mock_llm_with_response('{"Timestamp": "DISPUTED"}')
+            mock_get_strong.return_value = _mock_llm_with_response('{"Timestamp": "DISPUTED"}')
             out = await cross_validator(state)
 
         # Debate ran even though consensus said SAFE.
@@ -316,18 +374,24 @@ class TestDebateRuns:
         monkeypatch.setenv("DEBATE_MODE", "on")
 
         state = _make_state(
-            flagged=[{"vulnerability_class": "Timestamp", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Timestamp", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             consensus_verdict={
                 "Timestamp": {
                     "verdict": "CONFIRMED",
-                    "ml_signal": 1, "slither_match": 0, "aderyn_match": 0,
+                    "ml_signal": 1,
+                    "slither_match": 0,
+                    "aderyn_match": 0,
                     "confidence": 0.70,
                 },
             },
         )
 
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
             mock_get_fast.return_value = _mock_llm_with_response('{"Timestamp": "CONFIRMED"}')
             mock_get_strong.return_value = _mock_llm_with_response('{"Timestamp": "CONFIRMED"}')
             await cross_validator(state)
@@ -344,12 +408,16 @@ class TestDebateRuns:
         monkeypatch.setenv("DEBATE_MODE", "on")
 
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             consensus_verdict={},  # empty
         )
 
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
             mock_get_fast.return_value = _mock_llm_with_response('{"Reentrancy": "CONFIRMED"}')
             mock_get_strong.return_value = _mock_llm_with_response('{"Reentrancy": "CONFIRMED"}')
             await cross_validator(state)
@@ -360,6 +428,7 @@ class TestDebateRuns:
 # ---------------------------------------------------------------------------
 # Test 3: invariants — what the skipped-debate verdict looks like
 # ---------------------------------------------------------------------------
+
 
 class TestSkippedDebateVerdictShape:
     """
@@ -378,14 +447,24 @@ class TestSkippedDebateVerdictShape:
         monkeypatch.setenv("DEBATE_MODE", "on")
 
         state = _make_state(
-            flagged=[{"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}],
+            flagged=[
+                {"vulnerability_class": "Reentrancy", "probability": 0.85, "tier": "CONFIRMED"}
+            ],
             consensus_verdict={
-                "Reentrancy": {"verdict": "CONFIRMED", "ml_signal": 1, "slither_match": 1, "aderyn_match": 0, "confidence": 0.78},
+                "Reentrancy": {
+                    "verdict": "CONFIRMED",
+                    "ml_signal": 1,
+                    "slither_match": 1,
+                    "aderyn_match": 0,
+                    "confidence": 0.78,
+                },
             },
         )
 
-        with patch("src.llm.client.get_fast_llm") as mock_get_fast, \
-             patch("src.llm.client.get_strong_llm") as mock_get_strong:
+        with (
+            patch("src.llm.client.get_fast_llm") as mock_get_fast,
+            patch("src.llm.client.get_strong_llm") as mock_get_strong,
+        ):
             mock_get_fast.return_value = _mock_llm_with_response("X")
             mock_get_strong.return_value = _mock_llm_with_response("X")
             out = await cross_validator(state)

@@ -1,0 +1,97 @@
+{
+  "acceptance_rows": [
+    {
+      "evidence": {
+        "after": "A frozen outage probe returns only detail, error, and a canonical execution_status; it emits no label, probabilities, vulnerabilities, or model hash.",
+        "before": "The same frozen probe returned label=safe, ten probabilities, vulnerabilities, and a mock_model_hash value after a live inference connection failure.",
+        "measurement": "Comparable before/after key ac27a85060fcd93485f734c25edcd9e316e965b7bc2c73c82cc8223a8b7ef09a changed invariant_passed from false to true; all three after assertions pass with exit code 0."
+      },
+      "row_id": "R0.1-OUTAGE-FAIL-CLOSED",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Canonical strict execution status binds producer, operation, input digest, output digest, mode, and terminal state. Consumers revalidate binding before evidence use.",
+        "before": "Inference and audit responses had no canonical provenance contract, and transport success was treated as evidence success.",
+        "measurement": "7/7 execution-status tests pass, including ML wire compatibility, input/output mutation rejection, missing status rejection, and ineligible mock/degraded states."
+      },
+      "row_id": "R0.1-PROVENANCE-BINDING",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Routing, evidence emission, consensus, cross-validation, report synthesis, gateway, evaluation, proof, and submission all reject ineligible ML provenance. Static evidence remains independently usable and finality remains withheld.",
+        "before": "Plausible fallback results could flow through routing, reports, evaluation, proof, and submission as if they were live evidence.",
+        "measurement": "221/221 focused AGENTS tests pass across execution status, inference, audit, graph routing, gateway, evaluation, and submission provenance; 2/2 independent ML producer contract tests pass."
+      },
+      "row_id": "R0.1-CONSUMER-GATING",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Inference and audit expose process liveness separately from dependency readiness, and the gateway parses live/degraded/mock/unavailable readiness truth.",
+        "before": "Health endpoints reported ok based on process/configuration state, and gateway probes treated arbitrary HTTP responses below 500 as healthy.",
+        "measurement": "Focused outage, recovery, explicit-mock, malformed-response, audit-RPC, and gateway readiness tests are included in the 221/221 passing gate."
+      },
+      "row_id": "R0.1-READINESS-TRUTH",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "The canonical AGENTS suite from agents/ at candidate 9e656ee4 produced 665 passes and 9 failures out of 674.",
+        "before": "The R0.0 baseline candidate produced 638 passes and the same 9 environmental failures out of 647.",
+        "measurement": "Newly introduced failure count is zero. The retained set is six absent RAG seed-corpus assertions plus three unavailable-solc assertions."
+      },
+      "row_id": "R0.1-REGRESSION-DELTA",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "after": "Scoped flake8 on every new R0.1 module/test, AGENTS and ML compileall, formatter passes, and git diff checks succeed.",
+        "before": "The R0.1 modules and tests did not exist.",
+        "measurement": "Four available quality-gate classes pass; no unavailable check is represented as passing."
+      },
+      "row_id": "R0.1-QUALITY-GATES",
+      "status": "PASS"
+    }
+  ],
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "9e656ee4eb0a434eb97ba882eca1eee7c09a9c25",
+  "candidate_environment": {
+    "path": "acceptance/2026-07-14_SYSTEM_R0_ENVIRONMENT_r0-1_candidate.json",
+    "sha256": "5b74510a7755b3e8a9afa61afae9e979707d087bdc65b87d9a968d42bd6041b7"
+  },
+  "comparable_evidence": {
+    "after_path": "acceptance/2026-07-14_SYSTEM_R0-EVIDENCE-OUTAGE_after_r0-1.json",
+    "after_sha256": "3c9f5b3a04c824847ea08c1715a0494bc6d4e68fa571116a5a7c128dc4675aa3",
+    "before_path": "baseline_series_2/2026-07-14_SYSTEM_R0-EVIDENCE-OUTAGE_before_v2.json",
+    "before_sha256": "1050ab1648a7ddd064e5d931f5d32eeaa6be74c403e3888196f7c8d2f6324cf2",
+    "comparison_key": "ac27a85060fcd93485f734c25edcd9e316e965b7bc2c73c82cc8223a8b7ef09a"
+  },
+  "global_r0_coverage_complete": false,
+  "global_r0_rows_closed": 1,
+  "global_r0_rows_total": 8,
+  "kind": "r0_package_acceptance_ledger",
+  "limitations": [
+    {
+      "classification": "PRE_EXISTING_CHECKOUT_PREREQUISITE",
+      "detail": "Five source corpora and the canonical SWC corpus are absent; six RAG fetcher assertions fail identically outside the R0.1 surface."
+    },
+    {
+      "classification": "PRE_EXISTING_TOOLCHAIN_PREREQUISITE",
+      "detail": "solc is absent from PATH; two real-Slither assertions and one dependent smoke assertion fail identically outside the R0.1 surface."
+    },
+    {
+      "classification": "SCOPE_RETAINED_FOR_R0.4",
+      "detail": "R0.1 blocks ineligible ML provenance before proof or submission. Full proof/public-signal/transaction identity and receipt-truth redesign remains owned by R0.4."
+    }
+  ],
+  "package": "R0.1",
+  "review": {
+    "decided_at": "2026-07-14T13:39:17Z",
+    "reviewer": "Ali Motafegh (standing local-R0 authorization)",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "status": "ACCEPTED"
+}

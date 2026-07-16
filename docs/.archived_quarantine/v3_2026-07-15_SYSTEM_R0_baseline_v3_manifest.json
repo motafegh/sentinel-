@@ -1,0 +1,115 @@
+{
+  "schema_version": "1",
+  "kind": "r0_baseline_manifest_v3",
+  "comparison_contract_version": "2",
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "beb8e52505775475d4c7496a27cb1aa25a3cbe19",
+  "environment_manifest": {
+    "path": "2026-07-15_SYSTEM_R0_ENVIRONMENT_before_v3.json",
+    "sha256": "3db0e4e272c9615bdfafbef34cd1c061754b83c13d41905d2e42ce273cefe425",
+    "comparison_fingerprint": "c33f199829aaa0e6a82c21770fcc23d9d998f8b9a24308e0be032fa5db8355a3"
+  },
+  "candidate_environment_manifest": {
+    "path": "2026-07-15_SYSTEM_R0_ENVIRONMENT_candidate_v3.json",
+    "sha256": "532e51e6c017fb8fb8b976e6c8b4cee2df058e5795c6923d56b7670e6b47a34f",
+    "comparison_fingerprint": "c33f199829aaa0e6a82c21770fcc23d9d998f8b9a24308e0be032fa5db8355a3"
+  },
+  "evidence_records": [
+    {
+      "path": "2026-07-15_SYSTEM_R0-ARCHIVE-CONTAINMENT_after_v3.json",
+      "sha256": "cfa399b8e7dc57fcdce42edb7eb6d4bb641d0f094757338f46568659574bc9d8",
+      "matrix_row_id": "R0-ARCHIVE-CONTAINMENT",
+      "outcome": "pass"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-ARCHIVE-CONTAINMENT_before_v3.json",
+      "sha256": "2d92266c4a052b025bc3af6e1f02c0ed3368f4013bae6ca4ff757bb2a5bf5b74",
+      "matrix_row_id": "R0-ARCHIVE-CONTAINMENT",
+      "outcome": "fail"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-AUTHORIZATION-LIMITS_after_v3.json",
+      "sha256": "541cddffe23cdffd182f8f191e44255f3bea15442a24e8b991a579bb8578c305",
+      "matrix_row_id": "R0-AUTHORIZATION-LIMITS",
+      "outcome": "pass"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-AUTHORIZATION-LIMITS_before_v3.json",
+      "sha256": "0983f7f27c8b5be24ba049650eae4acbae5d1e02dfb2cf63b48393ab514426d3",
+      "matrix_row_id": "R0-AUTHORIZATION-LIMITS",
+      "outcome": "fail"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-DATA-RELEASE-TRUST_after_v3.json",
+      "sha256": "9a56473d9d1edbabc79a4351de591ce4622f142e6a6962be266f382479e7d6cc",
+      "matrix_row_id": "R0-DATA-RELEASE-TRUST",
+      "outcome": "pass"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-DATA-RELEASE-TRUST_before_v3.json",
+      "sha256": "132b1e1e76feca51589a0889ffccad0c4bee3178687b096f571015255d50c642",
+      "matrix_row_id": "R0-DATA-RELEASE-TRUST",
+      "outcome": "fail"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-EVIDENCE-OUTAGE_after_v3.json",
+      "sha256": "955e5bee63ad6e88f83f2346fc0ac432c5b9a7f3d604903fcc9e3cbfdff574c8",
+      "matrix_row_id": "R0-EVIDENCE-OUTAGE",
+      "outcome": "pass"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-EVIDENCE-OUTAGE_before_v3.json",
+      "sha256": "6f1bd145eb08a725a138d84e4041094026d6a8d0ef56f2e8bb6aef0896f6b986",
+      "matrix_row_id": "R0-EVIDENCE-OUTAGE",
+      "outcome": "fail"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-PROOF-IDENTITY_after_v3.json",
+      "sha256": "7689baf1ab69e81c8b244865d595feb84345a2d6a921d5cd91c928592decde23",
+      "matrix_row_id": "R0-PROOF-IDENTITY",
+      "outcome": "pass"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-PROOF-IDENTITY_before_v3.json",
+      "sha256": "f30f06a212c8c8fedeb062aa5400a534aafe9d3b5830033a40ef3a210b5c53e1",
+      "matrix_row_id": "R0-PROOF-IDENTITY",
+      "outcome": "fail"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-REPORT-CONTAINMENT_after_v3.json",
+      "sha256": "23c5120ce584f1f5be28390aeed536170f74712ca32aa08c9190d86c11b7d439",
+      "matrix_row_id": "R0-REPORT-CONTAINMENT",
+      "outcome": "pass"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-REPORT-CONTAINMENT_before_v3.json",
+      "sha256": "172da79013f760972ad2ad9ee52fde78ec7afb3cd631827199e2d3b7a7463c04",
+      "matrix_row_id": "R0-REPORT-CONTAINMENT",
+      "outcome": "fail"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-SIGNER-ISOLATION_after_v3.json",
+      "sha256": "e111bb629abeddd28f873e31f98aebbe6bd544aee13cc36a4fae3845d94a96b1",
+      "matrix_row_id": "R0-SIGNER-ISOLATION",
+      "outcome": "pass"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-SIGNER-ISOLATION_before_v3.json",
+      "sha256": "84db1ec19d565cb7557077d9988ad59d62671a38920d5ee9738cf061c81b23f1",
+      "matrix_row_id": "R0-SIGNER-ISOLATION",
+      "outcome": "fail"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-TRANSACTION-TRUTH_after_v3.json",
+      "sha256": "34b0774bb4e8460eac434a149f9f00335de369d3ff47b69da76ad8f8d1fe98a8",
+      "matrix_row_id": "R0-TRANSACTION-TRUTH",
+      "outcome": "pass"
+    },
+    {
+      "path": "2026-07-15_SYSTEM_R0-TRANSACTION-TRUTH_before_v3.json",
+      "sha256": "97d07f0389d7ce680b9ffd3c95753123bac6f28df77459c6ce66f67a60b37451",
+      "matrix_row_id": "R0-TRANSACTION-TRUTH",
+      "outcome": "fail"
+    }
+  ]
+}

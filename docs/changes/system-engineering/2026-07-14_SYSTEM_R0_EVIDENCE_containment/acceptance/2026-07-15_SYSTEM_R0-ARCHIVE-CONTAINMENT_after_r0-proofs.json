@@ -1,0 +1,69 @@
+{
+  "baseline_commit": "20fbf10ed4cb5d7b59df0f9cf626542b2b3de517",
+  "candidate_commit": "7294def23517effca6e344cc27155b76edba7d42",
+  "comparison_key": "5b0b9a3c0363dd91edd89e0cb4affb76b8a0bc2815ee4ea0d2006e8fe2911669",
+  "environment_manifest": {
+    "comparison_fingerprint": "6dd601b2e822f6120cdb45ba9edb5018790395b92d927ca9a970e809a1ae2415",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_env.json",
+    "sha256": "fcc59de8901e7e95998f737115afecaa49a12b461f04d9aeaf8e9a211a9237f4"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T17:14:48.508130+00:00",
+    "started_at": "2026-07-15T17:14:47.169352+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"exception='ConnectorError'\", \"name\": \"traversal_rejected\", \"passed\": true}, {\"detail\": \"escaped=False\", \"name\": \"no_outside_write\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "e45f079c7a7aff65972cc69a659db63623f56150356edb12cb1474ea09e7f881"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-ARCHIVE-CONTAINMENT",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "exception='ConnectorError'",
+        "name": "traversal_rejected",
+        "passed": true
+      },
+      {
+        "detail": "escaped=False",
+        "name": "no_outside_write",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{data_python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "zip-containment",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-zip-containment",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
+      "zip-containment",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-ARCHIVE-CONTAINMENT:after:r0-zip-containment:7294def23517",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "data_module/tests/test_ingestion/test_connector.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_DATA_D2_AUDIT_appendix.md"
+  ]
+}

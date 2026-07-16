@@ -29,42 +29,50 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("AUDIT_MOCK", "true")
 os.environ.setdefault("SEPOLIA_RPC_URL", "")
 
+from src.mcp.servers.audit._server import _readiness_payload
 from src.mcp.servers.audit_server import (
+    EZKL_SCALE_FACTOR,
     _decode_audit_result,
     _handle_check_audit_exists,
     _handle_get_audit_history,
     _handle_get_latest_audit,
     _mock_audit_result,
     _mock_history,
+    _on_startup,
     _validate_address,
     list_tools,
-    EZKL_SCALE_FACTOR,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-VALID_ADDRESS   = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+VALID_ADDRESS = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
 INVALID_ADDRESS = "not-an-address"
 
 # A realistic AuditResult tuple as returned by web3.py from the contract.
 # Layout: (scoreFieldElement, proofHash, timestamp, agent, verified)
 SAMPLE_TUPLE = (
-    5993,                              # scoreFieldElement (5993/8192 ≈ 0.7314)
-    bytes.fromhex("ab" * 32),          # proofHash (bytes32)
-    1713200000,                        # timestamp
+    5993,  # scoreFieldElement (5993/8192 ≈ 0.7314)
+    bytes.fromhex("ab" * 32),  # proofHash (bytes32)
+    1713200000,  # timestamp
     "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF",  # agent
-    True,                              # verified
+    True,  # verified
 )
 
 ZERO_TUPLE = (0, b"\x00" * 32, 0, "0x0000000000000000000000000000000000000000", False)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_mock_mode(monkeypatch):
+    """Make audit-server tests independent of import and collection order."""
+    monkeypatch.setattr("src.mcp.servers.audit_server._MOCK_MODE", True)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse(content_list) -> dict:
     """Extract and parse the JSON from a list[TextContent] tool response."""
@@ -76,12 +84,14 @@ def _parse(content_list) -> dict:
 # list_tools — schema tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
-async def test_list_tools_returns_four_tools():
-    """Audit server must expose exactly 4 tools (3 read + 1 write)."""
+async def test_list_tools_returns_three_read_only_tools():
+    """R0.3: Audit server exposes 3 read-only tools. submit_audit is not advertised."""
     tools = await list_tools()
     names = {t.name for t in tools}
-    assert names == {"get_latest_audit", "get_audit_history", "check_audit_exists", "submit_audit"}
+    assert names == {"get_latest_audit", "get_audit_history", "check_audit_exists"}
+    assert "submit_audit" not in names
 
 
 @pytest.mark.asyncio
@@ -91,14 +101,15 @@ async def test_list_tools_schemas_have_required():
     for tool in tools:
         schema = tool.inputSchema
         assert "required" in schema, f"{tool.name} missing 'required' in schema"
-        assert "contract_address" in schema["required"], (
-            f"{tool.name} does not require contract_address"
-        )
+        assert (
+            "contract_address" in schema["required"]
+        ), f"{tool.name} does not require contract_address"
 
 
 # ---------------------------------------------------------------------------
 # _validate_address
 # ---------------------------------------------------------------------------
+
 
 def test_validate_address_accepts_valid():
     """Valid checksummed address should pass without error."""
@@ -122,6 +133,7 @@ def test_validate_address_rejects_garbage():
 # ---------------------------------------------------------------------------
 # _decode_audit_result
 # ---------------------------------------------------------------------------
+
 
 def test_decode_audit_result_score():
     """Score must be scoreFieldElement / EZKL_SCALE_FACTOR."""
@@ -147,9 +159,16 @@ def test_decode_audit_result_required_fields():
     """Decoded dict must contain all fields expected by downstream agents."""
     decoded = _decode_audit_result(SAMPLE_TUPLE, VALID_ADDRESS)
     required = {
-        "contract_address", "score", "score_field_element", "label",
-        "threshold", "proof_hash", "timestamp", "timestamp_iso",
-        "agent", "verified",
+        "contract_address",
+        "score",
+        "score_field_element",
+        "label",
+        "threshold",
+        "proof_hash",
+        "timestamp",
+        "timestamp_iso",
+        "agent",
+        "verified",
     }
     missing = required - set(decoded.keys())
     assert not missing, f"Missing fields: {missing}"
@@ -166,6 +185,7 @@ def test_decode_audit_result_proof_hash_hex():
 # _handle_get_latest_audit (mock mode)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_latest_audit_mock_returns_result():
     """In mock mode, get_latest_audit must return a valid decoded result."""
@@ -174,6 +194,7 @@ async def test_get_latest_audit_mock_returns_result():
     assert "score" in data
     assert "label" in data
     assert 0.0 <= data["score"] <= 1.0
+    assert data["execution_status"]["status"] == "MOCK"
 
 
 @pytest.mark.asyncio
@@ -193,9 +214,7 @@ async def test_get_latest_audit_live_no_audit(monkeypatch):
     monkeypatch.setattr("src.mcp.servers.audit_server._MOCK_MODE", False)
 
     mock_contract = MagicMock()
-    mock_contract.functions.getLatestAudit.return_value.call = AsyncMock(
-        return_value=ZERO_TUPLE
-    )
+    mock_contract.functions.getLatestAudit.return_value.call = AsyncMock(return_value=ZERO_TUPLE)
     monkeypatch.setattr("src.mcp.servers.audit_server._registry", mock_contract)
 
     result = await _handle_get_latest_audit({"contract_address": VALID_ADDRESS})
@@ -222,19 +241,24 @@ async def test_get_latest_audit_live_rpc_error(monkeypatch):
     data = _parse(result)
     assert data["error"] == "rpc_error"
     assert "detail" in data
+    assert data["execution_status"]["status"] == "UNAVAILABLE"
+    assert data["execution_status"]["ran"] is False
 
 
 # ---------------------------------------------------------------------------
 # _handle_get_audit_history (mock mode)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_audit_history_mock_returns_list():
     """In mock mode, history must contain at least one record."""
-    result = await _handle_get_audit_history({
-        "contract_address": VALID_ADDRESS,
-        "limit": 5,
-    })
+    result = await _handle_get_audit_history(
+        {
+            "contract_address": VALID_ADDRESS,
+            "limit": 5,
+        }
+    )
     data = _parse(result)
     assert "records" in data
     assert isinstance(data["records"], list)
@@ -251,15 +275,15 @@ async def test_get_audit_history_respects_limit(monkeypatch):
 
     many_records = [SAMPLE_TUPLE] * 100
     mock_contract = MagicMock()
-    mock_contract.functions.getAuditHistory.return_value.call = AsyncMock(
-        return_value=many_records
-    )
+    mock_contract.functions.getAuditHistory.return_value.call = AsyncMock(return_value=many_records)
     monkeypatch.setattr("src.mcp.servers.audit_server._registry", mock_contract)
 
-    result = await _handle_get_audit_history({
-        "contract_address": VALID_ADDRESS,
-        "limit": 2,
-    })
+    result = await _handle_get_audit_history(
+        {
+            "contract_address": VALID_ADDRESS,
+            "limit": 2,
+        }
+    )
     data = _parse(result)
     assert len(data["records"]) <= 2
 
@@ -277,11 +301,13 @@ async def test_get_audit_history_live_empty(monkeypatch):
     data = _parse(result)
     assert data["count"] == 0
     assert data["records"] == []
+    assert data["execution_status"]["status"] == "CLEAN"
 
 
 # ---------------------------------------------------------------------------
 # _handle_check_audit_exists (mock mode)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_check_audit_exists_mock():
@@ -308,7 +334,7 @@ async def test_check_audit_exists_live(monkeypatch):
     monkeypatch.setattr("src.mcp.servers.audit_server._MOCK_MODE", False)
 
     mock_contract = MagicMock()
-    mock_contract.functions.hasAudit.return_value.call   = AsyncMock(return_value=True)
+    mock_contract.functions.hasAudit.return_value.call = AsyncMock(return_value=True)
     mock_contract.functions.getAuditCount.return_value.call = AsyncMock(return_value=7)
     monkeypatch.setattr("src.mcp.servers.audit_server._registry", mock_contract)
 
@@ -316,11 +342,53 @@ async def test_check_audit_exists_live(monkeypatch):
     data = _parse(result)
     assert data["exists"] is True
     assert data["count"] == 7
+    assert data["execution_status"]["status"] == "SUCCEEDED"
+
+
+@pytest.mark.asyncio
+async def test_missing_rpc_stays_unavailable_and_never_auto_enables_mock(monkeypatch):
+    import src.mcp.servers.audit_server as audit_server
+
+    monkeypatch.setattr(audit_server, "_MOCK_MODE", False)
+    monkeypatch.setattr(audit_server, "_RPC_URL", "")
+    await _on_startup()
+    readiness = _readiness_payload()
+    assert audit_server._MOCK_MODE is False
+    assert readiness["status"] == "unavailable"
+    assert readiness["dependency"]["reason_code"] == "rpc_not_configured"
+
+
+@pytest.mark.asyncio
+async def test_startup_failure_stays_unavailable_and_never_switches_to_mock(monkeypatch):
+    import src.mcp.servers.audit_server as audit_server
+
+    monkeypatch.setattr(audit_server, "_MOCK_MODE", False)
+    monkeypatch.setattr(audit_server, "_RPC_URL", "http://rpc.invalid")
+    monkeypatch.setattr(
+        "src.mcp.servers.audit._lifecycle._load_abi",
+        MagicMock(side_effect=RuntimeError("ABI unavailable")),
+    )
+    await _on_startup()
+    assert audit_server._MOCK_MODE is False
+    assert audit_server._execution_status["status"] == "UNAVAILABLE"
+    assert audit_server._execution_status["reason_code"] == "startup_failed"
+
+
+@pytest.mark.asyncio
+async def test_explicit_mock_startup_reports_mock_not_ready(monkeypatch):
+    import src.mcp.servers.audit_server as audit_server
+
+    monkeypatch.setattr(audit_server, "_MOCK_MODE", True)
+    await _on_startup()
+    readiness = _readiness_payload()
+    assert readiness["status"] == "mock"
+    assert readiness["ready"] is False
 
 
 # ---------------------------------------------------------------------------
 # Hard cap enforcement
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_history_limit_capped_at_50(monkeypatch):
@@ -332,14 +400,14 @@ async def test_history_limit_capped_at_50(monkeypatch):
 
     many_records = [SAMPLE_TUPLE] * 200
     mock_contract = MagicMock()
-    mock_contract.functions.getAuditHistory.return_value.call = AsyncMock(
-        return_value=many_records
-    )
+    mock_contract.functions.getAuditHistory.return_value.call = AsyncMock(return_value=many_records)
     monkeypatch.setattr("src.mcp.servers.audit_server._registry", mock_contract)
 
-    result = await _handle_get_audit_history({
-        "contract_address": VALID_ADDRESS,
-        "limit": 999,   # way over the cap
-    })
+    result = await _handle_get_audit_history(
+        {
+            "contract_address": VALID_ADDRESS,
+            "limit": 999,  # way over the cap
+        }
+    )
     data = _parse(result)
     assert len(data["records"]) <= 50

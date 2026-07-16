@@ -8,7 +8,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.orchestration.nodes import reflection, cross_validator
+from src.orchestration.nodes import cross_validator, reflection
+from tests.provenance_fixtures import live_ml_state
 
 
 def _report_with_verdicts():
@@ -53,7 +54,9 @@ class TestReflectionRuleBased:
         state = _report_with_verdicts()
         state["final_report"]["ml_truncated"] = True
         out = await reflection(state)
-        assert any("512" in f or "truncat" in f.lower() for f in out["reflection_notes"]["failure_modes"])
+        assert any(
+            "512" in f or "truncat" in f.lower() for f in out["reflection_notes"]["failure_modes"]
+        )
 
     @pytest.mark.asyncio
     async def test_empty_state_is_safe(self, monkeypatch):
@@ -69,7 +72,9 @@ class TestReflectionLLM:
         monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
         mock_llm = MagicMock()
         mock_resp = MagicMock()
-        mock_resp.content = "The ExternalBug verdict is likely a false positive given no call evidence."
+        mock_resp.content = (
+            "The ExternalBug verdict is likely a false positive given no call evidence."
+        )
         mock_llm.invoke.return_value = mock_resp
         with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
             out = await reflection(_report_with_verdicts())
@@ -101,12 +106,24 @@ class TestDebateMode:
             MagicMock(content='{"Reentrancy": "CONFIRMED"}'),
         ]
         mock_llm.invoke.side_effect = responses
-        state = {
-            "ml_result": {"confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.9, "tier": "CONFIRMED"}],
-                          "suspicious": []},
-            "static_findings": [], "rag_results": [], "audit_history": [],
-            "contract_code": "contract C { function f() public { msg.sender.call(''); } }",
-        }
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "confirmed": [
+                        {
+                            "vulnerability_class": "Reentrancy",
+                            "probability": 0.9,
+                            "tier": "CONFIRMED",
+                        }
+                    ],
+                    "suspicious": [],
+                },
+                "static_findings": [],
+                "rag_results": [],
+                "audit_history": [],
+                "contract_code": "contract C { function f() public { msg.sender.call(''); } }",
+            }
+        )
         with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
             out = await cross_validator(state)
         assert mock_llm.invoke.call_count == 3
@@ -120,10 +137,20 @@ class TestDebateMode:
     @pytest.mark.asyncio
     async def test_llm_disabled_skips_debate(self, monkeypatch):
         monkeypatch.setenv("AGENTS_DISABLE_LLM", "1")
-        state = {
-            "ml_result": {"confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.9, "tier": "CONFIRMED"}],
-                          "suspicious": []},
-        }
+        state = live_ml_state(
+            {
+                "ml_result": {
+                    "confirmed": [
+                        {
+                            "vulnerability_class": "Reentrancy",
+                            "probability": 0.9,
+                            "tier": "CONFIRMED",
+                        }
+                    ],
+                    "suspicious": [],
+                },
+            }
+        )
         out = await cross_validator(state)
         assert out == {}
 
@@ -141,14 +168,19 @@ class TestDebateMode:
 
         def _slow_invoke(_messages):
             import time
+
             time.sleep(1)  # slower than the 0.2s outer debate budget
             return MagicMock(content='{"Reentrancy": "CONFIRMED"}')
 
         mock_llm = MagicMock()
         mock_llm.invoke.side_effect = _slow_invoke
         state = {
-            "ml_result": {"confirmed": [{"vulnerability_class": "Reentrancy", "probability": 0.9, "tier": "CONFIRMED"}],
-                          "suspicious": []},
+            "ml_result": {
+                "confirmed": [
+                    {"vulnerability_class": "Reentrancy", "probability": 0.9, "tier": "CONFIRMED"}
+                ],
+                "suspicious": [],
+            },
         }
         with patch("src.llm.client.get_strong_llm", return_value=mock_llm):
             out = await cross_validator(state)

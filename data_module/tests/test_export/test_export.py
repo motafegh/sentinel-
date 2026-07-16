@@ -71,7 +71,8 @@ def test_sentinel_dataset_export_loads(tmp_path):
 def test_sentinel_dataset_export_verify_hash_true(tmp_path):
     out_dir = _build_export(tmp_path)
     export = SentinelDatasetExport(out_dir)
-    assert export.verify_artifact_hash() is True
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
 
 
 def test_sentinel_dataset_export_verify_hash_false_on_tamper(tmp_path):
@@ -80,23 +81,68 @@ def test_sentinel_dataset_export_verify_hash_false_on_tamper(tmp_path):
     labels_path = out_dir / "labels.parquet"
     labels_path.write_bytes(labels_path.read_bytes() + b"\xff")
     export = SentinelDatasetExport(out_dir)
-    assert export.verify_artifact_hash() is False
+    result = export.verify_artifact_hash()
+    assert result["verified"] is False
 
 
 def test_sentinel_dataset_export_manifest_tamper_does_not_affect_hash(tmp_path):
-    """Fix A: modifying manifest.json must not break verify_artifact_hash."""
+    """Fix A + R0.5: modifying manifest.json is excluded from artifact_hash
+    but IS detected by the release_descriptor.json manifest_hash check."""
     out_dir = _build_export(tmp_path)
     export = SentinelDatasetExport(out_dir)
-    assert export.verify_artifact_hash() is True
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
 
     # Tamper manifest
     raw = json.loads((out_dir / "manifest.json").read_text())
     raw["extra"] = "injected"
     (out_dir / "manifest.json").write_text(json.dumps(raw))
 
-    # reload — still verifies OK because manifest is excluded from hash
+    # reload — descriptor detects the tamper (R0.5)
     export2 = SentinelDatasetExport(out_dir)
-    assert export2.verify_artifact_hash() is True
+    result2 = export2.verify_artifact_hash()
+    assert result2["verified"] is False
+    assert result2["reason"].startswith("release_descriptor:")
+    assert result2["descriptor_verified"] is False
+
+
+def test_sentinel_dataset_export_verify_detects_deleted_shard(tmp_path):
+    """R0.5: descriptor and warm-cache both detect deleted shards."""
+    out_dir = _build_export(tmp_path)
+    export = SentinelDatasetExport(out_dir)
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
+
+    # Delete a shard file
+    shards = list((out_dir / "graphs").glob("*.pt"))
+    assert len(shards) > 0
+    shards[0].unlink()
+
+    # Warm path should detect the missing file (via release descriptor first)
+    export2 = SentinelDatasetExport(out_dir)
+    result2 = export2.verify_artifact_hash()
+    assert result2["verified"] is False
+    assert "missing" in result2["reason"] or "file_set_mismatch" in result2["reason"]
+    assert len(result2["files_missing"]) > 0
+    assert result2.get("descriptor_verified") is False
+
+
+def test_sentinel_dataset_export_verify_detects_extra_file(tmp_path):
+    """R0.5: descriptor and warm-cache both detect extra files."""
+    out_dir = _build_export(tmp_path)
+    export = SentinelDatasetExport(out_dir)
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
+
+    # Add an unexpected file
+    (out_dir / "graphs" / "evil_injected.pt").write_bytes(b"evil")
+
+    export2 = SentinelDatasetExport(out_dir)
+    result2 = export2.verify_artifact_hash()
+    assert result2["verified"] is False
+    assert "extra" in result2["reason"] or "file_set_mismatch" in result2["reason"]
+    assert len(result2["files_extra"]) > 0
+    assert result2.get("descriptor_verified") is False
 
 
 def test_sentinel_dataset_export_get_split_ids(tmp_path):
@@ -127,3 +173,22 @@ def test_import_from_export_module():
         write_labels_parquet, write_metadata_parquet,
         write_graphs_shards, write_tokens_shards,
     )
+
+
+def test_descriptor_missing_is_downgrade_attack(tmp_path):
+    """R0.6: deleting release_descriptor.json after tampering manifest must be detected."""
+    out_dir = _build_export(tmp_path)
+    export = SentinelDatasetExport(out_dir)
+    result = export.verify_artifact_hash()
+    assert result["verified"] is True
+
+    (out_dir / "release_descriptor.json").unlink()
+    raw = json.loads((out_dir / "manifest.json").read_text())
+    raw["n_contracts"] = 999999
+    (out_dir / "manifest.json").write_text(json.dumps(raw))
+
+    export2 = SentinelDatasetExport(out_dir)
+    result2 = export2.verify_artifact_hash()
+    assert result2["verified"] is False
+    assert result2["reason"].startswith("release_descriptor")
+    assert result2["descriptor_verified"] is False

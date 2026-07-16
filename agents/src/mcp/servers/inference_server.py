@@ -31,13 +31,16 @@ from loguru import logger
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 from mcp.types import TextContent, Tool
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import JSONResponse, Response   # Response is new
-from starlette.routing import Mount, Route
-
+from src.contracts.execution import ExecutionState, availability_label, failure_status
+from src.mcp.servers.inference.runtime import DEPENDENCY as _INFERENCE_DEPENDENCY
+from src.mcp.servers.inference.runtime import call_inference_api as _runtime_call_inference_api
+from src.mcp.servers.inference.runtime import mock_prediction as _runtime_mock_prediction
 from src.orchestration.timeouts import DEFAULT_MODULE1_INFERENCE_TIMEOUT_S
 from src.orchestration.timing import step_timer
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response  # Response is new
+from starlette.routing import Mount, Route
 
 # ---------------------------------------------------------------------------
 # Configuration — all values overridable via agents/.env
@@ -52,9 +55,9 @@ _MODULE1_URL: str = os.getenv("MODULE1_INFERENCE_URL", "http://localhost:8001")
 _SERVER_PORT: int = int(os.getenv("MCP_INFERENCE_PORT", "8010"))
 
 # Timeout for calls to Module 1. Inference can take 5-15s on CPU.
-_REQUEST_TIMEOUT: float = float(os.getenv(
-    "MODULE1_TIMEOUT", str(DEFAULT_MODULE1_INFERENCE_TIMEOUT_S)
-))
+_REQUEST_TIMEOUT: float = float(
+    os.getenv("MODULE1_TIMEOUT", str(DEFAULT_MODULE1_INFERENCE_TIMEOUT_S))
+)
 
 # Mock mode — return realistic fake responses when Module 1 is not running.
 # Set MODULE1_MOCK=true in agents/.env during M4 development.
@@ -72,6 +75,7 @@ server = Server("sentinel-inference")
 # ---------------------------------------------------------------------------
 # Tool definitions
 # ---------------------------------------------------------------------------
+
 
 # @server.list_tools() is called once per client connection during the
 # MCP initialization handshake. The client caches the result and uses
@@ -141,6 +145,7 @@ async def list_tools() -> list[Tool]:
         ),
     ]
 
+
 # ---------------------------------------------------------------------------
 # Shared HTTP client (A-20)
 # ---------------------------------------------------------------------------
@@ -150,12 +155,30 @@ async def list_tools() -> list[Tool]:
 # Initialised in _on_startup(), closed in _on_shutdown().
 
 _http_client: httpx.AsyncClient | None = None
+_dependency_status: dict[str, Any] = failure_status(
+    ExecutionState.UNAVAILABLE,
+    dependency=_INFERENCE_DEPENDENCY,
+    reason_code="not_started",
+    detail="inference MCP server has not started",
+    attempted=False,
+)
 
 
 async def _on_startup() -> None:
     """Create the shared HTTP client when the ASGI server starts."""
-    global _http_client
+    global _dependency_status, _http_client
+    if _MOCK_MODE:
+        _dependency_status = _runtime_mock_prediction("")["execution_status"]
+        logger.warning("Inference server started in explicit MOCK mode")
+        return
     _http_client = httpx.AsyncClient(timeout=_REQUEST_TIMEOUT)
+    _dependency_status = failure_status(
+        ExecutionState.UNAVAILABLE,
+        dependency=_INFERENCE_DEPENDENCY,
+        reason_code="not_probed",
+        detail="Module 1 has not completed a successful request",
+        attempted=False,
+    )
     logger.info(
         "Shared HTTP client ready — Module 1 URL: {} | timeout: {}s",
         _MODULE1_URL,
@@ -165,162 +188,67 @@ async def _on_startup() -> None:
 
 async def _on_shutdown() -> None:
     """Close the shared HTTP client when the ASGI server stops."""
-    global _http_client
+    global _dependency_status, _http_client
     if _http_client is not None:
         await _http_client.aclose()
         _http_client = None
         logger.info("Shared HTTP client closed")
+    _dependency_status = failure_status(
+        ExecutionState.UNAVAILABLE,
+        dependency=_INFERENCE_DEPENDENCY,
+        reason_code="shutdown",
+        detail="inference MCP server is shutting down",
+        attempted=False,
+    )
 
 
 # ---------------------------------------------------------------------------
 # HTTP bridge to Module 1
 # ---------------------------------------------------------------------------
 
+
 async def _call_inference_api(contract_code: str, contract_address: str = "") -> dict[str, Any]:
-    """
-    Call Module 1's POST /predict endpoint.
+    """Call Module 1 without ever converting a live failure into mock evidence."""
 
-    Returns a dict matching Track 3 PredictResponse (2026-04-17):
-      label            str    "vulnerable" | "safe"
-      vulnerabilities  list   [{"vulnerability_class": str, "probability": float}, ...]
-                               sorted desc by probability, only classes >= threshold.
-                               Empty list = safe.
-      threshold        float  decision boundary used
-      truncated        bool   True if source > 512 tokens (tail not analysed)
-      num_nodes        int    AST node count
-      num_edges        int    AST edge count
-
-    Falls back to _mock_prediction() when _MOCK_MODE is True or Module 1
-    is unreachable. Caller does not need to handle the fallback — it is
-    transparent from the tool handler's perspective.
-    """
-    if _MOCK_MODE:
-        logger.debug("Mock mode active — skipping Module 1 HTTP call")
-        return _mock_prediction(contract_code)
-
-    payload = {
-        "source_code": contract_code,
-        # contract_address has no field in PredictRequest — drop it from payload.
-        # It's metadata for traceability only — log it server-side, don't send it.
-    }
-
-    try:
-        # A-20 fix: use the shared module-level AsyncClient (initialised in _on_startup)
-        # instead of creating a new client per call.
-        # Benefit: TCP connection reuse — each new client triggers a full TCP+TLS handshake
-        # (~20-50ms), shared client amortises that across requests.
-        # The `async with` pattern is dropped — the shared client stays alive for the
-        # server's lifetime and is closed in _on_shutdown().
-        response = await _http_client.post(
-            f"{_MODULE1_URL}/predict",
-            json=payload,
-        )
-        # Raise immediately on 4xx/5xx — the caller handles the exception
-        # and converts it to a structured error TextContent.
-        response.raise_for_status()
-        return response.json()
-
-    except httpx.TimeoutException:
-        logger.warning(
-            "Module 1 inference timed out after {}s — falling back to mock",
-            _REQUEST_TIMEOUT,
-        )
-        return _mock_prediction(contract_code)
-
-    except httpx.HTTPStatusError as exc:
-        logger.error(
-            "Module 1 returned HTTP {} for predict call",
-            exc.response.status_code,
-        )
-        # Don't silently fall back on 4xx — that signals a bug in our payload,
-        # not a transient network failure. Re-raise so call_tool returns an error.
-        raise
-
-    except httpx.RequestError as exc:
-        # Connection refused, DNS failure, etc. — Module 1 is simply not running.
-        logger.warning("Module 1 unreachable ({}), falling back to mock", exc)
-        return _mock_prediction(contract_code)
+    del contract_address  # Trace metadata is intentionally not sent to Module 1.
+    global _dependency_status
+    result = await _runtime_call_inference_api(
+        contract_code,
+        client=_http_client,
+        module_url=_MODULE1_URL,
+        timeout_s=_REQUEST_TIMEOUT,
+        mock_mode=_MOCK_MODE,
+    )
+    _dependency_status = result["execution_status"]
+    return result
 
 
 def _mock_prediction(contract_code: str) -> dict[str, Any]:
-    """
-    Realistic fake prediction for development and testing (three-tier schema, 2026-05-27).
+    """Compatibility wrapper for the explicit development mock."""
 
-    Returns multi-label format matching the current PredictResponse schema:
-        label           "safe" | "suspicious" | "confirmed_vulnerable"
-        probabilities   {class: float}  full 10-class vector, always present
-        confirmed       [{vulnerability_class, probability, tier="CONFIRMED"}, ...]
-        suspicious      [{vulnerability_class, probability, tier="SUSPICIOUS"}, ...]
-        vulnerabilities legacy alias for confirmed (backward compat)
-        tier_thresholds {"confirmed": 0.55, "suspicious": 0.25, "noteworthy": 0.10}
+    return _runtime_mock_prediction(contract_code)
 
-    Values are plausible for a medium-risk contract — not random, so demo output
-    looks coherent. Structure exactly mirrors Module 1 output; swapping mock → real
-    requires zero changes to the tool handlers.
-    """
-    code_lower = contract_code.lower()
-    has_reentrancy_pattern = "call.value" in code_lower or "transfer(" in code_lower
 
-    # Full 10-class probability vector — realistic baseline probabilities.
-    _CLASS_NAMES = [
-        "Reentrancy", "IntegerUO", "GasException", "Timestamp", "TransactionOrderDependence",
-        "ExternalBug", "CallToUnknown", "MishandledException", "UnusedReturn", "DenialOfService",
-    ]
-    base_probs: dict[str, float] = {
-        "Reentrancy":          0.72 if has_reentrancy_pattern else 0.08,
-        "IntegerUO":           0.54 if has_reentrancy_pattern else 0.12,
-        "GasException":        0.18,
-        "Timestamp":           0.31 if has_reentrancy_pattern else 0.14,
-        "TransactionOrderDependence": 0.09,
-        "ExternalBug":         0.14,
-        "CallToUnknown":       0.07,
-        "MishandledException": 0.22,
-        "UnusedReturn":        0.19,
-        "DenialOfService":     0.06,
-    }
+def _liveness_payload() -> dict[str, Any]:
+    return {"status": "live", "server": "sentinel-inference"}
 
-    CONF_THR = 0.55
-    SUSP_THR = 0.25
 
-    confirmed = [
-        {"vulnerability_class": cls, "probability": prob, "tier": "CONFIRMED"}
-        for cls, prob in base_probs.items() if prob >= CONF_THR
-    ]
-    suspicious = [
-        {"vulnerability_class": cls, "probability": prob, "tier": "SUSPICIOUS"}
-        for cls, prob in base_probs.items() if SUSP_THR <= prob < CONF_THR
-    ]
-    confirmed.sort(key=lambda v: v["probability"], reverse=True)
-    suspicious.sort(key=lambda v: v["probability"], reverse=True)
-
-    if confirmed:     label = "confirmed_vulnerable"
-    elif suspicious:  label = "suspicious"
-    else:             label = "safe"
-
-    # Legacy field — confirmed only, no tier tag (backward compat).
-    vulnerabilities = [
-        {"vulnerability_class": v["vulnerability_class"], "probability": v["probability"]}
-        for v in confirmed
-    ]
-
+def _readiness_payload() -> dict[str, Any]:
+    status = availability_label(_dependency_status)
     return {
-        "label":           label,
-        "probabilities":   base_probs,
-        "confirmed":       confirmed,
-        "suspicious":      suspicious,
-        "vulnerabilities": vulnerabilities,
-        "tier_thresholds": {"confirmed": CONF_THR, "suspicious": SUSP_THR, "noteworthy": 0.10},
-        "thresholds":      [0.5] * len(_CLASS_NAMES),
-        "truncated":       False,
-        "windows_used":    1,
-        "num_nodes":       42,
-        "num_edges":       58,
-        "model_hash":      "mock_model_hash_" + "0" * 46,
+        "status": status,
+        "ready": status == "live",
+        "server": "sentinel-inference",
+        "mock_mode": _MOCK_MODE,
+        "module1_url": _MODULE1_URL,
+        "dependency": _dependency_status,
     }
+
 
 # ---------------------------------------------------------------------------
 # Tool call dispatcher
 # ---------------------------------------------------------------------------
+
 
 # @server.call_tool() receives every tool invocation from every connected client.
 # The SDK has already validated that `name` is in the list returned by list_tools()
@@ -340,10 +268,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         # Defensive branch for future tools added to list_tools() without
         # a matching handler — surfaces as a clear error, not a silent no-op.
         logger.error("call_tool received unknown tool name: {}", name)
-        return [TextContent(
-            type="text",
-            text=json.dumps({"error": f"Unknown tool: {name}"}),
-        )]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps({"error": f"Unknown tool: {name}"}),
+            )
+        ]
 
 
 async def _handle_predict(arguments: dict[str, Any]) -> list[TextContent]:
@@ -358,7 +288,7 @@ async def _handle_predict(arguments: dict[str, Any]) -> list[TextContent]:
                 "predict complete | address={} | label={} | confirmed={} | suspicious={}",
                 contract_address or "unknown",
                 result.get("label", "unknown"),
-                len(result.get("confirmed",  result.get("vulnerabilities", []))),
+                len(result.get("confirmed", result.get("vulnerabilities", []))),
                 len(result.get("suspicious", [])),
             )
         return [TextContent(type="text", text=json.dumps(result))]
@@ -387,10 +317,12 @@ async def _handle_batch_predict(arguments: dict[str, Any]) -> list[TextContent]:
     # This cap is defence-in-depth in case a client sends a pre-validated
     # request that bypasses the SDK layer (e.g. raw HTTP test).
     if len(contracts) > 20:
-        return [TextContent(
-            type="text",
-            text=json.dumps({"error": "batch size exceeds maximum of 20"}),
-        )]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps({"error": "batch size exceeds maximum of 20"}),
+            )
+        ]
 
     with step_timer("inference.batch_predict", contract_count=len(contracts)):
         return await _run_batch_predict(contracts)
@@ -403,26 +335,32 @@ async def _run_batch_predict(contracts: list[dict]) -> list[TextContent]:
         address = contract.get("contract_address", "")
         try:
             result = await _call_inference_api(code, address)
-            results.append({
-                "index": i,
-                "contract_address": address,
-                **result,
-            })
+            results.append(
+                {
+                    "index": i,
+                    "contract_address": address,
+                    **result,
+                }
+            )
         except httpx.HTTPStatusError as exc:
             # Don't abort the whole batch on one failure —
             # record the error for this index and continue.
-            results.append({
-                "index": i,
-                "contract_address": address,
-                "error": f"HTTP {exc.response.status_code}",
-            })
+            results.append(
+                {
+                    "index": i,
+                    "contract_address": address,
+                    "error": f"HTTP {exc.response.status_code}",
+                }
+            )
 
     logger.info("batch_predict complete | {} contracts processed", len(results))
     return [TextContent(type="text", text=json.dumps({"results": results}))]
 
+
 # ---------------------------------------------------------------------------
 # SSE server entrypoint
 # ---------------------------------------------------------------------------
+
 
 def run_server() -> None:
     """
@@ -444,7 +382,9 @@ def run_server() -> None:
     # We pass the mount path so it generates correct URLs in SSE events.
     sse_transport = SseServerTransport("/messages/")
 
-    async def handle_sse(request: Request) -> Response:  # A-04: was -> None (wrong — we return Response())
+    async def handle_sse(
+        request: Request,
+    ) -> Response:  # A-04: was -> None (wrong — we return Response())
         """Accept a new SSE client connection and run the MCP session."""
         logger.info("New MCP client connected from {}", request.client)
         async with sse_transport.connect_sse(
@@ -463,13 +403,15 @@ def run_server() -> None:
         return Response()  # ← this line. 200 OK, empty body, tells Starlette we're done.
 
     async def health(request: Request) -> JSONResponse:
-        """Liveness probe — used by Docker Compose and monitoring."""
-        return JSONResponse({
-            "status": "ok",
-            "server": "sentinel-inference",
-            "mock_mode": _MOCK_MODE,
-            "module1_url": _MODULE1_URL,
-        })
+        """Compatibility health endpoint returning readiness truth."""
+        return JSONResponse(_readiness_payload())
+
+    async def live(request: Request) -> JSONResponse:
+        return JSONResponse(_liveness_payload())
+
+    async def ready(request: Request) -> JSONResponse:
+        payload = _readiness_payload()
+        return JSONResponse(payload, status_code=200 if payload["ready"] else 503)
 
     # Starlette >= 1.0 removed on_startup/on_shutdown kwargs in favor of lifespan.
     from contextlib import asynccontextmanager
@@ -488,7 +430,9 @@ def run_server() -> None:
             Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse_transport.handle_post_message),
             Route("/health", endpoint=health),
-        ]
+            Route("/health/live", endpoint=live),
+            Route("/health/ready", endpoint=ready),
+        ],
     )
 
     logger.info(
@@ -496,7 +440,7 @@ def run_server() -> None:
         _SERVER_PORT,
         _MOCK_MODE,
     )
-    uvicorn.run(starlette_app, host="0.0.0.0", port=_SERVER_PORT)
+    uvicorn.run(starlette_app, host="127.0.0.1", port=_SERVER_PORT)
 
 
 if __name__ == "__main__":

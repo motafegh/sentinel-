@@ -1,0 +1,71 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "comparison_key": "91d1873a1f4e3d36d5fa9a7339c4de04a7b259e1eb874f4906ec48d3f1d0dcd7",
+  "environment_manifest": {
+    "comparison_fingerprint": "719974d3e8b1d34256c9eee252c471871c172a88176895a5cc9d3f3ea34c9f86",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/final_candidate_5e45/environment_after.json",
+    "sha256": "9d595a6aba260745c03df2cbabb9f678c6c5e416b3ba742b1548adba7e6d09fc"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-16T13:33:19.110205+00:00",
+    "started_at": "2026-07-16T13:33:18.990852+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"exception='ConnectorError'\", \"name\": \"traversal_rejected\", \"passed\": true}, {\"detail\": \"escaped=False\", \"name\": \"no_outside_write\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "e45f079c7a7aff65972cc69a659db63623f56150356edb12cb1474ea09e7f881"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-ARCHIVE-CONTAINMENT",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "exception='ConnectorError'",
+        "name": "traversal_rejected",
+        "passed": true
+      },
+      {
+        "detail": "escaped=False",
+        "name": "no_outside_write",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{data_python}",
+      "{probe_bundle}/baseline_probes.py",
+      "zip-containment",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-zip-containment",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/data_module/.venv/bin/python",
+      "<WORKSPACE>/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/probe_bundle/baseline_probes.py",
+      "zip-containment",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "probe_bundle_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "probe_bundle_sha256": "f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c",
+  "record_id": "R0-ARCHIVE-CONTAINMENT:after:r0-zip-containment:5e45fbed7e7a",
+  "review": {
+    "decided_at": "2026-07-16T13:55:01Z",
+    "reviewer": "Ali (project owner)",
+    "status": "accepted"
+  },
+  "schema_version": "2",
+  "test_references": [
+    "data_module/tests/test_ingestion/test_connector.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_DATA_D2_AUDIT_appendix.md"
+  ]
+}
