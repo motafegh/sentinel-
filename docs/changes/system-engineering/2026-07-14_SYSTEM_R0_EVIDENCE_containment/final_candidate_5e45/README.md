@@ -71,5 +71,15 @@ The expected exit code is zero and the report must contain `"complete": true`.
 
 ## Integration state
 
-R0 is formally closed on `codex/r0-containment`. It has not been merged into `main` because the main
-worktree contains unrelated uncommitted user changes; finalization did not overwrite or absorb them.
+R0 is formally closed and integrated into `main` through merge commits `50fb5c5b9`, `fb4f37e28`, and
+`8e2a32a0e`. The latter two commits contain the bounded post-merge correction: explicit process
+configuration now takes precedence over local dotenv values, and audit mock tests no longer depend on
+pytest collection order.
+
+The complete post-merge R0 verification is green: 134 AGENTS boundary/report tests, 46 transaction
+tests, 34 evidence-harness tests, and 33 DATA export tests (247 total, zero failures). The validator
+remains `complete=true` with 8/8 rows closed and zero malformed, invalid, or unknown artifacts.
+
+Unrelated ML/R4 work and local audit documents present during integration were preserved and excluded
+from the R0 merge commits. No push, deployment, live-chain write, key movement, or model promotion was
+performed as part of integration.
