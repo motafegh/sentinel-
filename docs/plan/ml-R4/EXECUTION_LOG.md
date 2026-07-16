@@ -27,6 +27,27 @@ Append one entry for each work package.
 
 ---
 
+### R4-LOG-20260716-002 — Phase 0 Closure Corrections
+
+- **Phase:** 0 (closure correction)
+- **Gap ID, if review work:** N/A
+- **Operator:** AI implementation agent
+- **Date/timezone:** 2026-07-16 UTC
+- **Repository branch/commit:** r4/phase1-previous-evidence-recovery / 6febb4283f92e801bf70e33de2cb00c409e8284f
+- **Worktree status before:** clean (no modified tracked files beyond DVC tmp locks)
+- **Input artifact IDs/hashes:** Same as R4-LOG-20260716-001
+- **Command(s):** jsonschema validate(instance=baseline_manifest.json, schema=baseline_manifest.schema.json); sha256sum on 26 protected artifacts; python3 scripts/p0_baseline_freeze.py --validate
+- **Environment and seed(s):** WSL2 Ubuntu 24.04, Python 3.12.1, jsonschema 4.10.3
+- **Expected outputs:** Corrected findings/01_baseline_and_evidence_location.md (audited baseline vs R4 output commit distinction, 26 protected, 30 evidence sets, lineage note); schema validation record; updated protected_artifacts.json (both commits recorded); updated p0_baseline_freeze.py (--validate flag); this log entry
+- **Actual outputs/hashes:** All corrections applied. Schema validation: PASS (15 artifacts, all type assertions PASS). Hash re-verification: 26/26 OK.
+- **Result:** PASS
+- **Historical evidence reused:** None
+- **New evidence created:** None
+- **Protected artifacts changed:** NO
+- **Register updates:** EXECUTION_LOG (this entry)
+- **Gate effect:** None (G0 already PASS; corrections close Phase 0 properly)
+- **Next permitted action:** Begin Phase 1 — Previous Evidence Recovery
+
 ### R4-LOG-20260716-001 — Phase 0 Baseline Freeze and Evidence Location
 
 - **Phase:** 0
