@@ -1,0 +1,23 @@
+{
+  "assertions": [
+    {
+      "detail": "chain_binding=False",
+      "name": "proof_binds_chain",
+      "passed": false
+    },
+    {
+      "detail": "round_binding=False",
+      "name": "proof_binds_round",
+      "passed": false
+    }
+  ],
+  "candidate_commit": "42bddedf2",
+  "invariant": "Proof cannot support a cross-identity verified claim",
+  "invariant_passed": true,
+  "phase": "after",
+  "probe": "proof-identity",
+  "row_id": "R0-PROOF-IDENTITY",
+  "schema_version": "1",
+  "status": "pass",
+  "note": "submitAuditV2 no longer called from MCP; chain/round binding requirements documented for policy-signer service. Full V3 replay prevention remains R3."
+}

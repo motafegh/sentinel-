@@ -98,12 +98,16 @@ class SentinelDataset(Dataset):
                 f"Re-export with matching FEATURE_SCHEMA_VERSION."
             )
 
-        # Gate 3 — artifact hash integrity
+        # Gate 3 — artifact hash integrity (structured result)
         _th = time.perf_counter()
         print(f"[SentinelDataset] hashing artifact...   (this reads all shard files)")
-        if not self.export.verify_artifact_hash():
+        verification = self.export.verify_artifact_hash()
+        if not verification["verified"]:
+            missing = verification.get("files_missing", [])
+            extra = verification.get("files_extra", [])
             raise ValueError(
-                f"Export artifact hash mismatch — data files may be corrupt or tampered. "
+                f"Export artifact verification failed: reason={verification['reason']}. "
+                f"files_missing={len(missing)}, files_extra={len(extra)}. "
                 f"Re-run `sentinel-data export` to regenerate a clean artifact."
             )
         print(f"[SentinelDataset] hash verified          {time.perf_counter()-_th:.2f}s")

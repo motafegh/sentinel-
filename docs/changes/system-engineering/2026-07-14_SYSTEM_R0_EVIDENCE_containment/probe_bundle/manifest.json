@@ -1,0 +1,11 @@
+{
+  "bundle_version": "1",
+  "entrypoint": "baseline_probes.py",
+  "file_count": 1,
+  "files": {
+    "baseline_probes.py": "19f8f43ce9d13b7ef9f6620e9b08d860417b011cfc2171acbf34ffac2086bdb6"
+  },
+  "kind": "r0_probe_bundle_manifest",
+  "python": "/usr/bin/python3",
+  "python_version": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]"
+}

@@ -16,38 +16,40 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.orchestration.state import AuditState
-from src.orchestration.verdict.evidence import Evidence, Polarity, Kind
-from src.orchestration.verdict.fuse import fuse
 from src.orchestration.verdict.emit import (
-    emit_ml_evidence,
-    emit_static_evidence,
-    emit_rag_evidence,
     emit_debate_evidence,
+    emit_ml_evidence,
     emit_quick_screen_evidence,
+    emit_rag_evidence,
+    emit_static_evidence,
 )
-
+from src.orchestration.verdict.evidence import Evidence, Kind, Polarity
+from src.orchestration.verdict.fuse import fuse
+from tests.provenance_fixtures import live_ml_result
 
 # ── Test data ────────────────────────────────────────────────────────────────
 
-ML_RESULT_DEEP = {
-    "label": "confirmed_vulnerable",
-    "probabilities": {
-        "Reentrancy": 0.87,
-        "IntegerUO": 0.65,
-        "ExternalBug": 0.45,
-        "Timestamp": 0.30,
-    },
-    "confirmed": [
-        {"vulnerability_class": "Reentrancy", "probability": 0.87, "tier": "CONFIRMED"},
-        {"vulnerability_class": "IntegerUO", "probability": 0.65, "tier": "CONFIRMED"},
-    ],
-    "suspicious": [
-        {"vulnerability_class": "ExternalBug", "probability": 0.45, "tier": "SUSPICIOUS"},
-        {"vulnerability_class": "Timestamp", "probability": 0.30, "tier": "SUSPICIOUS"},
-    ],
-    "truncated": False,
-    "windows_used": 1,
-}
+ML_RESULT_DEEP = live_ml_result(
+    {
+        "label": "confirmed_vulnerable",
+        "probabilities": {
+            "Reentrancy": 0.87,
+            "IntegerUO": 0.65,
+            "ExternalBug": 0.45,
+            "Timestamp": 0.30,
+        },
+        "confirmed": [
+            {"vulnerability_class": "Reentrancy", "probability": 0.87, "tier": "CONFIRMED"},
+            {"vulnerability_class": "IntegerUO", "probability": 0.65, "tier": "CONFIRMED"},
+        ],
+        "suspicious": [
+            {"vulnerability_class": "ExternalBug", "probability": 0.45, "tier": "SUSPICIOUS"},
+            {"vulnerability_class": "Timestamp", "probability": 0.30, "tier": "SUSPICIOUS"},
+        ],
+        "truncated": False,
+        "windows_used": 1,
+    }
+)
 
 STATIC_FINDINGS = [
     {
@@ -94,6 +96,7 @@ RAG_RESULTS = [
 
 # ── Emit tests ───────────────────────────────────────────────────────────────
 
+
 class TestEmitML:
     """emit_ml_evidence converts ML output to Evidence."""
 
@@ -133,7 +136,9 @@ class TestEmitStatic:
         """Same detector for same class shouldn't duplicate."""
         duplicate_findings = STATIC_FINDINGS + [STATIC_FINDINGS[0]]
         evidence = emit_static_evidence(duplicate_findings)
-        reent_count = sum(1 for e in evidence if e.vuln_class == "Reentrancy" and e.source == "slither")
+        reent_count = sum(
+            1 for e in evidence if e.vuln_class == "Reentrancy" and e.source == "slither"
+        )
         assert reent_count == 1
 
 
@@ -188,6 +193,7 @@ class TestEmitQuickScreen:
 
 # ── Fuse integration ─────────────────────────────────────────────────────────
 
+
 class TestFuseFullPipeline:
     """fuse() over evidence from all channels."""
 
@@ -239,6 +245,7 @@ class TestFuseFullPipeline:
 
 # ── State shape (verdict_provable / verdict_full in final_report) ────────────
 
+
 class TestStateShape:
     """The new state fields are present after the graph runs."""
 
@@ -270,12 +277,13 @@ class TestStateShape:
                 return {"explanations": {}, "hotspots": []}
             return {}
 
-        with patch("src.orchestration.nodes._helpers._call_mcp_tool",
-                   side_effect=_mock_mcp):
+        with patch("src.orchestration.nodes._helpers._call_mcp_tool", side_effect=_mock_mcp):
             result = await graph.ainvoke(initial_state)
 
         # New P2 fields should be present in the result (even if empty)
-        assert "evidence_list" in result, f"evidence_list missing from result keys: {sorted(result.keys())}"
+        assert (
+            "evidence_list" in result
+        ), f"evidence_list missing from result keys: {sorted(result.keys())}"
         assert "verdict_provable" in result
         assert "verdict_full" in result
 

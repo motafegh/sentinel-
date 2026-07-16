@@ -39,15 +39,17 @@ from src.eval import (
     gate_ws2_false_positives_on_safe,
     gate_ws3_long_contract_bug_detected,
 )
+from src.eval.provenance import validate_report_ml_provenance
 from src.eval.regression import RegressionBaseline
-
 
 # ---------------------------------------------------------------------------
 # Corpus loading (adapted from scripts/eval_benchmark.py)
 # ---------------------------------------------------------------------------
 
+
 def _build_sidecar_index(corpus_dir: Path) -> dict[str, Path]:
     import os as _os
+
     index: dict[str, Path] = {}
     for root, _dirs, files in _os.walk(corpus_dir, followlinks=True):
         for f in files:
@@ -61,6 +63,7 @@ def _build_sidecar_index(corpus_dir: Path) -> dict[str, Path]:
 
 def _build_sol_index(corpus_dir: Path) -> dict[str, Path]:
     import os as _os
+
     index: dict[str, Path] = {}
     for root, _dirs, files in _os.walk(corpus_dir, followlinks=True):
         for f in files:
@@ -77,7 +80,7 @@ def _parse_expect_header(sol_path: Path) -> tuple[list[str], str] | None:
     for line in text.splitlines()[:20]:
         stripped = line.strip()
         if stripped.startswith("// expect:"):
-            payload = stripped[len("// expect:"):].strip()
+            payload = stripped[len("// expect:") :].strip()
             labels = [c.strip() for c in payload.split(",") if c.strip()]
             gt = "safe" if not labels else "vulnerable"
             return labels, gt
@@ -114,6 +117,7 @@ def _load_contract_eval(
     label_info = _derive_labels_for_stem(stem, sol_path, sidecar_index)
     if label_info is None:
         return None
+    validate_report_ml_provenance(raw, report_path=report_path)
     labels, gt, label_source_path, _label_format = label_info
     verdicts = raw.get("verdicts") or (raw.get("final_report", {}) or {}).get("verdicts") or {}
     ml_result = raw.get("ml_result", {}) or {}
@@ -137,13 +141,16 @@ def _load_contract_eval(
         error=raw.get("error"),
         consensus_verdict=raw.get("consensus_verdict", {}) or {},
         vulnerability_verdicts_classes={
-            vv.get("vulnerability_class", "") for vv in final_report.get("vulnerability_verdicts", []) or []
+            vv.get("vulnerability_class", "")
+            for vv in final_report.get("vulnerability_verdicts", []) or []
         },
         eye_predictions=ml_result.get("eye_predictions"),
         # Rule 5C (CLAUDE.md, 2026-06-25): load tool_status so the matrix
         # builder can exclude contracts where a tool didn't run from that
         # tool's confusion-matrix counts.
-        tool_status=raw.get("tool_status", {}) or {},
+        tool_status=(
+            raw.get("tool_status") or (raw.get("final_report", {}) or {}).get("tool_status") or {}
+        ),
     )
 
 
@@ -168,6 +175,7 @@ def load_corpus(reports_dir: Path, corpus_dir: Path) -> list[ContractEval]:
 # ---------------------------------------------------------------------------
 # Metrics computation
 # ---------------------------------------------------------------------------
+
 
 def _positive_classes(verdicts: dict[str, str], positive_set: set[str]) -> list[str]:
     return [c for c, v in verdicts.items() if v in positive_set]
@@ -209,6 +217,7 @@ def compute_metrics(rows: list[ContractEval], positive_set: set[str]) -> Pipelin
 # Reporting
 # ---------------------------------------------------------------------------
 
+
 def render_markdown(
     rows: list[ContractEval],
     pm: PipelineMetrics,
@@ -218,7 +227,9 @@ def render_markdown(
     lines: list[str] = []
     lines.append("# SENTINEL Agents Pipeline Evaluation Report\n")
     lines.append(f"**Contracts evaluated:** {len(rows)}  \n")
-    lines.append(f"**Macro-F1:** {pm.macro_f1:.4f}  |  **Macro-Fbeta:** {pm.macro_fbeta:.4f}  |  **Micro-F1:** {pm.micro_f1:.4f}\n")
+    lines.append(
+        f"**Macro-F1:** {pm.macro_f1:.4f}  |  **Macro-Fbeta:** {pm.macro_fbeta:.4f}  |  **Micro-F1:** {pm.micro_f1:.4f}\n"
+    )
 
     lines.append("## Gate assertions\n")
     lines.append("| Gate | Description | Passed | Detail |")
@@ -235,7 +246,9 @@ def render_markdown(
     for m in sorted(pm.class_metrics.values(), key=lambda x: -x.support):
         p = f"{m.precision:.4f}" if not math.isnan(m.precision) else "nan"
         r = f"{m.recall:.4f}" if not math.isnan(m.recall) else "nan"
-        lines.append(f"| {m.cls} | {m.support} | {m.tp} | {m.fp} | {m.fn} | {m.tn} | {p} | {r} | {m.f1:.4f} | {m.fbeta:.4f} |")
+        lines.append(
+            f"| {m.cls} | {m.support} | {m.tp} | {m.fp} | {m.fn} | {m.tn} | {p} | {r} | {m.f1:.4f} | {m.fbeta:.4f} |"
+        )
 
     correct = sum(1 for r in rows if r.contract_correct)
     exact = sum(1 for r in rows if r.contract_exact)
@@ -247,8 +260,12 @@ def render_markdown(
         lines.append("## Baseline comparison\n")
         lines.append("| Metric | Baseline | Current | Delta |")
         lines.append("|---|---|---|---|")
-        lines.append(f"| macro_F1 | {baseline.get('macro_f1', 0):.4f} | {pm.macro_f1:.4f} | {pm.macro_f1 - baseline.get('macro_f1', 0):+.4f} |")
-        lines.append(f"| macro_Fbeta | {baseline.get('macro_fbeta', 0):.4f} | {pm.macro_fbeta:.4f} | {pm.macro_fbeta - baseline.get('macro_fbeta', 0):+.4f} |")
+        lines.append(
+            f"| macro_F1 | {baseline.get('macro_f1', 0):.4f} | {pm.macro_f1:.4f} | {pm.macro_f1 - baseline.get('macro_f1', 0):+.4f} |"
+        )
+        lines.append(
+            f"| macro_Fbeta | {baseline.get('macro_fbeta', 0):.4f} | {pm.macro_fbeta:.4f} | {pm.macro_fbeta - baseline.get('macro_fbeta', 0):+.4f} |"
+        )
 
     return "\n".join(lines) + "\n"
 
@@ -262,7 +279,13 @@ def build_metrics_json(
     exact = sum(1 for r in rows if r.contract_exact)
     d = pm.as_dict()
     d["gates"] = [
-        {"gate_id": g.gate_id, "description": g.description, "passed": g.passed, "detail": g.detail, "value": g.value}
+        {
+            "gate_id": g.gate_id,
+            "description": g.description,
+            "passed": g.passed,
+            "detail": g.detail,
+            "value": g.value,
+        }
         for g in gates
     ]
     d["per_contract"] = [
@@ -288,6 +311,7 @@ def build_metrics_json(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m src.eval.run_benchmark",
@@ -295,11 +319,24 @@ def build_arg_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument("--name", type=str, required=True, help="Run identifier (suffix for output dir)")
-    p.add_argument("--config", type=Path, default=None, help="Path to verdicts YAML config (default: configs/verdicts_default.yaml)")
-    p.add_argument("--reports", type=Path, required=True, help="Dir containing <stem>_report.json files")
-    p.add_argument("--corpus", type=Path, required=True, help="Corpus root with .sol + .json sidecars")
-    p.add_argument("--baseline", type=Path, default=None, help="Prior eval_metrics.json for regression check")
-    p.add_argument("--output-dir", type=Path, default=None, help="Output dir (default: eval/runs/<ts>_<name>)")
+    p.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to verdicts YAML config (default: configs/verdicts_default.yaml)",
+    )
+    p.add_argument(
+        "--reports", type=Path, required=True, help="Dir containing <stem>_report.json files"
+    )
+    p.add_argument(
+        "--corpus", type=Path, required=True, help="Corpus root with .sol + .json sidecars"
+    )
+    p.add_argument(
+        "--baseline", type=Path, default=None, help="Prior eval_metrics.json for regression check"
+    )
+    p.add_argument(
+        "--output-dir", type=Path, default=None, help="Output dir (default: eval/runs/<ts>_<name>)"
+    )
     return p
 
 
@@ -366,7 +403,9 @@ def main() -> None:
     # 9. Console summary
     print()
     print("=" * 72)
-    print(f"Contracts: {len(rows)}  |  Macro-F1: {pm.macro_f1:.4f}  |  Macro-Fbeta: {pm.macro_fbeta:.4f}")
+    print(
+        f"Contracts: {len(rows)}  |  Macro-F1: {pm.macro_f1:.4f}  |  Macro-Fbeta: {pm.macro_fbeta:.4f}"
+    )
     print("=" * 72)
     for g in gates:
         mark = "PASS" if g.passed else "FAIL"

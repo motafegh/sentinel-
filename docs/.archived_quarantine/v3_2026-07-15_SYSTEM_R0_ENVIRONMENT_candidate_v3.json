@@ -1,0 +1,72 @@
+{
+  "schema_version": "1",
+  "kind": "r0_environment_manifest",
+  "comparison_contract_version": "2",
+  "environment_contract": "linux-x86_64-python-3.12",
+  "workspace_commit": "beb8e52505775475d4c7496a27cb1aa25a3cbe19",
+  "workspace_dirty": false,
+  "python": {
+    "implementation": "CPython",
+    "version": "3.12.3"
+  },
+  "platform": {
+    "system": "Linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "machine": "x86_64"
+  },
+  "lockfiles": [
+    {
+      "path": "poetry.lock",
+      "sha256": "8c2d5dab098036bd8e7f72ce0d179eb53f9c9642a5d31ca470f6f0042605dabf"
+    },
+    {
+      "path": "agents/poetry.lock",
+      "sha256": "75a363634ef1951ac12c4823f6871adad50c6de66f6b390afef7e1372fbb3068"
+    },
+    {
+      "path": "ml/poetry.lock",
+      "sha256": "43069e3b9cf0973855ca111cc57138318347b5b1d1fd5a0495467dda49989c18"
+    }
+  ],
+  "runtimes": {
+    "agents_python": {
+      "implementation": "CPython",
+      "version": "3.12.3",
+      "package_count": 200,
+      "packages_sha256": "801257b814caa118d68949e3ca4a46f7fb21c6b13697301497d51d34d586c65c"
+    },
+    "data_python": {
+      "implementation": "CPython",
+      "version": "3.12.3",
+      "package_count": 153,
+      "packages_sha256": "36b8dcc997c4b26ed9626a69c2470ef62f7009d8059ee3b75bed6970e8d44892"
+    },
+    "harness_python": {
+      "implementation": "CPython",
+      "version": "3.12.3",
+      "package_count": 200,
+      "packages_sha256": "801257b814caa118d68949e3ca4a46f7fb21c6b13697301497d51d34d586c65c"
+    }
+  },
+  "probe_environment_policy": {
+    "version": "1",
+    "inherited_keys": [
+      "LANG",
+      "LC_ALL",
+      "PATH",
+      "REQUESTS_CA_BUNDLE",
+      "SSL_CERT_DIR",
+      "SSL_CERT_FILE",
+      "TEMP",
+      "TMP",
+      "TMPDIR"
+    ],
+    "isolated_home": true,
+    "forced": {
+      "NO_COLOR": "1",
+      "PYTHONHASHSEED": "0",
+      "SENTINEL_EVIDENCE_PROBE": "1"
+    }
+  },
+  "comparison_fingerprint": "c33f199829aaa0e6a82c21770fcc23d9d998f8b9a24308e0be032fa5db8355a3"
+}

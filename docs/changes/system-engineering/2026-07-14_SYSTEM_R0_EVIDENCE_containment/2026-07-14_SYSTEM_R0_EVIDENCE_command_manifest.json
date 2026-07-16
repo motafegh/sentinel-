@@ -1,0 +1,75 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "fixture_root_variable": "harness_workspace",
+  "fixture_sha256": {
+    "scripts/r0_evidence/baseline_probes.py": "23e4461e7d44b1e4dc8c5f8969e145b23dd574bacab8a54eb3a23a8fb8d10232"
+  },
+  "kind": "r0_command_manifest",
+  "probes": [
+    {
+      "argv": ["{agents_python}", "{harness_workspace}/scripts/r0_evidence/baseline_probes.py", "ml-outage", "--workspace", "{workspace}"],
+      "contract_version": "1",
+      "cwd": ".",
+      "matrix_row_id": "R0-EVIDENCE-OUTAGE",
+      "probe_id": "r0-ml-outage",
+      "test_references": ["agents/tests/test_inference_server.py", "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"]
+    },
+    {
+      "argv": ["{python}", "{harness_workspace}/scripts/r0_evidence/baseline_probes.py", "report-path", "--workspace", "{workspace}"],
+      "contract_version": "1",
+      "cwd": ".",
+      "matrix_row_id": "R0-REPORT-CONTAINMENT",
+      "probe_id": "r0-report-path",
+      "test_references": ["agents/src/orchestration/nodes/synthesizer.py", "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"]
+    },
+    {
+      "argv": ["{data_python}", "{harness_workspace}/scripts/r0_evidence/baseline_probes.py", "zip-containment", "--workspace", "{workspace}"],
+      "contract_version": "1",
+      "cwd": ".",
+      "matrix_row_id": "R0-ARCHIVE-CONTAINMENT",
+      "probe_id": "r0-zip-containment",
+      "test_references": ["data_module/tests/test_ingestion/test_connector.py", "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_DATA_D2_AUDIT_appendix.md"]
+    },
+    {
+      "argv": ["{python}", "{harness_workspace}/scripts/r0_evidence/baseline_probes.py", "data-release", "--workspace", "{workspace}"],
+      "contract_version": "1",
+      "cwd": ".",
+      "matrix_row_id": "R0-DATA-RELEASE-TRUST",
+      "probe_id": "r0-data-release",
+      "test_references": ["data_module/tests/test_export/test_export.py", "data_module/tests/test_export/test_chunker.py", "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_DATA_D2_AUDIT_appendix.md"]
+    },
+    {
+      "argv": ["{agents_python}", "{harness_workspace}/scripts/r0_evidence/baseline_probes.py", "gateway-auth", "--workspace", "{workspace}"],
+      "contract_version": "1",
+      "cwd": ".",
+      "matrix_row_id": "R0-AUTHORIZATION-LIMITS",
+      "probe_id": "r0-gateway-auth",
+      "test_references": ["agents/tests/test_gateway.py", "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_SYSTEM_D2_AUDIT_cross_system.md"]
+    },
+    {
+      "argv": ["{python}", "{harness_workspace}/scripts/r0_evidence/baseline_probes.py", "signer-boundary", "--workspace", "{workspace}"],
+      "contract_version": "1",
+      "cwd": ".",
+      "matrix_row_id": "R0-SIGNER-ISOLATION",
+      "probe_id": "r0-signer-boundary",
+      "test_references": ["agents/src/mcp/servers/audit/_submit.py", "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"]
+    },
+    {
+      "argv": ["{python}", "{harness_workspace}/scripts/r0_evidence/baseline_probes.py", "proof-identity", "--workspace", "{workspace}"],
+      "contract_version": "1",
+      "cwd": ".",
+      "matrix_row_id": "R0-PROOF-IDENTITY",
+      "probe_id": "r0-proof-identity",
+      "test_references": ["agents/src/mcp/servers/audit/_submit.py", "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"]
+    },
+    {
+      "argv": ["{python}", "{harness_workspace}/scripts/r0_evidence/baseline_probes.py", "transaction-truth", "--workspace", "{workspace}"],
+      "contract_version": "1",
+      "cwd": ".",
+      "matrix_row_id": "R0-TRANSACTION-TRUTH",
+      "probe_id": "r0-transaction-truth",
+      "test_references": ["agents/src/mcp/servers/audit/_submit.py", "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"]
+    }
+  ],
+  "schema_version": "1"
+}

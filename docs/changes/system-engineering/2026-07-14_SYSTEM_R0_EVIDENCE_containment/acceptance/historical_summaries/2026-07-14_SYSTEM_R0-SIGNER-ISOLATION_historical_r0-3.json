@@ -1,0 +1,22 @@
+{
+  "assertions": [
+    {
+      "detail": "raw_key_path=False",
+      "name": "analysis_process_has_no_raw_key",
+      "passed": true
+    },
+    {
+      "detail": "advertised=False",
+      "name": "mcp_does_not_advertise_signing",
+      "passed": true
+    }
+  ],
+  "candidate_commit": "78acffc84",
+  "invariant": "Analysis process has no raw signing key",
+  "invariant_passed": true,
+  "phase": "after",
+  "probe": "signer-boundary",
+  "row_id": "R0-SIGNER-ISOLATION",
+  "schema_version": "1",
+  "status": "pass"
+}

@@ -15,7 +15,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from sentinel_data.export.chunker import ExportManifest, _hash_export_data, _write_hash_cache, _HASH_EXCLUDED
+from sentinel_data.export.chunker import ExportManifest, _FILES_NOT_HASHED, _hash_export_data, _write_hash_cache
+from sentinel_data.export.release_descriptor import RELEASE_DESCRIPTOR_FILENAME, verify_release
 
 
 class SentinelDatasetExport:
@@ -57,33 +58,95 @@ class SentinelDatasetExport:
         return self.export_dir / "manifest.json"
 
     @property
+    def release_descriptor_path(self) -> Path:
+        return self.export_dir / RELEASE_DESCRIPTOR_FILENAME
+
+    @property
     def shard_index(self) -> dict[str, dict]:
         return self.manifest.shard_index
 
     # ── verification ───────────────────────────────────────────────────────
 
-    def verify_artifact_hash(self) -> bool:
-        """Compare artifact hash to manifest.artifact_hash.
+    def verify_artifact_hash(self) -> dict[str, any]:
+        """Compare artifact hash to manifest.artifact_hash with structured result.
 
-        Warm path (cache hit): stats each data file, compares mtime+size to
-        .hash_cache.json. If all match, trusts the cached hash — no disk reads
-        of shard data. Returns in milliseconds.
+        R0.5: warm path first verifies the **release descriptor** (per-file
+        SHA-256 checksums including manifest.json), then falls back to the
+        mtime/size hash cache for speed.  If the descriptor is present,
+        manifest tampering is detected (descriptor carries ``manifest_hash``).
 
-        Cold path (cache miss or stale): falls back to full SHA-256 over all
-        data files, then writes a fresh .hash_cache.json for the next call.
+        Cold path (no descriptor and no cache): full SHA-256 over all data
+        files.
 
-        Returns True if hashes match; False if any data file was tampered with.
-        Manifest.json and .hash_cache.json are excluded from the hash (Fix A).
+        Returns a structured dict:
+            verified: bool — True if hashes match and file set is complete
+            reason: str — "ok" or a failure reason
+            files_checked: int — number of files verified
+            files_missing: list — files in cache but not on disk
+            files_extra: list — files on disk but not in cache
+            descriptor_verified: bool | None — whether descriptor checked out
         """
+        # ── warm path via release descriptor (R0.5) ──────────────────────
+        if self.release_descriptor_path.exists():
+            r = verify_release(self.export_dir)
+            if not r["verified"]:
+                return {
+                    "verified": False,
+                    "reason": f"release_descriptor:{r['reason']}",
+                    "files_checked": r["files_checked"],
+                    "files_missing": r["missing"],
+                    "files_extra": r["extra"],
+                    "descriptor_verified": False,
+                }
+            descriptor_ok = True
+        else:
+            # R0.6: release descriptor is a mandatory part of the export artifact.
+            # chunk_export always writes it. Its absence means either a legacy
+            # export (pre-R0.5) or tampering. In either case, verification fails
+            # because we cannot attest manifest integrity without the descriptor.
+            # The manifest is excluded from artifact_hash (Fix A), so without the
+            # descriptor the artifact_hash check alone cannot detect manifest
+            # tampering. The release_descriptor field in the manifest is NOT
+            # authoritative — it is informational. Enforcement is here in the
+            # verification code.
+            return {
+                "verified": False,
+                "reason": "release_descriptor:file_missing",
+                "files_checked": 0,
+                "files_missing": ["release_descriptor.json"],
+                "files_extra": [],
+                "descriptor_verified": False,
+            }
+
+        # ── warm path via hash cache ──────────────────────────────────────
         cache_path = self.export_dir / ".hash_cache.json"
         if cache_path.exists():
             try:
                 cache = json.loads(cache_path.read_text())
                 cached_hash = cache.get("artifact_hash", "")
                 cached_files: dict = cache.get("files", {})
+
+                on_disk_files: set[str] = set()
+                for p in self.export_dir.rglob("*"):
+                    if p.is_file() and p.name not in _FILES_NOT_HASHED:
+                        on_disk_files.add(str(p.relative_to(self.export_dir)))
+
+                set_cached = set(cached_files)
+                missing = sorted(set_cached - on_disk_files)
+                extra = sorted(on_disk_files - set_cached)
+                if missing or extra:
+                    return {
+                        "verified": False,
+                        "reason": "file_set_mismatch",
+                        "files_checked": len(on_disk_files),
+                        "files_missing": missing,
+                        "files_extra": extra,
+                        "descriptor_verified": descriptor_ok,
+                    }
+
                 all_match = True
                 for p in self.export_dir.rglob("*"):
-                    if not p.is_file() or p.name in _HASH_EXCLUDED:
+                    if not p.is_file() or p.name in _FILES_NOT_HASHED:
                         continue
                     rel = str(p.relative_to(self.export_dir))
                     entry = cached_files.get(rel)
@@ -94,14 +157,31 @@ class SentinelDatasetExport:
                     if stat.st_mtime != entry["mtime"] or stat.st_size != entry["size"]:
                         all_match = False
                         break
+
                 if all_match and cached_hash:
-                    return cached_hash == self.manifest.artifact_hash
+                    hash_ok = cached_hash == self.manifest.artifact_hash
+                    return {
+                        "verified": hash_ok,
+                        "reason": "ok" if hash_ok else "hash_mismatch",
+                        "files_checked": len(on_disk_files),
+                        "files_missing": [],
+                        "files_extra": [],
+                        "descriptor_verified": descriptor_ok,
+                    }
             except Exception:
                 pass  # corrupt cache — fall through to full recompute
 
         actual = _hash_export_data(self.export_dir)
         _write_hash_cache(self.export_dir, actual)
-        return actual == self.manifest.artifact_hash
+        hash_ok = actual == self.manifest.artifact_hash
+        return {
+            "verified": hash_ok,
+            "reason": "ok" if hash_ok else "hash_mismatch",
+            "files_checked": len(list(self.export_dir.rglob("*"))),
+            "files_missing": [],
+            "files_extra": [],
+            "descriptor_verified": descriptor_ok,
+        }
 
     # ── split helpers ──────────────────────────────────────────────────────
 

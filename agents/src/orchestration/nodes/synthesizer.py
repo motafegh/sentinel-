@@ -11,16 +11,25 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.orchestration.state import AuditState
+from src.contracts.execution import (
+    ExecutionState,
+    failure_status,
+    parse_status,
+    require_eligible_payload,
+    status_allows_evidence,
+)
+from src.contracts.submission import normalize_submission
+from src.ingestion.pipeline import REPORTS_DIR
 from src.orchestration.nodes._helpers import _llm_enabled
 from src.orchestration.routing import compute_overall_verdict, prob_to_severity
-from src.orchestration.timing import step_timer
+from src.orchestration.state import AuditState
 from src.orchestration.timeouts import (
-    ENV_SYNTHESIZER_NARRATIVE_TIMEOUT_S,
     DEFAULT_SYNTHESIZER_NARRATIVE_TIMEOUT_S,
+    ENV_SYNTHESIZER_NARRATIVE_TIMEOUT_S,
     get_timeout,
 )
-from src.ingestion.pipeline import REPORTS_DIR
+from src.orchestration.timing import step_timer
+from src.persistence import persist_report
 from src.security import sanitize_for_prompt
 
 
@@ -67,32 +76,89 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     State updates:
         final_report → complete report dict
     """
-    ml_result       : dict       = state.get("ml_result",       {})
-    rag_results     : list       = state.get("rag_results",     [])
-    audit_history   : list       = state.get("audit_history",   [])
-    static_findings : list       = state.get("static_findings",  [])
-    routing_decisions: list      = state.get("routing_decisions", [])
-    error           : str | None = state.get("error")
+    raw_ml_result: dict = state.get("ml_result", {})
+    rag_results: list = state.get("rag_results", [])
+    audit_history: list = state.get("audit_history", [])
+    static_findings: list = state.get("static_findings", [])
+    routing_decisions: list = state.get("routing_decisions", [])
+    error: str | None = state.get("error")
 
-    label      = ml_result.get("label",     "unknown")
-    confirmed  = ml_result.get("confirmed",  [])
+    tool_status = dict(state.get("tool_status", {}) or {})
+    try:
+        ml_status = parse_status(raw_ml_result.get("execution_status"))
+        require_eligible_payload(
+            raw_ml_result,
+            purpose="final report",
+            input_payload={"source_code": state.get("contract_code", "")},
+        )
+        ml_eligible = True
+    except (TypeError, ValueError) as exc:
+        ml_eligible = False
+        try:
+            ml_status = parse_status(raw_ml_result.get("execution_status"))
+        except (TypeError, ValueError):
+            ml_status = parse_status(
+                failure_status(
+                    ExecutionState.UNAVAILABLE,
+                    dependency="inference",
+                    reason_code="missing_or_invalid_provenance",
+                    detail=str(exc),
+                    attempted=False,
+                )
+            )
+    tool_status["ml"] = ml_status.model_dump(mode="json")
+
+    audit_status_value = tool_status.get("audit_registry")
+    try:
+        audit_status = parse_status(audit_status_value)
+    except (TypeError, ValueError):
+        audit_status = parse_status(
+            failure_status(
+                ExecutionState.UNAVAILABLE,
+                dependency="audit_registry",
+                reason_code="missing_or_invalid_provenance",
+                detail="audit dependency status was not present in graph state",
+                attempted=False,
+            )
+        )
+        tool_status["audit_registry"] = audit_status.model_dump(mode="json")
+
+    finality_eligible = ml_eligible and status_allows_evidence(audit_status)
+    finality = {
+        "eligible": finality_eligible,
+        "status_gate": "passed" if finality_eligible else "blocked",
+        "reason": (
+            "required dependency results are live and provenance-valid"
+            if finality_eligible
+            else "live provenance-valid ML and audit-registry results are required"
+        ),
+        "required_dependencies": ["ml", "audit_registry"],
+    }
+
+    # Ineligible ML output remains visible in raw graph state and tool status,
+    # but cannot shape report labels, evidence, provenance, or finality.
+    ml_result: dict = raw_ml_result if ml_eligible else {}
+    eligible_model_hash = str(ml_result.get("model_hash", ""))
+
+    label = ml_result.get("label", "unknown")
+    confirmed = ml_result.get("confirmed", [])
     suspicious = ml_result.get("suspicious", [])
     # All flagged classes (CONFIRMED + SUSPICIOUS) — used for verdicts and report.
     # Falls back to legacy `vulnerabilities` field if three-tier keys absent.
     all_flagged = confirmed + suspicious or ml_result.get("vulnerabilities", [])
-    threshold  = ml_result.get("threshold", 0.50)
-    truncated  = ml_result.get("truncated", False)
-    num_nodes  = ml_result.get("num_nodes", 0)
-    num_edges  = ml_result.get("num_edges", 0)
+    threshold = ml_result.get("threshold", 0.50)
+    truncated = ml_result.get("truncated", False)
+    num_nodes = ml_result.get("num_nodes", 0)
+    num_edges = ml_result.get("num_edges", 0)
 
     # Derive risk_probability and top_vulnerability from CONFIRMED tier first.
     risk_source = confirmed or suspicious or ml_result.get("vulnerabilities", [])
     if risk_source:
-        top_vuln      = max(risk_source, key=lambda v: v.get("probability", 0.0))
-        risk_prob     = round(top_vuln.get("probability", 0.0), 4)
+        top_vuln = max(risk_source, key=lambda v: v.get("probability", 0.0))
+        risk_prob = round(top_vuln.get("probability", 0.0), 4)
         top_vuln_name = top_vuln.get("vulnerability_class")
     else:
-        risk_prob     = 0.0
+        risk_prob = 0.0
         top_vuln_name = None
 
     # Determine which path was taken.
@@ -105,8 +171,8 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # to produce verdict_provable (deterministic-only → ZK-anchorable) and
     # verdict_full (all evidence → human report).
     from src.orchestration.verdict.emit import emit_rag_evidence
-    from src.orchestration.verdict.fuse import fuse
     from src.orchestration.verdict.evidence import Polarity
+    from src.orchestration.verdict.fuse import fuse
 
     evidence_list: list[Any] = list(state.get("evidence_list", []) or [])
     evidence_list.extend(emit_rag_evidence(rag_results))
@@ -135,30 +201,31 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         elif ev.polarity == Polarity.REFUTES:
             has_refutes.add(ev.vuln_class)
     contradictions: dict[str, list[str]] = {
-        cls: ["conflicting SUPPORTS/REFUTES evidence"]
-        for cls in (has_supports & has_refutes)
+        cls: ["conflicting SUPPORTS/REFUTES evidence"] for cls in (has_supports & has_refutes)
     }
 
     flagged_by_cls = {v.get("vulnerability_class"): v for v in all_flagged}
     consensus_verdict: dict[str, dict] = state.get("consensus_verdict", {})
 
-    all_classes = set(flagged_by_cls.keys()) | set(verdict_full.keys()) | set(consensus_verdict.keys())
+    all_classes = (
+        set(flagged_by_cls.keys()) | set(verdict_full.keys()) | set(consensus_verdict.keys())
+    )
     vuln_verdicts: list[dict] = []
     for cls in sorted(all_classes):
         vuln = flagged_by_cls.get(cls, {"vulnerability_class": cls, "probability": 0.0})
         prob = float(vuln.get("probability", 0.0))
         verdict = verdict_full.get(cls, "SAFE")
-        ev_sources = list(dict.fromkeys(
-            ev.source for ev in evidence_list if ev.vuln_class == cls
-        ))
-        vuln_verdicts.append({
-            "vulnerability_class": cls,
-            "probability":         prob,
-            "verdict":             verdict,
-            "evidence_sources":    ev_sources,
-            "severity":            prob_to_severity(prob),
-            "confidence":          class_confidences.get(cls, 0.0),
-        })
+        ev_sources = list(dict.fromkeys(ev.source for ev in evidence_list if ev.vuln_class == cls))
+        vuln_verdicts.append(
+            {
+                "vulnerability_class": cls,
+                "probability": prob,
+                "verdict": verdict,
+                "evidence_sources": ev_sources,
+                "severity": prob_to_severity(prob),
+                "confidence": class_confidences.get(cls, 0.0),
+            }
+        )
 
     overall_verdict = compute_overall_verdict(verdicts)
 
@@ -167,17 +234,15 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # Rule 5C (CLAUDE.md, 2026-06-25): ml_result may be `{}` (legacy /
     # empty) or `{"ran": False, "reason": ...}` (Rule 5C unavailable
     # payload). Either means ML is not contributing to the verdicts.
-    if not ml_result or ml_result.get("ran") is False:
+    if not ml_eligible:
         recommendation = (
             "ML assessment failed — manual review required. "
             "Check that the inference server (port 8001) is running."
         )
     elif label in ("confirmed_vulnerable", "vulnerable") and risk_prob >= 0.70:
-        rag_count    = len(rag_results)
-        prior_count  = len(audit_history)
-        slither_high = sum(
-            1 for f in static_findings if f.get("impact") in ("High", "Medium")
-        )
+        rag_count = len(rag_results)
+        prior_count = len(audit_history)
+        slither_high = sum(1 for f in static_findings if f.get("impact") in ("High", "Medium"))
         recommendation = (
             f"HIGH RISK — top vulnerability: {top_vuln_name} "
             f"(probability {risk_prob:.1%}, CONFIRMED tier). "
@@ -226,25 +291,36 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             # SAFE and which contains zero external calls. `verdicts` (computed
             # just above) is now attached to every line, mirroring the pattern
             # reflection's prompt already used correctly.
-            vuln_lines = "\n".join(
-                f"  - [{v.get('tier', 'CONFIRMED')}] "
-                f"{v.get('vulnerability_class', '?')}: {v.get('probability', 0.0):.1%} "
-                f"→ verdict: {verdicts.get(v.get('vulnerability_class', ''), 'PENDING')}"
-                for v in all_flagged
-            ) or "  (none detected)"
+            vuln_lines = (
+                "\n".join(
+                    f"  - [{v.get('tier', 'CONFIRMED')}] "
+                    f"{v.get('vulnerability_class', '?')}: {v.get('probability', 0.0):.1%} "
+                    f"→ verdict: {verdicts.get(v.get('vulnerability_class', ''), 'PENDING')}"
+                    for v in all_flagged
+                )
+                or "  (none detected)"
+            )
 
-            rag_lines = "\n".join(
-                f"  [{i + 1}] {c.get('metadata', {}).get('protocol', 'unknown')}: "
-                f"{c.get('content', '')[:120]}..."
-                for i, c in enumerate(rag_results[:3])
-            ) if rag_results else "  (no matching exploit evidence retrieved)"
+            rag_lines = (
+                "\n".join(
+                    f"  [{i + 1}] {c.get('metadata', {}).get('protocol', 'unknown')}: "
+                    f"{c.get('content', '')[:120]}..."
+                    for i, c in enumerate(rag_results[:3])
+                )
+                if rag_results
+                else "  (no matching exploit evidence retrieved)"
+            )
 
-            slither_lines = "\n".join(
-                f"  [{f.get('impact', '')}] {f.get('detector', '')}: "
-                f"{f.get('description', '')[:100]}"
-                for f in static_findings[:5]
-                if f.get("impact") in ("High", "Medium")
-            ) if static_findings else "  (no High/Medium static analysis findings)"
+            slither_lines = (
+                "\n".join(
+                    f"  [{f.get('impact', '')}] {f.get('detector', '')}: "
+                    f"{f.get('description', '')[:100]}"
+                    for f in static_findings[:5]
+                    if f.get("impact") in ("High", "Medium")
+                )
+                if static_findings
+                else "  (no High/Medium static analysis findings)"
+            )
 
             code_snippet_raw = state.get("contract_code", "") or ""
             sanitized_code, injection_matches = sanitize_for_prompt(code_snippet_raw)
@@ -253,56 +329,64 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             # ExternalBug: add inter-contract call graph to prompt so LLM can
             # reason about oracle/price-feed dependency risks explicitly.
             ext_calls = state.get("external_call_summary", [])
-            ext_flagged = any(
-                v.get("vulnerability_class") == "ExternalBug" for v in all_flagged
-            )
+            ext_flagged = any(v.get("vulnerability_class") == "ExternalBug" for v in all_flagged)
             ext_call_lines = ""
             if ext_flagged and ext_calls:
-                ext_call_lines = "\n**Inter-contract call graph (ExternalBug context):**\n" + "\n".join(
-                    f"  {c['caller_function']}({c['caller_contract']}) "
-                    f"→ {c['callee_contract']}.{c['callee_function']}"
-                    + (" [INTERFACE]" if c.get("callee_is_interface") else "")
-                    for c in ext_calls[:8]
+                ext_call_lines = (
+                    "\n**Inter-contract call graph (ExternalBug context):**\n"
+                    + "\n".join(
+                        f"  {c['caller_function']}({c['caller_contract']}) "
+                        f"→ {c['callee_contract']}.{c['callee_function']}"
+                        + (" [INTERFACE]" if c.get("callee_is_interface") else "")
+                        for c in ext_calls[:8]
+                    )
                 )
 
-            system_msg = SystemMessage(content=(
-                "You are a senior smart contract security auditor. "
-                "Produce a concise, structured Markdown security assessment with exactly "
-                "these four sections:\n"
-                "## Severity\n"
-                "ONE of: CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL\n"
-                "## Vulnerability Summary\n"
-                "2–3 sentences describing what was detected and why it is dangerous. "
-                "Only discuss classes whose verdict below is CONFIRMED or LIKELY — "
-                "if a class's verdict is SAFE or DISPUTED, do NOT describe it as a "
-                "real risk even though it appears in the list, and do NOT introduce "
-                "a vulnerability class that is not in the list at all.\n"
-                "## Exploit Pattern\n"
-                "How an attacker could exploit the CONFIRMED/LIKELY class(es) above — "
-                "the RAG section below is general background on similar historical "
-                "exploits, not necessarily evidence about THIS contract; only cite it "
-                "if it genuinely matches a CONFIRMED/LIKELY class.\n"
-                "## Recommended Fix\n"
-                "Concrete, actionable mitigation steps specific to the detected vulnerability.\n"
-                "Be concise. Output only the Markdown, no preamble."
-            ))
+            system_msg = SystemMessage(
+                content=(
+                    "You are a senior smart contract security auditor. "
+                    "Produce a concise, structured Markdown security assessment with exactly "
+                    "these four sections:\n"
+                    "## Severity\n"
+                    "ONE of: CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL\n"
+                    "## Vulnerability Summary\n"
+                    "2–3 sentences describing what was detected and why it is dangerous. "
+                    "Only discuss classes whose verdict below is CONFIRMED or LIKELY — "
+                    "if a class's verdict is SAFE or DISPUTED, do NOT describe it as a "
+                    "real risk even though it appears in the list, and do NOT introduce "
+                    "a vulnerability class that is not in the list at all.\n"
+                    "## Exploit Pattern\n"
+                    "How an attacker could exploit the CONFIRMED/LIKELY class(es) above — "
+                    "the RAG section below is general background on similar historical "
+                    "exploits, not necessarily evidence about THIS contract; only cite it "
+                    "if it genuinely matches a CONFIRMED/LIKELY class.\n"
+                    "## Recommended Fix\n"
+                    "Concrete, actionable mitigation steps specific to the detected vulnerability.\n"
+                    "Be concise. Output only the Markdown, no preamble."
+                )
+            )
 
             tier_summary = (
                 f"{len(confirmed)} CONFIRMED (≥0.55), {len(suspicious)} SUSPICIOUS (0.25–0.54)"
-                if (confirmed or suspicious) else ""
+                if (confirmed or suspicious)
+                else ""
             )
-            user_msg = HumanMessage(content=(
-                f"**Contract address:** {state.get('contract_address', 'unknown')}\n"
-                f"**ML model assessment:** {label}"
-                + (f" — {tier_summary}" if tier_summary else "") + "\n\n"
-                f"**ML-flagged classes (tier: class: probability: verdict):**\n{vuln_lines}\n\n"
-                f"**RAG retrieved exploit patterns (general historical reference — "
-                f"NOT necessarily about this contract; only use if it matches a "
-                f"CONFIRMED/LIKELY class above):**\n{rag_lines}\n\n"
-                f"**Static analysis findings (High/Medium):**\n{slither_lines}\n"
-                + ext_call_lines + "\n\n"
-                f"**Contract code snippet (first 500 chars):**\n```solidity\n{code_snippet}\n```"
-            ))
+            user_msg = HumanMessage(
+                content=(
+                    f"**Contract address:** {state.get('contract_address', 'unknown')}\n"
+                    f"**ML model assessment:** {label}"
+                    + (f" — {tier_summary}" if tier_summary else "")
+                    + "\n\n"
+                    f"**ML-flagged classes (tier: class: probability: verdict):**\n{vuln_lines}\n\n"
+                    f"**RAG retrieved exploit patterns (general historical reference — "
+                    f"NOT necessarily about this contract; only use if it matches a "
+                    f"CONFIRMED/LIKELY class above):**\n{rag_lines}\n\n"
+                    f"**Static analysis findings (High/Medium):**\n{slither_lines}\n"
+                    + ext_call_lines
+                    + "\n\n"
+                    f"**Contract code snippet (first 500 chars):**\n```solidity\n{code_snippet}\n```"
+                )
+            )
 
             llm = get_strong_llm(max_tokens=int(os.getenv("SYNTHESIZER_MAX_TOKENS", "4096")))
             # Timeout configurable via SYNTHESIZER_TIMEOUT_S env var.
@@ -335,76 +419,70 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             narrative = None
 
     truncated_note = (
-        "\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens — "
-        "tail code was not analysed. Manual review of the unanalysed portion is recommended."
-    ) if truncated else ""
+        (
+            "\n\n> **NOTE:** Contract exceeded 512 CodeBERT tokens — "
+            "tail code was not analysed. Manual review of the unanalysed portion is recommended."
+        )
+        if truncated
+        else ""
+    )
 
     final_recommendation = (narrative or recommendation) + truncated_note
 
     report = {
-        "contract_address":       state.get("contract_address", ""),
-        "overall_label":          label,
-        "overall_verdict":        overall_verdict,
-        "risk_probability":       risk_prob,
-        "top_vulnerability":      top_vuln_name,
-        "confirmed":              confirmed,
-        "suspicious":             suspicious,
-        "vulnerabilities":        all_flagged,
-        "probabilities":          ml_result.get("probabilities", {}),
-        "tier_thresholds":        ml_result.get("tier_thresholds", {}),
+        "contract_address": state.get("contract_address", ""),
+        "overall_label": label,
+        "overall_verdict": overall_verdict,
+        "risk_probability": risk_prob,
+        "top_vulnerability": top_vuln_name,
+        "confirmed": confirmed,
+        "suspicious": suspicious,
+        "vulnerabilities": all_flagged,
+        "probabilities": ml_result.get("probabilities", {}),
+        "tier_thresholds": ml_result.get("tier_thresholds", {}),
         "vulnerability_verdicts": vuln_verdicts,
-        "threshold":              threshold,
-        "ml_truncated":           truncated,
-        "num_nodes":              num_nodes,
-        "num_edges":              num_edges,
-        "rag_evidence":           rag_results,
-        "audit_history":          audit_history,
-        "static_findings":        static_findings,
-        "external_call_summary":  state.get("external_call_summary", []),
-        "routing_decisions":      routing_decisions,
-        "consensus_verdict":      state.get("consensus_verdict", {}),
-        "debate_transcript":      state.get("debate_transcript", {}),
-        "recommendation":         final_recommendation,
-        "narrative":              narrative,
-        "error":                  error,
-        "path_taken":             path_taken,
-        "security":               {"injection_detections": injection_matches},
-        "model_provenance":       {
-            "model_hash":         state.get("model_hash", ""),
-            "checkpoint_path":    os.getenv("SENTINEL_CHECKPOINT", ""),
-            "schema_version":     "v9",
+        "threshold": threshold,
+        "ml_truncated": truncated,
+        "num_nodes": num_nodes,
+        "num_edges": num_edges,
+        "rag_evidence": rag_results,
+        "audit_history": audit_history,
+        "static_findings": static_findings,
+        "external_call_summary": state.get("external_call_summary", []),
+        "routing_decisions": routing_decisions,
+        "consensus_verdict": state.get("consensus_verdict", {}),
+        "debate_transcript": state.get("debate_transcript", {}),
+        "recommendation": final_recommendation,
+        "narrative": narrative,
+        "error": error,
+        "path_taken": path_taken,
+        "tool_status": tool_status,
+        "finality": finality,
+        "submission": normalize_submission(state.get("submission_result")),
+        "security": {"injection_detections": injection_matches},
+        "model_provenance": {
+            "model_hash": eligible_model_hash,
+            "checkpoint_path": os.getenv("SENTINEL_CHECKPOINT", ""),
+            "schema_version": "v9",
         },
-        "on_chain":               {
-            "submitted":          False,
-            "tx_hash":            None,
-            "proof_hash":         None,
-            "class_scores":       None,
-            "class_score_felts":  None,
-            "model_hash":         state.get("model_hash", ""),
-            "provenance":         None,
+        "on_chain": {
+            "submitted": False,
+            "tx_hash": None,
+            "proof_hash": None,
+            "class_scores": None,
+            "class_score_felts": None,
+            "model_hash": eligible_model_hash,
+            "provenance": None,
         },
     }
 
-    # ── BRIDGE (Issue #1): persist report for feedback_loop.py ──────────────
-    # feedback_loop.py has no access to in-memory state — it runs as a
-    # separate process listening to on-chain events. Writing the report to
-    # disk by contract_address gives it the vulnerability_class it needs to
-    # index on-chain findings with a meaningful vuln_type instead of "unknown".
-    #
-    # Only write if contract_address is known (it may be empty in test runs).
-    # Failures are logged but never raise — the report is still returned
-    # to the caller; a missing file only degrades RAG quality, not correctness.
-    contract_address = state.get("contract_address", "").strip()
-    if contract_address:
-        try:
-            REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-            report_path = REPORTS_DIR / f"{contract_address}.json"
-            report_path.write_text(json.dumps(report, indent=2))
-            logger.debug("synthesizer | report persisted → {}", report_path)
-        except Exception as exc:
-            logger.warning(
-                "synthesizer | could not persist report for bridge (non-fatal): {}", exc
-            )
+    # ── R0.2: persist report to job-scoped directory ──────────────────────
+    # Replaces the old address-as-filename pattern (D2-AGT-002).
+    # The report is written to data/reports/{job_id}/report.json using
+    # atomic publication. Failures surface as structured tool_status
+    # (Rule 5C) instead of silent log-only warnings.
+    persistence_status = persist_report(state, report, REPORTS_DIR)
+    tool_status.update(persistence_status)
 
     logger.info(
         "synthesizer complete | label={} | verdict={} | risk_prob={:.3f} | "
@@ -423,12 +501,14 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     )
 
     return {
-        "final_report":        report,
-        "verdicts":            verdicts,
-        "confirmations":       confirmations,
-        "contradictions":      contradictions,
+        "final_report": report,
+        "verdicts": verdicts,
+        "confirmations": confirmations,
+        "contradictions": contradictions,
         "confidence_by_class": class_confidences,
-        "verdict_provable":    verdict_provable,
-        "verdict_full":        verdict_full,
-        "injection_matches":   injection_matches,
+        "verdict_provable": verdict_provable,
+        "verdict_full": verdict_full,
+        "injection_matches": injection_matches,
+        "tool_status": tool_status,
+        "finality": finality,
     }

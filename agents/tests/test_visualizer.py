@@ -1,6 +1,7 @@
 """Tests for A.9 hotspot visualization (src/orchestration/visualizer.py + node)."""
 
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ def _state():
     return {
         "contract_code": "pragma solidity ^0.8.0;\ncontract V {\n  function withdraw() public {\n    msg.sender.call{value: 1}('');\n  }\n}",
         "contract_address": "0xABC",
+        "job_id": str(uuid.uuid4()),
         "ml_hotspots": [
             {"class": "Reentrancy", "fn_name": "withdraw", "lines": [3, 4], "score": 0.9},
         ],
@@ -22,10 +24,17 @@ def _state():
             "overall_verdict": "LIKELY_VULNERABLE",
             "top_vulnerability": "Reentrancy",
             "vulnerability_verdicts": [
-                {"vulnerability_class": "Reentrancy", "probability": 0.8, "verdict": "LIKELY", "severity": "High"},
+                {
+                    "vulnerability_class": "Reentrancy",
+                    "probability": 0.8,
+                    "verdict": "LIKELY",
+                    "severity": "High",
+                },
             ],
             "confidence_by_class": {"Reentrancy": 0.85},
-            "metric_attribution": {"Reentrancy": {"ml_pct": 40.0, "slither_pct": 50.0, "rag_pct": 10.0}},
+            "metric_attribution": {
+                "Reentrancy": {"ml_pct": 40.0, "slither_pct": 50.0, "rag_pct": 10.0}
+            },
         },
     }
 
@@ -40,10 +49,10 @@ class TestGenerateHotspotHtml:
 
     def test_contains_code_and_verdict_panel(self):
         html = generate_hotspot_html(_state())
-        assert "withdraw" in html        # source rendered
-        assert "Reentrancy" in html      # verdict card
-        assert "LIKELY" in html          # verdict badge
-        assert "0xABC" in html           # address in header
+        assert "withdraw" in html  # source rendered
+        assert "Reentrancy" in html  # verdict card
+        assert "LIKELY" in html  # verdict badge
+        assert "0xABC" in html  # address in header
 
     def test_hotspot_lines_highlighted(self):
         html = generate_hotspot_html(_state())
@@ -72,21 +81,35 @@ class TestVisualizerNode:
     @pytest.mark.asyncio
     async def test_node_sets_html_and_writes_file(self, tmp_path, monkeypatch):
         import importlib
+
         viz_mod = importlib.import_module("src.orchestration.nodes.visualizer")
         monkeypatch.setattr(viz_mod, "REPORTS_DIR", tmp_path)
-        out = await visualizer(_state())
+        st = _state()
+        out = await visualizer(st)
         assert out["hotspot_visualization"].startswith("<!DOCTYPE html>")
-        written = tmp_path / "0xABC_hotspot.html"
+        written = tmp_path / st["job_id"] / "hotspot.html"
         assert written.exists()
         assert "withdraw" in written.read_text()
 
     @pytest.mark.asyncio
-    async def test_node_no_address_no_file(self, tmp_path, monkeypatch):
+    async def test_node_no_job_id_no_file(self, tmp_path, monkeypatch):
         import importlib
+
         viz_mod = importlib.import_module("src.orchestration.nodes.visualizer")
         monkeypatch.setattr(viz_mod, "REPORTS_DIR", tmp_path)
         st = _state()
-        st["contract_address"] = ""
+        st["job_id"] = ""
         out = await visualizer(st)
         assert out["hotspot_visualization"] is not None
-        assert list(tmp_path.glob("*.html")) == []
+        assert list(tmp_path.glob("**/*.html")) == []
+
+    @pytest.mark.asyncio
+    async def test_node_persistence_status_surfaces(self, tmp_path, monkeypatch):
+        import importlib
+
+        viz_mod = importlib.import_module("src.orchestration.nodes.visualizer")
+        monkeypatch.setattr(viz_mod, "REPORTS_DIR", tmp_path)
+        st = _state()
+        out = await visualizer(st)
+        assert "tool_status" in out
+        assert out["tool_status"]["hotspot_persistence"]["ran"] is True

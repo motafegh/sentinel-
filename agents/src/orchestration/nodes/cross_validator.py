@@ -11,16 +11,17 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.orchestration.state import AuditState
 from src.orchestration.nodes._helpers import _llm_enabled
-from src.orchestration.timing import step_timer
+from src.orchestration.provenance import eligible_ml_result
+from src.orchestration.state import AuditState
 from src.orchestration.timeouts import (
-    ENV_CROSS_VALIDATOR_SINGLE_PASS_TIMEOUT_S,
     DEFAULT_CROSS_VALIDATOR_SINGLE_PASS_TIMEOUT_S,
-    ENV_DEBATE_TIMEOUT_S,
     DEFAULT_DEBATE_TIMEOUT_S,
+    ENV_CROSS_VALIDATOR_SINGLE_PASS_TIMEOUT_S,
+    ENV_DEBATE_TIMEOUT_S,
     get_timeout,
 )
+from src.orchestration.timing import step_timer
 from src.security import sanitize_for_prompt
 
 
@@ -48,12 +49,12 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
         confirmations  → {class: [evidence_source, ...]}
         contradictions → {class: [description, ...]}
     """
-    ml_result       = state.get("ml_result",       {})
-    static_findings = state.get("static_findings",  [])
-    rag_results     = state.get("rag_results",      [])
-    audit_history   = state.get("audit_history",    [])
+    ml_result = eligible_ml_result(state, purpose="cross validation")
+    static_findings = state.get("static_findings", [])
+    rag_results = state.get("rag_results", [])
+    audit_history = state.get("audit_history", [])
 
-    confirmed  = ml_result.get("confirmed",  [])
+    confirmed = ml_result.get("confirmed", [])
     suspicious = ml_result.get("suspicious", [])
     all_flagged = confirmed + suspicious or ml_result.get("vulnerabilities", [])
 
@@ -83,13 +84,20 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
     _max_classes = int(os.getenv("CROSS_VALIDATOR_MAX_CLASSES", "5"))
     consensus_verdict_state = state.get("consensus_verdict", {}) or {}
     if len(all_flagged) > _max_classes:
-        all_flagged = sorted(all_flagged, key=lambda v: (
-            consensus_verdict_state.get(v.get("vulnerability_class", ""), {}).get("confidence", 0.0),
-            v.get("probability", 0.0),
-        ), reverse=True)
+        all_flagged = sorted(
+            all_flagged,
+            key=lambda v: (
+                consensus_verdict_state.get(v.get("vulnerability_class", ""), {}).get(
+                    "confidence", 0.0
+                ),
+                v.get("probability", 0.0),
+            ),
+            reverse=True,
+        )
         # Guarantee any class with a tool hit is adjudicated, regardless of rank.
         tool_classes = {
-            c for c, v in consensus_verdict_state.items()
+            c
+            for c, v in consensus_verdict_state.items()
             if v.get("slither_match") or v.get("aderyn_match")
         }
         top = all_flagged[:_max_classes]
@@ -123,9 +131,9 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
     class_lines = []
     eye_predictions = ml_result.get("eye_predictions", {}) or {}
     for vuln in all_flagged:
-        cls    = vuln.get("vulnerability_class", "?")
-        prob   = vuln.get("probability", 0.0)
-        tier   = vuln.get("tier", "CONFIRMED")
+        cls = vuln.get("vulnerability_class", "?")
+        prob = vuln.get("probability", 0.0)
+        tier = vuln.get("tier", "CONFIRMED")
         slither_hits = slither_by_class.get(cls, ["(no Slither findings)"])
 
         # D4 (WS3, 2026-06-22): per-eye clues — discountable hints showing
@@ -133,9 +141,7 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
         eye_line = ""
         if eye_predictions:
             per_eye = {
-                eye: vals.get(cls, 0.0)
-                for eye, vals in eye_predictions.items()
-                if cls in vals
+                eye: vals.get(cls, 0.0) for eye, vals in eye_predictions.items() if cls in vals
             }
             if per_eye:
                 top_eye = max(per_eye, key=per_eye.get)
@@ -156,12 +162,14 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
     debate_transcript: dict[str, str] = {}
     try:
         from langchain_core.messages import HumanMessage, SystemMessage
+
         # 2026-06-17: Use FAST model (gemma-4-e2b-it) instead of STRONG.
         # Verdict picking from 5 options is a simple classification task.
         # STRONG (gemma-4-e2b-it, was qwen3.5-9b-ud) was taking 94s+ for 9 classes (TIMED OUT at 90s).
         # FAST runs ~3x faster, finishes in ~20-30s, quality is sufficient.
         # Override via CROSS_VALIDATOR_LLM_MODEL env var (model ID string).
         from src.llm.client import get_fast_llm, get_strong_llm
+
         _cv_model = os.getenv("CROSS_VALIDATOR_LLM_MODEL", "fast").lower()
 
         # WS4.1 (2026-06-21, Finding #6): per-role max_tokens cap. Previously
@@ -223,8 +231,7 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
                 cls_hotspots = hotspots_by_cls.get(cls, [])
                 if not cls_hotspots:
                     cls_hotspots = [
-                        h for h in ml_hotspots
-                        if cls in h.get("vulnerability_classes", [])
+                        h for h in ml_hotspots if cls in h.get("vulnerability_classes", [])
                     ]
                 if not cls_hotspots:
                     continue
@@ -239,42 +246,48 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
                         label = f"lines {lines[0]}-{lines[-1]}"
                     else:
                         label = f"function {fn}"
-                    hotspot_excerpt_lines.append(
-                        f"  {fn} ({label}, score={score:.2f})"
-                    )
+                    hotspot_excerpt_lines.append(f"  {fn} ({label}, score={score:.2f})")
                     if signals:
-                        hotspot_excerpt_lines.append(
-                            f"  Signals: {', '.join(signals)}"
-                        )
+                        hotspot_excerpt_lines.append(f"  Signals: {', '.join(signals)}")
                     if lines and source_lines:
                         block = ""
                         for ln in lines:
                             if 1 <= ln <= len(source_lines):
                                 block += f"{ln:4d}: {source_lines[ln - 1]}\n"
                         if block:
-                            hotspot_excerpt_lines.append(
-                                f"```solidity\n{block}```"
-                            )
+                            hotspot_excerpt_lines.append(f"```solidity\n{block}```")
 
         if hotspot_excerpt_lines:
             _full_for_ref = contract_code[:4000].strip()
             code_block = (
                 "\n\nFocused code excerpts (flagged regions):"
                 + "".join(hotspot_excerpt_lines)
-                + ("\n\nFull contract source (for reference):\n"
-                   f"```solidity\n{_full_for_ref}\n```" if _full_for_ref else "")
+                + (
+                    "\n\nFull contract source (for reference):\n"
+                    f"```solidity\n{_full_for_ref}\n```"
+                    if _full_for_ref
+                    else ""
+                )
             )
         else:
             _code_raw = contract_code[:2000].strip()
             ml_windows = ml_result.get("windows_used", 1)
             fallback_note = (
-                f"\nNote: ML used {ml_windows} sliding window(s) — "
-                "no hotspot data to narrow the excerpt."
-            ) if ml_windows > 1 else ""
+                (
+                    f"\nNote: ML used {ml_windows} sliding window(s) — "
+                    "no hotspot data to narrow the excerpt."
+                )
+                if ml_windows > 1
+                else ""
+            )
             code_block = (
-                "\n\nContract source (analyse it yourself — the ML signal is only a hint):\n"
-                f"```solidity\n{_code_raw}\n```" + fallback_note
-            ) if _code_raw else ""
+                (
+                    "\n\nContract source (analyse it yourself — the ML signal is only a hint):\n"
+                    f"```solidity\n{_code_raw}\n```" + fallback_note
+                )
+                if _code_raw
+                else ""
+            )
         # ── A.4 Multi-LLM debate (Prosecutor → Defender → Judge) ─────────────
         # DEBATE_MODE (default on) runs three role-specific passes so the final
         # verdict reflects an adversarial exchange rather than one classification
@@ -385,18 +398,19 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
 
         if _debate_on and not _skip_debate:
             _debate_timeout = get_timeout(ENV_DEBATE_TIMEOUT_S, DEFAULT_DEBATE_TIMEOUT_S)
-            with step_timer("cross_validator.debate_total", address=_address, budget_s=_debate_timeout):
-                raw, debate_transcript = await asyncio.wait_for(_run_debate(), timeout=_debate_timeout)
+            with step_timer(
+                "cross_validator.debate_total", address=_address, budget_s=_debate_timeout
+            ):
+                raw, debate_transcript = await asyncio.wait_for(
+                    _run_debate(), timeout=_debate_timeout
+                )
             logger.info("cross_validator | debate complete (3 roles)")
         elif _debate_on and _skip_debate:
             logger.info(
                 "cross_validator | debate skipped — {} class(es) CONFIRMED by multi-tool consensus",
                 len(all_flagged),
             )
-            raw = json.dumps({
-                v.get("vulnerability_class", ""): "CONFIRMED"
-                for v in all_flagged
-            })
+            raw = json.dumps({v.get("vulnerability_class", ""): "CONFIRMED" for v in all_flagged})
         else:
             # Legacy single-pass classification (retained for perf/tests).
             _single_pass_timeout = get_timeout(
@@ -434,6 +448,7 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
         _cascade_enabled = os.getenv("CASCADE_ENABLED", "false").lower() in ("1", "true", "yes")
         if _cascade_enabled:
             from src.llm.client import get_coder_llm
+
             _cascade_threshold = float(os.getenv("CASCADE_CONFIDENCE_THRESHOLD", "0.7"))
             _cascade_verdicts = set(os.getenv("CASCADE_VERDICTS", "DISPUTED,WATCH").split(","))
 
@@ -444,7 +459,11 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
                     ambiguous_classes.append(cls)
 
             if ambiguous_classes:
-                logger.info("cross_validator | cascade: {} ambiguous class(es) → {}", len(ambiguous_classes), ambiguous_classes)
+                logger.info(
+                    "cross_validator | cascade: {} ambiguous class(es) → {}",
+                    len(ambiguous_classes),
+                    ambiguous_classes,
+                )
                 _cascade_llm = get_coder_llm()
 
                 for cls in ambiguous_classes:
@@ -466,8 +485,12 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
                             fut = loop.run_in_executor(
                                 None,
                                 _cascade_llm.invoke,
-                                [SystemMessage(content="You are a smart contract security expert."),
-                                 HumanMessage(content=cascade_prompt)],
+                                [
+                                    SystemMessage(
+                                        content="You are a smart contract security expert."
+                                    ),
+                                    HumanMessage(content=cascade_prompt),
+                                ],
                             )
                             cascade_resp = await asyncio.wait_for(fut, timeout=30.0)
 
@@ -482,18 +505,27 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
 
                         old_verdict = verdicts[cls]
                         verdicts[cls] = cascade_verdict
-                        logger.info("cross_validator | cascade {} → {} (was {})", cls, cascade_verdict, old_verdict)
+                        logger.info(
+                            "cross_validator | cascade {} → {} (was {})",
+                            cls,
+                            cascade_verdict,
+                            old_verdict,
+                        )
                     except Exception as exc:
-                        logger.warning("cross_validator | cascade failed for {}: {} — keeping fast-model verdict", cls, exc)
+                        logger.warning(
+                            "cross_validator | cascade failed for {}: {} — keeping fast-model verdict",
+                            cls,
+                            exc,
+                        )
 
         logger.info("cross_validator complete | verdicts={}", verdicts)
         # ── P2 Shape A: emit debate evidence (verdicts converted to Evidence objects) ──
         from src.orchestration.verdict.emit import emit_debate_evidence
+
         evidence_list: list[Any] = emit_debate_evidence(debate_transcript, verdicts)
 
-
         result: dict[str, Any] = {
-            "evidence_list":  evidence_list,
+            "evidence_list": evidence_list,
             "injection_matches": injection_matches,
         }
         if debate_transcript:

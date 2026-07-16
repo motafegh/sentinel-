@@ -1,0 +1,74 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "beb8e52505775475d4c7496a27cb1aa25a3cbe19",
+  "comparison_key": "f86986da180d06f35ccddef61138ebb1374499b0c95536af3bd893f852a7a5ba",
+  "environment_manifest": {
+    "comparison_fingerprint": "c33f199829aaa0e6a82c21770fcc23d9d998f8b9a24308e0be032fa5db8355a3",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_v3_env_current.json",
+    "sha256": "6ce6f25060001531f43b5bdb08ab1db15fe2c1169e28f8a404d3eb0077761786"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T14:34:46.528548+00:00",
+    "started_at": "2026-07-15T14:34:45.789475+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"keys=['detail', 'error', 'execution_status']\", \"name\": \"outage_is_explicit\", \"passed\": true}, {\"detail\": \"label=None; probabilities=0\", \"name\": \"outage_emits_no_prediction_evidence\", \"passed\": true}, {\"detail\": \"model_hash=None\", \"name\": \"model_identity_is_not_mock_disguised_as_live\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "913fbe2ca834d958fadebb526843e704e828575d40b0ced3f00a08d5489538c3"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-EVIDENCE-OUTAGE",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "keys=['detail', 'error', 'execution_status']",
+        "name": "outage_is_explicit",
+        "passed": true
+      },
+      {
+        "detail": "label=None; probabilities=0",
+        "name": "outage_emits_no_prediction_evidence",
+        "passed": true
+      },
+      {
+        "detail": "model_hash=None",
+        "name": "model_identity_is_not_mock_disguised_as_live",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "ml-outage",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-ml-outage",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
+      "ml-outage",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-EVIDENCE-OUTAGE:after:r0-ml-outage:beb8e5250577",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/tests/test_inference_server.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}

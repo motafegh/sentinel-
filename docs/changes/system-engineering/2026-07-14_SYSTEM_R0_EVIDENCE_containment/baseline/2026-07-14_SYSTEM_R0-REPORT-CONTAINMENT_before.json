@@ -1,0 +1,63 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "36d7b68f54cc32833d18b658f98fc19455000a64761f183d054c653e06bfb809",
+  "environment_manifest": {
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "<HOME>/projects/sentinel-r0-0-evidence/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/baseline/2026-07-14_SYSTEM_R0_ENVIRONMENT_before.json",
+    "sha256": "cd11639d84080f7035a13dae144fd92da8dea1c49b11ce51eba95cfa0c6382f9"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-14T12:28:25.618050+00:00",
+    "started_at": "2026-07-14T12:28:25.514502+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"unsafe_expression=True\", \"name\": \"logical_address_not_used_as_filename\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "9fdf6c0eab7e1cb4f182ba66e34887adae162f163709c63c849a01c140b6d608"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-REPORT-CONTAINMENT",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "unsafe_expression=True",
+        "name": "logical_address_not_used_as_filename",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-report-path",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-0-evidence/scripts/r0_evidence/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-REPORT-CONTAINMENT:before:r0-report-path:1256d9aab45a",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/orchestration/nodes/synthesizer.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}

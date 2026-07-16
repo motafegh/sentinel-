@@ -14,12 +14,16 @@ attribute, which is what handlers observe.
 
 from __future__ import annotations
 
+import time
+
 from loguru import logger
+from src.contracts.execution import ExecutionState, bind_status, failure_status, mock_status
 
 
 def _shim():
     """Return the audit_server shim module (state holder)."""
     from src.mcp.servers import audit_server as _as
+
     return _as
 
 
@@ -32,12 +36,26 @@ async def _on_startup() -> None:
     _as = _shim()
 
     if _as._MOCK_MODE:
-        logger.info(
-            "Audit server starting in MOCK MODE — "
-            "no RPC calls will be made (AUDIT_MOCK=true or SEPOLIA_RPC_URL not set)"
+        _as._execution_status = mock_status(
+            {"service": "audit-registry"},
+            dependency="audit-registry",
+            input_payload={"operation": "startup"},
+        )["execution_status"]
+        logger.warning("Audit server starting in explicit MOCK mode (AUDIT_MOCK=true)")
+        return
+    if not _as._RPC_URL:
+        _as._execution_status = failure_status(
+            ExecutionState.UNAVAILABLE,
+            dependency="audit-registry",
+            reason_code="rpc_not_configured",
+            detail="SEPOLIA_RPC_URL is not configured",
+            attempted=False,
+            input_payload={"operation": "startup"},
         )
-        return  # _ABI stays None — mock handlers never use it
+        logger.error("AuditRegistry unavailable: SEPOLIA_RPC_URL is not configured")
+        return
 
+    started = time.monotonic()
     try:
         # Bug 2 fix — ABI loaded here, only in real mode, after mock guard.
         _ABI = _load_abi()
@@ -52,11 +70,7 @@ async def _on_startup() -> None:
         # chain_id = 11155111 for Sepolia.
         chain_id = await _w3.eth.chain_id
         if chain_id != 11155111:
-            logger.warning(
-                "Unexpected chain ID: {} (expected 11155111 for Sepolia). "
-                "Check SEPOLIA_RPC_URL.",
-                chain_id,
-            )
+            raise RuntimeError(f"Unexpected chain ID {chain_id}; expected 11155111 for Sepolia")
 
         # Convert to checksummed address — web3.py requires EIP-55 checksum.
         checksum_address = AsyncWeb3.to_checksum_address(_as._REGISTRY_ADDRESS)
@@ -66,6 +80,13 @@ async def _on_startup() -> None:
         _as._ABI = _ABI
         _as._w3 = _w3
         _as._registry = _registry
+        startup = bind_status(
+            {"chain_id": chain_id, "registry_address": checksum_address},
+            dependency="audit-registry",
+            input_payload={"operation": "startup", "rpc_configured": True},
+            duration_ms=(time.monotonic() - started) * 1000,
+        )
+        _as._execution_status = startup["execution_status"]
 
         logger.info(
             "Web3 client ready — chain={} | registry={} | rpc={}",
@@ -75,12 +96,19 @@ async def _on_startup() -> None:
         )
 
     except Exception as exc:
-        # Don't crash the server — log the error and switch to mock mode.
-        # This lets CI and offline development work without a live RPC.
-        logger.error(
-            "Failed to initialise Web3 client: {} — switching to mock mode", exc
+        _as._ABI = None
+        _as._w3 = None
+        _as._registry = None
+        _as._execution_status = failure_status(
+            ExecutionState.UNAVAILABLE,
+            dependency="audit-registry",
+            reason_code="startup_failed",
+            detail=f"{type(exc).__name__}: {exc}",
+            attempted=True,
+            input_payload={"operation": "startup", "rpc_configured": True},
+            duration_ms=(time.monotonic() - started) * 1000,
         )
-        _as._MOCK_MODE = True
+        logger.error("Failed to initialise Web3 client; registry remains unavailable: {}", exc)
 
 
 async def _on_shutdown() -> None:
@@ -89,6 +117,13 @@ async def _on_shutdown() -> None:
     # AsyncHTTPProvider doesn't hold persistent connections — nothing to close.
     _as._w3 = None
     _as._registry = None
+    _as._execution_status = failure_status(
+        ExecutionState.UNAVAILABLE,
+        dependency="audit-registry",
+        reason_code="shutdown",
+        detail="audit MCP server is shutting down",
+        attempted=False,
+    )
     logger.info("Audit server shutdown — Web3 client released")
 
 
@@ -110,6 +145,7 @@ def _load_abi() -> list:
             "  cd contracts && forge build"
         )
     import json
+
     with open(_as._ABI_PATH) as f:
         artifact = json.load(f)
     # Foundry artifact format: top-level "abi" key contains the ABI array

@@ -1,0 +1,89 @@
+{
+  "baseline_commit": "20fbf10ed4cb5d7b59df0f9cf626542b2b3de517",
+  "candidate_commit": "7294def23517effca6e344cc27155b76edba7d42",
+  "comparison_key": "e865c9ae5a262f143085e0fd70721026e81c153a43226e80b74306de2d5a435f",
+  "environment_manifest": {
+    "comparison_fingerprint": "6dd601b2e822f6120cdb45ba9edb5018790395b92d927ca9a970e809a1ae2415",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_env.json",
+    "sha256": "fcc59de8901e7e95998f737115afecaa49a12b461f04d9aeaf8e9a211a9237f4"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T17:15:05.746678+00:00",
+    "started_at": "2026-07-15T17:15:03.652174+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"keys=['chain_id', 'class_scores', 'contract_address', 'fusion_embedding_hash', 'operator_address', 'proxy_checkpoint_hash', 'round_id', 'signature', 'signature_reason', 'target_data_version', 'teacher_model_hash', 'timestamp']\", \"name\": \"provenance_manifest_has_teacher_model_hash\", \"passed\": true}, {\"detail\": \"keys=['chain_id', 'class_scores', 'contract_address', 'fusion_embedding_hash', 'operator_address', 'proxy_checkpoint_hash', 'round_id', 'signature', 'signature_reason', 'target_data_version', 'teacher_model_hash', 'timestamp']\", \"name\": \"provenance_manifest_has_fusion_embedding_hash\", \"passed\": true}, {\"detail\": \"chain_id=1\", \"name\": \"proof_identity_bound_to_chain\", \"passed\": true}, {\"detail\": \"round_id=42\", \"name\": \"proof_identity_bound_to_round\", \"passed\": true}, {\"detail\": \"contract_address='0x000000000000000000000000000000000000dEaD'\", \"name\": \"proof_identity_bound_to_contract\", \"passed\": true}, {\"detail\": \"signing key removed from MCP process; policy-signer owns submission\", \"name\": \"no_operator_key_prevents_signature\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "a72185372ee84fa2846fe4a4fb11e9e71a2a93c0cdbf5a3516818b09d63ead76"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-PROOF-IDENTITY",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "keys=['chain_id', 'class_scores', 'contract_address', 'fusion_embedding_hash', 'operator_address', 'proxy_checkpoint_hash', 'round_id', 'signature', 'signature_reason', 'target_data_version', 'teacher_model_hash', 'timestamp']",
+        "name": "provenance_manifest_has_teacher_model_hash",
+        "passed": true
+      },
+      {
+        "detail": "keys=['chain_id', 'class_scores', 'contract_address', 'fusion_embedding_hash', 'operator_address', 'proxy_checkpoint_hash', 'round_id', 'signature', 'signature_reason', 'target_data_version', 'teacher_model_hash', 'timestamp']",
+        "name": "provenance_manifest_has_fusion_embedding_hash",
+        "passed": true
+      },
+      {
+        "detail": "chain_id=1",
+        "name": "proof_identity_bound_to_chain",
+        "passed": true
+      },
+      {
+        "detail": "round_id=42",
+        "name": "proof_identity_bound_to_round",
+        "passed": true
+      },
+      {
+        "detail": "contract_address='0x000000000000000000000000000000000000dEaD'",
+        "name": "proof_identity_bound_to_contract",
+        "passed": true
+      },
+      {
+        "detail": "signing key removed from MCP process; policy-signer owns submission",
+        "name": "no_operator_key_prevents_signature",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "proof-identity",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-proof-identity",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
+      "proof-identity",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-PROOF-IDENTITY:after:r0-proof-identity:7294def23517",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "c107022c2b885bf59ffc12d3b57c432bb0179f926e34ff3c8b96159b54c16504",
+  "environment_manifest": {
+    "comparison_fingerprint": "719974d3e8b1d34256c9eee252c471871c172a88176895a5cc9d3f3ea34c9f86",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/final_candidate_5e45/environment_before.json",
+    "sha256": "f809eece8a100313d91eee70167b14ecb4eac8b6f3aff0f10e66a94bc7f3dfcb"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-16T13:33:10.322502+00:00",
+    "started_at": "2026-07-16T13:33:10.254189+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"No module named 'src.persistence'\", \"name\": \"paths_module_importable\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "833a94e36faf839ec3bb396bffab67d63238fdbc1a92c23049737bac91f7ee3e"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-REPORT-CONTAINMENT",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "No module named 'src.persistence'",
+        "name": "paths_module_importable",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{probe_bundle}/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-report-path",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-containment/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/probe_bundle/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "probe_bundle_commit": "5e45fbed7e7a04edb568dbe1c5250aed90200f49",
+  "probe_bundle_sha256": "f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c",
+  "record_id": "R0-REPORT-CONTAINMENT:before:r0-report-path:1256d9aab45a",
+  "review": {
+    "decided_at": "2026-07-16T13:55:01Z",
+    "reviewer": "Ali (project owner)",
+    "status": "accepted"
+  },
+  "schema_version": "2",
+  "test_references": [
+    "agents/src/orchestration/nodes/synthesizer.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}

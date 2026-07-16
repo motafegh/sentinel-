@@ -1,0 +1,84 @@
+{
+  "baseline_commit": "20fbf10ed4cb5d7b59df0f9cf626542b2b3de517",
+  "candidate_commit": "7294def23517effca6e344cc27155b76edba7d42",
+  "comparison_key": "6e1370ddc8ad92c943d0bef4f26f25511f2bf9dcddfe6304353b1777cb3936ac",
+  "environment_manifest": {
+    "comparison_fingerprint": "6dd601b2e822f6120cdb45ba9edb5018790395b92d927ca9a970e809a1ae2415",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "/tmp/r0_env.json",
+    "sha256": "fcc59de8901e7e95998f737115afecaa49a12b461f04d9aeaf8e9a211a9237f4"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-15T17:14:46.362900+00:00",
+    "started_at": "2026-07-15T17:14:45.014635+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"result=False\", \"name\": \"is_valid_job_id_rejects_path_traversal\", \"passed\": true}, {\"detail\": \"valid UUID accepted\", \"name\": \"is_valid_job_id_accepts_uuid\", \"passed\": true}, {\"detail\": \"persist_report ran=False for malicious job_id\", \"name\": \"persist_report_rejects_malicious_job_id\", \"passed\": true}, {\"detail\": \"rejected path traversal address\", \"name\": \"validate_address_rejects_path_traversal\", \"passed\": true}, {\"detail\": \"accepted valid address\", \"name\": \"validate_address_accepts_ethereum_address\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "94ca22aff58f82e5f23f8f0b652afcbe66f4a7d6360559d726a983e9eb85a87e"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-REPORT-CONTAINMENT",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "result=False",
+        "name": "is_valid_job_id_rejects_path_traversal",
+        "passed": true
+      },
+      {
+        "detail": "valid UUID accepted",
+        "name": "is_valid_job_id_accepts_uuid",
+        "passed": true
+      },
+      {
+        "detail": "persist_report ran=False for malicious job_id",
+        "name": "persist_report_rejects_malicious_job_id",
+        "passed": true
+      },
+      {
+        "detail": "rejected path traversal address",
+        "name": "validate_address_rejects_path_traversal",
+        "passed": true
+      },
+      {
+        "detail": "accepted valid address",
+        "name": "validate_address_accepts_ethereum_address",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-report-path",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<WORKSPACE>/scripts/r0_evidence/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-REPORT-CONTAINMENT:after:r0-report-path:7294def23517",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/orchestration/nodes/synthesizer.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}

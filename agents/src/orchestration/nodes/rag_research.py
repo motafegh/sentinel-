@@ -18,26 +18,25 @@ from typing import Any
 # ── sys.path — make agents/ importable regardless of cwd ──────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from loguru import logger
-
-from src.orchestration.state import AuditState
 import src.orchestration.nodes._helpers as _h
-
+from loguru import logger
+from src.orchestration.provenance import eligible_ml_result
+from src.orchestration.state import AuditState
 
 _RAG_URL: str = os.getenv("MCP_RAG_URL", "http://localhost:8011/sse")
 _RAG_K: int = int(os.getenv("AUDIT_RAG_K", "5"))
 
 _VULN_CLASS_TO_RAG_KEYWORDS: dict[str, str] = {
-    "Reentrancy":              "reentrancy reentrant call",
-    "IntegerUO":               "integer overflow underflow arithmetic",
-    "GasException":            "gas limit denial of service",
-    "Timestamp":               "timestamp manipulation time dependence",
+    "Reentrancy": "reentrancy reentrant call",
+    "IntegerUO": "integer overflow underflow arithmetic",
+    "GasException": "gas limit denial of service",
+    "Timestamp": "timestamp manipulation time dependence",
     "TransactionOrderDependence": "transaction ordering front running MEV",
-    "ExternalBug":             "external call oracle price manipulation",
-    "CallToUnknown":           "unknown external call untrusted contract",
-    "MishandledException":     "exception handling error propagation",
-    "UnusedReturn":            "unchecked return value ignored",
-    "DenialOfService":         "denial of service DoS griefing",
+    "ExternalBug": "external call oracle price manipulation",
+    "CallToUnknown": "unknown external call untrusted contract",
+    "MishandledException": "exception handling error propagation",
+    "UnusedReturn": "unchecked return value ignored",
+    "DenialOfService": "denial of service DoS griefing",
 }
 
 
@@ -75,8 +74,8 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
         logger.info("rag_research | skipped (SENTINEL_DETERMINISTIC mode)")
         return {"rag_results": []}
 
-    ml_result  = state.get("ml_result", {})
-    confirmed  = ml_result.get("confirmed",  [])
+    ml_result = eligible_ml_result(state, purpose="RAG routing")
+    confirmed = ml_result.get("confirmed", [])
     suspicious = ml_result.get("suspicious", [])
     flagged = confirmed or suspicious or ml_result.get("vulnerabilities", [])
 
@@ -104,10 +103,7 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
             f"price feed vulnerability: {call_str}"
         )
     else:
-        query = (
-            f"smart contract {rag_keywords} "
-            f"vulnerability exploit attack pattern"
-        )
+        query = f"smart contract {rag_keywords} " f"vulnerability exploit attack pattern"
     logger.info("rag_research | query='{}…'", query[:80])
 
     try:
@@ -136,7 +132,11 @@ async def rag_research(state: AuditState) -> dict[str, Any]:
                 arguments={"query": fallback_query, "k": _RAG_K},
             )
             if "error" not in fallback_result:
-                chunks = fallback_result if isinstance(fallback_result, list) else fallback_result.get("results", [])
+                chunks = (
+                    fallback_result
+                    if isinstance(fallback_result, list)
+                    else fallback_result.get("results", [])
+                )
                 logger.info("rag_research fallback | {} chunks retrieved", len(chunks))
 
         return {"rag_results": chunks}

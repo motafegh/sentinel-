@@ -28,15 +28,13 @@ CHANGES (2026-04-11):
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loguru import logger
 
-# Load .env from agents/ directory so LM_STUDIO_BASE_URL is available
-# whether this module is imported by a larger process OR run directly as a script.
-# load_dotenv() is a no-op if variables are already set in the environment,
-# so it is safe to call early at module level.
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+# R0.0: production env must not load .env — real env vars only
+if os.environ.get("SENTINEL_ENV", "").lower() != "production":
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 # FIX-15: Read from environment — no more hardcoded IPs that break on reboot.
 # To find your current WSL2 gateway IP:

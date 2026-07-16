@@ -6,8 +6,8 @@ findings back into the RAG knowledge base.
 
 RECALL — Why this closes the full SENTINEL loop:
   Module 1: ML model detects vulnerabilities
-  Module 2: ZK proof verifies the detection honestly
-  Module 5: AuditRegistry stores the result on-chain
+  Module 2: legacy V2 proof artifacts remain explicitly identity-unbound
+  Module 5: AuditRegistry events provide on-chain observations, not automatic finality
   Module 4: This module feeds those results back as RAG knowledge
 
 CHANGES (2026-04-11):
@@ -59,7 +59,10 @@ import numpy as np
 from loguru import logger
 from rank_bm25 import BM25Okapi
 
-from dotenv import load_dotenv
+# R0.0: production env must not load .env — real env vars only
+if os.environ.get("SENTINEL_ENV", "").lower() != "production":
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
 
 # FIX-6: Import canonical path constants from pipeline.py.
 from .pipeline import (
@@ -72,8 +75,6 @@ from .pipeline import (
     REPORTS_DIR,
     _atomic_write_binary,
 )
-
-load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -121,38 +122,56 @@ AUDIT_REGISTRY_ABI = [
 ]
 
 
-def _read_vuln_type_from_report(contract_address: str) -> str:
+def _read_report_context(contract_address: str) -> dict:
     """
-    BRIDGE (Issue #1): read vulnerability_class from the shared report store.
+    R0.2: read vulnerability_class from the shared report store via the
+    legacy read-only adapter. New reports are job-scoped, but the feedback
+    loop runs as a separate process that only knows the on-chain address,
+    so it uses the legacy adapter to find old address-keyed reports.
 
-    The orchestrator (synthesizer in nodes.py) writes the final_report to
-    data/reports/{contract_address}.json before returning. This function
-    reads that file to recover the Track 3 vulnerability class name.
+    Returns vulnerability and canonical submission context. New job-scoped
+    reports are not address-discoverable through this compatibility adapter,
+    so missing context fails closed to an ineligible submission.
 
-    Returns the top_vulnerability string if found, else "unknown".
-    "unknown" is the correct fallback for:
+    "unknown" / ineligible is the correct fallback for:
       - Legacy events ingested before the bridge was deployed
       - Safe contracts where top_vulnerability is None / label == "safe"
       - Any I/O failure reading the report file
+      - Malformed address (validation rejects before filesystem access)
     """
-    report_path = REPORTS_DIR / f"{contract_address}.json"
     try:
-        if report_path.exists():
-            report = json.loads(report_path.read_text())
+        from src.persistence.legacy_adapter import find_legacy_report
+
+        report = find_legacy_report(REPORTS_DIR, contract_address)
+        if report is not None:
+            from src.contracts.submission import normalize_submission
+
             vuln_type = report.get("top_vulnerability") or "unknown"
             logger.debug(
                 "bridge | recovered vuln_type='{}' for {}",
                 vuln_type,
                 contract_address[:10],
             )
-            return vuln_type
+            return {
+                "vuln_type": vuln_type,
+                "submission": normalize_submission(report.get("submission")),
+            }
+    except ValueError:
+        logger.debug("bridge | invalid address {}, skipping", contract_address[:10])
     except Exception as exc:
         logger.warning(
             "bridge | could not read report for {} (non-fatal): {}",
             contract_address[:10],
             exc,
         )
-    return "unknown"
+    from src.contracts.submission import normalize_submission
+
+    return {"vuln_type": "unknown", "submission": normalize_submission()}
+
+
+def _read_vuln_type_from_report(contract_address: str) -> str:
+    """Compatibility wrapper for callers that only need the class label."""
+    return str(_read_report_context(contract_address)["vuln_type"])
 
 
 class OnChainListener:
@@ -304,24 +323,31 @@ class FeedbackIngester:
             return False
 
         # BRIDGE (Issue #1): recover the Track 3 vulnerability class from the
-        # shared report file written by the orchestrator's synthesizer node.
-        # Fallback to "unknown" for legacy events or safe contracts.
-        vuln_type = _read_vuln_type_from_report(contract_address)
+        # legacy address-keyed report when one exists. Job-scoped or missing
+        # reports fail closed to unknown / no verified finality.
+        report_context = _read_report_context(contract_address)
+        vuln_type = report_context["vuln_type"]
+        submission = report_context["submission"]
+        verified_finality = bool(
+            submission["verified_audit_eligible"]
+            and submission["status"] == "confirmed"
+        )
 
         content = f"""SENTINEL Audit Finding
 Contract: {contract_address}
 Risk Score: {human_score} ({score} field element)
 Confidence: {"HIGH" if human_score > 0.85 else "MEDIUM"}
-Verified on-chain: YES (ZK proof verified by Halo2Verifier)
+Verified identity-bound finality: {"YES" if verified_finality else "NO"}
+Proof scope: {submission['proof_scope']}
+Submission policy: {submission['policy_decision']}
 Transaction: {tx_hash}
 Block: {event['block_number']}
 Agent: {event['agent']}
 
 This contract was audited by SENTINEL's ML model and found to have
-a risk score of {human_score:.1%}. The finding was verified on-chain
-via a zero-knowledge proof — the model computation is cryptographically
-guaranteed to be honest. This pattern should be considered when auditing
-similar contracts."""
+a risk score of {human_score:.1%}. The finding originated from an observed
+on-chain event. The associated report {"establishes" if verified_finality else "does not establish"}
+identity-bound verified finality. This pattern should be considered when auditing similar contracts."""
 
         doc = Document(
             content=content,
@@ -337,7 +363,8 @@ similar contracts."""
                 "date":             datetime.now().strftime("%Y-%m-%d"),
                 "source":           "SENTINEL_ONCHAIN",
                 "vuln_type":        vuln_type,   # BRIDGE: real class or "unknown"
-                "verified_onchain": True,
+                "verified_onchain": verified_finality,
+                "submission": submission,
             }
         )
 

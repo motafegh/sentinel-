@@ -1,0 +1,74 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": "9e656ee4eb0a434eb97ba882eca1eee7c09a9c25",
+  "comparison_key": "ac27a85060fcd93485f734c25edcd9e316e965b7bc2c73c82cc8223a8b7ef09a",
+  "environment_manifest": {
+    "comparison_fingerprint": "c21fac2037ea8c47dfd9bfee5f5b96e69054468504fd2d7025b7eea8127eccc1",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "<HOME>/projects/sentinel-r0-1-fail-closed/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/acceptance/2026-07-14_SYSTEM_R0_ENVIRONMENT_r0-1_candidate.json",
+    "sha256": "5b74510a7755b3e8a9afa61afae9e979707d087bdc65b87d9a968d42bd6041b7"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-14T13:38:48.213708+00:00",
+    "started_at": "2026-07-14T13:38:47.717665+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"keys=['detail', 'error', 'execution_status']\", \"name\": \"outage_is_explicit\", \"passed\": true}, {\"detail\": \"label=None; probabilities=0\", \"name\": \"outage_emits_no_prediction_evidence\", \"passed\": true}, {\"detail\": \"model_hash=None\", \"name\": \"model_identity_is_not_mock_disguised_as_live\", \"passed\": true}], \"invariant_passed\": true, \"status\": \"pass\"}\n",
+    "stdout_sha256": "913fbe2ca834d958fadebb526843e704e828575d40b0ced3f00a08d5489538c3"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-EVIDENCE-OUTAGE",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "keys=['detail', 'error', 'execution_status']",
+        "name": "outage_is_explicit",
+        "passed": true
+      },
+      {
+        "detail": "label=None; probabilities=0",
+        "name": "outage_emits_no_prediction_evidence",
+        "passed": true
+      },
+      {
+        "detail": "model_hash=None",
+        "name": "model_identity_is_not_mock_disguised_as_live",
+        "passed": true
+      }
+    ],
+    "invariant_passed": true,
+    "status": "pass"
+  },
+  "phase": "after",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "ml-outage",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-ml-outage",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-0-evidence/scripts/r0_evidence/baseline_probes.py",
+      "ml-outage",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-EVIDENCE-OUTAGE:after:r0-ml-outage:9e656ee4eb0a",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/tests/test_inference_server.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "3d6f96194361b015caf0cf23848caff58e7f82596c4e2ce97e050065d423d05a",
+  "environment_manifest": {
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "<HOME>/projects/sentinel-r0-0-evidence/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/baseline/2026-07-14_SYSTEM_R0_ENVIRONMENT_before.json",
+    "sha256": "cd11639d84080f7035a13dae144fd92da8dea1c49b11ce51eba95cfa0c6382f9"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-14T12:28:25.616089+00:00",
+    "started_at": "2026-07-14T12:28:25.527006+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"fixed_gas=True\", \"name\": \"transaction_gas_is_estimated\", \"passed\": false}, {\"detail\": \"checked=False\", \"name\": \"receipt_status_is_required\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "964ac63a9d9f606607c3aa84e94e2c5c7089e05f485767d29edcb07500aec10c"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-TRANSACTION-TRUTH",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "fixed_gas=True",
+        "name": "transaction_gas_is_estimated",
+        "passed": false
+      },
+      {
+        "detail": "checked=False",
+        "name": "receipt_status_is_required",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "transaction-truth",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-transaction-truth",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-0-evidence/scripts/r0_evidence/baseline_probes.py",
+      "transaction-truth",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-TRANSACTION-TRUTH:before:r0-transaction-truth:1256d9aab45a",
+  "review": {
+    "decided_at": null,
+    "reviewer": null,
+    "status": "pending"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/mcp/servers/audit/_submit.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_ZKML_CONTRACTS_D2_AUDIT_appendix.md"
+  ]
+}

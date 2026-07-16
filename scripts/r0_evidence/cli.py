@@ -1,0 +1,524 @@
+"""Command-line capture, environment manifest, and coverage validation."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import re
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+from scripts.r0_evidence.environment import (
+    create_environment_manifest,
+    probe_environment,
+    validate_environment_manifest,
+    verify_runtime_bindings,
+)
+from scripts.r0_evidence.matrix import MATRIX_ROW_IDS
+from scripts.r0_evidence.model import (
+    canonical_json_bytes,
+    load_evidence_artifacts,
+    redact_text,
+    probe_bundle_digest,
+    sha256_bytes,
+    sha256_file,
+    validate_coverage,
+)
+
+
+def _verify_probe_bundle(bundle_path: Path, expected_sha256: str | None = None) -> str:
+    """Verify the probe bundle manifest and return its aggregate digest.
+
+    Raises ValueError if files are missing or digests don't match.
+    """
+    bundle = bundle_path.resolve()
+    if not bundle.is_dir():
+        raise ValueError(f"probe bundle not found: {bundle}")
+
+    manifest_path = bundle / "manifest.json"
+    if not manifest_path.is_file():
+        raise ValueError(f"probe bundle manifest not found: {manifest_path}")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("kind") != "r0_probe_bundle_manifest":
+        raise ValueError("invalid probe bundle manifest kind")
+    entrypoint = manifest.get("entrypoint")
+    if not isinstance(entrypoint, str) or entrypoint not in manifest.get("files", {}):
+        raise ValueError("probe bundle entrypoint must name a manifested file")
+
+    for rel_path, expected in manifest.get("files", {}).items():
+        real = bundle / rel_path
+        if not real.is_file():
+            raise ValueError(f"probe bundle file missing: {rel_path}")
+        actual = sha256_file(real)
+        if actual != expected:
+            raise ValueError(f"probe bundle file hash mismatch: {rel_path}")
+        # Verify the file is executable by checking it can be read as text
+        try:
+            real.read_text(encoding="utf-8")
+        except Exception as exc:
+            raise ValueError(f"cannot read probe bundle file {rel_path}: {exc}")
+
+    # Aggregate digest = SHA-256 of canonical (compact, sorted) JSON bytes
+    # Same algorithm as the bundle generator: json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+    aggregate = probe_bundle_digest(manifest)
+    digest_path = bundle / "aggregate_digest.txt"
+    if digest_path.is_file():
+        stored = digest_path.read_text().strip()
+        if stored != aggregate:
+            raise ValueError(f"aggregate digest mismatch: stored={stored[:16]} actual={aggregate[:16]}")
+
+    if expected_sha256 and expected_sha256 != aggregate:
+        raise ValueError(f"probe bundle sha256 does not match expected: expected={expected_sha256[:16]} actual={aggregate[:16]}")
+
+    return aggregate
+
+
+def _probe_bundle_commit(bundle_path: Path) -> str:
+    """Return the last Git commit that contains the complete clean bundle."""
+    bundle = bundle_path.resolve()
+    top = Path(
+        subprocess.check_output(
+            ["git", "-C", str(bundle), "rev-parse", "--show-toplevel"], text=True
+        ).strip()
+    ).resolve()
+    paths = [bundle / "manifest.json", bundle / "aggregate_digest.txt"]
+    manifest = json.loads(paths[0].read_text(encoding="utf-8"))
+    paths.extend(bundle / relative for relative in manifest["files"])
+    relatives = [str(path.resolve().relative_to(top)) for path in paths]
+    dirty = subprocess.check_output(
+        ["git", "-C", str(top), "status", "--porcelain", "--", *relatives], text=True
+    ).strip()
+    if dirty:
+        raise ValueError("probe bundle contains uncommitted changes")
+    commit = subprocess.check_output(
+        ["git", "-C", str(top), "log", "-1", "--format=%H", "--", *relatives],
+        text=True,
+    ).strip()
+    if not _FULL_GIT_SHA.fullmatch(commit):
+        raise ValueError("probe bundle commit could not be resolved")
+    return commit
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+_PLACEHOLDER_PATTERN = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+_FULL_GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _render_command_part(part: str, substitutions: dict[str, str]) -> str:
+    """Replace only declared command placeholders, preserving code/JSON braces."""
+
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1)
+        if name not in substitutions:
+            raise ValueError(f"Unknown command placeholder {{{name}}}")
+        return substitutions[name]
+
+    return _PLACEHOLDER_PATTERN.sub(replace, part)
+
+
+def validate_command_manifest(manifest: Any) -> list[str]:
+    """Return every command-manifest error without executing a probe."""
+
+    if not isinstance(manifest, dict):
+        return ["command manifest must be an object"]
+
+    errors: list[str] = []
+    if manifest.get("schema_version") != "1" or manifest.get("kind") != "r0_command_manifest":
+        errors.append("unsupported command manifest schema/kind")
+    if not _FULL_GIT_SHA.fullmatch(str(manifest.get("baseline_commit", ""))):
+        errors.append("baseline_commit must be a full lowercase Git SHA")
+    comparison_version = str(manifest.get("comparison_contract_version", "1"))
+    if comparison_version not in {"1", "2"}:
+        errors.append("comparison_contract_version must be 1 or 2")
+    runtime_bindings = manifest.get("runtime_bindings", {})
+    if not isinstance(runtime_bindings, dict) or not all(
+        isinstance(placeholder, str)
+        and placeholder
+        and isinstance(runtime_name, str)
+        and runtime_name
+        for placeholder, runtime_name in runtime_bindings.items()
+    ):
+        errors.append("runtime_bindings must map placeholders to runtime names")
+    if comparison_version == "2" and not runtime_bindings:
+        errors.append("comparison contract 2 requires runtime_bindings")
+
+    fixtures = manifest.get("fixture_sha256", {})
+    if not isinstance(fixtures, dict) or not all(
+        isinstance(path, str)
+        and path
+        and not Path(path).is_absolute()
+        and _SHA256.fullmatch(str(digest))
+        for path, digest in fixtures.items()
+    ):
+        errors.append("fixture_sha256 must map relative paths to lowercase SHA-256 values")
+    if fixtures and not manifest.get("fixture_root_variable"):
+        errors.append("fixture_root_variable is required when fixtures are declared")
+
+    probes = manifest.get("probes")
+    if not isinstance(probes, list) or not probes:
+        errors.append("probes must be a non-empty list")
+        return errors
+
+    probe_ids: list[str] = []
+    row_ids: list[str] = []
+    for index, probe in enumerate(probes):
+        prefix = f"probes[{index}]"
+        if not isinstance(probe, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        for field in ("probe_id", "matrix_row_id", "contract_version", "cwd"):
+            if not probe.get(field):
+                errors.append(f"{prefix}.{field} is required")
+        if probe.get("contract_version") != "1":
+            errors.append(f"{prefix}.contract_version must be 1")
+        argv = probe.get("argv")
+        if (
+            not isinstance(argv, list)
+            or not argv
+            or not all(isinstance(item, str) and item for item in argv)
+        ):
+            errors.append(f"{prefix}.argv must be a non-empty string list")
+        references = probe.get("test_references")
+        if (
+            not isinstance(references, list)
+            or not references
+            or not all(isinstance(item, str) and item for item in references)
+        ):
+            errors.append(f"{prefix}.test_references must be a non-empty string list")
+        if probe.get("probe_id"):
+            probe_ids.append(str(probe["probe_id"]))
+        if probe.get("matrix_row_id"):
+            row_ids.append(str(probe["matrix_row_id"]))
+
+    if len(probe_ids) != len(set(probe_ids)):
+        errors.append("probe_id values must be unique")
+    if len(row_ids) != len(set(row_ids)):
+        errors.append("matrix_row_id values must be unique")
+    if set(row_ids) != MATRIX_ROW_IDS:
+        missing = sorted(MATRIX_ROW_IDS - set(row_ids))
+        unknown = sorted(set(row_ids) - MATRIX_ROW_IDS)
+        if missing:
+            errors.append(f"missing matrix rows: {', '.join(missing)}")
+        if unknown:
+            errors.append(f"unknown matrix rows: {', '.join(unknown)}")
+    return errors
+
+
+def _verify_command_fixtures(manifest: dict[str, Any], variables: dict[str, str]) -> None:
+    fixtures = manifest.get("fixture_sha256", {})
+    if not fixtures:
+        return
+    root_variable = str(manifest["fixture_root_variable"])
+    if root_variable not in variables:
+        raise ValueError(f"Missing fixture root variable: {root_variable}")
+    root = Path(variables[root_variable]).resolve()
+    for relative, expected in fixtures.items():
+        path = (root / relative).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            raise ValueError(f"Command fixture is missing or outside its root: {relative}")
+        actual = sha256_file(path)
+        if actual != expected:
+            raise ValueError(
+                f"Command fixture digest mismatch for {relative}: expected {expected}, got {actual}"
+            )
+
+
+def capture_probe(
+    *,
+    command_manifest_path: Path,
+    probe_id: str,
+    phase: str,
+    workspace: Path,
+    environment_manifest_path: Path,
+    output: Path,
+    variables: dict[str, str],
+    probe_bundle_path: Path,
+    expected_probe_bundle_sha256: str,
+    expected_probe_bundle_commit: str,
+) -> dict[str, Any]:
+    manifest = json.loads(command_manifest_path.read_text(encoding="utf-8"))
+    manifest_errors = validate_command_manifest(manifest)
+    if manifest_errors:
+        raise ValueError("Invalid command manifest: " + "; ".join(manifest_errors))
+    probes = [probe for probe in manifest["probes"] if probe["probe_id"] == probe_id]
+    if len(probes) != 1:
+        raise ValueError(f"Expected one probe named {probe_id!r}, found {len(probes)}")
+    probe = probes[0]
+
+    workspace = workspace.resolve()
+    environment = json.loads(environment_manifest_path.read_text(encoding="utf-8"))
+    environment_errors = validate_environment_manifest(environment)
+    if environment_errors:
+        raise ValueError("Invalid environment manifest: " + "; ".join(environment_errors))
+    if environment.get("workspace_dirty") is not False:
+        raise ValueError("Evidence capture requires a clean workspace manifest")
+    expected_commit = (
+        manifest["baseline_commit"] if phase == "before" else environment.get("workspace_commit")
+    )
+    if environment.get("workspace_commit") != expected_commit:
+        raise ValueError(f"Environment workspace commit does not match the {phase} evidence commit")
+    current_commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=workspace, text=True
+    ).strip()
+    current_dirty = bool(
+        subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=workspace, text=True
+        ).splitlines()
+    )
+    if current_commit != environment.get("workspace_commit") or current_dirty:
+        raise ValueError("Workspace changed after the environment manifest was created")
+
+    verify_runtime_bindings(manifest, environment, variables)
+
+    probe_bundle_path = probe_bundle_path.resolve()
+    probe_bundle_digest = _verify_probe_bundle(
+        probe_bundle_path, expected_sha256=expected_probe_bundle_sha256
+    )
+    probe_bundle_commit = _probe_bundle_commit(probe_bundle_path)
+    if probe_bundle_commit != expected_probe_bundle_commit:
+        raise ValueError(
+            "probe bundle commit does not match expected: "
+            f"expected={expected_probe_bundle_commit[:12]} actual={probe_bundle_commit[:12]}"
+        )
+    logger.info(
+        "Probe bundle verified: digest={} commit={}",
+        probe_bundle_digest[:16],
+        probe_bundle_commit[:12],
+    )
+
+    fixture_variables = {**variables, "probe_bundle": str(probe_bundle_path)}
+    _verify_command_fixtures(manifest, fixture_variables)
+    substitutions = {
+        "workspace": str(workspace),
+        "probe_bundle": str(probe_bundle_path),
+        "python": sys.executable,
+        **variables,
+    }
+    argv = [_render_command_part(part, substitutions) for part in probe["argv"]]
+    bundle_manifest = json.loads((probe_bundle_path / "manifest.json").read_text())
+    expected_entrypoint = (probe_bundle_path / bundle_manifest["entrypoint"]).resolve()
+    if len(argv) < 2 or Path(argv[1]).resolve() != expected_entrypoint:
+        raise ValueError("probe command must execute the verified bundle entrypoint")
+    cwd = (workspace / probe.get("cwd", ".")).resolve()
+    if not cwd.is_relative_to(workspace) or not cwd.is_dir():
+        raise ValueError("Probe cwd must be an existing directory inside the workspace")
+
+    started_at = _utc_now()
+    with tempfile.TemporaryDirectory(prefix="sentinel-r0-probe-home-") as home:
+        completed = subprocess.run(
+            argv,
+            cwd=cwd,
+            env=probe_environment(Path(home)),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    finished_at = _utc_now()
+    post_digest = _verify_probe_bundle(
+        probe_bundle_path, expected_sha256=expected_probe_bundle_sha256
+    )
+    post_commit = _probe_bundle_commit(probe_bundle_path)
+    if post_digest != probe_bundle_digest or post_commit != probe_bundle_commit:
+        raise ValueError("probe bundle changed during execution")
+    stdout = redact_text(completed.stdout, workspace=workspace)
+    stderr = redact_text(completed.stderr, workspace=workspace)
+
+    payload: dict[str, Any]
+    try:
+        last_line = next(line for line in reversed(stdout.splitlines()) if line.strip())
+        parsed = json.loads(last_line)
+        if not isinstance(parsed, dict):
+            raise ValueError("probe result must be an object")
+        payload = parsed
+    except (StopIteration, json.JSONDecodeError, ValueError) as exc:
+        payload = {
+            "invariant_passed": False,
+            "status": "blocked",
+            "assertions": [
+                {
+                    "name": "probe_result_contract",
+                    "passed": False,
+                    "detail": f"Probe did not emit a final JSON object: {exc}",
+                }
+            ],
+        }
+
+    if completed.returncode != 0:
+        payload["invariant_passed"] = False
+        payload["status"] = "blocked"
+        payload.setdefault("assertions", []).append(
+            {
+                "name": "probe_exit_code",
+                "passed": False,
+                "detail": f"exit_code={completed.returncode}",
+            }
+        )
+
+    comparison_material = {
+        "comparison_contract_version": str(manifest.get("comparison_contract_version", "1")),
+        "probe_id": probe["probe_id"],
+        "contract_version": probe["contract_version"],
+        "argv_template": probe["argv"],
+        "cwd": probe.get("cwd", "."),
+        "test_references": probe["test_references"],
+        "fixtures": {
+            **manifest.get("fixture_sha256", {}),
+            **probe.get("fixture_sha256", {}),
+        },
+        "environment_fingerprint": environment["comparison_fingerprint"],
+        "probe_bundle_sha256": probe_bundle_digest,
+        "probe_bundle_commit": probe_bundle_commit,
+    }
+    comparison_key = sha256_bytes(canonical_json_bytes(comparison_material))
+    candidate_commit = current_commit if phase == "after" else None
+
+    evidence_commit = candidate_commit or manifest["baseline_commit"]
+    record = {
+        "schema_version": "2",
+        "kind": "r0_evidence_record",
+        "record_id": (f"{probe['matrix_row_id']}:{phase}:{probe_id}:{evidence_commit[:12]}"),
+        "matrix_row_id": probe["matrix_row_id"],
+        "phase": phase,
+        "baseline_commit": manifest["baseline_commit"],
+        "candidate_commit": candidate_commit,
+        "comparison_key": comparison_key,
+        "probe_bundle_sha256": probe_bundle_digest,
+        "probe_bundle_commit": probe_bundle_commit,
+        "probe": {
+            "probe_id": probe["probe_id"],
+            "contract_version": probe["contract_version"],
+            "argv_template": probe["argv"],
+            "resolved_argv": [redact_text(item, workspace=workspace) for item in argv],
+            "cwd": probe.get("cwd", "."),
+        },
+        "environment_manifest": {
+            "path": redact_text(str(environment_manifest_path.resolve()), workspace=workspace),
+            "sha256": sha256_file(environment_manifest_path),
+            "environment_contract": environment["environment_contract"],
+            "comparison_fingerprint": environment["comparison_fingerprint"],
+        },
+        "execution": {
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "exit_code": completed.returncode,
+            "stdout_sha256": sha256_bytes(completed.stdout.encode("utf-8")),
+            "stderr_sha256": sha256_bytes(completed.stderr.encode("utf-8")),
+            "stdout": stdout,
+            "stderr": stderr,
+        },
+        "outcome": {
+            "status": payload.get("status", "pass" if payload.get("invariant_passed") else "fail"),
+            "invariant_passed": bool(payload.get("invariant_passed", False)),
+            "assertions": payload.get("assertions", []),
+        },
+        "test_references": probe["test_references"],
+        "review": {"status": "pending", "reviewer": None, "decided_at": None},
+    }
+    _write_json(output, record)
+    return record
+
+
+def _parse_variables(values: list[str]) -> dict[str, str]:
+    variables: dict[str, str] = {}
+    for item in values:
+        if "=" not in item:
+            raise ValueError(f"--var must be NAME=VALUE, got {item!r}")
+        name, value = item.split("=", 1)
+        if not name:
+            raise ValueError("--var name cannot be empty")
+        variables[name] = value
+    return variables
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="python -m scripts.r0_evidence")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    environment_parser = subparsers.add_parser("environment")
+    environment_parser.add_argument("--workspace", type=Path, required=True)
+    environment_parser.add_argument("--output", type=Path, required=True)
+    environment_parser.add_argument("--runtime", action="append", default=[])
+
+    capture_parser = subparsers.add_parser("capture")
+    capture_parser.add_argument("--command-manifest", type=Path, required=True)
+    capture_parser.add_argument("--probe-id", required=True)
+    capture_parser.add_argument("--phase", choices=("before", "after"), required=True)
+    capture_parser.add_argument("--workspace", type=Path, required=True)
+    capture_parser.add_argument("--environment-manifest", type=Path, required=True)
+    capture_parser.add_argument("--output", type=Path, required=True)
+    capture_parser.add_argument("--var", action="append", default=[])
+    capture_parser.add_argument("--probe-bundle", type=Path, required=True)
+    capture_parser.add_argument("--expected-probe-bundle-sha256", required=True)
+    capture_parser.add_argument("--expected-probe-bundle-commit", required=True)
+
+    validate_parser = subparsers.add_parser("validate")
+    validate_parser.add_argument("--evidence-dir", type=Path, required=True)
+    validate_parser.add_argument("--output", type=Path)
+    validate_parser.add_argument("--expected-baseline")
+    validate_parser.add_argument("--expected-candidate")
+    validate_parser.add_argument("--expected-probe-bundle-commit")
+    validate_parser.add_argument("--expected-probe-bundle-sha256")
+
+    args = parser.parse_args(argv)
+    if args.command == "environment":
+        payload = create_environment_manifest(
+            args.workspace,
+            runtimes=_parse_variables(args.runtime),
+        )
+        _write_json(args.output, payload)
+        print(json.dumps(payload, sort_keys=True))
+        return 0
+    if args.command == "capture":
+        record = capture_probe(
+            command_manifest_path=args.command_manifest,
+            probe_id=args.probe_id,
+            phase=args.phase,
+            workspace=args.workspace,
+            environment_manifest_path=args.environment_manifest,
+            output=args.output,
+            variables=_parse_variables(args.var),
+            probe_bundle_path=args.probe_bundle,
+            expected_probe_bundle_sha256=args.expected_probe_bundle_sha256,
+            expected_probe_bundle_commit=args.expected_probe_bundle_commit,
+        )
+        print(json.dumps(record["outcome"], sort_keys=True))
+        return 0
+
+    records, invalid_artifacts = load_evidence_artifacts(args.evidence_dir)
+    report = validate_coverage(
+        records,
+        invalid_artifacts=invalid_artifacts,
+        expected_baseline=args.expected_baseline,
+        expected_candidate=args.expected_candidate,
+        expected_probe_bundle_commit=args.expected_probe_bundle_commit,
+        expected_probe_bundle_sha256=args.expected_probe_bundle_sha256,
+    )
+    if args.output:
+        _write_json(args.output, report)
+    print(json.dumps(report, sort_keys=True))
+    return 0 if report["complete"] else 1
+
+
+__all__ = [
+    "capture_probe",
+    "create_environment_manifest",
+    "main",
+    "validate_command_manifest",
+]

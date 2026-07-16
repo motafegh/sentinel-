@@ -27,8 +27,12 @@ from typing import Any
 # parents[0]=audit  [1]=servers  [2]=mcp  [3]=src  [4]=agents
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
-from dotenv import load_dotenv
-load_dotenv(override=True)
+# R0.0: production env must not load .env — real env vars only
+if os.environ.get("SENTINEL_ENV", "").lower() != "production":
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+
+from src.contracts.execution import ExecutionState, failure_status
 
 # ---------------------------------------------------------------------------
 # Configuration — all values overridable via agents/.env
@@ -51,13 +55,8 @@ _REGISTRY_ADDRESS: str = os.getenv(
 # Agents can override per call via the `limit` argument.
 _DEFAULT_HISTORY_LIMIT: int = int(os.getenv("AUDIT_HISTORY_DEFAULT_LIMIT", "10"))
 
-# Mock mode — return realistic fake on-chain data when RPC is not configured.
-# Set AUDIT_MOCK=true in agents/.env during development / CI.
-# Must be false in M6 production.
-_MOCK_MODE: bool = (
-    os.getenv("AUDIT_MOCK", "false").lower() == "true"
-    or not _RPC_URL  # auto-mock if no RPC configured at all
-)
+# Mock mode is explicit. Missing RPC remains unavailable and can never become mock evidence.
+_MOCK_MODE: bool = os.getenv("AUDIT_MOCK", "false").lower() == "true"
 
 # ---------------------------------------------------------------------------
 # ABI — path resolution only at module level; actual load deferred to startup
@@ -85,13 +84,20 @@ EZKL_SCALE_FACTOR = 8192  # 2^13 — must match calibration from setup_circuit.p
 _ABI: list | None = None
 _w3: Any | None = None
 _registry: Any | None = None
+_execution_status: dict[str, Any] = failure_status(
+    ExecutionState.UNAVAILABLE,
+    dependency="audit-registry",
+    reason_code="not_started",
+    detail="audit MCP server has not started",
+    attempted=False,
+)
 
 # ---------------------------------------------------------------------------
 # V2 / submission configuration (P11, 2026-07)
 # ---------------------------------------------------------------------------
-# Operator private key — hex-encoded (no 0x prefix). Used to sign on-chain
-# submitAuditV2 transactions. Must have Sepolia ETH for gas + >= MIN_STAKE SNTL.
-_OPERATOR_KEY: str = os.getenv("SENTINEL_OPERATOR_KEY", "")
+# R0-F3: The analysis/MCP process contains no signing key, no key-import
+# path, and no transaction-construction code. The policy-signer service
+# (agents/src/security/policy_signer.py) owns all signing and submission.
 
 # ABI for AuditRegistry V2 (includes submitAuditV2, AuditResultV2 tuple).
 # Same contract address — UUPS, V1 and V2 coexist on the same proxy.
@@ -106,7 +112,7 @@ _PROXY_CHECKPOINT = _PROJECT_ROOT / "zkml/models/proxy_best.pt"
 
 # EZKL paths (for proof generation subprocess).
 _EZKL_RUN_PROOF = _PROJECT_ROOT / "zkml/src/ezkl/run_proof.py"
-_EZKL_CALLDATA  = _PROJECT_ROOT / "zkml/src/ezkl/extract_calldata.py"
+_EZKL_CALLDATA = _PROJECT_ROOT / "zkml/src/ezkl/extract_calldata.py"
 
 # Minimum block confirmations to wait after submission.
 _SUBMIT_CONFIRM_BLOCKS: int = int(os.getenv("SENTINEL_CONFIRM_BLOCKS", "2"))

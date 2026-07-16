@@ -10,13 +10,14 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.orchestration.state import AuditState
-from src.orchestration.routing import CLASS_TO_DETECTORS
 from src.orchestration.nodes._helpers import (
     AderynRunError,
-    _run_aderyn_on_file,
     _extract_external_call_summary,
+    _run_aderyn_on_file,
 )
+from src.orchestration.provenance import eligible_ml_result
+from src.orchestration.routing import CLASS_TO_DETECTORS
+from src.orchestration.state import AuditState
 
 
 async def static_analysis(state: AuditState) -> dict[str, Any]:
@@ -70,7 +71,7 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
 
     # Collect detector names relevant to classes above DEEP_THRESHOLDS.
     # Prefer probabilities dict (all 10 classes) over legacy vulnerabilities list.
-    ml_result     = state.get("ml_result", {})
+    ml_result = eligible_ml_result(state, purpose="static-analysis routing")
     probabilities = ml_result.get("probabilities", {})
     if probabilities:
         flagged_classes = {cls for cls, prob in probabilities.items() if prob >= 0.35}
@@ -122,7 +123,8 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
         # direct comparison: `slither contract.sol` on the CLI found reentrancy-eth
         # on a textbook reentrant Vault; this node (pre-fix) found 0.
         all_detector_classes = [
-            d for d in (getattr(all_detectors, name) for name in dir(all_detectors))
+            d
+            for d in (getattr(all_detectors, name) for name in dir(all_detectors))
             if inspect.isclass(d) and issubclass(d, AbstractDetector)
         ]
         for detector_cls in all_detector_classes:
@@ -134,7 +136,8 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
         # across Slither versions as it's part of the public detector interface.
         if scoped_detectors:
             sl._detectors = [  # type: ignore[attr-defined]
-                d for d in sl._detectors  # type: ignore[attr-defined]
+                d
+                for d in sl._detectors  # type: ignore[attr-defined]
                 if getattr(d, "ARGUMENT", "") in scoped_detectors
             ]
 
@@ -165,15 +168,17 @@ async def static_analysis(state: AuditState) -> dict[str, Any]:
                         fn_names.append(elem.get("name", ""))
 
                 detector_name = finding.get("check", "unknown")
-                findings.append({
-                    "tool":           "slither",
-                    "detector":       detector_name,
-                    "impact":         finding.get("impact", "Unknown"),
-                    "confidence":     finding.get("confidence", "Unknown"),
-                    "description":    finding.get("description", ""),
-                    "lines":          sorted(set(lines)),
-                    "function_names": fn_names,
-                })
+                findings.append(
+                    {
+                        "tool": "slither",
+                        "detector": detector_name,
+                        "impact": finding.get("impact", "Unknown"),
+                        "confidence": finding.get("confidence", "Unknown"),
+                        "description": finding.get("description", ""),
+                        "lines": sorted(set(lines)),
+                        "function_names": fn_names,
+                    }
+                )
 
         slither_status = {"ran": True, "n_findings": len(findings)}
 

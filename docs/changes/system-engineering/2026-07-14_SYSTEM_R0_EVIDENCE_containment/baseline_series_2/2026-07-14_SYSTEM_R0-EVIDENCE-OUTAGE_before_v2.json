@@ -1,0 +1,74 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "ac27a85060fcd93485f734c25edcd9e316e965b7bc2c73c82cc8223a8b7ef09a",
+  "environment_manifest": {
+    "comparison_fingerprint": "c21fac2037ea8c47dfd9bfee5f5b96e69054468504fd2d7025b7eea8127eccc1",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "<HOME>/projects/sentinel-r0-0-evidence/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/baseline_series_2/2026-07-14_SYSTEM_R0_ENVIRONMENT_before_v2.json",
+    "sha256": "336edbc3e48ce896143e23bde0a5cb8adc927b4c4a68afdacb0c9e052a1af4f4"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-14T12:40:29.890513+00:00",
+    "started_at": "2026-07-14T12:40:29.100778+00:00",
+    "stderr": "2026-07-14 16:10:29.797 | WARNING  | src.mcp.servers.inference_server:_call_inference_api:241 - Module 1 unreachable (r0-baseline-connect-failure), falling back to mock\n",
+    "stderr_sha256": "9d0c778ce8fdb9a455e84173484a93723263aab3f16c95ca1b2679cf23ba41b4",
+    "stdout": "{\"assertions\": [{\"detail\": \"keys=['confirmed', 'label', 'model_hash', 'num_edges', 'num_nodes', 'probabilities', 'suspicious', 'thresholds', 'tier_thresholds', 'truncated', 'vulnerabilities', 'windows_used']\", \"name\": \"outage_is_explicit\", \"passed\": false}, {\"detail\": \"label='safe'; probabilities=10\", \"name\": \"outage_emits_no_prediction_evidence\", \"passed\": false}, {\"detail\": \"model_hash='mock_model_hash_0000000000000000000000000000000000000000000000'\", \"name\": \"model_identity_is_not_mock_disguised_as_live\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "35bfb33f94551ee4c3a7c6cae098c00e73a70230898997188bca3bdfd2292f64"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-EVIDENCE-OUTAGE",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "keys=['confirmed', 'label', 'model_hash', 'num_edges', 'num_nodes', 'probabilities', 'suspicious', 'thresholds', 'tier_thresholds', 'truncated', 'vulnerabilities', 'windows_used']",
+        "name": "outage_is_explicit",
+        "passed": false
+      },
+      {
+        "detail": "label='safe'; probabilities=10",
+        "name": "outage_emits_no_prediction_evidence",
+        "passed": false
+      },
+      {
+        "detail": "model_hash='mock_model_hash_0000000000000000000000000000000000000000000000'",
+        "name": "model_identity_is_not_mock_disguised_as_live",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{agents_python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "ml-outage",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-ml-outage",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/agents/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-0-evidence/scripts/r0_evidence/baseline_probes.py",
+      "ml-outage",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-EVIDENCE-OUTAGE:before:r0-ml-outage:1256d9aab45a",
+  "review": {
+    "decided_at": "2026-07-14T12:43:06Z",
+    "reviewer": "Ali Motafegh",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/tests/test_inference_server.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}

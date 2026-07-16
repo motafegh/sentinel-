@@ -24,22 +24,23 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
+from mcp.types import TextContent
 
 # Import the server object and the functions we test directly.
 # We do NOT import run_server — that would start uvicorn.
 from src.mcp.servers.inference_server import (
+    _call_inference_api,
     _handle_batch_predict,
     _handle_predict,
     _mock_prediction,
-    list_tools,
+    _readiness_payload,
     call_tool,
+    list_tools,
 )
-from mcp.types import TextContent
-import httpx
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -56,24 +57,25 @@ REENTRANCY_CONTRACT = (
     "pragma solidity ^0.8.0;\n"
     "contract Vulnerable {\n"
     "    function withdraw() public {\n"
-    "        msg.sender.call.value(balance)(\"\");\n"
+    '        msg.sender.call.value(balance)("");\n'
     "    }\n"
     "}"
 )
 
 MOCK_PREDICTION_RESULT: dict[str, Any] = {
-    "label":           "safe",
+    "label": "safe",
     "vulnerabilities": [],
-    "threshold":       0.50,
-    "truncated":       False,
-    "num_nodes":       42,
-    "num_edges":       58,
+    "threshold": 0.50,
+    "truncated": False,
+    "num_nodes": 42,
+    "num_edges": 58,
 }
 
 
 # ---------------------------------------------------------------------------
 # list_tools — tool registration
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_tools_returns_two_tools():
@@ -111,12 +113,13 @@ async def test_batch_predict_tool_schema_contracts_required():
 # _mock_prediction — mock heuristic
 # ---------------------------------------------------------------------------
 
+
 def test_mock_prediction_safe_contract_returns_safe():
     """Contracts without reentrancy patterns should return label='safe', empty list."""
     result = _mock_prediction(SAMPLE_CONTRACT)
     assert result["label"] == "safe"
     assert result["vulnerabilities"] == []
-    assert "mock" not in result   # A-13: no mock key in production-mirror schema
+    assert result["execution_status"]["status"] == "MOCK"
 
 
 def test_mock_prediction_reentrancy_pattern_high_risk():
@@ -133,19 +136,115 @@ def test_mock_prediction_result_structure():
     """Mock result must contain all three-tier schema keys."""
     result = _mock_prediction(SAMPLE_CONTRACT)
     required_keys = {
-        "label", "probabilities", "confirmed", "suspicious",
-        "vulnerabilities", "tier_thresholds", "thresholds",
-        "truncated", "num_nodes", "num_edges", "windows_used",
+        "label",
+        "probabilities",
+        "confirmed",
+        "suspicious",
+        "vulnerabilities",
+        "tier_thresholds",
+        "thresholds",
+        "truncated",
+        "num_nodes",
+        "num_edges",
+        "windows_used",
     }
-    assert required_keys <= set(result.keys()), (
-        f"Missing keys: {required_keys - set(result.keys())}"
+    assert required_keys <= set(
+        result.keys()
+    ), f"Missing keys: {required_keys - set(result.keys())}"
+    assert result["execution_status"]["status"] == "MOCK"
+
+
+def _response(payload: Any, *, status_code: int = 200) -> MagicMock:
+    response = MagicMock()
+    response.status_code = status_code
+    response.json.return_value = payload
+    response.raise_for_status.return_value = None
+    return response
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure", "reason_code"),
+    [
+        (httpx.ConnectError("refused"), "request_error"),
+        (httpx.ReadTimeout("slow"), "timeout"),
+    ],
+)
+async def test_live_transport_outage_never_becomes_mock_prediction(failure, reason_code):
+    client = MagicMock()
+    client.post = AsyncMock(side_effect=failure)
+    with (
+        patch("src.mcp.servers.inference_server._http_client", client),
+        patch("src.mcp.servers.inference_server._MOCK_MODE", False),
+    ):
+        result = await _call_inference_api(SAMPLE_CONTRACT)
+
+    assert result["error"] == "inference_unavailable"
+    assert result["execution_status"]["status"] == "UNAVAILABLE"
+    assert result["execution_status"]["reason_code"] == reason_code
+    assert "probabilities" not in result
+    assert "model_hash" not in result
+
+
+@pytest.mark.asyncio
+async def test_http_failure_is_explicit_and_has_no_prediction():
+    request = httpx.Request("POST", "http://module1/predict")
+    response = httpx.Response(503, request=request)
+    client = MagicMock()
+    client.post = AsyncMock(
+        side_effect=httpx.HTTPStatusError("down", request=request, response=response)
     )
-    assert "mock" not in result   # A-13: must NOT have mock key
+    with (
+        patch("src.mcp.servers.inference_server._http_client", client),
+        patch("src.mcp.servers.inference_server._MOCK_MODE", False),
+    ):
+        result = await _call_inference_api(SAMPLE_CONTRACT)
+
+    assert result["execution_status"]["status"] == "FAILED"
+    assert result["execution_status"]["reason_code"] == "http_status"
+    assert "probabilities" not in result
+
+
+@pytest.mark.asyncio
+async def test_malformed_body_is_failed_not_successful_evidence():
+    client = MagicMock()
+    client.post = AsyncMock(return_value=_response({"label": "safe"}))
+    with (
+        patch("src.mcp.servers.inference_server._http_client", client),
+        patch("src.mcp.servers.inference_server._MOCK_MODE", False),
+    ):
+        result = await _call_inference_api(SAMPLE_CONTRACT)
+
+    assert result["execution_status"]["reason_code"] == "malformed_response"
+    assert "probabilities" not in result
+
+
+@pytest.mark.asyncio
+async def test_success_after_outage_recovers_readiness():
+    live_prediction = {
+        "label": "safe",
+        "probabilities": {"Reentrancy": 0.01},
+        "vulnerabilities": [],
+        "model_hash": "a" * 64,
+    }
+    client = MagicMock()
+    client.post = AsyncMock(return_value=_response(live_prediction))
+    with (
+        patch("src.mcp.servers.inference_server._http_client", client),
+        patch("src.mcp.servers.inference_server._MOCK_MODE", False),
+    ):
+        result = await _call_inference_api(SAMPLE_CONTRACT)
+        readiness = _readiness_payload()
+
+    assert result["execution_status"]["status"] == "SUCCEEDED"
+    assert readiness["status"] == "live"
+    assert readiness["ready"] is True
 
 
 # ---------------------------------------------------------------------------
 # _handle_predict — single contract tool handler
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_handle_predict_returns_text_content():
@@ -181,10 +280,12 @@ async def test_handle_predict_passes_contract_address():
     """contract_address arg must be forwarded to _call_inference_api."""
     mock_api = AsyncMock(return_value=MOCK_PREDICTION_RESULT)
     with patch("src.mcp.servers.inference_server._call_inference_api", new=mock_api):
-        await _handle_predict({
-            "contract_code": SAMPLE_CONTRACT,
-            "contract_address": "0xabc123",
-        })
+        await _handle_predict(
+            {
+                "contract_code": SAMPLE_CONTRACT,
+                "contract_address": "0xabc123",
+            }
+        )
 
     mock_api.assert_called_once_with(SAMPLE_CONTRACT, "0xabc123")
 
@@ -198,9 +299,9 @@ async def test_handle_predict_http_error_returns_error_content():
 
     with patch(
         "src.mcp.servers.inference_server._call_inference_api",
-        new=AsyncMock(side_effect=httpx.HTTPStatusError(
-            "422", request=AsyncMock(), response=mock_response
-        )),
+        new=AsyncMock(
+            side_effect=httpx.HTTPStatusError("422", request=AsyncMock(), response=mock_response)
+        ),
     ):
         result = await _handle_predict({"contract_code": SAMPLE_CONTRACT})
 
@@ -212,6 +313,7 @@ async def test_handle_predict_http_error_returns_error_content():
 # ---------------------------------------------------------------------------
 # _handle_batch_predict — batch handler
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_batch_predict_processes_all_contracts():
@@ -254,10 +356,12 @@ async def test_batch_predict_partial_failure_continues():
     mock_response.status_code = 500
 
     # First call succeeds, second raises HTTPStatusError
-    mock_api = AsyncMock(side_effect=[
-        MOCK_PREDICTION_RESULT,
-        httpx.HTTPStatusError("500", request=AsyncMock(), response=mock_response),
-    ])
+    mock_api = AsyncMock(
+        side_effect=[
+            MOCK_PREDICTION_RESULT,
+            httpx.HTTPStatusError("500", request=AsyncMock(), response=mock_response),
+        ]
+    )
 
     contracts = [
         {"contract_code": SAMPLE_CONTRACT},
@@ -291,6 +395,7 @@ async def test_batch_predict_enforces_size_cap():
 # ---------------------------------------------------------------------------
 # call_tool dispatcher
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_call_tool_routes_predict():

@@ -1,0 +1,64 @@
+{
+  "baseline_commit": "1256d9aab45add9cf2d23fe33aaa944303259012",
+  "candidate_commit": null,
+  "comparison_key": "baa2ce7f5759efff96962e9eade042bb7b32e4996a562dfa0e127e3806d91074",
+  "environment_manifest": {
+    "comparison_fingerprint": "c21fac2037ea8c47dfd9bfee5f5b96e69054468504fd2d7025b7eea8127eccc1",
+    "environment_contract": "linux-x86_64-python-3.12",
+    "path": "<HOME>/projects/sentinel-r0-0-evidence/docs/changes/system-engineering/2026-07-14_SYSTEM_R0_EVIDENCE_containment/baseline_series_2/2026-07-14_SYSTEM_R0_ENVIRONMENT_before_v2.json",
+    "sha256": "336edbc3e48ce896143e23bde0a5cb8adc927b4c4a68afdacb0c9e052a1af4f4"
+  },
+  "execution": {
+    "exit_code": 0,
+    "finished_at": "2026-07-14T12:40:29.221744+00:00",
+    "started_at": "2026-07-14T12:40:29.104410+00:00",
+    "stderr": "",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "{\"assertions\": [{\"detail\": \"unsafe_expression=True\", \"name\": \"logical_address_not_used_as_filename\", \"passed\": false}], \"invariant_passed\": false, \"status\": \"fail\"}\n",
+    "stdout_sha256": "9fdf6c0eab7e1cb4f182ba66e34887adae162f163709c63c849a01c140b6d608"
+  },
+  "kind": "r0_evidence_record",
+  "matrix_row_id": "R0-REPORT-CONTAINMENT",
+  "outcome": {
+    "assertions": [
+      {
+        "detail": "unsafe_expression=True",
+        "name": "logical_address_not_used_as_filename",
+        "passed": false
+      }
+    ],
+    "invariant_passed": false,
+    "status": "fail"
+  },
+  "phase": "before",
+  "probe": {
+    "argv_template": [
+      "{python}",
+      "{harness_workspace}/scripts/r0_evidence/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "{workspace}"
+    ],
+    "contract_version": "1",
+    "cwd": ".",
+    "probe_id": "r0-report-path",
+    "resolved_argv": [
+      "<HOME>/projects/sentinel/.venv/bin/python",
+      "<HOME>/projects/sentinel-r0-0-evidence/scripts/r0_evidence/baseline_probes.py",
+      "report-path",
+      "--workspace",
+      "<WORKSPACE>"
+    ]
+  },
+  "record_id": "R0-REPORT-CONTAINMENT:before:r0-report-path:1256d9aab45a",
+  "review": {
+    "decided_at": "2026-07-14T12:43:06Z",
+    "reviewer": "Ali Motafegh",
+    "status": "accepted"
+  },
+  "schema_version": "1",
+  "test_references": [
+    "agents/src/orchestration/nodes/synthesizer.py",
+    "docs/audit/system-engineering/2026-07-14_SYSTEM_D2_source_engineering_audit/appendices/2026-07-14_AGENTS_D2_AUDIT_appendix.md"
+  ]
+}
