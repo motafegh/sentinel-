@@ -1,4 +1,4 @@
-# R0 final candidate — independent review handoff
+# R0 final closure record
 
 - Executable candidate: `5e45fbed7e7a04edb568dbe1c5250aed90200f49`
 - Approved D2 baseline: `1256d9aab45add9cf2d23fe33aaa944303259012`
@@ -12,8 +12,9 @@ The same committed probe bundle produced `invariant_passed=false` for all eight 
 baseline and `invariant_passed=true` for all eight rows on the executable candidate. All 16 records
 are schema-valid and have exact matching comparison keys per row.
 
-The closure validator remains `complete=false` by design. Its only issues are pending independent
-review decisions on the before and after records. No record was self-accepted.
+On 2026-07-16, Ali approved finalization without another review cycle. That owner decision is
+recorded on all before and after records. The closure validator reports `complete=true`: 8/8 rows
+closed, zero malformed records, zero invalid artifacts, and zero unknown matrix rows.
 
 ## Regression evidence
 
@@ -45,4 +46,9 @@ python -m scripts.r0_evidence validate \
   --expected-probe-bundle-sha256 f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c
 ```
 
-The expected exit code is nonzero until an independent reviewer records accepted decisions.
+The expected exit code is zero and the report must contain `"complete": true`.
+
+## Integration state
+
+R0 is formally closed on `codex/r0-containment`. It has not been merged into `main` because the main
+worktree contains unrelated uncommitted user changes; finalization did not overwrite or absorb them.

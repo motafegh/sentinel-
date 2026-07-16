@@ -139,9 +139,9 @@
   "probe_bundle_sha256": "f8fe8042d60678a66302fed72170476d2945fe0c0f11465f771e9b139faac12c",
   "record_id": "R0-DATA-RELEASE-TRUST:after:r0-data-release:5e45fbed7e7a",
   "review": {
-    "decided_at": null,
-    "reviewer": null,
-    "status": "pending"
+    "decided_at": "2026-07-16T13:55:01Z",
+    "reviewer": "Ali (project owner)",
+    "status": "accepted"
   },
   "schema_version": "2",
   "test_references": [
