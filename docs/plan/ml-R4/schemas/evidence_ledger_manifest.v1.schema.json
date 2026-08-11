@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/r4/evidence_ledger_manifest.v1.schema.json",
+  "title": "SENTINEL R4 Evidence Ledger Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ledger_version",
+    "schema_version",
+    "source_export_artifact_id",
+    "source_export_sha256",
+    "expected_contracts",
+    "expected_classes",
+    "expected_rows",
+    "actual_contracts",
+    "actual_rows",
+    "ledger_parquet",
+    "evidence_jsonl",
+    "validation_report",
+    "class_names",
+    "generation_commit",
+    "status",
+    "limitations"
+  ],
+  "properties": {
+    "ledger_version": {"const": "r4-ledger-v1"},
+    "schema_version": {"const": "1"},
+    "created_at": {"type": ["string", "null"]},
+    "source_export_artifact_id": {"type": "string", "minLength": 1},
+    "source_export_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "expected_contracts": {"type": "integer", "minimum": 1},
+    "expected_classes": {"const": 10},
+    "expected_rows": {"type": "integer", "minimum": 10},
+    "actual_contracts": {"type": "integer", "minimum": 0},
+    "actual_rows": {"type": "integer", "minimum": 0},
+    "ledger_parquet": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "evidence_jsonl": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "validation_report": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "class_names": {
+      "type": "array",
+      "prefixItems": [
+        {"const": "CallToUnknown"},
+        {"const": "DenialOfService"},
+        {"const": "ExternalBug"},
+        {"const": "GasException"},
+        {"const": "IntegerUO"},
+        {"const": "MishandledException"},
+        {"const": "Reentrancy"},
+        {"const": "Timestamp"},
+        {"const": "TransactionOrderDependence"},
+        {"const": "UnusedReturn"}
+      ],
+      "minItems": 10,
+      "maxItems": 10
+    },
+    "source_counts": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "outcome_state_counts": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "historical_state_counts": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "role_counts": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "generation_commit": {"type": "string", "minLength": 7},
+    "status": {
+      "enum": ["DRAFT", "MATERIALIZED", "VALIDATED", "FAILED"]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "$defs": {
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-fA-F]{64}$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"enum": ["MATERIALIZED", "VALIDATED"]}}},
+      "then": {
+        "properties": {
+          "actual_contracts": {"minimum": 1},
+          "actual_rows": {"minimum": 10}
+        }
+      }
+    }
+  ]
+}
