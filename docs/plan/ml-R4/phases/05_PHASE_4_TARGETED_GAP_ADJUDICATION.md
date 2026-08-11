@@ -1,6 +1,6 @@
 # Phase 4 — Targeted Evidence-Gap Adjudication
 
-**Status:** WAITING FOR G3  
+**Status:** IN_PROGRESS — AUTHORIZATION TRIAGE  
 **Gate:** G4
 
 ## Objective
@@ -12,6 +12,8 @@ Fill only the evidence gaps that prevent a DATA vNext source/class/role decision
 Each work package must reference an approved `R4-GAP-*` entry.
 
 No gap ID means no review.
+
+Entry triage and deterministic preparation may proceed before approval, but new contract adjudication may not. The current Phase-4 execution plan is `runs/2026-08-11_PHASE4_gap_authorization_and_adjudication_plan.md`.
 
 ## Review design
 
@@ -42,6 +44,10 @@ Sample size is adaptive to the decision, prevalence, clustering, disagreement, a
 - role recommendation;
 - uncertainty report;
 - gap closure or mask/exclude decision.
+
+## G3 entry result
+
+G3 has passed. The validated Phase-3 sidecar contains 22,493 contracts × 10 classes = 224,930 unique contract-class rows and preserves historical positives as `NOT_REVIEWED` and historical zeros as `UNKNOWN`. Phase 4 must convert only decision-critical uncertainty into additional evidence.
 
 ## G4 pass criteria
 
