@@ -1,0 +1,89 @@
+name: R4 Phase 4 GAP-002 blind review
+
+on:
+  push:
+    branches:
+      - r4/phase4-targeted-gap-adjudication
+    paths:
+      - 'docs/plan/ml-R4/scripts/p4_publish_gap002_blind_review.py'
+      - 'docs/plan/ml-R4/manifests/p4_gap002_initial_sample.jsonl'
+      - 'docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1_extracted/**'
+      - '.github/workflows/r4-phase4-gap002-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-review:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r4/phase4-targeted-gap-adjudication
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Materialize locked blind review
+        run: python docs/plan/ml-R4/scripts/p4_publish_gap002_blind_review.py
+
+      - name: Validate review/sample binding
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          sample = [json.loads(x) for x in Path('docs/plan/ml-R4/manifests/p4_gap002_initial_sample.jsonl').read_text().splitlines() if x.strip()]
+          review_path = Path('docs/plan/ml-R4/reviews/R4-GAP-002/p4_gap002_blind_semantic_review_v1.jsonl')
+          review = [json.loads(x) for x in review_path.read_text().splitlines() if x.strip()]
+          report = json.loads(Path('docs/plan/ml-R4/findings/06_gap002_blind_semantic_review_report.json').read_text())
+
+          assert len(sample) == 100 == len(review)
+          sample_id = {(x['class_name'], x['stratum_ordinal']): x for x in sample}
+          assert len(sample_id) == 100
+          assert len({x['contract_id'] for x in review}) == 100
+          assert len({x['review_group_id'] for x in review}) == 100
+          allowed = {'SUPPORTS_POSITIVE','DOES_NOT_SUPPORT_POSITIVE','UNCLEAR_INSUFFICIENT','CLASS_BOUNDARY_CONFLICT'}
+          for row in review:
+              key = (row['class_name'], row['stratum_ordinal'])
+              src = sample_id[key]
+              assert row['contract_id'] == src['contract_id']
+              assert row['review_group_id'] == src['review_group_id']
+              assert row['review_state'] in allowed
+              assert row['reviewer_kind'] == 'AI_PRIMARY_SEMANTIC_REVIEW'
+              assert row['review_mode'] == 'SOURCE_ONLY_BLIND'
+              assert row['model_tool_evidence_revealed'] is False
+              assert row['creates_confirmed_negative'] is False
+
+          counts = {c: Counter(r['review_state'] for r in review if r['class_name']==c) for c in report['strata']}
+          assert counts['DenialOfService'] == Counter({'DOES_NOT_SUPPORT_POSITIVE': 20})
+          assert counts['IntegerUO'] == Counter({'DOES_NOT_SUPPORT_POSITIVE':16,'SUPPORTS_POSITIVE':3,'UNCLEAR_INSUFFICIENT':1})
+          assert counts['Timestamp'] == Counter({'DOES_NOT_SUPPORT_POSITIVE':15,'SUPPORTS_POSITIVE':4,'UNCLEAR_INSUFFICIENT':1})
+          assert counts['TransactionOrderDependence'] == Counter({'SUPPORTS_POSITIVE':12,'DOES_NOT_SUPPORT_POSITIVE':5,'CLASS_BOUNDARY_CONFLICT':3})
+          assert counts['UnusedReturn'] == Counter({'DOES_NOT_SUPPORT_POSITIVE':11,'SUPPORTS_POSITIVE':9})
+          assert report['strata']['TransactionOrderDependence']['role_recommendation'] == 'TRAIN_WEAK'
+          for cls in ('DenialOfService','IntegerUO','Timestamp','UnusedReturn'):
+              assert report['strata'][cls]['role_recommendation'] == 'MASK_OR_EXCLUDE'
+          digest = hashlib.sha256(review_path.read_bytes()).hexdigest()
+          assert digest == report['review_rows_sha256']
+          print(json.dumps({'passed': True, 'review_sha256': digest}, indent=2))
+          PY
+
+      - name: Commit review artifacts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            docs/plan/ml-R4/reviews/R4-GAP-002/p4_gap002_blind_semantic_review_v1.jsonl \
+            docs/plan/ml-R4/findings/06_gap002_blind_semantic_review_report.json
+          if git diff --cached --quiet; then
+            echo 'Review artifacts already current.'
+            exit 0
+          fi
+          git commit -m 'data(ml-r4): publish R4-GAP-002 blind semantic review'
+          git push origin HEAD:r4/phase4-targeted-gap-adjudication
