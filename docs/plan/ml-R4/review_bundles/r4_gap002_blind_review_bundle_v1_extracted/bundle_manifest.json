@@ -1,0 +1,22 @@
+{
+  "blind_exclusions": [
+    "model predictions/probabilities/tiers",
+    "Slither/Aderyn/tool votes",
+    "merger outcome",
+    "non-target historical labels"
+  ],
+  "class_counts": {
+    "DenialOfService": 20,
+    "IntegerUO": 20,
+    "Timestamp": 20,
+    "TransactionOrderDependence": 20,
+    "UnusedReturn": 20
+  },
+  "gap_id": "R4-GAP-002",
+  "note": "No semantic verdicts are pre-populated. Source bundle is reviewer handoff material and is not automatically committed.",
+  "sample_file_sha256": "2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9",
+  "sample_version": "r4-gap-002-sample-v1",
+  "schema": "r4-gap-review-bundle-v1",
+  "source_material": "local preprocessed DIVE normalized/flattened Solidity",
+  "task_count": 100
+}
