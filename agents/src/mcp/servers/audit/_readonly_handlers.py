@@ -163,7 +163,7 @@ async def list_tools() -> list[Tool]:
             name="get_latest_audit",
             description=(
                 "Get the newest persisted audit across AuditRegistry V3, V2, and V1. "
-                "The response identifies the protocol version explicitly."
+                "The response includes protocol_version explicitly."
             ),
             inputSchema={
                 "type": "object",
