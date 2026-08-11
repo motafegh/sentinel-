@@ -27,6 +27,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -41,13 +43,9 @@ jobs:
       - name: Assert Phase 5 is design-only
         run: |
           python - <<'PY'
-          from pathlib import Path
           import subprocess
 
-          # Phase-5 branch may change only R4 planning/spec/CI surfaces.
-          # On pull_request, diff against the merge base with main. On push,
-          # compare the branch root to main if available.
-          subprocess.run(['git','fetch','origin','main','--depth=1'], check=True)
+          subprocess.run(['git','fetch','origin','main'], check=True)
           base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
           files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
           allowed_prefixes = ('docs/plan/ml-R4/', '.github/workflows/r4-phase5-policy.yml')
