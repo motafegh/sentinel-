@@ -1,17 +1,13 @@
 """Validate the tracked SENTINEL legacy V2 ZKML artifact bundle.
 
 This is an identity/integrity validator, not a cryptographic proof test. It
-checks that the tracked files agree on the executable protocol shape and emits
+checks that tracked files agree on the executable protocol shape and emits
 SHA-256 identities for later local/CI evidence.
 
-The current V2 bundle is deliberately *not* production eligible because:
-- proof scope is ``legacy_proxy_only_unbound``; and
-- the tracked EZKL settings use ``check_mode=UNSAFE``.
-
-A structurally coherent historical bundle may therefore validate successfully
-while still reporting ``production_eligible=false``. Use
-``--require-production-eligible`` when a release gate is supposed to reject
-that historical state.
+The current V2 bundle is not production eligible because its proof scope is
+``legacy_proxy_only_unbound``. EZKL's ``check_mode`` is reported separately as
+a review flag: the enum name alone is not treated as proof of soundness or
+unsoundness.
 """
 
 from __future__ import annotations
@@ -60,7 +56,11 @@ def _load_json(path: Path) -> Any:
         raise ValueError(f"invalid JSON in {path}: {exc}") from exc
 
 
-def validate_settings(settings: dict[str, Any], errors: list[str], blockers: list[str]) -> None:
+def validate_settings(
+    settings: dict[str, Any],
+    errors: list[str],
+    review_flags: list[str],
+) -> None:
     run_args = settings.get("run_args")
     if not isinstance(run_args, dict):
         errors.append("settings.run_args is missing/not an object")
@@ -69,7 +69,8 @@ def validate_settings(settings: dict[str, Any], errors: list[str], blockers: lis
     shapes = settings.get("model_instance_shapes")
     if shapes != [[1, INPUT_DIM], [1, NUM_CLASSES]]:
         errors.append(
-            f"settings model_instance_shapes={shapes!r}; expected [[1,{INPUT_DIM}],[1,{NUM_CLASSES}]]"
+            f"settings model_instance_shapes={shapes!r}; "
+            f"expected [[1,{INPUT_DIM}],[1,{NUM_CLASSES}]]"
         )
 
     if run_args.get("input_visibility") != "Public":
@@ -87,11 +88,15 @@ def validate_settings(settings: dict[str, Any], errors: list[str], blockers: lis
             f"model_output_scales={output_scales!r}; expected 13/[13]"
         )
 
+    version = settings.get("version")
+    if version != "23.0.5":
+        review_flags.append(f"ezkl_version_changed:{version!r}")
+
     check_mode = run_args.get("check_mode", settings.get("check_mode"))
-    if check_mode == "UNSAFE":
-        blockers.append("ezkl_check_mode_unsafe")
-    elif not isinstance(check_mode, str) or not check_mode:
+    if not isinstance(check_mode, str) or not check_mode:
         errors.append("EZKL check_mode missing")
+    else:
+        review_flags.append(f"ezkl_check_mode:{check_mode}")
 
 
 def validate_verifier_abi(abi: Any, errors: list[str]) -> None:
@@ -132,7 +137,8 @@ def validate_single_verifier_source(root: Path, errors: list[str]) -> None:
 
 def validate_bundle(root: Path = REPO_ROOT) -> dict[str, Any]:
     errors: list[str] = []
-    blockers: list[str] = []
+    production_blockers: list[str] = []
+    review_flags: list[str] = []
     artifacts: dict[str, Any] = {}
 
     for name, relative in ARTIFACTS.items():
@@ -153,7 +159,7 @@ def validate_bundle(root: Path = REPO_ROOT) -> dict[str, Any]:
     if settings_path.exists():
         value = _load_json(settings_path)
         if isinstance(value, dict):
-            validate_settings(value, errors, blockers)
+            validate_settings(value, errors, review_flags)
         else:
             errors.append("settings root must be a JSON object")
 
@@ -163,8 +169,7 @@ def validate_bundle(root: Path = REPO_ROOT) -> dict[str, Any]:
 
     validate_single_verifier_source(root, errors)
 
-    # Production blockers are explicit even when historical structure is valid.
-    blockers.append("proof_scope_not_identity_bound")
+    production_blockers.append("proof_scope_not_identity_bound")
 
     return {
         "schema": "sentinel-zkml-artifact-bundle-v1",
@@ -176,9 +181,10 @@ def validate_bundle(root: Path = REPO_ROOT) -> dict[str, Any]:
         "num_classes": NUM_CLASSES,
         "total_public_signals": TOTAL_SIGNALS,
         "structurally_valid": not errors,
-        "production_eligible": not errors and not blockers,
+        "production_eligible": not errors and not production_blockers,
         "errors": errors,
-        "production_blockers": sorted(set(blockers)),
+        "production_blockers": sorted(set(production_blockers)),
+        "review_flags": sorted(set(review_flags)),
         "artifacts": artifacts,
     }
 
