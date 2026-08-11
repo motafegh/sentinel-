@@ -1,0 +1,47 @@
+{
+  "ledger_version": "r4-ledger-v1",
+  "schema_version": "1",
+  "created_at": null,
+  "source_export_artifact_id": "R4-P0-EXP-002",
+  "source_export_sha256": "26e739b5d82ba512e5a1830817d09609216e2184b79cf4ca7ec2d62ef34e32b5",
+  "expected_contracts": 22493,
+  "expected_classes": 10,
+  "expected_rows": 224930,
+  "actual_contracts": 0,
+  "actual_rows": 0,
+  "ledger_parquet": {
+    "path": "docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet",
+    "sha256": null
+  },
+  "evidence_jsonl": {
+    "path": "docs/plan/ml-R4/manifests/evidence_items_v1.jsonl",
+    "sha256": null
+  },
+  "validation_report": {
+    "path": "docs/plan/ml-R4/findings/04_evidence_ledger_validation_report.json",
+    "sha256": null
+  },
+  "class_names": [
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "GasException",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+    "UnusedReturn"
+  ],
+  "source_counts": {},
+  "outcome_state_counts": {},
+  "historical_state_counts": {},
+  "role_counts": {},
+  "generation_commit": "r4/phase3-evidence-ledger",
+  "status": "DRAFT",
+  "limitations": [
+    "Production ledger is not materialized yet. GitHub tracks the protected export identity and counts but not the full 22,493 contract-ID population required to generate 224,930 canonical rows.",
+    "Do not change status to MATERIALIZED or VALIDATED until the real protected population has been loaded and the validator passes without --allow-partial-population.",
+    "Category/source-scoped evidence_items_v1.jsonl is available, but contract-specific evidence must only be attached where its scope resolves to the actual contract-class row."
+  ]
+}
