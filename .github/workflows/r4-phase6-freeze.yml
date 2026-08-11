@@ -1,0 +1,86 @@
+name: R4 Phase 6 role partition freeze
+
+on:
+  push:
+    branches:
+      - r4/phase6-partitions-acceptance-freeze
+    paths:
+      - 'docs/plan/ml-R4/scripts/p6_freeze_role_partitions.py'
+      - 'docs/plan/ml-R4/manifests/p6_group_eligibility_inventory.jsonl'
+      - 'docs/plan/ml-R4/specs/data_vnext_policy_v1.json'
+      - 'docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet'
+      - '.github/workflows/r4-phase6-freeze.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  freeze:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r4/phase6-partitions-acceptance-freeze
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install partition dependency
+        run: python -m pip install --disable-pip-version-check pyarrow
+
+      - name: Freeze deterministic role partitions
+        run: python docs/plan/ml-R4/scripts/p6_freeze_role_partitions.py
+
+      - name: Validate frozen manifest surface
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('docs/plan/ml-R4/manifests')
+          p = json.loads((root/'p6_partition_manifest.json').read_text())
+          u = json.loads((root/'p6_unsupported_roles.json').read_text())
+          a = json.loads((root/'p6_untouched_acceptance_manifest.json').read_text())
+          s = json.loads((root/'p6_role_support_table.json').read_text())
+
+          assert p['status'] == 'FROZEN_CANDIDATE_G6'
+          assert p['population_contracts'] == 22493
+          assert p['population_groups'] > 0
+          assert sum(p['role_contract_counts'].values()) == 22493
+          assert p['role_group_counts']['TRAIN_STRONG'] > 0
+          assert p['role_group_counts']['MODEL_SELECTION'] > 0
+          assert p['role_group_counts']['INTERNAL_AUDIT'] > 0
+          assert p['role_group_counts']['TRAIN_WEAK'] > 0
+          assert p['role_group_counts']['TRAIN_UNLABELED'] > 0
+          assert u['roles']['THRESHOLD_FIT']['status'] == 'UNSUPPORTED_EMPTY'
+          assert u['roles']['CALIBRATION_FIT']['status'] == 'UNSUPPORTED_EMPTY'
+          assert u['roles']['UNTOUCHED_ACCEPTANCE']['status'] == 'UNSUPPORTED_EMPTY_FROZEN'
+          assert a['status'] == 'UNSUPPORTED_EMPTY_FROZEN' and a['frozen'] is True
+          assert a['contract_ids'] == [] and a['group_ids'] == []
+          for role in ('TRAIN_STRONG','MODEL_SELECTION','INTERNAL_AUDIT','TRAIN_WEAK','TRAIN_UNLABELED','EXCLUDED'):
+              if role in s['role_support']:
+                  for cls, counts in s['role_support'][role]['by_class'].items():
+                      assert counts['confirmed_negative_rows'] == 0
+          print(json.dumps({'passed': True, 'role_group_counts': p['role_group_counts'], 'role_contract_counts': p['role_contract_counts']}, indent=2))
+          PY
+
+      - name: Commit frozen Phase 6 artifacts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            docs/plan/ml-R4/manifests/p6_role_group_manifest.jsonl \
+            docs/plan/ml-R4/manifests/p6_contract_role_manifest.jsonl \
+            docs/plan/ml-R4/manifests/p6_role_support_table.json \
+            docs/plan/ml-R4/manifests/p6_unsupported_roles.json \
+            docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json \
+            docs/plan/ml-R4/manifests/p6_partition_manifest.json
+          if git diff --cached --quiet; then
+            echo 'Frozen Phase-6 artifacts already current.'
+            exit 0
+          fi
+          git commit -m 'data(ml-r4): freeze Phase 6 leakage-safe role partitions'
+          git push origin HEAD:r4/phase6-partitions-acceptance-freeze
