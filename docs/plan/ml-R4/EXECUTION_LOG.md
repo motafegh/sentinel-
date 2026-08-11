@@ -184,3 +184,20 @@ Append one entry for each work package.
 - **Gate effect:** **G4 PASS.** DIVE DoS/Arithmetic/Time manipulation/Unchecked Return Values source assertions are masked/excluded for the first baseline; DIVE Front Running/TOD is limited to `TRAIN_WEAK` and barred from outcome metrics, model selection, threshold/calibration fitting, and untouched acceptance. `DOES_NOT_SUPPORT_POSITIVE` does not create a confirmed negative.
 - **Next permitted action:** Begin Phase 5 — DATA vNext Policy and Design. Encode the Phase-0–4 source/class/state/role decisions in versioned ADRs/specification before any implementation makes semantic choices.
 
+---
+
+### R4-LOG-20260812-008 — Phase 5 DATA vNext Policy and G5 Closure
+
+- **Phase:** 5
+- **Operator:** GPT-5.6 Sol under delegated routine technical/governance approval
+- **Date:** 2026-08-12
+- **Repository branch/commit:** `r4/phase5-data-vnext-policy-design` at `104dd4f6f8a186f28a5d2a0f34aa960d274295b8` before deterministic closeout commit
+- **Inputs:** Phase-0–4 evidence, Phase-3 ledger `3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7`, Phase-4 R4-GAP-002 review `7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473`
+- **Outputs:** accepted machine policy SHA-256 `b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094`; label-state schema SHA-256 `14e414a568f090891cb39b4a9a16b3c710d9d69e2279aace50c310aece98959b`; implementation specification SHA-256 `fdf236a4bf8729a4bf3ee5e3c2c9b0a4dce2efc8666a25fae007204b12a913d4`; five Accepted ADRs; R4-D-001..005 decision-register entries
+- **Validation:** JSON-Schema row invariants + machine policy assertions + design-only branch scope guard passed in `R4 Phase 5 DATA vNext policy` CI
+- **Key decisions:** target zero requires confirmed negative; no blanket negative source; SolidiFI/approved SmartBugs direct categories strong positive; DIVE weak TOD only and otherwise unlabeled/masked; SmartBugs bad_randomness/short_addresses/other no canonical target; GasException and UnusedReturn supervision disabled; export format v2 explicit; historical v1 immutable
+- **Protected artifacts changed:** NO
+- **Implementation code changed:** NO
+- **Gate effect:** **G5 PASS.** Phase 6 is authorized to create leakage-safe dataset roles/partitions and freeze or explicitly declare unsupported acceptance support.
+- **Next permitted action:** Phase 6 only; Phase-7 DATA implementation remains blocked until G6.
+

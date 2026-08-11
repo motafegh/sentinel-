@@ -1,7 +1,7 @@
 {
   "schema": "sentinel-data-vnext-policy-v1",
   "policy_version": "data-vnext-policy-v1",
-  "status": "PROPOSED_FOR_G5_VALIDATION",
+  "status": "ACCEPTED_G5",
   "class_vocabulary": {
     "feature_schema_version": "v9",
     "locked": true,
@@ -45,8 +45,16 @@
       "UNAVAILABLE",
       "NO_ASSERTION"
     ],
-    "training_signals": ["POSITIVE", "NEGATIVE", "NONE"],
-    "training_strengths": ["STRONG", "WEAK", "NONE"],
+    "training_signals": [
+      "POSITIVE",
+      "NEGATIVE",
+      "NONE"
+    ],
+    "training_strengths": [
+      "STRONG",
+      "WEAK",
+      "NONE"
+    ],
     "invariants": [
       "historical_zero_never_implies_confirmed_negative",
       "source_absence_never_implies_negative",
@@ -77,7 +85,11 @@
     ],
     "target_value": {
       "type": "nullable_int8",
-      "allowed": [0, 1, null],
+      "allowed": [
+        0,
+        1,
+        null
+      ],
       "rules": {
         "1": "Allowed for CONFIRMED_POSITIVE/STRONG or explicitly authorized WEAK positive training signal.",
         "0": "Allowed only when outcome_state is CONFIRMED_NEGATIVE.",
@@ -92,19 +104,27 @@
     "CallToUnknown": {
       "class_index": 0,
       "status": "ENABLED",
-      "approved_strong_positive_sources": ["solidifi:Unchecked-Send", "smartbugs_curated:unchecked_low_level_calls"],
+      "approved_strong_positive_sources": [
+        "solidifi:Unchecked-Send",
+        "smartbugs_curated:unchecked_low_level_calls"
+      ],
       "approved_weak_positive_sources": []
     },
     "DenialOfService": {
       "class_index": 1,
       "status": "ENABLED",
-      "approved_strong_positive_sources": ["smartbugs_curated:denial_of_service"],
+      "approved_strong_positive_sources": [
+        "smartbugs_curated:denial_of_service"
+      ],
       "approved_weak_positive_sources": []
     },
     "ExternalBug": {
       "class_index": 2,
       "status": "ENABLED",
-      "approved_strong_positive_sources": ["solidifi:tx.origin", "smartbugs_curated:access_control"],
+      "approved_strong_positive_sources": [
+        "solidifi:tx.origin",
+        "smartbugs_curated:access_control"
+      ],
       "approved_weak_positive_sources": []
     },
     "GasException": {
@@ -117,33 +137,49 @@
     "IntegerUO": {
       "class_index": 4,
       "status": "ENABLED",
-      "approved_strong_positive_sources": ["solidifi:Overflow-Underflow", "smartbugs_curated:arithmetic"],
+      "approved_strong_positive_sources": [
+        "solidifi:Overflow-Underflow",
+        "smartbugs_curated:arithmetic"
+      ],
       "approved_weak_positive_sources": []
     },
     "MishandledException": {
       "class_index": 5,
       "status": "ENABLED",
-      "approved_strong_positive_sources": ["solidifi:Unhandled-Exceptions"],
+      "approved_strong_positive_sources": [
+        "solidifi:Unhandled-Exceptions"
+      ],
       "approved_weak_positive_sources": []
     },
     "Reentrancy": {
       "class_index": 6,
       "status": "ENABLED",
-      "approved_strong_positive_sources": ["solidifi:Re-entrancy", "smartbugs_curated:reentrancy"],
+      "approved_strong_positive_sources": [
+        "solidifi:Re-entrancy",
+        "smartbugs_curated:reentrancy"
+      ],
       "approved_weak_positive_sources": []
     },
     "Timestamp": {
       "class_index": 7,
       "status": "ENABLED",
-      "approved_strong_positive_sources": ["solidifi:Timestamp-Dependency", "smartbugs_curated:time_manipulation"],
+      "approved_strong_positive_sources": [
+        "solidifi:Timestamp-Dependency",
+        "smartbugs_curated:time_manipulation"
+      ],
       "approved_weak_positive_sources": [],
       "excluded_mapping": "smartbugs_curated:bad_randomness does not map to Timestamp in vNext without row-specific evidence"
     },
     "TransactionOrderDependence": {
       "class_index": 8,
       "status": "ENABLED",
-      "approved_strong_positive_sources": ["solidifi:TOD", "smartbugs_curated:front_running"],
-      "approved_weak_positive_sources": ["dive:Front Running"]
+      "approved_strong_positive_sources": [
+        "solidifi:TOD",
+        "smartbugs_curated:front_running"
+      ],
+      "approved_weak_positive_sources": [
+        "dive:Front Running"
+      ]
     },
     "UnusedReturn": {
       "class_index": 9,
@@ -168,9 +204,17 @@
         "Unchecked-Send": "CallToUnknown",
         "tx.origin": "ExternalBug"
       },
-      "positive_role_eligibility": ["TRAIN_STRONG", "INTERNAL_AUDIT", "CASE_STUDY"],
-      "forbidden_positive_roles": ["UNTOUCHED_ACCEPTANCE"],
-      "evidence_basis": ["R4-PREV-OTHER-SOLIDIFI"]
+      "positive_role_eligibility": [
+        "TRAIN_STRONG",
+        "INTERNAL_AUDIT",
+        "CASE_STUDY"
+      ],
+      "forbidden_positive_roles": [
+        "UNTOUCHED_ACCEPTANCE"
+      ],
+      "evidence_basis": [
+        "R4-PREV-OTHER-SOLIDIFI"
+      ]
     },
     "smartbugs_curated": {
       "first_baseline_status": "ACTIVE_SUPERVISED",
@@ -191,10 +235,19 @@
         "short_addresses": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET",
         "other": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET"
       },
-      "positive_role_eligibility": ["TRAIN_STRONG", "MODEL_SELECTION", "INTERNAL_AUDIT", "CASE_STUDY"],
-      "forbidden_positive_roles": ["UNTOUCHED_ACCEPTANCE"],
+      "positive_role_eligibility": [
+        "TRAIN_STRONG",
+        "MODEL_SELECTION",
+        "INTERNAL_AUDIT",
+        "CASE_STUDY"
+      ],
+      "forbidden_positive_roles": [
+        "UNTOUCHED_ACCEPTANCE"
+      ],
       "rule": "Historical short_addresses/other -> NonVulnerable and bad_randomness -> Timestamp mappings are superseded for DATA vNext; no canonical negative is synthesized.",
-      "evidence_basis": ["R4-PREV-OTHER-SMARTBUGS"]
+      "evidence_basis": [
+        "R4-PREV-OTHER-SMARTBUGS"
+      ]
     },
     "dive": {
       "first_baseline_status": "ACTIVE_UNLABELED_PLUS_WEAK_TOD",
@@ -202,22 +255,71 @@
       "negative_authority": "NONE",
       "zero_policy": "UNKNOWN",
       "mapped_category_policy": {
-        "Access Control": {"canonical_class": "ExternalBug", "training_strength": "NONE", "target_value": null},
-        "Reentrancy": {"canonical_class": "Reentrancy", "training_strength": "NONE", "target_value": null},
-        "DoS": {"canonical_class": "DenialOfService", "training_strength": "NONE", "target_value": null},
-        "Arithmetic": {"canonical_class": "IntegerUO", "training_strength": "NONE", "target_value": null},
-        "Time manipulation": {"canonical_class": "Timestamp", "training_strength": "NONE", "target_value": null},
-        "Unchecked Return Values": {"canonical_class": "UnusedReturn", "training_strength": "NONE", "target_value": null},
-        "Front Running": {"canonical_class": "TransactionOrderDependence", "training_strength": "WEAK", "target_value": 1}
+        "Access Control": {
+          "canonical_class": "ExternalBug",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Reentrancy": {
+          "canonical_class": "Reentrancy",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "DoS": {
+          "canonical_class": "DenialOfService",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Arithmetic": {
+          "canonical_class": "IntegerUO",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Time manipulation": {
+          "canonical_class": "Timestamp",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Unchecked Return Values": {
+          "canonical_class": "UnusedReturn",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Front Running": {
+          "canonical_class": "TransactionOrderDependence",
+          "training_strength": "WEAK",
+          "target_value": 1
+        }
       },
       "no_target_categories": {
         "Bad Randomness": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET"
       },
-      "unsupported_canonical_classes": ["CallToUnknown", "GasException", "MishandledException"],
-      "masked_contract_role_eligibility": ["TRAIN_UNLABELED", "CASE_STUDY", "EXCLUDE_OUTCOME_METRICS"],
-      "weak_tod_role_eligibility": ["TRAIN_WEAK", "CASE_STUDY", "EXCLUDE_OUTCOME_METRICS"],
-      "weak_tod_forbidden_roles": ["MODEL_SELECTION", "THRESHOLD_FIT", "CALIBRATION_FIT", "UNTOUCHED_ACCEPTANCE"],
-      "evidence_basis": ["R4-PREV-DIVE-EBRE", "R4-PREV-DIVE-SLITHER", "R4-GAP-002"]
+      "unsupported_canonical_classes": [
+        "CallToUnknown",
+        "GasException",
+        "MishandledException"
+      ],
+      "masked_contract_role_eligibility": [
+        "TRAIN_UNLABELED",
+        "CASE_STUDY",
+        "EXCLUDE_OUTCOME_METRICS"
+      ],
+      "weak_tod_role_eligibility": [
+        "TRAIN_WEAK",
+        "CASE_STUDY",
+        "EXCLUDE_OUTCOME_METRICS"
+      ],
+      "weak_tod_forbidden_roles": [
+        "MODEL_SELECTION",
+        "THRESHOLD_FIT",
+        "CALIBRATION_FIT",
+        "UNTOUCHED_ACCEPTANCE"
+      ],
+      "evidence_basis": [
+        "R4-PREV-DIVE-EBRE",
+        "R4-PREV-DIVE-SLITHER",
+        "R4-GAP-002"
+      ]
     },
     "web3bugs": {
       "first_baseline_status": "EXCLUDED_UNAVAILABLE",
