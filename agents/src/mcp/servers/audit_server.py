@@ -1,34 +1,24 @@
 # agents/src/mcp/servers/audit_server.py
-"""
-sentinel-audit MCP server — public API shim.
+"""sentinel-audit MCP server — public API shim.
 
-DEPRECATED entrypoint location (P2.5, 2026-06-25). The implementation now
-lives in the `audit/` package (see `audit/__init__.py`). This file is kept
-as a thin re-export so existing imports and test monkeypatch paths keep
-resolving unchanged:
-
-    from src.mcp.servers.audit_server import _handle_get_latest_audit, …
-    monkeypatch.setattr("src.mcp.servers.audit_server._MOCK_MODE", False)
+The live runtime surface is deliberately read-only. Historical submission code
+remains under `audit/_handlers.py` + `audit/_submit.py` for compatibility and
+forensic tests, but it is not registered on the MCP server. V3 signing belongs
+to the isolated policy-signer security domain.
 
 Run the server:
     cd ~/projects/sentinel
     poetry run python agents/src/mcp/servers/audit_server.py
     → http://localhost:8012/health
-    → http://localhost:8012/sse  (MCP SSE endpoint)
+    → http://localhost:8012/sse
 
-Import order matters: the mutable runtime state (_MOCK_MODE, _ABI, _w3,
-_registry) is bound into this shim's namespace FIRST (from _config), so
-when _handlers later imports this module by name to read `_as._MOCK_MODE`
-it sees the live attribute — and a test `monkeypatch.setattr` on it is
-observed by every handler.
+Mutable runtime state is bound into this shim first so tests can continue to
+monkeypatch `_MOCK_MODE`, `_registry`, and related state at the established
+public import path.
 """
 
 from __future__ import annotations
 
-# ── 1. Config + runtime state (re-imported into this module's namespace) ─────
-#     These bindings become rebindable attributes of `audit_server`:
-#     tests do `monkeypatch.setattr("...audit_server._MOCK_MODE", False)` and
-#     handlers observe the rebound value via `_as._MOCK_MODE` at call time.
 from .audit._config import (
     _ABI,
     _ABI_PATH,
@@ -44,11 +34,12 @@ from .audit._config import (
     _w3,
 )
 
-# ── 2. Pure decode helpers ─────────────────────────────────────────────────────
 from .audit._decode import _decode_audit_result, _mock_audit_result, _mock_history
 
-# ── 3. MCP `server` instance + tool declarations + handlers ──────────────────
-from .audit._handlers import (
+# The live MCP dispatcher is read-only. Re-export the established read-handler
+# names so existing tests/importers keep their public API without exposing the
+# historical `_handle_submit_audit` compatibility function.
+from .audit._readonly_handlers import (
     _handle_check_audit_exists,
     _handle_get_audit_history,
     _handle_get_latest_audit,
@@ -58,10 +49,7 @@ from .audit._handlers import (
     server,
 )
 
-# ── 4. Web3 lifecycle ─────────────────────────────────────────────────────────
 from .audit._lifecycle import _load_abi, _on_shutdown, _on_startup
-
-# ── 5. Server entrypoint ──────────────────────────────────────────────────────
 from .audit._server import run_server
 
 if __name__ == "__main__":
