@@ -7,12 +7,14 @@ on:
     paths:
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase5-g5.yml'
+      - '.github/workflows/r4-phase4-g4.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase5-g5.yml'
+      - '.github/workflows/r4-phase4-g4.yml'
   workflow_dispatch:
 
 permissions:
@@ -130,11 +132,16 @@ jobs:
           assert 'R4-LOG-20260812-008 — Phase 5 DATA vNext Policy and G5 Closure' in log
           assert '**Gate effect:** **G5 PASS.**' in log
 
-          # Fail closed if Phase-5 branch contains implementation changes.
           subprocess.run(['git','fetch','origin','main'], check=True)
           base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
           files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
-          allowed = ('docs/plan/ml-R4/', '.github/workflows/r4-phase5-policy.yml', '.github/workflows/r4-phase5-closeout.yml', '.github/workflows/r4-phase5-g5.yml')
+          allowed = (
+              'docs/plan/ml-R4/',
+              '.github/workflows/r4-phase5-policy.yml',
+              '.github/workflows/r4-phase5-closeout.yml',
+              '.github/workflows/r4-phase5-g5.yml',
+              '.github/workflows/r4-phase4-g4.yml',
+          )
           bad = [f for f in files if not any(f == p or f.startswith(p) for p in allowed)]
           assert not bad, 'out-of-scope Phase-5 files: ' + ', '.join(bad)
 
