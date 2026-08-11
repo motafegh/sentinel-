@@ -1,11 +1,24 @@
 # Phase 5 — DATA vNext Policy and Design
 
-**Status:** WAITING FOR G4  
+**Status:** READY — G4 SATISFIED  
 **Gate:** G5
 
 ## Objective
 
 Approve the smallest versioned data repair that converts prior evidence and gap outcomes into a trustworthy training/evaluation contract.
+
+## Entry evidence
+
+G4 has passed. Phase 4 resolved the decision-critical DIVE gap and bounded first-baseline source roles:
+
+- DIVE `DoS` → `DenialOfService`: source assertion masked/excluded;
+- DIVE `Arithmetic` → `IntegerUO`: source assertion masked/excluded;
+- DIVE `Time manipulation` → `Timestamp`: source assertion masked/excluded;
+- DIVE `Front Running` → `TransactionOrderDependence`: at most `TRAIN_WEAK`, excluded from outcome metrics/high-authority roles;
+- DIVE `Unchecked Return Values` → `UnusedReturn`: source assertion masked/excluded;
+- absent Web3Bugs and provisional non-active BCCC strata remain excluded/deferred for the first baseline unless a new evidence-backed policy explicitly imports them.
+
+These Phase-4 recommendations constrain Phase 5; implementation may not silently restore stronger authority.
 
 ## Decisions
 
