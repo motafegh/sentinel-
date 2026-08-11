@@ -28,6 +28,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install production-ledger validation dependency
+        run: python -m pip install --disable-pip-version-check pyarrow
+
       - name: Semantic ledger validator tests
         run: python docs/plan/ml-R4/scripts/test_p3_validate_evidence_ledger.py
 
@@ -46,15 +49,35 @@ jobs:
             docs/plan/ml-R4/scripts/p3_materialize_evidence_ledger.py \
             docs/plan/ml-R4/scripts/p3_run_local_gate.py
 
-      - name: Assert checkpoint remains blocked without protected population
+      - name: Validate published production ledger
+        run: |
+          python docs/plan/ml-R4/scripts/p3_validate_evidence_ledger_strict.py \
+            --ledger docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet \
+            --evidence docs/plan/ml-R4/manifests/evidence_items_v1.jsonl \
+            --manifest docs/plan/ml-R4/manifests/evidence_ledger_v1.materialized.json \
+            --report /tmp/r4-p3-strict-ci.json
+
+      - name: Validate published artifact bindings
+        run: |
+          python docs/plan/ml-R4/scripts/p3_validate_artifact_bindings.py \
+            --manifest docs/plan/ml-R4/manifests/evidence_ledger_v1.materialized.json \
+            --root . \
+            --report /tmp/r4-p3-binding-ci.json
+
+      - name: Assert G3 production identities
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          manifest = json.loads(Path('docs/plan/ml-R4/manifests/evidence_ledger_v1.manifest.json').read_text())
-          assert manifest['status'] == 'DRAFT', manifest['status']
-          assert manifest['actual_rows'] == 0, manifest['actual_rows']
-          assert manifest['expected_rows'] == 224930, manifest['expected_rows']
-          print('Phase 3 remote checkpoint remains DRAFT/blocked as intended.')
+          manifest = json.loads(Path('docs/plan/ml-R4/manifests/evidence_ledger_v1.materialized.json').read_text())
+          assert manifest['status'] == 'VALIDATED', manifest['status']
+          assert manifest['actual_contracts'] == 22493, manifest['actual_contracts']
+          assert manifest['actual_rows'] == 224930, manifest['actual_rows']
+          assert manifest['ledger_parquet']['sha256'] == '3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7'
+          strict = json.loads(Path('/tmp/r4-p3-strict-ci.json').read_text())
+          binding = json.loads(Path('/tmp/r4-p3-binding-ci.json').read_text())
+          assert strict['passed'] is True and strict['unique_keys'] == 224930
+          assert binding['passed'] is True and binding['status'] == 'VALIDATED'
+          print('Phase 3 production ledger is remotely reproducible and G3-ready.')
           PY
