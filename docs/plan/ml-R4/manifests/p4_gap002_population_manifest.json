@@ -1,0 +1,90 @@
+{
+  "gap_id": "R4-GAP-002",
+  "initial_per_stratum": 20,
+  "initial_total": 100,
+  "ledger_sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7",
+  "sample_sha256": "2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9",
+  "sample_version": "r4-gap-002-sample-v1",
+  "schema": "r4-gap-population-and-sample-manifest-v1",
+  "selection_policy": {
+    "adaptive_review": true,
+    "cross_stratum_group_reuse": "FORBIDDEN",
+    "eligible_split_policy": "TRAIN_ONLY_AND_GROUP_MUST_NOT_TOUCH_VAL_OR_TEST",
+    "group_precedence": [
+      "project_group_id",
+      "dedup_group_id",
+      "contract_id"
+    ],
+    "historical_state": "HISTORICAL_POSITIVE",
+    "note": "20 per stratum is an initial screening batch, not a fixed final sample size or authority threshold.",
+    "ranking": "SHA256(sample_version|gap_id|ledger_sha|class_name|group_key|contract_id)",
+    "source": "dive"
+  },
+  "strata": {
+    "DenialOfService": {
+      "class_index": 1,
+      "eligible_train_only_groups": 647,
+      "excluded_groups_touching_val_or_test": 247,
+      "historical_split_counts": {
+        "test": 126,
+        "train": 841,
+        "val": 128
+      },
+      "positive_contract_rows": 1095,
+      "source_native_label": "DoS",
+      "unique_review_groups": 894
+    },
+    "IntegerUO": {
+      "class_index": 4,
+      "eligible_train_only_groups": 4374,
+      "excluded_groups_touching_val_or_test": 1546,
+      "historical_split_counts": {
+        "test": 803,
+        "train": 7742,
+        "val": 843
+      },
+      "positive_contract_rows": 9388,
+      "source_native_label": "Arithmetic",
+      "unique_review_groups": 5920
+    },
+    "Timestamp": {
+      "class_index": 7,
+      "eligible_train_only_groups": 3256,
+      "excluded_groups_touching_val_or_test": 1187,
+      "historical_split_counts": {
+        "test": 609,
+        "train": 5028,
+        "val": 635
+      },
+      "positive_contract_rows": 6272,
+      "source_native_label": "Time manipulation",
+      "unique_review_groups": 4443
+    },
+    "TransactionOrderDependence": {
+      "class_index": 8,
+      "eligible_train_only_groups": 340,
+      "excluded_groups_touching_val_or_test": 152,
+      "historical_split_counts": {
+        "test": 76,
+        "train": 447,
+        "val": 81
+      },
+      "positive_contract_rows": 604,
+      "source_native_label": "Front Running",
+      "unique_review_groups": 492
+    },
+    "UnusedReturn": {
+      "class_index": 9,
+      "eligible_train_only_groups": 2958,
+      "excluded_groups_touching_val_or_test": 1040,
+      "historical_split_counts": {
+        "test": 553,
+        "train": 4757,
+        "val": 549
+      },
+      "positive_contract_rows": 5859,
+      "source_native_label": "Unchecked Return Values",
+      "unique_review_groups": 3998
+    }
+  }
+}
