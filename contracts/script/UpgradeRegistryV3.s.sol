@@ -21,9 +21,11 @@ contract UpgradeRegistryV3 is Script {
         require(verifierV3 != address(0), "UpgradeRegistryV3: zero verifier");
         require(policySignerV3 != address(0), "UpgradeRegistryV3: zero policy signer");
 
+        // Only pre-V3 selectors may be called before the implementation swap.
+        // The canonical historical registry exposes owner(), but it does not
+        // expose any of the newly appended V3 fields yet.
         AuditRegistry current = AuditRegistry(proxyAddress);
         require(current.owner() == deployer, "UpgradeRegistryV3: broadcaster is not proxy owner");
-        require(!current.legacySubmissionsDisabled(), "UpgradeRegistryV3: V3 already active");
 
         vm.startBroadcast(deployerKey);
         AuditRegistry implementation = new AuditRegistry();
@@ -35,8 +37,8 @@ contract UpgradeRegistryV3 is Script {
 
         implementationAddress = address(implementation);
 
-        // Read-back assertions are part of the deployment contract. A script
-        // must fail rather than merely print a partially configured upgrade.
+        // V3-only read-back assertions are valid only after the implementation
+        // swap. A script must fail rather than print a partially configured state.
         AuditRegistry upgraded = AuditRegistry(proxyAddress);
         require(upgraded.legacySubmissionsDisabled(), "UpgradeRegistryV3: legacy writes still enabled");
         require(address(upgraded.zkmlVerifierV3()) == verifierV3, "UpgradeRegistryV3: verifier mismatch");
