@@ -2,11 +2,16 @@
 
 These tests do not sign transactions or touch a private key. They verify the
 unsigned EIP-712 request that may be handed to the isolated signer service.
+
+The constants also form the cross-language golden vector consumed by the
+Foundry CI job. ``TARGET_RUNTIME_CODE`` is etched at ``TARGET`` in Solidity, so
+both implementations bind the same EVM code hash.
 """
 
 from dataclasses import replace
 
 import pytest
+from web3 import Web3
 
 from agents.src.security.policy_signer import (
     LEGACY_PROOF_SCOPE,
@@ -27,7 +32,8 @@ CHAIN_ID = 31337
 ROUND_ID = 77
 DEADLINE = 2_000_000_000
 
-CODE_HASH = "0x" + "44" * 32
+TARGET_RUNTIME_CODE = bytes.fromhex("6001600055")
+CODE_HASH = Web3.keccak(TARGET_RUNTIME_CODE).hex()
 TEACHER_HASH = "0x" + "55" * 32
 BUNDLE_HASH = "0x" + "66" * 32
 DATA_HASH = "0x" + "77" * 32
