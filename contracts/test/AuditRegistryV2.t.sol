@@ -7,10 +7,9 @@ import "../src/AuditRegistry.sol";
 import "../src/SentinelToken.sol";
 import "./mocks/MockZKMLVerifier.sol";
 
-/// @notice Tests the currently tracked 128-input/10-output legacy V2 seam.
-/// @dev These tests intentionally document that V2 does NOT bind model/context
-/// identity. That limitation is a testable property to eliminate in V3, not a
-/// security claim hidden in prose.
+/// @notice Tests the pre-V3 128-input/10-output legacy V2 seam.
+/// @dev V3 activation disables new V2 writes; this suite preserves the exact
+/// historical behavior so its limitations remain explicit and regression-safe.
 contract AuditRegistryV2Test is Test {
     AuditRegistry internal registry;
     SentinelToken internal token;
@@ -86,13 +85,21 @@ contract AuditRegistryV2Test is Test {
         }
     }
 
-    function test_v2_requires_minimum_public_signal_layout() public {
+    function test_v2_requires_exact_public_signal_layout() public {
         uint256[10] memory scores = _scores();
         uint256[] memory shortSignals = new uint256[](TOTAL_SIGNALS - 1);
 
         vm.prank(agent);
-        vm.expectRevert("AuditRegistry: insufficient public signals");
+        vm.expectRevert("AuditRegistry: invalid V2 public signal count");
         registry.submitAuditV2(target, scores, PROOF, shortSignals, bytes32(uint256(1)));
+
+        uint256[] memory longSignals = new uint256[](TOTAL_SIGNALS + 1);
+        for (uint256 i = 0; i < NUM_CLASSES; i++) {
+            longSignals[INPUT_OFFSET + i] = scores[i];
+        }
+        vm.prank(agent);
+        vm.expectRevert("AuditRegistry: invalid V2 public signal count");
+        registry.submitAuditV2(target, scores, PROOF, longSignals, bytes32(uint256(1)));
     }
 
     function test_v2_rejects_any_class_score_mismatch() public {
@@ -148,9 +155,9 @@ contract AuditRegistryV2Test is Test {
         assertEq(history.length, 2);
         assertEq(history[0].modelHash, claimedModelA);
         assertEq(history[1].modelHash, claimedModelB);
-        // Same proof/signals verify under the mock for both model identities.
-        // V3 must make this impossible by binding context into public signals.
         assertEq(history[0].proofHash, history[1].proofHash);
+        // V3 closes this at the accepted-submission layer by policy-signing
+        // the exact proof + model/data/schema context.
     }
 
     function test_v2_proof_is_not_bound_to_target_contract() public {
@@ -166,6 +173,7 @@ contract AuditRegistryV2Test is Test {
 
         assertEq(registry.getLatestAuditV2(target).proofHash, keccak256(PROOF));
         assertEq(registry.getLatestAuditV2(targetB).proofHash, keccak256(PROOF));
-        // This is the contained V2 replay/context gap that V3 must close.
+        // V3 closes this at the accepted-submission layer by signing target
+        // bytecode identity in an EIP-712 domain bound to chain + registry.
     }
 }
