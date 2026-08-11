@@ -13,6 +13,7 @@ on:
       - "agents/src/mcp/servers/audit_server.py"
       - "agents/tests/test_policy_signer_v3.py"
       - "agents/tests/test_audit_mcp_readonly.py"
+      - "agents/tests/test_audit_server.py"
       - ".github/workflows/system-alignment.yml"
 
 permissions:
@@ -56,12 +57,16 @@ jobs:
       - name: Install audit-MCP boundary dependencies
         run: |
           python -m pip install --disable-pip-version-check \
-            pytest loguru 'mcp>=1,<2' web3==7.15.0 uvicorn
+            pytest pytest-asyncio loguru 'mcp>=1,<2' web3==7.15.0 uvicorn
 
-      - name: Prove live audit MCP is read-only
+      - name: Prove live audit MCP is read-only and version-aware
         env:
           PYTHONPATH: .:agents
-        run: python -m pytest -q -c /dev/null agents/tests/test_audit_mcp_readonly.py
+          SENTINEL_ENV: production
+        run: |
+          python -m pytest -q -c /dev/null \
+            agents/tests/test_audit_mcp_readonly.py \
+            agents/tests/test_audit_server.py
 
   v3-policy-protocol-tests:
     runs-on: ubuntu-latest
