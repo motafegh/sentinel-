@@ -1,0 +1,83 @@
+{
+  "gap_id": "R4-GAP-002",
+  "limitations": [
+    "Single AI semantic reviewer; not inter-rater or acceptance-grade evidence.",
+    "Intervals are descriptive Wilson intervals for the deterministic group-aware screening sample, not promotion thresholds.",
+    "DOES_NOT_SUPPORT_POSITIVE does not create a confirmed negative outcome.",
+    "No model prediction, tool vote, merger outcome, or non-target historical label was used in the blind pass."
+  ],
+  "review_mode": "SOURCE_ONLY_BLIND",
+  "review_rows_sha256": "7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473",
+  "reviewer_kind": "AI_PRIMARY_SEMANTIC_REVIEW",
+  "sample_sha256": "2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9",
+  "sample_version": "r4-gap-002-sample-v1",
+  "schema": "r4-gap-blind-semantic-review-report-v1",
+  "strata": {
+    "DenialOfService": {
+      "class_boundary_conflict": 0,
+      "does_not_support_positive": 20,
+      "n": 20,
+      "observed_support_rate": 0.0,
+      "role_recommendation": "MASK_OR_EXCLUDE",
+      "supports_positive": 0,
+      "unclear_insufficient": 0,
+      "wilson_95_descriptive_interval": [
+        0.0,
+        0.16113012549493322
+      ]
+    },
+    "IntegerUO": {
+      "class_boundary_conflict": 0,
+      "does_not_support_positive": 16,
+      "n": 20,
+      "observed_support_rate": 0.15,
+      "role_recommendation": "MASK_OR_EXCLUDE",
+      "supports_positive": 3,
+      "unclear_insufficient": 1,
+      "wilson_95_descriptive_interval": [
+        0.05236779195949584,
+        0.36042329588695743
+      ]
+    },
+    "Timestamp": {
+      "class_boundary_conflict": 0,
+      "does_not_support_positive": 15,
+      "n": 20,
+      "observed_support_rate": 0.2,
+      "role_recommendation": "MASK_OR_EXCLUDE",
+      "supports_positive": 4,
+      "unclear_insufficient": 1,
+      "wilson_95_descriptive_interval": [
+        0.0806563532712,
+        0.41602172202575993
+      ]
+    },
+    "TransactionOrderDependence": {
+      "class_boundary_conflict": 3,
+      "does_not_support_positive": 5,
+      "n": 20,
+      "observed_support_rate": 0.6,
+      "role_recommendation": "TRAIN_WEAK",
+      "supports_positive": 12,
+      "unclear_insufficient": 0,
+      "wilson_95_descriptive_interval": [
+        0.3865779423152061,
+        0.7811960325858074
+      ]
+    },
+    "UnusedReturn": {
+      "class_boundary_conflict": 0,
+      "does_not_support_positive": 11,
+      "n": 20,
+      "observed_support_rate": 0.45,
+      "role_recommendation": "MASK_OR_EXCLUDE",
+      "supports_positive": 9,
+      "unclear_insufficient": 0,
+      "wilson_95_descriptive_interval": [
+        0.25819502085709295,
+        0.6579179916924003
+      ]
+    }
+  },
+  "task_count": 100
+}

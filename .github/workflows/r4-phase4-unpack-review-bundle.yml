@@ -1,0 +1,100 @@
+name: R4 Phase 4 unpack blind review bundle
+
+on:
+  push:
+    branches:
+      - r4/phase4-targeted-gap-adjudication
+    paths:
+      - 'docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1.zip'
+      - 'docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1.zip.sha256'
+      - '.github/workflows/r4-phase4-unpack-review-bundle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unpack-and-publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r4/phase4-targeted-gap-adjudication
+          fetch-depth: 0
+
+      - name: Verify bundle checksum
+        run: sha256sum -c docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1.zip.sha256
+
+      - name: Safely unpack and validate blind bundle
+        run: |
+          python - <<'PY'
+          import json
+          import shutil
+          import zipfile
+          from collections import Counter
+          from pathlib import Path, PurePosixPath
+
+          bundle = Path('docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1.zip')
+          out = Path('docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1_extracted')
+          tmp = Path('/tmp/r4_gap002_unpacked')
+          shutil.rmtree(tmp, ignore_errors=True)
+          tmp.mkdir(parents=True)
+
+          with zipfile.ZipFile(bundle) as zf:
+              names = zf.namelist()
+              if len(names) != 102:
+                  raise SystemExit(f'expected 102 ZIP members, got {len(names)}')
+              for name in names:
+                  p = PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts:
+                      raise SystemExit(f'unsafe ZIP member: {name}')
+              if 'bundle_manifest.json' not in names or 'review_tasks.jsonl' not in names:
+                  raise SystemExit('bundle manifest/task file missing')
+              source_names = [n for n in names if n.startswith('sources/') and n.endswith('.sol')]
+              if len(source_names) != 100:
+                  raise SystemExit(f'expected 100 source files, got {len(source_names)}')
+              zf.extractall(tmp)
+
+          manifest = json.loads((tmp / 'bundle_manifest.json').read_text())
+          tasks = [json.loads(line) for line in (tmp / 'review_tasks.jsonl').read_text().splitlines() if line.strip()]
+          if manifest.get('gap_id') != 'R4-GAP-002' or manifest.get('task_count') != 100:
+              raise SystemExit('unexpected bundle identity/count')
+          if len(tasks) != 100:
+              raise SystemExit(f'expected 100 tasks, got {len(tasks)}')
+          counts = Counter(t['class_name'] for t in tasks)
+          expected = {
+              'DenialOfService': 20,
+              'IntegerUO': 20,
+              'Timestamp': 20,
+              'TransactionOrderDependence': 20,
+              'UnusedReturn': 20,
+          }
+          if counts != expected:
+              raise SystemExit(f'unexpected class counts: {dict(counts)}')
+          if any(t.get('review_state') is not None for t in tasks):
+              raise SystemExit('bundle is not blind: pre-populated review state found')
+
+          shutil.rmtree(out, ignore_errors=True)
+          shutil.copytree(tmp, out)
+          print(json.dumps({'passed': True, 'tasks': len(tasks), 'counts': dict(counts)}, indent=2))
+          PY
+
+      - name: Upload verified blind corpus for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: r4-gap002-blind-corpus-v1
+          path: docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1_extracted
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Commit extracted text review corpus
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1_extracted
+          if git diff --cached --quiet; then
+            echo 'Extracted corpus already published; no commit needed.'
+            exit 0
+          fi
+          git commit -m 'data(ml-r4): publish extracted Phase 4 blind review corpus'
+          git push origin HEAD:r4/phase4-targeted-gap-adjudication
