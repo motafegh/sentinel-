@@ -114,3 +114,26 @@ Append one entry for each work package.
 - **Register updates:** PLAN_STATUS_MATRIX Phase 2 -> PASSED; RISK_AND_BLOCKER_REGISTER R4-R010 narrowed/mitigated and R4-R014 added; ARTIFACT_INDEX Phase-2 outputs; EXECUTION_LOG this entry
 - **Gate effect:** **G2 PASS** — every mandatory historical positive/zero origin category has a named transformation path. Contract×class adjudication may remain unknown as permitted by the Phase-2 gate.
 - **Next permitted action:** Begin Phase 3 — Evidence Ledger. Build a sidecar contract×class evidence ledger without rewriting the protected historical export.
+
+---
+
+### R4-LOG-20260811-005 — Phase 3 Evidence-Ledger Framework Checkpoint
+
+- **Phase:** 3
+- **Gap ID, if review work:** N/A — no new contract review performed
+- **Operator:** ChatGPT + GitHub repository implementation
+- **Date/timezone:** 2026-08-11 Europe/Berlin
+- **Repository branch/commit:** `r4/phase3-evidence-ledger` / branch created from canonical G2-passed main `380c6f468cc1971e9ca995af0bd48895797573a5`
+- **Worktree status before:** remote branch; no protected DATA/ML/runtime artifact modifications
+- **Input artifact IDs/hashes:** R4-P0-EXP-002 and R4-P0-SPL-001..004 identities/counts; Phase-2 findings/trace manifest; Label State and Dataset Role Policy; Phase-3 specification/templates
+- **Command(s):** design versioned ledger/evidence/manifest schemas; implement semantic validator; create deterministic valid/invalid fixtures and unittest harness; map Phase-2 mechanisms into conservative ledger states; seed category/source-scoped evidence; probe protected v3 row artifacts through GitHub contents API
+- **Environment and seed(s):** GitHub-tracked repository only; deterministic fixtures; no stochastic execution
+- **Expected outputs:** Phase-3 execution plan, row/evidence/manifest schemas, validator, fixtures/tests, state mapping, evidence seed, draft production manifest, schema report
+- **Actual outputs/hashes:** Framework outputs created. Production manifest declares expected 22,493 contracts / 224,930 rows but actual 0 / DRAFT. GitHub reads returned 404 for protected v3 train.jsonl, split_manifest.json, and labels.parquet, proving row identities are unavailable in ordinary remote contents.
+- **Result:** BLOCKED
+- **Historical evidence reused:** Phase-0 protected artifact identities/counts and Phase-2 transformation evidence only
+- **New evidence created:** deterministic schema/validator fixtures and source-derived transformation evidence; no contract adjudication
+- **Protected artifacts changed:** NO
+- **Register updates:** PLAN_STATUS_MATRIX Phase 3 -> BLOCKED; RISK_AND_BLOCKER_REGISTER adds R4-B002; Phase-3 framework report records exact unblock condition
+- **Gate effect:** **G3 NOT PASSED.** Schema/state representation requirement is implemented, but the required 224,930-row production ledger and validation cannot be produced from aggregate counts/hashes.
+- **Next permitted action:** Make the protected v3 split/labels row population available to an execution environment, verify hashes against R4-P0 artifacts, materialize the full ledger, run validator/self-tests, and reassess G3. Phase 4 remains WAITING.
