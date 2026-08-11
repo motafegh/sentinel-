@@ -8,7 +8,9 @@ on:
     paths:
       - "contracts/**"
       - "zkml/**"
+      - "agents/src/security/**"
       - "agents/src/mcp/servers/audit/**"
+      - "agents/tests/test_policy_signer_v3.py"
       - ".github/workflows/system-alignment.yml"
 
 permissions:
@@ -41,10 +43,33 @@ jobs:
             --output /tmp/zkml-v2-bundle-report.json
           cat /tmp/zkml-v2-bundle-report.json
 
+  v3-policy-protocol-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install policy-protocol dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            pytest web3==7.15.0
+
+      - name: Run V3 policy-signer tests
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q -c /dev/null agents/tests/test_policy_signer_v3.py
+
   contracts-foundry:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -65,6 +90,19 @@ jobs:
         run: |
           test -f contracts/src/ZKMLVerifier.sol
           mv contracts/src/ZKMLVerifier.sol /tmp/SENTINEL_ZKMLVerifier.sol
+
+      - name: Compute Python golden V3 digest
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m pip install --disable-pip-version-check web3==7.15.0 pytest
+          DIGEST="$(python - <<'PY'
+          from agents.tests.test_policy_signer_v3 import _request
+          print(_request().digest)
+          PY
+          )"
+          echo "SENTINEL_GOLDEN_V3_DIGEST=$DIGEST" >> "$GITHUB_ENV"
+          echo "Python V3 digest: $DIGEST"
 
       - name: Report formatting drift without blocking behavioral validation
         working-directory: contracts
