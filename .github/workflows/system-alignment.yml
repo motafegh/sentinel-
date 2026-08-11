@@ -1,0 +1,77 @@
+name: SENTINEL system alignment
+
+on:
+  push:
+    branches:
+      - system/zkml-contracts-alignment
+  pull_request:
+    paths:
+      - "contracts/**"
+      - "zkml/**"
+      - "agents/src/mcp/servers/audit/**"
+      - ".github/workflows/system-alignment.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  zkml-boundary-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install boundary-test dependencies
+        run: python -m pip install --disable-pip-version-check pytest
+
+      - name: Run dependency-light ZKML boundary tests
+        run: |
+          python -m pytest -q \
+            zkml/tests/test_run_proof.py \
+            zkml/tests/test_validate_bundle.py
+
+      - name: Validate tracked V2 artifact bundle structure
+        run: |
+          python zkml/src/ezkl/validate_bundle.py \
+            --output /tmp/zkml-v2-bundle-report.json
+          cat /tmp/zkml-v2-bundle-report.json
+
+  contracts-foundry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+
+      - name: Bootstrap locked Solidity dependencies
+        run: bash contracts/scripts/bootstrap_deps.sh
+
+      - name: Show toolchain identity
+        run: |
+          forge --version
+          git -C contracts/lib/forge-std rev-parse HEAD
+          git -C contracts/lib/openzeppelin-contracts rev-parse HEAD
+          git -C contracts/lib/openzeppelin-contracts-upgradeable rev-parse HEAD
+
+      - name: Isolate generated EZKL verifier from registry unit compilation
+        run: |
+          test -f contracts/src/ZKMLVerifier.sol
+          mv contracts/src/ZKMLVerifier.sol /tmp/SENTINEL_ZKMLVerifier.sol
+
+      - name: Format check
+        working-directory: contracts
+        run: forge fmt --check
+
+      - name: Build registry and tests
+        working-directory: contracts
+        run: forge build --sizes
+
+      - name: Run Foundry tests
+        working-directory: contracts
+        run: forge test -vvv
