@@ -1,0 +1,56 @@
+{
+  "actual_contracts": 1,
+  "actual_rows": 10,
+  "class_names": [
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "GasException",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+    "UnusedReturn"
+  ],
+  "created_at": null,
+  "evidence_jsonl": {
+    "path": "fixtures/p3_valid_evidence_fixture.jsonl",
+    "sha256": null
+  },
+  "expected_classes": 10,
+  "expected_contracts": 1,
+  "expected_rows": 10,
+  "generation_commit": "fixture",
+  "historical_state_counts": {
+    "HISTORICAL_POSITIVE": 1,
+    "HISTORICAL_ZERO": 9
+  },
+  "ledger_parquet": {
+    "path": "fixtures/p3_valid_ledger_fixture.jsonl",
+    "sha256": null
+  },
+  "ledger_version": "r4-ledger-v1",
+  "limitations": [
+    "Synthetic one-contract validator fixture; not production ledger."
+  ],
+  "outcome_state_counts": {
+    "CONFIRMED_POSITIVE": 1,
+    "UNKNOWN": 9
+  },
+  "role_counts": {
+    "TRAIN_STRONG": 1,
+    "TRAIN_UNLABELED": 9
+  },
+  "schema_version": "1",
+  "source_counts": {
+    "solidifi": 1
+  },
+  "source_export_artifact_id": "R4-P0-EXP-002",
+  "source_export_sha256": "26e739b5d82ba512e5a1830817d09609216e2184b79cf4ca7ec2d62ef34e32b5",
+  "status": "DRAFT",
+  "validation_report": {
+    "path": "fixtures/p3_valid_fixture_report.json",
+    "sha256": null
+  }
+}

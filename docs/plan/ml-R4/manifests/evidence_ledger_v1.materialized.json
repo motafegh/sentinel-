@@ -1,0 +1,61 @@
+{
+  "actual_contracts": 22493,
+  "actual_rows": 224930,
+  "class_names": [
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "GasException",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+    "UnusedReturn"
+  ],
+  "created_at": null,
+  "evidence_jsonl": {
+    "path": "docs/plan/ml-R4/manifests/evidence_items_v1.jsonl",
+    "sha256": "f0b2684d1b59272a549e61801287cf381e312b3af429507fcd06e60a3705f36d"
+  },
+  "expected_classes": 10,
+  "expected_contracts": 22493,
+  "expected_rows": 224930,
+  "generation_commit": "b8911daed077db573a2c421fb5e21a9811b62526",
+  "historical_state_counts": {
+    "HISTORICAL_POSITIVE": 51546,
+    "HISTORICAL_ZERO": 173384
+  },
+  "ledger_parquet": {
+    "path": "docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet",
+    "sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7"
+  },
+  "ledger_version": "r4-ledger-v1",
+  "limitations": [
+    "Initial Phase-3 ledger is deliberately conservative: historical positives are not automatically confirmed positives, and historical zeros are not automatically confirmed negatives.",
+    "Exact DIVE per-row zero origin remains unresolved where protected split rows do not retain source-native zero/unknown distinction.",
+    "leakage_group_id remains null in Phase 3; dedup_group_id and project_group_id are preserved for later role/partition construction.",
+    "Final Phase-3 validation identity is the strict schema-surface + semantic report."
+  ],
+  "outcome_state_counts": {
+    "NOT_REVIEWED": 51546,
+    "UNKNOWN": 173384
+  },
+  "role_counts": {
+    "EXCLUDE_OUTCOME_METRICS": 224930,
+    "TRAIN_UNLABELED": 224930
+  },
+  "schema_version": "1",
+  "source_counts": {
+    "dive": 220730,
+    "smartbugs_curated": 1370,
+    "solidifi": 2830
+  },
+  "source_export_artifact_id": "R4-P0-EXP-002",
+  "source_export_sha256": "26e739b5d82ba512e5a1830817d09609216e2184b79cf4ca7ec2d62ef34e32b5",
+  "status": "VALIDATED",
+  "validation_report": {
+    "path": "docs/plan/ml-R4/findings/04_evidence_ledger_strict_validation_report.json",
+    "sha256": "acd54021e8ff614c5517b1dbc0eecbcf20ac076aa43a12d9713837e4a2427b2b"
+  }
+}

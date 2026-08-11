@@ -114,3 +114,49 @@ Append one entry for each work package.
 - **Register updates:** PLAN_STATUS_MATRIX Phase 2 -> PASSED; RISK_AND_BLOCKER_REGISTER R4-R010 narrowed/mitigated and R4-R014 added; ARTIFACT_INDEX Phase-2 outputs; EXECUTION_LOG this entry
 - **Gate effect:** **G2 PASS** — every mandatory historical positive/zero origin category has a named transformation path. Contract×class adjudication may remain unknown as permitted by the Phase-2 gate.
 - **Next permitted action:** Begin Phase 3 — Evidence Ledger. Build a sidecar contract×class evidence ledger without rewriting the protected historical export.
+
+---
+
+### R4-LOG-20260811-005 — Phase 3 Evidence-Ledger Framework Checkpoint
+
+- **Phase:** 3
+- **Gap ID, if review work:** N/A — no new contract review performed
+- **Operator:** ChatGPT + GitHub repository implementation
+- **Date/timezone:** 2026-08-11 Europe/Berlin
+- **Repository branch/commit:** `r4/phase3-evidence-ledger` / branch created from canonical G2-passed main `380c6f468cc1971e9ca995af0bd48895797573a5`
+- **Worktree status before:** remote branch; no protected DATA/ML/runtime artifact modifications
+- **Input artifact IDs/hashes:** R4-P0-EXP-002 and R4-P0-SPL-001..004 identities/counts; Phase-2 findings/trace manifest; Label State and Dataset Role Policy; Phase-3 specification/templates
+- **Command(s):** design versioned ledger/evidence/manifest schemas; implement semantic validator; create deterministic valid/invalid fixtures and unittest harness; map Phase-2 mechanisms into conservative ledger states; seed category/source-scoped evidence; probe protected v3 row artifacts through GitHub contents API
+- **Environment and seed(s):** GitHub-tracked repository only; deterministic fixtures; no stochastic execution
+- **Expected outputs:** Phase-3 execution plan, row/evidence/manifest schemas, validator, fixtures/tests, state mapping, evidence seed, draft production manifest, schema report
+- **Actual outputs/hashes:** Framework outputs created. Production manifest declares expected 22,493 contracts / 224,930 rows but actual 0 / DRAFT. GitHub reads returned 404 for protected v3 train.jsonl, split_manifest.json, and labels.parquet, proving row identities are unavailable in ordinary remote contents.
+- **Result:** BLOCKED
+- **Historical evidence reused:** Phase-0 protected artifact identities/counts and Phase-2 transformation evidence only
+- **New evidence created:** deterministic schema/validator fixtures and source-derived transformation evidence; no contract adjudication
+- **Protected artifacts changed:** NO
+- **Register updates:** PLAN_STATUS_MATRIX Phase 3 -> BLOCKED; RISK_AND_BLOCKER_REGISTER adds R4-B002; Phase-3 framework report records exact unblock condition
+- **Gate effect:** **G3 NOT PASSED.** Schema/state representation requirement is implemented, but the required 224,930-row production ledger and validation cannot be produced from aggregate counts/hashes.
+- **Next permitted action:** Make the protected v3 split/labels row population available to an execution environment, verify hashes against R4-P0 artifacts, materialize the full ledger, run validator/self-tests, and reassess G3. Phase 4 remains WAITING.
+
+---
+
+### R4-LOG-20260811-006 — Phase 3 Protected-Population Materialization and G3 Closure
+
+- **Phase:** 3
+- **Gap ID, if review work:** N/A — no new contract adjudication performed
+- **Operator:** User local execution + ChatGPT repository review/registration
+- **Date/timezone:** 2026-08-11 Europe/Berlin
+- **Repository branch/commit:** `r4/phase3-evidence-ledger`; materialization generation commit `b8911daed077db573a2c421fb5e21a9811b62526`; publication commit `17fa204955e1228b1d2f691f2f7e3fe76875085a`
+- **Worktree status before:** local Phase-3 branch with protected Phase-0 split/export/representation artifacts available; no protected artifact modifications
+- **Input artifact IDs/hashes:** R4-P0-SPL-002 `03f2a237...`, R4-P0-SPL-003 `cf9a7b45...`, R4-P0-SPL-004 `b9bb4649...`, R4-P0-EXP-002 `26e739b5...`, Phase-3 evidence items `f0b2684d1b59272a549e61801287cf381e312b3af429507fcd06e60a3705f36d`
+- **Command(s):** `ml/.venv/bin/python docs/plan/ml-R4/scripts/p3_run_local_gate.py`; this ran semantic validator self-tests, strict schema-surface self-tests, artifact-binding self-tests, frozen protected-population verification, staged ledger materialization, strict production validation, staged binding, canonical promotion, and canonical binding validation
+- **Environment and seed(s):** existing local SENTINEL ML/data environment with `pyarrow`; deterministic transformation; no stochastic seed and no DVC command required
+- **Expected outputs:** complete 224,930-row ledger, materialized manifest, semantic report, strict report, artifact-binding report
+- **Actual outputs/hashes:** 22,493 contracts; 224,930 rows / 224,930 unique keys; 21,657 represented contracts; ledger SHA-256 `3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7`; strict report SHA-256 `acd54021e8ff614c5517b1dbc0eecbcf20ac076aa43a12d9713837e4a2427b2b`; evidence SHA-256 `f0b2684d1b59272a549e61801287cf381e312b3af429507fcd06e60a3705f36d`; all semantic/strict/binding reports PASS with zero errors; 51,546 historical positives remain `NOT_REVIEWED`; 173,384 historical zeros remain `UNKNOWN`; all 224,930 rows are initially `TRAIN_UNLABELED` and excluded from outcome metrics
+- **Result:** PASS
+- **Historical evidence reused:** frozen Phase-0 population/artifact identities and Phase-2 transformation evidence only
+- **New evidence created:** materialized sidecar ledger and validation/binding reports; no vulnerability outcome adjudication
+- **Protected artifacts changed:** NO
+- **Register updates:** ARTIFACT_INDEX production Phase-3 identities; RISK_AND_BLOCKER_REGISTER R4-B002 -> CLOSED and R4-R002/R4-R003 mitigation state clarified; PLAN_STATUS_MATRIX Phase 3 -> PASSED and Phase 4 -> READY; Phase-3 specification -> G3 PASS; EXECUTION_LOG this entry
+- **Gate effect:** **G3 PASS.** The complete export-relevant contract×class population is represented without forcing historical unknowns/zeros into confirmed negatives.
+- **Next permitted action:** Begin Phase 4 — Targeted Gap Adjudication. Every new review action requires an authorized Gap ID; no Phase-4 adjudication is implied by Phase-3 materialization.

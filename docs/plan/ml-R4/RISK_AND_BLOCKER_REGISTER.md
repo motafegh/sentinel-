@@ -3,8 +3,8 @@
 | ID | Type | Description | Impact | Mitigation | Status | Gate |
 |---|---|---|---|---|---|---|
 | R4-R001 | Risk | Agent repeats prior contract audits instead of reusing them. | High | Non-duplication policy and mandatory gap IDs. | OPEN | G1-G4 |
-| R4-R002 | Risk | Historical zeros are treated as confirmed negatives. | Critical | Phase 2 reconstructed zero origins; Phase 3+ must preserve explicit evidence states/masks instead of collapsing them. | OPEN | G2-G7 |
-| R4-R003 | Risk | Tool-correlated evidence is counted as independent confirmation. | High | Independence groups. | OPEN | G3-G4 |
+| R4-R002 | Risk | Historical zeros are treated as confirmed negatives. | Critical | Phase 2 reconstructed zero origins; Phase 3 materialized all 173,384 historical-zero rows as `UNKNOWN` with supervised/outcome masking. Later phases must preserve that invariant unless evidence changes the state. | OPEN | G2-G7 |
+| R4-R003 | Risk | Tool-correlated evidence is counted as independent confirmation. | High | Independence groups are explicit in the Phase-3 ledger/evidence model; Phase 4 adjudication must enforce them before confirmation. | OPEN | G3-G4 |
 | R4-R004 | Risk | Architecture changes distract from label repair. | High | Architecture freeze. | MITIGATED | G8 |
 | R4-R005 | Risk | Threshold/calibration reuse inflates evaluation. | Critical | Separate leakage-safe roles. | OPEN | G6-G9 |
 | R4-R006 | Risk | Web3Bugs declared enabled in config but entirely absent (no data/crosswalk/parser). | High | Phase 0 finding F0.4; Phase 2 confirms zero executable contribution. DATA vNext must either acquire Web3Bugs or explicitly exclude it. | OPEN | G5 |
@@ -16,3 +16,4 @@
 | R4-R012 | Risk | DIVE EB TP count discrepancy: per-table shows 3 TP / 72 FP, tally claims 4 TP / 71 FP (off by 1). | Low | Phase 2 keeps the discrepancy explicit; only resolve if an exact EB adjudication statistic is needed for a later KEEP/DROP decision. | OPEN | G4-G5 |
 | R4-R013 | Risk | Benchmark manifest has 74 entries but documented as 66. Contamination risk if discrepancy indicates duplicate/overlap. | Low | Update documentation to match actual count; verify no duplicates before acceptance partitions. | OPEN | G6-G7 |
 | R4-R014 | Risk | Nominal DATA label orchestration is not reproducible: `dvc.yaml` invokes `sentinel-data label`, but current `_run_label()` is a no-op placeholder while lower-level parsers exist. | Medium | Phase 2 records the seam. Phase 7 implementation must provide a deterministic versioned label build path before DATA vNext can be promoted. | OPEN | G7 |
+| R4-B002 | Blocker | The full protected v3 contract-ID / historical-target population required to materialize the Phase-3 ledger was unavailable through GitHub repository contents during remote-only work. | High | Resolved locally on 2026-08-11: frozen split/labels hashes and row contents verified; 22,493 contracts expanded to 224,930 unique contract×class rows; 21,657 represented contracts verified; semantic, strict, and artifact-binding validation all passed; package published in commit `17fa204955e1228b1d2f691f2f7e3fe76875085a`. | CLOSED | G3 |

@@ -1,0 +1,23 @@
+{
+  "checked": {
+    "evidence_jsonl": {
+      "bytes": 8833,
+      "path": "docs/plan/ml-R4/manifests/evidence_items_v1.jsonl",
+      "sha256": "f0b2684d1b59272a549e61801287cf381e312b3af429507fcd06e60a3705f36d"
+    },
+    "ledger_parquet": {
+      "bytes": 2245123,
+      "path": "docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet",
+      "sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7"
+    },
+    "validation_report": {
+      "bytes": 544,
+      "path": "docs/plan/ml-R4/findings/04_evidence_ledger_strict_validation_report.json",
+      "sha256": "acd54021e8ff614c5517b1dbc0eecbcf20ac076aa43a12d9713837e4a2427b2b"
+    }
+  },
+  "errors": [],
+  "passed": true,
+  "schema": "r4-ledger-artifact-binding-report-v1",
+  "status": "VALIDATED"
+}

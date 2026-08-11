@@ -1,0 +1,83 @@
+name: R4 Phase 3 framework
+
+on:
+  push:
+    branches:
+      - r4/phase3-evidence-ledger
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase3-framework.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase3-framework.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  framework-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install production-ledger validation dependency
+        run: python -m pip install --disable-pip-version-check pyarrow
+
+      - name: Semantic ledger validator tests
+        run: python docs/plan/ml-R4/scripts/test_p3_validate_evidence_ledger.py
+
+      - name: Strict schema-surface validator tests
+        run: python docs/plan/ml-R4/scripts/test_p3_validate_evidence_ledger_strict.py
+
+      - name: Artifact-binding validator tests
+        run: python docs/plan/ml-R4/scripts/test_p3_validate_artifact_bindings.py
+
+      - name: Compile Phase 3 scripts
+        run: |
+          python -m py_compile \
+            docs/plan/ml-R4/scripts/p3_validate_evidence_ledger.py \
+            docs/plan/ml-R4/scripts/p3_validate_evidence_ledger_strict.py \
+            docs/plan/ml-R4/scripts/p3_validate_artifact_bindings.py \
+            docs/plan/ml-R4/scripts/p3_materialize_evidence_ledger.py \
+            docs/plan/ml-R4/scripts/p3_run_local_gate.py
+
+      - name: Validate published production ledger
+        run: |
+          python docs/plan/ml-R4/scripts/p3_validate_evidence_ledger_strict.py \
+            --ledger docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet \
+            --evidence docs/plan/ml-R4/manifests/evidence_items_v1.jsonl \
+            --manifest docs/plan/ml-R4/manifests/evidence_ledger_v1.materialized.json \
+            --report /tmp/r4-p3-strict-ci.json
+
+      - name: Validate published artifact bindings
+        run: |
+          python docs/plan/ml-R4/scripts/p3_validate_artifact_bindings.py \
+            --manifest docs/plan/ml-R4/manifests/evidence_ledger_v1.materialized.json \
+            --root . \
+            --report /tmp/r4-p3-binding-ci.json
+
+      - name: Assert G3 production identities
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('docs/plan/ml-R4/manifests/evidence_ledger_v1.materialized.json').read_text())
+          assert manifest['status'] == 'VALIDATED', manifest['status']
+          assert manifest['actual_contracts'] == 22493, manifest['actual_contracts']
+          assert manifest['actual_rows'] == 224930, manifest['actual_rows']
+          assert manifest['ledger_parquet']['sha256'] == '3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7'
+          strict = json.loads(Path('/tmp/r4-p3-strict-ci.json').read_text())
+          binding = json.loads(Path('/tmp/r4-p3-binding-ci.json').read_text())
+          assert strict['passed'] is True and strict['unique_keys'] == 224930
+          assert binding['passed'] is True and binding['status'] == 'VALIDATED'
+          print('Phase 3 production ledger is remotely reproducible and G3-ready.')
+          PY

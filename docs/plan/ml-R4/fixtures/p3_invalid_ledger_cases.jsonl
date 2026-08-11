@@ -1,0 +1,10 @@
+{"case_id": "duplicate_key", "expected_error_fragment": "duplicate canonical ledger key", "mutation": "append_duplicate_row_0"}
+{"case_id": "class_order_mismatch", "expected_error_fragment": "does not match locked class", "mutation": "row_0_class_name=Reentrancy"}
+{"case_id": "confirmed_without_evidence", "expected_error_fragment": "requires at least one evidence reference", "mutation": "row_0_outcome=CONFIRMED_NEGATIVE_unmasked_no_evidence"}
+{"case_id": "unknown_not_masked", "expected_error_fragment": "must be masked from supervised loss", "mutation": "row_0_supervised_loss_masked=false"}
+{"case_id": "unresolved_evidence", "expected_error_fragment": "unresolved evidence_id", "mutation": "row_6_evidence_ids=DOES-NOT-EXIST"}
+{"case_id": "evidence_scope_mismatch", "expected_error_fragment": "CONTRACT_CLASS scope mismatch", "mutation": "evidence_FIX-E1_class_index=5"}
+{"case_id": "acceptance_tool_only", "expected_error_fragment": "cannot be supported only by tool evidence", "mutation": "row_6_role_add_UNTOUCHED_ACCEPTANCE_and_FIX-E1_tool_only"}
+{"case_id": "leakage_partition_crossing", "expected_error_fragment": "incompatible partitions", "mutation": "duplicate_contract_with_same_leakage_group_partition_UNTOUCHED_ACCEPTANCE"}
+{"case_id": "invalid_export_hash", "expected_error_fragment": "historical_export_sha256 must be 64 hex chars", "mutation": "row_0_historical_export_sha256=bad"}
+{"case_id": "historical_zero_without_origin", "expected_error_fragment": "historical zero requires at least one zero-origin category", "mutation": "row_0_zero_origin_categories=[]"}
