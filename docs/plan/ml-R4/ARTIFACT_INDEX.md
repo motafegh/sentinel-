@@ -56,7 +56,7 @@
 | R4-P2-FND-008 | 2 | findings | findings/03_label_corruption_reconstruction_summary.md | — | a9a2b1e9 | New | AVAILABLE | NO | G2 PASS assessment and next action |
 | R4-P2-MAN-001 | 2 | trace_manifest | manifests/phase2_end_to_end_traces.jsonl | — | 353d68c0 | New | AVAILABLE | NO | Representative source→ML target traces |
 
-## Phase 3 artifacts — framework checkpoint (G3 blocked)
+## Phase 3 artifacts — validated production ledger (G3 PASS)
 
 | Artifact ID | Phase | Type | Path/URI | SHA-256 | Source commit | Historical/New | Availability | Protected | Notes |
 |---|---|---|---|---|---|---|---|---|---|
@@ -69,11 +69,16 @@
 | R4-P3-TST-002 | 3 | fixture | fixtures/p3_valid_evidence_fixture.jsonl | — | f40c4cb6 | New | AVAILABLE | NO | Injection evidence fixture |
 | R4-P3-TST-003 | 3 | fixture | fixtures/p3_valid_manifest_fixture.json | — | 47b31dc1 | New | AVAILABLE | NO | One-contract valid manifest fixture |
 | R4-P3-TST-004 | 3 | fixture | fixtures/p3_invalid_ledger_cases.jsonl | — | 734e25e8 | New | AVAILABLE | NO | Ten targeted invalid semantic cases |
-| R4-P3-TST-005 | 3 | test | scripts/test_p3_validate_evidence_ledger.py | — | 1b42f2c6 | New | AVAILABLE | NO | Deterministic unittest harness; not yet executed in GitHub CI |
+| R4-P3-TST-005 | 3 | test | scripts/test_p3_validate_evidence_ledger.py | — | 1b42f2c6 | New | AVAILABLE_VERIFIED | NO | Deterministic unittest harness; exercised in Phase-3 framework CI and local gate |
 | R4-P3-FND-001 | 3 | findings | findings/04_phase3_state_mapping.md | — | a9a5d7f9 | New | AVAILABLE | NO | Conservative Phase-2→ledger state initialization |
-| R4-P3-FND-002 | 3 | findings | findings/04_evidence_ledger_schema_report.md | — | 7b9ef185 | New | AVAILABLE | NO | Framework coverage and exact G3 blocker |
-| R4-P3-MAN-001 | 3 | evidence_seed | manifests/evidence_items_v1.jsonl | — | 54880b5a | New | AVAILABLE | NO | Category/source-scoped evidence only; no fake contract evidence |
-| R4-P3-MAN-002 | 3 | ledger_manifest | manifests/evidence_ledger_v1.manifest.json | — | 602f6d8b | New | AVAILABLE | NO | DRAFT: expected 224930 rows, actual 0 until protected population available |
+| R4-P3-FND-002 | 3 | findings | findings/04_evidence_ledger_schema_report.md | — | 7b9ef185 | New | AVAILABLE | NO | Framework coverage and materialization boundary |
+| R4-P3-MAN-001 | 3 | evidence_items | manifests/evidence_items_v1.jsonl | f0b2684d1b59272a549e61801287cf381e312b3af429507fcd06e60a3705f36d | b8911daed | New | AVAILABLE_VERIFIED | NO | 10 source/category-scoped evidence items; historical DoS patch represented as transformation evidence |
+| R4-P3-MAN-002 | 3 | ledger_manifest_draft | manifests/evidence_ledger_v1.manifest.json | — | 602f6d8b | New | SUPERSEDED | NO | Original remote-only DRAFT manifest; superseded by materialized manifest |
+| R4-P3-LED-001 | 3 | evidence_ledger | ledger/evidence_ledger_v1.parquet | 3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7 | 17fa20495 | New | AVAILABLE_VERIFIED | NO | 22,493 contracts × 10 classes = 224,930 unique rows; 2,245,123 bytes |
+| R4-P3-MAN-003 | 3 | ledger_manifest | manifests/evidence_ledger_v1.materialized.json | 7fac5025a913e83a157231cd1034fcd555c5247e80e3ffe771d6b9681bf05c3e | 17fa20495 | New | AVAILABLE_VERIFIED | NO | VALIDATED manifest; generation commit b8911daed; binds ledger/evidence/strict report identities |
+| R4-P3-FND-003 | 3 | semantic_validation | findings/04_evidence_ledger_validation_report.json | 6b9dc920bc25f6cfe19d395a755c10f6b0e5190fe67e6c4ea40675b5e57ae56f | 17fa20495 | New | AVAILABLE_VERIFIED | NO | 224,930 unique keys; frozen split/labels/source/class counts verified; zero errors/warnings |
+| R4-P3-FND-004 | 3 | strict_validation | findings/04_evidence_ledger_strict_validation_report.json | acd54021e8ff614c5517b1dbc0eecbcf20ac076aa43a12d9713837e4a2427b2b | 17fa20495 | New | AVAILABLE_VERIFIED | NO | Strict schema + semantic validation PASS; zero surface/semantic errors |
+| R4-P3-FND-005 | 3 | artifact_binding | findings/04_evidence_ledger_artifact_binding_report.json | 0686975ad81df6255a0ae0caa694ff59fb444d3189e108ab67e3c48f16b0152a | 17fa20495 | New | AVAILABLE_VERIFIED | NO | Canonical ledger/evidence/strict-report SHA-256 binding PASS |
 
 ## Availability
 
