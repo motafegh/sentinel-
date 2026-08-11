@@ -1,8 +1,9 @@
 {
   "run_id": "R4-P0-20260716-001",
   "created_at": "2026-07-16T00:00:00Z",
-  "repository_commit": "4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493",
-  "protection_policy": "Phase 0 prohibits modification of all artifacts listed below. Hashes are SHA-256 of on-disk files at commit 4b5bd333c.",
+  "audited_baseline_commit": "4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493",
+  "r4_output_commit": "6febb4283f92e801bf70e33de2cb00c409e8284f",
+  "protection_policy": "Phase 0 prohibits modification of all artifacts listed below. Hashes are SHA-256 of on-disk files at the audited baseline commit 4b5bd333c.",
   "protected_artifacts": [
     {"artifact_id": "R4-P0-CHK-001", "category": "checkpoint", "path": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt", "sha256": "6a220c6b085a8e0b6b8ae8f5b7610d22bee931d56721000d17e3e304b2daa6cb", "protected": true, "dvc_tracked": true},
     {"artifact_id": "R4-P0-CHK-002", "category": "thresholds", "path": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL_thresholds.json", "sha256": "ea3c762afcd4b820ac0e61d554f1ead3e6b840d2589696c327cd2580cfedd937", "protected": true, "dvc_tracked": true},

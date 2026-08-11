@@ -1,7 +1,8 @@
 # Phase 0 — Baseline Freeze and Previous-Evidence Location Findings
 
 - **Run ID:** R4-P0-20260716-001
-- **Repository commit:** 4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493
+- **Audited baseline commit:** `4b5bd333c63ab7a7ec83810fbbae54f3ebf1b493` (pre-R4 repository state that Phase 0 read and protected)
+- **Phase 0/R4 output commit:** `6febb4283f92e801bf70e33de2cb00c409e8284f` (Phase 0 outputs and manifest files committed on branch `r4/phase1-previous-evidence-recovery`)
 - **Input artifact IDs:** R4-P0-CHK-001 through R4-P0-EVD-007 (see manifests)
 - **Date:** 2026-07-16
 - **Status:** COMPLETE
@@ -12,7 +13,7 @@ Freeze the exact current DATA/ML baseline, hash all protected artifacts, locate 
 
 ## Reused previous evidence
 
-No previous evidence was *consumed* in Phase 0 — it was *located and registered*. The evidence location inventory (24 evidence sets) was built by searching repository history and local storage. Key prior evidence sets identified:
+No previous evidence was *consumed* in Phase 0 — it was *located and registered*. The evidence location inventory (30 evidence sets) was built by searching repository history and local storage. Key prior evidence sets identified:
 
 - **DIVE** (2 review mds + 2 tool-corroboration JSONs + 17,287 Slither + 573 Aderyn + 22,073 per-contract labels + 22,330-row source CSV)
 - **BCCC** (full 5-phase deep dive: integrity, validation, analysis, label-validation, verification — 28 scripts, verified labels v1.4, class definitions, review batches)
@@ -96,7 +97,7 @@ All counts are kept separate per the Phase 0 spec. No distinct populations are c
 
 ### F0.3 — Prior evidence is extensive and largely AVAILABLE
 
-24 evidence sets identified across DIVE, BCCC, SolidiFI, SmartBugs, manual, tool, benchmark, and audit categories. 16 are AVAILABLE_VERIFIED or AVAILABLE_UNVERIFIED; 8 are UNAVAILABLE.
+30 evidence sets identified across DIVE, BCCC, SolidiFI, SmartBugs, manual, tool, benchmark, and audit categories. 23 are AVAILABLE_VERIFIED or AVAILABLE_UNVERIFIED; 7 are UNAVAILABLE.
 
 ### F0.4 — Web3Bugs is entirely UNAVAILABLE
 
@@ -139,6 +140,7 @@ Export manifest reports 22,493 contracts but only 21,657 with representations (n
 
 ## Limitations
 
+- **Checkpoint-to-training-export lineage is NOT resolved in Phase 0.** Phase 0 resolved the active runtime DATA configuration (which export the inference API loads) and active inference bundle (which checkpoint/thresholds MLOps binds). However, the exact export that produced checkpoint `GCB-P1-Run12-v3dospatched-20260613_FINAL.pt`, and the exact split used during its training, are not yet confirmed. The checkpoint state records epoch=51, best_f1=0.6801, architecture `four_eye_v8`, and the checkpoint name contains "v3dospatched" suggesting v3 split with DoS patch — but these are naming hints, not confirmed lineage. Phase 1 must recover the checkpoint-to-training-export and checkpoint-to-training-split lineage unless retained run metadata (MLflow, experiment logs, training config) proves it.
 - Export graph/token shard files (5 shards each, ~1.6GB total) are recorded as AVAILABLE_UNVERIFIED — individual file SHA-256 hashes were not computed for all shards due to size; the shard_index.json hash is recorded and the export manifest artifact_hash covers the full export.
 - The ML processed index (`ml/data/processed/multilabel_index.csv`, 41,577 rows) is a legacy v2-era artifact, not the active export. It is recorded but not protected.
 - `cached_dataset_v9.pkl` is a legacy paired cache from the v2 export era, not the active export. It is recorded but not protected.
@@ -166,7 +168,7 @@ Export manifest reports 22,493 contracts but only 21,657 with representations (n
 | Prior evidence locations are inventoried | PASS | evidence_location_inventory.csv with 24 evidence sets |
 | Missing artifacts are explicit | PASS | 8 UNAVAILABLE items listed with impact |
 | Population counts are separated | PASS | 17 distinct population boundaries recorded separately |
-| Protected artifacts are recorded | PASS | protected_artifacts.json with 24 protected entries + SHA-256 hashes |
+| Protected artifacts are recorded | PASS | protected_artifacts.json with 26 protected entries + SHA-256 hashes |
 | Manifests validate | PASS | JSON manifests are valid JSON; CSV inventories are well-formed |
 | No protected artifact changed | PASS | All hashes computed at Phase 0 start; no modifications made during Phase 0 |
 

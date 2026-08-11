@@ -3,7 +3,7 @@
 | Phase | File | Status | Entry condition | Exit gate | Notes |
 |---|---|---|---|---|---|
 | 0 | `phases/01_PHASE_0_BASELINE_AND_EVIDENCE_LOCATION.md` | PASSED | Master plan adopted | G0 | Phase 0 complete; G0 PASS |
-| 1 | `phases/02_PHASE_1_PREVIOUS_EVIDENCE_RECOVERY.md` | WAITING | G0 | G1 | Reuse prior work |
+| 1 | `phases/02_PHASE_1_PREVIOUS_EVIDENCE_RECOVERY.md` | PASSED | G0 | G1 | Phase 1 complete; G1 PASS |
 | 2 | `phases/03_PHASE_2_LABEL_CORRUPTION_RECONSTRUCTION.md` | WAITING | G1 | G2 | No new broad audit |
 | 3 | `phases/04_PHASE_3_EVIDENCE_LEDGER.md` | WAITING | G2 | G3 | Sidecar first |
 | 4 | `phases/05_PHASE_4_TARGETED_GAP_ADJUDICATION.md` | WAITING | G3 | G4 | Gap ID mandatory |
