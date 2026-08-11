@@ -1,8 +1,8 @@
 # 05 — Phase 4 Gap Entry and Class-Definition Reconciliation
 
 - **Phase:** R4 Phase 4 — Targeted Evidence-Gap Adjudication
-- **Status:** PRE-REVIEW / HUMAN APPROVAL REQUIRED
-- **Purpose:** establish the smallest decision-critical gap and a review rubric without performing new contract adjudication
+- **Status:** AUTHORIZED / R4-GAP-002 WP1 IN PROGRESS
+- **Purpose:** establish the smallest decision-critical gap and freeze its review rubric before contract adjudication
 
 ## 1. Entry conclusion
 
@@ -17,6 +17,10 @@ The only currently decision-critical new semantic review is **R4-GAP-002**, narr
 5. `Front Running` → `TransactionOrderDependence`
 
 DIVE `Bad Randomness` is not included in the first-baseline review population because the current crosswalk deliberately drops it rather than mapping it into a canonical class. It should remain unknown/masked unless a later ADR proposes a new mapping.
+
+`R4-GAP-002` was approved on 2026-08-11 under the human owner's explicit delegation of routine technical/governance approvals to the AI assistant. The approval record is:
+
+`docs/plan/ml-R4/authorizations/2026-08-11_R4-GAP-002_authorization.md`
 
 ## 2. Why the other proposed gaps do not block G4
 
@@ -45,11 +49,11 @@ The current canonical schema is `FEATURE_SCHEMA_VERSION=v9` and locks the class 
 | 8 | TransactionOrderDependence |
 | 9 | UnusedReturn |
 
-Recovered BCCC Phase-5 definition documents contain older historical class numbers. Their semantic inclusion/exclusion prose may be reused, but **their numeric class IDs are not authoritative for R4**. Phase-4 review records must bind by current canonical class name and current v9 index.
+Recovered BCCC Phase-5 definition documents contain older historical class numbers. Their semantic inclusion/exclusion prose may be reused, but **their numeric class IDs are not authoritative for R4**. Phase-4 review records bind by current canonical class name and current v9 index.
 
-## 4. Proposed review rubric for R4-GAP-002
+## 4. Frozen review rubric for R4-GAP-002
 
-These are semantic review definitions, not DATA-role decisions. Human approval is required before they are frozen for adjudication.
+These are semantic review definitions, not DATA-role decisions. They are frozen for the authorized R4-GAP-002 review unless evidence shows a material taxonomy contradiction, in which case review stops rather than silently changing the rubric.
 
 ### 4.1 DenialOfService — current index 1
 
@@ -91,9 +95,9 @@ These are semantic review definitions, not DATA-role decisions. Human approval i
 
 **DIVE-specific caution:** the source-native label is `Front Running`; review must establish an exploitable transaction-order dependency rather than treating any externally callable state update as front-running.
 
-## 5. Proposed adjudication record states
+## 5. Adjudication record states
 
-Initial semantic review should use only:
+Initial semantic review uses only:
 
 - `SUPPORTS_POSITIVE`
 - `DOES_NOT_SUPPORT_POSITIVE`
@@ -104,7 +108,7 @@ These review states do **not** create confirmed negatives. A DIVE positive that 
 
 ## 6. Evidence reveal discipline
 
-Initial review should hide, where practical:
+Initial review hides, where practical:
 
 - historical SENTINEL model probabilities/tiers;
 - prior tool votes;
@@ -120,8 +124,8 @@ After the semantic verdict is recorded, reconciliation may reveal:
 
 Tool agreement remains a correlated evidence source, not independent ground truth.
 
-## 7. Authorization boundary
+## 7. Authorization and current execution boundary
 
-No contract source review has been performed in this Phase-4 entry work.
+New contract review is authorized only for **R4-GAP-002** and only for the five mapped DIVE strata above.
 
-The next new-evidence action requires explicit human approval of **R4-GAP-002**, scoped to the five mapped DIVE strata and the semantic rubric above. On approval, the register can move R4-GAP-002 from `PROPOSED` to `APPROVED`, after which the deterministic population/sample freeze may begin.
+WP1 now freezes the exact population and a deterministic initial screening sample against the committed Phase-3 ledger. No semantic verdict is recorded until the sample identity is frozen and source material for those sampled contracts is bound. The initial sample is 20 TRAIN-only, globally group-disjoint contracts per stratum; this is a screening batch, not a fixed final sample size. Strata that are clearly unsuitable for trusted use may stop at mask/exclude; strata that appear suitable for higher-authority use require adaptive expansion and second review.
