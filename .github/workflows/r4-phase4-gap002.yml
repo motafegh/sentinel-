@@ -1,0 +1,78 @@
+name: R4 Phase 4 DIVE gap freeze
+
+on:
+  push:
+    branches:
+      - r4/phase4-targeted-gap-adjudication
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase4-gap002.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  gap002-population-freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install sampling dependencies
+        run: python -m pip install --disable-pip-version-check pyarrow
+
+      - name: Test deterministic sampling logic
+        run: python docs/plan/ml-R4/scripts/test_p4_freeze_gap002_sample.py
+
+      - name: Freeze committed-ledger population and initial blind sample
+        run: |
+          python docs/plan/ml-R4/scripts/p4_freeze_gap002_sample.py \
+            --output-manifest /tmp/p4_gap002_population_manifest.json \
+            --output-sample /tmp/p4_gap002_initial_sample.jsonl
+
+      - name: Assert frozen sample invariants
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          manifest = json.loads(Path('/tmp/p4_gap002_population_manifest.json').read_text())
+          sample_bytes = Path('/tmp/p4_gap002_initial_sample.jsonl').read_bytes()
+          rows = [json.loads(line) for line in sample_bytes.decode().splitlines() if line.strip()]
+
+          assert manifest['gap_id'] == 'R4-GAP-002'
+          assert manifest['ledger_sha256'] == '3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7'
+          assert manifest['initial_per_stratum'] == 20
+          assert manifest['initial_total'] == 100
+          assert hashlib.sha256(sample_bytes).hexdigest() == manifest['sample_sha256']
+          assert len(rows) == 100
+          assert len({row['review_group_id'] for row in rows}) == 100
+          assert all(row['historical_split'] == 'train' for row in rows)
+          counts = Counter(row['class_name'] for row in rows)
+          expected = {
+              'DenialOfService': 20,
+              'IntegerUO': 20,
+              'Timestamp': 20,
+              'TransactionOrderDependence': 20,
+              'UnusedReturn': 20,
+          }
+          assert counts == expected, (counts, expected)
+          print(json.dumps({'passed': True, 'counts': counts, 'sample_sha256': manifest['sample_sha256']}, default=dict, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-gap002-initial-freeze
+          path: |
+            /tmp/p4_gap002_population_manifest.json
+            /tmp/p4_gap002_initial_sample.jsonl
+          if-no-files-found: error
