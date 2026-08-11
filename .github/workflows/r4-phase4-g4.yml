@@ -111,13 +111,17 @@ jobs:
 
           status = (root / 'PLAN_STATUS_MATRIX.md').read_text()
           assert '| 4 | `phases/05_PHASE_4_TARGETED_GAP_ADJUDICATION.md` | PASSED |' in status
-          assert '| 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | READY |' in status
+          phase5_ready = '| 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | READY |' in status
+          phase5_passed = '| 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED |' in status
+          assert phase5_ready or phase5_passed
 
           phase4 = (root / 'phases/05_PHASE_4_TARGETED_GAP_ADJUDICATION.md').read_text()
           phase5 = (root / 'phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md').read_text()
           assert '**Status:** PASSED — G4 PASS' in phase4
           assert '**G4 PASS.**' in phase4
-          assert '**Status:** READY — G4 SATISFIED' in phase5
+          downstream_phase5_ready = '**Status:** READY — G4 SATISFIED' in phase5
+          downstream_phase5_passed = '**Status:** PASSED — G5 PASS' in phase5
+          assert downstream_phase5_ready or downstream_phase5_passed
 
           artifacts = (root / 'ARTIFACT_INDEX.md').read_text()
           assert '## Phase 4 artifacts — targeted gap adjudication (G4 PASS)' in artifacts
@@ -138,6 +142,6 @@ jobs:
               'authorization_path': str(authorization_path),
               'tasks': 100,
               'phase4': 'PASSED',
-              'phase5': 'READY',
+              'phase5_state': 'PASSED' if phase5_passed else 'READY',
           }, indent=2))
           PY
