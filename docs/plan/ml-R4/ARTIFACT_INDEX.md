@@ -56,6 +56,25 @@
 | R4-P2-FND-008 | 2 | findings | findings/03_label_corruption_reconstruction_summary.md | — | a9a2b1e9 | New | AVAILABLE | NO | G2 PASS assessment and next action |
 | R4-P2-MAN-001 | 2 | trace_manifest | manifests/phase2_end_to_end_traces.jsonl | — | 353d68c0 | New | AVAILABLE | NO | Representative source→ML target traces |
 
+## Phase 3 artifacts — framework checkpoint (G3 blocked)
+
+| Artifact ID | Phase | Type | Path/URI | SHA-256 | Source commit | Historical/New | Availability | Protected | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| R4-P3-PLN-001 | 3 | execution_plan | runs/2026-08-11_PHASE3_evidence_ledger_execution_plan.md | — | 77794238 | New | AVAILABLE | NO | Full Phase-3 work packages and materialization boundary |
+| R4-P3-SCH-001 | 3 | schema | schemas/evidence_ledger_row.v1.schema.json | — | d75b3d8f | New | AVAILABLE | NO | Contract×class ledger schema; explicit unresolved-zero state |
+| R4-P3-SCH-002 | 3 | schema | schemas/evidence_item.v1.schema.json | — | 6dcad5d8 | New | AVAILABLE | NO | Evidence scope/independence/provenance schema |
+| R4-P3-SCH-003 | 3 | schema | schemas/evidence_ledger_manifest.v1.schema.json | — | fe235ab4 | New | AVAILABLE | NO | Materialization/validation manifest schema |
+| R4-P3-SCR-001 | 3 | validator | scripts/p3_validate_evidence_ledger.py | — | 43817dab | New | AVAILABLE | NO | Semantic + population + leakage validator |
+| R4-P3-TST-001 | 3 | fixture | fixtures/p3_valid_ledger_fixture.jsonl | — | 8036ac61 | New | AVAILABLE | NO | Complete one-contract ten-class valid ledger fixture |
+| R4-P3-TST-002 | 3 | fixture | fixtures/p3_valid_evidence_fixture.jsonl | — | f40c4cb6 | New | AVAILABLE | NO | Injection evidence fixture |
+| R4-P3-TST-003 | 3 | fixture | fixtures/p3_valid_manifest_fixture.json | — | 47b31dc1 | New | AVAILABLE | NO | One-contract valid manifest fixture |
+| R4-P3-TST-004 | 3 | fixture | fixtures/p3_invalid_ledger_cases.jsonl | — | 734e25e8 | New | AVAILABLE | NO | Ten targeted invalid semantic cases |
+| R4-P3-TST-005 | 3 | test | scripts/test_p3_validate_evidence_ledger.py | — | 1b42f2c6 | New | AVAILABLE | NO | Deterministic unittest harness; not yet executed in GitHub CI |
+| R4-P3-FND-001 | 3 | findings | findings/04_phase3_state_mapping.md | — | a9a5d7f9 | New | AVAILABLE | NO | Conservative Phase-2→ledger state initialization |
+| R4-P3-FND-002 | 3 | findings | findings/04_evidence_ledger_schema_report.md | — | 7b9ef185 | New | AVAILABLE | NO | Framework coverage and exact G3 blocker |
+| R4-P3-MAN-001 | 3 | evidence_seed | manifests/evidence_items_v1.jsonl | — | 54880b5a | New | AVAILABLE | NO | Category/source-scoped evidence only; no fake contract evidence |
+| R4-P3-MAN-002 | 3 | ledger_manifest | manifests/evidence_ledger_v1.manifest.json | — | 602f6d8b | New | AVAILABLE | NO | DRAFT: expected 224930 rows, actual 0 until protected population available |
+
 ## Availability
 
 - `AVAILABLE_VERIFIED`
