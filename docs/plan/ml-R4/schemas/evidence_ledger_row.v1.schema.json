@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/r4/evidence_ledger_row.v1.schema.json",
+  "title": "SENTINEL R4 Evidence Ledger Row v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ledger_version",
+    "contract_id",
+    "class_index",
+    "class_name",
+    "primary_source",
+    "historical_state",
+    "historical_target",
+    "historical_export_artifact_id",
+    "historical_export_sha256",
+    "historical_split",
+    "representation_available",
+    "source_native_state",
+    "crosswalk_action",
+    "merger_action",
+    "verification_action",
+    "zero_origin_categories",
+    "evidence_ids",
+    "independence_groups",
+    "prior_review_state",
+    "outcome_state",
+    "limitations",
+    "supervised_loss_masked",
+    "outcome_metrics_masked",
+    "role_eligibility",
+    "partition",
+    "artifact_ids",
+    "provenance_kind"
+  ],
+  "properties": {
+    "ledger_version": {
+      "const": "r4-ledger-v1"
+    },
+    "contract_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "class_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9
+    },
+    "class_name": {
+      "enum": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp",
+        "TransactionOrderDependence",
+        "UnusedReturn"
+      ]
+    },
+    "primary_source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_record_id": {
+      "type": ["string", "null"]
+    },
+    "source_tier": {
+      "type": ["string", "null"],
+      "enum": ["T0", "T1", "T2", "T3", "T4", null]
+    },
+    "dedup_group_id": {
+      "type": ["string", "null"]
+    },
+    "project_group_id": {
+      "type": ["string", "null"]
+    },
+    "leakage_group_id": {
+      "type": ["string", "null"]
+    },
+    "historical_state": {
+      "enum": [
+        "HISTORICAL_POSITIVE",
+        "HISTORICAL_ZERO",
+        "HISTORICAL_MISSING"
+      ]
+    },
+    "historical_target": {
+      "type": ["integer", "null"],
+      "enum": [0, 1, null]
+    },
+    "historical_export_artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "historical_export_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "historical_split": {
+      "type": ["string", "null"],
+      "enum": ["train", "val", "test", null]
+    },
+    "representation_available": {
+      "type": "boolean"
+    },
+    "source_native_state": {
+      "enum": [
+        "EXPLICIT_POSITIVE",
+        "EXPLICIT_NEGATIVE",
+        "UNKNOWN",
+        "ABSENT",
+        "UNSUPPORTED",
+        "DROPPED_CATEGORY",
+        "MAPPED_NONVULNERABLE",
+        "UNAVAILABLE",
+        "MIXED",
+        "NOT_RECONSTRUCTED"
+      ]
+    },
+    "source_native_label": {
+      "type": ["string", "null"]
+    },
+    "parser_id": {
+      "type": ["string", "null"]
+    },
+    "crosswalk_id": {
+      "type": ["string", "null"]
+    },
+    "crosswalk_action": {
+      "enum": [
+        "DIRECT",
+        "LOSSY_MAP",
+        "DROP",
+        "MAP_NONVULNERABLE",
+        "UNSUPPORTED",
+        "NONE",
+        "UNKNOWN"
+      ]
+    },
+    "merger_action": {
+      "enum": [
+        "SINGLE_SOURCE",
+        "POSITIVE_PRECEDENCE",
+        "ALL_ZERO_SELECTION",
+        "CONFLICT",
+        "NONE",
+        "UNKNOWN"
+      ]
+    },
+    "verification_action": {
+      "enum": [
+        "GATE_ONLY",
+        "HISTORICAL_DIRECT_PATCH",
+        "NONE",
+        "UNKNOWN"
+      ]
+    },
+    "zero_origin_categories": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "EXPLICIT_SOURCE_ZERO",
+          "SOURCE_NATIVE_UNKNOWN",
+          "SOURCE_ABSENCE",
+          "CLASS_UNSUPPORTED",
+          "DROPPED_CATEGORY",
+          "MAPPED_NONVULNERABLE",
+          "PARSER_DEFAULT",
+          "MERGER_PRESERVED_ZERO",
+          "SYNTHETIC_NONVULNERABLE",
+          "HISTORICAL_POST_EXPORT_SUPPRESSION",
+          "HISTORICAL_MISSING",
+          "NONE"
+        ]
+      }
+    },
+    "phase2_trace_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "evidence_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "independence_groups": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "prior_review_state": {
+      "enum": [
+        "NONE",
+        "CONFIRMED_POSITIVE",
+        "CONFIRMED_NEGATIVE",
+        "UNKNOWN",
+        "CONFLICTING_EVIDENCE",
+        "NOT_REVIEWED",
+        "INVALID_RECORD"
+      ]
+    },
+    "outcome_state": {
+      "enum": [
+        "CONFIRMED_POSITIVE",
+        "CONFIRMED_NEGATIVE",
+        "UNKNOWN",
+        "NOT_APPLICABLE",
+        "CONFLICTING_EVIDENCE",
+        "NOT_REVIEWED",
+        "INVALID_RECORD"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "supervised_loss_masked": {
+      "type": "boolean"
+    },
+    "outcome_metrics_masked": {
+      "type": "boolean"
+    },
+    "role_eligibility": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "TRAIN_STRONG",
+          "TRAIN_WEAK",
+          "TRAIN_UNLABELED",
+          "MODEL_SELECTION",
+          "THRESHOLD_FIT",
+          "CALIBRATION_FIT",
+          "INTERNAL_AUDIT",
+          "UNTOUCHED_ACCEPTANCE",
+          "CASE_STUDY",
+          "EXCLUDE_OUTCOME_METRICS"
+        ]
+      }
+    },
+    "partition": {
+      "enum": [
+        "UNASSIGNED",
+        "TRAIN",
+        "MODEL_SELECTION",
+        "THRESHOLD_FIT",
+        "CALIBRATION_FIT",
+        "INTERNAL_AUDIT",
+        "UNTOUCHED_ACCEPTANCE",
+        "CASE_STUDY",
+        "EXCLUDED"
+      ]
+    },
+    "artifact_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "provenance_kind": {
+      "enum": [
+        "HISTORICAL_RECOVERED",
+        "HISTORICAL_CONCLUSION_ONLY",
+        "NEW_REPRODUCTION",
+        "NEW_GAP_REVIEW",
+        "TRANSFORMATION_RECONSTRUCTION",
+        "NO_EVIDENCE"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"historical_state": {"const": "HISTORICAL_POSITIVE"}}},
+      "then": {"properties": {"historical_target": {"const": 1}}}
+    },
+    {
+      "if": {"properties": {"historical_state": {"const": "HISTORICAL_ZERO"}}},
+      "then": {"properties": {"historical_target": {"const": 0}}}
+    },
+    {
+      "if": {"properties": {"historical_state": {"const": "HISTORICAL_MISSING"}}},
+      "then": {"properties": {"historical_target": {"type": "null"}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome_state": {
+            "enum": ["CONFIRMED_POSITIVE", "CONFIRMED_NEGATIVE"]
+          }
+        }
+      },
+      "then": {
+        "properties": {"evidence_ids": {"minItems": 1}}
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome_state": {
+            "enum": ["UNKNOWN", "NOT_APPLICABLE", "CONFLICTING_EVIDENCE", "NOT_REVIEWED", "INVALID_RECORD"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "supervised_loss_masked": {"const": true},
+          "outcome_metrics_masked": {"const": true}
+        }
+      }
+    }
+  ]
+}
