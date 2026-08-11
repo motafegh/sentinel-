@@ -6,7 +6,7 @@
 | 1 | `phases/02_PHASE_1_PREVIOUS_EVIDENCE_RECOVERY.md` | PASSED | G0 | G1 | Phase 1 complete; G1 PASS |
 | 2 | `phases/03_PHASE_2_LABEL_CORRUPTION_RECONSTRUCTION.md` | PASSED | G1 | G2 | Phase 2 complete; G2 PASS — historical positive/zero origins reconstructed at category level |
 | 3 | `phases/04_PHASE_3_EVIDENCE_LEDGER.md` | PASSED | G2 | G3 | Full 22,493-contract / 224,930-row ledger materialized and validated; G3 PASS |
-| 4 | `phases/05_PHASE_4_TARGETED_GAP_ADJUDICATION.md` | READY | G3 | G4 | Gap ID mandatory; G3 satisfied |
+| 4 | `phases/05_PHASE_4_TARGETED_GAP_ADJUDICATION.md` | IN_PROGRESS | G3 | G4 | Entry triage active; no new contract review until a specific gap receives explicit human approval |
 | 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | WAITING | G4 | G5 | ADRs required |
 | 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | WAITING | G5 | G6 | Freeze acceptance |
 | 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | WAITING | G6 | G7 | Versioned artifacts |
