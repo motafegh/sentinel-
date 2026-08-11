@@ -1,0 +1,75 @@
+name: SENTINEL V3 runtime feedback alignment
+
+on:
+  push:
+    branches:
+      - system/v3-runtime-feedback-alignment
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agents/src/contracts/submission_v3.py'
+      - 'agents/src/ingestion/audit_observation.py'
+      - 'agents/src/ingestion/feedback_policy.py'
+      - 'agents/src/ingestion/feedback_observer.py'
+      - 'agents/src/ingestion/feedback_runtime.py'
+      - 'agents/tests/test_submission_v3.py'
+      - 'agents/tests/test_feedback_v3_runtime.py'
+      - 'docs/plan/system-finalization/2026-08-11_V3_RUNTIME_FEEDBACK_ALIGNMENT_*.md'
+      - '.github/workflows/v3-runtime-feedback.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-feedback-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependency-light test requirements
+        run: python -m pip install --disable-pip-version-check pytest loguru
+
+      - name: Test versioned submission and feedback boundaries
+        env:
+          PYTHONPATH: agents
+          SENTINEL_ENV: production
+        run: |
+          python -m pytest -q -c /dev/null \
+            agents/tests/test_submission_v3.py \
+            agents/tests/test_feedback_v3_runtime.py
+
+      - name: Compile runtime boundary modules
+        run: |
+          python -m py_compile \
+            agents/src/contracts/submission_v3.py \
+            agents/src/ingestion/audit_observation.py \
+            agents/src/ingestion/feedback_policy.py \
+            agents/src/ingestion/feedback_observer.py \
+            agents/src/ingestion/feedback_runtime.py
+
+      - name: Assert analysis feedback boundary has no signing or broadcast capability
+        run: |
+          if grep -nE 'private[_-]?key|sign_transaction|send_raw_transaction|send_transaction|cast send' \
+            agents/src/ingestion/audit_observation.py \
+            agents/src/ingestion/feedback_policy.py \
+            agents/src/ingestion/feedback_observer.py \
+            agents/src/ingestion/feedback_runtime.py; then
+            echo 'Forbidden signing/broadcast capability found in feedback boundary' >&2
+            exit 1
+          fi
+
+      - name: Assert V3 policy remains intentionally unavailable
+        env:
+          PYTHONPATH: agents
+        run: |
+          python - <<'PY'
+          from src.ingestion.feedback_policy import V3_POLICY_VERSION
+          assert V3_POLICY_VERSION is None
+          print('V3 feedback promotion policy remains unmeasured/unavailable as intended.')
+          PY
