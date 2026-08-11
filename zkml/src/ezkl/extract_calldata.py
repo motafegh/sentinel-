@@ -1,146 +1,153 @@
-"""
-extract_calldata.py — Extract on-chain calldata from proof.json
+"""Decode a legacy V2 EZKL proof into a read-only submission bundle.
 
-Reads zkml/ezkl/proof.json and outputs the exact arguments needed
-to call AuditRegistry.submitAuditV2() on-chain via cast.
+This helper intentionally performs **no transaction construction and no signing**.
+R0 signer isolation requires all writes to cross the policy-signer boundary; the
+current V2 proof scope (``legacy_proxy_only_unbound``) is not eligible for an
+on-chain verified-audit submission.
 
-Usage:
-    cd ~/projects/sentinel
-    source ml/.venv/bin/activate
-    python zkml/src/ezkl/extract_calldata.py
+The output is useful for:
+- inspecting the 138 public signals;
+- checking the 128-input / 10-output layout;
+- preserving a deterministic proof/calldata evidence bundle;
+- later feeding a policy-signer-compatible V3 implementation.
 
-Output:
-    - Prints human-readable summary
-    - Writes check_verify.sh   (cast call → verifyProof on ZKMLVerifier)
-    - Writes submit_audit.sh   (cast send → submitAuditV2 on AuditRegistry)
-
-ENCODING REFERENCE — BN254 field elements:
-    EZKL stores every public signal as a 32-byte little-endian hex string
-    in proof.json["instances"][0].
-    Little-endian LEAST significant byte first → must convert explicitly.
-    CORRECT: int.from_bytes(bytes.fromhex(hex_str), byteorder='little')
+It must never emit ``cast send`` or accept/read a private key.
 """
 
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
-
-# ------------------------------------------------------------------
-# Config
-# ------------------------------------------------------------------
+from typing import Any
 
 PROOF_PATH = Path("zkml/ezkl/proof.json")
+BUNDLE_PATH = Path("zkml/ezkl/calldata_bundle_v2.json")
 
-# Sepolia deployment addresses (update after each re-deploy)
-ZKML_VERIFIER = "0xB7093Be4958dd95438D6f53Ff7DF8659451CbD97"
-AUDIT_REGISTRY = "0x14E5eFb6DE4cBb74896B45b4853fd14901E4CfAf"
-RPC_URL = "https://sepolia.infura.io/v3/31876fad90e24857ab6751fb214da7b9"
-
-AUDIT_TARGET = "0x000000000000000000000000000000000000dEaD"
-MODEL_HASH   = "0x0000000000000000000000000000000000000000000000000000000000000000"
-
-NUM_CLASSES   = 10
-INPUT_OFFSET  = 128   # first 128 publicSignals are fusion features
-TOTAL_SIGNALS = INPUT_OFFSET + NUM_CLASSES  # 138
-SCALE         = 8192  # 2^13
+NUM_CLASSES = 10
+INPUT_OFFSET = 128
+TOTAL_SIGNALS = INPUT_OFFSET + NUM_CLASSES
+SCALE = 8192  # EZKL fixed-point scale 2^13; circuit outputs are student scores.
+PROOF_SCOPE = "legacy_proxy_only_unbound"
+SUBMISSION_ELIGIBLE = False
+SUBMISSION_INELIGIBLE_REASON = "proof_scope_not_identity_bound"
 
 
 def _decode_field_element(hex_str: str) -> int:
-    return int.from_bytes(bytes.fromhex(hex_str), byteorder='little')
-
-
-def main() -> None:
-    if not PROOF_PATH.exists():
-        print(f"ERROR: proof.json not found at {PROOF_PATH}", file=sys.stderr)
-        print("Run: python zkml/src/ezkl/run_proof.py", file=sys.stderr)
-        sys.exit(1)
-
+    """Decode EZKL's 32-byte little-endian field-element representation."""
+    if not isinstance(hex_str, str) or not hex_str:
+        raise ValueError("field element must be a non-empty hex string")
     try:
-        proof_data = json.loads(PROOF_PATH.read_text())
-    except json.JSONDecodeError as e:
-        print(f"ERROR: proof.json is not valid JSON: {e}", file=sys.stderr)
-        sys.exit(1)
+        raw = bytes.fromhex(hex_str)
+    except ValueError as exc:
+        raise ValueError("field element is not valid hex") from exc
+    if len(raw) != 32:
+        raise ValueError(f"field element must be 32 bytes, got {len(raw)}")
+    return int.from_bytes(raw, byteorder="little")
+
+
+def _load_proof(path: Path) -> tuple[str, list[str]]:
+    if not path.exists():
+        raise FileNotFoundError(f"proof.json not found: {path}")
+    try:
+        proof_data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"proof JSON is invalid: {exc}") from exc
 
     try:
         hex_proof = proof_data["hex_proof"]
         instances = proof_data["instances"][0]
-    except (KeyError, IndexError, TypeError) as e:
-        print(
-            f"ERROR: proof.json missing expected structure: {e}\n"
-            f"Expected keys: hex_proof, instances[0]\n"
-            f"Regenerate the proof with run_proof.py.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ValueError(
+            "proof JSON must contain hex_proof and instances[0]"
+        ) from exc
 
+    if not isinstance(hex_proof, str) or not hex_proof.startswith("0x"):
+        raise ValueError("hex_proof must be a 0x-prefixed hex string")
+    try:
+        bytes.fromhex(hex_proof[2:])
+    except ValueError as exc:
+        raise ValueError("hex_proof is not valid hex") from exc
+
+    if not isinstance(instances, list):
+        raise ValueError("instances[0] must be a list")
     if len(instances) != TOTAL_SIGNALS:
-        print(
-            f"ERROR: expected {TOTAL_SIGNALS} public signals "
-            f"({INPUT_OFFSET} features + {NUM_CLASSES} scores), "
-            f"got {len(instances)}.\n"
-            f"The proof may have been generated with a different circuit version.",
-            file=sys.stderr,
+        raise ValueError(
+            f"expected exactly {TOTAL_SIGNALS} public signals "
+            f"({INPUT_OFFSET} fusion inputs + {NUM_CLASSES} proxy-score outputs), "
+            f"got {len(instances)}"
         )
-        sys.exit(1)
+    return hex_proof, instances
 
-    # Decode all field elements
-    public_signals = [_decode_field_element(h) for h in instances]
 
-    # Split: [0..127] = fusion features, [128..137] = class scores
+def build_bundle(proof_path: Path = PROOF_PATH) -> dict[str, Any]:
+    """Return a deterministic, non-signing representation of a V2 proof."""
+    hex_proof, encoded_instances = _load_proof(proof_path)
+    public_signals = [_decode_field_element(item) for item in encoded_instances]
     fusion_features = public_signals[:INPUT_OFFSET]
-    class_scores    = public_signals[INPUT_OFFSET:]
+    proxy_score_felts = public_signals[INPUT_OFFSET:]
+    proof_bytes = bytes.fromhex(hex_proof[2:])
 
-    print("=" * 60)
-    print(f"CALLDATA FOR AuditRegistry.submitAuditV2()")
-    print(f"  Circuit signals: {len(public_signals)} total")
-    print(f"  Fusion features: {INPUT_OFFSET}-dim (indices 0-{INPUT_OFFSET - 1})")
-    print(f"  Class scores:    {NUM_CLASSES} outputs (indices {INPUT_OFFSET}-{TOTAL_SIGNALS - 1})")
-    print("=" * 60)
-    print(f"  hex_proof (first 20 chars): {hex_proof[:20]}...")
-    print(f"  Class scores (felt → human):")
-    for i in range(NUM_CLASSES):
-        print(f"    [{i}] felt={class_scores[i]:>6d}  human={class_scores[i] / SCALE:.4f}")
-    print("=" * 60)
+    return {
+        "protocol": "sentinel-zkml-v2",
+        "proof_scope": PROOF_SCOPE,
+        "submission_eligible": SUBMISSION_ELIGIBLE,
+        "submission_ineligible_reason": SUBMISSION_INELIGIBLE_REASON,
+        "input_offset": INPUT_OFFSET,
+        "num_classes": NUM_CLASSES,
+        "total_public_signals": TOTAL_SIGNALS,
+        "fixed_point_scale": SCALE,
+        "output_semantics": "proxy_score_fixed_point",
+        "proof_hex": hex_proof,
+        "proof_sha256": hashlib.sha256(proof_bytes).hexdigest(),
+        "public_signals": public_signals,
+        "fusion_feature_felts": fusion_features,
+        "proxy_score_felts": proxy_score_felts,
+        "proxy_scores_approx": [value / SCALE for value in proxy_score_felts],
+        "warning": (
+            "Legacy V2 proves proxy computation only. It does not bind contract, "
+            "chain, round, or teacher-model identity and must not be submitted "
+            "outside the policy-signer boundary."
+        ),
+    }
 
-    # Build cast arguments
-    signals_str     = "[" + ",".join(str(s) for s in public_signals) + "]"
-    class_scores_str = "[" + ",".join(str(s) for s in class_scores) + "]"
 
-    # check_verify.sh
-    verify_lines = [
-        "cast call \\",
-        f"  {ZKML_VERIFIER} \\",
-        "  'verifyProof(bytes,uint256[])(bool)' \\",
-        f"  {hex_proof} \\",
-        f"  '{signals_str}' \\",
-        f"  --rpc-url {RPC_URL}",
-    ]
-    Path("check_verify.sh").write_text("\n".join(verify_lines))
-    print("check_verify.sh written  — run to confirm proof is valid on-chain")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--proof", type=Path, default=PROOF_PATH)
+    parser.add_argument("--output", type=Path, default=BUNDLE_PATH)
+    return parser.parse_args()
 
-    # submit_audit.sh  (V2)
-    submit_lines = [
-        "cast send \\",
-        "  --private-key $DEPLOYER_PRIVATE_KEY \\",
-        f"  --rpc-url {RPC_URL} \\",
-        f"  {AUDIT_REGISTRY} \\",
-        "  'submitAuditV2(address,uint256[10],bytes,uint256[],bytes32)' \\",
-        f"  {AUDIT_TARGET} \\",
-        f"  '{class_scores_str}' \\",
-        f"  {hex_proof} \\",
-        f"  '{signals_str}' \\",
-        f"  {MODEL_HASH}",
-    ]
-    Path("submit_audit.sh").write_text("\n".join(submit_lines))
-    print("submit_audit.sh written   — run after check_verify.sh returns true")
 
-    print()
-    print("Summary:")
-    for i in range(NUM_CLASSES):
-        print(f"  classScore[{i}] = {class_scores[i]:>6d} ({class_scores[i] / SCALE:.4f})")
+def main() -> int:
+    args = parse_args()
+    try:
+        bundle = build_bundle(args.proof)
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(
+        json.dumps(bundle, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    print("=" * 68)
+    print("SENTINEL legacy V2 proof bundle (READ ONLY)")
+    print(f"  public signals : {bundle['total_public_signals']}")
+    print(f"  fusion inputs  : {bundle['input_offset']}")
+    print(f"  proxy outputs  : {bundle['num_classes']}")
+    print(f"  proof scope    : {bundle['proof_scope']}")
+    print(f"  eligible       : {bundle['submission_eligible']}")
+    print(f"  reason         : {bundle['submission_ineligible_reason']}")
+    print(f"  output         : {args.output}")
+    print("No transaction or signing script was generated.")
+    print("=" * 68)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
