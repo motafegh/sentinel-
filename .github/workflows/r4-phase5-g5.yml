@@ -1,0 +1,153 @@
+name: R4 Phase 5 G5 gate
+
+on:
+  push:
+    branches:
+      - r4/phase5-data-vnext-policy-design
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase5-g5.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase5-g5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  g5-consistency:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install schema validator
+        run: python -m pip install --disable-pip-version-check 'jsonschema>=4,<5'
+
+      - name: Re-run semantic policy/schema validator
+        run: python docs/plan/ml-R4/scripts/p5_validate_data_vnext_policy.py
+
+      - name: Verify accepted G5 state and registered artifact identities
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import re
+          import subprocess
+          from pathlib import Path
+
+          root = Path('docs/plan/ml-R4')
+
+          def sha256(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open('rb') as fh:
+                  for chunk in iter(lambda: fh.read(1024 * 1024), b''):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          policy_path = root / 'specs/data_vnext_policy_v1.json'
+          schema_path = root / 'schemas/data_vnext_label_state_v1.schema.json'
+          spec_path = root / 'findings/07_data_vnext_policy_and_design_specification.md'
+          plan_path = root / 'runs/2026-08-12_PHASE5_data_vnext_policy_design_plan.md'
+          adr_paths = [
+              root / 'adrs/ADR-R4-001-label-state-and-training-signal.md',
+              root / 'adrs/ADR-R4-002-source-class-authority-and-enablement.md',
+              root / 'adrs/ADR-R4-003-crosswalk-and-aggregation-semantics.md',
+              root / 'adrs/ADR-R4-004-export-and-ml-consumer-contract.md',
+              root / 'adrs/ADR-R4-005-lineage-versioning-and-rollback.md',
+          ]
+
+          policy = json.loads(policy_path.read_text())
+          assert policy['status'] == 'ACCEPTED_G5'
+          assert policy['policy_version'] == 'data-vnext-policy-v1'
+          assert policy['class_vocabulary']['locked'] is True
+          assert policy['class_vocabulary']['feature_schema_version'] == 'v9'
+          assert len(policy['class_vocabulary']['classes']) == 10
+          disabled = {k for k,v in policy['class_supervision'].items() if v['status'] == 'SUPERVISION_DISABLED_PENDING_EVIDENCE'}
+          assert disabled == {'GasException', 'UnusedReturn'}
+          assert policy['negative_authority']['first_baseline_blanket_negative_sources'] == []
+          assert policy['sources']['dive']['mapped_category_policy']['Front Running']['training_strength'] == 'WEAK'
+          assert policy['sources']['dive']['mapped_category_policy']['Front Running']['target_value'] == 1
+          for native in ('Access Control','Reentrancy','DoS','Arithmetic','Time manipulation','Unchecked Return Values'):
+              assert policy['sources']['dive']['mapped_category_policy'][native]['training_strength'] == 'NONE'
+              assert policy['sources']['dive']['mapped_category_policy'][native]['target_value'] is None
+          assert policy['sources']['smartbugs_curated']['no_target_categories'] == {
+              'bad_randomness': 'LOSSY_NO_CANONICAL_TARGET',
+              'short_addresses': 'OUT_OF_TAXONOMY_NO_CANONICAL_TARGET',
+              'other': 'OUT_OF_TAXONOMY_NO_CANONICAL_TARGET',
+          }
+
+          for p in [policy_path, schema_path, spec_path, plan_path, *adr_paths]:
+              assert p.is_file(), p
+          for p in adr_paths:
+              assert '**Status:** Accepted' in p.read_text(), p
+
+          decisions = (root / 'DECISION_REGISTER.md').read_text()
+          for i in range(1, 6):
+              assert f'| R4-D-00{i} |' in decisions
+          assert decisions.count('| ACCEPTED |') >= 5
+
+          status = (root / 'PLAN_STATUS_MATRIX.md').read_text()
+          assert '| 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED |' in status
+          assert '| 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | READY |' in status
+
+          p5 = (root / 'phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md').read_text()
+          p6 = (root / 'phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md').read_text()
+          assert '**Status:** PASSED — G5 PASS' in p5
+          assert '**G5 PASS.**' in p5
+          assert '**Status:** READY — G5 SATISFIED' in p6
+
+          index = (root / 'ARTIFACT_INDEX.md').read_text()
+          assert '## Phase 5 artifacts — DATA vNext policy and design (G5 PASS)' in index
+          artifact_paths = {
+              'R4-P5-PLN-001': plan_path,
+              'R4-P5-POL-001': policy_path,
+              'R4-P5-SCH-001': schema_path,
+              'R4-P5-FND-001': spec_path,
+              'R4-P5-ADR-001': adr_paths[0],
+              'R4-P5-ADR-002': adr_paths[1],
+              'R4-P5-ADR-003': adr_paths[2],
+              'R4-P5-ADR-004': adr_paths[3],
+              'R4-P5-ADR-005': adr_paths[4],
+          }
+          for artifact_id, path in artifact_paths.items():
+              match = re.search(rf'^\| {re.escape(artifact_id)} \|[^\n]+\| ([0-9a-f]{{64}}) \|', index, re.MULTILINE)
+              assert match, f'missing/invalid index row for {artifact_id}'
+              registered = match.group(1)
+              actual = sha256(path)
+              assert registered == actual, (artifact_id, registered, actual)
+
+          log = (root / 'EXECUTION_LOG.md').read_text()
+          assert 'R4-LOG-20260812-008 — Phase 5 DATA vNext Policy and G5 Closure' in log
+          assert '**Gate effect:** **G5 PASS.**' in log
+
+          # Fail closed if Phase-5 branch contains implementation changes.
+          subprocess.run(['git','fetch','origin','main'], check=True)
+          base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
+          files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
+          allowed = ('docs/plan/ml-R4/', '.github/workflows/r4-phase5-policy.yml', '.github/workflows/r4-phase5-closeout.yml', '.github/workflows/r4-phase5-g5.yml')
+          bad = [f for f in files if not any(f == p or f.startswith(p) for p in allowed)]
+          assert not bad, 'out-of-scope Phase-5 files: ' + ', '.join(bad)
+
+          print(json.dumps({
+              'passed': True,
+              'policy_status': policy['status'],
+              'policy_sha256': sha256(policy_path),
+              'schema_sha256': sha256(schema_path),
+              'registered_artifacts_verified': len(artifact_paths),
+              'accepted_decisions': 5,
+              'disabled_classes': sorted(disabled),
+              'blanket_negative_sources': 0,
+              'phase5': 'PASSED',
+              'phase6': 'READY',
+          }, indent=2, sort_keys=True))
+          PY
