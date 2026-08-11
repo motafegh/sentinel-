@@ -160,3 +160,27 @@ Append one entry for each work package.
 - **Register updates:** ARTIFACT_INDEX production Phase-3 identities; RISK_AND_BLOCKER_REGISTER R4-B002 -> CLOSED and R4-R002/R4-R003 mitigation state clarified; PLAN_STATUS_MATRIX Phase 3 -> PASSED and Phase 4 -> READY; Phase-3 specification -> G3 PASS; EXECUTION_LOG this entry
 - **Gate effect:** **G3 PASS.** The complete export-relevant contract×class population is represented without forcing historical unknowns/zeros into confirmed negatives.
 - **Next permitted action:** Begin Phase 4 — Targeted Gap Adjudication. Every new review action requires an authorized Gap ID; no Phase-4 adjudication is implied by Phase-3 materialization.
+
+---
+
+### R4-LOG-20260811-007 — Phase 4 Targeted DIVE Gap Adjudication and G4 Closure
+
+- **Phase:** 4
+- **Gap ID, if review work:** `R4-GAP-002`
+- **Operator:** ChatGPT / GPT-5.6 Sol primary semantic reviewer + user local protected-source bundle materialization; routine technical/governance approval delegated by the human owner
+- **Date/timezone:** 2026-08-11 Europe/Berlin (execution crossed into 2026-08-12 in the user's local timezone)
+- **Repository branch/commit:** `r4/phase4-targeted-gap-adjudication`; frozen source bundle commit `02f254249f16b2f940dca0c9a9309e6b38bade12`; machine-readable review publication commit `c8f283f5961f2955c7738409bf8298dc41c599bd`
+- **Worktree status before:** Phase-3 G3-passed canonical ledger on `main`; protected local DIVE preprocessed source available without modifying protected historical artifacts
+- **Input artifact IDs/hashes:** R4-P3-LED-001 `3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7`; DIVE crosswalk/evidence R4-P0-XWK-001 and R4-P0-EVD-001..003; frozen sample SHA-256 `2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9`; blind source bundle SHA-256 `2b1ce12fdd96819c89bbb9fe1dfb2d9aa992ec0a05ce32f651c6b834b97ddf38`
+- **Command(s):** `p4_freeze_gap002_sample.py`; `p4_build_gap002_review_bundle.py`; checksum verification and safe-unpack CI; source-only blind semantic review; `p4_publish_gap002_blind_review.py`; review/sample binding CI
+- **Environment and seed(s):** deterministic SHA-ranked group-aware sample from committed Phase-3 ledger; TRAIN-only; groups touching val/test excluded; no stochastic review seed; blind source-only semantic pass with model/tool/merger/non-target-label evidence hidden
+- **Expected outputs:** authorization record; frozen population/sample; checksum-bound blind source bundle; 100 semantic verdicts; role recommendation and uncertainty report; explicit gap/G4 disposition
+- **Actual outputs/hashes:** 100 unique contracts/review groups, 20 per stratum; review rows SHA-256 `7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473`. Blind results: DenialOfService 0 support / 20 not-support; IntegerUO 3 / 16 / 1 unclear; Timestamp 4 / 15 / 1 unclear; TransactionOrderDependence 12 / 5 / 3 class-boundary conflicts; UnusedReturn 9 / 11. CI regenerated and bound all review identities successfully.
+- **Result:** PASS
+- **Historical evidence reused:** Phase-1 DIVE EB/RE manual reviews and correlated Slither/Aderyn findings; Phase-2 source/crosswalk semantics; Phase-3 ledger. Historical/tool evidence was revealed only after the blind semantic verdicts were locked.
+- **New evidence created:** single-AI primary source-only semantic review of 100 checksum-bound DIVE contracts; explicit source/stratum reliability evidence. This is not human/inter-rater or untouched-acceptance evidence.
+- **Protected artifacts changed:** NO
+- **Register updates:** R4-GAP-002 -> RESOLVED; Web3Bugs and provisional inactive BCCC first-baseline populations -> MASK_OR_EXCLUDE/deferred; Phase 4 -> PASSED; Phase 5 -> READY; Phase-4 artifacts registered in ARTIFACT_INDEX
+- **Gate effect:** **G4 PASS.** DIVE DoS/Arithmetic/Time manipulation/Unchecked Return Values source assertions are masked/excluded for the first baseline; DIVE Front Running/TOD is limited to `TRAIN_WEAK` and barred from outcome metrics, model selection, threshold/calibration fitting, and untouched acceptance. `DOES_NOT_SUPPORT_POSITIVE` does not create a confirmed negative.
+- **Next permitted action:** Begin Phase 5 — DATA vNext Policy and Design. Encode the Phase-0–4 source/class/state/role decisions in versioned ADRs/specification before any implementation makes semantic choices.
+
