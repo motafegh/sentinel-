@@ -1,0 +1,25 @@
+{
+  "actual_contracts": 22493,
+  "actual_rows": 224930,
+  "errors": [],
+  "evidence_items": 10,
+  "historical_state_counts": {
+    "HISTORICAL_POSITIVE": 51546,
+    "HISTORICAL_ZERO": 173384
+  },
+  "outcome_state_counts": {
+    "NOT_REVIEWED": 51546,
+    "UNKNOWN": 173384
+  },
+  "passed": true,
+  "schema": "r4-ledger-strict-validation-report-v1",
+  "semantic_errors": [],
+  "source_row_counts": {
+    "dive": 220730,
+    "smartbugs_curated": 1370,
+    "solidifi": 2830
+  },
+  "surface_errors": [],
+  "unique_keys": 224930,
+  "warnings": []
+}
