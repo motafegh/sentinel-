@@ -22,10 +22,22 @@ contract ZKMLVerifierRealProofTest is Test {
         assertTrue(verifier.verifyProof(proof, signals));
     }
 
-    function test_mutated_public_output_does_not_verify() public {
+    function test_mutated_public_output_is_rejected_fail_closed() public {
         bytes memory proof = ZkmlV2ProofFixture.proof();
         uint256[] memory signals = ZkmlV2ProofFixture.signals();
         signals[137] += 1;
-        assertFalse(verifier.verifyProof(proof, signals));
+
+        // EZKL-generated Halo2 verifiers are allowed to reject an invalid
+        // proof either by returning false or by reverting when the pairing
+        // check fails. Both outcomes are fail-closed. The only forbidden
+        // outcome is a successful call returning true.
+        (bool callSucceeded, bytes memory returndata) = address(verifier).call(
+            abi.encodeCall(Halo2Verifier.verifyProof, (proof, signals))
+        );
+
+        if (callSucceeded) {
+            assertEq(returndata.length, 32, "verifier returned malformed success data");
+            assertFalse(abi.decode(returndata, (bool)), "mutated public output verified");
+        }
     }
 }
