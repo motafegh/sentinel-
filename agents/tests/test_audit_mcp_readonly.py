@@ -4,23 +4,32 @@ import asyncio
 import json
 import sys
 
-from src.mcp.servers.audit._readonly_handlers import READ_ONLY_TOOLS, call_tool
+from src.mcp.servers.audit import _readonly_handlers as readonly
 
 
 def test_live_audit_tool_set_is_exactly_read_only() -> None:
-    assert READ_ONLY_TOOLS == {
+    assert readonly.READ_ONLY_TOOLS == {
         "get_latest_audit",
         "get_audit_history",
         "check_audit_exists",
     }
-    assert "submit_audit" not in READ_ONLY_TOOLS
+    assert "submit_audit" not in readonly.READ_ONLY_TOOLS
+
+
+def test_public_shim_exports_the_read_only_server() -> None:
+    from src.mcp.servers import audit_server
+
+    assert audit_server.server is readonly.server
+    assert audit_server.call_tool is readonly.call_tool
+    assert audit_server.list_tools is readonly.list_tools
+    assert not hasattr(audit_server, "_handle_submit_audit")
 
 
 def test_submit_audit_is_rejected_before_legacy_submit_module_import() -> None:
     sys.modules.pop("src.mcp.servers.audit._submit", None)
 
     result = asyncio.run(
-        call_tool(
+        readonly.call_tool(
             "submit_audit",
             {
                 "source_code": "pragma solidity ^0.8.20; contract T {}",
@@ -41,7 +50,7 @@ def test_submit_audit_is_rejected_before_legacy_submit_module_import() -> None:
 
 
 def test_unknown_write_like_name_is_also_rejected() -> None:
-    result = asyncio.run(call_tool("submit_audit_v3", {}))
+    result = asyncio.run(readonly.call_tool("submit_audit_v3", {}))
     payload = json.loads(result[0].text)
     assert payload["status"] == "policy_rejected"
     assert payload["attempted"] is False
