@@ -93,6 +93,20 @@
 | R4-P4-FND-001 | 4 | review_report | findings/06_gap002_blind_semantic_review_report.json | — | c8f283f5 | New | AVAILABLE_VERIFIED | NO | Exact per-stratum review counts, descriptive Wilson intervals, and bounded role recommendations |
 | R4-P4-FND-002 | 4 | adjudication | findings/06_gap002_blind_semantic_review.md | — | 3f3b6123 | New | AVAILABLE | NO | Source-role interpretation: four DIVE strata masked/excluded; TOD limited to TRAIN_WEAK |
 
+## Phase 5 artifacts — DATA vNext policy and design (G5 PASS)
+
+| Artifact ID | Phase | Type | Path/URI | SHA-256 | Source commit | Historical/New | Availability | Protected | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| R4-P5-PLN-001 | 5 | execution_plan | runs/2026-08-12_PHASE5_data_vnext_policy_design_plan.md | a7a74d85f4c8dfbd8f38193a3fea4be459ba7cf8c40054aed4001c01f351bd88 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Design-only Phase-5 execution plan |
+| R4-P5-POL-001 | 5 | machine_policy | specs/data_vnext_policy_v1.json | b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Accepted DATA vNext source/class/state/role policy v1 |
+| R4-P5-SCH-001 | 5 | schema | schemas/data_vnext_label_state_v1.schema.json | 14e414a568f090891cb39b4a9a16b3c710d9d69e2279aace50c310aece98959b | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Contract×class label/outcome/training-signal schema |
+| R4-P5-FND-001 | 5 | specification | findings/07_data_vnext_policy_and_design_specification.md | fdf236a4bf8729a4bf3ee5e3c2c9b0a4dce2efc8666a25fae007204b12a913d4 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Implementation-facing semantic specification |
+| R4-P5-ADR-001 | 5 | ADR | adrs/ADR-R4-001-label-state-and-training-signal.md | 3aaa724585740572bb5daf912b75df4fe927c370b937ebb93d4b63d081690ff3 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Outcome truth separated from training signal |
+| R4-P5-ADR-002 | 5 | ADR | adrs/ADR-R4-002-source-class-authority-and-enablement.md | 9a66da37f911981bb38a420969633bb9ca8f26e3ce2ec98aa242094fe578234d | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | First-baseline source/class authority and disabled classes |
+| R4-P5-ADR-003 | 5 | ADR | adrs/ADR-R4-003-crosswalk-and-aggregation-semantics.md | 2cfa22fc781635b42f8e2c22d2e7c002227ba185aa7dad2351e49ff0f902d7f5 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | No-target crosswalk states and evidence aggregation |
+| R4-P5-ADR-004 | 5 | ADR | adrs/ADR-R4-004-export-and-ml-consumer-contract.md | 018b26b7ebae0c6332875b41750ee0fa17a3ed26a14e592c761e7b2a9ddc47d8 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Explicit v2 export and masked ML consumer contract |
+| R4-P5-ADR-005 | 5 | ADR | adrs/ADR-R4-005-lineage-versioning-and-rollback.md | 21cb80d2d9f5912a07d7cab60c369175de609523ebe7c3089286161a95a3c8a1 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Immutable history, versioning, fail-closed publication, rollback |
+
 ## Availability
 
 - `AVAILABLE_VERIFIED`

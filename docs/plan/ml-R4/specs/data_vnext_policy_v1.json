@@ -1,0 +1,411 @@
+{
+  "schema": "sentinel-data-vnext-policy-v1",
+  "policy_version": "data-vnext-policy-v1",
+  "status": "ACCEPTED_G5",
+  "class_vocabulary": {
+    "feature_schema_version": "v9",
+    "locked": true,
+    "classes": [
+      "CallToUnknown",
+      "DenialOfService",
+      "ExternalBug",
+      "GasException",
+      "IntegerUO",
+      "MishandledException",
+      "Reentrancy",
+      "Timestamp",
+      "TransactionOrderDependence",
+      "UnusedReturn"
+    ],
+    "rule": "No add/remove/reorder in R4. Semantic policy is versioned separately from positional model output."
+  },
+  "state_model": {
+    "unit_of_truth": "contract_id_x_class_index",
+    "outcome_states": [
+      "CONFIRMED_POSITIVE",
+      "CONFIRMED_NEGATIVE",
+      "UNKNOWN",
+      "NOT_APPLICABLE",
+      "CONFLICTING_EVIDENCE",
+      "NOT_REVIEWED",
+      "INVALID_RECORD"
+    ],
+    "historical_states": [
+      "HISTORICAL_POSITIVE",
+      "HISTORICAL_ZERO",
+      "HISTORICAL_MISSING"
+    ],
+    "source_claim_states": [
+      "POSITIVE",
+      "EXPLICIT_ZERO",
+      "UNKNOWN",
+      "UNSUPPORTED",
+      "DROPPED_CATEGORY",
+      "OUT_OF_TAXONOMY",
+      "UNAVAILABLE",
+      "NO_ASSERTION"
+    ],
+    "training_signals": [
+      "POSITIVE",
+      "NEGATIVE",
+      "NONE"
+    ],
+    "training_strengths": [
+      "STRONG",
+      "WEAK",
+      "NONE"
+    ],
+    "invariants": [
+      "historical_zero_never_implies_confirmed_negative",
+      "source_absence_never_implies_negative",
+      "unsupported_class_never_implies_negative",
+      "dropped_or_out_of_taxonomy_category_never_implies_nonvulnerable",
+      "weak_training_signal_does_not_confirm_outcome",
+      "target_zero_requires_confirmed_negative_evidence",
+      "no_global_nonvulnerable_label_is_synthesized"
+    ]
+  },
+  "record_contract": {
+    "required_fields_per_contract_class": [
+      "contract_id",
+      "class_index",
+      "class_name",
+      "historical_state",
+      "source_claims",
+      "outcome_state",
+      "target_value",
+      "training_signal",
+      "training_strength",
+      "loss_eligible",
+      "outcome_metric_eligible",
+      "role_eligibility",
+      "policy_decision_id",
+      "evidence_ids",
+      "limitations"
+    ],
+    "target_value": {
+      "type": "nullable_int8",
+      "allowed": [
+        0,
+        1,
+        null
+      ],
+      "rules": {
+        "1": "Allowed for CONFIRMED_POSITIVE/STRONG or explicitly authorized WEAK positive training signal.",
+        "0": "Allowed only when outcome_state is CONFIRMED_NEGATIVE.",
+        "null": "Required when no authorized training target exists."
+      }
+    },
+    "loss_eligible": "true only when target_value is non-null and training_strength is STRONG or WEAK",
+    "outcome_metric_eligible": "never true for WEAK signals; final metric role also depends on Phase-6 partition assignment",
+    "numeric_training_weight": "NOT_DATA_SEMANTICS; Phase 8 must map STRONG/WEAK to numeric optimizer weights in explicit checkpoint-bound config"
+  },
+  "class_supervision": {
+    "CallToUnknown": {
+      "class_index": 0,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "solidifi:Unchecked-Send",
+        "smartbugs_curated:unchecked_low_level_calls"
+      ],
+      "approved_weak_positive_sources": []
+    },
+    "DenialOfService": {
+      "class_index": 1,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "smartbugs_curated:denial_of_service"
+      ],
+      "approved_weak_positive_sources": []
+    },
+    "ExternalBug": {
+      "class_index": 2,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "solidifi:tx.origin",
+        "smartbugs_curated:access_control"
+      ],
+      "approved_weak_positive_sources": []
+    },
+    "GasException": {
+      "class_index": 3,
+      "status": "SUPERVISION_DISABLED_PENDING_EVIDENCE",
+      "approved_strong_positive_sources": [],
+      "approved_weak_positive_sources": [],
+      "reason": "No active first-baseline source has approved class-specific positive authority."
+    },
+    "IntegerUO": {
+      "class_index": 4,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "solidifi:Overflow-Underflow",
+        "smartbugs_curated:arithmetic"
+      ],
+      "approved_weak_positive_sources": []
+    },
+    "MishandledException": {
+      "class_index": 5,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "solidifi:Unhandled-Exceptions"
+      ],
+      "approved_weak_positive_sources": []
+    },
+    "Reentrancy": {
+      "class_index": 6,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "solidifi:Re-entrancy",
+        "smartbugs_curated:reentrancy"
+      ],
+      "approved_weak_positive_sources": []
+    },
+    "Timestamp": {
+      "class_index": 7,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "solidifi:Timestamp-Dependency",
+        "smartbugs_curated:time_manipulation"
+      ],
+      "approved_weak_positive_sources": [],
+      "excluded_mapping": "smartbugs_curated:bad_randomness does not map to Timestamp in vNext without row-specific evidence"
+    },
+    "TransactionOrderDependence": {
+      "class_index": 8,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "solidifi:TOD",
+        "smartbugs_curated:front_running"
+      ],
+      "approved_weak_positive_sources": [
+        "dive:Front Running"
+      ]
+    },
+    "UnusedReturn": {
+      "class_index": 9,
+      "status": "SUPERVISION_DISABLED_PENDING_EVIDENCE",
+      "approved_strong_positive_sources": [],
+      "approved_weak_positive_sources": [],
+      "reason": "DIVE Unchecked Return Values failed Phase-4 authority threshold and no other active source directly supports this canonical class."
+    }
+  },
+  "sources": {
+    "solidifi": {
+      "first_baseline_status": "ACTIVE_SUPERVISED",
+      "positive_authority": "STRONG_CONFIRMED_FOR_INJECTED_CLASS_ONLY",
+      "negative_authority": "NONE",
+      "non_injected_class_policy": "UNKNOWN",
+      "direct_or_approved_mappings": {
+        "Re-entrancy": "Reentrancy",
+        "Timestamp-Dependency": "Timestamp",
+        "Unhandled-Exceptions": "MishandledException",
+        "TOD": "TransactionOrderDependence",
+        "Overflow-Underflow": "IntegerUO",
+        "Unchecked-Send": "CallToUnknown",
+        "tx.origin": "ExternalBug"
+      },
+      "positive_role_eligibility": [
+        "TRAIN_STRONG",
+        "INTERNAL_AUDIT",
+        "CASE_STUDY"
+      ],
+      "forbidden_positive_roles": [
+        "UNTOUCHED_ACCEPTANCE"
+      ],
+      "evidence_basis": [
+        "R4-PREV-OTHER-SOLIDIFI"
+      ]
+    },
+    "smartbugs_curated": {
+      "first_baseline_status": "ACTIVE_SUPERVISED",
+      "positive_authority": "STRONG_CONFIRMED_FOR_APPROVED_IN_TAXONOMY_CATEGORY_ONLY",
+      "negative_authority": "NONE",
+      "non_target_class_policy": "UNKNOWN",
+      "approved_mappings": {
+        "reentrancy": "Reentrancy",
+        "arithmetic": "IntegerUO",
+        "denial_of_service": "DenialOfService",
+        "time_manipulation": "Timestamp",
+        "unchecked_low_level_calls": "CallToUnknown",
+        "access_control": "ExternalBug",
+        "front_running": "TransactionOrderDependence"
+      },
+      "no_target_categories": {
+        "bad_randomness": "LOSSY_NO_CANONICAL_TARGET",
+        "short_addresses": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET",
+        "other": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET"
+      },
+      "positive_role_eligibility": [
+        "TRAIN_STRONG",
+        "MODEL_SELECTION",
+        "INTERNAL_AUDIT",
+        "CASE_STUDY"
+      ],
+      "forbidden_positive_roles": [
+        "UNTOUCHED_ACCEPTANCE"
+      ],
+      "rule": "Historical short_addresses/other -> NonVulnerable and bad_randomness -> Timestamp mappings are superseded for DATA vNext; no canonical negative is synthesized.",
+      "evidence_basis": [
+        "R4-PREV-OTHER-SMARTBUGS"
+      ]
+    },
+    "dive": {
+      "first_baseline_status": "ACTIVE_UNLABELED_PLUS_WEAK_TOD",
+      "positive_authority": "MASKED_EXCEPT_APPROVED_WEAK_TOD",
+      "negative_authority": "NONE",
+      "zero_policy": "UNKNOWN",
+      "mapped_category_policy": {
+        "Access Control": {
+          "canonical_class": "ExternalBug",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Reentrancy": {
+          "canonical_class": "Reentrancy",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "DoS": {
+          "canonical_class": "DenialOfService",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Arithmetic": {
+          "canonical_class": "IntegerUO",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Time manipulation": {
+          "canonical_class": "Timestamp",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Unchecked Return Values": {
+          "canonical_class": "UnusedReturn",
+          "training_strength": "NONE",
+          "target_value": null
+        },
+        "Front Running": {
+          "canonical_class": "TransactionOrderDependence",
+          "training_strength": "WEAK",
+          "target_value": 1
+        }
+      },
+      "no_target_categories": {
+        "Bad Randomness": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET"
+      },
+      "unsupported_canonical_classes": [
+        "CallToUnknown",
+        "GasException",
+        "MishandledException"
+      ],
+      "masked_contract_role_eligibility": [
+        "TRAIN_UNLABELED",
+        "CASE_STUDY",
+        "EXCLUDE_OUTCOME_METRICS"
+      ],
+      "weak_tod_role_eligibility": [
+        "TRAIN_WEAK",
+        "CASE_STUDY",
+        "EXCLUDE_OUTCOME_METRICS"
+      ],
+      "weak_tod_forbidden_roles": [
+        "MODEL_SELECTION",
+        "THRESHOLD_FIT",
+        "CALIBRATION_FIT",
+        "UNTOUCHED_ACCEPTANCE"
+      ],
+      "evidence_basis": [
+        "R4-PREV-DIVE-EBRE",
+        "R4-PREV-DIVE-SLITHER",
+        "R4-GAP-002"
+      ]
+    },
+    "web3bugs": {
+      "first_baseline_status": "EXCLUDED_UNAVAILABLE",
+      "positive_authority": "NONE",
+      "negative_authority": "NONE",
+      "rows_allowed": false
+    },
+    "disl": {
+      "first_baseline_status": "EXCLUDED_UNAVAILABLE",
+      "positive_authority": "NONE",
+      "negative_authority": "NONE",
+      "rows_allowed": false,
+      "rule": "unlabeled is not NonVulnerable"
+    },
+    "bccc": {
+      "first_baseline_status": "DEFERRED_NOT_IMPORTED",
+      "rows_allowed": false,
+      "rule": "historical verified/provisional evidence may inform decisions but is not active first-baseline training data"
+    },
+    "defihacklabs": {
+      "first_baseline_status": "DEFERRED_NOT_IMPORTED",
+      "rows_allowed": false
+    },
+    "smartbugs_wild": {
+      "first_baseline_status": "EXCLUDED_FROM_SUPERVISED_VNEXT",
+      "rows_allowed": false,
+      "rule": "historical wild labels are too noisy for supervised DATA vNext; separate pretraining use requires its own plan"
+    },
+    "manual_hand_written_contracts": {
+      "first_baseline_status": "EVALUATION_CANDIDATE_NOT_IMPORTED",
+      "rows_allowed": false,
+      "rule": "may be considered in Phase 6 only with exposure/leakage accounting"
+    },
+    "benchmark_v0.1_quickstart": {
+      "first_baseline_status": "EVALUATION_CANDIDATE_NOT_IMPORTED",
+      "rows_allowed": false,
+      "rule": "may be considered in Phase 6 for internal audit only after exposure/leakage accounting; not assumed untouched acceptance"
+    }
+  },
+  "negative_authority": {
+    "first_baseline_blanket_negative_sources": [],
+    "confirmed_negative_rule": "target_value=0 requires direct class-specific evidence that meaningfully assessed absence; no current parser/default/all-zero mechanism qualifies",
+    "weak_negative_training": "NOT_AUTHORIZED_IN_V1"
+  },
+  "aggregation": {
+    "preserve_all_source_claims": true,
+    "rules": [
+      "confirmed_positive_without_confirmed_negative -> CONFIRMED_POSITIVE",
+      "confirmed_negative_without_confirmed_positive -> CONFIRMED_NEGATIVE",
+      "confirmed_positive_and_confirmed_negative -> CONFLICTING_EVIDENCE",
+      "weak_positive_without_confirmed_contrary_outcome may produce POSITIVE/WEAK training signal but outcome remains UNKNOWN or NOT_REVIEWED",
+      "weak claim never overrides confirmed contrary outcome",
+      "tool/source vote count alone never establishes outcome",
+      "no evidence or only unsupported/dropped/absent claims -> UNKNOWN or NOT_REVIEWED, target null"
+    ],
+    "positive_precedence_over_binary_zero": "REMOVED",
+    "global_nonvulnerable_synthesis": "FORBIDDEN"
+  },
+  "export_contract": {
+    "historical_export_schema": "v1_immutable",
+    "vnext_export_schema": "v2",
+    "canonical_semantic_artifact": "label_states.parquet_long_contract_class",
+    "phase6_partition_artifact": "partitions.parquet_or_equivalent_separate_role_manifest",
+    "ml_projection": "derived_per_contract_10_class_projection_with_target_strength_and_masks",
+    "required_ml_projection_fields_per_class": [
+      "target_value_nullable",
+      "training_strength",
+      "loss_eligible",
+      "outcome_metric_eligible",
+      "outcome_state",
+      "policy_decision_id"
+    ],
+    "legacy_reader_rule": "v1 and v2 readers must be explicit; no silent fallback from missing v2 fields to historical zero semantics",
+    "graph_schema_rule": "graph FEATURE_SCHEMA_VERSION remains v9 unless separately authorized"
+  },
+  "phase_boundaries": {
+    "phase5": "semantic policy and schema only",
+    "phase6": "assign leakage-safe dataset roles/partitions and freeze/declare acceptance support",
+    "phase7": "implement data pipeline/export exactly from policy+partitions",
+    "phase8": "adapt existing trainer for masks/strong-weak handling and choose explicit numeric weak loss weight",
+    "phase9": "evaluation/calibration/threshold policy only on authorized independent roles"
+  },
+  "historical_compatibility": {
+    "mutate_historical_artifacts": false,
+    "historical_labels_parquet_sha256": "26e739b5d82ba512e5a1830817d09609216e2184b79cf4ca7ec2d62ef34e32b5",
+    "phase3_ledger_sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7",
+    "rollback": "select previously hashed historical artifact set; never rewrite it in place"
+  }
+}
