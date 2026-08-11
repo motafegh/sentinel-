@@ -10,7 +10,9 @@ on:
       - "zkml/**"
       - "agents/src/security/**"
       - "agents/src/mcp/servers/audit/**"
+      - "agents/src/mcp/servers/audit_server.py"
       - "agents/tests/test_policy_signer_v3.py"
+      - "agents/tests/test_audit_mcp_readonly.py"
       - ".github/workflows/system-alignment.yml"
 
 permissions:
@@ -41,6 +43,25 @@ jobs:
           python zkml/src/ezkl/validate_bundle.py \
             --output /tmp/zkml-v2-bundle-report.json
           cat /tmp/zkml-v2-bundle-report.json
+
+  audit-mcp-containment-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install audit-MCP boundary dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            pytest loguru 'mcp>=1,<2' web3==7.15.0 uvicorn
+
+      - name: Prove live audit MCP is read-only
+        env:
+          PYTHONPATH: .:agents
+        run: python -m pytest -q -c /dev/null agents/tests/test_audit_mcp_readonly.py
 
   v3-policy-protocol-tests:
     runs-on: ubuntu-latest
@@ -158,7 +179,7 @@ jobs:
         working-directory: contracts
         run: |
           forge test \
-            --match-test test_tracked_v2_proof_verifies_with_canonical_generated_verifier \
+            --match-test '^test_tracked_v2_proof_verifies_with_canonical_generated_verifier$' \
             -vvvv
 
       - name: Mutated public output must be rejected
@@ -166,5 +187,5 @@ jobs:
         working-directory: contracts
         run: |
           forge test \
-            --match-test test_mutated_public_output_does_not_verify \
+            --match-test '^test_mutated_public_output_is_rejected_fail_closed$' \
             -vvvv
