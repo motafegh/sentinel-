@@ -1,0 +1,58 @@
+name: R4 Phase 5 DATA vNext policy
+
+on:
+  push:
+    branches:
+      - r4/phase5-data-vnext-policy-design
+    paths:
+      - 'docs/plan/ml-R4/specs/data_vnext_policy_v1.json'
+      - 'docs/plan/ml-R4/schemas/data_vnext_label_state_v1.schema.json'
+      - 'docs/plan/ml-R4/adrs/ADR-R4-*.md'
+      - 'docs/plan/ml-R4/findings/07_data_vnext_policy_and_design_specification.md'
+      - 'docs/plan/ml-R4/scripts/p5_validate_data_vnext_policy.py'
+      - '.github/workflows/r4-phase5-policy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase5-policy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install schema validator
+        run: python -m pip install --disable-pip-version-check 'jsonschema>=4,<5'
+
+      - name: Validate DATA vNext semantic policy and row schema
+        run: python docs/plan/ml-R4/scripts/p5_validate_data_vnext_policy.py
+
+      - name: Assert Phase 5 is design-only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          # Phase-5 branch may change only R4 planning/spec/CI surfaces.
+          # On pull_request, diff against the merge base with main. On push,
+          # compare the branch root to main if available.
+          subprocess.run(['git','fetch','origin','main','--depth=1'], check=True)
+          base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
+          files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
+          allowed_prefixes = ('docs/plan/ml-R4/', '.github/workflows/r4-phase5-policy.yml')
+          bad = [f for f in files if not any(f == p or f.startswith(p) for p in allowed_prefixes)]
+          if bad:
+              raise SystemExit('Phase 5 modified implementation/out-of-scope files: ' + ', '.join(bad))
+          print(f'PASS: {len(files)} changed files remain Phase-5 design/CI only')
+          PY
