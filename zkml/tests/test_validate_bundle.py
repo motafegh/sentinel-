@@ -18,6 +18,7 @@ def _load_module():
 
 def _good_settings():
     return {
+        "version": "23.0.5",
         "run_args": {
             "input_scale": 13,
             "input_visibility": "Public",
@@ -30,20 +31,20 @@ def _good_settings():
     }
 
 
-def test_settings_shape_and_visibility_contract():
+def test_settings_shape_visibility_and_mode_metadata():
     mod = _load_module()
-    errors, blockers = [], []
-    mod.validate_settings(_good_settings(), errors, blockers)
+    errors, review_flags = [], []
+    mod.validate_settings(_good_settings(), errors, review_flags)
     assert errors == []
-    assert "ezkl_check_mode_unsafe" in blockers
+    assert "ezkl_check_mode:UNSAFE" in review_flags
 
 
 def test_wrong_instance_shape_fails():
     mod = _load_module()
     settings = _good_settings()
     settings["model_instance_shapes"] = [[1, 64], [1, 1]]
-    errors, blockers = [], []
-    mod.validate_settings(settings, errors, blockers)
+    errors, review_flags = [], []
+    mod.validate_settings(settings, errors, review_flags)
     assert any("model_instance_shapes" in error for error in errors)
 
 
@@ -81,11 +82,12 @@ def test_live_repository_has_one_canonical_verifier_source():
     assert errors == []
 
 
-def test_v2_bundle_can_be_structurally_valid_but_never_production_eligible():
+def test_v2_bundle_never_becomes_production_eligible_from_integrity_alone():
     mod = _load_module()
     report = mod.validate_bundle(ROOT)
-    # This test intentionally does not force structural validity: local clones
-    # may omit large/private setup artifacts. The policy conclusion is invariant.
     assert report["proof_scope"] == "legacy_proxy_only_unbound"
     assert "proof_scope_not_identity_bound" in report["production_blockers"]
     assert report["production_eligible"] is False
+    # check_mode is surfaced for explicit review, not misclassified as a
+    # cryptographic verdict based only on its enum spelling.
+    assert any(flag.startswith("ezkl_check_mode:") for flag in report["review_flags"])
