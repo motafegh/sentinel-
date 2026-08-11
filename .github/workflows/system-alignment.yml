@@ -59,7 +59,9 @@ jobs:
 
       - name: Run V3 policy-signer tests
         env:
-          PYTHONPATH: .
+          # AGENTS uses the historical top-level `src.*` import convention,
+          # while tests are addressed from the repository root.
+          PYTHONPATH: .:agents
         run: python -m pytest -q -c /dev/null agents/tests/test_policy_signer_v3.py
 
   contracts-foundry:
@@ -93,7 +95,7 @@ jobs:
 
       - name: Compute Python golden V3 digest
         env:
-          PYTHONPATH: .
+          PYTHONPATH: .:agents
         run: |
           python -m pip install --disable-pip-version-check web3==7.15.0 pytest
           DIGEST="$(python - <<'PY'
