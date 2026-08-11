@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/r4/data_vnext_label_state_v1.schema.json",
+  "title": "SENTINEL DATA vNext contract-class label state v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "policy_version",
+    "contract_id",
+    "class_index",
+    "class_name",
+    "historical_state",
+    "source_claims",
+    "outcome_state",
+    "target_value",
+    "training_signal",
+    "training_strength",
+    "loss_eligible",
+    "outcome_metric_eligible",
+    "role_eligibility",
+    "policy_decision_id",
+    "evidence_ids",
+    "limitations"
+  ],
+  "properties": {
+    "policy_version": {"const": "data-vnext-policy-v1"},
+    "contract_id": {"type": "string", "minLength": 1},
+    "class_index": {"type": "integer", "minimum": 0, "maximum": 9},
+    "class_name": {
+      "enum": [
+        "CallToUnknown",
+        "DenialOfService",
+        "ExternalBug",
+        "GasException",
+        "IntegerUO",
+        "MishandledException",
+        "Reentrancy",
+        "Timestamp",
+        "TransactionOrderDependence",
+        "UnusedReturn"
+      ]
+    },
+    "historical_state": {
+      "enum": ["HISTORICAL_POSITIVE", "HISTORICAL_ZERO", "HISTORICAL_MISSING"]
+    },
+    "source_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "source_record_id",
+          "source_claim_state",
+          "source_native_label",
+          "crosswalk_action",
+          "mapped_class_name",
+          "evidence_ids",
+          "limitations"
+        ],
+        "properties": {
+          "source": {"type": "string", "minLength": 1},
+          "source_record_id": {"type": ["string", "null"]},
+          "source_claim_state": {
+            "enum": [
+              "POSITIVE",
+              "EXPLICIT_ZERO",
+              "UNKNOWN",
+              "UNSUPPORTED",
+              "DROPPED_CATEGORY",
+              "OUT_OF_TAXONOMY",
+              "UNAVAILABLE",
+              "NO_ASSERTION"
+            ]
+          },
+          "source_native_label": {"type": ["string", "null"]},
+          "crosswalk_action": {
+            "enum": [
+              "DIRECT",
+              "SEMANTIC_COMPRESSION",
+              "LOSSY_NO_CANONICAL_TARGET",
+              "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET",
+              "UNSUPPORTED",
+              "DROPPED_CATEGORY",
+              "NO_ASSERTION"
+            ]
+          },
+          "mapped_class_name": {
+            "type": ["string", "null"],
+            "enum": [
+              "CallToUnknown",
+              "DenialOfService",
+              "ExternalBug",
+              "GasException",
+              "IntegerUO",
+              "MishandledException",
+              "Reentrancy",
+              "Timestamp",
+              "TransactionOrderDependence",
+              "UnusedReturn",
+              null
+            ]
+          },
+          "evidence_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+        }
+      }
+    },
+    "outcome_state": {
+      "enum": [
+        "CONFIRMED_POSITIVE",
+        "CONFIRMED_NEGATIVE",
+        "UNKNOWN",
+        "NOT_APPLICABLE",
+        "CONFLICTING_EVIDENCE",
+        "NOT_REVIEWED",
+        "INVALID_RECORD"
+      ]
+    },
+    "target_value": {"type": ["integer", "null"], "enum": [0, 1, null]},
+    "training_signal": {"enum": ["POSITIVE", "NEGATIVE", "NONE"]},
+    "training_strength": {"enum": ["STRONG", "WEAK", "NONE"]},
+    "loss_eligible": {"type": "boolean"},
+    "outcome_metric_eligible": {"type": "boolean"},
+    "role_eligibility": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "TRAIN_STRONG",
+          "TRAIN_WEAK",
+          "TRAIN_UNLABELED",
+          "MODEL_SELECTION",
+          "THRESHOLD_FIT",
+          "CALIBRATION_FIT",
+          "INTERNAL_AUDIT",
+          "UNTOUCHED_ACCEPTANCE",
+          "CASE_STUDY",
+          "EXCLUDE_OUTCOME_METRICS"
+        ]
+      }
+    },
+    "policy_decision_id": {"type": "string", "minLength": 1},
+    "evidence_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"target_value": {"const": 0}}},
+      "then": {
+        "properties": {
+          "outcome_state": {"const": "CONFIRMED_NEGATIVE"},
+          "training_signal": {"const": "NEGATIVE"},
+          "training_strength": {"const": "STRONG"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"training_strength": {"const": "WEAK"}}},
+      "then": {
+        "properties": {
+          "target_value": {"const": 1},
+          "training_signal": {"const": "POSITIVE"},
+          "loss_eligible": {"const": true},
+          "outcome_metric_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"training_strength": {"const": "NONE"}}},
+      "then": {
+        "properties": {
+          "target_value": {"type": "null"},
+          "training_signal": {"const": "NONE"},
+          "loss_eligible": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome_state": {
+            "enum": ["UNKNOWN", "NOT_APPLICABLE", "CONFLICTING_EVIDENCE", "NOT_REVIEWED", "INVALID_RECORD"]
+          }
+        }
+      },
+      "then": {"properties": {"outcome_metric_eligible": {"const": false}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "training_strength": {"const": "STRONG"},
+          "training_signal": {"const": "POSITIVE"}
+        }
+      },
+      "then": {
+        "properties": {
+          "target_value": {"const": 1},
+          "outcome_state": {"const": "CONFIRMED_POSITIVE"},
+          "loss_eligible": {"const": true}
+        }
+      }
+    }
+  ]
+}
