@@ -70,10 +70,14 @@ jobs:
         working-directory: contracts
         run: forge fmt --check || true
 
-      - name: Build registry and tests
+      - name: Build registry and tests through IR
         working-directory: contracts
-        run: forge build --sizes
+        run: |
+          # V3 currently exceeds the legacy codegen stack budget in submitAuditV3.
+          # via-IR is used here only to reach behavioral tests; this does not close
+          # the separate code-structure/compiler-mode review item.
+          forge build --sizes --via-ir
 
-      - name: Run Foundry tests
+      - name: Run Foundry tests through IR
         working-directory: contracts
-        run: forge test -vvv
+        run: forge test --via-ir -vvv
