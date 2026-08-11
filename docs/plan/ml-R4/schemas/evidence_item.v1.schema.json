@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/r4/evidence_item.v1.schema.json",
+  "title": "SENTINEL R4 Evidence Item v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_id",
+    "scope_type",
+    "evidence_type",
+    "producer",
+    "independence_group",
+    "polarity",
+    "finding_summary",
+    "artifact_id",
+    "artifact_sha256",
+    "historical_or_new",
+    "raw_evidence_available",
+    "tool_only",
+    "limitations"
+  ],
+  "properties": {
+    "evidence_id": {"type": "string", "minLength": 1},
+    "scope_type": {
+      "enum": [
+        "CONTRACT_CLASS",
+        "CONTRACT",
+        "SOURCE_CLASS",
+        "CORPUS_CLASS",
+        "TRANSFORMATION_CATEGORY"
+      ]
+    },
+    "contract_id": {"type": ["string", "null"]},
+    "class_index": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 9
+    },
+    "source": {"type": ["string", "null"]},
+    "evidence_type": {
+      "enum": [
+        "EXPLOIT_OR_INJECTION_VERIFIED",
+        "EXPERT_MANUAL_REVIEW",
+        "REPRODUCIBLE_STATIC_REASONING",
+        "DYNAMIC_TOOL_SUPPORT",
+        "STATIC_TOOL_SUPPORT",
+        "SOURCE_ASSERTION",
+        "TRANSFORMATION_DEFAULT",
+        "NO_EVIDENCE"
+      ]
+    },
+    "producer": {"type": "string", "minLength": 1},
+    "producer_version": {"type": ["string", "null"]},
+    "independence_group": {"type": "string", "minLength": 1},
+    "polarity": {
+      "enum": [
+        "SUPPORTS_POSITIVE",
+        "SUPPORTS_NEGATIVE",
+        "NEUTRAL",
+        "CONFLICTING"
+      ]
+    },
+    "finding_summary": {"type": "string", "minLength": 1},
+    "code_locations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "artifact_id": {"type": "string", "minLength": 1},
+    "artifact_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "historical_or_new": {
+      "enum": [
+        "HISTORICAL_RECOVERED",
+        "HISTORICAL_CONCLUSION_ONLY",
+        "NEW_REPRODUCTION",
+        "NEW_GAP_REVIEW",
+        "TRANSFORMATION_RECONSTRUCTION"
+      ]
+    },
+    "raw_evidence_available": {"type": "boolean"},
+    "tool_only": {"type": "boolean"},
+    "limitations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"scope_type": {"const": "CONTRACT_CLASS"}}},
+      "then": {"required": ["contract_id", "class_index"]}
+    },
+    {
+      "if": {"properties": {"scope_type": {"const": "CONTRACT"}}},
+      "then": {"required": ["contract_id"]}
+    },
+    {
+      "if": {
+        "properties": {
+          "scope_type": {"enum": ["SOURCE_CLASS", "CORPUS_CLASS"]}
+        }
+      },
+      "then": {"required": ["source", "class_index"]}
+    }
+  ]
+}
