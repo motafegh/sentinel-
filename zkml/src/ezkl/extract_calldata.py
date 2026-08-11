@@ -11,7 +11,8 @@ The output is useful for:
 - preserving a deterministic proof/calldata evidence bundle;
 - later feeding a policy-signer-compatible V3 implementation.
 
-It must never emit ``cast send`` or accept/read a private key.
+It must never emit a direct shell transaction command or accept/read a private
+key.
 """
 
 from __future__ import annotations
