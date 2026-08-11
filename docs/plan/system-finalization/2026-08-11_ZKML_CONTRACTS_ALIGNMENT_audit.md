@@ -50,6 +50,25 @@ The proof commits only fusion[128] and proxy outputs[10]. `contractAddress`, `ch
 
 **Required disposition:** define typed identity-bound V3 public-input protocol before enabling policy acceptance.
 
+### ZC-P0-004 — proxy output is double-sigmoided outside the circuit
+
+**Severity:** P0 / cross-module correctness  
+**Sources:** `zkml/src/distillation/train_proxy.py`, `zkml/src/distillation/proxy_model.py`, `agents/src/mcp/servers/audit/_submit.py`, `zkml/src/ezkl/run_proof.py`, `zkml/src/distillation/export_onnx.py`
+
+Executable training behavior is unambiguous:
+
+```python
+teacher_scores = torch.sigmoid(teacher_logits)       # [B,10] probabilities
+loss = MSELoss(proxy(features), teacher_scores)      # raw proxy forward is fitted to probabilities
+agreement = (proxy_scores >= 0.5) == (teacher_scores >= 0.5)
+```
+
+Therefore the current V2 proxy's `forward()` output is the student **score/probability approximation**, despite stale `ProxyModel` comments calling it a raw logit. `export_onnx.py` exports that exact forward pass, so the EZKL circuit proves those raw student scores.
+
+But `_submit.py` does `scores = torch.sigmoid(proxy(features))`, and `run_proof.py` also sigmoids proxy output for comparisons. That second sigmoid changes the value. The off-chain `result["class_scores"]` therefore does not mean the same thing as the 10 EZKL public outputs that later replace `class_score_felts` from the proof.
+
+**Required disposition:** for the existing V2 artifact semantics, treat `ProxyModel.forward()` as `proxy_scores` and remove the second sigmoid in consumers. Do not retrain remotely merely to make stale logit terminology true. Rename/comment behavior to match the trained artifact. Add tests that make a second sigmoid impossible to reintroduce silently.
+
 ### ZC-P1-001 — legacy binary contract path remains first-class
 
 **Severity:** P1 / stale surface  
@@ -68,9 +87,22 @@ Tracked EZKL settings use `check_mode: "UNSAFE"` (EZKL 23.0.5). No production cl
 
 **Required disposition:** preserve current artifacts as historical V2 evidence; generate a new versioned V3 proof bundle under an explicitly accepted safe-mode policy during local cryptographic validation.
 
-### ZC-P2-001 — stale source commentary around proxy parameter count
+### ZC-P1-003 — proxy training/calibration point at a stale v2 export
 
-`ProxyModel` executable architecture is 128→64→32→10 = 10,666 parameters, while comments/docstrings still say roughly 8K/8,330 in places. Executable guard permits up to 12,000. This is documentation drift, not a runtime defect.
+**Severity:** P1 / reproducibility and future-retraining blocker  
+**Sources:** `zkml/src/distillation/train_proxy.py`, `zkml/src/distillation/generate_calibration.py`
+
+Both files hardcode:
+
+`data_module/data/exports/sentinel-v2-baseline-2026-06-12`
+
+while the active/reconstructed Run12 DATA lineage is the later `sentinel-v3-smartbugs-2026-06-13` family and R4 has established that historical label semantics require repair before retraining. A future proxy retrain against the hardcoded v2 export would not be a faithful student of the intended post-R4 teacher/data contract.
+
+**Required disposition:** do not retrain the proxy yet. Externalize/bind the teacher checkpoint + source export identity in a versioned ZKML artifact manifest. Future retraining must consume an explicitly promoted R4 DATA/ML bundle, not this stale implicit path.
+
+### ZC-P2-001 — stale source commentary around proxy parameter count/output semantics
+
+`ProxyModel` executable architecture is 128→64→32→10 = 10,666 parameters, while comments/docstrings still say roughly 8K/8,330 in places and call outputs raw logits even though training fits them directly to teacher probabilities. These comments are stale and actively obscure the cross-module score bug.
 
 ## Open reconstruction items
 
