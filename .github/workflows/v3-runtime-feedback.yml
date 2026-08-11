@@ -33,7 +33,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependency-light test requirements
-        run: python -m pip install --disable-pip-version-check pytest loguru
+        run: python -m pip install --disable-pip-version-check pytest loguru 'pydantic>=2,<3'
 
       - name: Test versioned submission and feedback boundaries
         env:
