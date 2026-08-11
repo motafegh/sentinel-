@@ -1,0 +1,43 @@
+name: R4 Phase 4 closeout registration
+
+on:
+  push:
+    branches:
+      - r4/phase4-targeted-gap-adjudication
+    paths:
+      - 'docs/plan/ml-R4/scripts/p4_closeout_g4.py'
+      - '.github/workflows/r4-phase4-closeout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  register-closeout:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r4/phase4-targeted-gap-adjudication
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Register Phase 4 artifacts and execution log
+        run: python docs/plan/ml-R4/scripts/p4_closeout_g4.py
+
+      - name: Commit deterministic closeout records
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            docs/plan/ml-R4/ARTIFACT_INDEX.md \
+            docs/plan/ml-R4/EXECUTION_LOG.md
+          if git diff --cached --quiet; then
+            echo 'Closeout records already current.'
+            exit 0
+          fi
+          git commit -m 'docs(ml-r4): register Phase 4 G4 closure'
+          git push origin HEAD:r4/phase4-targeted-gap-adjudication
