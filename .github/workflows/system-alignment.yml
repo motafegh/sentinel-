@@ -60,8 +60,6 @@ jobs:
 
       - name: Run V3 policy-signer tests
         env:
-          # AGENTS uses the historical top-level `src.*` import convention,
-          # while tests are addressed from the repository root.
           PYTHONPATH: .:agents
         run: python -m pytest -q -c /dev/null agents/tests/test_policy_signer_v3.py
 
@@ -111,14 +109,10 @@ jobs:
         working-directory: contracts
         run: forge fmt --check || true
 
-      - name: Build registry and tests through IR
+      - name: Build registry and tests
         working-directory: contracts
-        run: |
-          # V3 currently exceeds the legacy codegen stack budget in submitAuditV3.
-          # via-IR is used here only to reach behavioral tests; this does not close
-          # the separate code-structure/compiler-mode review item.
-          forge build --sizes --via-ir
+        run: forge build --sizes
 
-      - name: Run Foundry tests through IR
+      - name: Run Foundry tests
         working-directory: contracts
-        run: forge test --via-ir -vvv
+        run: forge test -vvv
