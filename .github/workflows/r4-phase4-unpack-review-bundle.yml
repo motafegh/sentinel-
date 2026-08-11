@@ -79,6 +79,14 @@ jobs:
           print(json.dumps({'passed': True, 'tasks': len(tasks), 'counts': dict(counts)}, indent=2))
           PY
 
+      - name: Upload verified blind corpus for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: r4-gap002-blind-corpus-v1
+          path: docs/plan/ml-R4/review_bundles/r4_gap002_blind_review_bundle_v1_extracted
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Commit extracted text review corpus
         run: |
           git config user.name 'github-actions[bot]'
