@@ -11,12 +11,16 @@ on:
       - 'docs/plan/ml-R4/findings/07_data_vnext_policy_and_design_specification.md'
       - 'docs/plan/ml-R4/scripts/p5_validate_data_vnext_policy.py'
       - '.github/workflows/r4-phase5-policy.yml'
+      - '.github/workflows/r4-phase5-closeout.yml'
+      - '.github/workflows/r4-phase5-g5.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase5-policy.yml'
+      - '.github/workflows/r4-phase5-closeout.yml'
+      - '.github/workflows/r4-phase5-g5.yml'
   workflow_dispatch:
 
 permissions:
@@ -48,7 +52,12 @@ jobs:
           subprocess.run(['git','fetch','origin','main'], check=True)
           base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
           files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
-          allowed_prefixes = ('docs/plan/ml-R4/', '.github/workflows/r4-phase5-policy.yml')
+          allowed_prefixes = (
+              'docs/plan/ml-R4/',
+              '.github/workflows/r4-phase5-policy.yml',
+              '.github/workflows/r4-phase5-closeout.yml',
+              '.github/workflows/r4-phase5-g5.yml',
+          )
           bad = [f for f in files if not any(f == p or f.startswith(p) for p in allowed_prefixes)]
           if bad:
               raise SystemExit('Phase 5 modified implementation/out-of-scope files: ' + ', '.join(bad))
