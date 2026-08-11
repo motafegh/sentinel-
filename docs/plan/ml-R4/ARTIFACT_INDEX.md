@@ -41,6 +41,21 @@
 | R4-P1-FND-005 | 1 | findings | findings/02_previous_evidence_recovery_summary.md | — | 6febb4283 | New | AVAILABLE | NO | Phase 1 summary + G1 report |
 | R4-P1-MAN-001 | 1 | evidence_inventory | manifests/evidence_inventory.jsonl | — | 6febb4283 | New | AVAILABLE | NO | 27 structured evidence items |
 
+## Phase 2 artifacts
+
+| Artifact ID | Phase | Type | Path/URI | SHA-256 | Source commit | Historical/New | Availability | Protected | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| R4-P2-PLN-001 | 2 | execution_plan | runs/2026-08-11_PHASE2_label_corruption_reconstruction_execution_plan.md | — | 96037edd8 | New | AVAILABLE | NO | Read-only reconstruction plan |
+| R4-P2-FND-001 | 2 | findings | findings/03_source_authority_matrix.md | — | d908cb7f | New | AVAILABLE | NO | Active/deferred source authority by class |
+| R4-P2-FND-002 | 2 | findings | findings/03_source_semantics_cards.md | — | 27ce7cf6 | New | AVAILABLE | NO | Native positive/negative semantics by source |
+| R4-P2-FND-003 | 2 | findings | findings/03_crosswalk_effect_table.md | — | 180b17ee | New | AVAILABLE | NO | Dropped/lossy/unsupported mappings and DoS patch |
+| R4-P2-FND-004 | 2 | findings | findings/03_merger_sensitivity_table.md | — | 96650974 | New | AVAILABLE | NO | Positive precedence, weak zero provenance, verification boundary |
+| R4-P2-FND-005 | 2 | findings | findings/03_all_zero_decomposition.md | — | d1a3b99d | New | AVAILABLE | NO | Historical-zero origin taxonomy |
+| R4-P2-FND-006 | 2 | findings | findings/03_population_reconciliation.md | — | fe6d8028 | New | AVAILABLE | NO | Run12 2,635-row count reconciliation |
+| R4-P2-FND-007 | 2 | findings | findings/03_quantification_matrix.md | — | 3d38ab36 | New | AVAILABLE | NO | Source/class/target/mechanism counts and bounded unavailable cross-tabs |
+| R4-P2-FND-008 | 2 | findings | findings/03_label_corruption_reconstruction_summary.md | — | a9a2b1e9 | New | AVAILABLE | NO | G2 PASS assessment and next action |
+| R4-P2-MAN-001 | 2 | trace_manifest | manifests/phase2_end_to_end_traces.jsonl | — | 353d68c0 | New | AVAILABLE | NO | Representative source→ML target traces |
+
 ## Availability
 
 - `AVAILABLE_VERIFIED`

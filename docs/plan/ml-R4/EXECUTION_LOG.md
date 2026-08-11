@@ -91,3 +91,26 @@ Append one entry for each work package.
 - **Register updates:** PREVIOUS_EVIDENCE_REGISTER (all statuses updated to RECOVERED_VERIFIED/PARTIAL/UNAVAILABLE), ARTIFACT_INDEX (5 Phase 1 artifacts added), EVIDENCE_GAP_REGISTER (6 PROPOSED gaps), RISK_AND_BLOCKER_REGISTER (3 new risks: R4-R010-R013), EXECUTION_LOG (this entry), PLAN_STATUS_MATRIX (Phase 1 -> PASSED)
 - **Gate effect:** G1 PASS — all 5 pass criteria met. See findings/02_previous_evidence_recovery_summary.md for detailed assessment.
 - **Next permitted action:** Begin Phase 2 — Label Corruption Reconstruction, subject to approved EVIDENCE_GAP_REGISTER entries only
+
+---
+
+### R4-LOG-20260811-004 — Phase 2 Label-Corruption Mechanism Reconstruction
+
+- **Phase:** 2
+- **Gap ID, if review work:** N/A — no new contract review performed
+- **Operator:** ChatGPT + repository source audit
+- **Date/timezone:** 2026-08-11 Europe/Berlin / repository work performed remotely through GitHub
+- **Repository branch/commit:** `r4/phase2-label-corruption-reconstruction` / Phase-2 branch commits beginning at `96037edd8`
+- **Worktree status before:** Remote branch created from canonical `main` commit `253cbdec0`; local runtime/DVC state intentionally excluded from this remote-only reconstruction
+- **Input artifact IDs/hashes:** Phase-0 protected baseline and crosswalks; Phase-1 findings 02A/02B/02C/02D; current executable DATA/ML source on branch
+- **Command(s):** repository source tracing across config, ingestion folderization, label parsers/crosswalks, merger, verification gate, split, NonVulnerable cap, export/chunk/shard writers, SentinelDataset/collate, and AsymmetricLoss; retained-evidence reconciliation
+- **Environment and seed(s):** GitHub-tracked source/evidence only; no stochastic execution and no new dataset review
+- **Expected outputs:** source authority matrix; source semantics cards; crosswalk effect table; merger sensitivity table; all-zero decomposition; population reconciliation; quantitative matrix; end-to-end trace JSONL; Phase-2 summary
+- **Actual outputs/hashes:** All expected semantic reconstruction outputs created. Protected source/data artifacts were not modified. Exact DVC-only source/class sub-cross-tabs remain explicitly unavailable where not retained in Git.
+- **Result:** PASS
+- **Historical evidence reused:** DIVE source/crosswalk/audit evidence; SolidiFI source semantics; SmartBugs evidence; BCCC v1.4/deep-dive evidence; June 13 data audit; Run12 lineage; Phase-0 protected counts
+- **New evidence created:** Source-code-derived reconstruction only; no new contract adjudication, tool scan, exploit reproduction, or label correction
+- **Protected artifacts changed:** NO
+- **Register updates:** PLAN_STATUS_MATRIX Phase 2 -> PASSED; RISK_AND_BLOCKER_REGISTER R4-R010 narrowed/mitigated and R4-R014 added; ARTIFACT_INDEX Phase-2 outputs; EXECUTION_LOG this entry
+- **Gate effect:** **G2 PASS** — every mandatory historical positive/zero origin category has a named transformation path. Contract×class adjudication may remain unknown as permitted by the Phase-2 gate.
+- **Next permitted action:** Begin Phase 3 — Evidence Ledger. Build a sidecar contract×class evidence ledger without rewriting the protected historical export.
