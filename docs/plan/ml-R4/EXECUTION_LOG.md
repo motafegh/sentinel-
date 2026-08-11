@@ -201,3 +201,21 @@ Append one entry for each work package.
 - **Gate effect:** **G5 PASS.** Phase 6 is authorized to create leakage-safe dataset roles/partitions and freeze or explicitly declare unsupported acceptance support.
 - **Next permitted action:** Phase 6 only; Phase-7 DATA implementation remains blocked until G6.
 
+---
+
+### R4-LOG-20260812-009 — Phase 6 Leakage-Safe Roles and G6 Closure
+
+- **Phase:** 6
+- **Operator:** GPT-5.6 Sol under delegated routine technical/governance approval
+- **Date:** 2026-08-12
+- **Inputs:** Phase-3 ledger `3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7`; accepted Phase-5 policy `b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094`; measured role-support inventory; repository exposure audit
+- **Partition:** `r4-vnext-roles-v1` / status `FROZEN_G6`
+- **Population:** 22493 contracts / 13509 leakage groups, exactly one role each
+- **Roles:** TRAIN_STRONG 275 contracts; MODEL_SELECTION 56; INTERNAL_AUDIT 62; TRAIN_WEAK 773; TRAIN_UNLABELED 20,491; EXCLUDED 836
+- **Evidence limitations:** zero confirmed-negative rows; MODEL_SELECTION positive-only; THRESHOLD_FIT and CALIBRATION_FIT unsupported empty; UNTOUCHED_ACCEPTANCE unsupported empty frozen
+- **Exposure findings:** manual suite exposed to historical ML/AGENTS validation; quickstart contains invalid NonVulnerable mappings; Tier-E BCCC/tool-silence design is not confirmed-negative evidence; unavailable/deferred sources not imported
+- **Protected artifacts changed:** NO
+- **Implementation code changed:** NO
+- **Decision:** R4-D-006 / ADR-R4-006 Accepted
+- **Gate effect:** **G6 PASS.** Phase 7 is authorized to implement DATA vNext exactly from the frozen policy and role manifests; threshold/calibration/acceptance limitations must remain explicit.
+

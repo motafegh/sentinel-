@@ -107,6 +107,22 @@
 | R4-P5-ADR-004 | 5 | ADR | adrs/ADR-R4-004-export-and-ml-consumer-contract.md | 018b26b7ebae0c6332875b41750ee0fa17a3ed26a14e592c761e7b2a9ddc47d8 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Explicit v2 export and masked ML consumer contract |
 | R4-P5-ADR-005 | 5 | ADR | adrs/ADR-R4-005-lineage-versioning-and-rollback.md | 21cb80d2d9f5912a07d7cab60c369175de609523ebe7c3089286161a95a3c8a1 | 104dd4f6f8a1 | New | AVAILABLE_VERIFIED | NO | Immutable history, versioning, fail-closed publication, rollback |
 
+## Phase 6 artifacts — role partitions and acceptance freeze (G6 PASS)
+
+| Artifact ID | Phase | Type | Path/URI | SHA-256 | Source commit | Historical/New | Availability | Protected | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| R4-P6-PLN-001 | 6 | execution_plan | runs/2026-08-12_PHASE6_partitions_acceptance_freeze_plan.md | 9198a198fbf5ec153b68dd4612d77bbd3dffc5187eaf83fa0030cbbdd673ebeb | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Phase-6 role/acceptance execution plan |
+| R4-P6-INV-001 | 6 | role_support_inventory | manifests/p6_role_support_inventory.json | d6571bb8ede7b358ca2668c4377db92a4895114c97725c4cb4fcebe5d8ef185f | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Measured Phase-5-authorized strong/weak/unlabeled group support |
+| R4-P6-INV-002 | 6 | group_eligibility_inventory | manifests/p6_group_eligibility_inventory.jsonl | e7c380f0a584b4d0bfde15389d51bb73ea3d848b2eda6b3bd18cd534a0e0e6e2 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | 13,509 leakage-group eligibility rows |
+| R4-P6-MAN-001 | 6 | role_group_manifest | manifests/p6_role_group_manifest.jsonl | f3bad495c2273ccec9d7b49b98095e1023681e8c5334e9c8d8be1f0b18dde6bc | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | One frozen role per leakage group |
+| R4-P6-MAN-002 | 6 | contract_role_manifest | manifests/p6_contract_role_manifest.jsonl | def09010aafb1681c9866dd346de58409c89473b65d03c6c3adea69b75237174 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | One role per 22,493 contracts |
+| R4-P6-MAN-003 | 6 | role_support_table | manifests/p6_role_support_table.json | be9f0790480aa9a63fb95cdecee706ba9b6a4135e5fe6c32f6752ef2fee80453 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Per-role/class support and limitations |
+| R4-P6-MAN-004 | 6 | unsupported_roles | manifests/p6_unsupported_roles.json | 23c6206736aa4c04ca947a24c551f73e0a722c1acf8fe816a3b37a66273127f0 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Threshold/calibration/acceptance controlled empty roles |
+| R4-P6-MAN-005 | 6 | untouched_acceptance | manifests/p6_untouched_acceptance_manifest.json | 499b78e2c59fac8e56362d8ca240e37fb0cda0b12e98e4a2433aeb291ed48318 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Frozen empty unsupported untouched-acceptance manifest |
+| R4-P6-MAN-006 | 6 | partition_manifest | manifests/p6_partition_manifest.json | f3b9727f5e74e007c0833ccd9001d80d82976894c8365a75b7fb9b63ce12c21d | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | r4-vnext-roles-v1 frozen partition root |
+| R4-P6-ADR-001 | 6 | ADR | adrs/ADR-R4-006-role-partition-and-acceptance-freeze.md | 9657278b2dad070a78564a4bf365da23493e020e92a0040cd2dde3934069a132 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Leakage-safe partition and empty-acceptance decision |
+| R4-P6-FND-001 | 6 | findings | findings/08_phase6_role_partition_and_acceptance_freeze.md | 6c3f9657aa564f8ce16ac36efbb96b4c3545aa087d2542231c73a8c9f76a1070 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Partition/support/exposure interpretation |
+
 ## Availability
 
 - `AVAILABLE_VERIFIED`

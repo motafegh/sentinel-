@@ -21,6 +21,8 @@
       "sha256": "23c6206736aa4c04ca947a24c551f73e0a722c1acf8fe816a3b37a66273127f0"
     }
   },
+  "decision_id": "R4-D-006",
+  "gate": "G6_PASS",
   "invariants": [
     "one_role_per_leakage_group",
     "one_role_per_contract",
@@ -64,7 +66,7 @@
     "TRAIN_WEAK": 465
   },
   "schema": "r4-phase6-partition-manifest-v1",
-  "status": "FROZEN_CANDIDATE_G6",
+  "status": "FROZEN_G6",
   "strong_role_targets": {
     "coverage_rule": "At least one represented strong group per supported class in TRAIN_STRONG, MODEL_SELECTION, and INTERNAL_AUDIT.",
     "internal_audit_fraction": 0.15,
