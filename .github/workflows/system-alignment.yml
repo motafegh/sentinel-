@@ -154,19 +154,17 @@ jobs:
             --output contracts/test/generated/ZkmlV2ProofFixture.sol
           test -s contracts/test/generated/ZkmlV2ProofFixture.sol
 
-      - name: Compile and exercise canonical generated verifier
+      - name: Valid tracked proof must verify
         working-directory: contracts
-        shell: bash
         run: |
-          set +e
-          forge test --match-contract ZKMLVerifierRealProofTest -vvvv \
-            2>&1 | tee /tmp/sentinel-real-verifier.log
-          status=${PIPESTATUS[0]}
-          if [[ $status -ne 0 ]]; then
-            echo ""
-            echo "========== SENTINEL REAL VERIFIER DIAGNOSTIC =========="
-            grep -n -A20 -B12 -E "FAIL|revert|Error|panic|Counterexample|Suite result" \
-              /tmp/sentinel-real-verifier.log || tail -n 180 /tmp/sentinel-real-verifier.log
-            echo "======================================================="
-          fi
-          exit $status
+          forge test \
+            --match-test test_tracked_v2_proof_verifies_with_canonical_generated_verifier \
+            -vvvv
+
+      - name: Mutated public output must be rejected
+        if: always()
+        working-directory: contracts
+        run: |
+          forge test \
+            --match-test test_mutated_public_output_does_not_verify \
+            -vvvv
