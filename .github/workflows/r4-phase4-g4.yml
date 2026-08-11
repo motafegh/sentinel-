@@ -3,10 +3,18 @@ name: R4 Phase 4 G4 gate
 on:
   push:
     branches:
+      - main
       - r4/phase4-targeted-gap-adjudication
+      - r4/phase4-postmerge-reference-fix
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase4-g4.yml'
   pull_request:
     branches:
       - main
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase4-g4.yml'
   workflow_dispatch:
 
 permissions:
@@ -22,7 +30,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Validate frozen sample, bundle, review, roles, and G4 registration
+      - name: Validate frozen sample, bundle, review, roles, artifact paths, and G4 registration
         run: |
           python - <<'PY'
           import hashlib
@@ -44,12 +52,14 @@ jobs:
           review_path = root / 'reviews/R4-GAP-002/p4_gap002_blind_semantic_review_v1.jsonl'
           report_path = root / 'findings/06_gap002_blind_semantic_review_report.json'
           population_path = root / 'manifests/p4_gap002_population_manifest.json'
+          authorization_path = root / 'authorizations/2026-08-11_R4-GAP-002_authorization.md'
 
           expected_sample = '2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9'
           expected_bundle = '2b1ce12fdd96819c89bbb9fe1dfb2d9aa992ec0a05ce32f651c6b834b97ddf38'
           expected_review = '7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473'
           expected_ledger = '3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7'
 
+          assert authorization_path.is_file(), authorization_path
           assert sha256(sample_path) == expected_sample
           assert sha256(bundle_path) == expected_bundle
           assert sha256(review_path) == expected_review
@@ -112,6 +122,9 @@ jobs:
           artifacts = (root / 'ARTIFACT_INDEX.md').read_text()
           assert '## Phase 4 artifacts — targeted gap adjudication (G4 PASS)' in artifacts
           assert expected_sample in artifacts and expected_bundle in artifacts and expected_review in artifacts
+          correct_auth_row = '| R4-P4-AUT-001 | 4 | authorization | authorizations/2026-08-11_R4-GAP-002_authorization.md |'
+          assert correct_auth_row in artifacts
+          assert 'findings/05_gap002_authorization.md' not in artifacts
 
           log = (root / 'EXECUTION_LOG.md').read_text()
           assert 'R4-LOG-20260811-007 — Phase 4 Targeted DIVE Gap Adjudication and G4 Closure' in log
@@ -122,6 +135,7 @@ jobs:
               'sample_sha256': expected_sample,
               'bundle_sha256': expected_bundle,
               'review_sha256': expected_review,
+              'authorization_path': str(authorization_path),
               'tasks': 100,
               'phase4': 'PASSED',
               'phase5': 'READY',
