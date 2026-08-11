@@ -1,0 +1,60 @@
+name: R4 Phase 3 framework
+
+on:
+  push:
+    branches:
+      - r4/phase3-evidence-ledger
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase3-framework.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase3-framework.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  framework-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Semantic ledger validator tests
+        run: python docs/plan/ml-R4/scripts/test_p3_validate_evidence_ledger.py
+
+      - name: Strict schema-surface validator tests
+        run: python docs/plan/ml-R4/scripts/test_p3_validate_evidence_ledger_strict.py
+
+      - name: Artifact-binding validator tests
+        run: python docs/plan/ml-R4/scripts/test_p3_validate_artifact_bindings.py
+
+      - name: Compile Phase 3 scripts
+        run: |
+          python -m py_compile \
+            docs/plan/ml-R4/scripts/p3_validate_evidence_ledger.py \
+            docs/plan/ml-R4/scripts/p3_validate_evidence_ledger_strict.py \
+            docs/plan/ml-R4/scripts/p3_validate_artifact_bindings.py \
+            docs/plan/ml-R4/scripts/p3_materialize_evidence_ledger.py \
+            docs/plan/ml-R4/scripts/p3_run_local_gate.py
+
+      - name: Assert checkpoint remains blocked without protected population
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('docs/plan/ml-R4/manifests/evidence_ledger_v1.manifest.json').read_text())
+          assert manifest['status'] == 'DRAFT', manifest['status']
+          assert manifest['actual_rows'] == 0, manifest['actual_rows']
+          assert manifest['expected_rows'] == 224930, manifest['expected_rows']
+          print('Phase 3 remote checkpoint remains DRAFT/blocked as intended.')
+          PY
