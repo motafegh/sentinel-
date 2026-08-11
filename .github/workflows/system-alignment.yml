@@ -1,0 +1,196 @@
+name: SENTINEL system alignment
+
+on:
+  push:
+    branches:
+      - system/zkml-contracts-alignment
+  pull_request:
+    paths:
+      - "contracts/**"
+      - "zkml/**"
+      - "agents/src/security/**"
+      - "agents/src/mcp/servers/audit/**"
+      - "agents/src/mcp/servers/audit_server.py"
+      - "agents/tests/test_policy_signer_v3.py"
+      - "agents/tests/test_audit_mcp_readonly.py"
+      - "agents/tests/test_audit_server.py"
+      - ".github/workflows/system-alignment.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  zkml-boundary-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install boundary-test dependencies
+        run: python -m pip install --disable-pip-version-check pytest loguru
+
+      - name: Run dependency-light ZKML boundary tests
+        run: |
+          python -m pytest -q -c /dev/null \
+            zkml/tests/test_run_proof.py \
+            zkml/tests/test_validate_bundle.py \
+            zkml/tests/test_setup_circuit_lineage.py
+
+      - name: Validate tracked V2 artifact bundle structure
+        run: |
+          python zkml/src/ezkl/validate_bundle.py \
+            --output /tmp/zkml-v2-bundle-report.json
+          cat /tmp/zkml-v2-bundle-report.json
+
+  audit-mcp-containment-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install audit-MCP boundary dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            pytest pytest-asyncio loguru 'mcp>=1,<2' web3==7.15.0 uvicorn
+
+      - name: Prove live audit MCP is read-only and version-aware
+        env:
+          PYTHONPATH: .:agents
+          SENTINEL_ENV: production
+        run: |
+          python -m pytest -q -c /dev/null \
+            agents/tests/test_audit_mcp_readonly.py \
+            agents/tests/test_audit_server.py
+
+  v3-policy-protocol-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install policy-protocol dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            pytest web3==7.15.0
+
+      - name: Run V3 policy-signer tests
+        env:
+          PYTHONPATH: .:agents
+        run: python -m pytest -q -c /dev/null agents/tests/test_policy_signer_v3.py
+
+  contracts-foundry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+
+      - name: Bootstrap locked Solidity dependencies
+        run: bash contracts/scripts/bootstrap_deps.sh
+
+      - name: Show toolchain identity
+        run: |
+          forge --version
+          git -C contracts/lib/forge-std rev-parse HEAD
+          git -C contracts/lib/openzeppelin-contracts rev-parse HEAD
+          git -C contracts/lib/openzeppelin-contracts-upgradeable rev-parse HEAD
+
+      - name: Isolate generated EZKL verifier from registry unit compilation
+        run: |
+          test -f contracts/src/ZKMLVerifier.sol
+          mv contracts/src/ZKMLVerifier.sol /tmp/SENTINEL_ZKMLVerifier.sol
+          if [[ -f contracts/test/ZKMLVerifierRealProof.t.sol ]]; then
+            mv contracts/test/ZKMLVerifierRealProof.t.sol /tmp/ZKMLVerifierRealProof.t.sol
+          fi
+
+      - name: Compute Python golden V3 digest
+        env:
+          PYTHONPATH: .:agents
+        run: |
+          python -m pip install --disable-pip-version-check web3==7.15.0 pytest
+          DIGEST="$(python - <<'PY'
+          from agents.tests.test_policy_signer_v3 import _request
+          print(_request().digest)
+          PY
+          )"
+          echo "SENTINEL_GOLDEN_V3_DIGEST=$DIGEST" >> "$GITHUB_ENV"
+          echo "Python V3 digest: $DIGEST"
+
+      - name: Report formatting drift without blocking behavioral validation
+        working-directory: contracts
+        run: forge fmt --check || true
+
+      - name: Build registry and tests
+        working-directory: contracts
+        shell: bash
+        run: |
+          set +e
+          forge build --sizes 2>&1 | tee /tmp/sentinel-forge-build.log
+          status=${PIPESTATUS[0]}
+          if [[ $status -ne 0 ]]; then
+            echo ""
+            echo "========== SENTINEL COMPILER DIAGNOSTIC =========="
+            grep -n -A12 -B8 -E "Stack too deep|CompilerError|DeclarationError|TypeError|ParserError|YulException|Error:" \
+              /tmp/sentinel-forge-build.log || tail -n 120 /tmp/sentinel-forge-build.log
+            echo "=================================================="
+          fi
+          exit $status
+
+      - name: Run Foundry tests
+        working-directory: contracts
+        run: forge test -vvv
+
+  generated-verifier-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+
+      - name: Bootstrap locked Solidity dependencies
+        run: bash contracts/scripts/bootstrap_deps.sh
+
+      - name: Generate Solidity fixture from tracked EZKL proof
+        run: |
+          python zkml/src/ezkl/export_foundry_fixture.py \
+            --proof zkml/ezkl/proof.json \
+            --output contracts/test/generated/ZkmlV2ProofFixture.sol
+          test -s contracts/test/generated/ZkmlV2ProofFixture.sol
+
+      - name: Valid tracked proof must verify
+        working-directory: contracts
+        run: |
+          forge test \
+            --match-test '^test_tracked_v2_proof_verifies_with_canonical_generated_verifier$' \
+            -vvvv
+
+      - name: Mutated public output must be rejected
+        if: always()
+        working-directory: contracts
+        run: |
+          forge test \
+            --match-test '^test_mutated_public_output_is_rejected_fail_closed$' \
+            -vvvv

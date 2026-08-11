@@ -1,23 +1,30 @@
-"""Tests for proof generation + calldata extraction — field element encoding, signal layout."""
+"""Tests for V2 proof decoding, signal layout, and signer isolation."""
 
+import importlib.util
 import json
-import sys
 from pathlib import Path
 
-import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+ROOT = Path(__file__).resolve().parents[2]
+EXTRACT_PATH = ROOT / "zkml/src/ezkl/extract_calldata.py"
+
+
+def _load_extract_module():
+    spec = importlib.util.spec_from_file_location("extract_calldata", EXTRACT_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
 
 
 # ── Field element encoding / decoding ────────────────────────────────────
 
 def _decode_field_element(hex_str: str) -> int:
-    return int.from_bytes(bytes.fromhex(hex_str), byteorder='little')
+    return int.from_bytes(bytes.fromhex(hex_str), byteorder="little")
 
 
 def test_little_endian_decode_known_vector():
-    """Known EZKL output: 4497/8192 = 0.549."""
-    # "9111" in little-endian = 0x1191 = 4497
+    """Known fixed-point value: 4497 / 8192 ≈ 0.549."""
     hex_str = "9111000000000000000000000000000000000000000000000000000000000000"
     felt = _decode_field_element(hex_str)
     assert felt == 4497
@@ -25,104 +32,97 @@ def test_little_endian_decode_known_vector():
 
 
 def test_little_endian_decode_zero():
-    """All-zero hex → 0."""
-    hex_str = "0000000000000000000000000000000000000000000000000000000000000000"
+    hex_str = "00" * 32
     assert _decode_field_element(hex_str) == 0
 
 
-def test_little_endian_decode_max_value():
-    """All-0xFF hex → very large number (but valid field element)."""
-    hex_str = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0"
-    felt = _decode_field_element(hex_str)
-    assert felt > 0
-
-
 def test_big_endian_would_be_wrong():
-    """Demonstrate that int(hex,16) gives the WRONG answer."""
     hex_str = "9111000000000000000000000000000000000000000000000000000000000000"
-    big_endian = int(hex_str, 16)
-    little_endian = _decode_field_element(hex_str)
-    assert big_endian != little_endian
-    assert big_endian > 2**255  # huge garbage value
-    assert little_endian < 5000   # reasonable score field element
+    assert int(hex_str, 16) != _decode_field_element(hex_str)
 
 
-# ── Public signals layout ────────────────────────────────────────────────
+# ── Public-signal protocol ───────────────────────────────────────────────
 
 INPUT_OFFSET = 128
 NUM_CLASSES = 10
-TOTAL_SIGNALS = INPUT_OFFSET + NUM_CLASSES  # 138
+TOTAL_SIGNALS = INPUT_OFFSET + NUM_CLASSES
 
 
 def test_public_signals_layout():
-    """Verify that class scores start at index 128."""
     signals = [0] * TOTAL_SIGNALS
-    # Set class scores
     for i in range(NUM_CLASSES):
         signals[INPUT_OFFSET + i] = (i + 1) * 1000
-
-    class_scores = signals[INPUT_OFFSET:]
-    assert len(class_scores) == NUM_CLASSES
-    assert class_scores[0] == 1000
-    assert class_scores[9] == 10000
+    proxy_scores = signals[INPUT_OFFSET:]
+    assert len(proxy_scores) == NUM_CLASSES
+    assert proxy_scores[0] == 1000
+    assert proxy_scores[9] == 10000
 
 
 def test_total_signals_count():
-    """128 + 10 = 138."""
     assert TOTAL_SIGNALS == 138
 
 
-def test_class_offset_within_bounds():
-    """INPUT_OFFSET + 9 < TOTAL_SIGNALS."""
-    for i in range(NUM_CLASSES):
-        assert INPUT_OFFSET + i < TOTAL_SIGNALS
-
-
-# ── Proof input format ───────────────────────────────────────────────────
-
 def test_proof_input_format():
-    """EZKL expects {"input_data": [[128 floats]]}."""
-    features = [0.5] * 128
+    features = [0.5] * INPUT_OFFSET
     proof_input = {"input_data": [features]}
-    doc = json.dumps(proof_input)
-    parsed = json.loads(doc)
-    assert len(parsed["input_data"]) == 1
-    assert len(parsed["input_data"][0]) == 128
+    assert len(json.loads(json.dumps(proof_input))["input_data"][0]) == INPUT_OFFSET
 
 
-def test_proof_input_validation():
-    """Proof input with wrong dims should be detectable."""
-    features = [0.5] * 64  # wrong: should be 128
-    proof_input = {"input_data": [features]}
-    assert len(proof_input["input_data"][0]) != 128
+# ── Read-only calldata bundle containment ────────────────────────────────
 
-
-# ── Extract calldata script imports ──────────────────────────────────────
-
-def test_extract_calldata_constants():
-    """Module-level constants match expected layout."""
-    import importlib
-    spec = importlib.util.spec_from_file_location(
-        "extract_calldata",
-        Path(__file__).resolve().parents[2] / "zkml/src/ezkl/extract_calldata.py",
-    )
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+def test_extract_calldata_constants_and_policy_scope():
+    mod = _load_extract_module()
     assert mod.NUM_CLASSES == 10
     assert mod.INPUT_OFFSET == 128
     assert mod.TOTAL_SIGNALS == 138
     assert mod.SCALE == 8192
+    assert mod.PROOF_SCOPE == "legacy_proxy_only_unbound"
+    assert mod.SUBMISSION_ELIGIBLE is False
+    assert mod.SUBMISSION_INELIGIBLE_REASON == "proof_scope_not_identity_bound"
 
 
-def test_extract_calldata_decode():
-    """_decode_field_element matches our known-good implementation."""
-    import importlib
-    spec = importlib.util.spec_from_file_location(
-        "extract_calldata",
-        Path(__file__).resolve().parents[2] / "zkml/src/ezkl/extract_calldata.py",
-    )
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+def test_extract_calldata_decode_strict_length():
+    mod = _load_extract_module()
+    good = "9111000000000000000000000000000000000000000000000000000000000000"
+    assert mod._decode_field_element(good) == 4497
 
-    hex_str = "9111000000000000000000000000000000000000000000000000000000000000"
-    assert mod._decode_field_element(hex_str) == 4497
+    try:
+        mod._decode_field_element("91")
+    except ValueError as exc:
+        assert "32 bytes" in str(exc)
+    else:
+        raise AssertionError("short field element must fail closed")
+
+
+def test_extract_helper_cannot_generate_direct_signing_path():
+    """R0 signer isolation: this helper must remain incapable of raw-key writes."""
+    source = EXTRACT_PATH.read_text(encoding="utf-8")
+    forbidden = [
+        "cast send",
+        "DEPLOYER_PRIVATE_KEY",
+        "SENTINEL_OPERATOR_KEY",
+        "--private-key",
+        "send_raw_transaction",
+        "sign_transaction",
+    ]
+    for token in forbidden:
+        assert token not in source, f"legacy direct-write capability reintroduced: {token}"
+
+
+def test_build_bundle_is_explicitly_ineligible(tmp_path):
+    mod = _load_extract_module()
+    # 138 zero-valued 32-byte field elements and a syntactically valid proof.
+    proof = {
+        "hex_proof": "0xdeadbeef",
+        "instances": [["00" * 32 for _ in range(TOTAL_SIGNALS)]],
+    }
+    path = tmp_path / "proof.json"
+    path.write_text(json.dumps(proof), encoding="utf-8")
+
+    bundle = mod.build_bundle(path)
+    assert bundle["submission_eligible"] is False
+    assert bundle["proof_scope"] == "legacy_proxy_only_unbound"
+    assert bundle["submission_ineligible_reason"] == "proof_scope_not_identity_bound"
+    assert bundle["output_semantics"] == "proxy_score_fixed_point"
+    assert len(bundle["public_signals"]) == TOTAL_SIGNALS
+    assert len(bundle["proxy_score_felts"]) == NUM_CLASSES

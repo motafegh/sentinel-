@@ -1,377 +1,293 @@
-"""
-run_proof.py — EZKL Pipeline Steps 6-8 (per-audit proof generation)
+"""Generate and verify a legacy SENTINEL V2 EZKL proxy proof.
 
-RECALL — the full EZKL pipeline has two phases:
-    ONE-TIME (setup_circuit.py — already complete):
-        Steps 1-5: gen_settings → calibrate → compile → get_srs → setup
-        Output: proving_key.pk + verification_key.vk
+The V2 circuit proves only the student computation over a 128-dimensional
+fusion embedding. It does **not** bind contract/chain/round/teacher identity and
+is therefore not eligible for verified-audit finality under the R0 policy.
 
-    PER AUDIT (this file):
-        Step 6: gen_witness → encode real inputs as field elements
-        Step 7: prove       → generate cryptographic proof π (~2KB)
-        Step 8: verify      → confirm proof is valid
-
-RECALL — what a proof actually proves:
-    "I know private weights W such that when I run the circuit
-     defined by model.compiled on these specific public inputs
-     (the 128 CrossAttentionFusion features), I get these specific
-     10 class score outputs — and I can prove this without showing W."
-
-    The proof is ~2KB. It contains no weight information.
-    Anyone with verification_key.vk can verify it in milliseconds.
-    On-chain: ZKMLVerifier.verifyProof(proof, publicSignals) → bool
-
-RECALL — what publicSignals contains (v2.0 circuit, 10-class):
-    [fusion_features[0..127], class_score_0, ..., class_score_9]
-    Total: 128 + 10 = 138 public signals.
-    AuditRegistry V2 Guard 3 checks: publicSignals[128 + i] == classScores[i] ∀i∈[0,9]
-
-RECALL — BN254 field element encoding (CRITICAL):
-    EZKL stores all field elements as 32-byte little-endian hex strings.
-    proof.json instances[i] = 32-byte little-endian hex
-    To get the Solidity uint256:
-        CORRECT:  int.from_bytes(bytes.fromhex(instances[i]), byteorder='little')
-        WRONG:    int(instances[i], 16)  ← treats as big-endian, huge garbage value
-
-Usage:
-    cd ~/projects/sentinel
-    source ml/.venv/bin/activate
-    python zkml/src/ezkl/run_proof.py
-
-    Generates proof for first contract in the corpus.
-    Verifies proof off-chain.
-    Prints publicSignals — what gets submitted to AuditRegistry.
+Score semantics are locked to the trained artifact: ``ProxyModel.forward()`` is
+fitted directly to ``sigmoid(teacher_logits)`` and is used as-is. No second
+sigmoid is applied.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
-import numpy as np
 import torch
 from loguru import logger
+from torch_geometric.data import Batch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from torch_geometric.data import Batch
 from ml.src.inference.predictor import Predictor
-from zkml.src.distillation.proxy_model import CIRCUIT_VERSION, ProxyModel
+from zkml.src.distillation.proxy_model import (
+    CIRCUIT_VERSION,
+    OUTPUT_SEMANTICS,
+    ProxyModel,
+)
 
-# ------------------------------------------------------------------
-# Paths
-# ------------------------------------------------------------------
+TEACHER_CHECKPOINT = Path(
+    "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt"
+)
+PROXY_CHECKPOINT = Path("zkml/models/proxy_best.pt")
+COMPILED = Path("zkml/ezkl/model.compiled")
+SETTINGS = Path("zkml/ezkl/settings.json")
+SRS = Path("zkml/ezkl/srs.params")
+PROVING_KEY = Path("zkml/ezkl/proving_key.pk")
+VERIFICATION_KEY = Path("zkml/ezkl/verification_key.vk")
 
-TEACHER_CHECKPOINT = "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt"
-PROXY_CHECKPOINT   = "zkml/models/proxy_best.pt"
-ONNX_MODEL         = "zkml/models/proxy.onnx"
-COMPILED           = "zkml/ezkl/model.compiled"
-SETTINGS           = "zkml/ezkl/settings.json"
-SRS                = "zkml/ezkl/srs.params"
-PROVING_KEY        = "zkml/ezkl/proving_key.pk"
-VERIFICATION_KEY   = "zkml/ezkl/verification_key.vk"
+CORPUS_ROOT = Path("manual_hand_written_contracts")
+PROOF_INPUT = Path("zkml/ezkl/proof_input.json")
+WITNESS = Path("zkml/ezkl/witness.json")
+PROOF = Path("zkml/ezkl/proof.json")
 
-CORPUS_ROOT        = "manual_hand_written_contracts"
-NUM_CLASSES        = 10
-INPUT_DIM          = 128
-SCALE              = 8192  # 2^13
+INPUT_DIM = 128
+NUM_CLASSES = 10
+TOTAL_SIGNALS = INPUT_DIM + NUM_CLASSES
+SCALE = 8192
+PROOF_SCOPE = "legacy_proxy_only_unbound"
 
-# Output paths for this proof
-PROOF_INPUT  = "zkml/ezkl/proof_input.json"
-WITNESS      = "zkml/ezkl/witness.json"
-PROOF        = "zkml/ezkl/proof.json"
-
-# Class names matching graph_schema.py CLASS_NAMES order
 CLASS_NAMES = [
-    "CallToUnknown", "DenialOfService", "ExternalBug", "GasException",
-    "IntegerUO", "MishandledException", "Reentrancy", "Timestamp",
-    "TransactionOrderDependence", "UnusedReturn",
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "GasException",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+    "UnusedReturn",
 ]
 
 
+def _load_proxy(device: str) -> ProxyModel:
+    if not PROXY_CHECKPOINT.exists():
+        raise FileNotFoundError(f"proxy checkpoint missing: {PROXY_CHECKPOINT}")
+    proxy = ProxyModel().to(device)
+    state: Any = torch.load(PROXY_CHECKPOINT, map_location=device, weights_only=False)
+    if isinstance(state, dict) and "model" in state:
+        state = state["model"]
+    proxy.load_state_dict(state)
+    proxy.eval()
+    return proxy
+
+
 def check_prerequisites() -> None:
-    """Verify EZKL setup artifacts exist before attempting proof."""
     required = {
-        "Compiled circuit":  COMPILED,
-        "Settings":          SETTINGS,
-        "SRS":               SRS,
-        "Proving key":       PROVING_KEY,
-        "Verification key":  VERIFICATION_KEY,
+        "teacher checkpoint": TEACHER_CHECKPOINT,
+        "proxy checkpoint": PROXY_CHECKPOINT,
+        "compiled circuit": COMPILED,
+        "settings": SETTINGS,
+        "SRS": SRS,
+        "proving key": PROVING_KEY,
+        "verification key": VERIFICATION_KEY,
     }
-    for name, path in required.items():
-        if not Path(path).exists():
-            raise FileNotFoundError(
-                f"{name} not found: {path}\n"
-                f"Run setup_circuit.py first."
-            )
-    logger.info("Prerequisites check passed — EZKL setup artifacts present")
+    missing = [f"{name}: {path}" for name, path in required.items() if not path.exists()]
+    if missing:
+        raise FileNotFoundError(
+            "required V2 proof artifacts are missing:\n  - " + "\n  - ".join(missing)
+        )
 
 
-def _find_first_contract() -> Path:
-    """Find the first .sol contract in the corpus (excl. quarantine)."""
-    root = Path(CORPUS_ROOT)
-    for sol_file in sorted(root.rglob("*.sol")):
-        if "_quarantine" in str(sol_file):
-            continue
-        return sol_file
-    raise FileNotFoundError(
-        f"No .sol contracts found under {CORPUS_ROOT} (excluding _quarantine/)"
-    )
-
-
-def _find_all_contracts() -> list[Path]:
-    """Find all .sol contracts in the corpus (excl. quarantine)."""
-    root = Path(CORPUS_ROOT)
-    return sorted(
-        p for p in root.rglob("*.sol")
-        if "_quarantine" not in str(p)
-    )
+def _default_contract() -> Path:
+    for path in sorted(CORPUS_ROOT.rglob("*.sol")):
+        if "_quarantine" not in path.parts:
+            return path
+    raise FileNotFoundError(f"no Solidity contract found under {CORPUS_ROOT}")
 
 
 @torch.no_grad()
-def extract_corpus_contract_features(
+def extract_contract_features(
     predictor: Predictor,
+    proxy: ProxyModel,
     sol_file: Path,
     device: str,
-) -> tuple[list[float], list[float], list[float], int]:
-    """
-    Extract 128-dim fusion features and 10-class scores from a single corpus contract.
-
-    Returns:
-        features:       list of 128 floats
-        teacher_scores: list of 10 floats
-        proxy_scores:   list of 10 floats
-        n_disagreements: how many classes disagree at threshold 0.5
-    """
-    model = predictor.model
-    model.eval()
-
+) -> tuple[list[float], list[float], list[float]]:
+    """Return fusion[128], teacher probabilities[10], student scores[10]."""
     if not sol_file.exists():
-        raise FileNotFoundError(f"Contract not found: {sol_file}")
+        raise FileNotFoundError(f"contract not found: {sol_file}")
 
-    logger.info(f"Extracting features from: {sol_file.name}")
-    source_code = sol_file.read_text(encoding="utf-8", errors="replace")
-
+    source_code = sol_file.read_text(encoding="utf-8", errors="strict")
     graph, windows = predictor.preprocessor.process_source_windowed(source_code)
     batch = Batch.from_data_list([graph]).to(device)
 
-    selected = windows[:4]
-    pad_ids  = torch.zeros(1, 512, dtype=torch.long, device=device)
-    pad_mask = torch.zeros(1, 512, dtype=torch.long, device=device)
-    padded = list(selected)
-    while len(padded) < 4:
-        padded.append({"input_ids": pad_ids, "attention_mask": pad_mask})
-    stacked_ids  = torch.cat(
-        [w["input_ids"].to(device) for w in padded], dim=0
-    ).unsqueeze(0)
-    stacked_mask = torch.cat(
-        [w["attention_mask"].to(device) for w in padded], dim=0
-    ).unsqueeze(0)
-
-    with torch.no_grad():
-        logits, aux = model(batch, stacked_ids, stacked_mask, return_aux=True)
-
-    features_128 = aux["fusion_embedding"].squeeze(0)          # [128]
-    teacher_logits = logits.squeeze(0)                          # [10]
-    teacher_scores = torch.sigmoid(teacher_logits).cpu()        # [10]
-
-    # Load proxy and compute proxy scores
-    proxy = ProxyModel().to(device)
-    proxy_state = torch.load(PROXY_CHECKPOINT, map_location=device, weights_only=False)
-    if isinstance(proxy_state, dict) and "model" in proxy_state:
-        proxy_state = proxy_state["model"]
-    proxy.load_state_dict(proxy_state)
-    proxy.eval()
-
-    proxy_logits = proxy(features_128.unsqueeze(0).to(device)).squeeze(0)  # [10]
-    proxy_scores = torch.sigmoid(proxy_logits).cpu()                        # [10]
-
-    # Convert to Python lists for the caller
-    features_list = features_128.cpu().tolist()
-    teacher_list  = teacher_scores.tolist()
-    proxy_list    = proxy_scores.tolist()
-
-    # Count per-class disagreements (report, don't block)
-    disagreements = []
-    for i in range(NUM_CLASSES):
-        t_vuln = teacher_list[i] >= 0.5
-        p_vuln = proxy_list[i] >= 0.5
-        if t_vuln != p_vuln:
-            disagreements.append((CLASS_NAMES[i], teacher_list[i], proxy_list[i]))
-
-    if disagreements:
-        logger.warning(
-            f"  {len(disagreements)}/{NUM_CLASSES} class disagreements:"
+    selected = list(windows[:4])
+    while len(selected) < 4:
+        selected.append(
+            {
+                "input_ids": torch.zeros(1, 512, dtype=torch.long),
+                "attention_mask": torch.zeros(1, 512, dtype=torch.long),
+            }
         )
-        for cls, t, p in disagreements:
-            logger.warning(f"    {cls}: teacher={t:.4f} proxy={p:.4f}")
-    else:
-        logger.info("Teacher/proxy agreement: all 10 classes match at threshold 0.5")
+    input_ids = torch.cat([w["input_ids"].to(device) for w in selected], dim=0).unsqueeze(0)
+    attention_mask = torch.cat(
+        [w["attention_mask"].to(device) for w in selected], dim=0
+    ).unsqueeze(0)
 
-    return features_list, teacher_list, proxy_list, len(disagreements)
+    model = predictor.model
+    model.eval()
+    teacher_logits, aux = model(batch, input_ids, attention_mask, return_aux=True)
+    fusion = aux["fusion_embedding"]
+    if tuple(fusion.shape) != (1, INPUT_DIM):
+        raise RuntimeError(f"fusion shape must be [1,{INPUT_DIM}], got {tuple(fusion.shape)}")
+
+    teacher_probabilities = torch.sigmoid(teacher_logits.float()).squeeze(0).cpu()
+    student_scores = proxy(fusion.to(device)).squeeze(0).float().cpu()
+    if teacher_probabilities.numel() != NUM_CLASSES or student_scores.numel() != NUM_CLASSES:
+        raise RuntimeError("teacher/proxy class dimension must be 10")
+    if not torch.isfinite(student_scores).all():
+        raise RuntimeError("proxy produced non-finite student score(s)")
+
+    return (
+        fusion.squeeze(0).float().cpu().tolist(),
+        teacher_probabilities.tolist(),
+        student_scores.tolist(),
+    )
+
+
+def _decode_felt(hex_str: str) -> int:
+    raw = bytes.fromhex(hex_str)
+    if len(raw) != 32:
+        raise ValueError(f"EZKL field element must be 32 bytes, got {len(raw)}")
+    return int.from_bytes(raw, byteorder="little")
 
 
 def generate_proof(
+    sol_file: Path | None = None,
+    *,
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
-) -> bool:
-    """
-    Full per-audit proof pipeline: witness → prove → verify.
-
-    Returns:
-        True if proof is valid and ready for on-chain submission.
-
-    Raises:
-        FileNotFoundError: if setup artifacts are missing (run setup_circuit.py)
-        ValueError:        if teacher/proxy disagree (contract near boundary)
-        RuntimeError:      if proof generation or verification fails
-    """
+) -> dict[str, Any]:
+    """Generate + verify one explicit V2 proof and return its diagnostics."""
     check_prerequisites()
-    logger.info(f"Generating proof on: {device}")
-    logger.info(f"Circuit version: {CIRCUIT_VERSION}")
+    selected_contract = sol_file or _default_contract()
 
-    _partial_artifacts = [WITNESS, PROOF]
+    predictor = Predictor(checkpoint=str(TEACHER_CHECKPOINT))
+    proxy = _load_proxy(device)
+    features, teacher_probabilities, student_scores = extract_contract_features(
+        predictor, proxy, selected_contract, device
+    )
+
+    disagreements = [
+        CLASS_NAMES[i]
+        for i in range(NUM_CLASSES)
+        if (teacher_probabilities[i] >= 0.5) != (student_scores[i] >= 0.5)
+    ]
+
+    logger.info(
+        "V2 proof input contract={} circuit={} output_semantics={} disagreements={}",
+        selected_contract,
+        CIRCUIT_VERSION,
+        OUTPUT_SEMANTICS,
+        disagreements,
+    )
+
+    PROOF_INPUT.parent.mkdir(parents=True, exist_ok=True)
+    PROOF_INPUT.write_text(
+        json.dumps({"input_data": [features]}), encoding="utf-8"
+    )
+
+    # Partial proof artifacts are removed on failure so a stale proof cannot be
+    # mistaken for the current request.
+    for path in (WITNESS, PROOF):
+        if path.exists():
+            path.unlink()
 
     try:
-        # ── Load teacher ────────────────────────────────────────────────
-        predictor = Predictor(checkpoint=TEACHER_CHECKPOINT)
-        logger.info(f"Teacher loaded — architecture: {predictor.architecture}")
-
-        # ── Extract features — try contracts until one with acceptable agreement ──
-        all_contracts = _find_all_contracts()
-        if not all_contracts:
-            raise RuntimeError("No contracts found in corpus.")
-
-        best_contract = None
-        best_features = None
-        best_teacher  = None
-        best_proxy    = None
-        best_n_disag = NUM_CLASSES + 1
-
-        for sol_file in all_contracts[:10]:  # try at most 10 contracts
-            try:
-                feats, t_scores, p_scores, n_disag = extract_corpus_contract_features(
-                    predictor, sol_file, device,
-                )
-                if n_disag < best_n_disag:
-                    best_n_disag  = n_disag
-                    best_features = feats
-                    best_teacher  = t_scores
-                    best_proxy    = p_scores
-                    best_contract = sol_file
-                    if n_disag == 0:
-                        break
-            except Exception as e:
-                logger.warning(f"  Skipped {sol_file.name}: {e}")
-                continue
-
-        if best_contract is None:
-            raise RuntimeError("Could not extract features from any contract.")
-
-        features, teacher_scores, proxy_scores = best_features, best_teacher, best_proxy
-        logger.info(
-            f"Selected {best_contract.name} — "
-            f"{best_n_disag}/{NUM_CLASSES} disagreements (best available)"
-        )
-
-        # ── Format input for EZKL ───────────────────────────────────────
-        # EZKL proof_input format: {"input_data": [[f1, f2, ..., f128]]}
-        proof_input = {"input_data": [features]}
-        with open(PROOF_INPUT, "w") as f:
-            json.dump(proof_input, f)
-        logger.info(f"Proof input saved: {PROOF_INPUT} ({len(features)} features)")
-
-        # ── Step 6: gen_witness ─────────────────────────────────────────
         import ezkl
-        logger.info("Step 6/8 — gen_witness")
 
         witness = ezkl.gen_witness(
-            data=PROOF_INPUT,
-            model=COMPILED,
-            output=WITNESS,
+            data=str(PROOF_INPUT),
+            model=str(COMPILED),
+            output=str(WITNESS),
         )
-        logger.info(f"Witness generated: {WITNESS}")
-
-        # Decode all 10 output field elements (class scores)
-        outputs = witness["outputs"][0]  # list of 10 little-endian hex strings
-        if len(outputs) != NUM_CLASSES:
+        witness_outputs = witness.get("outputs", [[]])[0]
+        if len(witness_outputs) != NUM_CLASSES:
             raise RuntimeError(
-                f"Expected {NUM_CLASSES} output field elements, got {len(outputs)}. "
-                f"Circuit may have been compiled for a different number of classes."
+                f"expected {NUM_CLASSES} witness outputs, got {len(witness_outputs)}"
             )
 
-        class_score_felts = []
-        for i, hex_str in enumerate(outputs):
-            felt = int.from_bytes(bytes.fromhex(hex_str), byteorder='little')
-            class_score_felts.append(felt)
-            logger.info(
-                f"  class[{i}] {CLASS_NAMES[i]:>25s}: "
-                f"felt={felt:>6d}  human={felt / SCALE:.4f}  "
-                f"(teacher: {teacher_scores[i]:.4f}, proxy: {proxy_scores[i]:.4f})"
-            )
-
-        # ── Step 7: prove ───────────────────────────────────────────────
-        logger.info("Step 7/8 — prove (this may take 30-60 seconds)")
-
-        proof_result = ezkl.prove(
-            witness=WITNESS,
-            model=COMPILED,
-            pk_path=PROVING_KEY,
-            proof_path=PROOF,
-            srs_path=SRS,
+        ezkl.prove(
+            witness=str(WITNESS),
+            model=str(COMPILED),
+            pk_path=str(PROVING_KEY),
+            proof_path=str(PROOF),
+            srs_path=str(SRS),
         )
-
-        proof_size_kb = Path(PROOF).stat().st_size / 1024
-        logger.info(f"Proof generated: {PROOF} ({proof_size_kb:.1f} KB)")
-
-        # ── Step 8: verify (off-chain) ──────────────────────────────────
-        logger.info("Step 8/8 — verify")
+        if not PROOF.exists():
+            raise RuntimeError("ezkl.prove returned without writing proof.json")
 
         valid = ezkl.verify(
-            proof_path=PROOF,
-            settings_path=SETTINGS,
-            vk_path=VERIFICATION_KEY,
-            srs_path=SRS,
+            proof_path=str(PROOF),
+            settings_path=str(SETTINGS),
+            vk_path=str(VERIFICATION_KEY),
+            srs_path=str(SRS),
         )
-
         if not valid:
+            raise RuntimeError("off-chain EZKL proof verification failed")
+
+        proof_data = json.loads(PROOF.read_text(encoding="utf-8"))
+        instances = proof_data.get("instances", [[]])[0]
+        if len(instances) != TOTAL_SIGNALS:
             raise RuntimeError(
-                "Off-chain verification failed — proof is cryptographically invalid.\n"
-                "Possible causes:\n"
-                "  - Proving key does not match the compiled circuit\n"
-                "  - Witness was generated with different inputs than the proof\n"
-                "  - EZKL version mismatch between setup and prove steps\n"
-                "Run: python zkml/src/ezkl/setup_circuit.py"
+                f"expected exactly {TOTAL_SIGNALS} public signals, got {len(instances)}"
             )
+        public_signals = [_decode_felt(item) for item in instances]
+        output_felts = public_signals[INPUT_DIM:]
 
-        # ── Summary ─────────────────────────────────────────────────────
-        logger.info("=" * 60)
-        logger.info("Proof pipeline complete")
-        logger.info(f"  Contract:          {best_contract.name}")
-        logger.info(f"  Circuit version:   {CIRCUIT_VERSION}")
-        logger.info(f"  Proof size:        {proof_size_kb:.1f} KB")
-        logger.info(f"  Off-chain valid:   {valid} ✓")
-        logger.info(f"  Public signals:    {INPUT_DIM} inputs + {NUM_CLASSES} outputs = {INPUT_DIM + NUM_CLASSES}")
-        logger.info(f"  Class disagreements:{best_n_disag}/{NUM_CLASSES}")
-        for i in range(NUM_CLASSES):
-            logger.info(
-                f"  classScore[{i}] {CLASS_NAMES[i]:>25s}: "
-                f"felt={class_score_felts[i]:>6d}  "
-                f"human={class_score_felts[i] / SCALE:.4f}"
-            )
-        logger.info("  Ready for AuditRegistry.submitAuditV2()")
-        logger.info("  Run: python zkml/src/ezkl/extract_calldata.py")
-        logger.info("=" * 60)
-
-        return True
-
+        result = {
+            "status": "verified_off_chain",
+            "proof_scope": PROOF_SCOPE,
+            "submission_eligible": False,
+            "submission_ineligible_reason": "proof_scope_not_identity_bound",
+            "contract_path": str(selected_contract),
+            "circuit_version": CIRCUIT_VERSION,
+            "output_semantics": OUTPUT_SEMANTICS,
+            "teacher_probabilities": teacher_probabilities,
+            "proxy_scores": student_scores,
+            "threshold_disagreements": disagreements,
+            "public_signal_count": len(public_signals),
+            "proxy_output_felts": output_felts,
+            "proxy_outputs_approx": [value / SCALE for value in output_felts],
+            "proof_path": str(PROOF),
+        }
+        logger.info(
+            "V2 proof verified off-chain; policy eligibility remains false ({})",
+            result["submission_ineligible_reason"],
+        )
+        return result
     except Exception:
-        for path in _partial_artifacts:
-            if Path(path).exists():
-                Path(path).unlink()
-                logger.warning(f"Cleaned up partial artifact: {path}")
+        for path in (WITNESS, PROOF):
+            if path.exists():
+                path.unlink()
         raise
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--contract", type=Path, default=None)
+    parser.add_argument(
+        "--device",
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        choices=["cpu", "cuda"],
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        result = generate_proof(args.contract, device=args.device)
+    except Exception as exc:
+        logger.exception("V2 proof generation failed: {}", exc)
+        return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 if __name__ == "__main__":
-    generate_proof()
+    raise SystemExit(main())

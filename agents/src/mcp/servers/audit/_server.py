@@ -1,16 +1,10 @@
 # agents/src/mcp/servers/audit/_server.py
-"""
-SSE transport wiring + uvicorn entrypoint for the sentinel-audit server.
+"""SSE transport wiring + uvicorn entrypoint for the sentinel-audit server.
 
-Same SSE architecture as inference_server.py and rag_server.py:
-    SseServerTransport → /sse + /messages/
-    Starlette app      → ASGI router
-    uvicorn            → ASGI server
-
-The `server` MCP instance is imported from _handlers (where the
-@list_tools / @call_tool decorators register tools). Lifecycle hooks
-(_on_startup/_on_shutdown) come from _lifecycle. Mutable state stays on
-the audit_server shim module.
+The live MCP `server` instance comes from `_readonly_handlers`: runtime audit
+submission is intentionally absent from this analysis-service security domain.
+Lifecycle hooks remain in `_lifecycle`, and mutable state remains on the
+`audit_server` shim module.
 """
 
 from __future__ import annotations
@@ -52,10 +46,10 @@ def _readiness_payload() -> dict:
 
 
 def run_server() -> None:
-    """Wire up the MCP server to SSE transport and start uvicorn."""
+    """Wire the read-only MCP server to SSE transport and start uvicorn."""
     _as = _shim()
-    from ._handlers import server
     from ._lifecycle import _on_shutdown, _on_startup
+    from ._readonly_handlers import server
 
     sse_transport = SseServerTransport("/messages/")
 
@@ -85,7 +79,6 @@ def run_server() -> None:
         payload = _readiness_payload()
         return JSONResponse(payload, status_code=200 if payload["ready"] else 503)
 
-    # Starlette >= 1.0 removed on_startup/on_shutdown kwargs in favor of lifespan.
     from contextlib import asynccontextmanager
 
     @asynccontextmanager

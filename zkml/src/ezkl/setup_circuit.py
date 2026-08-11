@@ -1,271 +1,370 @@
-"""
-setup_circuit.py — EZKL Pipeline Steps 1-5 (one-time setup)
+"""Build a versioned EZKL circuit bundle from explicitly bound artifacts.
 
-RECALL — the full EZKL pipeline has two phases:
-    ONE-TIME (this file):
-        Step 1: gen_settings    → how to represent floats as integers
-        Step 2: calibrate       → refine scale using real data
-        Step 3: compile_circuit → ONNX → ZK circuit (R1CS constraints)
-        Step 4: get_srs         → cryptographic foundation for keys
-        Step 5: setup           → proving_key.pk + verification_key.vk
+This setup path is fail-closed on lineage. It will not generate settings,
+compiled circuit, keys, or a future Solidity verifier from anonymous files that
+merely happen to live under ``zkml/``.
 
-    PER AUDIT (run_proof.py):
-        Step 6: gen_witness     → witness file from real input
-        Step 7: prove           → proof π (~2KB)
-        Step 8: verify          → true/false
+Required inputs:
+- ``proxy.onnx`` + ``proxy.onnx.manifest.json``;
+- ``calibration.json`` + ``calibration.manifest.json``;
+- matching teacher-checkpoint and DATA-export identities across both manifests.
 
-RECALL — async behaviour in EZKL 23.x (learned through testing):
-    gen_settings:       sync  → call directly
-    calibrate_settings: sync  → call directly
-    compile_circuit:    sync  → call directly
-    get_srs:            async Rust future → needs asyncio.run() + await
-    setup:              sync  → call directly
+Important protocol rule: this script makes **no assumption** that a verification
+key or compiled circuit remains valid after proxy retraining/weight changes.
+Any newly exported ONNX artifact is treated as a new setup input identity and
+must be regenerated/validated as a versioned bundle unless an explicitly
+approved compatibility procedure proves otherwise.
 
-    get_srs wraps a Rust/tokio future. Python's asyncio.run() provides
-    the event loop that tokio needs. Without it: "no running event loop".
-    Without await: returns a pending Future instead of executing.
-    This is NOT standard Python async — it's a PyO3 Rust binding quirk.
-
-RECALL — what the outputs are used for:
-    settings.json       → describes circuit numerics
-    model.compiled      → the ZK circuit itself (R1CS constraints)
-    srs.params          → cryptographic reference string (public, ~4MB)
-    proving_key.pk      → how to construct proofs (PRIVATE — never commit)
-    verification_key.vk → how to verify proofs (PUBLIC → Solidity)
-
-Usage:
-    cd ~/projects/sentinel
-    poetry run python zkml/src/ezkl/setup_circuit.py
+The legacy tracked V2 artifacts remain historical evidence and are inspected by
+``validate_bundle.py``. This script is for producing a newly bound setup bundle.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+import hashlib
+import json
 from pathlib import Path
+from typing import Any
 
-import ezkl
 from loguru import logger
 
-# ------------------------------------------------------------------
-# Paths
-# ------------------------------------------------------------------
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
-ONNX_MODEL       = "zkml/models/proxy.onnx"
-CALIBRATION      = "zkml/ezkl/calibration.json"
-SETTINGS         = "zkml/ezkl/settings.json"
-COMPILED         = "zkml/ezkl/model.compiled"
-SRS              = "zkml/ezkl/srs.params"
-PROVING_KEY      = "zkml/ezkl/proving_key.pk"
-VERIFICATION_KEY = "zkml/ezkl/verification_key.vk"
+ONNX_MODEL = Path("zkml/models/proxy.onnx")
+ONNX_MANIFEST = Path("zkml/models/proxy.onnx.manifest.json")
+CALIBRATION = Path("zkml/ezkl/calibration.json")
+CALIBRATION_MANIFEST = Path("zkml/ezkl/calibration.manifest.json")
+SETTINGS = Path("zkml/ezkl/settings.json")
+COMPILED = Path("zkml/ezkl/model.compiled")
+SRS = Path("zkml/ezkl/srs.params")
+PROVING_KEY = Path("zkml/ezkl/proving_key.pk")
+VERIFICATION_KEY = Path("zkml/ezkl/verification_key.vk")
+SETUP_MANIFEST = Path("zkml/ezkl/setup.manifest.json")
 
-
-def check_prerequisites() -> None:
-    """Verify all required input files exist before starting."""
-    required = {
-        "ONNX model":       ONNX_MODEL,
-        "Calibration data": CALIBRATION,
-    }
-    for name, path in required.items():
-        if not Path(path).exists():
-            raise FileNotFoundError(
-                f"{name} not found: {path}\n"
-                f"Run these first:\n"
-                f"  python zkml/src/distillation/export_onnx.py\n"
-                f"  python zkml/src/distillation/generate_calibration.py"
-            )
-    logger.info("Prerequisites check passed")
+EXPECTED_INPUT_DIM = 128
+EXPECTED_NUM_CLASSES = 10
+EXPECTED_OUTPUT_SEMANTICS = "teacher_probability_regression_v1"
+EXPECTED_CIRCUIT_VERSION = "v2.0"
 
 
-async def _download_srs() -> None:
-    """
-    Download SRS inside an async context.
-
-    RECALL — why this needs its own async function:
-        get_srs returns a Rust/tokio future (PyO3 binding).
-        It requires a running Python event loop to execute.
-        asyncio.run() provides that loop.
-        await unwraps the future and blocks until download completes.
-        Without await: returns pending Future, download never happens.
-        Without asyncio.run(): "no running event loop" RuntimeError.
-    """
-    await ezkl.get_srs(
-        settings_path=SETTINGS,
-        srs_path=SRS,
-    )
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
-def run_pipeline() -> None:
-    """
-    Execute EZKL Steps 1-5 sequentially.
+def load_json(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid JSON in {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"{path}: expected JSON object")
+    return value
 
-    Sync functions called directly.
-    get_srs called via asyncio.run() — the one async exception.
-    """
-    Path("zkml/ezkl").mkdir(parents=True, exist_ok=True)
-    check_prerequisites()
 
-    # ------------------------------------------------------------------
-    # Step 1 — gen_settings
-    # ------------------------------------------------------------------
-    # RECALL — reads ONNX graph, produces initial scale factor.
-    # Scale 13 = values multiplied by 2^13=8192 for integer arithmetic.
-    # Our calibration showed range [0.0, 1.4613] — compact, efficient.
-    logger.info("Step 1/5 — gen_settings")
+def _require_hash_entry(
+    manifest: dict[str, Any],
+    path: list[str],
+    *,
+    field_name: str,
+) -> str:
+    value: Any = manifest
+    for key in path:
+        if not isinstance(value, dict) or key not in value:
+            raise ValueError(f"{field_name} missing from manifest")
+        value = value[key]
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"{field_name} must be a 64-hex SHA-256 string")
+    try:
+        bytes.fromhex(value)
+    except ValueError as exc:
+        raise ValueError(f"{field_name} must be valid hex") from exc
+    return value.lower()
 
-    res = ezkl.gen_settings(
-        model=ONNX_MODEL,
-        output=SETTINGS,
-    )
-    # A-13 fix: `assert` is silently stripped by `python -O` (optimised mode).
-    # Using an explicit RuntimeError ensures the failure is ALWAYS visible.
-    if not res:
-        raise RuntimeError(
-            "gen_settings failed — check ONNX file is valid opset 11.\n"
-            "Possible causes:\n"
-            "  - ONNX file is missing or corrupt: check ONNX_MODEL path\n"
-            "  - ONNX opset > 11: re-export with opset_version=11 in torch.onnx.export()\n"
-            "  - EZKL version mismatch: check `ezkl --version`\n"
-            f"  ONNX path: {ONNX_MODEL}"
+
+def validate_lineage(
+    *,
+    root: Path = REPO_ROOT,
+    onnx_path: Path = ONNX_MODEL,
+    onnx_manifest_path: Path = ONNX_MANIFEST,
+    calibration_path: Path = CALIBRATION,
+    calibration_manifest_path: Path = CALIBRATION_MANIFEST,
+) -> dict[str, Any]:
+    """Validate that ONNX + calibration describe one teacher/DATA lineage."""
+    absolute_onnx = root / onnx_path
+    absolute_onnx_manifest = root / onnx_manifest_path
+    absolute_calibration = root / calibration_path
+    absolute_calibration_manifest = root / calibration_manifest_path
+
+    for label, path in {
+        "ONNX model": absolute_onnx,
+        "ONNX manifest": absolute_onnx_manifest,
+        "calibration": absolute_calibration,
+        "calibration manifest": absolute_calibration_manifest,
+    }.items():
+        if not path.exists() or not path.is_file():
+            raise FileNotFoundError(f"{label} missing: {path}")
+
+    onnx_manifest = load_json(absolute_onnx_manifest)
+    calibration_manifest = load_json(absolute_calibration_manifest)
+
+    if onnx_manifest.get("circuit_version") != EXPECTED_CIRCUIT_VERSION:
+        raise ValueError(
+            f"ONNX circuit_version={onnx_manifest.get('circuit_version')!r}; "
+            f"expected {EXPECTED_CIRCUIT_VERSION!r}"
         )
-    logger.info(f"Settings generated: {SETTINGS}")
+    if onnx_manifest.get("output_semantics") != EXPECTED_OUTPUT_SEMANTICS:
+        raise ValueError(
+            f"ONNX output_semantics={onnx_manifest.get('output_semantics')!r}; "
+            f"expected {EXPECTED_OUTPUT_SEMANTICS!r}"
+        )
+    if onnx_manifest.get("input_dim") != EXPECTED_INPUT_DIM:
+        raise ValueError("ONNX manifest input_dim must be 128")
+    if onnx_manifest.get("num_classes") != EXPECTED_NUM_CLASSES:
+        raise ValueError("ONNX manifest num_classes must be 10")
+    if calibration_manifest.get("input_dim") != EXPECTED_INPUT_DIM:
+        raise ValueError("calibration manifest input_dim must be 128")
 
-    # ------------------------------------------------------------------
-    # Step 2 — calibrate_settings
-    # ------------------------------------------------------------------
-    # RECALL — runs real features through ONNX, observes actual value
-    # ranges, refines scale factor. Prevents overflow in circuit.
-    # target="resources" balances proof size vs proving time.
-    logger.info("Step 2/5 — calibrate_settings")
+    onnx_sha = _require_hash_entry(
+        onnx_manifest, ["onnx", "sha256"], field_name="onnx.sha256"
+    )
+    if sha256_file(absolute_onnx) != onnx_sha:
+        raise RuntimeError("ONNX file hash does not match ONNX manifest")
 
-    # calibrate_settings return value is not documented to be boolean in all
-    # EZKL versions — check both falsy return and missing settings file.
-    res = ezkl.calibrate_settings(
-        data=CALIBRATION,
-        model=ONNX_MODEL,
-        settings=SETTINGS,
+    calibration_sha = _require_hash_entry(
+        calibration_manifest,
+        ["calibration", "sha256"],
+        field_name="calibration.sha256",
+    )
+    if sha256_file(absolute_calibration) != calibration_sha:
+        raise RuntimeError(
+            "calibration file hash does not match calibration manifest"
+        )
+
+    checkpoint_metadata = (
+        onnx_manifest.get("checkpoint", {}).get("metadata", {})
+        if isinstance(onnx_manifest.get("checkpoint"), dict)
+        else {}
+    )
+    if not isinstance(checkpoint_metadata, dict):
+        raise ValueError("ONNX checkpoint.metadata must be an object")
+
+    teacher_from_onnx = checkpoint_metadata.get("teacher_checkpoint_sha256")
+    export_from_onnx = checkpoint_metadata.get("export_manifest_sha256")
+    if not isinstance(teacher_from_onnx, str) or len(teacher_from_onnx) != 64:
+        raise ValueError(
+            "ONNX checkpoint metadata lacks bound teacher_checkpoint_sha256; "
+            "legacy anonymous checkpoints must be re-exported through the "
+            "versioned distillation workflow before circuit setup"
+        )
+    if not isinstance(export_from_onnx, str) or len(export_from_onnx) != 64:
+        raise ValueError(
+            "ONNX checkpoint metadata lacks bound export_manifest_sha256"
+        )
+
+    teacher_from_calibration = _require_hash_entry(
+        calibration_manifest,
+        ["teacher_checkpoint", "sha256"],
+        field_name="calibration.teacher_checkpoint.sha256",
+    )
+    export_from_calibration = _require_hash_entry(
+        calibration_manifest,
+        ["data_export", "manifest_sha256"],
+        field_name="calibration.data_export.manifest_sha256",
+    )
+
+    if teacher_from_onnx.lower() != teacher_from_calibration:
+        raise RuntimeError(
+            "teacher lineage mismatch between ONNX and calibration manifests"
+        )
+    if export_from_onnx.lower() != export_from_calibration:
+        raise RuntimeError(
+            "DATA export lineage mismatch between ONNX and calibration manifests"
+        )
+
+    external = onnx_manifest.get("onnx_external_data")
+    external_identity: dict[str, Any] | None = None
+    if external is not None:
+        if not isinstance(external, dict):
+            raise ValueError("onnx_external_data must be null or an object")
+        external_path_raw = external.get("path")
+        external_sha_raw = external.get("sha256")
+        if not isinstance(external_path_raw, str) or not external_path_raw:
+            raise ValueError("onnx_external_data.path missing")
+        if not isinstance(external_sha_raw, str) or len(external_sha_raw) != 64:
+            raise ValueError("onnx_external_data.sha256 invalid")
+        external_path = root / Path(external_path_raw)
+        if not external_path.exists():
+            raise FileNotFoundError(f"ONNX external-data file missing: {external_path}")
+        if sha256_file(external_path) != external_sha_raw.lower():
+            raise RuntimeError("ONNX external-data hash mismatch")
+        external_identity = {
+            "path": Path(external_path_raw).as_posix(),
+            "sha256": external_sha_raw.lower(),
+        }
+
+    return {
+        "schema": "sentinel-zkml-setup-input-lineage-v1",
+        "circuit_version": EXPECTED_CIRCUIT_VERSION,
+        "output_semantics": EXPECTED_OUTPUT_SEMANTICS,
+        "teacher_checkpoint_sha256": teacher_from_calibration,
+        "data_export_manifest_sha256": export_from_calibration,
+        "onnx": {"path": onnx_path.as_posix(), "sha256": onnx_sha},
+        "onnx_external_data": external_identity,
+        "calibration": {
+            "path": calibration_path.as_posix(),
+            "sha256": calibration_sha,
+        },
+        "onnx_manifest": {
+            "path": onnx_manifest_path.as_posix(),
+            "sha256": sha256_file(absolute_onnx_manifest),
+        },
+        "calibration_manifest": {
+            "path": calibration_manifest_path.as_posix(),
+            "sha256": sha256_file(absolute_calibration_manifest),
+        },
+    }
+
+
+async def _download_srs(ezkl: Any, *, settings: Path, srs: Path) -> None:
+    await ezkl.get_srs(settings_path=str(settings), srs_path=str(srs))
+
+
+def _artifact_identity(path: Path) -> dict[str, Any]:
+    if not path.exists() or not path.is_file() or path.stat().st_size == 0:
+        raise RuntimeError(f"expected generated artifact missing/empty: {path}")
+    return {
+        "path": path.as_posix(),
+        "sha256": sha256_file(path),
+        "size_bytes": path.stat().st_size,
+    }
+
+
+def run_pipeline(
+    *,
+    root: Path = REPO_ROOT,
+    setup_manifest_path: Path = SETUP_MANIFEST,
+) -> dict[str, Any]:
+    """Generate settings/circuit/SRS/keys and return their bound manifest."""
+    lineage = validate_lineage(root=root)
+
+    try:
+        import ezkl  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(
+            "EZKL Python package is required for circuit setup; use the pinned "
+            "SENTINEL ZKML environment"
+        ) from exc
+
+    onnx = root / ONNX_MODEL
+    calibration = root / CALIBRATION
+    settings = root / SETTINGS
+    compiled = root / COMPILED
+    srs = root / SRS
+    proving_key = root / PROVING_KEY
+    verification_key = root / VERIFICATION_KEY
+    output_manifest = root / setup_manifest_path
+
+    settings.parent.mkdir(parents=True, exist_ok=True)
+
+    logger.info("EZKL setup input lineage verified: {}", lineage)
+
+    result = ezkl.gen_settings(model=str(onnx), output=str(settings))
+    if not result:
+        raise RuntimeError("ezkl.gen_settings failed")
+
+    result = ezkl.calibrate_settings(
+        data=str(calibration),
+        model=str(onnx),
+        settings=str(settings),
         target="resources",
     )
-    if res is not None and not res:
-        raise RuntimeError(
-            "calibrate_settings failed — check calibration data and ONNX model.\n"
-            "Possible causes:\n"
-            "  - Calibration input file is empty or malformed\n"
-            "  - ONNX model produces NaN/Inf for the calibration inputs\n"
-            f"  Calibration file: {CALIBRATION}"
-        )
-    if not Path(SETTINGS).exists():
-        raise RuntimeError(
-            f"calibrate_settings completed but settings file is missing: {SETTINGS}\n"
-            "This usually means calibration silently failed — check EZKL logs."
-        )
-    logger.info(f"Settings calibrated: {SETTINGS}")
+    if result is not None and not result:
+        raise RuntimeError("ezkl.calibrate_settings failed")
+    _artifact_identity(settings)
 
-    # ------------------------------------------------------------------
-    # Step 3 — compile_circuit
-    # ------------------------------------------------------------------
-    # RECALL — converts ONNX ops → R1CS arithmetic constraints.
-    # Weights separated as private witness — not in circuit structure.
-    # This is why the circuit captures structure, not weights.
-    # Why setup survives retraining: weights change, structure doesn't.
-    logger.info("Step 3/5 — compile_circuit")
-
-    res = ezkl.compile_circuit(
-        model=ONNX_MODEL,
-        compiled_circuit=COMPILED,
-        settings_path=SETTINGS,
+    result = ezkl.compile_circuit(
+        model=str(onnx),
+        compiled_circuit=str(compiled),
+        settings_path=str(settings),
     )
-    if not res:
-        raise RuntimeError(
-            "compile_circuit failed — check settings.json is calibrated.\n"
-            "Possible causes:\n"
-            "  - settings.json was not calibrated (run Step 2 first)\n"
-            "  - settings.json is from a different ONNX model than ONNX_MODEL\n"
-            "  - ONNX model uses an operation not supported by EZKL\n"
-            f"  Settings path: {SETTINGS}"
-        )
+    if not result:
+        raise RuntimeError("ezkl.compile_circuit failed")
+    _artifact_identity(compiled)
 
-    compiled_size_kb = Path(COMPILED).stat().st_size / 1024
-    logger.info(f"Circuit compiled: {COMPILED} ({compiled_size_kb:.1f} KB)")
+    asyncio.run(_download_srs(ezkl, settings=settings, srs=srs))
+    _artifact_identity(srs)
 
-    # ------------------------------------------------------------------
-    # Step 4 — get_srs
-    # ------------------------------------------------------------------
-    # RECALL — downloads Structured Reference String (~4MB).
-    # BN254 elliptic curve points — public cryptographic foundation.
-    # Same SRS used by all EZKL users for the same circuit size.
-    # Downloaded once, cached at srs_path, reused forever.
-    # Needs internet: https://kzg.ezkl.xyz
-    logger.info("Step 4/5 — get_srs (~4MB from kzg.ezkl.xyz)")
-
-    asyncio.run(_download_srs())
-
-    srs_size_mb = Path(SRS).stat().st_size / (1024 * 1024)
-    logger.info(f"SRS ready: {SRS} ({srs_size_mb:.1f} MB)")
-
-    # RECALL — BN254 SRS for our circuit size is ~4 MB.
-    # A file outside 3.5–5.5 MB indicates corrupt or truncated download.
-    SRS_MIN_MB, SRS_MAX_MB = 3.5, 5.5
-    if not (SRS_MIN_MB <= srs_size_mb <= SRS_MAX_MB):
-        raise ValueError(
-            f"SRS size {srs_size_mb:.1f} MB is outside expected range "
-            f"[{SRS_MIN_MB}, {SRS_MAX_MB}] MB — may be corrupt or truncated. "
-            f"Delete {SRS} and rerun."
-        )
-
-    # ------------------------------------------------------------------
-    # Step 5 — setup
-    # ------------------------------------------------------------------
-    # RECALL — derives proving + verification keys from circuit + SRS.
-    #
-    # proving_key.pk (PRIVATE, never commit to git):
-    #   Encodes how to construct valid proofs for THIS circuit.
-    #   Contains circuit structure + cryptographic trapdoor info.
-    #
-    # verification_key.vk (PUBLIC, embed in Solidity):
-    #   Circuit fingerprint only — no weights, no trapdoor.
-    #   Gets baked as constants into ZKMLVerifier.sol.
-    #
-    # RECALL — why keys survive proxy retraining (ADR-007):
-    #   Keys derived from circuit STRUCTURE not weights.
-    #   Retrain → weights change → circuit unchanged → keys valid.
-    #   Resize architecture → circuit changes → must rerun setup.
-    logger.info("Step 5/5 — setup")
-
-    res = ezkl.setup(
-        model=COMPILED,
-        vk_path=VERIFICATION_KEY,
-        pk_path=PROVING_KEY,
-        srs_path=SRS,
+    result = ezkl.setup(
+        model=str(compiled),
+        vk_path=str(verification_key),
+        pk_path=str(proving_key),
+        srs_path=str(srs),
     )
-    if not res:
-        raise RuntimeError(
-            "setup failed — check compiled circuit and SRS are valid.\n"
-            "Possible causes:\n"
-            "  - SRS file is corrupt or truncated (check size: expect ~4MB)\n"
-            "  - Compiled circuit was produced by a different EZKL version than the SRS\n"
-            "  - Proving key or verification key path is not writable\n"
-            f"  Compiled circuit: {COMPILED}\n"
-            f"  SRS path:         {SRS}"
-        )
+    if not result:
+        raise RuntimeError("ezkl.setup failed")
 
-    pk_size_mb = Path(PROVING_KEY).stat().st_size / (1024 * 1024)
-    vk_size_kb = Path(VERIFICATION_KEY).stat().st_size / 1024
-    compiled_size_kb = Path(COMPILED).stat().st_size / 1024
-    srs_size_mb = Path(SRS).stat().st_size / (1024 * 1024)
+    setup_manifest: dict[str, Any] = {
+        "schema": "sentinel-zkml-setup-bundle-v1",
+        "circuit_version": EXPECTED_CIRCUIT_VERSION,
+        "output_semantics": EXPECTED_OUTPUT_SEMANTICS,
+        "input_lineage": lineage,
+        "ezkl_version_from_settings": None,
+        "artifacts": {
+            "settings": _artifact_identity(settings),
+            "compiled_circuit": _artifact_identity(compiled),
+            "srs": _artifact_identity(srs),
+            "proving_key": _artifact_identity(proving_key),
+            "verification_key": _artifact_identity(verification_key),
+        },
+        "compatibility_policy": (
+            "Any new ONNX identity requires a newly generated and validated "
+            "setup bundle unless an explicitly approved compatibility procedure "
+            "demonstrates artifact reuse."
+        ),
+    }
 
-    # ------------------------------------------------------------------
-    # Summary
-    # ------------------------------------------------------------------
-    logger.info("=" * 60)
-    logger.info("EZKL setup complete — all artifacts generated")
-    logger.info(f"  Settings:         {SETTINGS}")
-    logger.info(f"  Compiled circuit: {COMPILED} ({compiled_size_kb:.1f} KB)")
-    logger.info(f"  SRS:              {SRS} ({srs_size_mb:.1f} MB)")
-    logger.info(f"  Proving key:      {PROVING_KEY} ({pk_size_mb:.1f} MB) PRIVATE")
-    logger.info(f"  Verification key: {VERIFICATION_KEY} ({vk_size_kb:.1f} KB) PUBLIC")
-    logger.info("Next: run_proof.py to generate and verify a proof")
-    logger.info("=" * 60)
+    settings_value = load_json(settings)
+    version = settings_value.get("version")
+    if isinstance(version, str):
+        setup_manifest["ezkl_version_from_settings"] = version
+
+    output_manifest.parent.mkdir(parents=True, exist_ok=True)
+    output_manifest.write_text(
+        json.dumps(setup_manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    logger.info("Versioned EZKL setup bundle written: {}", output_manifest)
+    return setup_manifest
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=REPO_ROOT)
+    parser.add_argument("--manifest", type=Path, default=SETUP_MANIFEST)
+    parser.add_argument(
+        "--validate-lineage-only",
+        action="store_true",
+        help="Validate ONNX/calibration lineage without importing or running EZKL.",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    root = args.root.resolve()
+    if args.validate_lineage_only:
+        report = validate_lineage(root=root)
+    else:
+        report = run_pipeline(root=root, setup_manifest_path=args.manifest)
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 0
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    raise SystemExit(main())

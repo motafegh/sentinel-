@@ -1,11 +1,13 @@
-# Foundry build artifacts
+# Foundry build/runtime artifacts
 out/
 cache/
 broadcast/
 
-# EZKL-generated verifier - produced by zkml/src/ezkl/setup_circuit.py
-# Copy here manually after generation, but do NOT commit.
-src/ZKMLVerifier.sol
+# The canonical generated verifier is intentionally tracked at
+# src/ZKMLVerifier.sol so a circuit/VK/verifier bundle has a reviewable identity.
+# Regeneration must therefore produce an explicit Git diff and be accompanied by
+# the ZKML artifact manifest/validation evidence. Do not add alternate live
+# verifier copies elsewhere in this module.
 
 # Foundry dependencies - installed via `forge install`
 lib/
