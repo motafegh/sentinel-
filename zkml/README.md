@@ -1,231 +1,211 @@
-# M2 — ZKML Proof Generation
+# SENTINEL ZKML
 
-Bridges M1 (ML inference) and M5 (on-chain registry) by generating a ZK proof that a given Solidity contract scored a specific risk level — without revealing the model weights. Uses EZKL/Groth16 over the BN254 curve.
+`zkml/` is the proof layer between the ML teacher and the on-chain audit registry.
+It does **not** prove the full Sentinel teacher model. The tracked V2 circuit proves
+a small student/proxy computation over a public 128-dimensional fusion embedding.
 
-The proof is a cryptographic guarantee: anyone can verify on-chain that the score was produced by the committed model, without re-running the full 125M-parameter SentinelModel.
+The current trust statement is intentionally narrow:
 
----
-
-## Why a Proxy Model?
-
-EZKL can prove circuits up to ~10 K parameters. SentinelModel has ~125 M parameters — far too large.
-
-**Solution: Knowledge Distillation**
-
-Train a tiny ProxyMLP to replicate SentinelModel's output on the CrossAttentionFusion embeddings. The proxy learns from the teacher's scores (MSE loss), never from ground truth labels. Target: ≥ 95% per-class agreement with the teacher.
-
-```
-SentinelModel forward()
-  ├── GNNEncoder + TransformerEncoder
-  └── CrossAttentionFusion  →  fused [1, 128]
-                                    │
-                          ┌─────────┘
-                          │  (proof input)
-                          ▼
-                     ProxyMLP
-          Linear(128→64) → ReLU
-          Linear(64→32)  → ReLU
-          Linear(32→10)  →  proxy_logits [1, 10]
+```text
+Solidity source
+    ↓
+ML teacher (off-chain)
+    ↓  /fusion-embedding
+128 public fusion values
+    ↓
+ProxyModel 128 → 64 → 32 → 10
+    ↓
+10 public student scores
+    ↓
+EZKL proof
 ```
 
----
+The proof establishes the proxy computation for the supplied public inputs. It
+does not by itself prove that the fusion values came from a particular Solidity
+contract, teacher checkpoint, chain, registry, or audit round. The V3 registry
+protocol handles that context separately with a policy-signed EIP-712 request.
 
-## Proxy Model Architecture
+## Current executable contract
 
-```
-Input:   128-dim fused embedding  (CrossAttentionFusion output — BEFORE classifier)
-Layers:  Linear(128→64) → ReLU → Linear(64→32) → ReLU → Linear(32→10)
-Params:  ~8 300
-Target:  per-class agreement with teacher ≥ 95 %
-Loss:    MSE(proxy_output, teacher_output)
-```
+### ML boundary
 
-**Circuit version: v2.0** — Architecture is frozen by ADR-007.
-**Input dim = 128 is locked** to `CrossAttentionFusion output_dim`. If that changes, the ONNX export, EZKL circuit, `ZKMLVerifier.sol`, and `AuditRegistry` deployment must all be rebuilt.
+`ml/src/inference/api.py::/fusion-embedding` returns:
 
----
+- exactly 128 fusion values;
+- the live teacher checkpoint SHA-256;
+- graph/window metadata;
+- structured execution status.
 
-## Full Pipeline
+### Proxy model
 
-```
-Step 0  Train proxy                 zkml/src/distillation/train_proxy.py
-Step 1  Export to ONNX              zkml/src/distillation/export_onnx.py
-Step 2  Gen EZKL settings           zkml/src/ezkl/setup_circuit.py  (step 1–2)
-Step 3  Compile R1CS circuit        zkml/src/ezkl/setup_circuit.py  (step 3)
-Step 4  Setup — gen keys            zkml/src/ezkl/setup_circuit.py  (step 4–5)
-                                    → proving_key.pk  (gitignored, ~10 MB)
-                                    → verification_key.vk
-                                    → ZKMLVerifier.sol  (copy to contracts/src/)
-        ── ONE TIME ─────────────────────────────────────────────────────────────
-Step 5  Per-audit: gen proof        zkml/src/ezkl/run_proof.py
-                                    → proof.json  (π ~2 KB)
-                                    → publicSignals[10 class scores]
-Step 6  Extract calldata            zkml/src/ezkl/extract_calldata.py
-                                    → publicSignals[65] (64 features + 1 score)
-Step 7  Submit on-chain             submit_audit.sh
+`zkml/src/distillation/proxy_model.py` is frozen at:
+
+```text
+Linear(128 → 64) → ReLU → Linear(64 → 32) → ReLU → Linear(32 → 10)
 ```
 
-Steps 0–4 are **one-time setup**. Steps 5–7 run **per audit**.
+Exact parameter count: **10,666**.
 
----
+Circuit version: `v2.0`.
 
-## Running the Pipeline
+The student is trained by MSE directly against
+`sigmoid(teacher_logits)`. Therefore `ProxyModel.forward()` is the canonical
+student **score** vector for the current artifact semantics. Consumers must not
+apply an additional sigmoid.
 
-### Step 0 — Train the proxy
+## Public-signal layout
 
-Requires: M1 trained checkpoint at `ml/checkpoints/multilabel_crossattn_best.pt`.
+The tracked V2 EZKL bundle uses public inputs and public outputs:
 
-```bash
-cd zkml
-TRANSFORMERS_OFFLINE=1 \
-SENTINEL_CHECKPOINT=../ml/checkpoints/multilabel_crossattn_best.pt \
-poetry run python -m src.distillation.train_proxy \
-  --graphs-dir ../ml/data/graphs/ \
-  --tokens-dir ../ml/data/tokens/ \
-  --output zkml/ezkl/proxy_best.pt
-# Trains for up to 50 epochs; saves when agreement >= 95 %
+```text
+indices   0..127  fusion inputs
+indices 128..137  ten proxy output field elements
+----------------
+138 public signals total
 ```
 
-### Step 1 — Export to ONNX
-
-```bash
-poetry run python -m src.distillation.export_onnx \
-  --checkpoint zkml/ezkl/proxy_best.pt \
-  --output zkml/ezkl/proxy.onnx
-# Verifies PyTorch vs ONNX outputs (max diff tolerance 1e-5)
-```
-
-### Step 2–5 — Circuit setup (one-time, expensive)
-
-```bash
-poetry run python -m src.ezkl.setup_circuit
-# Runs gen_settings → calibrate_settings → compile_circuit → get_srs → setup
-# Generates:
-#   zkml/ezkl/settings.json
-#   zkml/ezkl/model.compiled
-#   zkml/ezkl/proving_key.pk      ← gitignored (~10 MB)
-#   zkml/ezkl/srs.params          ← gitignored
-#   zkml/ezkl/verification_key.vk
-#   zkml/ezkl/ZKMLVerifier.sol    ← copy to contracts/src/
-```
-
-After this step, copy the verifier contract and compile with solc 0.8.17:
-```bash
-cp zkml/ezkl/ZKMLVerifier.sol contracts/src/ZKMLVerifier.sol
-solc-select use 0.8.17
-cd contracts && forge build --contracts src/ZKMLVerifier.sol
-solc-select use 0.8.20
-```
-
-### Step 5 — Generate proof per audit
-
-```bash
-cd zkml
-poetry run python -m src.ezkl.run_proof \
-  --contract test_contracts/simple_reentrancy.sol
-# Takes 30–60 s on RTX 3070
-# Writes: zkml/ezkl/proof.json
-```
-
-The script validates that teacher and proxy agree on the classification before accepting the proof.
-
-### Step 6 — Extract calldata for on-chain submission
-
-```bash
-poetry run python -m src.ezkl.extract_calldata
-# Reads: zkml/ezkl/proof.json
-# Outputs:
-#   check_verify.sh    test ZKMLVerifier.verify() via cast
-#   submit_audit.sh    submit to AuditRegistry via cast
-```
-
----
-
-## Critical Encoding Details
-
-EZKL stores field elements as **little-endian 32-byte hex strings**.
+Field elements in EZKL JSON artifacts are encoded as 32-byte little-endian hex.
+Python decoding must use:
 
 ```python
-# CORRECT
-score = int.from_bytes(bytes.fromhex(instances[64]), byteorder='little') / 8192
-
-# WRONG — treats as big-endian, produces garbage
-score = int(instances[64], 16) / 8192
+int.from_bytes(bytes.fromhex(value), byteorder="little")
 ```
 
-`publicSignals[64]` is the score field element index in `proof.json`.
-Scale factor: `score_field_element = round(model_output * 8192)` (EZKL scale 2¹³).
-`AuditRegistry` stores `scoreFieldElement` raw; divide by 8192 to get human-readable probability.
+Do not decode the string as a normal big-endian integer.
 
----
+## Distillation and DATA lineage
 
-## Artifacts
+Future proxy training has **no implicit DATA export**. This is deliberate.
+R4 is repairing DATA/label reality, so a new proxy must not silently train on an
+old export.
 
-| File | Status | Notes |
-|------|--------|-------|
-| `zkml/ezkl/proxy_best.pt` | generated | ProxyMLP weights |
-| `zkml/ezkl/proxy.onnx` | generated | ONNX export (opset 11) |
-| `zkml/ezkl/settings.json` | generated | EZKL quantisation config |
-| `zkml/ezkl/calibration_data.json` | generated | Calibration inputs |
-| `zkml/ezkl/model.compiled` | generated | Compiled R1CS circuit |
-| `zkml/ezkl/verification_key.vk` | generated | Public verification key |
-| `zkml/ezkl/proving_key.pk` | **gitignored** | Private proving key (~10 MB) |
-| `zkml/ezkl/srs.params` | **gitignored** | BN254 SRS (~4 MB) |
-| `zkml/ezkl/proof.json` | per-audit | Most recent proof artifact |
-| `zkml/ezkl/ZKMLVerifier.sol` | generated | Copy to `contracts/src/` |
-
----
-
-## EZKL Version Notes (23.0.5)
-
-| Function | Behaviour |
-|----------|-----------|
-| `get_srs` | **async** — must wrap with `asyncio.run()` |
-| `compile_circuit` | sync (was `compile_model` in older versions) |
-| `calibrate_settings` | sync (was `calibrate` in older versions) |
-| All other functions | sync |
-
-Do not upgrade EZKL without verifying function signatures; names changed between releases.
-
----
-
-## Deployment Addresses (Sepolia)
-
-Populated after `setup_circuit.py` generates `ZKMLVerifier.sol` and it is deployed:
-
-| Contract | Address |
-|---------|---------|
-| `ZKMLVerifier` | `0xB7093Be4958dd95438D6f53Ff7DF8659451CbD97` |
-| `AuditRegistry` | `0x14E5eFb6DE4cBb74896B45b4853fd14901E4CfAf` |
-
-Update these in `audit_server.py` `AUDIT_REGISTRY_ADDRESS` env var and `extract_calldata.py` constants when redeploying.
-
----
-
-## File Reference
-
-```
-zkml/src/
-  distillation/
-    proxy_model.py           ProxyMLP definition (circuit version v2.0)
-    train_proxy.py           Knowledge distillation from SentinelModel
-    export_onnx.py           PyTorch → ONNX (opset 11)
-    generate_calibration.py  Calibration data from real embeddings
-
-  ezkl/
-    setup_circuit.py         One-time: gen_settings → calibrate → compile → setup
-    run_proof.py             Per-audit: witness → prove → verify
-    extract_calldata.py      proof.json → publicSignals + shell scripts
-
-zkml/ezkl/                   Artifact directory (most files gitignored)
+```bash
+python zkml/src/distillation/train_proxy.py \
+  --export-dir <EXPLICIT_PROMOTED_DATA_EXPORT>
 ```
 
----
+The saved checkpoint metadata binds, among other fields:
 
-## Do Not Change Without Wider Plan
+- teacher checkpoint SHA-256;
+- DATA export manifest SHA-256;
+- circuit version;
+- output semantics;
+- random seed;
+- measured teacher/student agreement.
 
-- **Never change `proxy_model.py` architecture** without incrementing circuit version, rerunning `setup_circuit.py`, regenerating `ZKMLVerifier.sol`, and redeploying on-chain.
-- **Never change `CrossAttentionFusion output_dim`** without the full ZKML rebuild chain.
-- **Never change ONNX opset** from 11 — EZKL 23.0.5 requires it.
-- **Never commit `proving_key.pk` or `srs.params`** — gitignored for size reasons; losing `pk` requires re-running setup (expensive).
-- **Do not expose `submit_audit`** via `audit_server.py` until Track 3 multi-label proof semantics are confirmed — the current `AuditResult` stores one `scoreFieldElement`; a 10-class output may need a different proof commitment design.
+Calibration follows the same rule: the export must be selected explicitly.
+Do not retrain/regenerate the production candidate until R4 has promoted the
+intended DATA/ML lineage.
+
+## Artifact chain
+
+The intended regeneration chain is:
+
+```text
+promoted DATA export
+      ↓
+teacher checkpoint
+      ↓
+train_proxy.py
+      ↓
+zkml/models/proxy_best.pt
+      ↓
+export_onnx.py
+      ↓
+zkml/models/proxy.onnx (+ manifest)
+      ↓
+generate_calibration.py
+      ↓
+calibration data (+ lineage)
+      ↓
+setup_circuit.py
+      ↓
+settings / compiled circuit / SRS / PK / VK
+      ↓
+generated contracts/src/ZKMLVerifier.sol
+      ↓
+run_proof.py
+      ↓
+proof.json + 138 public signals
+```
+
+`zkml/src/validation/validate_bundle.py` checks the tracked bundle's structural,
+identity, dimension, visibility, and protocol invariants. That validation is an
+integrity check; it is not a replacement for cryptographic proof verification.
+
+## Tracked V2 bundle
+
+The repository currently retains a historical V2 proof bundle including the
+proxy, ONNX artifacts, calibration/settings, compiled circuit, verification key,
+proof fixture, and canonical generated Solidity verifier.
+
+That bundle is useful for reproducibility and regression testing. It is **not an
+eligible runtime audit submission protocol** because its proof scope is
+`legacy_proxy_only_unbound`.
+
+Remote CI exercises the tracked proof against the actual generated
+`Halo2Verifier`. A mutation of a public output must fail closed (the generated
+verifier may return `false` or revert).
+
+## Per-proof helper
+
+`zkml/src/ezkl/run_proof.py` is a deterministic proof-generation helper. It no
+longer searches for an easier contract to prove and it does not claim that a V2
+proof is eligible for chain finality.
+
+`zkml/src/ezkl/extract_calldata.py` is intentionally **read-only**. It may decode
+and inspect the historical V2 proof, but it does not emit `cast send`, accept a
+private key, or generate a direct `submitAuditV2` write path. Runtime signing is
+a separate security boundary.
+
+## V3 relationship
+
+The V3 registry protocol does not pretend the V2 neural proof suddenly proves
+more than it does. It uses two independent checks:
+
+1. the EZKL verifier validates the exact proxy proof and 138 public signals;
+2. a dedicated policy signer authenticates the audit context with EIP-712.
+
+The signed context binds the submitting agent, target address and runtime
+bytecode hash, chain/registry domain, round, teacher model identity, proxy bundle
+identity, DATA identity, class-schema identity, proof hash, public-signal hash,
+score hash, and expiry.
+
+See `agents/src/security/policy_signer.py` and
+`contracts/src/AuditRegistry.sol` for executable V3 semantics.
+
+## Testing
+
+Dependency-light ZKML tests:
+
+```bash
+pytest -q zkml/tests
+```
+
+The dedicated root workflow `.github/workflows/system-alignment.yml` additionally
+validates the tracked bundle and exercises the canonical generated Solidity
+verifier with the tracked proof.
+
+Local full proof regeneration still requires the ML/data environment and the
+cryptographic setup artifacts that are intentionally not all reproduced in a
+plain remote checkout.
+
+## Important invariants
+
+- Fusion input dimension is 128.
+- Vulnerability class count is 10.
+- V2 public-signal count is exactly 138.
+- Proxy architecture changes require a circuit-version bump and complete artifact regeneration.
+- Proxy output semantics are direct teacher-probability regression scores; no second sigmoid.
+- DATA export selection for retraining/calibration must be explicit.
+- Generated verifier identity must be tied to the exact circuit/VK bundle.
+- Legacy V2 proof scope remains ineligible for runtime finality.
+- No ZKML helper may bypass the isolated policy-signer boundary with a raw private key.
+
+## Current status
+
+The code/protocol alignment branch validates the historical V2 proof boundary and
+implements the context-attested V3 registry protocol. New proxy/circuit artifacts
+should be regenerated only after R4 promotes the appropriate DATA/ML candidate;
+that future bundle must receive fresh lineage, proof, verifier, and integration
+validation before deployment.
