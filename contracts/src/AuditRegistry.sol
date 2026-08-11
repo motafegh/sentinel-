@@ -61,15 +61,8 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
     // V3 append-only storage
     // ---------------------------------------------------------------------
 
-    /// @dev Dedicated verifier for the context-attested V3 path. Keeping this
-    /// separate avoids silently changing the meaning of historical V1/V2 rows.
     IZKMLVerifier public zkmlVerifierV3;
-
-    /// @dev Dedicated service identity allowed to attest audit context.
     address public auditPolicySignerV3;
-
-    /// @dev Set permanently by initializeV3(). Historical queries remain live;
-    /// only new V1/V2 submissions are disabled after V3 activation.
     bool public legacySubmissionsDisabled;
 
     struct AuditContextV3 {
@@ -100,11 +93,19 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         bool verified;
     }
 
+    /// @dev In-memory helper to keep submitAuditV3 below the legacy codegen
+    /// stack limit. This struct adds no storage slot.
+    struct V3Hashes {
+        bytes32 proofHash;
+        bytes32 publicSignalsHash;
+        bytes32 classScoreFeltsHash;
+        bytes32 contractCodeHash;
+        bytes32 requestDigest;
+    }
+
     mapping(address => AuditResultV3[]) private _auditsV3;
     mapping(bytes32 => bool) private _usedV3RequestDigests;
 
-    // EIP-712 domain is calculated dynamically so chain-id changes/forks do not
-    // accidentally reuse signatures across domains.
     bytes32 private constant _EIP712_DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
@@ -155,10 +156,7 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         _disableInitializers();
     }
 
-    function initialize(
-        address verifierAddress,
-        address tokenAddress
-    ) public initializer {
+    function initialize(address verifierAddress, address tokenAddress) public initializer {
         require(verifierAddress != address(0), "AuditRegistry: zero verifier");
         require(tokenAddress != address(0), "AuditRegistry: zero token");
         __Ownable_init(msg.sender);
@@ -167,9 +165,6 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         sentinelToken = SentinelToken(tokenAddress);
     }
 
-    /// @notice Activate the context-bound V3 protocol after upgrading an
-    /// existing proxy. This is intentionally a one-way containment boundary:
-    /// once V3 is activated, new V1/V2 submissions stay disabled.
     function initializeV3(
         address verifierAddress,
         address policySignerAddress
@@ -188,8 +183,13 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
     // Emergency / V3 trust-root controls
     // ---------------------------------------------------------------------
 
-    function pause() external onlyOwner { _pause(); }
-    function unpause() external onlyOwner { _unpause(); }
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+    }
 
     function setZkmlVerifierV3(address verifierAddress) external onlyOwner {
         require(verifierAddress != address(0), "AuditRegistry: zero V3 verifier");
@@ -231,13 +231,15 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         );
 
         bytes32 proofHash = keccak256(proof);
-        _audits[contractAddress].push(AuditResult({
-            scoreFieldElement: scoreFieldElement,
-            proofHash: proofHash,
-            timestamp: block.timestamp,
-            agent: msg.sender,
-            verified: true
-        }));
+        _audits[contractAddress].push(
+            AuditResult({
+                scoreFieldElement: scoreFieldElement,
+                proofHash: proofHash,
+                timestamp: block.timestamp,
+                agent: msg.sender,
+                verified: true
+            })
+        );
         emit AuditSubmitted(contractAddress, proofHash, msg.sender, scoreFieldElement);
     }
 
@@ -269,14 +271,16 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         }
 
         bytes32 proofHash = keccak256(proof);
-        _auditsV2[contractAddress].push(AuditResultV2({
-            classScores: classScores,
-            proofHash: proofHash,
-            modelHash: modelHash,
-            timestamp: block.timestamp,
-            agent: msg.sender,
-            verified: true
-        }));
+        _auditsV2[contractAddress].push(
+            AuditResultV2({
+                classScores: classScores,
+                proofHash: proofHash,
+                modelHash: modelHash,
+                timestamp: block.timestamp,
+                agent: msg.sender,
+                verified: true
+            })
+        );
         emit AuditSubmittedV2(contractAddress, proofHash, msg.sender, classScores, modelHash);
     }
 
@@ -285,13 +289,15 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
     // ---------------------------------------------------------------------
 
     function domainSeparatorV3() public view returns (bytes32) {
-        return keccak256(abi.encode(
-            _EIP712_DOMAIN_TYPEHASH,
-            _EIP712_NAME_HASH,
-            _EIP712_VERSION_HASH,
-            block.chainid,
-            address(this)
-        ));
+        return keccak256(
+            abi.encode(
+                _EIP712_DOMAIN_TYPEHASH,
+                _EIP712_NAME_HASH,
+                _EIP712_VERSION_HASH,
+                block.chainid,
+                address(this)
+            )
+        );
     }
 
     function computeAuditDigestV3(
@@ -301,23 +307,15 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         bytes32 publicSignalsHash,
         bytes32 classScoreFeltsHash
     ) public view returns (bytes32) {
-        bytes32 contractCodeHash = context.contractAddress.codehash;
-        bytes32 structHash = keccak256(abi.encode(
-            AUDIT_REQUEST_V3_TYPEHASH,
-            agent,
-            context.contractAddress,
-            contractCodeHash,
-            context.roundId,
-            context.teacherModelHash,
-            context.proxyBundleHash,
-            context.dataVersionHash,
-            context.classSchemaHash,
-            proofHash,
-            publicSignalsHash,
-            classScoreFeltsHash,
-            context.deadline
-        ));
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparatorV3(), structHash));
+        return
+            _computeAuditDigestV3(
+                agent,
+                context,
+                context.contractAddress.codehash,
+                proofHash,
+                publicSignalsHash,
+                classScoreFeltsHash
+            );
     }
 
     function submitAuditV3(
@@ -327,6 +325,23 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         uint256[] calldata publicSignals,
         bytes calldata policySignature
     ) external whenNotPaused {
+        _validateV3Inputs(context, classScoreFelts, publicSignals);
+        V3Hashes memory hashes = _buildV3Hashes(
+            context,
+            classScoreFelts,
+            proof,
+            publicSignals
+        );
+        _authorizeAndVerifyV3(hashes, proof, publicSignals, policySignature);
+        _storeV3Result(context, classScoreFelts, hashes);
+        _emitV3Result(context, classScoreFelts, hashes);
+    }
+
+    function _validateV3Inputs(
+        AuditContextV3 calldata context,
+        uint256[10] calldata classScoreFelts,
+        uint256[] calldata publicSignals
+    ) internal view {
         require(legacySubmissionsDisabled, "AuditRegistry: V3 not initialized");
         require(address(zkmlVerifierV3) != address(0), "AuditRegistry: V3 verifier unset");
         require(auditPolicySignerV3 != address(0), "AuditRegistry: V3 signer unset");
@@ -346,58 +361,113 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
                 "AuditRegistry: class score mismatch"
             );
         }
+    }
 
-        bytes32 proofHash = keccak256(proof);
-        bytes32 publicSignalsHash = keccak256(abi.encode(publicSignals));
-        bytes32 classScoreFeltsHash = keccak256(abi.encode(classScoreFelts));
-        bytes32 requestDigest = computeAuditDigestV3(
+    function _buildV3Hashes(
+        AuditContextV3 calldata context,
+        uint256[10] calldata classScoreFelts,
+        bytes calldata proof,
+        uint256[] calldata publicSignals
+    ) internal view returns (V3Hashes memory hashes) {
+        hashes.proofHash = keccak256(proof);
+        hashes.publicSignalsHash = keccak256(abi.encode(publicSignals));
+        hashes.classScoreFeltsHash = keccak256(abi.encode(classScoreFelts));
+        hashes.contractCodeHash = context.contractAddress.codehash;
+        hashes.requestDigest = _computeAuditDigestV3(
             msg.sender,
             context,
-            proofHash,
-            publicSignalsHash,
-            classScoreFeltsHash
+            hashes.contractCodeHash,
+            hashes.proofHash,
+            hashes.publicSignalsHash,
+            hashes.classScoreFeltsHash
         );
+    }
 
+    function _computeAuditDigestV3(
+        address agent,
+        AuditContextV3 calldata context,
+        bytes32 contractCodeHash,
+        bytes32 proofHash,
+        bytes32 publicSignalsHash,
+        bytes32 classScoreFeltsHash
+    ) internal view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                AUDIT_REQUEST_V3_TYPEHASH,
+                agent,
+                context.contractAddress,
+                contractCodeHash,
+                context.roundId,
+                context.teacherModelHash,
+                context.proxyBundleHash,
+                context.dataVersionHash,
+                context.classSchemaHash,
+                proofHash,
+                publicSignalsHash,
+                classScoreFeltsHash,
+                context.deadline
+            )
+        );
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparatorV3(), structHash));
+    }
+
+    function _authorizeAndVerifyV3(
+        V3Hashes memory hashes,
+        bytes calldata proof,
+        uint256[] calldata publicSignals,
+        bytes calldata policySignature
+    ) internal {
         require(
-            !_usedV3RequestDigests[requestDigest],
+            !_usedV3RequestDigests[hashes.requestDigest],
             "AuditRegistry: V3 request already used"
         );
         require(
-            requestDigest.recover(policySignature) == auditPolicySignerV3,
+            hashes.requestDigest.recover(policySignature) == auditPolicySignerV3,
             "AuditRegistry: invalid V3 policy signature"
         );
 
-        // Mark before the external verifier call to prevent same-digest
-        // re-entrancy. Any verifier failure/revert rolls this state change back.
-        _usedV3RequestDigests[requestDigest] = true;
+        _usedV3RequestDigests[hashes.requestDigest] = true;
         require(
             zkmlVerifierV3.verifyProof(proof, publicSignals),
             "AuditRegistry: invalid V3 ZK proof"
         );
+    }
 
-        bytes32 contractCodeHash = context.contractAddress.codehash;
-        _auditsV3[context.contractAddress].push(AuditResultV3({
-            classScoreFelts: classScoreFelts,
-            proofHash: proofHash,
-            requestDigest: requestDigest,
-            publicSignalsHash: publicSignalsHash,
-            contractCodeHash: contractCodeHash,
-            teacherModelHash: context.teacherModelHash,
-            proxyBundleHash: context.proxyBundleHash,
-            dataVersionHash: context.dataVersionHash,
-            classSchemaHash: context.classSchemaHash,
-            roundId: context.roundId,
-            timestamp: block.timestamp,
-            agent: msg.sender,
-            policySigner: auditPolicySignerV3,
-            verifier: address(zkmlVerifierV3),
-            verified: true
-        }));
+    function _storeV3Result(
+        AuditContextV3 calldata context,
+        uint256[10] calldata classScoreFelts,
+        V3Hashes memory hashes
+    ) internal {
+        _auditsV3[context.contractAddress].push(
+            AuditResultV3({
+                classScoreFelts: classScoreFelts,
+                proofHash: hashes.proofHash,
+                requestDigest: hashes.requestDigest,
+                publicSignalsHash: hashes.publicSignalsHash,
+                contractCodeHash: hashes.contractCodeHash,
+                teacherModelHash: context.teacherModelHash,
+                proxyBundleHash: context.proxyBundleHash,
+                dataVersionHash: context.dataVersionHash,
+                classSchemaHash: context.classSchemaHash,
+                roundId: context.roundId,
+                timestamp: block.timestamp,
+                agent: msg.sender,
+                policySigner: auditPolicySignerV3,
+                verifier: address(zkmlVerifierV3),
+                verified: true
+            })
+        );
+    }
 
+    function _emitV3Result(
+        AuditContextV3 calldata context,
+        uint256[10] calldata classScoreFelts,
+        V3Hashes memory hashes
+    ) internal {
         emit AuditSubmittedV3(
             context.contractAddress,
-            requestDigest,
-            proofHash,
+            hashes.requestDigest,
+            hashes.proofHash,
             msg.sender,
             classScoreFelts,
             context.teacherModelHash,
