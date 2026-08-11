@@ -1,0 +1,24 @@
+{
+  "partition_version": "r4-vnext-roles-v1",
+  "roles": {
+    "CALIBRATION_FIT": {
+      "contracts": [],
+      "groups": [],
+      "reason": "Calibration requires outcome-labeled discrimination support; current evidence is strong/weak positive plus unlabeled with no confirmed negatives.",
+      "status": "UNSUPPORTED_EMPTY"
+    },
+    "THRESHOLD_FIT": {
+      "contracts": [],
+      "groups": [],
+      "reason": "No trustworthy class-specific confirmed-negative support exists under data-vnext-policy-v1.",
+      "status": "UNSUPPORTED_EMPTY"
+    },
+    "UNTOUCHED_ACCEPTANCE": {
+      "contracts": [],
+      "groups": [],
+      "reason": "No trustworthy unexposed labeled corpus exists in the recovered repository evidence; historical/manual/quickstart corpora are exposed, semantically invalid for negatives, unavailable, or deferred.",
+      "status": "UNSUPPORTED_EMPTY_FROZEN"
+    }
+  },
+  "schema": "r4-phase6-unsupported-roles-v1"
+}
