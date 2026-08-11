@@ -1,0 +1,66 @@
+name: R4 Phase 6 role-support inventory
+
+on:
+  push:
+    branches:
+      - r4/phase6-partitions-acceptance-freeze
+    paths:
+      - 'docs/plan/ml-R4/scripts/p6_inventory_role_support.py'
+      - 'docs/plan/ml-R4/specs/data_vnext_policy_v1.json'
+      - 'docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet'
+      - '.github/workflows/r4-phase6-inventory.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r4/phase6-partitions-acceptance-freeze
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install inventory dependency
+        run: python -m pip install --disable-pip-version-check pyarrow
+
+      - name: Generate role-support inventory
+        run: python docs/plan/ml-R4/scripts/p6_inventory_role_support.py
+
+      - name: Validate fail-closed support claims
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('docs/plan/ml-R4/manifests/p6_role_support_inventory.json').read_text())
+          assert p['ledger_sha256'] == '3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7'
+          assert p['contracts'] == 22493
+          assert p['ledger_rows'] == 224930
+          assert p['strong_positive_row_counts_by_class']['GasException'] == 0
+          assert p['strong_positive_row_counts_by_class']['UnusedReturn'] == 0
+          assert p['weak_positive_row_counts_by_class']['TransactionOrderDependence'] > 0
+          assert p['role_support']['THRESHOLD_FIT'].startswith('UNSUPPORTED')
+          assert p['role_support']['CALIBRATION_FIT'].startswith('UNSUPPORTED')
+          assert p['role_support']['UNTOUCHED_ACCEPTANCE'].startswith('UNSUPPORTED')
+          print('PASS: Phase-6 role-support inventory is conservative and policy-bound')
+          PY
+
+      - name: Commit inventory artifacts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            docs/plan/ml-R4/manifests/p6_role_support_inventory.json \
+            docs/plan/ml-R4/manifests/p6_group_eligibility_inventory.jsonl
+          if git diff --cached --quiet; then
+            echo 'Inventory already current.'
+            exit 0
+          fi
+          git commit -m 'data(ml-r4): publish Phase 6 role-support inventory'
+          git push origin HEAD:r4/phase6-partitions-acceptance-freeze
