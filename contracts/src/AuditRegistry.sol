@@ -93,8 +93,8 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         bool verified;
     }
 
-    /// @dev In-memory helper to keep submitAuditV3 below the legacy codegen
-    /// stack limit. This struct adds no storage slot.
+    /// @dev In-memory helper to keep the public V3 entry point compact.
+    /// This struct adds no storage slot.
     struct V3Hashes {
         bytes32 proofHash;
         bytes32 publicSignalsHash;
@@ -134,16 +134,13 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         bytes32 modelHash
     );
 
+    /// @dev V3 emits the compact immutable lookup identity. Full model/data/
+    /// schema/signer/verifier context remains queryable from AuditResultV3.
     event AuditSubmittedV3(
         address indexed contractAddress,
         bytes32 indexed requestDigest,
         bytes32 indexed proofHash,
         address agent,
-        uint256[10] classScoreFelts,
-        bytes32 teacherModelHash,
-        bytes32 proxyBundleHash,
-        bytes32 dataVersionHash,
-        bytes32 classSchemaHash,
         uint256 roundId
     );
 
@@ -307,15 +304,14 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         bytes32 publicSignalsHash,
         bytes32 classScoreFeltsHash
     ) public view returns (bytes32) {
-        return
-            _computeAuditDigestV3(
-                agent,
-                context,
-                context.contractAddress.codehash,
-                proofHash,
-                publicSignalsHash,
-                classScoreFeltsHash
-            );
+        return _computeAuditDigestV3(
+            agent,
+            context,
+            context.contractAddress.codehash,
+            proofHash,
+            publicSignalsHash,
+            classScoreFeltsHash
+        );
     }
 
     function submitAuditV3(
@@ -334,7 +330,13 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         );
         _authorizeAndVerifyV3(hashes, proof, publicSignals, policySignature);
         _storeV3Result(context, classScoreFelts, hashes);
-        _emitV3Result(context, classScoreFelts, hashes);
+        emit AuditSubmittedV3(
+            context.contractAddress,
+            hashes.requestDigest,
+            hashes.proofHash,
+            msg.sender,
+            context.roundId
+        );
     }
 
     function _validateV3Inputs(
@@ -391,23 +393,25 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         bytes32 publicSignalsHash,
         bytes32 classScoreFeltsHash
     ) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                AUDIT_REQUEST_V3_TYPEHASH,
-                agent,
-                context.contractAddress,
-                contractCodeHash,
-                context.roundId,
-                context.teacherModelHash,
-                context.proxyBundleHash,
-                context.dataVersionHash,
-                context.classSchemaHash,
-                proofHash,
-                publicSignalsHash,
-                classScoreFeltsHash,
-                context.deadline
-            )
-        );
+        // All EIP-712 struct fields are static 32-byte ABI words. Building the
+        // fixed word array avoids legacy-codegen stack pressure while remaining
+        // byte-for-byte equivalent to abi.encode(typehash, field1, ... field12).
+        bytes32[13] memory words;
+        words[0] = AUDIT_REQUEST_V3_TYPEHASH;
+        words[1] = bytes32(uint256(uint160(agent)));
+        words[2] = bytes32(uint256(uint160(context.contractAddress)));
+        words[3] = contractCodeHash;
+        words[4] = bytes32(context.roundId);
+        words[5] = context.teacherModelHash;
+        words[6] = context.proxyBundleHash;
+        words[7] = context.dataVersionHash;
+        words[8] = context.classSchemaHash;
+        words[9] = proofHash;
+        words[10] = publicSignalsHash;
+        words[11] = classScoreFeltsHash;
+        words[12] = bytes32(context.deadline);
+
+        bytes32 structHash = keccak256(abi.encodePacked(words));
         return keccak256(abi.encodePacked("\x19\x01", domainSeparatorV3(), structHash));
     }
 
@@ -438,44 +442,24 @@ contract AuditRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pa
         uint256[10] calldata classScoreFelts,
         V3Hashes memory hashes
     ) internal {
-        _auditsV3[context.contractAddress].push(
-            AuditResultV3({
-                classScoreFelts: classScoreFelts,
-                proofHash: hashes.proofHash,
-                requestDigest: hashes.requestDigest,
-                publicSignalsHash: hashes.publicSignalsHash,
-                contractCodeHash: hashes.contractCodeHash,
-                teacherModelHash: context.teacherModelHash,
-                proxyBundleHash: context.proxyBundleHash,
-                dataVersionHash: context.dataVersionHash,
-                classSchemaHash: context.classSchemaHash,
-                roundId: context.roundId,
-                timestamp: block.timestamp,
-                agent: msg.sender,
-                policySigner: auditPolicySignerV3,
-                verifier: address(zkmlVerifierV3),
-                verified: true
-            })
-        );
-    }
-
-    function _emitV3Result(
-        AuditContextV3 calldata context,
-        uint256[10] calldata classScoreFelts,
-        V3Hashes memory hashes
-    ) internal {
-        emit AuditSubmittedV3(
-            context.contractAddress,
-            hashes.requestDigest,
-            hashes.proofHash,
-            msg.sender,
-            classScoreFelts,
-            context.teacherModelHash,
-            context.proxyBundleHash,
-            context.dataVersionHash,
-            context.classSchemaHash,
-            context.roundId
-        );
+        AuditResultV3 storage result = _auditsV3[context.contractAddress].push();
+        for (uint256 i = 0; i < NUM_CLASSES; i++) {
+            result.classScoreFelts[i] = classScoreFelts[i];
+        }
+        result.proofHash = hashes.proofHash;
+        result.requestDigest = hashes.requestDigest;
+        result.publicSignalsHash = hashes.publicSignalsHash;
+        result.contractCodeHash = hashes.contractCodeHash;
+        result.teacherModelHash = context.teacherModelHash;
+        result.proxyBundleHash = context.proxyBundleHash;
+        result.dataVersionHash = context.dataVersionHash;
+        result.classSchemaHash = context.classSchemaHash;
+        result.roundId = context.roundId;
+        result.timestamp = block.timestamp;
+        result.agent = msg.sender;
+        result.policySigner = auditPolicySignerV3;
+        result.verifier = address(zkmlVerifierV3);
+        result.verified = true;
     }
 
     function isV3RequestUsed(bytes32 requestDigest) external view returns (bool) {
