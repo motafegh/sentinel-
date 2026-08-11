@@ -85,7 +85,7 @@
 | Artifact ID | Phase | Type | Path/URI | SHA-256 | Source commit | Historical/New | Availability | Protected | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | R4-P4-PLN-001 | 4 | execution_plan | runs/2026-08-11_PHASE4_gap_authorization_and_adjudication_plan.md | — | d8b138b1 | New | AVAILABLE | NO | Scope-minimal Phase-4 authorization/adjudication plan |
-| R4-P4-AUT-001 | 4 | authorization | findings/05_gap002_authorization.md | — | 0613aeee | New | AVAILABLE | NO | Delegated approval of R4-GAP-002; five mapped DIVE strata only |
+| R4-P4-AUT-001 | 4 | authorization | authorizations/2026-08-11_R4-GAP-002_authorization.md | — | 0613aeee | New | AVAILABLE | NO | Delegated approval of R4-GAP-002; five mapped DIVE strata only |
 | R4-P4-MAN-001 | 4 | population_manifest | manifests/p4_gap002_population_manifest.json | — | 4e5ff9be | New | AVAILABLE_VERIFIED | NO | Phase-3-ledger-bound DIVE positive population counts and group-aware eligibility |
 | R4-P4-MAN-002 | 4 | frozen_sample | manifests/p4_gap002_initial_sample.jsonl | 2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9 | 757c368d | New | AVAILABLE_VERIFIED | NO | 100 TRAIN-only contracts; 20 per stratum; no review-group reuse; groups touching val/test excluded |
 | R4-P4-BND-001 | 4 | blind_source_bundle | review_bundles/r4_gap002_blind_review_bundle_v1.zip | 2b1ce12fdd96819c89bbb9fe1dfb2d9aa992ec0a05ce32f651c6b834b97ddf38 | 02f254249 | New | AVAILABLE_VERIFIED | NO | Checksum-bound normalized/flattened Solidity for the exact frozen 100-contract sample |
