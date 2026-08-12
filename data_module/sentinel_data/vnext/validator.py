@@ -314,8 +314,12 @@ def validate_vnext_overlay(
 
     binding_meta = manifest.get("representation_binding_report")
     if require_representation_binding:
-        if manifest.get("status") != "VALIDATED_G7_CANDIDATE":
-            errors.append("manifest_not_finalized_for_g7")
+        allowed_states = {
+            "REPRESENTATIONS_VALIDATED_G7_PENDING_FINAL",
+            "VALIDATED_G7_CANDIDATE",
+        }
+        if manifest.get("status") not in allowed_states:
+            errors.append("manifest_not_representation_bound_for_g7")
         if not isinstance(binding_meta, dict):
             errors.append("representation_binding_report_not_bound")
         else:
