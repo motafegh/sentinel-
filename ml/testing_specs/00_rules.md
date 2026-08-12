@@ -1,140 +1,159 @@
-# 00 — Universal Rules
+# 00 — Universal Validation Rules
 
-> These rules apply to **every procedure in every spec file** in this folder.
-> They are not repeated in individual files. They are always in force.
-> Load this file alongside whichever section spec you are using.
->
-> **Last revised: 2026-06-14** (post-Run-12 launch, pre-Run-13 prep). Added 6 new entries to the "Where Things Live" table to reflect the seam-swap canonical paths, the new sibling files (BCCC re-evaluation, feature leakage audit, Run 12/13 cron), and the post-training process overview.
+These rules apply to **every procedure in `ml/testing_specs/`**.
 
----
+The suite contains useful mechanics from multiple project eras, especially Run12. It is not a stronger source of current DATA/ML truth than executable source, R4 policy/roles, or canonical current status.
 
-## Rule 0 — Read Before Claiming
+## Rule 0 — Resolve current authority before running a procedure
 
-Never assert a value, state, or result without first reading its source.
+For current work, read facts in this order:
 
-- Do not use memory, prior conversation, or assumption as the source of a fact
-- Do not re-read a file and then quote it from memory — cite which file and section
-- If the file does not exist yet, say so explicitly — do not estimate its content
-- If the file exists but is ambiguous, resolve the ambiguity before proceeding
+1. executable source/config/tests;
+2. current machine-readable R4 policy/manifests;
+3. canonical handbook/current status;
+4. active R4 ADR/decision/risk records;
+5. this validation procedure;
+6. dated historical findings/memory for historical context only.
 
-This rule applies to: schema constants, checkpoint paths, metric numbers, run names,
-label counts, known bugs, config values, field names, and architectural decisions.
+For DATA-vNext/retraining work, mandatory current inputs are:
 
----
+- `docs/plan/ml-R4/specs/data_vnext_policy_v1.json`;
+- `docs/plan/ml-R4/manifests/p6_partition_manifest.json`;
+- `docs/plan/ml-R4/manifests/p6_role_support_table.json`;
+- `docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json`;
+- `docs/handbook/16_current_status.md`.
 
-## Rule 1 — Where Things Live
+If an individual spec conflicts with those artifacts, **the spec is historical at that point**. Update/adapt it rather than weakening R4.
 
-Read from the correct source. Do not look for values anywhere else.
+## Rule 1 — Never recreate the historical label defect
 
-| What you need | Where to read it |
-|---|---|
-| Schema constants (dims, types, edge types) | **CANONICAL: `data_module/sentinel_data/representation/graph_schema.py`**. Shim: `ml/src/preprocessing/graph_schema.py` (22 lines, re-exports). Always read the canonical source first. |
-| Active checkpoint path, current run state | `MEMORY.md` → "Current State" + "Key Operational Facts" sections |
-| Open bugs, known failure modes | `project_run8_audit_findings.md` (Runs 7-9) + BCCC re-evaluation findings in `project_bccc_2tool_audit_2026-06-14.md` |
-| Training log field names | `ml/src/training/training_logger.py` |
-| Training log data | `ml/logs/<run_name>/` (JSONL — step_metrics, epoch_summary, alerts) |
-| Run analysis, metric results | `docs/training/<run_name>-analysis.md` |
-| Architecture decisions | `docs/ml/adr/INDEX.md` (8 ADRs as of Run 12) |
-| Data module config + gates | **CANONICAL: `data_module/docs/architecture.md`**. Historical: `data_module/docs/v2-readiness-2026-06-12.md` |
-| Interpretability experiment status | `docs/interpretability/EXPERIMENT_INDEX.md` |
-| Threshold load path | `ml/src/inference/predictor.py` |
-| Warmup and loss instantiation | `ml/src/training/trainer.py` |
-| Eye-to-output relationship | `ml/src/models/sentinel_model.py` |
-| **Run 12/13 monitoring cron** | `ml/scripts/check_run12_status.sh` + `ml/scripts/check_run12_status_README.md` |
-| **BCCC re-evaluation** | `project_bccc_2tool_audit_2026-06-14.md` (sibling) — 658 ME contracts ready |
-| **Feature leakage audit** | `project_feature_leakage_audit_2026-06-14.md` (sibling) — comments stripped, AST legit, etc. |
-| **Run 13 plan (post-Run-12)** | `data_module/temp/live_plans/run_12_to_13_handoff_2026-06-14.md` + `run13_plan_2026-06-14.md` |
-| **Post-training process overview** | `data_module/temp/live_plans/post_training_process_2026-06-14.md` |
+Permanent R4 invariants:
 
-If the information you need is not in this table, find its canonical source file
-before proceeding — do not assume or reconstruct from context.
+- historical zero ≠ confirmed negative;
+- unknown/unsupported/absent/dropped/tool-silent ≠ negative;
+- masked/disabled cells must not be filled with zero;
+- weak evidence ≠ strong or metric-grade evidence;
+- GasException and UnusedReturn remain supervision-disabled under policy v1;
+- DIVE Front Running→TOD is weak-positive only;
+- no blanket confirmed-negative source exists in policy v1.
 
----
+Any validation procedure that computes negatives or full binary metrics must first prove that its selected role actually contains authorized confirmed-negative evidence.
 
-## Rule 2 — Validate Your Validation
+## Rule 2 — Dataset roles are evidence boundaries
 
-Every validation procedure must verify that it was performed correctly, not just
-that it ran. There are three required layers.
+Current first-baseline role authority:
 
-### Layer 1 — Gate Assertions (write results, never just print)
+- `TRAIN_STRONG` — optimization allowed for strong targets;
+- `TRAIN_WEAK` — optimization allowed only with explicit weak handling;
+- `TRAIN_UNLABELED` — unlabeled use only;
+- `MODEL_SELECTION` — positive-only limited diagnostics;
+- `INTERNAL_AUDIT` — internal/exposed audit evidence;
+- `THRESHOLD_FIT` — `UNSUPPORTED_EMPTY`;
+- `CALIBRATION_FIT` — `UNSUPPORTED_EMPTY`;
+- `UNTOUCHED_ACCEPTANCE` — `UNSUPPORTED_EMPTY_FROZEN`.
 
-Every step that produces a boolean result or a number must write its result
-to a named file before the procedure continues. Format:
+Do not borrow one role to fill another because a legacy script expects data.
 
-```
-<check_name>: PASS | FAIL | UNVERIFIED — <one-line description>
-Source: <file or tool that produced this result>
-Date: <ISO date>
-```
+In particular:
 
-If a result cannot be confirmed from the tool output, mark it `UNVERIFIED`.
-`UNVERIFIED` is not a pass. Document what prevented confirmation and stop
-until it is resolved or explicitly accepted as a known gap.
+- positive-only model selection does not support trusted F1/AUC/FPR claims;
+- a threshold script running successfully does not authorize threshold fitting;
+- a calibration script running successfully does not authorize calibration;
+- exposed historical/manual/quickstart data cannot be renamed untouched acceptance.
 
-### Layer 2 — Cross-Check (two independent sources)
+## Rule 3 — Run12 is historical operational baseline
 
-For any metric or count that will be used to draw a conclusion (F1, threshold,
-contamination count, label class counts, VRAM headroom), confirm it from two
-independent sources where they exist. Sources might be: MLflow log vs. JSONL
-epoch file, split index count vs. label file count, schema file vs. model config.
+Run12 weights, thresholds, calibration, old splits, and old release/staging state are historical evidence.
 
-If the two sources disagree, that disagreement is itself a finding.
-Stop, document it, and do not proceed until the discrepancy is resolved.
+A future repaired checkpoint must receive new lineage bound to:
 
-### Layer 3 — Completion Attestation (write before session ends)
+- exact DATA vNext artifact/policy/roles;
+- training config/seed/initialization;
+- numeric strong/weak optimization behavior;
+- checkpoint SHA;
+- checkpoint-selection evidence and limitations;
+- any later separately authorized threshold/calibration evidence.
 
-At the end of any multi-step procedure, produce a structured attestation
-and append it to the relevant doc (audit file, run analysis, or MEMORY.md).
-Do not consider a procedure finished until the attestation is written.
+Do not automatically reuse Run12 decision artifacts because output dimensions match.
 
-```
-## Procedure Attestation — <procedure name> — <ISO date>
-Steps completed:   [list each step with PASS / FAIL / UNVERIFIED]
-Steps skipped:     [list any skipped steps and explicit reason]
-Unverified items:  [list anything marked UNVERIFIED]
-New findings:      [link to doc entry, or "none"]
-Written to:        [path of this attestation file]
-```
+## Rule 4 — Read before claiming
 
-A skipped step with no documented reason is treated as a gap.
+Never assert a value/state/result from memory when the source exists.
 
----
+For every important claim, identify its source:
 
-## Rule 3 — No Floating Findings
+- schema constants → canonical source;
+- DATA semantics/roles → R4 machine artifacts;
+- checkpoint/runtime path → current config/source/artifact lineage;
+- current phase/gate → R4 status matrix/current status;
+- metric result → exact run/report/artifact;
+- protocol behavior → executable source/tests.
 
-Any finding, decision, anomaly, or open question discovered during a procedure
-must be written to a named persistent file immediately — not at the end of the
-session, not kept only in the conversation.
+If evidence is absent or ambiguous, record `UNVERIFIED`/unsupported rather than estimating or reconstructing a convenient answer.
 
-- New bug or failure mode → append to current audit doc (path in `MEMORY.md`)
-- Architecture or data decision → create or append to relevant ADR
-- Open question with no immediate answer → append to `## Open Questions` in the relevant doc
-- Plan or intent agreed in conversation → write to the relevant spec or doc now
+## Rule 5 — Validate the validation
 
-A finding that exists only in the conversation is considered lost.
+Every decision-driving procedure needs three layers:
 
----
+### Layer 1 — explicit result
 
-## Rule 4 — Procedures Are Not Knowledge
+Write PASS / FAIL / UNVERIFIED (or a domain-specific explicit state) with exact artifact/commit/config/role identity.
 
-Spec files contain *how to check* — not *what the answer is*.
+### Layer 2 — independent cross-check
 
-- Never update a spec file to record a metric, value, or result
-- Never add hardcoded run names, version numbers, or checkpoint paths to a spec file
-- If you find yourself adding a specific value to a spec file, stop —
-  that value belongs in `MEMORY.md`, a run analysis doc, or a config file
-- Spec files must remain valid for future runs, future schema versions,
-  and future checkpoints without modification
+Cross-check decision-driving counts/metrics/hashes using independent sources where possible. Disagreement is a finding, not something to average away.
 
----
+### Layer 3 — completion record
 
-## Applying These Rules
+Persist the procedure result, skipped steps, limitations, new findings, and output artifact identities before closing the task.
 
-Before starting any procedure from any spec file in this folder:
+A skipped step without reason is a gap.
 
-1. Confirm you have read `00_rules.md` in the current session
-2. Read the relevant source files listed in Rule 1 for this task
-3. Begin the procedure
-4. Apply Layer 1 gate assertions at each verification step
-5. Apply Layer 2 cross-checks on any metric that drives a decision
-6. Write the Layer 3 attestation before the session ends or the task closes
+## Rule 6 — No floating findings
+
+Consequential findings/decisions must move from conversation into the appropriate durable place:
+
+- source bug → issue/finding/test;
+- DATA/ML semantic decision → R4 ADR/decision/register;
+- run result → versioned run/evaluation report;
+- unsupported evidence → risk/blocker/status;
+- current-state change → canonical current status.
+
+Do not create new governance artifacts merely for ceremony; use the existing controlling record where one exists.
+
+## Rule 7 — Procedures are not knowledge
+
+A procedure describes **how to check**. It does not permanently define the answer.
+
+Avoid hardcoding transient run names, thresholds, checkpoint paths, or current metric totals into reusable specs unless the file is explicitly versioned as historical for that run.
+
+Current answers belong in source/config/artifact/run reports/current status, not in generic procedure rules.
+
+## Rule 8 — Separate implementation checks from evidence authority
+
+A test can prove that code behaves as written. It cannot by itself prove that:
+
+- labels are ground truth;
+- a threshold/calibration corpus is valid;
+- a checkpoint is promotion-ready;
+- an on-chain record is a vulnerability label;
+- a ZK proof covers upstream teacher/source/AGENTS execution.
+
+Always state whether an output is an implementation test, data/evidence validation, model-quality evaluation, protocol proof, or release/promotion decision.
+
+## Rule 9 — Current phase sequencing
+
+Stable `main` is through R4 G6. Phase 7 must finish local representation binding/G7 before Phase 8 retraining.
+
+Do not use this spec suite to bypass an R4 gate because the next-stage code/script already exists.
+
+## Before using any spec
+
+1. Read this file.
+2. Read current status and the relevant R4 machine artifacts.
+3. Identify which assumptions in the selected spec are historical versus still valid.
+4. Bind exact commit/DATA/checkpoint/config/role identities.
+5. Run the procedure without weakening failure/evidence gates.
+6. Persist PASS/FAIL/UNVERIFIED plus limitations and artifact hashes.
+
+If a procedure cannot be made compatible with current R4 evidence without inventing data or authority, stop and record that limitation instead of forcing it to pass.
