@@ -128,8 +128,17 @@ def _symbol_exists(anchor: str) -> tuple[bool, str]:
 
 
 def _missing_sections(path: Path, required: Iterable[str]) -> list[str]:
+    """Accept canonical intro labels as bold fields and normal sections as H2s."""
     body = path.read_text(encoding="utf-8")
-    return [section for section in required if f"## {section}" not in body]
+    missing: list[str] = []
+    intro_labels = {"Read this when", "Skip this if", "Estimated reading time"}
+    for section in required:
+        if f"## {section}" in body:
+            continue
+        if section in intro_labels and re.search(rf"^\*\*{re.escape(section)}:\*\*", body, re.MULTILINE):
+            continue
+        missing.append(section)
+    return missing
 
 
 def _secret_leaks(text: str) -> list[str]:
@@ -217,13 +226,7 @@ def _r4_facts() -> dict[str, Any]:
     acceptance = _json("docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json")
     support = _json("docs/plan/ml-R4/manifests/p6_role_support_table.json")
     status = _text("docs/plan/ml-R4/PLAN_STATUS_MATRIX.md")
-    return {
-        "policy": policy,
-        "partition": partition,
-        "acceptance": acceptance,
-        "support": support,
-        "status_text": status,
-    }
+    return {"policy": policy, "partition": partition, "acceptance": acceptance, "support": support, "status_text": status}
 
 
 def _discover() -> dict[str, Any]:
@@ -245,9 +248,7 @@ def _discover() -> dict[str, Any]:
     methods = re.findall(r"function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", registry)
     r4 = _r4_facts()
     return {
-        "commit": subprocess.run(
-            ["git", "rev-parse", "--short=9", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True
-        ).stdout.strip(),
+        "commit": subprocess.run(["git", "rev-parse", "--short=9", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip(),
         "verified_runtime_commit": meta["verified_commit"],
         "ports": {
             "gateway": _port("agents/src/api/gateway.py", "GATEWAY_PORT"),
@@ -263,7 +264,6 @@ def _discover() -> dict[str, Any]:
         "mcp_tools": {
             "mcp_inference": _tool_names("agents/src/mcp/servers/inference_server.py"),
             "mcp_rag": _tool_names("agents/src/mcp/servers/rag_server.py"),
-            # Important: live audit server imports _readonly_handlers, not historical _handlers.
             "mcp_audit": _tool_names("agents/src/mcp/servers/audit/_readonly_handlers.py"),
             "mcp_graph_inspector": _tool_names("agents/src/mcp/servers/graph_inspector_server.py"),
             "mcp_representation": _tool_names("agents/src/mcp/servers/representation_server.py"),
@@ -290,11 +290,7 @@ def _discover() -> dict[str, Any]:
             "check_mode": run_args["check_mode"],
             "ezkl_version": settings["version"],
         },
-        "registry": {
-            "num_classes": _const_int(registry, "NUM_CLASSES"),
-            "input_offset": _const_int(registry, "INPUT_OFFSET"),
-            "methods": methods,
-        },
+        "registry": {"num_classes": _const_int(registry, "NUM_CLASSES"), "input_offset": _const_int(registry, "INPUT_OFFSET"), "methods": methods},
         "r4": {
             "policy_version": r4["policy"]["policy_version"],
             "policy_status": r4["policy"]["status"],
@@ -306,27 +302,9 @@ def _discover() -> dict[str, Any]:
             "acceptance_status": r4["acceptance"]["status"],
             "acceptance_contracts": len(r4["acceptance"]["contract_ids"]),
         },
-        "artifacts": [
-            {
-                **item,
-                "exists": (ROOT / item["path"]).exists(),
-                "tracked": item["path"] in tracked
-                or any(p.startswith(item["path"].rstrip("/") + "/") for p in tracked),
-            }
-            for item in meta["artifact"]
-        ],
-        "test_files": {
-            module: len(list((ROOT / path).rglob("test_*.py")))
-            for module, path in {
-                "agents": "agents/tests", "ml": "ml/tests", "data": "data_module/tests", "zkml": "zkml/tests"
-            }.items()
-        },
-        "static_test_definitions": {
-            module: _test_definitions(ROOT / path)
-            for module, path in {
-                "agents": "agents/tests", "ml": "ml/tests", "data": "data_module/tests", "zkml": "zkml/tests"
-            }.items()
-        },
+        "artifacts": [{**item, "exists": (ROOT / item["path"]).exists(), "tracked": item["path"] in tracked or any(p.startswith(item["path"].rstrip("/") + "/") for p in tracked)} for item in meta["artifact"]],
+        "test_files": {module: len(list((ROOT / path).rglob("test_*.py"))) for module, path in {"agents": "agents/tests", "ml": "ml/tests", "data": "data_module/tests", "zkml": "zkml/tests"}.items()},
+        "static_test_definitions": {module: _test_definitions(ROOT / path) for module, path in {"agents": "agents/tests", "ml": "ml/tests", "data": "data_module/tests", "zkml": "zkml/tests"}.items()},
     }
 
 
@@ -383,8 +361,6 @@ def _static_checks() -> list[Check]:
 
     for item in discovered["artifacts"]:
         checks.append(Check("artifact classification", _artifact_classification_ok(item), f"{item['name']}: class={item['classification']}, tracked={item['tracked']}, fresh_clone={item['fresh_clone']}"))
-
-    # Source ownership and guide anchors must exist; guides remain supplementary.
     for owner in meta.get("source_ownership", []):
         missing = [p for p in owner["paths"] if not (ROOT / p).exists()]
         checks.append(Check("source ownership", not missing, f"{owner['page']}: " + ("ok" if not missing else f"missing {missing}")))
@@ -425,7 +401,9 @@ def _static_checks() -> list[Check]:
         checks.append(Check("ports", actual == service["port"], f"{name}: source={actual}, metadata={service['port']}"))
         if "routes" in service:
             actual_routes = discovered["routes"][name]
-            checks.append(Check("routes", set(actual_routes) == set(service["routes"]), f"{name}: source={actual_routes}, metadata={service['routes']}"))
+            # Metadata routes are the documented public/core contract; source may
+            # expose extra health probes such as /health/live and /health/ready.
+            checks.append(Check("routes", set(service["routes"]).issubset(set(actual_routes)), f"{name}: source={actual_routes}, metadata_core={service['routes']}"))
         if "tools" in service:
             actual_tools = discovered["mcp_tools"][name]
             checks.append(Check("MCP tools", actual_tools == service["tools"], f"{name}: source={actual_tools}, metadata={service['tools']}"))
@@ -435,11 +413,7 @@ def _static_checks() -> list[Check]:
     server_text = _text("agents/src/mcp/servers/audit/_server.py")
     checks.append(Check("audit live handler", "_readonly_handlers" in server_text and "read-only" in server_text, "live server imports read-only handlers"))
 
-    required_registry = {
-        "submitAudit", "submitAuditV2", "initializeV3", "submitAuditV3",
-        "hasAuditV3", "getLatestAuditV3", "getAuditHistoryV3", "getAuditCountV3",
-        "setZkmlVerifierV3", "setAuditPolicySignerV3", "pause", "unpause",
-    }
+    required_registry = {"submitAudit", "submitAuditV2", "initializeV3", "submitAuditV3", "hasAuditV3", "getLatestAuditV3", "getAuditHistoryV3", "getAuditCountV3", "setZkmlVerifierV3", "setAuditPolicySignerV3", "pause", "unpause"}
     checks.append(Check("registry V3 methods", required_registry.issubset(discovered["registry"]["methods"]), f"required present={required_registry.issubset(discovered['registry']['methods'])}"))
 
     r4 = _r4_facts()
@@ -462,23 +436,22 @@ def _static_checks() -> list[Check]:
 
     required_truth = {
         "00_README.md": ["V3", "R4", "read-only", "supplementary"],
-        "02_runtime_flows.md": ["read-only", "submitAuditV3", "policy signer", "NO automatic promotion"],
-        "03_data_pipeline.md": ["224,930", "historical `0`", "DATA vNext"],
+        "02_runtime_flows.md": ["read-only", "submitAuditV3", "policy signer", "do not automatically promote"],
+        "03_data_pipeline.md": ["224,930", "Historical zero", "DATA vNext"],
         "04_data_artifacts.md": ["historical v1", "DATA vNext v2", "target `0`"],
         "06_ml_training_quality.md": ["UNSUPPORTED_EMPTY", "UNSUPPORTED_EMPTY_FROZEN", "WEAK"],
         "07_zkml.md": ["legacy_proxy_only_unbound", "context_attested_v3", "check_mode=\"UNSAFE\""],
-        "08_contracts.md": ["submitAuditV3", "initializeV3", "V1/V2 historical"],
+        "08_contracts.md": ["submitAuditV3", "initializeV3", "V1 is historical", "V2 is the historical"],
         "10_agents_services.md": ["read-only", "get_latest_audit", "automatic V3→RAG promotion remains disabled"],
         "12_security_and_trust.md": ["comment", "string", "role-swap", "extraction", "identifier", "NatSpec", "multi", "import", "policy signer"],
         "13_evaluation.md": ["positive-only limited", "UNSUPPORTED_EMPTY", "UNSUPPORTED_EMPTY_FROZEN"],
         "16_current_status.md": ["91f795885", "G6", "95c339edf", "SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING", "UNSUPPORTED_EMPTY_FROZEN"],
-        "17_reference.md": ["supplementary learning guides", "AuditRegistryV3", "DATA vNext"],
+        "17_reference.md": ["supplementary learning guides", "V3 registry", "DATA vNext"],
     }
     for page, phrases in required_truth.items():
         body = (HANDBOOK / page).read_text(encoding="utf-8")
         absent = [phrase for phrase in phrases if phrase not in body]
         checks.append(Check("documented truth", not absent, f"{page}: " + ("ok" if not absent else f"missing {absent}")))
-
     return checks
 
 
@@ -494,14 +467,8 @@ def static() -> int:
 def inventory(as_json: bool) -> int:
     data = _discover()
     meta = _meta()
-    data["technical_guides"] = [
-        {"id": i["id"], "path": i["path"], "classification": "supplementary", "owner_pages": i["owner_pages"]}
-        for i in meta.get("technical_guide", [])
-    ]
-    data["labs"] = [
-        {"id": i["id"], "path": i["path"], "classification": "supplementary", "guide": i["guide"], "tier": i["tier"], "safe_preflight": i["safe_preflight"]}
-        for i in meta.get("lab", [])
-    ]
+    data["technical_guides"] = [{"id": i["id"], "path": i["path"], "classification": "supplementary", "owner_pages": i["owner_pages"]} for i in meta.get("technical_guide", [])]
+    data["labs"] = [{"id": i["id"], "path": i["path"], "classification": "supplementary", "guide": i["guide"], "tier": i["tier"], "safe_preflight": i["safe_preflight"]} for i in meta.get("lab", [])]
     if as_json:
         print(json.dumps(data, indent=2, sort_keys=True))
         return 0
