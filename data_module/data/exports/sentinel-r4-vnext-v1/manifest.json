@@ -6,9 +6,9 @@
       "sha256": "a384720d47d0ce823c7ef7518921974dd0f396c11144fb0fd865159349de8395"
     },
     "evidence_snapshot": {
-      "bytes": 1568,
+      "bytes": 1302,
       "path": "evidence_snapshot.json",
-      "sha256": "fe34eceffdaccf673b19cde6b570cd1cb5b7fe637e41cdd0b1c66539ee9a05cc"
+      "sha256": "bf7761b42701501c5c256729da149526005dbc6c10dfc6beac0b4db70245bd66"
     },
     "label_states": {
       "bytes": 1900672,
@@ -45,37 +45,37 @@
   ],
   "dataset_version": "sentinel-r4-vnext-v1",
   "export_schema_version": "v2",
-  "generation_commit": "20776a37a43b0c7cf847a0b8dc774723ab32563e",
+  "generation_commit": "ff936bfaddf2ff7fe23285d43fd780a1f1794660",
   "graph_schema_version": "v9",
   "historical_artifacts_mutated": false,
   "inputs": {
     "contract_roles": {
-      "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/manifests/p6_contract_role_manifest.jsonl",
+      "path": "docs/plan/ml-R4/manifests/p6_contract_role_manifest.jsonl",
       "sha256": "def09010aafb1681c9866dd346de58409c89473b65d03c6c3adea69b75237174"
     },
     "label_schema": {
-      "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/schemas/data_vnext_label_state_v1.schema.json",
+      "path": "docs/plan/ml-R4/schemas/data_vnext_label_state_v1.schema.json",
       "sha256": "14e414a568f090891cb39b4a9a16b3c710d9d69e2279aace50c310aece98959b"
     },
     "ledger": {
-      "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet",
+      "path": "docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet",
       "sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7"
     },
     "partition_manifest": {
-      "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/manifests/p6_partition_manifest.json",
+      "path": "docs/plan/ml-R4/manifests/p6_partition_manifest.json",
       "sha256": "f3b9727f5e74e007c0833ccd9001d80d82976894c8365a75b7fb9b63ce12c21d"
     },
     "policy": {
-      "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/specs/data_vnext_policy_v1.json",
+      "path": "docs/plan/ml-R4/specs/data_vnext_policy_v1.json",
       "sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094"
     },
     "schema": "sentinel-data-vnext-evidence-snapshot-v1",
     "unsupported_roles": {
-      "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/manifests/p6_unsupported_roles.json",
+      "path": "docs/plan/ml-R4/manifests/p6_unsupported_roles.json",
       "sha256": "23c6206736aa4c04ca947a24c551f73e0a722c1acf8fe816a3b37a66273127f0"
     },
     "untouched_acceptance": {
-      "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json",
+      "path": "docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json",
       "sha256": "499b78e2c59fac8e56362d8ca240e37fb0cda0b12e98e4a2433aeb291ed48318"
     }
   },
