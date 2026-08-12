@@ -45,6 +45,12 @@
   ],
   "dataset_version": "sentinel-r4-vnext-v1",
   "export_schema_version": "v2",
+  "g7_validation_report": {
+    "bytes": 822,
+    "path": "g7_validation_report.json",
+    "sha256": "9bfd5abca187d9eb8a966e5e914e7203f9c2f70102f899936c46c23ae9aa0d21",
+    "status": "VALIDATED_G7"
+  },
   "generation_commit": "ff936bfaddf2ff7fe23285d43fd780a1f1794660",
   "graph_schema_version": "v9",
   "historical_artifacts_mutated": false,
@@ -85,7 +91,14 @@
     "excluded_contracts": 836,
     "representation_required_contracts": 21657
   },
-  "representation_binding_report": null,
+  "representation_binding_report": {
+    "binding_digest_sha256": "7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420",
+    "bytes": 873,
+    "path": "representation_binding_report.json",
+    "required_contracts": 21657,
+    "sha256": "d5bba3b037a0f443c5764bfb4be17da35a3e44201d97f0f671298b9fbf4dc33d",
+    "status": "VALIDATED_LOCAL_G7"
+  },
   "role_contract_counts": {
     "EXCLUDED": 836,
     "INTERNAL_AUDIT": 62,
@@ -114,7 +127,7 @@
     "sha256": "f2ebc067fff50d23bd72fdf091d78922bcdef928dab93d243ce3c0a58e54ec5d",
     "status": "VALIDATED_SEMANTICS"
   },
-  "status": "SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING",
+  "status": "VALIDATED_G7_CANDIDATE",
   "unsupported_roles": {
     "CALIBRATION_FIT": "UNSUPPORTED_EMPTY",
     "THRESHOLD_FIT": "UNSUPPORTED_EMPTY",

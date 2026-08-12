@@ -1,0 +1,36 @@
+{
+  "contract_class_rows": 224930,
+  "contracts": 22493,
+  "effective_loss_cells": 852,
+  "errors": [],
+  "excluded_contracts": 836,
+  "outcome_metric_cells": 118,
+  "passed": true,
+  "require_representation_binding": true,
+  "role_contract_counts": {
+    "EXCLUDED": 836,
+    "INTERNAL_AUDIT": 62,
+    "MODEL_SELECTION": 56,
+    "TRAIN_STRONG": 275,
+    "TRAIN_UNLABELED": 20491,
+    "TRAIN_WEAK": 773
+  },
+  "schema": "sentinel-data-vnext-validation-report-v1",
+  "strong_rows_by_source": {
+    "smartbugs_curated": 120,
+    "solidifi": 283
+  },
+  "target_counts": {
+    "1": 1007,
+    "None": 223923
+  },
+  "training_strength_counts": {
+    "NONE": 223923,
+    "STRONG": 403,
+    "WEAK": 604
+  },
+  "unique_contract_class_keys": 224930,
+  "weak_rows_by_source_class": {
+    "dive:TransactionOrderDependence": 604
+  }
+}
