@@ -11,7 +11,6 @@ from typing import Any
 from .policy import (
     CLASS_NAMES,
     crosswalk_action,
-    effective_loss_mask,
     role_eligibility_for_row,
     semantic_decision,
     source_claim_state,
@@ -58,9 +57,20 @@ def _require_pyarrow():
     return pa, pq
 
 
-def _source_claim(row: dict[str, Any]) -> dict[str, Any]:
+def _policy_evidence_basis(row: dict[str, Any], policy: dict[str, Any]) -> list[str]:
+    source = str(row.get("primary_source") or "")
+    source_cfg = (policy.get("sources") or {}).get(source) or {}
+    return [str(x) for x in (source_cfg.get("evidence_basis") or [])]
+
+
+def _evidence_ids(row: dict[str, Any], policy: dict[str, Any]) -> list[str]:
+    return sorted(set(
+        [*(str(x) for x in (row.get("evidence_ids") or [])), *_policy_evidence_basis(row, policy)]
+    ))
+
+
+def _source_claim(row: dict[str, Any], policy: dict[str, Any]) -> dict[str, Any]:
     action, mapped = crosswalk_action(row)
-    evidence_ids = sorted(set(str(x) for x in (row.get("evidence_ids") or [])))
     limitations = sorted(set(str(x) for x in (row.get("limitations") or [])))
     return {
         "source": str(row["primary_source"]),
@@ -69,7 +79,7 @@ def _source_claim(row: dict[str, Any]) -> dict[str, Any]:
         "source_native_label": row.get("source_native_label"),
         "crosswalk_action": action,
         "mapped_class_name": mapped,
-        "evidence_ids": evidence_ids,
+        "evidence_ids": _evidence_ids(row, policy),
         "limitations": limitations,
     }
 
@@ -80,7 +90,7 @@ def _label_state_row(
     role: str,
 ) -> dict[str, Any]:
     decision = semantic_decision(row, policy, role)
-    evidence_ids = sorted(set(str(x) for x in (row.get("evidence_ids") or [])))
+    evidence_ids = _evidence_ids(row, policy)
     if decision.outcome_state == "CONFIRMED_POSITIVE" and not evidence_ids:
         raise ValueError(f"confirmed positive lacks evidence_ids: {row['contract_id']} {row['class_name']}")
 
@@ -94,7 +104,7 @@ def _label_state_row(
         "class_index": int(row["class_index"]),
         "class_name": str(row["class_name"]),
         "historical_state": str(row["historical_state"]),
-        "source_claims": [_source_claim(row)],
+        "source_claims": [_source_claim(row, policy)],
         "outcome_state": decision.outcome_state,
         "target_value": decision.target_value,
         "training_signal": decision.training_signal,
@@ -254,8 +264,6 @@ def build_vnext_overlay(
     representation_requirements_path = output_dir / "representation_requirements.json"
     manifest_path = output_dir / "manifest.json"
 
-    # Stable row order is fixed above.  Pin compression/options in CI for byte
-    # reproducibility under the pinned pyarrow version.
     pq.write_table(pa.Table.from_pylist(semantic_rows), label_states_path, compression="zstd")
     pq.write_table(pa.Table.from_pylist(ml_rows), ml_targets_path, compression="zstd")
 
@@ -367,6 +375,7 @@ def build_vnext_overlay(
         },
         "inputs": evidence_snapshot,
         "artifacts": artifacts,
+        "semantic_validation_report": None,
         "representation_binding_report": None,
         "historical_artifacts_mutated": False,
     }
