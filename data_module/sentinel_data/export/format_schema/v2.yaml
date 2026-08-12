@@ -28,6 +28,7 @@ directory_layout:
   representation_requirements: "representation_requirements.json"
   validation_report: "validation_report.json"
   representation_binding_report: "representation_binding_report.json"
+  g7_validation_report: "g7_validation_report.json"
 
 population:
   contracts: 22493
@@ -136,25 +137,34 @@ representation_binding:
   local_g7_required: true
 
 manifest:
-  status_before_local_binding: "SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING"
-  status_after_local_binding: "VALIDATED_G7_CANDIDATE"
+  status_after_semantic_validation: "SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING"
+  status_after_physical_scan_binding: "REPRESENTATIONS_VALIDATED_G7_PENDING_FINAL"
+  status_after_final_representation_bound_validation: "VALIDATED_G7_CANDIDATE"
   binds:
     - Phase-3 ledger SHA-256
     - Phase-5 policy/schema SHA-256
     - Phase-6 partition/role/unsupported/acceptance SHA-256
     - generated semantic artifact SHA-256 and sizes
     - semantic validation report SHA-256
-    - local representation-binding report SHA-256 after final gate
+    - local representation-binding report SHA-256
+    - final representation-bound G7 validation report SHA-256
   historical_artifacts_mutated: false
 
 publication:
   deterministic: true
+  transactional_local_promotion: true
+  failure_rule: >-
+    A failed final representation-bound validation or publication-binding check
+    restores the original semantic-only manifest. Physical failure reports may
+    remain for diagnosis, but the manifest is not promoted.
   build_order:
     - validate frozen inputs
     - write semantic artifacts to a clean staging/output directory
     - validate generated semantics and hashes
     - publish semantic validation report
     - local physical representation verification
-    - bind successful representation report into manifest
-    - run final G7 validation
+    - bind successful representation report into intermediate manifest state
+    - run final representation-bound G7 validation
+    - bind final G7 validation report and promote manifest to candidate
+    - verify all publication bindings
   overwrite_historical_export: false
