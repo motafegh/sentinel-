@@ -1,150 +1,264 @@
 # 16 — Current status and gap ledger
 
-**Read this when:** you need to know what is passing, failing, local-only, degraded, or disconnected today.
+**Read this when:** you need to know what is canonical, verified, pending, unsupported, historical, or local-only today.
 
-**Skip this if:** never; every learning path should end here before operational decisions.
+**Skip this if:** never before operational, training, evaluation, or production-readiness decisions.
 
-**Estimated reading time:** 8 minutes.
+**Estimated reading time:** 10 minutes.
 
 ## 30-second summary
 
-This page is the only canonical home for volatile test counts. The baseline below was measured on 2026-07-13 at commit `ac78c057b`. Several suites have real failures, some required artifacts are not available in a fresh clone, and the off-chain gateway flow is not connected to the MCP ZK/on-chain submission flow. Those facts are documentation targets, not defects fixed by D1.
+The stable source/runtime baseline for this handbook reconciliation is `main` merge **`91f795885`** (2026-08-12): R4 DATA/ML repair has passed **G0 through G6**, the V3 registry/context protocol and read-only audit-MCP boundary are implemented, and Run12 remains the historical operational teacher. Phase 7 DATA vNext implementation is active on `r4/phase7-data-vnext-implementation`; its remote semantic build/validation is green, but **G7 remains pending local physical binding of 21,657 representations**. No repaired teacher has been retrained/promoted yet.
+
+This page intentionally does **not** carry the old July module-suite totals. They were measured against an obsolete source/architecture baseline and are now historical evidence only. New volatile suite totals should be added only when they are rerun against a named current commit/environment.
 
 ## Just-enough mental model
 
-“Implemented” means executable code exists. “Verified” means the named check passed at the bound commit. “Available in a fresh clone” means Git supplies the artifact. “Live-ready” additionally requires external dependencies, secrets, services, or chain state. These labels are deliberately separate.
+```text
+canonical main (91f795885)
+  R4 G0–G6 PASS
+  V3 registry/read-only observation boundaries
+  Run12 historical inference baseline
+        ↓
+Phase 7 branch
+  deterministic DATA vNext v2 semantic overlay
+  remote semantic checks PASS
+  local representation binding PENDING
+        ↓
+G7
+        ↓
+Phase 8 retrain existing architecture
+        ↓
+Phase 9 evaluation/policy
+        ↓
+Phase 10 promotion/rollback
+```
+
+Three current limitations are deliberate, not hidden TODOs:
+
+```text
+confirmed-negative support: absent in policy v1
+threshold/calibration fitting: unsupported/empty
+untouched acceptance: unsupported/empty/frozen
+```
 
 ## Actual runtime/source walkthrough
 
-The baseline was captured by invoking each module’s native suite with WSL-safe temporary variables:
+### Canonical R4 gate state
 
-| Module | Result | Interpretation |
-|---|---:|---|
-| AGENTS | 631 passed, 3 failed | implemented; module suite not green |
-| ML | 198 passed, 19 failed | implemented; module suite not green |
-| DATA | 569 passed, 9 failed, 47 skipped | implemented; module suite not green and optional coverage skipped |
-| ZKML | 37 passed | suite green in the measured environment |
-| Contracts | 66 passed | current-checkout Foundry suite green; includes ignored local V2 coverage |
+| Phase | State | Meaning |
+|---:|---|---|
+| 0 | G0 PASS | historical baseline/evidence locations frozen |
+| 1 | G1 PASS | prior evidence recovered |
+| 2 | G2 PASS | label-corruption mechanisms reconstructed |
+| 3 | G3 PASS | 22,493×10 evidence ledger materialized/validated |
+| 4 | G4 PASS | decision-critical DIVE source authority adjudicated |
+| 5 | G5 PASS | DATA vNext policy/schema/ADRs accepted |
+| 6 | G6 PASS | leakage-safe roles frozen; acceptance support explicitly bounded |
+| 7 | pending G7 | implementation branch exists; local physical representation binding still required |
+| 8–10 | waiting | retraining/evaluation/promotion not authorized until preceding gates |
 
-The failing AGENTS cases are mock-audit tests. D1 does not reinterpret or suppress them. Consult raw test output when repairing the product; do not lower documentation validation to hide product failures.
+### R4 DATA foundation
 
-### D1 v3 documentation implementation verification
+Canonical evidence/policy facts on `main`:
 
-The documentation-only v3 worktree was checked on the same 2026-07-13 source commit:
+- contracts: **22,493**;
+- contract×class ledger rows: **224,930**;
+- represented historical contracts: **21,657**;
+- incomplete-representation contracts: **836**;
+- historical-zero rows remain unresolved/unknown rather than confirmed negative;
+- ten-class order remains locked/v9-compatible;
+- GasException and UnusedReturn are supervision-disabled pending evidence;
+- DIVE Front Running→TransactionOrderDependence is weak-positive only;
+- no blanket confirmed-negative source exists.
 
-| Check | Result | Meaning |
-|---|---:|---|
-| Handbook static contract | 285 passed | chapters, guides, labs, links, symbols, 429 active production source files, secrets, ownership, artifacts, and critical facts agree |
-| Validator unit tests | 10 passed | broken-link, missing-symbol/section, secret, volatile-count, and artifact-classification checks behave as intended |
-| Safe lab preflights | 7 passed | every lab marked safe has tracked source/test prerequisites |
-| Focused DATA command | 34 passed | documented CLI/representation command is executable |
-| Focused ZKML command | 21 passed | documented proxy/layout/endian command is executable |
-| Focused AGENTS command | 119 passed | documented fusion/routing/service/gateway/security command is executable |
-| Focused tracked registry command | 15 passed | documented `AuditRegistry.t.sol` command is executable without relying on ignored V2 test |
-| Focused ML model/predictor/API command | 43 passed, 1 failed | command is executable; `test_forward_return_aux_shapes` expects three auxiliary keys while current source returns the additional `phase2` head |
-| L02 dataset-seam command | 16 passed | local export, schema/hash gates, shard loading, and collate command is executable |
-| L04 trainer/predictor/promotion command | 23 passed, 2 failed | promotion tests expect generated behavioral-probe JSON that their current fixture does not create |
+Key lineage roots include the Phase-3 evidence ledger SHA-256:
 
-The focused ML failures are product-test/source or fixture expectation mismatches already inside the non-green ML baseline. D1 v3 records them and does not alter model or test behavior.
+`3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7`
 
-The live availability probe at documentation finalization found ML on port 8001 healthy and Anvil on 8545 reachable. Gateway 8000 and all five MCP health endpoints on 8010–8014 refused connections because those services were not running. The live command therefore failed as designed; it did not convert absent services into skipped or passing checks.
+and accepted machine policy `data-vnext-policy-v1`.
+
+### Frozen Phase-6 roles
+
+`r4-vnext-roles-v1` assigns every active contract/leakage group exactly once:
+
+| Role | Groups | Contracts | Current authority |
+|---|---:|---:|---|
+| TRAIN_STRONG | 238 | 275 | strong-positive training |
+| MODEL_SELECTION | 51 | 56 | positive-only limited diagnostics |
+| INTERNAL_AUDIT | 51 | 62 | internal strong-positive audit |
+| TRAIN_WEAK | 465 | 773 | DIVE TOD weak-positive only |
+| TRAIN_UNLABELED | 11,869 | 20,491 | represented, no authorized target |
+| EXCLUDED | 835 | 836 | incomplete representation group |
+
+Unsupported/frozen roles:
+
+- `THRESHOLD_FIT = UNSUPPORTED_EMPTY`
+- `CALIBRATION_FIT = UNSUPPORTED_EMPTY`
+- `UNTOUCHED_ACCEPTANCE = UNSUPPORTED_EMPTY_FROZEN`
+
+No confirmed-negative row is synthesized to fill these roles.
+
+### Phase 7 candidate state
+
+Branch: `r4/phase7-data-vnext-implementation`  
+Latest documentation-audit-visible branch head: **`95c339edf`**.
+
+Remote Phase-7 work has produced an additive v2 semantic implementation under `data_module/sentinel_data/vnext` plus a deterministic semantic overlay. Remote checks establish:
+
+- vNext unit/compile checks pass;
+- full 224,930-row semantic build is byte-deterministic under the pinned CI toolchain;
+- committed semantic overlay validates independently;
+- generated target count is 1,007 positive targets, **0 negative targets**;
+- 403 strong and 604 weak training signals reconcile with frozen evidence/roles;
+- manifest state is `SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING`;
+- v2 loader rejects silent historical-v1 fallback.
+
+G7 is **not** passed yet. The required local gate must verify the existing physical representation root for all 21,657 required contracts: graph + tokens + sidecar = **64,971 physical files**. Only a successful representation-bound final validator may promote the Phase-7 manifest to a G7 candidate for PR/merge.
+
+### Current ML state
+
+Run12 remains the historical operational checkpoint and comparison baseline. It was trained using the pre-R4 binary target semantics. Therefore:
+
+- current Run12 inference remains usable for runtime continuity/historical comparison;
+- Run12 weights are not the repaired DATA-vNext model;
+- Run12 thresholds/calibration are historical companions and are not valid defaults for a future retrain;
+- no Phase-8 repaired teacher checkpoint exists yet.
+
+Architecture remains frozen through the initial repaired retrain so R4 can measure the effect of data/label repair before redesigning the model.
+
+### Current V3 / chain state
+
+`AuditRegistry` now contains V1/V2 historical compatibility plus the V3 context-attested protocol.
+
+V3:
+
+- appends storage safely;
+- `initializeV3` configures V3 verifier/policy signer and disables new legacy V1/V2 writes;
+- binds target runtime bytecode and agent/round/model/proxy/DATA/schema/proof/signal/score/deadline identities through EIP-712;
+- rejects replayed request digests;
+- verifies configured policy signer and retained proxy proof;
+- preserves V1/V2/V3 reads/history.
+
+The retained proof still proves only the proxy computation. `check_mode="UNSAFE"` remains an explicit production-assurance limitation.
+
+### Current audit MCP / feedback state
+
+Live audit MCP :8012 is **read-only** and exposes exactly:
+
+- `get_latest_audit`
+- `get_audit_history`
+- `check_audit_exists`
+
+It observes V1/V2/V3 history. Historical mutable submission code is not exposed by the live analysis service.
+
+V3 feedback observation is implemented with an explicit policy boundary. Current V3 promotion policy is intentionally unavailable, so V3 observations may be durably pending but do not automatically enter RAG/DATA truth.
 
 ## Interfaces, data shapes, and configuration
 
-### Environment note
+### Current authority hierarchy
 
-On this WSL/Desktop setup, inherited `TMP`, `TEMP`, or `TMPDIR` values can point pytest at a Windows temporary directory and cause capture failures unrelated to the test target. Prefix pytest commands with:
+1. executable source and committed machine-readable policy/manifests;
+2. this canonical handbook/current-status page;
+3. active R4 plans/ADRs/registers for DATA/ML work;
+4. supplementary technical guides/labs for mechanics;
+5. historical plans/reports/learning files for context only.
 
-```bash
-export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
-```
+### Fresh-clone / local-only distinction
 
-### Availability ledger
+Tracked in Git:
 
-| Item | State at baseline |
-|---|---|
-| Source, configs, proxy model, compiled circuit, verification key | tracked |
-| Run 12 teacher checkpoint and its `.dvc` pointers | present locally; ignored/untracked in this checkout |
-| DATA exports and splits | present locally; ignored/untracked |
-| EZKL proving key and SRS | ignored/private prerequisites |
-| RAG indexes, gateway DB, LangGraph checkpoint DB, inference caches | regenerated/local runtime state |
-| `contracts/test/AuditRegistryV2.t.sol` | local but ignored by root `test` rule; absent from fresh-clone coverage |
+- source/config/tests;
+- R4 evidence ledger/policy/schema/role manifests and reports;
+- contract V3 tests;
+- retained proxy/ONNX/settings/compiled/VK/verifier artifacts where already tracked.
 
-The 66-test result was measured from this working checkout, where Foundry discovers the ignored `AuditRegistryV2.t.sol` file and its 14 tests. A fresh clone does not contain that file, so 66 must not be presented as reproducible fresh-clone contract coverage until the file/ignore rule is fixed.
+Potentially local/protected/regenerated:
+
+- Run12 teacher checkpoint/companions depending on checkout/acquisition;
+- large physical DATA representations;
+- proving key/SRS/runtime proof workspaces;
+- RAG indexes and runtime databases;
+- secrets, RPC credentials, signing keys.
 
 ## Failure modes and current limitations
 
-### Submission boundary
+### DATA/ML
 
-- `POST /audit` runs the off-chain graph and persists a report; it does not invoke MCP `submit_audit`.
-- `final_report["on_chain"]` starts as an unsubmitted placeholder.
-- Direct ZK/on-chain submission is a separately invoked MCP tool path.
-- The submission response reports a SHA-256 proof-file hash, while the registry records `keccak256(proof)`.
-- The input `model_hash` is sent to the contract; an ML-fetched hash is reported separately and is not automatically substituted.
-- Proof generation uses shared `proof_input.json`, `witness.json`, and `proof.json` paths, so concurrent submissions can race.
+- no trustworthy class-specific confirmed-negative population in policy v1;
+- two classes supervision-disabled;
+- model-selection is positive-only limited;
+- threshold/calibration/untouched acceptance unsupported;
+- Phase 7 still requires local physical representation binding;
+- no repaired teacher retrain/promoted checkpoint yet.
 
-### Trust boundary
+### ZK/V3
 
-- `verdict_provable` is deterministic evidence fusion, but the EZKL proof verifies proxy logits from the fusion embedding—not that verdict.
-- Provenance is an off-chain operator assertion. It can be unsigned in degraded operation and does not prove that the teacher generated the supplied embedding.
-- `check_mode="UNSAFE"` requires explicit review before any production security claim.
+- retained proof scope is proxy-only;
+- `UNSAFE` EZKL check mode remains;
+- policy signature authenticates context but does not expand the circuit;
+- no production signing/broadcast service is claimed;
+- owner/verifier/signer rotation remains governance/security trust.
 
-### Integration maturity
+### Runtime/feedback
 
-- Live behavior depends on local model/data/proving artifacts and external toolchains.
-- `graph_inspector_server.py` currently defaults its ML upstream URL to port 8000 instead of the ML service’s port 8001; operators must override `SENTINEL_ML_API_URL` for real GNN hotspots.
-- Some paths intentionally return structured degraded status; callers must not treat “did not run” as “ran clean.”
-- The ignored V2 contract test and ignored DVC pointers must be tracked/fixed in a separate product/repository task before fresh-clone claims change.
+- gateway audit completion is off-chain only;
+- audit MCP is read-only;
+- V3 feedback promotion remains disabled pending measured policy;
+- a versioned/on-chain record is not automatically vulnerability ground truth.
+
+### Test evidence
+
+The July 13 full-module counts previously published in this page are **superseded current-status evidence**. Do not cite them as the present project state. The R4/V3 work has its own green gate/targeted CI evidence; a fresh whole-repository suite census should be recorded only after rerunning it against a named current post-merge commit and environment.
 
 ## Common change recipe
 
-To update this status page:
+To update this page:
 
-1. Record the date and exact commit.
-2. Set WSL-safe temporary variables.
-3. Run the suites without `|| true`, filtered output, or hidden skips.
-4. Record pass/fail/skip outcomes only here.
-5. Run handbook static/inventory validation.
-6. If artifact availability changed, update `_meta/handbook.toml` and the reference matrix too.
+1. record exact commit/date and which branch is canonical versus candidate;
+2. update only evidence actually rerun/verified;
+3. keep gate states, artifact hashes, role limitations, and local-only blockers explicit;
+4. do not carry forward old test counts automatically;
+5. if a previously unsupported role becomes supported, name the new evidence/decision/version that changed it;
+6. run handbook static validation and relevant R4 regression gates.
 
 ## Verification commands
 
 ```bash
-export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
-cd agents && poetry run pytest -q
-cd .. && ml/.venv/bin/python -m pytest ml/tests -q
-data_module/.venv/bin/python -m pytest data_module/tests -q
-ml/.venv/bin/python -m pytest zkml/tests -q
-cd contracts && forge test
+python3 docs/handbook/tools/verify_handbook.py static
+python3 docs/handbook/tools/verify_handbook.py inventory
+python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-These are module checks. GPU inference, real EZKL proof generation, and live chain submission are separate live checks in [operations](14_operations.md).
+For Phase 7, use the active branch’s `p7_run_local_gate.py` command when the local representation root is available. Full module/live suites are separate evidence and should be recorded here only after an intentional current rerun.
 
 ## Optional deep references
 
-- [`handbook.toml`](_meta/handbook.toml) — machine-readable baseline contract
-- [Security and trust](12_security_and_trust.md)
-- [Operations](14_operations.md)
+- [R4 plan status matrix](../plan/ml-R4/PLAN_STATUS_MATRIX.md)
+- [R4 decision register](../plan/ml-R4/DECISION_REGISTER.md)
+- [R4 risk/blocker register](../plan/ml-R4/RISK_AND_BLOCKER_REGISTER.md)
+- [DATA artifacts](04_data_artifacts.md)
 - [Runtime flows](02_runtime_flows.md)
+- [Security and trust](12_security_and_trust.md)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know commit binding, tracked versus ignored/DVC artifacts, test maturity, mocked versus live evidence, and gap-ledger discipline.
+Know commit binding, artifact hashes, gate-based development, historical-versus-current evidence, partial-label semantics, role isolation, and local/protected artifact boundaries.
 
 ### Source map and reading order
 
-Read `handbook.toml` verified commit/artifact classifications, this page’s dated evidence, then inventory output and owning technical guide. Never infer current readiness from an undated learning page.
+Read R4 status/decision/risk registers, current source for V3/audit MCP, this page, then the relevant subsystem. For Phase 7, inspect its branch and gate scripts rather than assuming candidate code is already canonical main.
 
 ### Execution trace and worked example
 
-A status claim is acceptable only as commit + date + command/environment + artifact availability + result + limitation. For example, local contract totals that include ignored `AuditRegistryV2.t.sol` are local-checkout evidence and cannot become fresh-clone coverage.
+Today a correct statement is: “R4 G6 is canonical; Phase 7 remote semantics are green but local representation binding is pending; Run12 is historical operational inference; no retrained vNext teacher or untouched-acceptance claim exists.” A statement like “the current model has passed final vNext test/calibration” is false.
 
 ### Implementation practice
 
-Use four maturity labels: implemented-and-verified, implemented-with-known-failure, degraded/optional, and planned/disconnected. Update only this page when volatile results change; module chapters link here. [L10](labs/10_end_to_end_capstone.md) distinguishes preflight availability from live success.
+When a phase/role becomes available, change the machine-readable plan/manifests first, validate, merge, then update this page. Do not make status prose the only place where a project-state transition exists.
 
 ### Review and ownership check
 
-Can you tell which claims survive a fresh clone and which depend on local/private/live state?
+Can you distinguish canonical main from Phase-7 candidate state, state all unsupported evaluation roles, identify the current teacher/proof/MCP protocol versions, and name the exact local blocker before G7?

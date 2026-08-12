@@ -1,140 +1,202 @@
-## Who Ali Is
+# SENTINEL AI Working Instructions
 
-Ali —  learining by doing  SENTINEL project ( decentralised smart contract security oracle).
-Current target: Senior AI/ML Engineer and Hybrid AI/Blockchain Engineer roles.
+SENTINEL is Ali's learning-by-doing smart-contract security project. AI assistance may write substantial code, but project ownership, architecture reasoning, evidence quality, reproducibility, and educational value must remain explicit.
 
-| Environment | Windows 11 + WSL2 Ubuntu + VS Code | Use Linux paths inside WSL2 | RTX 3070 8GB VRAM, cpu:i7-12700H, 64GB RAM | Python 3.12.1, Poetry, venv |
+Project root: `~/projects/sentinel` in the primary WSL environment.
 
-Current project: SENTINEL at `~/projects/sentinel`.
-**SENTINEL project state, training history, schema, key file paths, audit findings, etc.**
-**live in:** `~/.claude/projects/-home-motafeq-projects-sentinel/memory/MEMORY.md` (and the
-sibling `project_*.md` files in that directory). Read MEMORY.md at session start.
+## Current project authority
 
+Use this order when facts conflict:
 
+1. **Executable source/config/tests** for actual behavior.
+2. **Committed machine-readable governance/artifacts** for semantics and gate state — especially `docs/plan/ml-R4/` for current DATA/ML work.
+3. **Canonical handbook** under `docs/handbook/` for current explanatory/navigation context.
+4. ADRs/decision/risk registers for rationale and controlled decisions.
+5. Supplementary guides/labs and dated historical reports for learning/history only.
 
----
+Do not treat a stale comment, docstring, README, old plan, old test count, or historical artifact as stronger than current source/policy.
 
-## Rules
+### Current stable technical baseline
 
-**0 - Always answer Honestly, Professionally and in production ready ,educational valuable learning lens**
+As of the 2026-08-12 reconciliation:
 
-**1 — Plan before code.**
-Write a markdown file confirming the session plan before any implementation. If Ali says "just code it" — surface a
-condensed plan, wait for a nod (yes / go / looks good), then proceed. Continued questions
-are not a nod.
+- canonical `main` has passed R4 G0–G6;
+- `data-vnext-policy-v1` and `r4-vnext-roles-v1` govern new DATA/ML semantics;
+- historical zero/absence/unsupported state is not confirmed-negative truth;
+- threshold-fit, calibration-fit, and untouched-acceptance roles are unsupported/empty for the first repaired baseline;
+- Run12 is the **historical operational ML baseline**, not a repaired-vNext model;
+- Phase 7 DATA vNext implementation remains candidate work until local representation binding/G7;
+- V3 is the current registry submission protocol; V1/V2 are historical compatibility;
+- live audit MCP is read-only;
+- V3 signing/broadcast is outside the analysis MCP security domain;
+- the retained EZKL proof proves only the proxy computation; V3 context attestation is separate.
 
-**2 — Check MEMORY.md.**
-Before any architecture or library decision, check the live `MEMORY.md` and all of its
-references that you need for your works at:
-wsl path : 
+Always check `docs/handbook/16_current_status.md` and the relevant machine-readable R4 artifacts before making a current-state claim.
+
+## Approval model
+
+Ali has delegated **routine technical and governance approvals** to the assistant. Do not stop merely to ask for approval of a normal plan, implementation slice, refactor, test, ADR, branch, PR, or evidence-preserving decision when the technically best option is clear.
+
+Instead:
+
+1. make the best evidence-based decision;
+2. record important decisions in the appropriate plan/ADR/register;
+3. execute and validate them;
+4. surface consequential tradeoffs/results to Ali.
+
+Still stop for genuinely non-routine user decisions that cannot be inferred safely, such as destructive loss of protected data/history, real production deployment/funds/keys, irreversible external actions, or choices that change the project's intended product/career direction rather than implementation quality.
+
+## Plan before code
+
+For non-trivial work, write or update the appropriate plan/working record before implementation. The plan is an execution aid, not an approval ceremony.
+
+Avoid excessive governance ceremony. Do not create new specs/registers/ADRs unless the decision actually needs durable control or later implementation could otherwise invent semantics.
+
+## Working memory
+
+In Ali's primary Claude Code setup, project memory may exist under:
+
 `/home/motafeq/.claude/projects/-home-motafeq-projects-sentinel/memory/`
 
-windows path : 
-`\\wsl.localhost\\Ubuntu-24.04\\home\\motafeq\\.claude\\projects\\-home-motafeq-projects-sentinel\\memory`
+When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
 
-**3 — WORKING MEMORIES : Document incrementally, never batch.**
-Whenever planning, analyzing, or reading source code:
-- Before starting, create a dedicated `.md` file at a path like
-  `~/.claude/scratch/<topic>_<YYYYMMDD>.md` (e.g. `gnn_trainer_analysis_20260613.md`).
-- Write findings to that file **continuously and incrementally** — after every hypothesis
-  formed, every ambiguity spotted. Do NOT hold findings in context and flush later.
-- The file is the working memory. If the session ends or context resets, nothing is lost.
-- Update the file even for small steps: a one-line note beats a lost insight.
-- When the session goal is complete, summarize key findings back into MEMORY.md
-  (keep MEMORY.md ≤ 200 lines; link to the scratch file if needed).
+For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 
-**4 — Trust source code only. Distrust all docs.**
-When reading the SENTINEL codebase:
-- **Canonical truth**: `.py`, `.sol`, `.ts`, `.sh` files — the actual executable syntax.
-- **Explicitly untrusted** (treat as stale until verified against code):
-  - Docstrings and inline comments (they lag behind refactors)
-  - README files, any `.md` docs, `Project-docs/`, `docs/`
-  - Function signatures in documentation that differ from actual `.py` files
-- Workflow: read the source first → form your own understanding → only then cross-check
-  docs if curious. Never infer behavior from a docstring without confirming in the
-  function body.
-- If a docstring contradicts what the code does: **the code is right**. Flag the stale
-  docstring as a finding in the scratch `.md` file.
+## Professional engineering rules
 
-**5 — Professional coding standards** (always on, all modules ,submodules and everywhere).
+### 1. Single responsibility
 
-When writing or refactoring: apply by default.
-When reviewing: flag violations as findings in the scratch `.md` file.
+Prefer focused modules/functions with one clear reason to change. Split growing god-files instead of appending unrelated behavior because it is convenient.
 
-**A — Single Responsibility.**
-One file, one reason to change. If describing what a file does requires "and", it should be two files.
+Heuristics, not laws:
 
-Heuristics (guidelines, not laws): functions ~50 lines; files 200–400 lines; past 500 needs
-a reason; past 1000 split it.
+- functions around 50 lines deserve review when much larger;
+- files around 200–400 lines are easier to own;
+- >500 lines needs a reason;
+- >1000 lines normally needs decomposition.
 
-Prefer a package of focused modules (`nodes/<one_per_node>.py`) over a god-file
-(`nodes.py` with 13 responsibilities). Appending to the current file is the AI default —
-default to splitting instead.
+### 2. Decision numbers require evidence
 
-**B — No decision-number changes without measurement.**
-Any threshold, weight, or confidence value is POLICY. It must be:
-(a) externalized into versioned config — never a constant buried in `.py`
-(b) changed only when a measurement justifies it
+Thresholds, weights, confidence cutoffs, acceptance gates, and similar numbers are policy.
 
-Tests prove the code runs. Evals prove the system is good. A passing suite is necessary,
-not sufficient.
+They should be:
 
-If Ali proposes changing a decision number, ask for the before/after eval result before
-proceeding. "I think 0.35 feels right" is not sufficient. "0.35 gives recall 0.91 /
-precision 0.62 on the held-out set" is.
+- externalized/versioned rather than buried in implementation;
+- changed only with measured evidence;
+- bound to the artifact/config that used them.
 
-Maturity ladder — every decision number has a level:
-- Level 0: hand-set constant (prototype only — label it as such)
-- Level 1: externalized versioned config
-- Level 2: measured against a baseline before every change
-- Level 3: learned from data (e.g. threshold from precision-recall curve; weight fitted
-  from per-tool confusion matrix)
+Tests prove code behavior. Evals/evidence justify decision quality.
 
+For R4 specifically, do **not** invent thresholds/calibration data to fill currently unsupported roles.
 
-for learning artifacts explicitly ask Ali where to store them (e.g. `~/projects/sentinel/learning_artifacts/`),no need to say about them in MEMORY.md. 
+### 3. No silent failures or silent skips
 
-**C — No silent failures. No silent skips. No "fail-soft that hides the failure."**
+A failure must be represented as one of:
 
-While we are building and trying different things, the system must never swallow a failure and
-continue as if nothing happened. A silent skip is a lie told to the next layer, which then
-computes a number against an absent witness (the Aderyn bug: `FileNotFoundError` caught,
-logged at `DEBUG`, `[]` returned indistinguishable from "ran clean" → 83 contracts of zero
-Aderyn findings → biased reliability matrix → biased macro-F1). **A silent failure
-manufactures a rabbit hole.**
+1. precise eager error;
+2. structured degraded result containing the reason/status;
+3. explicit state/tool-status field consumed downstream.
 
-Applies to (non-exhaustive): subprocess tool calls (slither, aderyn, halmos, gigahorse,
-ityfuzz, anvil), MCP tool calls, external HTTP, optional dependency imports, fallback paths,
-default-return-on-exception, env-var substituters, "tool not installed" branches, and any
-`except Exception: return []` / `return {}` / `return None` pattern.
+Never make “tool did not run” indistinguishable from “tool ran and found nothing.”
 
-**The contract — any of these is acceptable, none of them is silent:**
-1. **Eager error** — `raise` with a precise message naming the tool, the resolved path
-   (or `shutil.which` == None), and the exact precondition that failed.
-2. **Structured degraded return** — return a value that **carries the failure**, not one
-   that hides it: a finding dict with `detail={"skipped": True, "reason": …, "resolved": …,
-   "exit": …}` OR a sentinel whose `skipped` flag downstream code MUST check. Audit report
-   MUST serialise this so the eval layer sees it.
-3. **Explicit node-status field** — `state["tool_status"][tool] = {"ran": False, "reason": …}`,
-   and synthesizer / eval MUST treat absent `ran=True` consistently. An empty return is no
-   longer "tool absent"; `ran=False` is.
+Forbidden patterns include:
 
-**NOT acceptable:**
-- `except FileNotFoundError: logger.debug("not installed — skipping"); return []`
-- `except Exception: return [] or {}` with no status mutation
-- Logging only (log lines drop at thresholds, gone by report time)
-- A debug log + empty return that, from the caller's view, is identical to "ran clean"
+- `except ...: return []/{}/None` when caller interprets empty as clean;
+- debug-log-only failure reporting;
+- optional dependency/tool absence silently converted into valid evidence;
+- fallback values that contaminate metrics without provenance.
 
-**Migration:** apply to new code immediately. For existing silent-skip sites found during
-other work, stop and record a `file:line` finding in the scratch `.md` (what fails silently,
-what downstream measurement it contaminates, intentional-or-not), but do NOT refactor all in
-one sweep — surface to Ali one at a time. The Aderyn site (`_helpers.py:80-118`) is the
-first finding.
+### 4. Preserve semantic uncertainty
 
-**Tests:** a unit test mocking a subprocess to raise `FileNotFoundError` MUST assert the
-code surfaces a status field or raises — it must NOT assert `result == []` against a value
-indistinguishable from "ran clean." Audit the existing tests when a silent-skip site is
-refactored.
+This rule is permanent after R4:
 
+- unknown ≠ negative;
+- unavailable ≠ clean;
+- unsupported ≠ negative;
+- weak evidence ≠ strong/metric-grade evidence;
+- historical label ≠ current DATA vNext truth;
+- on-chain record ≠ vulnerability ground truth;
+- valid proxy proof ≠ proof of teacher/source/AGENTS execution.
 
+Encode uncertainty/status explicitly rather than forcing a convenient downstream type.
 
+### 5. Version rather than overwrite history
 
+Historical v1 DATA, Run12 artifacts, V1/V2 registry history, and retained proxy artifacts are reproducibility/rollback roots.
+
+For semantic/protocol changes:
+
+- create a new versioned artifact/path;
+- bind hashes and lineage;
+- validate before promotion;
+- rollback by selecting an older compatible bundle, not reverse-editing history.
+
+### 6. Source-first review, docs-currentness second
+
+When changing code:
+
+1. inspect executable source/tests;
+2. inspect current machine policy/ADR if semantics are governed;
+3. check canonical docs for expected boundary/intent;
+4. flag and fix any canonical documentation contradiction in the same change when practical.
+
+Dated audits, redesign notes, experimental reports, `docs/learning/`, and handbook technical/lab exercises may intentionally describe historical mechanics. Preserve them unless they falsely present themselves as current authority.
+
+## Module-specific boundaries
+
+### DATA / ML
+
+- R4 controls current semantic authority.
+- Phase-6 roles are frozen; Phase 7 must not rebalance them implicitly.
+- no target `0` without confirmed-negative evidence;
+- GasException/UnusedReturn supervision disabled under policy v1;
+- Run12 threshold/calibration artifacts are historical only;
+- first repaired retrain keeps architecture frozen unless a later approved architecture decision changes that.
+
+### AGENTS
+
+- gateway/LangGraph is off-chain;
+- audit MCP is read-only;
+- tool status must distinguish unavailable from clean;
+- V3 feedback does not auto-promote while policy is unavailable.
+
+### ZKML / Contracts
+
+- retained proof scope is proxy-only;
+- V3 context attestation is separate;
+- no raw private-key runtime submission helper in analysis/ZKML MCP code;
+- preserve UUPS storage and historical V1/V2 reads;
+- signing/broadcast is a separate trust domain.
+
+## Validation discipline
+
+Use the narrowest meaningful test first, then expand according to blast radius. Preserve raw failures; do not weaken gates to turn failures green.
+
+For canonical documentation/current-state changes:
+
+```bash
+python3 docs/handbook/tools/verify_handbook.py static
+python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
+python3 docs/handbook/tools/verify_handbook.py inventory
+```
+
+For R4 G6 semantics:
+
+```bash
+python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
+```
+
+Later phase-specific gates are authoritative only after their phase/artifacts exist on the branch being validated.
+
+## Learning lens
+
+When helping Ali understand code, architecture, or decisions:
+
+- avoid harmful oversimplification;
+- name real technical terms and abbreviations;
+- distinguish what must be learned now from what can be deferred;
+- explain why an approach exists and what failure it prevents;
+- connect code syntax to architecture/data flow when useful;
+- preserve evidence versus inference distinctions.
+
+AI-generated implementation is acceptable; unexamined implementation is not the goal.

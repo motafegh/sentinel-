@@ -8,96 +8,122 @@
 
 ## 30-second summary
 
-SENTINEL has five source modules and multiple runtime processes. DATA builds trustworthy versioned training artifacts. ML serves four-eye predictions and fusion embeddings. AGENTS orchestrates evidence and exposes gateway/MCP services. ZKML proves a small proxy computation. Contracts gate submissions by stake and proof and store audit history. The main architectural caveat is that gateway audits and direct ZK/on-chain submissions are separate paths.
+SENTINEL has five main source modules but two distinct current directions: the off-chain analysis runtime and the repaired DATA/ML lifecycle. DATA/ML is being repaired through R4 before retraining; the stable main branch has passed G6 and frozen label semantics plus leakage-safe roles. The live audit MCP is read-only. The registry’s current submission protocol is V3, which combines the retained proxy-computation proof with a separate EIP-712 policy/context attestation. No current claim says the ZK circuit proves teacher/source/AGENTS execution.
 
 ## Just-enough mental model
 
 ```mermaid
 flowchart LR
-  U["Solidity / upstream data"] --> D["DATA: ten-stage pipeline"]
-  D --> A["Versioned graph/token/label export"]
-  A --> M["ML teacher training"]
-  U --> API["ML API :8001"]
-  M --> API
+  U["Solidity / upstream data"] --> D["DATA + R4 evidence/policy"]
+  D --> A["Historical representations + repaired semantic roles"]
+  A --> M["Teacher training/retraining boundary"]
+  M --> API["ML API :8001"]
   C["Client"] --> G["Gateway :8000"]
   G --> L["14-node LangGraph"]
   L --> API
-  L --> S["MCP services :8010–8014"]
-  API --> Z["Proxy + EZKL"]
-  Z --> R["AuditRegistry / verifier"]
-  S -. "explicit submit_audit only" .-> Z
+  L --> S["Selected MCP services"]
+  L --> REP["Off-chain report"]
+
+  API --> F["fusion[128]"]
+  F --> Z["retained proxy/EZKL proof"]
+  Z --> V3["V3 request + policy attestation"]
+  V3 --> R["AuditRegistry V3"]
+
+  RO["Audit MCP :8012 read-only"] --> R
 ```
 
-The dotted submission connection is not invoked by the normal gateway graph.
+The gateway does not submit a transaction. The audit MCP observes V1/V2/V3 history but does not expose runtime signing/broadcast. The V3 protocol boundary exists in source/contracts; a production signer/broadcaster is not claimed.
 
 ## Actual runtime/source walkthrough
 
 ### Module ownership
 
-| Module | Primary responsibility | Runtime/build outputs |
+| Module | Current responsibility | Important current state |
 |---|---|---|
-| [`data_module`](../../data_module) | acquire, normalize, represent, label, verify, split, register, analyze, export, freshness | ignored/local datasets, manifests, reports, catalogs |
-| [`ml`](../../ml) | teacher architecture, training, inference, calibration, drift, MLOps | checkpoint companions, API responses, metrics |
-| [`agents`](../../agents) | orchestration, evidence, RAG, MCP, gateway, feedback, eval | reports, jobs, indexes, state/eval evidence |
-| [`zkml`](../../zkml) | proxy distillation, ONNX, EZKL setup/proof | model/circuit/key/proof artifacts |
-| [`contracts`](../../contracts) | stake, verification, V1/V2 storage, upgrades/deployment | deployed token/verifier/registry and events |
+| [`data_module`](../../data_module) | ingestion, preprocessing, representations, historical exports, DATA vNext implementation | historical label path preserved; R4 vNext semantics/roles are authoritative for new work |
+| [`ml`](../../ml) | four-eye teacher, Run12 inference, future repaired retrain | Run12 remains historical operational baseline; no vNext-retrained teacher promoted yet |
+| [`agents`](../../agents) | orchestration, evidence, RAG, MCP, gateway, feedback, V3 observation | audit MCP live surface is read-only; V3 feedback policy remains intentionally unavailable |
+| [`zkml`](../../zkml) | retained proxy distillation/ONNX/EZKL proof boundary | proof is proxy-only/unbound by itself; future production regeneration follows promoted DATA/ML |
+| [`contracts`](../../contracts) | staking, verifier, V1/V2 historical storage, V3 context-attested protocol, UUPS upgrades | V3 initialization disables new legacy V1/V2 writes while preserving reads/history |
 
 ### Runtime processes and ports
 
 | Process | Default port | Boundary |
 |---|---:|---|
-| Gateway | 8000 | public async job API |
-| ML FastAPI | 8001 | source inference and fusion embedding |
-| inference MCP | 8010 | MCP wrapper over ML |
-| RAG MCP | 8011 | hybrid retrieval |
-| audit MCP | 8012 | chain reads plus explicit proof/submission |
-| graph inspector MCP | 8013 | hotspot analysis |
-| representation MCP | 8014 | function CFG structural data |
-| Anvil | 8545 | optional local chain |
+| Gateway | 8000 | async off-chain audit jobs |
+| ML FastAPI | 8001 | source inference / hotspots / fusion embedding |
+| inference MCP | 8010 | ML wrapper |
+| RAG MCP | 8011 | retrieval |
+| audit MCP | 8012 | **read-only version-aware registry observation** |
+| graph inspector MCP | 8013 | hotspot/graph inspection |
+| representation MCP | 8014 | CFG/representation structural data |
+| Anvil | 8545 | optional local chain for contract testing/deployment exercises |
 
-Gateway jobs persist in SQLite. LangGraph has its own SQLite checkpointer when available. RAG indexes, caches, reports, and databases are local runtime artifacts unless explicitly promoted.
+Gateway/graph reports, RAG indexes, caches, databases, and proof workspaces are separate local/runtime state unless explicitly promoted.
 
-### Trust boundaries
+### DATA/ML architecture after R4 G6
 
-- Solidity and external reports are untrusted inputs.
-- DATA validation/provenance controls corpus trust; they do not guarantee label truth.
-- ML outputs are learned evidence, not proof.
-- analyzers/formal tools have explicit availability/failure states.
-- RAG/LLM outputs are nondeterministic supporting evidence.
-- the operator supplies proof inputs, model hash, transaction authority, and provenance claims.
-- EZKL proves only proxy computation.
-- AuditRegistry is owner-upgradeable and economically gates the submitting address.
+The original 22,493-contract population is no longer interpreted as ten trustworthy binary targets. R4 created a 224,930-row contract×class ledger, accepted `data-vnext-policy-v1`, and froze `r4-vnext-roles-v1`.
+
+The repaired semantic direction is:
+
+```text
+contract × class evidence
+→ canonical outcome state
+→ optional training signal/strength
+→ role eligibility / frozen leakage group role
+→ DATA vNext v2 projection
+→ later masked/strength-aware trainer compatibility
+```
+
+No historical zero is promoted to a confirmed negative. GasException and UnusedReturn remain supervision-disabled under policy v1. Threshold-fit, calibration-fit, and untouched-acceptance roles are intentionally unsupported/empty.
+
+### V3 trust boundary
+
+`AuditRegistry.submitAuditV3` binds the submitting agent, target bytecode hash, round, teacher-model hash, proxy-bundle hash, DATA-version hash, class-schema hash, proof hash, public-signal hash, ten-score hash, deadline, chain ID, and registry address through an EIP-712 policy signature. It still verifies the retained proxy proof separately.
+
+That produces two distinct claims:
+
+1. **ZK claim:** the fixed proxy computation is valid for the supplied public inputs/outputs.
+2. **policy/provenance claim:** an authorized signer attested that this fully bound audit context is eligible for V3 submission.
+
+Neither claim says the circuit proved Solidity compilation, teacher execution, LangGraph routing, or the final AGENTS verdict.
 
 ## Interfaces, data shapes, and configuration
 
-The principal boundaries are:
+Principal compatibility boundaries:
 
-1. DATA export → `SentinelDataset`: v9, graph `[N,12]`, tokens `[4,512]`, labels `[10]`.
-2. ML → AGENTS: ten probabilities/tiers, eye signals, model hash, hotspots.
-3. ML → ZKML: fusion embedding `[128]`.
-4. ZKML → registry: proof plus 138 public signals and ten score fields.
-5. AGENTS → client: asynchronous job plus evidence-rich final report.
+1. Historical representations: v9 graph `x[N,12]`, tokens `[4,512]`, locked ten-class order.
+2. R4 semantic layer: contract×class outcome/training state plus frozen dataset role; historical binary v1 is compatibility history, not new truth.
+3. ML → AGENTS: ten probabilities/tiers, eye signals, model hash, hotspots.
+4. ML → ZKML: fusion embedding `[128]`.
+5. ZKML proof: 128 public inputs + 10 public outputs = 138 public signals.
+6. V3 registry context: proof/output identities plus target/model/data/schema/request identities and policy signer.
+7. AGENTS → client: asynchronous off-chain report.
 
-Configuration is module-scoped. Shared compatibility values are mirrored in [`handbook.toml`](_meta/handbook.toml) and explained in [cross-module contracts](11_cross_module_contracts.md).
+See [cross-module contracts](11_cross_module_contracts.md) for exact meanings and [current status](16_current_status.md) for gate state.
 
 ## Failure modes and current limitations
 
-- Multiple services can be healthy independently while an end-to-end path is incomplete.
-- Gateway completion is off-chain only; on-chain placeholder fields are not transaction evidence.
-- Fresh clones lack several large/private/local artifacts.
-- Mock/fallback/degraded responses must not be mixed with live evidence.
-- Owner and operator keys remain centralized trust points.
-- Local databases and shared proof paths limit horizontal/concurrent production behavior.
+- A healthy gateway/ML/MCP topology does not imply a production chain-submission service exists.
+- Gateway completion is off-chain only.
+- The audit MCP must not be treated as a transaction signer/broadcaster.
+- Run12 predictions/thresholds remain historical-baseline behavior until repaired retraining occurs.
+- DATA vNext Phase 7 remains candidate work until local physical representation binding and G7 completion.
+- The first repaired baseline has no trustworthy confirmed-negative population, so ordinary binary threshold/calibration/untouched-acceptance claims are unavailable.
+- The retained EZKL bundle remains legacy proxy scope and `check_mode="UNSAFE"`; V3 context binding does not expand the circuit statement.
+- Owner/policy-signer/operational key management remains a trust/governance boundary.
 
 ## Common change recipe
 
 For an architectural change:
 
-1. Name the module owner and cross-module interface.
-2. Update source producer/consumer with versioned compatibility tests.
-3. Re-evaluate process, port, artifact, failure, and trust boundaries.
-4. Run affected module and live flows.
-5. Update architecture, runtime flows, cross-module contracts, security, operations, metadata, and status.
+1. Identify whether it affects historical compatibility, R4/DATA vNext, runtime analysis, or V3 submission protocol.
+2. Name producer/consumer semantics before touching shapes.
+3. Add mismatch/failure tests.
+4. Preserve old artifacts and version new semantics unless an approved migration says otherwise.
+5. Re-evaluate DATA roles, ML retraining, proxy/circuit, V3 hashes/signature, MCP exposure, and documentation as applicable.
+6. Update current status and governing R4/ADR records.
 
 ## Verification commands
 
@@ -107,31 +133,34 @@ python3 docs/handbook/tools/verify_handbook.py inventory
 python3 docs/handbook/tools/verify_handbook.py live --services
 ```
 
+The live services command verifies process availability only. Contract/ZK/live signer claims require separate explicit evidence.
+
 ## Optional deep references
 
 - [Runtime flows](02_runtime_flows.md)
 - [Cross-module contracts](11_cross_module_contracts.md)
 - [Security and trust](12_security_and_trust.md)
 - [Current status](16_current_status.md)
+- [R4 master plan](../plan/ml-R4/00_MASTER_PLAN.md)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know process boundaries, ports, HTTP request lifecycles, artifacts, and trust boundaries. Read [the handbook workflow](00_README.md) first.
+Know process boundaries, versioned artifacts, dataset leakage roles, HTTP/MCP, EIP-712, proxy proofs, and UUPS storage compatibility.
 
 ### Source map and reading order
 
-Read gateway `agents/src/api/gateway.py::create_app`, graph `agents/src/orchestration/graph.py::build_graph`, ML `ml/src/inference/api.py::lifespan`, audit MCP `agents/src/mcp/servers/audit/_submit.py::_run_submit`, and registry `contracts/src/AuditRegistry.sol::submitAuditV2`. Continue with [T10](technical/10_end_to_end_debugging.md).
+Read gateway `agents/src/api/gateway.py::create_app`, graph `agents/src/orchestration/graph.py::build_graph`, live audit server `agents/src/mcp/servers/audit/_server.py::run_server`, read-only handlers, policy signer `agents/src/security/policy_signer.py`, registry `contracts/src/AuditRegistry.sol::submitAuditV3`, then R4 policy/role manifests. Do not use historical `_submit.py` as the live runtime entry point.
 
 ### Execution trace and worked example
 
-A gateway request crosses process boundaries at gateway 8000 and ML 8001, then may call MCP services 8010–8014. It ends as an off-chain report. Only the separate audit-MCP flow crosses EZKL and registry/Anvil 8545. Drawing one arrow from gateway completion directly to registry is therefore incorrect current architecture.
+A normal client request reaches gateway 8000, runs the LangGraph with ML/tool evidence, and ends as an off-chain report. A separate V3 submission system would need a valid proxy proof plus a fully bound policy-signed request and transaction authority outside the analysis MCP. The audit MCP can then read the resulting V1/V2/V3 history.
 
 ### Implementation practice
 
-Before adding a process, declare owner, port, routes/tools, health semantics, secrets, persistent state, upstream/downstream contracts, startup order, tests, and failure isolation. Exercise the complete map in [L10](labs/10_end_to_end_capstone.md).
+Before adding a process or cross-module path, declare its trust domain, signing authority, artifact/hash inputs, network boundary, persistent state, failure semantics, and whether it is actually connected to the default gateway flow.
 
 ### Review and ownership check
 
-Can you identify which process owns each mutable state, which links are network versus files, and which boundaries are cryptographic versus operator-asserted?
+Can you draw the off-chain analysis path, DATA/ML repair path, and V3 proof/attestation path separately and state which arrows are implemented, historical, candidate, or intentionally outside the analysis service?

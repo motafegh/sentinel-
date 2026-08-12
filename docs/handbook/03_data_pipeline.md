@@ -1,135 +1,145 @@
 # 03 — DATA pipeline
 
-**Read this when:** you need to acquire, clean, label, verify, split, register, analyze, export, or freshness-check Solidity data.
+**Read this when:** you need to understand Solidity acquisition/representation, historical labels, or the repaired DATA vNext path.
 
-**Skip this if:** your input is already an approved immutable export and you only need [artifact shapes](04_data_artifacts.md).
+**Skip this if:** you only consume a hash-bound approved export and do not change DATA semantics.
 
 **Estimated reading time:** 15 minutes.
 
 ## 30-second summary
 
-DATA is a ten-stage lifecycle, not a folder of ML-ready files: ingest, preprocess, represent, label, verify, split, register, analyze, export, and freshness. Each stage has a distinct trust job—provenance, compilation, feature extraction, ground truth, corroboration, leakage prevention, lineage, diagnostics, immutable packaging, or upstream-change detection. The CLI exposes all ten names, but its `label` command is currently a placeholder; labeling components exist and must be invoked through their source workflows until that adapter is completed.
+SENTINEL still has the historical ten-stage DATA lifecycle, but **new DATA/ML work is governed by R4 rather than trusting the historical binary label path**. R4 reconstructed the 22,493-contract population into a contract×class evidence ledger, accepted `data-vnext-policy-v1`, froze leakage-safe roles, and is implementing an additive v2 semantic overlay. Historical v1 exports remain immutable compatibility evidence. The old label CLI is still incomplete and must not be described as the repaired vNext build path.
 
 ## Just-enough mental model
 
 ```text
-upstream sources
-  → ingest → preprocess → represent → label → verify
-  → split → register → analyze → export
-          freshness watches upstream/tool drift ─┘
+Historical acquisition/representation lifecycle
+upstream → ingest → preprocess → represent
+                         ↓
+                 graph/token artifacts
+
+Historical label/export path (v1 compatibility)
+label/crosswalk/merge → split/export → Run12 training
+
+Current repair path (R4)
+historical labels + source evidence
+→ contract×class evidence ledger
+→ data-vnext-policy-v1
+→ r4-vnext-roles-v1
+→ DATA vNext v2 semantic overlay
+→ later masked/strength-aware ML retraining
 ```
 
-No later stage repairs an earlier trust failure. A well-trained model cannot compensate for leaked splits, a manifest cannot make wrong labels true, and a freshness report cannot replace pinned provenance.
+**Historical zero is not a confirmed negative.** More generally, absence, unsupported classes, unknown states, dropped categories, and other historical-zero mechanisms cannot be silently converted into negative training targets.
 
 ## Actual runtime/source walkthrough
 
-The stage registry lives in [`cli.py`](../../data_module/sentinel_data/cli.py) — `data_module/sentinel_data/cli.py::STAGES` and `::_STAGE_FN`.
+### Historical ten-stage lifecycle
 
-| Stage | Source owner | What actually happens |
-|---|---|---|
-| 1. ingest | [`ingest.py`](../../data_module/sentinel_data/ingestion/ingest.py) `::ingest_all` | pulls enabled sources and writes SHA-256 provenance manifests |
-| 2. preprocess | [`preprocess.py`](../../data_module/sentinel_data/preprocessing/preprocess.py) `::preprocess_all` | flatten, compile, deduplicate, normalize, segment, and compiler-bucket |
-| 3. represent | [`orchestrator.py`](../../data_module/sentinel_data/representation/orchestrator.py) `::represent_source` | emits v9 graphs and windowed GraphCodeBERT tokens with cache identities |
-| 4. label | [`merger.py`](../../data_module/sentinel_data/labeling/merger.py) and [`gate.py`](../../data_module/sentinel_data/labeling/gate.py) | applies source crosswalks, merges multi-label truth, and gates label quality |
-| 5. verify | [`semantic_checker.py`](../../data_module/sentinel_data/verification/semantic_checker.py), tool runners, and `verification/gate.py` | checks AST semantics and corroborates labels with Slither/Aderyn evidence |
-| 6. split | [`splitters.py`](../../data_module/sentinel_data/splitting/splitters.py) plus leakage/dedup/cap modules | builds deterministic train/validation/test sets and audits overlap |
-| 7. register | [`catalog.py`](../../data_module/sentinel_data/registry/catalog.py) and [`lineage_tracker.py`](../../data_module/sentinel_data/registry/lineage_tracker.py) | records dataset versions, parentage, artifacts, and metrics in SQLite/YAML |
-| 8. analyze | [`feature_dist.py`](../../data_module/sentinel_data/analysis/feature_dist.py), co-occurrence, drift, overlap, and probe modules | measures representation/label balance and change risk |
-| 9. export | [`export.py`](../../data_module/sentinel_data/export/export.py) `::export_dataset` | creates Parquet tables, sharded tensors, indexes, manifest, and artifact hash |
-| 10. freshness | [`freshness.py`](../../data_module/sentinel_data/ingestion/freshness.py) `::run_freshness_check` | compares pinned upstream/tool versions with current observations |
+The historical CLI registry remains:
 
-`sentinel-data run` walks the nine production stages in `STAGES`; `freshness` is a separate utility command and is also registered in `_STAGE_FN`. This is why the lifecycle has ten stages while the sequential build list has nine.
+1. ingest
+2. preprocess
+3. represent
+4. label
+5. verify
+6. split
+7. register
+8. analyze
+9. export
+10. freshness
 
-### Verification and lineage
+`sentinel-data run` walks the nine `STAGES`; freshness remains separate. `cli.py::_run_label` is still a placeholder. Lower-level labeling libraries/parsers exist, but this does not make the old one-command label stage an authoritative repaired build.
 
-Verification is not label generation. It produces evidence about whether labels and negatives are credible. Tool absence or compilation failure must be explicit in reports; an empty finding list must mean “ran and found none,” never “did not run.” Registration then binds a dataset identity to source manifests, transforms, artifacts, and parent versions so comparisons can explain what changed.
+### What R4 changed
 
-### Benchmarks
+R4 did not delete old contracts or representations. It repaired what DATA is allowed to **claim** about each contract/class:
 
-`data_module/benchmarks/` contains tracked benchmark definitions and contamination checks. Benchmark results are evidence about a specific artifact version; they are not interchangeable with the full corpus or a test-suite count.
+- Phase 0–2 reconstructed source/crosswalk/zero semantics;
+- Phase 3 materialized 224,930 contract×class ledger rows;
+- Phase 4 reviewed the decision-critical DIVE gap;
+- Phase 5 accepted explicit outcome/training-state semantics;
+- Phase 6 froze one leakage-safe role per group;
+- Phase 7 builds the v2 semantic/export overlay and is pending final local representation binding/G7.
+
+### Accepted source policy for the first repaired baseline
+
+- SolidiFI injected class: strong positive for that class only; other classes unknown.
+- approved SmartBugs Curated in-taxonomy category: strong positive for that category only; other classes unknown.
+- DIVE: unlabeled/masked except Front Running→TransactionOrderDependence as weak-positive training signal.
+- historical DIVE zeros remain unknown.
+- SmartBugs `bad_randomness`, `short_addresses`, and `other` produce no canonical vNext target.
+- Web3Bugs/DISL unavailable; BCCC/DeFiHackLabs deferred for the first baseline.
+- GasException and UnusedReturn supervision are disabled pending evidence.
+- no blanket confirmed-negative source exists.
 
 ## Interfaces, data shapes, and configuration
 
-The main interface is:
+The graph/token representation contract remains v9 and unchanged by R4. The new semantic unit is `contract_id × class_index`, carrying explicit outcome/training/provenance state instead of only `0/1`.
 
-```bash
-cd data_module
-.venv/bin/python -m sentinel_data.cli <stage> --config config.yaml
-```
+The frozen role layer uses groups rather than old train/val/test names as semantic authority. Roles include `TRAIN_STRONG`, `TRAIN_WEAK`, `TRAIN_UNLABELED`, `MODEL_SELECTION`, `INTERNAL_AUDIT`, and `EXCLUDED`; threshold/calibration/untouched-acceptance roles are controlled empty/unsupported in policy v1.
 
-Use `--dry-run` where supported before writes. Source enablement, paths, preprocessing thresholds, split policies, and tool settings live in [`config.yaml`](../../data_module/config.yaml); never copy environment secrets into it.
-
-Key boundaries:
-
-- ingest output: immutable source files plus source manifest and content hashes;
-- preprocess output: compiler-compatible normalized contracts plus dropped/error records;
-- representation output: one graph/token identity per contract, versioned by schema and extractor;
-- label output: ten-class multi-label records plus confidence/provenance;
-- split output: contract IDs assigned deterministically with leakage evidence;
-- export output: manifest, labels/metadata Parquet, graph/token shards, indexes, and an aggregate hash.
+The controlling repair artifacts live under [`docs/plan/ml-R4`](../plan/ml-R4): evidence ledger, policy/schema, ADRs, role manifests, decisions, risks, and gate status.
 
 ## Failure modes and current limitations
 
-- `cli.py::_run_label` currently prints `NOT IMPLEMENTED`; the stage’s library components exist, but the one-command CLI seam is incomplete.
-- Stage logs that say “skip” must be reviewed: some current paths predate Rule 5C’s structured-degradation standard.
-- External tools and multiple Solidity compiler versions are operational prerequisites, not Python-only dependencies.
-- Source deduplication, leakage auditing, and class caps are policy. Changing them requires before/after measurements.
-- DATA exports, split manifests, and catalogs under `data_module/data/` are ignored local artifacts in this checkout.
-- Freshness detects change; it does not automatically approve or ingest that change.
+- Running historical label/merge code does not produce DATA vNext semantics.
+- Historical `0` is not reusable as a negative target.
+- Historical train/val/test membership is lineage evidence, not the vNext role freeze.
+- 836 contracts belong to incomplete-representation groups and are frozen `EXCLUDED` for the first baseline.
+- no confirmed-negative population means threshold-fit, calibration-fit, and untouched acceptance are unavailable for the first repaired baseline.
+- Phase 7 is not G7-complete until 21,657 required physical representations are locally bound and validated.
 
 ## Common change recipe
 
-To add a source:
+For a DATA semantic change:
 
-1. Add a pinned source configuration and ingestion adapter.
-2. Record upstream identity and content hashes.
-3. Establish label crosswalk semantics and negative policy.
-4. Run preprocessing and representation on a small sample.
-5. Run semantic/tool verification and contamination checks.
-6. Rebuild splits; prove no family/duplicate leakage.
-7. Register a new dataset version, analyze deltas, and export immutably.
-8. Evaluate downstream ML changes before promotion.
+1. identify the controlling R4 decision/policy/ADR;
+2. never edit historical v1 artifacts in place;
+3. preserve source-native claim and evidence lineage;
+4. make unknown/no-target/masked states explicit;
+5. update leakage-group roles if eligibility changes;
+6. regenerate a new versioned vNext artifact and validate hashes/counts;
+7. reassess ML retraining/evaluation roles before promotion.
 
-For schema changes, follow the wider blast-radius playbook in [change playbooks](15_change_playbooks.md).
+For representation-only changes, use the historical ten-stage source ownership but version graph/token schema independently from label policy.
 
 ## Verification commands
 
 ```bash
-export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
-data_module/.venv/bin/python -m sentinel_data.cli --help                 # smoke
-data_module/.venv/bin/python -m sentinel_data.cli freshness --help       # smoke
-data_module/.venv/bin/python -m pytest data_module/tests -q              # module
-python3 docs/handbook/tools/verify_handbook.py inventory                 # documentation inventory
+python3 docs/handbook/tools/verify_handbook.py static
+python3 docs/handbook/tools/verify_handbook.py inventory
+python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-Commands that pull sources, invoke analyzers, or write a complete export are live/data-build operations. Current suite counts are only in [current status](16_current_status.md).
+Phase-7 vNext validation commands belong to the active R4 Phase-7 branch until G7 is merged.
 
 ## Optional deep references
 
-- [`data_module/sentinel_data`](../../data_module/sentinel_data) — executable pipeline packages
-- [`data_module/benchmarks`](../../data_module/benchmarks) — benchmark manifests and contamination evidence
 - [DATA artifacts](04_data_artifacts.md)
 - [ML training and quality](06_ml_training_quality.md)
 - [Evaluation](13_evaluation.md)
+- [R4 master plan](../plan/ml-R4/00_MASTER_PLAN.md)
+- [R4 DATA vNext specification](../plan/ml-R4/findings/07_data_vnext_policy_and_design_specification.md)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know manifests, content hashes, compiler resolution, deduplication, stratified/project/temporal splits, and dataset leakage.
+Know content hashes, multi-label classification, unknown-vs-negative semantics, leakage grouping, masks, provenance, and versioned artifacts.
 
 ### Source map and reading order
 
-Start at `data_module/sentinel_data/cli.py::{STAGES,_handle_run}` and follow each handler into ingestion, preprocessing, representation, labeling, verification, splitting, registry, analysis, export, then freshness. [T01](technical/01_data_pipeline_internals.md) gives the complete call/artifact chain.
+For historical representation mechanics: `cli.py` → preprocessing → representation. For current DATA semantics: R4 evidence ledger → `specs/data_vnext_policy_v1.json` → `manifests/p6_partition_manifest.json`. After G7, the additive `sentinel_data.vnext` package becomes the implementation owner for v2 semantics.
 
 ### Execution trace and worked example
 
-One acquired contract gains a SHA-256 manifest, normalized/compiler-resolved source, v9 graph/token representations, ten-class labels, verification evidence, deterministic split membership, catalog lineage, analysis reports, a sharded export position, and a freshness decision. The current label handler remains an explicit CLI integration gap.
+A DIVE contract historically labeled DoS no longer automatically becomes `DenialOfService=1`, and its other nine cells never become negatives. Under vNext policy, the source assertion can be masked while the contract remains useful as unlabeled structure. By contrast, a SolidiFI injected Reentrancy contract can contribute a strong positive Reentrancy target while its non-injected classes remain unknown.
 
 ### Implementation practice
 
-Use [L01](labs/01_data_fixture_representation.md) to prove representation/cache behavior. A stage change begins with a fixture and ends only after downstream hashes/schema/leakage/export consumers are checked.
+Never “repair” DATA by editing a Parquet target value manually. Repair source/evidence policy, regenerate a versioned semantic artifact, validate group/role invariants, then retrain consumers explicitly.
 
 ### Review and ownership check
 
-Can you name every stage’s input/output and distinguish “library implemented” from “CLI path operational”?
+Can you distinguish the historical ten-stage mechanics from the current R4 semantic authority, and explain why the same Solidity/representation corpus can support a different trustworthy training contract without rewriting history?

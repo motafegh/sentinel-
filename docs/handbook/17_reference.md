@@ -1,6 +1,6 @@
 # 17 — Reference registry
 
-**Read this when:** you need a glossary, source-symbol map, configuration/environment registry, artifact classification, or historical-doc status.
+**Read this when:** you need a glossary, source-symbol map, configuration registry, artifact classification, or document-authority lookup.
 
 **Skip this if:** you are following a learning path for the first time; use it as a lookup page.
 
@@ -8,102 +8,129 @@
 
 ## 30-second summary
 
-This is the handbook’s lookup layer. It maps stable concepts to source symbols and distinguishes canonical deep references from useful history and superseded plans. The machine-readable companion is [`_meta/handbook.toml`](_meta/handbook.toml).
+This is the handbook’s lookup layer. Current authority is executable source + committed machine-readable policies/manifests, the canonical handbook, and active R4 decisions. Historical v1/Run12/V1-V2 artifacts remain important for reproduction but are not current authority for new DATA/ML or chain work. Technical guides/labs remain useful supplementary teaching material; some examples were authored against pre-R4/pre-V3 behavior and are subordinate to canonical chapters/current status.
 
 ## Just-enough mental model
 
-Use `relative/path::symbol` to locate truth. Links open the file; symbols survive line movement. Source remains authoritative if a historical document disagrees.
+```text
+behavioral truth: source + machine policy/manifests
+        ↓
+canonical explanation: docs/handbook
+        ↓
+active DATA/ML governance: docs/plan/ml-R4
+        ↓
+supplementary guides/labs
+        ↓
+historical plans/reports/learning context
+```
+
+When two layers disagree, move upward in this hierarchy and inspect the exact current source/artifact identity.
 
 ## Actual runtime/source walkthrough
 
 ### Glossary
 
-| Term | Meaning |
+| Term | Current meaning |
 |---|---|
-| DATA | ten-stage data lifecycle and artifacts |
+| DATA v1 | historical binary label/export semantics used by Run12 compatibility |
+| DATA vNext / v2 | repaired semantic layer: outcome state, nullable target, strength, masks, provenance, frozen roles |
+| evidence ledger | 224,930 contract×class rows reconstructing historical source/target state |
+| outcome state | evidence conclusion such as confirmed positive/negative, unknown, conflicting, not reviewed |
+| training strength | `STRONG`, `WEAK`, or `NONE`; separate from canonical truth |
+| dataset role | leakage-group purpose such as train strong/weak/unlabeled, model selection, internal audit, excluded |
+| Run12 | historical operational teacher/checkpoint baseline; not vNext-retrained |
 | teacher | full four-eye `SentinelModel` |
-| proxy/student | frozen 128→64→32→10 ZK-compatible model |
+| proxy/student | retained frozen 128→64→32→10 ZK-compatible model |
 | fusion embedding | 128-value teacher representation consumed by proxy |
-| deterministic evidence | reproducible tool/model evidence eligible for `verdict_provable` |
-| full evidence | deterministic plus RAG/LLM evidence used by `verdict_full` |
-| Rule 5C | failures/skips must be explicit, never empty-as-clean |
-| artifact hash | integrity identity for an export/checkpoint/proof-related file |
-| provenance | claim about origin/process; not automatically cryptographic proof |
-| smoke/module/live | fast targeted / full subsystem / real external execution tiers |
+| proof scope | computation actually established by the ZK circuit; currently proxy-only |
+| V3 | context-attested registry submission protocol with EIP-712 policy signature + proxy proof |
+| policy signer | isolated authority for V3 context attestation; current analysis code builds/validates requests but does not hold signing keys |
+| audit MCP | live read-only V1/V2/V3 registry observation service on 8012 |
+| Rule 5C | failures/skips/unavailable evidence must be explicit, never empty-as-clean |
+| provenance | origin/process/context claim; not automatically cryptographic ground truth |
+| smoke/module/live | targeted implementation / subsystem / real external-operation evidence tiers |
 
 ### Source-symbol map
 
-| Concern | Stable reference |
+| Concern | Stable/current reference |
 |---|---|
-| DATA stage registry | `data_module/sentinel_data/cli.py::STAGES`, `::_STAGE_FN` |
-| schema/classes | `data_module/sentinel_data/representation/graph_schema.py::FEATURE_SCHEMA_VERSION`, `::CLASS_NAMES` |
-| dataset seam | `ml/src/datasets/sentinel_dataset.py::SentinelDataset` |
+| historical DATA stage registry | `data_module/sentinel_data/cli.py::STAGES` |
+| physical graph/class schema | `data_module/sentinel_data/representation/graph_schema.py::FEATURE_SCHEMA_VERSION`, `::CLASS_NAMES` |
+| R4 DATA policy | `docs/plan/ml-R4/specs/data_vnext_policy_v1.json` |
+| R4 frozen roles | `docs/plan/ml-R4/manifests/p6_partition_manifest.json` |
+| historical ML dataset seam | `ml/src/datasets/sentinel_dataset.py::SentinelDataset` |
 | teacher | `ml/src/models/sentinel_model.py::SentinelModel` |
 | inference API | `ml/src/inference/api.py::app` |
 | proxy/circuit | `zkml/src/distillation/proxy_model.py::ProxyModel`, `::CIRCUIT_VERSION` |
-| circuit setup/proof | `zkml/src/ezkl/setup_circuit.py::setup_circuit`, `run_proof.py::main` |
-| registry | `contracts/src/AuditRegistry.sol::AuditRegistry` |
-| state/graph | `agents/src/orchestration/state.py::AuditState`, `graph.py::build_graph` |
-| fusion verdict | `agents/src/orchestration/verdict/fuse.py::fuse` |
+| circuit proof | `zkml/src/ezkl/run_proof.py::main` / proof helpers |
+| V3 registry | `contracts/src/AuditRegistry.sol::submitAuditV3` |
+| V3 digest/request | `agents/src/security/policy_signer.py::compute_v3_digest`, `::build_v3_request` |
+| live audit MCP | `agents/src/mcp/servers/audit/_server.py::run_server`, `_readonly_handlers.py` |
+| LangGraph | `agents/src/orchestration/graph.py::build_graph` |
 | gateway/jobs | `agents/src/api/gateway.py::create_app`, `sqlite_job_store.py::SqliteJobStore` |
-| reliability | `agents/src/eval/reliability_fit.py::_fit_cell` |
-| injection defense | `agents/src/security/prompt_sanitize.py::sanitize_for_prompt` |
+| V3 feedback | versioned submission/observation/policy/runtime modules under `agents/src/contracts` and `agents/src/ingestion` |
 
 ### Configuration registry
 
 | Area | Location |
 |---|---|
-| DATA sources/policies | [`data_module/config.yaml`](../../data_module/config.yaml) |
-| ML training/MLOps | [`train.py`](../../ml/scripts/train.py) and [`mlops_config.json`](../../ml/mlops_config.json) |
-| AGENTS verdict/routing policy | [`agents/configs/verdicts_default.yaml`](../../agents/configs/verdicts_default.yaml) |
-| fitted reliability | [`agents/configs/reliability_v3.yaml`](../../agents/configs/reliability_v3.yaml) |
+| historical DATA acquisition/config | [`data_module/config.yaml`](../../data_module/config.yaml) |
+| R4 DATA semantics | [`data_vnext_policy_v1.json`](../plan/ml-R4/specs/data_vnext_policy_v1.json) |
+| R4 roles | [`p6_partition_manifest.json`](../plan/ml-R4/manifests/p6_partition_manifest.json) |
+| ML training/MLOps | [`ml/scripts`](../../ml/scripts) + [`mlops_config.json`](../../ml/mlops_config.json) |
+| AGENTS verdict/routing | [`agents/configs`](../../agents/configs) |
 | EZKL circuit | [`zkml/ezkl/settings.json`](../../zkml/ezkl/settings.json) |
-| Foundry/networks | [`contracts/foundry.toml`](../../contracts/foundry.toml) |
+| V3 contract trust roots | `AuditRegistry` V3 verifier/policy-signer storage + deployment/upgrade config |
 | handbook facts | [`handbook.toml`](_meta/handbook.toml) |
 
 ### Environment-variable registry
 
-Names only; inspect source for current defaults and never paste values:
+Names only; inspect source for exact current defaults:
 
-- gateway: `GATEWAY_PORT`, database/health interval and audit limit variables;
-- ML: `SENTINEL_CHECKPOINT`, `SENTINEL_DRIFT_BASELINE`, `SENTINEL_DETERMINISTIC`;
-- MCP: per-service port variables, ML API URL, mock flags, timeout/index variables;
-- LLM/RAG: model/base URL and index/embedder configuration names;
-- chain: RPC URL, registry address, operator key, confirmation configuration;
+- gateway: port/database/health/audit-limit variables;
+- ML: `SENTINEL_CHECKPOINT`, drift/determinism/resource variables;
+- MCP: per-service ports/upstream/index/mock/timeouts;
+- chain observation: RPC + registry address;
+- future isolated V3 signer/broadcaster: must define its own external key/KMS/RPC boundary; no secret value belongs here;
 - testing: `TMPDIR`, `TMP`, `TEMP`.
-
-Use `rg -n 'os.getenv|os.environ' agents/src ml/src zkml/src` to generate the exact current inventory.
 
 ### Artifact matrix
 
-| Classification | Examples | Fresh clone behavior |
+| Classification | Examples | Current meaning |
 |---|---|---|
-| tracked | source/config, proxy, ONNX, compiled circuit, settings, VK, generated verifier | present via Git |
-| DVC-managed local | Run 12 checkpoint and companions in this checkout | pointer files are also ignored/untracked here; separate acquisition needed |
-| regenerated | caches, RAG indexes, gateway/checkpoint DBs, witness/proof inputs | created by commands/services |
-| ignored/private | proving key; secrets; operator state | must be securely supplied/regenerated |
-| ignored local | DATA exports/splits; `AuditRegistryV2.t.sol` | not clone coverage or guaranteed availability |
+| tracked current governance | R4 ledger, policy, schema, Phase-6 role/support/acceptance manifests | fresh-clone semantic authority through G6 |
+| tracked source/tests | DATA/ML/AGENTS/ZK/contracts source, V3 tests | implementation/verification source |
+| tracked historical/reproducibility | proxy/ONNX/settings/compiled/VK/generated verifier, historical reports | present but may require regeneration after repaired teacher |
+| historical local/protected | Run12 checkpoint/companions, large physical representations depending on checkout | required for specific reproduction/local G7; not guaranteed clone assets |
+| generated/local runtime | RAG indexes, DBs, caches, witness/proof workspaces | recreated by operation/build |
+| private operational | secrets/signing keys/RPC credentials/proving material where applicable | never Git/documented values |
+
+The old claim that `contracts/test/AuditRegistryV2.t.sol` is merely ignored/local is obsolete. Current tracked contract tests include V2 compatibility plus V3 behavior, golden-digest parity, V3 upgrade/storage, and real-proof verification.
 
 ## Interfaces, data shapes, and configuration
 
-The machine-readable registry owns canonical page names, required template sections, ports/routes, critical dimensions, source ownership, artifacts, and test tiers. Update it whenever a referenced fact changes, then run both validator modes.
+The machine-readable handbook registry owns canonical page names, required sections, ports/routes/tools, critical dimensions, selected source ownership, artifacts, and test tiers. It must mirror the **live** service surface: audit MCP has three read-only tools, while V3 submission exists at the contract/policy boundary rather than as an analysis-MCP tool.
+
+R4 machine artifacts are stronger sources for DATA semantic state than prose summaries. Content hashes identify evidence/partition/data artifacts independently of mutable paths.
 
 ## Failure modes and current limitations
 
-- This map can lag source; static validation catches declared critical facts, not every semantic change.
-- Local files can make a checkout look more complete than a fresh clone.
-- Historical docs can contain excellent reasoning and stale current-state claims simultaneously.
-- Source comments/docstrings are not stronger than executable behavior.
+- A registered source path can exist while prose semantics are stale; validator truth checks therefore need semantic phrases as well as symbol existence.
+- A tracked historical artifact can be reproducible without being production/current authority.
+- Same tensor shape/version name can hide changed model/data meaning.
+- Supplementary guides/labs can teach mechanics while containing old examples; they must not override canonical chapters.
+- Local files can make one checkout appear more complete than a fresh clone.
 
 ## Common change recipe
 
-When adding a document or reference:
+When adding/changing a reference:
 
-1. Decide whether it is canonical handbook, canonical deep reference, useful history, or superseded plan.
-2. Give canonical pages source ownership in metadata.
-3. Link by relative path plus `path::symbol` where useful.
-4. Avoid volatile counts outside status and avoid secrets everywhere.
-5. Run static link/path/fact validation.
+1. classify it as current canonical, active governance, supplementary, historical/reproducibility, generated/local, or private;
+2. register stable source/policy/artifact identity;
+3. update the owning canonical chapter/current status;
+4. update validator discovery if the **live** entry point changed;
+5. keep historical material but label its authority honestly;
+6. run static/inventory checks and PR CI.
 
 ## Verification commands
 
@@ -111,7 +138,6 @@ When adding a document or reference:
 python3 docs/handbook/tools/verify_handbook.py static
 python3 docs/handbook/tools/verify_handbook.py inventory
 git ls-files
-git check-ignore -v <suspected-local-artifact>
 ```
 
 ## Optional deep references
@@ -120,48 +146,46 @@ git check-ignore -v <suspected-local-artifact>
 
 | Material | Classification | How to use it now |
 |---|---|---|
-| `docs/handbook/technical/` and `docs/handbook/labs/` | current and source-validated | primary technical study/implementation layer; checked by symbol/template/preflight validation |
-| `docs/learning/01_*` through `10_*` | useful historical deep context | strong explanations, especially for AGENTS; verify every operational claim against the matching T07–T09 guide and source |
-| `docs/learning/agents-ownership/` | useful precursor, partially superseded | exercises informed the ownership approach; use v3 labs for current commands, paths, gaps, and reset rules |
-| `docs/learning/2026-06-23_agents_module_mastery_roadmap.md` and `LEARNING_DOCS_SPEC.md` | historical planning context | explains learning intent, not current runtime truth |
-| `docs/learning/plans/` | superseded plans | retain for auditability; do not use as implementation instructions |
+| `docs/handbook/*.md` canonical chapters | current | primary explanatory/navigation authority |
+| `docs/plan/ml-R4/` | active controlling DATA/ML governance/evidence | authoritative for R4 phase/semantic/role state |
+| `docs/handbook/technical/` | **supplementary learning guides** | use for source-reading mechanics; verify pre-R4/pre-V3 examples against canonical chapters/source |
+| `docs/handbook/labs/` | **supplementary practice labs** | safe exercises where prerequisites still match; not current-state authority |
+| `docs/learning/` | historical/useful conceptual context | verify operational/current claims before reuse |
+| prior plans/reports/experiments | historical evidence/context | preserve for auditability, not current implementation instructions |
 
-“Refreshed” in v3 means the topic was re-derived into the matching technical guide; it does not mean the older file was silently rewritten or fully revalidated.
+### Canonical deep references
 
-### Canonical deep reference
+- R4 evidence/policy/role artifacts under [`docs/plan/ml-R4`](../plan/ml-R4)
+- current ADRs/decision registers bound to current implementation
+- module tests/evidence tied to explicit commits/artifact hashes
 
-- [`docs/learning`](../learning) — focused conceptual tutorials; verify source/current status before operational use.
-- [`docs/ml/adr`](../ml/adr) and other ADR directories — design rationale; source defines current implementation.
-- module testing specs and evaluation reports bound to explicit artifacts/commits.
+### Historical compatibility roots
 
-### Useful historical context
+- historical v1 DATA exports/splits/labels;
+- Run12 checkpoint/threshold/calibration companions;
+- V1/V2 registry history/ABI paths;
+- retained proxy proof bundle until replaced after repaired teacher selection.
 
-- [`docs/proposal`](../proposal), [`docs/reports`](../reports), prior experiments, run notes, and archived analyses.
-- Older module READMEs may explain intent but are not current authority.
-
-### Superseded material
-
-- [`docs/plan/system-finalization/handbook`](../plan/system-finalization/handbook) — D1 v1 per-page plans, superseded by the D1 v3 master plan and this implemented handbook.
-- Historical plans remain for auditability; they are not required reading for the core learning path.
+Historical compatibility is deliberate; it must not be silently presented as the current path.
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know repository navigation, Python/Solidity symbol syntax, configuration precedence, environment variables, and artifact ownership.
+Know repository navigation, semantic versioning, artifact provenance, partial-label semantics, EIP-712, source-symbol lookup, and current-vs-historical authority.
 
 ### Source map and reading order
 
-Use this page to resolve a term/config/artifact, then jump to the owning canonical chapter, registered guide, and lab. Machine-readable ownership lives in [`handbook.toml`](_meta/handbook.toml); symbol existence is validated by AST/constrained Solidity parsing.
+Resolve a term here, jump to the owning canonical chapter, then executable source/R4 machine artifact. Use supplementary guides/labs only after current status is clear.
 
 ### Execution trace and worked example
 
-For `class_scores`, the map leads from proxy output/public positions through `AuditRegistry.submitAuditV2`, then report/query boundaries. For a configuration like `GATEWAY_PORT`, it leads to source default, service registry, operations command, and health check without copying an environment value.
+For an on-chain audit today, the registry lookup leads to V3 context storage and read-only MCP observation; V2 remains historical. For a DATA target, lookup leads to vNext policy/role artifacts; historical `y[10]` remains Run12 compatibility. For a future retrain, those identities must propagate into the new checkpoint/proxy/V3 hashes.
 
 ### Implementation practice
 
-When introducing a public symbol/config/artifact/error, add its owner, stable `path::symbol`, default or classification, consumers, and verification route. Historical documents are classified current/refreshed/context/superseded rather than silently trusted.
+When introducing a public symbol/config/artifact/error, add its authority/classification, owner, consumers, version/hash, failure behavior, verification path, and historical compatibility relationship.
 
 ### Review and ownership check
 
-Can you locate a symbol or error in source from this registry and decide whether its associated document/artifact is canonical, historical, local-only, or regenerated?
+Can you locate the current DATA policy, frozen roles, current teacher status, live audit-MCP tool surface, V3 submission method, proof scope, and candidate Phase-7 status without relying on a historical guide?

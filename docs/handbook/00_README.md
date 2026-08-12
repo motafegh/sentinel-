@@ -2,93 +2,98 @@
 
 **Read this when:** you are learning, operating, changing, reviewing, or handing over SENTINEL.
 
-**Skip this if:** never on first use; it defines the handbook’s authority and shortest learning paths.
+**Skip this if:** never on first use; it defines documentation authority and the shortest safe learning paths.
 
 **Estimated reading time:** 6 minutes, plus the selected path.
 
 ## 30-second summary
 
-This handbook explains SENTINEL progressively: a one-hour ownership path first, subsystem depth only when needed. Executable source is authoritative. Every page distinguishes implemented, degraded, planned, tracked, regenerated, ignored/private, and local-only behavior. Volatile test counts live only in [current status](16_current_status.md).
+This handbook is the canonical current learning/navigation layer for SENTINEL. The stable system is now defined by the V3 registry/read-only analysis boundary and the R4 DATA/ML repair program through G6. Historical Run12/v1/V2 behavior is still preserved for reproducibility, but it must not be confused with the repaired DATA vNext policy or the current V3 trust model. Volatile state belongs in [current status](16_current_status.md).
 
 ## Just-enough mental model
 
-SENTINEL turns Solidity into versioned DATA artifacts, a four-eye ML assessment, multi-tool agent evidence and dual verdicts, an optional proxy ZK proof, and an on-chain audit record. The off-chain gateway and direct proof/submission paths are currently separate.
+```text
+Solidity/data
+   ↓
+DATA + R4 evidence/policy/role controls
+   ↓
+current historical representations + DATA vNext semantic repair
+   ↓
+Four-eye teacher / ML API
+   ↓
+AGENTS 14-node off-chain audit → gateway report
+
+separate trust/protocol boundary:
+ML fusion[128] → retained proxy/EZKL proof → V3 context-attested registry protocol
+```
+
+The live audit MCP is read-only. V3 submission signing/broadcast is outside the analysis MCP security domain. The retained proof proves the proxy computation only; the V3 policy signature separately binds context/provenance.
 
 ### Authority rules
 
-1. Executable `.py`, `.sol`, `.sh`, and configuration behavior is current truth.
-2. This handbook is the canonical learning/navigation layer and is checked against selected source facts.
-3. ADRs explain decisions; reports/testing specs provide bound evidence; plans and experiments are historical unless explicitly active.
-4. A local file is not a fresh-clone artifact unless Git tracks it.
-5. A passing test proves the checked behavior, not product quality or end-to-end security.
-6. No `.env`, RPC credential, private key, or private endpoint value belongs in documentation.
+1. Executable `.py`, `.sol`, `.sh`, configuration, and committed machine-readable policy/manifests are behavioral truth.
+2. This handbook is the canonical current explanatory/navigation layer.
+3. `docs/plan/ml-R4/` is the controlling DATA/ML repair record for evidence, decisions, roles, risks, and gate state.
+4. ADRs explain decisions; historical plans/reports/experiments remain evidence/history unless explicitly active.
+5. Historical DATA v1 labels, Run12 thresholds, V1/V2 registry writes, and old submission code remain reproducibility artifacts—not current authority for new work.
+6. A local file is not a fresh-clone artifact unless Git tracks it.
+7. A passing test proves the checked behavior, not product quality or end-to-end security.
+8. No `.env`, RPC credential, private key, mnemonic, or private endpoint value belongs in documentation.
 
 ## Actual runtime/source walkthrough
 
-Start at architecture, choose the runtime flow, then follow the producer-to-consumer boundary relevant to your task. Each chapter provides source-symbol anchors, current limitations, a change recipe, and smoke/module/live verification.
+Start with architecture and current status. Then choose one of the two important tracks:
+
+- **runtime/audit track:** gateway → LangGraph → evidence/report, plus read-only V1/V2/V3 registry observation;
+- **DATA/ML repair track:** historical evidence → R4 ledger/policy/roles → DATA vNext → later retraining/evaluation.
 
 ### Page index
 
 | Page | Owns |
 |---|---|
-| [01 Architecture](01_architecture.md) | topology, processes, ports, trust boundaries |
-| [02 Runtime flows](02_runtime_flows.md) | off-chain, direct ZK/on-chain, feedback |
-| [03 DATA pipeline](03_data_pipeline.md) | ten stages and lineage |
-| [04 DATA artifacts](04_data_artifacts.md) | schema, exports, splits, dataset seam |
-| [05 ML model/inference](05_ml_model_inference.md) | four-eye teacher and HTTP API |
-| [06 ML training/quality](06_ml_training_quality.md) | loss, calibration, MLOps, interpretation |
-| [07 ZKML](07_zkml.md) | proxy, EZKL, proof semantics |
-| [08 Contracts](08_contracts.md) | token, registry, verifier, UUPS |
+| [01 Architecture](01_architecture.md) | topology, processes, ports, V3 trust boundaries |
+| [02 Runtime flows](02_runtime_flows.md) | off-chain report, read-only registry observation, V3 protocol boundary, feedback |
+| [03 DATA pipeline](03_data_pipeline.md) | historical lifecycle plus R4/DATA vNext authority |
+| [04 DATA artifacts](04_data_artifacts.md) | v1 vs v2 semantics, representations, frozen roles, ML seam |
+| [05 ML model/inference](05_ml_model_inference.md) | four-eye teacher and current Run12 inference status |
+| [06 ML training/quality](06_ml_training_quality.md) | historical training mechanics and repaired-retrain constraints |
+| [07 ZKML](07_zkml.md) | retained proxy proof scope and V3 context binding |
+| [08 Contracts](08_contracts.md) | token, V1/V2 history, V3 protocol, verifier, UUPS |
 | [09 AGENTS orchestration](09_agents_orchestration.md) | state, 14-node graph, evidence/verdicts |
-| [10 AGENTS services](10_agents_services.md) | five MCPs, RAG, gateway, feedback |
-| [11 Cross-module contracts](11_cross_module_contracts.md) | shapes, versions, hashes, boundaries |
-| [12 Security and trust](12_security_and_trust.md) | injection, Rule 5C, secrets, ZK limits |
-| [13 Evaluation](13_evaluation.md) | DATA/ML/AGENTS evidence and gates |
-| [14 Operations](14_operations.md) | setup, startup, smoke/live, troubleshooting |
-| [15 Change playbooks](15_change_playbooks.md) | blast-radius recipes |
-| [16 Current status](16_current_status.md) | commit-bound tests, gaps, availability |
-| [17 Reference](17_reference.md) | glossary, symbols, configs, artifacts, history |
+| [10 AGENTS services](10_agents_services.md) | five MCPs, read-only audit MCP, RAG, gateway, feedback |
+| [11 Cross-module contracts](11_cross_module_contracts.md) | DATA vNext/ML/ZK/V3 compatibility boundaries |
+| [12 Security and trust](12_security_and_trust.md) | injection, Rule 5C, proof/attestation/signing boundaries |
+| [13 Evaluation](13_evaluation.md) | R4 role limitations, ML/AGENTS evidence and gates |
+| [14 Operations](14_operations.md) | safe startup, verification, artifact/local-only boundaries |
+| [15 Change playbooks](15_change_playbooks.md) | versioned DATA/ML/V3 blast-radius recipes |
+| [16 Current status](16_current_status.md) | canonical current gates, blockers, availability |
+| [17 Reference](17_reference.md) | glossary, symbols, configs, artifacts, document classification |
 
 ### Learning paths
 
-- Core ownership (~1 hour): `00 → 01 → 02 → 11 → 12 → 16`
-- Run the system: `01 → 02 → 14 → 16`
-- DATA/ML/ZK: `03 → 04 → 05 → 06 → 07 → 11 → 13`
-- Agents: `09 → 10 → 11 → 12 → 13`
-- Blockchain: `07 → 08 → 11 → 14`
-- Maintainer: `15 → 17`
+- Core ownership: `00 → 01 → 02 → 11 → 12 → 16`
+- DATA/ML repair: `03 → 04 → 06 → 13 → 16 → docs/plan/ml-R4`
+- Runtime/operator: `01 → 02 → 10 → 14 → 16`
+- ZK/contracts: `07 → 08 → 11 → 12 → 16`
+- AGENTS: `09 → 10 → 11 → 12 → 13`
 
-Read each page’s 30-second summary first. Stop after the mental model if you are not changing that subsystem. Read source walkthrough and interfaces before editing. Use deep references only when the task needs their depth.
-
-### Technical guide and lab map
-
-| Area | Deep guide | Ownership lab |
-|---|---|---|
-| DATA lifecycle | [T01](technical/01_data_pipeline_internals.md) | [L01](labs/01_data_fixture_representation.md) |
-| DATA/ML artifact seam | [T02](technical/02_data_representation_export.md) | [L02](labs/02_export_dataset_seam.md) |
-| Model/inference | [T03](technical/03_ml_model_inference_internals.md) | [L03](labs/03_ml_tensor_api_trace.md) |
-| Training/quality | [T04](technical/04_ml_training_quality_mlops.md) | [L04](labs/04_training_calibration_promotion.md) |
-| ZKML | [T05](technical/05_zkml_proof_lifecycle.md) | [L05](labs/05_zkml_witness_signals.md) |
-| Contracts | [T06](technical/06_contracts_storage_upgrades.md) | [L06](labs/06_contract_registry_invariant.md) |
-| AGENTS orchestration | [T07](technical/07_agents_orchestration_evidence.md) | [L07](labs/07_agents_state_fusion.md) |
-| Services/RAG/gateway | [T08](technical/08_services_rag_gateway.md) | [L08](labs/08_services_rag_gateway_recovery.md) |
-| Security/evaluation | [T09](technical/09_security_evaluation_trust.md) | [L09](labs/09_injection_rule5c_reliability.md) |
-| End-to-end debugging | [T10](technical/10_end_to_end_debugging.md) | [L10](labs/10_end_to_end_capstone.md) |
+Technical guides and labs remain useful for code-reading/practice, but they are **supplementary**. Some exercises were authored against the pre-R4/pre-V3 baseline. Where a guide/lab conflicts with a canonical chapter, current source, R4 policy, or current status, the canonical/current material wins.
 
 ## Interfaces, data shapes, and configuration
 
-[`_meta/handbook.toml`](_meta/handbook.toml) is the documentation interface: page registry, required sections, source ownership, ports/routes, critical constants, test tiers, and artifact classifications. [`tools/verify_handbook.py`](tools/verify_handbook.py) checks it without third-party packages.
+[`_meta/handbook.toml`](_meta/handbook.toml) is the machine-readable documentation interface: canonical pages, ports/routes/tools, critical shapes, source ownership, artifact classification, and test tiers. [`tools/verify_handbook.py`](tools/verify_handbook.py) checks declared facts against source.
 
 ## Failure modes and current limitations
 
-- Static checks cover declared critical facts, not every possible semantic drift.
-- The handbook documents real failing tests and disconnected behavior; it does not repair product defects.
-- Historical references may be stale even when useful.
-- Some commands require local artifacts not supplied by Git; read prerequisites before running them.
+- Static documentation checks cannot prove every semantic claim.
+- Historical material can remain valuable while being operationally superseded.
+- The stable main branch is through R4 G6; Phase 7 DATA vNext implementation is candidate work until local representation binding and G7 completion.
+- Run12 remains the historical operational teacher; no repaired retrain has been promoted yet.
+- The recovered vNext evidence has no trustworthy confirmed-negative population, so threshold/calibration/untouched-acceptance roles are intentionally unsupported for the first repaired baseline.
 
 ## Common change recipe
 
-When source changes, update the owning chapter, cross-module page if a boundary changed, status if evidence changed, and metadata if a declared fact/path changed. Run static and inventory checks before review.
+When behavior changes, update the owning canonical chapter, cross-module/security pages if a boundary changed, `16_current_status.md`, and handbook metadata/validator assumptions. If the change is DATA/ML semantic, update the R4 decision/risk/gate artifacts first. Do not make old learning material silently authoritative again.
 
 ## Verification commands
 
@@ -96,34 +101,34 @@ When source changes, update the owning chapter, cross-module page if a boundary 
 python3 docs/handbook/tools/verify_handbook.py static
 python3 docs/handbook/tools/verify_handbook.py inventory
 python3 docs/handbook/tools/verify_handbook.py lab --list
-python3 docs/handbook/tools/verify_handbook.py lab --check-all-safe
 python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
 ```
 
 ## Optional deep references
 
-- [Reference registry](17_reference.md)
 - [Current status](16_current_status.md)
+- [Reference registry](17_reference.md)
+- [R4 master plan](../plan/ml-R4/00_MASTER_PLAN.md)
 - [`handbook.toml`](_meta/handbook.toml)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Basic Python, shell, Git, HTTP/JSON, tensors, and Solidity are assumed. Each technical guide refreshes the difficult graph, PyTorch, ZK, distributed-state, or upgrade concepts it uses.
+Basic Python, shell, Git, HTTP/JSON, tensors, Solidity, and evidence/provenance concepts are assumed. The handbook introduces the project-specific meanings of label state, training strength, proof scope, policy attestation, and dataset role.
 
 ### Source map and reading order
 
-Use the one-hour core path first. Then choose a subsystem pair: canonical chapter → matching guide in [`technical/`](technical/) → matching lab in [`labs/`](labs/). The ten guide/lab pairs are registered in [`handbook.toml`](_meta/handbook.toml), so the validator can detect missing learning coverage.
+Read current status before acting on an older guide. For implementation work, follow canonical chapter → executable source → R4/ADR decision if applicable → focused tests. Technical guides/labs are practice aids, not a stronger source of current operational truth.
 
 ### Execution trace and worked example
 
-The capstone trace is [T10](technical/10_end_to_end_debugging.md): one Solidity contract becomes an off-chain report and, through a separately invoked path, a proxy proof/on-chain record. It identifies every shape, hash, port, and current disconnection.
+A current DATA/ML trace is: historical contract/evidence → contract×class ledger → accepted source/class policy → leakage-safe role → DATA vNext semantic target/mask → later trainer compatibility/retrain. A current chain trace is: proxy proof artifacts + fully bound V3 request → isolated policy attestation → `AuditRegistry.submitAuditV3`; the analysis MCP itself only reads registry state.
 
 ### Implementation practice
 
-Labs make controlled changes in tests or temporary fixtures, run focused checks, show an intentional failure, and restore the edit. Start with [L01](labs/01_data_fixture_representation.md); run `python3 docs/handbook/tools/verify_handbook.py lab --list` to choose prerequisites honestly.
+Before editing, identify whether you are changing historical compatibility, the repaired vNext path, live analysis runtime, or the V3 submission protocol. Preserve old artifacts in place and introduce versioned new behavior unless an approved migration says otherwise.
 
 ### Review and ownership check
 
-You own a topic when you can trace inputs to outputs, name the source symbols, predict success/failure behavior, implement a test-first change, identify regenerated artifacts, and roll back without weakening a gate.
+Can you distinguish historical v1/Run12/V2 compatibility from the current R4/V3 direction, name which components are canonical today, and identify what remains blocked before retraining/promotion?
