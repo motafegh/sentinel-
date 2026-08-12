@@ -1,139 +1,169 @@
 # 13 — Evaluation and release evidence
 
-**Read this when:** you need to judge DATA quality, ML quality, AGENTS behavior, reliability weights, or release readiness.
+**Read this when:** you need to judge DATA quality, ML quality, AGENTS behavior, reliability weights, or release/promotion readiness.
 
-**Skip this if:** you are only browsing architecture; do not skip it before promotion.
+**Skip this if:** you are only browsing architecture; do not skip it before claiming model quality or promotion.
 
 **Estimated reading time:** 15 minutes.
 
 ## 30-second summary
 
-Evaluation has three layers. DATA proves provenance, label quality, leakage control, and representation integrity. ML measures ranking, thresholded decisions, calibration, OOD behavior, and interpretability. AGENTS measures whole-pipeline verdicts, paths, failures, evidence coverage, Fβ with β=2, nine behavioral gates, and per-tool reliability. A test pass means implementation consistency; release evidence means measured usefulness and safety.
+Evaluation must follow evidence authority, not merely available scripts. R4 repaired the DATA truth layer and froze purpose-specific roles before retraining. For the first repaired baseline, model-selection evidence is **strong-positive but positive-only**, while threshold-fit, calibration-fit, and untouched-acceptance roles are deliberately unsupported/empty because no trustworthy confirmed-negative/unexposed corpus exists. AGENTS evaluation infrastructure remains useful, but model/release metrics must never treat unknown/masked cells as negatives or reuse historical Run12 evaluation roles as if they were vNext evidence.
 
 ## Just-enough mental model
 
 ```text
-DATA gates: is the evidence set trustworthy?
+R4 DATA evidence/policy
       ↓
-ML eval: does the model rank/calibrate/decide well?
+leakage-safe roles
       ↓
-AGENTS eval: does the composed system route, fail, and report correctly?
+Phase 8 retrain + positive-only model-selection diagnostics
       ↓
-release record: artifact + commit + environment + metrics + gates + limitations
+Phase 9 evaluation constrained by available evidence
+      ↓
+Phase 10 promotion decision
+
+unsupported evidence role ≠ permission to borrow another role
 ```
 
-Never compare metrics unless corpus, split, class order, thresholds, tool availability, and deterministic/LLM mode are compatible.
+A test pass means implementation consistency. A metric is trustworthy only when its labels, role, exposure history, and semantics justify that metric.
 
 ## Actual runtime/source walkthrough
 
-### DATA
+### DATA / R4 evidence quality
 
-DATA verification, split leakage, contamination benchmarks, feature distributions, co-occurrence, drift, overlap, and catalog diffs establish whether an export is safe to use. The relevant code is under [`verification`](../../data_module/sentinel_data/verification), [`splitting`](../../data_module/sentinel_data/splitting), [`analysis`](../../data_module/sentinel_data/analysis), and tracked [`benchmarks`](../../data_module/benchmarks).
+The current DATA evaluation foundation is the R4 chain:
 
-### ML
+- historical-source/crosswalk reconstruction;
+- 224,930-row contract×class evidence ledger;
+- targeted DIVE semantic review;
+- accepted `data-vnext-policy-v1`;
+- frozen `r4-vnext-roles-v1` leakage-group roles;
+- explicit unsupported threshold/calibration/acceptance manifests.
 
-Training validation records per-class and aggregate precision/recall/F1/AUC-PR plus calibration. Threshold tuning is per class. OOD suites, behavioral probes, cross-tool comparisons, reproducibility checks, and interpretability experiments provide complementary evidence. No single macro score replaces them.
+This evidence is stronger than old split names or binary labels. Historical `test`, `NonVulnerable`, all-zero, source-absence, or tool-silence states do not become trusted negatives merely because an evaluation utility expects them.
 
-### AGENTS
+### ML evaluation after repaired retraining
 
-[`pipeline_metrics.py`](../../agents/src/eval/pipeline_metrics.py) computes per-class/macro metrics including Fβ, configured with β=2 to emphasize recall. [`gates.py`](../../agents/src/eval/gates.py) defines nine release assertions:
+Phase 8/9 must separate:
 
-1. no consensus-flagged class silently becomes SAFE;
-2. debate timeout emits INCONCLUSIVE in LLM mode;
-3. no consensus vote disappears from final verdicts;
-4. confidence 1.0 is not downgraded to SAFE;
-5. vulnerable overall label is not paired with SAFE overall verdict;
-6. zero false-positive verdicts on the safe subset;
-7. the long-contract regression is detected;
-8. eye predictions are present;
-9. macro-F1 does not drop against the selected baseline.
+- optimization roles (`TRAIN_STRONG`, `TRAIN_WEAK`, optional unlabeled handling);
+- checkpoint-selection evidence (`MODEL_SELECTION`, positive-only limited);
+- internal audit/case-study evidence;
+- threshold fitting — currently unavailable;
+- calibration fitting — currently unavailable;
+- untouched acceptance — currently unavailable.
 
-[`run_benchmark.py`](../../agents/src/eval/run_benchmark.py) writes rows, metrics, gates, and reports. A run counts as passed only when its applicable gates pass; N/A conditions must remain visible.
+Positive-only model-selection can support sensitivity/positive-loss/regression diagnostics. It cannot honestly estimate false-positive rate, full F1, ROC-AUC, PR-AUC against trusted negatives, or calibrated decision probabilities.
 
-### Reliability matrix and fitting
+Run12 metrics remain historical baseline evidence and may be compared descriptively only with clear corpus/semantic differences. They are not an unbiased vNext holdout.
 
-[`reliability_matrix.py`](../../agents/src/eval/reliability_matrix.py) builds per-tool/per-class TP/FP/FN/TN while excluding cases where `tool_status.ran` is not true. [`reliability_fit.py`](../../agents/src/eval/reliability_fit.py) computes measured precision `tp/(tp+fp)` and shrinks it toward the configured L1 prior:
+### AGENTS evaluation
 
-```text
-fitted = (n × measured_precision + alpha × prior) / (n + alpha)
-n = tp + fp + fn + tn; alpha = 5
-```
+AGENTS evaluation code under [`agents/src/eval`](../../agents/src/eval) still evaluates orchestration/report behavior, failure semantics, path coverage, evidence use, Fβ, behavioral gates, and reliability. Tool-status rules remain critical: a tool that did not run is excluded rather than recorded as a negative.
 
-Zero-sample cells retain the prior. A fitted/prior delta of at least 0.05 requires a recorded justification. This is not the beta-posterior formula described in the superseded D1 plan.
+Reliability fitting may be appropriate only for evidence whose outcome labels and execution status are actually trustworthy. R4 restrictions on DATA/ML truth do not disappear when evidence reaches AGENTS.
+
+### V3/chain evidence
+
+A valid V3 registry record establishes successful contract/protocol verification for the stored proof/context/signature. It is not a ground-truth vulnerability label and cannot by itself become an ML evaluation target or automatic feedback promotion.
+
+Current V3 feedback promotion policy remains unavailable; observations can remain pending rather than being treated as accepted outcome evidence.
 
 ## Interfaces, data shapes, and configuration
 
-A release evidence bundle should name:
+A valid evaluation/release record should name:
 
-- commit, date, environment, deterministic/LLM/tool modes;
-- DATA version, split, artifact hash, schema, contamination/leakage evidence;
-- teacher checkpoint/hash, thresholds, calibration, proxy/circuit versions;
-- per-class confusion and ranking/calibration metrics;
-- Fβ β value, nine gate results, tool-status coverage, path/latency distributions;
-- reliability matrix input and fitted config/justifications;
-- known failures, skipped checks, local-only prerequisites, and comparison baseline.
+- commit/date/environment/mode;
+- DATA vNext policy/schema/manifest and Phase-6 role identities;
+- checkpoint/training-config identity;
+- which classes are supervised/disabled;
+- exact role used for each metric or decision;
+- strong/weak/masked support counts;
+- exposure history and leakage groups;
+- any threshold/calibration artifact and the authorized fitting evidence behind it;
+- AGENTS tool-status coverage/modes where system metrics are reported;
+- proxy/V3 identities only when chain/proof behavior is in scope;
+- explicit unsupported metrics/claims.
 
-The active decision policy is in [`verdicts_default.yaml`](../../agents/configs/verdicts_default.yaml); fitted reliability is in [`reliability_v3.yaml`](../../agents/configs/reliability_v3.yaml).
+### Current first-baseline role authority
+
+| Evidence purpose | Current status |
+|---|---|
+| train strong | supported |
+| train weak | supported for DIVE TOD only |
+| train unlabeled | supported |
+| model selection | supported, **positive-only limited** |
+| internal audit | supported, exposed/internal |
+| threshold fit | `UNSUPPORTED_EMPTY` |
+| calibration fit | `UNSUPPORTED_EMPTY` |
+| untouched acceptance | `UNSUPPORTED_EMPTY_FROZEN` |
+
+GasException and UnusedReturn remain supervision-disabled under policy v1.
 
 ## Failure modes and current limitations
 
-- Treating skipped/unavailable tools as negatives biases reliability and system metrics.
-- Fβ emphasizes recall but does not constrain false positives without separate gates.
-- Small benchmark corpora create high uncertainty; shrinkage reduces but does not remove it.
-- LLM-on and deterministic/no-LLM runs are not directly interchangeable.
-- Thresholds optimized on evaluation data invalidate that data as an unbiased final test.
-- Product test counts are volatile and belong only in [current status](16_current_status.md).
+- Unknown/masked rows counted as TN/negative recreate the original R4 corruption.
+- Positive-only model-selection cannot support ordinary discrimination/false-positive metrics.
+- A threshold/calibration script can execute successfully while the fitting evidence is unauthorized.
+- Reusing Run12 thresholds/calibration after retraining is invalid.
+- Exposed manual/quickstart corpora cannot be relabeled untouched acceptance.
+- Quickstart historical `NonVulnerable` semantics include invalid mappings and are not trusted negatives.
+- BCCC/tool silence is not class-specific confirmed-negative evidence.
+- AGENTS benchmark gates do not substitute for missing ML acceptance data.
+- V3 on-chain verification does not create vulnerability ground truth.
 
 ## Common change recipe
 
-For any policy or model change:
+For any model/policy evaluation change:
 
-1. Freeze baseline, corpus, modes, and artifact identities.
-2. State the expected metric/gate effect before implementation.
-3. Run DATA validation if inputs changed, ML evaluation if model/thresholds changed, and AGENTS benchmark if system policy changed.
-4. Compare per class and failure coverage, not only macro metrics.
-5. Refit reliability only from valid `ran=true` evidence.
-6. Record regressions and justifications; do not weaken a gate to obtain green output.
+1. freeze artifact and role identities before metrics;
+2. state which outcome states/classes the metric requires;
+3. verify that required positive/negative/acceptance support actually exists;
+4. mask unknown/disabled/weak cells according to policy;
+5. preserve group-role isolation;
+6. report unsupported metrics instead of synthesizing data;
+7. compare with Run12 only with explicit historical-semantic caveats;
+8. if new negative/acceptance evidence is introduced, create a new versioned evidence/role decision before using it.
+
+For AGENTS reliability/evaluation, continue to exclude `ran=false` tools and preserve deterministic/LLM/live/mock provenance.
 
 ## Verification commands
 
 ```bash
-export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
-cd agents
-poetry run python -m src.eval.run_benchmark --help
-poetry run python -m src.eval.reliability_fit --help
-poetry run pytest -q -k 'eval or gate or reliability'
-cd ..
+python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 python3 docs/handbook/tools/verify_handbook.py static
+cd agents && poetry run pytest -q -k 'eval or gate or reliability'
 ```
 
-Full benchmark runs with real tools/LLMs are live checks and must preserve their raw evidence.
+After repaired retraining begins, Phase-8/9 commands and evidence bundles become the controlling ML evaluation artifacts.
 
 ## Optional deep references
 
-- [`docs/learning/08_evaluation_framework.md`](../learning/08_evaluation_framework.md)
-- [`docs/learning/10_decision_numbers.md`](../learning/10_decision_numbers.md)
-- [`agents/src/eval/README.md`](../../agents/src/eval/README.md)
 - [ML training and quality](06_ml_training_quality.md)
+- [DATA artifacts](04_data_artifacts.md)
+- [Current status](16_current_status.md)
+- [R4 Phase 9 plan](../plan/ml-R4/phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md)
+- [R4 Phase 10 plan](../plan/ml-R4/phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know confusion matrices, macro/micro metrics, Fβ, calibration, regression baselines, and statistical uncertainty.
+Know confusion matrices, precision/recall/Fβ, calibration, partial/positive-unlabeled labels, data leakage, exposure, checkpoint selection, and evaluation-role separation.
 
 ### Source map and reading order
 
-Read DATA verification/benchmarks, ML testing specs/promotion evidence, AGENTS `pipeline_metrics.py`, nine gates in `gates.py`, reliability matrix, and `reliability_fit.py::fit`. See [T09](technical/09_security_evaluation_trust.md).
+Start with R4 policy and frozen support table before reading ML/AGENTS metric utilities. Then inspect historical trainer/evaluation code, AGENTS pipeline metrics/gates/reliability, and the Phase-9/10 plans. Let evidence roles constrain which utilities are meaningful.
 
 ### Execution trace and worked example
 
-Labeled outcomes become per-class confusion cells. Measured reliability is precision `tp/(tp+fp)` and shrinks toward L1 prior with alpha 5. For `n=10`, measured `0.8`, prior `0.6`, fitted value is about `0.7333`. Gate failures remain release evidence even if an average metric improves.
+If a model predicts all strong-positive model-selection examples correctly, positive recall can be reported. Because that role has no trusted negatives, false-positive rate and full F1 cannot. A later separately reviewed negative corpus would require a new role/version before those metrics become authorized.
 
 ### Implementation practice
 
-[L04](labs/04_training_calibration_promotion.md) practices Fβ/threshold evidence; [L09](labs/09_injection_rule5c_reliability.md) practices reliability and failure exclusion. Freeze corpus identity before comparison.
+Make metric eligibility a machine-readable mask/role check, not reviewer memory. Unit-test that unknown rows, weak metric-ineligible rows, disabled classes, and unsupported roles cannot enter outcome metrics.
 
 ### Review and ownership check
 
-Can you reproduce every reported metric from counts and explain all nine gates without referring to volatile suite counts?
+Can you say which current roles may train weights, select checkpoints, fit thresholds, fit calibration, or provide untouched acceptance—and identify which common metrics are impossible today because negative evidence is absent?
