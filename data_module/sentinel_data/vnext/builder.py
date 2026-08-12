@@ -23,6 +23,7 @@ EXPECTED_LEDGER_SHA256 = "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f564
 EXPECTED_CONTRACTS = 22493
 EXPECTED_ROWS = 224930
 EXPECTED_EXCLUDED = 836
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _sha256(path: Path) -> str:
@@ -31,6 +32,15 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: fh.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _logical_path(path: Path) -> str:
+    """Return stable repo-relative lineage path when the input is in this repo."""
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(_REPO_ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -293,13 +303,13 @@ def build_vnext_overlay(
 
     evidence_snapshot = {
         "schema": "sentinel-data-vnext-evidence-snapshot-v1",
-        "ledger": {"path": str(ledger_path), "sha256": _sha256(ledger_path)},
-        "policy": {"path": str(policy_path), "sha256": _sha256(policy_path)},
-        "label_schema": {"path": str(label_schema_path), "sha256": _sha256(label_schema_path)},
-        "partition_manifest": {"path": str(partition_manifest_path), "sha256": _sha256(partition_manifest_path)},
-        "contract_roles": {"path": str(contract_roles_path), "sha256": _sha256(contract_roles_path)},
-        "unsupported_roles": {"path": str(unsupported_roles_path), "sha256": _sha256(unsupported_roles_path)},
-        "untouched_acceptance": {"path": str(acceptance_manifest_path), "sha256": _sha256(acceptance_manifest_path)},
+        "ledger": {"path": _logical_path(ledger_path), "sha256": _sha256(ledger_path)},
+        "policy": {"path": _logical_path(policy_path), "sha256": _sha256(policy_path)},
+        "label_schema": {"path": _logical_path(label_schema_path), "sha256": _sha256(label_schema_path)},
+        "partition_manifest": {"path": _logical_path(partition_manifest_path), "sha256": _sha256(partition_manifest_path)},
+        "contract_roles": {"path": _logical_path(contract_roles_path), "sha256": _sha256(contract_roles_path)},
+        "unsupported_roles": {"path": _logical_path(unsupported_roles_path), "sha256": _sha256(unsupported_roles_path)},
+        "untouched_acceptance": {"path": _logical_path(acceptance_manifest_path), "sha256": _sha256(acceptance_manifest_path)},
     }
     _write_json(evidence_snapshot_path, evidence_snapshot)
 
