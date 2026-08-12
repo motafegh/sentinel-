@@ -8,6 +8,7 @@ on:
       - 'data_module/sentinel_data/vnext/**'
       - 'data_module/sentinel_data/export/format_schema/v2.yaml'
       - 'data_module/tests/test_vnext/**'
+      - 'docs/plan/ml-R4/scripts/p7_run_local_gate.py'
       - 'docs/plan/ml-R4/specs/data_vnext_policy_v1.json'
       - 'docs/plan/ml-R4/schemas/data_vnext_label_state_v1.schema.json'
       - 'docs/plan/ml-R4/manifests/p6_contract_role_manifest.jsonl'
@@ -42,7 +43,7 @@ jobs:
           PYTHONPATH: data_module
         run: python -m pytest -q -c /dev/null data_module/tests/test_vnext
 
-      - name: Compile vNext package
+      - name: Compile vNext package and local gate wrapper
         run: |
           python -m py_compile \
             data_module/sentinel_data/vnext/__init__.py \
@@ -52,7 +53,8 @@ jobs:
             data_module/sentinel_data/vnext/publication.py \
             data_module/sentinel_data/vnext/representations.py \
             data_module/sentinel_data/vnext/loader.py \
-            data_module/sentinel_data/vnext/cli.py
+            data_module/sentinel_data/vnext/cli.py \
+            docs/plan/ml-R4/scripts/p7_run_local_gate.py
 
       - name: Build twice and assert byte determinism
         env:
@@ -96,6 +98,7 @@ jobs:
           m = json.loads((p/'manifest.json').read_text())
           r = json.loads((p/'representation_requirements.json').read_text())
           v = json.loads((p/'validation_report.json').read_text())
+          e = json.loads((p/'evidence_snapshot.json').read_text())
           assert m['status'] == 'SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING'
           assert m['population'] == {
               'contracts': 22493,
@@ -108,10 +111,19 @@ jobs:
               'CALIBRATION_FIT': 'UNSUPPORTED_EMPTY',
               'UNTOUCHED_ACCEPTANCE': 'UNSUPPORTED_EMPTY_FROZEN',
           }
-          assert m['semantic_counts']['target_value'].get('0', 0) == 0
+          assert m['semantic_counts'] == {
+              'target_value': {'1': 1007, 'None': 223923},
+              'training_strength': {'NONE': 223923, 'STRONG': 403, 'WEAK': 604},
+              'effective_loss_cells': 852,
+              'outcome_metric_cells': 118,
+          }
           assert r['required_contracts'] == 21657
           assert r['physical_binding_status'] == 'PENDING_LOCAL_G7_GATE'
           assert v['passed'] is True and v['require_representation_binding'] is False
+          for name, meta in e.items():
+              if name == 'schema':
+                  continue
+              assert not meta['path'].startswith('/'), (name, meta['path'])
           assert not (p/'representation_binding_report.json').exists()
           assert not (p/'g7_validation_report.json').exists()
           print(json.dumps({
