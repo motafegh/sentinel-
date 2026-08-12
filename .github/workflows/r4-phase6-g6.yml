@@ -3,6 +3,7 @@ name: R4 Phase 6 G6 gate
 on:
   push:
     branches:
+      - main
       - r4/phase6-partitions-acceptance-freeze
     paths:
       - 'docs/plan/ml-R4/**'
