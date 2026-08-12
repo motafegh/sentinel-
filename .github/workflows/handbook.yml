@@ -4,22 +4,32 @@ on:
   pull_request:
     paths:
       - "README.md"
+      - "CLAUDE.md"
       - "docs/handbook/**"
       - "docs/plan/ml-R4/**"
+      - "data_module/README.md"
       - "data_module/sentinel_data/cli.py"
       - "data_module/sentinel_data/representation/**"
       - "data_module/sentinel_data/export/**"
       - "data_module/sentinel_data/splitting/**"
       - "data_module/sentinel_data/registry/**"
       - "data_module/sentinel_data/vnext/**"
+      - "ml/README.md"
+      - "ml/CLAUDE.md"
+      - "ml/DIAGRAMS.md"
       - "ml/src/**"
       - "ml/scripts/**"
+      - "zkml/README.md"
       - "zkml/src/**"
       - "zkml/ezkl/settings.json"
+      - "contracts/README.md"
       - "contracts/src/**"
       - "contracts/script/**"
       - "contracts/test/AuditRegistry*.t.sol"
       - "contracts/test/ZKMLVerifierRealProof.t.sol"
+      - "agents/README.md"
+      - "agents/DIAGRAM.md"
+      - "agents/DIAGRAM.mmd"
       - "agents/src/api/**"
       - "agents/src/mcp/servers/**"
       - "agents/src/orchestration/**"
@@ -31,22 +41,32 @@ on:
   push:
     paths:
       - "README.md"
+      - "CLAUDE.md"
       - "docs/handbook/**"
       - "docs/plan/ml-R4/**"
+      - "data_module/README.md"
       - "data_module/sentinel_data/cli.py"
       - "data_module/sentinel_data/representation/**"
       - "data_module/sentinel_data/export/**"
       - "data_module/sentinel_data/splitting/**"
       - "data_module/sentinel_data/registry/**"
       - "data_module/sentinel_data/vnext/**"
+      - "ml/README.md"
+      - "ml/CLAUDE.md"
+      - "ml/DIAGRAMS.md"
       - "ml/src/**"
       - "ml/scripts/**"
+      - "zkml/README.md"
       - "zkml/src/**"
       - "zkml/ezkl/settings.json"
+      - "contracts/README.md"
       - "contracts/src/**"
       - "contracts/script/**"
       - "contracts/test/AuditRegistry*.t.sol"
       - "contracts/test/ZKMLVerifierRealProof.t.sol"
+      - "agents/README.md"
+      - "agents/DIAGRAM.md"
+      - "agents/DIAGRAM.mmd"
       - "agents/src/api/**"
       - "agents/src/mcp/servers/**"
       - "agents/src/orchestration/**"
@@ -68,6 +88,30 @@ jobs:
           python-version: "3.12"
       - name: Validate canonical handbook against current source/R4 state
         run: python3 docs/handbook/tools/verify_handbook.py static
+      - name: Assert active entry-point documentation boundaries
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          required = {
+              'README.md': ['R4', 'V3', 'read-only', 'Run12'],
+              'CLAUDE.md': ['routine technical and governance approvals', 'data-vnext-policy-v1', 'audit MCP is read-only'],
+              'data_module/README.md': ['Historical zero is not negative truth', 'data-vnext-policy-v1', 'r4-vnext-roles-v1'],
+              'ml/README.md': ['historical operational baseline', 'UNSUPPORTED_EMPTY', 'UNSUPPORTED_EMPTY_FROZEN'],
+              'ml/CLAUDE.md': ['historical operational baseline', 'Unknown is not negative', 'Phase 8 retraining is not authorized until G7'],
+              'ml/DIAGRAMS.md': ['DATA vNext', 'THRESHOLD_FIT empty', 'Phase 8'],
+              'agents/README.md': ['audit MCP on port 8012 is **read-only**', 'get_latest_audit', 'does **not** automatically become RAG knowledge'],
+              'agents/DIAGRAM.md': ['READ ONLY', 'submitAuditV3', 'no automatic promotion'],
+              'zkml/README.md': ['legacy_proxy_only_unbound', 'V3', 'check_mode="UNSAFE"'],
+              'contracts/README.md': ['V3', 'submitAuditV3', 'V1/V2 history remains readable'],
+          }
+          for path, phrases in required.items():
+              text = Path(path).read_text(encoding='utf-8')
+              missing = [p for p in phrases if p not in text]
+              if missing:
+                  raise SystemExit(f'{path}: missing current-authority phrases: {missing}')
+          print(f'PASS: {len(required)} active entry-point documents match current R4/V3 authority')
+          PY
       - name: Run handbook validator unit tests
         run: python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
       - name: Emit current inventory
