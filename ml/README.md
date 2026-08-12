@@ -56,9 +56,9 @@ Current first-baseline evidence roles are deliberately constrained:
 - `TRAIN_WEAK`: DIVE TOD weak-positive only;
 - `TRAIN_UNLABELED`: supported;
 - `MODEL_SELECTION`: positive-only limited;
-- `THRESHOLD_FIT`: unsupported/empty;
-- `CALIBRATION_FIT`: unsupported/empty;
-- `UNTOUCHED_ACCEPTANCE`: unsupported/empty/frozen.
+- `THRESHOLD_FIT = UNSUPPORTED_EMPTY`;
+- `CALIBRATION_FIT = UNSUPPORTED_EMPTY`;
+- `UNTOUCHED_ACCEPTANCE = UNSUPPORTED_EMPTY_FROZEN`.
 
 GasException and UnusedReturn remain model output positions but are supervision-disabled in policy v1.
 
