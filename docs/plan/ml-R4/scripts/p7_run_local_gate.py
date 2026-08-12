@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the final local-only R4 Phase-7 representation-binding gate.
 
-This wrapper deliberately does not use DVC.  It verifies the committed semantic
+This wrapper deliberately does not use DVC. It verifies the committed semantic
 v2 overlay and frozen inputs are clean, checks lineage against the checked-out
 code, and then invokes the transactional DATA vNext local gate against the
 protected/local representation tree.
@@ -148,10 +148,12 @@ def main() -> int:
     print(f"representation report:  {rep_report}")
     print(f"final G7 report:         {g7_report}")
     print("\nPublish these three files to the Phase-7 branch:")
-    print("git add -f \\")
-    print("  data_module/data/exports/sentinel-r4-vnext-v1/manifest.json \\")
-    print("  data_module/data/exports/sentinel-r4-vnext-v1/representation_binding_report.json \\")
-    print("  data_module/data/exports/sentinel-r4-vnext-v1/g7_validation_report.json")
+    print(
+        "git add -f "
+        "data_module/data/exports/sentinel-r4-vnext-v1/manifest.json "
+        "data_module/data/exports/sentinel-r4-vnext-v1/representation_binding_report.json "
+        "data_module/data/exports/sentinel-r4-vnext-v1/g7_validation_report.json"
+    )
     print('git commit -m "data(ml-r4): bind local representations for G7"')
     print("git push origin HEAD:r4/phase7-data-vnext-implementation")
     return 0
