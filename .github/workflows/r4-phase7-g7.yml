@@ -1,4 +1,6 @@
 name: R4 Phase 7 G7 gate
+# A bot-published semantic overlay is verified on the next human/connector commit,
+# because GitHub does not recursively trigger workflows from GITHUB_TOKEN pushes.
 
 on:
   push:
@@ -97,7 +99,6 @@ jobs:
               assert rep['mismatch_total'] == 0
               assert rep['binding_digest_sha256']
               assert g7['passed'] is True and g7['require_representation_binding'] is True
-              assert (out/'manifest.json').is_file()
               for path in (
                   out/'manifest.json',
                   out/'representation_binding_report.json',
