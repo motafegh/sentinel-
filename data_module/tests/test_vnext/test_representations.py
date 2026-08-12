@@ -67,7 +67,7 @@ def create_valid_representation(reps: Path, cid: str) -> None:
     })
 
 
-def test_valid_local_representation_population_binds(tmp_path: Path) -> None:
+def test_valid_local_representation_population_binds_to_intermediate_state(tmp_path: Path) -> None:
     export, reps, cid = make_overlay(tmp_path)
     create_valid_representation(reps, cid)
     report_path = export / "representation_binding_report.json"
@@ -81,7 +81,7 @@ def test_valid_local_representation_population_binds(tmp_path: Path) -> None:
     assert report["extractor_version_counts"] == {"v2.1-windowed-gcb": 1}
 
     manifest = bind_representation_report(export, report_path)
-    assert manifest["status"] == "VALIDATED_G7_CANDIDATE"
+    assert manifest["status"] == "REPRESENTATIONS_VALIDATED_G7_PENDING_FINAL"
     assert manifest["representation_binding_report"]["binding_digest_sha256"] == report["binding_digest_sha256"]
 
 
