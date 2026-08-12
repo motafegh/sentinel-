@@ -1,0 +1,65 @@
+name: R4 Phase 6 G6 gate
+
+on:
+  push:
+    branches:
+      - main
+      - r4/phase6-partitions-acceptance-freeze
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase6-*.yml'
+      - '.github/workflows/r4-phase5-policy.yml'
+      - '.github/workflows/r4-phase5-g5.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase6-*.yml'
+      - '.github/workflows/r4-phase5-policy.yml'
+      - '.github/workflows/r4-phase5-g5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  g6-consistency:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate frozen Phase 6 partitions and acceptance
+        run: python docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
+
+      - name: Assert Phase 6 is partition/governance only on the Phase 6 branch
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+
+          head_ref = os.environ.get('GITHUB_HEAD_REF') or os.environ.get('GITHUB_REF_NAME') or ''
+          if head_ref != 'r4/phase6-partitions-acceptance-freeze':
+              print(f'SKIP: Phase-6 partition/governance scope guard is branch-local; current head is {head_ref!r}')
+              raise SystemExit(0)
+
+          subprocess.run(['git','fetch','origin','main'], check=True)
+          base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
+          files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
+          allowed = (
+              'docs/plan/ml-R4/',
+              '.github/workflows/r4-phase6-',
+              '.github/workflows/r4-phase5-policy.yml',
+              '.github/workflows/r4-phase5-g5.yml',
+          )
+          bad = [f for f in files if not any(f == p or f.startswith(p) for p in allowed)]
+          if bad:
+              raise SystemExit('Phase 6 modified implementation/out-of-scope files: ' + ', '.join(bad))
+          print(f'PASS: {len(files)} changed files remain Phase-6 role/governance/CI only')
+          PY

@@ -1,0 +1,16 @@
+{
+  "contract_ids": [],
+  "frozen": true,
+  "group_ids": [],
+  "partition_version": "r4-vnext-roles-v1",
+  "prior_exposure": "No candidate corpus qualified as both semantically trustworthy and unexposed.",
+  "prohibited_uses": [
+    "Do not relabel historical test data as untouched acceptance.",
+    "Do not use manual_hand_written_contracts as untouched acceptance; it was explicitly used for model/agent validation.",
+    "Do not use benchmark_v0.1_quickstart NonVulnerable labels as negatives; Tier-A builder contains invalid access_control/tx.origin -> NonVulnerable mappings.",
+    "Do not use Tier-E BCCC/tool-silence design as confirmed negative evidence."
+  ],
+  "reason": "No trustworthy unexposed labeled corpus exists in the recovered repository evidence; historical/manual/quickstart corpora are exposed, semantically invalid for negatives, unavailable, or deferred.",
+  "schema": "r4-phase6-untouched-acceptance-manifest-v1",
+  "status": "UNSUPPORTED_EMPTY_FROZEN"
+}

@@ -46,10 +46,16 @@ jobs:
       - name: Validate DATA vNext semantic policy and row schema
         run: python docs/plan/ml-R4/scripts/p5_validate_data_vnext_policy.py
 
-      - name: Assert Phase 5 is design-only
+      - name: Assert Phase 5 is design-only on the Phase 5 branch
         run: |
           python - <<'PY'
+          import os
           import subprocess
+
+          head_ref = os.environ.get('GITHUB_HEAD_REF') or os.environ.get('GITHUB_REF_NAME') or ''
+          if head_ref != 'r4/phase5-data-vnext-policy-design':
+              print(f'SKIP: Phase-5 design-only scope guard is branch-local; current head is {head_ref!r}')
+              raise SystemExit(0)
 
           subprocess.run(['git','fetch','origin','main'], check=True)
           base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()

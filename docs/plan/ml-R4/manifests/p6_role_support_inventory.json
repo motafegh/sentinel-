@@ -1,0 +1,98 @@
+{
+  "ambiguous_smartbugs_timestamp_contracts": 13,
+  "contracts": 22493,
+  "group_classification_counts": {
+    "STRONG_ELIGIBLE_GROUP": 350,
+    "UNLABELED_GROUP": 12667,
+    "WEAK_ELIGIBLE_GROUP": 492
+  },
+  "group_inventory_sha256": "e7c380f0a584b4d0bfde15389d51bb73ea3d848b2eda6b3bd18cd534a0e0e6e2",
+  "groups": 13509,
+  "groups_touching_multiple_historical_splits": 0,
+  "groups_with_multiple_sources": 0,
+  "ledger_rows": 224930,
+  "ledger_sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7",
+  "limitations": [
+    "SmartBugs Timestamp positives are withheld because source-native time_manipulation vs bad_randomness identity is unavailable in the committed ledger.",
+    "No historical zero is treated as a negative.",
+    "This inventory establishes role eligibility only; final deterministic group roles are assigned in a separate Phase-6 freeze step."
+  ],
+  "masked_historical_positive_rows_by_class": {
+    "CallToUnknown": 0,
+    "DenialOfService": 1095,
+    "ExternalBug": 16582,
+    "GasException": 0,
+    "IntegerUO": 9388,
+    "MishandledException": 0,
+    "Reentrancy": 11330,
+    "Timestamp": 6285,
+    "TransactionOrderDependence": 0,
+    "UnusedReturn": 5859
+  },
+  "policy_sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094",
+  "policy_version": "data-vnext-policy-v1",
+  "role_support": {
+    "CALIBRATION_FIT": "UNSUPPORTED_NO_CONFIRMED_NEGATIVE_SUPPORT",
+    "INTERNAL_AUDIT": "SUPPORTED_EXPOSED_OR_STRONG_HOLDOUT",
+    "MODEL_SELECTION": "LIMITED_POSITIVE_ONLY_STRONG_GROUPS",
+    "THRESHOLD_FIT": "UNSUPPORTED_NO_CONFIRMED_NEGATIVE_SUPPORT",
+    "TRAIN_STRONG": "SUPPORTED",
+    "TRAIN_UNLABELED": "SUPPORTED",
+    "TRAIN_WEAK": "SUPPORTED_IF_WEAK_GROUPS_GT_0",
+    "UNTOUCHED_ACCEPTANCE": "UNSUPPORTED_NO_TRUSTWORTHY_UNEXPOSED_LABELED_CORPUS"
+  },
+  "schema": "r4-phase6-role-support-inventory-v1",
+  "source_contract_counts": {
+    "dive": 22073,
+    "smartbugs_curated": 137,
+    "solidifi": 283
+  },
+  "strong_group_counts_by_class": {
+    "CallToUnknown": 72,
+    "DenialOfService": 6,
+    "ExternalBug": 52,
+    "GasException": 0,
+    "IntegerUO": 58,
+    "MishandledException": 36,
+    "Reentrancy": 50,
+    "Timestamp": 36,
+    "TransactionOrderDependence": 40,
+    "UnusedReturn": 0
+  },
+  "strong_positive_row_counts_by_class": {
+    "CallToUnknown": 87,
+    "DenialOfService": 6,
+    "ExternalBug": 56,
+    "GasException": 0,
+    "IntegerUO": 64,
+    "MishandledException": 39,
+    "Reentrancy": 69,
+    "Timestamp": 39,
+    "TransactionOrderDependence": 43,
+    "UnusedReturn": 0
+  },
+  "weak_group_counts_by_class": {
+    "CallToUnknown": 0,
+    "DenialOfService": 0,
+    "ExternalBug": 0,
+    "GasException": 0,
+    "IntegerUO": 0,
+    "MishandledException": 0,
+    "Reentrancy": 0,
+    "Timestamp": 0,
+    "TransactionOrderDependence": 492,
+    "UnusedReturn": 0
+  },
+  "weak_positive_row_counts_by_class": {
+    "CallToUnknown": 0,
+    "DenialOfService": 0,
+    "ExternalBug": 0,
+    "GasException": 0,
+    "IntegerUO": 0,
+    "MishandledException": 0,
+    "Reentrancy": 0,
+    "Timestamp": 0,
+    "TransactionOrderDependence": 604,
+    "UnusedReturn": 0
+  }
+}

@@ -1,0 +1,495 @@
+{
+  "ledger_sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7",
+  "limitations": {
+    "CALIBRATION_FIT": "Unsupported; empty.",
+    "CONFIRMED_NEGATIVES": "Zero rows in policy v1.",
+    "MODEL_SELECTION": "Positive-only strong evidence. Useful for positive loss/recall diagnostics but not full discrimination/F1/AUC.",
+    "THRESHOLD_FIT": "Unsupported; empty.",
+    "UNTOUCHED_ACCEPTANCE": "Unsupported; empty/frozen."
+  },
+  "partition_version": "r4-vnext-roles-v1",
+  "policy_sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094",
+  "role_support": {
+    "EXCLUDED": {
+      "by_class": {
+        "CallToUnknown": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "DenialOfService": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "ExternalBug": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "GasException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "IntegerUO": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "MishandledException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "Reentrancy": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "Timestamp": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "TransactionOrderDependence": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        },
+        "UnusedReturn": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 836,
+          "unlabeled_or_masked_rows": 0,
+          "weak_positive_rows": 0
+        }
+      },
+      "contracts": 836,
+      "groups": 835,
+      "source_contracts": {
+        "dive": 826,
+        "smartbugs_curated": 3,
+        "solidifi": 7
+      }
+    },
+    "INTERNAL_AUDIT": {
+      "by_class": {
+        "CallToUnknown": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 9,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 53,
+          "weak_positive_rows": 0
+        },
+        "DenialOfService": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 1,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 61,
+          "weak_positive_rows": 0
+        },
+        "ExternalBug": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 4,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 58,
+          "weak_positive_rows": 0
+        },
+        "GasException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 62,
+          "weak_positive_rows": 0
+        },
+        "IntegerUO": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 11,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 51,
+          "weak_positive_rows": 0
+        },
+        "MishandledException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 5,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 57,
+          "weak_positive_rows": 0
+        },
+        "Reentrancy": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 17,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 45,
+          "weak_positive_rows": 0
+        },
+        "Timestamp": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 7,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 55,
+          "weak_positive_rows": 0
+        },
+        "TransactionOrderDependence": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 8,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 54,
+          "weak_positive_rows": 0
+        },
+        "UnusedReturn": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 62,
+          "weak_positive_rows": 0
+        }
+      },
+      "contracts": 62,
+      "groups": 51,
+      "source_contracts": {
+        "smartbugs_curated": 20,
+        "solidifi": 42
+      }
+    },
+    "MODEL_SELECTION": {
+      "by_class": {
+        "CallToUnknown": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 16,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 40,
+          "weak_positive_rows": 0
+        },
+        "DenialOfService": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 2,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 54,
+          "weak_positive_rows": 0
+        },
+        "ExternalBug": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 5,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 51,
+          "weak_positive_rows": 0
+        },
+        "GasException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 56,
+          "weak_positive_rows": 0
+        },
+        "IntegerUO": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 9,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 47,
+          "weak_positive_rows": 0
+        },
+        "MishandledException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 4,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 52,
+          "weak_positive_rows": 0
+        },
+        "Reentrancy": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 11,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 45,
+          "weak_positive_rows": 0
+        },
+        "Timestamp": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 4,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 52,
+          "weak_positive_rows": 0
+        },
+        "TransactionOrderDependence": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 5,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 51,
+          "weak_positive_rows": 0
+        },
+        "UnusedReturn": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 56,
+          "weak_positive_rows": 0
+        }
+      },
+      "contracts": 56,
+      "groups": 51,
+      "source_contracts": {
+        "smartbugs_curated": 18,
+        "solidifi": 38
+      }
+    },
+    "TRAIN_STRONG": {
+      "by_class": {
+        "CallToUnknown": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 60,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 215,
+          "weak_positive_rows": 0
+        },
+        "DenialOfService": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 3,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 272,
+          "weak_positive_rows": 0
+        },
+        "ExternalBug": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 46,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 229,
+          "weak_positive_rows": 0
+        },
+        "GasException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 275,
+          "weak_positive_rows": 0
+        },
+        "IntegerUO": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 43,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 232,
+          "weak_positive_rows": 0
+        },
+        "MishandledException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 29,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 246,
+          "weak_positive_rows": 0
+        },
+        "Reentrancy": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 38,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 237,
+          "weak_positive_rows": 0
+        },
+        "Timestamp": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 27,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 248,
+          "weak_positive_rows": 0
+        },
+        "TransactionOrderDependence": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 29,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 246,
+          "weak_positive_rows": 0
+        },
+        "UnusedReturn": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 275,
+          "weak_positive_rows": 0
+        }
+      },
+      "contracts": 275,
+      "groups": 238,
+      "source_contracts": {
+        "smartbugs_curated": 79,
+        "solidifi": 196
+      }
+    },
+    "TRAIN_UNLABELED": {
+      "by_class": {
+        "CallToUnknown": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "DenialOfService": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "ExternalBug": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "GasException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "IntegerUO": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "MishandledException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "Reentrancy": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "Timestamp": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "TransactionOrderDependence": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        },
+        "UnusedReturn": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 20491,
+          "weak_positive_rows": 0
+        }
+      },
+      "contracts": 20491,
+      "groups": 11869,
+      "source_contracts": {
+        "dive": 20474,
+        "smartbugs_curated": 17
+      }
+    },
+    "TRAIN_WEAK": {
+      "by_class": {
+        "CallToUnknown": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        },
+        "DenialOfService": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        },
+        "ExternalBug": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        },
+        "GasException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        },
+        "IntegerUO": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        },
+        "MishandledException": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        },
+        "Reentrancy": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        },
+        "Timestamp": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        },
+        "TransactionOrderDependence": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 196,
+          "weak_positive_rows": 577
+        },
+        "UnusedReturn": {
+          "confirmed_negative_rows": 0,
+          "confirmed_positive_rows": 0,
+          "excluded_rows": 0,
+          "unlabeled_or_masked_rows": 773,
+          "weak_positive_rows": 0
+        }
+      },
+      "contracts": 773,
+      "groups": 465,
+      "source_contracts": {
+        "dive": 773
+      }
+    }
+  },
+  "schema": "r4-phase6-role-support-table-v1"
+}

@@ -1,6 +1,6 @@
 # Phase 6 — Dataset Roles, Leakage-Safe Partitions, and Acceptance Freeze
 
-**Status:** READY — G5 SATISFIED  
+**Status:** PASSED — G6 PASS  
 **Gate:** G6
 
 ## Objective
@@ -64,3 +64,21 @@ Per class and role report:
 ## G6 pass criteria
 
 No incompatible role leakage; acceptance is frozen or explicitly declared unsupported with a controlled empty/blocked manifest; unsupported roles/classes are explicit; no source authority exceeds Phase-5 policy.
+
+
+## G6 closeout
+
+G6 passed with `r4-vnext-roles-v1` frozen over all 22,493 active contracts / 13,509 leakage groups.
+
+Frozen active roles:
+
+- TRAIN_STRONG: 238 groups / 275 contracts
+- MODEL_SELECTION: 51 / 56 (positive-only limited support)
+- INTERNAL_AUDIT: 51 / 62
+- TRAIN_WEAK: 465 / 773 (DIVE TOD weak signal only)
+- TRAIN_UNLABELED: 11,869 / 20,491
+- EXCLUDED: 835 / 836 (incomplete representation group)
+
+`THRESHOLD_FIT` and `CALIBRATION_FIT` are `UNSUPPORTED_EMPTY`. `UNTOUCHED_ACCEPTANCE` is `UNSUPPORTED_EMPTY_FROZEN` with zero contracts/groups. No confirmed-negative rows were synthesized.
+
+**G6 PASS.** Phase 7 may implement DATA vNext from the frozen Phase-5 policy and Phase-6 role manifests. It may not regenerate/rebalance roles or manufacture unsupported evaluation sets.
