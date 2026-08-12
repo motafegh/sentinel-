@@ -1,0 +1,31 @@
+{
+  "contract_roles": {
+    "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/manifests/p6_contract_role_manifest.jsonl",
+    "sha256": "def09010aafb1681c9866dd346de58409c89473b65d03c6c3adea69b75237174"
+  },
+  "label_schema": {
+    "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/schemas/data_vnext_label_state_v1.schema.json",
+    "sha256": "14e414a568f090891cb39b4a9a16b3c710d9d69e2279aace50c310aece98959b"
+  },
+  "ledger": {
+    "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet",
+    "sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7"
+  },
+  "partition_manifest": {
+    "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/manifests/p6_partition_manifest.json",
+    "sha256": "f3b9727f5e74e007c0833ccd9001d80d82976894c8365a75b7fb9b63ce12c21d"
+  },
+  "policy": {
+    "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/specs/data_vnext_policy_v1.json",
+    "sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094"
+  },
+  "schema": "sentinel-data-vnext-evidence-snapshot-v1",
+  "unsupported_roles": {
+    "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/manifests/p6_unsupported_roles.json",
+    "sha256": "23c6206736aa4c04ca947a24c551f73e0a722c1acf8fe816a3b37a66273127f0"
+  },
+  "untouched_acceptance": {
+    "path": "/home/runner/work/sentinel-/sentinel-/docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json",
+    "sha256": "499b78e2c59fac8e56362d8ca240e37fb0cda0b12e98e4a2433aeb291ed48318"
+  }
+}
