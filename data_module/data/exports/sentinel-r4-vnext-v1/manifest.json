@@ -1,0 +1,136 @@
+{
+  "artifacts": {
+    "crosswalk_registry": {
+      "bytes": 3036,
+      "path": "crosswalk_registry.json",
+      "sha256": "a384720d47d0ce823c7ef7518921974dd0f396c11144fb0fd865159349de8395"
+    },
+    "evidence_snapshot": {
+      "bytes": 1302,
+      "path": "evidence_snapshot.json",
+      "sha256": "bf7761b42701501c5c256729da149526005dbc6c10dfc6beac0b4db70245bd66"
+    },
+    "label_states": {
+      "bytes": 1900672,
+      "path": "label_states.parquet",
+      "sha256": "1a21cf931200c33353111cf5cb6a5f7874f851018bc45dab9db1d888c69be1e5"
+    },
+    "ml_targets": {
+      "bytes": 1310473,
+      "path": "ml_targets.parquet",
+      "sha256": "dac0673c03767502b3a294d42d8a57d82969c5a612bdfc2a852260576df359b5"
+    },
+    "representation_requirements": {
+      "bytes": 504,
+      "path": "representation_requirements.json",
+      "sha256": "04ec986f195a0d81079cbd8414865cd049124529b1e8e76db712b642d8410d39"
+    },
+    "source_registry": {
+      "bytes": 5846,
+      "path": "source_registry.json",
+      "sha256": "f0b640f9396c902dd929584b1b4525b90f023b370c4df38e70ab3399f64f6dcf"
+    }
+  },
+  "class_order": [
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "GasException",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+    "UnusedReturn"
+  ],
+  "dataset_version": "sentinel-r4-vnext-v1",
+  "export_schema_version": "v2",
+  "g7_validation_report": {
+    "bytes": 822,
+    "path": "g7_validation_report.json",
+    "sha256": "9bfd5abca187d9eb8a966e5e914e7203f9c2f70102f899936c46c23ae9aa0d21",
+    "status": "VALIDATED_G7"
+  },
+  "generation_commit": "ff936bfaddf2ff7fe23285d43fd780a1f1794660",
+  "graph_schema_version": "v9",
+  "historical_artifacts_mutated": false,
+  "inputs": {
+    "contract_roles": {
+      "path": "docs/plan/ml-R4/manifests/p6_contract_role_manifest.jsonl",
+      "sha256": "def09010aafb1681c9866dd346de58409c89473b65d03c6c3adea69b75237174"
+    },
+    "label_schema": {
+      "path": "docs/plan/ml-R4/schemas/data_vnext_label_state_v1.schema.json",
+      "sha256": "14e414a568f090891cb39b4a9a16b3c710d9d69e2279aace50c310aece98959b"
+    },
+    "ledger": {
+      "path": "docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet",
+      "sha256": "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f5640857cd0ac7"
+    },
+    "partition_manifest": {
+      "path": "docs/plan/ml-R4/manifests/p6_partition_manifest.json",
+      "sha256": "f3b9727f5e74e007c0833ccd9001d80d82976894c8365a75b7fb9b63ce12c21d"
+    },
+    "policy": {
+      "path": "docs/plan/ml-R4/specs/data_vnext_policy_v1.json",
+      "sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094"
+    },
+    "schema": "sentinel-data-vnext-evidence-snapshot-v1",
+    "unsupported_roles": {
+      "path": "docs/plan/ml-R4/manifests/p6_unsupported_roles.json",
+      "sha256": "23c6206736aa4c04ca947a24c551f73e0a722c1acf8fe816a3b37a66273127f0"
+    },
+    "untouched_acceptance": {
+      "path": "docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json",
+      "sha256": "499b78e2c59fac8e56362d8ca240e37fb0cda0b12e98e4a2433aeb291ed48318"
+    }
+  },
+  "population": {
+    "contract_class_rows": 224930,
+    "contracts": 22493,
+    "excluded_contracts": 836,
+    "representation_required_contracts": 21657
+  },
+  "representation_binding_report": {
+    "binding_digest_sha256": "7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420",
+    "bytes": 873,
+    "path": "representation_binding_report.json",
+    "required_contracts": 21657,
+    "sha256": "d5bba3b037a0f443c5764bfb4be17da35a3e44201d97f0f671298b9fbf4dc33d",
+    "status": "VALIDATED_LOCAL_G7"
+  },
+  "role_contract_counts": {
+    "EXCLUDED": 836,
+    "INTERNAL_AUDIT": 62,
+    "MODEL_SELECTION": 56,
+    "TRAIN_STRONG": 275,
+    "TRAIN_UNLABELED": 20491,
+    "TRAIN_WEAK": 773
+  },
+  "schema": "sentinel-data-vnext-overlay-manifest-v1",
+  "semantic_counts": {
+    "effective_loss_cells": 852,
+    "outcome_metric_cells": 118,
+    "target_value": {
+      "1": 1007,
+      "None": 223923
+    },
+    "training_strength": {
+      "NONE": 223923,
+      "STRONG": 403,
+      "WEAK": 604
+    }
+  },
+  "semantic_validation_report": {
+    "bytes": 823,
+    "path": "validation_report.json",
+    "sha256": "f2ebc067fff50d23bd72fdf091d78922bcdef928dab93d243ce3c0a58e54ec5d",
+    "status": "VALIDATED_SEMANTICS"
+  },
+  "status": "VALIDATED_G7_CANDIDATE",
+  "unsupported_roles": {
+    "CALIBRATION_FIT": "UNSUPPORTED_EMPTY",
+    "THRESHOLD_FIT": "UNSUPPORTED_EMPTY",
+    "UNTOUCHED_ACCEPTANCE": "UNSUPPORTED_EMPTY_FROZEN"
+  }
+}

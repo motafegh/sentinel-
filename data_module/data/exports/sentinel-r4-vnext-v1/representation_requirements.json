@@ -1,0 +1,14 @@
+{
+  "authoritative_contract_list": "ml_targets.parquet",
+  "excluded_contracts": 836,
+  "graph_schema_version": "v9",
+  "path_patterns": {
+    "graph": "<root>/<source>/<contract_id>.pt",
+    "sidecar": "<root>/<source>/<contract_id>.rep.json",
+    "tokens": "<root>/<source>/<contract_id>.tokens.pt"
+  },
+  "physical_binding_status": "PENDING_LOCAL_G7_GATE",
+  "required_contracts": 21657,
+  "root": "data_module/data/representations",
+  "schema": "sentinel-data-vnext-representation-requirements-v1"
+}

@@ -1,0 +1,158 @@
+name: R4 Phase 7 G7 gate
+# A bot-published semantic overlay is verified on the next human/connector commit,
+# because GitHub does not recursively trigger workflows from GITHUB_TOKEN pushes.
+
+on:
+  push:
+    branches:
+      - r4/phase7-data-vnext-implementation
+    paths:
+      - 'data_module/data/exports/sentinel-r4-vnext-v1/**'
+      - 'docs/plan/ml-R4/scripts/p7_run_local_gate.py'
+      - '.github/workflows/r4-phase7-g7.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'data_module/sentinel_data/vnext/**'
+      - 'data_module/sentinel_data/export/format_schema/v2.yaml'
+      - 'data_module/tests/test_vnext/**'
+      - 'data_module/data/exports/sentinel-r4-vnext-v1/**'
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase7-*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  g7-consistency:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned Phase 7 validation dependencies
+        run: python -m pip install --disable-pip-version-check pytest 'pyarrow==17.0.0'
+
+      - name: Compile and unit-test vNext + local wrapper
+        env:
+          PYTHONPATH: data_module
+        run: |
+          python -m py_compile \
+            data_module/sentinel_data/vnext/__init__.py \
+            data_module/sentinel_data/vnext/policy.py \
+            data_module/sentinel_data/vnext/builder.py \
+            data_module/sentinel_data/vnext/validator.py \
+            data_module/sentinel_data/vnext/publication.py \
+            data_module/sentinel_data/vnext/representations.py \
+            data_module/sentinel_data/vnext/loader.py \
+            data_module/sentinel_data/vnext/cli.py \
+            docs/plan/ml-R4/scripts/p7_run_local_gate.py
+          python -m pytest -q -c /dev/null data_module/tests/test_vnext
+
+      - name: Validate semantic-only or final representation-bound publication state
+        env:
+          PYTHONPATH: data_module
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          out = Path('data_module/data/exports/sentinel-r4-vnext-v1')
+          manifest = json.loads((out/'manifest.json').read_text())
+          status = manifest['status']
+          event = os.environ.get('GITHUB_EVENT_NAME', '')
+
+          if status == 'SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING':
+              if event == 'pull_request':
+                  raise SystemExit('Phase-7 PR is forbidden before local representation binding and final G7 validation')
+              subprocess.run([
+                  'python','-m','sentinel_data.vnext.cli','validate','--output',str(out)
+              ], check=True)
+              assert manifest.get('representation_binding_report') is None
+              assert manifest.get('g7_validation_report') is None
+              assert not (out/'representation_binding_report.json').exists()
+              assert not (out/'g7_validation_report.json').exists()
+              print('PASS: semantic-only Phase-7 branch state is valid; local G7 remains pending')
+          elif status == 'VALIDATED_G7_CANDIDATE':
+              subprocess.run([
+                  'python','-m','sentinel_data.vnext.cli','validate','--output',str(out),
+                  '--require-representation-binding'
+              ], check=True)
+              rep = json.loads((out/'representation_binding_report.json').read_text())
+              g7 = json.loads((out/'g7_validation_report.json').read_text())
+              assert rep['status'] == 'VALIDATED_LOCAL_G7' and rep['passed'] is True
+              assert rep['representation_root'] == 'data_module/data/representations'
+              assert rep['physical_root_recorded'] is False
+              assert rep['required_contracts'] == 21657
+              assert rep['checked_contracts'] == 21657
+              assert rep['checked_files'] == 64971
+              assert rep['missing_files_total'] == 0
+              assert rep['mismatch_total'] == 0
+              assert rep['binding_digest_sha256']
+              assert g7['passed'] is True and g7['require_representation_binding'] is True
+              for path in (
+                  out/'manifest.json',
+                  out/'representation_binding_report.json',
+                  out/'g7_validation_report.json',
+              ):
+                  subprocess.run(['git','ls-files','--error-unmatch',str(path)], check=True)
+              print(json.dumps({
+                  'passed': True,
+                  'status': status,
+                  'binding_digest_sha256': rep['binding_digest_sha256'],
+                  'checked_contracts': rep['checked_contracts'],
+                  'checked_files': rep['checked_files'],
+              }, indent=2, sort_keys=True))
+          else:
+              raise SystemExit(f'forbidden Phase-7 publication state: {status!r}')
+          PY
+
+      - name: Assert Phase 7 implementation scope and immutable legacy v1 seam
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+
+          head_ref = os.environ.get('GITHUB_HEAD_REF') or os.environ.get('GITHUB_REF_NAME') or ''
+          if head_ref != 'r4/phase7-data-vnext-implementation':
+              print(f'SKIP: Phase-7 branch scope guard is branch-local; current head is {head_ref!r}')
+              raise SystemExit(0)
+
+          subprocess.run(['git','fetch','origin','main'], check=True)
+          base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
+          files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
+          allowed = (
+              'data_module/sentinel_data/vnext/',
+              'data_module/sentinel_data/export/format_schema/v2.yaml',
+              'data_module/tests/test_vnext/',
+              'data_module/data/exports/sentinel-r4-vnext-v1/',
+              'docs/plan/ml-R4/',
+              '.github/workflows/r4-phase7-',
+          )
+          bad = [f for f in files if not any(f == p or f.startswith(p) for p in allowed)]
+          if bad:
+              raise SystemExit('Phase 7 modified out-of-scope/legacy implementation files: ' + ', '.join(bad))
+
+          forbidden = {
+              'data_module/sentinel_data/labeling/merger.py',
+              'data_module/sentinel_data/export/label_writer.py',
+              'data_module/sentinel_data/export/format_schema/v1.yaml',
+              'data_module/sentinel_data/cli.py',
+              'ml/src/datasets/sentinel_dataset.py',
+              'ml/src/datasets/collate.py',
+              'ml/src/training/losses.py',
+          }
+          touched_forbidden = sorted(forbidden & set(files))
+          if touched_forbidden:
+              raise SystemExit('Phase 7 mutated frozen legacy/ML seam: ' + ', '.join(touched_forbidden))
+          print(f'PASS: {len(files)} changed files stay inside additive Phase-7 v2 scope')
+          PY

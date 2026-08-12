@@ -1,0 +1,90 @@
+{
+  "aggregation": {
+    "global_nonvulnerable_synthesis": "FORBIDDEN",
+    "positive_precedence_over_binary_zero": "REMOVED",
+    "preserve_all_source_claims": true,
+    "rules": [
+      "confirmed_positive_without_confirmed_negative -> CONFIRMED_POSITIVE",
+      "confirmed_negative_without_confirmed_positive -> CONFIRMED_NEGATIVE",
+      "confirmed_positive_and_confirmed_negative -> CONFLICTING_EVIDENCE",
+      "weak_positive_without_confirmed_contrary_outcome may produce POSITIVE/WEAK training signal but outcome remains UNKNOWN or NOT_REVIEWED",
+      "weak claim never overrides confirmed contrary outcome",
+      "tool/source vote count alone never establishes outcome",
+      "no evidence or only unsupported/dropped/absent claims -> UNKNOWN or NOT_REVIEWED, target null"
+    ]
+  },
+  "dive": {
+    "mapped_category_policy": {
+      "Access Control": {
+        "canonical_class": "ExternalBug",
+        "target_value": null,
+        "training_strength": "NONE"
+      },
+      "Arithmetic": {
+        "canonical_class": "IntegerUO",
+        "target_value": null,
+        "training_strength": "NONE"
+      },
+      "DoS": {
+        "canonical_class": "DenialOfService",
+        "target_value": null,
+        "training_strength": "NONE"
+      },
+      "Front Running": {
+        "canonical_class": "TransactionOrderDependence",
+        "target_value": 1,
+        "training_strength": "WEAK"
+      },
+      "Reentrancy": {
+        "canonical_class": "Reentrancy",
+        "target_value": null,
+        "training_strength": "NONE"
+      },
+      "Time manipulation": {
+        "canonical_class": "Timestamp",
+        "target_value": null,
+        "training_strength": "NONE"
+      },
+      "Unchecked Return Values": {
+        "canonical_class": "UnusedReturn",
+        "target_value": null,
+        "training_strength": "NONE"
+      }
+    },
+    "no_target_categories": {
+      "Bad Randomness": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET"
+    },
+    "unsupported_canonical_classes": [
+      "CallToUnknown",
+      "GasException",
+      "MishandledException"
+    ]
+  },
+  "policy_version": "data-vnext-policy-v1",
+  "schema": "sentinel-data-vnext-crosswalk-registry-v1",
+  "smartbugs_curated": {
+    "approved_mappings": {
+      "access_control": "ExternalBug",
+      "arithmetic": "IntegerUO",
+      "denial_of_service": "DenialOfService",
+      "front_running": "TransactionOrderDependence",
+      "reentrancy": "Reentrancy",
+      "time_manipulation": "Timestamp",
+      "unchecked_low_level_calls": "CallToUnknown"
+    },
+    "no_target_categories": {
+      "bad_randomness": "LOSSY_NO_CANONICAL_TARGET",
+      "other": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET",
+      "short_addresses": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET"
+    }
+  },
+  "solidifi": {
+    "Overflow-Underflow": "IntegerUO",
+    "Re-entrancy": "Reentrancy",
+    "TOD": "TransactionOrderDependence",
+    "Timestamp-Dependency": "Timestamp",
+    "Unchecked-Send": "CallToUnknown",
+    "Unhandled-Exceptions": "MishandledException",
+    "tx.origin": "ExternalBug"
+  }
+}

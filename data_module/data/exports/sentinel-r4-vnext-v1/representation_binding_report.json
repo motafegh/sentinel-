@@ -1,0 +1,28 @@
+{
+  "binding_algorithm": "sha256(sorted contract_id/source + graph/token/sidecar sha256+size)",
+  "binding_digest_sha256": "7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420",
+  "checked_contracts": 21657,
+  "checked_files": 64971,
+  "expected_files": 64971,
+  "extractor_version_counts": {
+    "v2.1-windowed-gcb": 21657
+  },
+  "graph_schema_version": "v9",
+  "mismatch_total": 0,
+  "mismatches": [],
+  "missing_files": [],
+  "missing_files_total": 0,
+  "passed": true,
+  "physical_root_recorded": false,
+  "reported_failure_limit": 100,
+  "representation_root": "data_module/data/representations",
+  "required_contracts": 21657,
+  "schema": "sentinel-data-vnext-representation-binding-report-v1",
+  "source_counts": {
+    "dive": 21247,
+    "smartbugs_curated": 134,
+    "solidifi": 276
+  },
+  "status": "VALIDATED_LOCAL_G7",
+  "total_bytes": 2014824727
+}

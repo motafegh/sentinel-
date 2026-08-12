@@ -1,0 +1,170 @@
+# SENTINEL DATA vNext — Export Format Schema v2
+#
+# Breaking successor to historical format_schema/v1.yaml.
+# v2 is an R4 semantic overlay. It does NOT duplicate graph/token tensors and
+# never interprets missing v2 fields through historical binary-zero semantics.
+
+schema_version: "v2"
+dataset_version: "sentinel-r4-vnext-v1"
+graph_schema_version: "v9"
+policy_version: "data-vnext-policy-v1"
+partition_version: "r4-vnext-roles-v1"
+
+compatibility:
+  historical_v1_mutable: false
+  v1_fallback_allowed: false
+  graph_token_representation_reused_by_binding: true
+  note: >-
+    Historical v1 remains readable only through the legacy loader. DATA vNext
+    consumers must fail if the v2 semantic fields/manifest are absent.
+
+directory_layout:
+  manifest: "manifest.json"
+  label_states: "label_states.parquet"
+  ml_targets: "ml_targets.parquet"
+  source_registry: "source_registry.json"
+  crosswalk_registry: "crosswalk_registry.json"
+  evidence_snapshot: "evidence_snapshot.json"
+  representation_requirements: "representation_requirements.json"
+  validation_report: "validation_report.json"
+  representation_binding_report: "representation_binding_report.json"
+  g7_validation_report: "g7_validation_report.json"
+
+population:
+  contracts: 22493
+  contract_class_rows: 224930
+  excluded_contracts: 836
+  representation_required_contracts: 21657
+
+class_order:
+  - CallToUnknown
+  - DenialOfService
+  - ExternalBug
+  - GasException
+  - IntegerUO
+  - MishandledException
+  - Reentrancy
+  - Timestamp
+  - TransactionOrderDependence
+  - UnusedReturn
+
+label_states_parquet:
+  one_row_per: "contract_id x class_index"
+  rows: 224930
+  compression: "zstd"
+  required_fields:
+    - policy_version
+    - contract_id
+    - class_index
+    - class_name
+    - historical_state
+    - source_claims
+    - outcome_state
+    - target_value
+    - training_signal
+    - training_strength
+    - loss_eligible
+    - outcome_metric_eligible
+    - role_eligibility
+    - policy_decision_id
+    - evidence_ids
+    - limitations
+  semantic_rules:
+    target_zero: "forbidden in policy v1 because no confirmed-negative evidence exists"
+    target_one_strong: "SolidiFI injected class or approved SmartBugs direct category only"
+    target_one_weak: "DIVE Front Running -> TransactionOrderDependence only"
+    target_null: "all masked, disabled, unknown, unsupported, ambiguous, or unlabeled cells"
+    weak_outcome_truth: "does not imply CONFIRMED_POSITIVE"
+    weak_outcome_metrics: false
+    gas_exception_supervised: false
+    unused_return_supervised: false
+
+ml_targets_parquet:
+  one_row_per: "contract_id"
+  rows: 22493
+  compression: "zstd"
+  identity_fields:
+    - contract_id
+    - source
+    - group_id
+    - role
+    - representation_required
+  per_class_fields:
+    target: "target_{i}: nullable int (1 or null in policy v1)"
+    strength: "strength_{i}: STRONG | WEAK | NONE"
+    source_loss_eligible: "source_loss_eligible_{i}: bool"
+    effective_loss_mask: "effective_loss_mask_{i}: bool"
+    outcome_metric_mask: "outcome_metric_mask_{i}: bool"
+    outcome_state: "outcome_state_{i}: canonical state"
+    policy_decision_id: "policy_decision_id_{i}: versioned decision identity"
+  effective_loss_rules:
+    TRAIN_STRONG: "only STRONG source-eligible cells"
+    TRAIN_WEAK: "only WEAK source-eligible cells"
+    TRAIN_UNLABELED: "no supervised cells"
+    MODEL_SELECTION: "no training loss; strong confirmed-positive cells may be positive-only metrics"
+    INTERNAL_AUDIT: "no training loss; strong confirmed-positive cells may be positive-only metrics"
+    EXCLUDED: "no supervised cells and no representation requirement"
+
+frozen_role_counts:
+  TRAIN_STRONG: 275
+  MODEL_SELECTION: 56
+  INTERNAL_AUDIT: 62
+  TRAIN_WEAK: 773
+  TRAIN_UNLABELED: 20491
+  EXCLUDED: 836
+
+unsupported_roles:
+  THRESHOLD_FIT: "UNSUPPORTED_EMPTY"
+  CALIBRATION_FIT: "UNSUPPORTED_EMPTY"
+  UNTOUCHED_ACCEPTANCE: "UNSUPPORTED_EMPTY_FROZEN"
+
+representation_binding:
+  root: "data_module/data/representations"
+  required_for_roles:
+    - TRAIN_STRONG
+    - MODEL_SELECTION
+    - INTERNAL_AUDIT
+    - TRAIN_WEAK
+    - TRAIN_UNLABELED
+  excluded_role_requires_representation: false
+  graph_path: "<root>/<source>/<contract_id>.pt"
+  tokens_path: "<root>/<source>/<contract_id>.tokens.pt"
+  sidecar_path: "<root>/<source>/<contract_id>.rep.json"
+  sidecar_required_fields:
+    sha256: "must equal contract_id"
+    source: "must equal ml_targets.source"
+    schema_version: "must equal v9"
+  local_g7_required: true
+
+manifest:
+  status_after_semantic_validation: "SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING"
+  status_after_physical_scan_binding: "REPRESENTATIONS_VALIDATED_G7_PENDING_FINAL"
+  status_after_final_representation_bound_validation: "VALIDATED_G7_CANDIDATE"
+  binds:
+    - Phase-3 ledger SHA-256
+    - Phase-5 policy/schema SHA-256
+    - Phase-6 partition/role/unsupported/acceptance SHA-256
+    - generated semantic artifact SHA-256 and sizes
+    - semantic validation report SHA-256
+    - local representation-binding report SHA-256
+    - final representation-bound G7 validation report SHA-256
+  historical_artifacts_mutated: false
+
+publication:
+  deterministic: true
+  transactional_local_promotion: true
+  failure_rule: >-
+    A failed final representation-bound validation or publication-binding check
+    restores the original semantic-only manifest. Physical failure reports may
+    remain for diagnosis, but the manifest is not promoted.
+  build_order:
+    - validate frozen inputs
+    - write semantic artifacts to a clean staging/output directory
+    - validate generated semantics and hashes
+    - publish semantic validation report
+    - local physical representation verification
+    - bind successful representation report into intermediate manifest state
+    - run final representation-bound G7 validation
+    - bind final G7 validation report and promote manifest to candidate
+    - verify all publication bindings
+  overwrite_historical_export: false

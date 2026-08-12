@@ -1,0 +1,155 @@
+name: R4 Phase 7 DATA vNext semantic overlay
+
+on:
+  push:
+    branches:
+      - r4/phase7-data-vnext-implementation
+    paths:
+      - 'data_module/sentinel_data/vnext/**'
+      - 'data_module/sentinel_data/export/format_schema/v2.yaml'
+      - 'data_module/tests/test_vnext/**'
+      - 'docs/plan/ml-R4/scripts/p7_run_local_gate.py'
+      - 'docs/plan/ml-R4/specs/data_vnext_policy_v1.json'
+      - 'docs/plan/ml-R4/schemas/data_vnext_label_state_v1.schema.json'
+      - 'docs/plan/ml-R4/manifests/p6_contract_role_manifest.jsonl'
+      - 'docs/plan/ml-R4/manifests/p6_partition_manifest.json'
+      - 'docs/plan/ml-R4/manifests/p6_unsupported_roles.json'
+      - 'docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json'
+      - 'docs/plan/ml-R4/ledger/evidence_ledger_v1.parquet'
+      - '.github/workflows/r4-phase7-vnext.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-semantic-overlay:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r4/phase7-data-vnext-implementation
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned Phase 7 dependencies
+        run: python -m pip install --disable-pip-version-check pytest 'pyarrow==17.0.0'
+
+      - name: Unit-test vNext semantics and representation binding
+        env:
+          PYTHONPATH: data_module
+        run: python -m pytest -q -c /dev/null data_module/tests/test_vnext
+
+      - name: Compile vNext package and local gate wrapper
+        run: |
+          python -m py_compile \
+            data_module/sentinel_data/vnext/__init__.py \
+            data_module/sentinel_data/vnext/policy.py \
+            data_module/sentinel_data/vnext/builder.py \
+            data_module/sentinel_data/vnext/validator.py \
+            data_module/sentinel_data/vnext/publication.py \
+            data_module/sentinel_data/vnext/representations.py \
+            data_module/sentinel_data/vnext/loader.py \
+            data_module/sentinel_data/vnext/cli.py \
+            docs/plan/ml-R4/scripts/p7_run_local_gate.py
+
+      - name: Build twice and assert byte determinism
+        env:
+          PYTHONPATH: data_module
+        run: |
+          set -euo pipefail
+          GEN_SHA="$(git rev-parse HEAD)"
+          rm -rf /tmp/r4-vnext-build-a /tmp/r4-vnext-build-b
+
+          python -m sentinel_data.vnext.cli build \
+            --output /tmp/r4-vnext-build-a \
+            --generation-commit "$GEN_SHA"
+          python -m sentinel_data.vnext.cli build \
+            --output /tmp/r4-vnext-build-b \
+            --generation-commit "$GEN_SHA"
+
+          (cd /tmp/r4-vnext-build-a && find . -type f -print0 | sort -z | xargs -0 sha256sum) > /tmp/r4-a.sha256
+          (cd /tmp/r4-vnext-build-b && find . -type f -print0 | sort -z | xargs -0 sha256sum) > /tmp/r4-b.sha256
+          diff -u /tmp/r4-a.sha256 /tmp/r4-b.sha256
+          echo 'PASS: DATA vNext semantic overlay is byte-deterministic under pyarrow 17.0.0'
+
+      - name: Build canonical semantic overlay
+        env:
+          PYTHONPATH: data_module
+        run: |
+          set -euo pipefail
+          GEN_SHA="$(git rev-parse HEAD)"
+          OUT='data_module/data/exports/sentinel-r4-vnext-v1'
+          rm -rf "$OUT"
+          python -m sentinel_data.vnext.cli build \
+            --output "$OUT" \
+            --generation-commit "$GEN_SHA"
+          python -m sentinel_data.vnext.cli validate --output "$OUT"
+
+      - name: Assert canonical pre-local status and frozen limitations
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data_module/data/exports/sentinel-r4-vnext-v1')
+          m = json.loads((p/'manifest.json').read_text())
+          r = json.loads((p/'representation_requirements.json').read_text())
+          v = json.loads((p/'validation_report.json').read_text())
+          e = json.loads((p/'evidence_snapshot.json').read_text())
+          assert m['status'] == 'SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING'
+          assert m['population'] == {
+              'contracts': 22493,
+              'contract_class_rows': 224930,
+              'excluded_contracts': 836,
+              'representation_required_contracts': 21657,
+          }
+          assert m['unsupported_roles'] == {
+              'THRESHOLD_FIT': 'UNSUPPORTED_EMPTY',
+              'CALIBRATION_FIT': 'UNSUPPORTED_EMPTY',
+              'UNTOUCHED_ACCEPTANCE': 'UNSUPPORTED_EMPTY_FROZEN',
+          }
+          assert m['semantic_counts'] == {
+              'target_value': {'1': 1007, 'None': 223923},
+              'training_strength': {'NONE': 223923, 'STRONG': 403, 'WEAK': 604},
+              'effective_loss_cells': 852,
+              'outcome_metric_cells': 118,
+          }
+          assert r['required_contracts'] == 21657
+          assert r['physical_binding_status'] == 'PENDING_LOCAL_G7_GATE'
+          assert v['passed'] is True and v['require_representation_binding'] is False
+          for name, meta in e.items():
+              if name == 'schema':
+                  continue
+              assert not meta['path'].startswith('/'), (name, meta['path'])
+          assert not (p/'representation_binding_report.json').exists()
+          assert not (p/'g7_validation_report.json').exists()
+          print(json.dumps({
+              'passed': True,
+              'role_contract_counts': m['role_contract_counts'],
+              'semantic_counts': m['semantic_counts'],
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Commit only the v2 semantic overlay
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          OUT='data_module/data/exports/sentinel-r4-vnext-v1'
+          git add -f \
+            "$OUT/manifest.json" \
+            "$OUT/source_registry.json" \
+            "$OUT/crosswalk_registry.json" \
+            "$OUT/evidence_snapshot.json" \
+            "$OUT/representation_requirements.json" \
+            "$OUT/label_states.parquet" \
+            "$OUT/ml_targets.parquet" \
+            "$OUT/validation_report.json"
+          if git diff --cached --quiet; then
+            echo 'Canonical semantic overlay already current.'
+            exit 0
+          fi
+          git commit -m 'data(ml-r4): publish DATA vNext v2 semantic overlay'
+          git push origin HEAD:r4/phase7-data-vnext-implementation

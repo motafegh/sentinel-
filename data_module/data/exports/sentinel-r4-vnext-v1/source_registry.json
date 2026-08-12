@@ -1,0 +1,174 @@
+{
+  "policy_version": "data-vnext-policy-v1",
+  "schema": "sentinel-data-vnext-source-registry-v1",
+  "sources": {
+    "bccc": {
+      "first_baseline_status": "DEFERRED_NOT_IMPORTED",
+      "rows_allowed": false,
+      "rule": "historical verified/provisional evidence may inform decisions but is not active first-baseline training data"
+    },
+    "benchmark_v0.1_quickstart": {
+      "first_baseline_status": "EVALUATION_CANDIDATE_NOT_IMPORTED",
+      "rows_allowed": false,
+      "rule": "may be considered in Phase 6 for internal audit only after exposure/leakage accounting; not assumed untouched acceptance"
+    },
+    "defihacklabs": {
+      "first_baseline_status": "DEFERRED_NOT_IMPORTED",
+      "rows_allowed": false
+    },
+    "disl": {
+      "first_baseline_status": "EXCLUDED_UNAVAILABLE",
+      "negative_authority": "NONE",
+      "positive_authority": "NONE",
+      "rows_allowed": false,
+      "rule": "unlabeled is not NonVulnerable"
+    },
+    "dive": {
+      "evidence_basis": [
+        "R4-PREV-DIVE-EBRE",
+        "R4-PREV-DIVE-SLITHER",
+        "R4-GAP-002"
+      ],
+      "first_baseline_status": "ACTIVE_UNLABELED_PLUS_WEAK_TOD",
+      "mapped_category_policy": {
+        "Access Control": {
+          "canonical_class": "ExternalBug",
+          "target_value": null,
+          "training_strength": "NONE"
+        },
+        "Arithmetic": {
+          "canonical_class": "IntegerUO",
+          "target_value": null,
+          "training_strength": "NONE"
+        },
+        "DoS": {
+          "canonical_class": "DenialOfService",
+          "target_value": null,
+          "training_strength": "NONE"
+        },
+        "Front Running": {
+          "canonical_class": "TransactionOrderDependence",
+          "target_value": 1,
+          "training_strength": "WEAK"
+        },
+        "Reentrancy": {
+          "canonical_class": "Reentrancy",
+          "target_value": null,
+          "training_strength": "NONE"
+        },
+        "Time manipulation": {
+          "canonical_class": "Timestamp",
+          "target_value": null,
+          "training_strength": "NONE"
+        },
+        "Unchecked Return Values": {
+          "canonical_class": "UnusedReturn",
+          "target_value": null,
+          "training_strength": "NONE"
+        }
+      },
+      "masked_contract_role_eligibility": [
+        "TRAIN_UNLABELED",
+        "CASE_STUDY",
+        "EXCLUDE_OUTCOME_METRICS"
+      ],
+      "negative_authority": "NONE",
+      "no_target_categories": {
+        "Bad Randomness": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET"
+      },
+      "positive_authority": "MASKED_EXCEPT_APPROVED_WEAK_TOD",
+      "unsupported_canonical_classes": [
+        "CallToUnknown",
+        "GasException",
+        "MishandledException"
+      ],
+      "weak_tod_forbidden_roles": [
+        "MODEL_SELECTION",
+        "THRESHOLD_FIT",
+        "CALIBRATION_FIT",
+        "UNTOUCHED_ACCEPTANCE"
+      ],
+      "weak_tod_role_eligibility": [
+        "TRAIN_WEAK",
+        "CASE_STUDY",
+        "EXCLUDE_OUTCOME_METRICS"
+      ],
+      "zero_policy": "UNKNOWN"
+    },
+    "manual_hand_written_contracts": {
+      "first_baseline_status": "EVALUATION_CANDIDATE_NOT_IMPORTED",
+      "rows_allowed": false,
+      "rule": "may be considered in Phase 6 only with exposure/leakage accounting"
+    },
+    "smartbugs_curated": {
+      "approved_mappings": {
+        "access_control": "ExternalBug",
+        "arithmetic": "IntegerUO",
+        "denial_of_service": "DenialOfService",
+        "front_running": "TransactionOrderDependence",
+        "reentrancy": "Reentrancy",
+        "time_manipulation": "Timestamp",
+        "unchecked_low_level_calls": "CallToUnknown"
+      },
+      "evidence_basis": [
+        "R4-PREV-OTHER-SMARTBUGS"
+      ],
+      "first_baseline_status": "ACTIVE_SUPERVISED",
+      "forbidden_positive_roles": [
+        "UNTOUCHED_ACCEPTANCE"
+      ],
+      "negative_authority": "NONE",
+      "no_target_categories": {
+        "bad_randomness": "LOSSY_NO_CANONICAL_TARGET",
+        "other": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET",
+        "short_addresses": "OUT_OF_TAXONOMY_NO_CANONICAL_TARGET"
+      },
+      "non_target_class_policy": "UNKNOWN",
+      "positive_authority": "STRONG_CONFIRMED_FOR_APPROVED_IN_TAXONOMY_CATEGORY_ONLY",
+      "positive_role_eligibility": [
+        "TRAIN_STRONG",
+        "MODEL_SELECTION",
+        "INTERNAL_AUDIT",
+        "CASE_STUDY"
+      ],
+      "rule": "Historical short_addresses/other -> NonVulnerable and bad_randomness -> Timestamp mappings are superseded for DATA vNext; no canonical negative is synthesized."
+    },
+    "smartbugs_wild": {
+      "first_baseline_status": "EXCLUDED_FROM_SUPERVISED_VNEXT",
+      "rows_allowed": false,
+      "rule": "historical wild labels are too noisy for supervised DATA vNext; separate pretraining use requires its own plan"
+    },
+    "solidifi": {
+      "direct_or_approved_mappings": {
+        "Overflow-Underflow": "IntegerUO",
+        "Re-entrancy": "Reentrancy",
+        "TOD": "TransactionOrderDependence",
+        "Timestamp-Dependency": "Timestamp",
+        "Unchecked-Send": "CallToUnknown",
+        "Unhandled-Exceptions": "MishandledException",
+        "tx.origin": "ExternalBug"
+      },
+      "evidence_basis": [
+        "R4-PREV-OTHER-SOLIDIFI"
+      ],
+      "first_baseline_status": "ACTIVE_SUPERVISED",
+      "forbidden_positive_roles": [
+        "UNTOUCHED_ACCEPTANCE"
+      ],
+      "negative_authority": "NONE",
+      "non_injected_class_policy": "UNKNOWN",
+      "positive_authority": "STRONG_CONFIRMED_FOR_INJECTED_CLASS_ONLY",
+      "positive_role_eligibility": [
+        "TRAIN_STRONG",
+        "INTERNAL_AUDIT",
+        "CASE_STUDY"
+      ]
+    },
+    "web3bugs": {
+      "first_baseline_status": "EXCLUDED_UNAVAILABLE",
+      "negative_authority": "NONE",
+      "positive_authority": "NONE",
+      "rows_allowed": false
+    }
+  }
+}
