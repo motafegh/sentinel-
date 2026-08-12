@@ -32,13 +32,11 @@ def bind_semantic_validation_report(export_dir: Path, report_path: Path) -> dict
         raise FileNotFoundError(manifest_path)
     if not report_path.is_file():
         raise FileNotFoundError(report_path)
-
     report = _load_json(report_path)
     if report.get("passed") is not True:
         raise ValueError("cannot publish a failed semantic validation report")
     if report.get("require_representation_binding") is not False:
         raise ValueError("semantic validation report must be pre-local-binding")
-
     manifest = _load_json(manifest_path)
     if manifest.get("status") != "SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING":
         raise ValueError(f"unexpected manifest status before semantic publication: {manifest.get('status')!r}")
@@ -53,7 +51,7 @@ def bind_semantic_validation_report(export_dir: Path, report_path: Path) -> dict
 
 
 def bind_final_g7_validation_report(export_dir: Path, report_path: Path) -> dict[str, Any]:
-    """Bind the successful post-representation final G7 validation report."""
+    """Promote the intermediate representation-bound manifest after final G7 validation."""
     export_dir = Path(export_dir)
     report_path = Path(report_path)
     manifest_path = export_dir / "manifest.json"
@@ -61,14 +59,12 @@ def bind_final_g7_validation_report(export_dir: Path, report_path: Path) -> dict
         raise FileNotFoundError(manifest_path)
     if not report_path.is_file():
         raise FileNotFoundError(report_path)
-
     report = _load_json(report_path)
     if report.get("passed") is not True or report.get("require_representation_binding") is not True:
         raise ValueError("final G7 validation report must be a successful representation-bound validation")
-
     manifest = _load_json(manifest_path)
-    if manifest.get("status") != "VALIDATED_G7_CANDIDATE":
-        raise ValueError("manifest must already bind a successful local representation report")
+    if manifest.get("status") != "REPRESENTATIONS_VALIDATED_G7_PENDING_FINAL":
+        raise ValueError("manifest must be in the intermediate post-representation state")
     if not isinstance(manifest.get("representation_binding_report"), dict):
         raise ValueError("representation binding must exist before final G7 report publication")
     manifest["g7_validation_report"] = {
@@ -77,6 +73,7 @@ def bind_final_g7_validation_report(export_dir: Path, report_path: Path) -> dict
         "bytes": report_path.stat().st_size,
         "status": "VALIDATED_G7",
     }
+    manifest["status"] = "VALIDATED_G7_CANDIDATE"
     _write_manifest(manifest_path, manifest)
     return manifest
 
@@ -124,9 +121,10 @@ def verify_publication_bindings(export_dir: Path) -> dict[str, Any]:
             export_dir, semantic,
             label="semantic_validation_report", checked=checked, errors=errors
         )
-        if report is not None:
-            if report.get("passed") is not True or report.get("require_representation_binding") is not False:
-                errors.append("semantic_validation_report_content_invalid")
+        if report is not None and (
+            report.get("passed") is not True or report.get("require_representation_binding") is not False
+        ):
+            errors.append("semantic_validation_report_content_invalid")
 
     representation = manifest.get("representation_binding_report")
     if representation is not None:
@@ -152,11 +150,18 @@ def verify_publication_bindings(export_dir: Path) -> dict[str, Any]:
                 export_dir, g7,
                 label="g7_validation_report", checked=checked, errors=errors
             )
-            if report is not None:
-                if report.get("passed") is not True or report.get("require_representation_binding") is not True:
-                    errors.append("g7_validation_report_content_invalid")
+            if report is not None and (
+                report.get("passed") is not True or report.get("require_representation_binding") is not True
+            ):
+                errors.append("g7_validation_report_content_invalid")
 
-    if manifest.get("status") == "VALIDATED_G7_CANDIDATE":
+    status = manifest.get("status")
+    if status == "REPRESENTATIONS_VALIDATED_G7_PENDING_FINAL":
+        if not isinstance(representation, dict):
+            errors.append("intermediate_manifest_missing_representation_binding")
+        if g7 is not None:
+            errors.append("intermediate_manifest_must_not_bind_final_g7_report")
+    if status == "VALIDATED_G7_CANDIDATE":
         if not isinstance(representation, dict):
             errors.append("candidate_manifest_missing_representation_binding")
         if not isinstance(g7, dict):
@@ -167,7 +172,7 @@ def verify_publication_bindings(export_dir: Path) -> dict[str, Any]:
         "passed": not errors,
         "errors": errors,
         "checked": checked,
-        "manifest_status": manifest.get("status"),
+        "manifest_status": status,
     }
 
 
