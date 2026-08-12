@@ -5,7 +5,7 @@ on:
     branches:
       - r4/phase7-g7-closeout
     paths:
-      - 'docs/plan/ml-R4/scripts/p7_closeout_g7_v2.py'
+      - 'docs/plan/ml-R4/scripts/p7_closeout_g7_v3.py'
       - '.github/workflows/r4-phase7-closeout-fast.yml'
   workflow_dispatch:
 
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: r4/phase7-g7-closeout
-          fetch-depth: 1
+          fetch-depth: 10
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /README.md
@@ -28,6 +28,7 @@ jobs:
             /docs/
             /data_module/README.md
             /data_module/config.yaml
+            /data_module/benchmarks/
             /data_module/sentinel_data/
             /data_module/tests/test_vnext/
             /data_module/data/exports/sentinel-r4-vnext-v1/
@@ -52,7 +53,7 @@ jobs:
             --require-representation-binding
 
       - name: Run deterministic G7 governance and documentation closeout
-        run: python docs/plan/ml-R4/scripts/p7_closeout_g7_v2.py
+        run: python docs/plan/ml-R4/scripts/p7_closeout_g7_v3.py
 
       - name: Validate updated canonical handbook
         run: python docs/handbook/tools/verify_handbook.py static
@@ -76,6 +77,10 @@ jobs:
           assert '| R4-D-007 |' in (root/'DECISION_REGISTER.md').read_text()
           assert 'ADR-R4-007' in (root/'ARTIFACT_INDEX.md').read_text()
           assert 'R4-LOG-20260812-010' in (root/'EXECUTION_LOG.md').read_text()
+          meta = (Path('docs/handbook/_meta/handbook.toml')).read_text()
+          assert 'handbook_version = "D1-v5-r4-g7"' in meta
+          assert 'verified_commit = "81d9c547d"' in meta
+          assert 'r4_canonical_gate = "G7"' in meta
           out = Path('data_module/data/exports/sentinel-r4-vnext-v1')
           manifest = json.loads((out/'manifest.json').read_text())
           rep = json.loads((out/'representation_binding_report.json').read_text())
@@ -84,7 +89,7 @@ jobs:
           assert rep['passed'] is True and rep['checked_contracts'] == 21657 and rep['checked_files'] == 64971
           assert rep['missing_files_total'] == 0 and rep['mismatch_total'] == 0
           assert g7['passed'] is True and g7['require_representation_binding'] is True
-          print('PASS: Phase 7 closeout state is internally consistent')
+          print('PASS: Phase 7 G7 closeout state is internally consistent')
           PY
 
       - name: Commit deterministic G7 closeout
@@ -96,6 +101,7 @@ jobs:
             data_module/README.md \
             docs/handbook/04_data_artifacts.md \
             docs/handbook/16_current_status.md \
+            docs/handbook/_meta/handbook.toml \
             docs/handbook/tools/verify_handbook.py \
             docs/plan/ml-R4/PLAN_STATUS_MATRIX.md \
             docs/plan/ml-R4/phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md \
