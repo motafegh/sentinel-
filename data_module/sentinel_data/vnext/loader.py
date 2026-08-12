@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .builder import DATASET_VERSION, EXPORT_SCHEMA_VERSION
+from .publication import verify_publication_bindings
 from .validator import validate_vnext_overlay
 
 
@@ -38,7 +39,7 @@ class VNextExport:
         if self.manifest.get("historical_artifacts_mutated") is not False:
             raise ValueError("DATA vNext manifest does not preserve historical immutability")
         if require_representation_binding and self.manifest.get("status") != "VALIDATED_G7_CANDIDATE":
-            raise ValueError("DATA vNext overlay has not passed local representation binding")
+            raise ValueError("DATA vNext overlay has not passed the complete local G7 binding/validation cycle")
 
     @property
     def label_states_path(self) -> Path:
@@ -65,11 +66,17 @@ class VNextExport:
         return dict(self.manifest.get("role_contract_counts") or {})
 
     def verify(self, *, require_representation_binding: bool = False) -> dict[str, Any]:
-        """Run the independent overlay validator."""
-        return validate_vnext_overlay(
+        """Run semantic and publication-binding verification as one read-only check."""
+        semantic = validate_vnext_overlay(
             self.export_dir,
             require_representation_binding=require_representation_binding,
         )
+        publication = verify_publication_bindings(self.export_dir)
+        return {
+            "passed": bool(semantic["passed"] and publication["passed"]),
+            "semantic_validation": semantic,
+            "publication_bindings": publication,
+        }
 
     def _pq(self):
         try:
