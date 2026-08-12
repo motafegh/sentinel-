@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 EXPECTED_GRAPH_SCHEMA = "v9"
+LOGICAL_REPRESENTATION_ROOT = "data_module/data/representations"
 MAX_REPORTED_FAILURES = 100
 
 
@@ -168,7 +169,8 @@ def verify_local_representations(
         "schema": "sentinel-data-vnext-representation-binding-report-v1",
         "status": "VALIDATED_LOCAL_G7" if passed else "FAILED_LOCAL_G7",
         "passed": passed,
-        "representation_root": representations_root.as_posix(),
+        "representation_root": LOGICAL_REPRESENTATION_ROOT,
+        "physical_root_recorded": False,
         "graph_schema_version": EXPECTED_GRAPH_SCHEMA,
         "required_contracts": expected_required,
         "checked_contracts": checked_contracts,
