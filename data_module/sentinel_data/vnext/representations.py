@@ -1,6 +1,6 @@
 """Local physical representation binding for DATA vNext G7.
 
-The semantic overlay is committed without copying graph/token tensors.  This
+The semantic overlay is committed without copying graph/token tensors. This
 module verifies the protected/local representation tree against the exact
 non-excluded vNext population and produces a compact hash-bound report.
 """
@@ -38,11 +38,7 @@ def verify_local_representations(
     *,
     report_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Verify every non-excluded vNext contract has valid local representation files.
-
-    The report contains only identities, counts, hashes and bounded failure
-    descriptions; no graph/token/raw-source contents are copied into the repo.
-    """
+    """Verify every non-excluded vNext contract has valid local representation files."""
     pq = _require_pyarrow()
     export_dir = Path(export_dir)
     representations_root = Path(representations_root)
@@ -95,11 +91,7 @@ def verify_local_representations(
         graph_path = source_dir / f"{cid}.pt"
         tokens_path = source_dir / f"{cid}.tokens.pt"
         sidecar_path = source_dir / f"{cid}.rep.json"
-        expected = (
-            ("graph", graph_path),
-            ("tokens", tokens_path),
-            ("sidecar", sidecar_path),
-        )
+        expected = (("graph", graph_path), ("tokens", tokens_path), ("sidecar", sidecar_path))
 
         contract_missing = False
         for kind, path in expected:
@@ -159,12 +151,12 @@ def verify_local_representations(
         total_bytes += graph_bytes + tokens_bytes + sidecar_bytes
         checked_files += 3
         checked_contracts += 1
-
-        binding_line = (
-            f"{cid}\0{source}\0{graph_sha}\0{graph_bytes}\0"
-            f"{tokens_sha}\0{tokens_bytes}\0{sidecar_sha}\0{sidecar_bytes}\n"
-        ).encode("utf-8")
-        aggregate.update(binding_line)
+        aggregate.update(
+            (
+                f"{cid}\0{source}\0{graph_sha}\0{graph_bytes}\0"
+                f"{tokens_sha}\0{tokens_bytes}\0{sidecar_sha}\0{sidecar_bytes}\n"
+            ).encode("utf-8")
+        )
 
     passed = (
         missing_total == 0
@@ -200,7 +192,7 @@ def verify_local_representations(
 
 
 def bind_representation_report(export_dir: Path, report_path: Path) -> dict[str, Any]:
-    """Bind a successful local report into manifest.json without mutating data artifacts."""
+    """Bind a successful local scan without yet claiming final G7 validation."""
     export_dir = Path(export_dir)
     report_path = Path(report_path)
     manifest_path = export_dir / "manifest.json"
@@ -216,11 +208,13 @@ def bind_representation_report(export_dir: Path, report_path: Path) -> dict[str,
         raise ValueError("representation report contains failures")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("status") != "SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING":
+        raise ValueError(f"unexpected manifest status before representation binding: {manifest.get('status')!r}")
     requirements = json.loads((export_dir / "representation_requirements.json").read_text(encoding="utf-8"))
     if int(report.get("required_contracts", -1)) != int(requirements.get("required_contracts", -2)):
         raise ValueError("representation report population does not match requirements")
 
-    manifest["status"] = "VALIDATED_G7_CANDIDATE"
+    manifest["status"] = "REPRESENTATIONS_VALIDATED_G7_PENDING_FINAL"
     manifest["representation_binding_report"] = {
         "path": report_path.name,
         "sha256": _sha256(report_path),
