@@ -5,6 +5,7 @@ on:
     branches:
       - r4/phase7-g7-closeout
     paths:
+      - 'docs/plan/ml-R4/scripts/p7_closeout_g7_v2.py'
       - '.github/workflows/r4-phase7-closeout-fast.yml'
   workflow_dispatch:
 
@@ -51,7 +52,7 @@ jobs:
             --require-representation-binding
 
       - name: Run deterministic G7 governance and documentation closeout
-        run: python docs/plan/ml-R4/scripts/p7_closeout_g7.py
+        run: python docs/plan/ml-R4/scripts/p7_closeout_g7_v2.py
 
       - name: Validate updated canonical handbook
         run: python docs/handbook/tools/verify_handbook.py static
