@@ -23,6 +23,10 @@ EXPECTED_LEDGER_SHA256 = "3983cc2b3317515d546c784449b583ac9a7c23ac8da267ee10f564
 EXPECTED_CONTRACTS = 22493
 EXPECTED_ROWS = 224930
 EXPECTED_EXCLUDED = 836
+EXPECTED_TARGET_COUNTS = {"1": 1007, "None": 223923}
+EXPECTED_STRENGTH_COUNTS = {"NONE": 223923, "STRONG": 403, "WEAK": 604}
+EXPECTED_EFFECTIVE_LOSS_CELLS = 852
+EXPECTED_OUTCOME_METRIC_CELLS = 118
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -35,7 +39,6 @@ def _sha256(path: Path) -> str:
 
 
 def _logical_path(path: Path) -> str:
-    """Return stable repo-relative lineage path when the input is in this repo."""
     resolved = path.resolve()
     try:
         return resolved.relative_to(_REPO_ROOT).as_posix()
@@ -94,20 +97,14 @@ def _source_claim(row: dict[str, Any], policy: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def _label_state_row(
-    row: dict[str, Any],
-    policy: dict[str, Any],
-    role: str,
-) -> dict[str, Any]:
+def _label_state_row(row: dict[str, Any], policy: dict[str, Any], role: str) -> dict[str, Any]:
     decision = semantic_decision(row, policy, role)
     evidence_ids = _evidence_ids(row, policy)
     if decision.outcome_state == "CONFIRMED_POSITIVE" and not evidence_ids:
         raise ValueError(f"confirmed positive lacks evidence_ids: {row['contract_id']} {row['class_name']}")
-
     limitations = sorted(set(
         [*(str(x) for x in (row.get("limitations") or [])), decision.reason_code]
     ))
-
     return {
         "policy_version": policy["policy_version"],
         "contract_id": str(row["contract_id"]),
@@ -138,7 +135,6 @@ def _build_ml_projection(
     ordered = sorted(semantic_rows, key=lambda r: r["class_index"])
     if [r["class_name"] for r in ordered] != list(CLASS_NAMES):
         raise ValueError(f"class order mismatch for {contract_id}")
-
     out: dict[str, Any] = {
         "contract_id": contract_id,
         "source": source,
@@ -164,6 +160,16 @@ def _build_ml_projection(
     return out
 
 
+def _verify_bound_file(partition_manifest: dict[str, Any], key: str, path: Path) -> None:
+    meta = (partition_manifest.get("artifacts") or {}).get(key)
+    if not isinstance(meta, dict):
+        raise ValueError(f"Phase-6 partition manifest missing artifact binding: {key}")
+    expected = str(meta.get("sha256") or "")
+    actual = _sha256(path)
+    if actual != expected:
+        raise ValueError(f"Phase-6 artifact binding mismatch for {key}: {actual} != {expected}")
+
+
 def build_vnext_overlay(
     *,
     ledger_path: Path,
@@ -178,7 +184,6 @@ def build_vnext_overlay(
 ) -> dict[str, Any]:
     """Materialize the deterministic semantic overlay and return its manifest."""
     pa, pq = _require_pyarrow()
-
     for p in (
         ledger_path,
         policy_path,
@@ -193,7 +198,6 @@ def build_vnext_overlay(
 
     if _sha256(ledger_path) != EXPECTED_LEDGER_SHA256:
         raise ValueError("Phase-3 ledger SHA-256 mismatch")
-
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
     validate_policy_surface(policy)
     partition_manifest = json.loads(partition_manifest_path.read_text(encoding="utf-8"))
@@ -205,6 +209,9 @@ def build_vnext_overlay(
         raise ValueError("Phase-6 partition does not bind expected ledger")
     if partition_manifest.get("policy_sha256") != _sha256(policy_path):
         raise ValueError("Phase-6 partition does not bind current policy")
+    _verify_bound_file(partition_manifest, "contract_manifest", contract_roles_path)
+    _verify_bound_file(partition_manifest, "unsupported_roles", unsupported_roles_path)
+    _verify_bound_file(partition_manifest, "acceptance_manifest", acceptance_manifest_path)
 
     unsupported = json.loads(unsupported_roles_path.read_text(encoding="utf-8"))
     acceptance = json.loads(acceptance_manifest_path.read_text(encoding="utf-8"))
@@ -234,7 +241,6 @@ def build_vnext_overlay(
     contract_semantics: dict[str, list[dict[str, Any]]] = defaultdict(list)
     source_by_contract: dict[str, str] = {}
     representation_flag_by_contract: dict[str, bool] = {}
-
     for row in ledger:
         cid = str(row["contract_id"])
         if cid not in role_by_contract:
@@ -248,11 +254,9 @@ def build_vnext_overlay(
         previous_rep = representation_flag_by_contract.setdefault(cid, rep)
         if previous_rep != rep:
             raise ValueError(f"representation flag changes across class rows: {cid}")
-
         out = _label_state_row(row, policy, role)
         semantic_rows.append(out)
         contract_semantics[cid].append(out)
-
     if len(contract_semantics) != EXPECTED_CONTRACTS:
         raise ValueError("semantic contract population mismatch")
 
@@ -261,9 +265,7 @@ def build_vnext_overlay(
         role, gid = role_by_contract[cid]
         if role != "EXCLUDED" and not representation_flag_by_contract[cid]:
             raise ValueError(f"non-excluded contract lacks representation flag: {cid}")
-        ml_rows.append(_build_ml_projection(
-            cid, source_by_contract[cid], gid, role, contract_semantics[cid]
-        ))
+        ml_rows.append(_build_ml_projection(cid, source_by_contract[cid], gid, role, contract_semantics[cid]))
 
     output_dir.mkdir(parents=True, exist_ok=True)
     label_states_path = output_dir / "label_states.parquet"
@@ -283,7 +285,6 @@ def build_vnext_overlay(
         "sources": policy["sources"],
     }
     _write_json(source_registry_path, source_registry)
-
     crosswalk_registry = {
         "schema": "sentinel-data-vnext-crosswalk-registry-v1",
         "policy_version": policy["policy_version"],
@@ -314,6 +315,8 @@ def build_vnext_overlay(
     _write_json(evidence_snapshot_path, evidence_snapshot)
 
     role_counts = Counter(row["role"] for row in ml_rows)
+    if dict(sorted(role_counts.items())) != dict(sorted(partition_manifest["role_contract_counts"].items())):
+        raise ValueError("generated contract role counts differ from frozen G6 partition")
     required = [r for r in ml_rows if r["representation_required"]]
     representation_requirements = {
         "schema": "sentinel-data-vnext-representation-requirements-v1",
@@ -340,22 +343,24 @@ def build_vnext_overlay(
         ("evidence_snapshot", evidence_snapshot_path),
         ("representation_requirements", representation_requirements_path),
     ):
-        artifacts[name] = {
-            "path": path.name,
-            "sha256": _sha256(path),
-            "bytes": path.stat().st_size,
-        }
+        artifacts[name] = {"path": path.name, "sha256": _sha256(path), "bytes": path.stat().st_size}
 
-    target_counts = Counter()
-    strength_counts = Counter()
-    effective_loss_cells = 0
-    outcome_metric_cells = 0
-    for row in semantic_rows:
-        target_counts[str(row["target_value"])] += 1
-        strength_counts[row["training_strength"]] += 1
-    for row in ml_rows:
-        effective_loss_cells += sum(bool(row[f"effective_loss_mask_{i}"]) for i in range(10))
-        outcome_metric_cells += sum(bool(row[f"outcome_metric_mask_{i}"]) for i in range(10))
+    target_counts = Counter(str(row["target_value"]) for row in semantic_rows)
+    strength_counts = Counter(row["training_strength"] for row in semantic_rows)
+    effective_loss_cells = sum(
+        sum(bool(row[f"effective_loss_mask_{i}"]) for i in range(10)) for row in ml_rows
+    )
+    outcome_metric_cells = sum(
+        sum(bool(row[f"outcome_metric_mask_{i}"]) for i in range(10)) for row in ml_rows
+    )
+    if dict(sorted(target_counts.items())) != EXPECTED_TARGET_COUNTS:
+        raise ValueError(f"unexpected target counts: {dict(target_counts)}")
+    if dict(sorted(strength_counts.items())) != EXPECTED_STRENGTH_COUNTS:
+        raise ValueError(f"unexpected training-strength counts: {dict(strength_counts)}")
+    if effective_loss_cells != EXPECTED_EFFECTIVE_LOSS_CELLS:
+        raise ValueError(f"unexpected effective loss cells: {effective_loss_cells}")
+    if outcome_metric_cells != EXPECTED_OUTCOME_METRIC_CELLS:
+        raise ValueError(f"unexpected outcome metric cells: {outcome_metric_cells}")
 
     manifest = {
         "schema": "sentinel-data-vnext-overlay-manifest-v1",
@@ -397,13 +402,8 @@ def build_vnext_overlay(
         raise ValueError("manifest excluded population mismatch")
     if target_counts.get("0", 0):
         raise ValueError("policy v1 must not produce target=0")
-
     _write_json(manifest_path, manifest)
     return manifest
 
 
-__all__ = [
-    "DATASET_VERSION",
-    "EXPORT_SCHEMA_VERSION",
-    "build_vnext_overlay",
-]
+__all__ = ["DATASET_VERSION", "EXPORT_SCHEMA_VERSION", "build_vnext_overlay"]
