@@ -72,7 +72,6 @@ def semantic_decision(row: dict[str, Any], policy: dict[str, Any], role: str) ->
     source = str(row.get("primary_source") or "")
     historical_positive = historical_target == 1
 
-    # Disabled classes remain present positionally but have no supervised target.
     if not _enabled(policy, class_name):
         return SemanticDecision(
             outcome_state="NOT_REVIEWED" if historical_positive else "UNKNOWN",
@@ -85,8 +84,6 @@ def semantic_decision(row: dict[str, Any], policy: dict[str, Any], role: str) ->
             reason_code="SUPERVISION_DISABLED_PENDING_EVIDENCE",
         )
 
-    # SolidiFI's only historical positive is the injected class and is accepted
-    # as strong positive evidence.  Non-target zeros are never negatives.
     if source == "solidifi" and historical_positive:
         return SemanticDecision(
             outcome_state="CONFIRMED_POSITIVE",
@@ -99,9 +96,6 @@ def semantic_decision(row: dict[str, Any], policy: dict[str, Any], role: str) ->
             reason_code="SOLIDIFI_INJECTED_CLASS_STRONG_POSITIVE",
         )
 
-    # Approved SmartBugs direct categories are strong positives, except
-    # Timestamp: the committed ledger cannot distinguish time_manipulation from
-    # the superseded bad_randomness->Timestamp mapping, so it fails closed.
     if source == "smartbugs_curated" and historical_positive:
         if class_name == "Timestamp":
             return SemanticDecision(
@@ -127,7 +121,6 @@ def semantic_decision(row: dict[str, Any], policy: dict[str, Any], role: str) ->
                 reason_code="SMARTBUGS_APPROVED_DIRECT_STRONG_POSITIVE",
             )
 
-    # The only retained DIVE supervised signal is weak Front Running -> TOD.
     if (
         source == "dive"
         and historical_positive
@@ -147,8 +140,6 @@ def semantic_decision(row: dict[str, Any], policy: dict[str, Any], role: str) ->
             reason_code="DIVE_TOD_WEAK_POSITIVE_ONLY",
         )
 
-    # All other positives are masked/not-reviewed.  Historical zeros and
-    # non-assertions remain unknown and never become target=0.
     return SemanticDecision(
         outcome_state="NOT_REVIEWED" if historical_positive else "UNKNOWN",
         target_value=None,
@@ -192,15 +183,19 @@ def source_claim_state(row: dict[str, Any]) -> str:
 def crosswalk_action(row: dict[str, Any]) -> tuple[str, str | None]:
     """Map historical crosswalk state into a vNext semantic action.
 
-    SmartBugs Timestamp is deliberately no-target because native category
-    identity was lost in the committed ledger.
+    SmartBugs positive rows have lost their original category in the frozen
+    ledger.  For every approved non-Timestamp canonical class the mapping is
+    nevertheless unambiguous; Timestamp is not, because the historical export
+    mixed direct time_manipulation with bad_randomness->Timestamp.
     """
     source = str(row.get("primary_source") or "")
     class_name = str(row.get("class_name") or "")
     historical_target = row.get("historical_target")
 
-    if source == "smartbugs_curated" and class_name == "Timestamp" and historical_target == 1:
-        return "LOSSY_NO_CANONICAL_TARGET", None
+    if source == "smartbugs_curated" and historical_target == 1:
+        if class_name == "Timestamp":
+            return "LOSSY_NO_CANONICAL_TARGET", None
+        return "DIRECT", class_name
 
     native = str(row.get("crosswalk_action") or "UNKNOWN")
     if native == "DIRECT":
