@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: r4/phase7-g7-closeout
-          fetch-depth: 0
+          fetch-depth: 1
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /README.md
