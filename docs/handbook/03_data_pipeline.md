@@ -30,7 +30,7 @@ historical labels + source evidence
 → later masked/strength-aware ML retraining
 ```
 
-The crucial current rule is: **absence/unsupported/unknown/dropped/historical-zero state is not a confirmed negative.**
+**Historical zero is not a confirmed negative.** More generally, absence, unsupported classes, unknown states, dropped categories, and other historical-zero mechanisms cannot be silently converted into negative training targets.
 
 ## Actual runtime/source walkthrough
 
