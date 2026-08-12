@@ -19,10 +19,12 @@ class SymbolTests(unittest.TestCase):
     def test_python_top_level_and_method_symbols(self) -> None:
         self.assertTrue(vh._symbol_exists("ml/src/models/sentinel_model.py::SentinelModel.forward")[0])
         self.assertTrue(vh._symbol_exists("agents/src/orchestration/graph.py::build_graph")[0])
+        self.assertTrue(vh._symbol_exists("agents/src/security/policy_signer.py::compute_v3_digest")[0])
 
-    def test_solidity_contract_and_function_symbols(self) -> None:
+    def test_solidity_contract_and_current_v3_function_symbols(self) -> None:
         self.assertTrue(vh._symbol_exists("contracts/src/AuditRegistry.sol::AuditRegistry")[0])
-        self.assertTrue(vh._symbol_exists("contracts/src/AuditRegistry.sol::submitAuditV2")[0])
+        self.assertTrue(vh._symbol_exists("contracts/src/AuditRegistry.sol::submitAuditV3")[0])
+        self.assertTrue(vh._symbol_exists("contracts/src/AuditRegistry.sol::initializeV3")[0])
 
     def test_missing_symbol_fails(self) -> None:
         passed, detail = vh._symbol_exists("contracts/src/AuditRegistry.sol::notARealMethod")
@@ -74,6 +76,11 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(len(meta["technical_guide"]), 10)
         self.assertEqual(len(meta["lab"]), 10)
         self.assertEqual({lab["guide"] for lab in meta["lab"]}, {guide["id"] for guide in meta["technical_guide"]})
+
+    def test_live_audit_tool_discovery_is_read_only(self) -> None:
+        tools = vh._discover()["mcp_tools"]["mcp_audit"]
+        self.assertEqual(tools, ["get_latest_audit", "get_audit_history", "check_audit_exists"])
+        self.assertNotIn("submit_audit", tools)
 
 
 if __name__ == "__main__":
