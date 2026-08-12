@@ -6,7 +6,11 @@ import json
 from pathlib import Path
 
 from .builder import DATASET_VERSION, build_vnext_overlay
-from .publication import bind_semantic_validation_report, verify_publication_bindings
+from .publication import (
+    bind_final_g7_validation_report,
+    bind_semantic_validation_report,
+    verify_publication_bindings,
+)
 from .representations import bind_representation_report, verify_local_representations
 from .validator import validate_vnext_overlay
 
@@ -95,6 +99,12 @@ def _verify_representations(args: argparse.Namespace) -> int:
 
 
 def _local_gate(args: argparse.Namespace) -> int:
+    manifest_path = args.output / "manifest.json"
+    if not manifest_path.is_file():
+        _print({"passed": False, "stage": "precheck", "error": f"missing {manifest_path}"})
+        return 1
+    original_manifest = manifest_path.read_text(encoding="utf-8")
+
     pre = validate_vnext_overlay(args.output, require_representation_binding=False)
     publication_pre = verify_publication_bindings(args.output)
     if not pre["passed"] or not publication_pre["passed"]:
@@ -102,6 +112,7 @@ def _local_gate(args: argparse.Namespace) -> int:
         return 1
 
     rep_path = args.output / "representation_binding_report.json"
+    final_path = args.output / "g7_validation_report.json"
     rep = verify_local_representations(
         args.output,
         args.representations_root,
@@ -110,17 +121,36 @@ def _local_gate(args: argparse.Namespace) -> int:
     if not rep["passed"]:
         _print({"passed": False, "stage": "representation_binding", "report": rep})
         return 1
-    bind_representation_report(args.output, rep_path)
 
-    final_path = args.output / "g7_validation_report.json"
-    final = validate_vnext_overlay(
-        args.output,
-        require_representation_binding=True,
-        report_path=final_path,
-    )
-    publication_final = verify_publication_bindings(args.output)
+    try:
+        bind_representation_report(args.output, rep_path)
+        final = validate_vnext_overlay(
+            args.output,
+            require_representation_binding=True,
+            report_path=final_path,
+        )
+        if not final["passed"]:
+            manifest_path.write_text(original_manifest, encoding="utf-8")
+            _print({"passed": False, "stage": "final_validation", "validation": final})
+            return 1
+
+        bind_final_g7_validation_report(args.output, final_path)
+        publication_final = verify_publication_bindings(args.output)
+        if not publication_final["passed"]:
+            manifest_path.write_text(original_manifest, encoding="utf-8")
+            _print({"passed": False, "stage": "final_publication_binding", "publication": publication_final})
+            return 1
+    except Exception as exc:
+        manifest_path.write_text(original_manifest, encoding="utf-8")
+        _print({
+            "passed": False,
+            "stage": "transactional_promotion",
+            "error": f"{type(exc).__name__}: {exc}",
+        })
+        return 1
+
     result = {
-        "passed": bool(final["passed"] and publication_final["passed"]),
+        "passed": True,
         "stage": "g7_local_gate",
         "representation_binding_report": str(rep_path),
         "final_validation_report": str(final_path),
@@ -128,7 +158,7 @@ def _local_gate(args: argparse.Namespace) -> int:
         "publication_bindings": publication_final,
     }
     _print(result)
-    return 0 if result["passed"] else 1
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -158,10 +188,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output", type=Path, default=d["export"])
     p.add_argument("--representations-root", type=Path, default=d["representations"])
     p.add_argument("--report", type=Path, default=None)
-    p.add_argument("--bind", action="store_true", help="Bind a successful report into manifest.json")
+    p.add_argument("--bind", action="store_true", help="Bind a successful report into manifest.json as intermediate state")
     p.set_defaults(func=_verify_representations)
 
-    p = sub.add_parser("local-gate", help="Run the complete local physical-binding G7 gate")
+    p = sub.add_parser("local-gate", help="Run the complete transactional local physical-binding G7 gate")
     p.add_argument("--output", type=Path, default=d["export"])
     p.add_argument("--representations-root", type=Path, default=d["representations"])
     p.set_defaults(func=_local_gate)
