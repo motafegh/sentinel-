@@ -1,115 +1,173 @@
 # 08 — Contracts and on-chain registry
 
-**Read this when:** you need staking, V1/V2 audit storage, verifier calls, deployment, upgrades, or query invariants.
+**Read this when:** you need staking, V1/V2/V3 audit storage, verifier calls, V3 policy binding, deployment, or UUPS upgrades.
 
-**Skip this if:** you only consume off-chain reports and do not operate chain state.
+**Skip this if:** you only consume off-chain reports and never operate/query chain state.
 
 **Estimated reading time:** 13 minutes.
 
 ## 30-second summary
 
-`SentinelToken` supplies ERC-20 stake and owner-controlled slashing. Upgradeable `AuditRegistry` requires minimum stake and a valid verifier call before storing proof hashes and scores. V1 stores one score; V2 stores ten scores plus a model hash. The registry verifies score/public-signal consistency, not the full teacher or AGENTS verdict semantics.
+`AuditRegistry` is an upgradeable, staked audit-history registry with three versioned protocols. V1 is historical scalar storage. V2 is the historical ten-score proxy-proof path and does not bind audit context/model identity. **V3 is the current submission protocol:** after `initializeV3`, new V1/V2 writes are disabled, while old history remains readable. V3 verifies the same class of proxy proof plus a separate EIP-712 policy signature that binds target bytecode and audit/model/data/schema identities to the agent, chain, and registry.
 
 ## Just-enough mental model
 
 ```text
-agent stakes SNTL ─┐
-proof + 138 signals ├→ AuditRegistry proxy → verifier → append immutable audit record
-model hash ─────────┘
-owner: pause/unpause, authorize UUPS implementation upgrade, slash stake
+historical:
+V1 scalar records ─┐
+V2 ten-score records ├─→ remain readable
+                    ┘
+
+current V3 write protocol:
+staked agent
+  + target runtime code
+  + proxy proof / 138 signals / 10 scores
+  + model/proxy/DATA/schema identities
+  + round/deadline
+  + policy signature
+        ↓
+submitAuditV3
+        ↓
+verify context + signer + anti-replay + proof + output equality
+        ↓
+append V3 record
 ```
 
-The proxy address is stable while implementations can change. Storage layout compatibility is therefore a permanent upgrade constraint.
+V3 context attestation and ZK proof are complementary but distinct trust claims.
 
 ## Actual runtime/source walkthrough
 
-- [`SentinelToken.sol`](../../contracts/src/SentinelToken.sol) — `SentinelToken::MIN_STAKE`, `::stake`, `::unstake`, `::slash`, and `::stakedBalance` implement the economic gate.
-- [`AuditRegistry.sol`](../../contracts/src/AuditRegistry.sol) — `AuditRegistry::initialize` binds verifier/token. The constructor disables direct implementation initialization.
-- `::submitAudit` is the V1 single-score path and binds its score to a public signal.
-- `::submitAuditV2` requires at least 138 signals, verifies the proof, compares all ten output slots beginning at 128, then appends `AuditResultV2`.
-- V1 queries are `hasAudit`, `getLatestAudit`, `getAuditHistory`, `getAuditCount`; V2 equivalents carry the `V2` suffix.
-- `::pause` and `::unpause` stop/start submissions. `::_authorizeUpgrade` is owner-only and emits `ImplementationUpgraded`.
-- [`IZKMLVerifier.sol`](../../contracts/src/IZKMLVerifier.sol) defines `verifyProof`; [`ZKMLVerifier.sol`](../../contracts/src/ZKMLVerifier.sol) is generated from current EZKL artifacts.
-- [`Deploy.s.sol`](../../contracts/script/Deploy.s.sol) deploys token, verifier, implementation, and ERC1967/UUPS proxy wiring.
+### Storage/versioning
+
+[`AuditRegistry.sol`](../../contracts/src/AuditRegistry.sol) preserves V1 and V2 storage order, then appends V3 state:
+
+- V3 verifier address;
+- V3 policy-signer address;
+- `legacySubmissionsDisabled`;
+- V3 audit records;
+- used-request-digest replay protection.
+
+`initializeV3(verifier, policySigner)` is a reinitializer that sets the V3 trust roots and permanently disables new legacy submissions through the stored flag. Historical V1/V2 query functions remain available.
+
+### Historical writes
+
+`submitAudit` and `submitAuditV2` remain in the ABI for historical/storage compatibility, but both require `!legacySubmissionsDisabled`. Once V3 is initialized, they reject new writes.
+
+### V3 submission
+
+`submitAuditV3`:
+
+1. requires V3 initialized, verifier/signer configured, target has code, deadline valid, and sufficient stake;
+2. requires exactly 138 public signals;
+3. requires signals 128–137 equal the supplied ten class-score field elements;
+4. hashes proof, public signals, scores, and target runtime bytecode;
+5. computes the exact EIP-712 request digest including agent, target, round, teacher/proxy/DATA/schema identities, deadline, chain ID, and registry address;
+6. rejects reused request digest;
+7. verifies the signature recovers the configured policy signer;
+8. verifies the proxy proof;
+9. stores the complete V3 provenance/context record and emits `AuditSubmittedV3`.
+
+### Queries
+
+V1, V2, and V3 each retain explicit `has/getLatest/getHistory/getCount` methods. The live audit MCP wraps these as protocol-neutral version-aware reads.
+
+### Trust-root controls
+
+Owner-only controls include pause/unpause, V3 verifier rotation, V3 policy-signer rotation, and UUPS upgrade authorization. Those are centralized governance/security boundaries and must be treated accordingly.
 
 ## Interfaces, data shapes, and configuration
 
-`AuditRegistry` constants are `NUM_CLASSES=10` and `INPUT_OFFSET=128`. V2 accepts:
+V3 context includes:
 
-```solidity
-submitAuditV2(
-    address contractAddress,
-    uint256[10] classScores,
-    bytes proof,
-    uint256[] publicSignals,
-    bytes32 modelHash
-)
+```text
+contractAddress
+roundId
+teacherModelHash
+proxyBundleHash
+dataVersionHash
+classSchemaHash
+deadline
 ```
 
-Stored `proofHash` is `keccak256(proof)`. Scores are fixed-point field elements; human interpretation divides by 8192 when the score semantics match scale 13. `modelHash` is bytes32 supplied by the caller; the contract does not recompute a teacher checkpoint hash.
+The signed digest additionally binds:
 
-Network/RPC addresses and private keys belong in deployment environment/configuration, never in this handbook. Foundry settings live in [`foundry.toml`](../../contracts/foundry.toml).
+```text
+agent
+contractCodeHash
+chainId
+registryAddress
+proofHash
+publicSignalsHash
+classScoreFeltsHash
+```
+
+Fixed proof layout remains:
+
+- `NUM_CLASSES = 10`
+- `INPUT_OFFSET = 128`
+- total V2/V3 public signals = 138.
+
+The contract stores `keccak256(proof)` as `proofHash`.
 
 ## Failure modes and current limitations
 
-- Insufficient stake, pause state, verifier rejection, insufficient V2 signals, or score mismatch reverts atomically.
-- The verifier validates the proxy circuit only; see [ZKML](07_zkml.md) for the exact claim.
-- UUPS upgrades can corrupt state if variable order/types are changed incompatibly.
-- Owner control is centralized for pause, upgrade authorization, and slashing in the current MVP.
-- V1’s hard-coded public-signal assumption belongs to the historical single-score layout; V2 is the current ten-class path.
-- `contracts/test/AuditRegistryV2.t.sol` exists locally but is ignored by the root `test` pattern and is not fresh-clone coverage. The tracked suite status is in [current status](16_current_status.md).
+- V3 proof verification still proves only the retained proxy circuit.
+- Policy signature authenticates context/provenance but does not prove teacher/source/AGENTS execution.
+- A production policy-signing/broadcast service is not claimed by the current analysis runtime.
+- Owner compromise can affect pause, signer/verifier rotation, and upgrades.
+- UUPS storage compatibility remains a permanent constraint.
+- `check_mode="UNSAFE"` in the retained EZKL settings is an external proof-assurance limitation despite contract verification passing.
+- V1/V2 records remain readable and must not be mistaken for V3-bound provenance.
 
 ## Common change recipe
 
-For a verifier upgrade:
+For V3 verifier/signer/implementation changes:
 
-1. Regenerate and independently verify EZKL artifacts and the Solidity verifier.
-2. Add tracked tests for valid proof, tampering, signal length/order, and score mismatch.
-3. Deploy the new verifier and decide whether a registry implementation change is needed.
-4. If upgrading the registry, run storage-layout comparison and proxy upgrade tests.
-5. Update deployment manifests/addresses without documenting secrets.
-6. Run local Anvil end-to-end submission before Sepolia.
-
-For any class/order change, update DATA, ML, ZKML, contract constants/methods, tests, and every query consumer as one versioned migration.
+1. preserve storage layout and historical reads;
+2. test fresh deployment and V2→V3 upgrade path;
+3. verify `initializeV3` disables new legacy writes;
+4. test digest parity with off-chain `policy_signer.py`;
+5. test replay, expiry, code-hash, score/signal, signature, proof, stake, pause, and rotation failures;
+6. bind deployment/verifier/signer identities without committing secrets;
+7. verify read-only audit MCP returns V3 provenance correctly;
+8. update security/status docs before operational claims change.
 
 ## Verification commands
 
 ```bash
 cd contracts
-forge build                                      # smoke
-forge test                                       # module
-anvil --port 8545                                 # live chain, separate terminal
-forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast  # live
+forge build
+forge test
 ```
 
-Never paste a private key into a committed command or document. Current counts are only in [current status](16_current_status.md).
+Focused V3 suites include registry V3 behavior, golden digest parity, upgrade/storage compatibility, and real-proof verifier tests. Live broadcast/signing is a separate integration concern.
 
 ## Optional deep references
 
-- [`AuditRegistry.sol`](../../contracts/src/AuditRegistry.sol) — public contract interface
-- [`contracts/test`](../../contracts/test) — tracked tests only constitute clone coverage
+- [`AuditRegistry.sol`](../../contracts/src/AuditRegistry.sol)
+- [`policy_signer.py`](../../agents/src/security/policy_signer.py)
 - [ZKML](07_zkml.md)
-- [Operations](14_operations.md)
-- [Change playbooks](15_change_playbooks.md)
+- [Runtime flows](02_runtime_flows.md)
+- [Security and trust](12_security_and_trust.md)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know ERC-20 approval/staking, verifier interfaces, events/mappings, UUPS proxy storage, and Foundry.
+Know ERC-20 staking, UUPS storage, EIP-712, ECDSA recovery, replay protection, bytecode hashes, ZK verifier interfaces, and event/query versioning.
 
 ### Source map and reading order
 
-Read `SentinelToken`, `IZKMLVerifier`, registry storage/initialize/V1/V2 submit/query/upgrade methods, deployment scripts, then tracked tests. [T06](technical/06_contracts_storage_upgrades.md) provides the guard and storage trace.
+Read V1/V2 storage first for compatibility, then V3 appended storage, `initializeV3`, digest construction, `submitAuditV3`, V3 queries, rotation controls, upgrade tests, and off-chain digest builder in `policy_signer.py`.
 
 ### Execution trace and worked example
 
-V2 requires stake, valid verifier result, and ten submitted class fields equal to public instances beginning at 128. It appends a V2 record and event while V1 history remains intact. Proof hash is `keccak256(proof)`; model hash remains asserted provenance.
+A V3 request for a deployed target computes the runtime `codehash`, binds it with proof/signal/score hashes and model/data identities, receives an authorized policy signature, then reaches `submitAuditV3`. The registry rejects replay/expiry/mismatch before appending a V3 result. Later the read-only audit MCP can return that record together with V1/V2 history.
 
 ### Implementation practice
 
-[L06](labs/06_contract_registry_invariant.md) adds a test-only history/upgrade invariant. Storage variables are appended, never reordered; pre/post-upgrade state is asserted.
+Any V3 field change is a protocol migration affecting EIP-712 typehash/digest, off-chain request builder, tests, contract ABI/storage/event interpretation, and all submitting/querying components. Do not mutate it as a local helper change.
 
 ### Review and ownership check
 
-Can you separate verifier, stake, score, pause, and upgrade authorization failures and state which are cryptographic?
+Can you explain which legacy operations are historical, why V3 disables new legacy writes, every field protected by the V3 digest, and the separate responsibilities of policy signer versus ZK verifier?

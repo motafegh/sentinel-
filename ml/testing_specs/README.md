@@ -1,70 +1,79 @@
-# ml/testing_specs — Validation and Audit Spec Suite
+# ml/testing_specs — Validation/Audit Procedures
 
-Validation and audit procedures for model runs, data integrity, and session handoff.
+This directory contains reusable and historical validation procedures for ML runs, data integrity, diagnostics, schema migration, inference, calibration mechanics, and release review.
 
----
+> **Authority notice:** these specs were largely authored around Run12/pre-R4 workflows. They are **procedures, not current DATA/evaluation authority**. For any new DATA-vNext retrain or release decision, current R4 policy/roles and canonical handbook state override older split, negative-label, threshold, calibration, and acceptance assumptions in individual spec files.
 
-## Scope
+Always read [`00_rules.md`](00_rules.md) alongside a selected procedure.
 
-**These files ARE for:** validating runs, auditing model behaviour, triaging alerts, promoting checkpoints, verifying data integrity, and session handoff.
+## Current R4 constraints before using a spec
 
-**These files are NOT for:** writing code, building features, refactoring, adding scripts, or general development work.
+Stable `main` is through R4 G6. Before applying any ML validation procedure, verify:
 
----
+- DATA semantic policy: `docs/plan/ml-R4/specs/data_vnext_policy_v1.json`;
+- frozen roles: `docs/plan/ml-R4/manifests/p6_partition_manifest.json`;
+- role support: `docs/plan/ml-R4/manifests/p6_role_support_table.json`;
+- acceptance state: `docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json`;
+- current status: `docs/handbook/16_current_status.md`.
+
+Current first-baseline limitations:
+
+```text
+historical/unknown zero ≠ confirmed negative
+GasException + UnusedReturn supervision disabled
+MODEL_SELECTION = positive-only limited
+THRESHOLD_FIT = UNSUPPORTED_EMPTY
+CALIBRATION_FIT = UNSUPPORTED_EMPTY
+UNTOUCHED_ACCEPTANCE = UNSUPPORTED_EMPTY_FROZEN
+Run12 = historical operational baseline
+Phase 8 retrain waits for G7
+```
+
+If a procedure assumes otherwise, treat that assumption as historical and adapt/update the procedure before using it for a current decision.
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `00_rules.md` | Spec rules — load alongside any spec file |
-| `README.md` | Routing table — identifies which 1-2 spec files apply |
-| `QUICKSTART.md` | Quick start guide |
-| `MIGRATION.md` | Migration guide |
-| `A_benchmark_runs.md` | A: Benchmark run validation |
-| `B_contract_deep_dive.md` | B: Contract deep-dive analysis |
-| `B_data_pipeline.md` | B: Data pipeline validation |
-| `C_diagnostic_checks.md` | C: Diagnostic checks |
-| `D_smoke_preflight.md` | D: Smoke preflight checks |
-| `E_preprocessing_consistency.md` | E: Preprocessing consistency |
-| `F_new_run_checklist.md` | F: New run checklist |
-| `G_ablation_protocol.md` | G: Ablation study protocol |
-| `H_issue_triage.md` | H: Issue triage procedures |
-| `I_regression_guard.md` | I: Regression guard checks |
-| `J_schema_migration.md` | J: Schema migration procedures |
-| `K_inference_api.md` | K: Inference API validation |
-| `L_release_readiness.md` | L: Release readiness checklist |
+| File | Purpose / current use |
+|---|---|
+| `00_rules.md` | mandatory authority/evidence rules |
+| `QUICKSTART.md` | supplementary navigation; verify assumptions against R4 |
+| `MIGRATION.md` | historical migration mechanics |
+| `A_benchmark_runs.md` | benchmark/run validation mechanics |
+| `B_contract_deep_dive.md` | contract-level diagnostic review |
+| `B_data_pipeline.md` | historical DATA-pipeline validation; R4 semantics override old binary assumptions |
+| `C_diagnostic_checks.md` | diagnostics |
+| `D_smoke_preflight.md` | smoke/preflight mechanics |
+| `E_preprocessing_consistency.md` | preprocessing consistency |
+| `F_new_run_checklist.md` | run setup checklist; must bind vNext artifacts/roles for future retrain |
+| `G_ablation_protocol.md` | ablation mechanics |
+| `H_issue_triage.md` | issue triage |
+| `I_regression_guard.md` | regression mechanics |
+| `J_schema_migration.md` | schema migration procedures |
+| `K_inference_api.md` | inference API validation |
+| `L_release_readiness.md` | historical release checklist; current promotion authority is R4 Phase 9/10 evidence/gates |
 
----
+## Framework
 
-## Testing Framework
+`framework/` contains CLI/gates/reporters from the historical validation system. It may still be useful for implementation diagnostics, but a green framework gate cannot create a missing R4 evidence role.
 
-**Directory:** `framework/`
+Examples:
 
-| File | Purpose |
-|------|---------|
-| `cli.py` | CLI entry point: `python -m ml.testing_specs.framework.cli run` |
-| `config.py` | Gate configuration and thresholds |
-| `gates.py` | Gate implementations (9 gates wired into CLI) |
-| `reporters.py` | Report generation |
-| `templates/` | Report templates |
-
-**9 gates** validate model state: contamination, diagnostics, inference smoke, staging checks, etc.
-
----
+- running threshold checks does not create a trustworthy threshold-fit corpus;
+- running calibration checks does not authorize calibration on unknown/exposed rows;
+- passing old staging checks does not promote a vNext model;
+- historical Run12 gate outcomes are historical evidence, not the current project state.
 
 ## Usage
 
-```bash
-# Run all gates
-python -m ml.testing_specs.framework.cli run
+1. read `00_rules.md`;
+2. read current R4 policy/role/current-status artifacts;
+3. select only the procedure relevant to the task;
+4. identify and replace any historical assumption before execution;
+5. record outputs against exact DATA/checkpoint/config/role identities.
 
-# Run specific spec
-cat ml/testing_specs/00_rules.md   # always load alongside any spec
+```bash
+cat ml/testing_specs/00_rules.md
+python -m ml.testing_specs.framework.cli run   # historical framework mechanics only
 ```
 
----
-
-## Run 12 Validation State
-
-- 6 gates PASS, 3 FAIL, Exit 1 — correct for current state
-- Phase 5 closed all loose ends: BUG-6 fixed, 36 unit tests at 91% coverage
+For current ML training/evaluation policy, use [`../README.md`](../README.md), [`../../docs/handbook/06_ml_training_quality.md`](../../docs/handbook/06_ml_training_quality.md), and the active R4 phase plans.

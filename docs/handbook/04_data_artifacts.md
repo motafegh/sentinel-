@@ -1,133 +1,162 @@
 # 04 — DATA artifacts and the ML seam
 
-**Read this when:** you need to understand graph/token files, labels, splits, export hashes, or `SentinelDataset`.
+**Read this when:** you need graph/token files, historical labels, DATA vNext semantic state, frozen roles, or the ML dataset boundary.
 
-**Skip this if:** you only need to run an audit; read [runtime flows](02_runtime_flows.md) instead.
+**Skip this if:** you only need runtime source inference.
 
 **Estimated reading time:** 12 minutes.
 
 ## 30-second summary
 
-DATA turns each Solidity contract into a v9 PyG graph, four 512-token windows, a ten-class multi-label vector, metadata, and a split assignment. Export shards are integrity-bound by a manifest hash and loaded by `SentinelDataset` through format, graph-schema, and artifact-hash gates. The large export and split directories in this checkout are ignored local artifacts, not fresh-clone assets.
+SENTINEL now has two different DATA semantics that must not be mixed. Historical export v1 stores ten non-nullable binary class columns and fed Run12 through the legacy `SentinelDataset`/collate/loss path. R4 preserves that bundle for reproducibility but supersedes its label meaning for new training. DATA vNext v2 carries explicit contract×class outcome state, nullable target, training strength, loss/metric eligibility, provenance, and frozen role. The v9 graph/token representations remain the same physical representation layer.
 
 ## Just-enough mental model
 
 ```text
-Solidity + labels
-     ├─ graph: x[N,12], edge_index[2,E], edge_attr[E]
-     ├─ tokens: input_ids[4,512]
-     ├─ target: y[10]
-     └─ identity: contract_id + metadata + split
-                         ↓
-              sharded DATA export
-                         ↓
-             SentinelDataset / collate
-                         ↓
-                    ML trainer
+physical representation (unchanged by R4)
+contract → graph x[N,12] + tokens[4,512]
+
+historical v1 semantic seam
+class_0..class_9 = non-nullable 0/1
+→ y[10]
+→ every 0 reached binary loss as negative
+
+DATA vNext v2 semantic seam
+contract×class state
+→ target {1,0,null}
+→ strength {STRONG,WEAK,NONE}
+→ source-policy loss eligibility
+→ frozen dataset role
+→ effective training/metric masks
 ```
 
-The graph schema and class order are compatibility contracts. Reordering either without versioning invalidates datasets, caches, checkpoints, proxy expectations, and on-chain class indices.
+For policy v1, target `0` requires a real `CONFIRMED_NEGATIVE`. No recovered blanket negative source satisfies that rule.
 
 ## Actual runtime/source walkthrough
 
-1. [`graph_schema.py`](../../data_module/sentinel_data/representation/graph_schema.py) — `data_module/sentinel_data/representation/graph_schema.py::FEATURE_SCHEMA_VERSION` owns v9 constants, vocabularies, features, and class order.
-2. [`orchestrator.py`](../../data_module/sentinel_data/representation/orchestrator.py) — `::represent_source` writes graph and token representations and records extractor/schema versions.
-3. [`export.py`](../../data_module/sentinel_data/export/export.py) and its writer/chunker siblings build Parquet metadata/labels, graph/token shards, shard indexes, and `manifest.json`.
-4. [`sentinel_dataset.py`](../../ml/src/datasets/sentinel_dataset.py) — `::SentinelDataset` opens the export, rejects format/schema/hash mismatches, intersects a chosen split with shard membership, and returns samples.
-5. [`collate.py`](../../ml/src/datasets/collate.py) — `::sentinel_collate_fn` batches PyG objects, `[4,512]` token tensors, labels, IDs, and confidence tiers.
+### Historical v1 compatibility
 
-The local `sentinel-v2-baseline-2026-06-12` manifest reports 22,356 labeled contracts, 21,523 with both representations, and five shards. The local v3 split manifest covers a different 22,493-contract universe. This is not a contradiction: export membership is filtered by successful representation, while split membership describes the selected labeled universe. These numbers are local artifact facts, not promises that a clean clone contains the data.
+The existing legacy export/dataset stack remains source-compatible for reproducing Run12:
+
+- representation schema v9;
+- graph `[N,12]` and tokens `[4,512]`;
+- historical ten binary label columns;
+- `ml/src/datasets/sentinel_dataset.py` returns `y[10]`;
+- historical collate/loss paths do not carry vNext masks/strength.
+
+This is **historical compatibility**, not the target interface for repaired retraining.
+
+### R4 semantic artifacts already canonical on main
+
+- Phase-3 evidence ledger: 22,493 contracts × 10 classes = 224,930 rows;
+- `data-vnext-policy-v1`: outcome/training/source authority contract;
+- `data_vnext_label_state_v1.schema.json`: contract×class semantic schema;
+- `r4-vnext-roles-v1`: one frozen role per leakage group/contract;
+- support/unsupported/acceptance manifests.
+
+Frozen role counts are recorded in [current status](16_current_status.md) and the R4 manifests, not duplicated as mutable split logic.
+
+### Phase-7 v2 implementation
+
+The active Phase-7 branch implements an **additive semantic overlay** rather than copying all graph/token tensors. It builds:
+
+- canonical long-form contract×class label-state Parquet;
+- derived per-contract ten-class ML projection carrying target/strength/masks/state/policy identity;
+- manifest and validation/binding reports;
+- explicit v2 loader that rejects silent fallback to historical v1 semantics.
+
+Remote semantic generation is deterministic. Final G7 requires local binding to the existing 21,657 represented contracts before the v2 candidate can be promoted/merged.
 
 ## Interfaces, data shapes, and configuration
 
-### Locked v9 schema
+### Locked representation/class compatibility
 
 | Contract | Current value |
 |---|---:|
-| `FEATURE_SCHEMA_VERSION` | `v9` |
-| `NODE_FEATURE_DIM` | 12 |
-| Node types | 14, IDs 0–13 |
-| Edge types | 12, IDs 0–11 |
-| Vulnerability classes | 10 |
-| Token shape per contract | `[4, 512]` |
+| graph schema | `v9` |
+| node feature dim | 12 |
+| node types | 14 |
+| edge types | 12 |
+| class count | 10 |
+| token shape | `[4,512]` |
 
-Feature order is `type_id`, `visibility`, `uses_block_globals`, `view`, `payable`, `complexity`, `loc`, `return_ignored`, `call_target_typed`, `has_loop`, `external_call_count`, `in_unchecked_block`.
+Class order remains `CallToUnknown`, `DenialOfService`, `ExternalBug`, `GasException`, `IntegerUO`, `MishandledException`, `Reentrancy`, `Timestamp`, `TransactionOrderDependence`, `UnusedReturn`.
 
-Class order is `CallToUnknown`, `DenialOfService`, `ExternalBug`, `GasException`, `IntegerUO`, `MishandledException`, `Reentrancy`, `Timestamp`, `TransactionOrderDependence`, `UnusedReturn`.
+### vNext semantic fields
 
-`SentinelDataset.__getitem__` returns `(graph, tokens, y, contract_id, confidence_tier)`. The collator returns batched equivalents. Its attention mask is derived from non-padding token IDs.
+The canonical semantic row includes at least:
 
-### Artifact classes
+- `contract_id`, class index/name;
+- historical state and source claims;
+- canonical outcome state;
+- nullable target;
+- training signal/strength;
+- source-policy loss eligibility;
+- outcome-metric eligibility;
+- role eligibility / policy decision / evidence IDs / limitations.
 
-| Artifact | Classification | Fresh clone? | Acquisition |
-|---|---|---:|---|
-| Source/config/schema | tracked | yes | Git |
-| DATA exports and splits | ignored local | no | regenerate or obtain an approved immutable snapshot |
-| Run 12 checkpoint | DVC-managed local in this checkout | no | obtain the tracked pointer/remote access separately, then `dvc pull` |
-| ML caches | regenerated | no | inference/preprocessing recreates them |
+The final effective training mask also requires a compatible Phase-6 role. A valid target is not automatically training- or metric-authorized.
 
-See the complete matrix in [reference](17_reference.md#artifact-matrix).
+### Current supervision state
+
+Eight classes have approved strong-positive source support. GasException and UnusedReturn remain supervision-disabled pending evidence. DIVE Front Running→TOD is weak-positive only. No confirmed-negative rows are authorized in policy v1.
 
 ## Failure modes and current limitations
 
-- A graph schema mismatch is a hard compatibility failure, not a warning.
-- A missing export/split is expected in a fresh clone; commands must name the prerequisite.
-- Corrupt or modified shards fail artifact-hash verification.
-- A contract may have a split row but no usable representation and is then absent from `SentinelDataset`.
-- `REVERSE_CONTAINS` is runtime-only and must not be serialized as an on-disk edge.
-- Some source docstrings still mention older 11-dimensional schemas; executable constants and assertions are authoritative.
+- Loading a historical v1 export as if it carried vNext masks is semantic corruption.
+- Filling vNext `null`/unknown targets with zero recreates the original R4 defect.
+- GasException/UnusedReturn output indices still exist; missing supervision must not be converted into zeros.
+- model-selection support is positive-only limited; it is not a trustworthy full binary validation set.
+- threshold/calibration/untouched-acceptance manifests are intentionally empty/unsupported.
+- Phase-7 v2 is not canonical main until G7 local representation binding passes and the branch merges.
 
 ## Common change recipe
 
-For any feature, node, edge, or class change:
+For DATA/ML seam changes:
 
-1. Change the canonical DATA schema and bump `FEATURE_SCHEMA_VERSION`.
-2. Update extractor assertions and version registry.
-3. Regenerate all graph/token exports and their hashes.
-4. Regenerate or validate split/label compatibility.
-5. Update ML preprocessing, model input assumptions, and tests.
-6. Retrain; do not reuse a checkpoint trained against the prior schema.
-7. Revisit proxy/circuit and contract class-index compatibility.
-8. Update [`handbook.toml`](_meta/handbook.toml) and run static validation.
+1. identify v1 compatibility vs v2 repaired behavior explicitly;
+2. never mutate historical export files in place;
+3. preserve class order and graph schema unless separately versioned;
+4. carry target + strength + masks + policy/role identities together;
+5. fail if required v2 fields are absent rather than defaulting to v1;
+6. bind generated semantic artifacts to policy, partition, ledger, code, and physical representations;
+7. update trainer compatibility in Phase 8 rather than weakening v2 semantics.
 
 ## Verification commands
 
 ```bash
-export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
 python3 docs/handbook/tools/verify_handbook.py static
-python3 docs/handbook/tools/verify_handbook.py inventory
-data_module/.venv/bin/python -m pytest data_module/tests/representation -q   # smoke/targeted
-data_module/.venv/bin/python -m pytest data_module/tests -q                  # module
+python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-The current measured module result is recorded only in [current status](16_current_status.md).
+After G7 merges, use the committed vNext CLI/validator for v2 artifact verification. Historical `SentinelDataset` tests remain relevant only to the v1 compatibility seam until Phase-8 trainer/dataset compatibility is added.
 
 ## Optional deep references
 
-- [`graph_schema.py`](../../data_module/sentinel_data/representation/graph_schema.py) — `::CLASS_NAMES`, `::FEATURE_NAMES`, `::NODE_TYPES`, `::EDGE_TYPES`
-- [`windowed_tokenizer.py`](../../ml/src/data_extraction/windowed_tokenizer.py) — `::WindowedTokenizer`
-- [`export.py`](../../data_module/sentinel_data/export/export.py) — `::SentinelDatasetExport` and artifact-hash verification
 - [DATA pipeline](03_data_pipeline.md)
+- [ML training and quality](06_ml_training_quality.md)
 - [Cross-module contracts](11_cross_module_contracts.md)
+- [R4 vNext policy specification](../plan/ml-R4/findings/07_data_vnext_policy_and_design_specification.md)
+- [R4 Phase-6 partition finding](../plan/ml-R4/findings/08_phase6_role_partition_and_acceptance_freeze.md)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know PyTorch Geometric `Data`, tensor shapes, Parquet, sharding, and integrity hashes.
+Know PyTorch/PyG tensor shapes, nullable semantic state, masks, loss eligibility, leakage roles, Parquet, and content hashes.
 
 ### Source map and reading order
 
-Read `graph_schema.py` constants, representation extractors, export writers, `export.py::SentinelDatasetExport`, `ml/src/datasets/sentinel_dataset.py::SentinelDataset`, then `collate.py::sentinel_collate_fn`. See [T02](technical/02_data_representation_export.md).
+Read v9 representation constants/orchestrator first. Treat `ml/src/datasets/sentinel_dataset.py` and `collate.py` as historical v1 consumers today. For repaired semantics, read R4 policy/schema/partition artifacts; after G7, the additive `data_module/sentinel_data/vnext` package is the v2 implementation source.
 
 ### Execution trace and worked example
 
-A contract hash maps through a split to `shard_index`, then graph `[N,12]`, token `[4,512]`, label `[10]`, and confidence tier. Dataset construction checks format schema, graph schema, and artifact hash before serving any sample.
+The same represented contract can have graph/token bytes unchanged while its training semantics change from historical `[0,1,...]` to explicit per-class states. A masked DIVE DoS claim contributes no DenialOfService target; the contract can still live in an unlabeled role. A SolidiFI injected class can contribute a strong positive target without turning the other nine classes into negatives.
 
 ### Implementation practice
 
-[L02](labs/02_export_dataset_seam.md) uses a copied export to trigger hash/schema failures safely. Schema changes require version bump and dependent artifact regeneration; manifest hashes are never hand-edited.
+Test three different failures separately: representation/schema mismatch, semantic-policy violation, and artifact/hash binding failure. Do not let any of them degrade into a warning/default label.
 
 ### Review and ownership check
 
-Can you prove row alignment and explain why format, graph, and hash failures are three different errors?
+Can you state which artifacts are physical representation, historical v1 semantic compatibility, R4 policy/roles, and v2 repaired semantic projection—and prove that a missing v2 field cannot silently become an old binary label?
