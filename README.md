@@ -4,7 +4,7 @@ SENTINEL is a smart-contract security research/engineering system under active d
 
 ## Current system state
 
-The current stable `main` baseline is the R4 **G6-passed** state from merge commit `91f795885` plus later documentation-only reconciliation. R4 repaired the historical DATA/ML label assumptions before any new teacher retraining:
+The current stable `main` baseline includes the R4 **G7-passed DATA vNext v2 implementation**, merged at `81d9c547d`, on top of the V3/runtime and canonical-documentation baseline. R4 repaired the historical DATA/ML label assumptions before any new teacher retraining:
 
 - 22,493 historical contracts were reconstructed as a 224,930-row contract×class evidence ledger;
 - historical `0` is no longer treated as a confirmed negative;
@@ -13,7 +13,7 @@ The current stable `main` baseline is the R4 **G6-passed** state from merge comm
 - threshold-fit, calibration-fit, and untouched-acceptance roles are intentionally unsupported/empty because the recovered evidence does not justify them;
 - the existing Run12 teacher remains the historical operational baseline and has **not yet been retrained on DATA vNext**.
 
-Phase 7 implements the additive DATA vNext v2 semantic overlay on branch `r4/phase7-data-vnext-implementation`. Its remote semantic checks are green, but G7 is not complete until the existing local graph/token representations are physically bound and validated. Until G7 is merged, the v2 implementation branch is candidate work rather than canonical `main` runtime.
+Phase 7 is complete: DATA vNext v2 is canonical, its semantic overlay is deterministic, and the real local representation population was physically bound and validated for G7. Phase 8 is now the next authorized R4 step; no repaired teacher has been retrained yet.
 
 ## Current architecture
 

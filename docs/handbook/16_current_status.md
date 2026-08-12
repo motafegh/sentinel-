@@ -8,26 +8,24 @@
 
 ## 30-second summary
 
-The stable source/runtime baseline for this handbook reconciliation is `main` merge **`91f795885`** (2026-08-12): R4 DATA/ML repair has passed **G0 through G6**, the V3 registry/context protocol and read-only audit-MCP boundary are implemented, and Run12 remains the historical operational teacher. Phase 7 DATA vNext implementation is active on `r4/phase7-data-vnext-implementation`; its remote semantic build/validation is green, but **G7 remains pending local physical binding of 21,657 representations**. No repaired teacher has been retrained/promoted yet.
+The canonical post-G7 baseline includes DATA vNext implementation merge **`81d9c547d`** (2026-08-12): R4 DATA/ML repair has passed **G0 through G7**, the V3 registry/context protocol and read-only audit-MCP boundary remain implemented, and Run12 remains the historical operational teacher. The v2 semantic overlay is now physically bound to all 21,657 required representations / 64,971 graph-token-sidecar files with zero missing files and zero mismatches. **Phase 8 retraining is READY**, but no repaired teacher checkpoint has been trained or promoted yet.
 
-This page intentionally does **not** carry the old July module-suite totals. They were measured against an obsolete source/architecture baseline and are now historical evidence only. New volatile suite totals should be added only when they are rerun against a named current commit/environment.
+The evidence limitations remain explicit: no confirmed-negative source exists in policy v1, threshold/calibration roles are unsupported/empty, and untouched acceptance is unsupported/empty/frozen. Historical July suite totals remain historical evidence rather than current-state proof.
 
 ## Just-enough mental model
 
 ```text
 canonical main (91f795885)
-  R4 G0–G6 PASS
+  R4 G0–G7 PASS
   V3 registry/read-only observation boundaries
   Run12 historical inference baseline
         ↓
-Phase 7 branch
-  deterministic DATA vNext v2 semantic overlay
-  remote semantic checks PASS
-  local representation binding PENDING
+DATA vNext v2
+  deterministic semantic overlay PASS
+  local representation binding PASS
+  G7 PASS
         ↓
-G7
-        ↓
-Phase 8 retrain existing architecture
+Phase 8 retrain existing architecture (READY)
         ↓
 Phase 9 evaluation/policy
         ↓
@@ -55,8 +53,9 @@ untouched acceptance: unsupported/empty/frozen
 | 4 | G4 PASS | decision-critical DIVE source authority adjudicated |
 | 5 | G5 PASS | DATA vNext policy/schema/ADRs accepted |
 | 6 | G6 PASS | leakage-safe roles frozen; acceptance support explicitly bounded |
-| 7 | pending G7 | implementation branch exists; local physical representation binding still required |
-| 8–10 | waiting | retraining/evaluation/promotion not authorized until preceding gates |
+| 7 | G7 PASS | v2 implementation merged; 21,657 representations / 64,971 files physically bound with zero mismatches |
+| 8 | READY | existing-architecture retraining authorized against the exact G7-passed v2 lineage |
+| 9–10 | waiting | evaluation/promotion remain gated by preceding phases |
 
 ### R4 DATA foundation
 
@@ -99,22 +98,25 @@ Unsupported/frozen roles:
 
 No confirmed-negative row is synthesized to fill these roles.
 
-### Phase 7 candidate state
+### Phase 7 G7 state
 
-Branch: `r4/phase7-data-vnext-implementation`  
-Latest documentation-audit-visible branch head: **`95c339edf`**.
+DATA vNext v2 is canonical through implementation merge `81d9c547d` and the G7 closeout records the locally bound publication.
 
-Remote Phase-7 work has produced an additive v2 semantic implementation under `data_module/sentinel_data/vnext` plus a deterministic semantic overlay. Remote checks establish:
+Final G7 evidence:
 
-- vNext unit/compile checks pass;
-- full 224,930-row semantic build is byte-deterministic under the pinned CI toolchain;
-- committed semantic overlay validates independently;
-- generated target count is 1,007 positive targets, **0 negative targets**;
-- 403 strong and 604 weak training signals reconcile with frozen evidence/roles;
-- manifest state is `SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING`;
-- v2 loader rejects silent historical-v1 fallback.
+- manifest status: `VALIDATED_G7_CANDIDATE`;
+- contracts: 22,493;
+- contract×class rows: 224,930;
+- positive targets: 1,007; negative targets: 0;
+- STRONG signals: 403; WEAK signals: 604;
+- effective loss cells: 852; outcome-metric cells: 118;
+- required/checked representation contracts: 21,657/21,657;
+- required/checked physical files: 64,971/64,971;
+- missing files: 0; representation mismatches: 0;
+- physical local path recorded: false;
+- representation binding digest: `7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420`.
 
-G7 is **not** passed yet. The required local gate must verify the existing physical representation root for all 21,657 required contracts: graph + tokens + sidecar = **64,971 physical files**. Only a successful representation-bound final validator may promote the Phase-7 manifest to a G7 candidate for PR/merge.
+The v2 loader rejects silent historical-v1 fallback. Historical v1 artifacts remain immutable. Phase 8 may adapt the frozen training consumer to this exact lineage; it may not invent negatives, rebalance frozen roles, or manufacture unsupported threshold/calibration/acceptance populations.
 
 ### Current ML state
 
@@ -189,7 +191,7 @@ Potentially local/protected/regenerated:
 - two classes supervision-disabled;
 - model-selection is positive-only limited;
 - threshold/calibration/untouched acceptance unsupported;
-- Phase 7 still requires local physical representation binding;
+- Phase 7 physical representation binding passed; the remaining DATA/ML limitations are evidence limitations, not G7 implementation blockers;
 - no repaired teacher retrain/promoted checkpoint yet.
 
 ### ZK/V3
@@ -230,7 +232,7 @@ python3 docs/handbook/tools/verify_handbook.py inventory
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-For Phase 7, use the active branch’s `p7_run_local_gate.py` command when the local representation root is available. Full module/live suites are separate evidence and should be recorded here only after an intentional current rerun.
+For G7 evidence, use the committed vNext manifest, representation-binding report, and final G7 validation report. The local gate remains available for reproducibility, not because G7 is pending. Full module/live suites are separate evidence and should be recorded here only after an intentional current rerun.
 
 ## Optional deep references
 
@@ -249,11 +251,11 @@ Know commit binding, artifact hashes, gate-based development, historical-versus-
 
 ### Source map and reading order
 
-Read R4 status/decision/risk registers, current source for V3/audit MCP, this page, then the relevant subsystem. For Phase 7, inspect its branch and gate scripts rather than assuming candidate code is already canonical main.
+Read R4 status/decision/risk registers, current source for V3/audit MCP, this page, then the relevant subsystem. For DATA vNext, inspect the canonical vNext package, G7 manifest/reports, and R4 decisions rather than historical v1 label/export assumptions.
 
 ### Execution trace and worked example
 
-Today a correct statement is: “R4 G6 is canonical; Phase 7 remote semantics are green but local representation binding is pending; Run12 is historical operational inference; no retrained vNext teacher or untouched-acceptance claim exists.” A statement like “the current model has passed final vNext test/calibration” is false.
+Today a correct statement is: “R4 G7 is canonical; DATA vNext v2 is representation-bound; Phase 8 retraining is ready; Run12 remains historical operational inference; no retrained vNext teacher or untouched-acceptance claim exists.” A statement like “the current model has passed final vNext test/calibration” is false.
 
 ### Implementation practice
 
@@ -261,4 +263,4 @@ When a phase/role becomes available, change the machine-readable plan/manifests 
 
 ### Review and ownership check
 
-Can you distinguish canonical main from Phase-7 candidate state, state all unsupported evaluation roles, identify the current teacher/proof/MCP protocol versions, and name the exact local blocker before G7?
+Can you identify the exact G7 DATA vNext manifest/binding lineage, state all unsupported evaluation roles, distinguish Run12 from the future repaired teacher, and explain what Phase 8 is and is not authorized to change?

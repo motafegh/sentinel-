@@ -65,7 +65,7 @@ The active Phase-7 branch implements an **additive semantic overlay** rather tha
 - manifest and validation/binding reports;
 - explicit v2 loader that rejects silent fallback to historical v1 semantics.
 
-Remote semantic generation is deterministic. Final G7 requires local binding to the existing 21,657 represented contracts before the v2 candidate can be promoted/merged.
+Semantic generation is deterministic, and G7 is complete: the local gate bound all 21,657 required represented contracts / 64,971 graph-token-sidecar files with zero missing files or mismatches. The committed v2 manifest is representation-bound and Phase 8 may consume it.
 
 ## Interfaces, data shapes, and configuration
 
@@ -108,7 +108,7 @@ Eight classes have approved strong-positive source support. GasException and Unu
 - GasException/UnusedReturn output indices still exist; missing supervision must not be converted into zeros.
 - model-selection support is positive-only limited; it is not a trustworthy full binary validation set.
 - threshold/calibration/untouched-acceptance manifests are intentionally empty/unsupported.
-- Phase-7 v2 is not canonical main until G7 local representation binding passes and the branch merges.
+- DATA vNext v2 is canonical post-G7; Phase 8 must consume its exact manifest/roles/masks rather than rebuilding semantics implicitly.
 
 ## Common change recipe
 
@@ -129,7 +129,7 @@ python3 docs/handbook/tools/verify_handbook.py static
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-After G7 merges, use the committed vNext CLI/validator for v2 artifact verification. Historical `SentinelDataset` tests remain relevant only to the v1 compatibility seam until Phase-8 trainer/dataset compatibility is added.
+Use the committed vNext CLI/validator for v2 artifact verification; representation-required validation is now part of the G7 lineage. Historical `SentinelDataset` tests remain relevant only to the v1 compatibility seam until Phase-8 trainer/dataset compatibility is added.
 
 ## Optional deep references
 
@@ -147,7 +147,7 @@ Know PyTorch/PyG tensor shapes, nullable semantic state, masks, loss eligibility
 
 ### Source map and reading order
 
-Read v9 representation constants/orchestrator first. Treat `ml/src/datasets/sentinel_dataset.py` and `collate.py` as historical v1 consumers today. For repaired semantics, read R4 policy/schema/partition artifacts; after G7, the additive `data_module/sentinel_data/vnext` package is the v2 implementation source.
+Read v9 representation constants/orchestrator first. Treat `ml/src/datasets/sentinel_dataset.py` and `collate.py` as historical v1 consumers today. For repaired semantics, read R4 policy/schema/partition artifacts and the canonical `data_module/sentinel_data/vnext` package, which is the G7-passed v2 implementation source.
 
 ### Execution trace and worked example
 

@@ -1,0 +1,101 @@
+name: R4 Phase 7 G7 closeout
+
+on:
+  push:
+    branches:
+      - r4/phase7-g7-closeout
+    paths:
+      - 'docs/plan/ml-R4/scripts/p7_closeout_g7.py'
+      - '.github/workflows/r4-phase7-closeout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r4/phase7-g7-closeout
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned G7 validation dependencies
+        run: python -m pip install --disable-pip-version-check pytest 'pyarrow==17.0.0'
+
+      - name: Revalidate committed representation-bound DATA vNext publication
+        env:
+          PYTHONPATH: data_module
+        run: |
+          python -m sentinel_data.vnext.cli validate \
+            --output data_module/data/exports/sentinel-r4-vnext-v1 \
+            --require-representation-binding
+
+      - name: Run deterministic G7 governance and documentation closeout
+        run: python docs/plan/ml-R4/scripts/p7_closeout_g7.py
+
+      - name: Validate updated canonical handbook
+        run: python docs/handbook/tools/verify_handbook.py static
+
+      - name: Re-run DATA vNext unit tests
+        env:
+          PYTHONPATH: data_module
+        run: python -m pytest -q -c /dev/null data_module/tests/test_vnext
+
+      - name: Assert closeout state
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('docs/plan/ml-R4')
+          status = (root/'PLAN_STATUS_MATRIX.md').read_text()
+          assert '| 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED |' in status
+          assert '| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | READY |' in status
+          assert '**Status:** PASSED — G7 PASS' in (root/'phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md').read_text()
+          assert '**Status:** READY — G7 SATISFIED' in (root/'phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md').read_text()
+          assert '| R4-D-007 |' in (root/'DECISION_REGISTER.md').read_text()
+          assert 'ADR-R4-007' in (root/'ARTIFACT_INDEX.md').read_text()
+          assert 'R4-LOG-20260812-010' in (root/'EXECUTION_LOG.md').read_text()
+
+          out = Path('data_module/data/exports/sentinel-r4-vnext-v1')
+          manifest = json.loads((out/'manifest.json').read_text())
+          rep = json.loads((out/'representation_binding_report.json').read_text())
+          g7 = json.loads((out/'g7_validation_report.json').read_text())
+          assert manifest['status'] == 'VALIDATED_G7_CANDIDATE'
+          assert rep['passed'] is True and rep['checked_contracts'] == 21657 and rep['checked_files'] == 64971
+          assert rep['missing_files_total'] == 0 and rep['mismatch_total'] == 0
+          assert g7['passed'] is True and g7['require_representation_binding'] is True
+          print('PASS: Phase 7 closeout state is internally consistent')
+          PY
+
+      - name: Commit deterministic G7 closeout
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            README.md \
+            data_module/README.md \
+            docs/handbook/04_data_artifacts.md \
+            docs/handbook/16_current_status.md \
+            docs/handbook/tools/verify_handbook.py \
+            docs/plan/ml-R4/PLAN_STATUS_MATRIX.md \
+            docs/plan/ml-R4/phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md \
+            docs/plan/ml-R4/phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md \
+            docs/plan/ml-R4/DECISION_REGISTER.md \
+            docs/plan/ml-R4/RISK_AND_BLOCKER_REGISTER.md \
+            docs/plan/ml-R4/ARTIFACT_INDEX.md \
+            docs/plan/ml-R4/EXECUTION_LOG.md \
+            docs/plan/ml-R4/adrs/ADR-R4-007-data-vnext-implementation-and-g7-publication.md \
+            docs/plan/ml-R4/findings/09_phase7_data_vnext_implementation_and_g7.md
+          if git diff --cached --quiet; then
+            echo 'G7 closeout already current.'
+            exit 0
+          fi
+          git commit -m 'docs(ml-r4): close Phase 7 with G7 pass'
+          git push origin HEAD:r4/phase7-g7-closeout

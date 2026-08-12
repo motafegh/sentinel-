@@ -1,8 +1,8 @@
 schema_version = 3
-handbook_version = "D1-v4-r4-v3"
+handbook_version = "D1-v5-r4-g7"
 verified_date = "2026-08-12"
-# Runtime/source baseline. Documentation-only reconciliation commits may be later.
-verified_commit = "91f795885"
+# Canonical source/runtime baseline after DATA vNext G7 implementation merge.
+verified_commit = "81d9c547d"
 status_page = "16_current_status.md"
 
 canonical_pages = [
@@ -109,7 +109,7 @@ registry_num_classes = 10
 registry_input_offset = 128
 r4_policy_version = "data-vnext-policy-v1"
 r4_partition_version = "r4-vnext-roles-v1"
-r4_canonical_gate = "G6"
+r4_canonical_gate = "G7"
 audit_mcp_write_surface = false
 v3_submission_protocol = "context_attested_v3"
 
@@ -214,6 +214,27 @@ owner = "R4 DATA"
 [[artifact]]
 name = "R4 untouched acceptance manifest"
 path = "docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json"
+classification = "tracked"
+fresh_clone = true
+owner = "R4 DATA"
+
+[[artifact]]
+name = "R4 DATA vNext G7 manifest"
+path = "data_module/data/exports/sentinel-r4-vnext-v1/manifest.json"
+classification = "tracked"
+fresh_clone = true
+owner = "R4 DATA"
+
+[[artifact]]
+name = "R4 DATA vNext G7 label states"
+path = "data_module/data/exports/sentinel-r4-vnext-v1/label_states.parquet"
+classification = "tracked"
+fresh_clone = true
+owner = "R4 DATA"
+
+[[artifact]]
+name = "R4 DATA vNext G7 representation binding"
+path = "data_module/data/exports/sentinel-r4-vnext-v1/representation_binding_report.json"
 classification = "tracked"
 fresh_clone = true
 owner = "R4 DATA"

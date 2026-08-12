@@ -6,7 +6,7 @@
 
 ## Current state
 
-Stable `main` has passed R4 **G6**:
+Stable `main` has passed R4 **G7**:
 
 - historical population: **22,493 contracts**;
 - evidence ledger: **224,930 contract×class rows**;
@@ -19,7 +19,7 @@ Stable `main` has passed R4 **G6**:
 - DIVE Front Running→TransactionOrderDependence is weak-positive only;
 - threshold-fit, calibration-fit, and untouched-acceptance roles are intentionally unsupported/empty.
 
-Phase 7 DATA vNext implementation is active on `r4/phase7-data-vnext-implementation`. Remote semantic generation/validation is green, but G7 still requires local binding to the existing 21,657 physical representation triplets before merge.
+Phase 7 DATA vNext implementation is complete and canonical. The local G7 gate bound all 21,657 required representation contracts (64,971 graph/token/sidecar files) with zero missing files and zero mismatches; the committed v2 manifest is representation-bound and Phase 8 is authorized.
 
 ## Two DATA paths
 
@@ -85,7 +85,7 @@ data_module/sentinel_data/
   verification/              historical/source verification utilities
   splitting/                 historical split utilities
   export/                    historical v1 export compatibility
-  vnext/                     DATA vNext v2 implementation (Phase 7 branch until G7)
+  vnext/                     canonical DATA vNext v2 implementation (G7-passed)
 
 docs/plan/ml-R4/
   ledger/                    evidence ledger
@@ -97,14 +97,14 @@ docs/plan/ml-R4/
 
 ## Verification
 
-On canonical `main` through G6:
+On canonical `main` through G7:
 
 ```bash
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 python3 docs/handbook/tools/verify_handbook.py static
 ```
 
-Phase-7 build/local commands belong to the dedicated Phase-7 branch until G7 is complete.
+The representation-bound v2 publication is now the canonical Phase-8 training-data lineage; use the committed vNext validator/loader and do not regenerate roles or fall back to historical v1 semantics.
 
 ## Do not silently weaken these invariants
 

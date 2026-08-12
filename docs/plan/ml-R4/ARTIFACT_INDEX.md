@@ -123,6 +123,25 @@
 | R4-P6-ADR-001 | 6 | ADR | adrs/ADR-R4-006-role-partition-and-acceptance-freeze.md | 9657278b2dad070a78564a4bf365da23493e020e92a0040cd2dde3934069a132 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Leakage-safe partition and empty-acceptance decision |
 | R4-P6-FND-001 | 6 | findings | findings/08_phase6_role_partition_and_acceptance_freeze.md | 6c3f9657aa564f8ce16ac36efbb96b4c3545aa087d2542231c73a8c9f76a1070 | 5e981fe96407 | New | AVAILABLE_VERIFIED | NO | Partition/support/exposure interpretation |
 
+## Phase 7 artifacts — DATA vNext implementation and local representation binding (G7 PASS)
+
+| Artifact ID | Phase | Type | Path/URI | SHA-256 | Source commit | Historical/New | Availability | Protected | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| R4-P7-PLN-001 | 7 | execution_plan | docs/plan/ml-R4/runs/2026-08-12_PHASE7_data_vnext_implementation_plan.md | c6b4919cfb6c3e452fbea61a5322d64aefa6235318896a51e78cc715a0dbc135 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Phase-7 implementation plan |
+| R4-P7-SCH-001 | 7 | export_schema | data_module/sentinel_data/export/format_schema/v2.yaml | fcd1cbc454c10bc3dcbeae43aabcbf68ef5ba2796c6846d1b2d01c9965d428cc | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Explicit DATA vNext v2 format schema |
+| R4-P7-EXP-001 | 7 | manifest | data_module/data/exports/sentinel-r4-vnext-v1/manifest.json | 1fd80ebafa036ccb0065f6a6e9e4ff5309ac6c17661b0ecf45469ecf8e8f0d43 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | G7-passed DATA vNext publication root |
+| R4-P7-EXP-002 | 7 | label_states | data_module/data/exports/sentinel-r4-vnext-v1/label_states.parquet | 1a21cf931200c33353111cf5cb6a5f7874f851018bc45dab9db1d888c69be1e5 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | 224,930-row canonical contract×class semantic state |
+| R4-P7-EXP-003 | 7 | ml_targets | data_module/data/exports/sentinel-r4-vnext-v1/ml_targets.parquet | dac0673c03767502b3a294d42d8a57d82969c5a612bdfc2a852260576df359b5 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Derived per-contract ten-class target/strength/mask/role projection |
+| R4-P7-REG-001 | 7 | source_registry | data_module/data/exports/sentinel-r4-vnext-v1/source_registry.json | f0b640f9396c902dd929584b1b4525b90f023b370c4df38e70ab3399f64f6dcf | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Frozen first-baseline source authority snapshot |
+| R4-P7-REG-002 | 7 | crosswalk_registry | data_module/data/exports/sentinel-r4-vnext-v1/crosswalk_registry.json | a384720d47d0ce823c7ef7518921974dd0f396c11144fb0fd865159349de8395 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Frozen vNext crosswalk action snapshot |
+| R4-P7-BND-001 | 7 | evidence_snapshot | data_module/data/exports/sentinel-r4-vnext-v1/evidence_snapshot.json | bf7761b42701501c5c256729da149526005dbc6c10dfc6beac0b4db70245bd66 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Ledger/policy/partition evidence bindings |
+| R4-P7-BND-002 | 7 | representation_requirements | data_module/data/exports/sentinel-r4-vnext-v1/representation_requirements.json | 04ec986f195a0d81079cbd8414865cd049124529b1e8e76db712b642d8410d39 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Exact non-excluded representation requirement set |
+| R4-P7-VAL-001 | 7 | semantic_validation | data_module/data/exports/sentinel-r4-vnext-v1/validation_report.json | f2ebc067fff50d23bd72fdf091d78922bcdef928dab93d243ce3c0a58e54ec5d | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Independent semantic validation report |
+| R4-P7-VAL-002 | 7 | representation_binding | data_module/data/exports/sentinel-r4-vnext-v1/representation_binding_report.json | d5bba3b037a0f443c5764bfb4be17da35a3e44201d97f0f671298b9fbf4dc33d | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | 21,657-contract / 64,971-file local physical binding report |
+| R4-P7-VAL-003 | 7 | g7_validation | data_module/data/exports/sentinel-r4-vnext-v1/g7_validation_report.json | 9bfd5abca187d9eb8a966e5e914e7203f9c2f70102f899936c46c23ae9aa0d21 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Final representation-required G7 validation report |
+| R4-P7-ADR-001 | 7 | ADR | docs/plan/ml-R4/adrs/ADR-R4-007-data-vnext-implementation-and-g7-publication.md | b3e61db0c0e7eb0f132dd35845a3f8f63fb022130877fa5399f21006a8af08aa | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Accepted G7 publication/training-input authority |
+| R4-P7-FND-001 | 7 | findings | docs/plan/ml-R4/findings/09_phase7_data_vnext_implementation_and_g7.md | 5e8ea6a0f71284de0d0e3e61d1c270b2c1a05deabfe5cb0241433479aace9e32 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Phase-7 implementation and G7 result |
+
 ## Availability
 
 - `AVAILABLE_VERIFIED`

@@ -1,6 +1,6 @@
 # Phase 8 — Existing Architecture Retraining
 
-**Status:** WAITING FOR G7  
+**Status:** READY — G7 SATISFIED  
 **Gate:** G8
 
 ## Objective
@@ -41,3 +41,8 @@ Only changes required for:
 ## G8 pass criteria
 
 A reproducible current-architecture checkpoint is bound to DATA vNext and developed without acceptance leakage.
+
+## Phase-7 handoff
+
+Training input authority is `sentinel-r4-vnext-v1` with local representation binding digest `7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420`. Phase 8 must preserve class order/schema, Phase-6 roles, nullable target semantics, STRONG/WEAK distinction, disabled-class masking, and the unsupported threshold/calibration/acceptance boundaries.
+
