@@ -1,6 +1,6 @@
 # Phase 7 — DATA vNext Implementation
 
-**Status:** IN_PROGRESS — G6 SATISFIED  
+**Status:** PASSED — G7 PASS  
 **Gate:** G7
 
 ## Objective
@@ -57,3 +57,23 @@ The semantic overlay can be generated and validated remotely from committed froz
 ## G7 pass criteria
 
 DATA vNext reproduces from frozen inputs, passes semantic/schema/hash/role validation, physically binds every required representation on the local protected tree, and is suitable for the approved Phase-6 roles without creating unsupported threshold/calibration/acceptance artifacts.
+
+## G7 closeout
+
+The additive v2 implementation is merged and locally representation-bound.
+
+- dataset: `sentinel-r4-vnext-v1`
+- contracts: 22,493
+- contract×class rows: 224,930
+- required/checked representations: 21,657
+- required/checked physical files: 64,971
+- missing files: 0
+- mismatches: 0
+- representation digest: `7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420`
+- manifest state: `VALIDATED_G7_CANDIDATE`
+- final representation-required validation: PASS
+
+Historical v1 artifacts were not mutated. Threshold/calibration/untouched-acceptance roles remain intentionally unsupported/empty.
+
+**G7 PASS.** Phase 8 is authorized to retrain the existing frozen architecture using this exact v2 lineage.
+

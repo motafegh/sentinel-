@@ -226,7 +226,19 @@ def _r4_facts() -> dict[str, Any]:
     acceptance = _json("docs/plan/ml-R4/manifests/p6_untouched_acceptance_manifest.json")
     support = _json("docs/plan/ml-R4/manifests/p6_role_support_table.json")
     status = _text("docs/plan/ml-R4/PLAN_STATUS_MATRIX.md")
-    return {"policy": policy, "partition": partition, "acceptance": acceptance, "support": support, "status_text": status}
+    g7_manifest = _json("data_module/data/exports/sentinel-r4-vnext-v1/manifest.json")
+    g7_representation = _json("data_module/data/exports/sentinel-r4-vnext-v1/representation_binding_report.json")
+    g7_validation = _json("data_module/data/exports/sentinel-r4-vnext-v1/g7_validation_report.json")
+    return {
+        "policy": policy,
+        "partition": partition,
+        "acceptance": acceptance,
+        "support": support,
+        "status_text": status,
+        "g7_manifest": g7_manifest,
+        "g7_representation": g7_representation,
+        "g7_validation": g7_validation,
+    }
 
 
 def _discover() -> dict[str, Any]:
@@ -301,6 +313,9 @@ def _discover() -> dict[str, Any]:
             "role_contract_counts": r4["partition"]["role_contract_counts"],
             "acceptance_status": r4["acceptance"]["status"],
             "acceptance_contracts": len(r4["acceptance"]["contract_ids"]),
+            "g7_status": r4["g7_manifest"]["status"],
+            "g7_binding_digest": r4["g7_representation"]["binding_digest_sha256"],
+            "g7_checked_contracts": r4["g7_representation"]["checked_contracts"],
         },
         "artifacts": [{**item, "exists": (ROOT / item["path"]).exists(), "tracked": item["path"] in tracked or any(p.startswith(item["path"].rstrip("/") + "/") for p in tracked)} for item in meta["artifact"]],
         "test_files": {module: len(list((ROOT / path).rglob("test_*.py"))) for module, path in {"agents": "agents/tests", "ml": "ml/tests", "data": "data_module/tests", "zkml": "zkml/tests"}.items()},
@@ -427,11 +442,17 @@ def _static_checks() -> list[Check]:
     checks.append(Check("R4 partition frozen", partition["status"] == "FROZEN_G6" and partition.get("gate") == "G6_PASS", f"status={partition['status']}, gate={partition.get('gate')}"))
     checks.append(Check("R4 population", partition["population_contracts"] == 22493 and partition["population_groups"] == 13509, f"contracts={partition['population_contracts']}, groups={partition['population_groups']}"))
     checks.append(Check("R4 acceptance unsupported", acceptance["status"] == "UNSUPPORTED_EMPTY_FROZEN" and acceptance["contract_ids"] == [] and acceptance["group_ids"] == [], f"status={acceptance['status']}"))
-    checks.append(Check("R4 phase status", "| 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | PASSED |" in r4["status_text"] and "| 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | READY |" in r4["status_text"], "Phase 6 PASSED / Phase 7 READY on canonical main"))
+    checks.append(Check("R4 phase status", "| 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED |" in r4["status_text"] and "| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | READY |" in r4["status_text"], "Phase 7 PASSED / Phase 8 READY on canonical main"))
+    g7_manifest = r4["g7_manifest"]
+    g7_rep = r4["g7_representation"]
+    g7_report = r4["g7_validation"]
+    checks.append(Check("R4 G7 publication", g7_manifest.get("status") == "VALIDATED_G7_CANDIDATE" and g7_manifest.get("export_schema_version") == "v2" and g7_manifest.get("population", {}).get("contracts") == 22493, f"status={g7_manifest.get('status')}, schema={g7_manifest.get('export_schema_version')}"))
+    checks.append(Check("R4 G7 representation binding", g7_rep.get("passed") is True and g7_rep.get("checked_contracts") == 21657 and g7_rep.get("checked_files") == 64971 and g7_rep.get("missing_files_total") == 0 and g7_rep.get("mismatch_total") == 0 and g7_rep.get("physical_root_recorded") is False and g7_rep.get("binding_digest_sha256") == "7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420", f"contracts={g7_rep.get('checked_contracts')}, files={g7_rep.get('checked_files')}, missing={g7_rep.get('missing_files_total')}, mismatches={g7_rep.get('mismatch_total')}"))
+    checks.append(Check("R4 G7 final validation", g7_report.get("passed") is True and g7_report.get("require_representation_binding") is True and g7_report.get("target_counts") == {"1": 1007, "None": 223923} and g7_report.get("training_strength_counts") == {"NONE": 223923, "STRONG": 403, "WEAK": 604}, f"passed={g7_report.get('passed')}, targets={g7_report.get('target_counts')}"))
 
     verified_commit = meta["verified_commit"]
     commit_ok = subprocess.run(["git", "cat-file", "-e", f"{verified_commit}^{{commit}}"], cwd=ROOT, capture_output=True).returncode == 0
-    checks.append(Check("verified runtime commit", commit_ok and verified_commit == "91f795885", f"metadata={verified_commit}, exists={commit_ok}"))
+    checks.append(Check("verified source/runtime commit", commit_ok and verified_commit == "81d9c547d", f"metadata={verified_commit}, exists={commit_ok}"))
     checks.append(Check("verified date", meta["verified_date"] == "2026-08-12", f"metadata={meta['verified_date']}"))
 
     required_truth = {
@@ -445,7 +466,7 @@ def _static_checks() -> list[Check]:
         "10_agents_services.md": ["read-only", "get_latest_audit", "automatic V3→RAG promotion remains disabled"],
         "12_security_and_trust.md": ["comment", "string", "role-swap", "extraction", "identifier", "NatSpec", "multi", "import", "policy signer"],
         "13_evaluation.md": ["positive-only limited", "UNSUPPORTED_EMPTY", "UNSUPPORTED_EMPTY_FROZEN"],
-        "16_current_status.md": ["91f795885", "G6", "95c339edf", "SEMANTIC_VALIDATED_REPRESENTATIONS_PENDING", "UNSUPPORTED_EMPTY_FROZEN"],
+        "16_current_status.md": ["81d9c547d", "G7", "VALIDATED_G7_CANDIDATE", "7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420", "UNSUPPORTED_EMPTY_FROZEN"],
         "17_reference.md": ["supplementary learning guides", "V3 registry", "DATA vNext"],
     }
     for page, phrases in required_truth.items():

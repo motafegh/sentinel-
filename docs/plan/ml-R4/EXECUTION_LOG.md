@@ -219,3 +219,22 @@ Append one entry for each work package.
 - **Decision:** R4-D-006 / ADR-R4-006 Accepted
 - **Gate effect:** **G6 PASS.** Phase 7 is authorized to implement DATA vNext exactly from the frozen policy and role manifests; threshold/calibration/acceptance limitations must remain explicit.
 
+---
+
+### R4-LOG-20260812-010 — Phase 7 DATA vNext Implementation and G7 Closure
+
+- **Phase:** 7
+- **Operator:** GPT-5.6 Sol under delegated routine technical/governance approval; local physical gate executed by project owner
+- **Date:** 2026-08-12
+- **Implementation merge:** `81d9c547d3610e2cfb12a5927a7a78b5693430c2`
+- **Local G7 evidence commit:** `5bd9c19eb46cd804b34ac0c2cd598767f10c7fad`
+- **Dataset:** `sentinel-r4-vnext-v1` / export schema `v2` / graph schema `v9`
+- **Semantic population:** 22,493 contracts / 224,930 contract×class rows / 1,007 positive targets / 0 negative targets / 403 STRONG / 604 WEAK
+- **Physical representation validation:** 21,657/21,657 contracts; 64,971/64,971 files; missing=0; mismatches=0; physical path not recorded
+- **Representation binding digest:** `7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420`
+- **Unsupported roles preserved:** THRESHOLD_FIT empty; CALIBRATION_FIT empty; UNTOUCHED_ACCEPTANCE empty/frozen
+- **Historical artifacts changed:** NO
+- **Legacy v1 semantic path changed:** NO
+- **Decision:** R4-D-007 / ADR-R4-007 Accepted
+- **Gate effect:** **G7 PASS.** Phase 8 is authorized to adapt the existing frozen training consumer to this exact v2 lineage and retrain without acceptance leakage.
+

@@ -9,6 +9,8 @@
 | R4-D-005 | 2026-08-12 | ACCEPTED | lineage/versioning | Keep historical export and Phase-3 ledger immutable; bind policy/schema/partition/code/artifact hashes; staged publication; rollback by artifact selection | ADR-R4-005; Phase-3 fail-closed publication pattern | New versioned paths/manifests only | select earlier compatible hashed bundle | delegated technical owner / GPT-5.6 Sol |
 | R4-D-006 | 2026-08-12 | ACCEPTED | leakage-safe roles/acceptance | Freeze one role per project/dedup/contract group; exclude incomplete-representation groups; split represented strong groups into train/model-selection/internal-audit with class coverage; DIVE TOD weak groups train-weak; remaining represented groups train-unlabeled; threshold/calibration/untouched acceptance remain controlled empty unsupported | ADR-R4-006; Phase-6 role-support inventory; quickstart/manual/Tier-E exposure audit | Phase 7 must consume `r4-vnext-roles-v1` manifests exactly; no implicit rebalancing | select previous hash-bound role manifest; acceptance remains empty until separately versioned corpus exists | delegated technical owner / GPT-5.6 Sol |
 
+| R4-D-007 | 2026-08-12 | ACCEPTED | DATA vNext implementation / G7 | Accept `sentinel-r4-vnext-v1` as the G7-passed v2 semantic/representation-bound lineage and sole Phase-8 training-data authority; historical v1 remains immutable and unsupported evaluation roles remain empty | ADR-R4-007; G7 local binding + final validation; implementation merge `81d9c547d` | Phase 8 consumes exact manifest/roles/masks and binds any training-weight choices to checkpoint config | select prior hash-bound compatible bundle; never rewrite v1/v2 in place | delegated technical owner / GPT-5.6 Sol |
+
 ## Decisions requiring ADR
 
 - class definition change;
