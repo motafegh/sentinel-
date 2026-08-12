@@ -7,8 +7,29 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from .builder import DATASET_VERSION, EXPECTED_CONTRACTS, EXPECTED_EXCLUDED, EXPECTED_ROWS
+from .builder import (
+    DATASET_VERSION,
+    EXPECTED_CONTRACTS,
+    EXPECTED_EFFECTIVE_LOSS_CELLS,
+    EXPECTED_EXCLUDED,
+    EXPECTED_OUTCOME_METRIC_CELLS,
+    EXPECTED_ROWS,
+    EXPECTED_STRENGTH_COUNTS,
+    EXPECTED_TARGET_COUNTS,
+)
 from .policy import CLASS_NAMES
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+EXPECTED_ROLE_COUNTS = {
+    "EXCLUDED": 836,
+    "INTERNAL_AUDIT": 62,
+    "MODEL_SELECTION": 56,
+    "TRAIN_STRONG": 275,
+    "TRAIN_UNLABELED": 20491,
+    "TRAIN_WEAK": 773,
+}
+EXPECTED_STRONG_BY_SOURCE = {"smartbugs_curated": 120, "solidifi": 283}
+EXPECTED_WEAK_BY_SOURCE_CLASS = {("dive", "TransactionOrderDependence"): 604}
 
 
 def _sha256(path: Path) -> str:
@@ -25,6 +46,59 @@ def _require_pyarrow():
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("DATA vNext validation requires pyarrow") from exc
     return pq
+
+
+def _validate_input_bindings(manifest: dict[str, Any], errors: list[str]) -> None:
+    inputs = manifest.get("inputs") or {}
+    required = {
+        "ledger",
+        "policy",
+        "label_schema",
+        "partition_manifest",
+        "contract_roles",
+        "unsupported_roles",
+        "untouched_acceptance",
+    }
+    if set(inputs) - {"schema"} != required:
+        errors.append("input_binding_set_mismatch")
+        return
+    for name in sorted(required):
+        meta = inputs.get(name) or {}
+        raw = str(meta.get("path") or "")
+        path = Path(raw)
+        if path.is_absolute():
+            errors.append(f"input_path_not_repo_relative:{name}")
+            continue
+        actual_path = _REPO_ROOT / path
+        if not actual_path.is_file():
+            errors.append(f"bound_input_missing:{name}")
+            continue
+        if _sha256(actual_path) != meta.get("sha256"):
+            errors.append(f"bound_input_hash_mismatch:{name}")
+
+
+def _validate_bound_semantic_report(output_dir: Path, manifest: dict[str, Any], errors: list[str]) -> None:
+    meta = manifest.get("semantic_validation_report")
+    if meta is None:
+        return
+    if not isinstance(meta, dict):
+        errors.append("semantic_validation_report_metadata_invalid")
+        return
+    path = output_dir / str(meta.get("path") or "")
+    if not path.is_file():
+        errors.append("semantic_validation_report_missing")
+        return
+    if _sha256(path) != meta.get("sha256"):
+        errors.append("semantic_validation_report_hash_mismatch")
+    if path.stat().st_size != int(meta.get("bytes", -1)):
+        errors.append("semantic_validation_report_size_mismatch")
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        errors.append("semantic_validation_report_invalid_json")
+        return
+    if report.get("passed") is not True or report.get("require_representation_binding") is not False:
+        errors.append("semantic_validation_report_not_prelocal_pass")
 
 
 def validate_vnext_overlay(
@@ -52,6 +126,11 @@ def validate_vnext_overlay(
         errors.append("graph_schema_version_mismatch")
     if manifest.get("historical_artifacts_mutated") is not False:
         errors.append("historical_mutation_flag_not_false")
+    generation_commit = str(manifest.get("generation_commit") or "")
+    if len(generation_commit) != 40 or any(c not in "0123456789abcdef" for c in generation_commit.lower()):
+        errors.append("generation_commit_not_full_sha")
+
+    _validate_input_bindings(manifest, errors)
 
     expected_artifacts = {
         "label_states",
@@ -76,6 +155,8 @@ def validate_vnext_overlay(
             errors.append(f"artifact_hash_mismatch:{name}")
         if path.stat().st_size != int(meta.get("bytes", -1)):
             errors.append(f"artifact_size_mismatch:{name}")
+
+    _validate_bound_semantic_report(output_dir, manifest, errors)
 
     label_states_path = output_dir / "label_states.parquet"
     ml_targets_path = output_dir / "ml_targets.parquet"
@@ -106,22 +187,22 @@ def validate_vnext_overlay(
             if len(errors) > 100:
                 break
 
-    target_zero = 0
-    strong_by_source = Counter()
-    weak_by_source_class = Counter()
-    target_counts = Counter()
-    strength_counts = Counter()
+    strong_by_source: Counter[str] = Counter()
+    weak_by_source_class: Counter[tuple[str, str]] = Counter()
+    target_counts: Counter[str] = Counter()
+    strength_counts: Counter[str] = Counter()
     for row in semantic_rows:
         target = row.get("target_value")
         target_counts[str(target)] += 1
         strength = str(row.get("training_strength"))
         strength_counts[strength] += 1
         claims = row.get("source_claims") or []
-        source = str(claims[0].get("source")) if claims else ""
+        claim = claims[0] if claims else {}
+        source = str(claim.get("source") or "")
         cls = str(row.get("class_name"))
 
         if target == 0:
-            target_zero += 1
+            errors.append(f"target_zero_present:{row['contract_id']}:{cls}")
         if cls in {"GasException", "UnusedReturn"}:
             if target is not None or strength != "NONE" or bool(row.get("loss_eligible")):
                 errors.append(f"disabled_class_supervised:{row['contract_id']}:{cls}")
@@ -131,6 +212,10 @@ def validate_vnext_overlay(
                 errors.append(f"invalid_weak_signal:{row['contract_id']}:{source}:{cls}")
             if bool(row.get("outcome_metric_eligible")):
                 errors.append(f"weak_metric_eligible:{row['contract_id']}:{cls}")
+            if row.get("outcome_state") not in {"UNKNOWN", "NOT_REVIEWED"}:
+                errors.append(f"weak_promoted_to_outcome_truth:{row['contract_id']}:{cls}")
+            if claim.get("source_claim_state") != "POSITIVE" or claim.get("mapped_class_name") != cls:
+                errors.append(f"weak_claim_provenance_invalid:{row['contract_id']}:{cls}")
         if strength == "STRONG":
             strong_by_source[source] += 1
             if source not in {"solidifi", "smartbugs_curated"} or target != 1:
@@ -139,6 +224,12 @@ def validate_vnext_overlay(
                 errors.append(f"ambiguous_smartbugs_timestamp_strong:{row['contract_id']}")
             if row.get("outcome_state") != "CONFIRMED_POSITIVE":
                 errors.append(f"strong_not_confirmed_positive:{row['contract_id']}:{cls}")
+            if not row.get("evidence_ids") or not claim.get("evidence_ids"):
+                errors.append(f"confirmed_positive_missing_evidence:{row['contract_id']}:{cls}")
+            if claim.get("source_claim_state") != "POSITIVE" or claim.get("mapped_class_name") != cls:
+                errors.append(f"strong_claim_provenance_invalid:{row['contract_id']}:{cls}")
+            if source == "smartbugs_curated" and claim.get("crosswalk_action") != "DIRECT":
+                errors.append(f"smartbugs_strong_crosswalk_not_direct:{row['contract_id']}:{cls}")
         if strength == "NONE":
             if target is not None or bool(row.get("loss_eligible")):
                 errors.append(f"masked_row_has_target:{row['contract_id']}:{cls}")
@@ -146,12 +237,16 @@ def validate_vnext_overlay(
             if bool(row.get("outcome_metric_eligible")):
                 errors.append(f"unresolved_metric_eligible:{row['contract_id']}:{cls}")
 
-    if target_zero:
-        errors.append(f"target_zero_present:{target_zero}")
-    if set(weak_by_source_class) - {("dive", "TransactionOrderDependence")}:
-        errors.append("unexpected_weak_source_class")
+    if dict(sorted(target_counts.items())) != EXPECTED_TARGET_COUNTS:
+        errors.append(f"target_counts_mismatch:{dict(target_counts)}")
+    if dict(sorted(strength_counts.items())) != EXPECTED_STRENGTH_COUNTS:
+        errors.append(f"strength_counts_mismatch:{dict(strength_counts)}")
+    if dict(sorted(strong_by_source.items())) != EXPECTED_STRONG_BY_SOURCE:
+        errors.append(f"strong_source_counts_mismatch:{dict(strong_by_source)}")
+    if dict(sorted(weak_by_source_class.items())) != EXPECTED_WEAK_BY_SOURCE_CLASS:
+        errors.append(f"weak_source_class_counts_mismatch:{dict(weak_by_source_class)}")
 
-    role_counts = Counter()
+    role_counts: Counter[str] = Counter()
     excluded_count = 0
     effective_loss_cells = 0
     outcome_metric_cells = 0
@@ -194,9 +289,14 @@ def validate_vnext_overlay(
 
     if excluded_count != EXPECTED_EXCLUDED:
         errors.append(f"excluded_count:{excluded_count}")
-    manifest_roles = manifest.get("role_contract_counts") or {}
-    if dict(sorted(role_counts.items())) != dict(sorted(manifest_roles.items())):
+    if dict(sorted(role_counts.items())) != EXPECTED_ROLE_COUNTS:
+        errors.append(f"role_counts_frozen_mismatch:{dict(role_counts)}")
+    if dict(sorted(role_counts.items())) != dict(sorted((manifest.get("role_contract_counts") or {}).items())):
         errors.append("role_counts_manifest_mismatch")
+    if effective_loss_cells != EXPECTED_EFFECTIVE_LOSS_CELLS:
+        errors.append(f"effective_loss_cells_mismatch:{effective_loss_cells}")
+    if outcome_metric_cells != EXPECTED_OUTCOME_METRIC_CELLS:
+        errors.append(f"outcome_metric_cells_mismatch:{outcome_metric_cells}")
     if manifest.get("unsupported_roles") != {
         "THRESHOLD_FIT": "UNSUPPORTED_EMPTY",
         "CALIBRATION_FIT": "UNSUPPORTED_EMPTY",
@@ -228,10 +328,14 @@ def validate_vnext_overlay(
                 report = json.loads(binding_path.read_text())
                 if report.get("status") != "VALIDATED_LOCAL_G7":
                     errors.append("representation_binding_report_not_validated")
-                if report.get("missing_files") or report.get("mismatches"):
+                if report.get("missing_files_total") != 0 or report.get("mismatch_total") != 0:
                     errors.append("representation_binding_report_has_failures")
                 if report.get("required_contracts") != expected_required:
                     errors.append("representation_binding_required_count_mismatch")
+                if report.get("checked_contracts") != expected_required or report.get("checked_files") != expected_required * 3:
+                    errors.append("representation_binding_checked_population_mismatch")
+                if report.get("binding_digest_sha256") != binding_meta.get("binding_digest_sha256"):
+                    errors.append("representation_binding_digest_mismatch")
 
     report = {
         "schema": "sentinel-data-vnext-validation-report-v1",
