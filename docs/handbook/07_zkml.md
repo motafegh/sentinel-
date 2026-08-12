@@ -1,119 +1,149 @@
 # 07 — ZKML proof boundary
 
-**Read this when:** you need to distill the teacher, regenerate EZKL artifacts, interpret a proof, or submit class scores on-chain.
+**Read this when:** you need to understand proxy distillation, retained EZKL proof semantics, or the V3 proof/attestation boundary.
 
-**Skip this if:** you only need off-chain gateway reports; that path does not invoke ZK submission.
+**Skip this if:** you only need off-chain gateway reports; that path does not require chain submission.
 
 **Estimated reading time:** 15 minutes.
 
 ## 30-second summary
 
-The full teacher is not proved. A frozen 10,666-parameter proxy maps the teacher’s 128-value fusion embedding through `128→64→32→10`. EZKL proves that this proxy circuit produced the ten public class outputs for the 128 public inputs. It does not prove raw Solidity was analyzed, the teacher made the embedding, the agent verdict is correct, or `verdict_provable` was computed.
+The full teacher is not proved. The retained 10,666-parameter proxy maps the teacher’s 128-value fusion embedding through `128→64→32→10`, and EZKL proves that fixed proxy computation for 128 public inputs and ten public outputs. This proof remains **legacy proxy-only scope** and uses `check_mode="UNSAFE"`. V3 does not expand the circuit. Instead, V3 separately binds proof/output identities to target bytecode, agent, chain/registry, round, teacher/proxy/DATA/schema identities, and deadline through an EIP-712 policy attestation.
 
 ## Just-enough mental model
 
 ```text
-Solidity → teacher → fusion[128] ───────── operator assertion
+Solidity → teacher → fusion[128] ─────────────── outside ZK circuit
                          ↓
-             proxy 128→64→32→10
+                proxy 128→64→32→10
                          ↓
-                   outputs[10]
-                         ╰── EZKL proves this computation only
+                     outputs[10]
+                         ↓
+                 EZKL proxy proof
+                         +
+            V3 EIP-712 policy attestation
+                         ↓
+               context-bound registry record
 ```
 
-The proof statement is precise: “for these public inputs and fixed circuit parameters, these public outputs satisfy the compiled proxy computation.” Everything before the fusion vector is outside the circuit.
+Two claims remain separate:
+
+1. the proxy computation is valid;
+2. an authorized policy signer attested the fully bound audit context.
+
+Neither proves the teacher, Solidity source analysis, LangGraph execution, or final verdict.
 
 ## Actual runtime/source walkthrough
 
-1. [`corpus_distill.py`](../../zkml/src/distillation/corpus_distill.py) or [`train_proxy.py`](../../zkml/src/distillation/train_proxy.py) produces teacher embeddings and trains the student for agreement.
-2. [`proxy_model.py`](../../zkml/src/distillation/proxy_model.py) — `zkml/src/distillation/proxy_model.py::ProxyModel` freezes dimensions and enforces the parameter ceiling; `::CIRCUIT_VERSION` is `v2.0`.
-3. [`export_onnx.py`](../../zkml/src/distillation/export_onnx.py) exports raw proxy logits to ONNX.
-4. [`generate_calibration.py`](../../zkml/src/distillation/generate_calibration.py) creates representative calibration inputs.
-5. [`setup_circuit.py`](../../zkml/src/ezkl/setup_circuit.py) performs settings generation, calibration, compilation, SRS acquisition, and setup to create proving/verification keys.
-6. [`run_proof.py`](../../zkml/src/ezkl/run_proof.py) generates a witness, proves, verifies off-chain, and parses little-endian field elements.
-7. [`_submit.py`](../../agents/src/mcp/servers/audit/_submit.py) — `agents/src/mcp/servers/audit/_submit.py::_run_submit` repeats the live proof lifecycle for a supplied contract and calls `AuditRegistry.submitAuditV2`.
+### Retained proxy/circuit
 
-The current [`settings.json`](../../zkml/ezkl/settings.json) records EZKL 23.0.5, `input_visibility="Public"`, `output_visibility="Public"`, `param_visibility="Fixed"`, scale 13, logrows 15, shapes `[1,128]` and `[1,10]`, and `check_mode="UNSAFE"`. Public signals are the 128 inputs followed by ten outputs: 138 total.
+- [`proxy_model.py`](../../zkml/src/distillation/proxy_model.py) owns the frozen 128→64→32→10 proxy and circuit version.
+- ONNX/settings/compiled/VK artifacts remain tracked.
+- [`run_proof.py`](../../zkml/src/ezkl/run_proof.py) owns witness/prove/verify/parsing mechanics.
+- current settings retain 138 public signals: 128 inputs followed by ten outputs.
+- score fixed-point scale remains 13 (`8192`).
+
+### Current V3 trust integration
+
+The historical audit submitter is no longer the live analysis MCP write surface. V3 integration is split across:
+
+- [`policy_signer.py`](../../agents/src/security/policy_signer.py): builds/validates a fully bound unsigned V3 request/digest; deliberately has no private key, transaction construction, broadcast, or receipt handling;
+- [`AuditRegistry.sol`](../../contracts/src/AuditRegistry.sol): verifies V3 policy signature, request reuse, target code, stake, 138-signal layout, output equality, and the proxy proof before storing V3 context.
+
+The V3 request binds:
+
+- agent;
+- contract address + runtime bytecode hash;
+- chain ID + registry address;
+- round ID;
+- teacher-model hash;
+- proxy-bundle hash;
+- DATA-version hash;
+- class-schema hash;
+- proof hash;
+- public-signals hash;
+- ten-score hash;
+- deadline.
+
+### Future regeneration boundary
+
+The retained proxy/circuit artifacts belong to the historical teacher/fusion distribution. R4 intentionally defers any production proxy redistillation/regeneration until a repaired DATA-vNext teacher is trained and selected. Do not regenerate ZKML merely because DATA semantics changed; regenerate when the promoted teacher/fusion behavior actually changes.
 
 ## Interfaces, data shapes, and configuration
 
-| Boundary | Shape/meaning |
+| Boundary | Current meaning |
 |---|---|
 | teacher fusion | 128 floats |
-| proxy output | 10 raw logits; sigmoid applied outside the PyTorch network |
-| EZKL instances | 138 fixed-point field elements |
-| contract offset | outputs begin at `INPUT_OFFSET=128` |
+| proxy | 128→64→32→10, 10,666 params |
+| public signals | 128 inputs + 10 outputs = 138 |
+| contract output offset | 128 |
 | fixed-point scale | `2^13 = 8192` |
+| proof scope | `legacy_proxy_only_unbound` by itself |
+| V3 submission protocol | `context_attested_v3` |
+| EZKL check mode | `UNSAFE` |
 
-Artifact ownership:
-
-- tracked/public: proxy checkpoint, ONNX, settings, compiled circuit, verification key, generated verifier;
-- regenerated: calibration/witness/proof inputs and proof outputs;
-- ignored/private operational prerequisite: proving key;
-- ignored/downloaded public prerequisite: `srs.params`.
-
-The current repository also tracks sample proof/witness JSON. They are examples or mutable shared runtime paths, not per-request durable evidence.
+Tracked proof/circuit artifacts are reproducibility inputs, not automatic production-eligibility claims. Proving key/SRS remain operational prerequisites where live proving is attempted.
 
 ## Failure modes and current limitations
 
-- `check_mode="UNSAFE"` is not a production assurance setting. Review the exact guarantees and limitations against the [EZKL 23.0.5 Python bindings](https://pythonbindings.ezkl.xyz/en/stable/) and [official EZKL security guidance](https://docs.ezkl.xyz/security/) before relying on the proof in an adversarial setting.
-- The provenance manifest is an off-chain operator assertion. It may be unsigned when the key/dependency is absent and does not prove the teacher generated the embedding.
-- `verdict_provable` belongs to AGENTS evidence fusion and is outside this circuit.
-- The submission path reports SHA-256 of proof bytes, while the contract stores `keccak256(proof)`.
-- `_run_submit` reports the ML-returned model hash but passes the original function argument to the transaction, so callers must provide the correct hash.
-- Shared `proof_input.json`, `witness.json`, and `proof.json` make concurrent calls unsafe.
-- The proving key and SRS are absent from a fresh clone.
+- A valid proof does not prove source compilation, teacher execution, DATA provenance, AGENTS routing, or verdict correctness.
+- A valid V3 policy signature does not expand the ZK statement.
+- `check_mode="UNSAFE"` remains a production-assurance blocker requiring explicit review.
+- A production signer/broadcast service is not currently claimed.
+- Historical `_submit.py` must not be treated as the live analysis MCP entry point.
+- The retained proxy may need redistillation after repaired teacher retraining; old agreement evidence cannot automatically transfer to a new teacher.
+- proving artifacts may be absent from a fresh clone.
 
 ## Common change recipe
 
-For any proxy architecture/weight or EZKL setting change:
+For a repaired-teacher ZKML update:
 
-1. Decide whether only weights changed or the circuit definition changed; bump `CIRCUIT_VERSION` for structural changes.
-2. Rebuild distillation evidence against the approved teacher.
-3. Export ONNX and regenerate calibration.
-4. Regenerate settings, compiled circuit, SRS compatibility, proving key, and verification key with one pinned EZKL version.
-5. Run witness/prove/off-chain verify and inspect all 138 instances.
-6. Generate a new Solidity verifier and test gas/correctness.
-7. Deploy/swap verifier through the controlled contract path.
-8. Update artifact hashes, provenance expectations, metadata, and live evidence.
+1. select/promote the repaired teacher candidate with bound DATA/config lineage;
+2. regenerate distillation corpus from the approved teacher/fusion seam;
+3. retrain/evaluate proxy agreement;
+4. export ONNX and regenerate calibration/settings/compiled circuit/keys as required;
+5. prove/verify exact 138-signal behavior;
+6. regenerate/test Solidity verifier;
+7. compute and bind the new proxy-bundle identity used by V3;
+8. rotate V3 verifier only through explicit contract governance/tests;
+9. preserve old verifier/proxy artifacts as historical lineage.
 
 ## Verification commands
 
 ```bash
 export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
-ml/.venv/bin/python -m pytest zkml/tests -q                    # module
-ml/.venv/bin/python -m zkml.src.distillation.proxy_model       # smoke
-python3 docs/handbook/tools/verify_handbook.py static           # shape/settings contract
-ml/.venv/bin/python -m zkml.src.ezkl.run_proof                 # live; needs proving artifacts
+ml/.venv/bin/python -m pytest zkml/tests -q
+cd contracts && forge test -q
+cd .. && python3 docs/handbook/tools/verify_handbook.py static
 ```
 
-Current suite results are in [current status](16_current_status.md).
+Live proving/signing/broadcast requires separate explicit prerequisites and is not implied by these checks.
 
 ## Optional deep references
 
-- [`setup_circuit.py`](../../zkml/src/ezkl/setup_circuit.py) — `::setup_circuit`
-- [`run_proof.py`](../../zkml/src/ezkl/run_proof.py) — proof parsing and verification
 - [Contracts](08_contracts.md)
 - [Security and trust](12_security_and_trust.md)
+- [Runtime flows](02_runtime_flows.md)
+- [`policy_signer.py`](../../agents/src/security/policy_signer.py)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know distillation, ONNX, finite-field encoding, witnesses/keys, public inputs, and Solidity calldata.
+Know distillation, finite-field encoding, public inputs/outputs, EIP-712, artifact hashes, and the distinction between proof scope and authenticated provenance.
 
 ### Source map and reading order
 
-Read `proxy_model.py::ProxyModel`, distillation/export scripts, EZKL setup/settings, `run_proof.py::generate_proof`, calldata extraction, audit MCP `_run_submit`, and registry verifier boundary. See [T05](technical/05_zkml_proof_lifecycle.md).
+Read proxy model/settings/run_proof for the cryptographic computation, then `policy_signer.py` for V3 request binding and `AuditRegistry.submitAuditV3` for contract enforcement. Treat historical `_submit.py` as compatibility/history, not current live service architecture.
 
 ### Execution trace and worked example
 
-The teacher supplies 128 public proxy inputs; the fixed proxy produces ten public outputs at positions 128–137. Witness hex is little-endian and scores scale by 8192. Proof validity covers that fixed computation—not AGENTS `verdict_provable`, thresholding, or teacher provenance.
+A 128-value fusion vector and ten score fields satisfy the fixed proxy circuit and produce a proof. V3 hashes that proof, the 138 public signals, the ten scores, target runtime code, teacher/proxy/DATA/schema identities, round/deadline, agent, chain, and registry into an EIP-712 digest. The signature authenticates that context; the verifier independently verifies the proxy proof.
 
 ### Implementation practice
 
-[L05](labs/05_zkml_witness_signals.md) checks architecture/endian/layout without pretending to run a live proof. Any architecture/settings/version change requires a complete circuit/key/verifier migration.
+Keep proof validation and policy/provenance authorization separately testable. If one changes, do not silently reinterpret the other.
 
 ### Review and ownership check
 
-Can you name all 138 signals, required private artifacts, and the production-review implication of `check_mode="UNSAFE"`?
+Can you state exactly what the retained proof proves, what V3 attests, what remains outside both, and why a new teacher may require proxy/circuit regeneration even when dimensions stay 128→10?
