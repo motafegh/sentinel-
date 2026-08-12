@@ -43,6 +43,7 @@ jobs:
           python - <<'PY'
           import hashlib
           import json
+          import os
           import re
           import subprocess
           from pathlib import Path
@@ -100,13 +101,21 @@ jobs:
 
           status = (root / 'PLAN_STATUS_MATRIX.md').read_text()
           assert '| 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED |' in status
-          assert '| 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | READY |' in status
+          phase6_states = {
+              state for state in ('READY', 'IN_PROGRESS', 'PASSED')
+              if f'| 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | {state} |' in status
+          }
+          assert len(phase6_states) == 1, phase6_states
+          phase6_state = next(iter(phase6_states))
 
           p5 = (root / 'phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md').read_text()
           p6 = (root / 'phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md').read_text()
           assert '**Status:** PASSED — G5 PASS' in p5
           assert '**G5 PASS.**' in p5
-          assert '**Status:** READY — G5 SATISFIED' in p6
+          assert (
+              '**Status:** READY — G5 SATISFIED' in p6
+              or '**Status:** PASSED — G6 PASS' in p6
+          )
 
           index = (root / 'ARTIFACT_INDEX.md').read_text()
           assert '## Phase 5 artifacts — DATA vNext policy and design (G5 PASS)' in index
@@ -132,18 +141,22 @@ jobs:
           assert 'R4-LOG-20260812-008 — Phase 5 DATA vNext Policy and G5 Closure' in log
           assert '**Gate effect:** **G5 PASS.**' in log
 
-          subprocess.run(['git','fetch','origin','main'], check=True)
-          base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
-          files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
-          allowed = (
-              'docs/plan/ml-R4/',
-              '.github/workflows/r4-phase5-policy.yml',
-              '.github/workflows/r4-phase5-closeout.yml',
-              '.github/workflows/r4-phase5-g5.yml',
-              '.github/workflows/r4-phase4-g4.yml',
-          )
-          bad = [f for f in files if not any(f == p or f.startswith(p) for p in allowed)]
-          assert not bad, 'out-of-scope Phase-5 files: ' + ', '.join(bad)
+          head_ref = os.environ.get('GITHUB_HEAD_REF') or os.environ.get('GITHUB_REF_NAME') or ''
+          if head_ref == 'r4/phase5-data-vnext-policy-design':
+              subprocess.run(['git','fetch','origin','main'], check=True)
+              base = subprocess.check_output(['git','merge-base','HEAD','origin/main'], text=True).strip()
+              files = subprocess.check_output(['git','diff','--name-only',base,'HEAD'], text=True).splitlines()
+              allowed = (
+                  'docs/plan/ml-R4/',
+                  '.github/workflows/r4-phase5-policy.yml',
+                  '.github/workflows/r4-phase5-closeout.yml',
+                  '.github/workflows/r4-phase5-g5.yml',
+                  '.github/workflows/r4-phase4-g4.yml',
+              )
+              bad = [f for f in files if not any(f == p or f.startswith(p) for p in allowed)]
+              assert not bad, 'out-of-scope Phase-5 files: ' + ', '.join(bad)
+          else:
+              print(f'SKIP: Phase-5 design-only scope guard is branch-local; current head is {head_ref!r}')
 
           print(json.dumps({
               'passed': True,
@@ -155,6 +168,6 @@ jobs:
               'disabled_classes': sorted(disabled),
               'blanket_negative_sources': 0,
               'phase5': 'PASSED',
-              'phase6': 'READY',
+              'phase6_state': phase6_state,
           }, indent=2, sort_keys=True))
           PY
