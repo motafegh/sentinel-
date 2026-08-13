@@ -1,0 +1,66 @@
+name: R4 Phase 8 vNext training compatibility
+
+on:
+  push:
+    branches:
+      - r4/phase8-existing-model-retraining
+    paths:
+      - 'ml/src/datasets/**'
+      - 'ml/src/training/vnext_*.py'
+      - 'ml/src/training/group_sampler.py'
+      - 'ml/tests/test_vnext_phase8_compat.py'
+      - 'data_module/sentinel_data/vnext/**'
+      - 'data_module/data/exports/sentinel-r4-vnext-v1/**'
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase8-compat.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'ml/src/datasets/**'
+      - 'ml/src/training/vnext_*.py'
+      - 'ml/src/training/group_sampler.py'
+      - 'ml/tests/test_vnext_phase8_compat.py'
+      - 'data_module/sentinel_data/vnext/**'
+      - 'data_module/data/exports/sentinel-r4-vnext-v1/**'
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase8-compat.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /ml/src/datasets/
+            /ml/src/training/
+            /ml/tests/test_vnext_phase8_compat.py
+            /data_module/sentinel_data/vnext/
+            /data_module/sentinel_data/export/
+            /data_module/sentinel_data/representation/graph_schema.py
+            /data_module/data/exports/sentinel-r4-vnext-v1/
+            /docs/plan/ml-R4/
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install compatibility-test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check pytest 'pyarrow==17.0.0' pandas 'torch==2.10.0' 'torch-geometric==2.7.0'
+
+      - name: Compile Phase 8 compatibility modules
+        run: |
+          python -m py_compile ml/src/datasets/vnext_dataset.py ml/src/training/vnext_losses.py ml/src/training/group_sampler.py ml/tests/test_vnext_phase8_compat.py
+
+      - name: Run Phase 8 vNext compatibility tests
+        env:
+          PYTHONPATH: .:data_module
+        run: python -m pytest -q -c /dev/null ml/tests/test_vnext_phase8_compat.py
