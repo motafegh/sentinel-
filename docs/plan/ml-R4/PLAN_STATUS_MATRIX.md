@@ -10,7 +10,7 @@
 | 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED | G4 | G5 | data-vnext-policy-v1 + contract-class schema + five accepted ADRs validated; eight classes enabled, GasException/UnusedReturn supervision disabled; no blanket negatives; G5 PASS |
 | 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | PASSED | G5 | G6 | r4-vnext-roles-v1 covers 22,493 contracts/13,509 groups exactly once; 836 incomplete-representation contracts excluded; threshold/calibration/untouched acceptance frozen unsupported/empty; G6 PASS |
 | 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED | G6 | G7 | sentinel-r4-vnext-v1 implemented and locally bound to 21,657 representations / 64,971 files with zero mismatches; G7 PASS |
-| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | READY | G7 | G8 | Retrain the frozen four-eye architecture using the exact G7-passed v2 lineage; no historical-v1 fallback or unsupported evaluation roles |
+| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Phase-8 compatibility/training-path work active on `r4/phase8-existing-model-retraining`; architecture frozen; no GPU/full retrain until vNext masks/roles/checkpoint binding tests pass |
 | 9 | `phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md` | WAITING | G8 | G9 | Independent roles |
 | 10 | `phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md` | WAITING | G9 | G10 | Final decision |
 
