@@ -58,7 +58,16 @@ jobs:
 
       - name: Compile Phase 8 compatibility modules
         run: |
-          python -m py_compile ml/src/datasets/vnext_dataset.py ml/src/training/vnext_losses.py ml/src/training/group_sampler.py ml/tests/test_vnext_phase8_compat.py
+          python -m py_compile \
+            ml/src/datasets/vnext_dataset.py \
+            ml/src/training/vnext_losses.py \
+            ml/src/training/group_sampler.py \
+            ml/src/training/vnext_phase8_config.py \
+            ml/src/training/vnext_model_factory.py \
+            ml/src/training/vnext_param_groups.py \
+            ml/src/training/vnext_binding.py \
+            ml/src/training/vnext_epoch.py \
+            ml/tests/test_vnext_phase8_compat.py
 
       - name: Run Phase 8 vNext compatibility tests
         env:
