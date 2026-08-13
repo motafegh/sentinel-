@@ -177,41 +177,101 @@ class VNextTrainingDataset(Dataset):
         if not selected:
             raise ValueError(f"no DATA vNext rows for roles={sorted(self.roles)}")
 
+        # Phase-6 roles are frozen at GROUP level.  Therefore some contracts
+        # legitimately inherit a supervised group role while carrying no
+        # optimizer/metric-eligible cell themselves.
+        frozen_role_counts = Counter(str(r["role"]) for r in selected)
+        frozen_groups = {str(r["group_id"]) for r in selected}
+
         self._rows: list[dict] = []
         self._supervision: dict[str, dict[str, torch.Tensor]] = {}
         self._group_to_indices: dict[str, list[int]] = defaultdict(list)
-        role_counts: Counter[str] = Counter()
+
+        active_role_counts: Counter[str] = Counter()
+        skipped_no_signal_counts: Counter[str] = Counter()
 
         for row in selected:
             cid = str(row["contract_id"])
             role = str(row["role"])
+
             if not bool(row["representation_required"]):
-                raise ValueError(f"Phase-8 role {role} unexpectedly lacks representation: {cid}")
+                raise ValueError(
+                    f"Phase-8 role {role} unexpectedly lacks representation: {cid}"
+                )
+
             supervision = _row_to_supervision(row)
+            loss_mask = supervision["effective_loss_mask"]
+            metric_mask = supervision["outcome_metric_mask"]
 
             if role in TRAIN_ROLES:
-                if not supervision["effective_loss_mask"].any():
-                    raise ValueError(f"training contract has zero effective optimizer cells: {cid}")
-                # Frozen role semantics are exact: TRAIN_STRONG optimizer cells are
-                # STRONG; TRAIN_WEAK optimizer cells are WEAK.
-                codes = supervision["strength_codes"][supervision["effective_loss_mask"]]
-                expected_code = _STRENGTH_CODE["STRONG" if role == "TRAIN_STRONG" else "WEAK"]
+                # A training GROUP can contain sibling contracts without direct
+                # supervision.  Those siblings remain in the frozen partition
+                # but must not enter the optimizer.
+                if not loss_mask.any():
+                    skipped_no_signal_counts[role] += 1
+                    continue
+
+                codes = supervision["strength_codes"][loss_mask]
+                expected_code = _STRENGTH_CODE[
+                    "STRONG" if role == "TRAIN_STRONG" else "WEAK"
+                ]
                 if not torch.all(codes == expected_code):
-                    raise ValueError(f"role/strength mismatch for {cid} ({role})")
+                    raise ValueError(
+                        f"role/strength mismatch for {cid} ({role})"
+                    )
+
             elif role == "MODEL_SELECTION":
-                if supervision["effective_loss_mask"].any():
-                    raise ValueError(f"MODEL_SELECTION contract unexpectedly has optimizer cells: {cid}")
-                if not supervision["outcome_metric_mask"].any():
-                    raise ValueError(f"MODEL_SELECTION contract has zero authorized metric cells: {cid}")
+                if loss_mask.any():
+                    raise ValueError(
+                        f"MODEL_SELECTION contract unexpectedly has optimizer cells: {cid}"
+                    )
+
+                # Same group-level rule: only contracts with authorized metric
+                # cells participate in checkpoint selection.
+                if not metric_mask.any():
+                    skipped_no_signal_counts[role] += 1
+                    continue
 
             idx = len(self._rows)
             self._rows.append(row)
             self._supervision[cid] = supervision
             self._group_to_indices[str(row["group_id"])].append(idx)
-            role_counts[role] += 1
+            active_role_counts[role] += 1
 
-        self.role_counts = dict(sorted(role_counts.items()))
-        self.group_count = len(self._group_to_indices)
+        if not self._rows:
+            raise ValueError(
+                f"roles={sorted(self.roles)} contain no contracts with "
+                "authorized Phase-8 cells"
+            )
+
+        active_groups = set(self._group_to_indices)
+        missing_groups = frozen_groups - active_groups
+
+        # Every frozen supervised group was classified using at least one
+        # authorized signal.  If an entire group disappears here, G6 and G7
+        # semantics have diverged and we fail closed.
+        if missing_groups:
+            preview = sorted(missing_groups)[:5]
+            raise ValueError(
+                "frozen supervised groups lost all authorized Phase-8 cells: "
+                f"count={len(missing_groups)} preview={preview}"
+            )
+
+        # Keep BOTH views explicit:
+        #   frozen_* = complete Phase-6 group-role population
+        #   role_counts/group_count = active optimizer/evaluation population
+        self.frozen_role_counts = dict(sorted(frozen_role_counts.items()))
+        self.frozen_group_count = len(frozen_groups)
+
+        self.role_counts = dict(sorted(active_role_counts.items()))
+        self.group_count = len(active_groups)
+
+        self.skipped_no_signal_counts = dict(
+            sorted(skipped_no_signal_counts.items())
+        )
+        self.skipped_no_signal_contracts = sum(
+            skipped_no_signal_counts.values()
+        )
 
     @property
     def group_to_indices(self) -> dict[str, tuple[int, ...]]:

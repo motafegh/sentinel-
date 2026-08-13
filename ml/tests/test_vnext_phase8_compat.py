@@ -145,3 +145,75 @@ def test_committed_projection_has_no_negative_targets_and_disabled_masks():
         assert row["effective_loss_mask_9"] is False
         effective += sum(bool(row[f"effective_loss_mask_{i}"]) for i in range(CLASS_COUNT))
     assert effective == 852
+
+
+def test_group_role_allows_no_signal_sibling(tmp_path: Path):
+    """Frozen roles are group-level; only signal-bearing siblings enter optimization."""
+    overlay = tmp_path / "overlay"
+    reps = tmp_path / "representations"
+    overlay.mkdir()
+
+    active_cid = "d" * 64
+    sibling_cid = "e" * 64
+
+    active = _row(
+        active_cid,
+        "TRAIN_WEAK",
+        "shared-group",
+        8,
+        "WEAK",
+        True,
+        False,
+    )
+
+    # Same frozen TRAIN_WEAK group, but this sibling has no authorized
+    # optimizer cell of its own.
+    sibling = _row(
+        sibling_cid,
+        "TRAIN_WEAK",
+        "shared-group",
+        8,
+        "NONE",
+        False,
+        False,
+        target=None,
+    )
+
+    pq.write_table(
+        pa.Table.from_pylist([active, sibling]),
+        overlay / "ml_targets.parquet",
+    )
+
+    (overlay / "manifest.json").write_text(
+        '{"dataset_version":"sentinel-r4-vnext-v1",'
+        '"export_schema_version":"v2",'
+        '"graph_schema_version":"v9",'
+        '"historical_artifacts_mutated":false,'
+        '"status":"VALIDATED_G7_CANDIDATE",'
+        '"representation_binding_report":{"binding_digest_sha256":"fixture"},'
+        '"role_contract_counts":{"TRAIN_WEAK":2}}\n'
+    )
+
+    _write_rep(reps, active_cid)
+    _write_rep(reps, sibling_cid)
+
+    ds = VNextTrainingDataset(
+        overlay_dir=overlay,
+        representations_root=reps,
+        roles=("TRAIN_WEAK",),
+        expected_binding_digest=None,
+        verify_publication=False,
+    )
+
+    # Phase-6 population remains visible as the frozen authority.
+    assert ds.frozen_role_counts == {"TRAIN_WEAK": 2}
+    assert ds.frozen_group_count == 1
+
+    # Only the signal-bearing sibling is exposed to the optimizer.
+    assert ds.role_counts == {"TRAIN_WEAK": 1}
+    assert ds.group_count == 1
+    assert len(ds) == 1
+    assert ds.contract_ids == (active_cid,)
+
+    assert ds.skipped_no_signal_counts == {"TRAIN_WEAK": 1}
+    assert ds.skipped_no_signal_contracts == 1
