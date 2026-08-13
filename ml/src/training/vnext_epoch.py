@@ -163,6 +163,7 @@ def evaluate_positive_selection(
     device: torch.device,
     settings: Phase8Settings,
     epoch: int,
+    use_amp: bool = True,
     max_batches: int | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     model.eval()
@@ -177,7 +178,19 @@ def evaluate_positive_selection(
         if batch_idx >= total_batches:
             break
         graphs, tokens, supervision, contract_ids, *_ = _move_batch(batch, device)
-        logits = model(graphs, tokens["input_ids"], tokens["attention_mask"])
+
+        # Match the mixed-precision contract used during Phase-8 training.
+        with torch.autocast(
+            device_type=device.type,
+            dtype=torch.bfloat16,
+            enabled=bool(use_amp and device.type == "cuda"),
+        ):
+            logits = model(
+                graphs,
+                tokens["input_ids"],
+                tokens["attention_mask"],
+            )
+
         targets = supervision["targets"]
         metric_mask = supervision["outcome_metric_mask"]
         logits_all.append(logits.float().cpu())
