@@ -194,7 +194,8 @@ def main() -> int:
             "weak_semantic_cells": weak_cells,
             "effective_loss_cells": publication.get("effective_loss_cells"),
             "outcome_metric_cells": publication.get("outcome_metric_cells"),
-            "group_count": (publication.get("role_contract_counts") or {}),
+            "group_count": len(grouping.get("groups") or []),
+  "role_contract_counts": publication.get("role_contract_counts") or {},
             "cross_source_exact_identities": len(
                 grouping.get("cross_source_exact_identities") or {}
             ),
