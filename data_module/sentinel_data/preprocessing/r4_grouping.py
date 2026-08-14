@@ -1,18 +1,19 @@
 """Deterministic leakage-family grouping for repaired Phase-8 DATA.
 
-Grouping is intentionally distinct from deduplication.  Every content-distinct
+Grouping is intentionally distinct from deduplication. Every content-distinct
 artifact survives preprocessing; this module only decides which artifacts must
 stay together when roles/splits are assigned.
 
 Conservative grouping evidence:
 
-* identical normalized-code identity joins artifacts across sources;
+* the same normalized-text SHA appearing in multiple sources is one contract
+  identity with multiple source claims;
+* identical normalized-code identity joins distinct artifact bytes globally;
 * an explicit provenance family key joins artifacts carrying that key;
 * a shared Ethereum address joins artifacts only *within the same source*.
 
-The address rule prevents the historical SolidiFI variant family from being
-split across roles, but never removes a record and never treats the address as a
-label/duplicate fact.  Cross-source address coincidence alone is not enough.
+The address rule prevents same-source variant families from being split across
+roles, but never removes a record and never treats an address as label truth.
 """
 
 from __future__ import annotations
@@ -47,8 +48,6 @@ class _UnionFind:
         a, b = self.find(left), self.find(right)
         if a == b:
             return
-        # Lexicographic root makes the structure deterministic regardless of
-        # input traversal order.
         small, large = sorted((a, b))
         self.parent[large] = small
 
@@ -56,10 +55,12 @@ class _UnionFind:
 @dataclass(frozen=True)
 class GroupingResult:
     artifacts: int
+    source_artifact_records: int
     groups: int
     normalized_edges: int
     address_edges: int
     explicit_family_edges: int
+    cross_source_exact_identities: int
     output_path: str
 
 
@@ -92,35 +93,48 @@ def build_grouping(
 ) -> GroupingResult:
     """Build and write the repaired group manifest from preprocessing metadata."""
 
-    metas: dict[str, dict[str, Any]] = {}
-    source_by_artifact: dict[str, str] = {}
+    # One normalized-text SHA is one contract identity even if exact bytes were
+    # observed in multiple source corpora. Keep every source-specific meta so
+    # semantic claims are preserved, but use the SHA only once in group space.
+    metas_by_artifact: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+    source_artifact_records = 0
     for source, directory in sorted(source_dirs.items()):
         for path in sorted(directory.glob("*.meta.json")):
             meta = _load_meta(path)
             artifact = str(meta["sha256"])
-            if artifact in metas:
-                raise ValueError(
-                    f"artifact {artifact} appears in multiple source directories; "
-                    "cross-source exact identity must be represented through provenance, not duplicate meta files"
-                )
-            metas[artifact] = meta
-            source_by_artifact[artifact] = source
+            metas_by_artifact.setdefault(artifact, []).append((source, meta))
+            source_artifact_records += 1
 
-    uf = _UnionFind(metas)
+    uf = _UnionFind(metas_by_artifact)
     normalized_index: dict[str, list[str]] = {}
     source_address_index: dict[tuple[str, str], list[str]] = {}
     explicit_index: dict[str, list[str]] = {}
+    sources_by_artifact: dict[str, set[str]] = {
+        artifact: {source for source, _ in entries}
+        for artifact, entries in metas_by_artifact.items()
+    }
 
-    for artifact, meta in sorted(metas.items()):
-        normalized = str(meta.get("normalized_code_sha256") or "")
-        if normalized:
+    for artifact, entries in sorted(metas_by_artifact.items()):
+        normalized_values = {
+            str(meta.get("normalized_code_sha256") or "")
+            for _, meta in entries
+            if meta.get("normalized_code_sha256")
+        }
+        if len(normalized_values) > 1:
+            raise ValueError(
+                f"cross-source exact artifact {artifact} has conflicting normalized-code identities: "
+                f"{sorted(normalized_values)}"
+            )
+        for normalized in normalized_values:
             normalized_index.setdefault(normalized, []).append(artifact)
-        for address in meta.get("address_literals") or []:
-            source_address_index.setdefault(
-                (source_by_artifact[artifact], str(address).lower()), []
-            ).append(artifact)
-        for value in _explicit_family_values(meta):
-            explicit_index.setdefault(value, []).append(artifact)
+
+        for source, meta in entries:
+            for address in meta.get("address_literals") or []:
+                source_address_index.setdefault(
+                    (source, str(address).lower()), []
+                ).append(artifact)
+            for value in _explicit_family_values(meta):
+                explicit_index.setdefault(value, []).append(artifact)
 
     evidence_edges: list[dict[str, str]] = []
 
@@ -156,7 +170,7 @@ def build_grouping(
     )
 
     components: dict[str, list[str]] = {}
-    for artifact in sorted(metas):
+    for artifact in sorted(metas_by_artifact):
         components.setdefault(uf.find(artifact), []).append(artifact)
 
     artifact_to_group: dict[str, str] = {}
@@ -169,22 +183,38 @@ def build_grouping(
             {
                 "group_id": group_id,
                 "members": members,
-                "sources": sorted({source_by_artifact[item] for item in members}),
+                "sources": sorted(
+                    {source for item in members for source in sources_by_artifact[item]}
+                ),
             }
         )
 
+    cross_source_exact = {
+        artifact: sorted(sources)
+        for artifact, sources in sorted(sources_by_artifact.items())
+        if len(sources) > 1
+    }
     payload = {
         "status": "GROUPS_BUILT_PHYSICAL_ROLE_FREEZE_PENDING",
         "grouping_version": GROUPING_VERSION,
-        "artifacts": len(metas),
+        "artifacts": len(metas_by_artifact),
+        "source_artifact_records": source_artifact_records,
+        "cross_source_exact_identities": cross_source_exact,
         "groups": groups,
         "artifact_to_group": dict(sorted(artifact_to_group.items())),
+        "artifact_sources": {
+            artifact: sorted(sources)
+            for artifact, sources in sorted(sources_by_artifact.items())
+        },
         "evidence_edges": sorted(
             evidence_edges,
-            key=lambda row: (row["reason"], row["evidence_key"], row["left"], row["right"]),
+            key=lambda row: (
+                row["reason"], row["evidence_key"], row["left"], row["right"]
+            ),
         ),
         "policy_notes": [
             "Grouping does not delete artifacts or alter label truth.",
+            "Cross-source exact identity is one contract identity with all source claims preserved.",
             "Shared-address evidence is source-scoped and used only to prevent leakage-family role splitting.",
             "Cross-source address coincidence alone does not create a group edge.",
             "Role assignment must consume artifact_to_group atomically after this grouping is final."
@@ -196,10 +226,12 @@ def build_grouping(
         encoding="utf-8",
     )
     return GroupingResult(
-        artifacts=len(metas),
+        artifacts=len(metas_by_artifact),
+        source_artifact_records=source_artifact_records,
         groups=len(groups),
         normalized_edges=normalized_edges,
         address_edges=address_edges,
         explicit_family_edges=explicit_edges,
+        cross_source_exact_identities=len(cross_source_exact),
         output_path=str(output_path),
     )
