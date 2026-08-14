@@ -1,7 +1,7 @@
 # Phase-8 Decision — Long-Contract Token Strategy
 
-**Date:** 2026-08-15  
-**Status:** DEFERRED DECISION — EVIDENCE COLLECTION IMPLEMENTED  
+**Date:** 2026-08-15
+**Status:** DEFERRED DECISION — EVIDENCE COLLECTION IMPLEMENTED
 **Scope:** repaired Phase-8 GraphCodeBERT token representations
 
 ## Decision
@@ -55,6 +55,17 @@ After the repaired physical corpus and representation target binding are availab
    Do not use false-positive/F1/AUC/calibration claims because confirmed-negative support remains absent.
 6. Adopt a different bounded selector only if it materially improves target/evidence coverage without introducing provenance leakage or unstable optimization. Record the selector as a new extractor version and repeat physical binding + bounded GPU smoke.
 7. If bounded four-window strategies remain inadequate, open a separate architecture decision for hierarchical/more-window encoding rather than silently changing `four_eye_v8`.
+
+The repository-provided read-only comparison command is:
+
+```bash
+TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1 PYTHONPATH=.:data_module \
+./ml/.venv/bin/python \
+  docs/plan/ml-R4/scripts/p8_compare_bounded_window_strategies.py \
+  --output data_module/data/r4-v2-build/bounded_window_experiment.json
+```
+
+This command does not rewrite representations and cannot promote a selector by itself.
 
 ## Current implementation contract
 
