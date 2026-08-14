@@ -3,7 +3,7 @@ name: R4 Phase 8 vNext training compatibility
 on:
   push:
     branches:
-      - r4/phase8-existing-model-retraining
+      - main
     paths:
       - 'ml/src/datasets/**'
       - 'ml/src/training/vnext_*.py'
