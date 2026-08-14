@@ -12,7 +12,6 @@ on:
       - 'data_module/tests/test_representation/**'
       - 'data_module/tests/test_vnext/**'
       - 'ml/src/data_extraction/windowed_tokenizer.py'
-      - 'ml/tests/test_windowed_tokenizer_coverage.py'
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase8-data-repair.yml'
   pull_request:
@@ -23,7 +22,6 @@ on:
       - 'data_module/sentinel_data/vnext/**'
       - 'data_module/tests/**'
       - 'ml/src/data_extraction/windowed_tokenizer.py'
-      - 'ml/tests/test_windowed_tokenizer_coverage.py'
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase8-data-repair.yml'
   workflow_dispatch:
@@ -49,7 +47,7 @@ jobs:
             pytest 'numpy==1.26.4' 'pyarrow==19.0.1' \
             'torch==2.10.0' 'transformers==4.46.3'
 
-      - name: Compile repaired DATA and token modules
+      - name: Compile repaired DATA, token, and local-gate modules
         run: |
           python -m py_compile \
             data_module/sentinel_data/preprocessing/normalizer.py \
@@ -65,7 +63,10 @@ jobs:
             data_module/sentinel_data/vnext/r4_binding.py \
             ml/src/data_extraction/windowed_tokenizer.py \
             docs/plan/ml-R4/scripts/p8_verify_repaired_raw_inputs.py \
-            docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py
+            docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py \
+            docs/plan/ml-R4/scripts/p8_build_repaired_evidence_ledger.py \
+            docs/plan/ml-R4/scripts/p8_audit_repaired_lineage.py \
+            docs/plan/ml-R4/scripts/p8_compare_bounded_window_strategies.py
 
       - name: Run repaired regression suite
         env:
@@ -76,11 +77,11 @@ jobs:
             data_module/tests/test_preprocessing/test_r4_repair.py \
             data_module/tests/test_preprocessing/test_r4_grouping.py \
             data_module/tests/test_representation/test_r4_target_selector.py \
+            data_module/tests/test_representation/test_windowed_tokenizer_coverage.py \
             data_module/tests/test_vnext/test_policy.py \
             data_module/tests/test_vnext/test_r4_source_claims.py \
             data_module/tests/test_vnext/test_r4_builder.py \
-            data_module/tests/test_vnext/test_r4_binding.py \
-            ml/tests/test_windowed_tokenizer_coverage.py
+            data_module/tests/test_vnext/test_r4_binding.py
 
       - name: Prove frozen historical G6 artifacts still validate
         env:
