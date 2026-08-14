@@ -258,3 +258,24 @@ Append one entry for each work package.
 - **Register updates:** R4-R008 reopened; R4-R017 through R4-R020 opened; Phase-8 handoff/status surfaces changed to launch hold
 - **Result:** **HOLD** — execution wiring is valid, but known source loss, post-compile corruption, graph-target mismatch, and token omission make the current corpus unsuitable for the full evidence-generating run
 - **Gate effect:** G7 remains the valid historical binding result for `sentinel-r4-vnext-v1`; no G8 pass is claimed. Repair and publish a new versioned DATA/representation/role lineage before launching the full Phase-8 horizon.
+
+### R4-LOG-20260815-012 — Phase-8 repository real-DATA repair implemented; local physical rebuild boundary opened
+
+- Trigger: the 2026-08-14 real-data readiness audit invalidated the historical v1 physical DATA/representation lineage as the full-retrain input while preserving G7 as immutable historical evidence.
+- Repository-repair base: `a10fae041cc5f436b5607b6fd54fcabf63386059`.
+- Repository-safe repair completed on canonical `main`:
+  - lexical Solidity-safe, line-preserving repaired normalization;
+  - provenance-preserving exact/normalized-code identity with address equality removed as a deletion rule;
+  - deterministic parent-process source-record aggregation;
+  - version-aware solc flags and compile-the-promoted-bytes ordering;
+  - fail-closed application-contract graph target resolution and requested/actual assertion;
+  - `[4,512]` preserved with explicit pre-subsampling token/window coverage telemetry;
+  - repaired leakage grouping, source-native claims, evidence-ledger, role-freeze, DATA publication and representation-binding interfaces;
+  - separate repaired-v2 ML dataset/run-binding and bounded GPU-smoke seam without weakening historical v1 guards;
+  - portable source-acquisition descriptor, raw-byte verifier, local rebuild driver, repaired-lineage acceptance profiler and bounded-window experiment.
+- New lineage identifiers: `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `r4-leakage-groups-v2`, `r4-vnext-roles-v2`, `sentinel-r4-vnext-v2`, extractor `v2.2-r4-repaired`, token coverage `r4-token-coverage-v1`; graph schema remains `v9`, token shape remains `[4,512]`, model remains `four_eye_v8` / `v8.1`.
+- Repository validation evidence before final governance sync: repaired focused suite reached `83 passed, 4 warnings`; frozen historical G6 validation passed. The remaining whitespace-only CI defect was corrected before final gate rerun.
+- Historical v1 artifacts, G7 evidence, Run12 artifacts and old representation/preprocessing roots were not overwritten.
+- Physical recovery/acceptance is intentionally **not** claimed from repository tests. Next authority is `runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`.
+- Current blockers: protected raw corpus/labels, historical solc binaries, generated repaired representations/parquets, physical representation binding, repaired-lineage acceptance, long-contract evidence experiment and bounded repaired-data GPU smoke.
+- Full 100-epoch training remains explicitly unauthorized pending local evidence review and a later governance re-authorization.
