@@ -67,7 +67,9 @@ jobs:
             ml/src/training/vnext_param_groups.py \
             ml/src/training/vnext_binding.py \
             ml/src/training/vnext_epoch.py \
-            ml/tests/test_vnext_phase8_compat.py
+            ml/tests/test_vnext_phase8_compat.py \
+            docs/plan/ml-R4/scripts/p8_run_micro_smoke.py
+          bash -n docs/plan/ml-R4/scripts/p8_run_micro_smoke.sh
 
       - name: Run Phase 8 vNext compatibility tests
         env:
