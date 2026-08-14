@@ -18,20 +18,23 @@ Do not treat a stale comment, docstring, README, old plan, old test count, or hi
 
 ### Current stable technical baseline
 
-As of the 2026-08-12 reconciliation:
+As of the 2026-08-14 Phase-8 launch-readiness reconciliation:
 
-- canonical `main` has passed R4 G0–G6;
-- `data-vnext-policy-v1` and `r4-vnext-roles-v1` govern new DATA/ML semantics;
-- historical zero/absence/unsupported state is not confirmed-negative truth;
-- threshold-fit, calibration-fit, and untouched-acceptance roles are unsupported/empty for the first repaired baseline;
-- Run12 is the **historical operational ML baseline**, not a repaired-vNext model;
-- Phase 7 DATA vNext implementation remains candidate work until local representation binding/G7;
+- canonical `main` has passed R4 G0–G7 and is the active Phase-8 execution line;
+- Phase 8 is `IN_PROGRESS`: the existing-architecture vNext compatibility path, masked training/evaluation semantics, grouped sampler, durable checkpoint/resume runner, runtime provenance binding, and launch preflight are implemented/validated, but the real fixed-horizon repaired retrain has **not** been launched yet;
+- `sentinel-r4-vnext-v1` / export schema v2 is the canonical repaired DATA input, physically bound to 21,657 required representations / 64,971 graph-token-sidecar files with zero missing files and zero mismatches;
+- `data-vnext-policy-v1` and `r4-vnext-roles-v1` govern current DATA/ML semantics;
+- historical zero/absence/unsupported state is not confirmed-negative truth, and the current repaired baseline has zero confirmed-negative target cells;
+- threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty for the first repaired baseline;
+- Run12 is the **historical operational ML baseline**, not a repaired-vNext model; its learned weights, optimizer/scheduler state, thresholds, and calibration are not reused as current Phase-8 truth;
+- the first repaired retrain keeps the existing `four_eye_v8` / `v8.1` architecture frozen so data/label repair can be evaluated without simultaneous architecture search;
+- the old `r4/phase8-existing-model-retraining` branch/worktree is provenance only after adoption into `main`;
 - V3 is the current registry submission protocol; V1/V2 are historical compatibility;
 - live audit MCP is read-only;
 - V3 signing/broadcast is outside the analysis MCP security domain;
 - the retained EZKL proof proves only the proxy computation; V3 context attestation is separate.
 
-Always check `docs/handbook/16_current_status.md` and the relevant machine-readable R4 artifacts before making a current-state claim.
+For the exact pre-training restart point, read `docs/plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md` after the status matrix. Always check `docs/handbook/16_current_status.md` and the relevant machine-readable R4 artifacts before making a current-state claim.
 
 ## Approval model
 
@@ -59,6 +62,8 @@ In Ali's primary Claude Code setup, project memory may exist under:
 `/home/motafeq/.claude/projects/-home-motafeq-projects-sentinel/memory/`
 
 When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
+
+For the current R4 Phase-8 pre-training boundary, the committed restart record is `docs/plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md`. If private/local `MEMORY.md` is maintained, it should point to that handoff rather than duplicate all transient launch details.
 
 For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 
@@ -147,11 +152,13 @@ Dated audits, redesign notes, experimental reports, `docs/learning/`, and handbo
 ### DATA / ML
 
 - R4 controls current semantic authority.
-- Phase-6 roles are frozen; Phase 7 must not rebalance them implicitly.
+- Phase-6 roles are frozen; later phases must not rebalance them implicitly.
 - no target `0` without confirmed-negative evidence;
 - GasException/UnusedReturn supervision disabled under policy v1;
 - Run12 threshold/calibration artifacts are historical only;
-- first repaired retrain keeps architecture frozen unless a later approved architecture decision changes that.
+- first repaired retrain keeps architecture frozen unless a later approved architecture decision changes that;
+- Phase-8 full retraining must bind the exact `main` source commit, G7 DATA/representation lineage, runtime provenance, seed, optimizer/scheduler horizon, and frozen role/population identities;
+- while a bound full run is active, do not mutate tracked files, change the ML environment, or reinterpret positive-only MODEL_SELECTION as general validation evidence.
 
 ### AGENTS
 
