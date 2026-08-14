@@ -1,13 +1,26 @@
 # R4 Phase 8 — Existing Architecture Retraining Execution Plan
 
 **Date:** 2026-08-13  
-**Branch:** `r4/phase8-existing-model-retraining`  
+**Canonical execution branch:** `main`  
+**Historical implementation branch:** `r4/phase8-existing-model-retraining`  
 **Entry gate:** G7 PASS  
 **Target gate:** G8
 
 ## Objective
 
 Produce a reproducible checkpoint of the existing ten-output Four-Eye architecture trained against the exact G7-passed DATA vNext lineage, without recreating historical zero-as-negative semantics and without using unsupported threshold/calibration/acceptance roles.
+
+## 2026-08-14 launch-readiness checkpoint
+
+Phase-8 implementation has been adopted onto canonical `main`. The old Phase-8 branch/worktree is provenance only and must not be treated as a higher-authority execution line.
+
+Implementation, compatibility tests, the GPU end-to-end micro-smoke, durable checkpoint/resume behavior, runtime provenance binding, main-branch Phase-8 CI, and the pre-launch source/runtime checks have passed. The expensive full repaired retrain has **not** been launched yet, so G8 remains open.
+
+The durable restart/handoff record for the exact pre-training boundary is:
+
+`docs/plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md`
+
+Because committed documentation synchronization changes the exact Git SHA that the run will bind, the minimal tracked-worktree/runtime preflight must be rerun after pulling the final synchronization commit and immediately before launch.
 
 ## Immutable input authority
 
@@ -129,6 +142,8 @@ Only after the smoke gate passes:
 - preserve intermediate/best checkpoints and structured logs;
 - select checkpoint only by the authorized positive-only model-selection signal;
 - record any all-positive/other degeneracy as a result rather than repairing it with invented negatives.
+
+At the 2026-08-14 handoff, P8.1–P8.6 and launch preflight are complete; P8.7 is the immediate next action and has not yet started.
 
 ## Explicit risks carried into Phase 8
 
