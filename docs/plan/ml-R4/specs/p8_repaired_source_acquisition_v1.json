@@ -1,0 +1,55 @@
+{
+  "schema": "sentinel-r4-repaired-source-acquisition-v1",
+  "status": "PARTIAL_PORTABILITY_LOCAL_BYTES_AUTHORITATIVE",
+  "purpose": "Portable acquisition metadata for the Phase-8 repaired-data rebuild. Existing ingestion manifests remain the byte-level authority until a source is fully reacquirable from this descriptor.",
+  "rules": [
+    "No machine-specific absolute paths are recorded here.",
+    "A reacquired source is accepted only after p8_verify_repaired_raw_inputs.py matches every existing ingestion-manifest byte hash and size.",
+    "Missing portable locator/pin metadata is an explicit recovery limitation, not permission to substitute a nearby dataset revision."
+  ],
+  "sources": {
+    "solidifi": {
+      "connector": "git",
+      "url": "https://github.com/DependableSystemsLab/SolidiFI-benchmark",
+      "pin": "4b0573e1b3f7031396de6f48f7f3e7380222ad3a",
+      "pin_status": "EXACT",
+      "include_subdirs": ["buggy_contracts"],
+      "portable_recovery_status": "SUPPORTED_SUBJECT_TO_MANIFEST_BYTE_VERIFICATION"
+    },
+    "smartbugs_curated": {
+      "connector": "git_or_manual_archive",
+      "url": "https://github.com/smartbugs/smartbugs-curated",
+      "observed_local_commit_prefix_from_2026_08_14_audit": "230e6491",
+      "pin_status": "FULL_COMMIT_SHA_MUST_BE_CAPTURED_LOCALLY_BEFORE_PORTABLE_RECOVERY_IS_CLAIMED",
+      "include_subdirs": [
+        "reentrancy",
+        "arithmetic",
+        "denial_of_service",
+        "time_manipulation",
+        "unchecked_low_level_calls",
+        "access_control",
+        "bad_randomness",
+        "front_running",
+        "short_addresses",
+        "other"
+      ],
+      "portable_recovery_status": "PARTIAL"
+    },
+    "dive": {
+      "connector": "manual_archive",
+      "dataset_identity": "DIVE_Raw_Data plus DIVE_Labels.csv used by the 2026-08-14 audit",
+      "pin": "2025-10-02",
+      "portable_archive_url": null,
+      "portable_archive_sha256": null,
+      "labels_archive_url": null,
+      "labels_sha256": null,
+      "pin_status": "LOCAL_INGESTION_MANIFEST_BYTES_ONLY",
+      "portable_recovery_status": "UNRESOLVED",
+      "required_local_followup": [
+        "Record a stable archive locator for the exact audited DIVE source bundle.",
+        "Record archive SHA-256 for source and labels bundles.",
+        "Verify the extracted files reproduce the existing ingestion manifest and DIVE contractID/label census exactly."
+      ]
+    }
+  }
+}
