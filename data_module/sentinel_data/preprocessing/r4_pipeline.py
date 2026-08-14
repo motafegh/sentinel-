@@ -21,7 +21,7 @@ import hashlib
 import json
 import multiprocessing as mp
 import shutil
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -112,7 +112,7 @@ def _prepare_one(
 
     try:
         flat = flatten_contract(sol_path)
-        normalized = normalize(flat.content)
+        normalized = normalize(flat.content, preserve_line_structure=True)
     except Exception as exc:
         return None, {
             "source": source_name,
