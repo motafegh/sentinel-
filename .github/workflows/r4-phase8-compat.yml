@@ -8,7 +8,7 @@ on:
       - 'ml/src/datasets/**'
       - 'ml/src/training/vnext_*.py'
       - 'ml/src/training/group_sampler.py'
-      - 'ml/tests/test_vnext_phase8_compat.py'
+      - 'ml/tests/test_vnext_phase8_*.py'
       - 'data_module/sentinel_data/vnext/**'
       - 'data_module/data/exports/sentinel-r4-vnext-v1/**'
       - 'docs/plan/ml-R4/**'
@@ -20,7 +20,7 @@ on:
       - 'ml/src/datasets/**'
       - 'ml/src/training/vnext_*.py'
       - 'ml/src/training/group_sampler.py'
-      - 'ml/tests/test_vnext_phase8_compat.py'
+      - 'ml/tests/test_vnext_phase8_*.py'
       - 'data_module/sentinel_data/vnext/**'
       - 'data_module/data/exports/sentinel-r4-vnext-v1/**'
       - 'docs/plan/ml-R4/**'
@@ -42,6 +42,7 @@ jobs:
             /ml/src/datasets/
             /ml/src/training/
             /ml/tests/test_vnext_phase8_compat.py
+            /ml/tests/test_vnext_phase8_runner.py
             /data_module/sentinel_data/vnext/
             /data_module/sentinel_data/export/
             /data_module/sentinel_data/representation/graph_schema.py
@@ -67,11 +68,21 @@ jobs:
             ml/src/training/vnext_param_groups.py \
             ml/src/training/vnext_binding.py \
             ml/src/training/vnext_epoch.py \
+            ml/src/training/vnext_checkpoint.py \
+            ml/src/training/vnext_run_control.py \
+            ml/src/training/vnext_run_io.py \
+            ml/src/training/vnext_runner.py \
             ml/tests/test_vnext_phase8_compat.py \
-            docs/plan/ml-R4/scripts/p8_run_micro_smoke.py
+            ml/tests/test_vnext_phase8_runner.py \
+            docs/plan/ml-R4/scripts/p8_run_micro_smoke.py \
+            docs/plan/ml-R4/scripts/p8_run_training.py
           bash -n docs/plan/ml-R4/scripts/p8_run_micro_smoke.sh
+          bash -n docs/plan/ml-R4/scripts/p8_run_training.sh
 
       - name: Run Phase 8 vNext compatibility tests
         env:
           PYTHONPATH: .:data_module
-        run: python -m pytest -q -c /dev/null ml/tests/test_vnext_phase8_compat.py
+        run: |
+          python -m pytest -q -c /dev/null \
+            ml/tests/test_vnext_phase8_compat.py \
+            ml/tests/test_vnext_phase8_runner.py
