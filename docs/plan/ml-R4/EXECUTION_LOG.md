@@ -238,3 +238,23 @@ Append one entry for each work package.
 - **Decision:** R4-D-007 / ADR-R4-007 Accepted
 - **Gate effect:** **G7 PASS.** Phase 8 is authorized to adapt the existing frozen training consumer to this exact v2 lineage and retrain without acceptance leakage.
 
+---
+
+### R4-LOG-20260814-011 — Phase 8 Real-Data Readiness Audit and Launch Hold
+
+- **Phase:** 8
+- **Operator:** Codex / GPT-5.6 Sol under user-authorized read-only data audit and durable documentation scope
+- **Date/timezone:** 2026-08-14 Asia/Tehran
+- **Repository branch/commit:** `main` at `8dc81e865a8291dc84cb2d0bf1d4661e54fc150c` before audit documentation
+- **Inputs:** all 22,823 active raw manifest records; DIVE labels/folder links; all 22,493 preprocessed Solidity/metadata pairs; `sentinel-r4-vnext-v1`; all 21,657 graph/token/sidecar triplets; SolidiFI injection logs; current Phase-8 runtime/backbone
+- **Commands:** `p8_audit_real_data.py`; `p8_audit_representations.py`; offline `p8_audit_token_coverage.py`; `p8_run_micro_smoke.py --train-batches 2 --selection-batches 1 --batch-size 1`; handbook static/unit/inventory validation
+- **Exact source findings:** 65 compile-valid content-distinct positives removed only by address equality; one valid SmartBugs contract removed by an unconditional legacy-incompatible compiler flag; five direct SmartBugs Timestamp records physically recoverable; 120 identical normalized-code groups / 288 records, ten with multiple group IDs
+- **Exact representation findings:** 21,657 / 21,657 triplets load with zero hard structural failures; 341 selected-contract mismatches; 18,491 contracts over the four-window token limit; median retained token coverage 44.3%; 612 / 852 effective loss cells over the limit
+- **Exact exclusion findings:** all 836 excluded rows have no representation component; current retry yields 790 direct DIVE normalization-syntax failures, seven SolidiFI top-level normalization failures, two now-successful SmartBugs Reentrancy graphs, and 37 excluded positive target cells
+- **SolidiFI injection-line check:** 275 / 276 represented files have at least one logged injection in the GNN-selected contract; selected graphs cover 4,335 / 7,203 logged injection sites
+- **Runtime result:** bounded GPU smoke PASS; two optimizer steps; finite losses; 970.04 MB peak allocated; no Run12 weights and no checkpoint written
+- **Protected DATA/model artifacts changed:** NO
+- **New evidence created:** three read-only deterministic audit profilers and `2026-08-14_PHASE8_real_data_readiness_audit.md`
+- **Register updates:** R4-R008 reopened; R4-R017 through R4-R020 opened; Phase-8 handoff/status surfaces changed to launch hold
+- **Result:** **HOLD** — execution wiring is valid, but known source loss, post-compile corruption, graph-target mismatch, and token omission make the current corpus unsuitable for the full evidence-generating run
+- **Gate effect:** G7 remains the valid historical binding result for `sentinel-r4-vnext-v1`; no G8 pass is claimed. Repair and publish a new versioned DATA/representation/role lineage before launching the full Phase-8 horizon.

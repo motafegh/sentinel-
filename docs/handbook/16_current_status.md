@@ -10,7 +10,7 @@
 
 The canonical DATA foundation includes DATA vNext implementation merge **`81d9c547d`** (2026-08-12): R4 DATA/ML repair has passed **G0 through G7**, the V3 registry/context protocol and read-only audit-MCP boundary remain implemented, and Run12 remains the historical operational teacher. The v2 semantic overlay is physically bound to all 21,657 required representations / 64,971 graph-token-sidecar files with zero missing files and zero mismatches.
 
-As of the 2026-08-14 launch-readiness reconciliation, canonical `main` has also adopted the Phase-8 existing-architecture retraining implementation. **Phase 8 is IN_PROGRESS**: the vNext compatibility seam, masked losses, grouped sampler, durable checkpoint/resume runner, runtime provenance binding, main-branch CI, GPU micro-smoke, and launch preflight are validated, but the real fixed-horizon repaired teacher training run has **not** been launched yet and G8 remains open.
+As of the 2026-08-14 reconciliation, canonical `main` has adopted the Phase-8 existing-architecture retraining implementation. **Phase 8 is IN_PROGRESS with the full launch on a DATA/representation hold**: the vNext compatibility seam, masked losses, grouped sampler, durable checkpoint/resume runner, runtime provenance binding, main-branch CI, and bounded GPU execution are validated, but the completed live audit found material source loss, post-compile normalization corruption, graph-target mismatch, token omission, and incomplete normalized grouping. The real fixed-horizon repaired teacher training run has **not** been launched and G8 remains open.
 
 The evidence limitations remain explicit: no confirmed-negative source exists in policy v1, threshold/calibration roles are unsupported/empty, and untouched acceptance is unsupported/empty/frozen. Historical July suite totals remain historical evidence rather than current-state proof.
 
@@ -29,6 +29,7 @@ DATA vNext v2
         ↓
 Phase 8 retrain existing architecture (IN_PROGRESS)
   implementation + smoke + launch preflight complete
+  full launch held for real-data remediation/re-freeze
   full 100-epoch repaired run not yet launched
         ↓
 G8 checkpoint/evidence review
@@ -60,7 +61,7 @@ untouched acceptance: unsupported/empty/frozen
 | 5 | G5 PASS | DATA vNext policy/schema/ADRs accepted |
 | 6 | G6 PASS | leakage-safe roles frozen; acceptance support explicitly bounded |
 | 7 | G7 PASS | v2 implementation merged; 21,657 representations / 64,971 files physically bound with zero mismatches |
-| 8 | IN_PROGRESS | existing-architecture retraining implementation and launch preflight are canonical on `main`; full repaired run/G8 checkpoint not yet complete |
+| 8 | IN_PROGRESS | implementation/preflight are canonical on `main`; full launch is held for real-data remediation/re-freeze; repaired run/G8 checkpoint not yet complete |
 | 9–10 | waiting | evaluation/promotion remain gated by preceding phases |
 
 ### R4 DATA foundation
@@ -135,7 +136,7 @@ Run12 remains the historical operational checkpoint and comparison baseline. It 
 
 Architecture remains frozen through the initial repaired retrain so R4 can measure the effect of data/label repair before redesigning the model.
 
-Phase-8 launch state is now explicit:
+Phase-8 execution configuration remains explicit, but full launch is held:
 
 - architecture/model: `four_eye_v8` / `v8.1`, ten outputs;
 - training starts from the accepted pretrained GraphCodeBERT base plus fresh/current Phase-8 trainable components, not Run12 learned weights;
@@ -151,9 +152,9 @@ Phase-8 launch state is now explicit:
 
 The accepted pretrained backbone snapshot is `microsoft/graphcodebert-base` revision `2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d`. Runtime binding records Python, PyTorch/CUDA/cuDNN, Transformers, PEFT, PyTorch Geometric, NumPy, Pandas, and PyArrow versions and fails closed on backbone provenance mismatch.
 
-The GPU end-to-end micro-smoke passed the repaired path. The full 100-epoch run is still the first evidence for actual long-horizon training behavior, full-batch memory sufficiency, and useful positive-only learning dynamics; those outcomes are not assumed in advance.
+The GPU end-to-end micro-smoke passed the repaired execution path. The completed live data audit nevertheless found 65 distinct positives removed solely by address equality, one valid SmartBugs contract rejected by a legacy compiler-flag incompatibility, five direct SmartBugs Timestamp positives recoverable from physical metadata, at least 790 DIVE and seven SolidiFI normalized outputs corrupted after their compile gate, 341 graphs selecting a library/non-contract declaration, and 18,491 represented contracts omitting code tokens under the four-window cap. Only 275 strong + 577 weak cells are optimizer-active, and 612 / 852 are over the cap. Recovering known absent records could add up to 71 strong semantic cells over the current 403 before representation/role gates. The full 100-epoch run must therefore wait for a repaired, re-frozen DATA version. See the [Phase-8 real-data readiness audit](../plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md).
 
-For the exact pre-training restart point and next commands, use `docs/plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md`.
+For the current pre-training boundary, read the real-data readiness audit before the pre-training handoff. Do not execute the handoff's training command while the DATA-audit hold remains open.
 
 ### Current V3 / chain state
 
@@ -219,7 +220,7 @@ Potentially local/protected/regenerated:
 - model-selection is positive-only limited;
 - threshold/calibration/untouched acceptance unsupported;
 - Phase 7 physical representation binding passed; the remaining DATA/ML limitations are evidence limitations, not G7 implementation blockers;
-- Phase-8 implementation/preflight is ready for execution, but no repaired full-run/final teacher checkpoint exists yet;
+- Phase-8 implementation/preflight is technically executable, but full execution is held for a repaired DATA/representation lineage and no repaired full-run/final teacher checkpoint exists yet;
 - positive-only supervision may produce broad overprediction; that must be measured as a result, not hidden by invented negatives.
 
 ### ZK/V3
@@ -269,6 +270,7 @@ For G7 evidence, use the committed vNext manifest, representation-binding report
 - [R4 plan status matrix](../plan/ml-R4/PLAN_STATUS_MATRIX.md)
 - [Phase-8 execution plan](../plan/ml-R4/runs/2026-08-13_PHASE8_existing_model_retraining_plan.md)
 - [Phase-8 pre-training launch handoff](../plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md)
+- [Phase-8 real-data readiness audit](../plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md)
 - [R4 decision register](../plan/ml-R4/DECISION_REGISTER.md)
 - [R4 risk/blocker register](../plan/ml-R4/RISK_AND_BLOCKER_REGISTER.md)
 - [DATA artifacts](04_data_artifacts.md)
@@ -287,7 +289,7 @@ Read R4 status/decision/risk registers, the Phase-8 pre-training handoff when ex
 
 ### Execution trace and worked example
 
-Today a correct statement is: “R4 G7 is canonical; DATA vNext v2 is representation-bound; Phase 8 is IN_PROGRESS on `main`; its repaired training implementation, micro-smoke, runtime provenance, and launch preflight are validated; the real 100-epoch retrain has not yet been launched; Run12 remains historical operational inference; no retrained vNext teacher or untouched-acceptance claim exists.” A statement like “the current model has passed final vNext test/calibration” is false.
+Today a correct statement is: “R4 G7 remains the valid binding result for DATA vNext v2; Phase 8 is IN_PROGRESS on `main`; its training implementation, micro-smoke, and runtime preflight are validated; the full launch is held because a later live audit found material recoverable supervision omitted by preprocessing; the 100-epoch retrain has not been launched; Run12 remains historical operational inference; no retrained vNext teacher or untouched-acceptance claim exists.” A statement like “the current model has passed final vNext test/calibration” is false.
 
 ### Implementation practice
 

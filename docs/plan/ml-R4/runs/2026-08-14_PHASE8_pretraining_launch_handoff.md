@@ -6,9 +6,11 @@
 **Gate:** G8  
 **State at handoff:** implementation and launch preflight complete; full repaired training run has **not** been launched yet.
 
+> **Post-handoff launch hold — 2026-08-14:** The completed live data audit found 65 compile-valid distinct positives removed by address equality, one valid contract blocked by a legacy-incompatible compiler flag, five recoverable Timestamp positives, at least 790 DIVE and seven SolidiFI normalized outputs corrupted after their compile gate, 341 graphs selecting a library/non-contract declaration, and 18,491 represented contracts omitting code tokens under the four-window cap. Only 275 strong + 577 weak cells are optimizer-active; 612 / 852 are over the token cap. The bounded GPU path passes, but that proves execution rather than evidence adequacy. **Do not launch the 100-epoch run on `sentinel-r4-vnext-v1`; repair and re-freeze a new DATA version first.** See `2026-08-14_PHASE8_real_data_readiness_audit.md`. G7 remains the valid binding result for the historical v1 artifact; this hold does not retroactively alter it.
+
 ## Purpose
 
-This handoff is the durable restart point immediately before the expensive Phase-8 full retrain. It records what is already proven, what remains frozen, what must not be re-decided, and the exact next execution boundary.
+This handoff was the durable restart point immediately before the expensive Phase-8 full retrain. The post-handoff real-data audit now supersedes its immediate-launch instruction: the runner remains the canonical execution path, but DATA remediation/re-freezing is the next boundary before the expensive run.
 
 It does **not** replace executable source, machine-readable R4 policy/manifests, or `PLAN_STATUS_MATRIX.md`. Those remain higher authority. This file exists so a future session does not repeat the investigation that already established launch readiness or accidentally reinterpret old Run12 semantics.
 

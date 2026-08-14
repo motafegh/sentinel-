@@ -21,7 +21,7 @@ Do not treat a stale comment, docstring, README, old plan, old test count, or hi
 As of the 2026-08-14 Phase-8 launch-readiness reconciliation:
 
 - canonical `main` has passed R4 G0–G7 and is the active Phase-8 execution line;
-- Phase 8 is `IN_PROGRESS`: the existing-architecture vNext compatibility path, masked training/evaluation semantics, grouped sampler, durable checkpoint/resume runner, runtime provenance binding, and launch preflight are implemented/validated, but the real fixed-horizon repaired retrain has **not** been launched yet;
+- Phase 8 is `IN_PROGRESS`: the existing-architecture vNext compatibility path, masked training/evaluation semantics, grouped sampler, durable checkpoint/resume runner, runtime provenance binding, and bounded GPU execution are validated, but the real fixed-horizon retrain has **not** been launched and is on a DATA/representation hold pending a repaired, versioned, re-frozen lineage;
 - `sentinel-r4-vnext-v1` / export schema v2 is the canonical repaired DATA input, physically bound to 21,657 required representations / 64,971 graph-token-sidecar files with zero missing files and zero mismatches;
 - `data-vnext-policy-v1` and `r4-vnext-roles-v1` govern current DATA/ML semantics;
 - historical zero/absence/unsupported state is not confirmed-negative truth, and the current repaired baseline has zero confirmed-negative target cells;
@@ -34,7 +34,7 @@ As of the 2026-08-14 Phase-8 launch-readiness reconciliation:
 - V3 signing/broadcast is outside the analysis MCP security domain;
 - the retained EZKL proof proves only the proxy computation; V3 context attestation is separate.
 
-For the exact pre-training restart point, read `docs/plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md` after the status matrix. Always check `docs/handbook/16_current_status.md` and the relevant machine-readable R4 artifacts before making a current-state claim.
+For the current pre-training boundary, read `docs/plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md` before `docs/plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md`. Always check `docs/handbook/16_current_status.md` and the relevant machine-readable R4 artifacts before making a current-state claim.
 
 ## Approval model
 
