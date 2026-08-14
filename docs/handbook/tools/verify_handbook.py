@@ -288,7 +288,7 @@ def _discover() -> dict[str, Any]:
             "version": _assignment(schema_path, "FEATURE_SCHEMA_VERSION"),
             "node_feature_dim": _const_int(schema, "NODE_FEATURE_DIM"),
             "node_types": _const_int(schema, "NUM_NODE_TYPES"),
-            "edge_types": _const_int(schema, "EDGE_TYPES"),
+            "edge_types": _const_int(schema, "NUM_EDGE_TYPES"),
             "classes": _class_names(),
         },
         "proxy": {
@@ -416,8 +416,6 @@ def _static_checks() -> list[Check]:
         checks.append(Check("ports", actual == service["port"], f"{name}: source={actual}, metadata={service['port']}"))
         if "routes" in service:
             actual_routes = discovered["routes"][name]
-            # Metadata routes are the documented public/core contract; source may
-            # expose extra health probes such as /health/live and /health/ready.
             checks.append(Check("routes", set(service["routes"]).issubset(set(actual_routes)), f"{name}: source={actual_routes}, metadata_core={service['routes']}"))
         if "tools" in service:
             actual_tools = discovered["mcp_tools"][name]
