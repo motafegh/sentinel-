@@ -1,12 +1,20 @@
-"""Deduplicator — three-level dedup: exact SHA-256 → address-level → text-normalized hash.
+"""Deterministic duplicate identity for repaired DATA builds.
 
-The BCCC dataset had 38.8% duplication, mostly from the same contract appearing in
-multiple class folders with minor edits. The 0.85 threshold catches copy-paste-with-edits.
+Historical preprocessing treated a shared Ethereum address literal as proof
+that two files were duplicates and deleted the later record.  The Phase-8
+real-data audit proved that this erased content-distinct positive contracts.
+A shared address is now provenance/family *evidence only*; it is never a
+deletion criterion.
 
-Level 3 detects contracts that are identical after stripping comments and collapsing
-whitespace. This catches copy-paste-with-comment-edits near-dups that Level 1 misses.
-Identifier lowercasing is intentionally NOT applied — it would collapse semantically
-distinct function names (e.g. reentrantWithdraw ≠ reentrancyWithdraw).
+Duplicate identity is intentionally split into:
+
+* exact text identity (SHA-256 of the input text), and
+* normalized-code identity (comments removed lexically, code whitespace
+  canonicalized without changing string literals).
+
+Leakage-family construction is a later, explicit stage.  Address literals are
+returned as signals so that stage can inspect them without conflating them with
+identity.
 """
 
 from __future__ import annotations
@@ -16,99 +24,134 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from sentinel_data.preprocessing.normalizer import strip_comments_lexically
 
-_ADDRESS_RE  = re.compile(r'0x[0-9a-fA-F]{40}')
-_BLOCK_CMT   = re.compile(r'/\*.*?\*/', re.DOTALL)
-_LINE_CMT    = re.compile(r'//[^\n]*')
-_WHITESPACE  = re.compile(r'\s+')
+_ADDRESS_RE = re.compile(r"0x[0-9a-fA-F]{40}")
 
 
-@dataclass
+@dataclass(frozen=True)
 class DedupRecord:
-    """Outcome of deduplication for a single file."""
+    """Identity/deduplication result for one source record."""
 
     sha256: str
-    dedup_group_id: str   # canonical representative sha256 for this dedup group
+    normalized_sha256: str
+    dedup_group_id: str
     is_duplicate: bool
-    duplicate_of: str     # sha256 of the canonical representative, or "" if canonical
+    duplicate_of: str
+    duplicate_kind: str  # "" | "exact" | "normalized"
+    address_literals: tuple[str, ...] = ()
 
 
-def _normalize_for_dedup(content: str) -> str:
-    """Strip comments and collapse all whitespace for Level-3 dedup hash.
+def _canonicalize_code_whitespace(source: str) -> str:
+    """Collapse code whitespace while preserving string literal contents.
 
-    Intentionally does NOT lowercase identifiers — that would create false-positive
-    groups across different vulnerability classes (e.g. Reentrancy vs ReentrancyGuard).
+    Comments are first removed by the lexical normalizer primitive.  Whitespace
+    outside quoted strings is collapsed to one ASCII space; whitespace and
+    escapes inside strings remain exact.  This lets formatting/comment-only
+    variants share a normalized-code identity without corrupting URLs or other
+    string data.
     """
-    out = _BLOCK_CMT.sub('', content)
-    out = _LINE_CMT.sub('', out)
-    out = _WHITESPACE.sub(' ', out).strip()
-    return out
+
+    stripped, _ = strip_comments_lexically(source)
+    CODE, SINGLE, DOUBLE = range(3)
+    state = CODE
+    out: list[str] = []
+    pending_space = False
+    i = 0
+
+    while i < len(stripped):
+        ch = stripped[i]
+        if state == CODE:
+            if ch.isspace():
+                pending_space = bool(out)
+                i += 1
+                continue
+            if pending_space and out and out[-1] != " ":
+                out.append(" ")
+            pending_space = False
+            out.append(ch)
+            if ch == "'":
+                state = SINGLE
+            elif ch == '"':
+                state = DOUBLE
+            i += 1
+            continue
+
+        quote = "'" if state == SINGLE else '"'
+        out.append(ch)
+        if ch == "\\" and i + 1 < len(stripped):
+            out.append(stripped[i + 1])
+            i += 2
+            continue
+        if ch == quote:
+            state = CODE
+        i += 1
+
+    return "".join(out).strip()
+
+
+def normalized_code_sha256(content: str) -> str:
+    """Return the repaired normalized-code identity hash."""
+
+    return _sha256(_canonicalize_code_whitespace(content))
 
 
 class Deduplicator:
-    """Stateful deduplicator — call process() for each file in sequence."""
+    """Stateful exact/normalized deduplicator with no address deletion."""
 
-    def __init__(self):
-        # sha256 → canonical path
+    def __init__(self) -> None:
         self._seen_sha: dict[str, Path] = {}
-        # ethereum address → first sha256 that had this address
-        self._seen_addr: dict[str, str] = {}
-        # normalized-text hash → first sha256 with that normalized content
         self._seen_norm: dict[str, str] = {}
 
     def process(self, content: str, path: Path) -> DedupRecord:
-        """Check content against seen SHA-256 hashes, Ethereum addresses, and normalized text.
+        """Classify duplicate identity for ``content``.
 
-        Returns a DedupRecord indicating whether this file is a duplicate.
+        Exact and normalized duplicates collapse to one content identity.  Shared
+        addresses are reported but never set ``is_duplicate=True``.
         """
 
         sha = _sha256(content)
+        norm_hash = normalized_code_sha256(content)
+        addresses = tuple(sorted({a.lower() for a in _ADDRESS_RE.findall(content)}))
 
-        # Level 1: exact SHA-256 match
         if sha in self._seen_sha:
             return DedupRecord(
                 sha256=sha,
+                normalized_sha256=norm_hash,
                 dedup_group_id=sha,
                 is_duplicate=True,
                 duplicate_of=sha,
+                duplicate_kind="exact",
+                address_literals=addresses,
             )
-        self._seen_sha[sha] = path
 
-        # Level 2: address-level — same Ethereum address in two different files
-        addrs = set(_ADDRESS_RE.findall(content))
-        for addr in addrs:
-            if addr in self._seen_addr:
-                canonical_sha = self._seen_addr[addr]
-                return DedupRecord(
-                    sha256=sha,
-                    dedup_group_id=canonical_sha,
-                    is_duplicate=True,
-                    duplicate_of=canonical_sha,
-                )
-        for addr in addrs:
-            self._seen_addr[addr] = sha
-
-        # Level 3: text-normalized hash — catches copy-paste-with-comment-edits near-dups
-        norm_hash = _sha256(_normalize_for_dedup(content))
         if norm_hash in self._seen_norm:
             canonical_sha = self._seen_norm[norm_hash]
+            self._seen_sha[sha] = path
             return DedupRecord(
                 sha256=sha,
+                normalized_sha256=norm_hash,
                 dedup_group_id=canonical_sha,
                 is_duplicate=True,
                 duplicate_of=canonical_sha,
+                duplicate_kind="normalized",
+                address_literals=addresses,
             )
-        self._seen_norm[norm_hash] = sha
 
+        self._seen_sha[sha] = path
+        self._seen_norm[norm_hash] = sha
         return DedupRecord(
             sha256=sha,
+            normalized_sha256=norm_hash,
             dedup_group_id=sha,
             is_duplicate=False,
             duplicate_of="",
+            duplicate_kind="",
+            address_literals=addresses,
         )
 
 
 def _sha256(content: str) -> str:
-    """Compute hex-encoded SHA-256 of a string."""
+    """Compute UTF-8 SHA-256 for a Python string."""
 
-    return hashlib.sha256(content.encode()).hexdigest()
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
