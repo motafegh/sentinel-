@@ -609,18 +609,33 @@ def build_repaired_publication(
         "role_contract_counts": dict(sorted(role_counts.items())),
         "confirmed_negative_rows": 0,
         "artifacts": {
-            "label_states": {"path": "label_states.parquet", "sha256": _sha256_file(label_states_path)},
-            "ml_targets": {"path": "ml_targets.parquet", "sha256": _sha256_file(ml_targets_path)},
-            "claims": {"path": str(claims_path), "sha256": _sha256_file(claims_path)},
-            "grouping": {"path": str(grouping_path), "sha256": grouping_sha},
-            "policy": {"path": str(policy_path), "sha256": policy_sha},
+            "label_states": {
+                "path": "label_states.parquet",
+                "sha256": _sha256_file(label_states_path),
+            },
+            "ml_targets": {
+                "path": "ml_targets.parquet",
+                "sha256": _sha256_file(ml_targets_path),
+            },
+            "claims": {
+                "path": "r4-v2-build/source_claims.jsonl",
+                "sha256": _sha256_file(claims_path),
+            },
+            "grouping": {
+                "path": "r4-v2-build/grouping.json",
+                "sha256": grouping_sha,
+            },
+            "policy": {
+                "path": "docs/plan/ml-R4/specs/data_vnext_policy_v1.json",
+                "sha256": policy_sha,
+            },
         },
         "representation_root_recorded": False,
         "representation_binding_report": None,
         "limitations": [
             "Physical representation binding/acceptance must pass before this candidate can replace historical sentinel-r4-vnext-v1.",
             "No confirmed-negative evidence exists; threshold/calibration/acceptance roles remain unsupported.",
-            "Token coverage metadata is diagnostic only and does not establish four-window adequacy."
+            "Token coverage metadata is diagnostic only and does not establish four-window adequacy.",
         ],
     }
     _write_json(output_dir / "manifest.json", manifest)
