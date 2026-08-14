@@ -18,23 +18,30 @@ Do not treat a stale comment, docstring, README, old plan, old test count, or hi
 
 ### Current stable technical baseline
 
-As of the 2026-08-14 Phase-8 launch-readiness reconciliation:
+As of the 2026-08-15 Phase-8 real-DATA repair reconciliation:
 
-- canonical `main` has passed R4 G0–G7 and is the active Phase-8 execution line;
-- Phase 8 is `IN_PROGRESS`: the existing-architecture vNext compatibility path, masked training/evaluation semantics, grouped sampler, durable checkpoint/resume runner, runtime provenance binding, and bounded GPU execution are validated, but the real fixed-horizon retrain has **not** been launched and is on a DATA/representation hold pending a repaired, versioned, re-frozen lineage;
-- `sentinel-r4-vnext-v1` / export schema v2 is the canonical repaired DATA input, physically bound to 21,657 required representations / 64,971 graph-token-sidecar files with zero missing files and zero mismatches;
-- `data-vnext-policy-v1` and `r4-vnext-roles-v1` govern current DATA/ML semantics;
-- historical zero/absence/unsupported state is not confirmed-negative truth, and the current repaired baseline has zero confirmed-negative target cells;
-- threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty for the first repaired baseline;
-- Run12 is the **historical operational ML baseline**, not a repaired-vNext model; its learned weights, optimizer/scheduler state, thresholds, and calibration are not reused as current Phase-8 truth;
-- the first repaired retrain keeps the existing `four_eye_v8` / `v8.1` architecture frozen so data/label repair can be evaluated without simultaneous architecture search;
-- the old `r4/phase8-existing-model-retraining` branch/worktree is provenance only after adoption into `main`;
+- canonical `main` has passed historical R4 G0–G7 and remains the active Phase-8 execution line;
+- Phase 8 is `IN_PROGRESS`, not G8-passed;
+- historical `sentinel-r4-vnext-v1` / `r4-vnext-roles-v1` / graph-schema-v9 G7 evidence remains immutable and reproducible, but the 2026-08-14 real-data audit found physical preprocessing/representation defects that prevent using that v1 lineage for the full retrain;
+- repository-safe repair implementation is complete on `main`: lexical line-preserving normalization, provenance-preserving dedup, version-aware solc, strict graph target binding, token coverage telemetry, deterministic leakage grouping, repaired source claims/evidence ledger/roles/publication/binding, repaired ML adapter/binding, local acceptance tools, and bounded GPU-smoke seam;
+- repaired candidate version identities are `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `r4-leakage-groups-v2`, `r4-vnext-roles-v2`, `sentinel-r4-vnext-v2`, and representation extractor `v2.2-r4-repaired`;
+- the repaired candidate keeps graph schema `v9`, token tensor `[4,512]`, and architecture `four_eye_v8` / `v8.1`; long-contract adequacy is explicitly unresolved and requires measured local evidence rather than an implicit architecture change;
+- the protected local corpus has **not** yet been rebuilt/accepted into repaired v2, so no repaired-v2 population count, representation binding digest, checkpoint, or model-quality result may be claimed from repository CI alone;
+- no confirmed-negative source exists in policy v1; target `0` remains forbidden without class-specific confirmed-negative evidence;
+- threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
+- Run12 is the **historical operational ML baseline**, not repaired-v2 truth; its learned weights, optimizer/scheduler state, thresholds, and calibration are not reused as current Phase-8 truth;
 - V3 is the current registry submission protocol; V1/V2 are historical compatibility;
 - live audit MCP is read-only;
 - V3 signing/broadcast is outside the analysis MCP security domain;
 - the retained EZKL proof proves only the proxy computation; V3 context attestation is separate.
 
-For the current pre-training boundary, read `docs/plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md` before `docs/plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md`. Always check `docs/handbook/16_current_status.md` and the relevant machine-readable R4 artifacts before making a current-state claim.
+For the exact current DATA/ML restart boundary, read in order:
+
+1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
+2. `docs/plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md`;
+3. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`.
+
+The 2026-08-14 pretraining launch handoff is historical/superseded for full-training authorization. Do not launch the 100-epoch Phase-8 run until the new repaired-v2 physical rebuild/acceptance, long-contract evidence review, bounded repaired-data GPU smoke, and an explicit governance re-authorization are complete.
 
 ## Approval model
 
@@ -63,7 +70,7 @@ In Ali's primary Claude Code setup, project memory may exist under:
 
 When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
 
-For the current R4 Phase-8 pre-training boundary, the committed restart record is `docs/plan/ml-R4/runs/2026-08-14_PHASE8_pretraining_launch_handoff.md`. If private/local `MEMORY.md` is maintained, it should point to that handoff rather than duplicate all transient launch details.
+For the current R4 Phase-8 boundary, the committed restart record is `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`. If private/local `MEMORY.md` is maintained, it should point to that handoff rather than duplicate all transient local rebuild details.
 
 For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 
@@ -152,13 +159,15 @@ Dated audits, redesign notes, experimental reports, `docs/learning/`, and handbo
 ### DATA / ML
 
 - R4 controls current semantic authority.
-- Phase-6 roles are frozen; later phases must not rebalance them implicitly.
+- Historical Phase-6/v1 roles remain frozen and immutable; repaired-v2 roles are a separate versioned lineage produced only after final repaired grouping/representation availability.
 - no target `0` without confirmed-negative evidence;
 - GasException/UnusedReturn supervision disabled under policy v1;
 - Run12 threshold/calibration artifacts are historical only;
 - first repaired retrain keeps architecture frozen unless a later approved architecture decision changes that;
-- Phase-8 full retraining must bind the exact `main` source commit, G7 DATA/representation lineage, runtime provenance, seed, optimizer/scheduler horizon, and frozen role/population identities;
-- while a bound full run is active, do not mutate tracked files, change the ML environment, or reinterpret positive-only MODEL_SELECTION as general validation evidence.
+- do not overwrite historical DATA/representation artifacts; repaired work uses new v2 roots;
+- repository-only tests do not prove physical DATA recovery;
+- the only currently authorized repaired-v2 GPU action is the bounded micro-smoke after physical repaired-DATA acceptance;
+- full Phase-8 training remains prohibited until an explicit post-smoke governance update re-authorizes it.
 
 ### AGENTS
 
@@ -179,6 +188,12 @@ Dated audits, redesign notes, experimental reports, `docs/learning/`, and handbo
 
 Use the narrowest meaningful test first, then expand according to blast radius. Preserve raw failures; do not weaken gates to turn failures green.
 
+For the Phase-8 repository real-DATA repair, the dedicated CI contract is:
+
+`.github/workflows/r4-phase8-data-repair.yml`
+
+It must compile the repaired DATA/ML/local-gate source, run repaired regressions, prove historical G6 still validates, and pass `git diff --check` from the audit handoff base.
+
 For canonical documentation/current-state changes:
 
 ```bash
@@ -187,7 +202,7 @@ python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
 python3 docs/handbook/tools/verify_handbook.py inventory
 ```
 
-For R4 G6 semantics:
+For historical R4 G6 semantics:
 
 ```bash
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
