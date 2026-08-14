@@ -6,6 +6,13 @@ from dataclasses import dataclass
 ARCHITECTURE = "four_eye_v8"
 MODEL_VERSION = "v8.1"
 
+# Phase-8 must not depend on a mutable Hugging Face branch/ref. This is the
+# exact GraphCodeBERT snapshot resolved by the accepted local preflight before
+# the repaired full retrain. The generic model loader is unchanged; Phase-8
+# fail-closes in vnext_binding if the local model name resolves elsewhere.
+GRAPHCODEBERT_MODEL_NAME = "microsoft/graphcodebert-base"
+GRAPHCODEBERT_REVISION = "2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d"
+
 FROZEN_ARCHITECTURE = {
     "num_classes": 10,
     "fusion_output_dim": 128,
@@ -53,4 +60,11 @@ class Phase8Settings:
     fixed_diagnostic_threshold: float = 0.5
 
 
-__all__ = ["ARCHITECTURE", "FROZEN_ARCHITECTURE", "MODEL_VERSION", "Phase8Settings"]
+__all__ = [
+    "ARCHITECTURE",
+    "FROZEN_ARCHITECTURE",
+    "GRAPHCODEBERT_MODEL_NAME",
+    "GRAPHCODEBERT_REVISION",
+    "MODEL_VERSION",
+    "Phase8Settings",
+]

@@ -2,12 +2,20 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata as importlib_metadata
 import json
+import platform
 from pathlib import Path
 from typing import Any, Mapping
 
 from sentinel_data.vnext.policy import CLASS_NAMES
-from ml.src.training.vnext_phase8_config import ARCHITECTURE, FROZEN_ARCHITECTURE, MODEL_VERSION
+from ml.src.training.vnext_phase8_config import (
+    ARCHITECTURE,
+    FROZEN_ARCHITECTURE,
+    GRAPHCODEBERT_MODEL_NAME,
+    GRAPHCODEBERT_REVISION,
+    MODEL_VERSION,
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -21,6 +29,85 @@ def sha256_file(path: Path) -> str:
 def canonical_digest(payload: Mapping[str, Any]) -> str:
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+def _distribution_version(name: str) -> str:
+    try:
+        return importlib_metadata.version(name)
+    except importlib_metadata.PackageNotFoundError as exc:
+        raise RuntimeError(
+            f"Phase-8 runtime dependency is not installed: {name}"
+        ) from exc
+
+
+def runtime_binding_metadata() -> dict[str, Any]:
+    """Resolve and fail-close the software/backbone runtime used by Phase 8.
+
+    The generic TransformerEncoder intentionally remains unchanged. Phase 8
+    instead proves that the mutable model name currently resolves to the exact
+    accepted cached snapshot before any optimizer step can occur, then binds
+    that snapshot and the effective ML software stack into the run digest.
+    """
+    import torch
+    from transformers import AutoConfig
+
+    resolved = AutoConfig.from_pretrained(
+        GRAPHCODEBERT_MODEL_NAME,
+        local_files_only=True,
+    )
+    resolved_name = str(getattr(resolved, "_name_or_path", "") or "")
+    resolved_revision = str(getattr(resolved, "_commit_hash", "") or "")
+    if resolved_name != GRAPHCODEBERT_MODEL_NAME:
+        raise RuntimeError(
+            "Phase-8 GraphCodeBERT model-name mismatch: "
+            f"{resolved_name!r} != {GRAPHCODEBERT_MODEL_NAME!r}"
+        )
+    if resolved_revision != GRAPHCODEBERT_REVISION:
+        raise RuntimeError(
+            "Phase-8 GraphCodeBERT mutable-name resolution mismatch: "
+            f"{resolved_revision!r} != {GRAPHCODEBERT_REVISION!r}"
+        )
+
+    pinned = AutoConfig.from_pretrained(
+        GRAPHCODEBERT_MODEL_NAME,
+        revision=GRAPHCODEBERT_REVISION,
+        local_files_only=True,
+    )
+    pinned_revision = str(getattr(pinned, "_commit_hash", "") or "")
+    if pinned_revision != GRAPHCODEBERT_REVISION:
+        raise RuntimeError(
+            "Phase-8 pinned GraphCodeBERT snapshot could not be resolved exactly: "
+            f"{pinned_revision!r} != {GRAPHCODEBERT_REVISION!r}"
+        )
+
+    packages = {
+        "numpy": _distribution_version("numpy"),
+        "pandas": _distribution_version("pandas"),
+        "peft": _distribution_version("peft"),
+        "pyarrow": _distribution_version("pyarrow"),
+        "torch-geometric": _distribution_version("torch-geometric"),
+        "transformers": _distribution_version("transformers"),
+    }
+    return {
+        "python": {
+            "implementation": platform.python_implementation(),
+            "version": platform.python_version(),
+        },
+        "torch": {
+            "version": str(torch.__version__),
+            "cuda_compiled_version": None
+            if torch.version.cuda is None
+            else str(torch.version.cuda),
+            "cudnn_version": None
+            if not hasattr(torch.backends, "cudnn")
+            else torch.backends.cudnn.version(),
+        },
+        "packages": packages,
+        "pretrained_backbone": {
+            "model_name": GRAPHCODEBERT_MODEL_NAME,
+            "revision": GRAPHCODEBERT_REVISION,
+        },
+    }
 
 
 def build_run_binding(
@@ -80,6 +167,7 @@ def build_run_binding(
         "seed": int(seed),
         "weak_positive_weight": float(weak_positive_weight),
         "optimizer": dict(optimizer_config),
+        "runtime": runtime_binding_metadata(),
         "limits": {
             "confirmed_negative_cells": 0,
             "threshold_tuning": False,
@@ -91,4 +179,9 @@ def build_run_binding(
     return payload
 
 
-__all__ = ["build_run_binding", "canonical_digest", "sha256_file"]
+__all__ = [
+    "build_run_binding",
+    "canonical_digest",
+    "runtime_binding_metadata",
+    "sha256_file",
+]

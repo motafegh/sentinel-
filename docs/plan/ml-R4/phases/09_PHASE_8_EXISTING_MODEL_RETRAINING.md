@@ -54,6 +54,8 @@ The historical Run12 model-selection policy does **not** survive R4. Phase 8 the
 
 Checkpoint/run identity must include the exact source commit, G7 DATA manifest and representation binding, Phase-6 role/partition identity, seed, weak-positive weight, optimizer/scheduler configuration, mixed-precision mode, sampler population, and planned optimizer-step horizon. Resume is permitted only when this binding matches exactly.
 
+The pretrained transformer dependency is also part of reproducibility. Before the full retrain begins, Phase 8 must fail closed unless the local `microsoft/graphcodebert-base` name resolves to the accepted Hugging Face snapshot `2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d`. The run binding must record that exact snapshot together with the effective Python, PyTorch/CUDA/cuDNN, Transformers, PEFT, PyTorch Geometric, NumPy, Pandas, and PyArrow versions used by the training process. This is runtime provenance only; it does not change the frozen architecture or authorize dependency upgrades during the run.
+
 Durable runtime outputs are local run artifacts rather than DATA truth: an immutable run binding inside the manifest/checkpoints, deterministic JSONL epoch metrics, deterministic raw MODEL_SELECTION records, an atomic latest checkpoint, periodic intermediate recovery checkpoints, the limited `best_positive_nll` checkpoint, and the final checkpoint. Threshold fitting, calibration fitting, acceptance access, and pseudo-negative construction remain unavailable.
 
 ## Prohibited
