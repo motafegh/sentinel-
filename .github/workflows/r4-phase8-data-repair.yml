@@ -1,0 +1,93 @@
+name: R4 Phase 8 real-data repository repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data_module/CLAUDE.md'
+      - 'data_module/sentinel_data/preprocessing/**'
+      - 'data_module/sentinel_data/representation/**'
+      - 'data_module/sentinel_data/vnext/**'
+      - 'data_module/tests/test_preprocessing/**'
+      - 'data_module/tests/test_representation/**'
+      - 'data_module/tests/test_vnext/**'
+      - 'ml/src/data_extraction/windowed_tokenizer.py'
+      - 'ml/tests/test_windowed_tokenizer_coverage.py'
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase8-data-repair.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'data_module/sentinel_data/preprocessing/**'
+      - 'data_module/sentinel_data/representation/**'
+      - 'data_module/sentinel_data/vnext/**'
+      - 'data_module/tests/**'
+      - 'ml/src/data_extraction/windowed_tokenizer.py'
+      - 'ml/tests/test_windowed_tokenizer_coverage.py'
+      - 'docs/plan/ml-R4/**'
+      - '.github/workflows/r4-phase8-data-repair.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repository-repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install repository-safe test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            pytest 'numpy==1.26.4' 'pyarrow==19.0.1' \
+            'torch==2.10.0' 'transformers==4.46.3'
+
+      - name: Compile repaired DATA and token modules
+        run: |
+          python -m py_compile \
+            data_module/sentinel_data/preprocessing/normalizer.py \
+            data_module/sentinel_data/preprocessing/deduplicator.py \
+            data_module/sentinel_data/preprocessing/compiler.py \
+            data_module/sentinel_data/preprocessing/r4_versions.py \
+            data_module/sentinel_data/preprocessing/r4_pipeline.py \
+            data_module/sentinel_data/preprocessing/r4_grouping.py \
+            data_module/sentinel_data/representation/target_selector.py \
+            data_module/sentinel_data/representation/r4_orchestrator.py \
+            data_module/sentinel_data/vnext/r4_source_claims.py \
+            data_module/sentinel_data/vnext/r4_builder.py \
+            data_module/sentinel_data/vnext/r4_binding.py \
+            ml/src/data_extraction/windowed_tokenizer.py \
+            docs/plan/ml-R4/scripts/p8_verify_repaired_raw_inputs.py \
+            docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py
+
+      - name: Run repaired regression suite
+        env:
+          PYTHONPATH: .:data_module
+        run: |
+          python -m pytest -q -c /dev/null \
+            data_module/tests/test_preprocessing/test_pipeline.py \
+            data_module/tests/test_preprocessing/test_r4_repair.py \
+            data_module/tests/test_preprocessing/test_r4_grouping.py \
+            data_module/tests/test_representation/test_r4_target_selector.py \
+            data_module/tests/test_vnext/test_policy.py \
+            data_module/tests/test_vnext/test_r4_source_claims.py \
+            data_module/tests/test_vnext/test_r4_builder.py \
+            data_module/tests/test_vnext/test_r4_binding.py \
+            ml/tests/test_windowed_tokenizer_coverage.py
+
+      - name: Prove frozen historical G6 artifacts still validate
+        env:
+          PYTHONPATH: .:data_module
+        run: |
+          python docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
+
+      - name: Whitespace/error diff check across repair tranche
+        run: |
+          git diff --check a10fae041cc5f436b5607b6fd54fcabf63386059..HEAD
