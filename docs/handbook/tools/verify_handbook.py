@@ -416,8 +416,6 @@ def _static_checks() -> list[Check]:
         checks.append(Check("ports", actual == service["port"], f"{name}: source={actual}, metadata={service['port']}"))
         if "routes" in service:
             actual_routes = discovered["routes"][name]
-            # Metadata routes are the documented public/core contract; source may
-            # expose extra health probes such as /health/live and /health/ready.
             checks.append(Check("routes", set(service["routes"]).issubset(set(actual_routes)), f"{name}: source={actual_routes}, metadata_core={service['routes']}"))
         if "tools" in service:
             actual_tools = discovered["mcp_tools"][name]
@@ -442,7 +440,7 @@ def _static_checks() -> list[Check]:
     checks.append(Check("R4 partition frozen", partition["status"] == "FROZEN_G6" and partition.get("gate") == "G6_PASS", f"status={partition['status']}, gate={partition.get('gate')}"))
     checks.append(Check("R4 population", partition["population_contracts"] == 22493 and partition["population_groups"] == 13509, f"contracts={partition['population_contracts']}, groups={partition['population_groups']}"))
     checks.append(Check("R4 acceptance unsupported", acceptance["status"] == "UNSUPPORTED_EMPTY_FROZEN" and acceptance["contract_ids"] == [] and acceptance["group_ids"] == [], f"status={acceptance['status']}"))
-    checks.append(Check("R4 phase status", "| 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED |" in r4["status_text"] and "| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | READY |" in r4["status_text"], "Phase 7 PASSED / Phase 8 READY on canonical main"))
+    checks.append(Check("R4 phase status", "| 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED |" in r4["status_text"] and "| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS |" in r4["status_text"], "Phase 7 PASSED / Phase 8 IN_PROGRESS on canonical main"))
     g7_manifest = r4["g7_manifest"]
     g7_rep = r4["g7_representation"]
     g7_report = r4["g7_validation"]
