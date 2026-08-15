@@ -1,8 +1,8 @@
 # ADR-R4-008 — Repaired-v2 Physical DATA Acceptance and Phase-8 No-Launch
 
-**Status:** Accepted  
-**Date:** 2026-08-15  
-**Deciders:** Ali Rajabi (routine technical/governance approval delegated), GPT-5.6 Sol  
+**Status:** Accepted
+**Date:** 2026-08-15
+**Deciders:** Ali Rajabi (routine technical/governance approval delegated), GPT-5.6 Sol
 **Scope:** R4 Phase-8 repaired physical DATA acceptance, bounded-research authority, and full-training hold
 
 ## Context
