@@ -274,8 +274,19 @@ def build_claim_index(
     output_path: Path,
     *,
     dive_labels_csv: Path | None = None,
+    verify_completeness: bool = True,
 ) -> dict[str, Any]:
     """Materialize deterministic JSONL source claims from repaired meta files."""
+
+    from sentinel_data.preprocessing.r4_completeness import (
+        require_complete_preprocessed_sources,
+    )
+
+    preprocessing_manifests = (
+        require_complete_preprocessed_sources(source_dirs)
+        if verify_completeness
+        else {}
+    )
 
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
     validate_policy_surface(policy)
@@ -314,5 +325,9 @@ def build_claim_index(
         "weak_positive_claims": sum(r["training_strength"] == "WEAK" for r in rows),
         "target_zero_claims": sum(r["target_value"] == 0 for r in rows),
         "class_names": list(CLASS_NAMES),
+        "preprocessing_manifest_sha256": {
+            source: value["manifest_sha256"]
+            for source, value in sorted(preprocessing_manifests.items())
+        },
         "output": str(output_path),
     }

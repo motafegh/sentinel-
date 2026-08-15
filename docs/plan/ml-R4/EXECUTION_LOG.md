@@ -279,3 +279,16 @@ Append one entry for each work package.
 - Physical recovery/acceptance is intentionally **not** claimed from repository tests. Next authority is `runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`.
 - Current blockers: protected raw corpus/labels, historical solc binaries, generated repaired representations/parquets, physical representation binding, repaired-lineage acceptance, long-contract evidence experiment and bounded repaired-data GPU smoke.
 - Full 100-epoch training remains explicitly unauthorized pending local evidence review and a later governance re-authorization.
+
+### R4-LOG-20260815-013 — Local repaired-DATA gate re-audit and fail-closed corrections
+
+- **Phase:** 8
+- **Repository inspected:** `main` at `433c5cd021b608d37929578102e0a4d2fa445fdb` before this correction tranche
+- **Raw evidence:** 22,823/22,823 manifest records passed size and SHA-256 verification (DIVE 22,330; SmartBugs 143; SolidiFI 350)
+- **Defects corrected:** intentional raw symlinks misclassified as path escapes; `--limit` builds not marked/rejected as incomplete; single-target graph rule unresolved for 4,241 files; binder did not deserialize graph bytes or prove token/sidecar parity; publication declared but did not hash-consume the evidence ledger; role freeze/acceptance/GPU smoke lacked final coverage and exact-state bindings
+- **Graph decision:** file-level inheritance-leaf union; full census resolves 22,823 files / 29,556 components / 4,256 multi-component files / maximum 28 components
+- **Physical smoke:** two DIVE files, including a five-component 1,595-node/2,485-edge graph, compiled/tokenized and passed strict graph/token/sidecar validation
+- **Repository validation:** repaired focused suite `93 passed`; corrected raw verifier PASS on all three full manifests; frozen G6 validator PASS; handbook validator `11 passed`; `git diff --check` PASS
+- **Generated production artifacts:** none; only a disposable `/tmp` representation smoke was used
+- **Gate effect:** physical repaired-v2 rebuild remains pending; G8 remains open; full training remains unauthorized
+- **Durable evidence:** `runs/2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md`

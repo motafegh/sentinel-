@@ -60,6 +60,8 @@ jobs:
             data_module/sentinel_data/preprocessing/compiler.py \
             data_module/sentinel_data/preprocessing/r4_versions.py \
             data_module/sentinel_data/preprocessing/r4_pipeline.py \
+            data_module/sentinel_data/preprocessing/r4_raw_verifier.py \
+            data_module/sentinel_data/preprocessing/r4_completeness.py \
             data_module/sentinel_data/preprocessing/r4_grouping.py \
             data_module/sentinel_data/representation/target_selector.py \
             data_module/sentinel_data/representation/r4_orchestrator.py \
@@ -83,6 +85,7 @@ jobs:
           python -m pytest -q -c /dev/null \
             data_module/tests/test_preprocessing/test_pipeline.py \
             data_module/tests/test_preprocessing/test_r4_repair.py \
+            data_module/tests/test_preprocessing/test_r4_data_gates.py \
             data_module/tests/test_preprocessing/test_r4_grouping.py \
             data_module/tests/test_representation/test_r4_target_selector.py \
             data_module/tests/test_representation/test_windowed_tokenizer_coverage.py \

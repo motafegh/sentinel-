@@ -15,6 +15,7 @@ It is intentionally *not* the 100-epoch launcher:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -56,7 +57,20 @@ def _finite(value: Any, name: str) -> None:
         raise RuntimeError(f"{name} is not finite numeric output: {value!r}")
 
 
-def _load_acceptance(path: Path) -> dict[str, Any]:
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _load_acceptance(
+    path: Path,
+    *,
+    expected_manifest_sha256: str,
+    expected_representation_digest: str,
+) -> dict[str, Any]:
     if not path.is_file():
         raise FileNotFoundError(
             f"missing repaired lineage acceptance report: {path}. Run "
@@ -69,13 +83,19 @@ def _load_acceptance(path: Path) -> dict[str, Any]:
         raise ValueError(
             "repaired lineage report unexpectedly claims training authorization"
         )
+    if report.get("publication_manifest_sha256") != expected_manifest_sha256:
+        raise ValueError("repaired lineage acceptance report is stale for this publication")
+    if (
+        report.get("representation_binding_digest_sha256")
+        != expected_representation_digest
+    ):
+        raise ValueError("repaired lineage acceptance report is stale for this representation binding")
     return report
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
     overlay = args.overlay.resolve()
     representations = args.representations_root.resolve()
-    acceptance = _load_acceptance(args.acceptance_report.resolve())
     if not torch.cuda.is_available():
         raise RuntimeError("bounded repaired-data Phase-8 smoke requires CUDA")
 
@@ -88,6 +108,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     )
     if not rep_digest:
         raise ValueError("repaired publication lacks representation binding digest")
+    acceptance = _load_acceptance(
+        args.acceptance_report.resolve(),
+        expected_manifest_sha256=_sha256(overlay / "manifest.json"),
+        expected_representation_digest=rep_digest,
+    )
 
     settings = Phase8Settings(
         epochs=1,

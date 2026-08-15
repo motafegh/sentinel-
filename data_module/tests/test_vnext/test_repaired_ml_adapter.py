@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -54,6 +55,14 @@ def _publication(tmp_path):
     ]
     pq.write_table(pa.Table.from_pylist(rows), overlay / "ml_targets.parquet")
     digest = "d" * 64
+    binding_report = {
+        "passed": True,
+        "graph_schema_version": "v9",
+        "binding_digest_sha256": digest,
+    }
+    binding_path = overlay / "representation_binding_report.json"
+    binding_path.write_text(json.dumps(binding_report))
+    file_sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     manifest = {
         "dataset_version": "sentinel-r4-vnext-v2",
         "export_schema_version": "v2",
@@ -65,20 +74,15 @@ def _publication(tmp_path):
             "TRAIN_WEAK": 1,
             "MODEL_SELECTION": 1,
         },
+        "artifacts": {
+            "ml_targets": {"sha256": file_sha(overlay / "ml_targets.parquet")}
+        },
         "representation_binding_report": {
             "binding_digest_sha256": digest,
+            "sha256": file_sha(binding_path),
         },
     }
     (overlay / "manifest.json").write_text(json.dumps(manifest))
-    (overlay / "representation_binding_report.json").write_text(
-        json.dumps(
-            {
-                "passed": True,
-                "graph_schema_version": "v9",
-                "binding_digest_sha256": digest,
-            }
-        )
-    )
     return overlay, reps, digest
 
 

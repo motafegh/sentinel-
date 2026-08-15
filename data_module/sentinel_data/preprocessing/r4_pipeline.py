@@ -34,6 +34,7 @@ from sentinel_data.preprocessing.r4_versions import (
     PREPROCESSING_META_SCHEMA_VERSION,
     PROVENANCE_SCHEMA_VERSION,
 )
+from sentinel_data.preprocessing.r4_raw_verifier import require_manifest_source
 from sentinel_data.preprocessing.segmenter import segment_and_bucket
 
 
@@ -73,6 +74,9 @@ class RepairResult:
     normalized_code_groups: int
     address_candidate_groups: int
     output_dir: str
+    manifest_records_total: int
+    records_requested: int
+    complete_source_build: bool
 
 
 def _sha256_text(text: str) -> str:
@@ -251,6 +255,11 @@ def _materialize(
     records: list[PreparedRecord],
     drops: list[dict[str, Any]],
     out_dir: Path,
+    *,
+    manifest_records_total: int | None = None,
+    records_requested: int | None = None,
+    requested_limit: int | None = None,
+    raw_verification: dict[str, Any] | None = None,
 ) -> RepairResult:
     """Deterministically aggregate provenance and promote staged records."""
 
@@ -330,6 +339,13 @@ def _materialize(
         if len(values) > 1
     }
 
+    requested = (
+        len(records) + len(drops)
+        if records_requested is None
+        else int(records_requested)
+    )
+    manifest_total = requested if manifest_records_total is None else int(manifest_records_total)
+    complete_source_build = requested == manifest_total and requested_limit is None
     manifest = {
         "status": "REPOSITORY_INTERFACE_ONLY_PHYSICAL_ACCEPTANCE_PENDING",
         "source": source_name,
@@ -339,6 +355,14 @@ def _materialize(
         "normalizer_version": NORMALIZER_VERSION,
         "records_prepared": len(records),
         "records_dropped": len(drops),
+        "manifest_records_total": manifest_total,
+        "records_requested": requested,
+        "requested_limit": requested_limit,
+        "complete_source_build": complete_source_build,
+        "raw_manifest_verification_passed": bool(
+            (raw_verification or {}).get("passed", False)
+        ),
+        "raw_manifest_sha256": (raw_verification or {}).get("manifest_sha256"),
         "artifacts_written": len(by_artifact),
         "exact_normalized_duplicates_aggregated": len(records) - len(by_artifact),
         "normalized_code_groups_requiring_group_atomic_roles": normalized_groups,
@@ -361,6 +385,9 @@ def _materialize(
         normalized_code_groups=len(normalized_groups),
         address_candidate_groups=len(address_candidates),
         output_dir=str(out_dir),
+        manifest_records_total=manifest_total,
+        records_requested=requested,
+        complete_source_build=complete_source_build,
     )
 
 
@@ -380,11 +407,19 @@ def run_repaired_source(
     constitute physical DATA acceptance.
     """
 
-    _require_empty_output(out_dir)
+    raw_verification = require_manifest_source(
+        source_name,
+        raw_dir,
+        ingestion_manifest,
+    )
     manifest = json.loads(ingestion_manifest.read_text(encoding="utf-8"))
-    entries = sorted(manifest.get("files", []), key=lambda item: item["path"])
+    all_entries = sorted(manifest.get("files", []), key=lambda item: item["path"])
+    entries = all_entries
     if limit is not None:
+        if limit < 1:
+            raise ValueError("limit must be >= 1")
         entries = entries[:limit]
+    _require_empty_output(out_dir)
 
     staging_dir = out_dir / ".staging"
     staging_dir.mkdir(parents=True, exist_ok=True)
@@ -421,6 +456,15 @@ def run_repaired_source(
                 elif drop is not None:
                     drops.append(drop)
 
-        return _materialize(source_name, prepared, drops, out_dir)
+        return _materialize(
+            source_name,
+            prepared,
+            drops,
+            out_dir,
+            manifest_records_total=len(all_entries),
+            records_requested=len(entries),
+            requested_limit=limit,
+            raw_verification=raw_verification,
+        )
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)

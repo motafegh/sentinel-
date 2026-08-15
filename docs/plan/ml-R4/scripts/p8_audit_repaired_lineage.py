@@ -10,6 +10,7 @@ recoveries into facts.
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import sys
 from collections import Counter
@@ -59,6 +60,16 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+def _sha256(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
@@ -87,6 +98,12 @@ def _source_summary(source: str) -> dict[str, Any]:
         "preprocessing_manifest_present": manifest is not None,
         "records_prepared": (manifest or {}).get("records_prepared"),
         "records_dropped": (manifest or {}).get("records_dropped"),
+        "manifest_records_total": (manifest or {}).get("manifest_records_total"),
+        "records_requested": (manifest or {}).get("records_requested"),
+        "complete_source_build": (manifest or {}).get("complete_source_build"),
+        "raw_manifest_verification_passed": (manifest or {}).get(
+            "raw_manifest_verification_passed"
+        ),
         "artifacts_written": (manifest or {}).get("artifacts_written"),
         "exact_normalized_duplicates_aggregated": (manifest or {}).get(
             "exact_normalized_duplicates_aggregated"
@@ -105,6 +122,15 @@ def _source_summary(source: str) -> dict[str, Any]:
         "representation_manifest_present": rep_manifest is not None,
         "representations_written": (rep_manifest or {}).get("representations_written"),
         "representations_failed": (rep_manifest or {}).get("representations_failed"),
+        "complete_source_build_verified_for_representation": (rep_manifest or {}).get(
+            "complete_source_build_verified"
+        ),
+        "representation_preprocessing_manifest_sha256": (rep_manifest or {}).get(
+            "preprocessing_manifest_sha256"
+        ),
+        "preprocessing_manifest_sha256": _sha256(
+            directory / "repaired_preprocessing_manifest.json"
+        ),
     }
 
 
@@ -114,6 +140,9 @@ def main() -> int:
     ledger = _read_json(BUILD_ROOT / "evidence_ledger_v2_manifest.json") or {}
     publication = _read_json(PUBLICATION_ROOT / "manifest.json") or {}
     binding = _read_json(PUBLICATION_ROOT / "representation_binding_report.json") or {}
+    partition = _read_json(PUBLICATION_ROOT / "partition_manifest.json") or {}
+    publication_manifest_path = PUBLICATION_ROOT / "manifest.json"
+    binding_path = PUBLICATION_ROOT / "representation_binding_report.json"
 
     source_summaries = {source: _source_summary(source) for source in ACTIVE_SOURCES}
     claim_strengths = Counter(str(row.get("training_strength")) for row in claims)
@@ -137,6 +166,50 @@ def main() -> int:
         int(summary["address_duplicate_drop_rows"] or 0)
         for summary in source_summaries.values()
     )
+    expected_raw_counts = HISTORICAL["raw_manifest_records"]
+    complete_sources = all(
+        summary.get("complete_source_build") is True
+        and summary.get("raw_manifest_verification_passed") is True
+        and summary.get("records_requested") == expected_raw_counts[source]
+        and summary.get("manifest_records_total") == expected_raw_counts[source]
+        and (summary.get("records_prepared") or 0)
+        + (summary.get("records_dropped") or 0)
+        == expected_raw_counts[source]
+        for source, summary in source_summaries.items()
+    )
+    representation_source_bindings = all(
+        summary.get("complete_source_build_verified_for_representation") is True
+        and summary.get("representation_preprocessing_manifest_sha256")
+        == summary.get("preprocessing_manifest_sha256")
+        for summary in source_summaries.values()
+    )
+    publication_artifacts = publication.get("artifacts") or {}
+    ledger_artifacts = ledger.get("artifacts") or {}
+    ledger_sha = (ledger_artifacts.get("ledger") or {}).get("sha256")
+    ledger_manifest_sha = _sha256(BUILD_ROOT / "evidence_ledger_v2_manifest.json")
+    ledger_bound = bool(
+        ledger_sha
+        and ledger_manifest_sha
+        and (publication_artifacts.get("evidence_ledger") or {}).get("sha256")
+        == ledger_sha
+        and (publication_artifacts.get("evidence_ledger_manifest") or {}).get(
+            "sha256"
+        )
+        == ledger_manifest_sha
+    )
+    binding_meta = publication.get("representation_binding_report") or {}
+    binding_bound = (
+        binding.get("passed") is True
+        and binding_meta.get("sha256") == _sha256(binding_path)
+        and binding_meta.get("binding_digest_sha256")
+        == binding.get("binding_digest_sha256")
+    )
+    role_coverage = partition.get("strong_group_coverage_by_role_and_class") or {}
+    enabled_role_coverage = all(
+        role_coverage.get(role)
+        and all(int(count) >= 1 for count in role_coverage[role].values())
+        for role in ("TRAIN_STRONG", "MODEL_SELECTION", "INTERNAL_AUDIT")
+    )
 
     checks = {
         "all_preprocessing_manifests_present": all(
@@ -147,6 +220,8 @@ def main() -> int:
             summary["representation_manifest_present"]
             for summary in source_summaries.values()
         ),
+        "all_preprocessing_sources_complete_and_reconciled": complete_sources,
+        "representations_bound_to_complete_preprocessing": representation_source_bindings,
         "no_address_based_deletion": address_deletion == 0,
         "source_claim_index_present": bool(claims),
         "no_source_claim_target_zero": all(row.get("target_value") != 0 for row in claims),
@@ -157,15 +232,26 @@ def main() -> int:
         "publication_is_repaired_v2": publication.get("dataset_version") == "sentinel-r4-vnext-v2",
         "publication_no_confirmed_negatives": publication.get("confirmed_negative_rows") == 0,
         "physical_binding_passed": binding.get("passed") is True,
+        "physical_binding_hash_bound_to_publication": binding_bound,
+        "evidence_ledger_hash_bound_to_publication": ledger_bound,
+        "enabled_classes_have_strong_coverage_in_all_evaluation_roles": enabled_role_coverage,
         "representation_failures_zero": all(
             summary.get("representations_failed") == 0
             for summary in source_summaries.values()
         ),
-        "ledger_publication_contract_count_match": ledger.get("contracts")
+        "ledger_publication_contract_count_match": isinstance(
+            ledger.get("contracts"), int
+        )
+        and ledger.get("contracts")
         == (publication.get("population") or {}).get("contracts"),
-        "ledger_publication_target_counts_match": ledger.get("target_counts")
-        == publication.get("target_counts"),
-        "ledger_publication_strength_counts_match": ledger.get("training_strength_counts")
+        "ledger_publication_target_counts_match": isinstance(
+            ledger.get("target_counts"), dict
+        )
+        and ledger.get("target_counts") == publication.get("target_counts"),
+        "ledger_publication_strength_counts_match": isinstance(
+            ledger.get("training_strength_counts"), dict
+        )
+        and ledger.get("training_strength_counts")
         == publication.get("training_strength_counts"),
     }
     repository_data_acceptance_passed = all(checks.values())
@@ -178,6 +264,11 @@ def main() -> int:
         "schema": "sentinel-r4-phase8-repaired-lineage-audit-v1",
         "repository_data_acceptance_passed": repository_data_acceptance_passed,
         "training_authorized": False,
+        "publication_manifest_sha256": _sha256(publication_manifest_path),
+        "representation_binding_digest_sha256": binding.get(
+            "binding_digest_sha256"
+        ),
+        "representation_binding_report_sha256": _sha256(binding_path),
         "checks": checks,
         "historical_2026_08_14_baseline": HISTORICAL,
         "actual_repaired_observations": {
@@ -201,6 +292,7 @@ def main() -> int:
             ),
             "binding_digest_sha256": binding.get("binding_digest_sha256"),
             "token_coverage": binding.get("token_coverage"),
+            "graph_population": binding.get("graph_population"),
         },
         "deltas_vs_historical": {
             "contract_identities": (

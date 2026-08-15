@@ -7,6 +7,7 @@ import pytest
 from sentinel_data.representation.target_selector import (
     TargetSelectionError,
     declarations,
+    resolve_file_graph_targets,
     resolve_target_contract,
 )
 
@@ -54,6 +55,28 @@ def test_unique_provenance_contract_name_resolves_multiple_contract_file():
         source,
         provenance_contract_names=("B",),
     ) == "B"
+
+
+def test_unique_inheritance_leaf_resolves_application_contract():
+    source = "contract Context {} contract Ownable is Context {} contract Vault is Ownable {}"
+    assert resolve_target_contract(source) == "Vault"
+
+
+def test_inheritance_constructor_arguments_do_not_split_base_names():
+    source = "contract A {} contract B {} contract C is A(1, 2), B {}"
+    items = declarations(source)
+    assert items[-1].base_names == ("A", "B")
+    assert resolve_target_contract(source) == "C"
+
+
+def test_file_graph_retains_all_unrelated_application_leaves():
+    source = "contract Helper {} contract Main {}"
+    assert resolve_file_graph_targets(source) == ("Helper", "Main")
+
+
+def test_library_only_file_retains_executable_library():
+    source = "interface IToken {} library Math { function add() internal {} }"
+    assert resolve_file_graph_targets(source) == ("Math",)
 
 
 def test_declaration_words_in_comments_and_strings_are_ignored():

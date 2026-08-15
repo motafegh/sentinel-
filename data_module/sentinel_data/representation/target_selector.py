@@ -5,9 +5,11 @@ declaration, which allowed libraries such as ``SafeMath`` to become the graph
 root.  The repaired path resolves a target *before* Slither extraction and then
 verifies that the resulting graph names the same declaration.
 
-This module intentionally does not guess among multiple application contracts.
-If provenance cannot identify one target, the repaired build fails closed and
-records the ambiguity for local adjudication.
+This module intentionally does not guess among unrelated application contracts.
+It can, however, resolve the unique inheritance leaf: a contract that is not a
+base of another contract declared in the same file.  That rule is structural,
+deterministic, and prevents common base contracts from replacing the deployed
+application contract.  Remaining ambiguity fails closed for local adjudication.
 """
 
 from __future__ import annotations
@@ -31,6 +33,41 @@ class SolidityDeclaration:
     name: str
     kind: str  # contract | abstract_contract | library | interface
     source_offset: int
+    base_names: tuple[str, ...] = ()
+
+
+def _inheritance_bases(code_only: str, name_end: int) -> tuple[str, ...]:
+    """Read top-level inheritance names between a declaration name and ``{``."""
+
+    brace = code_only.find("{", name_end)
+    if brace < 0:
+        return ()
+    header = code_only[name_end:brace]
+    match = re.match(r"\s+is\s+(.+?)\s*$", header, flags=re.DOTALL)
+    if not match:
+        return ()
+    value = match.group(1)
+    parts: list[str] = []
+    start = 0
+    depth = 0
+    for index, character in enumerate(value):
+        if character == "(":
+            depth += 1
+        elif character == ")" and depth:
+            depth -= 1
+        elif character == "," and depth == 0:
+            parts.append(value[start:index])
+            start = index + 1
+    parts.append(value[start:])
+    names: list[str] = []
+    for part in parts:
+        base = re.match(
+            r"\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)",
+            part,
+        )
+        if base:
+            names.append(base.group(1).split(".")[-1])
+    return tuple(names)
 
 
 def _mask_strings(source: str) -> str:
@@ -79,6 +116,7 @@ def declarations(source: str) -> tuple[SolidityDeclaration, ...]:
                 name=name,
                 kind=kind,
                 source_offset=match.start(),
+                base_names=_inheritance_bases(code_only, match.end()),
             )
         )
     return tuple(found)
@@ -95,8 +133,8 @@ def resolve_target_contract(
     Selection precedence:
 
     1. an explicit provenance target, if it names a contract declaration;
-    2. a unique contract intersecting ``provenance_contract_names``;
-    3. the sole contract declaration in the file.
+    2. the unique inheritance leaf among provenance-named contracts;
+    3. the unique inheritance leaf among all contract declarations.
 
     Libraries and interfaces are never application targets.  Multiple remaining
     contracts are an ambiguity, not permission to reintroduce a heuristic.
@@ -130,20 +168,79 @@ def resolve_target_contract(
     provenance_matches = [item.name for item in contracts if item.name in provenance_names]
     if len(provenance_matches) == 1:
         return provenance_matches[0]
-    if len(provenance_matches) > 1:
-        raise TargetSelectionError(
-            "provenance names identify multiple application contracts: "
-            f"{provenance_matches}; explicit target provenance is required"
-        )
-
-    if len(contracts) == 1:
-        return contracts[0].name
     if not contracts:
         raise TargetSelectionError(
             "no application contract declaration found; "
             f"libraries={libraries}, interfaces={interfaces}"
         )
+    candidates = provenance_matches or [item.name for item in contracts]
+    inherited_names = {
+        base_name
+        for item in contracts
+        for base_name in item.base_names
+    }
+    leaves = [name for name in candidates if name not in inherited_names]
+    if len(leaves) == 1:
+        return leaves[0]
     raise TargetSelectionError(
-        "multiple application contracts remain ambiguous: "
-        f"{[item.name for item in contracts]}; explicit target provenance is required"
+        "multiple application contracts remain ambiguous after unique-inheritance-leaf selection: "
+        f"candidates={candidates}, leaves={leaves}; explicit target provenance is required"
     )
+
+
+def resolve_file_graph_targets(
+    source: str,
+    *,
+    explicit_target: str | None = None,
+    provenance_contract_names: tuple[str, ...] | list[str] = (),
+) -> tuple[str, ...]:
+    """Return the evidence-preserving target set for one file-level sample.
+
+    A unique explicit target remains authoritative.  Otherwise every unrelated
+    inheritance leaf is retained so a file-level label is not silently assigned
+    to one guessed contract.  Inheritance parents are represented through each
+    leaf by Slither.  Library-only files retain their libraries; interface-only
+    files fail because they contain no executable implementation graph.
+    """
+
+    decls = declarations(source)
+    if explicit_target:
+        return (
+            resolve_target_contract(
+                source,
+                explicit_target=explicit_target,
+                provenance_contract_names=provenance_contract_names,
+            ),
+        )
+    contracts = [
+        item for item in decls if item.kind in {"contract", "abstract_contract"}
+    ]
+    provenance_names = set(provenance_contract_names)
+    candidates = [item for item in contracts if item.name in provenance_names]
+    if not candidates:
+        candidates = contracts
+    inherited_names = {
+        base_name
+        for item in contracts
+        for base_name in item.base_names
+    }
+    leaves = tuple(item.name for item in candidates if item.name not in inherited_names)
+    if leaves:
+        return leaves
+    libraries = tuple(item.name for item in decls if item.kind == "library")
+    if not contracts and libraries:
+        return libraries
+    interfaces = [item.name for item in decls if item.kind == "interface"]
+    raise TargetSelectionError(
+        "no executable file-graph target found; "
+        f"contracts={[item.name for item in contracts]}, interfaces={interfaces}"
+    )
+
+
+__all__ = [
+    "SolidityDeclaration",
+    "TargetSelectionError",
+    "declarations",
+    "resolve_file_graph_targets",
+    "resolve_target_contract",
+]

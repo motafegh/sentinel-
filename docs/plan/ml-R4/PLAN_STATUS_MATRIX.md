@@ -1,6 +1,6 @@
 # R4 Plan Status Matrix
 
-**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for the immutable `sentinel-r4-vnext-v1` lineage. Phase 8 is still `IN_PROGRESS`: the repository-safe real-DATA repair implementation is complete, but the new physical repaired-v2 corpus/publication has not yet been rebuilt, accepted, or smoke-tested on the local GPU. The 100-epoch retrain is not authorized.
+**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for the immutable `sentinel-r4-vnext-v1` lineage. Phase 8 is still `IN_PROGRESS`: the local gate re-audit corrections are implemented, but the new physical repaired-v2 corpus/publication has not yet been rebuilt, accepted, or smoke-tested on the local GPU. The 100-epoch retrain is not authorized.
 
 | Phase | File | Status | Entry condition | Exit gate | Notes |
 |---|---|---|---|---|---|
@@ -12,7 +12,7 @@
 | 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED | G4 | G5 | data-vnext-policy-v1 + contract-class schema + five accepted ADRs validated; eight classes enabled, GasException/UnusedReturn supervision disabled; no blanket negatives; G5 PASS |
 | 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | PASSED | G5 | G6 | Historical `r4-vnext-roles-v1` covers 22,493 contracts/13,509 groups exactly once; threshold/calibration/untouched acceptance frozen unsupported/empty; G6 PASS. Repaired-v2 roles are a separate local rebuild lineage and do not overwrite this artifact. |
 | 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED | G6 | G7 | Historical `sentinel-r4-vnext-v1` is bound to 21,657 representations / 64,971 files with zero mismatches; G7 PASS remains valid evidence for that immutable lineage. Later Phase-8 audit findings prevent using it for the full retrain. |
-| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repository repair implementation is complete: lexical normalization, provenance-preserving dedup, version-aware solc, strict graph targets, token-coverage telemetry, repaired grouping/source claims/ledger/roles/publication/binding, dynamic repaired ML adapter, local acceptance tools, and bounded GPU-smoke seam are implemented. Physical `sentinel-r4-vnext-v2` rebuild/acceptance and bounded repaired-data GPU smoke remain local-only prerequisites. Full 100-epoch training is not authorized. |
+| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repository repair plus local gate corrections are implemented: full-manifest raw/completeness gates, evidence-preserving file-level graph union, token coverage, repaired grouping/source claims, ledger-bound publication, physical payload validation, role coverage, exact-state acceptance, dynamic ML adapter, and bounded GPU-smoke seam. Physical `sentinel-r4-vnext-v2` rebuild/acceptance and bounded repaired-data GPU smoke remain local-only prerequisites. Full 100-epoch training is not authorized. |
 | 9 | `phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md` | WAITING | G8 | G9 | Independent roles; current threshold/calibration support remains unavailable. |
 | 10 | `phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md` | WAITING | G9 | G10 | Final decision; untouched acceptance remains unsupported/empty/frozen. |
 
@@ -38,7 +38,7 @@ Required repaired lineage identifiers are:
 - graph schema remains `v9`;
 - token tensor contract remains `[4, 512]`.
 
-The exact restart/execution contract is the latest durable Phase-8 local-data rebuild handoff under `runs/`. No old pretraining handoff may be used to launch the 100-epoch job while this local repair/acceptance boundary remains open.
+The exact restart/execution contract is the latest durable Phase-8 local-data rebuild handoff under `runs/`, amended by `2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md`. No old pretraining handoff may be used to launch the 100-epoch job while this local repair/acceptance boundary remains open.
 
 ## Status vocabulary
 

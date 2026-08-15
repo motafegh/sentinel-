@@ -24,6 +24,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from sentinel_data.preprocessing.r4_completeness import (
+    require_complete_preprocessed_sources,
+)
 from sentinel_data.preprocessing.r4_versions import GROUPING_VERSION
 
 _EXPLICIT_FAMILY_KEYS = (
@@ -90,8 +93,16 @@ def _explicit_family_values(meta: dict[str, Any]) -> set[str]:
 def build_grouping(
     source_dirs: dict[str, Path],
     output_path: Path,
+    *,
+    verify_completeness: bool = True,
 ) -> GroupingResult:
     """Build and write the repaired group manifest from preprocessing metadata."""
+
+    preprocessing_manifests = (
+        require_complete_preprocessed_sources(source_dirs)
+        if verify_completeness
+        else {}
+    )
 
     # One normalized-text SHA is one contract identity even if exact bytes were
     # observed in multiple source corpora. Keep every source-specific meta so
@@ -205,6 +216,17 @@ def build_grouping(
         "artifact_sources": {
             artifact: sorted(sources)
             for artifact, sources in sorted(sources_by_artifact.items())
+        },
+        "preprocessing_manifests": {
+            source: {
+                "manifest_sha256": value["manifest_sha256"],
+                "manifest_records_total": value["manifest_records_total"],
+                "records_prepared": value["records_prepared"],
+                "records_dropped": value["records_dropped"],
+                "artifacts_written": value["artifacts_written"],
+                "complete_source_build": value["complete_source_build"],
+            }
+            for source, value in sorted(preprocessing_manifests.items())
         },
         "evidence_edges": sorted(
             evidence_edges,

@@ -28,7 +28,7 @@ These version identifiers describe the repaired interface. They do **not** claim
 3. **Source record != contract identity != leakage group.** Preserve source-record provenance, aggregate exact content identity deterministically, and assign roles only after final leakage grouping.
 4. **Ethereum address coincidence is not duplicate identity.** Same-source shared addresses may be conservative family evidence for leakage prevention; they never delete a content-distinct contract or create label truth.
 5. **Compile the exact promoted normalized source.** Regex-only comment stripping and compile-before-normalize are not permitted in repaired preprocessing.
-6. **Graph target selection fails closed.** Libraries/interfaces are not vulnerability-bearing application targets. An absent explicit target or unresolved multi-contract ambiguity is an error, not permission to fall back.
+6. **File-level graph selection preserves label scope.** An explicit provenance target is authoritative. Otherwise represent every unrelated application inheritance leaf in one disconnected file graph; inheritance parents arrive through their leaves. Library-only files may retain executable libraries, while interfaces alone are not implementation targets. Never guess one unrelated contract or silently fall back.
 7. **Long-contract truncation is visible.** Preserve `[4,512]` for this architecture-frozen tranche, but record pre-subsampling coverage and do not claim adequacy from shape validity.
 8. **Weak evidence stays weak.** DIVE Front Running→TransactionOrderDependence remains WEAK training-only under `data-vnext-policy-v1`; other DIVE positives remain masked unless policy changes with evidence.
 9. **SmartBugs native category is provenance.** Direct `time_manipulation→Timestamp` is authorized strong evidence; `bad_randomness→Timestamp` is superseded/no-target. The distinction must be bound before training, not guessed by the ML consumer.
@@ -52,6 +52,7 @@ Do not use historical `data/preprocessed` or `data/representations` as mutable r
 Repository-safe repair tests live primarily under:
 
 - `data_module/tests/test_preprocessing/test_r4_repair.py`
+- `data_module/tests/test_preprocessing/test_r4_data_gates.py`
 - `data_module/tests/test_preprocessing/test_r4_grouping.py`
 - `data_module/tests/test_representation/test_r4_target_selector.py`
 - `data_module/tests/test_vnext/test_r4_source_claims.py`

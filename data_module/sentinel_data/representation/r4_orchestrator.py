@@ -15,13 +15,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from sentinel_data.preprocessing.r4_completeness import (
+    require_complete_preprocessed_source,
+)
 from sentinel_data.preprocessing.r4_versions import (
     PREPROCESSING_ARTIFACT_VERSION,
     REPAIRED_REPRESENTATION_EXTRACTOR_VERSION,
 )
 from sentinel_data.representation.target_selector import (
     TargetSelectionError,
-    resolve_target_contract,
+    resolve_file_graph_targets,
 )
 
 log = logging.getLogger("sentinel_data.r4_orchestrator")
@@ -83,9 +86,9 @@ def _explicit_target_from_provenance(meta: dict[str, Any]) -> str | None:
     return None
 
 
-def _select_target(sol_path: Path, meta: dict[str, Any]) -> str:
+def _select_targets(sol_path: Path, meta: dict[str, Any]) -> tuple[str, ...]:
     source = sol_path.read_text(encoding="utf-8", errors="replace")
-    return resolve_target_contract(
+    return resolve_file_graph_targets(
         source,
         explicit_target=_explicit_target_from_provenance(meta),
         provenance_contract_names=tuple(meta.get("contract_names") or ()),
@@ -127,25 +130,61 @@ def _extract_one(
     from sentinel_data.representation.graph_schema import FEATURE_SCHEMA_VERSION
 
     sha256 = meta["sha256"]
-    target = _select_target(sol_path, meta)
+    targets = _select_targets(sol_path, meta)
     solc_binary = _resolve_solc_binary(meta.get("solc_version", ""))
 
-    config_kwargs: dict[str, Any] = {
-        "multi_contract_policy": "by_name",
-        "target_contract_name": target,
-        "allow_paths": str(sol_path.parent),
-    }
-    if solc_binary is not None:
-        config_kwargs["solc_binary"] = solc_binary
-        config_kwargs["solc_version"] = meta.get("solc_version", "")
-
     started = time.monotonic()
-    graph = extract_contract_graph(sol_path, config=GraphExtractionConfig(**config_kwargs))
-    actual_target = str(getattr(graph, "contract_name", ""))
-    if actual_target != target:
-        raise TargetSelectionError(
-            f"graph target mismatch for {sha256}: requested={target!r}, actual={actual_target!r}"
+    component_graphs = []
+    actual_targets: list[str] = []
+    for target in targets:
+        config_kwargs: dict[str, Any] = {
+            "multi_contract_policy": "by_name",
+            "target_contract_name": target,
+            "allow_paths": str(sol_path.parent),
+        }
+        if solc_binary is not None:
+            config_kwargs["solc_binary"] = solc_binary
+            config_kwargs["solc_version"] = meta.get("solc_version", "")
+        component = extract_contract_graph(
+            sol_path,
+            config=GraphExtractionConfig(**config_kwargs),
         )
+        actual = str(getattr(component, "contract_name", ""))
+        if actual != target:
+            raise TargetSelectionError(
+                f"graph target mismatch for {sha256}: requested={target!r}, actual={actual!r}"
+            )
+        component_graphs.append(component)
+        actual_targets.append(actual)
+
+    if len(component_graphs) == 1:
+        graph = component_graphs[0]
+    else:
+        from torch_geometric.data import Data
+
+        node_offset = 0
+        edge_indexes = []
+        node_metadata = []
+        for target, component in zip(targets, component_graphs):
+            edge_indexes.append(component.edge_index + node_offset)
+            node_metadata.extend(
+                {**row, "file_graph_component": target}
+                for row in component.node_metadata
+            )
+            node_offset += int(component.num_nodes)
+        graph = Data(
+            x=torch.cat([item.x for item in component_graphs], dim=0),
+            edge_index=torch.cat(edge_indexes, dim=1),
+            edge_attr=torch.cat([item.edge_attr for item in component_graphs], dim=0),
+        )
+        graph.node_metadata = node_metadata
+        graph.contract_name = "FILE_UNION:" + "|".join(targets)
+        graph.contract_names = list(targets)
+        graph.has_cei_path = int(
+            any(int(getattr(item, "has_cei_path", 0)) for item in component_graphs)
+        )
+        graph.num_nodes = int(graph.x.shape[0])
+        graph.num_edges = int(graph.edge_index.shape[1])
 
     # Repaired preprocessing has already performed lexical comment removal.
     # Re-stripping here would be a second mutation seam, so it is disabled.
@@ -189,9 +228,12 @@ def _extract_one(
         "source_record_count": meta.get("source_record_count", 0),
         "schema_version": FEATURE_SCHEMA_VERSION,
         "extractor_version": EXTRACTOR_VERSION,
-        "graph_target_policy": "explicit_contract_fail_closed_v1",
-        "requested_contract_name": target,
-        "actual_contract_name": actual_target,
+        "graph_target_policy": "file_level_inheritance_leaf_union_v1",
+        "requested_contract_names": list(targets),
+        "actual_contract_names": actual_targets,
+        "requested_contract_name": targets[0] if len(targets) == 1 else None,
+        "actual_contract_name": actual_targets[0] if len(actual_targets) == 1 else None,
+        "graph_component_count": len(component_graphs),
         "node_count": int(graph.num_nodes),
         "edge_count": int(graph.num_edges),
         "window_count": int(tokens["num_windows"]),
@@ -212,6 +254,7 @@ def represent_repaired_source(
     output_dir: Path,
     *,
     limit: int | None = None,
+    verify_completeness: bool = True,
 ) -> RepairedRepresentResult:
     """Build repaired representations from one versioned preprocessing source.
 
@@ -219,6 +262,11 @@ def represent_repaired_source(
     overwritten.  Failures are recorded in ``representation_failures.jsonl``.
     """
 
+    preprocessing_manifest = (
+        require_complete_preprocessed_source(source, preprocessed_dir)
+        if verify_completeness
+        else None
+    )
     if output_dir.exists() and any(output_dir.iterdir()):
         raise FileExistsError(
             f"repaired representation output is not empty: {output_dir}"
@@ -266,6 +314,12 @@ def represent_repaired_source(
         "representations_failed": len(failures),
         "frozen_token_shape": [4, 512],
         "coverage_policy": "telemetry_only_no_adequacy_threshold",
+        "complete_source_build_verified": preprocessing_manifest is not None,
+        "preprocessing_manifest_sha256": (
+            preprocessing_manifest["manifest_sha256"]
+            if preprocessing_manifest is not None
+            else None
+        ),
     }
     (output_dir / "repaired_representation_manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",

@@ -5,7 +5,7 @@
 **Phase:** 8 — Existing Architecture Retraining
 **Gate:** G8 remains OPEN
 **Repository-repair base:** `a10fae041cc5f436b5607b6fd54fcabf63386059`
-**State:** repository-safe repair implementation complete; physical repaired-v2 rebuild/acceptance and bounded GPU smoke pending locally; full 100-epoch training not authorized.
+**State:** local gate re-audit corrections implemented; physical repaired-v2 rebuild/acceptance and bounded GPU smoke pending locally; full 100-epoch training not authorized. Read `2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md` before executing this handoff.
 
 ## Authority and purpose
 
@@ -44,13 +44,15 @@ Repository implementation includes:
 3. deterministic source-record provenance aggregation after worker staging;
 4. version-aware solc flags, including no `--allow-paths` for unsupported 0.4.x compilers;
 5. compilation of the exact normalized bytes that are promoted;
-6. fail-closed application-contract graph target selection plus requested/actual post-extraction assertion;
+6. evidence-preserving file graph selection: unique inheritance leaves where possible and a disconnected union of all unrelated application leaves (or executable libraries for library-only files), with requested/actual post-extraction assertion;
 7. frozen `[4,512]` token output with explicit pre-subsampling token/window coverage evidence;
 8. deterministic leakage grouping after exact-content identity, normalized-code identity, explicit family provenance, and conservative same-source address-family evidence;
 9. source-native repaired claim reconstruction preserving SmartBugs `time_manipulation` versus `bad_randomness`, SolidiFI injected-class authority, and DIVE weak-TOD semantics;
 10. a separate dynamic repaired evidence-ledger/role/publication/binding lineage with no target zero and no threshold/calibration/acceptance fabrication;
 11. a repaired-v2 ML dataset/run-binding seam for bounded GPU smoke without weakening historical v1 guards;
-12. repository CI and synthetic regression tests covering repaired invariants while revalidating the frozen historical G6 artifacts.
+12. repository CI and synthetic regression tests covering repaired invariants while revalidating the frozen historical G6 artifacts;
+13. full-source completeness manifests enforced before claims, grouping, or representations;
+14. publication bound to the materialized evidence ledger and GPU acceptance bound to the exact publication/binding hashes.
 
 ## Permanent semantic constraints
 
@@ -223,6 +225,7 @@ Required properties:
 - graph schema `v9`;
 - extractor `v2.2-r4-repaired`;
 - requested graph contract == actual graph contract;
+- multi-contract file labels retain every unrelated inheritance leaf rather than selecting one heuristically;
 - token tensor remains `[4,512]`;
 - coverage telemetry is present;
 - any failure is recorded explicitly in `representation_failures.jsonl`.
@@ -267,7 +270,7 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
   docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py bind
 ```
 
-A passing report must validate every required graph/token/sidecar triple, requested/actual graph target equality, extractor/schema identity, frozen token shape and coverage fields. It produces a deterministic content binding without recording the machine-specific representation root.
+A passing report must deserialize and validate every required graph/token/sidecar triple, requested/actual graph target-set equality, graph tensor/schema/edge bounds, token tensor/mask/coverage parity, extractor identity, and frozen token shape. It produces a deterministic content binding without recording the machine-specific representation root and reports graph component/node/edge distributions.
 
 A passing binding changes the generated publication status only to:
 

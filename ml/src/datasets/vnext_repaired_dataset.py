@@ -12,6 +12,7 @@ function; no model architecture or loss semantics are changed.
 from __future__ import annotations
 
 import json
+import hashlib
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Iterable
@@ -32,6 +33,14 @@ from sentinel_data.preprocessing.r4_versions import (
 )
 
 _ALLOWED_PHASE8_ROLES = TRAIN_ROLES | MODEL_SELECTION_ROLES
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 class RepairedVNextTrainingDataset(Dataset):
@@ -70,6 +79,11 @@ class RepairedVNextTrainingDataset(Dataset):
         except ImportError as exc:  # pragma: no cover - runtime dependency
             raise RuntimeError("repaired Phase-8 dataset requires pyarrow") from exc
         ml_targets = self.overlay_dir / "ml_targets.parquet"
+        expected_ml_sha = (
+            (self.manifest.get("artifacts") or {}).get("ml_targets") or {}
+        ).get("sha256")
+        if not expected_ml_sha or _sha256(ml_targets) != expected_ml_sha:
+            raise ValueError("repaired ml_targets.parquet hash mismatch")
         rows = pq.read_table(ml_targets).to_pylist()
         selected = [row for row in rows if str(row["role"]) in self.roles]
         selected.sort(key=lambda row: (str(row["group_id"]), str(row["contract_id"])))
@@ -173,6 +187,8 @@ class RepairedVNextTrainingDataset(Dataset):
         report_path = self.overlay_dir / "representation_binding_report.json"
         if not report_path.is_file():
             raise FileNotFoundError(report_path)
+        if not binding.get("sha256") or _sha256(report_path) != binding.get("sha256"):
+            raise ValueError("repaired representation binding report hash mismatch")
         report = json.loads(report_path.read_text(encoding="utf-8"))
         if report.get("passed") is not True:
             raise ValueError("repaired representation binding report is not passing")

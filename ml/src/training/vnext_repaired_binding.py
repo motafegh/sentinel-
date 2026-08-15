@@ -86,6 +86,13 @@ def build_repaired_smoke_binding(
             "grouping_sha256": (artifacts.get("grouping") or {}).get("sha256"),
             "claims_sha256": (artifacts.get("claims") or {}).get("sha256"),
             "ml_targets_sha256": (artifacts.get("ml_targets") or {}).get("sha256"),
+            "evidence_ledger_sha256": (
+                artifacts.get("evidence_ledger") or {}
+            ).get("sha256"),
+            "evidence_ledger_manifest_sha256": (
+                artifacts.get("evidence_ledger_manifest") or {}
+            ).get("sha256"),
+            "representation_binding_report_sha256": representation.get("sha256"),
         },
         "roles": {
             "training": ["TRAIN_STRONG", "TRAIN_WEAK"],

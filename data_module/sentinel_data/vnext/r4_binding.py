@@ -24,6 +24,22 @@ from sentinel_data.preprocessing.r4_versions import (
     REPAIRED_REPRESENTATION_EXTRACTOR_VERSION,
     TOKEN_TENSOR_SHAPE,
 )
+from sentinel_data.representation.graph_schema import (
+    NODE_FEATURE_DIM,
+    NUM_EDGE_TYPES,
+)
+
+_COVERAGE_KEYS = (
+    "coverage_schema_version",
+    "pre_subsampling_window_count",
+    "pre_subsampling_code_tokens",
+    "selected_window_indices",
+    "selected_code_token_ranges",
+    "retained_unique_code_tokens",
+    "retained_token_ratio",
+    "content_tokens_per_window",
+    "coverage_interpretation",
+)
 
 
 def _sha256_file(path: Path) -> str:
@@ -73,6 +89,72 @@ def _binding_digest(records: list[dict[str, Any]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _validate_graph(torch: Any, graph: Any, sidecar: dict[str, Any]) -> None:
+    x = getattr(graph, "x", None)
+    edge_index = getattr(graph, "edge_index", None)
+    edge_attr = getattr(graph, "edge_attr", None)
+    if not isinstance(x, torch.Tensor) or x.dtype != torch.float32:
+        raise ValueError("graph x must be a float32 tensor")
+    if x.ndim != 2 or tuple(x.shape)[1] != NODE_FEATURE_DIM or x.shape[0] < 1:
+        raise ValueError(f"graph x shape mismatch: {tuple(x.shape)}")
+    if not bool(torch.isfinite(x).all()):
+        raise ValueError("graph x contains non-finite values")
+    if not isinstance(edge_index, torch.Tensor) or edge_index.dtype != torch.long:
+        raise ValueError("graph edge_index must be an int64 tensor")
+    if edge_index.ndim != 2 or edge_index.shape[0] != 2:
+        raise ValueError(f"graph edge_index shape mismatch: {tuple(edge_index.shape)}")
+    if edge_index.numel() and (
+        int(edge_index.min()) < 0 or int(edge_index.max()) >= int(x.shape[0])
+    ):
+        raise ValueError("graph edge_index is out of node bounds")
+    if not isinstance(edge_attr, torch.Tensor) or edge_attr.dtype != torch.long:
+        raise ValueError("graph edge_attr must be an int64 tensor")
+    if edge_attr.ndim != 1 or edge_attr.shape[0] != edge_index.shape[1]:
+        raise ValueError("graph edge_attr length mismatch")
+    if edge_attr.numel() and (
+        int(edge_attr.min()) < 0 or int(edge_attr.max()) >= NUM_EDGE_TYPES
+    ):
+        raise ValueError("graph edge_attr contains an unknown edge type")
+    metadata = getattr(graph, "node_metadata", None)
+    if not isinstance(metadata, list) or len(metadata) != x.shape[0]:
+        raise ValueError("graph node_metadata is not node-aligned")
+    if int(sidecar.get("node_count", -1)) != int(x.shape[0]):
+        raise ValueError("graph node_count/sidecar mismatch")
+    if int(sidecar.get("edge_count", -1)) != int(edge_index.shape[1]):
+        raise ValueError("graph edge_count/sidecar mismatch")
+    expected = list(sidecar.get("actual_contract_names") or ())
+    if not expected:
+        raise ValueError("sidecar has no actual contract targets")
+    if int(sidecar.get("graph_component_count", -1)) != len(expected):
+        raise ValueError("graph component count/target-set mismatch")
+    if len(expected) == 1:
+        actual = [str(getattr(graph, "contract_name", ""))]
+    else:
+        actual = [str(value) for value in (getattr(graph, "contract_names", None) or ())]
+    if actual != expected:
+        raise ValueError(f"graph target payload mismatch expected={expected} actual={actual}")
+
+
+def _validate_tokens(torch: Any, payload: dict[str, Any], sidecar: dict[str, Any]) -> None:
+    input_ids = payload.get("input_ids")
+    attention_mask = payload.get("attention_mask")
+    if not isinstance(input_ids, torch.Tensor) or input_ids.dtype != torch.long:
+        raise ValueError("token input_ids must be an int64 tensor")
+    if not isinstance(attention_mask, torch.Tensor) or attention_mask.dtype != torch.long:
+        raise ValueError("token attention_mask must be an int64 tensor")
+    shape = tuple(int(v) for v in input_ids.shape)
+    mask_shape = tuple(int(v) for v in attention_mask.shape)
+    if shape != TOKEN_TENSOR_SHAPE or mask_shape != TOKEN_TENSOR_SHAPE:
+        raise ValueError(f"frozen token shape mismatch ids={shape} mask={mask_shape}")
+    if not bool(((attention_mask == 0) | (attention_mask == 1)).all()):
+        raise ValueError("attention_mask is not binary")
+    if bool(((attention_mask[:, 1:] - attention_mask[:, :-1]) > 0).any()):
+        raise ValueError("attention_mask is not right padded")
+    for key in _COVERAGE_KEYS:
+        if payload.get(key) != sidecar.get(key):
+            raise ValueError(f"token coverage mismatch for {key}")
+
+
 def bind_repaired_publication(
     *,
     publication_dir: Path,
@@ -108,6 +190,9 @@ def bind_repaired_publication(
     errors: list[dict[str, str]] = []
     coverage_ratios: list[float] = []
     pre_windows: list[float] = []
+    graph_nodes: list[float] = []
+    graph_edges: list[float] = []
+    graph_components: list[float] = []
     coverage_over_four = 0
     role_counts: Counter[str] = Counter()
 
@@ -157,10 +242,10 @@ def bind_repaired_publication(
                 != REPAIRED_REPRESENTATION_EXTRACTOR_VERSION
             ):
                 raise ValueError("extractor version mismatch")
-            if sidecar.get("graph_target_policy") != "explicit_contract_fail_closed_v1":
+            if sidecar.get("graph_target_policy") != "file_level_inheritance_leaf_union_v1":
                 raise ValueError("graph target policy mismatch")
-            if sidecar.get("requested_contract_name") != sidecar.get(
-                "actual_contract_name"
+            if sidecar.get("requested_contract_names") != sidecar.get(
+                "actual_contract_names"
             ):
                 raise ValueError("requested/actual graph target mismatch")
             if sidecar.get("coverage_interpretation") != (
@@ -168,15 +253,10 @@ def bind_repaired_publication(
             ):
                 raise ValueError("token coverage interpretation mismatch")
 
+            graph = torch.load(graph_path, map_location="cpu", weights_only=False)
+            _validate_graph(torch, graph, sidecar)
             token_payload = torch.load(token_path, map_location="cpu", weights_only=True)
-            input_ids = token_payload.get("input_ids")
-            attention_mask = token_payload.get("attention_mask")
-            shape = tuple(int(v) for v in input_ids.shape)
-            mask_shape = tuple(int(v) for v in attention_mask.shape)
-            if shape != TOKEN_TENSOR_SHAPE or mask_shape != TOKEN_TENSOR_SHAPE:
-                raise ValueError(
-                    f"frozen token shape mismatch ids={shape} mask={mask_shape}"
-                )
+            _validate_tokens(torch, token_payload, sidecar)
             if str(token_payload.get("sha256")) != contract_id:
                 raise ValueError("token payload sha256 mismatch")
             if str(token_payload.get("source")) != source:
@@ -192,6 +272,9 @@ def bind_repaired_publication(
                 raise ValueError("invalid token coverage counts")
             coverage_ratios.append(ratio)
             pre_windows.append(float(windows))
+            graph_nodes.append(float(sidecar["node_count"]))
+            graph_edges.append(float(sidecar["edge_count"]))
+            graph_components.append(float(sidecar["graph_component_count"]))
             coverage_over_four += int(windows > TOKEN_TENSOR_SHAPE[0])
 
             records.append(
@@ -203,8 +286,8 @@ def bind_repaired_publication(
                     "sidecar_sha256": _sha256_file(sidecar_path),
                     "schema_version": sidecar["schema_version"],
                     "extractor_version": sidecar["extractor_version"],
-                    "requested_contract_name": sidecar["requested_contract_name"],
-                    "actual_contract_name": sidecar["actual_contract_name"],
+                    "requested_contract_names": sidecar["requested_contract_names"],
+                    "actual_contract_names": sidecar["actual_contract_names"],
                     "pre_subsampling_window_count": windows,
                     "pre_subsampling_code_tokens": total,
                     "retained_unique_code_tokens": retained,
@@ -248,6 +331,12 @@ def bind_repaired_publication(
             "retained_token_ratio": _quantiles(coverage_ratios),
             "adequacy_threshold": None,
             "interpretation": "diagnostic_only; long-contract strategy requires separate decision evidence",
+        },
+        "graph_population": {
+            "multi_component_contracts": sum(value > 1 for value in graph_components),
+            "component_count": _quantiles(graph_components),
+            "node_count": _quantiles(graph_nodes),
+            "edge_count": _quantiles(graph_edges),
         },
         "records": records,
     }

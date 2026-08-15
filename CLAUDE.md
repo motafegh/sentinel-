@@ -23,7 +23,7 @@ As of the 2026-08-15 Phase-8 real-DATA repair reconciliation:
 - canonical `main` has passed historical R4 G0–G7 and remains the active Phase-8 execution line;
 - Phase 8 is `IN_PROGRESS`, not G8-passed;
 - historical `sentinel-r4-vnext-v1` / `r4-vnext-roles-v1` / graph-schema-v9 G7 evidence remains immutable and reproducible, but the 2026-08-14 real-data audit found physical preprocessing/representation defects that prevent using that v1 lineage for the full retrain;
-- repository-safe repair implementation is complete on `main`: lexical line-preserving normalization, provenance-preserving dedup, version-aware solc, strict graph target binding, token coverage telemetry, deterministic leakage grouping, repaired source claims/evidence ledger/roles/publication/binding, repaired ML adapter/binding, local acceptance tools, and bounded GPU-smoke seam;
+- repository-safe repair implementation is complete on `main`: lexical line-preserving normalization, provenance-preserving dedup, version-aware solc, evidence-preserving file-level graph target binding, token coverage telemetry, deterministic leakage grouping, repaired source claims/evidence ledger/roles/publication/binding, repaired ML adapter/binding, local acceptance tools, and bounded GPU-smoke seam;
 - repaired candidate version identities are `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `r4-leakage-groups-v2`, `r4-vnext-roles-v2`, `sentinel-r4-vnext-v2`, and representation extractor `v2.2-r4-repaired`;
 - the repaired candidate keeps graph schema `v9`, token tensor `[4,512]`, and architecture `four_eye_v8` / `v8.1`; long-contract adequacy is explicitly unresolved and requires measured local evidence rather than an implicit architecture change;
 - the protected local corpus has **not** yet been rebuilt/accepted into repaired v2, so no repaired-v2 population count, representation binding digest, checkpoint, or model-quality result may be claimed from repository CI alone;
@@ -39,7 +39,8 @@ For the exact current DATA/ML restart boundary, read in order:
 
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
 2. `docs/plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md`;
-3. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`.
+3. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md`.
+4. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`.
 
 The 2026-08-14 pretraining launch handoff is historical/superseded for full-training authorization. Do not launch the 100-epoch Phase-8 run until the new repaired-v2 physical rebuild/acceptance, long-contract evidence review, bounded repaired-data GPU smoke, and an explicit governance re-authorization are complete.
 

@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
 from sentinel_data.vnext.policy import CLASS_NAMES
-from sentinel_data.vnext.r4_builder import build_semantic_cells, freeze_roles
+from sentinel_data.vnext.r4_builder import (
+    build_repaired_publication,
+    build_semantic_cells,
+    freeze_roles,
+)
 
 
 @pytest.fixture
@@ -22,6 +29,10 @@ def _rep_triple(root: Path, source: str, contract_id: str) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     for suffix in (".pt", ".tokens.pt", ".rep.json"):
         (directory / f"{contract_id}{suffix}").write_bytes(b"fixture")
+
+
+def _sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _claim(
@@ -208,3 +219,80 @@ def test_all_members_of_a_group_inherit_one_role(policy):
         if row["contract_id"] in {first_contract, sibling}
     }
     assert roles[first_contract] == roles[sibling]
+
+
+def test_publication_consumes_hash_bound_materialized_ledger(tmp_path, policy):
+    policy_path = Path(__file__).resolve().parents[3] / "docs/plan/ml-R4/specs/data_vnext_policy_v1.json"
+    claims = []
+    artifact_sources = {}
+    artifact_to_group = {}
+    groups = []
+    counter = 0
+    enabled = [
+        name for name in CLASS_NAMES
+        if policy["class_supervision"][name]["status"] == "ENABLED"
+    ]
+    reps = tmp_path / "representations"
+    for class_name in enabled:
+        for copy in range(3):
+            counter += 1
+            contract_id = f"{counter:064x}"
+            group_id = f"group-{counter:03d}"
+            claims.append(
+                _claim(
+                    contract_id,
+                    "solidifi",
+                    class_name,
+                    "STRONG",
+                    1,
+                    f"record-{counter}",
+                )
+            )
+            artifact_sources[contract_id] = ["solidifi"]
+            artifact_to_group[contract_id] = group_id
+            groups.append(
+                {"group_id": group_id, "members": [contract_id], "sources": ["solidifi"]}
+            )
+            _rep_triple(reps, "solidifi", contract_id)
+
+    claims_path = tmp_path / "source_claims.jsonl"
+    claims_path.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in claims))
+    grouping_path = tmp_path / "grouping.json"
+    grouping = {
+        "artifact_sources": artifact_sources,
+        "artifact_to_group": artifact_to_group,
+        "groups": groups,
+    }
+    grouping_path.write_text(json.dumps(grouping, sort_keys=True))
+    ledger_rows, _ = build_semantic_cells(claims, grouping, policy, reps)
+    ledger_rows.sort(key=lambda row: (row["contract_id"], row["class_index"]))
+    ledger_path = tmp_path / "evidence_ledger_v2.parquet"
+    pq.write_table(pa.Table.from_pylist(ledger_rows), ledger_path)
+    ledger_manifest_path = tmp_path / "evidence_ledger_v2_manifest.json"
+    ledger_manifest_path.write_text(
+        json.dumps(
+            {
+                "ledger_version": "evidence-ledger-r4-v2",
+                "artifacts": {
+                    "ledger": {"sha256": _sha(ledger_path)},
+                    "source_claims": {"sha256": _sha(claims_path)},
+                    "grouping": {"sha256": _sha(grouping_path)},
+                    "policy": {"sha256": _sha(policy_path)},
+                },
+            }
+        )
+    )
+
+    manifest = build_repaired_publication(
+        claims_path=claims_path,
+        grouping_path=grouping_path,
+        policy_path=policy_path,
+        representation_root=reps,
+        output_dir=tmp_path / "publication",
+        ledger_path=ledger_path,
+        ledger_manifest_path=ledger_manifest_path,
+    )
+    assert manifest["artifacts"]["evidence_ledger"]["sha256"] == _sha(ledger_path)
+    assert manifest["artifacts"]["evidence_ledger_manifest"]["sha256"] == _sha(
+        ledger_manifest_path
+    )

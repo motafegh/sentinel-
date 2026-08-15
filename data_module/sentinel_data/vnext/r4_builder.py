@@ -384,6 +384,28 @@ def freeze_roles(
     if len(assigned) != len(groups):
         raise AssertionError("not every repaired group received exactly one role")
 
+    strong_coverage_by_role = {
+        role: {
+            class_name: sum(
+                assigned[group["group_id"]] == role
+                and class_name in group["strong_classes"]
+                for group in strong
+            )
+            for class_name in enabled_classes
+        }
+        for role in ("TRAIN_STRONG", "MODEL_SELECTION", "INTERNAL_AUDIT")
+    }
+    missing_role_coverage = {
+        role: [name for name, count in counts.items() if count < 1]
+        for role, counts in strong_coverage_by_role.items()
+        if any(count < 1 for count in counts.values())
+    }
+    if missing_role_coverage:
+        raise RuntimeError(
+            "enabled-class strong coverage is missing after group-atomic role freeze: "
+            f"{missing_role_coverage}"
+        )
+
     group_rows: list[dict[str, Any]] = []
     contract_rows: list[dict[str, Any]] = []
     for group in sorted(groups, key=lambda item: item["group_id"]):
@@ -421,6 +443,7 @@ def freeze_roles(
         "role_group_counts": dict(sorted(role_group_counts.items())),
         "role_contract_counts": dict(sorted(role_contract_counts.items())),
         "represented_strong_groups_by_class": support_counts,
+        "strong_group_coverage_by_role_and_class": strong_coverage_by_role,
         "threshold_fit": "UNSUPPORTED_EMPTY",
         "calibration_fit": "UNSUPPORTED_EMPTY",
         "untouched_acceptance": "UNSUPPORTED_EMPTY_FROZEN",
@@ -467,26 +490,52 @@ def build_repaired_publication(
     policy_path: Path,
     representation_root: Path,
     output_dir: Path,
+    ledger_path: Path,
+    ledger_manifest_path: Path,
 ) -> dict[str, Any]:
     """Build the complete local repaired-v2 candidate publication."""
 
     pa, pq = _require_pyarrow()
-    if output_dir.exists() and any(output_dir.iterdir()):
-        raise FileExistsError(
-            f"repaired publication output is not empty: {output_dir}"
-        )
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     claims = _load_jsonl(claims_path)
     grouping = json.loads(grouping_path.read_text(encoding="utf-8"))
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
     validate_policy_surface(policy)
 
-    semantic_base, artifact_info = build_semantic_cells(
-        claims, grouping, policy, representation_root
-    )
     grouping_sha = _sha256_file(grouping_path)
     policy_sha = _sha256_file(policy_path)
+    claims_sha = _sha256_file(claims_path)
+    ledger_manifest = json.loads(ledger_manifest_path.read_text(encoding="utf-8"))
+    if ledger_manifest.get("ledger_version") != REPAIRED_EVIDENCE_LEDGER_ID:
+        raise ValueError("repaired evidence-ledger version mismatch")
+    ledger_artifacts = ledger_manifest.get("artifacts") or {}
+    expected_inputs = {
+        "ledger": _sha256_file(ledger_path),
+        "source_claims": claims_sha,
+        "grouping": grouping_sha,
+        "policy": policy_sha,
+    }
+    for name, actual_sha in expected_inputs.items():
+        if (ledger_artifacts.get(name) or {}).get("sha256") != actual_sha:
+            raise ValueError(f"repaired evidence-ledger {name} hash mismatch")
+
+    recomputed_semantics, artifact_info = build_semantic_cells(
+        claims, grouping, policy, representation_root
+    )
+    ledger_semantics = pq.read_table(ledger_path).to_pylist()
+    sort_key = lambda row: (str(row["contract_id"]), int(row["class_index"]))
+    recomputed_semantics.sort(key=sort_key)
+    ledger_semantics.sort(key=sort_key)
+    if json.loads(json.dumps(recomputed_semantics, sort_keys=True)) != json.loads(
+        json.dumps(ledger_semantics, sort_keys=True)
+    ):
+        raise ValueError("repaired evidence ledger diverges from its bound inputs")
+    semantic_base = ledger_semantics
+
+    if output_dir.exists() and any(output_dir.iterdir()):
+        raise FileExistsError(
+            f"repaired publication output is not empty: {output_dir}"
+        )
+    output_dir.mkdir(parents=True, exist_ok=True)
     group_rows, contract_roles, partition = freeze_roles(
         semantic_base,
         artifact_info,
@@ -619,7 +668,7 @@ def build_repaired_publication(
             },
             "claims": {
                 "path": "r4-v2-build/source_claims.jsonl",
-                "sha256": _sha256_file(claims_path),
+                "sha256": claims_sha,
             },
             "grouping": {
                 "path": "r4-v2-build/grouping.json",
@@ -628,6 +677,14 @@ def build_repaired_publication(
             "policy": {
                 "path": "docs/plan/ml-R4/specs/data_vnext_policy_v1.json",
                 "sha256": policy_sha,
+            },
+            "evidence_ledger": {
+                "path": "r4-v2-build/evidence_ledger_v2.parquet",
+                "sha256": _sha256_file(ledger_path),
+            },
+            "evidence_ledger_manifest": {
+                "path": "r4-v2-build/evidence_ledger_v2_manifest.json",
+                "sha256": _sha256_file(ledger_manifest_path),
             },
         },
         "representation_root_recorded": False,

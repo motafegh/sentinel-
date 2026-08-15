@@ -105,6 +105,8 @@ def _source_dirs(preprocessed_root: Path) -> dict[str, Path]:
 
 
 def cmd_prerequisites(args: argparse.Namespace) -> int:
+    from sentinel_data.preprocessing.r4_raw_verifier import verify_manifest_source
+
     checks: list[dict[str, Any]] = []
     clean, detail = _tracked_clean()
     checks.append({"check": "tracked_worktree_clean", "passed": clean, "detail": detail})
@@ -124,6 +126,19 @@ def cmd_prerequisites(args: argparse.Namespace) -> int:
                 "check": f"raw_source:{source}",
                 "passed": raw.is_dir(),
                 "detail": str(raw),
+            }
+        )
+        verification = verify_manifest_source(source, raw, manifest)
+        checks.append(
+            {
+                "check": f"raw_manifest_bytes:{source}",
+                "passed": bool(verification.get("passed")),
+                "detail": {
+                    "manifest_records": verification.get("manifest_records"),
+                    "manifest_sha256": verification.get("manifest_sha256"),
+                    "errors_total": verification.get("errors_total"),
+                    "errors": (verification.get("errors") or [])[:3],
+                },
             }
         )
         checks.append(
@@ -248,7 +263,9 @@ def cmd_publish(args: argparse.Namespace) -> int:
 
     claims = args.build_root / "source_claims.jsonl"
     grouping = args.build_root / "grouping.json"
-    for path in (claims, grouping):
+    ledger = args.build_root / "evidence_ledger_v2.parquet"
+    ledger_manifest = args.build_root / "evidence_ledger_v2_manifest.json"
+    for path in (claims, grouping, ledger, ledger_manifest):
         if not path.is_file():
             raise FileNotFoundError(path)
     _ensure_fresh(args.publication_root, "repaired vNext publication")
@@ -258,6 +275,8 @@ def cmd_publish(args: argparse.Namespace) -> int:
         policy_path=POLICY_PATH,
         representation_root=args.representations_root,
         output_dir=args.publication_root,
+        ledger_path=ledger,
+        ledger_manifest_path=ledger_manifest,
     )
     _emit(manifest)
     return 0
