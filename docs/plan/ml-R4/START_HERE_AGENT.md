@@ -1,5 +1,7 @@
 # START HERE — AI Implementation Agent Instruction
 
+> **Historical bootstrap notice (2026-08-15):** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7, repaired-v2 physical DATA is accepted for bounded research under R4-D-008 / ADR-R4-008, Phase 8 remains `IN_PROGRESS`, and the 100-epoch run is not authorized. For current work, read `PLAN_STATUS_MATRIX.md`, `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, and `runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` before acting. Current next work is the evidence-honest objective/evaluation contract and versioned token-selector diagnostics—not Phase 0 replay.
+
 You are implementing the SENTINEL ML R4 trustworthy-label recovery and retraining program.
 
 ## Governing objective
@@ -19,9 +21,9 @@ Your job is to:
 7. retrain the existing model architecture;
 8. evaluate, calibrate, threshold, and promote it using leakage-safe evidence-qualified populations.
 
-## Read before acting
+## Historical Phase-0 read order
 
-Read in this order:
+The following sequence documents the original bootstrap path. Do not execute it as current work unless explicitly reconstructing Phase-0 history:
 
 1. every applicable repository-level instruction file;
 2. `docs/plan/ml-R4/README.md`;
@@ -32,13 +34,13 @@ Read in this order:
 7. `docs/plan/ml-R4/phases/01_PHASE_0_BASELINE_AND_EVIDENCE_LOCATION.md`;
 8. operational registers and templates referenced by Phase 0.
 
-## First execution assignment
+## Historical first execution assignment
 
-Execute **Phase 0 only**.
+Originally: execute **Phase 0 only**, then stop and report Gate G0.
 
-Do not begin Phase 1 automatically. Stop and report the Gate G0 result.
+That assignment is complete and historical. Current agents must not repeat it merely because this file exists.
 
-## Prohibited during Phase 0
+## Prohibited during historical Phase 0
 
 Do not:
 
@@ -54,7 +56,7 @@ Do not:
 - delete, clean, reset, or overwrite unrelated local work;
 - claim that a missing historical artifact has been recovered by creating a new one.
 
-## Required Phase 0 behavior
+## Required historical Phase 0 behavior
 
 - Resolve the actual local branch, commit, worktree status, and applicable instructions.
 - Work on an isolated branch/worktree if changes will be committed.
@@ -67,7 +69,7 @@ Do not:
 - Create only the outputs required by Phase 0.
 - Keep all new R4 outputs under `docs/plan/ml-R4/` unless the phase explicitly approves another versioned audit-output path.
 
-## Required Phase 0 outputs
+## Required historical Phase 0 outputs
 
 - `manifests/baseline_manifest.json`
 - `manifests/protected_artifacts.json`
@@ -76,7 +78,7 @@ Do not:
 - `findings/01_baseline_and_evidence_location.md`
 - deterministic helper scripts under `scripts/` as needed
 
-Update:
+Historical updates included:
 
 - `EXECUTION_LOG.md`
 - `ARTIFACT_INDEX.md`
@@ -84,19 +86,16 @@ Update:
 - `RISK_AND_BLOCKER_REGISTER.md`
 - `PLAN_STATUS_MATRIX.md`
 
-## Final response after Phase 0
+## Current restart boundary
 
-Report:
+Current Phase-8 work must instead preserve these facts:
 
-1. `G0 PASS`, `G0 FAIL`, or `G0 BLOCKED`;
-2. repository branch, commit, and worktree status;
-3. exact active DATA/ML bundle;
-4. distinct population counts;
-5. prior evidence locations and availability;
-6. unresolved artifact identities or contradictions;
-7. files created or updated;
-8. commands and validation performed;
-9. confirmation that no protected DATA/ML artifact changed;
-10. the single next permitted action.
+- historical G7/v1 is immutable reproducibility evidence;
+- `sentinel-r4-vnext-v2` is physically accepted for bounded research under R4-D-008;
+- all 899 current effective loss cells are positive target `1` and zero confirmed negatives exist;
+- threshold fit, calibration fit, and untouched acceptance remain unsupported/empty;
+- the historical four-window selector is not accepted as adequate and the target-aware candidate is not yet promoted;
+- no 100-epoch run is authorized;
+- objective, selector, role, or representation changes must be versioned rather than reverse-editing accepted repaired-v2 evidence.
 
-Stop after the report.
+The single current restart document is `runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` together with ADR-R4-008 and the current registers.
