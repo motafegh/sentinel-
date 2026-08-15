@@ -130,8 +130,14 @@ It produces exact comparison sets for:
 - worst-case active GPU candidates interleaved across node-count, edge-count,
   component-count, and token-window extremes.
 
-New research requires explicit `graph_extraction_mode` provenance. The profiler
-does not infer missing mode metadata as normal full Slither analysis.
+Current repaired-v2 physical binding already permits one narrow legacy
+provenance inference: sidecars byte-reused from the successful portion of a
+failed-tail recovery build may omit `graph_extraction_mode`, in which case the
+binder records them as inferred standard `slither_full_analysis`. The research
+profiler now follows that same accepted binding rule and reports the inferred
+count explicitly. Sidecars that record a source transform cannot use that
+inference, and newly generated/recovered compatibility artifacts still require
+explicit mode provenance.
 
 ## Local execution order
 
