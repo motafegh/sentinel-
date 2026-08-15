@@ -36,7 +36,11 @@ def _semantic_rows(contract_id):
 
 
 def test_v3_role_freeze_is_group_atomic_and_versioned():
-    contracts = ["a" * 64, "b" * 64, "c" * 64]
+    # The production coverage contract reserves distinct strong groups for each
+    # enabled class in MODEL_SELECTION and INTERNAL_AUDIT before leaving the
+    # remainder in TRAIN_STRONG. Twenty-four all-class groups exercise that
+    # contract without weakening it for a synthetic test.
+    contracts = [f"{index:064x}" for index in range(24)]
     semantic = [row for contract in contracts for row in _semantic_rows(contract)]
     artifact_info = {
         contract: {"representation_available": True}
@@ -44,7 +48,7 @@ def test_v3_role_freeze_is_group_atomic_and_versioned():
     }
     groups = [
         {
-            "group_id": f"g{index}",
+            "group_id": f"g{index:02d}",
             "members": [contract],
             "sources": ["solidifi"],
         }
@@ -69,6 +73,6 @@ def test_v3_role_freeze_is_group_atomic_and_versioned():
         "MODEL_SELECTION",
         "INTERNAL_AUDIT",
     }
-    assert len(contract_rows) == 3
+    assert len(contract_rows) == 24
     assert all(row["partition_version"] == ROLE_PARTITION_VERSION_V3 for row in contract_rows)
     assert all(row["schema"] == "r4-repaired-contract-role-row-v3" for row in contract_rows)
