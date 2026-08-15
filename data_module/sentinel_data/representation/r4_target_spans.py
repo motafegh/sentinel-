@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sentinel_data.preprocessing.normalizer import strip_comments_lexically
 from sentinel_data.representation.target_selector import declarations
 
 
@@ -35,14 +36,17 @@ def target_contract_char_spans(
 ) -> list[tuple[int, int]]:
     """Return exact declaration-body spans for requested file-graph targets.
 
-    Every target must resolve exactly once and have balanced braces.  The helper
-    is lexical and offset-preserving; compilation/Slither remain authoritative
-    for Solidity semantics.
+    Every target must resolve exactly once and have balanced braces. Comments
+    and strings are masked with source offsets preserved before brace matching,
+    so documentation/example braces cannot truncate or expand a target span.
+    The helper remains lexical; compilation/Slither are authoritative for
+    Solidity semantics.
     """
 
     if not target_names:
         raise ValueError("target_names must not be empty")
-    masked = _mask_strings(source)
+    no_comments, _ = strip_comments_lexically(source)
+    masked = _mask_strings(no_comments)
     items = declarations(source)
     spans: list[tuple[int, int]] = []
     for target in target_names:
