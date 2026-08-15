@@ -1,13 +1,18 @@
 """Versioned research-only bounded-window selectors for R4 Phase 8.
 
 Production repaired-v2 representations remain bound to the historical linspace
-selector.  This module provides candidate selectors and exact telemetry for
+selector. This module provides candidate selectors and exact telemetry for
 controlled comparison without silently changing the accepted representation
 lineage.
 
 The guarded candidate never accepts lower target-contract token coverage than
-the historical control for the same source/target spans.  Equal target coverage
+the historical control for the same source/target spans. Equal target coverage
 falls back to the historical control to minimize unnecessary behavioral change.
+
+Research tokenization uses the same comment-stripped, offset-preserving source
+view as repaired-v2 production tokenization. Target character spans are computed
+against the original preprocessed source and remain valid because lexical comment
+removal preserves source length and newline positions.
 """
 
 from __future__ import annotations
@@ -18,10 +23,30 @@ from typing import Any, Iterable
 import numpy as np
 import torch
 
+from sentinel_data.preprocessing.normalizer import strip_comments_lexically
+
 SELECTOR_RESEARCH_SCHEMA = "sentinel-r4-bounded-window-selector-research-v1"
 CONTROL_STRATEGY = "historical_linspace_v1"
 GREEDY_STRATEGY = "target_aware_greedy_v1"
 GUARDED_STRATEGY = "target_aware_guarded_v1"
+
+
+def prepare_source_for_tokenization(source_text: str) -> str:
+    """Return the repaired-v2 comment-stripped tokenizer input.
+
+    Comment characters are replaced with spaces while newlines and all source
+    offsets are preserved. This mirrors the production repaired-v2 tokenizer's
+    ``strip_comments=True`` contract without mutating the promoted Solidity.
+    """
+
+    if not source_text.strip():
+        raise ValueError("source_text must not be empty")
+    code, _ = strip_comments_lexically(source_text)
+    if not code.strip():
+        raise ValueError("source contains no code after comment removal")
+    if len(code) != len(source_text):
+        raise AssertionError("comment stripping changed source length")
+    return code
 
 
 def union_length(ranges: Iterable[Iterable[int]]) -> int:
@@ -93,10 +118,7 @@ def linspace_indices(total_windows: int, count: int = 4) -> list[int]:
         raise ValueError("total_windows must be >= 0")
     if total_windows <= count:
         return list(range(total_windows))
-    return [
-        round(value)
-        for value in np.linspace(0, total_windows - 1, count)
-    ]
+    return [round(value) for value in np.linspace(0, total_windows - 1, count)]
 
 
 def target_aware_greedy_indices(
@@ -207,9 +229,7 @@ def select_indices(
         strategy=strategy,
         selected_indices=tuple(chosen),
         control_indices=tuple(control),
-        target_coverage_tokens=intersect_union_length(
-            chosen_ranges, target_ranges
-        ),
+        target_coverage_tokens=intersect_union_length(chosen_ranges, target_ranges),
         control_target_coverage_tokens=control_target,
         retained_tokens=union_length(chosen_ranges),
         control_retained_tokens=control_retained,
@@ -250,20 +270,20 @@ def tokenize_with_selector(
     window_size: int = 512,
     stride: int = 256,
 ) -> dict[str, Any]:
-    """Tokenize one already-preprocessed source using a research selector.
+    """Tokenize one repaired source using a research selector.
 
-    The output tensor shape matches the frozen production contract but is not a
-    promoted representation artifact.  It is intended for bounded identical-
-    initialization GPU comparison only.
+    The exact production preprocessing contract is retained: Solidity comments
+    are lexically replaced with spaces before GraphCodeBERT tokenization while
+    source offsets stay unchanged. The output tensor shape matches the frozen
+    production contract but is not a promoted representation artifact.
     """
 
-    if not source_text.strip():
-        raise ValueError("source_text must not be empty")
     if max_windows < 1:
         raise ValueError("max_windows must be >= 1")
+    token_source = prepare_source_for_tokenization(source_text)
 
     raw = tokenizer(
-        source_text,
+        token_source,
         add_special_tokens=False,
         truncation=False,
         return_offsets_mapping=True,
@@ -296,7 +316,7 @@ def tokenize_with_selector(
     )
 
     encoded = tokenizer(
-        source_text,
+        token_source,
         max_length=window_size,
         padding="max_length",
         truncation=True,
@@ -313,9 +333,7 @@ def tokenize_with_selector(
         )
 
     chosen_ids = [all_ids[index].tolist() for index in selection.selected_indices]
-    chosen_masks = [
-        all_masks[index].tolist() for index in selection.selected_indices
-    ]
+    chosen_masks = [all_masks[index].tolist() for index in selection.selected_indices]
     pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
     while len(chosen_ids) < max_windows:
         chosen_ids.append([pad_id] * window_size)
@@ -336,14 +354,11 @@ def tokenize_with_selector(
             else 1.0
         ),
         "control_target_coverage_ratio": (
-            float(selection.control_target_coverage_tokens)
-            / float(target_tokens)
+            float(selection.control_target_coverage_tokens) / float(target_tokens)
             if target_tokens
             else 1.0
         ),
-        "retained_ratio": (
-            float(selection.retained_tokens) / float(total_tokens)
-        ),
+        "retained_ratio": float(selection.retained_tokens) / float(total_tokens),
         "control_retained_ratio": (
             float(selection.control_retained_tokens) / float(total_tokens)
         ),
@@ -360,6 +375,7 @@ __all__ = [
     "char_spans_to_token_ranges",
     "intersect_union_length",
     "linspace_indices",
+    "prepare_source_for_tokenization",
     "select_indices",
     "target_aware_greedy_indices",
     "tokenize_with_selector",
