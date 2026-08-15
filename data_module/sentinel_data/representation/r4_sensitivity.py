@@ -63,13 +63,18 @@ def profile_representation_records(
         inferred_legacy_standard = bool(
             row.get("graph_extraction_mode_inferred_legacy_standard")
         )
-        if raw_mode:
-            mode = str(raw_mode)
-            mode_provenance_counts["explicit"] += 1
-        elif inferred_legacy_standard:
+        if inferred_legacy_standard:
+            if raw_mode not in (None, "", FULL_ANALYSIS):
+                raise ValueError(
+                    f"{contract_id} marks legacy standard inference but records "
+                    f"non-standard graph_extraction_mode={raw_mode!r}"
+                )
             mode = FULL_ANALYSIS
             row["graph_extraction_mode"] = mode
             mode_provenance_counts["inferred_legacy_standard"] += 1
+        elif raw_mode:
+            mode = str(raw_mode)
+            mode_provenance_counts["explicit"] += 1
         else:
             raise ValueError(f"{contract_id} lacks graph_extraction_mode provenance")
 
