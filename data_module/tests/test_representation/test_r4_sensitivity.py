@@ -94,6 +94,21 @@ def test_profiler_accepts_explicitly_marked_legacy_standard_inference():
     ] is True
 
 
+def test_profiler_counts_materialized_legacy_standard_as_inferred():
+    row = _row("legacy-materialized", mode="slither_full_analysis")
+    row["graph_extraction_mode_inferred_legacy_standard"] = True
+    report = profile_representation_records([row])
+    assert report["mode_counts"] == {"slither_full_analysis": 1}
+    assert report["mode_provenance_counts"] == {"inferred_legacy_standard": 1}
+
+
+def test_profiler_rejects_inferred_marker_with_nonstandard_mode():
+    row = _row("bad-inference", mode="slither_parse_only")
+    row["graph_extraction_mode_inferred_legacy_standard"] = True
+    with pytest.raises(ValueError, match="legacy standard inference"):
+        profile_representation_records([row])
+
+
 def test_profiler_fails_when_mode_provenance_is_missing():
     row = _row("bad")
     row["graph_extraction_mode"] = ""
