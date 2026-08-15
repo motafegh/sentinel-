@@ -232,6 +232,25 @@ Required properties:
 
 The full local acceptance gate currently requires zero representation failures for required contracts; do not hide failures by deleting rows.
 
+If a complete representation attempt ends with explicit failures, preserve that
+source directory unchanged and use the failed-tail recovery command only after
+the compatibility correction is committed and validated:
+
+```bash
+PYTHONPATH=.:data_module ./ml/.venv/bin/python \
+  docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py \
+  recover-representations --source dive --workers 4 \
+  --failed-attempt-dir /path/to/immutable/failed/dive
+```
+
+The normal destination must again be fresh. Recovery is accepted only when the
+failed attempt was a full build bound to the same preprocessing manifest, its
+structured failure identities reconcile exactly, all successful triples are
+present for byte reuse, every failed identity is retried, the final manifest
+reports zero failures, and physical completeness passes. Parse-only or
+graph-source-compatibility artifacts remain visible in sidecars and the final
+binding report; they are not silently equivalent to full-analysis graphs.
+
 ### 7. Materialize the separate repaired evidence ledger
 
 ```bash

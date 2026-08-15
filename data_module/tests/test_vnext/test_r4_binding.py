@@ -115,6 +115,12 @@ def test_binding_passes_and_binds_manifest_without_physical_root(tmp_path):
     assert report["checked_files"] == 3
     assert report["physical_root_recorded"] is False
     assert report["binding_digest_sha256"]
+    assert report["graph_extraction"] == {
+        "mode_counts": {"slither_full_analysis": 1},
+        "analysis_degraded_contracts": 0,
+        "source_transformed_contracts": 0,
+        "inferred_legacy_standard_mode_contracts": 1,
+    }
     assert report["token_coverage"][
         "contracts_with_more_than_four_pre_subsampling_windows"
     ] == 1
@@ -125,6 +131,29 @@ def test_binding_passes_and_binds_manifest_without_physical_root(tmp_path):
     ]
     persisted = (publication / "representation_binding_report.json").read_text()
     assert str(root) not in persisted
+
+
+def test_binding_accepts_and_reports_explicit_parse_only_compatibility(tmp_path):
+    publication = _publication(tmp_path)
+    root = _representation(tmp_path)
+    sidecar = root / "fixture" / f"{'a' * 64}.rep.json"
+    payload = json.loads(sidecar.read_text())
+    payload["graph_extraction_mode"] = "slither_parse_only"
+    payload["graph_analysis_degraded"] = True
+    payload["graph_extraction_fallback_errors"] = [
+        {"error_type": "SlitherParseError", "error": "IR defect"}
+    ]
+    payload["graph_source_transform"] = None
+    sidecar.write_text(json.dumps(payload))
+
+    report = bind_repaired_publication(
+        publication_dir=publication,
+        representations_root=root,
+    )
+
+    assert report["passed"] is True
+    assert report["graph_extraction"]["mode_counts"] == {"slither_parse_only": 1}
+    assert report["graph_extraction"]["analysis_degraded_contracts"] == 1
 
 
 def test_wrong_graph_target_fails_and_does_not_promote_manifest(tmp_path):

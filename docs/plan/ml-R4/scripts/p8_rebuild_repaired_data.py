@@ -20,6 +20,8 @@ Typical execution from repository root, after pulling the exact repair commit:
     ... p8_rebuild_repaired_data.py represent --source dive
     ... p8_rebuild_repaired_data.py represent --source smartbugs_curated
     ... p8_rebuild_repaired_data.py represent --source solidifi
+    ... p8_rebuild_repaired_data.py recover-representations --source dive \
+          --failed-attempt-dir /path/to/immutable/failed/dive
     ... p8_rebuild_repaired_data.py publish
     ... p8_rebuild_repaired_data.py bind
     ... p8_rebuild_repaired_data.py summarize
@@ -259,6 +261,25 @@ def cmd_represent(args: argparse.Namespace) -> int:
     return 0 if result.representations_failed == 0 else 1
 
 
+def cmd_recover_representations(args: argparse.Namespace) -> int:
+    from sentinel_data.representation.r4_orchestrator import (
+        recover_failed_representations,
+    )
+
+    preprocessed = _source_preprocessed(args.preprocessed_root, args.source)
+    output = _source_representations(args.representations_root, args.source)
+    _ensure_fresh(output, f"repaired representation recovery output for {args.source}")
+    result = recover_failed_representations(
+        args.source,
+        preprocessed,
+        args.failed_attempt_dir,
+        output,
+        n_workers=args.workers,
+    )
+    _emit(result.__dict__)
+    return 0 if result.representations_failed == 0 else 1
+
+
 def cmd_publish(args: argparse.Namespace) -> int:
     from sentinel_data.vnext.r4_builder import build_repaired_publication
 
@@ -374,6 +395,12 @@ def parse_args() -> argparse.Namespace:
     represent.add_argument("--limit", type=int)
     represent.add_argument("--workers", type=int, default=1)
 
+    recover = sub.add_parser("recover-representations")
+    _add_common_paths(recover)
+    recover.add_argument("--source", choices=ACTIVE_SOURCES, required=True)
+    recover.add_argument("--failed-attempt-dir", type=Path, required=True)
+    recover.add_argument("--workers", type=int, default=1)
+
     publish = sub.add_parser("publish")
     _add_common_paths(publish)
 
@@ -394,6 +421,7 @@ def main() -> int:
             "claims": cmd_claims,
             "grouping": cmd_grouping,
             "represent": cmd_represent,
+            "recover-representations": cmd_recover_representations,
             "publish": cmd_publish,
             "bind": cmd_bind,
             "summarize": cmd_summarize,

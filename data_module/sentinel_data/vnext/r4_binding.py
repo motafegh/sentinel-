@@ -28,6 +28,13 @@ from sentinel_data.representation.graph_schema import (
     NODE_FEATURE_DIM,
     NUM_EDGE_TYPES,
 )
+from sentinel_data.representation.r4_compatibility import (
+    COMPATIBILITY_MODES,
+    FULL_ANALYSIS,
+    FULL_ANALYSIS_CONSTANT_FOLD,
+    PARSE_ONLY,
+    PARSE_ONLY_CONSTANT_FOLD,
+)
 
 _COVERAGE_KEYS = (
     "coverage_schema_version",
@@ -195,6 +202,10 @@ def bind_repaired_publication(
     graph_components: list[float] = []
     coverage_over_four = 0
     role_counts: Counter[str] = Counter()
+    graph_extraction_modes: Counter[str] = Counter()
+    graph_analysis_degraded = 0
+    graph_source_transformed = 0
+    inferred_legacy_standard_mode = 0
 
     for row in sorted(rows, key=lambda item: str(item["contract_id"])):
         role = str(row["role"])
@@ -244,6 +255,32 @@ def bind_repaired_publication(
                 raise ValueError("extractor version mismatch")
             if sidecar.get("graph_target_policy") != "file_level_inheritance_leaf_union_v1":
                 raise ValueError("graph target policy mismatch")
+            mode_value = sidecar.get("graph_extraction_mode")
+            mode_inferred = mode_value is None
+            mode = FULL_ANALYSIS if mode_inferred else str(mode_value)
+            if mode not in COMPATIBILITY_MODES:
+                raise ValueError(f"unknown graph extraction mode: {mode!r}")
+            degraded = mode in {PARSE_ONLY, PARSE_ONLY_CONSTANT_FOLD}
+            if not mode_inferred and bool(sidecar.get("graph_analysis_degraded")) != degraded:
+                raise ValueError("graph extraction mode/degraded flag mismatch")
+            transform = sidecar.get("graph_source_transform")
+            transform_expected = mode in {
+                FULL_ANALYSIS_CONSTANT_FOLD,
+                PARSE_ONLY_CONSTANT_FOLD,
+            }
+            if transform_expected:
+                if not isinstance(transform, dict):
+                    raise ValueError("compatibility graph is missing source-transform provenance")
+                if transform.get("schema") != "r4-graph-source-compatibility-v1":
+                    raise ValueError("unknown graph source-transform schema")
+                if transform.get("byte_length_preserved") is not True or transform.get(
+                    "line_count_preserved"
+                ) is not True:
+                    raise ValueError("graph source transform did not preserve byte/line layout")
+                if not transform.get("replacements"):
+                    raise ValueError("graph source transform has no replacements")
+            elif transform is not None:
+                raise ValueError("standard graph unexpectedly records a source transform")
             if sidecar.get("requested_contract_names") != sidecar.get(
                 "actual_contract_names"
             ):
@@ -276,6 +313,10 @@ def bind_repaired_publication(
             graph_edges.append(float(sidecar["edge_count"]))
             graph_components.append(float(sidecar["graph_component_count"]))
             coverage_over_four += int(windows > TOKEN_TENSOR_SHAPE[0])
+            graph_extraction_modes[mode] += 1
+            graph_analysis_degraded += int(degraded)
+            graph_source_transformed += int(transform_expected)
+            inferred_legacy_standard_mode += int(mode_inferred)
 
             records.append(
                 {
@@ -286,6 +327,8 @@ def bind_repaired_publication(
                     "sidecar_sha256": _sha256_file(sidecar_path),
                     "schema_version": sidecar["schema_version"],
                     "extractor_version": sidecar["extractor_version"],
+                    "graph_extraction_mode": mode,
+                    "graph_extraction_mode_inferred_legacy_standard": mode_inferred,
                     "requested_contract_names": sidecar["requested_contract_names"],
                     "actual_contract_names": sidecar["actual_contract_names"],
                     "pre_subsampling_window_count": windows,
@@ -323,6 +366,12 @@ def bind_repaired_publication(
         "binding_digest_sha256": digest,
         "graph_schema_version": GRAPH_SCHEMA_VERSION,
         "extractor_version": REPAIRED_REPRESENTATION_EXTRACTOR_VERSION,
+        "graph_extraction": {
+            "mode_counts": dict(sorted(graph_extraction_modes.items())),
+            "analysis_degraded_contracts": graph_analysis_degraded,
+            "source_transformed_contracts": graph_source_transformed,
+            "inferred_legacy_standard_mode_contracts": inferred_legacy_standard_mode,
+        },
         "frozen_token_shape": list(TOKEN_TENSOR_SHAPE),
         "role_contract_counts": dict(sorted(role_counts.items())),
         "token_coverage": {

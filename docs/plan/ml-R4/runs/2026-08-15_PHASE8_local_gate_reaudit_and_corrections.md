@@ -117,6 +117,39 @@ smoke produced both test artifacts with zero failures, so the full DIVE
 representation pass may use bounded process parallelism without changing
 artifact ordering or semantics.
 
+### First full DIVE representation attempt found a Slither compatibility tail
+
+The first full DIVE representation attempt processed all 22,054 repaired
+artifacts in 3,374 seconds with eight workers. It wrote 22,026 complete
+graph/token/sidecar triples and explicitly rejected 28 artifacts (0.127%); the
+zero-failure completeness gate therefore blocked ledger publication and
+binding as designed.
+
+Failure classification is concentrated rather than random:
+
+- 24 artifacts fail in Slither IR type propagation with
+  `TypeError: unhashable type: 'list'`;
+- one Solidity 0.8 artifact reaches an unsupported ternary-to-SlithIR path;
+- one old-Solidity artifact reaches a `send` IR typing failure;
+- two old-Solidity artifacts fail Slither constant folding for compile-valid
+  fixed-array lengths (`20+1` and `stageTotal*3`).
+
+Direct compatibility probes show that Slither's `skip_analyze` mode still
+parses declarations and produces non-empty target graphs for 26 of the 28
+artifacts (39 target graphs). The final two require only deterministic folding
+of compile-time fixed-array length expressions; the promoted Solidity and
+GraphCodeBERT token input must remain unchanged, while any graph-only
+compatibility source must preserve byte length and line positions and record
+its transformed SHA-256 and replacements.
+
+The accepted recovery must remain fail-closed and provenance-visible. It will
+use a fresh output directory, hash-bind the rejected attempt, hard-link only
+its already complete triples, retry exactly the 28 recorded failures, expose
+full-analysis versus parse-only/compatibility modes in sidecars and the final
+binding report, and still require zero final representation failures. This is
+a DATA compatibility repair, not evidence that model quality improved, and it
+does not authorize training.
+
 ## What is and is not known about expected model benefit
 
 A repaired run is worth testing because it removes known training-input defects:

@@ -253,6 +253,14 @@ class GraphExtractionConfig:
     allow_paths: str | None = None
     """Directory path(s) passed to solc as --allow-paths."""
 
+    slither_skip_analyze: bool = False
+    """Parse declarations/CFG without Slither's optional SlithIR analysis.
+
+    This is a provenance-visible compatibility seam for compile-valid source
+    that triggers a Slither analysis defect.  Callers must not enable it
+    silently; repaired R4 sidecars record the resulting degraded mode.
+    """
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Feature computation helpers (module-private)
@@ -1617,7 +1625,11 @@ def extract_contract_graph(
     # ── Slither instantiation ──────────────────────────────────────────────
     solc_args = _build_solc_args(config)
     try:
-        slither_kwargs: dict = {"solc_args": solc_args, "detectors_to_run": []}
+        slither_kwargs: dict = {
+            "solc_args": solc_args,
+            "detectors_to_run": [],
+            "skip_analyze": config.slither_skip_analyze,
+        }
         if config.solc_binary:
             slither_kwargs["solc"] = str(config.solc_binary)
         sl = Slither(str(sol_path), **slither_kwargs)

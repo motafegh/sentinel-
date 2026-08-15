@@ -8,9 +8,13 @@ ambiguous/wrong graph targets while retaining the frozen graph schema and
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import os
+import shutil
 import time
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +30,10 @@ from sentinel_data.preprocessing.r4_versions import (
 from sentinel_data.representation.target_selector import (
     TargetSelectionError,
     resolve_file_graph_targets,
+)
+from sentinel_data.representation.r4_compatibility import (
+    FULL_ANALYSIS,
+    extract_components_with_compatibility,
 )
 
 log = logging.getLogger("sentinel_data.r4_orchestrator")
@@ -116,17 +124,13 @@ def _extract_one(
     sol_path: Path,
     meta: dict[str, Any],
     output_dir: Path,
-) -> None:
+) -> dict[str, Any]:
     """Build one strict graph/token/sidecar triple."""
 
     import torch
 
     from ml.src.data_extraction.windowed_tokenizer import (
         tokenize_windowed_contract_strict,
-    )
-    from sentinel_data.representation.graph_extractor import (
-        GraphExtractionConfig,
-        extract_contract_graph,
     )
     from sentinel_data.representation.graph_schema import FEATURE_SCHEMA_VERSION
 
@@ -135,28 +139,14 @@ def _extract_one(
     solc_binary = _resolve_solc_binary(meta.get("solc_version", ""))
 
     started = time.monotonic()
-    component_graphs = []
-    actual_targets: list[str] = []
-    for target in targets:
-        config_kwargs: dict[str, Any] = {
-            "multi_contract_policy": "by_name",
-            "target_contract_name": target,
-            "allow_paths": str(sol_path.parent),
-        }
-        if solc_binary is not None:
-            config_kwargs["solc_binary"] = solc_binary
-            config_kwargs["solc_version"] = meta.get("solc_version", "")
-        component = extract_contract_graph(
-            sol_path,
-            config=GraphExtractionConfig(**config_kwargs),
-        )
-        actual = str(getattr(component, "contract_name", ""))
-        if actual != target:
-            raise TargetSelectionError(
-                f"graph target mismatch for {sha256}: requested={target!r}, actual={actual!r}"
-            )
-        component_graphs.append(component)
-        actual_targets.append(actual)
+    extraction = extract_components_with_compatibility(
+        sol_path,
+        targets,
+        solc_binary=solc_binary,
+        solc_version=str(meta.get("solc_version", "")),
+    )
+    component_graphs = list(extraction.graphs)
+    actual_targets = list(extraction.actual_targets)
 
     if len(component_graphs) == 1:
         graph = component_graphs[0]
@@ -230,6 +220,10 @@ def _extract_one(
         "schema_version": FEATURE_SCHEMA_VERSION,
         "extractor_version": EXTRACTOR_VERSION,
         "graph_target_policy": "file_level_inheritance_leaf_union_v1",
+        "graph_extraction_mode": extraction.mode,
+        "graph_analysis_degraded": extraction.analysis_degraded,
+        "graph_extraction_fallback_errors": list(extraction.fallback_errors),
+        "graph_source_transform": extraction.source_transform,
         "requested_contract_names": list(targets),
         "actual_contract_names": actual_targets,
         "requested_contract_name": targets[0] if len(targets) == 1 else None,
@@ -247,11 +241,16 @@ def _extract_one(
         json.dumps(sidecar, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    return {
+        "graph_extraction_mode": extraction.mode,
+        "graph_analysis_degraded": extraction.analysis_degraded,
+        "graph_source_transform_applied": extraction.source_transform is not None,
+    }
 
 
 def _represent_worker(
     args: tuple[str, str, str, str],
-) -> tuple[bool, dict[str, str] | None]:
+) -> tuple[bool, dict[str, Any] | None, dict[str, str] | None]:
     """Process-safe one-artifact wrapper with explicit failure evidence."""
 
     source, meta_value, preprocessed_value, output_value = args
@@ -263,10 +262,10 @@ def _represent_worker(
         sol_path = preprocessed_dir / f"{meta['sha256']}.sol"
         if not sol_path.exists():
             raise FileNotFoundError(f"missing repaired Solidity artifact {sol_path}")
-        _extract_one(source, sol_path, meta, output_dir)
-        return True, None
+        provenance = _extract_one(source, sol_path, meta, output_dir)
+        return True, provenance, None
     except Exception as exc:
-        return False, {
+        return False, None, {
             "meta_path": meta_path.name,
             "error_type": type(exc).__name__,
             "error": str(exc),
@@ -320,9 +319,18 @@ def represent_repaired_source(
     else:
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
             results = list(executor.map(_represent_worker, worker_args, chunksize=1))
-    failures.extend(failure for passed, failure in results if not passed and failure)
+    failures.extend(
+        failure
+        for passed, _, failure in results
+        if not passed and failure
+    )
     failures.sort(key=lambda row: row["meta_path"])
-    written = sum(passed for passed, _ in results)
+    written = sum(passed for passed, _, _ in results)
+    mode_counts = Counter(
+        str(provenance["graph_extraction_mode"])
+        for passed, provenance, _ in results
+        if passed and provenance
+    )
 
     if failures:
         with (output_dir / "representation_failures.jsonl").open(
@@ -348,6 +356,17 @@ def represent_repaired_source(
         "frozen_token_shape": [4, 512],
         "coverage_policy": "telemetry_only_no_adequacy_threshold",
         "representation_workers": n_workers,
+        "graph_extraction_mode_counts": dict(sorted(mode_counts.items())),
+        "graph_analysis_degraded_total": sum(
+            bool(provenance.get("graph_analysis_degraded"))
+            for passed, provenance, _ in results
+            if passed and provenance
+        ),
+        "graph_source_transform_total": sum(
+            bool(provenance.get("graph_source_transform_applied"))
+            for passed, provenance, _ in results
+            if passed and provenance
+        ),
         "complete_source_build_verified": preprocessing_manifest is not None,
         "preprocessing_manifest_sha256": (
             preprocessing_manifest["manifest_sha256"]
@@ -365,5 +384,201 @@ def represent_repaired_source(
         contracts_seen=len(meta_paths),
         representations_written=written,
         representations_failed=len(failures),
+        duration_s=time.monotonic() - started,
+    )
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _link_or_copy(source: Path, destination: Path) -> str:
+    try:
+        os.link(source, destination)
+        return "hardlink"
+    except OSError:
+        shutil.copy2(source, destination)
+        return "copy"
+
+
+def recover_failed_representations(
+    source: str,
+    preprocessed_dir: Path,
+    failed_attempt_dir: Path,
+    output_dir: Path,
+    *,
+    n_workers: int = 1,
+) -> RepairedRepresentResult:
+    """Create a fresh complete root from one explicit failed full attempt.
+
+    Successful triples are byte-reused, while only identities listed in the
+    attempt's structured failure file are regenerated.  The failed attempt is
+    never modified and its manifest hash is bound into the recovery manifest.
+    """
+
+    if n_workers < 1:
+        raise ValueError("n_workers must be >= 1")
+    preprocessed_dir = Path(preprocessed_dir)
+    failed_attempt_dir = Path(failed_attempt_dir)
+    output_dir = Path(output_dir)
+    preprocessing_manifest = require_complete_preprocessed_source(
+        source, preprocessed_dir
+    )
+    attempt_manifest_path = (
+        failed_attempt_dir / "repaired_representation_manifest.json"
+    )
+    failures_path = failed_attempt_dir / "representation_failures.jsonl"
+    if not attempt_manifest_path.is_file() or not failures_path.is_file():
+        raise FileNotFoundError(
+            "failed representation recovery requires both the attempt manifest "
+            "and representation_failures.jsonl"
+        )
+    attempt = json.loads(attempt_manifest_path.read_text(encoding="utf-8"))
+    if attempt.get("source") != source:
+        raise ValueError("failed representation attempt source mismatch")
+    if attempt.get("complete_representation_build") is not True:
+        raise ValueError("representation recovery requires a full failed attempt")
+    if attempt.get("preprocessing_manifest_sha256") != preprocessing_manifest.get(
+        "manifest_sha256"
+    ):
+        raise ValueError("failed attempt/preprocessing manifest binding mismatch")
+
+    all_meta_paths = sorted(preprocessed_dir.glob("*.meta.json"))
+    total = len(all_meta_paths)
+    attempt_written = int(attempt.get("representations_written", -1))
+    attempt_failed = int(attempt.get("representations_failed", -1))
+    if (
+        int(attempt.get("contracts_requested", -1)) != total
+        or int(attempt.get("preprocessed_artifacts_total", -1)) != total
+        or attempt_written + attempt_failed != total
+        or attempt_failed < 1
+    ):
+        raise ValueError("failed representation attempt does not reconcile")
+
+    failure_rows = [
+        json.loads(line)
+        for line in failures_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    failed_ids = [
+        str(row.get("meta_path", "")).removesuffix(".meta.json")
+        for row in failure_rows
+    ]
+    if len(failed_ids) != attempt_failed or len(set(failed_ids)) != len(failed_ids):
+        raise ValueError("failed representation identities do not reconcile")
+    meta_by_id = {path.name.removesuffix(".meta.json"): path for path in all_meta_paths}
+    unknown_failures = sorted(set(failed_ids) - set(meta_by_id))
+    if unknown_failures:
+        raise ValueError(
+            f"failed representation identities are absent from preprocessing: {unknown_failures[:5]}"
+        )
+    if output_dir.exists() and any(output_dir.iterdir()):
+        raise FileExistsError(
+            f"repaired representation recovery output is not empty: {output_dir}"
+        )
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    started = time.monotonic()
+    failed_set = set(failed_ids)
+    transfer_counts: Counter[str] = Counter()
+    reused = 0
+    for artifact_id in sorted(set(meta_by_id) - failed_set):
+        for suffix in (".pt", ".tokens.pt", ".rep.json"):
+            source_path = failed_attempt_dir / f"{artifact_id}{suffix}"
+            if not source_path.is_file():
+                raise FileNotFoundError(
+                    f"failed attempt is missing accepted artifact {source_path.name}"
+                )
+            transfer_counts[_link_or_copy(source_path, output_dir / source_path.name)] += 1
+        reused += 1
+    if reused != attempt_written:
+        raise ValueError(
+            f"failed attempt reuse count mismatch: manifest={attempt_written} physical={reused}"
+        )
+
+    worker_args = [
+        (source, str(meta_by_id[artifact_id]), str(preprocessed_dir), str(output_dir))
+        for artifact_id in sorted(failed_set)
+    ]
+    if n_workers == 1:
+        results = list(map(_represent_worker, worker_args))
+    else:
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            results = list(executor.map(_represent_worker, worker_args, chunksize=1))
+
+    recovery_failures = [
+        failure
+        for passed, _, failure in results
+        if not passed and failure
+    ]
+    recovery_failures.sort(key=lambda row: row["meta_path"])
+    recovered = sum(passed for passed, _, _ in results)
+    if recovery_failures:
+        with (output_dir / "representation_failures.jsonl").open(
+            "w", encoding="utf-8"
+        ) as handle:
+            for row in recovery_failures:
+                handle.write(json.dumps(row, sort_keys=True) + "\n")
+
+    recovered_mode_counts = Counter(
+        str(provenance["graph_extraction_mode"])
+        for passed, provenance, _ in results
+        if passed and provenance
+    )
+    mode_counts = Counter({f"{FULL_ANALYSIS}_reused": reused})
+    mode_counts.update(recovered_mode_counts)
+    written = reused + recovered
+    manifest = {
+        "status": "PHYSICAL_ACCEPTANCE_PENDING",
+        "source": source,
+        "preprocessing_artifact_version": PREPROCESSING_ARTIFACT_VERSION,
+        "extractor_version": EXTRACTOR_VERSION,
+        "contracts_seen": total,
+        "preprocessed_artifacts_total": total,
+        "contracts_requested": total,
+        "requested_limit": None,
+        "complete_representation_build": True,
+        "representations_written": written,
+        "representations_failed": len(recovery_failures),
+        "frozen_token_shape": [4, 512],
+        "coverage_policy": "telemetry_only_no_adequacy_threshold",
+        "representation_workers": n_workers,
+        "complete_source_build_verified": True,
+        "preprocessing_manifest_sha256": preprocessing_manifest["manifest_sha256"],
+        "graph_extraction_mode_counts": dict(sorted(mode_counts.items())),
+        "graph_analysis_degraded_total": sum(
+            bool(provenance.get("graph_analysis_degraded"))
+            for passed, provenance, _ in results
+            if passed and provenance
+        ),
+        "graph_source_transform_total": sum(
+            bool(provenance.get("graph_source_transform_applied"))
+            for passed, provenance, _ in results
+            if passed and provenance
+        ),
+        "recovery": {
+            "schema": "r4-representation-failed-tail-recovery-v1",
+            "failed_attempt_manifest_sha256": _sha256_file(attempt_manifest_path),
+            "failed_attempt_representations_written": attempt_written,
+            "failed_attempt_representations_failed": attempt_failed,
+            "reused_representations": reused,
+            "retried_representations": len(failed_ids),
+            "recovered_representations": recovered,
+            "transfer_file_counts": dict(sorted(transfer_counts.items())),
+        },
+    }
+    (output_dir / "repaired_representation_manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return RepairedRepresentResult(
+        source=source,
+        contracts_seen=total,
+        representations_written=written,
+        representations_failed=len(recovery_failures),
         duration_s=time.monotonic() - started,
     )
