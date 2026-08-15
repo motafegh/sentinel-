@@ -56,3 +56,19 @@ def test_target_spans_support_multiple_file_components():
         "contract First { function a() public {} }",
         "contract Second { uint x; }",
     ]
+
+
+def test_target_spans_ignore_braces_inside_comments_and_strings():
+    source = (
+        "contract First /* misleading { } */ { "
+        'string constant SAMPLE = "}"; '
+        "function a() public { /* } { */ } "
+        "} "
+        "contract Second { uint x; }"
+    )
+    spans = target_contract_char_spans(source, ["First", "Second"])
+    extracted = [source[start:end] for start, end in spans]
+    assert extracted[0].startswith("contract First")
+    assert extracted[0].endswith("} ") is False
+    assert "function a()" in extracted[0]
+    assert extracted[1] == "contract Second { uint x; }"
