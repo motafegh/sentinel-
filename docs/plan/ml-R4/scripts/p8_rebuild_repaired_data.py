@@ -253,6 +253,7 @@ def cmd_represent(args: argparse.Namespace) -> int:
         preprocessed,
         output,
         limit=args.limit,
+        n_workers=args.workers,
     )
     _emit(result.__dict__)
     return 0 if result.representations_failed == 0 else 1
@@ -371,6 +372,7 @@ def parse_args() -> argparse.Namespace:
     _add_common_paths(represent)
     represent.add_argument("--source", choices=ACTIVE_SOURCES, required=True)
     represent.add_argument("--limit", type=int)
+    represent.add_argument("--workers", type=int, default=1)
 
     publish = sub.add_parser("publish")
     _add_common_paths(publish)

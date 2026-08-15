@@ -202,17 +202,17 @@ Grouping changes role/split atomicity only; it does not delete contracts or chan
 TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1 PYTHONPATH=.:data_module \
 ./ml/.venv/bin/python \
   docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py \
-  represent --source dive
+  represent --source dive --workers 8
 
 TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1 PYTHONPATH=.:data_module \
 ./ml/.venv/bin/python \
   docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py \
-  represent --source smartbugs_curated
+  represent --source smartbugs_curated --workers 4
 
 TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1 PYTHONPATH=.:data_module \
 ./ml/.venv/bin/python \
   docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py \
-  represent --source solidifi
+  represent --source solidifi --workers 4
 ```
 
 Default output root:

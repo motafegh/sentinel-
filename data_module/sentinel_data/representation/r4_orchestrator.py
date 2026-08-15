@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -248,6 +249,30 @@ def _extract_one(
     )
 
 
+def _represent_worker(
+    args: tuple[str, str, str, str],
+) -> tuple[bool, dict[str, str] | None]:
+    """Process-safe one-artifact wrapper with explicit failure evidence."""
+
+    source, meta_value, preprocessed_value, output_value = args
+    meta_path = Path(meta_value)
+    preprocessed_dir = Path(preprocessed_value)
+    output_dir = Path(output_value)
+    try:
+        meta = _load_meta(meta_path)
+        sol_path = preprocessed_dir / f"{meta['sha256']}.sol"
+        if not sol_path.exists():
+            raise FileNotFoundError(f"missing repaired Solidity artifact {sol_path}")
+        _extract_one(source, sol_path, meta, output_dir)
+        return True, None
+    except Exception as exc:
+        return False, {
+            "meta_path": meta_path.name,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+        }
+
+
 def represent_repaired_source(
     source: str,
     preprocessed_dir: Path,
@@ -255,6 +280,7 @@ def represent_repaired_source(
     *,
     limit: int | None = None,
     verify_completeness: bool = True,
+    n_workers: int = 1,
 ) -> RepairedRepresentResult:
     """Build repaired representations from one versioned preprocessing source.
 
@@ -262,6 +288,10 @@ def represent_repaired_source(
     overwritten.  Failures are recorded in ``representation_failures.jsonl``.
     """
 
+    if n_workers < 1:
+        raise ValueError("n_workers must be >= 1")
+    if limit is not None and limit < 1:
+        raise ValueError("limit must be >= 1")
     preprocessing_manifest = (
         require_complete_preprocessed_source(source, preprocessed_dir)
         if verify_completeness
@@ -273,29 +303,26 @@ def represent_repaired_source(
         )
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    meta_paths = sorted(preprocessed_dir.glob("*.meta.json"))
+    all_meta_paths = sorted(preprocessed_dir.glob("*.meta.json"))
+    meta_paths = all_meta_paths
     if limit is not None:
         meta_paths = meta_paths[:limit]
 
     failures: list[dict[str, str]] = []
-    written = 0
     started = time.monotonic()
-    for meta_path in meta_paths:
-        try:
-            meta = _load_meta(meta_path)
-            sol_path = preprocessed_dir / f"{meta['sha256']}.sol"
-            if not sol_path.exists():
-                raise FileNotFoundError(f"missing repaired Solidity artifact {sol_path}")
-            _extract_one(source, sol_path, meta, output_dir)
-            written += 1
-        except Exception as exc:
-            failures.append(
-                {
-                    "meta_path": meta_path.name,
-                    "error_type": type(exc).__name__,
-                    "error": str(exc),
-                }
-            )
+    worker_args = [
+        (source, str(path), str(preprocessed_dir), str(output_dir))
+        for path in meta_paths
+    ]
+    if n_workers == 1:
+        results = map(_represent_worker, worker_args)
+        results = list(results)
+    else:
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            results = list(executor.map(_represent_worker, worker_args, chunksize=1))
+    failures.extend(failure for passed, failure in results if not passed and failure)
+    failures.sort(key=lambda row: row["meta_path"])
+    written = sum(passed for passed, _ in results)
 
     if failures:
         with (output_dir / "representation_failures.jsonl").open(
@@ -310,10 +337,17 @@ def represent_repaired_source(
         "preprocessing_artifact_version": PREPROCESSING_ARTIFACT_VERSION,
         "extractor_version": EXTRACTOR_VERSION,
         "contracts_seen": len(meta_paths),
+        "preprocessed_artifacts_total": len(all_meta_paths),
+        "contracts_requested": len(meta_paths),
+        "requested_limit": limit,
+        "complete_representation_build": (
+            limit is None and preprocessing_manifest is not None
+        ),
         "representations_written": written,
         "representations_failed": len(failures),
         "frozen_token_shape": [4, 512],
         "coverage_policy": "telemetry_only_no_adequacy_threshold",
+        "representation_workers": n_workers,
         "complete_source_build_verified": preprocessing_manifest is not None,
         "preprocessing_manifest_sha256": (
             preprocessing_manifest["manifest_sha256"]

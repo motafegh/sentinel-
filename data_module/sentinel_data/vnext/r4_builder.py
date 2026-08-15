@@ -501,6 +501,15 @@ def build_repaired_publication(
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
     validate_policy_surface(policy)
 
+    from sentinel_data.preprocessing.r4_completeness import (
+        require_complete_representation_sources,
+    )
+
+    representation_manifests = require_complete_representation_sources(
+        representation_root,
+        grouping.get("preprocessing_manifests") or {},
+    )
+
     grouping_sha = _sha256_file(grouping_path)
     policy_sha = _sha256_file(policy_path)
     claims_sha = _sha256_file(claims_path)
@@ -685,6 +694,13 @@ def build_repaired_publication(
             "evidence_ledger_manifest": {
                 "path": "r4-v2-build/evidence_ledger_v2_manifest.json",
                 "sha256": _sha256_file(ledger_manifest_path),
+            },
+            "representation_manifests": {
+                "path": "representations-r4-v2/*/repaired_representation_manifest.json",
+                "sha256_by_source": {
+                    source: value["manifest_sha256"]
+                    for source, value in sorted(representation_manifests.items())
+                },
             },
         },
         "representation_root_recorded": False,

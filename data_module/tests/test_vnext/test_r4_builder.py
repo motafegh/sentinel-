@@ -262,6 +262,9 @@ def test_publication_consumes_hash_bound_materialized_ledger(tmp_path, policy):
         "artifact_sources": artifact_sources,
         "artifact_to_group": artifact_to_group,
         "groups": groups,
+        "preprocessing_manifests": {
+            "solidifi": {"manifest_sha256": "b" * 64}
+        },
     }
     grouping_path.write_text(json.dumps(grouping, sort_keys=True))
     ledger_rows, _ = build_semantic_cells(claims, grouping, policy, reps)
@@ -279,6 +282,19 @@ def test_publication_consumes_hash_bound_materialized_ledger(tmp_path, policy):
                     "grouping": {"sha256": _sha(grouping_path)},
                     "policy": {"sha256": _sha(policy_path)},
                 },
+            }
+        )
+    )
+    (reps / "solidifi" / "repaired_representation_manifest.json").write_text(
+        json.dumps(
+            {
+                "source": "solidifi",
+                "preprocessed_artifacts_total": counter,
+                "contracts_requested": counter,
+                "representations_written": counter,
+                "representations_failed": 0,
+                "complete_representation_build": True,
+                "preprocessing_manifest_sha256": "b" * 64,
             }
         )
     )

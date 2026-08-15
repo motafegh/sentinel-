@@ -52,6 +52,9 @@ def main() -> int:
         import pyarrow as pa
         import pyarrow.parquet as pq
         from sentinel_data.vnext.r4_builder import build_semantic_cells
+        from sentinel_data.preprocessing.r4_completeness import (
+            require_complete_representation_sources,
+        )
     except ImportError as exc:
         print(f"repaired ledger dependency unavailable: {exc}", file=sys.stderr)
         return 2
@@ -73,6 +76,10 @@ def main() -> int:
 
     claims = _load_jsonl(claims_path)
     grouping = json.loads(grouping_path.read_text(encoding="utf-8"))
+    require_complete_representation_sources(
+        args.representations_root,
+        grouping.get("preprocessing_manifests") or {},
+    )
     policy = json.loads(args.policy.read_text(encoding="utf-8"))
     rows, artifact_info = build_semantic_cells(
         claims,

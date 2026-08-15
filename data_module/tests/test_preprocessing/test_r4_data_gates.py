@@ -9,6 +9,7 @@ import pytest
 
 from sentinel_data.preprocessing.r4_completeness import (
     require_complete_preprocessed_source,
+    require_complete_representation_source,
 )
 from sentinel_data.preprocessing.r4_raw_verifier import verify_manifest_source
 from sentinel_data.preprocessing.r4_versions import PREPROCESSING_ARTIFACT_VERSION
@@ -123,3 +124,27 @@ def test_completeness_gate_accepts_reconciled_full_build(tmp_path):
     )
     report = require_complete_preprocessed_source("fixture", directory)
     assert report["manifest_sha256"]
+
+
+def test_representation_completeness_rejects_limit_build(tmp_path):
+    directory = tmp_path / "representations"
+    directory.mkdir()
+    (directory / "repaired_representation_manifest.json").write_text(
+        json.dumps(
+            {
+                "source": "fixture",
+                "preprocessed_artifacts_total": 10,
+                "contracts_requested": 1,
+                "representations_written": 1,
+                "representations_failed": 0,
+                "complete_representation_build": False,
+                "preprocessing_manifest_sha256": "a" * 64,
+            }
+        )
+    )
+    with pytest.raises(ValueError, match="partial"):
+        require_complete_representation_source(
+            "fixture",
+            directory,
+            expected_preprocessing_manifest_sha256="a" * 64,
+        )

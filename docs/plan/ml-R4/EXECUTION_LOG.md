@@ -311,3 +311,12 @@ Append one entry for each work package.
 - **Real recovery check:** DIVE `15105.sol` with `^0.8` prepared successfully using solc 0.8.35
 - **Validation:** repaired focused suite `99 passed`; `git diff --check` PASS
 - **Gate effect:** second output rejected/archived; final full DIVE preprocessing restarts from a fresh root before any downstream stage
+
+### R4-LOG-20260815-016 — Representation completeness and bounded parallel execution gate
+
+- **Finding:** representation `--limit` output was not explicitly marked partial, so downstream role publication could have converted missing physical artifacts into `EXCLUDED` rows instead of rejecting an incomplete build
+- **Correction:** representation manifests bind preprocessing SHA, total/requested/written/failed counts, limit/completeness state and worker count; ledger/publication require zero-failure physical triples for every bound preprocessing source
+- **Efficiency correction:** representation driver supports deterministic process workers; output/failure rows remain artifact-keyed and sorted
+- **Real smoke:** two DIVE artifacts, including a five-component graph, completed with two workers and zero failures
+- **Validation:** repaired focused suite `100 passed`; frozen G6 validator PASS; `git diff --check` PASS
+- **Gate effect:** small-source representation outputs made before this manifest change must be rebuilt; full DIVE representations may run with eight workers only after repository validation

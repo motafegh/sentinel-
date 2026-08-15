@@ -81,7 +81,7 @@ edges. This validates mechanics, not full-corpus cost or model quality. The full
 binding report now records component/node/edge quantiles so graph inflation and
 GPU feasibility are reviewed before training.
 
-Repository validation after the latest corrections: repaired focused suite `99
+Repository validation after the latest corrections: repaired focused suite `100
 passed`; corrected verifier PASS over all three full manifests; frozen G6
 validator PASS; handbook validator `11 passed`; `git diff --check` PASS.
 
@@ -107,6 +107,15 @@ remaining zero-attempt rows all used the valid partial pragma `^0.8`. Partial
 one/two-component constraint versions are now normalized for range evaluation;
 a real `^0.8` source compiled with solc 0.8.35. This second output is also a
 rejected attempt and the final DIVE candidate must be rebuilt once more.
+
+Before the large representation run, the same completeness analysis was
+applied to that stage. Representation manifests now bind total/requested counts,
+the preprocessing-manifest SHA-256, worker count, and whether `--limit` was
+used. Ledger/publication construction rejects a partial, failed, hash-mismatched,
+or physically incomplete graph/token/sidecar population. A two-worker real DIVE
+smoke produced both test artifacts with zero failures, so the full DIVE
+representation pass may use bounded process parallelism without changing
+artifact ordering or semantics.
 
 ## What is and is not known about expected model benefit
 

@@ -63,7 +63,66 @@ def require_complete_preprocessed_sources(
     }
 
 
+def require_complete_representation_source(
+    source: str,
+    directory: Path,
+    *,
+    expected_preprocessing_manifest_sha256: str,
+) -> dict[str, Any]:
+    """Reject partial, failed, or physically incomplete representation output."""
+
+    directory = Path(directory)
+    path = directory / "repaired_representation_manifest.json"
+    if not path.is_file():
+        raise FileNotFoundError(f"missing repaired representation manifest for {source}: {path}")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    total = int(value.get("preprocessed_artifacts_total", -1))
+    requested = int(value.get("contracts_requested", -1))
+    written = int(value.get("representations_written", -1))
+    failed = int(value.get("representations_failed", -1))
+    if value.get("source") != source:
+        raise ValueError(f"repaired representation source mismatch for {source}")
+    if value.get("complete_representation_build") is not True:
+        raise ValueError(f"repaired representation build is partial for {source}")
+    if requested != total or written + failed != total or failed != 0:
+        raise ValueError(
+            f"repaired representation reconciliation failed for {source}: "
+            f"total={total} requested={requested} written={written} failed={failed}"
+        )
+    if value.get("preprocessing_manifest_sha256") != expected_preprocessing_manifest_sha256:
+        raise ValueError(f"representation/preprocessing binding mismatch for {source}")
+    physical = {
+        "graphs": len([p for p in directory.glob("*.pt") if not p.name.endswith(".tokens.pt")]),
+        "tokens": len(list(directory.glob("*.tokens.pt"))),
+        "sidecars": len(list(directory.glob("*.rep.json"))),
+    }
+    if any(count != written for count in physical.values()):
+        raise ValueError(
+            f"repaired representation physical count mismatch for {source}: "
+            f"manifest={written} physical={physical}"
+        )
+    return {**value, "manifest_path": path, "manifest_sha256": _sha256(path)}
+
+
+def require_complete_representation_sources(
+    representation_root: Path,
+    preprocessing_manifests: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    if not preprocessing_manifests:
+        raise ValueError("grouping has no bound preprocessing manifests")
+    return {
+        source: require_complete_representation_source(
+            source,
+            Path(representation_root) / source,
+            expected_preprocessing_manifest_sha256=str(value["manifest_sha256"]),
+        )
+        for source, value in sorted(preprocessing_manifests.items())
+    }
+
+
 __all__ = [
     "require_complete_preprocessed_source",
     "require_complete_preprocessed_sources",
+    "require_complete_representation_source",
+    "require_complete_representation_sources",
 ]
