@@ -1,8 +1,8 @@
 # ADR-R4-009 — Correct leakage grouping with logical lineage V3
 
-**Date:** 2026-08-15  
-**Status:** ACCEPTED FOR LOCAL VALIDATION  
-**Decision ID:** R4-D-009  
+**Date:** 2026-08-15
+**Status:** ACCEPTED FOR LOCAL VALIDATION
+**Decision ID:** R4-D-009
 **Scope:** Phase-8 leakage grouping, role partitioning, evaluation reservations, and future training population
 
 ## Context
