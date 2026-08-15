@@ -1,7 +1,7 @@
 """Representation sensitivity profiling for repaired R4 Phase 8.
 
 This module turns representation sidecar metadata into explicit comparison sets
-for compatibility-mode and file-union diagnostics.  It is read-only and makes
+for compatibility-mode and file-union diagnostics. It is read-only and makes
 no acceptance or model-quality claim.
 """
 
@@ -64,7 +64,9 @@ def profile_representation_records(
         components = int(row.get("graph_component_count", 0))
         nodes = int(row.get("node_count", 0))
         edges = int(row.get("edge_count", 0))
-        windows = int(row.get("pre_subsampling_window_count", row.get("window_count", 0)))
+        windows = int(
+            row.get("pre_subsampling_window_count", row.get("window_count", 0))
+        )
         if components < 1 or nodes < 1 or edges < 0 or windows < 1:
             raise ValueError(
                 f"invalid representation telemetry for {contract_id}: "
@@ -90,6 +92,22 @@ def profile_representation_records(
         if file_union and selection_active:
             selection_union.append(contract_id)
 
+    def _summary_row(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "contract_id": str(row["contract_id"]),
+            "source": str(row.get("source") or ""),
+            "role": str(row.get("role") or ""),
+            "graph_extraction_mode": str(row.get("graph_extraction_mode") or ""),
+            "graph_component_count": int(row.get("graph_component_count", 0)),
+            "node_count": int(row.get("node_count", 0)),
+            "edge_count": int(row.get("edge_count", 0)),
+            "pre_subsampling_window_count": int(
+                row.get("pre_subsampling_window_count", row.get("window_count", 0))
+            ),
+            "optimizer_active": bool(row.get("optimizer_active")),
+            "model_selection_active": bool(row.get("model_selection_active")),
+        }
+
     def top(metric: str) -> list[dict[str, Any]]:
         ordered = sorted(
             rows,
@@ -98,23 +116,7 @@ def profile_representation_records(
                 str(row["contract_id"]),
             ),
         )[:top_n]
-        return [
-            {
-                "contract_id": str(row["contract_id"]),
-                "source": str(row.get("source") or ""),
-                "role": str(row.get("role") or ""),
-                "graph_extraction_mode": str(row.get("graph_extraction_mode") or ""),
-                "graph_component_count": int(row.get("graph_component_count", 0)),
-                "node_count": int(row.get("node_count", 0)),
-                "edge_count": int(row.get("edge_count", 0)),
-                "pre_subsampling_window_count": int(
-                    row.get("pre_subsampling_window_count", row.get("window_count", 0))
-                ),
-                "optimizer_active": bool(row.get("optimizer_active")),
-                "model_selection_active": bool(row.get("model_selection_active")),
-            }
-            for row in ordered
-        ]
+        return [_summary_row(row) for row in ordered]
 
     active_rows = [
         row
@@ -123,31 +125,44 @@ def profile_representation_records(
         or bool(row.get("model_selection_active"))
     ]
 
-    def top_active(metric: str) -> list[dict[str, Any]]:
-        ordered = sorted(
-            active_rows,
-            key=lambda row: (
-                -int(row.get(metric, 0)),
-                str(row["contract_id"]),
-            ),
-        )[:top_n]
-        return ordered
-
-    worst_case_ids: list[str] = []
-    for metric in (
+    metrics = (
         "node_count",
         "edge_count",
         "graph_component_count",
         "pre_subsampling_window_count",
-    ):
-        for row in top_active(metric):
-            contract_id = str(row["contract_id"])
+    )
+    active_rankings: dict[str, list[dict[str, Any]]] = {
+        metric: sorted(
+            active_rows,
+            key=lambda row, metric=metric: (
+                -int(row.get(metric, 0)),
+                str(row["contract_id"]),
+            ),
+        )[:top_n]
+        for metric in metrics
+    }
+
+    # Interleave metric rankings by rank so one dimension (usually node count)
+    # cannot consume the entire bounded GPU probe budget before edge/component/
+    # token-window extremes are represented.
+    worst_case_ids: list[str] = []
+    for rank in range(top_n):
+        for metric in metrics:
+            ranking = active_rankings[metric]
+            if rank >= len(ranking):
+                continue
+            contract_id = str(ranking[rank]["contract_id"])
             if contract_id not in worst_case_ids:
                 worst_case_ids.append(contract_id)
             if len(worst_case_ids) >= top_n:
                 break
         if len(worst_case_ids) >= top_n:
             break
+
+    worst_case_by_metric = {
+        metric: [str(row["contract_id"]) for row in ranking]
+        for metric, ranking in active_rankings.items()
+    }
 
     return {
         "schema": "sentinel-r4-representation-sensitivity-v1",
@@ -171,6 +186,7 @@ def profile_representation_records(
             "optimizer_file_union_contract_ids": sorted(optimizer_union),
             "model_selection_file_union_contract_ids": sorted(selection_union),
             "worst_case_gpu_contract_ids": worst_case_ids,
+            "worst_case_active_contract_ids_by_metric": worst_case_by_metric,
         },
         "top_by_nodes": top("node_count"),
         "top_by_edges": top("edge_count"),
