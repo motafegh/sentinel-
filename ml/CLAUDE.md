@@ -4,201 +4,138 @@ This file extends root `CLAUDE.md` for `ml/`. Root project authority and committ
 
 ## Current Phase-8 ML state
 
-The historical G7 DATA/ML lineage remains immutable and reproducible:
+Historical G7/v1 and Run12 remain immutable reproducibility/comparison roots. They are not current repaired training truth.
 
-- DATA publication: `sentinel-r4-vnext-v1`;
-- role partition: `r4-vnext-roles-v1`;
-- graph schema: `v9`;
-- historical representation extractor: `v2.1-windowed-gcb`;
-- historical G7 representation binding digest: `7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420`.
+R4-D-008 physically accepted the repaired-v2 DATA source/representation layer:
 
-The 2026-08-14 real-data readiness audit found physical preprocessing/representation defects that prevent this historical v1 lineage from serving as the full Phase-8 retrain input. G7 remains valid evidence for v1; it is not erased or rewritten.
+- 22,540 contracts / 67,620 graph-token-sidecar files;
+- physical representation binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`;
+- representation extractor `v2.2-r4-repaired`;
+- graph schema `v9`;
+- token tensor `[4,512]`;
+- architecture `four_eye_v8` / `v8.1` remains frozen.
 
-Repository repair defines a separate repaired lineage:
+That physical acceptance remains valid.
 
-- preprocessing: `sentinel-preprocessed-r4-v2`;
-- evidence ledger: `evidence-ledger-r4-v2`;
-- grouping: `r4-leakage-groups-v2`;
-- role partition: `r4-vnext-roles-v2`;
-- DATA publication: `sentinel-r4-vnext-v2`;
-- representation extractor: `v2.2-r4-repaired`;
-- graph schema remains `v9`;
-- model token tensor remains `[4,512]`;
-- architecture remains `four_eye_v8` / `v8.1`.
+R4-D-009 / ADR-R4-009 supersedes **V2 grouping/roles for future ML research** because the full-population audit found a 10,327-contract DIVE component produced by arbitrary shared-address grouping. The active logical candidate is therefore:
 
-Repository-safe implementation/tests and the protected local physical rebuild are complete. At evidence source commit `fb31326da4420c2289822c2a6db8a022ac25876a`, repaired-v2 binds 22,540 contracts / 67,620 files with digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`. The generated artifacts are Git-ignored and absent from a fresh clone. The bounded CUDA smoke passed without Run12 weights or a checkpoint; no model-quality result is claimed.
+- `r4-leakage-groups-v3`;
+- `r4-vnext-roles-v3`;
+- `sentinel-r4-vnext-v3`;
+- ML adapter `ml/src/datasets/vnext_logical_v3_dataset.py`.
 
-Repaired-v2 physical authority and the launch hold are governed by:
+V3 reuses accepted repaired-v2 graph/token/sidecar bytes. Local V3 generation and acceptance are pending; until they pass, no repaired logical partition is authorized for full training.
 
-- R4-D-008 in `docs/plan/ml-R4/DECISION_REGISTER.md`;
-- `docs/plan/ml-R4/adrs/ADR-R4-008-repaired-v2-data-acceptance-and-phase8-no-launch.md`;
-- `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`.
+## Compatibility boundaries
 
-## Historical-v1 compatibility boundary
+Do not loosen historical guards:
 
-Do not loosen the existing v1 guards merely to make repaired data load:
+- `ml/src/datasets/vnext_dataset.py` remains historical G7/v1;
+- `ml/src/training/vnext_binding.py` remains historical Phase-8 v1 run binding;
+- Run12 learned weights/optimizer/scheduler/threshold/calibration remain historical only.
 
-- `ml/src/datasets/vnext_dataset.py` remains bound to historical G7/v1 semantics;
-- `ml/src/training/vnext_binding.py` remains the historical Phase-8 v1 run-binding contract;
-- old fixed v1 population assertions remain reproducibility evidence;
-- old Run12 artifacts remain historical only.
+Repaired/v2 remains a physical/historical research seam:
 
-The repaired path is separate:
+- `ml/src/datasets/vnext_repaired_dataset.py` binds `sentinel-r4-vnext-v2`;
+- V2 role-dependent research outputs are historical after R4-D-009.
 
-- `ml/src/datasets/vnext_repaired_dataset.py` consumes only physically bound `sentinel-r4-vnext-v2` and derives repaired populations dynamically;
-- `ml/src/training/vnext_repaired_binding.py` currently binds bounded repaired-data smoke evidence and explicitly records `full_training_authorized=false`;
-- the repaired CUDA micro-smoke is complete evidence, not permission for the 100-epoch runner;
-- additional repaired-v2 GPU work is authorized only when it is a **bounded comparative diagnostic** explicitly tied to R4-D-008 / the long-contract decision or a later approved objective experiment. It must not write/promote a training checkpoint or silently become a full-run substitute.
+Current V3 research seam:
 
-Do not route `p8_run_training.sh` to repaired v2 until governance explicitly re-authorizes the full run after objective/evaluation and selector decisions.
+- `ml/src/datasets/vnext_logical_v3_dataset.py` requires V3 dataset/grouping/partition identity and a passing V3 physical binding report;
+- it reuses the accepted repaired-v2 representation root;
+- it fails closed if address grouping authority is re-enabled or the V3 binding is absent/mismatched.
 
-## Permanent R4 constraints
+Do not route the full 100-epoch runner to V2 or V3 until governance explicitly re-authorizes training.
+
+## Permanent R4 semantics
 
 ### Unknown is not negative
 
-The historical consumer path treated every binary `0` as a supervised negative. That behavior is **not valid for DATA vNext**.
+No unknown/masked/disabled cell may be filled with zero to satisfy an old loss API. Current model inputs must preserve nullable targets, strength, effective-loss masks, outcome/metric masks, roles, and lineage.
 
-Current/repaired training must carry:
-
-- authorized nullable target;
-- training strength (`STRONG`, `WEAK`, `NONE`);
-- effective loss mask;
-- outcome/metric mask;
-- frozen dataset role;
-- DATA/policy/config lineage.
-
-Never fill an unknown/masked/disabled vNext cell with zero just to satisfy an old loss API.
-
-### Current class support
-
-The ten-output order remains locked. `GasException` and `UnusedReturn` are supervision-disabled under `data-vnext-policy-v1` until later evidence-backed policy changes.
-
-DIVE Front Running→TransactionOrderDependence is weak-positive only. Weak does not become strong or metric-grade evidence automatically.
+Policy v1 still has zero confirmed-negative source authority. `GasException` and `UnusedReturn` remain supervision-disabled. DIVE Front Running→TransactionOrderDependence remains weak-positive only.
 
 ### Evaluation roles
 
-Current first-baseline limitations remain:
+Current limitations remain:
 
 - training strong: supported;
-- training weak: supported for DIVE TOD only;
-- training unlabeled: supported;
+- training weak: supported for authorized weak evidence;
+- training unlabeled: supported as a role, not as negative truth;
 - model selection: positive-only limited;
 - threshold fit: `UNSUPPORTED_EMPTY`;
 - calibration fit: `UNSUPPORTED_EMPTY`;
 - untouched acceptance: `UNSUPPORTED_EMPTY_FROZEN`.
 
-Do not run a historical utility and then infer that the corresponding evidence role exists. A threshold/calibration script executing successfully is not authorization to fit policy on unknown/exposed data.
+The old V2 confirmed-negative pilot queue is obsolete because its group reservations came from the superseded V2 partition. Generate/review the V3 queue only after V3 acceptance.
 
-### Run12 compatibility
+## Architecture and selector boundary
 
-Preserve Run12/checkpoint companions for reproducibility and comparison. Do not overwrite them with repaired artifacts.
+Keep architecture/input shape frozen for this tranche:
 
-A future repaired checkpoint that keeps the same architecture is still semantically new and must bind:
+- architecture `four_eye_v8`;
+- model `v8.1`;
+- ten locked outputs;
+- graph schema `v9`;
+- token tensor `[4,512]`.
 
-- exact repaired DATA artifact/policy/roles;
-- exact repaired representation binding;
-- training config and seed/initialization;
-- strong/weak numeric optimization handling;
-- checkpoint hash;
-- checkpoint-selection evidence/limitations;
-- any later authorized threshold/calibration artifacts.
+`target_aware_guarded_v1` remains a research candidate, not a promoted extractor. V2 evidence showed strong requested-target coverage improvement, but those statistics were conditioned on superseded V2 roles.
 
-Do not automatically reuse Run12 weights, optimizer/scheduler state, thresholds, calibration, drift, or proxy-agreement evidence.
+After V3 acceptance, regenerate selector coverage and CUDA evidence against V3 roles. The V3 CUDA launcher must execute its requested worst-case graph probes; unlike the earlier V2 run, missing sensitivity evidence cannot silently produce an empty probe set.
 
-## Architecture and long-contract boundary
+Encoding more than four windows is an architecture/input-capacity change and needs a separate architecture decision.
 
-The repository repair deliberately does **not** change architecture or frozen input shape.
+## Training-horizon rule
 
-Current contract:
+Do not copy historical v1 or V2 scheduler counts into a V3 run.
 
-- architecture: `four_eye_v8`;
-- model version: `v8.1`;
-- class count/order: existing locked ten-class order;
-- graph schema: `v9`;
-- token tensor: `[4,512]`;
-- historical four-window linspace selection remains the repaired control;
-- token coverage is explicit diagnostic evidence using `r4-token-coverage-v1`.
+The earlier V2 active population of 831 groups and planning arithmetic of 104 micro-batches / 13 optimizer steps per epoch are now historical V2 partition facts. The V3 acceptance audit derives the corrected active optimizer contracts/groups and reports fresh batch-8/accum-8 planning arithmetic.
 
-Do not infer that `[4,512]` shape validity means long-contract adequacy. The governing decision is:
+Even those V3 counts remain planning-only until the final objective, selector, roles, and training configuration are explicitly authorized and bound.
 
-`docs/plan/ml-R4/decisions/2026-08-15_PHASE8_LONG_CONTRACT_TOKEN_STRATEGY.md`
+## Local V3 execution
 
-A target-contract-aware bounded-window comparison is implemented for evidence collection. The first corpus-wide coverage experiment is complete and promising but not sufficient for promotion. Production selector promotion requires a versioned extractor lineage plus identical-initialization bounded GPU comparison, regression-case review, worst-case large-graph diagnostics, and repeated physical binding/smoke evidence. Encoding more than four windows is an architecture/input-capacity change and requires a separate architecture decision.
+Follow:
 
-## Repaired training-horizon rule
+`docs/plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md`
 
-Do not copy historical v1 dataloader/scheduler constants into a future repaired-v2 run.
+Order:
 
-Current measured active optimizer population is 899 contracts over 831 active leakage groups. With the existing one-member-per-group sampler, batch size 8, and gradient accumulation 8, **planning-only arithmetic** would be 104 micro-batches and 13 optimizer/scheduler steps per epoch, or 1,300 steps across 100 epochs. The historical v1 values 88 / 11 / 1,100 are not repaired-v2 authority.
+1. build V3 grouping;
+2. freeze V3 roles/publication;
+3. prove unchanged physical binding;
+4. pass V2→V3 logical acceptance;
+5. regenerate V3 representation-sensitivity and selector population evidence;
+6. generate the V3 negative-review queue;
+7. rerun identical-initialization selector CUDA comparison with mandatory worst-case probes;
+8. review evidence before any selector/objective/training decision.
 
-No repaired-v2 full-run horizon is currently authorized. Any later objective/selector/population change must recompute the actual dataloader length and scheduler horizon from the final bound configuration, then record it in the run binding/checkpoint lineage.
+## Runtime provenance
 
-## ML runtime provenance
+Any GPU diagnostic or future authorized run must bind exact source commit, V3 DATA/group/partition manifest hashes, the unchanged physical representation digest, architecture/class order, seed/config, package versions, and accepted GraphCodeBERT snapshot `2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d`.
 
-Any repaired GPU diagnostic or later authorized full run must bind:
-
-- exact source commit;
-- repaired DATA manifest/content hashes;
-- repaired representation binding digest;
-- policy/grouping/claims/role identities;
-- frozen architecture/model/class order;
-- seed and optimization configuration;
-- actual runtime package versions;
-- accepted GraphCodeBERT snapshot `2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d`.
-
-Do not change packages during an active evidence-generating run.
-
-## Before modifying source
-
-1. Determine whether the task touches historical Run12/v1 compatibility or the repaired-v2 path.
-2. Read the exact source/tests.
-3. If DATA semantics/evidence roles are involved, read current R4 policy/manifest/decision records before coding.
-4. Preserve the architecture freeze unless an explicit later R4 decision unfreezes it.
-5. Add failure tests for missing masks/strength/roles/bindings where relevant.
-6. Do not weaken DATA semantics or historical replay guards to minimize ML changes; use the separate repaired seam.
-7. If changing objective, selector, grouping, representation semantics, or evaluation roles, create a new versioned identity/binding rather than mutating accepted repaired-v2 evidence in place.
+Do not change packages during an evidence-generating run.
 
 ## Validation discipline
 
-For repository-safe repair/current Phase-8 compatibility work, use the dedicated workflow:
+Repository-safe Phase-8 validation is:
 
 `.github/workflows/r4-phase8-data-repair.yml`
 
-It compiles repaired DATA/ML/local scripts, runs repaired regressions, revalidates frozen historical G6 artifacts, and performs a diff whitespace/error check from the real-data repair base.
+It compiles repaired/V3 DATA+ML entry points, runs regressions, revalidates frozen historical G6, and runs the repair-tranche diff gate.
 
-Repository CI cannot substitute for protected local physical evidence. The accepted repaired-v2 local gates have already been executed, but **any changed physical lineage** must repeat the applicable local gates:
-
-- raw/input byte and provenance verification where inputs change;
-- actual historical solc execution where preprocessing/compiler policy changes;
-- regenerated repaired representations where selector/graph semantics change;
-- regenerated repaired parquets/roles/publication where DATA semantics/grouping change;
-- physical representation binding;
-- repaired-lineage acceptance audit;
-- relevant token/graph coverage experiment;
-- bounded repaired-data CUDA diagnostic.
-
-Historical/supplementary ML testing specs remain useful only when they do not conflict with current R4 semantics.
-
-## Coding conventions
-
-- type hints on ML source interfaces;
-- import canonical schema constants; do not duplicate class/graph constants;
-- explicit versioned config for training/evidence semantics;
-- structured metrics/log fields;
-- focused tests near the relevant source area;
-- decision numbers require measured evidence and explicit config;
-- no silent failures/skips/defaults that can contaminate evaluation.
+Repository CI cannot prove the Git-ignored V3 publication or local GPU evidence. Physical/local acceptance must execute the handoff commands against the existing accepted repaired-v2 trees.
 
 ## Training stop line
 
-Until the positive-only objective/evaluation limitation and token-selector decision are resolved and governance is updated again:
+Until V3 is accepted locally and evaluation/selector decisions are made:
 
 - do not run the 100-epoch job;
-- do not create/promote a repaired full-training checkpoint;
+- do not create/promote a repaired teacher checkpoint;
 - do not reuse Run12 learned weights;
 - do not tune thresholds/calibration;
-- do not inspect/manufacture acceptance data;
-- do not weaken v1/v2 provenance or role guards just to make execution convenient;
-- bounded comparative diagnostics are permitted only under an explicit versioned experimental contract and must remain non-promotional.
+- do not manufacture negative or acceptance evidence;
+- do not promote `target_aware_guarded_v1`;
+- do not approve PU learning merely to bypass the lack of negative evaluation evidence.
 
-**Current ML status:** repaired-v2 physical DATA accepted locally for bounded research; bounded CUDA smoke passed; all 899 effective loss cells are positive-only; target-aware selector promising but not promoted; grouping/compatibility/file-union representation sensitivity remains open evidence; G8 open; 100-epoch training not authorized.
+**Current ML status:** physical repaired-v2 representations remain accepted; V2 grouping/roles are superseded for future research; logical V3 is implemented and awaits protected local acceptance; confirmed-negative evidence and selector promotion remain unresolved; G8 open; full training unauthorized.
