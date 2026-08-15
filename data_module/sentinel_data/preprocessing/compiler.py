@@ -118,16 +118,33 @@ def _satisfying_versions(pragma: str, available: list[str]) -> list[str]:
     if not pragma:
         return list(reversed(available))
 
-    token_re = re.compile(r"(\^|~|>=|<=|>|<|=)?\s*(\d+\.\d+\.\d+)")
+    token_re = re.compile(r"(\^|~|>=|<=|>|<|=)?\s*(\d+(?:\.\d+){0,2})")
+
+    def constraint_tuple(raw_version: str) -> tuple[int, int, int]:
+        parts = raw_version.split(".")
+        if not 1 <= len(parts) <= 3 or not all(part.isdigit() for part in parts):
+            raise ValueError(f"invalid Solidity constraint version: {raw_version!r}")
+        padded = [*parts, *(["0"] * (3 - len(parts)))]
+        return tuple(int(part) for part in padded)  # type: ignore[return-value]
 
     def clause_matches(value: tuple[int, int, int], clause: str) -> bool:
         tokens = token_re.findall(clause)
         if not tokens:
             return False
         for operator, raw_version in tokens:
-            bound = _version_tuple(raw_version)
-            if operator in ("", "=") and value != bound:
-                return False
+            bound = constraint_tuple(raw_version)
+            precision = raw_version.count(".") + 1
+            if operator in ("", "="):
+                if precision == 3 and value != bound:
+                    return False
+                if precision == 2 and not bound <= value < (
+                    bound[0],
+                    bound[1] + 1,
+                    0,
+                ):
+                    return False
+                if precision == 1 and not bound <= value < (bound[0] + 1, 0, 0):
+                    return False
             if operator == ">=" and value < bound:
                 return False
             if operator == ">" and value <= bound:

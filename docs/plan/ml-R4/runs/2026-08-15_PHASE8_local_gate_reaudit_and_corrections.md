@@ -81,7 +81,7 @@ edges. This validates mechanics, not full-corpus cost or model quality. The full
 binding report now records component/node/edge quantiles so graph inflation and
 GPU feasibility are reviewed before training.
 
-Repository validation after the latest corrections: repaired focused suite `98
+Repository validation after the latest corrections: repaired focused suite `99
 passed`; corrected verifier PASS over all three full manifests; frozen G6
 validator PASS; handbook validator `11 passed`; `git diff --check` PASS.
 
@@ -101,6 +101,12 @@ with solc 0.4.26, `<0.6.0` with solc 0.5.17, and the flattened adjacent clause
 `<0.8.0=0.6.12>=0.6.0>=0.6.2` with solc 0.6.12. The first DIVE output is a
 failed attempt, not candidate evidence, and must be archived before rebuilding
 the source from a fresh directory.
+
+The second DIVE pass reduced drops from 81 to 26, recovering 55 records. Four
+remaining zero-attempt rows all used the valid partial pragma `^0.8`. Partial
+one/two-component constraint versions are now normalized for range evaluation;
+a real `^0.8` source compiled with solc 0.8.35. This second output is also a
+rejected attempt and the final DIVE candidate must be rebuilt once more.
 
 ## What is and is not known about expected model benefit
 

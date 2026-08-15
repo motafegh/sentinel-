@@ -87,6 +87,9 @@ class TestR4CompilerSelection:
     def test_caret_range_does_not_cross_major_version(self):
         assert _satisfying_versions("^0.7.6", self.VERSIONS) == ["0.7.6"]
 
+    def test_partial_caret_version_is_supported(self):
+        assert _satisfying_versions("^0.8", self.VERSIONS) == ["0.8.20", "0.8.0"]
+
     def test_missing_pragma_tries_all_installed_versions_newest_first(self):
         assert _satisfying_versions("", self.VERSIONS) == list(reversed(self.VERSIONS))
 

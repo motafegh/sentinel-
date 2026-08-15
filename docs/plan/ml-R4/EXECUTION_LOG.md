@@ -302,3 +302,12 @@ Append one entry for each work package.
 - **Real recovery checks:** no-pragma `10824.sol` -> solc 0.4.26; `11811.sol` `<0.6.0` -> solc 0.5.17; `1115.sol` flattened adjacent constraints -> solc 0.6.12
 - **Validation:** repaired focused suite `98 passed`; frozen G6 validator PASS; handbook static validator `145 passed`; `git diff --check` PASS
 - **Gate effect:** first DIVE generated root is rejected/archived; full DIVE preprocessing must restart from a fresh root; claims/grouping/representations remain blocked until the corrected full rebuild completes
+
+### R4-LOG-20260815-015 — Second DIVE rebuild attempt rejected; partial pragmas corrected
+
+- **Attempt result:** 22,304 prepared / 26 drops / 22,050 artifacts, recovering 55 of the first attempt's 81 drops
+- **Residual gate finding:** four drops had zero attempted compilers; every one used valid shorthand `pragma solidity ^0.8`
+- **Correction:** one/two/three-component constraint versions are normalized and evaluated under exact/comparator/caret/tilde semantics
+- **Real recovery check:** DIVE `15105.sol` with `^0.8` prepared successfully using solc 0.8.35
+- **Validation:** repaired focused suite `99 passed`; `git diff --check` PASS
+- **Gate effect:** second output rejected/archived; final full DIVE preprocessing restarts from a fresh root before any downstream stage
