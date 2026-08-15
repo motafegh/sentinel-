@@ -8,7 +8,7 @@
 
 ## 30-second summary
 
-SENTINEL historical R4 **G0–G7 remain PASSED** and immutable. **Phase 8 is IN_PROGRESS; G8 is open.** Run12 remains the historical operational ML baseline and is not current repaired training truth.
+SENTINEL historical R4 **G0–G7 remain PASSED** and immutable. The historical G7 implementation merge is `81d9c547d`, and its tracked publication status remains `VALIDATED_G7_CANDIDATE` as a reproducibility anchor. **Phase 8 is IN_PROGRESS; G8 is open.** Run12 remains the historical operational ML baseline and is not current repaired training truth.
 
 R4-D-008 physically accepted the repaired-v2 DATA source/representation layer: **22,540 contracts**, **225,400 contract×class rows**, and **67,620 graph/token/sidecar files**, with zero missing/invalid required representation files and physical binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`.
 
@@ -85,6 +85,8 @@ model discrimination evidence still unavailable
 
 Historical `sentinel-r4-vnext-v1` remains an immutable reproducibility root:
 
+- implementation merge: `81d9c547d`;
+- tracked publication status: `VALIDATED_G7_CANDIDATE`;
 - contracts: 22,493;
 - contract×class rows: 224,930;
 - positive targets: 1,007;
