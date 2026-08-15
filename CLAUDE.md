@@ -18,19 +18,24 @@ Do not treat a stale comment, docstring, README, old plan, old test count, or hi
 
 ### Current stable technical baseline
 
-As of the 2026-08-15 Phase-8 real-DATA repair reconciliation:
+As of the 2026-08-15 Phase-8 logical-V3 grouping correction:
 
 - canonical `main` has passed historical R4 G0–G7 and remains the active Phase-8 execution line;
 - Phase 8 is `IN_PROGRESS`, not G8-passed;
-- historical `sentinel-r4-vnext-v1` / `r4-vnext-roles-v1` / graph-schema-v9 G7 evidence remains immutable and reproducible, but the 2026-08-14 real-data audit found physical preprocessing/representation defects that prevent using that v1 lineage for the full retrain;
-- repository-safe repair implementation is complete on `main`: lexical line-preserving normalization, provenance-preserving dedup, version-aware solc, evidence-preserving file-level graph target binding, token coverage telemetry, deterministic leakage grouping, repaired source claims/evidence ledger/roles/publication/binding, repaired ML adapter/binding, local acceptance tools, and bounded GPU-smoke seam;
-- repaired candidate version identities are `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `r4-leakage-groups-v2`, `r4-vnext-roles-v2`, `sentinel-r4-vnext-v2`, and representation extractor `v2.2-r4-repaired`;
-- the repaired candidate keeps graph schema `v9`, token tensor `[4,512]`, and architecture `four_eye_v8` / `v8.1`; a local target-aware experiment improves median target coverage but is not promoted;
-- the protected local corpus was rebuilt and physically accepted on 2026-08-15 at source commit `fb31326da4420c2289822c2a6db8a022ac25876a`: 22,540 contracts / 67,620 representation files, binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`; these generated artifacts are Git-ignored and are not present in a fresh clone;
-- the bounded repaired-data CUDA smoke passed without Run12 weights or a checkpoint, but every one of the 899 effective loss cells is positive-only, so the 100-epoch run remains unauthorized and no model-quality improvement is claimed;
-- no confirmed-negative source exists in `data-vnext-policy-v1`; target `0` remains forbidden without class-specific confirmed-negative evidence;
+- historical `sentinel-r4-vnext-v1` / `r4-vnext-roles-v1` / graph-schema-v9 G7 evidence remains immutable and reproducible;
+- R4-D-008 physically accepts repaired-v2 preprocessing/representations as the current reusable physical DATA root: 22,540 contracts / 67,620 graph-token-sidecar files, all physically valid, binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`;
+- repaired physical version identities remain `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `representations-r4-v2`, and extractor `v2.2-r4-repaired`;
+- full-population research subsequently proved `r4-leakage-groups-v2` over-connects unrelated contracts through arbitrary same-source address literals: one DIVE component contains 10,327 contracts and is dominated by common protocol/sentinel addresses;
+- R4-D-009 therefore supersedes V2 **grouping/roles** for future model research while preserving repaired-v2 physical artifacts and role-independent evidence semantics as immutable evidence;
+- the active logical candidate is `r4-leakage-groups-v3`, `r4-vnext-roles-v3`, `sentinel-r4-vnext-v3`, and logical build `r4-logical-lineage-v3`;
+- V3 grouping permits normalized-code identity and explicit source family/project provenance as family authority; arbitrary Ethereum address literals are diagnostic only and must create zero grouping edges;
+- repository-safe V3 grouping, role/publication, same-byte binding, acceptance, V3 ML adapter, negative-review queue, selector/sensitivity research, mandatory worst-case CUDA probe, and evidence-snapshot tooling are implemented on `main`; protected local V3 generation/acceptance is still pending;
+- the physical representation contract remains graph schema `v9`, token tensor `[4,512]`, and architecture `four_eye_v8` / `v8.1`; no physical representation rebuild is authorized merely for the logical grouping correction;
+- the earlier V2 target-aware selector evidence is encouraging but population-specific after V2 role supersession and must be regenerated under V3 before promotion;
+- every currently authorized supervised target remains positive; no confirmed-negative source exists in `data-vnext-policy-v1`; target `0` remains forbidden without class-specific confirmed-negative evidence;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
-- Run12 is the **historical operational ML baseline**, not repaired-v2 truth; its learned weights, optimizer/scheduler state, thresholds, and calibration are not reused as current Phase-8 truth;
+- Run12 is the **historical operational ML baseline**, not repaired-v2/V3 truth; its learned weights, optimizer/scheduler state, thresholds, and calibration are not reused as current Phase-8 truth;
+- the 100-epoch Phase-8 run remains unauthorized; no model-quality improvement is claimed;
 - V3 is the current registry submission protocol; V1/V2 are historical compatibility;
 - live audit MCP is read-only;
 - V3 signing/broadcast is outside the analysis MCP security domain;
@@ -39,12 +44,11 @@ As of the 2026-08-15 Phase-8 real-DATA repair reconciliation:
 For the exact current DATA/ML restart boundary, read in order:
 
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
-2. `docs/plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md`;
-3. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md`.
-4. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`.
-5. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`.
+2. `docs/plan/ml-R4/DECISION_REGISTER.md` and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`;
+3. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` for the preserved physical-v2 acceptance boundary;
+4. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md` for the active local execution sequence.
 
-The 2026-08-14 pretraining launch handoff is historical/superseded for full-training authorization. Physical repaired-v2 acceptance and the bounded smoke are complete; do not launch the 100-epoch Phase-8 run until the positive-only objective/evaluation limitation and long-contract selector are resolved and governance explicitly re-authorizes it.
+The earlier pretraining/V2 research handoffs are historical for future role/training authority. Do not manually adjudicate the V2 negative-review queue, promote the V2 selector result, or launch the 100-epoch Phase-8 run. First generate and accept the logical V3 lineage locally and regenerate the role-dependent evidence under V3.
 
 ## Approval model
 
@@ -73,7 +77,7 @@ In Ali's primary Claude Code setup, project memory may exist under:
 
 When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
 
-For the current R4 Phase-8 boundary, the committed decision record is `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`. If private/local `MEMORY.md` is maintained, it should point to that decision rather than duplicate transient local rebuild details.
+For the current R4 Phase-8 boundary, committed restart authority is `docs/plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md`, governed by R4-D-009 / ADR-R4-009. The repaired-v2 acceptance decision remains the physical-data reproducibility root. If private/local `MEMORY.md` is maintained, it should point to these committed boundaries rather than duplicate transient generated V3 counts.
 
 For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 
@@ -137,7 +141,7 @@ Encode uncertainty/status explicitly rather than forcing a convenient downstream
 
 ### 5. Version rather than overwrite history
 
-Historical v1 DATA, Run12 artifacts, V1/V2 registry history, and retained proxy artifacts are reproducibility/rollback roots.
+Historical v1 DATA, accepted repaired-v2 physical artifacts, superseded V2 grouping/roles, Run12 artifacts, V1/V2 registry history, and retained proxy artifacts are reproducibility/rollback roots.
 
 For semantic/protocol changes:
 
@@ -162,15 +166,18 @@ Dated audits, redesign notes, experimental reports, `docs/learning/`, and handbo
 ### DATA / ML
 
 - R4 controls current semantic authority.
-- Historical Phase-6/v1 roles remain frozen and immutable; repaired-v2 roles are a separate versioned lineage produced only after final repaired grouping/representation availability.
+- Historical Phase-6/v1 roles remain frozen and immutable.
+- Repaired-v2 source/representation artifacts remain the accepted physical root; V2 grouping/roles are historical/superseded for future model research after R4-D-009.
+- Current logical candidate is V3 grouping/roles/publication; no arbitrary address literal may create a leakage-group edge.
 - no target `0` without confirmed-negative evidence;
 - GasException/UnusedReturn supervision disabled under policy v1;
 - Run12 threshold/calibration artifacts are historical only;
-- first repaired retrain keeps architecture frozen unless a later approved architecture decision changes that;
-- do not overwrite historical DATA/representation artifacts; repaired work uses new v2 roots;
-- repository-only tests do not prove physical DATA recovery;
-- the only currently authorized repaired-v2 GPU action is the bounded micro-smoke after physical repaired-DATA acceptance;
-- full Phase-8 training remains prohibited until an explicit post-smoke governance update re-authorizes it.
+- architecture remains frozen unless a later approved architecture decision changes it;
+- do not overwrite historical or accepted physical DATA/representation artifacts;
+- repository-only tests do not prove protected local V3 generation or physical rebinding;
+- V3 acceptance must prove unchanged semantic counts and the exact same repaired-v2 physical representation binding digest;
+- V2 role-dependent negative/selector/sensitivity/GPU evidence must be regenerated under V3 before decisions;
+- full Phase-8 training remains prohibited until explicit later governance re-authorizes it.
 
 ### AGENTS
 
@@ -191,11 +198,11 @@ Dated audits, redesign notes, experimental reports, `docs/learning/`, and handbo
 
 Use the narrowest meaningful test first, then expand according to blast radius. Preserve raw failures; do not weaken gates to turn failures green.
 
-For the Phase-8 repository real-DATA repair, the dedicated CI contract is:
+For the Phase-8 repository DATA/logical-V3 repair, the dedicated CI contract is:
 
 `.github/workflows/r4-phase8-data-repair.yml`
 
-It must compile the repaired DATA/ML/local-gate source, run repaired regressions, prove historical G6 still validates, and pass `git diff --check` from the audit handoff base.
+It must compile repaired/V3 DATA and ML entry points, run repaired/V3 regressions, prove historical G6 still validates, and pass `git diff --check` from the audit handoff base.
 
 For canonical documentation/current-state changes:
 
