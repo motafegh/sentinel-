@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Profile repaired-v2 compatibility/file-union/worst-case sensitivity sets.
 
-The output is read-only research evidence.  It identifies exact contracts for
+The output is read-only research evidence. It identifies exact contracts for
 bounded exclusion/down-weighting and worst-case GPU comparisons without
 changing the accepted repaired-v2 representation lineage.
 """
@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "data_module"))
 
+from sentinel_data.representation.r4_compatibility import FULL_ANALYSIS
 from sentinel_data.representation.r4_sensitivity import (
     profile_representation_records,
 )
@@ -69,6 +70,24 @@ def main() -> int:
             bool(row.get(f"outcome_metric_mask_{index}"))
             for index in range(len(CLASS_NAMES))
         )
+
+        mode_value = sidecar.get("graph_extraction_mode")
+        mode_inferred = mode_value is None
+        if mode_inferred:
+            # This is the same legacy-standard inference already accepted by
+            # the repaired-v2 physical binder for byte-reused successful
+            # sidecars from a failed-tail recovery build. A source transform
+            # would contradict standard/full-analysis inference and therefore
+            # remains fail-closed.
+            if sidecar.get("graph_source_transform") is not None:
+                raise ValueError(
+                    f"{contract_id} lacks graph_extraction_mode but records "
+                    "graph_source_transform"
+                )
+            graph_mode = FULL_ANALYSIS
+        else:
+            graph_mode = str(mode_value)
+
         records.append(
             {
                 "contract_id": contract_id,
@@ -76,7 +95,8 @@ def main() -> int:
                 "role": str(row["role"]),
                 "optimizer_active": optimizer_active,
                 "model_selection_active": selection_active,
-                "graph_extraction_mode": sidecar.get("graph_extraction_mode"),
+                "graph_extraction_mode": graph_mode,
+                "graph_extraction_mode_inferred_legacy_standard": mode_inferred,
                 "graph_analysis_degraded": sidecar.get(
                     "graph_analysis_degraded"
                 ),
