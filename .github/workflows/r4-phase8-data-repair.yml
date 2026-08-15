@@ -13,6 +13,7 @@ on:
       - 'data_module/tests/test_vnext/**'
       - 'ml/src/data_extraction/**'
       - 'ml/src/datasets/vnext_repaired_dataset.py'
+      - 'ml/src/datasets/vnext_logical_v3_dataset.py'
       - 'ml/src/training/vnext_repaired_binding.py'
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase8-data-repair.yml'
@@ -25,6 +26,7 @@ on:
       - 'data_module/tests/**'
       - 'ml/src/data_extraction/**'
       - 'ml/src/datasets/vnext_repaired_dataset.py'
+      - 'ml/src/datasets/vnext_logical_v3_dataset.py'
       - 'ml/src/training/vnext_repaired_binding.py'
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase8-data-repair.yml'
@@ -63,6 +65,7 @@ jobs:
             data_module/sentinel_data/preprocessing/r4_raw_verifier.py \
             data_module/sentinel_data/preprocessing/r4_completeness.py \
             data_module/sentinel_data/preprocessing/r4_grouping.py \
+            data_module/sentinel_data/preprocessing/r4_grouping_v3.py \
             data_module/sentinel_data/preprocessing/r4_grouping_audit.py \
             data_module/sentinel_data/representation/target_selector.py \
             data_module/sentinel_data/representation/r4_target_spans.py \
@@ -72,13 +75,17 @@ jobs:
             data_module/sentinel_data/vnext/r4_source_claims.py \
             data_module/sentinel_data/vnext/r4_builder.py \
             data_module/sentinel_data/vnext/r4_binding.py \
+            data_module/sentinel_data/vnext/r4_v3_versions.py \
+            data_module/sentinel_data/vnext/r4_logical_v3.py \
             data_module/sentinel_data/vnext/confirmed_negative_evaluation.py \
             ml/src/data_extraction/windowed_tokenizer.py \
             ml/src/data_extraction/bounded_window_selector.py \
             ml/src/datasets/vnext_repaired_dataset.py \
+            ml/src/datasets/vnext_logical_v3_dataset.py \
             ml/src/training/vnext_repaired_binding.py \
             docs/plan/ml-R4/scripts/p8_verify_repaired_raw_inputs.py \
             docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py \
+            docs/plan/ml-R4/scripts/p8_rebuild_logical_v3.py \
             docs/plan/ml-R4/scripts/p8_build_repaired_evidence_ledger.py \
             docs/plan/ml-R4/scripts/p8_audit_repaired_lineage.py \
             docs/plan/ml-R4/scripts/p8_compare_bounded_window_strategies.py \
@@ -99,6 +106,7 @@ jobs:
             data_module/tests/test_preprocessing/test_r4_repair.py \
             data_module/tests/test_preprocessing/test_r4_data_gates.py \
             data_module/tests/test_preprocessing/test_r4_grouping.py \
+            data_module/tests/test_preprocessing/test_r4_grouping_v3.py \
             data_module/tests/test_preprocessing/test_r4_grouping_audit.py \
             data_module/tests/test_representation/test_r4_target_selector.py \
             data_module/tests/test_representation/test_r4_compatibility.py \
@@ -111,6 +119,8 @@ jobs:
             data_module/tests/test_vnext/test_r4_builder.py \
             data_module/tests/test_vnext/test_r4_binding.py \
             data_module/tests/test_vnext/test_repaired_ml_adapter.py \
+            data_module/tests/test_vnext/test_r4_logical_v3.py \
+            data_module/tests/test_vnext/test_logical_v3_ml_adapter.py \
             data_module/tests/test_vnext/test_confirmed_negative_evaluation.py
 
       - name: Prove frozen historical G6 artifacts still validate
