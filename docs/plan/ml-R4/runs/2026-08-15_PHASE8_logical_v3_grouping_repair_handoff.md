@@ -1,9 +1,9 @@
 # Phase-8 logical V3 grouping repair — local execution handoff
 
-**Date:** 2026-08-15  
-**Canonical branch:** `main`  
-**Decision:** R4-D-009 / ADR-R4-009  
-**State:** repository implementation complete; local logical V3 generation/acceptance pending  
+**Date:** 2026-08-15
+**Canonical branch:** `main`
+**Decision:** R4-D-009 / ADR-R4-009
+**State:** repository implementation complete; local logical V3 generation/acceptance pending
 **Training:** NOT AUTHORIZED
 
 ## Purpose
