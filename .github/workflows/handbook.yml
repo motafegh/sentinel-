@@ -102,7 +102,7 @@ jobs:
               'CLAUDE.md': ['routine technical and governance approvals', 'data-vnext-policy-v1', 'audit MCP is read-only'],
               'data_module/README.md': ['Historical zero is not negative truth', 'data-vnext-policy-v1', 'r4-vnext-roles-v1'],
               'ml/README.md': ['historical operational baseline', 'UNSUPPORTED_EMPTY', 'UNSUPPORTED_EMPTY_FROZEN'],
-              'ml/CLAUDE.md': ['historical operational baseline', 'Unknown is not negative', 'Phase 8 retraining is not authorized until G7'],
+              'ml/CLAUDE.md': ['historical G7 DATA/ML lineage', 'Unknown is not negative', '100-epoch training not authorized'],
               'ml/DIAGRAMS.md': ['DATA vNext', 'THRESHOLD_FIT empty', 'Phase 8'],
               'ml/testing_specs/README.md': ['procedures, not current DATA/evaluation authority', 'UNSUPPORTED_EMPTY', 'Run12 = historical operational baseline'],
               'ml/testing_specs/00_rules.md': ['Never recreate the historical label defect', 'Dataset roles are evidence boundaries', 'Run12 is historical operational baseline'],

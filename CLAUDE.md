@@ -27,7 +27,7 @@ As of the 2026-08-15 Phase-8 real-DATA repair reconciliation:
 - repaired candidate version identities are `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `r4-leakage-groups-v2`, `r4-vnext-roles-v2`, `sentinel-r4-vnext-v2`, and representation extractor `v2.2-r4-repaired`;
 - the repaired candidate keeps graph schema `v9`, token tensor `[4,512]`, and architecture `four_eye_v8` / `v8.1`; long-contract adequacy is explicitly unresolved and requires measured local evidence rather than an implicit architecture change;
 - the protected local corpus has **not** yet been rebuilt/accepted into repaired v2, so no repaired-v2 population count, representation binding digest, checkpoint, or model-quality result may be claimed from repository CI alone;
-- no confirmed-negative source exists in policy v1; target `0` remains forbidden without class-specific confirmed-negative evidence;
+- no confirmed-negative source exists in `data-vnext-policy-v1`; target `0` remains forbidden without class-specific confirmed-negative evidence;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
 - Run12 is the **historical operational ML baseline**, not repaired-v2 truth; its learned weights, optimizer/scheduler state, thresholds, and calibration are not reused as current Phase-8 truth;
 - V3 is the current registry submission protocol; V1/V2 are historical compatibility;
