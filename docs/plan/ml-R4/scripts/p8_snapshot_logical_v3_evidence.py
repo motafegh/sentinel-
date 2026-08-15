@@ -22,6 +22,7 @@ OUTPUT_ROOT = REPO_ROOT / "docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3
 
 SMALL_REPORTS = (
     "logical_v3_summary.json",
+    "logical_v3_acceptance.json",
     "grouping_breadth_audit_v1.json",
     "representation_sensitivity_v1.json",
     "confirmed_negative_review_queue_v1.json",
