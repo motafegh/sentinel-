@@ -1,0 +1,40 @@
+{
+  "schema": "sentinel-r4-confirmed-negative-adjudication-v1",
+  "candidate_id": "COPY_FROM_REVIEW_QUEUE",
+  "contract_id": "COPY_FROM_REVIEW_QUEUE",
+  "group_id": "COPY_FROM_REVIEW_QUEUE",
+  "class_index": -1,
+  "class_name": "COPY_FROM_REVIEW_QUEUE",
+  "decision": "CONFIRMED_NEGATIVE",
+  "negative_scope": "CLASS_SPECIFIC_ONLY",
+  "primary_review": {
+    "reviewer_id": "PRIMARY_REVIEWER_ID",
+    "reviewed_at": "ISO-8601_TIMESTAMP",
+    "rationale": "Explain why this exact vulnerability class is absent after complete code review.",
+    "code_scope_complete": true,
+    "all_file_graph_components_reviewed": true,
+    "contradictory_positive_evidence_found": false,
+    "evidence": [
+      {
+        "type": "MANUAL_CLASS_SPECIFIC_REVIEW",
+        "reference": "LOCAL_OR_TRACKED_EVIDENCE_REFERENCE",
+        "summary": "Summarize the class-specific absence evidence.",
+        "independent_of_training_label": true
+      }
+    ]
+  },
+  "independent_verification": {
+    "status": "AGREES",
+    "reviewer_id": "DISTINCT_SECOND_REVIEWER_ID",
+    "reviewed_at": "ISO-8601_TIMESTAMP",
+    "rationale": "Explain the independent verification without relying on historical training labels.",
+    "evidence": [
+      {
+        "type": "TOOL_ANALYSIS",
+        "reference": "LOCAL_OR_TRACKED_VERIFICATION_REFERENCE",
+        "summary": "Summarize corroborating independent evidence.",
+        "independent_of_training_label": true
+      }
+    ]
+  }
+}

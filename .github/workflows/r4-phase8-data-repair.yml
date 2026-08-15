@@ -11,7 +11,7 @@ on:
       - 'data_module/tests/test_preprocessing/**'
       - 'data_module/tests/test_representation/**'
       - 'data_module/tests/test_vnext/**'
-      - 'ml/src/data_extraction/windowed_tokenizer.py'
+      - 'ml/src/data_extraction/**'
       - 'ml/src/datasets/vnext_repaired_dataset.py'
       - 'ml/src/training/vnext_repaired_binding.py'
       - 'docs/plan/ml-R4/**'
@@ -23,7 +23,7 @@ on:
       - 'data_module/sentinel_data/representation/**'
       - 'data_module/sentinel_data/vnext/**'
       - 'data_module/tests/**'
-      - 'ml/src/data_extraction/windowed_tokenizer.py'
+      - 'ml/src/data_extraction/**'
       - 'ml/src/datasets/vnext_repaired_dataset.py'
       - 'ml/src/training/vnext_repaired_binding.py'
       - 'docs/plan/ml-R4/**'
@@ -52,7 +52,7 @@ jobs:
             'torch==2.10.0' 'torch-geometric==2.7.0' \
             'transformers==4.46.3'
 
-      - name: Compile repaired DATA, ML, token, and local-gate modules
+      - name: Compile repaired DATA, ML, token, and research modules
         run: |
           python -m py_compile \
             data_module/sentinel_data/preprocessing/normalizer.py \
@@ -63,13 +63,18 @@ jobs:
             data_module/sentinel_data/preprocessing/r4_raw_verifier.py \
             data_module/sentinel_data/preprocessing/r4_completeness.py \
             data_module/sentinel_data/preprocessing/r4_grouping.py \
+            data_module/sentinel_data/preprocessing/r4_grouping_audit.py \
             data_module/sentinel_data/representation/target_selector.py \
+            data_module/sentinel_data/representation/r4_target_spans.py \
             data_module/sentinel_data/representation/r4_compatibility.py \
             data_module/sentinel_data/representation/r4_orchestrator.py \
+            data_module/sentinel_data/representation/r4_sensitivity.py \
             data_module/sentinel_data/vnext/r4_source_claims.py \
             data_module/sentinel_data/vnext/r4_builder.py \
             data_module/sentinel_data/vnext/r4_binding.py \
+            data_module/sentinel_data/vnext/confirmed_negative_evaluation.py \
             ml/src/data_extraction/windowed_tokenizer.py \
+            ml/src/data_extraction/bounded_window_selector.py \
             ml/src/datasets/vnext_repaired_dataset.py \
             ml/src/training/vnext_repaired_binding.py \
             docs/plan/ml-R4/scripts/p8_verify_repaired_raw_inputs.py \
@@ -77,9 +82,15 @@ jobs:
             docs/plan/ml-R4/scripts/p8_build_repaired_evidence_ledger.py \
             docs/plan/ml-R4/scripts/p8_audit_repaired_lineage.py \
             docs/plan/ml-R4/scripts/p8_compare_bounded_window_strategies.py \
-            docs/plan/ml-R4/scripts/p8_run_repaired_micro_smoke.py
+            docs/plan/ml-R4/scripts/p8_run_repaired_micro_smoke.py \
+            docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue.py \
+            docs/plan/ml-R4/scripts/p8_validate_confirmed_negative_adjudications.py \
+            docs/plan/ml-R4/scripts/p8_audit_grouping_breadth.py \
+            docs/plan/ml-R4/scripts/p8_profile_representation_sensitivity.py \
+            docs/plan/ml-R4/scripts/p8_compare_bounded_window_selector_v1.py \
+            docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare.py
 
-      - name: Run repaired regression suite
+      - name: Run repaired and Phase-8 research regression suite
         env:
           PYTHONPATH: .:data_module
         run: |
@@ -88,15 +99,19 @@ jobs:
             data_module/tests/test_preprocessing/test_r4_repair.py \
             data_module/tests/test_preprocessing/test_r4_data_gates.py \
             data_module/tests/test_preprocessing/test_r4_grouping.py \
+            data_module/tests/test_preprocessing/test_r4_grouping_audit.py \
             data_module/tests/test_representation/test_r4_target_selector.py \
             data_module/tests/test_representation/test_r4_compatibility.py \
             data_module/tests/test_representation/test_bounded_window_strategy.py \
+            data_module/tests/test_representation/test_bounded_window_selector.py \
+            data_module/tests/test_representation/test_r4_sensitivity.py \
             data_module/tests/test_representation/test_windowed_tokenizer_coverage.py \
             data_module/tests/test_vnext/test_policy.py \
             data_module/tests/test_vnext/test_r4_source_claims.py \
             data_module/tests/test_vnext/test_r4_builder.py \
             data_module/tests/test_vnext/test_r4_binding.py \
-            data_module/tests/test_vnext/test_repaired_ml_adapter.py
+            data_module/tests/test_vnext/test_repaired_ml_adapter.py \
+            data_module/tests/test_vnext/test_confirmed_negative_evaluation.py
 
       - name: Prove frozen historical G6 artifacts still validate
         env:

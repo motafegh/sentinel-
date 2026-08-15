@@ -1,0 +1,78 @@
+{
+  "candidate_queue": {
+    "allowed_current_outcome_states": [
+      "UNKNOWN",
+      "NOT_REVIEWED"
+    ],
+    "eligible_current_roles": [
+      "TRAIN_UNLABELED"
+    ],
+    "pilot_candidates_per_enabled_class": 25,
+    "pilot_purpose": "estimate adjudication yield and review burden; not final evaluation size",
+    "required_current_target": null,
+    "required_effective_loss_mask": false,
+    "required_outcome_metric_mask": false,
+    "required_source_loss_eligible": false,
+    "reservation": "REVIEW_PENDING_DO_NOT_ADD_GROUP_TO_FUTURE_OPTIMIZER",
+    "selection": "deterministic_one_representative_contract_per_group_per_class"
+  },
+  "confirmation": {
+    "contradictory_positive_evidence_must_be_absent": true,
+    "corroborating_evidence_types": [
+      "DYNAMIC_PROPERTY_TEST",
+      "TOOL_ANALYSIS",
+      "DOCUMENTATION"
+    ],
+    "independent_reviewer_must_differ": true,
+    "independent_verification_required": true,
+    "negative_scope": "CLASS_SPECIFIC_ONLY",
+    "primary_evidence_types": [
+      "MANUAL_CLASS_SPECIFIC_REVIEW",
+      "FORMAL_STATIC_ARGUMENT",
+      "TRUSTED_EXPLICIT_NEGATIVE_SOURCE"
+    ],
+    "primary_review_required": true,
+    "primary_review_requires_all_file_graph_components": true,
+    "primary_review_requires_complete_code_scope": true
+  },
+  "invariants": [
+    "source_absence_is_not_negative_evidence",
+    "historical_zero_is_not_negative_evidence",
+    "unknown_or_unlabeled_status_is_not_negative_evidence",
+    "review_queue_membership_is_not_negative_truth",
+    "confirmed_negative_is_class_specific_not_global_safe",
+    "accepted_negative_evaluation_cells_do_not_automatically_become_training_targets",
+    "evaluation_groups_must_remain_leakage_disjoint_from_future_optimizer_roles"
+  ],
+  "policy_version": "confirmed-negative-evaluation-v1",
+  "promotion_boundary": [
+    "pilot review queue completed with measured confirmation yield",
+    "confirmed-negative cells validated by dual-review contract",
+    "reserved leakage groups excluded from any future optimizer population",
+    "final per-class evaluation size justified from desired error bound and observed yield",
+    "separate decision defines any threshold or model-quality gate"
+  ],
+  "sample_size_planning": {
+    "default_confidence": 0.95,
+    "default_max_false_positive_rate": 0.05,
+    "formula": "ceil(log(1-confidence)/log(1-max_false_positive_rate))",
+    "limitations": [
+      "planning bound assumes independent negative examples",
+      "group dependence and selection bias must be handled separately",
+      "nonzero false-positive counts require an explicit binomial confidence method",
+      "multiple-class evaluation and threshold fitting require separate governance"
+    ],
+    "zero_false_positive_minimum_confirmed_negatives_per_class": 59
+  },
+  "schema": "sentinel-r4-confirmed-negative-evaluation-policy-v1",
+  "scope": "R4 Phase-8 class-specific confirmed-negative evaluation evidence only",
+  "status": "AUTHORIZED_BOUNDED_RESEARCH",
+  "unit_of_truth": "contract_id_x_class_index",
+  "usage_authority": {
+    "calibration_fit": "NOT_AUTHORIZED",
+    "evaluation": "AUTHORIZED_AFTER_VALID_ADJUDICATION",
+    "threshold_fit": "NOT_AUTHORIZED",
+    "training_target_zero": "NOT_AUTHORIZED",
+    "untouched_acceptance": "NOT_AUTHORIZED"
+  }
+}
