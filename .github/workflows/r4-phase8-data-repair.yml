@@ -88,6 +88,7 @@ jobs:
             docs/plan/ml-R4/scripts/p8_rebuild_logical_v3.py \
             docs/plan/ml-R4/scripts/p8_build_repaired_evidence_ledger.py \
             docs/plan/ml-R4/scripts/p8_audit_repaired_lineage.py \
+            docs/plan/ml-R4/scripts/p8_audit_logical_v3_acceptance.py \
             docs/plan/ml-R4/scripts/p8_compare_bounded_window_strategies.py \
             docs/plan/ml-R4/scripts/p8_run_repaired_micro_smoke.py \
             docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue.py \
