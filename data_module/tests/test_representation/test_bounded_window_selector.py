@@ -3,6 +3,7 @@ from __future__ import annotations
 from ml.src.data_extraction.bounded_window_selector import (
     GUARDED_STRATEGY,
     intersect_union_length,
+    prepare_source_for_tokenization,
     select_indices,
     target_aware_greedy_indices,
     union_length,
@@ -69,6 +70,22 @@ def test_target_spans_ignore_braces_inside_comments_and_strings():
     spans = target_contract_char_spans(source, ["First", "Second"])
     extracted = [source[start:end] for start, end in spans]
     assert extracted[0].startswith("contract First")
-    assert extracted[0].endswith("} ") is False
+    assert extracted[0].endswith("}")
     assert "function a()" in extracted[0]
     assert extracted[1] == "contract Second { uint x; }"
+
+
+def test_research_token_source_strips_comments_without_shifting_offsets():
+    source = (
+        'contract First { string constant URL = "https://example.test//ok"; '
+        "/* comment { } */ uint value; // trailing }\n"
+        "function a() public {} }"
+    )
+    prepared = prepare_source_for_tokenization(source)
+    assert len(prepared) == len(source)
+    assert prepared.count("\n") == source.count("\n")
+    assert '"https://example.test//ok"' in prepared
+    assert "comment { }" not in prepared
+    assert "trailing }" not in prepared
+    assert prepared.index("uint value") == source.index("uint value")
+    assert prepared.index("function a") == source.index("function a")
