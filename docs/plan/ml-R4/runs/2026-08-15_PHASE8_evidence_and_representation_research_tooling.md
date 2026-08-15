@@ -84,15 +84,23 @@ Repository code:
 Three research strategies are explicit:
 
 - `historical_linspace_v1` — exact production control;
-- `target_aware_greedy_v1` — greedily maximizes target-contract token coverage;
-- `target_aware_guarded_v1` — uses the greedy choice only when target coverage
-  is strictly better than control; equal or worse coverage falls back to the
-  historical control.
+- `target_aware_greedy_v1` — greedily maximizes requested target-declaration
+  token coverage;
+- `target_aware_guarded_v1` — uses the greedy choice only when requested
+  target-declaration coverage is strictly better than control; equal or worse
+  coverage falls back to the historical control.
 
-The accepted `[4,512]` token artifacts are not rewritten. The CUDA comparison
-dynamically regenerates both strategies and requires the dynamic historical
-control tensors to equal the already bound token tensors for every accessed
-control sample.
+The accepted `[4,512]` token artifacts are not rewritten. Repaired-v2
+preprocessing already removed comments before the representation stage, and the
+research path preserves that tokenizer-input contract. The CUDA comparison
+requires the dynamically regenerated historical-control tensors to equal the
+already bound token tensors for every accessed control sample.
+
+The target-coverage metric is deliberately narrower than full semantic coverage:
+it measures the requested file-graph target declaration spans. Inherited base
+code, library code, and other semantic dependencies outside those spans are not
+claimed as covered merely because the target-declaration ratio is high. That is
+one reason the bounded GPU/model comparison remains mandatory before promotion.
 
 The CUDA launcher also:
 
@@ -119,14 +127,17 @@ It produces exact comparison sets for:
 - model-selection compatibility-mode contracts;
 - optimizer-active file-union contracts;
 - model-selection file-union contracts;
-- worst-case active GPU candidates.
+- worst-case active GPU candidates interleaved across node-count, edge-count,
+  component-count, and token-window extremes.
 
 New research requires explicit `graph_extraction_mode` provenance. The profiler
 does not infer missing mode metadata as normal full Slither analysis.
 
 ## Local execution order
 
-From the canonical `main` worktree with the accepted repaired-v2 local artifacts:
+Use the canonical `main` worktree and the same accepted ML virtual environment
+that produced the repaired-v2 CUDA evidence. Do not substitute the system
+Python or upgrade packages for this experiment.
 
 ```bash
 cd ~/projects/sentinel
@@ -137,15 +148,15 @@ export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
 export PYTHONPATH=".:data_module"
 
-python docs/plan/ml-R4/scripts/p8_audit_grouping_breadth.py
+./ml/.venv/bin/python docs/plan/ml-R4/scripts/p8_audit_grouping_breadth.py
 
-python docs/plan/ml-R4/scripts/p8_profile_representation_sensitivity.py
+./ml/.venv/bin/python docs/plan/ml-R4/scripts/p8_profile_representation_sensitivity.py
 
-python docs/plan/ml-R4/scripts/p8_compare_bounded_window_selector_v1.py
+./ml/.venv/bin/python docs/plan/ml-R4/scripts/p8_compare_bounded_window_selector_v1.py
 
-python docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue.py
+./ml/.venv/bin/python docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue.py
 
-python docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare.py
+./ml/.venv/bin/python docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare.py
 ```
 
 The expected local/git-ignored outputs are:
@@ -159,7 +170,7 @@ The expected local/git-ignored outputs are:
 Only after real review/adjudication records exist should this be run:
 
 ```bash
-python docs/plan/ml-R4/scripts/p8_validate_confirmed_negative_adjudications.py
+./ml/.venv/bin/python docs/plan/ml-R4/scripts/p8_validate_confirmed_negative_adjudications.py
 ```
 
 That validator expects:
@@ -172,7 +183,7 @@ representation lineage:
 
 1. grouping breadth and the largest address-connected families;
 2. exact compatibility/file-union/worst-case active sets;
-3. control vs guarded target-code coverage;
+3. control vs guarded requested-target declaration coverage;
 4. identical-initialization bounded CUDA behavior and memory;
 5. confirmed-negative pilot yield and reviewer disagreement/exclusion rate.
 
