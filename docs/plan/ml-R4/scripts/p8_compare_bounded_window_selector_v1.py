@@ -4,6 +4,9 @@
 This is a read-only CPU/tokenizer experiment. It does not rewrite bound token
 artifacts and does not promote a selector. The guarded candidate must never
 reduce target-contract token coverage relative to the historical control.
+
+All strategies operate on the same comment-stripped, offset-preserving code view
+used by repaired-v2 production tokenization.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ from ml.src.data_extraction.bounded_window_selector import (
     GREEDY_STRATEGY,
     GUARDED_STRATEGY,
     char_spans_to_token_ranges,
+    prepare_source_for_tokenization,
     select_indices,
     union_length,
     window_ranges,
@@ -59,11 +63,7 @@ def _load_rows(publication: Path) -> list[dict[str, Any]]:
     import pyarrow.parquet as pq
 
     rows = pq.read_table(publication / "ml_targets.parquet").to_pylist()
-    return [
-        row
-        for row in rows
-        if str(row["role"]) in ROLES
-    ]
+    return [row for row in rows if str(row["role"]) in ROLES]
 
 
 def main() -> int:
@@ -88,7 +88,11 @@ def main() -> int:
 
     rows = sorted(
         _load_rows(args.publication_root),
-        key=lambda row: (str(row["role"]), str(row["group_id"]), str(row["contract_id"])),
+        key=lambda row: (
+            str(row["role"]),
+            str(row["group_id"]),
+            str(row["contract_id"]),
+        ),
     )
     if args.limit is not None:
         if args.limit < 1:
@@ -106,14 +110,18 @@ def main() -> int:
         sidecar_path = args.representations_root / source / f"{contract_id}.rep.json"
         try:
             source_text = sol_path.read_text(encoding="utf-8")
+            token_source = prepare_source_for_tokenization(source_text)
             sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-            targets = [str(value) for value in (sidecar.get("requested_contract_names") or ())]
+            targets = [
+                str(value)
+                for value in (sidecar.get("requested_contract_names") or ())
+            ]
             if not targets:
                 raise ValueError("representation sidecar has no requested_contract_names")
             char_spans = target_contract_char_spans(source_text, targets)
 
             raw = tokenizer(
-                source_text,
+                token_source,
                 add_special_tokens=False,
                 truncation=False,
                 return_offsets_mapping=True,
@@ -153,11 +161,15 @@ def main() -> int:
                     ),
                 }
 
-            control_coverage = result_by_strategy[CONTROL_STRATEGY]["target_coverage_ratio"]
-            guarded_coverage = result_by_strategy[GUARDED_STRATEGY]["target_coverage_ratio"]
+            control_coverage = result_by_strategy[CONTROL_STRATEGY][
+                "target_coverage_ratio"
+            ]
+            guarded_coverage = result_by_strategy[GUARDED_STRATEGY][
+                "target_coverage_ratio"
+            ]
             if guarded_coverage + 1e-12 < control_coverage:
                 raise AssertionError(
-                    f"guarded selector regressed target coverage: "
+                    "guarded selector regressed target coverage: "
                     f"{guarded_coverage} < {control_coverage}"
                 )
 
@@ -167,8 +179,12 @@ def main() -> int:
                     "source": source,
                     "role": str(row["role"]),
                     "group_id": str(row["group_id"]),
-                    "graph_component_count": int(sidecar.get("graph_component_count", 0)),
-                    "graph_extraction_mode": str(sidecar.get("graph_extraction_mode") or ""),
+                    "graph_component_count": int(
+                        sidecar.get("graph_component_count", 0)
+                    ),
+                    "graph_extraction_mode": str(
+                        sidecar.get("graph_extraction_mode") or ""
+                    ),
                     "total_code_tokens": total_tokens,
                     "total_windows": len(ranges),
                     "target_contract_names": targets,
@@ -222,6 +238,7 @@ def main() -> int:
         "experiment_only": True,
         "promotion_authorized": False,
         "changes_bound_representations": False,
+        "token_source_semantics": "repaired_v2_comment_stripped_offset_preserving",
         "tokenizer_name": TOKENIZER_MODEL,
         "transformers_version": transformers.__version__,
         "window_size": WINDOW_SIZE,
