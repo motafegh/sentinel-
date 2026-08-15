@@ -366,3 +366,23 @@ Append one entry for each work package.
 - **Decision:** repaired DATA and bounded mechanics accepted, but the 100-epoch job is **NOT AUTHORIZED** because positive-only fitting cannot establish false-positive discrimination or production quality and token selection remains unresolved
 - **Gate effect:** G8 remains OPEN; next work is an evidence-honest confirmed-negative or positive-unlabeled objective/evaluation contract plus a versioned bounded-selector comparison
 - **Durable decision:** `runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`
+
+
+### R4-LOG-20260815-021 — Independent repaired-v2 audit and governance reconciliation
+
+- **Phase:** 8 evidence/governance review
+- **Operator:** ChatGPT / GPT-5.6 Sol using the connected GitHub repository
+- **Audited repository head:** `89059bfb0b9bf68447d96e0d416a7b4b78964209`
+- **Scope:** independently verify the local assistant's repaired-v2 summary against governing documents, source, tests, workflow logs, and committed evidence; correct governance contradictions only
+- **Verified physical evidence:** 22,823 raw records; accepted 22,540-contract / 225,400-row repaired-v2 publication; 67,620 bound representation files; zero missing/invalid; 20/20 repaired-lineage checks; binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`
+- **Verified repository evidence at audited head:** dedicated Phase-8 repair CI `108 passed` with four warnings; historical frozen G6 validator PASS; diff gate PASS; Handbook `145` static checks and `11` unit tests PASS
+- **Verified ML limitation:** 899 effective loss cells, all target `1`; zero confirmed negatives; positive-only model selection; threshold/calibration/untouched acceptance unsupported
+- **Verified representation limitations:** 19,451 contracts over four token windows; target-aware selector improves median target coverage but remains unpromoted; 28 compatibility-mode representations; 4,211 multi-component file-union graphs; graph max 16,065 nodes / 166,459 edges
+- **Governance defects corrected:** repaired-v2 acceptance registered as R4-D-008 / ADR-R4-008; stale local blockers reconciled; explicit grouping/compatibility/file-union risks added; current-status scheduler horizon corrected; PRE-R4 claim matrix updated; Phase-0 START_HERE and README redirected to the current Phase-8 boundary; Phase-8 artifacts registered here
+- **New open risks/blockers:** R4-R022 source-scoped address grouping breadth; R4-R023 compatibility-mode sensitivity; R4-R024 multi-component file-union semantics; R4-B005 positive-only objective/quality gate; R4-B006 token-selector promotion
+- **Scheduler correction:** historical v1 88 micro-batches / 11 steps per epoch / 1,100-step horizon is not repaired-v2 authority. With the currently measured 831 active groups and unchanged batch=8/accumulation=8 mechanics, planning arithmetic is 104 micro-batches / 13 optimizer steps per epoch / 1,300 steps over 100 epochs, but no full-run horizon is authorized until objective/selector/population are frozen.
+- **Protected/local DATA changed:** NO
+- **Model/representation code changed:** NO
+- **Training launched:** NO
+- **Decision:** repaired-v2 physical DATA acceptance stands; no rollback indicated. Full 100-epoch training remains NOT AUTHORIZED and G8 remains OPEN.
+- **Next permitted action:** evidence-honest objective/evaluation design plus versioned selector/grouping/compatibility diagnostics; any changed physical lineage must be rebuilt/rebound locally before training re-authorization.

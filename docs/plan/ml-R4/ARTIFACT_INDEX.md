@@ -142,6 +142,19 @@
 | R4-P7-ADR-001 | 7 | ADR | docs/plan/ml-R4/adrs/ADR-R4-007-data-vnext-implementation-and-g7-publication.md | b3e61db0c0e7eb0f132dd35845a3f8f63fb022130877fa5399f21006a8af08aa | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Accepted G7 publication/training-input authority |
 | R4-P7-FND-001 | 7 | findings | docs/plan/ml-R4/findings/09_phase7_data_vnext_implementation_and_g7.md | 5e8ea6a0f71284de0d0e3e61d1c270b2c1a05deabfe5cb0241433479aace9e32 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Phase-7 implementation and G7 result |
 
+## Phase 8 artifacts — repaired-v2 physical acceptance and no-launch
+
+| Artifact ID | Phase | Type | Path/URI | SHA-256 / binding identity | Source commit | Historical/New | Availability | Protected | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| R4-P8-RUN-001 | 8 | real_data_audit | runs/2026-08-14_PHASE8_real_data_readiness_audit.md | — | 8dc81e865a82+ | New | AVAILABLE_VERIFIED | NO | Full-corpus audit that placed the historical v1 physical lineage on launch hold |
+| R4-P8-RUN-002 | 8 | local_gate_reaudit | runs/2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md | — | 433c5cd021b6+ | New | AVAILABLE_VERIFIED | NO | Local fail-closed gate corrections before accepted rebuild |
+| R4-P8-RUN-003 | 8 | acceptance_decision | runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md | evidence source `fb31326da442`; binding `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd` | 89059bfb0b9b | New | AVAILABLE_VERIFIED | NO | Accept repaired-v2 physical DATA for bounded research; 100-epoch run NOT AUTHORIZED; G8 OPEN |
+| R4-P8-ADR-001 | 8 | ADR | adrs/ADR-R4-008-repaired-v2-data-acceptance-and-phase8-no-launch.md | — | governance reconciliation | New | AVAILABLE_VERIFIED | NO | Formal R4-D-008 acceptance/no-launch authority |
+| R4-P8-LED-001 | 8 | repaired_evidence_ledger | local generated `data_module/data/r4-v2-build/evidence_ledger_r4_v2.parquet` or equivalent bound build artifact | `5317aba94b9cdbe900bd90bd9b2fdf22d69c3810ec2b0a08d9be032f21658d6d` | local evidence source `fb31326da442` | New | LOCAL_GENERATED_VERIFIED | YES_LOCAL | 22,540 contracts / 225,400 rows; generated/Git-ignored; hash recorded in acceptance decision |
+| R4-P8-BND-001 | 8 | repaired_representation_binding | local generated `sentinel-r4-vnext-v2/representation_binding_report.json` | binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd` | local evidence source `fb31326da442` | New | LOCAL_GENERATED_VERIFIED | YES_LOCAL | 22,540/22,540 contracts; 67,620 files; zero missing/invalid; physical root not committed |
+| R4-P8-EVL-001 | 8 | token_coverage_experiment | local generated `data_module/data/r4-v2-build/bounded_window_experiment.json` | — | local evidence source `fb31326da442` | New | LOCAL_GENERATED_VERIFIED | YES_LOCAL | 11,341/11,341 role records; target-aware median target coverage 0.5119 vs 0.2760 control; candidate not promoted |
+| R4-P8-SMK-001 | 8 | cuda_micro_smoke | local generated `data_module/data/r4-v2-build/repaired_gpu_smoke.json` | — | local evidence source `fb31326da442` | New | LOCAL_GENERATED_VERIFIED | YES_LOCAL | RTX 3070 Laptop BF16; two optimizer steps; finite; no Run12 weights/checkpoint; full_training_authorized=false |
+
 ## Availability
 
 - `AVAILABLE_VERIFIED`
