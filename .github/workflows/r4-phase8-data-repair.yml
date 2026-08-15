@@ -91,11 +91,15 @@ jobs:
             docs/plan/ml-R4/scripts/p8_compare_bounded_window_strategies.py \
             docs/plan/ml-R4/scripts/p8_run_repaired_micro_smoke.py \
             docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue.py \
+            docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue_v3.py \
             docs/plan/ml-R4/scripts/p8_validate_confirmed_negative_adjudications.py \
             docs/plan/ml-R4/scripts/p8_audit_grouping_breadth.py \
             docs/plan/ml-R4/scripts/p8_profile_representation_sensitivity.py \
             docs/plan/ml-R4/scripts/p8_compare_bounded_window_selector_v1.py \
-            docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare.py
+            docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare.py \
+            docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare_v3.py \
+            docs/plan/ml-R4/scripts/p8_snapshot_research_evidence.py \
+            docs/plan/ml-R4/scripts/p8_snapshot_logical_v3_evidence.py
 
       - name: Run repaired and Phase-8 research regression suite
         env:
