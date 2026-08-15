@@ -45,6 +45,7 @@ def profile_representation_records(
 
     mode_counts: Counter[str] = Counter()
     mode_by_role: dict[str, Counter[str]] = defaultdict(Counter)
+    mode_provenance_counts: Counter[str] = Counter()
     component_counts: list[int] = []
     node_counts: list[int] = []
     edge_counts: list[int] = []
@@ -58,9 +59,20 @@ def profile_representation_records(
     for row in rows:
         contract_id = str(row["contract_id"])
         role = str(row.get("role") or "")
-        mode = str(row.get("graph_extraction_mode") or "")
-        if not mode:
-            raise ValueError(f"{contract_id} lacks explicit graph_extraction_mode")
+        raw_mode = row.get("graph_extraction_mode")
+        inferred_legacy_standard = bool(
+            row.get("graph_extraction_mode_inferred_legacy_standard")
+        )
+        if raw_mode:
+            mode = str(raw_mode)
+            mode_provenance_counts["explicit"] += 1
+        elif inferred_legacy_standard:
+            mode = FULL_ANALYSIS
+            row["graph_extraction_mode"] = mode
+            mode_provenance_counts["inferred_legacy_standard"] += 1
+        else:
+            raise ValueError(f"{contract_id} lacks graph_extraction_mode provenance")
+
         components = int(row.get("graph_component_count", 0))
         nodes = int(row.get("node_count", 0))
         edges = int(row.get("edge_count", 0))
@@ -98,6 +110,9 @@ def profile_representation_records(
             "source": str(row.get("source") or ""),
             "role": str(row.get("role") or ""),
             "graph_extraction_mode": str(row.get("graph_extraction_mode") or ""),
+            "graph_extraction_mode_inferred_legacy_standard": bool(
+                row.get("graph_extraction_mode_inferred_legacy_standard")
+            ),
             "graph_component_count": int(row.get("graph_component_count", 0)),
             "node_count": int(row.get("node_count", 0)),
             "edge_count": int(row.get("edge_count", 0)),
@@ -170,6 +185,7 @@ def profile_representation_records(
         "model_architecture_changed": False,
         "records": len(rows),
         "mode_counts": dict(sorted(mode_counts.items())),
+        "mode_provenance_counts": dict(sorted(mode_provenance_counts.items())),
         "mode_counts_by_role": {
             role: dict(sorted(counts.items()))
             for role, counts in sorted(mode_by_role.items())
@@ -193,9 +209,11 @@ def profile_representation_records(
         "top_by_components": top("graph_component_count"),
         "top_by_windows": top("pre_subsampling_window_count"),
         "decision_boundary": (
-            "These sets are for bounded sensitivity/GPU comparisons. Excluding "
-            "or down-weighting them in a promoted training lineage requires a "
-            "new explicit policy/representation decision."
+            "These sets are for bounded sensitivity/GPU comparisons. Legacy "
+            "standard/full-analysis mode inference is reported explicitly and "
+            "does not change repaired-v2 acceptance. Excluding or down-weighting "
+            "comparison sets in a promoted training lineage requires a new "
+            "explicit policy/representation decision."
         ),
     }
 
