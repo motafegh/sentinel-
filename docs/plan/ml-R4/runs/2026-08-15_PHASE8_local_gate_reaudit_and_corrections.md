@@ -81,9 +81,26 @@ edges. This validates mechanics, not full-corpus cost or model quality. The full
 binding report now records component/node/edge quantiles so graph inflation and
 GPU feasibility are reviewed before training.
 
-Repository validation after the corrections: repaired focused suite `93
+Repository validation after the latest corrections: repaired focused suite `98
 passed`; corrected verifier PASS over all three full manifests; frozen G6
 validator PASS; handbook validator `11 passed`; `git diff --check` PASS.
+
+### First full-preprocessing attempt found a compiler-selection defect
+
+The first full DIVE attempt reconciled all 22,330 records but reported 81
+compile drops: 57 sources without a pragma and 24 sources failing every selected
+version. Drop inspection showed the compiler helper treated a missing pragma as
+an immediate failure and misread upper-bound-only or adjacent constraints. For
+example, `<0.6.0` was incorrectly interpreted as both a floor and ceiling, so it
+attempted no compiler.
+
+The selector now evaluates exact, comparator, adjacent comparator, caret, tilde,
+and `||` clauses and deterministically tries installed versions for no-pragma
+sources. Real rechecks recovered all three inspected cases: a no-pragma source
+with solc 0.4.26, `<0.6.0` with solc 0.5.17, and the flattened adjacent clause
+`<0.8.0=0.6.12>=0.6.0>=0.6.2` with solc 0.6.12. The first DIVE output is a
+failed attempt, not candidate evidence, and must be archived before rebuilding
+the source from a fresh directory.
 
 ## What is and is not known about expected model benefit
 

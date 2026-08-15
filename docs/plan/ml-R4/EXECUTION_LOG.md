@@ -292,3 +292,13 @@ Append one entry for each work package.
 - **Generated production artifacts:** none; only a disposable `/tmp` representation smoke was used
 - **Gate effect:** physical repaired-v2 rebuild remains pending; G8 remains open; full training remains unauthorized
 - **Durable evidence:** `runs/2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md`
+
+### R4-LOG-20260815-014 — First DIVE rebuild attempt rejected; compiler constraint gate corrected
+
+- **Phase:** 8 local repaired-v2 rebuild
+- **Attempt result:** complete 22,330-record DIVE reconciliation produced 22,249 prepared records, 81 compile drops and 21,995 unique artifacts; candidate rejected before claims/grouping
+- **Drop audit:** 57 no-pragma sources were rejected without compilation; `<0.6.0` and one flattened adjacent comparator expression selected zero compilers; remaining compile failures retained explicit attempted versions/errors
+- **Correction:** deterministic Solidity constraint evaluation for exact/comparator/adjacent/caret/tilde/OR clauses; no-pragma sources try installed compilers newest-first and bind the successful version
+- **Real recovery checks:** no-pragma `10824.sol` -> solc 0.4.26; `11811.sol` `<0.6.0` -> solc 0.5.17; `1115.sol` flattened adjacent constraints -> solc 0.6.12
+- **Validation:** repaired focused suite `98 passed`; frozen G6 validator PASS; handbook static validator `145 passed`; `git diff --check` PASS
+- **Gate effect:** first DIVE generated root is rejected/archived; full DIVE preprocessing must restart from a fresh root; claims/grouping/representations remain blocked until the corrected full rebuild completes

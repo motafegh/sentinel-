@@ -39,9 +39,6 @@ def compile_contract(sol_path: Path) -> CompileResult:
 
     source = sol_path.read_text(errors="replace")
     pragma_raw = _extract_pragma(source)
-    if not pragma_raw:
-        return CompileResult(False, "", "", error="no pragma solidity found")
-
     requested = _parse_version(pragma_raw)
     attempted: list[str] = []
     last_err = ""
@@ -110,20 +107,56 @@ def _parse_version(pragma: str) -> str:
 
 
 def _satisfying_versions(pragma: str, available: list[str]) -> list[str]:
-    """Return plausibly satisfying installed versions, newest first."""
+    """Return installed Solidity versions satisfying the pragma, newest first.
 
-    match = re.search(r"(\d+\.\d+\.\d+)", pragma)
-    if not match:
+    Solidity permits adjacent comparator clauses (for example
+    ``>=0.6.2<0.8.0``), caret/tilde ranges, and ``||`` alternatives. Missing
+    pragmas are not proof of invalid source; all installed versions are tried
+    deterministically and the successful compiler becomes provenance.
+    """
+
+    if not pragma:
         return list(reversed(available))
-    floor = _version_tuple(match.group(1))
-    ceiling_match = re.search(r"<(\d+\.\d+\.\d+)", pragma)
-    ceiling = _version_tuple(ceiling_match.group(1)) if ceiling_match else None
 
-    def satisfies(ver: str) -> bool:
-        value = _version_tuple(ver)
-        return value >= floor and (ceiling is None or value < ceiling)
+    token_re = re.compile(r"(\^|~|>=|<=|>|<|=)?\s*(\d+\.\d+\.\d+)")
 
-    return [v for v in reversed(available) if satisfies(v)]
+    def clause_matches(value: tuple[int, int, int], clause: str) -> bool:
+        tokens = token_re.findall(clause)
+        if not tokens:
+            return False
+        for operator, raw_version in tokens:
+            bound = _version_tuple(raw_version)
+            if operator in ("", "=") and value != bound:
+                return False
+            if operator == ">=" and value < bound:
+                return False
+            if operator == ">" and value <= bound:
+                return False
+            if operator == "<=" and value > bound:
+                return False
+            if operator == "<" and value >= bound:
+                return False
+            if operator == "^":
+                if bound[0] > 0:
+                    ceiling = (bound[0] + 1, 0, 0)
+                elif bound[1] > 0:
+                    ceiling = (0, bound[1] + 1, 0)
+                else:
+                    ceiling = (0, 0, bound[2] + 1)
+                if not bound <= value < ceiling:
+                    return False
+            if operator == "~":
+                ceiling = (bound[0], bound[1] + 1, 0)
+                if not bound <= value < ceiling:
+                    return False
+        return True
+
+    clauses = pragma.split("||")
+    return [
+        version
+        for version in reversed(available)
+        if any(clause_matches(_version_tuple(version), clause) for clause in clauses)
+    ]
 
 
 def _version_tuple(version: str) -> tuple[int, int, int]:

@@ -7,7 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from sentinel_data.preprocessing.compiler import build_solc_command
+from sentinel_data.preprocessing.compiler import (
+    _satisfying_versions,
+    build_solc_command,
+)
 from sentinel_data.preprocessing.deduplicator import Deduplicator
 from sentinel_data.preprocessing.normalizer import normalize
 from sentinel_data.preprocessing.r4_pipeline import PreparedRecord, _materialize
@@ -52,6 +55,40 @@ class TestR4LexicalNormalization:
     def test_legacy_mode_keeps_blank_line_compaction_contract(self):
         src = 'uint x;\n\n\n\nuint y;\n'
         assert '\n\n\n' not in normalize(src).content
+
+
+class TestR4CompilerSelection:
+    VERSIONS = [
+        "0.4.26",
+        "0.5.17",
+        "0.6.2",
+        "0.6.12",
+        "0.7.6",
+        "0.8.0",
+        "0.8.20",
+    ]
+
+    def test_upper_bound_only_does_not_become_an_impossible_floor(self):
+        assert _satisfying_versions("<0.6.0", self.VERSIONS) == ["0.5.17", "0.4.26"]
+
+    def test_adjacent_comparators_are_all_applied(self):
+        assert _satisfying_versions(">=0.6.2<0.8.0", self.VERSIONS) == [
+            "0.7.6",
+            "0.6.12",
+            "0.6.2",
+        ]
+
+    def test_flattened_adjacent_exact_and_range_clauses_are_recovered(self):
+        assert _satisfying_versions(
+            "<0.8.0=0.6.12>=0.6.0>=0.6.2",
+            self.VERSIONS,
+        ) == ["0.6.12"]
+
+    def test_caret_range_does_not_cross_major_version(self):
+        assert _satisfying_versions("^0.7.6", self.VERSIONS) == ["0.7.6"]
+
+    def test_missing_pragma_tries_all_installed_versions_newest_first(self):
+        assert _satisfying_versions("", self.VERSIONS) == list(reversed(self.VERSIONS))
 
 
 class TestR4DedupSemantics:
