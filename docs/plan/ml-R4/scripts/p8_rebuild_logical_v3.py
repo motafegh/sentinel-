@@ -20,10 +20,10 @@ Recommended order:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -52,14 +52,6 @@ V3_GROUPING_AUDIT = V3_BUILD_ROOT / "grouping_breadth_audit_v1.json"
 
 def _emit(value: Any) -> None:
     print(json.dumps(value, indent=2, sort_keys=True, default=str))
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _git_head() -> str:
@@ -132,7 +124,10 @@ def cmd_prerequisites(_: argparse.Namespace) -> int:
             {
                 "check": "accepted_physical_v2_complete",
                 "passed": True,
-                "detail": {source: value["artifacts_written"] for source, value in preprocessing.items()},
+                "detail": {
+                    source: value["artifacts_written"]
+                    for source, value in preprocessing.items()
+                },
             }
         )
     except Exception as exc:
@@ -235,17 +230,15 @@ def cmd_audit(_: argparse.Namespace) -> int:
 
     payload = json.loads(V3_GROUPING.read_text(encoding="utf-8"))
     report = audit_grouping_payload(payload)
+    address_edges = [
+        edge
+        for edge in payload.get("evidence_edges") or []
+        if edge.get("reason") == "same_source_shared_address_candidate"
+    ]
     report["v3_policy_check"] = {
         "address_literal_grouping_authority": False,
-        "address_edge_count": sum(
-            1
-            for edge in payload.get("evidence_edges") or []
-            if edge.get("reason") == "same_source_shared_address_candidate"
-        ),
-        "passed": not any(
-            edge.get("reason") == "same_source_shared_address_candidate"
-            for edge in payload.get("evidence_edges") or []
-        ),
+        "address_edge_count": len(address_edges),
+        "passed": not address_edges,
     }
     V3_GROUPING_AUDIT.parent.mkdir(parents=True, exist_ok=True)
     V3_GROUPING_AUDIT.write_text(
@@ -322,7 +315,6 @@ def cmd_summarize(_: argparse.Namespace) -> int:
             "review evidence before selector promotion or PU-objective design",
         ],
     }
-    # Keep the summary local/generated; it is suitable for later sanitized snapshotting.
     out = V3_BUILD_ROOT / "logical_v3_summary.json"
     out.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     _emit(summary)
@@ -338,12 +330,15 @@ def cmd_summarize(_: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_subparsers(dest="command", required=True)
-    for name in ("prerequisites", "grouping", "publish", "bind", "audit", "summarize"):
-        parser.add_subparsers if False else None
-    # argparse requires parsers to be registered on the single subparser action.
-    sub = parser._subparsers._group_actions[0]
-    for name in ("prerequisites", "grouping", "publish", "bind", "audit", "summarize"):
+    sub = parser.add_subparsers(dest="command", required=True)
+    for name in (
+        "prerequisites",
+        "grouping",
+        "publish",
+        "bind",
+        "audit",
+        "summarize",
+    ):
         sub.add_parser(name)
     return parser.parse_args()
 
