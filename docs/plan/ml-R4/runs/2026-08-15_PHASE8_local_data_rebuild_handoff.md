@@ -5,7 +5,7 @@
 **Phase:** 8 — Existing Architecture Retraining
 **Gate:** G8 remains OPEN
 **Repository-repair base:** `a10fae041cc5f436b5607b6fd54fcabf63386059`
-**State:** local gate re-audit corrections implemented; physical repaired-v2 rebuild/acceptance and bounded GPU smoke pending locally; full 100-epoch training not authorized. Read `2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md` before executing this handoff.
+**State:** EXECUTED / SUPERSEDED FOR CURRENT AUTHORITY. The physical repaired-v2 rebuild/acceptance and bounded GPU smoke completed locally. Full 100-epoch training remains unauthorized. Current authority: `2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`.
 
 ## Authority and purpose
 
@@ -435,6 +435,9 @@ It does **not** authorize:
 - invented negatives;
 - architecture/input-shape changes.
 
-After the bounded smoke, preserve the generated JSON evidence and return for review. A new explicit governance decision is required before the full Phase-8 training horizon may start.
+The bounded smoke evidence was preserved and reviewed. The resulting governance
+decision does not authorize the full Phase-8 horizon: every effective loss cell
+is positive-only and the current token selector remains under review.
 
-**Repository repair complete; physical DATA rebuild and acceptance pending locally; 100-epoch training not yet authorized.**
+**Repository repair and physical DATA acceptance complete locally; bounded GPU
+smoke passed; 100-epoch training not authorized.**

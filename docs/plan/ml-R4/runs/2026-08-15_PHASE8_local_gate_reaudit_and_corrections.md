@@ -183,3 +183,26 @@ After these corrections are committed and the tracked worktree is clean:
 
 Full training remains unauthorized until a separate decision records why the
 accepted physical evidence is sufficient.
+
+## Final local acceptance outcome
+
+The prescribed rebuild and bounded smoke subsequently completed at source
+commit `fb31326da4420c2289822c2a6db8a022ac25876a`:
+
+- repaired publication: 22,540 contracts / 225,400 contract-class rows;
+- representation binding: 22,540 contracts / 67,620 files checked, zero
+  missing or invalid, digest
+  `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`;
+- the 28-artifact Slither tail was recovered with explicit mode provenance:
+  26 parse-only and two graph-only constant-array folds;
+- repaired-lineage audit: all 20 checks pass, while
+  `training_authorized=false` remains explicit;
+- bounded window experiment: 11,341 / 11,341 records analyzed, zero failures;
+- bounded CUDA smoke: PASS, two optimizer steps, no Run12 weights, no
+  checkpoint, 964.46 MB peak allocated.
+
+This completes the physical rebuild boundary described by this report. The
+separate governing decision is
+`2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`: DATA is
+accepted, but the 100-epoch run remains unauthorized because all 899 effective
+loss cells are positive-only and target-window adequacy is unresolved.

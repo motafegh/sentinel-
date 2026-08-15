@@ -10,7 +10,7 @@
 
 The canonical DATA foundation includes DATA vNext implementation merge **`81d9c547d`** (2026-08-12): R4 DATA/ML repair has passed **G0 through G7**, the V3 registry/context protocol and read-only audit-MCP boundary remain implemented, and Run12 remains the historical operational teacher. The v2 semantic overlay is physically bound to all 21,657 required representations / 64,971 graph-token-sidecar files with zero missing files and zero mismatches.
 
-As of the 2026-08-15 local gate re-audit, **Phase 8 is IN_PROGRESS with the full launch on a DATA/representation hold**. All 22,823 protected raw records match their ingestion-manifest bytes, but the first repository repair still had partial-build, graph-target scalability, opaque physical-binding, ledger-publication, role-coverage, and stale-acceptance seams. Corrections are implemented locally; a fresh full repaired-v2 physical rebuild remains pending. The real fixed-horizon repaired teacher training run has **not** been launched and G8 remains open.
+As of the 2026-08-15 local rebuild, **Phase 8 is IN_PROGRESS with repaired-v2 DATA physically accepted but full training on an evidence/objective hold**. The accepted local publication contains 22,540 contracts and all 67,620 required graph/token/sidecar files pass physical binding. The 20-check repaired-lineage audit and bounded CUDA smoke pass. The fixed-horizon teacher run has **not** been launched: every one of the 899 effective supervised cells is positive, there are no confirmed negatives, and the four-window control has measured target-code omissions. G8 remains open.
 
 The evidence limitations remain explicit: no confirmed-negative source exists in policy v1, threshold/calibration roles are unsupported/empty, and untouched acceptance is unsupported/empty/frozen. Historical July suite totals remain historical evidence rather than current-state proof.
 
@@ -28,8 +28,8 @@ DATA vNext v2
   G7 PASS
         ↓
 Phase 8 retrain existing architecture (IN_PROGRESS)
-  implementation + smoke + launch preflight complete
-  full launch held for real-data remediation/re-freeze
+  repaired-v2 physical DATA + bounded smoke accepted locally
+  full launch held for objective/evaluation + token-selector evidence
   full 100-epoch repaired run not yet launched
         ↓
 G8 checkpoint/evidence review
@@ -61,7 +61,7 @@ untouched acceptance: unsupported/empty/frozen
 | 5 | G5 PASS | DATA vNext policy/schema/ADRs accepted |
 | 6 | G6 PASS | leakage-safe roles frozen; acceptance support explicitly bounded |
 | 7 | G7 PASS | v2 implementation merged; 21,657 representations / 64,971 files physically bound with zero mismatches |
-| 8 | IN_PROGRESS | implementation/preflight are canonical on `main`; full launch is held for real-data remediation/re-freeze; repaired run/G8 checkpoint not yet complete |
+| 8 | IN_PROGRESS | repaired-v2 physical binding and bounded GPU smoke passed locally; full launch is held because supervision is positive-only and token-selection adequacy remains unresolved; repaired run/G8 checkpoint not complete |
 | 9–10 | waiting | evaluation/promotion remain gated by preceding phases |
 
 ### R4 DATA foundation
@@ -125,6 +125,35 @@ Final G7 evidence:
 
 The v2 loader rejects silent historical-v1 fallback. Historical v1 artifacts remain immutable. Phase 8 consumes this exact lineage; it may not invent negatives, rebalance frozen roles, or manufacture unsupported threshold/calibration/acceptance populations.
 
+### Repaired-v2 local physical acceptance
+
+The versioned repaired candidate is accepted as a physically complete local
+research dataset, separate from immutable historical G7/v1:
+
+- DATA publication: `sentinel-r4-vnext-v2`;
+- 22,540 contracts / 225,400 contract-class rows;
+- roles: 310 `TRAIN_STRONG`, 10,926 `TRAIN_WEAK`, 11,124
+  `TRAIN_UNLABELED`, 105 `MODEL_SELECTION`, 75 `INTERNAL_AUDIT`;
+- targets: 1,080 positive, 224,320 unknown, zero confirmed negative;
+- 22,540 / 22,540 contracts and 67,620 files physically valid;
+- representation binding digest:
+  `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`;
+- extraction modes: 22,512 full analysis, 26 provenance-visible
+  parse-only, two full-analysis graph-only constant-array folds;
+- all 20 repaired-lineage acceptance checks pass;
+- bounded two-step CUDA smoke passes and writes no checkpoint.
+
+This is DATA acceptance, not model-quality acceptance. There are 899 effective
+loss cells and every one targets `1`; 21,641 published contracts have no active
+loss cell. The current objective can measure positive fitting but cannot learn
+or evaluate false-positive discrimination.
+
+Token evidence is also material: 19,451 / 22,540 contracts exceed four
+pre-subsampling windows. Across all 11,341 optimizer/model-selection role
+records, a target-aware bounded candidate raises median target-contract
+coverage from 0.2760 to 0.5119, but regresses 342 records and is not promoted.
+See the [repaired-DATA acceptance and launch decision](../plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md).
+
 ### Current ML state
 
 Run12 remains the historical operational checkpoint and comparison baseline. It was trained using the pre-R4 binary target semantics. Therefore:
@@ -136,14 +165,15 @@ Run12 remains the historical operational checkpoint and comparison baseline. It 
 
 Architecture remains frozen through the initial repaired retrain so R4 can measure the effect of data/label repair before redesigning the model.
 
-Phase-8 execution configuration remains explicit, but full launch is held:
+The historical Phase-8 execution configuration remains explicit, but its old
+population figures are not authority for repaired-v2 and full launch is held:
 
 - architecture/model: `four_eye_v8` / `v8.1`, ten outputs;
 - training starts from the accepted pretrained GraphCodeBERT base plus fresh/current Phase-8 trainable components, not Run12 learned weights;
-- frozen training population: 275 `TRAIN_STRONG` + 773 `TRAIN_WEAK` contracts;
-- optimizer-bearing population: 275 strong + 577 weak = 852 contracts; 196 weak no-signal siblings are excluded from loss;
-- grouped sampler: 703 leakage groups, one deterministically rotating member per group/epoch;
-- MODEL_SELECTION: 56 contracts / 51 groups, positive-only limited support;
+- repaired frozen training roles: 310 `TRAIN_STRONG` + 10,926 `TRAIN_WEAK`;
+- repaired optimizer-bearing population: 298 strong + 601 weak = 899 contracts;
+- grouped sampler: 831 active leakage groups, one deterministically rotating member per group/epoch;
+- repaired MODEL_SELECTION: 105 frozen / 103 active contracts, 61 active groups, positive-only limited support;
 - epochs: 100; batch size: 8; gradient accumulation: 8;
 - 88 micro-batches and 11 optimizer/scheduler steps per epoch;
 - fixed run horizon: 1,100 optimizer steps;
@@ -152,11 +182,13 @@ Phase-8 execution configuration remains explicit, but full launch is held:
 
 The accepted pretrained backbone snapshot is `microsoft/graphcodebert-base` revision `2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d`. Runtime binding records Python, PyTorch/CUDA/cuDNN, Transformers, PEFT, PyTorch Geometric, NumPy, Pandas, and PyArrow versions and fails closed on backbone provenance mismatch.
 
-The GPU end-to-end micro-smoke passed the repaired execution path. The completed live data audit nevertheless found 65 distinct positives removed solely by address equality, one valid SmartBugs contract rejected by a legacy compiler-flag incompatibility, five direct SmartBugs Timestamp positives recoverable from physical metadata, at least 790 DIVE and seven SolidiFI normalized outputs corrupted after their compile gate, 341 graphs selecting a library/non-contract declaration, and 18,491 represented contracts omitting code tokens under the four-window cap. Only 275 strong + 577 weak cells are optimizer-active, and 612 / 852 are over the cap. Recovering known absent records could add up to 71 strong semantic cells over the current 403 before representation/role gates. The full 100-epoch run must therefore wait for a repaired, re-frozen DATA version. See the [Phase-8 real-data readiness audit](../plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md).
-
-For the current pre-training boundary, read the real-data readiness audit before the pre-training handoff. Do not execute the handoff's training command while the DATA-audit hold remains open.
-
-The current local execution authority is the [repaired-DATA rebuild handoff](../plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md), together with the [local gate re-audit and corrections](../plan/ml-R4/runs/2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md). The corrected graph policy retains all unrelated file-level inheritance leaves: the full raw census resolves 22,823 files into 29,556 graph components, including 4,256 multi-component files. This is evidence-preserving but can increase graph size; full-corpus graph distributions and GPU feasibility remain acceptance evidence, not assumptions.
+The 2026-08-14 audit motivated the repaired lineage and remains historical
+diagnostic evidence. The completed local rebuild recovered the predicted 71
+strong semantic cells, physically bound 883 more contracts than v1, and
+measured graph size through a maximum of 16,065 nodes / 166,459 edges. The
+remaining launch hold is no longer physical incompleteness; it is the inability
+of all-positive supervision to support discrimination claims, plus the
+unpromoted token selector.
 
 ### Current V3 / chain state
 
@@ -221,8 +253,8 @@ Potentially local/protected/regenerated:
 - two classes supervision-disabled;
 - model-selection is positive-only limited;
 - threshold/calibration/untouched acceptance unsupported;
-- Phase 7 physical representation binding passed; the remaining DATA/ML limitations are evidence limitations, not G7 implementation blockers;
-- Phase-8 implementation/preflight is technically executable, but full execution is held for a repaired DATA/representation lineage and no repaired full-run/final teacher checkpoint exists yet;
+- repaired-v2 physical representation binding and bounded CUDA smoke passed locally; generated artifacts remain local/Git-ignored;
+- Phase-8 implementation is technically executable, but full execution is held for a credible objective/evaluation contract and a reviewed token selector; no repaired full-run/final teacher checkpoint exists;
 - positive-only supervision may produce broad overprediction; that must be measured as a result, not hidden by invented negatives.
 
 ### ZK/V3

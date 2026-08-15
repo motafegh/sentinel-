@@ -25,8 +25,9 @@ As of the 2026-08-15 Phase-8 real-DATA repair reconciliation:
 - historical `sentinel-r4-vnext-v1` / `r4-vnext-roles-v1` / graph-schema-v9 G7 evidence remains immutable and reproducible, but the 2026-08-14 real-data audit found physical preprocessing/representation defects that prevent using that v1 lineage for the full retrain;
 - repository-safe repair implementation is complete on `main`: lexical line-preserving normalization, provenance-preserving dedup, version-aware solc, evidence-preserving file-level graph target binding, token coverage telemetry, deterministic leakage grouping, repaired source claims/evidence ledger/roles/publication/binding, repaired ML adapter/binding, local acceptance tools, and bounded GPU-smoke seam;
 - repaired candidate version identities are `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `r4-leakage-groups-v2`, `r4-vnext-roles-v2`, `sentinel-r4-vnext-v2`, and representation extractor `v2.2-r4-repaired`;
-- the repaired candidate keeps graph schema `v9`, token tensor `[4,512]`, and architecture `four_eye_v8` / `v8.1`; long-contract adequacy is explicitly unresolved and requires measured local evidence rather than an implicit architecture change;
-- the protected local corpus has **not** yet been rebuilt/accepted into repaired v2, so no repaired-v2 population count, representation binding digest, checkpoint, or model-quality result may be claimed from repository CI alone;
+- the repaired candidate keeps graph schema `v9`, token tensor `[4,512]`, and architecture `four_eye_v8` / `v8.1`; a local target-aware experiment improves median target coverage but is not promoted;
+- the protected local corpus was rebuilt and physically accepted on 2026-08-15 at source commit `fb31326da4420c2289822c2a6db8a022ac25876a`: 22,540 contracts / 67,620 representation files, binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`; these generated artifacts are Git-ignored and are not present in a fresh clone;
+- the bounded repaired-data CUDA smoke passed without Run12 weights or a checkpoint, but every one of the 899 effective loss cells is positive-only, so the 100-epoch run remains unauthorized and no model-quality improvement is claimed;
 - no confirmed-negative source exists in `data-vnext-policy-v1`; target `0` remains forbidden without class-specific confirmed-negative evidence;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
 - Run12 is the **historical operational ML baseline**, not repaired-v2 truth; its learned weights, optimizer/scheduler state, thresholds, and calibration are not reused as current Phase-8 truth;
@@ -41,8 +42,9 @@ For the exact current DATA/ML restart boundary, read in order:
 2. `docs/plan/ml-R4/runs/2026-08-14_PHASE8_real_data_readiness_audit.md`;
 3. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_gate_reaudit_and_corrections.md`.
 4. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`.
+5. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`.
 
-The 2026-08-14 pretraining launch handoff is historical/superseded for full-training authorization. Do not launch the 100-epoch Phase-8 run until the new repaired-v2 physical rebuild/acceptance, long-contract evidence review, bounded repaired-data GPU smoke, and an explicit governance re-authorization are complete.
+The 2026-08-14 pretraining launch handoff is historical/superseded for full-training authorization. Physical repaired-v2 acceptance and the bounded smoke are complete; do not launch the 100-epoch Phase-8 run until the positive-only objective/evaluation limitation and long-contract selector are resolved and governance explicitly re-authorizes it.
 
 ## Approval model
 
@@ -71,7 +73,7 @@ In Ali's primary Claude Code setup, project memory may exist under:
 
 When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
 
-For the current R4 Phase-8 boundary, the committed restart record is `docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`. If private/local `MEMORY.md` is maintained, it should point to that handoff rather than duplicate all transient local rebuild details.
+For the current R4 Phase-8 boundary, the committed decision record is `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`. If private/local `MEMORY.md` is maintained, it should point to that decision rather than duplicate transient local rebuild details.
 
 For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 

@@ -26,11 +26,18 @@ Repository repair now defines a separate repaired candidate lineage:
 - model token tensor remains `[4,512]`;
 - architecture remains `four_eye_v8` / `v8.1`.
 
-Repository-safe implementation/tests are complete. The protected local corpus has **not** yet been rebuilt into this v2 lineage, so no repaired-v2 population counts, binding digest, checkpoint, or model-quality result may be claimed from repository CI alone.
+Repository-safe implementation/tests and the protected local physical rebuild
+are complete. At source commit
+`fb31326da4420c2289822c2a6db8a022ac25876a`, repaired-v2 binds 22,540 contracts
+/ 67,620 files with digest
+`16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`.
+The generated artifacts are Git-ignored and absent from a fresh clone. The
+bounded CUDA smoke passed without Run12 weights or a checkpoint; no model
+quality result is claimed.
 
-The exact next execution contract is:
+The governing launch decision is:
 
-`docs/plan/ml-R4/runs/2026-08-15_PHASE8_local_data_rebuild_handoff.md`
+`docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`
 
 ## Historical-v1 compatibility boundary
 
@@ -179,7 +186,8 @@ Historical/supplementary ML testing specs remain useful only when they do not co
 
 ## Training stop line
 
-Until local repaired DATA acceptance, coverage review, and the bounded repaired-data GPU smoke are complete and governance is updated again:
+Until the positive-only objective/evaluation limitation and token-selector
+decision are resolved and governance is updated again:
 
 - do not run the 100-epoch job;
 - do not create/promote a repaired checkpoint;
@@ -188,4 +196,6 @@ Until local repaired DATA acceptance, coverage review, and the bounded repaired-
 - do not inspect/manufacture acceptance data;
 - do not weaken v1/v2 provenance or role guards just to make execution convenient.
 
-**Current ML status:** repository repaired-v2 consumer/smoke seam implemented; physical repaired-v2 DATA evidence pending; G8 open; 100-epoch training not authorized.
+**Current ML status:** repaired-v2 physical DATA accepted locally; bounded CUDA
+smoke passed; all 899 effective loss cells are positive-only; token selector
+not promoted; G8 open; 100-epoch training not authorized.

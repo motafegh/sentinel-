@@ -19,7 +19,11 @@ Repository repair now defines a new candidate lineage:
 - graph feature schema: still `v9`;
 - token tensor contract: still `[4, 512]`.
 
-These version identifiers describe the repaired interface. They do **not** claim the Git-ignored physical corpus has already been rebuilt or accepted.
+The Git-ignored repaired physical corpus was rebuilt and accepted locally on
+2026-08-15 at source commit
+`fb31326da4420c2289822c2a6db8a022ac25876a`: 22,540 contracts and 67,620
+graph/token/sidecar files bind with zero missing/invalid payloads. This local
+evidence is not present in a fresh clone and does not claim model quality.
 
 ## Mandatory repair semantics
 
@@ -63,7 +67,8 @@ Physical acceptance additionally requires the protected raw manifests/corpus, DI
 
 ## Training boundary
 
-The DATA module must not describe repaired-v2 as training-ready until:
+Physical repaired-v2 DATA acceptance has completed through steps 1-5 below;
+step 6 remains false:
 
 1. raw-manifest byte verification passes;
 2. repaired preprocessing/claims/grouping/representations/publication complete;
@@ -72,4 +77,6 @@ The DATA module must not describe repaired-v2 as training-ready until:
 5. a bounded repaired-data GPU smoke passes;
 6. R4 governance explicitly re-authorizes the full Phase-8 run.
 
-Until then: **100-epoch training is not authorized.**
+The physical dataset is accepted for bounded research, but **100-epoch training
+is not authorized** because all 899 effective loss cells are positive-only and
+the long-contract selector is not yet promoted.

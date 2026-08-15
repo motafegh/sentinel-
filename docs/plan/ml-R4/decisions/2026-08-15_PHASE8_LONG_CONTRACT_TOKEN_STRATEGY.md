@@ -1,7 +1,7 @@
 # Phase-8 Decision — Long-Contract Token Strategy
 
 **Date:** 2026-08-15
-**Status:** DEFERRED DECISION — EVIDENCE COLLECTION IMPLEMENTED
+**Status:** EVIDENCE COLLECTED — PRODUCTION CHANGE NOT AUTHORIZED
 **Scope:** repaired Phase-8 GraphCodeBERT token representations
 
 ## Decision
@@ -10,7 +10,34 @@ Do **not** change the frozen `[4, 512]` token tensor contract or the `four_eye_v
 
 The repaired extractor keeps the historical deterministic four-window linspace selection so DATA/provenance repairs are not confounded with an architecture/input-capacity redesign. It now records exact pre-subsampling token/window counts, selected window indices/ranges, retained unique-token count, and retained-token ratio. These fields are evidence only; no retained-ratio threshold is approved.
 
-The 2026-08-14 real-data audit found 18,491 / 21,657 represented contracts exceed four windows and 612 / 852 optimizer cells attach to over-cap inputs. Therefore shape validity is explicitly **not** evidence that four windows are adequate.
+The accepted repaired-v2 binding finds 19,451 / 22,540 represented contracts
+(86.3%) exceed four windows. Of 899 optimizer-active contracts, 655 are over
+the cap. Therefore shape validity is explicitly **not** evidence that four
+windows are adequate.
+
+## Completed local comparison
+
+The corrected profiler analyzed all 11,341 optimizer/model-selection role
+records with zero failures; 10,996 exceed four windows. Multi-component files
+are evaluated against the union of every represented target contract.
+
+| Metric | Historical linspace control | Target-aware candidate |
+|---|---:|---:|
+| Median global retained ratio | 0.2759 | 0.2868 |
+| Median target-contract coverage | 0.2760 | 0.5119 |
+| Minimum target-contract coverage | 0.0000 | 0.0321 |
+
+Target-contract coverage improves for 10,208 records and regresses for 342.
+For the 655 optimizer-active over-cap records, median target coverage improves
+from 0.6585 to 0.8738 (409 improve, 70 regress). For the 87 active
+model-selection over-cap records it improves from 0.4855 to 0.8295 (70 improve,
+seven regress).
+
+The candidate clearly improves coverage in aggregate, but this profiler does
+not rewrite representations and cannot establish optimization benefit or
+acceptable regressions. The production selector remains the historical
+control until a versioned candidate lineage and identical-initialization
+bounded GPU comparison are reviewed.
 
 ## Alternatives to test locally
 
@@ -33,7 +60,7 @@ The 2026-08-14 real-data audit found 18,491 / 21,657 represented contracts excee
 
 ## Exact local experiment required before changing selection
 
-After the repaired physical corpus and representation target binding are available:
+The coverage-only steps below are complete. Before changing selection:
 
 1. Preserve the repaired four-window representations as the control lineage.
 2. On the **same final leakage groups**, select a deterministic analysis sample containing:
@@ -74,4 +101,6 @@ This command does not rewrite representations and cannot promote a selector by i
 - coverage schema: `r4-token-coverage-v1`;
 - repaired representation extractor: `v2.2-r4-repaired`;
 - coverage interpretation: `diagnostic_only_no_adequacy_threshold`;
-- 100-epoch training: **not authorized** until physical repaired-DATA acceptance and the bounded repaired-data GPU smoke are reviewed.
+- 100-epoch training: **not authorized**; physical repaired-DATA acceptance and
+  the generic bounded smoke passed, but the selector still needs a comparative
+  GPU diagnostic and the all-positive learning-objective limitation remains.

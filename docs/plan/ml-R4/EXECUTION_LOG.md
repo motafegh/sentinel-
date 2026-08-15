@@ -320,3 +320,49 @@ Append one entry for each work package.
 - **Real smoke:** two DIVE artifacts, including a five-component graph, completed with two workers and zero failures
 - **Validation:** repaired focused suite `100 passed`; frozen G6 validator PASS; `git diff --check` PASS
 - **Gate effect:** small-source representation outputs made before this manifest change must be rebuilt; full DIVE representations may run with eight workers only after repository validation
+
+### R4-LOG-20260815-017 — Full DIVE representation attempt rejected at explicit Slither tail
+
+- **Phase:** 8 local repaired-v2 representation build
+- **Source population:** 22,054 repaired DIVE artifact identities
+- **Runtime:** 3,374 seconds with eight workers
+- **Attempt result:** 22,026 complete graph/token/sidecar triples; 28 explicit failures (0.127%); completeness gate rejected publication
+- **Failure classes:** 24 Slither IR `unhashable type: 'list'`; one ternary IR failure; one old-`send` IR failure; two compile-valid fixed-array constant-fold failures
+- **Compatibility probe:** Slither parse-only produced non-empty target graphs for 26 / 28; the final two required only line/byte-preserving graph-source folding of fixed-array length expressions
+- **Preservation:** failed attempt retained outside the candidate root with manifest SHA-256 `99d370ae64e0e59610c4a43ecc18ae5e4768e8649eea750a64daf40953faeea1`
+- **Gate effect:** zero-failure gate operated correctly; no ledger/publication/training authorization followed from the partial build
+
+### R4-LOG-20260815-018 — Provenance-visible representation recovery accepted
+
+- **Phase:** 8 local repaired-v2 representation recovery
+- **Implementation commit:** `94bcac86d641f9abc38e22358debb71f8991dd80`
+- **Recovery contract:** immutable failed-attempt hash binding; complete-triple reuse; retry exactly the structured failure identities; active imports refused for graph-source transforms; promoted Solidity/token bytes unchanged
+- **DIVE result:** 22,054 / 22,054 triples, zero failures; 22,026 reused normal triples; 26 Slither parse-only; two full-analysis graph-only constant-array folds
+- **Small sources:** SmartBugs 143 / 143; SolidiFI 343 / 343; zero representation failures
+- **Representation manifest hashes:** DIVE `7bd7e798d9595e4f4c536706ade276e7017e5e3fb5f2fe23cbecb5a2a4d97a1f`; SmartBugs `28b3ce071903e731f515321489b3a7e1ef4b1c2b98f2e65adcdf16a6d4ccb0b5`; SolidiFI `e0c5a19f533b79e63f7eceb2065e12f7cf24861288a855b506bf3d037d0d0327`
+- **Validation:** repaired focused suite `105 passed`; frozen G6 PASS; handbook static `145 passed`; handbook unit `11 passed`; `git diff --check` PASS
+- **Gate effect:** representation completeness prerequisite passed; degraded extraction modes remain explicit evidence, not silent equivalence or model-quality proof
+
+### R4-LOG-20260815-019 — Repaired-v2 publication and full physical acceptance
+
+- **Phase:** 8 local repaired-v2 DATA acceptance
+- **Publication:** `sentinel-r4-vnext-v2`; 22,540 contracts / 225,400 rows; 1,080 positive / 224,320 unknown / zero confirmed-negative targets
+- **Strength/roles:** 474 STRONG / 606 WEAK; roles 310 TRAIN_STRONG, 10,926 TRAIN_WEAK, 11,124 TRAIN_UNLABELED, 105 MODEL_SELECTION, 75 INTERNAL_AUDIT
+- **Optimization/evaluation support:** 899 effective loss cells; 176 outcome metric cells; no threshold/calibration/untouched-acceptance population
+- **Ledger:** 22,540 contracts / 225,400 rows; SHA-256 `5317aba94b9cdbe900bd90bd9b2fdf22d69c3810ec2b0a08d9be032f21658d6d`
+- **Physical binding:** 22,540 / 22,540 contracts; 67,620 files; zero missing/invalid; digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`
+- **Measured population:** 4,211 multi-component contracts; nodes p50 264 / p99 1,606 / max 16,065; edges p50 685 / p99 4,269 / max 166,459; 19,451 contracts over four token windows
+- **Acceptance:** all 20 repaired-lineage checks PASS; `repository_data_acceptance_passed=true`; `training_authorized=false`
+- **Historical delta:** +47 contract identities; +883 represented contracts; +71 strong cells; +2 weak cells
+- **Gate effect:** physical repaired-v2 DATA accepted locally; generated artifacts remain Git-ignored and fresh clones must not claim possession of them
+
+### R4-LOG-20260815-020 — Token experiment, CUDA smoke, and full-run no-launch decision
+
+- **Phase:** 8 evidence review
+- **Coverage correction commit:** `fb31326da4420c2289822c2a6db8a022ac25876a`
+- **Coverage experiment:** 11,341 / 11,341 optimizer/model-selection role records; zero failures; target-aware median target coverage 0.5119 versus control 0.2760; 10,208 improve / 342 regress; no production selector promotion
+- **CUDA smoke:** PASS on NVIDIA GeForce RTX 3070 Laptop GPU; BF16; two train batches / two optimizer steps / one selection batch; finite loss; 964.46 MB peak allocated; no Run12 weights; no checkpoint
+- **Objective evidence:** every one of 899 effective loss cells targets `1`; 21,641 contracts have no active loss cell; unknowns are masked; zero confirmed negatives exist
+- **Decision:** repaired DATA and bounded mechanics accepted, but the 100-epoch job is **NOT AUTHORIZED** because positive-only fitting cannot establish false-positive discrimination or production quality and token selection remains unresolved
+- **Gate effect:** G8 remains OPEN; next work is an evidence-honest confirmed-negative or positive-unlabeled objective/evaluation contract plus a versioned bounded-selector comparison
+- **Durable decision:** `runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`
