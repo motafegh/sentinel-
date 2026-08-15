@@ -80,6 +80,20 @@ def test_worst_case_gpu_candidates_cover_distinct_active_extremes():
     assert by_metric["pre_subsampling_window_count"][0] == "window-max"
 
 
+def test_profiler_accepts_explicitly_marked_legacy_standard_inference():
+    row = _row("legacy-reused", mode="")
+    row["graph_extraction_mode_inferred_legacy_standard"] = True
+    report = profile_representation_records([row])
+    assert report["mode_counts"] == {"slither_full_analysis": 1}
+    assert report["mode_provenance_counts"] == {"inferred_legacy_standard": 1}
+    assert report["top_by_nodes"][0]["graph_extraction_mode"] == (
+        "slither_full_analysis"
+    )
+    assert report["top_by_nodes"][0][
+        "graph_extraction_mode_inferred_legacy_standard"
+    ] is True
+
+
 def test_profiler_fails_when_mode_provenance_is_missing():
     row = _row("bad")
     row["graph_extraction_mode"] = ""
