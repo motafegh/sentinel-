@@ -302,7 +302,7 @@ This still does **not** authorize full training.
 ```bash
 PYTHONPATH=.:data_module ./ml/.venv/bin/python \
   docs/plan/ml-R4/scripts/p8_audit_repaired_lineage.py \
-  > data_module/data/r4-v2-build/repaired_lineage_audit.json
+  --output data_module/data/r4-v2-build/repaired_lineage_audit.json
 ```
 
 Required result before any GPU action:

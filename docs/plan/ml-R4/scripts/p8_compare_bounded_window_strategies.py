@@ -69,27 +69,37 @@ def _mask_strings(source: str) -> str:
     return "".join(chars)
 
 
-def _target_char_span(source: str, target: str) -> tuple[int, int]:
+def _target_char_spans(
+    source: str, targets: list[str]
+) -> list[tuple[int, int]]:
     from sentinel_data.representation.target_selector import declarations
 
-    matches = [item for item in declarations(source) if item.name == target]
-    if len(matches) != 1:
-        raise ValueError(f"target declaration count for {target!r} is {len(matches)}")
-    start = matches[0].source_offset
     masked = _mask_strings(source)
-    open_brace = masked.find("{", start)
-    if open_brace < 0:
-        raise ValueError(f"target {target!r} has no opening brace")
-    depth = 0
-    for index in range(open_brace, len(masked)):
-        ch = masked[index]
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return start, index + 1
-    raise ValueError(f"target {target!r} has no matching closing brace")
+    items = declarations(source)
+    spans: list[tuple[int, int]] = []
+    for target in targets:
+        matches = [item for item in items if item.name == target]
+        if len(matches) != 1:
+            raise ValueError(
+                f"target declaration count for {target!r} is {len(matches)}"
+            )
+        start = matches[0].source_offset
+        open_brace = masked.find("{", start)
+        if open_brace < 0:
+            raise ValueError(f"target {target!r} has no opening brace")
+        depth = 0
+        for index in range(open_brace, len(masked)):
+            ch = masked[index]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    spans.append((start, index + 1))
+                    break
+        else:
+            raise ValueError(f"target {target!r} has no matching closing brace")
+    return spans
 
 
 def _window_ranges(total_tokens: int, content_capacity: int, stride: int) -> list[list[int]]:
@@ -120,11 +130,13 @@ def _union_length(ranges: list[list[int]]) -> int:
     return total + right - left
 
 
-def _intersect_length(ranges: list[list[int]], target_range: list[int]) -> int:
-    target_start, target_end = target_range
+def _intersect_union_length(
+    ranges: list[list[int]], target_ranges: list[list[int]]
+) -> int:
     intersections = [
         [max(start, target_start), min(end, target_end)]
         for start, end in ranges
+        for target_start, target_end in target_ranges
         if min(end, target_end) > max(start, target_start)
     ]
     return _union_length(intersections)
@@ -140,19 +152,26 @@ def _linspace_indices(total: int, count: int = 4) -> list[int]:
 
 
 def _target_aware_indices(
-    ranges: list[list[int]], target_range: list[int], count: int = 4
+    ranges: list[list[int]], target_ranges: list[list[int]], count: int = 4
 ) -> list[int]:
-    overlapping = [
-        index
-        for index, (start, end) in enumerate(ranges)
-        if min(end, target_range[1]) > max(start, target_range[0])
-    ]
     selected: list[int] = []
-    if len(overlapping) > count:
-        for pos in _linspace_indices(len(overlapping), count):
-            selected.append(overlapping[pos])
-    else:
-        selected.extend(overlapping)
+    covered = 0
+    while len(selected) < count:
+        candidates: list[tuple[int, int]] = []
+        for index in range(len(ranges)):
+            if index in selected:
+                continue
+            score = _intersect_union_length(
+                [ranges[value] for value in (*selected, index)], target_ranges
+            )
+            candidates.append((score - covered, index))
+        if not candidates:
+            break
+        gain, index = max(candidates, key=lambda item: (item[0], -item[1]))
+        if gain <= 0:
+            break
+        selected.append(index)
+        covered += gain
     for index in _linspace_indices(len(ranges), count):
         if len(selected) >= count:
             break
@@ -214,8 +233,13 @@ def main() -> int:
         try:
             source_text = sol.read_text(encoding="utf-8")
             sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-            target = str(sidecar["requested_contract_name"])
-            char_span = _target_char_span(source_text, target)
+            targets = [
+                str(value)
+                for value in (sidecar.get("requested_contract_names") or ())
+            ]
+            if not targets:
+                raise ValueError("representation sidecar has no requested targets")
+            char_spans = _target_char_spans(source_text, targets)
             encoded = tokenizer(
                 source_text,
                 add_special_tokens=False,
@@ -228,26 +252,32 @@ def main() -> int:
                 token_ids = token_ids[0]
                 offsets = offsets[0]
             total_tokens = len(token_ids)
-            target_token_indices = [
-                index
-                for index, (start, end) in enumerate(offsets)
-                if end > char_span[0] and start < char_span[1]
-            ]
-            if not target_token_indices:
-                raise ValueError("target declaration maps to zero code tokens")
-            target_range = [min(target_token_indices), max(target_token_indices) + 1]
+            target_ranges: list[list[int]] = []
+            for target, char_span in zip(targets, char_spans):
+                target_token_indices = [
+                    index
+                    for index, (start, end) in enumerate(offsets)
+                    if end > char_span[0] and start < char_span[1]
+                ]
+                if not target_token_indices:
+                    raise ValueError(
+                        f"target declaration {target!r} maps to zero code tokens"
+                    )
+                target_ranges.append(
+                    [min(target_token_indices), max(target_token_indices) + 1]
+                )
             ranges = _window_ranges(total_tokens, capacity, STRIDE)
             control_indices = _linspace_indices(len(ranges), 4)
-            target_indices = _target_aware_indices(ranges, target_range, 4)
+            target_indices = _target_aware_indices(ranges, target_ranges, 4)
             control_ranges = [ranges[index] for index in control_indices]
             candidate_ranges = [ranges[index] for index in target_indices]
-            target_tokens = target_range[1] - target_range[0]
+            target_tokens = _union_length(target_ranges)
             records.append(
                 {
                     "contract_id": contract_id,
                     "source": source,
                     "role": str(row["role"]),
-                    "target_contract_name": target,
+                    "target_contract_names": targets,
                     "total_code_tokens": total_tokens,
                     "total_windows": len(ranges),
                     "target_contract_tokens": target_tokens,
@@ -255,8 +285,8 @@ def main() -> int:
                     "target_aware_indices": target_indices,
                     "control_retained_ratio": _union_length(control_ranges) / total_tokens,
                     "target_aware_retained_ratio": _union_length(candidate_ranges) / total_tokens,
-                    "control_target_coverage_ratio": _intersect_length(control_ranges, target_range) / target_tokens,
-                    "target_aware_target_coverage_ratio": _intersect_length(candidate_ranges, target_range) / target_tokens,
+                    "control_target_coverage_ratio": _intersect_union_length(control_ranges, target_ranges) / target_tokens,
+                    "target_aware_target_coverage_ratio": _intersect_union_length(candidate_ranges, target_ranges) / target_tokens,
                 }
             )
         except Exception as exc:

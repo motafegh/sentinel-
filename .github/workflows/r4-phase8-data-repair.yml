@@ -90,6 +90,7 @@ jobs:
             data_module/tests/test_preprocessing/test_r4_grouping.py \
             data_module/tests/test_representation/test_r4_target_selector.py \
             data_module/tests/test_representation/test_r4_compatibility.py \
+            data_module/tests/test_representation/test_bounded_window_strategy.py \
             data_module/tests/test_representation/test_windowed_tokenizer_coverage.py \
             data_module/tests/test_vnext/test_policy.py \
             data_module/tests/test_vnext/test_r4_source_claims.py \

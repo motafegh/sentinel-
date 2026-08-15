@@ -9,6 +9,7 @@ recoveries into facts.
 
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
 import json
@@ -135,6 +136,9 @@ def _source_summary(source: str) -> dict[str, Any]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
     claims = _read_jsonl(BUILD_ROOT / "source_claims.jsonl")
     grouping = _read_json(BUILD_ROOT / "grouping.json") or {}
     ledger = _read_json(BUILD_ROOT / "evidence_ledger_v2_manifest.json") or {}
@@ -329,7 +333,11 @@ def main() -> int:
             else "resolve failed physical DATA acceptance checks"
         ),
     }
-    print(json.dumps(result, indent=2, sort_keys=True))
+    text = json.dumps(result, indent=2, sort_keys=True) + "\n"
+    print(text, end="")
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(text, encoding="utf-8")
     return 0 if repository_data_acceptance_passed else 1
 
 
