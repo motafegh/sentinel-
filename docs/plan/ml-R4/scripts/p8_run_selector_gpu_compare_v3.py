@@ -2,8 +2,8 @@
 """Run the bounded selector CUDA comparison against logical lineage V3.
 
 This reuses the proven experiment mechanics from ``p8_run_selector_gpu_compare``
-but swaps in the V3 dataset adapter and requires the V3 sensitivity report so
-worst-case forward probes cannot silently disappear again.
+but swaps in the V3 dataset adapter and requires a lineage-bound V3 sensitivity
+report so stale or mismatched worst-case probes cannot be consumed silently.
 """
 
 from __future__ import annotations
@@ -94,6 +94,7 @@ def main() -> int:
     ):
         raise ValueError("logical-v3 publication is not physically bound")
 
+    manifest_sha = base._sha256_file(manifest_path)
     rep_digest = str(
         (manifest.get("representation_binding_report") or {}).get(
             "binding_digest_sha256"
@@ -103,13 +104,34 @@ def main() -> int:
     if not rep_digest:
         raise ValueError("logical-v3 manifest lacks representation binding digest")
 
+    current_source_commit = base._source_commit()
     expected_worst_case = 0
+    sensitivity_sha = ""
     if args.worst_case_probes > 0:
         if not sensitivity_path.is_file():
             raise FileNotFoundError(
                 f"worst-case probes requested but sensitivity report is missing: {sensitivity_path}"
             )
         sensitivity = json.loads(sensitivity_path.read_text(encoding="utf-8"))
+        lineage = sensitivity.get("lineage") or {}
+        expected_lineage = {
+            "dataset_version": DATASET_VERSION_V3,
+            "grouping_version": GROUPING_VERSION_V3,
+            "partition_version": ROLE_PARTITION_VERSION_V3,
+            "publication_manifest_sha256": manifest_sha,
+            "representation_binding_digest_sha256": rep_digest,
+            "source_commit": current_source_commit,
+        }
+        mismatches = {
+            key: {"expected": expected, "observed": lineage.get(key)}
+            for key, expected in expected_lineage.items()
+            if lineage.get(key) != expected
+        }
+        if mismatches:
+            raise ValueError(
+                "sensitivity report lineage does not match current V3 publication/source: "
+                f"{mismatches}"
+            )
         wanted = (
             (sensitivity.get("comparison_sets") or {}).get("worst_case_gpu_contract_ids")
             or []
@@ -117,6 +139,7 @@ def main() -> int:
         expected_worst_case = min(args.worst_case_probes, len(wanted))
         if expected_worst_case == 0:
             raise ValueError("sensitivity report contains no worst-case active contracts")
+        sensitivity_sha = base._sha256_file(sensitivity_path)
 
     from transformers import AutoTokenizer
 
@@ -195,12 +218,13 @@ def main() -> int:
     report = {
         "schema": "sentinel-r4-phase8-selector-gpu-compare-v3",
         "status": "LOGICAL_V3_BOUNDED_RESEARCH_COMPLETE",
-        "source_commit": base._source_commit(),
+        "source_commit": current_source_commit,
         "dataset_version": DATASET_VERSION_V3,
         "grouping_version": GROUPING_VERSION_V3,
         "partition_version": ROLE_PARTITION_VERSION_V3,
-        "publication_manifest_sha256": base._sha256_file(manifest_path),
+        "publication_manifest_sha256": manifest_sha,
         "representation_binding_digest_sha256": rep_digest,
+        "sensitivity_report_sha256": sensitivity_sha,
         "gpu": torch.cuda.get_device_name(0),
         "seed": settings.seed,
         "initial_state_digest_sha256": initial_digest,
