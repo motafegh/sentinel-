@@ -3,15 +3,16 @@
 
 The V3 logical build and research reports remain under Git-ignored DATA roots.
 This helper validates that all decision-critical reports describe the same V3
-publication and physical binding before copying anything into durable docs.
-It then sanitizes local paths, summarizes the large selector report, and binds
-every snapshot file by SHA-256.
+publication, physical binding, and hardened source commit before copying
+anything into durable docs. It then sanitizes local paths, summarizes the large
+selector report, and binds every snapshot file by SHA-256.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +52,13 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _source_commit() -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
 
 
 def _sanitize(value: Any) -> Any:
@@ -105,6 +113,7 @@ def validate_snapshot_coherence(
     selector: dict[str, Any],
     selector_sha256: str,
     gpu: dict[str, Any],
+    current_source_commit: str,
 ) -> dict[str, Any]:
     """Fail closed unless every decision-critical report binds to one V3 lineage."""
 
@@ -116,6 +125,13 @@ def validate_snapshot_coherence(
     gpu_scope = gpu.get("runtime_scope") or {}
     candidates = queue.get("candidates") or []
     candidate_groups = [str(row.get("group_id") or "") for row in candidates]
+    report_source_commits = {
+        "acceptance": acceptance_lineage.get("source_commit"),
+        "sensitivity": sensitivity_lineage.get("source_commit"),
+        "selector": selector_lineage.get("source_commit"),
+        "queue": queue.get("source_commit"),
+        "gpu": gpu.get("source_commit"),
+    }
 
     checks = {
         "manifest_dataset_v3": manifest.get("dataset_version") == DATASET_VERSION,
@@ -153,7 +169,8 @@ def validate_snapshot_coherence(
         )
         is True
         and (summary.get("semantic_invariants") or {}).get("confirmed_negative_rows") == 0,
-        "acceptance_pass": acceptance.get("status") == "PASS" and _all_true(acceptance.get("checks")),
+        "acceptance_pass": acceptance.get("status") == "PASS"
+        and _all_true(acceptance.get("checks")),
         "acceptance_manifest_matches": acceptance_lineage.get("publication_manifest_sha256")
         == manifest_sha256,
         "acceptance_binding_matches": acceptance_lineage.get(
@@ -225,6 +242,11 @@ def validate_snapshot_coherence(
         and gpu_scope.get("run12_weights_loaded") is False,
         "gpu_training_and_promotion_unauthorized": gpu.get("full_training_authorized") is False
         and gpu.get("selector_promotion_authorized") is False,
+        "research_source_commit_present": bool(current_source_commit)
+        and all(bool(value) for value in report_source_commits.values()),
+        "research_source_commit_consistent": all(
+            value == current_source_commit for value in report_source_commits.values()
+        ),
     }
     failures = sorted(name for name, passed in checks.items() if not passed)
     report = {
@@ -241,11 +263,13 @@ def validate_snapshot_coherence(
             "representation_binding_report_sha256": binding_sha256,
             "representation_sensitivity_sha256": sensitivity_sha256,
             "bounded_selector_source_report_sha256": selector_sha256,
+            "source_commit": current_source_commit,
+            "report_source_commits": report_source_commits,
         },
         "decision_boundary": (
             "PASS means the snapshot inputs are mutually coherent and bound to one V3 "
-            "publication/physical representation lineage. It does not create negative truth, "
-            "promote the selector, or authorize full training."
+            "publication, physical representation lineage, and hardened source commit. "
+            "It does not create negative truth, promote the selector, or authorize full training."
         ),
     }
     if failures:
@@ -289,6 +313,7 @@ def main() -> int:
         selector=selector,
         selector_sha256=_sha256(selector_path),
         gpu=gpu,
+        current_source_commit=_source_commit(),
     )
 
     if OUTPUT_ROOT.exists() and any(OUTPUT_ROOT.iterdir()):
