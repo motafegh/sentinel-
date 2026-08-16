@@ -58,7 +58,7 @@ def test_normalized_identity_remains_global_grouping_authority(tmp_path):
     assert payload["artifact_to_group"]["a" * 64] == payload["artifact_to_group"]["b" * 64]
 
 
-def test_explicit_family_remains_grouping_authority(tmp_path):
+def test_explicit_family_remains_grouping_authority_within_source(tmp_path):
     source = tmp_path / "source"
     record = lambda value: {"ingestion_entry": {"base_family_id": value}}
     _write_meta(source, "a" * 64, norm="1" * 64, source_records=(record("family-7"),))
@@ -66,9 +66,46 @@ def test_explicit_family_remains_grouping_authority(tmp_path):
 
     out = tmp_path / "groups.json"
     result = build_grouping_v3({"source": source}, out, verify_completeness=False)
+    payload = json.loads(out.read_text())
 
     assert result.groups == 1
     assert result.explicit_family_edges == 1
+    edge = next(
+        edge
+        for edge in payload["evidence_edges"]
+        if edge["reason"] == "explicit_source_family"
+    )
+    assert edge["evidence_key"] == "source:base_family_id:family-7"
+
+
+def test_same_explicit_family_value_from_different_sources_does_not_merge(tmp_path):
+    source_a = tmp_path / "source-a"
+    source_b = tmp_path / "source-b"
+    record = lambda value: {"ingestion_entry": {"project_id": value}}
+    _write_meta(
+        source_a,
+        "a" * 64,
+        norm="1" * 64,
+        source_records=(record("project-1"),),
+    )
+    _write_meta(
+        source_b,
+        "b" * 64,
+        norm="2" * 64,
+        source_records=(record("project-1"),),
+    )
+
+    out = tmp_path / "groups.json"
+    result = build_grouping_v3(
+        {"source-a": source_a, "source-b": source_b},
+        out,
+        verify_completeness=False,
+    )
+    payload = json.loads(out.read_text())
+
+    assert result.groups == 2
+    assert result.explicit_family_edges == 0
+    assert payload["artifact_to_group"]["a" * 64] != payload["artifact_to_group"]["b" * 64]
 
 
 def test_v3_group_ids_are_order_independent(tmp_path):
