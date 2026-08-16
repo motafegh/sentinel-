@@ -14,9 +14,11 @@ R4-D-008 physically accepted the repaired-v2 DATA source/representation layer: *
 
 A later full-population research audit found a separate logical defect: `r4-leakage-groups-v2` used arbitrary same-source Ethereum address literals as family/group authority. One DIVE component contained **10,327 contracts**, driven largely by common addresses such as the Uniswap V2 router, dead/zero addresses, WETH, and other ubiquitous constants. R4-D-009 therefore **supersedes V2 grouping/roles for future model research while preserving repaired-v2 physical artifacts as accepted evidence**.
 
-The active logical candidate is now `r4-leakage-groups-v3` → `r4-vnext-roles-v3` → `sentinel-r4-vnext-v3`. V3 removes arbitrary address literals from grouping authority and reuses the accepted repaired-v2 physical source/representation bytes. Repository tooling and tests exist; **protected local V3 generation, same-byte rebinding, acceptance, and regenerated research evidence are still pending**.
+The corrected logical lineage `r4-leakage-groups-v3` → `r4-vnext-roles-v3` → `sentinel-r4-vnext-v3` has now passed protected local generation, same-byte rebinding, and V2→V3 acceptance. V3 contains **22,394 groups**, maximum group size **7**, **146 normalized-code edges**, and **zero address-authority edges** while preserving the exact repaired-v2 physical digest. R4-D-009 is therefore **ACCEPTED**.
 
-There are still **zero confirmed-negative examples** in policy v1. Threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty. The target-aware four-window selector is not promoted. **The 100-epoch Phase-8 run is not authorized.**
+Role-dependent research has also been regenerated under V3. Representation sensitivity is stable; the guarded four-window selector improved target coverage on **476 of 737** over-cap records, was equal/fallback on 261, and regressed on **0**. The bounded identical-initialization CUDA comparison completed all **4/4 mandatory worst-case probes** on the RTX 3070 Laptop GPU. This makes the guarded selector evidence-ready for a separate promotion ADR/versioned extractor decision, but it is **not yet promoted**.
+
+There are still **zero confirmed-negative examples**. R4-GAP-007 authorizes a 200-cell V3 pilot review queue (25 candidates per enabled class), but every candidate remains `PENDING_REVIEW`, target `None`, and `negative_truth_claim=false`. Threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty. **The 100-epoch Phase-8 run is not authorized.**
 
 ## Just-enough mental model
 
@@ -40,17 +42,23 @@ R4-D-009 logical V3 correction
   sentinel-r4-vnext-v3
   address literals = diagnostics only
         ↓
-LOCAL V3 acceptance pending
-  grouping → roles/publication → same-byte rebinding
-  → V2→V3 acceptance audit
+LOCAL V3 acceptance PASS
+  22,394 groups / max 7
+  zero address-authority edges
+  same 67,620 physical files
+  same physical digest
         ↓
-regenerate role-dependent research evidence
-  selector coverage
+V3 role-dependent research COMPLETE
   representation sensitivity
+  selector CPU coverage
   confirmed-negative pilot queue
-  CUDA comparison + mandatory worst-case probes
+  CUDA comparison + 4/4 worst-case probes
         ↓
-objective/evaluation decision
+next controlled decisions
+  final Git-safe evidence snapshot
+  selector promotion ADR/versioning
+  R4-GAP-007 negative adjudication
+  objective/evaluation design
         ↓
 possible later G8 training authorization
 ```
@@ -60,8 +68,9 @@ The key distinction is:
 ```text
 physical DATA integrity       accepted under R4-D-008
 logical V2 grouping/roles     superseded for future research
-logical V3 implementation     repository-complete, local acceptance pending
-model discrimination evidence still unavailable
+logical V3 grouping/roles     accepted under R4-D-009
+selector evidence             strong enough for separate promotion decision, not promoted
+model discrimination evidence still unavailable because confirmed negatives = 0
 ```
 
 ## Actual runtime/source walkthrough
@@ -78,7 +87,7 @@ model discrimination evidence still unavailable
 | 5 | G5 PASS | DATA vNext policy/schema/ADRs accepted |
 | 6 | G6 PASS | historical v1 leakage-safe role manifests frozen; unsupported evaluation roles explicit |
 | 7 | G7 PASS | historical `sentinel-r4-vnext-v1` bound to 21,657 representations / 64,971 files with zero mismatches |
-| 8 | IN_PROGRESS | repaired-v2 physical DATA accepted; V2 grouping superseded; logical V3 implemented but local V3 acceptance/evidence regeneration pending; full training unauthorized |
+| 8 | IN_PROGRESS | repaired-v2 physical DATA accepted; V2 grouping superseded; logical V3 accepted; V3 selector/sensitivity/negative-queue/CUDA research completed; confirmed-negative adjudication, selector promotion, objective/evaluation design, and full training remain pending |
 | 9–10 | WAITING | evaluation/calibration/promotion remain gated by G8 and missing evidence |
 
 ### Historical G7 foundation
@@ -146,7 +155,7 @@ V2 role-dependent research outputs   historical/population-specific
 
 Do not use the V2 200-cell confirmed-negative review queue for manual adjudication. Its group reservations are tied to the superseded V2 partition.
 
-### Logical V3 candidate
+### Accepted logical V3 lineage
 
 The corrected V3 identifiers are:
 
@@ -161,20 +170,50 @@ V3 grouping authority permits:
 - identical normalized-code identity;
 - explicit source-provided family/project identifiers such as `base_family_id`, `family_id`, `project_group_id`, or `project_id`.
 
-V3 explicitly forbids arbitrary address literals as grouping authority. Address overlaps remain measurable diagnostics and must create **zero** union edges.
+V3 explicitly forbids arbitrary address literals as grouping authority. Address overlaps remain measurable diagnostics and create **zero** union edges.
+
+Protected local acceptance proved:
+
+- contracts / contract×class rows unchanged: 22,540 / 225,400;
+- positive / unknown / confirmed-negative targets unchanged: 1,080 / 224,320 / 0;
+- STRONG / WEAK semantic cells unchanged: 474 / 606;
+- V3 groups: 22,394;
+- maximum group size: 7;
+- normalized-code grouping edges: 146;
+- address literals observed: 14,851;
+- address-authority grouping edges: 0;
+- V2 giant group removed;
+- physical representation files checked: 67,620;
+- V3 physical binding digest exactly equals repaired-v2: `16dd4a3f...`;
+- physical rebuild performed: false.
+
+V3 role contract counts:
+
+- `TRAIN_STRONG`: 343;
+- `TRAIN_WEAK`: 602;
+- `TRAIN_UNLABELED`: 21,449;
+- `MODEL_SELECTION`: 73;
+- `INTERNAL_AUDIT`: 73.
+
+V3 active supervision/evaluation:
+
+- effective loss cells: 932;
+- optimizer-active contracts/groups: 932 / 932;
+- model-selection outcome cells: 143;
+- model-selection contracts/groups: 143 / 142.
+
+All of those supervised/model-selection cells remain positive-only.
 
 Repository implementation includes:
 
 - `data_module/sentinel_data/preprocessing/r4_grouping_v3.py`;
 - `data_module/sentinel_data/vnext/r4_logical_v3.py`;
 - `ml/src/datasets/vnext_logical_v3_dataset.py`;
-- local V3 rebuild/binding/acceptance scripts;
+- V3 rebuild/binding/acceptance scripts;
 - V3 confirmed-negative queue builder;
 - V3 selector CUDA comparison with mandatory worst-case probes;
 - Git-safe V3 evidence snapshotting;
 - focused V3 regression tests and Phase-8 CI coverage.
-
-Local acceptance must prove semantic counts are unchanged from repaired-v2, address-union edges are zero, the giant V2 component disappears, every required physical representation still validates, and the physical binding digest remains exactly `16dd4a3f...`.
 
 ### Current model/evaluation state
 
@@ -188,27 +227,76 @@ The architecture remains frozen for this evidence tranche:
 - graph schema: `v9`;
 - token tensor: `[4,512]`.
 
-The V2 role freeze previously produced 899 optimizer-bearing positive contracts across 831 active groups. **Those are historical V2 partition facts now, not V3 training authority.** The V3 acceptance script derives fresh active optimizer contracts/groups and fresh batch/accumulation planning arithmetic from the corrected partition. Do not carry V2 `831`, `104`, `13`, or a hypothetical `1,300`-step horizon forward automatically.
+The current V3 partition contains 932 optimizer-bearing positive cells/contracts across 932 active groups. The acceptance script also reported planning-only batch-8/accum-8 arithmetic of 117 micro-batches/epoch, 15 optimizer steps/epoch, and 1,500 optimizer steps over a hypothetical 100 epochs. **Those numbers are not an authorized training horizon.**
 
 The supervision problem remains independent of grouping: current policy has zero confirmed-negative source authority. Unknown cells remain masked, not target `0`. A future objective cannot claim trustworthy false-positive discrimination until suitable negative/evaluation evidence or an explicitly justified alternative evaluation design exists.
 
-### Research evidence that must be regenerated under V3
+### V3 research evidence now regenerated
 
-V2 research established useful hypotheses but not future population authority:
+#### Representation sensitivity
 
-- guarded target-aware selection improved requested-target declaration coverage on the V2 active-role population with zero guarded regressions in the committed summary;
-- the small identical-initialization V2 CUDA comparison ran successfully;
-- the original V2 CUDA report did **not** execute its intended worst-case forward probes because the sensitivity report did not yet exist;
-- representation telemetry showed maxima of 16,065 nodes, 166,459 edges, 28 components, and 403 pre-subsampling token windows.
+Physical telemetry remains:
 
-After V3 local acceptance, regenerate:
+- graph nodes p50/p95/p99/max: 264 / 883 / 1,606 / 16,065;
+- edges: 685 / 1,969 / 4,269 / 166,459;
+- components: 1 / 2 / 5 / 28;
+- pre-subsampling windows: 17 / 54 / 97 / 403.
 
-1. representation sensitivity under V3 roles;
-2. bounded-window selector population statistics under V3 roles;
-3. V3 confirmed-negative pilot queue;
-4. identical-initialization CUDA selector comparison with all requested worst-case probes completed.
+Representation modes remain 22,512 full analysis, 26 parse-only, and 2 constant-array-fold compatibility cases. Under V3 roles, MODEL_SELECTION contains zero compatibility-mode contracts; seven optimizer-active compatibility cases remain, all `TRAIN_WEAK` parse-only.
 
-Selector promotion, compatibility exclusion/down-weighting, PU learning, and a full-run horizon remain separate later decisions.
+#### Selector CPU population comparison
+
+V3 selector experiment:
+
+- records analyzed: 1,018;
+- over four windows: 737;
+- guarded improved target coverage: 476;
+- equal/control fallback: 261;
+- regressions: 0;
+- median target coverage: historical ~63.01%, guarded ~87.94%.
+
+The V3 population differs materially from the superseded V2 partition, so V2 improvement percentages are historical rather than a baseline the V3 percentages must match.
+
+#### Confirmed-negative pilot queue
+
+R4-GAP-007 is APPROVED. The current V3 queue contains:
+
+- 200 candidate cells;
+- 25 candidates for each of the eight enabled classes;
+- 200 reserved leakage groups;
+- all `PENDING_REVIEW`;
+- all current targets `None`;
+- all role `TRAIN_UNLABELED`;
+- `negative_truth_claim=false`.
+
+The planning-only one-sided zero-FP bound is 59 confirmed negatives/class for a 5% maximum FPR at 95% confidence if zero false positives are observed. The 25/class queue is only a pilot to estimate adjudication yield, not a final quality gate.
+
+#### Identical-initialization CUDA selector comparison
+
+The bounded V3 comparison ran on the NVIDIA GeForce RTX 3070 Laptop GPU with BF16 autocast:
+
+- identical initialization: true;
+- initial-state digest: `ad1987633e72d74fa3350d9e20cd1c01ada67d257ccba1691ba4b58e88ea7606` for both strategies;
+- 4 train batches + 4 selection batches per strategy;
+- 4/4 mandatory worst-case probes completed;
+- no Run12 weights loaded;
+- no checkpoint written.
+
+Positive-only model selection:
+
+- control NLL / mean positive probability: 0.68474 / 0.50607;
+- guarded NLL / mean positive probability: 0.66014 / 0.51887;
+- positive recall at fixed 0.5 threshold: 0.5 for both;
+- metric cells: 4.
+
+Peak CUDA allocation:
+
+- control: 967.36 MB;
+- guarded: 956.68 MB.
+
+Worst-case probes included a 353-window `TRAIN_WEAK` contract whose target coverage increased from ~1.64% to ~3.79%, a 78-window `TRAIN_STRONG` contract from ~18.38% to ~35.53%, and a 51-window `TRAIN_STRONG` contract from ~12.31% to ~19.42%. A four-window case correctly fell back to control and preserved 100% coverage.
+
+This evidence is sufficient to consider a **separate selector-promotion ADR/versioned extractor decision**. It does not itself promote `target_aware_guarded_v1`, and positive-only CUDA behavior does not establish vulnerability discrimination.
 
 ## Interfaces, data shapes, and configuration
 
@@ -219,8 +307,9 @@ Selector promotion, compatibility exclusion/down-weighting, PU learning, and a f
 | semantic policy | `data-vnext-policy-v1` |
 | historical gate baseline | G0–G7 / `sentinel-r4-vnext-v1` |
 | repaired physical source/representation root | R4-D-008 / repaired-v2 physical artifacts |
-| current logical candidate | R4-D-009 / logical V3 |
-| current local execution handoff | `docs/plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md` |
+| current logical authority | R4-D-009 / accepted logical V3 |
+| confirmed-negative review authority | R4-GAP-007 / V3 pilot, adjudication not started |
+| current restart checkpoint | `docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md` |
 | training authorization | HOLD / none |
 
 ### Stable shapes
@@ -254,14 +343,14 @@ Tracked in Git:
 - historical G0–G7 evidence/policy/manifests;
 - V2 repair/V3 logical tooling and governance;
 - sanitized decisive research snapshots;
-- ADRs, status matrix, risk register, and handoffs.
+- ADRs, status matrix, evidence-gap register, and handoffs/checkpoints.
 
 Local/protected/generated:
 
 - repaired-v2 preprocessing tree;
 - repaired-v2 representation tree;
 - repaired-v2/V3 generated publications where ignored;
-- V3 local build/evidence reports before sanitization;
+- V3 local build/evidence reports before final sanitization;
 - Run12 checkpoint companions depending on acquisition;
 - GPU training logs/checkpoints;
 - secrets, RPC credentials, signing keys, proving-key/SRS workspaces.
@@ -274,13 +363,14 @@ A fresh clone may cite committed acceptance evidence, but it must not claim loca
 
 - repaired-v2 physical artifacts are accepted;
 - V2 grouping/roles are superseded for future research because address coincidence over-grouped unrelated contracts;
-- V3 repository tooling exists, but protected local V3 acceptance has not yet occurred;
-- if V3 changes the physical representation binding digest, stop: a logical-only migration has violated its core invariant;
+- V3 grouping/roles are accepted after protected local validation;
+- V3 preserved the exact repaired-v2 physical representation binding digest;
 - source acquisition portability remains imperfect for some external corpora.
 
 ### Supervision / evaluation
 
 - zero confirmed-negative rows;
+- R4-GAP-007 pilot candidates are review reservations, not negatives;
 - all historical/repaired negative-like absence remains unknown unless independently confirmed;
 - threshold fitting unavailable;
 - calibration fitting unavailable;
@@ -290,9 +380,9 @@ A fresh clone may cite committed acceptance evidence, but it must not claim loca
 ### Representation / selector
 
 - fixed `[4,512]` input capacity omits material code for many long contracts;
-- target-aware selection is promising but unpromoted and must be regenerated/reviewed under V3;
+- target-aware guarded selection has strong V3 CPU + bounded CUDA evidence but remains unpromoted pending a separate ADR/versioned extractor lineage;
 - compatibility-mode and multi-component/file-union representations remain explicit sensitivity risks;
-- worst-case graph/token GPU probes must actually complete before long-run assumptions.
+- all four required worst-case graph/token GPU probes completed successfully in the current bounded experiment.
 
 ### Training
 
@@ -315,13 +405,13 @@ A fresh clone may cite committed acceptance evidence, but it must not claim loca
 For current Phase-8 DATA/ML work:
 
 1. start from synchronized `main`;
-2. read `PLAN_STATUS_MATRIX.md`, R4-D-009/ADR-R4-009, and the logical-V3 handoff;
-3. preserve repaired-v2 physical artifacts and historical V1/V2 logical artifacts;
-4. execute the V3 logical build stages in order and stop on any failed invariant;
-5. accept V3 only if semantic counts and physical hashes remain invariant while grouping defects are removed;
-6. regenerate all role-dependent research evidence under V3;
-7. review the evidence before changing selector/objective/training policy;
-8. use a new ADR/version for any selector promotion, negative-training authority, PU objective, architecture change, calibration policy, or full-run authorization.
+2. read `PLAN_STATUS_MATRIX.md` and `runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md`;
+3. preserve historical V1/V2 evidence, repaired-v2 physical artifacts, and accepted V3 logical authority;
+4. run the final Git-safe V3 evidence snapshot helper before treating the current local research tranche as fully packaged in Git;
+5. use a new ADR/versioned extractor lineage for selector promotion; do not mutate repaired-v2 bound tokens in place;
+6. conduct R4-GAP-007 review only under class-specific primary evidence plus independent agreeing verification;
+7. decide objective/evaluation design after negative-evidence yield is known;
+8. reconsider a full training horizon only after selector/objective/evaluation authority is explicit and bound.
 
 Never “fix” current state by editing generated parquet/JSON artifacts by hand.
 
@@ -354,17 +444,20 @@ python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
 python3 docs/handbook/tools/verify_handbook.py inventory
 ```
 
-Protected local V3 validation is governed by the handoff and cannot be replaced by CI because CI does not contain the Git-ignored repaired-v2 physical trees.
+Protected local V3 acceptance is complete and is recorded in the current checkpoint. CI still cannot replace protected local physical validation because CI does not contain the Git-ignored repaired-v2 physical trees.
 
 ## Optional deep references
 
 - [R4 plan status matrix](../plan/ml-R4/PLAN_STATUS_MATRIX.md)
 - [R4 decision register](../plan/ml-R4/DECISION_REGISTER.md)
+- [R4 evidence gap register](../plan/ml-R4/EVIDENCE_GAP_REGISTER.md)
 - [ADR-R4-008 repaired-v2 physical DATA acceptance](../plan/ml-R4/adrs/ADR-R4-008-repaired-v2-data-acceptance-and-phase8-no-launch.md)
-- [ADR-R4-009 logical V3 grouping correction](../plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md)
+- [ADR-R4-009 accepted logical V3 grouping correction](../plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md)
 - [Repaired-v2 acceptance/no-launch decision](../plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md)
-- [Logical V3 local execution handoff](../plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md)
+- [Logical V3 execution handoff/history](../plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md)
+- [Logical V3 acceptance/research checkpoint](../plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md)
 - [V2 research evidence snapshot](../plan/ml-R4/evidence/2026-08-15_phase8_research/)
+- [V3 interim research evidence](../plan/ml-R4/evidence/2026-08-15_phase8_logical_v3_interim/)
 
 ## Technical mastery layer
 
@@ -375,7 +468,7 @@ The current Phase-8 issue illustrates four separate engineering concepts that mu
 3. **Leakage partition integrity** — are related/duplicate artifacts prevented from crossing roles without collapsing unrelated projects?
 4. **Statistical learning adequacy** — does the available positive/negative/evaluation evidence support the claims we want to make about the model?
 
-R4-D-008 substantially solved (1) and repaired much of (2). R4-D-009 corrects a defect in (3). The project still has major unresolved work in (4).
+R4-D-008 substantially solved (1) and repaired much of (2). Accepted R4-D-009 corrects the discovered defect in (3). The project still has major unresolved work in (4), especially confirmed-negative evaluation and later objective/threshold/calibration design.
 
 A useful mental rule is:
 
@@ -400,22 +493,22 @@ To own this phase technically, understand at least:
 - train/model-selection/threshold/calibration/acceptance role separation;
 - why a GPU smoke test proves execution mechanics rather than model quality.
 
-You do not need to master PU-learning theory yet. That decision is intentionally deferred until corrected V3 roles and negative-evaluation evidence are available.
+You do not need to master PU-learning theory yet. That decision is intentionally deferred until confirmed-negative pilot yield and the later objective/evaluation design are understood.
 
 ## Source map and reading order
 
 For current Phase-8 ownership, read in this order:
 
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`
-2. `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`
-3. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md`
-4. `data_module/sentinel_data/preprocessing/r4_grouping_v3.py`
-5. `data_module/sentinel_data/vnext/r4_logical_v3.py`
-6. `docs/plan/ml-R4/scripts/p8_audit_logical_v3_acceptance.py`
+2. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md`
+3. `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`
+4. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md` / R4-GAP-007
+5. `data_module/sentinel_data/preprocessing/r4_grouping_v3.py`
+6. `data_module/sentinel_data/vnext/r4_logical_v3.py`
 7. `ml/src/datasets/vnext_logical_v3_dataset.py`
-8. V3 research scripts only after local V3 acceptance.
+8. selector/negative-evaluation source only when working on those next decisions.
 
-For historical context, read R4-D-008 and the V2 evidence snapshot afterward rather than treating them as the current logical restart point.
+For historical context, read R4-D-008, the completed V3 handoff, and the V2 evidence snapshot afterward rather than treating them as the current restart point.
 
 ## Execution trace and worked example
 
@@ -445,7 +538,7 @@ Contract D ── explicit family_id ── Contract E
           authoritative leakage edge
 ```
 
-After V3 grouping is built, role assignment is recomputed group-atomically. The physical graph/token files are not regenerated. The V3 binder must check the same 22,540 physical contracts / 67,620 representation files and recover the exact same physical binding digest as repaired-v2. If it does not, the migration stops.
+After V3 grouping was built, role assignment was recomputed group-atomically. The physical graph/token files were not regenerated. The V3 binder checked the same 22,540 physical contracts / 67,620 representation files and recovered the exact repaired-v2 physical binding digest. That invariant passed, so the logical V3 migration was accepted.
 
 ## Implementation practice
 
@@ -472,11 +565,11 @@ Before claiming the current state is understood, you should be able to answer:
 
 - Why does repaired-v2 physical acceptance remain valid even though V2 grouping is superseded?
 - Why can an address shared by thousands of contracts not be treated as family identity?
-- Which evidence types are still allowed to create V3 leakage-group edges?
-- Why must the V3 physical binding digest equal the V2 physical digest?
-- Why is the old 200-cell negative-review queue obsolete?
-- Why do V2 selector improvements need to be rerun under V3 even though the selector algorithm itself did not change?
+- Which evidence types are allowed to create V3 leakage-group edges?
+- Which local invariants allowed R4-D-009 to become ACCEPTED?
+- Why is the old V2 200-cell negative-review queue obsolete, while the new V3 200-cell queue is still not negative truth?
+- Why does the guarded selector now have stronger evidence without yet being promoted?
 - Why can a successful positive-only CUDA run not establish false-positive discrimination?
 - What evidence would be needed before the 100-epoch run could be reconsidered?
 
-If any answer is unclear, use the logical-V3 ADR/handoff and the grouping source as the next reading point rather than guessing from historical V2 counts.
+If any answer is unclear, use the current V3 acceptance/research checkpoint plus ADR-R4-009 as the next reading point rather than guessing from historical V2 counts.
