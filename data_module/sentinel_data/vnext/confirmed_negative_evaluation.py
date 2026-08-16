@@ -1,7 +1,7 @@
 """Evidence-honest confirmed-negative evaluation tooling for R4 Phase 8.
 
 This module does not infer negative truth from missing labels, source silence, or
-unlabeled status.  It only:
+unlabeled status. It only:
 
 * builds deterministic class-balanced review queues from currently unlabeled
   leakage groups;
@@ -82,7 +82,7 @@ def minimum_zero_false_positive_sample_size(
     the true false-positive rate below ``max_false_positive_rate`` at the
     requested confidence level.
 
-    This helper is a planning bound only.  Group dependence, selection bias,
+    This helper is a planning bound only. Group dependence, selection bias,
     threshold fitting, and multiple-class testing still require explicit
     evaluation design.
     """
@@ -110,10 +110,11 @@ def build_review_queue(
     """Build a deterministic pilot queue without asserting negative truth.
 
     Candidate cells come only from currently unlabeled groups and must have a
-    null target with no source-policy/effective loss eligibility.  At most one
-    representative contract is selected per leakage group for each class.
+    null target with no source-policy/effective loss eligibility. One leakage
+    group may appear at most once across the entire queue, including across
+    different vulnerability classes.
 
-    Queue membership is *review reservation*, not a label.  If a later PU
+    Queue membership is *review reservation*, not a label. If a later PU
     objective consumes unlabeled examples, queue/reserved groups must remain
     outside optimizer use until the evaluation decision is closed.
     """
@@ -139,6 +140,9 @@ def build_review_queue(
         class_index = CLASS_NAMES.index(class_name)
         by_group: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for row in rows:
+            group_id = str(row["group_id"])
+            if group_id in selected_groups:
+                continue
             if row.get(f"target_{class_index}") is not None:
                 continue
             if bool(row.get(f"source_loss_eligible_{class_index}")):
@@ -150,7 +154,7 @@ def build_review_queue(
             outcome = str(row.get(f"outcome_state_{class_index}") or "")
             if outcome not in {"UNKNOWN", "NOT_REVIEWED"}:
                 continue
-            by_group[str(row["group_id"])].append(row)
+            by_group[group_id].append(row)
 
         representative_rows: list[dict[str, Any]] = []
         for group_id, group_rows in sorted(by_group.items()):
@@ -174,9 +178,18 @@ def build_review_queue(
         )
 
         available_by_class[class_name] = len(representative_rows)
+        if len(representative_rows) < per_class:
+            raise ValueError(
+                "confirmed-negative queue cannot satisfy globally distinct group "
+                f"reservations for {class_name}: requested={per_class} "
+                f"available_unreserved={len(representative_rows)}"
+            )
+
         for ordinal, row in enumerate(representative_rows[:per_class], start=1):
             group_id = str(row["group_id"])
             contract_id = str(row["contract_id"])
+            if group_id in selected_groups:  # defensive fail-closed assertion
+                raise AssertionError(f"queue group reused across classes: {group_id}")
             selected_groups.add(group_id)
             candidates.append(
                 {
@@ -213,6 +226,9 @@ def build_review_queue(
                 }
             )
 
+    if len(selected_groups) != len(candidates):
+        raise AssertionError("confirmed-negative queue lost global group uniqueness")
+
     by_class = Counter(str(row["class_name"]) for row in candidates)
     return {
         "schema": QUEUE_SCHEMA,
@@ -224,12 +240,13 @@ def build_review_queue(
         "eligible_roles": sorted(roles),
         "requested_per_enabled_class": per_class,
         "enabled_classes": list(enabled),
-        "available_groups_by_class": available_by_class,
+        "available_unreserved_groups_by_class": available_by_class,
         "queued_cells_by_class": {
             name: int(by_class.get(name, 0)) for name in enabled
         },
         "queued_cells": len(candidates),
         "reserved_group_ids": sorted(selected_groups),
+        "group_uniqueness_scope": "GLOBAL_ACROSS_ENABLED_CLASSES",
         "future_optimizer_rule": (
             "Any queue or accepted-evaluation group must remain outside a future "
             "PU/unlabeled optimizer population until a new role policy explicitly "
@@ -321,7 +338,7 @@ def validate_adjudications(
 
     Manual negative confirmation requires a complete primary review, at least
     one direct class-specific evidence type, and a distinct independent reviewer
-    that explicitly agrees.  A failed/ambiguous review never becomes target 0.
+    that explicitly agrees. A failed/ambiguous review never becomes target 0.
     """
 
     if queue.get("schema") != QUEUE_SCHEMA:
