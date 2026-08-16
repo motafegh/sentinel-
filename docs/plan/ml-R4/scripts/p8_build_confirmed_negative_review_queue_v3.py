@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Build the confirmed-negative pilot queue from corrected logical lineage V3.
 
-This replaces the obsolete V2 queue.  Candidates remain UNKNOWN and are only
+This replaces the obsolete V2 queue. Candidates remain UNKNOWN and are only
 reserved for class-specific human/evidence review; no target 0 is created.
+Leakage groups are globally unique across the entire class-balanced queue.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -41,6 +43,13 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _source_commit() -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--overlay", type=Path, default=DEFAULT_OVERLAY)
@@ -66,6 +75,12 @@ def main() -> int:
     ):
         raise ValueError("V3 queue requires a physically bound logical publication")
 
+    expected_ml_sha = ((manifest.get("artifacts") or {}).get("ml_targets") or {}).get(
+        "sha256"
+    )
+    if not expected_ml_sha or _sha256(ml_targets_path) != expected_ml_sha:
+        raise ValueError("V3 queue ml_targets.parquet hash mismatch")
+
     policy = json.loads(args.policy.read_text(encoding="utf-8"))
     enabled = [
         name
@@ -84,6 +99,12 @@ def main() -> int:
         enabled_class_names=enabled,
         per_class=args.per_class,
     )
+    if queue.get("group_uniqueness_scope") != "GLOBAL_ACROSS_ENABLED_CLASSES":
+        raise AssertionError("V3 negative queue did not enforce global group uniqueness")
+    if len(queue.get("reserved_group_ids") or []) != int(queue.get("queued_cells", -1)):
+        raise AssertionError("V3 negative queue contains a reused group reservation")
+
+    queue["source_commit"] = _source_commit()
     queue["supersedes_queue"] = {
         "dataset_version": "sentinel-r4-vnext-v2",
         "partition_version": "r4-vnext-roles-v2",
