@@ -1,9 +1,9 @@
 """Corrected leakage-family grouping for repaired Phase-8 DATA.
 
 V2 conservatively joined every pair of same-source artifacts that shared any
-Ethereum address literal.  Full-corpus evidence showed that common protocol,
+Ethereum address literal. Full-corpus evidence showed that common protocol,
 sentinel, and token addresses transitively collapsed unrelated DIVE contracts
-into a 10k+ member group.  V3 therefore removes arbitrary address literals from
+into a 10k+ member group. V3 therefore removes arbitrary address literals from
 grouping authority.
 
 V3 grouping authority is limited to evidence that can plausibly identify a
@@ -11,9 +11,9 @@ shared artifact/family boundary:
 
 * exact artifact identity (already represented by one artifact id);
 * identical normalized-code identity globally;
-* explicit source-provided family/project identifiers.
+* explicit source-provided family/project identifiers, namespaced by source.
 
-Address literals are retained only as diagnostics in the output.  They never
+Address literals are retained only as diagnostics in the output. They never
 create union edges and never alter label truth.
 """
 
@@ -81,14 +81,21 @@ def _load_meta(path: Path) -> dict[str, Any]:
     return value
 
 
-def _explicit_family_values(meta: dict[str, Any]) -> set[str]:
+def _explicit_family_values(source: str, meta: dict[str, Any]) -> set[str]:
+    """Return source-scoped explicit family keys.
+
+    Source-native identifiers such as ``project_id`` are not globally unique by
+    contract. Two unrelated source corpora can legitimately reuse the same
+    identifier, so the source namespace is part of the grouping evidence key.
+    """
+
     values: set[str] = set()
     for record in meta.get("source_records", []):
         entry = record.get("ingestion_entry") or {}
         for key in _EXPLICIT_FAMILY_KEYS:
             value = entry.get(key)
             if value not in (None, ""):
-                values.add(f"{key}:{value}")
+                values.add(f"{source}:{key}:{value}")
     return values
 
 
@@ -142,7 +149,7 @@ def build_grouping_v3(
             normalized_index.setdefault(normalized, []).append(artifact)
 
         for source, meta in entries:
-            for value in _explicit_family_values(meta):
+            for value in _explicit_family_values(source, meta):
                 explicit_index.setdefault(value, []).append(artifact)
             for address in meta.get("address_literals") or []:
                 key = (source, str(address).lower())
@@ -252,7 +259,7 @@ def build_grouping_v3(
             "Grouping does not delete artifacts or alter label truth.",
             "Cross-source exact identity is one contract identity with all source claims preserved.",
             "Normalized-code identity remains global leakage-family authority.",
-            "Explicit source family/project identifiers remain leakage-family authority.",
+            "Explicit source family/project identifiers are source-namespaced leakage-family authority.",
             "Arbitrary address literals are diagnostic only and create zero union edges in V3.",
             "Role assignment must consume artifact_to_group atomically after this grouping is final.",
         ],
