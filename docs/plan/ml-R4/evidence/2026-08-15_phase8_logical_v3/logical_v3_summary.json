@@ -1,0 +1,63 @@
+{
+  "git_head": "204f5059f20ae564aa9be92c77b9a7bbfbd6f167",
+  "grouping": {
+    "address_literal_grouping_authority": false,
+    "evidence_edge_counts": {
+      "normalized_code_identity": 146
+    },
+    "groups": 22394,
+    "max_group_members": 7,
+    "multi_member_groups": 117
+  },
+  "next": [
+    "regenerate V3 confirmed-negative pilot queue; V2 queue is obsolete",
+    "regenerate selector coverage statistics against V3 roles",
+    "regenerate representation sensitivity comparison sets against V3 roles",
+    "rerun selector CUDA comparison with worst-case probes present",
+    "review evidence before selector promotion or PU-objective design"
+  ],
+  "partition": {
+    "effective_loss_cells": 932,
+    "outcome_metric_cells": 143,
+    "role_contract_counts": {
+      "INTERNAL_AUDIT": 73,
+      "MODEL_SELECTION": 73,
+      "TRAIN_STRONG": 343,
+      "TRAIN_UNLABELED": 21449,
+      "TRAIN_WEAK": 602
+    },
+    "role_group_counts": {
+      "INTERNAL_AUDIT": 71,
+      "MODEL_SELECTION": 71,
+      "TRAIN_STRONG": 331,
+      "TRAIN_UNLABELED": 21320,
+      "TRAIN_WEAK": 601
+    }
+  },
+  "physical_binding": {
+    "binding_digest_sha256": "16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd",
+    "checked_contracts": 22540,
+    "checked_files": 67620,
+    "matches_parent_v2": true,
+    "passed": true
+  },
+  "physical_rebuild_performed": false,
+  "population": {
+    "classes": 10,
+    "contract_class_rows": 225400,
+    "contracts": 22540
+  },
+  "semantic_invariants": {
+    "confirmed_negative_rows": 0,
+    "target_counts_unchanged_from_v2": true,
+    "training_strength_counts_unchanged_from_v2": true
+  },
+  "status": "LOGICAL_V3_REBUILD_COMPLETE_RESEARCH_REGENERATION_PENDING",
+  "training_authorized": false,
+  "versions": {
+    "dataset": "sentinel-r4-vnext-v3",
+    "grouping": "r4-leakage-groups-v3",
+    "partition": "r4-vnext-roles-v3",
+    "source_evidence_ledger": "evidence-ledger-r4-v2"
+  }
+}

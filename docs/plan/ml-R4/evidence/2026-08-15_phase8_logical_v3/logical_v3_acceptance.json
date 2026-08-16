@@ -1,0 +1,96 @@
+{
+  "active_supervision": {
+    "effective_loss_cells": 932,
+    "internal_audit_contracts": 72,
+    "internal_audit_groups": 71,
+    "model_selection_contracts": 71,
+    "model_selection_groups": 71,
+    "optimizer_contracts": 932,
+    "optimizer_contracts_by_role": {
+      "TRAIN_STRONG": 331,
+      "TRAIN_WEAK": 601
+    },
+    "optimizer_groups": 932,
+    "outcome_metric_cells": 143,
+    "outcome_metric_contracts": 143,
+    "outcome_metric_contracts_by_role": {
+      "INTERNAL_AUDIT": 72,
+      "MODEL_SELECTION": 71
+    },
+    "outcome_metric_groups": 142
+  },
+  "checks": {
+    "address_authority_disabled": true,
+    "address_union_edges_zero": true,
+    "all_contracts_physically_checked": true,
+    "all_representation_files_checked": true,
+    "binding_passed": true,
+    "confirmed_negative_rows_zero": true,
+    "dataset_version_v3": true,
+    "giant_v2_group_removed": true,
+    "grouping_version_v3": true,
+    "outcome_metric_roles_are_selection_or_audit_only": true,
+    "partition_reports_no_confirmed_negatives": true,
+    "partition_version_v3": true,
+    "physical_binding_digest_unchanged": true,
+    "population_cells_unchanged": true,
+    "population_contracts_unchanged": true,
+    "target_counts_unchanged": true,
+    "training_strength_counts_unchanged": true
+  },
+  "decision_boundary": "PASS accepts the corrected logical V3 grouping/partition over the existing physical repaired artifacts. MODEL_SELECTION and INTERNAL_AUDIT outcome-metric populations are reported separately. PASS does not promote the target-aware selector, create confirmed-negative truth, select a PU objective, or authorize full training.",
+  "grouping_comparison": {
+    "v2": {
+      "groups": 11551,
+      "max": 10327,
+      "multi_member": 280,
+      "singletons": 11271
+    },
+    "v3": {
+      "groups": 22394,
+      "max": 7,
+      "multi_member": 117,
+      "singletons": 22277
+    },
+    "v3_address_edges": 0
+  },
+  "lineage": {
+    "dataset_version": "sentinel-r4-vnext-v3",
+    "grouping_version": "r4-leakage-groups-v3",
+    "partition_version": "r4-vnext-roles-v3",
+    "physical_parent_manifest_sha256": "628906820e277012299dfd5193abeb4e810815c384b974a0e0aa7a80377d9536",
+    "publication_manifest_sha256": "26b0a4b103010d3f2bcbb6ca08aaec98047dfeb8a4954440aa913c4a7053400f",
+    "representation_binding_digest_sha256": "16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd",
+    "source_commit": "83bd566b9c4f4f653e530c2c0f5c990858dd759d"
+  },
+  "physical_rebuild_performed": false,
+  "planning_arithmetic_if_batch8_accum8": {
+    "authorized_horizon": false,
+    "hundred_epoch_steps_if_later_authorized": 1500,
+    "micro_batches_per_epoch": 117,
+    "optimizer_steps_per_epoch": 15
+  },
+  "role_contract_counts": {
+    "INTERNAL_AUDIT": 73,
+    "MODEL_SELECTION": 73,
+    "TRAIN_STRONG": 343,
+    "TRAIN_UNLABELED": 21449,
+    "TRAIN_WEAK": 602
+  },
+  "role_group_counts": {
+    "INTERNAL_AUDIT": 71,
+    "MODEL_SELECTION": 71,
+    "TRAIN_STRONG": 331,
+    "TRAIN_UNLABELED": 21320,
+    "TRAIN_WEAK": 601
+  },
+  "schema": "sentinel-r4-logical-v3-acceptance-v1",
+  "status": "PASS",
+  "training_authorized": false,
+  "versions": {
+    "dataset": "sentinel-r4-vnext-v3",
+    "grouping": "r4-leakage-groups-v3",
+    "partition": "r4-vnext-roles-v3",
+    "physical_parent_dataset": "sentinel-r4-vnext-v2"
+  }
+}

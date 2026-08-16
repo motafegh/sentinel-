@@ -1,0 +1,805 @@
+{
+  "candidate": {
+    "cuda": {
+      "allocated_mb": 289.84,
+      "peak_allocated_mb": 956.68,
+      "reserved_mb": 1000.0
+    },
+    "initial_state_digest_sha256": "ad1987633e72d74fa3350d9e20cd1c01ada67d257ccba1691ba4b58e88ea7606",
+    "model_selection": {
+      "fixed_threshold": 0.5,
+      "mean_positive_probability": 0.5192851424217224,
+      "metric_cells": 4,
+      "per_class": {
+        "0": {
+          "cells": 2,
+          "mean_positive_probability": 0.4754837155342102,
+          "positive_nll": 0.7434266209602356,
+          "positive_recall_at_fixed_threshold": 0.0
+        },
+        "1": {
+          "cells": 1,
+          "mean_positive_probability": 0.5372841358184814,
+          "positive_nll": 0.6212280988693237,
+          "positive_recall_at_fixed_threshold": 1.0
+        },
+        "6": {
+          "cells": 1,
+          "mean_positive_probability": 0.5888891220092773,
+          "positive_nll": 0.5295173525810242,
+          "positive_recall_at_fixed_threshold": 1.0
+        }
+      },
+      "positive_nll": 0.659399688243866,
+      "positive_recall_at_fixed_threshold": 0.5
+    },
+    "parameter_group_summary": [
+      0.0005,
+      6e-05,
+      0.0001,
+      0.001,
+      0.0002
+    ],
+    "selection_population": {
+      "active_contracts": 71,
+      "active_groups": 71,
+      "active_role_counts": {
+        "MODEL_SELECTION": 71
+      }
+    },
+    "selection_records": [
+      {
+        "class_index": 0,
+        "class_name": "CallToUnknown",
+        "contract_id": "58e0bad603ceae05c2da9b21e9db98464e3f000ef25779a65f08ff6bd70077b2",
+        "probability": 0.47682324051856995
+      },
+      {
+        "class_index": 6,
+        "class_name": "Reentrancy",
+        "contract_id": "9b8eb361195230fb9e7d8797c3c456fce60b169564f5484ae003814ee03a6e4c",
+        "probability": 0.5888891220092773
+      },
+      {
+        "class_index": 1,
+        "class_name": "DenialOfService",
+        "contract_id": "85a6581669271b86cd58b837f216e6b140f726b1dce93270dcf6291995fbfe5d",
+        "probability": 0.5372841358184814
+      },
+      {
+        "class_index": 0,
+        "class_name": "CallToUnknown",
+        "contract_id": "08378c9d432399d34e2f5a417e0b57e47b0ef63cc99a208f9efb67744d5e837f",
+        "probability": 0.4741441607475281
+      }
+    ],
+    "selector_telemetry": {
+      "selection": {
+        "08378c9d432399d34e2f5a417e0b57e47b0ef63cc99a208f9efb67744d5e837f": {
+          "control_indices": [
+            0,
+            3,
+            7,
+            10
+          ],
+          "control_retained_ratio": 0.6429833863556027,
+          "control_target_coverage_ratio": 0.5205566097406704,
+          "group_id": "r4grp-091e905a4c5887c5cc121bdf15b8f0cd",
+          "retained_ratio": 0.5510781194768469,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            5,
+            6,
+            8,
+            10
+          ],
+          "source": "solidifi",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 0.9854522454142948,
+          "total_windows": 11,
+          "used_control_fallback": false
+        },
+        "397813120698b5942a0168c339310bb57dcf2d8b4041b3590ad86ce3d3accfbd": {
+          "control_indices": [
+            0,
+            2,
+            5,
+            7
+          ],
+          "control_retained_ratio": 0.8873994638069705,
+          "control_target_coverage_ratio": 0.8838709677419355,
+          "group_id": "r4grp-0961d74185ff0a38733f7174ac219a85",
+          "retained_ratio": 0.8873994638069705,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0,
+            2,
+            5,
+            7
+          ],
+          "source": "solidifi",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 0.8838709677419355,
+          "total_windows": 8,
+          "used_control_fallback": true
+        },
+        "58e0bad603ceae05c2da9b21e9db98464e3f000ef25779a65f08ff6bd70077b2": {
+          "control_indices": [
+            0,
+            2,
+            3,
+            5
+          ],
+          "control_retained_ratio": 1.0,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-04d3f42e6bcd69a8e55de49d229783e3",
+          "retained_ratio": 1.0,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0,
+            2,
+            3,
+            5
+          ],
+          "source": "solidifi",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 6,
+          "used_control_fallback": true
+        },
+        "85a6581669271b86cd58b837f216e6b140f726b1dce93270dcf6291995fbfe5d": {
+          "control_indices": [
+            0
+          ],
+          "control_retained_ratio": 1.0,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-0610c9771827ecc8a129c82e702af1ba",
+          "retained_ratio": 1.0,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0
+          ],
+          "source": "smartbugs_curated",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 1,
+          "used_control_fallback": true
+        },
+        "9b8eb361195230fb9e7d8797c3c456fce60b169564f5484ae003814ee03a6e4c": {
+          "control_indices": [
+            0,
+            5,
+            11,
+            16
+          ],
+          "control_retained_ratio": 0.44148115494820367,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-05a45b2d084e142bab607bc928130ff1",
+          "retained_ratio": 0.44148115494820367,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0,
+            5,
+            11,
+            16
+          ],
+          "source": "solidifi",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 17,
+          "used_control_fallback": true
+        }
+      },
+      "train": {
+        "087f69b560460734f646e30aa9be314c7f9085289ba394677905d008cf3a7ae0": {
+          "control_indices": [
+            0,
+            5,
+            11,
+            16
+          ],
+          "control_retained_ratio": 0.42682650983940285,
+          "control_target_coverage_ratio": 0.36030374443571617,
+          "group_id": "r4grp-288ea483b55a309233dfae3eb1506fcb",
+          "retained_ratio": 0.4614340646912463,
+          "role": "TRAIN_WEAK",
+          "selected_indices": [
+            3,
+            6,
+            9,
+            12
+          ],
+          "source": "dive",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 0.5341712490180676,
+          "total_windows": 17,
+          "used_control_fallback": false
+        },
+        "36bb3d2973356b411edbf0d66fa4dadb72f3f9860b7e49208996f4a3f6c57a2c": {
+          "control_indices": [
+            0
+          ],
+          "control_retained_ratio": 1.0,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-f236e1eec05b94501fb646c717444631",
+          "retained_ratio": 1.0,
+          "role": "TRAIN_STRONG",
+          "selected_indices": [
+            0
+          ],
+          "source": "smartbugs_curated",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 1,
+          "used_control_fallback": true
+        },
+        "83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d": {
+          "control_indices": [
+            0,
+            20,
+            41,
+            61
+          ],
+          "control_retained_ratio": 0.11345311408799441,
+          "control_target_coverage_ratio": 0.11139967195188627,
+          "group_id": "r4grp-5ef24124d57fdecac2fdbe972a5d9e43",
+          "retained_ratio": 0.12951558631198018,
+          "role": "TRAIN_WEAK",
+          "selected_indices": [
+            1,
+            4,
+            7,
+            10
+          ],
+          "source": "dive",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 0.1394204483324221,
+          "total_windows": 62,
+          "used_control_fallback": false
+        },
+        "d4b90b62c2ab33ce14d403f1d995b132e8178a09ca243db3be58b610c30cd297": {
+          "control_indices": [
+            0,
+            4,
+            7,
+            11
+          ],
+          "control_retained_ratio": 0.6166211707612982,
+          "control_target_coverage_ratio": 0.6095149830089589,
+          "group_id": "r4grp-5c319616965198e2aef87b060416bcd5",
+          "retained_ratio": 0.618744313011829,
+          "role": "TRAIN_STRONG",
+          "selected_indices": [
+            1,
+            4,
+            7,
+            10
+          ],
+          "source": "solidifi",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 0.6302131603336423,
+          "total_windows": 12,
+          "used_control_fallback": false
+        },
+        "f9c004a9ce6b17b746918da39ca908e7e61c47085875ff4503113fb810365da3": {
+          "control_indices": [
+            0
+          ],
+          "control_retained_ratio": 1.0,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-c0f0d8bc4c03c55a5204366bb7c8adb7",
+          "retained_ratio": 1.0,
+          "role": "TRAIN_WEAK",
+          "selected_indices": [
+            0
+          ],
+          "source": "dive",
+          "strategy": "target_aware_guarded_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 1,
+          "used_control_fallback": true
+        }
+      }
+    },
+    "strategy": "target_aware_guarded_v1",
+    "train": {
+      "aux_loss": 2.2488991022109985,
+      "aux_weight_effective": 0.0375,
+      "loss": 0.9048098921775818,
+      "main_loss": 0.6798481643199921,
+      "optimizer_steps": 4.0,
+      "phase2_loss": 0.7028037458658218
+    },
+    "train_population": {
+      "active_contracts": 932,
+      "active_groups": 932,
+      "active_role_counts": {
+        "TRAIN_STRONG": 331,
+        "TRAIN_WEAK": 601
+      }
+    }
+  },
+  "control": {
+    "cuda": {
+      "allocated_mb": 290.34,
+      "peak_allocated_mb": 967.36,
+      "reserved_mb": 1008.0
+    },
+    "initial_state_digest_sha256": "ad1987633e72d74fa3350d9e20cd1c01ada67d257ccba1691ba4b58e88ea7606",
+    "model_selection": {
+      "fixed_threshold": 0.5,
+      "mean_positive_probability": 0.5061633586883545,
+      "metric_cells": 4,
+      "per_class": {
+        "0": {
+          "cells": 2,
+          "mean_positive_probability": 0.4656945466995239,
+          "positive_nll": 0.764281153678894,
+          "positive_recall_at_fixed_threshold": 0.0
+        },
+        "1": {
+          "cells": 1,
+          "mean_positive_probability": 0.5229331254959106,
+          "positive_nll": 0.6483017206192017,
+          "positive_recall_at_fixed_threshold": 1.0
+        },
+        "6": {
+          "cells": 1,
+          "mean_positive_probability": 0.570331335067749,
+          "positive_nll": 0.5615378022193909,
+          "positive_recall_at_fixed_threshold": 1.0
+        }
+      },
+      "positive_nll": 0.6846004724502563,
+      "positive_recall_at_fixed_threshold": 0.5
+    },
+    "parameter_group_summary": [
+      0.0005,
+      6e-05,
+      0.0001,
+      0.001,
+      0.0002
+    ],
+    "selection_population": {
+      "active_contracts": 71,
+      "active_groups": 71,
+      "active_role_counts": {
+        "MODEL_SELECTION": 71
+      }
+    },
+    "selection_records": [
+      {
+        "class_index": 0,
+        "class_name": "CallToUnknown",
+        "contract_id": "58e0bad603ceae05c2da9b21e9db98464e3f000ef25779a65f08ff6bd70077b2",
+        "probability": 0.4706149399280548
+      },
+      {
+        "class_index": 6,
+        "class_name": "Reentrancy",
+        "contract_id": "9b8eb361195230fb9e7d8797c3c456fce60b169564f5484ae003814ee03a6e4c",
+        "probability": 0.570331335067749
+      },
+      {
+        "class_index": 1,
+        "class_name": "DenialOfService",
+        "contract_id": "85a6581669271b86cd58b837f216e6b140f726b1dce93270dcf6291995fbfe5d",
+        "probability": 0.5229331254959106
+      },
+      {
+        "class_index": 0,
+        "class_name": "CallToUnknown",
+        "contract_id": "08378c9d432399d34e2f5a417e0b57e47b0ef63cc99a208f9efb67744d5e837f",
+        "probability": 0.46077415347099304
+      }
+    ],
+    "selector_telemetry": {
+      "selection": {
+        "08378c9d432399d34e2f5a417e0b57e47b0ef63cc99a208f9efb67744d5e837f": {
+          "control_indices": [
+            0,
+            3,
+            7,
+            10
+          ],
+          "control_retained_ratio": 0.6429833863556027,
+          "control_target_coverage_ratio": 0.5205566097406704,
+          "group_id": "r4grp-091e905a4c5887c5cc121bdf15b8f0cd",
+          "retained_ratio": 0.6429833863556027,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0,
+            3,
+            7,
+            10
+          ],
+          "source": "solidifi",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 0.5205566097406704,
+          "total_windows": 11,
+          "used_control_fallback": false
+        },
+        "397813120698b5942a0168c339310bb57dcf2d8b4041b3590ad86ce3d3accfbd": {
+          "control_indices": [
+            0,
+            2,
+            5,
+            7
+          ],
+          "control_retained_ratio": 0.8873994638069705,
+          "control_target_coverage_ratio": 0.8838709677419355,
+          "group_id": "r4grp-0961d74185ff0a38733f7174ac219a85",
+          "retained_ratio": 0.8873994638069705,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0,
+            2,
+            5,
+            7
+          ],
+          "source": "solidifi",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 0.8838709677419355,
+          "total_windows": 8,
+          "used_control_fallback": false
+        },
+        "58e0bad603ceae05c2da9b21e9db98464e3f000ef25779a65f08ff6bd70077b2": {
+          "control_indices": [
+            0,
+            2,
+            3,
+            5
+          ],
+          "control_retained_ratio": 1.0,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-04d3f42e6bcd69a8e55de49d229783e3",
+          "retained_ratio": 1.0,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0,
+            2,
+            3,
+            5
+          ],
+          "source": "solidifi",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 6,
+          "used_control_fallback": false
+        },
+        "85a6581669271b86cd58b837f216e6b140f726b1dce93270dcf6291995fbfe5d": {
+          "control_indices": [
+            0
+          ],
+          "control_retained_ratio": 1.0,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-0610c9771827ecc8a129c82e702af1ba",
+          "retained_ratio": 1.0,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0
+          ],
+          "source": "smartbugs_curated",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 1,
+          "used_control_fallback": false
+        },
+        "9b8eb361195230fb9e7d8797c3c456fce60b169564f5484ae003814ee03a6e4c": {
+          "control_indices": [
+            0,
+            5,
+            11,
+            16
+          ],
+          "control_retained_ratio": 0.44148115494820367,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-05a45b2d084e142bab607bc928130ff1",
+          "retained_ratio": 0.44148115494820367,
+          "role": "MODEL_SELECTION",
+          "selected_indices": [
+            0,
+            5,
+            11,
+            16
+          ],
+          "source": "solidifi",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 17,
+          "used_control_fallback": false
+        }
+      },
+      "train": {
+        "087f69b560460734f646e30aa9be314c7f9085289ba394677905d008cf3a7ae0": {
+          "control_indices": [
+            0,
+            5,
+            11,
+            16
+          ],
+          "control_retained_ratio": 0.42682650983940285,
+          "control_target_coverage_ratio": 0.36030374443571617,
+          "group_id": "r4grp-288ea483b55a309233dfae3eb1506fcb",
+          "retained_ratio": 0.42682650983940285,
+          "role": "TRAIN_WEAK",
+          "selected_indices": [
+            0,
+            5,
+            11,
+            16
+          ],
+          "source": "dive",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 0.36030374443571617,
+          "total_windows": 17,
+          "used_control_fallback": false
+        },
+        "36bb3d2973356b411edbf0d66fa4dadb72f3f9860b7e49208996f4a3f6c57a2c": {
+          "control_indices": [
+            0
+          ],
+          "control_retained_ratio": 1.0,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-f236e1eec05b94501fb646c717444631",
+          "retained_ratio": 1.0,
+          "role": "TRAIN_STRONG",
+          "selected_indices": [
+            0
+          ],
+          "source": "smartbugs_curated",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 1,
+          "used_control_fallback": false
+        },
+        "83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d": {
+          "control_indices": [
+            0,
+            20,
+            41,
+            61
+          ],
+          "control_retained_ratio": 0.11345311408799441,
+          "control_target_coverage_ratio": 0.11139967195188627,
+          "group_id": "r4grp-5ef24124d57fdecac2fdbe972a5d9e43",
+          "retained_ratio": 0.11345311408799441,
+          "role": "TRAIN_WEAK",
+          "selected_indices": [
+            0,
+            20,
+            41,
+            61
+          ],
+          "source": "dive",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 0.11139967195188627,
+          "total_windows": 62,
+          "used_control_fallback": false
+        },
+        "d4b90b62c2ab33ce14d403f1d995b132e8178a09ca243db3be58b610c30cd297": {
+          "control_indices": [
+            0,
+            4,
+            7,
+            11
+          ],
+          "control_retained_ratio": 0.6166211707612982,
+          "control_target_coverage_ratio": 0.6095149830089589,
+          "group_id": "r4grp-5c319616965198e2aef87b060416bcd5",
+          "retained_ratio": 0.6166211707612982,
+          "role": "TRAIN_STRONG",
+          "selected_indices": [
+            0,
+            4,
+            7,
+            11
+          ],
+          "source": "solidifi",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 0.6095149830089589,
+          "total_windows": 12,
+          "used_control_fallback": false
+        },
+        "f9c004a9ce6b17b746918da39ca908e7e61c47085875ff4503113fb810365da3": {
+          "control_indices": [
+            0
+          ],
+          "control_retained_ratio": 1.0,
+          "control_target_coverage_ratio": 1.0,
+          "group_id": "r4grp-c0f0d8bc4c03c55a5204366bb7c8adb7",
+          "retained_ratio": 1.0,
+          "role": "TRAIN_WEAK",
+          "selected_indices": [
+            0
+          ],
+          "source": "dive",
+          "strategy": "historical_linspace_v1",
+          "target_coverage_ratio": 1.0,
+          "total_windows": 1,
+          "used_control_fallback": false
+        }
+      }
+    },
+    "strategy": "historical_linspace_v1",
+    "train": {
+      "aux_loss": 2.0642466247081757,
+      "aux_weight_effective": 0.0375,
+      "loss": 0.8339990526437759,
+      "main_loss": 0.6094187349081039,
+      "optimizer_steps": 4.0,
+      "phase2_loss": 0.735390767455101
+    },
+    "train_population": {
+      "active_contracts": 932,
+      "active_groups": 932,
+      "active_role_counts": {
+        "TRAIN_STRONG": 331,
+        "TRAIN_WEAK": 601
+      }
+    }
+  },
+  "dataset_version": "sentinel-r4-vnext-v3",
+  "decision_boundary": "This bounded V3 comparison tests selector behavior and CUDA safety only. It cannot establish vulnerability discrimination because confirmed-negative evaluation evidence is still pending.",
+  "full_training_authorized": false,
+  "gpu": "NVIDIA GeForce RTX 3070 Laptop GPU",
+  "grouping_version": "r4-leakage-groups-v3",
+  "identical_initialization_verified": true,
+  "initial_state_digest_sha256": "ad1987633e72d74fa3350d9e20cd1c01ada67d257ccba1691ba4b58e88ea7606",
+  "partition_version": "r4-vnext-roles-v3",
+  "positive_selection_probability_delta": {
+    "cells": 4,
+    "max_absolute_probability_delta": 0.01855778694152832,
+    "mean_absolute_probability_delta": 0.013121776282787323,
+    "mean_signed_probability_delta": 0.013121776282787323
+  },
+  "publication_manifest_sha256": "26b0a4b103010d3f2bcbb6ca08aaec98047dfeb8a4954440aa913c4a7053400f",
+  "representation_binding_digest_sha256": "16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd",
+  "runtime_scope": {
+    "batch_size": 1,
+    "checkpoint_written": false,
+    "gradient_accumulation_steps": 1,
+    "mixed_precision": "bf16_autocast",
+    "run12_weights_loaded": false,
+    "selection_batches_per_strategy": 4,
+    "train_batches_per_strategy": 4,
+    "worst_case_probes_completed": 4,
+    "worst_case_probes_required": 4
+  },
+  "schema": "sentinel-r4-phase8-selector-gpu-compare-v3",
+  "seed": 20260813,
+  "selector_promotion_authorized": false,
+  "sensitivity_report_sha256": "fe4cf9aae0d5bbf2737501cab86f00b445ee6b0901203d4f67bfdf24def45322",
+  "source_commit": "83bd566b9c4f4f653e530c2c0f5c990858dd759d",
+  "status": "LOGICAL_V3_BOUNDED_RESEARCH_COMPLETE",
+  "worst_case_guarded_forward_probes": [
+    {
+      "contract_id": "f50cd5d7df9ab644a02eb760ceab56548d327984db313015a66bca85513fa3c5",
+      "logits_shape": [
+        1,
+        10
+      ],
+      "peak_allocated_mb": 559.82,
+      "selector": {
+        "control_indices": [
+          0,
+          117,
+          235,
+          352
+        ],
+        "control_retained_ratio": 0.020759741923981233,
+        "control_target_coverage_ratio": 0.016383089382569285,
+        "group_id": "r4grp-80a9cc85b505bc4bf2527d23224a9d2b",
+        "retained_ratio": 0.02273208455444,
+        "role": "TRAIN_WEAK",
+        "selected_indices": [
+          96,
+          99,
+          102,
+          105
+        ],
+        "source": "dive",
+        "strategy": "target_aware_guarded_v1",
+        "target_coverage_ratio": 0.03789285979641875,
+        "total_windows": 353,
+        "used_control_fallback": false
+      }
+    },
+    {
+      "contract_id": "bf8aff7ffe46311ad9fe2139b26b9990f7a70e462eb29580a77d56bc6fca479b",
+      "logits_shape": [
+        1,
+        10
+      ],
+      "peak_allocated_mb": 327.99,
+      "selector": {
+        "control_indices": [
+          0,
+          26,
+          51,
+          77
+        ],
+        "control_retained_ratio": 0.09557016003612101,
+        "control_target_coverage_ratio": 0.18376589444347674,
+        "group_id": "r4grp-4d9a5d560c813027031c811b2df60cb1",
+        "retained_ratio": 0.10234284854261777,
+        "role": "TRAIN_STRONG",
+        "selected_indices": [
+          52,
+          55,
+          59,
+          62
+        ],
+        "source": "smartbugs_curated",
+        "strategy": "target_aware_guarded_v1",
+        "target_coverage_ratio": 0.35533879115136735,
+        "total_windows": 78,
+        "used_control_fallback": false
+      }
+    },
+    {
+      "contract_id": "7fdee94764cd85d349b4aa786cf79cc0e61bde746fa03d06919191dc591e0c73",
+      "logits_shape": [
+        1,
+        10
+      ],
+      "peak_allocated_mb": 319.64,
+      "selector": {
+        "control_indices": [
+          0,
+          17,
+          33,
+          50
+        ],
+        "control_retained_ratio": 0.13904732542007092,
+        "control_target_coverage_ratio": 0.1230959634424981,
+        "group_id": "r4grp-1baa26c041c21568288c015cdb2c531c",
+        "retained_ratio": 0.1572375520271312,
+        "role": "TRAIN_STRONG",
+        "selected_indices": [
+          12,
+          15,
+          18,
+          21
+        ],
+        "source": "smartbugs_curated",
+        "strategy": "target_aware_guarded_v1",
+        "target_coverage_ratio": 0.19421172886519422,
+        "total_windows": 51,
+        "used_control_fallback": false
+      }
+    },
+    {
+      "contract_id": "bec1a687219255a34633dcc8a56727744fa20300e381b7ab33b9816562654239",
+      "logits_shape": [
+        1,
+        10
+      ],
+      "peak_allocated_mb": 323.74,
+      "selector": {
+        "control_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "control_retained_ratio": 1.0,
+        "control_target_coverage_ratio": 1.0,
+        "group_id": "r4grp-d519b5bd2505ee9c30c828f19b40120a",
+        "retained_ratio": 1.0,
+        "role": "TRAIN_WEAK",
+        "selected_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source": "dive",
+        "strategy": "target_aware_guarded_v1",
+        "target_coverage_ratio": 1.0,
+        "total_windows": 4,
+        "used_control_fallback": true
+      }
+    }
+  ]
+}

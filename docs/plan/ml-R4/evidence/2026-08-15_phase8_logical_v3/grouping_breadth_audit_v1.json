@@ -1,0 +1,441 @@
+{
+  "address_connected_large_groups": [],
+  "address_evidence_keys": 0,
+  "address_only_multi_member_groups": [],
+  "automatic_defect_claim": false,
+  "decision_boundary": "Flags request local evidence review. They do not invalidate accepted repaired-v2 grouping. Any policy change must use a new grouping/partition version rather than rewriting accepted v2 evidence.",
+  "evidence_edge_counts_by_reason": {
+    "normalized_code_identity": 146
+  },
+  "grouping_version": "r4-leakage-groups-v3",
+  "high_frequency_address_keys": [],
+  "largest_groups": [
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 6
+      },
+      "group_id": "r4grp-92ed4e2d591f3baaab08f9782fe57b0e",
+      "member_count": 7,
+      "members_preview": [
+        "2e1e0c5741768f1552e573a47c4d7bf834b43dcd986bee6858b35ca289f1f92a",
+        "4eac96bb629744ca4ff93e06b2a29ea1c9161f50a25f40f783c780d399f8d497",
+        "6796e008cd707ea41f4956441555e5caa3f81c2ee70853afa14b225df0e054cc",
+        "84822f67103a5a8146ea6274ba69cbd002fdfd6631880c581e00833c7b0c1703",
+        "8528e47b7e90240c2e71dd8985c9eff620183ae513c81e8461758952684f9016",
+        "8d4bfd2a7623a73b6416db8422151e96b7e1554ab45b872ec831cae8528b7e12",
+        "b1c84585a5584b6370c772253e9b2859e9217092e399903e03f6c86209a69e68"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 5
+      },
+      "group_id": "r4grp-507222d5398ed6452a4200a051d79a3a",
+      "member_count": 6,
+      "members_preview": [
+        "0b59c758d6b92068002f180d2096bdad1c0e62f67ed89122a76340097d6f7481",
+        "121118f70d445cb6cce58fb634fb1100ccee3c26eddaf3a5a0c039d8e48e9e96",
+        "5f62da36f02272f6eb2e547c8640c6ca59a3b877c7d3127393f89e226a335626",
+        "6f63030e3871ebd5a14bb179d68ca02df2524abc5ad187a0968397b56baf9cd2",
+        "b0f15f13584e2442eddf5308e3280236e0312d9b0a7c77b8829756cf54bd18a2",
+        "eeeb6db5eeb9f2b3ca7ab7fdcbdcae3a57ffefae73b393859d7fca373aa4e415"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 4
+      },
+      "group_id": "r4grp-5303193dfbe54221eb3a8981b8031aa0",
+      "member_count": 5,
+      "members_preview": [
+        "4a74e7d8486e7776afa3f5d3fd0587c0e8e202bd90606164b0e2994722f713b1",
+        "6df77e124b99a52da4a01c10331157ba9a2be62d7087dd4e393b83861849522d",
+        "7a5db8167facf48c9c87b815cf96eebafda0e036a60038244d8abd8985b535b1",
+        "cfabb0e9fec6ff56dbead999842e6082b6a089dea973c3e6a1853f49f3b37750",
+        "eb57da9e8820a1b715df78805f3b11461441a7a04f227ec61b9cfde2217c4952"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 3
+      },
+      "group_id": "r4grp-4deaf8d0ce27ffe0a61088b1bc11b1fe",
+      "member_count": 4,
+      "members_preview": [
+        "492cdf570227352b3c8a33ccdb5907bc633321bfe501741d6bd37fb8b07f2374",
+        "9d2f321e55dd3ae28a007bea0a0004e3d702380012347a54c46746c34cee2fd3",
+        "a1b8fa266f18bd73b9f2b5a3b2cd82886e83802897e83498e36f1815dd91540f",
+        "d9d655f2d6997c77bf1aa7c8e8dcfa59e008bba2aa5ffe6f8ff92aec423f2ef2"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 3
+      },
+      "group_id": "r4grp-749cc7be014155b2436b77d2e7fc2c6e",
+      "member_count": 4,
+      "members_preview": [
+        "37d0033937d0cf5924f4aa069454f8b512064aa0298b5b0b2be04e3aba3ea099",
+        "d3ed0a0576defca3340a211586c634cf3d76372e3c5f05527b4da3495bd03395",
+        "df27ee823ba0fffbb6967cd582364d08d680757862d70489eaa29fe1f7febfb3",
+        "eb85a589995b8a56f45ef486b1bf418560b4ad42d09b2db5bb56541b4b473b3c"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 3
+      },
+      "group_id": "r4grp-7d27215600ab45d97c618a895d7977aa",
+      "member_count": 4,
+      "members_preview": [
+        "0e013fb60f2be7e2c9e948a7528888ccae87361b98081b4287f078954e33c19b",
+        "1b7849df5d2c8aa3546f48714029c3f5cd530bac6802b59a35aad701e257a6b3",
+        "aa5a464cf9931c19a28d828bf229a0a12c51fa4645dba32bdc3ccdd7f98a2202",
+        "eb4bae382b2af90ede45dea8db56ea7abdfaaf52c6878232f965c898dd58dfaa"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 3
+      },
+      "group_id": "r4grp-ee601dbff5bf62d98a9747bf3b83f34b",
+      "member_count": 4,
+      "members_preview": [
+        "67bb4a428e18bee82caf7d65186e9cc662f9372a5b696582c740ab3f2aac8bc9",
+        "c53153229cbe2799a4377722693875cfd30f2e696618185f70d85df36d4cccbb",
+        "e2f1e81ac3c148f2fb1913298fff933d5d497a20a3f2d3817da12a82d5782058",
+        "e7d2678e01d6156afad55712c88d93d0b154c1b137e51e3493fac56d545e1584"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-04a55bf34f2af37f832422df559086e6",
+      "member_count": 3,
+      "members_preview": [
+        "39abcdb9f8d98665ff8756e3f96bb7fa99e7f08554638e44bcc8fc80d41b70b4",
+        "b1fa4a2f70813dc108be27423d537df33bec519073735a53c2675a07a4136012",
+        "d032a8e7f028f47c8dc4cfd2740605cd114c45886d78ab0e17f12a71679458db"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-0cb33a71f6f887b145696e88ded3364f",
+      "member_count": 3,
+      "members_preview": [
+        "418dcde8912ef98a543d6c72f6dd682862776d6b3c95f23f5fd4906d2117d3aa",
+        "427fe0911e29fd5f6d1c5db165c53bf2da0fb58b1a3e705c1c461da90b73d2f7",
+        "a01ac44951ed8ef0c54155e43fce9a875d94ec49933a8ff340ee935f1b5463aa"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-1356cf5133381509f3da3a8b7039a002",
+      "member_count": 3,
+      "members_preview": [
+        "3e664e9aba6fa94b94591ef1ae1fc4862efa14a847479be6f17f3e2d136a5955",
+        "9540e806c323b87db025cbf400ae5cfe34c45b6444dff5812ac02696c4d44874",
+        "f787a387c78af6e2e9513547b008b203426e483d09c1e2c5ff9bb0e6c9c58f8a"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-4c04d27bae13d2c056734c9d820f7f15",
+      "member_count": 3,
+      "members_preview": [
+        "207737fad09b90d6e180f6124f75dedcd8fd772384af50030d36e7c08c73ccd0",
+        "3aa4b3caaaac42638389a4377928dd3890e8b32ceba4bc7598866f07f65e70c0",
+        "de150167c8905e6d6fbfeb5764b80d6dcf56b2ad1ce0338241056bdfbbec995b"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-604653ed29cc1e649c7d1150d35830b7",
+      "member_count": 3,
+      "members_preview": [
+        "469d38c7a9f418e51956b06bfdf5979736b855a6c4e5c5c1c9a3e44349f525ad",
+        "ba90fa5dc5dd7451c8122b79fcb54cad7a5aee612e6795af3e3bcbe20ace3886",
+        "c0f3680b7161847fd2a3c50dfc4962855a2ca7abd9cab9b21bf9da3d5ce30781"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-7dd5219496117669ef11cbbf0cf9d224",
+      "member_count": 3,
+      "members_preview": [
+        "026e57b7191dde4ec92a9ee89847afbdf40fecfb830d17793e9a2c380747e917",
+        "76ea1e1aad61950ac7d46508af53575fb36628b017840d16b55349c9e4297430",
+        "b153a95dc64eb7bc69f89aaafc072275de99715975f9a30ed93214eee0295d9d"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-a009f4c8fad7ef05b28f73b3246c31a3",
+      "member_count": 3,
+      "members_preview": [
+        "846de4b85cce0288b6f6042d89f80974113e0e0137bc940ceb72e145b26f6dcc",
+        "b29a6f70e53e262df3478b4e48e14d0a0ec536227b3927aee1dca4b60ccc05ce",
+        "dd653399b85753c073ced85c467a6d59b8e87f9d8fe8548435d9b83c70ff8e02"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-ccb3a0360fdd48cb0dff6faa98a546e6",
+      "member_count": 3,
+      "members_preview": [
+        "67093781c56e3cc1b9bd1cee6ec190a7e44f166ad51774c9c157ec74b46addce",
+        "82e46fa265251b297d2ef895d246645ec1466a875b95c297f7a2ab72e2bfb255",
+        "fc7fda3ad5a19facaf50467c75eb69eca0d621d81af217f09592744e56c75791"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 2
+      },
+      "group_id": "r4grp-cddfc67b675c04db3e2279879639ec8d",
+      "member_count": 3,
+      "members_preview": [
+        "2008732a89d55823f1f81848ca6566fb866dd0958de74980dfe6f6bccc96011b",
+        "29713d54ff3bc20470236560955dc52de5bc6ccb599127bf5f346637d8e0307d",
+        "487fbcb0eb36b8b34fee78c113cf9de218076b944018b3d1a7b06ae4c4f376d0"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-00fb0ad2cd13d24bab7240d175eed375",
+      "member_count": 2,
+      "members_preview": [
+        "0ce4a4dea2cda5f34160d646ebc3f15d7a7a99b10b969673db42e361e50dc4b3",
+        "11b0a5326990bfe3c4e55b050fd41b7f581560928a14183de755558150fbb7fa"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-037aa67f2dccc36297b22f8be81e5bce",
+      "member_count": 2,
+      "members_preview": [
+        "b382b9fe77514261caebe7b316b3c44cd0fbd28211df37414e4871be63cefe22",
+        "ef943d9c0e0341d6399e5b180a288fc053479f88acb7ac392a69d9cb4e276457"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-057f23dfb5eae9604533843cf89cafc0",
+      "member_count": 2,
+      "members_preview": [
+        "099c6dcdb5a034673890d2d5505e1f3352cf8fd177cbc65a25137549bc86459e",
+        "1bb2b5accd728752bc07b20d36c73086214794dd710361a56243968017e6c35a"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-07efdc5a6572b92a6cb06b25b46ea1cb",
+      "member_count": 2,
+      "members_preview": [
+        "6b3532e6f25b25a9c1dbdd96027bb0aa8de21407fbd8f21bda9831a2d7d77b41",
+        "d15862d7a24cb7f07213a71ca929f08131a4d7d79ab7df206558b78db2d153ec"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-093eadb80216b89f7fd8b09745509de3",
+      "member_count": 2,
+      "members_preview": [
+        "75c952f375d91c61fa570d548a4e724cad2aca39e36676a7279df17ba0a4e8fe",
+        "c7dd6bcebe6d9403f8237d6e4f19617bb8f73e9f94a2afd11d644c4d9b52dcec"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-0bf31a49e3c85b6247a204e269985ab5",
+      "member_count": 2,
+      "members_preview": [
+        "53df8b67520463886a016453574115915a1d023c45c52048ec3ec0deb2eabf39",
+        "eb86a26155cbbb595d5579c13b8b215896885fca99f4ea0ebbfe684d70383bd0"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-0e2eed28d01072676dde43be0e9e82f6",
+      "member_count": 2,
+      "members_preview": [
+        "2be6020e7213d89acdda7a762843c9cf5b3451f2ca2652563b6a9d2ed2e0f842",
+        "766d371e71cebfcc82dd2293471909345f5376cf293fac08ec4a7e20654e9898"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-1315c6bff30aec0a67d2edb395628515",
+      "member_count": 2,
+      "members_preview": [
+        "910c2b11a6e17befd7670a5049cfe52ef76f94bc314a19aba37961c0d358f8ed",
+        "ccf88827c6216fc0c762ab0cc43e1d6b888ce973cf7a18b1be68ec7d0bb16c21"
+      ],
+      "sources": [
+        "dive"
+      ]
+    },
+    {
+      "address_key_count": 0,
+      "edge_reasons": {
+        "normalized_code_identity": 1
+      },
+      "group_id": "r4grp-16a090d431534ae79ad9b2cf3bedd8c4",
+      "member_count": 2,
+      "members_preview": [
+        "8a8bfffdc54954c60baed40e2ef2b2c68b65d26f89ec0a736a58ffd0ac5289c3",
+        "97be8858b5ca36d5d165de62b5a98e2f55675d9cbf82b2d02f30a60542530e04"
+      ],
+      "sources": [
+        "dive"
+      ]
+    }
+  ],
+  "population": {
+    "artifacts": 22540,
+    "group_size_quantiles": {
+      "max": 7,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1
+    },
+    "groups": 22394
+  },
+  "review_required": false,
+  "schema": "sentinel-r4-grouping-breadth-audit-v1",
+  "thresholds": {
+    "high_frequency_address_artifacts": 20,
+    "large_group_members": 20
+  },
+  "transitive_multi_address_groups": [],
+  "v3_policy_check": {
+    "address_edge_count": 0,
+    "address_literal_grouping_authority": false,
+    "passed": true
+  }
+}

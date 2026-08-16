@@ -1,0 +1,71 @@
+{
+  "address_literal_grouping_authority": false,
+  "calibration_fit": "UNSUPPORTED_EMPTY",
+  "confirmed_negative_rows": 0,
+  "grouping_version": "r4-leakage-groups-v3",
+  "internal_audit_fraction": 0.15,
+  "model_fraction": 0.15,
+  "partition_version": "r4-vnext-roles-v3",
+  "population_contracts": 22540,
+  "population_groups": 22394,
+  "represented_strong_groups_by_class": {
+    "CallToUnknown": 101,
+    "DenialOfService": 6,
+    "ExternalBug": 67,
+    "IntegerUO": 64,
+    "MishandledException": 49,
+    "Reentrancy": 80,
+    "Timestamp": 54,
+    "TransactionOrderDependence": 53
+  },
+  "role_contract_counts": {
+    "INTERNAL_AUDIT": 73,
+    "MODEL_SELECTION": 73,
+    "TRAIN_STRONG": 343,
+    "TRAIN_UNLABELED": 21449,
+    "TRAIN_WEAK": 602
+  },
+  "role_group_counts": {
+    "INTERNAL_AUDIT": 71,
+    "MODEL_SELECTION": 71,
+    "TRAIN_STRONG": 331,
+    "TRAIN_UNLABELED": 21320,
+    "TRAIN_WEAK": 601
+  },
+  "schema": "r4-repaired-partition-manifest-v3",
+  "status": "LOCAL_LOGICAL_REBUILD_CANDIDATE_NOT_G8_AUTHORIZED",
+  "strong_group_coverage_by_role_and_class": {
+    "INTERNAL_AUDIT": {
+      "CallToUnknown": 11,
+      "DenialOfService": 2,
+      "ExternalBug": 11,
+      "IntegerUO": 12,
+      "MishandledException": 4,
+      "Reentrancy": 12,
+      "Timestamp": 9,
+      "TransactionOrderDependence": 11
+    },
+    "MODEL_SELECTION": {
+      "CallToUnknown": 14,
+      "DenialOfService": 1,
+      "ExternalBug": 13,
+      "IntegerUO": 11,
+      "MishandledException": 5,
+      "Reentrancy": 9,
+      "Timestamp": 8,
+      "TransactionOrderDependence": 10
+    },
+    "TRAIN_STRONG": {
+      "CallToUnknown": 76,
+      "DenialOfService": 3,
+      "ExternalBug": 43,
+      "IntegerUO": 41,
+      "MishandledException": 40,
+      "Reentrancy": 59,
+      "Timestamp": 37,
+      "TransactionOrderDependence": 32
+    }
+  },
+  "threshold_fit": "UNSUPPORTED_EMPTY",
+  "untouched_acceptance": "UNSUPPORTED_EMPTY_FROZEN"
+}

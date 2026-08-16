@@ -1,0 +1,103 @@
+{
+  "address_literal_grouping_authority": false,
+  "artifacts": {
+    "claims": {
+      "path": "r4-v2-build/source_claims.jsonl",
+      "sha256": "987cd2f35bae31121b880e73e3d90e0e73ed56558e4283d65e0a884173cdaaaf"
+    },
+    "grouping": {
+      "path": "r4-v3-logical-build/grouping.json",
+      "sha256": "f72c20fb2bd9c89013644ee5f4cb714979361306f87c60357ed4e90f4bc8238e"
+    },
+    "label_states": {
+      "path": "label_states.parquet",
+      "sha256": "6d75898f0cf5fc502132fa51f22de3ec1271808e34fec3e656ac0c1fc3915312"
+    },
+    "ml_targets": {
+      "path": "ml_targets.parquet",
+      "sha256": "908888ca40c921debdeeb9c09891df7435ed770b6040209555c4dd95b2ecfccf"
+    },
+    "policy": {
+      "path": "docs/plan/ml-R4/specs/data_vnext_policy_v1.json",
+      "sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094"
+    },
+    "representation_manifests": {
+      "path": "representations-r4-v2/*/repaired_representation_manifest.json",
+      "sha256_by_source": {
+        "dive": "7bd7e798d9595e4f4c536706ade276e7017e5e3fb5f2fe23cbecb5a2a4d97a1f",
+        "smartbugs_curated": "28b3ce071903e731f515321489b3a7e1ef4b1c2b98f2e65adcdf16a6d4ccb0b5",
+        "solidifi": "e0c5a19f533b79e63f7eceb2065e12f7cf24861288a855b506bf3d037d0d0327"
+      }
+    },
+    "source_evidence_ledger": {
+      "path": "r4-v2-build/evidence_ledger_v2.parquet",
+      "sha256": "5317aba94b9cdbe900bd90bd9b2fdf22d69c3810ec2b0a08d9be032f21658d6d"
+    },
+    "source_evidence_ledger_manifest": {
+      "path": "r4-v2-build/evidence_ledger_v2_manifest.json",
+      "sha256": "3db9994d4ec4e838e0a116b28f6e9a8700767637670de5ce235c4e70c94b5208"
+    }
+  },
+  "class_names": [
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "GasException",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+    "UnusedReturn"
+  ],
+  "confirmed_negative_rows": 0,
+  "dataset_version": "sentinel-r4-vnext-v3",
+  "effective_loss_cells": 932,
+  "export_schema_version": "v2",
+  "grouping_version": "r4-leakage-groups-v3",
+  "ledger_version": "evidence-ledger-r4-v2",
+  "limitations": [
+    "V3 changes grouping/roles only; physical repaired-v2 source and representation bytes are reused.",
+    "No confirmed-negative evidence exists; threshold/calibration/acceptance roles remain unsupported.",
+    "Selector and GPU research must be regenerated against V3 roles before promotion decisions.",
+    "The previous V2 negative-review queue is obsolete because group reservations changed."
+  ],
+  "logical_build_version": "r4-logical-lineage-v3",
+  "outcome_metric_cells": 143,
+  "parent_v2": {
+    "dataset_version": "sentinel-r4-vnext-v2",
+    "manifest_sha256": "628906820e277012299dfd5193abeb4e810815c384b974a0e0aa7a80377d9536",
+    "representation_binding_digest_sha256": "16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd"
+  },
+  "partition_version": "r4-vnext-roles-v3",
+  "physical_artifacts_reused": true,
+  "policy_version": "data-vnext-policy-v1",
+  "population": {
+    "classes": 10,
+    "contract_class_rows": 225400,
+    "contracts": 22540
+  },
+  "representation_binding_report": {
+    "binding_digest_sha256": "16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd",
+    "path": "representation_binding_report.json",
+    "sha256": "15f18be375114be40c1d23d37a7fb61849df5c74243e5133f13224e30136ec54"
+  },
+  "representation_root_recorded": false,
+  "role_contract_counts": {
+    "INTERNAL_AUDIT": 73,
+    "MODEL_SELECTION": 73,
+    "TRAIN_STRONG": 343,
+    "TRAIN_UNLABELED": 21449,
+    "TRAIN_WEAK": 602
+  },
+  "status": "LOGICAL_V3_REPRESENTATION_BOUND_LOCAL_REVIEW_REQUIRED",
+  "target_counts": {
+    "1": 1080,
+    "None": 224320
+  },
+  "training_strength_counts": {
+    "NONE": 224320,
+    "STRONG": 474,
+    "WEAK": 606
+  }
+}
