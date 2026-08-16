@@ -23,7 +23,8 @@ SOURCE_COMMIT = "f" * 40
 
 def _queue() -> dict:
     candidates = []
-    for class_index, class_name in enumerate(snapshot.QUEUE_ENABLED_CLASSES):
+    for class_name in snapshot.QUEUE_ENABLED_CLASSES:
+        class_index = snapshot.QUEUE_CLASS_INDEX[class_name]
         for ordinal in range(1, snapshot.QUEUE_EXPECTED_PER_CLASS + 1):
             group_id = f"g-{class_index}-{ordinal:02d}"
             contract_id = f"c-{class_index}-{ordinal:02d}"
@@ -244,13 +245,15 @@ def test_snapshot_coherence_rejects_invalid_candidate_id():
 def test_snapshot_coherence_rejects_class_imbalance():
     payloads = _payloads()
     first = payloads["queue"]["candidates"][0]
-    first["class_name"] = snapshot.QUEUE_ENABLED_CLASSES[1]
-    first["class_index"] = 1
+    moved_class = snapshot.QUEUE_ENABLED_CLASSES[1]
+    moved_index = snapshot.QUEUE_CLASS_INDEX[moved_class]
+    first["class_name"] = moved_class
+    first["class_index"] = moved_index
     first["candidate_id"] = snapshot._queue_candidate_id(
         MANIFEST_SHA,
         first["group_id"],
         first["contract_id"],
-        1,
+        moved_index,
     )
     with pytest.raises(ValueError, match="queue_class_balance_exact"):
         snapshot.validate_snapshot_coherence(**payloads)
