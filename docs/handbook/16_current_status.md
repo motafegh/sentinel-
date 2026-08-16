@@ -64,7 +64,9 @@ valid physical DATA
 ≠ trustworthy model quality
 ```
 
-## Canonical R4 gate state
+## Actual runtime/source walkthrough
+
+### Canonical R4 gate state
 
 | Phase | State | Current meaning |
 |---:|---|---|
@@ -72,7 +74,7 @@ valid physical DATA
 | 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 accepted; evidence hardening/regeneration closed with a coherent committed snapshot; confirmed-negative pilot is next; full training unauthorized |
 | 9–10 | WAITING | evaluation/calibration/promotion remain gated by G8 and missing evidence |
 
-## Historical G7 validation anchors
+### Historical G7 validation anchors
 
 The handbook intentionally preserves the historical G7 machine-validation anchors because later Phase-8 lineages must not erase them:
 
@@ -83,7 +85,7 @@ The handbook intentionally preserves the historical G7 machine-validation anchor
 
 These anchors are historical reproducibility facts, not current Phase-8 DATA/ML authority.
 
-## Repaired-v2 physical acceptance
+### Repaired-v2 physical acceptance
 
 Current physical root:
 
@@ -103,7 +105,7 @@ Current physical root:
 
 Physical compatibility provenance remains explicit: 22,512 full Slither analyses, 26 parse-only recoveries, and two graph-only constant-array compatibility transformations.
 
-## Why V2 logical grouping is superseded
+### Why V2 logical grouping is superseded
 
 V2 grouped contracts when arbitrary same-source Ethereum address literals matched. Full-population audit showed:
 
@@ -114,7 +116,7 @@ V2 grouped contracts when arbitrary same-source Ethereum address literals matche
 
 Therefore address coincidence is diagnostic correlation, not family identity.
 
-## Accepted logical V3
+### Accepted logical V3
 
 Accepted identifiers:
 
@@ -141,7 +143,7 @@ Current hardened grouping authority:
 
 Because the accepted V3 population has zero explicit-family edges, source-namespacing hardening does not alter its accepted group population.
 
-## Corrected role/outcome terminology
+### Corrected role/outcome terminology
 
 Frozen V3 role contract counts remain:
 
@@ -162,7 +164,7 @@ The hardened acceptance rerun durably establishes:
 
 `143/142` is therefore not a MODEL_SELECTION population count. The ML adapter loads `MODEL_SELECTION` only for model selection and does not load `INTERNAL_AUDIT`; the old defect was reporting/research-population contamination, not trainer leakage.
 
-## Evidence-hardening closeout
+### Evidence-hardening closeout
 
 The audit found five issues:
 
@@ -195,7 +197,7 @@ Snapshot result:
 - no selector promotion;
 - no training authorization.
 
-## Hardened selector evidence
+### Hardened selector evidence
 
 CPU selector rerun:
 
@@ -221,7 +223,7 @@ This is durable mechanical/coverage evidence. It still cannot establish false-po
 
 Before any promotion ADR, verify across the relevant full population that the historical control selector exactly reproduces the currently bound representation token tensors.
 
-## Confirmed-negative state
+### Confirmed-negative state
 
 Current source authority still contains zero confirmed negatives.
 
@@ -239,7 +241,9 @@ The queue is now ready for pilot adjudication. The pre-hardening queue is obsole
 
 Queue membership remains review reservation only. Never infer negative truth from historical zero, unlabeled state, source silence, static-tool silence, or queue membership. Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY` and requires class-specific primary review plus independent agreeing verification.
 
-## Current DATA/ML authority stack
+## Interfaces, data shapes, and configuration
+
+### Current DATA/ML authority stack
 
 | Surface | Current authority |
 |---|---|
@@ -253,7 +257,7 @@ Queue membership remains review reservation only. Never infer negative truth fro
 | selector | historical control remains bound; guarded candidate unpromoted |
 | training authorization | HOLD / none |
 
-## Stable shapes
+### Stable shapes
 
 - vulnerability classes: 10;
 - graph schema: `v9`;
@@ -264,7 +268,7 @@ Queue membership remains review reservation only. Never infer negative truth fro
 - model outputs: 10;
 - architecture: `four_eye_v8` / `v8.1`.
 
-## Unsupported evaluation roles
+### Unsupported evaluation roles
 
 ```text
 THRESHOLD_FIT        = UNSUPPORTED_EMPTY
