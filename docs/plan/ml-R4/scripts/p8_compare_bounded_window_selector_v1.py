@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-"""Compare historical, greedy, and guarded four-window selectors on repaired-v2.
+"""Compare historical, greedy, and guarded four-window selectors on repaired DATA.
 
 This is a read-only CPU/tokenizer experiment. It does not rewrite bound token
 artifacts and does not promote a selector. The guarded candidate must never
 reduce target-contract token coverage relative to the historical control.
 
 All strategies operate on the same comment-stripped, offset-preserving code view
-used by repaired-v2 production tokenization.
+used by repaired-v2 production tokenization. The report binds itself to the
+publication manifest, physical representation digest, and source commit so it
+cannot be mixed silently with another logical population.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -40,6 +44,21 @@ DEFAULT_REPRESENTATIONS = DATA_ROOT / "representations-r4-v2"
 DEFAULT_PUBLICATION = DATA_ROOT / "exports/sentinel-r4-vnext-v2"
 DEFAULT_OUTPUT = DATA_ROOT / "r4-v2-build/bounded_window_selector_v1.json"
 ROLES = ("TRAIN_STRONG", "TRAIN_WEAK", "MODEL_SELECTION")
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _source_commit() -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
 
 
 def _quantiles(values: list[float]) -> dict[str, float]:
@@ -77,6 +96,25 @@ def main() -> int:
 
     from transformers import AutoTokenizer
     import transformers
+
+    manifest_path = args.publication_root / "manifest.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(manifest_path)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    binding_digest = str(
+        (manifest.get("representation_binding_report") or {}).get(
+            "binding_digest_sha256"
+        )
+        or ""
+    )
+    if not binding_digest:
+        raise ValueError("selector publication lacks representation binding digest")
+    ml_targets_path = args.publication_root / "ml_targets.parquet"
+    expected_ml_sha = ((manifest.get("artifacts") or {}).get("ml_targets") or {}).get(
+        "sha256"
+    )
+    if not expected_ml_sha or _sha256(ml_targets_path) != expected_ml_sha:
+        raise ValueError("selector publication ml_targets.parquet hash mismatch")
 
     tokenizer = AutoTokenizer.from_pretrained(
         TOKENIZER_MODEL,
@@ -238,6 +276,14 @@ def main() -> int:
         "experiment_only": True,
         "promotion_authorized": False,
         "changes_bound_representations": False,
+        "lineage": {
+            "dataset_version": manifest.get("dataset_version"),
+            "grouping_version": manifest.get("grouping_version"),
+            "partition_version": manifest.get("partition_version"),
+            "publication_manifest_sha256": _sha256(manifest_path),
+            "representation_binding_digest_sha256": binding_digest,
+            "source_commit": _source_commit(),
+        },
         "token_source_semantics": "repaired_v2_comment_stripped_offset_preserving",
         "tokenizer_name": TOKENIZER_MODEL,
         "transformers_version": transformers.__version__,
@@ -258,7 +304,8 @@ def main() -> int:
         "decision_boundary": (
             "CPU coverage evidence cannot promote a selector. Promotion requires "
             "identical-initialization bounded CUDA comparison, regression review, "
-            "worst-case graph/token diagnostics, and an explicit new extractor decision."
+            "worst-case graph/token diagnostics, bound-token equivalence verification, "
+            "and an explicit new extractor decision."
         ),
         "records": records,
     }
