@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,21 @@ GROUPING_VERSION = "r4-leakage-groups-v3"
 PARTITION_VERSION = "r4-vnext-roles-v3"
 BOUND_STATUS = "LOGICAL_V3_REPRESENTATION_BOUND_LOCAL_REVIEW_REQUIRED"
 GPU_STATUS = "LOGICAL_V3_BOUNDED_RESEARCH_COMPLETE"
+QUEUE_SCHEMA = "sentinel-r4-confirmed-negative-review-queue-v1"
+QUEUE_STATUS = "PILOT_REVIEW_QUEUE_NOT_NEGATIVE_TRUTH"
+QUEUE_EXPECTED_PER_CLASS = 25
+QUEUE_ENABLED_CLASSES = (
+    "CallToUnknown",
+    "DenialOfService",
+    "ExternalBug",
+    "IntegerUO",
+    "MishandledException",
+    "Reentrancy",
+    "Timestamp",
+    "TransactionOrderDependence",
+)
+QUEUE_ALLOWED_OUTCOME_STATES = frozenset({"UNKNOWN", "NOT_REVIEWED"})
+QUEUE_EXPECTED_CELLS = QUEUE_EXPECTED_PER_CLASS * len(QUEUE_ENABLED_CLASSES)
 
 SMALL_REPORTS = (
     "logical_v3_summary.json",
@@ -97,6 +113,137 @@ def _all_true(mapping: Any) -> bool:
     )
 
 
+def _queue_candidate_id(
+    publication_manifest_sha256: str,
+    group_id: str,
+    contract_id: str,
+    class_index: int,
+) -> str:
+    payload = "\0".join(
+        str(part)
+        for part in (
+            QUEUE_SCHEMA,
+            publication_manifest_sha256,
+            group_id,
+            contract_id,
+            class_index,
+        )
+    )
+    return "r4neg-" + hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
+
+
+def validate_queue_coherence(
+    queue: dict[str, Any],
+    *,
+    manifest_sha256: str,
+) -> dict[str, bool]:
+    """Validate the exact V3 8x25 pilot queue contract without inferring truth."""
+
+    raw_candidates = queue.get("candidates")
+    candidates = raw_candidates if isinstance(raw_candidates, list) else []
+    candidate_groups = [
+        str(row.get("group_id") or "") for row in candidates if isinstance(row, dict)
+    ]
+    candidate_ids = [
+        str(row.get("candidate_id") or "") for row in candidates if isinstance(row, dict)
+    ]
+    reserved = queue.get("reserved_group_ids")
+    reserved_groups = reserved if isinstance(reserved, list) else []
+    enabled = queue.get("enabled_classes")
+    enabled_classes = enabled if isinstance(enabled, list) else []
+    declared_by_class = queue.get("queued_cells_by_class")
+    declared_by_class = declared_by_class if isinstance(declared_by_class, dict) else {}
+
+    class_counts: Counter[str] = Counter()
+    ordinals: defaultdict[str, list[int]] = defaultdict(list)
+    structural_rows_ok = True
+    outcome_states_ok = True
+    candidate_ids_ok = True
+
+    for row in candidates:
+        if not isinstance(row, dict):
+            structural_rows_ok = False
+            outcome_states_ok = False
+            candidate_ids_ok = False
+            continue
+        class_name = str(row.get("class_name") or "")
+        class_counts[class_name] += 1
+        try:
+            class_index = int(row.get("class_index"))
+            ordinal = int(row.get("queue_ordinal_within_class"))
+        except (TypeError, ValueError):
+            structural_rows_ok = False
+            candidate_ids_ok = False
+            continue
+        ordinals[class_name].append(ordinal)
+        expected_index = (
+            QUEUE_ENABLED_CLASSES.index(class_name)
+            if class_name in QUEUE_ENABLED_CLASSES
+            else -1
+        )
+        structural_rows_ok = structural_rows_ok and (
+            row.get("schema") == QUEUE_SCHEMA
+            and row.get("dataset_version") == DATASET_VERSION
+            and row.get("partition_version") == PARTITION_VERSION
+            and row.get("publication_manifest_sha256") == manifest_sha256
+            and row.get("candidate_status") == "PENDING_REVIEW"
+            and row.get("current_target_value") is None
+            and row.get("negative_truth_claim") is False
+            and row.get("role_at_queue_creation") == "TRAIN_UNLABELED"
+            and class_index == expected_index
+            and 1 <= ordinal <= QUEUE_EXPECTED_PER_CLASS
+            and bool(str(row.get("contract_id") or ""))
+            and bool(str(row.get("group_id") or ""))
+        )
+        outcome_states_ok = outcome_states_ok and (
+            row.get("current_outcome_state") in QUEUE_ALLOWED_OUTCOME_STATES
+        )
+        expected_candidate_id = _queue_candidate_id(
+            manifest_sha256,
+            str(row.get("group_id") or ""),
+            str(row.get("contract_id") or ""),
+            class_index,
+        )
+        candidate_ids_ok = candidate_ids_ok and (
+            row.get("candidate_id") == expected_candidate_id
+        )
+
+    expected_by_class = {
+        name: QUEUE_EXPECTED_PER_CLASS for name in QUEUE_ENABLED_CLASSES
+    }
+    ordinals_exact = all(
+        sorted(ordinals.get(name, []))
+        == list(range(1, QUEUE_EXPECTED_PER_CLASS + 1))
+        for name in QUEUE_ENABLED_CLASSES
+    )
+
+    return {
+        "queue_schema_status_valid": queue.get("schema") == QUEUE_SCHEMA
+        and queue.get("status") == QUEUE_STATUS,
+        "queue_expected_size": len(candidates) == QUEUE_EXPECTED_CELLS
+        and queue.get("queued_cells") == QUEUE_EXPECTED_CELLS,
+        "queue_enabled_classes_exact": enabled_classes == list(QUEUE_ENABLED_CLASSES)
+        and queue.get("requested_per_enabled_class") == QUEUE_EXPECTED_PER_CLASS
+        and queue.get("eligible_roles") == ["TRAIN_UNLABELED"],
+        "queue_class_balance_exact": dict(class_counts) == expected_by_class
+        and declared_by_class == expected_by_class
+        and ordinals_exact,
+        "queue_groups_globally_unique": len(candidate_groups)
+        == len(set(candidate_groups))
+        == QUEUE_EXPECTED_CELLS,
+        "queue_reserved_groups_match_candidates": len(reserved_groups)
+        == QUEUE_EXPECTED_CELLS
+        and len(set(reserved_groups)) == QUEUE_EXPECTED_CELLS
+        and set(reserved_groups) == set(candidate_groups),
+        "queue_candidate_ids_valid_unique": candidate_ids_ok
+        and len(candidate_ids) == QUEUE_EXPECTED_CELLS
+        and len(set(candidate_ids)) == QUEUE_EXPECTED_CELLS
+        and all(candidate_ids),
+        "queue_candidates_pending_unknown": structural_rows_ok,
+        "queue_candidate_outcomes_allowed": outcome_states_ok,
+    }
+
+
 def validate_snapshot_coherence(
     *,
     manifest: dict[str, Any],
@@ -123,8 +270,6 @@ def validate_snapshot_coherence(
     selector_lineage = selector.get("lineage") or {}
     acceptance_lineage = acceptance.get("lineage") or {}
     gpu_scope = gpu.get("runtime_scope") or {}
-    candidates = queue.get("candidates") or []
-    candidate_groups = [str(row.get("group_id") or "") for row in candidates]
     report_source_commits = {
         "acceptance": acceptance_lineage.get("source_commit"),
         "sensitivity": sensitivity_lineage.get("source_commit"),
@@ -203,17 +348,7 @@ def validate_snapshot_coherence(
         "queue_not_negative_truth": queue.get("negative_truth_claim") is False,
         "queue_global_group_uniqueness_declared": queue.get("group_uniqueness_scope")
         == "GLOBAL_ACROSS_ENABLED_CLASSES",
-        "queue_groups_globally_unique": len(candidate_groups) == len(set(candidate_groups))
-        == int(queue.get("queued_cells", -1))
-        == len(queue.get("reserved_group_ids") or []),
-        "queue_candidates_pending_unknown": all(
-            row.get("candidate_status") == "PENDING_REVIEW"
-            and row.get("current_target_value") is None
-            and row.get("negative_truth_claim") is False
-            and row.get("role_at_queue_creation") == "TRAIN_UNLABELED"
-            and row.get("publication_manifest_sha256") == manifest_sha256
-            for row in candidates
-        ),
+        **validate_queue_coherence(queue, manifest_sha256=manifest_sha256),
         "selector_manifest_matches": selector_lineage.get("publication_manifest_sha256")
         == manifest_sha256,
         "selector_binding_matches": selector_lineage.get("representation_binding_digest_sha256")
@@ -373,4 +508,7 @@ if __name__ == "__main__":
     raise SystemExit(main())
 
 
-__all__ = ["validate_snapshot_coherence"]
+__all__ = [
+    "validate_queue_coherence",
+    "validate_snapshot_coherence",
+]
