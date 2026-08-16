@@ -3,8 +3,11 @@
 **Date:** 2026-08-15
 **Canonical branch:** `main`
 **Decision:** R4-D-009 / ADR-R4-009
-**State:** repository implementation complete; local logical V3 generation/acceptance pending
+**State:** COMPLETED LOCALLY on 2026-08-16; retained as execution procedure/history
 **Training:** NOT AUTHORIZED
+
+> Completion authority: `runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md`.
+> All stages 1–11 below completed successfully. R4-D-009 is now ACCEPTED. Stage 12 final Git-safe evidence packaging remains the next repository evidence-snapshot step; it is not a missing logical-acceptance gate.
 
 ## Purpose
 
@@ -71,6 +74,8 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
 
 Must pass before generated V3 output is written.
 
+**Completed:** PASS.
+
 ### 2. Corrected grouping
 
 ```bash
@@ -79,6 +84,8 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
 ```
 
 Expected invariant: `address_edges = 0`.
+
+**Completed:** PASS — 22,540 artifacts, 22,394 groups, max group size 7, 146 normalized-code edges, 14,851 address literals observed, zero address-authority edges.
 
 ### 3. Role freeze and V3 publication
 
@@ -89,6 +96,8 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
 
 This must recompute role-independent semantic cells and prove they are identical to the accepted V2 evidence ledger before writing V3 roles/publication.
 
+**Completed:** PASS — population/target/strength semantics unchanged; V3 role counts recorded in the completion checkpoint.
+
 ### 4. Rebind the unchanged physical representation population
 
 ```bash
@@ -98,6 +107,8 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
 
 Hard requirement: V3 binding digest must equal the accepted repaired-v2 physical digest because no graph/token/sidecar bytes changed.
 
+**Completed:** PASS — 22,540 contracts / 67,620 files, digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`, exact parent match.
+
 ### 5. Grouping audit
 
 ```bash
@@ -106,6 +117,8 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
 ```
 
 Review the new group-count and largest-group distribution. The V2 10,327-member address-connected component must no longer exist.
+
+**Completed:** PASS — largest V3 group = 7; no address-based grouping authority or large address-connected group remains.
 
 ### 6. V2→V3 logical acceptance gate
 
@@ -127,6 +140,8 @@ This gate must prove:
 
 It also reports the new active optimizer groups and planning-only batch-8/accum-8 step arithmetic. Those numbers are **not** a training authorization.
 
+**Completed:** PASS — all acceptance checks true; 932 effective loss cells, 143 model-selection outcome cells, confirmed negatives still zero, full training false.
+
 ### 7. Summary
 
 ```bash
@@ -134,11 +149,11 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
   docs/plan/ml-R4/scripts/p8_rebuild_logical_v3.py summarize
 ```
 
-At this point the logical V3 correction may be reviewed. Do not start training.
+**Completed:** `LOGICAL_V3_REBUILD_COMPLETE_RESEARCH_REGENERATION_PENDING` at the time of generation; subsequent stages below then completed.
 
 ## Research regeneration after V3 acceptance
 
-The V2 negative queue and V2 role-dependent research outputs become historical population-specific evidence. Generate fresh V3 evidence in this order.
+The V2 negative queue and V2 role-dependent research outputs are historical population-specific evidence. Fresh V3 evidence was generated in the required order.
 
 ### 8. Representation sensitivity under V3 roles
 
@@ -149,6 +164,8 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
   --representations-root data_module/data/representations-r4-v2 \
   --output data_module/data/r4-v3-logical-build/representation_sensitivity_v1.json
 ```
+
+**Completed:** PASS. Physical telemetry remained consistent. Seven optimizer-active compatibility cases remain, all `TRAIN_WEAK`; MODEL_SELECTION contains zero compatibility-mode contracts. Interim sanitized evidence committed at `5e19fdf3a134ef2eb5b72df166a157c421fa811b`.
 
 ### 9. Selector population comparison under V3 roles
 
@@ -162,7 +179,9 @@ TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1 PYTHONPATH=.:data_module \
   --output data_module/data/r4-v3-logical-build/bounded_window_selector_v1.json
 ```
 
-Selector promotion remains prohibited even if coverage improves.
+**Completed:** PASS — 1,018 analyzed, 737 over four windows, guarded improved 476 / equal-fallback 261 / regressed 0; median target coverage ~63.01% historical vs ~87.94% guarded. Interim summary committed at `a51f28e0684f63cec69af2e76efcfc518035a21a`.
+
+Selector promotion remains prohibited until a separate explicit promotion ADR/versioned extractor decision.
 
 ### 10. New confirmed-negative pilot queue
 
@@ -171,7 +190,7 @@ PYTHONPATH=.:data_module ./ml/.venv/bin/python \
   docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue_v3.py
 ```
 
-Do not manually adjudicate the obsolete V2 queue. V3 candidates remain UNKNOWN until class-specific evidence and independent review confirm otherwise.
+**Completed:** PASS — 200 cells, 25 per enabled class, 200 reserved groups, all `PENDING_REVIEW`, all target `None`, all `TRAIN_UNLABELED`, `negative_truth_claim=false`. R4-GAP-007 now governs any future adjudication. Do not manually adjudicate the obsolete V2 queue.
 
 ### 11. Identical-initialization CUDA selector comparison + mandatory worst-case probes
 
@@ -183,18 +202,18 @@ TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1 PYTHONPATH=.:data_module \
 
 Unlike the earlier V2 run, this V3 launcher fails if worst-case probes were requested but the sensitivity report is absent/empty or the expected probes are not completed.
 
-It must not load Run12 weights or write a checkpoint.
+**Completed:** PASS — RTX 3070 Laptop GPU, BF16, identical initialization verified, 4 train + 4 selection batches per strategy, 4/4 mandatory worst-case probes completed, no Run12 weights, no checkpoint. Guarded positive-only model-selection NLL was 0.66014 vs 0.68474 control; peak allocated memory 956.68 MB vs 967.36 MB control. These are bounded positive-only research results, not discrimination evidence or training authorization.
 
 ### 12. Git-safe evidence snapshot
 
-Only after stages 1–11 complete successfully:
+This is the remaining packaging step before moving on:
 
 ```bash
 PYTHONPATH=.:data_module ./ml/.venv/bin/python \
   docs/plan/ml-R4/scripts/p8_snapshot_logical_v3_evidence.py
 ```
 
-The helper sanitizes repository-local paths, snapshots small decisive reports, summarizes the large selector report instead of committing its per-contract 10s-of-MB payload, and writes SHA-256 bindings.
+The helper sanitizes repository-local paths, snapshots small decisive reports, summarizes the large selector report instead of committing its per-contract payload, and writes SHA-256 bindings.
 
 Commit only:
 
@@ -215,10 +234,12 @@ Stop and preserve evidence if any of these occurs:
 - requested worst-case probes do not all complete;
 - any script attempts to change graph schema, token shape, model architecture, Run12 weights, threshold/calibration roles, or untouched acceptance.
 
+Stages 1–11 encountered none of these stop conditions.
+
 ## Rollback
 
-An unsuccessful V3 attempt is rolled back by archiving/removing **only** the generated V3 roots and rerunning from a clean commit. Never modify accepted V2 physical artifacts or historical V1/V2 evidence.
+An unsuccessful later V3-derived experiment is rolled back by selecting/removing only that new versioned/generated artifact. Never modify accepted repaired-v2 physical artifacts, accepted V3 logical authority, or historical V1/V2 evidence in place.
 
 ## Current decision boundary
 
-Repository tooling implements the corrected grouping/partition lineage. Physical repaired-v2 remains the reusable source/representation root. Full Phase-8 training remains unauthorized until V3 is accepted locally and the regenerated evaluation/selector evidence is reviewed.
+Logical V3 is accepted under R4-D-009. Physical repaired-v2 remains the reusable source/representation root. V3 selector/representation/negative-queue/CUDA research has been regenerated and reviewed. The guarded selector is evidence-ready for a separate promotion decision but not yet promoted. R4-GAP-007 authorizes confirmed-negative pilot review but adjudication has not started. Full Phase-8 training remains unauthorized and G8 remains open.
