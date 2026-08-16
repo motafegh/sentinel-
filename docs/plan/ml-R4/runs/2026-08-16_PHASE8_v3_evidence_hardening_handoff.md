@@ -1,11 +1,11 @@
 # Phase-8 V3 evidence hardening handoff
 
-**Date:** 2026-08-16  
-**Canonical branch:** `main`  
-**Logical authority:** R4-D-009 / accepted logical V3  
-**Evidence gap:** R4-GAP-007  
-**State:** repository hardening implemented; protected local evidence regeneration required before final snapshot  
-**Training:** NOT AUTHORIZED  
+**Date:** 2026-08-16
+**Canonical branch:** `main`
+**Logical authority:** R4-D-009 / accepted logical V3
+**Evidence gap:** R4-GAP-007
+**State:** repository hardening implemented; protected local evidence regeneration required before final snapshot
+**Training:** NOT AUTHORIZED
 **G8:** OPEN
 
 ## Why this handoff exists
