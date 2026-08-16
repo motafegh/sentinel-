@@ -10,7 +10,7 @@ No new contract review is permitted without an approved gap entry.
 | R4-GAP-004 | BCCC/all classes | 2-tool consensus baseline | skeleton exists; results absent | Tool intersection is not ground truth | Execute only if later benchmark decision requires it | Tier-C benchmark baseline | PROPOSED | Non-blocking |
 | R4-GAP-005 | All classes | Echidna/fuzzing precision estimates | no retained fuzzing evidence | complementary, not required for current DATA source roles | targeted future fuzzing only | Complementary fuzz evidence | PROPOSED | Non-blocking |
 | R4-GAP-006 | All classes | Exploit-reproduction PoC tests | no retained PoC corpus | useful for outcome validation but not smallest current evidence | targeted future PoCs only | Outcome validation/case study | PROPOSED | Non-blocking |
-| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **hardened regenerated V3 queue**: target 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | APPROVED / REGENERATION BEFORE REVIEW | 2026-08-16 — gap remains approved. Pre-hardening queue observed 200 PENDING_REVIEW cells/200 distinct groups but uniqueness was not algorithmically guaranteed. Repository now enforces global group uniqueness; regenerate and inspect the queue before any adjudication |
+| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **committed hardened V3 queue**: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | APPROVED / PILOT READY | 2026-08-16 — hardened queue regenerated, coherence-validated, and committed in snapshot `44fbb9c1d...`; pilot review may begin under the stop lines below |
 
 ## R4-GAP-002 closure evidence
 
@@ -29,18 +29,33 @@ No `DOES_NOT_SUPPORT_POSITIVE` review verdict is a confirmed negative. The Phase
 
 Current logical authority is R4-D-009 / `sentinel-r4-vnext-v3`.
 
-The earlier generated queue at `data_module/data/r4-v3-logical-build/confirmed_negative_review_queue_v1.json` observed 200 cells, 25 per enabled class, 200 reserved groups, all `PENDING_REVIEW`, all target `None`, all `TRAIN_UNLABELED`, and `negative_truth_claim=false`. A later audit proved that the old builder guaranteed uniqueness only within each class; the real artifact happened to be globally distinct but the invariant was not enforced.
+The hardened queue is now durably captured at:
 
-The hardened builder now:
+`docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/confirmed_negative_review_queue_v1.json`
 
-- excludes already reserved groups from later classes;
-- fails closed if requested per-class balance cannot be satisfied with globally distinct groups;
-- records `group_uniqueness_scope=GLOBAL_ACROSS_ENABLED_CLASSES`;
-- binds the queue to the V3 publication manifest hash and source commit.
+It was regenerated under source commit `83bd566b9c4f4f653e530c2c0f5c990858dd759d`, passed snapshot coherence, and was committed in snapshot commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29`.
 
-**Do not adjudicate the pre-hardening queue.** Regenerate it after synchronizing to the hardening source and inspect its bindings/uniqueness first. Active execution procedure: `runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md`.
+Current durable queue invariants:
 
-Queue membership is review reservation only. Do not convert source absence, unlabeled state, static-tool silence, or failed/ambiguous review into target `0`. Accepted negatives remain evaluation-only unless a later versioned decision explicitly grants optimizer authority.
+- 200 queued cells;
+- 25 candidates per enabled class;
+- 200 reserved groups;
+- `group_uniqueness_scope=GLOBAL_ACROSS_ENABLED_CLASSES`;
+- every candidate `PENDING_REVIEW`;
+- every current target `None`;
+- every role at queue creation `TRAIN_UNLABELED`;
+- `negative_truth_claim=false`;
+- queue bound to the accepted V3 publication manifest and hardened source commit.
+
+The old/pre-hardening queue is obsolete for review. **R4-GAP-007 pilot adjudication may now begin only from the committed hardened queue.**
+
+Queue membership is review reservation only. Do not convert source absence, unlabeled state, static-tool silence, or failed/ambiguous review into target `0`. Any `CONFIRMED_NEGATIVE` requires class-specific primary review plus an independent reviewer that agrees from sufficient evidence.
+
+Accepted confirmed negatives remain `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY` unless a later versioned decision explicitly grants optimizer authority.
+
+Current restart record:
+
+`runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`
 
 ## Approval delegation note
 
