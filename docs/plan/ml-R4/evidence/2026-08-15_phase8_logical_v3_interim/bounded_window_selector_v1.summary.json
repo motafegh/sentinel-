@@ -1,0 +1,79 @@
+{
+  "changes_bound_representations": false,
+  "decision_boundary": "CPU coverage evidence cannot promote a selector. Promotion requires identical-initialization bounded CUDA comparison, regression review, worst-case graph/token diagnostics, and an explicit new extractor decision.",
+  "experiment_only": true,
+  "failures": [],
+  "failures_total": 0,
+  "guarded_control_fallback_records": 261,
+  "guarded_target_coverage_equal_records": 261,
+  "guarded_target_coverage_improved_records": 476,
+  "guarded_target_coverage_regressed_records": 0,
+  "max_windows": 4,
+  "over_four_window_records": 737,
+  "promotion_authorized": false,
+  "records_analyzed": 1018,
+  "records_omitted_from_interim_snapshot": 1018,
+  "records_requested": 1018,
+  "roles": [
+    "TRAIN_STRONG",
+    "TRAIN_WEAK",
+    "MODEL_SELECTION"
+  ],
+  "schema": "sentinel-r4-phase8-bounded-window-selector-experiment-v1",
+  "source_report_sha256": "eefecebab1d8e128f7d30a7e8f607d65da2da723f929bc0dd06de54a356323a0",
+  "strategy_summary_over_cap": {
+    "historical_linspace_v1": {
+      "retained_ratio": {
+        "max": 1.0,
+        "min": 0.020759741923981233,
+        "p50": 0.601010101010101,
+        "p95": 1.0,
+        "p99": 1.0
+      },
+      "target_coverage_ratio": {
+        "max": 1.0,
+        "min": 0.016383089382569285,
+        "p50": 0.6300634455832114,
+        "p95": 1.0,
+        "p99": 1.0
+      }
+    },
+    "target_aware_greedy_v1": {
+      "retained_ratio": {
+        "max": 1.0,
+        "min": 0.02273208455444,
+        "p50": 0.577922077922078,
+        "p95": 1.0,
+        "p99": 1.0
+      },
+      "target_coverage_ratio": {
+        "max": 1.0,
+        "min": 0.03789285979641875,
+        "p50": 0.8687164470473402,
+        "p95": 1.0,
+        "p99": 1.0
+      }
+    },
+    "target_aware_guarded_v1": {
+      "retained_ratio": {
+        "max": 1.0,
+        "min": 0.02273208455444,
+        "p50": 0.577922077922078,
+        "p95": 1.0,
+        "p99": 1.0
+      },
+      "target_coverage_ratio": {
+        "max": 1.0,
+        "min": 0.03789285979641875,
+        "p50": 0.8794466403162056,
+        "p95": 1.0,
+        "p99": 1.0
+      }
+    }
+  },
+  "stride": 256,
+  "token_source_semantics": "repaired_v2_comment_stripped_offset_preserving",
+  "tokenizer_name": "microsoft/graphcodebert-base",
+  "transformers_version": "4.46.3",
+  "window_size": 512
+}
