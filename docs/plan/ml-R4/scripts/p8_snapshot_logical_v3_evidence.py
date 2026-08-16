@@ -31,16 +31,17 @@ GPU_STATUS = "LOGICAL_V3_BOUNDED_RESEARCH_COMPLETE"
 QUEUE_SCHEMA = "sentinel-r4-confirmed-negative-review-queue-v1"
 QUEUE_STATUS = "PILOT_REVIEW_QUEUE_NOT_NEGATIVE_TRUTH"
 QUEUE_EXPECTED_PER_CLASS = 25
-QUEUE_ENABLED_CLASSES = (
-    "CallToUnknown",
-    "DenialOfService",
-    "ExternalBug",
-    "IntegerUO",
-    "MishandledException",
-    "Reentrancy",
-    "Timestamp",
-    "TransactionOrderDependence",
-)
+QUEUE_CLASS_INDEX = {
+    "CallToUnknown": 0,
+    "DenialOfService": 1,
+    "ExternalBug": 2,
+    "IntegerUO": 4,
+    "MishandledException": 5,
+    "Reentrancy": 6,
+    "Timestamp": 7,
+    "TransactionOrderDependence": 8,
+}
+QUEUE_ENABLED_CLASSES = tuple(QUEUE_CLASS_INDEX)
 QUEUE_ALLOWED_OUTCOME_STATES = frozenset({"UNKNOWN", "NOT_REVIEWED"})
 QUEUE_EXPECTED_CELLS = QUEUE_EXPECTED_PER_CLASS * len(QUEUE_ENABLED_CLASSES)
 
@@ -176,11 +177,7 @@ def validate_queue_coherence(
             candidate_ids_ok = False
             continue
         ordinals[class_name].append(ordinal)
-        expected_index = (
-            QUEUE_ENABLED_CLASSES.index(class_name)
-            if class_name in QUEUE_ENABLED_CLASSES
-            else -1
-        )
+        expected_index = QUEUE_CLASS_INDEX.get(class_name, -1)
         structural_rows_ok = structural_rows_ok and (
             row.get("schema") == QUEUE_SCHEMA
             and row.get("dataset_version") == DATASET_VERSION
