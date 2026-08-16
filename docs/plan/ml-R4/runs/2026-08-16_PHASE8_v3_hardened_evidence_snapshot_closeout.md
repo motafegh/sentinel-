@@ -4,7 +4,7 @@
 **Canonical branch:** `main`
 **Logical authority:** R4-D-009 / accepted logical V3
 **Evidence gap:** R4-GAP-007
-**State:** HARDENED V3 RESEARCH EVIDENCE SNAPSHOT COMMITTED
+**State:** HARDENED V3 RESEARCH EVIDENCE SNAPSHOT COMMITTED AND FRESH-CLONE VERIFIED
 **Training:** NOT AUTHORIZED
 **G8:** OPEN
 
@@ -13,6 +13,8 @@
 This record closes the post-acceptance V3 evidence-hardening/regeneration tranche that began in `2026-08-16_PHASE8_v3_evidence_hardening_handoff.md`.
 
 The earlier hardening handoff remains historical execution evidence. Its instruction to regenerate acceptance/sensitivity/selector/queue/GPU reports and then create a final snapshot is now complete and must not be treated as pending work.
+
+A second protected-local audit after the snapshot commit identified three **future-safety / verification** gaps: the snapshot queue predicate could fail open for an empty candidate list or an invalid outcome state, CI did not re-verify the actual committed snapshot from a fresh clone, and one build-stage summary inside the snapshot could be mistaken for current instructions. These findings did not show current-data corruption, model-selection leakage, fabricated negatives, representation corruption, or unauthorized training. The follow-through below closes those verification gaps without rebuilding physical DATA or rerunning CUDA.
 
 ## Canonical evidence boundary
 
@@ -149,9 +151,66 @@ The final helper validated the decision-critical reports against one V3 lineage 
 
 `coherence=PASS` means these evidence files belong to one coherent V3 publication/binding/source state. It does not create negative truth, promote a selector, or authorize training.
 
+## Post-closeout verification follow-through
+
+The second audit reproduced two fail-open cases in the original queue coherence predicate: an empty candidate list could satisfy `all([])`, and a candidate whose `current_outcome_state` was changed to `CONFIRMED_POSITIVE` was not rejected. The committed real queue itself remained valid.
+
+The snapshot verifier is now hardened to require the exact pilot contract:
+
+- exactly 200 candidate cells;
+- exactly eight enabled classes and 25 candidates per class;
+- canonical 10-class indices for the enabled classes: `0,1,2,4,5,6,7,8`;
+- queue ordinals `1..25` within every enabled class;
+- deterministic candidate IDs matching the production queue-ID function;
+- 200 globally unique candidate groups;
+- the reserved-group set exactly matching the candidate-group set;
+- `PENDING_REVIEW`, target `None`, `TRAIN_UNLABELED`, and `negative_truth_claim=false` for every candidate;
+- `current_outcome_state` restricted to `UNKNOWN` or `NOT_REVIEWED`.
+
+Focused regressions now prove that an empty queue, `CONFIRMED_POSITIVE` outcome, invalid candidate ID, and class imbalance all fail closed. The Phase-8 repository regression suite increased from 141 to **145 passing tests**.
+
+Fresh-clone CI now runs:
+
+`docs/plan/ml-R4/scripts/p8_verify_committed_logical_v3_snapshot.py`
+
+against the **actual committed snapshot**, not only synthetic fixtures. The verifier:
+
+1. requires the exact 11-JSON snapshot inventory;
+2. verifies every SHA-256 listed in the original `SHA256SUMS.txt`;
+3. recomputes the strengthened cross-report coherence contract over committed files;
+4. semantically validates the full 200-row queue;
+5. requires the snapshot index/addendum that classifies the early summary correctly;
+6. preserves training and selector-promotion stop lines.
+
+Fresh-clone verification on the committed evidence produced:
+
+- `committed_snapshot=PASS`;
+- `json_checksums_verified=11`;
+- `coherence_checks_recomputed=60`;
+- `queue_cells=200`;
+- `queue_groups=200`;
+- `queue_outcomes={"NOT_REVIEWED": 48, "UNKNOWN": 152}`;
+- evidence source commit `83bd566b9c4f4f653e530c2c0f5c990858dd759d`;
+- `training_authorized=false`;
+- `selector_promotion_authorized=false`.
+
+The same CI validation also passed the 145-test regression suite and historical frozen G6 validation. An intermediate run was red only because the newly added `SNAPSHOT_INDEX.md` used Markdown hard-break trailing spaces; those formatting-only spaces were removed without changing evidence semantics.
+
+### Historical build-stage summary addendum
+
+`logical_v3_summary.json` is intentionally **not rewritten**. It remains a historical build-stage artifact whose recorded status says research regeneration was pending at that earlier point.
+
+`docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/SNAPSHOT_INDEX.md` now explicitly classifies it as:
+
+`HISTORICAL_BUILD_STAGE_SUMMARY`
+
+and directs current readers to the downstream acceptance/sensitivity/selector/GPU/queue/coherence evidence instead. The index is non-destructive contextual metadata added after the original snapshot commit. It is intentionally not retroactively inserted into `SHA256SUMS.txt`; the original checksum ledger continues to bind the exact 11 JSON files from snapshot commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29`.
+
+No physical DATA artifact, snapshot JSON, representation, queue content, selector report, or CUDA result was regenerated for this verification follow-through.
+
 ## Current Phase-8 blockers
 
-The post-acceptance V3 evidence-regeneration blocker is closed.
+The post-acceptance V3 evidence-regeneration and committed-snapshot verification blockers are closed.
 
 The remaining scientific/governance blockers are now:
 
@@ -182,6 +241,7 @@ For current DATA/ML Phase-8 work, read in order:
 2. this closeout;
 3. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md`;
 4. `docs/plan/ml-R4/DECISION_REGISTER.md` and `adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`;
-5. `2026-08-16_PHASE8_v3_evidence_hardening_handoff.md` only as historical execution detail.
+5. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/SNAPSHOT_INDEX.md` for snapshot-internal chronology;
+6. `2026-08-16_PHASE8_v3_evidence_hardening_handoff.md` only as historical execution detail.
 
-The current restart point is **after** coherent V3 snapshot commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29`, not before regeneration.
+The current restart point is **after** coherent V3 snapshot commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29` and after the fresh-clone verification follow-through. R4-GAP-007 is the primary next track; regeneration is not pending.
