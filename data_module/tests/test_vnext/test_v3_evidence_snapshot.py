@@ -18,6 +18,7 @@ BINDING_SHA = "b" * 64
 BINDING_DIGEST = "c" * 64
 SENSITIVITY_SHA = "d" * 64
 SELECTOR_SHA = "e" * 64
+SOURCE_COMMIT = "f" * 40
 
 
 def _payloads():
@@ -69,7 +70,7 @@ def _payloads():
         "partition_version": snapshot.PARTITION_VERSION,
         "publication_manifest_sha256": MANIFEST_SHA,
         "representation_binding_digest_sha256": BINDING_DIGEST,
-        "source_commit": "f" * 40,
+        "source_commit": SOURCE_COMMIT,
     }
     acceptance = {
         "status": "PASS",
@@ -88,6 +89,7 @@ def _payloads():
         "dataset_version": snapshot.DATASET_VERSION,
         "partition_version": snapshot.PARTITION_VERSION,
         "publication_manifest_sha256": MANIFEST_SHA,
+        "source_commit": SOURCE_COMMIT,
         "negative_truth_claim": False,
         "group_uniqueness_scope": "GLOBAL_ACROSS_ENABLED_CLASSES",
         "queued_cells": 2,
@@ -121,6 +123,7 @@ def _payloads():
     }
     gpu = {
         "status": snapshot.GPU_STATUS,
+        "source_commit": SOURCE_COMMIT,
         "dataset_version": snapshot.DATASET_VERSION,
         "grouping_version": snapshot.GROUPING_VERSION,
         "partition_version": snapshot.PARTITION_VERSION,
@@ -152,6 +155,7 @@ def _payloads():
         "selector": selector,
         "selector_sha256": SELECTOR_SHA,
         "gpu": gpu,
+        "current_source_commit": SOURCE_COMMIT,
     }
 
 
@@ -172,4 +176,11 @@ def test_snapshot_coherence_rejects_incomplete_gpu_probes():
     payloads = _payloads()
     payloads["gpu"]["runtime_scope"]["worst_case_probes_completed"] = 3
     with pytest.raises(ValueError, match="gpu_worst_case_probes_complete"):
+        snapshot.validate_snapshot_coherence(**payloads)
+
+
+def test_snapshot_coherence_rejects_mixed_research_source_commit():
+    payloads = _payloads()
+    payloads["queue"]["source_commit"] = "0" * 40
+    with pytest.raises(ValueError, match="research_source_commit_consistent"):
         snapshot.validate_snapshot_coherence(**payloads)
