@@ -18,31 +18,32 @@ Do not treat a stale comment, docstring, README, old plan, old test count, or hi
 
 ### Current stable technical baseline
 
-As of the 2026-08-16 V3 evidence-hardening boundary:
+As of the 2026-08-16 hardened V3 evidence-snapshot closeout:
 
 - canonical `main` has passed historical R4 G0–G7 and remains the active Phase-8 execution line;
 - Phase 8 is `IN_PROGRESS`, not G8-passed;
 - current semantic supervision policy remains `data-vnext-policy-v1`;
-- historical `sentinel-r4-vnext-v1` / `r4-vnext-roles-v1` / graph-schema-v9 G7 evidence remains immutable and reproducible;
+- historical `sentinel-r4-vnext-v1` / `r4-vnext-roles-v1` / graph-schema-v9 G7 evidence remains immutable and reproducible; historical G7 implementation merge `81d9c547d` and tracked candidate status `VALIDATED_G7_CANDIDATE` remain historical anchors;
 - R4-D-008 physically accepts repaired-v2 preprocessing/representations as the reusable physical DATA root: 22,540 contracts / 67,620 graph-token-sidecar files, all physically valid, binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`;
 - repaired physical identities remain `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `representations-r4-v2`, extractor `v2.2-r4-repaired`;
 - V2 address-literal grouping is superseded after a 10,327-contract DIVE component demonstrated over-grouping;
 - R4-D-009 accepts logical authority `r4-leakage-groups-v3`, `r4-vnext-roles-v3`, `sentinel-r4-vnext-v3`, logical build `r4-logical-lineage-v3`;
 - protected local V3 acceptance passed: 22,394 groups, max group size 7, 146 normalized-code edges, zero address-authority edges, unchanged target/strength semantics, all 67,620 physical files valid, and the exact repaired-v2 physical binding digest preserved;
-- V3 family authority is now hardened: normalized-code identity is global; exact artifact identity is global; explicit source-native family/project IDs are source-namespaced as `<source>:<field>:<value>`; arbitrary Ethereum address literals remain diagnostic-only;
+- V3 family authority is hardened: normalized-code identity is global; exact artifact identity is global; explicit source-native family/project IDs are source-namespaced as `<source>:<field>:<value>`; arbitrary Ethereum address literals remain diagnostic-only;
 - the accepted V3 population had zero explicit-family edges, so source-namespacing hardening does not invalidate the accepted V3 grouping artifact;
 - V3 active optimizer supervision remains 932 positive-only effective loss cells;
-- **143 contracts / 142 unique groups is the previously observed combined outcome-metric population across `MODEL_SELECTION` + `INTERNAL_AUDIT`, not the MODEL_SELECTION population**;
-- protected-local audit observed active `MODEL_SELECTION = 71 contracts / 71 groups` and active `INTERNAL_AUDIT = 72 contracts / 71 groups`; these counts must be reproduced by the hardened acceptance rerun before final snapshotting;
-- the ML dataset adapter itself allows `MODEL_SELECTION` only for model-selection loading and does not load `INTERNAL_AUDIT`; the defect was governance/reporting and research-population labeling, not trainer leakage;
-- the earlier V3 sensitivity/CPU-selector/negative-queue/CUDA reports are **pre-hardening observations**. Repository code has been hardened and those affected reports must be regenerated locally before a final durable V3 snapshot;
-- snapshotting now fails closed on cross-report manifest/version/binding/queue/selector/GPU coherence and writes `snapshot_coherence_v1.json` only after a coherent tranche passes;
-- representation sensitivity is now self-identifying by dataset/grouping/partition versions, publication manifest SHA, physical binding digest, and source commit; `MODEL_SELECTION` and `INTERNAL_AUDIT` sensitivity sets are separated;
-- CPU selector evidence is now publication/binding/source-lineage bound;
-- V3 CUDA comparison now requires a sensitivity report from the exact same V3 manifest, physical binding and source commit and records its SHA;
-- confirmed-negative queue generation now enforces global leakage-group uniqueness across enabled classes and fails closed if the requested class balance cannot be satisfied;
-- R4-GAP-007 remains the approved confirmed-negative pilot gap, but **do not adjudicate the pre-hardening queue**; regenerate and inspect it first;
-- no confirmed-negative target exists yet; target `0` remains forbidden without class-specific confirmed-negative evidence;
+- hardened acceptance now durably establishes **143 contracts / 142 unique groups as the combined outcome-metric population across `MODEL_SELECTION` + `INTERNAL_AUDIT`, not the MODEL_SELECTION population**;
+- active `MODEL_SELECTION = 71 contracts / 71 groups`; active `INTERNAL_AUDIT = 72 contracts / 71 groups`;
+- the ML dataset adapter allows `MODEL_SELECTION` only for model-selection loading and does not load `INTERNAL_AUDIT`; the old defect was governance/reporting and research-population labeling, not trainer leakage;
+- the post-acceptance V3 evidence-hardening tranche is complete: acceptance, sensitivity, CPU selector, negative-review queue, and CUDA comparison were regenerated under source commit `83bd566b9c4f4f653e530c2c0f5c990858dd759d`;
+- the final Git-safe evidence snapshot at `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` passed `coherence=PASS`, all listed JSON SHA-256 checks verified `OK`, and was committed at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`;
+- snapshotting fails closed on cross-report manifest/version/binding/queue/selector/GPU/source-commit coherence and writes `snapshot_coherence_v1.json` only after a coherent tranche passes;
+- hardened CPU selector evidence reproduced 1,018 analyzed records / 737 over-cap / 476 improved / 261 equal / 0 regressed / 0 failures;
+- hardened CUDA selector evidence completed identical initialization and 4/4 required worst-case probes, with no Run12 weights, no checkpoint, no selector promotion, and no full-training authorization;
+- the hardened V3 confirmed-negative queue now contains 200 `PENDING_REVIEW` cells across 200 globally unique leakage groups, all target `None`, all `TRAIN_UNLABELED`, `negative_truth_claim=false`;
+- R4-GAP-007 remains the approved confirmed-negative pilot gap and the committed hardened queue is now ready for pilot adjudication; do not use the pre-hardening queue;
+- no confirmed-negative target exists yet; target `0` remains forbidden without class-specific confirmed-negative evidence plus independent agreeing verification;
+- accepted confirmed negatives are evaluation-only unless a later versioned policy grants optimizer authority;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
 - the guarded selector remains unpromoted. Before promotion, add/execute full-population verification that the historical control selector reproduces the currently bound representation token tensors exactly;
 - graph schema remains `v9`, token tensor contract `[4,512]`, architecture `four_eye_v8` / `v8.1`;
@@ -56,12 +57,13 @@ As of the 2026-08-16 V3 evidence-hardening boundary:
 For the exact current DATA/ML restart boundary, read in order:
 
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
-2. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md`;
-3. `docs/plan/ml-R4/DECISION_REGISTER.md`, `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md`, and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`;
-4. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md` as the **pre-hardening historical checkpoint**;
-5. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` for the physical repaired-v2 acceptance boundary.
+2. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`;
+3. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md`, `docs/plan/ml-R4/DECISION_REGISTER.md`, and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`;
+4. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md` only as the **completed historical regeneration procedure**;
+5. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md` as the **pre-hardening historical checkpoint**;
+6. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` for the physical repaired-v2 acceptance boundary.
 
-Do not create the final V3 snapshot from the old local reports. The current controlled work is: sync hardened `main`, regenerate corrected acceptance → sensitivity → CPU selector → globally unique negative queue → CUDA comparison, then run the coherence-gated final snapshot. Do not adjudicate negatives, promote the selector, or launch full training before that regeneration is reviewed.
+Current controlled work starts **after** the coherent V3 snapshot. Primary next track: R4-GAP-007 confirmed-negative pilot adjudication using only the committed hardened queue. Secondary independent track: full-population control-selector → bound-token equivalence evidence before any guarded-selector promotion ADR. Do not infer negatives, silently promote the selector, fit unsupported threshold/calibration roles, reuse Run12 state, or launch full training.
 
 ## Approval model
 
@@ -90,7 +92,7 @@ In Ali's primary Claude Code setup, project memory may exist under:
 
 When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
 
-For the current Phase-8 boundary, committed restart authority is `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md`, governed by accepted R4-D-009 / ADR-R4-009. R4-D-008 remains the physical-data reproducibility root. R4-GAP-007 governs any later confirmed-negative review. If private/local memory is maintained, it should point to these committed boundaries rather than duplicate transient generated counts.
+For the current Phase-8 boundary, committed restart authority is `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`, governed by accepted R4-D-009 / ADR-R4-009. R4-D-008 remains the physical-data reproducibility root. R4-GAP-007 governs confirmed-negative review. If private/local memory is maintained, it should point to these committed boundaries rather than duplicate transient generated counts.
 
 For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 
@@ -170,9 +172,9 @@ Dated audits, experimental reports, `docs/learning/`, and handbook exercises may
 - architecture remains frozen unless a later approved architecture decision changes it;
 - do not overwrite historical or accepted physical DATA/representation artifacts;
 - V3 acceptance proved unchanged semantic counts and the exact same repaired-v2 physical binding digest;
-- post-acceptance research reports must be regenerated under the hardened evidence-lineage code before final snapshot;
-- R4-GAP-007 queue membership is review reservation only, not negative truth or optimizer supervision;
-- selector promotion requires a separate ADR/versioned extractor decision and bound-token control equivalence evidence;
+- hardened post-acceptance V3 research reports have been regenerated coherently and committed in the final Git-safe evidence snapshot;
+- R4-GAP-007 queue membership is review reservation only, not negative truth or optimizer supervision; use only the committed hardened queue for pilot review;
+- selector promotion requires a separate ADR/versioned extractor decision and bound-token control-equivalence evidence;
 - full Phase-8 training remains prohibited until explicit later governance re-authorizes it.
 
 ### AGENTS
