@@ -83,7 +83,7 @@ The accepted population had **zero explicit-family edges**. Therefore the later 
 
 R4-D-009 remains **ACCEPTED**. Logical V3 is the current grouping/role authority for Phase-8 research.
 
-## Post-acceptance evidence hardening — 2026-08-16
+## Post-acceptance evidence hardening — completed 2026-08-16
 
 A protected-local audit of the research/reporting tranche found that:
 
@@ -93,15 +93,56 @@ A protected-local audit of the research/reporting tranche found that:
 - confirmed-negative queue generation did not enforce group uniqueness across classes;
 - explicit source-native family IDs were not source-namespaced.
 
-These defects do **not** reverse V3 logical acceptance or repaired-v2 physical acceptance. Repository hardening now separates selection/audit reporting, binds research reports to the V3 manifest/physical digest/source commit, enforces globally unique queue groups, source-namespaces explicit family IDs, and makes final snapshotting fail closed on cross-report coherence.
+These defects did **not** reverse V3 logical acceptance or repaired-v2 physical acceptance.
 
-The affected protected-local research reports must be regenerated before the final durable V3 evidence snapshot.
+Repository hardening now separates selection/audit reporting, binds research reports to the V3 manifest/physical digest/source commit, enforces globally unique queue groups, source-namespaces explicit family IDs, and makes final snapshotting fail closed on cross-report coherence.
 
-Active restart authority:
+The affected reports were regenerated under hardened source commit:
 
-`runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md`
+`83bd566b9c4f4f653e530c2c0f5c990858dd759d`
 
-The earlier acceptance/research checkpoint remains pre-hardening historical evidence.
+The final Git-safe V3 evidence snapshot then completed with `coherence=PASS`, every listed JSON checksum verified `OK`, and was committed at:
+
+`44fbb9c1d2033be8002fe404d650cf09f08b0f29`
+
+Durable evidence root:
+
+`docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`
+
+Current closeout/restart authority:
+
+`runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`
+
+The earlier acceptance/research checkpoint and evidence-hardening handoff remain historical evidence only.
+
+## Durable corrected research boundary
+
+The hardened acceptance rerun established:
+
+- optimizer-active contracts/groups: 932 / 932;
+- combined outcome-metric population: 143 contracts / 142 unique groups;
+- active `MODEL_SELECTION`: 71 contracts / 71 groups;
+- active `INTERNAL_AUDIT`: 72 contracts / 71 groups;
+- training authorization: false.
+
+The hardened CPU selector rerun reproduced:
+
+- 1,018 records analyzed;
+- 737 over-cap;
+- 476 guarded coverage improvements;
+- 261 equal;
+- 0 regressions;
+- 0 failures.
+
+The hardened negative-review queue contains:
+
+- 200 cells;
+- 200 globally unique leakage groups;
+- all `PENDING_REVIEW`;
+- all target `None`;
+- `negative_truth_claim=false`.
+
+The hardened CUDA comparison completed with identical initialization and 4/4 required worst-case probes, while retaining `selector_promotion_authorized=false` and `full_training_authorized=false`.
 
 ## Consequences
 
@@ -124,6 +165,10 @@ No physical rebuild is authorized by the evidence-hardening work.
 
 Sensitivity, selector, queue, GPU and final-snapshot evidence must be mutually bound to the same V3 publication manifest and physical representation digest. A stale report must fail closed rather than be silently mixed with a newer lineage.
 
+### Confirmed-negative pilot may now begin
+
+R4-GAP-007 remains approved. The committed hardened queue is now the only V3 queue eligible for pilot adjudication. Queue membership is not negative truth, and accepted negatives remain evaluation-only unless a later versioned decision grants optimizer authority.
+
 ### Training remains unauthorized
 
 This decision does not:
@@ -145,8 +190,8 @@ Rollback is artifact selection, not reverse-editing:
 - retain repaired-v2 physical artifacts as the physical reproducibility root;
 - retain accepted V3 logical artifacts as current logical authority;
 - preserve V2 grouping/roles as historical evidence;
-- regenerate stale V3-derived research reports rather than editing them by hand;
-- do not start long training from V2 or from pre-hardening V3 research evidence.
+- regenerate any future stale V3-derived report rather than editing it by hand;
+- do not start long training from V2 or from evidence that fails V3 coherence checks.
 
 ## Evidence
 
@@ -158,6 +203,14 @@ Pre-hardening V3 checkpoint:
 
 `docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md`
 
-Current hardening/restart boundary:
+Completed hardening procedure:
 
 `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md`
+
+Current durable closeout:
+
+`docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`
+
+Final hardened evidence snapshot:
+
+`docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`
