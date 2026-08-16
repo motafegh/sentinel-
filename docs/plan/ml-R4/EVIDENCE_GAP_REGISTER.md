@@ -10,6 +10,7 @@ No new contract review is permitted without an approved gap entry.
 | R4-GAP-004 | BCCC/all classes | 2-tool consensus baseline (Slither+Aderyn intersection) | `consensus.py` skeleton exists but patterns/results are empty; historical BCCC verification evidence recovered | Tool intersection is not ground truth and detector coverage is absent for some classes, including DoS/GasException | Execute only if a later benchmark-role decision specifically requires this baseline | Tier-C benchmark baseline | PROPOSED | Non-blocking future evidence opportunity; not required for first-baseline G4 |
 | R4-GAP-005 | All classes | Echidna/fuzzing-based precision estimates | Full repo search — no Echidna cache or results recovered | No fuzzing evidence, but fuzzing is complementary rather than required to decide current active source roles | Define targeted fuzzing only for a later evaluation/case-study gap | Complementary fuzz evidence | PROPOSED | Non-blocking future evidence opportunity; not required for first-baseline G4 |
 | R4-GAP-006 | All classes | Exploit-reproduction PoC tests | No retained Foundry/Hardhat vulnerability PoC corpus recovered | Functional exploit evidence would strengthen outcome validation but is not the smallest evidence needed for current DATA-source decisions | Create targeted PoCs only for later evidence-qualified evaluation/case studies, not a broad 5–10-per-class Phase-4 program | Outcome-validation/case-study evidence | PROPOSED | Non-blocking future evidence opportunity; not required for first-baseline G4 |
+| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation-design decisions | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tool outputs, R4-GAP-002 review, and V2/V3 pilot-queue mechanics | None of the prior evidence establishes target `0`; historical/source absence is explicitly non-negative, and V2 queue reservations are obsolete after grouping correction | Start with the deterministic V3 pilot queue: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class (200 distinct groups). Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification under `confirmed_negative_evaluation.py`. Use observed pilot yield before expanding; the planning-only zero-FP bound is 59 confirmed negatives/class at 5% max FPR and 95% confidence, not a final gate. | Confirmed-negative **evaluation-only** evidence; any optimizer/training authority requires a separate later policy/ADR | APPROVED | 2026-08-16 — delegated technical approval after V3 acceptance; pilot queue generated cleanly with 200 PENDING_REVIEW cells, all target `None`, all `TRAIN_UNLABELED`, `negative_truth_claim=false`; adjudication not started |
 
 ## R4-GAP-002 closure evidence
 
@@ -23,6 +24,15 @@ No new contract review is permitted without an approved gap entry.
 - interpretation/role decision: `findings/06_gap002_blind_semantic_review.md`
 
 No `DOES_NOT_SUPPORT_POSITIVE` review verdict is a confirmed negative. The Phase-4 result controls source-assertion role only.
+
+## R4-GAP-007 entry evidence and stop line
+
+- current logical authority: R4-D-009 / `sentinel-r4-vnext-v3`;
+- generated queue: `data_module/data/r4-v3-logical-build/confirmed_negative_review_queue_v1.json`;
+- queue state at authorization: 200 cells, 25 per enabled class, 200 reserved groups, all `PENDING_REVIEW`, all target `None`, all role `TRAIN_UNLABELED`, `negative_truth_claim=false`;
+- detailed checkpoint: `runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md`.
+
+Queue membership is a review reservation only. Do not convert source absence, unlabeled state, static-tool silence, or a failed/ambiguous review into target `0`. Accepted negatives remain evaluation-only unless a later versioned decision explicitly grants optimizer authority.
 
 ## Approval delegation note
 
