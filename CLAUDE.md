@@ -22,6 +22,7 @@ As of the 2026-08-16 Phase-8 logical-V3 acceptance/research checkpoint:
 
 - canonical `main` has passed historical R4 G0–G7 and remains the active Phase-8 execution line;
 - Phase 8 is `IN_PROGRESS`, not G8-passed;
+- current semantic supervision policy remains `data-vnext-policy-v1`;
 - historical `sentinel-r4-vnext-v1` / `r4-vnext-roles-v1` / graph-schema-v9 G7 evidence remains immutable and reproducible;
 - R4-D-008 physically accepts repaired-v2 preprocessing/representations as the current reusable physical DATA root: 22,540 contracts / 67,620 graph-token-sidecar files, all physically valid, binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`;
 - repaired physical version identities remain `sentinel-preprocessed-r4-v2`, `r4-provenance-v1`, `evidence-ledger-r4-v2`, `representations-r4-v2`, and extractor `v2.2-r4-repaired`;
