@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from sentinel_data.vnext.confirmed_negative_evaluation import (
     build_review_queue,
     minimum_zero_false_positive_sample_size,
@@ -94,8 +96,41 @@ def test_queue_is_deterministic_and_never_claims_negative_truth():
     assert first == second
     assert first["queued_cells"] == 2
     assert len({row["group_id"] for row in first["candidates"]}) == 2
+    assert first["group_uniqueness_scope"] == "GLOBAL_ACROSS_ENABLED_CLASSES"
     assert all(row["negative_truth_claim"] is False for row in first["candidates"])
     assert all(row["current_target_value"] is None for row in first["candidates"])
+
+
+def test_queue_never_reuses_group_across_classes():
+    rows = [
+        _row("c1", "g1"),
+        _row("c2", "g2"),
+        _row("c3", "g3"),
+    ]
+    queue = build_review_queue(
+        rows,
+        dataset_version="sentinel-r4-vnext-v3",
+        partition_version="r4-vnext-roles-v3",
+        publication_manifest_sha256="b" * 64,
+        enabled_class_names=("Reentrancy", "Timestamp"),
+        per_class=1,
+    )
+    groups = [row["group_id"] for row in queue["candidates"]]
+    assert len(groups) == 2
+    assert len(set(groups)) == 2
+    assert len(queue["reserved_group_ids"]) == queue["queued_cells"]
+
+
+def test_queue_fails_closed_when_global_uniqueness_cannot_satisfy_class_balance():
+    with pytest.raises(ValueError, match="globally distinct group reservations"):
+        build_review_queue(
+            [_row("c1", "g1")],
+            dataset_version="sentinel-r4-vnext-v3",
+            partition_version="r4-vnext-roles-v3",
+            publication_manifest_sha256="c" * 64,
+            enabled_class_names=("Reentrancy", "Timestamp"),
+            per_class=1,
+        )
 
 
 def test_same_reviewer_cannot_self_verify_confirmed_negative():
