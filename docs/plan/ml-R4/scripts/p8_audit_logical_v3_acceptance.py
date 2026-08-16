@@ -9,8 +9,10 @@ counts; it does not authorize training.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -38,6 +40,21 @@ def _load(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _source_commit() -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
+
+
 def _group_stats(payload):
     sizes = sorted(len(group["members"]) for group in payload["groups"])
     return {
@@ -51,13 +68,21 @@ def _group_stats(payload):
 def main() -> int:
     import pyarrow.parquet as pq
 
-    v2_manifest = _load(V2_PUBLICATION / "manifest.json")
-    v3_manifest = _load(V3_PUBLICATION / "manifest.json")
+    v2_manifest_path = V2_PUBLICATION / "manifest.json"
+    v3_manifest_path = V3_PUBLICATION / "manifest.json"
+    v2_manifest = _load(v2_manifest_path)
+    v3_manifest = _load(v3_manifest_path)
     v2_grouping = _load(V2_BUILD / "grouping.json")
     v3_grouping = _load(V3_BUILD / "grouping.json")
     v3_partition = _load(V3_PUBLICATION / "partition_manifest.json")
     v3_binding = _load(V3_PUBLICATION / "representation_binding_report.json")
-    rows = pq.read_table(V3_PUBLICATION / "ml_targets.parquet").to_pylist()
+    ml_targets_path = V3_PUBLICATION / "ml_targets.parquet"
+    expected_ml_sha = ((v3_manifest.get("artifacts") or {}).get("ml_targets") or {}).get(
+        "sha256"
+    )
+    if not expected_ml_sha or _sha256(ml_targets_path) != expected_ml_sha:
+        raise ValueError("logical-v3 acceptance ml_targets.parquet hash mismatch")
+    rows = pq.read_table(ml_targets_path).to_pylist()
 
     active_train_rows = []
     active_train_groups = set()
@@ -152,6 +177,17 @@ def main() -> int:
         "schema": "sentinel-r4-logical-v3-acceptance-v1",
         "status": "PASS" if all(checks.values()) else "FAIL",
         "checks": checks,
+        "lineage": {
+            "dataset_version": v3_manifest.get("dataset_version"),
+            "grouping_version": v3_manifest.get("grouping_version"),
+            "partition_version": v3_manifest.get("partition_version"),
+            "publication_manifest_sha256": _sha256(v3_manifest_path),
+            "representation_binding_digest_sha256": v3_binding.get(
+                "binding_digest_sha256"
+            ),
+            "physical_parent_manifest_sha256": _sha256(v2_manifest_path),
+            "source_commit": _source_commit(),
+        },
         "physical_rebuild_performed": False,
         "training_authorized": False,
         "versions": {
