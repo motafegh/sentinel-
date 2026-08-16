@@ -16,6 +16,7 @@ def _row(
     role="TRAIN_STRONG",
     optimizer=False,
     selection=False,
+    audit=False,
 ):
     return {
         "contract_id": contract_id,
@@ -28,6 +29,7 @@ def _row(
         "pre_subsampling_window_count": windows,
         "optimizer_active": optimizer,
         "model_selection_active": selection,
+        "internal_audit_active": audit,
     }
 
 
@@ -45,15 +47,24 @@ def test_profiler_builds_exact_compatibility_and_file_union_sets():
                 role="MODEL_SELECTION",
                 selection=True,
             ),
+            _row(
+                "compat-audit",
+                mode="slither_parse_only",
+                role="INTERNAL_AUDIT",
+                audit=True,
+            ),
             _row("normal", optimizer=True),
         ]
     )
     sets = report["comparison_sets"]
     assert sets["optimizer_compatibility_contract_ids"] == ["compat-train"]
     assert sets["model_selection_compatibility_contract_ids"] == []
+    assert sets["internal_audit_compatibility_contract_ids"] == ["compat-audit"]
     assert sets["optimizer_file_union_contract_ids"] == []
     assert sets["model_selection_file_union_contract_ids"] == ["union-selection"]
+    assert sets["internal_audit_file_union_contract_ids"] == []
     assert "compat-train" in sets["worst_case_gpu_contract_ids"]
+    assert "compat-audit" not in sets["worst_case_gpu_contract_ids"]
 
 
 def test_worst_case_gpu_candidates_cover_distinct_active_extremes():
@@ -63,6 +74,14 @@ def test_worst_case_gpu_candidates_cover_distinct_active_extremes():
             _row("edge-max", nodes=10, edges=2000, windows=1, optimizer=True),
             _row("component-max", components=20, windows=1, optimizer=True),
             _row("window-max", windows=300, optimizer=True),
+            _row(
+                "audit-only-max",
+                nodes=5000,
+                edges=5000,
+                windows=500,
+                role="INTERNAL_AUDIT",
+                audit=True,
+            ),
         ],
         top_n=4,
     )
