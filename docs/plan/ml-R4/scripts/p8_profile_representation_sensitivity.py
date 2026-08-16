@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Profile repaired-v2 compatibility/file-union/worst-case sensitivity sets.
+"""Profile repaired Phase-8 compatibility/file-union/worst-case sensitivity sets.
 
 The output is read-only research evidence. It identifies exact contracts for
 bounded exclusion/down-weighting and worst-case GPU comparisons without
-changing the accepted repaired-v2 representation lineage.
+changing the accepted repaired representation lineage. The report is
+self-identifying: publication versions/hash, physical binding digest and source
+commit are recorded so stale reports cannot be mixed silently.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -29,6 +33,21 @@ DEFAULT_REPRESENTATIONS = DATA_ROOT / "representations-r4-v2"
 DEFAULT_OUTPUT = DATA_ROOT / "r4-v2-build/representation_sensitivity_v1.json"
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _source_commit() -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--overlay", type=Path, default=DEFAULT_OVERLAY)
@@ -43,12 +62,30 @@ def main() -> int:
 
     import pyarrow.parquet as pq
 
-    rows = pq.read_table(args.overlay / "ml_targets.parquet").to_pylist()
+    manifest_path = args.overlay / "manifest.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(manifest_path)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    binding = manifest.get("representation_binding_report") or {}
+    binding_digest = str(binding.get("binding_digest_sha256") or "")
+    if not binding_digest:
+        raise ValueError("sensitivity overlay manifest lacks representation binding digest")
+
+    ml_targets_path = args.overlay / "ml_targets.parquet"
+    expected_ml_sha = ((manifest.get("artifacts") or {}).get("ml_targets") or {}).get(
+        "sha256"
+    )
+    if not expected_ml_sha or _sha256(ml_targets_path) != expected_ml_sha:
+        raise ValueError("sensitivity overlay ml_targets.parquet hash mismatch")
+
+    rows = pq.read_table(ml_targets_path).to_pylist()
     records: list[dict] = []
     missing: list[dict[str, str]] = []
+    unexpected_metric_roles: set[str] = set()
     for row in rows:
         contract_id = str(row["contract_id"])
         source = str(row["source"])
+        role = str(row["role"])
         sidecar_path = (
             args.representations_root / source / f"{contract_id}.rep.json"
         )
@@ -66,10 +103,14 @@ def main() -> int:
             bool(row.get(f"effective_loss_mask_{index}"))
             for index in range(len(CLASS_NAMES))
         )
-        selection_active = any(
+        metric_active = any(
             bool(row.get(f"outcome_metric_mask_{index}"))
             for index in range(len(CLASS_NAMES))
         )
+        if metric_active and role not in {"MODEL_SELECTION", "INTERNAL_AUDIT"}:
+            unexpected_metric_roles.add(role)
+        model_selection_active = metric_active and role == "MODEL_SELECTION"
+        internal_audit_active = metric_active and role == "INTERNAL_AUDIT"
 
         mode_value = sidecar.get("graph_extraction_mode")
         mode_inferred = mode_value is None
@@ -92,9 +133,10 @@ def main() -> int:
             {
                 "contract_id": contract_id,
                 "source": source,
-                "role": str(row["role"]),
+                "role": role,
                 "optimizer_active": optimizer_active,
-                "model_selection_active": selection_active,
+                "model_selection_active": model_selection_active,
+                "internal_audit_active": internal_audit_active,
                 "graph_extraction_mode": graph_mode,
                 "graph_extraction_mode_inferred_legacy_standard": mode_inferred,
                 "graph_analysis_degraded": sidecar.get(
@@ -115,8 +157,21 @@ def main() -> int:
             "representation sensitivity requires complete bound sidecars; "
             f"missing={len(missing)} preview={missing[:5]}"
         )
+    if unexpected_metric_roles:
+        raise ValueError(
+            "outcome metric masks appear on unexpected roles: "
+            f"{sorted(unexpected_metric_roles)}"
+        )
 
     report = profile_representation_records(records, top_n=args.top_n)
+    report["lineage"] = {
+        "dataset_version": manifest.get("dataset_version"),
+        "grouping_version": manifest.get("grouping_version"),
+        "partition_version": manifest.get("partition_version"),
+        "publication_manifest_sha256": _sha256(manifest_path),
+        "representation_binding_digest_sha256": binding_digest,
+        "source_commit": _source_commit(),
+    }
     report["overlay"] = str(args.overlay)
     report["representations_root"] = str(args.representations_root)
     report["full_training_authorized"] = False
