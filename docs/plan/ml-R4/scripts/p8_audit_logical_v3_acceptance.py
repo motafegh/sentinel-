@@ -60,11 +60,19 @@ def main() -> int:
     rows = pq.read_table(V3_PUBLICATION / "ml_targets.parquet").to_pylist()
 
     active_train_rows = []
-    active_selection_rows = []
     active_train_groups = set()
-    active_selection_groups = set()
     active_train_roles = Counter()
+
+    outcome_metric_rows = []
+    outcome_metric_groups = set()
+    outcome_metric_roles = Counter()
+    model_selection_rows = []
+    model_selection_groups = set()
+    internal_audit_rows = []
+    internal_audit_groups = set()
+
     for row in rows:
+        role = str(row["role"])
         loss_active = any(
             bool(row.get(f"effective_loss_mask_{index}"))
             for index in range(len(CLASS_NAMES))
@@ -76,10 +84,17 @@ def main() -> int:
         if loss_active:
             active_train_rows.append(row)
             active_train_groups.add(str(row["group_id"]))
-            active_train_roles[str(row["role"])] += 1
+            active_train_roles[role] += 1
         if metric_active:
-            active_selection_rows.append(row)
-            active_selection_groups.add(str(row["group_id"]))
+            outcome_metric_rows.append(row)
+            outcome_metric_groups.add(str(row["group_id"]))
+            outcome_metric_roles[role] += 1
+            if role == "MODEL_SELECTION":
+                model_selection_rows.append(row)
+                model_selection_groups.add(str(row["group_id"]))
+            elif role == "INTERNAL_AUDIT":
+                internal_audit_rows.append(row)
+                internal_audit_groups.add(str(row["group_id"]))
 
     batch_size = 8
     accumulation = 8
@@ -97,6 +112,8 @@ def main() -> int:
         "binding_digest_sha256"
     )
 
+    metric_roles = set(outcome_metric_roles)
+    expected_metric_roles = {"MODEL_SELECTION", "INTERNAL_AUDIT"}
     checks = {
         "dataset_version_v3": v3_manifest.get("dataset_version") == DATASET_VERSION_V3,
         "grouping_version_v3": v3_manifest.get("grouping_version") == GROUPING_VERSION_V3,
@@ -127,6 +144,8 @@ def main() -> int:
             "confirmed_negative_rows"
         )
         == 0,
+        "outcome_metric_roles_are_selection_or_audit_only": metric_roles
+        <= expected_metric_roles,
     }
 
     report = {
@@ -152,8 +171,13 @@ def main() -> int:
             "optimizer_contracts": len(active_train_rows),
             "optimizer_groups": len(active_train_groups),
             "optimizer_contracts_by_role": dict(sorted(active_train_roles.items())),
-            "model_selection_contracts": len(active_selection_rows),
-            "model_selection_groups": len(active_selection_groups),
+            "outcome_metric_contracts": len(outcome_metric_rows),
+            "outcome_metric_groups": len(outcome_metric_groups),
+            "outcome_metric_contracts_by_role": dict(sorted(outcome_metric_roles.items())),
+            "model_selection_contracts": len(model_selection_rows),
+            "model_selection_groups": len(model_selection_groups),
+            "internal_audit_contracts": len(internal_audit_rows),
+            "internal_audit_groups": len(internal_audit_groups),
             "effective_loss_cells": v3_manifest.get("effective_loss_cells"),
             "outcome_metric_cells": v3_manifest.get("outcome_metric_cells"),
         },
@@ -165,8 +189,10 @@ def main() -> int:
         },
         "decision_boundary": (
             "PASS accepts the corrected logical V3 grouping/partition over the existing "
-            "physical repaired artifacts. It does not promote the target-aware selector, "
-            "create confirmed-negative truth, select a PU objective, or authorize full training."
+            "physical repaired artifacts. MODEL_SELECTION and INTERNAL_AUDIT outcome-metric "
+            "populations are reported separately. PASS does not promote the target-aware "
+            "selector, create confirmed-negative truth, select a PU objective, or authorize "
+            "full training."
         ),
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
