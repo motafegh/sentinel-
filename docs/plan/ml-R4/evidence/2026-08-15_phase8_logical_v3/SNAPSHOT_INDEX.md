@@ -1,8 +1,8 @@
 # Logical V3 evidence snapshot index / addendum
 
-**Snapshot root:** `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`  
-**Original snapshot commit:** `44fbb9c1d2033be8002fe404d650cf09f08b0f29`  
-**Original JSON checksum ledger:** `SHA256SUMS.txt`  
+**Snapshot root:** `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`
+**Original snapshot commit:** `44fbb9c1d2033be8002fe404d650cf09f08b0f29`
+**Original JSON checksum ledger:** `SHA256SUMS.txt`
 **Current interpretation:** hardened post-regeneration V3 evidence; training and selector promotion remain unauthorized.
 
 ## Why this addendum exists
