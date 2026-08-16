@@ -100,7 +100,8 @@ jobs:
             docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare.py \
             docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare_v3.py \
             docs/plan/ml-R4/scripts/p8_snapshot_research_evidence.py \
-            docs/plan/ml-R4/scripts/p8_snapshot_logical_v3_evidence.py
+            docs/plan/ml-R4/scripts/p8_snapshot_logical_v3_evidence.py \
+            docs/plan/ml-R4/scripts/p8_verify_committed_logical_v3_snapshot.py
 
       - name: Run repaired and Phase-8 research regression suite
         env:
@@ -128,6 +129,10 @@ jobs:
             data_module/tests/test_vnext/test_logical_v3_ml_adapter.py \
             data_module/tests/test_vnext/test_confirmed_negative_evaluation.py \
             data_module/tests/test_vnext/test_v3_evidence_snapshot.py
+
+      - name: Verify committed logical-V3 snapshot from fresh clone
+        run: |
+          python docs/plan/ml-R4/scripts/p8_verify_committed_logical_v3_snapshot.py
 
       - name: Prove frozen historical G6 artifacts still validate
         env:
