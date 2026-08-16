@@ -1,7 +1,7 @@
 # ADR-R4-009 — Correct leakage grouping with logical lineage V3
 
 **Date:** 2026-08-15
-**Status:** ACCEPTED FOR LOCAL VALIDATION
+**Status:** ACCEPTED
 **Decision ID:** R4-D-009
 **Scope:** Phase-8 leakage grouping, role partitioning, evaluation reservations, and future training population
 
@@ -58,6 +58,33 @@ Local V3 acceptance must prove all of the following:
 - frozen graph schema v9 and token tensor shape `[4,512]` remain unchanged;
 - architecture `four_eye_v8` / `v8.1` remains frozen.
 
+## Validation outcome — 2026-08-16
+
+Protected local execution completed all logical V3 acceptance stages successfully.
+
+Observed acceptance facts:
+
+- contracts / contract×class rows: 22,540 / 225,400, unchanged;
+- positive / unknown / confirmed-negative targets: 1,080 / 224,320 / 0, unchanged;
+- STRONG / WEAK semantic cells: 474 / 606, unchanged;
+- V3 groups: 22,394;
+- maximum V3 group size: 7;
+- normalized-code grouping edges: 146;
+- address literals observed: 14,851;
+- address-authority grouping edges: 0;
+- V2 10,327-contract giant component removed;
+- representation files checked: 67,620;
+- physical representation binding digest:
+  `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`;
+- digest matches accepted repaired-v2: true;
+- physical rebuild performed: false.
+
+R4-D-009 is therefore promoted from `ACCEPTED_FOR_LOCAL_VALIDATION` to **ACCEPTED**. Logical V3 is the current Phase-8 grouping/role authority for future model research. This acceptance still does not authorize full training or any selector/objective promotion.
+
+Detailed acceptance and regenerated research results are recorded in:
+
+`runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md`.
+
 ## Consequences
 
 ### V2 remains historical evidence
@@ -66,25 +93,25 @@ Do not rewrite or delete `r4-leakage-groups-v2`, `r4-vnext-roles-v2`, or `sentin
 
 ### V2 research outputs become population-specific historical evidence
 
-The following V2 outputs remain useful diagnostics but are not future decision authority after V3 is accepted:
+The following V2 outputs remain useful diagnostics but are not future decision authority after V3 acceptance:
 
 - V2 confirmed-negative review queue;
 - V2 selector population statistics;
 - V2 representation sensitivity role sets;
 - V2 selector CUDA comparison.
 
-They must be regenerated against V3 roles before manual negative adjudication, selector promotion, exclusion/down-weighting decisions, or training-horizon binding.
+They were regenerated against V3 roles before any future manual negative adjudication, selector promotion, exclusion/down-weighting decision, or training-horizon binding.
 
 ### No physical rebuild
 
-V3 must reuse:
+V3 reuses:
 
 - `sentinel-preprocessed-r4-v2`;
 - `r4-provenance-v1` / repaired source claims;
 - `evidence-ledger-r4-v2` as role-independent semantic evidence;
 - `representations-r4-v2` / extractor `v2.2-r4-repaired`.
 
-If V3 changes any physical representation hash, the logical-only migration assumption has failed and the attempt must stop for investigation.
+The accepted V3 logical migration preserved the repaired-v2 physical binding digest exactly.
 
 ### Training remains unauthorized
 
@@ -100,25 +127,29 @@ G8 remains open.
 
 ## Migration
 
-Execute the versioned V3 logical rebuild and acceptance sequence documented in:
+The versioned V3 logical rebuild and acceptance sequence documented in
 
-`runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md`.
+`runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md`
 
-After V3 acceptance, regenerate the negative-review queue, selector coverage experiment, representation sensitivity profile, and identical-initialization CUDA comparison with required worst-case probes.
+has completed locally. Role-dependent representation sensitivity, selector coverage, confirmed-negative pilot-queue generation, and identical-initialization CUDA selector comparison were regenerated under V3. Final Git-safe evidence snapshotting remains a repository/evidence packaging step, not an acceptance prerequisite already satisfied by the protected local gate.
 
 ## Rollback
 
 Rollback is artifact selection, not reverse-editing:
 
 - retain repaired-v2 physical artifacts as the physical reproducibility root;
-- discard/archive an unsuccessful V3 generated attempt only;
+- retain accepted V3 logical artifacts/evidence as the current logical authority;
 - do not mutate V2 grouping, roles, publication, or evidence snapshots;
-- do not start long training from V2 merely because V3 validation fails.
+- do not start long training from V2 merely because a later V3-derived experiment fails.
 
 ## Evidence
 
-Primary triggering evidence:
+Primary triggering V2 evidence:
 
 `docs/plan/ml-R4/evidence/2026-08-15_phase8_research/grouping_breadth_audit_v1.json`
 
 Key observed V2 condition: largest group = 10,327 contracts, with 18,213 address-derived edges and 999 address keys.
+
+Primary V3 acceptance/research checkpoint:
+
+`docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md`
