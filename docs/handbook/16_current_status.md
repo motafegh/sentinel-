@@ -69,6 +69,17 @@ valid physical DATA
 | 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 accepted; V3 research code hardened; protected-local research reports require coherent regeneration; full training unauthorized |
 | 9–10 | WAITING | evaluation/calibration/promotion remain gated by G8 and missing evidence |
 
+### Historical G7 validation anchors
+
+The handbook intentionally preserves the historical G7 machine-validation anchors because later Phase-8 lineages must not erase them:
+
+- historical G7 implementation merge: `81d9c547d`;
+- historical tracked publication status: `VALIDATED_G7_CANDIDATE`;
+- historical G7 representation binding digest: `7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420`;
+- historical G7 contracts / representation files: 22,493 / 64,971.
+
+These anchors are historical reproducibility facts, not current Phase-8 DATA/ML authority.
+
 ### Repaired-v2 physical acceptance
 
 Current physical root:
@@ -160,7 +171,7 @@ Repository code now enforces:
 - confirmed-negative queue groups are globally unique across enabled classes and queue generation fails closed if balanced uniqueness cannot be satisfied;
 - explicit family IDs are source-namespaced;
 - CUDA selector comparison rejects a sensitivity report from another manifest/binding/source commit and records the sensitivity-report SHA;
-- final snapshotting validates cross-report coherence **before** copying evidence and writes `snapshot_coherence_v1.json` only on PASS.
+- final snapshotting validates cross-report manifest/version/binding/**source-commit** coherence before copying evidence and writes `snapshot_coherence_v1.json` only on PASS.
 
 ### Pre-hardening research observations
 
@@ -193,15 +204,7 @@ Current source authority still contains zero confirmed negatives.
 
 R4-GAP-007 authorizes class-specific dual-review negative evaluation work. The pre-hardening queue observed 200 `PENDING_REVIEW` cells across 200 distinct groups, but it must be regenerated because the implementation now **guarantees** global group uniqueness and records stronger lineage.
 
-Queue membership remains review reservation only. Never infer negative truth from:
-
-- historical zero;
-- unlabeled state;
-- source silence;
-- static-tool silence;
-- queue membership.
-
-Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY`.
+Queue membership remains review reservation only. Never infer negative truth from historical zero, unlabeled state, source silence, static-tool silence, or queue membership. Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY`.
 
 ## Interfaces, data shapes, and configuration
 
@@ -250,7 +253,7 @@ confirmed negatives  = 0
 
 ### Evidence coherence
 
-The final V3 snapshot must fail if acceptance, sensitivity, queue, selector or GPU evidence references a different publication manifest, physical binding, version, or required dependency. Do not hand-edit reports to make coherence pass.
+The final V3 snapshot must fail if acceptance, sensitivity, queue, selector or GPU evidence references a different publication manifest, physical binding, source commit, version, or required dependency. Do not hand-edit reports to make coherence pass.
 
 ### Supervision / evaluation
 
@@ -310,7 +313,7 @@ Historical G6 validation:
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-Protected local regeneration commands are intentionally centralized in:
+Protected local regeneration commands are centralized in:
 
 `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md`.
 
@@ -346,17 +349,7 @@ successful optimization ≠ trustworthy model quality
 
 ## Prerequisite knowledge
 
-To own this phase technically, understand:
-
-- multi-label classification and nullable/masked targets;
-- positive-only versus confirmed-negative supervision;
-- leakage groups and group-atomic splits;
-- union-find / connected-component grouping;
-- provenance versus heuristic correlation;
-- deterministic dataset/hash binding;
-- train vs MODEL_SELECTION vs INTERNAL_AUDIT roles;
-- token truncation/window selection;
-- why a CUDA smoke/comparison proves mechanics rather than model discrimination.
+To own this phase technically, understand multi-label classification and nullable/masked targets; positive-only versus confirmed-negative supervision; leakage groups and group-atomic splits; union-find grouping; provenance versus heuristic correlation; deterministic dataset/hash binding; train vs MODEL_SELECTION vs INTERNAL_AUDIT roles; token window selection; and why a CUDA smoke/comparison proves mechanics rather than model discrimination.
 
 PU-learning theory remains deferred until negative-evaluation evidence and objective design are ready.
 
@@ -376,13 +369,7 @@ Current reading order:
 
 ## Execution trace and worked example
 
-Two unrelated contracts may both contain WETH or a router address. Under V3 that overlap is diagnostic only and creates no group edge.
-
-Two contracts with identical normalized code may group globally.
-
-Two contracts in the same source with `project_id=7` may group using `source:project_id:7`.
-
-A contract in another source that also uses `project_id=7` does **not** group through that local identifier alone.
+Two unrelated contracts may both contain WETH or a router address. Under V3 that overlap is diagnostic only and creates no group edge. Two contracts with identical normalized code may group globally. Two contracts in the same source with `project_id=7` may group using `source:project_id:7`; another source using `project_id=7` does not group through that local identifier alone.
 
 Similarly, `outcome_metric_mask=true` does not itself mean “MODEL_SELECTION”: the role must be inspected. `INTERNAL_AUDIT` is a separate population.
 
@@ -390,13 +377,13 @@ Similarly, `outcome_metric_mask=true` does not itself mean “MODEL_SELECTION”
 
 Useful regression fixtures now include:
 
-- two contracts sharing a common Ethereum address → separate groups;
+- shared common Ethereum address → separate groups;
 - same normalized code across sources → same group;
 - same explicit family ID within one source → same group;
 - same explicit family ID across different sources → separate groups;
 - queue candidates across multiple classes → globally distinct groups;
-- snapshot inputs with a stale manifest hash → snapshot rejected;
-- snapshot inputs with incomplete GPU probes → snapshot rejected.
+- snapshot inputs with stale manifest/source commit → rejected;
+- snapshot inputs with incomplete GPU probes → rejected.
 
 ## Review and ownership check
 
@@ -407,7 +394,7 @@ Before proceeding, be able to answer:
 - Why does the trainer remain leakage-safe from INTERNAL_AUDIT despite that reporting bug?
 - Why must explicit source-native IDs be source-namespaced?
 - Why must the queue reserve groups globally, not only per class?
-- Why must final snapshotting validate manifest/binding/report coherence?
+- Why must final snapshotting validate manifest/binding/source/report coherence?
 - Why can positive-only selector CUDA evidence not establish false-positive discrimination?
 - What must be regenerated before the final V3 snapshot?
 
