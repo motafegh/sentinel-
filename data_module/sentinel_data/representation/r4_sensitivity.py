@@ -53,8 +53,10 @@ def profile_representation_records(
 
     optimizer_compat: list[str] = []
     selection_compat: list[str] = []
+    audit_compat: list[str] = []
     optimizer_union: list[str] = []
     selection_union: list[str] = []
+    audit_union: list[str] = []
 
     for row in rows:
         contract_id = str(row["contract_id"])
@@ -98,16 +100,21 @@ def profile_representation_records(
 
         optimizer_active = bool(row.get("optimizer_active"))
         selection_active = bool(row.get("model_selection_active"))
+        audit_active = bool(row.get("internal_audit_active"))
         compat = mode != FULL_ANALYSIS
         file_union = components > 1
         if compat and optimizer_active:
             optimizer_compat.append(contract_id)
         if compat and selection_active:
             selection_compat.append(contract_id)
+        if compat and audit_active:
+            audit_compat.append(contract_id)
         if file_union and optimizer_active:
             optimizer_union.append(contract_id)
         if file_union and selection_active:
             selection_union.append(contract_id)
+        if file_union and audit_active:
+            audit_union.append(contract_id)
 
     def _summary_row(row: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -126,6 +133,7 @@ def profile_representation_records(
             ),
             "optimizer_active": bool(row.get("optimizer_active")),
             "model_selection_active": bool(row.get("model_selection_active")),
+            "internal_audit_active": bool(row.get("internal_audit_active")),
         }
 
     def top(metric: str) -> list[dict[str, Any]]:
@@ -138,6 +146,9 @@ def profile_representation_records(
         )[:top_n]
         return [_summary_row(row) for row in ordered]
 
+    # Worst-case GPU probes exercise populations that the bounded selector
+    # experiment actually loads: optimizer roles plus MODEL_SELECTION. INTERNAL_AUDIT
+    # remains a separate evaluation/audit population and is reported separately.
     active_rows = [
         row
         for row in rows
@@ -204,8 +215,10 @@ def profile_representation_records(
         "comparison_sets": {
             "optimizer_compatibility_contract_ids": sorted(optimizer_compat),
             "model_selection_compatibility_contract_ids": sorted(selection_compat),
+            "internal_audit_compatibility_contract_ids": sorted(audit_compat),
             "optimizer_file_union_contract_ids": sorted(optimizer_union),
             "model_selection_file_union_contract_ids": sorted(selection_union),
+            "internal_audit_file_union_contract_ids": sorted(audit_union),
             "worst_case_gpu_contract_ids": worst_case_ids,
             "worst_case_active_contract_ids_by_metric": worst_case_by_metric,
         },
@@ -214,11 +227,12 @@ def profile_representation_records(
         "top_by_components": top("graph_component_count"),
         "top_by_windows": top("pre_subsampling_window_count"),
         "decision_boundary": (
-            "These sets are for bounded sensitivity/GPU comparisons. Legacy "
-            "standard/full-analysis mode inference is reported explicitly and "
-            "does not change repaired-v2 acceptance. Excluding or down-weighting "
-            "comparison sets in a promoted training lineage requires a new "
-            "explicit policy/representation decision."
+            "These sets are for bounded sensitivity/GPU comparisons. MODEL_SELECTION "
+            "and INTERNAL_AUDIT are reported separately; worst-case selector GPU probes "
+            "use optimizer-active or MODEL_SELECTION rows only. Legacy standard/full-analysis "
+            "mode inference is reported explicitly and does not change repaired-v2 acceptance. "
+            "Excluding or down-weighting comparison sets in a promoted training lineage requires "
+            "a new explicit policy/representation decision."
         ),
     }
 
