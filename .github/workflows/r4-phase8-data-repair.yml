@@ -73,7 +73,9 @@ jobs:
           python -m pip install --disable-pip-version-check \
             pytest 'numpy==1.26.4' 'pyarrow==19.0.1' \
             'torch==2.10.0' 'torch-geometric==2.7.0' \
-            'transformers==4.46.3' loguru
+            'transformers==4.46.3' loguru \
+            'fastapi==0.115.14' 'httpx==0.27.2' \
+            'prometheus-fastapi-instrumentator==7.1.0'
 
       - name: Compile repaired DATA, ML, token, and research modules
         run: |
