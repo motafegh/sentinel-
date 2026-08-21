@@ -1,12 +1,12 @@
 # Phase-8 R4-GAP-007 candidate #1 local handoff
 
-**Date:** 2026-08-21  
-**Canonical branch target:** `main`  
-**Physical DATA authority:** R4-D-008 / repaired-v2  
-**Logical authority:** R4-D-009 / accepted logical V3  
-**Evidence gap:** R4-GAP-007  
-**State:** PILOT IN PROGRESS — candidate #1 partial primary review only  
-**Training:** NOT AUTHORIZED  
+**Date:** 2026-08-21
+**Canonical branch target:** `main`
+**Physical DATA authority:** R4-D-008 / repaired-v2
+**Logical authority:** R4-D-009 / accepted logical V3
+**Evidence gap:** R4-GAP-007
+**State:** PILOT IN PROGRESS — candidate #1 partial primary review only
+**Training:** NOT AUTHORIZED
 **G8:** OPEN
 
 ## Purpose
