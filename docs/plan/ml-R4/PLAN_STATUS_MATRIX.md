@@ -1,6 +1,6 @@
 # R4 Plan Status Matrix
 
-**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for the immutable `sentinel-r4-vnext-v1` lineage. Phase 8 is still `IN_PROGRESS`. Repaired-v2 physical source/representation evidence remains accepted under R4-D-008. Corrected logical V3 remains accepted under R4-D-009. The 2026-08-16 evidence-hardening/regeneration tranche is complete: the hardened acceptance, sensitivity, CPU selector, confirmed-negative queue, CUDA comparison, and final coherence-gated Git-safe snapshot were regenerated and committed at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. R4-GAP-007 pilot adjudication has now started from that committed hardened queue. Candidate #1 (`CallToUnknown`) is under partial primary review only; no verdict, target change, or independent verification exists yet. G8 remains open and the 100-epoch retrain is not authorized.
+**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for the immutable `sentinel-r4-vnext-v1` lineage. Phase 8 is still `IN_PROGRESS`. Repaired-v2 physical source/representation evidence remains accepted under R4-D-008, and corrected logical V3 remains accepted under R4-D-009. The hardened 2026-08-16 Git-safe snapshot remains the accepted pre-pilot evidence boundary at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. R4-GAP-007 pilot adjudication is in progress: candidate #1 (`CallToUnknown`) is `NOT_CONFIRMED`; candidate #2 primary review supports `CONFIRMED_NEGATIVE` but still requires genuinely independent agreement, so confirmed negatives remain zero. R4-D-010 preserves v9 for historical reproduction while prohibiting its use for the new full run. The v10 implementation, bounded regressions, full 22,540-candidate generation/binding, and independent transition mechanics pass. Physical acceptance is rejected for now under R4-B008 because 26 parse-only compatibility contracts lack complete call IR. G8 is open and the 100-epoch retrain is not authorized.
 
 | Phase | File | Status | Entry condition | Exit gate | Notes |
 |---:|---|---|---|---|---|
@@ -12,7 +12,7 @@
 | 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED | G4 | G5 | `data-vnext-policy-v1`; eight classes enabled, GasException/UnusedReturn disabled; no blanket negatives; G5 PASS |
 | 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | PASSED | G5 | G6 | Historical `r4-vnext-roles-v1` frozen; threshold/calibration/untouched acceptance unsupported/empty; G6 PASS |
 | 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED | G6 | G7 | Historical `sentinel-r4-vnext-v1` / 21,657 representations / 64,971 files passed G7; immutable historical evidence |
-| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repaired-v2 physical DATA accepted; logical V3 accepted; post-acceptance evidence hardening/verification closed. R4-GAP-007 pilot is now IN_PROGRESS from the committed hardened queue; candidate #1 has partial primary review only and remains UNKNOWN/PENDING_REVIEW. Selector promotion remains separate and full training is unauthorized. |
+| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repaired-v2 physical DATA and logical V3 remain accepted evidence. Candidate #1 closed `NOT_CONFIRMED`; candidate #2 primary supports a negative but awaits independent verification. R4-D-010 withdraws v9 from new-training eligibility and requires a versioned v10 candidate plus local acceptance. Selector promotion remains separate and full training is unauthorized. |
 | 9 | `phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md` | WAITING | G8 | G9 | Current threshold/calibration support remains unavailable |
 | 10 | `phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md` | WAITING | G9 | G10 | Untouched acceptance remains unsupported/empty/frozen |
 
@@ -21,14 +21,15 @@
 | Layer | State | Meaning |
 |---|---|---|
 | Historical v1 / G7 | PASSED / immutable | `sentinel-r4-vnext-v1`, `r4-vnext-roles-v1`, graph schema v9 remain reproducible historical evidence |
-| Repaired-v2 physical source/representations | ACCEPTED / immutable evidence | 22,540 contracts; 67,620 graph/token/sidecar files; zero missing/invalid; physical binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd` |
+| Repaired-v2 physical source/representations | ACCEPTED / immutable historical and reproducibility evidence | 22,540 contracts; 67,620 graph/token/sidecar files; zero missing/invalid; physical binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`; v9 is not eligible for a new full run under R4-D-010 |
 | Repaired-v2 grouping/roles | SUPERSEDED FOR FUTURE RESEARCH | V2 address-literal grouping produced a 10,327-contract DIVE component; keep only as historical logical evidence |
 | Logical V3 grouping/roles/publication | ACCEPTED | 22,394 groups; max group size 7; 146 normalized-code edges; zero address-authority edges; semantic counts and physical binding unchanged |
 | V3 evidence implementation | HARDENED | MODEL_SELECTION/INTERNAL_AUDIT reporting separated; snapshot coherence fail-closed; sensitivity/selector/queue reports lineage-bound; queue globally group-unique; explicit source-family IDs source-namespaced |
 | Hardened protected-local V3 research | REGENERATED / DURABLE SNAPSHOT COMMITTED | Acceptance, sensitivity, CPU selector, globally unique queue, and CUDA comparison all regenerated from source commit `83bd566b9...`; final snapshot at `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` passed coherence and SHA verification and was committed at `44fbb9c1d...` |
-| Confirmed-negative evaluation | IN_PROGRESS | R4-GAP-007 pilot has started from the committed 200-cell / 200-group hardened queue. Candidate #1 (`CallToUnknown`) is under partial primary review; no verdict, target `0`, or independent verification exists yet. Accepted negatives, if any, remain evaluation-only. |
+| Confirmed-negative evaluation | IN_PROGRESS | Candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary review supports `CONFIRMED_NEGATIVE`, but authoritative truth remains UNKNOWN / PENDING_REVIEW / target `None` until a genuinely independent reviewer agrees. Accepted negatives, if any, remain evaluation-only. |
+| Future graph representation | FULL DIAGNOSTIC PASS / PHYSICAL ACCEPTANCE REJECTED FOR NOW | v10/extractor `v2.3-r4-call-semantics` generated and bound 22,540/22,540 identities with zero errors, exact v9 token bytes, and transition digest `6087dc6d...b0260`. Six call kinds total 293,183 edges. The 26 parse-only contracts (7 `TRAIN_WEAK`, 19 `TRAIN_UNLABELED`) lack complete call IR and require explicit resolution before acceptance. |
 | Selector promotion | NOT AUTHORIZED | Guarded candidate retains promising CPU/CUDA evidence but needs full-population bound-token control-equivalence evidence plus a separate versioned promotion decision |
-| Full training / G8 | HOLD | No confirmed negatives; no threshold/calibration/untouched acceptance; selector unpromoted; objective/evaluation design unresolved; no full-run horizon authorized |
+| Full training / G8 | HOLD | v9 is ineligible for the new run; v10 is implemented but not physically accepted; no confirmed negatives; no threshold/calibration/untouched acceptance; selector unpromoted; objective/evaluation design unresolved |
 
 ## Corrected outcome-population terminology
 
@@ -50,7 +51,7 @@ Historical/physical roots that remain immutable:
 - repaired provenance/source claims: `r4-provenance-v1`;
 - role-independent evidence ledger: `evidence-ledger-r4-v2`;
 - repaired representations: `representations-r4-v2` / extractor `v2.2-r4-repaired`;
-- graph schema: `v9`;
+- graph schema: `v9` (immutable accepted historical/physical evidence; not future-full-training eligible);
 - token tensor contract: `[4,512]`.
 
 Historical/superseded logical V2 identifiers:
@@ -65,6 +66,13 @@ Accepted logical V3 identifiers:
 - partition: `r4-vnext-roles-v3`;
 - publication: `sentinel-r4-vnext-v3`;
 - logical build: `r4-logical-lineage-v3`.
+
+Required but not-yet-accepted future physical candidate identifiers:
+
+- graph schema: `v10`;
+- extractor: `v2.3-r4-call-semantics`;
+- representation root: `representations-r4-v3-candidate`;
+- preprocessing input remains accepted `sentinel-preprocessed-r4-v2`.
 
 V3 family authority after hardening:
 
@@ -85,7 +93,25 @@ Pre-pilot closeout/reproducibility record:
 
 `runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`
 
-Current pilot handoff/restart record:
+Candidate #1 primary-review closeout:
+
+`runs/2026-08-21_PHASE8_gap007_candidate1_primary_review.md`
+
+Candidate #2 primary-review state:
+
+`runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`
+
+Current representation stop line and remediation decision:
+
+- `runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`;
+- `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
+- `runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`.
+
+Implementation and bounded-local regression evidence:
+
+`runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md`
+
+Prior partial-review handoff:
 
 `runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
 
@@ -103,6 +129,16 @@ Key durable facts:
 
 Read first:
 
+`runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`
+
+Then read:
+
+- `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
+- `runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`;
+- `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`.
+
+Immediate predecessor/handoff:
+
 `runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
 
 Required accepted baseline immediately behind it:
@@ -116,16 +152,17 @@ Historical context only:
 
 Current execution order:
 
-1. preserve the committed coherent V3 snapshot as the durable pre-pilot research-evidence boundary;
-2. continue R4-GAP-007 candidate #1 from the partial primary review recorded in the 2026-08-21 local handoff;
-3. keep the candidate UNKNOWN/PENDING_REVIEW unless complete class-specific primary review plus a genuinely independent agreeing verification establishes a confirmed negative;
-4. if the candidate is ambiguous, record `NOT_CONFIRMED` or `EXCLUDE` rather than inferring target `0`;
-5. keep any accepted negative evaluation-only unless a later versioned policy grants optimizer authority;
-6. separately design/execute the full-population control-selector → currently bound token-tensor equivalence check required before any guarded-selector promotion ADR;
+1. preserve v9/repaired-v2 and the committed coherent V3 snapshot as immutable evidence;
+2. preserve the completed R4-D-010 v10 repository implementation and bounded regression evidence without mutating v9;
+3. send candidate #2's blind source bundle to a genuinely independent reviewer; the primary reviewer must not self-verify;
+4. preserve the completed full v10 diagnostic candidate and transition audit; do not regenerate unless the versioned parse-only remediation changes extraction semantics;
+5. keep candidate #2 UNKNOWN/target `None` unless independent agreement completes its dual review; any accepted negative remains evaluation-only;
+6. separately design/execute control-selector → bound-token equivalence before any guarded-selector promotion ADR;
 7. revisit objective/evaluation design, including possible PU learning, only after new evidence supports a versioned decision;
-8. reconsider training authorization only after those evidence/design gates are satisfied.
+8. resolve the 26 parse-only contracts through versioned extraction repair, explicit exclusion/role treatment, or complete source reconciliation, then rerun affected candidate evidence;
+9. reconsider training authorization only after v10 acceptance and the remaining evidence/design gates are satisfied.
 
-Do **not** manually adjudicate the obsolete V2 queue or the pre-hardening V3 queue. Do **not** infer target `0`, silently promote the selector, invent pseudo-negatives, reuse Run12 state, fit unsupported threshold/calibration roles, implement PU as an ungoverned shortcut, or launch the 100-epoch job.
+Do **not** manually adjudicate the obsolete V2 queue or the pre-hardening V3 queue. Do **not** patch v9 in place, train from v9, infer target `0`, self-verify candidate #2, silently promote the selector, invent pseudo-negatives, reuse Run12 state, fit unsupported threshold/calibration roles, implement PU as an ungoverned shortcut, or launch the 100-epoch job.
 
 ## Status vocabulary
 

@@ -87,6 +87,25 @@ _TRAINING_MAX_WINDOWS: int = 4
 _BINARY_CLASS_NAME = "BinaryScore"
 
 
+def _requires_legacy_edge_embedding_resize(
+    *,
+    graph_schema_version: str,
+    checkpoint_rows: int,
+    expected_rows: int,
+) -> bool:
+    """Allow historical v9 recovery only; v10 vocabulary drift is fatal."""
+
+    if checkpoint_rows == expected_rows:
+        return False
+    if graph_schema_version != "v9":
+        raise ValueError(
+            f"{graph_schema_version} checkpoint/schema mismatch: checkpoint edge "
+            f"embedding has {checkpoint_rows} rows but schema requires {expected_rows}; "
+            "automatic resizing is forbidden"
+        )
+    return True
+
+
 def _ensure_list(v: object) -> list:
     """Guard: MLflow may serialise list[str] as a comma-joined string."""
     if isinstance(v, list):
@@ -253,6 +272,7 @@ class Predictor:
         # ------------------------------------------------------------------
         # Architecture-aware defaults: v5 uses wider GNN + higher LoRA rank.
         _is_v5 = (architecture == "three_eye_v5")
+        checkpoint_graph_schema = saved_cfg.get("graph_schema_version", "v9")
         self.model = SentinelModel(
             num_classes=num_classes,
             fusion_output_dim=fusion_output_dim,
@@ -276,6 +296,7 @@ class Predictor:
             fusion_max_nodes=saved_cfg.get("fusion_max_nodes", 1024),             # ISSUE-3
             drop_complexity_feature=saved_cfg.get("drop_complexity_feature", False),  # Run 8
             appnp_alpha=saved_cfg.get("appnp_alpha", 0.0),                             # Run 8
+            graph_schema_version=checkpoint_graph_schema,
         ).to(self.device)
         # Strip _orig_mod. prefix left by torch.compile when saving compiled checkpoints
         state_dict = {k.replace("._orig_mod.", "."): v for k, v in state_dict.items()}
@@ -284,7 +305,11 @@ class Predictor:
         if edge_emb_key and self.model.gnn.edge_embedding is not None:
             ckpt_num_edge_types = state_dict[edge_emb_key].shape[0]
             current = self.model.gnn.edge_embedding.num_embeddings
-            if ckpt_num_edge_types != current:
+            if _requires_legacy_edge_embedding_resize(
+                graph_schema_version=checkpoint_graph_schema,
+                checkpoint_rows=ckpt_num_edge_types,
+                expected_rows=current,
+            ):
                 import torch.nn as nn
                 emb_dim = self.model.gnn.edge_embedding.embedding_dim
                 self.model.gnn.edge_embedding = nn.Embedding(ckpt_num_edge_types, emb_dim).to(self.device)

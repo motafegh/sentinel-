@@ -1,0 +1,47 @@
+{
+  "schema": "sentinel-r4-confirmed-negative-primary-review-v1",
+  "candidate_id": "r4neg-bfe90ef82e33a324d612256a5d4053c6",
+  "contract_id": "f7afe9fff9f6c117c6cd9dd4730c0f12e3cc3c8ab98797911de091e240051b93",
+  "group_id": "r4grp-dc843217924fe207d2a658ada327615a",
+  "class_index": 0,
+  "class_name": "CallToUnknown",
+  "primary_decision": "SUPPORTS_CONFIRMED_NEGATIVE_PENDING_INDEPENDENT_VERIFICATION",
+  "negative_scope": "CLASS_SPECIFIC_ONLY",
+  "candidate_state_unchanged": true,
+  "target_value": null,
+  "outcome_state": "UNKNOWN",
+  "primary_review": {
+    "reviewer_id": "codex-local-primary-2026-08-21",
+    "reviewed_at": "2026-08-21T18:28:18Z",
+    "rationale": "Complete review of all 343 source lines found one external interaction: an Ether transfer to msg.sender after the caller's dividend and referral state is updated. Solidity transfer reverts on failure and is not an unchecked boolean-returning send or raw low-level call. No call, callcode, delegatecall, staticcall, send, assembly call, dynamic typed callback, contract creation, or selfdestruct exists. Other-class reentrancy tool findings do not contradict this class-specific absence conclusion.",
+    "code_scope_complete": true,
+    "all_file_graph_components_reviewed": true,
+    "contradictory_positive_evidence_found": false,
+    "evidence": [
+      {
+        "type": "MANUAL_CLASS_SPECIFIC_REVIEW",
+        "reference": "docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md",
+        "summary": "Whole-file review found only a reverting Ether transfer and no raw, unchecked, or unknown-target low-level call behavior.",
+        "independent_of_training_label": true
+      },
+      {
+        "type": "TOOL_ANALYSIS",
+        "reference": "docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md#targeted-static-corroboration",
+        "summary": "Slither 0.11.5 with solc 0.4.25 found no low-level or unchecked-send finding; two reported findings are scoped to Reentrancy.",
+        "independent_of_training_label": true
+      },
+      {
+        "type": "DOCUMENTATION",
+        "reference": "docs/plan/ml-R4/findings/02B_bccc_previous_evidence_recovery.md",
+        "summary": "Recovered project evidence classifies transfer-only behavior as a false-positive root cause rather than CallToUnknown truth.",
+        "independent_of_training_label": true
+      }
+    ]
+  },
+  "representation_limitations": [
+    "The selected token windows omit the Ether-transfer source site and retain only 33.87967964239151 percent of unique code tokens.",
+    "All 30 v9 EXTERNAL_CALL edges are same-file SafeMath LibraryCall nodes; the real Ether Transfer node has no type-11 edge.",
+    "R4-GAP-008 governs the resulting representation-semantic defect; graph signal was not used as negative truth."
+  ],
+  "required_next_step": "GENUINELY_INDEPENDENT_REVIEW_FROM_BLIND_SOURCE_BUNDLE"
+}

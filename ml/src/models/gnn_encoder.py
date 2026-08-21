@@ -49,7 +49,8 @@ import torch.nn as nn
 from loguru import logger
 from torch_geometric.nn import GATConv
 
-from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NODE_TYPES, NUM_EDGE_TYPES, EDGE_TYPES
+from ml.src.preprocessing.graph_schema import NODE_FEATURE_DIM, NODE_TYPES
+from sentinel_data.representation.graph_schema_versions import get_graph_schema
 
 # BUG-R7-2: node type stored as float(type_id)/12.0 — GATConv cannot learn categorical
 # structure from a continuous scalar. Enrich input with a learned 16-dim embedding so
@@ -167,6 +168,7 @@ class GNNEncoder(nn.Module):
         validate_graph_integrity: bool           = False,  # [A25] off by default; O(E) scan gated here
         drop_complexity:          bool           = False,  # Run 8: zero feat[5] to break complexity-proxy
         appnp_alpha:              float          = 0.0,    # Run 8: APPNP teleport fraction (0=disabled)
+        graph_schema_version:     str            = "v9",
     ) -> None:
         """
         Args:
@@ -207,6 +209,13 @@ class GNNEncoder(nn.Module):
         self.validate_graph_integrity = validate_graph_integrity  # [A25]
         self.drop_complexity          = drop_complexity  # Run 8: zero feat[5] to break complexity-proxy
         self.appnp_alpha              = appnp_alpha      # Run 8: APPNP teleport fraction (0=disabled)
+        self.graph_schema_version     = graph_schema_version
+        self.graph_schema             = get_graph_schema(graph_schema_version)
+        self.edge_types               = dict(self.graph_schema.edge_types)
+        _call_edge_names = list(self.graph_schema.external_handoff_edge_names)
+        if self.graph_schema.library_edge_name is not None:
+            _call_edge_names.append(self.graph_schema.library_edge_name)
+        self.call_edge_type_ids = self.graph_schema.edge_ids(tuple(_call_edge_names))
 
         _head_dim = hidden_dim // heads  # 32 per head when hidden=256, heads=8
         if _head_dim * heads != hidden_dim:
@@ -215,11 +224,14 @@ class GNNEncoder(nn.Module):
                 f"Each head needs hidden_dim/heads = {hidden_dim/heads:.1f} dims."
             )
 
-        # Edge type embedding: covers all 11 edge types including REVERSE_CONTAINS(7)
-        # (runtime-only), CALL_ENTRY(8) + RETURN_TO(9) (v8 ICFG-Lite, on disk), DEF_USE(10).
+        # Bind the exact selected schema vocabulary. v9 remains the default;
+        # v10 deliberately allocates all six distinct call-kind embeddings.
         _edge_dim: int | None = None
         if use_edge_attr:
-            self.edge_embedding = nn.Embedding(NUM_EDGE_TYPES, edge_emb_dim)
+            self.edge_embedding = nn.Embedding(
+                self.graph_schema.num_edge_types,
+                edge_emb_dim,
+            )
             _edge_dim = edge_emb_dim
         else:
             self.edge_embedding = None
@@ -439,23 +451,19 @@ class GNNEncoder(nn.Module):
         # ── Edge embeddings ──────────────────────────────────────────────────
         e = None
         if self.edge_embedding is not None and edge_attr is not None:
-            # Fix C1 (H9): clamp OOB edge_attr before nn.Embedding lookup.
-            # Corrupted .pt files with type IDs outside [0, NUM_EDGE_TYPES-1] cause
-            # nn.Embedding to throw an unhelpful index-out-of-range CUDA error with
-            # no indication of which contract caused it. Clamping lets the forward
-            # pass continue on a bad sample with a logged warning instead of crashing
-            # the entire training run on an unrecoverable CUDA illegal-memory error.
+            # R4-D-010: graph/schema mismatch is a hard lineage failure. Never
+            # clamp a newer or corrupt edge ID into a different semantic kind.
             if edge_attr.numel() > 0:
                 _max_valid = self.edge_embedding.num_embeddings - 1
                 _oob_mask = (edge_attr < 0) | (edge_attr > _max_valid)
                 if _oob_mask.any():
-                    logger.warning(
-                        f"GNNEncoder: {_oob_mask.sum().item()} OOB edge_attr value(s) "
-                        f"clamped to [0, {_max_valid}] "
-                        f"(observed min={edge_attr.min().item()}, max={edge_attr.max().item()}). "
-                        "Source .pt file may be corrupted or uses a newer schema than this model."
+                    raise ValueError(
+                        f"GNNEncoder graph-schema mismatch: "
+                        f"{_oob_mask.sum().item()} edge_attr value(s) outside "
+                        f"[0, {_max_valid}] for {self.graph_schema_version} "
+                        f"(observed min={edge_attr.min().item()}, "
+                        f"max={edge_attr.max().item()})"
                     )
-                    edge_attr = edge_attr.clamp(0, _max_valid)
             e = self.edge_embedding(edge_attr)   # [E, edge_emb_dim]
 
         # ── Edge masks — one per phase ───────────────────────────────────────
@@ -463,13 +471,12 @@ class GNNEncoder(nn.Module):
         # cfg_mask:      CONTROL_FLOW(6) + CALL_ENTRY(8) + RETURN_TO(9) + DEF_USE(10)
         #                + EXTERNAL_CALL(11, v9 Fix #3) — Phase 2 (ICFG routing)
         # contains_mask: CONTAINS only; used to build Phase 3 reverse edges
-        _CONTAINS         = EDGE_TYPES["CONTAINS"]          # 5
-        _CONTROL_FLOW     = EDGE_TYPES["CONTROL_FLOW"]       # 6
-        _REVERSE_CONTAINS = EDGE_TYPES["REVERSE_CONTAINS"]   # 7 (runtime-only)
-        _CALL_ENTRY       = EDGE_TYPES["CALL_ENTRY"]         # 8 (v8 ICFG-Lite)
-        _RETURN_TO        = EDGE_TYPES["RETURN_TO"]          # 9 (v8 ICFG-Lite)
-        _DEF_USE          = EDGE_TYPES["DEF_USE"]            # 10 (v8 data-flow)
-        _EXTERNAL_CALL    = EDGE_TYPES.get("EXTERNAL_CALL", -1)  # 11 (v9 Fix #3)
+        _CONTAINS         = self.edge_types["CONTAINS"]          # 5
+        _CONTROL_FLOW     = self.edge_types["CONTROL_FLOW"]       # 6
+        _REVERSE_CONTAINS = self.edge_types["REVERSE_CONTAINS"]   # 7 (runtime-only)
+        _CALL_ENTRY       = self.edge_types["CALL_ENTRY"]         # 8 (v8 ICFG-Lite)
+        _RETURN_TO        = self.edge_types["RETURN_TO"]          # 9 (v8 ICFG-Lite)
+        _DEF_USE          = self.edge_types["DEF_USE"]            # 10 (v8 data-flow)
         if edge_attr is not None:
             struct_mask   = edge_attr <= _CONTAINS
             if self.phase2_edge_types is not None:
@@ -477,13 +484,14 @@ class GNNEncoder(nn.Module):
                 for _t in self.phase2_edge_types:
                     cfg_mask |= (edge_attr == _t)
             else:
-                cfg_mask  = (
+                cfg_mask = (
                     (edge_attr == _CONTROL_FLOW) |
                     (edge_attr == _CALL_ENTRY)   |
                     (edge_attr == _RETURN_TO)    |
-                    (edge_attr == _DEF_USE)      |
-                    (edge_attr == _EXTERNAL_CALL)  # v9 Fix #3
+                    (edge_attr == _DEF_USE)
                 )
+                for _call_edge_id in self.call_edge_type_ids:
+                    cfg_mask |= edge_attr == _call_edge_id
             contains_mask = edge_attr == _CONTAINS
         else:
             # Without edge_attr: Phase 2 (CFG) and Phase 3 (REVERSE_CONTAINS) are
@@ -528,9 +536,10 @@ class GNNEncoder(nn.Module):
             # only be visible at conv3c (integration layer) with dilution.
             _icfg_mask = (
                 (phase2_raw == _CALL_ENTRY) |
-                (phase2_raw == _RETURN_TO)  |
-                (phase2_raw == _EXTERNAL_CALL)
+                (phase2_raw == _RETURN_TO)
             )
+            for _call_edge_id in self.call_edge_type_ids:
+                _icfg_mask |= phase2_raw == _call_edge_id
             cf_only_ei   = phase2_ei[:, _cf_mask]
             cf_only_ea   = phase2_ea[_cf_mask]
             icfg_only_ei = phase2_ei[:, _icfg_mask]

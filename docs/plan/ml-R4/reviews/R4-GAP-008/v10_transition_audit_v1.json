@@ -1,0 +1,460 @@
+{
+  "accepted_v9_contracts": 22540,
+  "by_source": {
+    "dive": {
+      "graphs_checked": 22054,
+      "graphs_with_changed_total_call_edges": 14825,
+      "graphs_with_v10_contract_creation": 438,
+      "graphs_with_v10_ether_send": 702,
+      "graphs_with_v10_ether_transfer": 10048,
+      "graphs_with_v10_high_level_call": 15411,
+      "graphs_with_v10_library_call": 14732,
+      "graphs_with_v10_low_level_call": 4130,
+      "v10_contract_creation_edges": 540,
+      "v10_ether_send_edges": 1298,
+      "v10_ether_transfer_edges": 15573,
+      "v10_extraction_mode_slither_full_analysis": 22026,
+      "v10_extraction_mode_slither_full_analysis_constant_array_fold_v1": 2,
+      "v10_extraction_mode_slither_parse_only": 26,
+      "v10_high_level_call_edges": 77099,
+      "v10_library_call_edges": 181668,
+      "v10_low_level_call_edges": 6986,
+      "v10_parse_only_contracts": 26,
+      "v10_parse_only_source_contract_creation_hits": 14,
+      "v10_parse_only_source_ether_send_hits": 14,
+      "v10_parse_only_source_ether_transfer_hits": 85,
+      "v10_parse_only_source_raw_low_level_hits": 0,
+      "v9_external_call_edges": 215052,
+      "v9_extraction_mode_slither_full_analysis": 22026,
+      "v9_extraction_mode_slither_full_analysis_constant_array_fold_v1": 2,
+      "v9_extraction_mode_slither_parse_only": 26
+    },
+    "smartbugs_curated": {
+      "graphs_checked": 143,
+      "graphs_with_changed_total_call_edges": 76,
+      "graphs_with_v10_contract_creation": 2,
+      "graphs_with_v10_ether_send": 19,
+      "graphs_with_v10_ether_transfer": 51,
+      "graphs_with_v10_high_level_call": 29,
+      "graphs_with_v10_library_call": 6,
+      "graphs_with_v10_low_level_call": 80,
+      "v10_contract_creation_edges": 2,
+      "v10_ether_send_edges": 53,
+      "v10_ether_transfer_edges": 99,
+      "v10_extraction_mode_slither_full_analysis": 143,
+      "v10_high_level_call_edges": 99,
+      "v10_library_call_edges": 37,
+      "v10_low_level_call_edges": 103,
+      "v9_external_call_edges": 179,
+      "v9_extraction_mode_slither_full_analysis": 143
+    },
+    "solidifi": {
+      "graphs_checked": 343,
+      "graphs_with_changed_total_call_edges": 341,
+      "graphs_with_v10_ether_send": 98,
+      "graphs_with_v10_ether_transfer": 305,
+      "graphs_with_v10_high_level_call": 147,
+      "graphs_with_v10_library_call": 175,
+      "graphs_with_v10_low_level_call": 101,
+      "v10_contract_creation_edges": 0,
+      "v10_ether_send_edges": 1852,
+      "v10_ether_transfer_edges": 4817,
+      "v10_extraction_mode_slither_full_analysis": 343,
+      "v10_high_level_call_edges": 364,
+      "v10_library_call_edges": 2121,
+      "v10_low_level_call_edges": 472,
+      "v9_external_call_edges": 2259,
+      "v9_extraction_mode_slither_full_analysis": 343
+    }
+  },
+  "candidate_binding_digest_sha256": "6087dc6d76d781efbefe0c4984458d291790c38b1c55d852f48fd796222b0260",
+  "candidate_binding_report_sha256": "bc8fdfd4b0e62ce76fef331c9eaebf8da5b45aa0966fcb91cc096f05c6fcefcd",
+  "candidate_v10_contracts": 22540,
+  "compatibility_contracts": [
+    {
+      "contract": "dive/02e09fbc663a9cebb8806a884798a8fdc2048d88462789cd753cf7f703ca4b46",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 2,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/06b39e44f8d5a7cbf0b5b6b3d5361a2273acf3523db487d6651a646d486fd297",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 5,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/198c19c9ff82cfdc2352bd44cc26a017bc5170b972a9c498eca725673bf27d5c",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 2,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/27c52b949585d14c7cca8b8b699b35b83576b0e2031d8fdb6bd4a685392a72ee",
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_SOURCE_TRANSFORM",
+      "v10_extraction_mode": "slither_full_analysis_constant_array_fold_v1",
+      "v9_extraction_mode": "slither_full_analysis_constant_array_fold_v1"
+    },
+    {
+      "contract": "dive/3194e53a9cb3aa1f7e604a4ab08c6e883089b7eaf85f7bbd2c2d149d32c34fb3",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 2,
+        "ether_send": 0,
+        "ether_transfer": 6,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/49c343edfe2b15f40eecb0d97048244d018f4989f0f5b5980770bb4b17eb1c17",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 2,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/4f0ccb71e6f4c526352d0d9d8905ec5291e2d0878e66a329bac35d4e0375fc22",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 3,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/58e753c30a37b0d3adf3514060a9f3ff20ee8cb3f63bffca9c6bf92c55e1e579",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 3,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/5e1d708aa3e28fe84d0da119ecaba88272acbbe21ce208f799a907b660d8e5e1",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 3,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/6809fdf4e636aa5fb3f180b237cb123d9ebe160ce630581055f08f7650ac24be",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 2,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/74ba0bb543d57f91e75da6c0e0720802d9c107350c52cd8a7778aa53fe89f248",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 2,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/85c69a9be9e4fedbd987bb360c5673cb4a48596b2165b0521c1d4dcecdaaf62d",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 1,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/871775b6b86ebb343ab762c90588f6b054bcd47e39fe8fb480ad0625fd30e4a1",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/930836f863156f6c2744979bd561c1bf7e2ff5d0b02eddc67339f8720cba7906",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/9703409b36b5e3bf0fe83d25c3f3377c6fd618e07c343b8a4f70b846dc80c235",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 1,
+        "ether_send": 0,
+        "ether_transfer": 1,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/9930859ba5572e723badb03d16fad872b477ae65ed223720466c375120d9878a",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 6,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/ae742409f7f42a933c9ea3b666b403328101fb1e6ff3efbc249d5d17fe3fb86d",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/c397d94d056e4d5ed4620ee6284cd2cf11ce6c126f223b0b8cde71e2eb213e3c",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/c5d98739f0088155cfed4599550b8addf8a1e22b960ef49a601d2b8f4b8f2b83",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 1,
+        "ether_send": 0,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 6,
+        "ether_transfer": 0,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/cc7fddffc286c29c7bd0585190f4291f2f62f94315f34b2a45bce5600a9d6291",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 2,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/d5045358a8134786d44c6d76346868dda8701612b870fd7350ea46bb9df0ac57",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 1,
+        "ether_send": 0,
+        "ether_transfer": 4,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/db68f561fe5744531020e6c839e9b84b0cf073542f4844fe49a53c2f841c7a67",
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_SOURCE_TRANSFORM",
+      "v10_extraction_mode": "slither_full_analysis_constant_array_fold_v1",
+      "v9_extraction_mode": "slither_full_analysis_constant_array_fold_v1"
+    },
+    {
+      "contract": "dive/dd3b0a070faeaf34e17fe536dc5f272fb7f381250168c5df3f923d84a95f4329",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 3,
+        "ether_send": 0,
+        "ether_transfer": 5,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/e512fc64c5b1f6cabf1d1cc7f8ce4e1e574051e8c747186740096951f6e17a75",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 2,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/ee8772aa8f228b3406c611ae0a7f5356afe781c5e4faf930a95a5b023a7101c5",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 3,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/f74805ca3bb2a74d99ecfa683d7012754c723495103f2189d7183518488f9a60",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 0,
+        "ether_send": 0,
+        "ether_transfer": 2,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/f8b2252dcea61c773adb83996fbfbcdeea41a76ac19f93bf73f492a882a18cc0",
+      "semantic_completeness": "IR_CALL_EDGES_NOT_COMPLETE",
+      "source_call_syntax_hits": {
+        "contract_creation": 6,
+        "ether_send": 0,
+        "ether_transfer": 1,
+        "raw_low_level": 0
+      },
+      "v10_extraction_mode": "slither_parse_only",
+      "v9_extraction_mode": "slither_parse_only"
+    }
+  ],
+  "errors": [],
+  "errors_total": 0,
+  "errors_truncated": 0,
+  "extractor_version": "v2.3-r4-call-semantics",
+  "graph_schema_version": "v10",
+  "implementation_sha256": {
+    "data_module/sentinel_data/representation/graph_extractor.py": "f6a62ddc421ba0b132b43520a2fe39aeaf009dccc6ef371785208f86ec79437e",
+    "data_module/sentinel_data/representation/graph_schema_versions.py": "189606a4b4705b302546730f7ff03abd90443e6316eedb1189781d1894fd8bab",
+    "data_module/sentinel_data/representation/r4_compatibility.py": "0791c5dcb21b387b7b7499a24db8d86ed49e492d0d1c85b559def5d55b2b6e3f",
+    "data_module/sentinel_data/representation/r4_orchestrator.py": "3b0004c4977a16c6fef690f58de3e7239ecf01ce31d2d7f4333be4d6d7442671",
+    "data_module/sentinel_data/vnext/r4_v10_binding.py": "b5cdf6ffe6b7615e3b100c41ff60d4d51c84cfa416de1926ad486272d8783f73",
+    "docs/plan/ml-R4/scripts/p8_audit_v10_transition.py": "7e91585b0d6cf3cf4a44ea15e45b9a2b37ffa995697415d2b0de8ba1805c20ef",
+    "docs/plan/ml-R4/scripts/p8_generate_v10_candidate.py": "a1ce6a4cb0dde6d62ccefc0bd9a2854b35e4c98700eeadc1840d629399e3c2fc",
+    "ml/src/datasets/vnext_logical_v3_v10_dataset.py": "affa0567662f1a07f76c7804d1336bc4e318aa28708e515004126a4242263a06",
+    "ml/src/models/gnn_encoder.py": "5bb03ef263e9d42a4a70fec65b48e0ffe36d8c69e7d71da06c6c120766ba08c2",
+    "ml/src/models/sentinel_model.py": "6dfca83fed81d5cb93d7eb21596c82708db4746a6eebf8f2401bab90e4746b29",
+    "ml/src/training/vnext_binding.py": "e8750a57cac78818884318ba210934c376ca9afa0f8400268f848918b1da7e99"
+  },
+  "limitations": [
+    "This proves representation mechanics and Slither-IR-to-edge reconciliation, not vulnerability labels.",
+    "Parse-only compatibility graphs cannot prove complete IR call semantics and block physical acceptance until explicitly resolved.",
+    "Physical acceptance still requires review of this report, bounded source regressions, tests, and an explicit decision record."
+  ],
+  "passed": true,
+  "physical_acceptance": false,
+  "physical_acceptance_blockers": [
+    "parse-only compatibility graphs lack complete Slither IR call edges; resolve through versioned extraction repair, explicit exclusion/role decision, or complete source-level reconciliation"
+  ],
+  "repository_head": "9207843d609d8149bc7f33327f0fe0e3bcccbf31",
+  "repository_worktree_dirty": true,
+  "schema": "sentinel-r4-v9-to-v10-transition-audit-v1",
+  "status": "PASS_DIAGNOSTIC_WITH_COMPATIBILITY_BLOCKER",
+  "totals": {
+    "graphs_checked": 22540,
+    "graphs_with_changed_total_call_edges": 15242,
+    "graphs_with_v10_contract_creation": 440,
+    "graphs_with_v10_ether_send": 819,
+    "graphs_with_v10_ether_transfer": 10404,
+    "graphs_with_v10_high_level_call": 15587,
+    "graphs_with_v10_library_call": 14913,
+    "graphs_with_v10_low_level_call": 4311,
+    "v10_contract_creation_edges": 542,
+    "v10_ether_send_edges": 3203,
+    "v10_ether_transfer_edges": 20489,
+    "v10_extraction_mode_slither_full_analysis": 22512,
+    "v10_extraction_mode_slither_full_analysis_constant_array_fold_v1": 2,
+    "v10_extraction_mode_slither_parse_only": 26,
+    "v10_high_level_call_edges": 77562,
+    "v10_library_call_edges": 183826,
+    "v10_low_level_call_edges": 7561,
+    "v10_parse_only_contracts": 26,
+    "v10_parse_only_source_contract_creation_hits": 14,
+    "v10_parse_only_source_ether_send_hits": 14,
+    "v10_parse_only_source_ether_transfer_hits": 85,
+    "v10_parse_only_source_raw_low_level_hits": 0,
+    "v9_external_call_edges": 217490,
+    "v9_extraction_mode_slither_full_analysis": 22512,
+    "v9_extraction_mode_slither_full_analysis_constant_array_fold_v1": 2,
+    "v9_extraction_mode_slither_parse_only": 26
+  },
+  "training_authorized": false
+}

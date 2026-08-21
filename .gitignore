@@ -124,6 +124,7 @@ Thumbs.db
 
 # Compressed files
 *.zip
+!docs/plan/ml-R4/review_bundles/r4_gap007_candidate2_independent_review_v1.zip
 *.gz
 *.tar
 *.tgz

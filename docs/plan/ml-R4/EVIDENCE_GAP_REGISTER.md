@@ -10,7 +10,8 @@ No new contract review is permitted without an approved gap entry.
 | R4-GAP-004 | BCCC/all classes | 2-tool consensus baseline | skeleton exists; results absent | Tool intersection is not ground truth | Execute only if later benchmark decision requires it | Tier-C benchmark baseline | PROPOSED | Non-blocking |
 | R4-GAP-005 | All classes | Echidna/fuzzing precision estimates | no retained fuzzing evidence | complementary, not required for current DATA source roles | targeted future fuzzing only | Complementary fuzz evidence | PROPOSED | Non-blocking |
 | R4-GAP-006 | All classes | Exploit-reproduction PoC tests | no retained PoC corpus | useful for outcome validation but not smallest current evidence | targeted future PoCs only | Outcome validation/case study | PROPOSED | Non-blocking |
-| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **committed hardened V3 queue**: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-08-21 — pilot started from the hardened queue; candidate #1 (`CallToUnknown`) is under partial primary review only, with no verdict/target change. Current handoff: `runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md` |
+| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **committed hardened V3 queue**: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-08-21 — candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary review supports a negative but awaits genuinely independent verification from the blind bundle; it remains UNKNOWN/target `None`. Confirmed negatives remain zero. |
+| R4-GAP-008 | repaired-v2 graph schema v9 / `EXTERNAL_CALL` edge / CallToUnknown, ExternalBug, Reentrancy consumers | Population impact and remediation decision for library calls emitted as external-call edges while Solidity `Transfer`/`Send` IR is not emitted by the same edge builder | Candidate #2 full source/graph inspection; graph extractor source/tests; CallToUnknown pattern/library exclusion; historical BCCC false-positive analysis | Candidate #2 has 30 type-11 edges and all 30 are same-file `SafeMath` library calls, while its real Ether `transfer` has no type-11 edge. Existing tests document library counting as known behavior, but the class pattern explicitly excludes library calls. One candidate cannot establish population impact or safe remediation lineage | Run a read-only full-population v9 edge-origin audit plus queue-focused impact analysis; preserve v9 artifacts; then decide whether a versioned extractor/schema candidate and regeneration are required before G8 | Representation semantic-integrity decision; no label, selector, or training authority | RESOLVED | 2026-08-22 — v10 full 22,540-identity generation/binding/transition mechanics pass, but physical acceptance is rejected for now because 26 parse-only contracts lack complete call IR. R4-B008 remains open. |
 
 ## R4-GAP-002 closure evidence
 
@@ -66,17 +67,79 @@ state        = UNKNOWN / PENDING_REVIEW
 target       = None
 ```
 
-Partial primary review has identified a typed callback `spender.receiveApproval(...)` to a caller-supplied address and a legacy Solidity `msg.sender.transfer(...)` value transfer. Neither establishes class truth by itself. No adjudication verdict has been made, no independent verification has started, and the confirmed-negative count remains zero.
+Complete whole-source and bound-representation primary review identified a typed callback `spender.receiveApproval(...)` to a caller-supplied address and a legacy Solidity `msg.sender.transfer(...)` value transfer. Solidity 0.4.18 error semantics and targeted Slither analysis corroborate that neither is an unchecked raw low-level call. However, the governing taxonomy also includes calls to unverified external addresses, so the dynamic typed callback is contradictory or ambiguous positive evidence and prevents class-specific negative confirmation.
 
-Continue from the complete primary review described in:
+Candidate #1 was therefore adjudicated `NOT_CONFIRMED`. The explicit-path validator passed with one `NOT_CONFIRMED` decision, zero accepted cells, no errors, and all training/threshold/calibration authorizations false. The queue remains immutable; candidate #1 remains `UNKNOWN` / `PENDING_REVIEW`, target `None`, and confirmed negatives remain zero. A non-confirmed decision does not require independent verification.
+
+Primary review closeout:
+
+`runs/2026-08-21_PHASE8_gap007_candidate1_primary_review.md`
+
+Machine-readable adjudication and evaluation:
+
+- `reviews/R4-GAP-007/candidate1_primary_adjudication_v1.jsonl`
+- `reviews/R4-GAP-007/candidate1_evaluation_v1.json`
+
+Prior partial-review handoff:
 
 `runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
 
-Current restart record:
+Candidate #2 (`r4neg-bfe90ef82e33a324d612256a5d4053c6`) then completed source-first primary review. The primary result supports `CONFIRMED_NEGATIVE` for `CallToUnknown`, but the candidate remains UNKNOWN / PENDING_REVIEW / target `None` because genuinely independent verification is still pending. The primary reviewer must not self-verify.
 
-`runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
+Candidate #2 primary record:
 
-The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilot baseline and must still be read before this handoff.
+`runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`
+
+Blind independent-review archive:
+
+`review_bundles/r4_gap007_candidate2_independent_review_v1.zip`
+
+SHA-256: `2e7f48c9648097624406d167266a42a31055f222a0f468a0453b2f353b343f1a`.
+
+The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilot baseline and must still be read before the current primary-review closeout.
+
+## R4-GAP-008 resolution and current stop line
+
+Candidate #2 primary review exposed a representation-semantic contradiction that must be quantified before treating v9 graph signals as trustworthy evaluation or future-training inputs:
+
+- all 30 candidate #2 `EXTERNAL_CALL` edges point to same-file `SafeMath` library-call nodes;
+- the actual `_customerAddress.transfer(...)` node has no `EXTERNAL_CALL` edge;
+- `verification/patterns/CallToUnknown.yaml` explicitly excludes library calls;
+- `graph_extractor.py` intentionally treats `LibraryCall` as high-level/external in the type-11 edge path and does not add `Transfer`/`Send` there;
+- the semantic checker treats any type-11 edge as a positive `CallToUnknown` and `ExternalBug` signal.
+
+The full-population audit resolved the evidence question and R4-D-010 accepted the remediation boundary. Until the versioned v10 candidate passes local acceptance:
+
+- do not mutate accepted v9/repaired-v2 artifacts;
+- do not reinterpret type-11 presence or absence as class truth;
+- do not authorize G8/full training;
+- candidate review may continue from whole source, but any representation-based conclusion must carry the v9 limitation;
+- do not change extractor behavior under the same schema/extractor identity.
+
+Current audit record:
+
+`runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`
+
+Governing decision:
+
+`adrs/ADR-R4-010-versioned-external-call-representation-correction.md`
+
+Repository/local implementation handoff:
+
+`runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`
+
+Repository implementation and bounded source-reviewed regression evidence:
+
+`runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md`
+
+The implementation now emits exact v10 call kinds, records unclassified IR and
+IR-to-CFG mapping failures, and fails population binding unless classified,
+emitted, and observed call counts agree. Candidate #1 reproduces one typed
+high-level callback plus one transfer; candidate #2 reproduces 30 library calls
+plus one transfer. Full generation/binding/transition mechanics pass for all
+22,540 identities with digest `6087dc6d...b0260`. Physical acceptance remains
+rejected for now under R4-B008 because 26 parse-only contracts cannot establish
+complete call IR.
 
 ## Approval delegation note
 

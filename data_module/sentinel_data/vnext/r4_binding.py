@@ -96,7 +96,13 @@ def _binding_digest(records: list[dict[str, Any]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _validate_graph(torch: Any, graph: Any, sidecar: dict[str, Any]) -> None:
+def _validate_graph(
+    torch: Any,
+    graph: Any,
+    sidecar: dict[str, Any],
+    *,
+    num_edge_types: int = NUM_EDGE_TYPES,
+) -> None:
     x = getattr(graph, "x", None)
     edge_index = getattr(graph, "edge_index", None)
     edge_attr = getattr(graph, "edge_attr", None)
@@ -119,7 +125,7 @@ def _validate_graph(torch: Any, graph: Any, sidecar: dict[str, Any]) -> None:
     if edge_attr.ndim != 1 or edge_attr.shape[0] != edge_index.shape[1]:
         raise ValueError("graph edge_attr length mismatch")
     if edge_attr.numel() and (
-        int(edge_attr.min()) < 0 or int(edge_attr.max()) >= NUM_EDGE_TYPES
+        int(edge_attr.min()) < 0 or int(edge_attr.max()) >= num_edge_types
     ):
         raise ValueError("graph edge_attr contains an unknown edge type")
     metadata = getattr(graph, "node_metadata", None)

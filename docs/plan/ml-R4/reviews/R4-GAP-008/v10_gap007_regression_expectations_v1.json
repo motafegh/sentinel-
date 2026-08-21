@@ -1,0 +1,34 @@
+{
+  "schema": "sentinel-r4-v10-source-reviewed-regression-expectations-v1",
+  "authority": "complete source interaction inventories in the two GAP-007 primary reviews",
+  "contracts": {
+    "defe4690028dc863df4611176a4c35f0ffd0bbc90f61db2bd4f25f5ad7f2a384": {
+      "source": "dive",
+      "call_edge_counts": {
+        "ETHER_SEND": 0,
+        "ETHER_TRANSFER": 1,
+        "HIGH_LEVEL_CALL": 1,
+        "LIBRARY_CALL": 0,
+        "LOW_LEVEL_CALL": 0,
+        "CONTRACT_CREATION": 0
+      },
+      "review": "2026-08-21_PHASE8_gap007_candidate1_primary_review.md"
+    },
+    "f7afe9fff9f6c117c6cd9dd4730c0f12e3cc3c8ab98797911de091e240051b93": {
+      "source": "dive",
+      "call_edge_counts": {
+        "ETHER_SEND": 0,
+        "ETHER_TRANSFER": 1,
+        "HIGH_LEVEL_CALL": 0,
+        "LIBRARY_CALL": 30,
+        "LOW_LEVEL_CALL": 0,
+        "CONTRACT_CREATION": 0
+      },
+      "review": "2026-08-21_PHASE8_gap007_candidate2_primary_review.md"
+    }
+  },
+  "limitations": [
+    "These counts are regression expectations for two completely reviewed files, not population acceptance.",
+    "Edge counts are representation evidence and do not change either contract's class label."
+  ]
+}

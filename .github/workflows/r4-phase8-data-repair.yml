@@ -8,12 +8,23 @@ on:
       - 'data_module/sentinel_data/preprocessing/**'
       - 'data_module/sentinel_data/representation/**'
       - 'data_module/sentinel_data/vnext/**'
+      - 'data_module/sentinel_data/verification/**'
       - 'data_module/tests/test_preprocessing/**'
       - 'data_module/tests/test_representation/**'
       - 'data_module/tests/test_vnext/**'
+      - 'data_module/tests/test_verification/**'
       - 'ml/src/data_extraction/**'
       - 'ml/src/datasets/vnext_repaired_dataset.py'
       - 'ml/src/datasets/vnext_logical_v3_dataset.py'
+      - 'ml/src/datasets/vnext_logical_v3_v10_dataset.py'
+      - 'ml/src/models/gnn_encoder.py'
+      - 'ml/src/models/sentinel_model.py'
+      - 'ml/src/inference/predictor.py'
+      - 'ml/src/training/trainer.py'
+      - 'ml/src/training/vnext_binding.py'
+      - 'ml/tests/test_gnn_encoder.py'
+      - 'ml/tests/test_predictor_graph_schema.py'
+      - 'ml/tests/test_vnext_v10_binding.py'
       - 'ml/src/training/vnext_repaired_binding.py'
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase8-data-repair.yml'
@@ -23,10 +34,20 @@ on:
       - 'data_module/sentinel_data/preprocessing/**'
       - 'data_module/sentinel_data/representation/**'
       - 'data_module/sentinel_data/vnext/**'
+      - 'data_module/sentinel_data/verification/**'
       - 'data_module/tests/**'
       - 'ml/src/data_extraction/**'
       - 'ml/src/datasets/vnext_repaired_dataset.py'
       - 'ml/src/datasets/vnext_logical_v3_dataset.py'
+      - 'ml/src/datasets/vnext_logical_v3_v10_dataset.py'
+      - 'ml/src/models/gnn_encoder.py'
+      - 'ml/src/models/sentinel_model.py'
+      - 'ml/src/inference/predictor.py'
+      - 'ml/src/training/trainer.py'
+      - 'ml/src/training/vnext_binding.py'
+      - 'ml/tests/test_gnn_encoder.py'
+      - 'ml/tests/test_predictor_graph_schema.py'
+      - 'ml/tests/test_vnext_v10_binding.py'
       - 'ml/src/training/vnext_repaired_binding.py'
       - 'docs/plan/ml-R4/**'
       - '.github/workflows/r4-phase8-data-repair.yml'
@@ -52,7 +73,7 @@ jobs:
           python -m pip install --disable-pip-version-check \
             pytest 'numpy==1.26.4' 'pyarrow==19.0.1' \
             'torch==2.10.0' 'torch-geometric==2.7.0' \
-            'transformers==4.46.3'
+            'transformers==4.46.3' loguru
 
       - name: Compile repaired DATA, ML, token, and research modules
         run: |
@@ -68,6 +89,8 @@ jobs:
             data_module/sentinel_data/preprocessing/r4_grouping_v3.py \
             data_module/sentinel_data/preprocessing/r4_grouping_audit.py \
             data_module/sentinel_data/representation/target_selector.py \
+            data_module/sentinel_data/representation/graph_schema_versions.py \
+            data_module/sentinel_data/representation/graph_extractor.py \
             data_module/sentinel_data/representation/r4_target_spans.py \
             data_module/sentinel_data/representation/r4_compatibility.py \
             data_module/sentinel_data/representation/r4_orchestrator.py \
@@ -75,13 +98,21 @@ jobs:
             data_module/sentinel_data/vnext/r4_source_claims.py \
             data_module/sentinel_data/vnext/r4_builder.py \
             data_module/sentinel_data/vnext/r4_binding.py \
+            data_module/sentinel_data/vnext/r4_v10_binding.py \
             data_module/sentinel_data/vnext/r4_v3_versions.py \
             data_module/sentinel_data/vnext/r4_logical_v3.py \
             data_module/sentinel_data/vnext/confirmed_negative_evaluation.py \
+            data_module/sentinel_data/verification/semantic_checker.py \
             ml/src/data_extraction/windowed_tokenizer.py \
             ml/src/data_extraction/bounded_window_selector.py \
             ml/src/datasets/vnext_repaired_dataset.py \
             ml/src/datasets/vnext_logical_v3_dataset.py \
+            ml/src/datasets/vnext_logical_v3_v10_dataset.py \
+            ml/src/models/gnn_encoder.py \
+            ml/src/models/sentinel_model.py \
+            ml/src/inference/predictor.py \
+            ml/src/training/trainer.py \
+            ml/src/training/vnext_binding.py \
             ml/src/training/vnext_repaired_binding.py \
             docs/plan/ml-R4/scripts/p8_verify_repaired_raw_inputs.py \
             docs/plan/ml-R4/scripts/p8_rebuild_repaired_data.py \
@@ -101,7 +132,10 @@ jobs:
             docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare_v3.py \
             docs/plan/ml-R4/scripts/p8_snapshot_research_evidence.py \
             docs/plan/ml-R4/scripts/p8_snapshot_logical_v3_evidence.py \
-            docs/plan/ml-R4/scripts/p8_verify_committed_logical_v3_snapshot.py
+            docs/plan/ml-R4/scripts/p8_verify_committed_logical_v3_snapshot.py \
+            docs/plan/ml-R4/scripts/p8_generate_v10_candidate.py \
+            docs/plan/ml-R4/scripts/p8_audit_v10_transition.py \
+            docs/plan/ml-R4/scripts/test_p8_audit_v10_transition.py
 
       - name: Run repaired and Phase-8 research regression suite
         env:
@@ -119,16 +153,24 @@ jobs:
             data_module/tests/test_representation/test_bounded_window_strategy.py \
             data_module/tests/test_representation/test_bounded_window_selector.py \
             data_module/tests/test_representation/test_r4_sensitivity.py \
+            data_module/tests/test_representation/test_graph_schema_v10.py \
+            data_module/tests/test_representation/test_r4_v10_orchestrator.py \
             data_module/tests/test_representation/test_windowed_tokenizer_coverage.py \
             data_module/tests/test_vnext/test_policy.py \
             data_module/tests/test_vnext/test_r4_source_claims.py \
             data_module/tests/test_vnext/test_r4_builder.py \
             data_module/tests/test_vnext/test_r4_binding.py \
+            data_module/tests/test_vnext/test_r4_v10_binding.py \
             data_module/tests/test_vnext/test_repaired_ml_adapter.py \
             data_module/tests/test_vnext/test_r4_logical_v3.py \
             data_module/tests/test_vnext/test_logical_v3_ml_adapter.py \
+            data_module/tests/test_vnext/test_logical_v3_v10_ml_adapter.py \
             data_module/tests/test_vnext/test_confirmed_negative_evaluation.py \
-            data_module/tests/test_vnext/test_v3_evidence_snapshot.py
+            data_module/tests/test_vnext/test_v3_evidence_snapshot.py \
+            data_module/tests/test_verification/test_semantic_checker.py \
+            ml/tests/test_gnn_encoder.py \
+            ml/tests/test_vnext_v10_binding.py \
+            docs/plan/ml-R4/scripts/test_p8_audit_v10_transition.py
 
       - name: Verify committed logical-V3 snapshot from fresh clone
         run: |

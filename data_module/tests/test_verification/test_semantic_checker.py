@@ -19,7 +19,15 @@ def _skip_if_no_merged():
         pytest.skip("Merged labels not found — run merger first")
 
 
-def _mock_graph(has_cei=1, feat2=0.0, feat7=0.0, feat11=0.0, has_ext_call=False):
+def _mock_graph(
+    has_cei=1,
+    feat2=0.0,
+    feat7=0.0,
+    feat11=0.0,
+    has_ext_call=False,
+    graph_schema_version="v9",
+    edge_attr=None,
+):
     """Create a minimal mock graph."""
     import torch
     g = MagicMock()
@@ -29,7 +37,10 @@ def _mock_graph(has_cei=1, feat2=0.0, feat7=0.0, feat11=0.0, has_ext_call=False)
     x[:, 7] = feat7
     x[:, 11] = feat11
     g.x = x
-    if has_ext_call:
+    g.graph_schema_version = graph_schema_version
+    if edge_attr is not None:
+        g.edge_attr = torch.tensor(edge_attr)
+    elif has_ext_call:
         g.edge_attr = torch.tensor([0, 11, 5])
     else:
         g.edge_attr = torch.tensor([0, 5, 6])
@@ -86,15 +97,45 @@ class TestCheckClass:
         verdict, _ = _check_class("MishandledException", g, None)
         assert verdict == CheckVerdict.PASS
 
-    def test_call_to_unknown_pass(self):
+    def test_call_to_unknown_v9_not_extractable(self):
         g = _mock_graph(has_ext_call=True)
+        verdict, _ = _check_class("CallToUnknown", g, None)
+        assert verdict == CheckVerdict.NOT_EXTRACTABLE
+
+    def test_call_to_unknown_v10_low_level_pass(self):
+        g = _mock_graph(graph_schema_version="v10", edge_attr=[0, 12, 5])
         verdict, _ = _check_class("CallToUnknown", g, None)
         assert verdict == CheckVerdict.PASS
 
-    def test_call_to_unknown_fail(self):
-        g = _mock_graph(has_ext_call=False)
+    def test_call_to_unknown_v10_library_only_fails(self):
+        g = _mock_graph(graph_schema_version="v10", edge_attr=[0, 15, 5])
         verdict, _ = _check_class("CallToUnknown", g, None)
         assert verdict == CheckVerdict.FAIL
+
+    def test_external_bug_not_extractable(self):
+        g = _mock_graph(graph_schema_version="v10", edge_attr=[11, 12, 13, 14])
+        verdict, _ = _check_class("ExternalBug", g, None)
+        assert verdict == CheckVerdict.NOT_EXTRACTABLE
+
+    def test_graph_sidecar_schema_mismatch_fails_closed(self):
+        g = _mock_graph(graph_schema_version="v10", edge_attr=[12])
+        with pytest.raises(ValueError, match="graph/sidecar schema mismatch"):
+            _check_class("CallToUnknown", g, {"schema_version": "v9"})
+
+    @pytest.mark.parametrize("class_name", ["CallToUnknown", "Reentrancy"])
+    def test_v10_parse_only_is_not_misread_as_absent_signal(self, class_name):
+        g = _mock_graph(graph_schema_version="v10", edge_attr=[])
+        verdict, note = _check_class(
+            class_name,
+            g,
+            {
+                "schema_version": "v10",
+                "graph_analysis_degraded": True,
+                "graph_extraction_mode": "slither_parse_only",
+            },
+        )
+        assert verdict == CheckVerdict.NOT_EXTRACTABLE
+        assert "parse-only" in note
 
     def test_dos_not_extractable(self):
         g = _mock_graph()

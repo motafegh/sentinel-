@@ -179,8 +179,92 @@ def build_run_binding(
     return payload
 
 
+def build_v10_run_binding(
+    *,
+    source_commit: str,
+    manifest_path: Path,
+    expected_representation_digest: str,
+    seed: int,
+    weak_positive_weight: float,
+    optimizer_config: Mapping[str, Any],
+    train_contracts: int,
+    train_groups: int,
+    selection_contracts: int,
+    selection_groups: int,
+) -> dict[str, Any]:
+    """Build a v10 run identity only after separate explicit authorization.
+
+    A passing diagnostic candidate binding cannot satisfy this contract.
+    """
+
+    from ml.src.datasets.vnext_logical_v3_v10_dataset import (
+        validate_v10_training_manifest,
+    )
+    from sentinel_data.preprocessing.r4_versions import (
+        V10_GRAPH_SCHEMA_VERSION,
+        V10_REPRESENTATION_EXTRACTOR_VERSION,
+    )
+
+    manifest_path = Path(manifest_path)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    digest = validate_v10_training_manifest(
+        manifest=manifest,
+        overlay_dir=manifest_path.parent,
+        expected_binding_digest=expected_representation_digest,
+    )
+    if not 0.0 < float(weak_positive_weight) <= 1.0:
+        raise ValueError("weak_positive_weight must be in (0,1]")
+
+    inputs = manifest.get("inputs") or {}
+    authorization = manifest["training_authorization"]
+    payload: dict[str, Any] = {
+        "schema": "sentinel-r4-phase8-v10-run-binding-v1",
+        "source_commit": str(source_commit),
+        "architecture": ARCHITECTURE,
+        "model_version": MODEL_VERSION,
+        "architecture_config": dict(FROZEN_ARCHITECTURE),
+        "class_order": list(CLASS_NAMES),
+        "data": {
+            "dataset_version": manifest.get("dataset_version"),
+            "export_schema_version": manifest.get("export_schema_version"),
+            "graph_schema_version": V10_GRAPH_SCHEMA_VERSION,
+            "representation_extractor_version": V10_REPRESENTATION_EXTRACTOR_VERSION,
+            "manifest_sha256": sha256_file(manifest_path),
+            "representation_binding_digest_sha256": digest,
+            "policy_sha256": (inputs.get("policy") or {}).get("sha256"),
+            "partition_sha256": (inputs.get("partition_manifest") or {}).get("sha256"),
+        },
+        "training_authorization": {
+            "decision_id": authorization["decision_id"],
+            "representation_binding_digest_sha256": digest,
+        },
+        "roles": {
+            "training": ["TRAIN_STRONG", "TRAIN_WEAK"],
+            "model_selection": ["MODEL_SELECTION"],
+            "train_contracts": int(train_contracts),
+            "train_groups": int(train_groups),
+            "selection_contracts": int(selection_contracts),
+            "selection_groups": int(selection_groups),
+        },
+        "seed": int(seed),
+        "weak_positive_weight": float(weak_positive_weight),
+        "optimizer": dict(optimizer_config),
+        "runtime": runtime_binding_metadata(),
+        "limits": {
+            "confirmed_negative_cells": 0,
+            "threshold_tuning": False,
+            "calibration_fit": False,
+            "untouched_acceptance": False,
+            "historical_checkpoint_reuse": False,
+        },
+    }
+    payload["binding_digest_sha256"] = canonical_digest(payload)
+    return payload
+
+
 __all__ = [
     "build_run_binding",
+    "build_v10_run_binding",
     "canonical_digest",
     "runtime_binding_metadata",
     "sha256_file",

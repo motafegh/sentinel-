@@ -56,8 +56,7 @@ def _make_graph(n_nodes: int = 5, n_edges: int = 4) -> tuple:
     dst        = torch.arange(1, n_edges + 1)
     edge_index = torch.stack([src, dst])
     batch      = torch.zeros(n_nodes, dtype=torch.long)
-    # Edge types drawn from current valid range [0, NUM_EDGE_TYPES).
-    # NUM_EDGE_TYPES is 8 after Phase 1-A3 adds REVERSE_CONTAINS.
+    # Historical/default v9 edge types are used by this generic helper.
     edge_attr  = torch.randint(0, NUM_EDGE_TYPES - 1, (n_edges,))  # exclude type 7 (runtime-only)
     return x, edge_index, batch, edge_attr
 
@@ -154,6 +153,20 @@ def test_valid_head_configuration():
     """hidden_dim=128, heads=8 → head_dim=16 — should construct without error."""
     enc = GNNEncoder(hidden_dim=128, heads=8)
     assert enc.hidden_dim == 128
+
+
+def test_v10_allocates_exact_edge_vocabulary():
+    enc = GNNEncoder(hidden_dim=64, heads=8, graph_schema_version="v10")
+    assert enc.edge_embedding.num_embeddings == 17
+    assert enc.call_edge_type_ids == (11, 12, 13, 14, 16, 15)
+
+
+def test_edge_attr_out_of_schema_range_fails_closed():
+    enc = GNNEncoder(hidden_dim=64, heads=8, graph_schema_version="v10")
+    x, edge_index, batch, edge_attr = _make_graph(n_nodes=5, n_edges=4)
+    edge_attr[-1] = 17
+    with pytest.raises(ValueError, match="graph-schema mismatch"):
+        enc(x, edge_index, batch, edge_attr=edge_attr)
 
 
 # ---------------------------------------------------------------------------

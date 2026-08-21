@@ -1,10 +1,10 @@
 # R4 Claim Status Matrix
 
-This matrix describes the **current evidence-qualified claim boundary**, not the historical binary-label surface. R4-D-008 accepts repaired-v2 physical DATA; R4-D-009 accepts corrected logical V3 grouping/roles for current Phase-8 research. The hardened V3 research tranche is now durably snapshotted with `coherence=PASS` at commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. None of these facts establishes general model discrimination, calibration, thresholds, or production acceptance.
+This matrix describes the **current evidence-qualified claim boundary**, not the historical binary-label surface. R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence; R4-D-009 accepts corrected logical V3 grouping/roles for current Phase-8 research. R4-D-010 now prohibits using v9 for the new full training run and requires a separately versioned v10 call-semantics candidate plus local acceptance. The hardened V3 research tranche remains durably snapshotted with `coherence=PASS` at commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. None of these facts establishes general model discrimination, calibration, thresholds, or production acceptance.
 
 | Index | Class | DATA vNext supervision | Current positive authority | Confirmed-negative support | Discrimination | Calibration / threshold | Current claim status | Key limitation |
 |---:|---|---|---|---|---|---|---|---|
-| 0 | CallToUnknown | ENABLED | STRONG: SolidiFI Unchecked-Send; SmartBugs unchecked_low_level_calls | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | Positive evidence only; false-positive behavior not yet identifiable |
+| 0 | CallToUnknown | ENABLED | STRONG: SolidiFI Unchecked-Send; SmartBugs unchecked_low_level_calls | NONE — candidate #1 `NOT_CONFIRMED`; candidate #2 primary supports a negative but independent verification is pending | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | No accepted negative; v9 call edges are semantically inadequate for this class and cannot support a new full run |
 | 1 | DenialOfService | ENABLED | STRONG: SmartBugs denial_of_service | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE DoS is masked; no confirmed negatives yet |
 | 2 | ExternalBug | ENABLED | STRONG: SolidiFI tx.origin; SmartBugs access_control | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Access Control is masked; class scope remains broader than any one source category |
 | 3 | GasException | SUPERVISION_DISABLED_PENDING_EVIDENCE | none | NONE | UNSUPPORTED | UNSUPPORTED_EMPTY | DISABLED_PENDING_EVIDENCE | No active approved class-specific positive authority |
@@ -19,9 +19,10 @@ This matrix describes the **current evidence-qualified claim boundary**, not the
 
 Physical DATA:
 
-- repaired-v2 physical DATA: **ACCEPTED_FOR_REUSE/BOUNDED_RESEARCH** under R4-D-008 / ADR-R4-008;
+- repaired-v2 physical DATA: **ACCEPTED_IMMUTABLE_REPRODUCIBILITY_EVIDENCE** under R4-D-008 / ADR-R4-008;
 - contracts / contract×class rows / physical files: 22,540 / 225,400 / 67,620;
 - physical binding digest: `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`.
+- graph schema v9 is **NOT ELIGIBLE FOR A NEW FULL TRAINING RUN** under R4-D-010; v10/extractor `v2.3-r4-call-semantics` now has a complete 22,540-identity diagnostic generation/binding and transition pass with digest `6087dc6d...b0260`, but physical acceptance is rejected for now. The 26 parse-only compatibility contracts (7 `TRAIN_WEAK`, 19 `TRAIN_UNLABELED`) cannot prove complete call-IR semantics and explicitly block acceptance until resolved.
 
 Logical authority:
 
@@ -45,7 +46,7 @@ Current V3 supervised/evaluation surface:
 
 ## Hardened V3 negative-evidence pilot state
 
-R4-GAP-007 is APPROVED and the pilot queue is now ready for adjudication, but adjudication has not started and confirmed-negative support remains `NONE` for every enabled class.
+R4-GAP-007 is in progress and confirmed-negative support remains `NONE` for every enabled class. Candidate #1 was fully reviewed as `NOT_CONFIRMED`. Candidate #2's source-first primary review supports `CONFIRMED_NEGATIVE`, but its authoritative queue truth remains UNKNOWN / PENDING_REVIEW / target `None` until a genuinely independent reviewer agrees.
 
 The committed hardened pilot queue contains:
 
@@ -59,7 +60,9 @@ The committed hardened pilot queue contains:
 - `negative_truth_claim=false`;
 - manifest/source lineage validated by the final coherence snapshot.
 
-Queue membership is not confirmed-negative support. A class remains `NONE` in the matrix until explicit class-specific adjudication and independent verification accept negative evidence. Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY`.
+Queue membership or one primary opinion is not confirmed-negative support. A class remains `NONE` in the matrix until explicit class-specific adjudication and genuinely independent verification accept negative evidence. Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY`.
+
+Candidate #2 also exposed a separate representation-quality blocker. The R4-GAP-008 population audit found at least 11,702 provable same-file declared-library calls among 217,490 v9 type-11 edges, while type 11 was attached to only 7,057 / 13,413 raw-low-level nodes, 40 / 4,215 send nodes, and 6,557 / 80,927 transfer nodes. These are representation diagnostics, not label truth; they justify R4-D-010 and the v10 requirement.
 
 ## Selector/model-execution evidence boundary
 
@@ -94,11 +97,15 @@ Final coherent snapshot:
 
 `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`
 
-Current closeout/restart record:
+Current representation stop line/restart record:
 
-`runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`.
+`runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`.
 
-The earlier `runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md` and `runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md` are historical pre-hardening/execution records, not the current restart boundary.
+Current candidate-review record:
+
+`runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`.
+
+The accepted pre-pilot baseline remains `runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`. The earlier logical-V3 checkpoint and evidence-hardening handoff are historical pre-hardening/execution records, not the current restart boundary.
 
 ## Status vocabulary
 

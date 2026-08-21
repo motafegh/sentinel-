@@ -24,7 +24,19 @@ R4-D-009 / ADR-R4-009 supersedes **V2 grouping/roles for future ML research** be
 - `sentinel-r4-vnext-v3`;
 - ML adapter `ml/src/datasets/vnext_logical_v3_dataset.py`.
 
-V3 reuses accepted repaired-v2 graph/token/sidecar bytes. Local V3 generation and acceptance are pending; until they pass, no repaired logical partition is authorized for full training.
+V3 reuses accepted repaired-v2 graph/token/sidecar bytes. Protected-local V3
+acceptance and the hardened evidence snapshot are complete.
+
+R4-D-010 preserves repaired-v2/v9 for reproduction but makes v9 ineligible for
+the new full run. The future-training representation candidate is graph schema
+`v10`, extractor `v2.3-r4-call-semantics`, root
+`representations-r4-v3-candidate`. Repository consumers support the exact v10
+edge vocabulary without OOB clamping or checkpoint resizing. Bounded
+source-reviewed regressions and full 22,540-identity transition mechanics pass;
+the finalized vocabulary has 17 edge kinds, including explicit contract
+creation discovered by population probing. Physical acceptance is rejected for
+now because 26 parse-only graphs have incomplete call IR; a later separate
+training decision remains required.
 
 ## Compatibility boundaries
 
@@ -39,11 +51,21 @@ Repaired/v2 remains a physical/historical research seam:
 - `ml/src/datasets/vnext_repaired_dataset.py` binds `sentinel-r4-vnext-v2`;
 - V2 role-dependent research outputs are historical after R4-D-009.
 
-Current V3 research seam:
+Current accepted V3 logical seam:
 
 - `ml/src/datasets/vnext_logical_v3_dataset.py` requires V3 dataset/grouping/partition identity and a passing V3 physical binding report;
-- it reuses the accepted repaired-v2 representation root;
+- the historical adapter reuses the accepted repaired-v2 representation root;
 - it fails closed if address grouping authority is re-enabled or the V3 binding is absent/mismatched.
+
+Future v10 training seam:
+
+- `ml/src/datasets/vnext_logical_v3_v10_dataset.py` requires exact V3/v10/
+  extractor/root identities;
+- it rejects a diagnostic candidate and requires both a separate physical
+  acceptance report and an explicit binding-specific training decision;
+- `build_v10_run_binding` carries that decision and forbids historical
+  checkpoint reuse;
+- current candidate reports cannot satisfy these guards.
 
 Do not route the full 100-epoch runner to V2 or V3 until governance explicitly re-authorizes training.
 
@@ -76,12 +98,13 @@ Keep architecture/input shape frozen for this tranche:
 - architecture `four_eye_v8`;
 - model `v8.1`;
 - ten locked outputs;
-- graph schema `v9`;
+- graph schema `v10` for any future new run; v9 only for historical reproduction;
 - token tensor `[4,512]`.
 
 `target_aware_guarded_v1` remains a research candidate, not a promoted extractor. V2 evidence showed strong requested-target coverage improvement, but those statistics were conditioned on superseded V2 roles.
 
-After V3 acceptance, regenerate selector coverage and CUDA evidence against V3 roles. The V3 CUDA launcher must execute its requested worst-case graph probes; unlike the earlier V2 run, missing sensitivity evidence cannot silently produce an empty probe set.
+The hardened V3 selector/CUDA evidence is complete but does not promote the
+selector. Initial v10 comparison reuses accepted v9 token bytes exactly.
 
 Encoding more than four windows is an architecture/input-capacity change and needs a separate architecture decision.
 
@@ -93,22 +116,21 @@ The earlier V2 active population of 831 groups and planning arithmetic of 104 mi
 
 Even those V3 counts remain planning-only until the final objective, selector, roles, and training configuration are explicitly authorized and bound.
 
-## Local V3 execution
+## Local v10 execution
 
 Follow:
 
-`docs/plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md`
+`docs/plan/ml-R4/runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`
 
 Order:
 
-1. build V3 grouping;
-2. freeze V3 roles/publication;
-3. prove unchanged physical binding;
-4. pass V2→V3 logical acceptance;
-5. regenerate V3 representation-sensitivity and selector population evidence;
-6. generate the V3 negative-review queue;
-7. rerun identical-initialization selector CUDA comparison with mandatory worst-case probes;
-8. review evidence before any selector/objective/training decision.
+1. pass source-reviewed GAP-007 v10 regressions;
+2. generate a fresh full v10 candidate from accepted preprocessing;
+3. prove exact population identity and byte-identical accepted tokens;
+4. reconcile every classified call IR with emitted v10 call edges;
+5. run transition/model-consumer regressions;
+6. write an explicit physical acceptance or rejection record;
+7. keep training closed pending a later objective/selector/training decision.
 
 ## Runtime provenance
 
@@ -128,7 +150,7 @@ Repository CI cannot prove the Git-ignored V3 publication or local GPU evidence.
 
 ## Training stop line
 
-Until V3 is accepted locally and evaluation/selector decisions are made:
+Until v10 is physically accepted and later evaluation/selector/training decisions are made:
 
 - do not run the 100-epoch job;
 - do not create/promote a repaired teacher checkpoint;
@@ -138,4 +160,8 @@ Until V3 is accepted locally and evaluation/selector decisions are made:
 - do not promote `target_aware_guarded_v1`;
 - do not approve PU learning merely to bypass the lack of negative evaluation evidence.
 
-**Current ML status:** physical repaired-v2 representations remain accepted; V2 grouping/roles are superseded for future research; logical V3 is implemented and awaits protected local acceptance; confirmed-negative evidence and selector promotion remain unresolved; G8 open; full training unauthorized.
+**Current ML status:** repaired-v2/v9 remains accepted historical physical
+evidence; logical V3 is accepted; v10 repository consumers, bounded regressions,
+and full diagnostic mechanics pass, but physical v10 acceptance is blocked by
+26 parse-only contracts. Confirmed-negative evidence and selector promotion
+remain unresolved; G8 is open and full training is unauthorized.

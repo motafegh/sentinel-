@@ -22,14 +22,28 @@ That physical acceptance still stands.
 
 However, the 2026-08-15 full-population grouping audit proved `r4-leakage-groups-v2` over-connects unrelated contracts through arbitrary same-source Ethereum address literals. One DIVE component contains 10,327 contracts and is dominated by common protocol/sentinel addresses. Therefore R4-D-009 / ADR-R4-009 supersedes V2 **grouping/roles** for future research while preserving V2 physical artifacts as historical/physical evidence.
 
-The active logical candidate is:
+The accepted logical authority is:
 
 - grouping: `r4-leakage-groups-v3`;
 - role partition: `r4-vnext-roles-v3`;
 - publication: `sentinel-r4-vnext-v3`;
 - logical build: `r4-logical-lineage-v3`.
 
-Repository implementation exists; protected local V3 generation/acceptance is still required before V3 becomes accepted local authority.
+Protected local V3 acceptance and the hardened evidence snapshot are complete.
+V3 has 22,394 groups, maximum group size 7, and zero address-authority
+edges while preserving the repaired-v2 physical binding digest.
+
+R4-D-010 now separates physical reproducibility from future-training
+eligibility.  The accepted repaired-v2/v9 bytes remain immutable evidence, but
+the v9 call edge is semantically inadequate for a new full run.  The only
+current future-training representation candidate is graph schema `v10`,
+extractor `v2.3-r4-call-semantics`, under
+`representations-r4-v3-candidate`. Repository implementation, bounded
+source-reviewed regressions, full 22,540-identity generation/binding, and the
+transition mechanics pass with digest `6087dc6d...b0260`. Population probing
+required an explicit `CONTRACT_CREATION` kind, bringing v10 to 17 exact edge
+kinds. Physical acceptance is rejected for now because 26 parse-only contracts
+lack complete call IR. None of this authorizes training.
 
 ## Mandatory semantics
 
@@ -46,49 +60,44 @@ Repository implementation exists; protected local V3 generation/acceptance is st
 
 ## Current execution seam
 
-Do **not** rerun the expensive repaired-v2 physical build for the grouping correction.
-
-Use the logical-only V3 handoff:
-
-`docs/plan/ml-R4/runs/2026-08-15_PHASE8_logical_v3_grouping_repair_handoff.md`
-
-Primary driver:
+Do **not** rerun or edit repaired-v2/v9.  Use the v10 protected-local driver:
 
 ```bash
 PYTHONPATH=.:data_module ./ml/.venv/bin/python \
-  docs/plan/ml-R4/scripts/p8_rebuild_logical_v3.py --help
+  docs/plan/ml-R4/scripts/p8_generate_v10_candidate.py --help
 ```
 
-Required local sequence is V3 grouping → V3 role/publication freeze → same-byte physical rebinding → V2→V3 acceptance audit → regenerated V3 research evidence.
-
-The V3 binder must prove the physical representation binding digest is unchanged from repaired-v2. If that digest changes, stop: a supposedly logical-only change has modified the physical contract.
+Required local sequence is bounded source-reviewed regressions → fresh full v10
+root → exact v9 population/token binding → v9-to-v10 transition audit → model
+consumer validation → explicit physical acceptance decision.  The candidate
+binder is diagnostic-only and always records `training_authorized=false`.
 
 ## Research/evaluation boundary
 
-The V2 confirmed-negative queue and V2 role-dependent selector/sensitivity/GPU outputs are historical population-specific evidence after R4-D-009. Do not manually adjudicate or promote from them.
-
-After local V3 acceptance, regenerate:
-
-- V3 representation sensitivity;
-- V3 selector population comparison;
-- V3 confirmed-negative pilot queue;
-- V3 identical-initialization CUDA selector comparison with mandatory worst-case probes.
-
-No pseudo-negatives, selector promotion, PU objective, threshold/calibration fitting, or full training is authorized by those generation steps alone.
+The hardened V3 queue is current review authority. Candidate #1 is durably
+`NOT_CONFIRMED`; candidate #2 primary review supports a class-specific negative
+but remains UNKNOWN/target `None` pending genuinely independent agreement.
+No pseudo-negatives, selector promotion, PU objective, threshold/calibration
+fitting, or full training is authorized by v10 generation or review.
 
 ## Validation
 
 Repository-safe validation is `.github/workflows/r4-phase8-data-repair.yml`, including V3 grouping/partition tests and frozen historical G6 validation.
 
-Protected local acceptance additionally requires the existing repaired-v2 preprocessing/representation trees and V3 generated publication/binding reports. Repository CI cannot substitute for local physical hash verification.
+Protected local v10 acceptance additionally requires the existing repaired-v2
+preprocessing/representation trees and the generated candidate/binding/audit
+reports. Repository CI cannot substitute for local physical hash verification.
 
 ## Training boundary
 
 Full Phase-8 training remains prohibited. Current blockers are:
 
-- local V3 logical acceptance pending;
+- v10 physical acceptance rejected for now pending explicit resolution of 26 parse-only contracts;
 - zero confirmed-negative evaluation evidence;
 - target-aware selector not promoted;
 - threshold/calibration/untouched acceptance unavailable.
 
-**Current DATA status:** repaired-v2 physical source/representations accepted and immutable; V2 logical grouping/roles superseded for future research; corrected logical V3 implemented repository-side and awaiting local generation/acceptance; G8 open.
+**Current DATA status:** repaired-v2/v9 physical evidence is accepted and
+immutable; logical V3 is accepted; v9 is ineligible for the new full run;
+versioned v10 full diagnostic evidence passes, while physical acceptance is
+blocked by 26 parse-only contracts; G8 is open and training is unauthorized.

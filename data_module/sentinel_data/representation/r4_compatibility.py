@@ -206,6 +206,7 @@ def _extract_components(
     solc_version: str,
     skip_analyze: bool,
     allow_paths: str,
+    graph_schema_version: str,
 ) -> tuple[tuple[Any, ...], tuple[str, ...]]:
     graphs: list[Any] = []
     actual_targets: list[str] = []
@@ -217,6 +218,7 @@ def _extract_components(
             solc_binary=solc_binary,
             solc_version=solc_version,
             slither_skip_analyze=skip_analyze,
+            graph_schema_version=graph_schema_version,
         )
         graph = extract_contract_graph(sol_path, config=config)
         actual = str(getattr(graph, "contract_name", ""))
@@ -235,6 +237,7 @@ def extract_components_with_compatibility(
     *,
     solc_binary: Path | None,
     solc_version: str,
+    graph_schema_version: str = "v9",
 ) -> CompatibilityExtraction:
     """Extract all file targets with explicit, ordered compatibility modes."""
 
@@ -244,6 +247,7 @@ def extract_components_with_compatibility(
         "solc_binary": solc_binary,
         "solc_version": solc_version,
         "allow_paths": str(sol_path.parent),
+        "graph_schema_version": graph_schema_version,
     }
     try:
         graphs, actual = _extract_components(
@@ -297,6 +301,7 @@ def extract_components_with_compatibility(
             "solc_binary": solc_binary,
             "solc_version": solc_version,
             "allow_paths": f"{sol_path.parent},{transformed_path.parent}",
+            "graph_schema_version": graph_schema_version,
         }
         try:
             graphs, actual = _extract_components(

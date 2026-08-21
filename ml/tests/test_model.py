@@ -175,13 +175,22 @@ def test_forward_return_aux_shapes():
     )
     logits, aux = result
     assert logits.shape == (4, 10), f"logits shape: {logits.shape}"
-    assert {"gnn", "transformer", "fused", "phase2", "jk_entropy"} == set(aux.keys()), (
-        f"aux keys must be {{'gnn', 'transformer', 'fused', 'phase2', 'jk_entropy'}}, got {set(aux.keys())}"
+    assert {
+        "gnn",
+        "transformer",
+        "fused",
+        "phase2",
+        "jk_entropy",
+        "fusion_embedding",
+    } == set(aux.keys()), (
+        "aux keys must include four eye logits, jk_entropy, and the existing "
+        f"fusion_embedding boundary; got {set(aux.keys())}"
     )
     for key in ("gnn", "transformer", "fused", "phase2"):
         assert aux[key].shape == (4, 10), (
             f"aux['{key}'] shape: {aux[key].shape}, expected (4, 10)"
         )
+    assert aux["fusion_embedding"].shape == (4, 128)
 
 
 def test_forward_return_aux_false_returns_tensor():

@@ -16,7 +16,9 @@ R4-D-009 accepts corrected logical V3 after V2 address-literal grouping produced
 
 A later protected-local audit found five post-acceptance research/reporting defects. Repository hardening fixed them, the affected acceptance/sensitivity/selector/queue/CUDA reports were regenerated under source commit `83bd566b9c4f4f653e530c2c0f5c990858dd759d`, and the final Git-safe V3 evidence snapshot completed with `coherence=PASS` and verified SHA-256 checksums. The durable snapshot was committed at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`.
 
-There are still **zero confirmed-negative examples**. R4-GAP-007 has moved from pilot-ready to **pilot in progress** using the hardened 200-cell / 200-group queue. Candidate #1 (`CallToUnknown`) has only a partial primary review and remains `UNKNOWN` / `PENDING_REVIEW` with target `None`; no independent verification or negative verdict exists. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch Phase-8 run remain unauthorized.
+There are still **zero confirmed-negative examples**. R4-GAP-007 is **pilot in progress** using the hardened 200-cell / 200-group queue. Candidate #1 (`CallToUnknown`) is `NOT_CONFIRMED`. Candidate #2's source-first primary review supports `CONFIRMED_NEGATIVE`, but it remains `UNKNOWN` / `PENDING_REVIEW` with target `None` until a genuinely independent reviewer agrees.
+
+Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. V10 now passes complete 22,540-identity generation/binding and transition mechanics, but physical acceptance is rejected for now because 26 parse-only contracts lack complete call IR. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch run remain unauthorized.
 
 ## Just-enough mental model
 
@@ -47,7 +49,14 @@ coherence-gated final snapshot
   PASS / COMMITTED
         ↓
 R4-GAP-007 negative pilot
-  IN PROGRESS / candidate #1 partial primary review
+  IN PROGRESS / candidate #1 NOT_CONFIRMED
+  candidate #2 primary supports negative / independent review pending
+        ↓
+R4-GAP-008 full-population representation audit
+  COMPLETE / v9 semantically inadequate for new training
+        ↓
+versioned v10 implementation + protected-local acceptance
+  REQUIRED / OPEN
         ↓
 separate selector-promotion decision / objective design
         ↓
@@ -71,7 +80,7 @@ valid physical DATA
 | Phase | State | Current meaning |
 |---:|---|---|
 | 0–7 | PASSED | historical G0–G7 remain immutable/reproducible |
-| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 accepted; evidence hardening/regeneration closed with a coherent committed snapshot; R4-GAP-007 pilot started and candidate #1 is under partial primary review; full training unauthorized |
+| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 remain accepted evidence; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary supports a negative pending independent review; v10 full diagnostics pass but physical acceptance is rejected for now on 26 parse-only contracts; full training unauthorized |
 | 9–10 | WAITING | evaluation/calibration/promotion remain gated by G8 and missing evidence |
 
 ### Historical G7 validation anchors
@@ -102,6 +111,8 @@ Current physical root:
 - positive / unknown / confirmed-negative targets: 1,080 / 224,320 / 0;
 - STRONG / WEAK semantic cells: 474 / 606;
 - physical binding digest: `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`.
+
+This acceptance proves physical integrity and reproducibility of those exact v9 bytes. R4-D-010 now explicitly prevents using them as the graph lineage for a new full training run; it does not erase the earlier acceptance evidence.
 
 Physical compatibility provenance remains explicit: 22,512 full Slither analyses, 26 parse-only recoveries, and two graph-only constant-array compatibility transformations.
 
@@ -237,9 +248,27 @@ R4-GAP-007 authorizes class-specific dual-review negative evaluation work. The c
 - all roles `TRAIN_UNLABELED`;
 - `negative_truth_claim=false`.
 
-The pilot has now started with deterministic candidate #1 for `CallToUnknown`. Partial primary review found a typed callback to a caller-supplied `_spender` (`spender.receiveApproval(...)`) and a legacy Solidity Ether transfer (`msg.sender.transfer(...)`). Neither interaction establishes positive or negative class truth by itself. Candidate #1 remains `UNKNOWN` / `PENDING_REVIEW`; complete source/representation review and any genuinely independent verification are still pending.
+The pilot started with deterministic candidate #1 for `CallToUnknown`. Complete whole-source and bound-representation primary review found no raw/unchecked low-level call, and Solidity 0.4.18 semantics plus targeted Slither analysis corroborated that the legacy `msg.sender.transfer(...)` reverts on failure. However, the typed callback to caller-supplied `_spender` (`spender.receiveApproval(...)`) is a real call to an unverified external target, which conflicts with the governing taxonomy's broader class definition. Candidate #1 was therefore adjudicated `NOT_CONFIRMED` and remains `UNKNOWN` / `PENDING_REVIEW`, target `None`. Validation passed with zero accepted negatives and no new authorization. Independent verification is required only for a primary `CONFIRMED_NEGATIVE`, so none was needed here.
+
+Candidate #2 for `CallToUnknown` (`r4neg-bfe90ef82e33a324d612256a5d4053c6`) then received complete whole-source, graph, token-window, sidecar, and targeted Slither primary review. Its only actual external interaction is `_customerAddress.transfer(_dividends)` after state update; no raw low-level call, send, typed callback, assembly, creation, or self-destruct was found. The primary result therefore supports `CONFIRMED_NEGATIVE` for this class, but it is not accepted truth yet. The primary reviewer must not self-verify; the deterministic blind source bundle under `docs/plan/ml-R4/review_bundles/` is the handoff for a genuinely independent reviewer.
 
 Queue membership remains review reservation only. Never infer negative truth from historical zero, unlabeled state, source silence, static-tool silence, or queue membership. Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY` and requires class-specific primary review plus independent agreeing verification.
+
+### Representation semantic integrity
+
+Candidate #2's bound v9 graph contains 30 type-11 edges and all 30 are provable same-file `SafeMath` library calls. Its actual `Transfer` IR is present in graph metadata but does not receive type 11. The read-only R4-GAP-008 audit then found across all 22,540 repaired-v2 graphs:
+
+- 217,490 total type-11 edges;
+- at least 11,702 provable same-file declared-library type-11 edges in 1,489 graphs;
+- 7,057 / 13,413 raw-low-level nodes with type 11;
+- 40 / 4,215 send nodes with type 11;
+- 6,557 / 80,927 transfer nodes with type 11;
+- 9,013 / 13,025 transfer-containing graphs without a transfer-linked type-11 edge;
+- 12,653 graphs retaining less than 50% of unique code tokens.
+
+The library classifier is conservative and can undercount imported, aliased, or `using for` libraries. Transfer/send name matching can include token-interface methods. These counts are therefore representation diagnostics and proven lower bounds, not vulnerability labels or a complete false-positive rate.
+
+R4-D-010 requires graph schema v10 / extractor `v2.3-r4-call-semantics` / root `representations-r4-v3-candidate`, with distinct typed-high-level, raw-low-level, `Transfer`, `Send`, `LibraryCall`, and contract-creation kinds. Repository implementation and bounded protected-local regression now pass. Candidate #1 emits its one typed callback plus one transfer; candidate #2 emits 30 library calls plus one transfer; both reuse accepted token bytes exactly and have zero unknown IR or call-map loss. A population probe also exposed and then verified explicit `NewContract` handling. Full generation, v9→v10 reconciliation, physical binding, and explicit acceptance still require the ignored local corpus.
 
 ## Interfaces, data shapes, and configuration
 
@@ -249,15 +278,16 @@ Queue membership remains review reservation only. Never infer negative truth fro
 |---|---|
 | semantic policy | `data-vnext-policy-v1` |
 | historical gate baseline | G0–G7 / `sentinel-r4-vnext-v1` |
-| physical DATA root | R4-D-008 / repaired-v2 |
+| physical DATA root | R4-D-008 / repaired-v2; immutable reproduction evidence, not new-full-training eligible |
 | logical grouping/role authority | R4-D-009 / accepted V3 |
 | durable research evidence | coherent snapshot `44fbb9c1d...` under `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` |
-| current execution restart | `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md` |
-| confirmed-negative review | R4-GAP-007 / pilot IN_PROGRESS / candidate #1 partial primary review |
+| current execution restart | v10 implementation/bounded regression record + R4-GAP-008 audit/ADR; candidate #2 review is a separate pending-independent track |
+| confirmed-negative review | R4-GAP-007 / candidate #1 `NOT_CONFIRMED` / candidate #2 primary-support only, independent pending |
+| future representation | v10 / extractor `v2.3-r4-call-semantics` / `representations-r4-v3-candidate`; implemented and bounded-regression passed, not physically accepted |
 | selector | historical control remains bound; guarded candidate unpromoted |
 | training authorization | HOLD / none |
 
-### Stable shapes
+### Stable accepted-v9 shapes
 
 - vulnerability classes: 10;
 - graph schema: `v9`;
@@ -267,6 +297,8 @@ Queue membership remains review reservation only. Never infer negative truth fro
 - model token input: `[4,512]`;
 - model outputs: 10;
 - architecture: `four_eye_v8` / `v8.1`.
+
+These describe accepted v9 artifacts. V10 has 17 exact edge kinds and a passing 22,540-identity diagnostic generation/binding/transition audit, but it is not an accepted physical population. The 26 known `slither_parse_only` compatibility graphs cannot establish complete call-IR semantics; V10 reports them `NOT_EXTRACTABLE`, and they require explicit resolution before physical acceptance.
 
 ### Unsupported evaluation roles
 
@@ -300,6 +332,8 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 
 ### Representation / selector
 
+- v9 type-11 edges conflate library calls and omit most Transfer/Send nodes; v9 is prohibited for the new full run;
+- v10 full-population diagnostics pass, while protected-local acceptance is rejected for now under R4-B008 due to 26 parse-only contracts;
 - `[4,512]` capacity omits material code on long contracts;
 - guarded target-aware selection remains promising but unpromoted;
 - full-population bound-token equivalence remains required before promotion.
@@ -316,13 +350,14 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 For the current Phase-8 boundary:
 
 1. synchronize local `main`;
-2. read `PLAN_STATUS_MATRIX.md`, the 2026-08-16 hardened snapshot closeout, and `runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`;
-3. preserve repaired-v2 physical roots, accepted V3 publication/grouping, and the committed coherent evidence snapshot;
-4. continue candidate #1 complete primary review from the committed hardened queue only;
-5. keep every candidate UNKNOWN/PENDING_REVIEW until class-specific primary review plus independent agreeing verification establishes negative evidence;
-6. keep any accepted negative evaluation-only unless later policy explicitly grants optimizer authority;
-7. separately design/execute the full-population control-selector → bound-token equivalence check before any guarded-selector promotion ADR;
-8. revisit objective/evaluation/training authorization, including any PU-learning decision, only after new evidence supports it.
+2. read `PLAN_STATUS_MATRIX.md`, the R4-GAP-008 audit, ADR-R4-010, candidate #2 primary review, and the 2026-08-16 hardened snapshot closeout;
+3. preserve v9/repaired-v2 physical roots, accepted V3 publication/grouping, and the committed coherent evidence snapshot;
+4. preserve and validate v10 as a separate versioned source/test lineage; never patch v9 behavior or files in place;
+5. have a genuinely independent reviewer evaluate candidate #2 from the blind bundle; keep target `None` unless dual review agrees;
+6. run full v10 generation, v9→v10 comparison, binding, and model-consumer acceptance only where the protected local corpus exists;
+7. keep any accepted negative evaluation-only unless later policy explicitly grants optimizer authority;
+8. separately execute control-selector → bound-token equivalence before any guarded-selector promotion ADR;
+9. revisit objective/evaluation/training authorization, including PU learning, only after new evidence supports it.
 
 Never fix generated parquet/JSON evidence by hand.
 
@@ -353,7 +388,13 @@ python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 - [R4 evidence gap register](../plan/ml-R4/EVIDENCE_GAP_REGISTER.md)
 - [ADR-R4-008 repaired-v2 physical DATA acceptance](../plan/ml-R4/adrs/ADR-R4-008-repaired-v2-data-acceptance-and-phase8-no-launch.md)
 - [ADR-R4-009 logical V3 grouping correction](../plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md)
-- [Current GAP-007 candidate #1 local handoff](../plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md)
+- [ADR-R4-010 versioned external-call representation correction](../plan/ml-R4/adrs/ADR-R4-010-versioned-external-call-representation-correction.md)
+- [Current GAP-008 external-call semantics audit](../plan/ml-R4/runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md)
+- [V10 implementation and bounded-local regression](../plan/ml-R4/runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md)
+- [V10 repository/local implementation handoff](../plan/ml-R4/runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md)
+- [Current GAP-007 candidate #2 primary review](../plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md)
+- [Current GAP-007 candidate #1 primary-review closeout](../plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_primary_review.md)
+- [Prior GAP-007 candidate #1 local handoff](../plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md)
 - [Hardened V3 evidence snapshot closeout](../plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md)
 - [Completed V3 evidence-hardening procedure](../plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md)
 - [Pre-hardening V3 research checkpoint](../plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md)
@@ -391,13 +432,18 @@ Current reading order:
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`
 2. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`
 3. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md`
-4. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
-5. `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`
-6. `docs/plan/ml-R4/CLAIM_STATUS_MATRIX.md`
-7. `data_module/sentinel_data/vnext/confirmed_negative_evaluation.py`
-8. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/snapshot_coherence_v1.json`
-9. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/confirmed_negative_review_queue_v1.json`
-10. `ml/src/data_extraction/bounded_window_selector.py`
+4. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`
+5. `docs/plan/ml-R4/adrs/ADR-R4-010-versioned-external-call-representation-correction.md`
+6. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md`
+7. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`
+8. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`
+9. `docs/plan/ml-R4/CLAIM_STATUS_MATRIX.md`
+10. `data_module/sentinel_data/representation/graph_extractor.py`
+11. `data_module/sentinel_data/verification/semantic_checker.py`
+12. `data_module/sentinel_data/vnext/confirmed_negative_evaluation.py`
+13. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/snapshot_coherence_v1.json`
+14. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/confirmed_negative_review_queue_v1.json`
+15. `ml/src/data_extraction/bounded_window_selector.py`
 
 ## Execution trace and worked example
 
@@ -429,5 +475,6 @@ Before proceeding, be able to answer:
 - What exactly did `coherence=PASS` prove, and what did it not prove?
 - Why can positive-only selector CUDA evidence not establish false-positive discrimination?
 - What evidence is still missing before G8 can authorize full training?
+- Why can v9 remain valid historical evidence while being ineligible for a new training run?
 
-If any answer is unclear, use the 2026-08-16 hardened V3 evidence snapshot closeout for the accepted pre-pilot baseline and the 2026-08-21 GAP-007 candidate #1 handoff for the current execution point rather than guessing from historical pre-hardening reports.
+If any answer is unclear, use the 2026-08-16 hardened V3 evidence snapshot closeout for the accepted pre-pilot baseline, then the 2026-08-21 v10 implementation/bounded-regression record, GAP-008 audit, and ADR-R4-010 for the current execution point. Use candidate #2's primary-review record only for its pending-independent review track.

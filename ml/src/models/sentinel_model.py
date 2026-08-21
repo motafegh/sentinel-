@@ -202,6 +202,7 @@ class SentinelModel(nn.Module):
         drop_complexity_feature:    bool  = False,
         # Run 8: APPNP Phase 1 teleport fraction (0.0 = disabled)
         appnp_alpha:                float = 0.0,
+        graph_schema_version:       str   = "v9",
     ) -> None:
         super().__init__()
 
@@ -225,6 +226,7 @@ class SentinelModel(nn.Module):
             phase2_edge_types=gnn_phase2_edge_types,
             drop_complexity=drop_complexity_feature,
             appnp_alpha=appnp_alpha,
+            graph_schema_version=graph_schema_version,
         )
         self.transformer = TransformerEncoder(
             lora_r=lora_r,

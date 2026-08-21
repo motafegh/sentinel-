@@ -112,6 +112,10 @@ from torch_geometric.data import Data
 from sentinel_data.representation.graph_schema import (
     EDGE_TYPES, FEATURE_NAMES, NODE_FEATURE_DIM, NODE_TYPES, NUM_EDGE_TYPES, VISIBILITY_MAP,
 )
+from sentinel_data.representation.graph_schema_versions import (
+    GraphSchemaDefinition,
+    get_graph_schema,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +264,9 @@ class GraphExtractionConfig:
     that triggers a Slither analysis defect.  Callers must not enable it
     silently; repaired R4 sidecars record the resulting degraded mode.
     """
+
+    graph_schema_version: str = "v9"
+    """Exact graph schema to emit. Defaults to immutable historical v9."""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1055,6 +1062,120 @@ def _build_control_flow_edges(
     return contains_edges, control_flow_edges
 
 
+@dataclass(frozen=True)
+class _CallOperationTypes:
+    high_level: type
+    low_level: type
+    transfer: type
+    send: type
+    library: type
+    call: type | None = None
+    ignored_non_external_calls: tuple[type, ...] = ()
+    new_contract: type | None = None
+
+
+def _slither_call_operation_types() -> _CallOperationTypes:
+    """Load the exact Slither IR classes used by v10 call-kind extraction."""
+
+    from slither.slithir.operations import (
+        Call,
+        EventCall,
+        HighLevelCall,
+        InternalCall,
+        InternalDynamicCall,
+        LibraryCall,
+        LowLevelCall,
+        NewArray,
+        NewContract,
+        NewElementaryType,
+        NewStructure,
+        Send,
+        SolidityCall,
+        Transfer,
+    )
+
+    return _CallOperationTypes(
+        high_level=HighLevelCall,
+        low_level=LowLevelCall,
+        transfer=Transfer,
+        send=Send,
+        library=LibraryCall,
+        call=Call,
+        ignored_non_external_calls=(
+            EventCall,
+            InternalCall,
+            InternalDynamicCall,
+            NewArray,
+            NewElementaryType,
+            NewStructure,
+            SolidityCall,
+        ),
+        new_contract=NewContract,
+    )
+
+
+def _classify_v10_call_kinds(
+    operations: list[Any] | tuple[Any, ...],
+    operation_types: _CallOperationTypes | None = None,
+) -> tuple[str, ...]:
+    """Classify Slither IR calls into deterministic, non-overlapping v10 kinds."""
+
+    types = operation_types or _slither_call_operation_types()
+    observed: set[str] = set()
+    for operation in operations:
+        # LibraryCall subclasses HighLevelCall, so the library check must be first.
+        if isinstance(operation, types.library):
+            observed.add("LIBRARY_CALL")
+        elif types.new_contract is not None and isinstance(operation, types.new_contract):
+            observed.add("CONTRACT_CREATION")
+        elif isinstance(operation, types.low_level):
+            observed.add("LOW_LEVEL_CALL")
+        elif isinstance(operation, types.transfer):
+            observed.add("ETHER_TRANSFER")
+        elif isinstance(operation, types.send):
+            observed.add("ETHER_SEND")
+        elif isinstance(operation, types.high_level):
+            observed.add("HIGH_LEVEL_CALL")
+
+    order = (
+        "HIGH_LEVEL_CALL",
+        "LOW_LEVEL_CALL",
+        "ETHER_TRANSFER",
+        "ETHER_SEND",
+        "LIBRARY_CALL",
+        "CONTRACT_CREATION",
+    )
+    return tuple(kind for kind in order if kind in observed)
+
+
+def _unclassified_v10_call_ir(
+    operations: list[Any] | tuple[Any, ...],
+    operation_types: _CallOperationTypes | None = None,
+) -> tuple[str, ...]:
+    """Report call IR subclasses not covered by the explicit v10 vocabulary."""
+
+    types = operation_types or _slither_call_operation_types()
+    if types.call is None:
+        return ()
+    known_types = [
+        types.library,
+        types.low_level,
+        types.transfer,
+        types.send,
+        types.high_level,
+    ]
+    if types.new_contract is not None:
+        known_types.append(types.new_contract)
+    unknown = {
+        f"{type(operation).__module__}.{type(operation).__qualname__}"
+        for operation in operations
+        if isinstance(operation, types.call)
+        and not isinstance(operation, tuple(known_types))
+        and not isinstance(operation, types.ignored_non_external_calls)
+    }
+    return tuple(sorted(unknown))
+
+
 def _add_icfg_edges(
     contract: Any,
     func_entry_map: dict,
@@ -1062,6 +1183,11 @@ def _add_icfg_edges(
     func_cfg_maps: dict,
     edges: list,
     edge_types: list,
+    graph_schema: GraphSchemaDefinition,
+    unclassified_call_ir: list[dict[str, str]] | None = None,
+    classified_call_ir_counts: dict[str, int] | None = None,
+    emitted_call_edge_counts: dict[str, int] | None = None,
+    call_mapping_errors: list[dict[str, Any]] | None = None,
 ) -> None:
     """
     PLAN-1D — ICFG-Lite: add cross-function control-flow edges.
@@ -1087,23 +1213,79 @@ def _add_icfg_edges(
         func_terminal_map: canonical_name → [graph_idx, ...] of callee terminal nodes.
         func_cfg_maps:     canonical_name → {slither_node → graph_idx} per function.
     """
-    _CALL_ENTRY    = EDGE_TYPES["CALL_ENTRY"]
-    _RETURN_TO     = EDGE_TYPES["RETURN_TO"]
-    _EXTERNAL_CALL = EDGE_TYPES["EXTERNAL_CALL"]
+    schema_edges = graph_schema.edge_types
+    _CALL_ENTRY = schema_edges["CALL_ENTRY"]
+    _RETURN_TO = schema_edges["RETURN_TO"]
 
     for func in contract.functions:
         func_key = getattr(func, "canonical_name", None) or func.name
-        local_map = func_cfg_maps.get(func_key)
+        # Inherited function clones may share a canonical name while carrying
+        # different Slither node objects. v10 resolves the caller map by object
+        # identity so a later parent clone cannot silently overwrite the leaf
+        # function's call sites. v9 keeps its historical canonical-name lookup.
+        local_map = (
+            func_cfg_maps.get(("object", id(func)))
+            if graph_schema.version == "v10"
+            else func_cfg_maps.get(func_key)
+        )
         if local_map is None:
+            if graph_schema.version == "v10":
+                for node in (getattr(func, "nodes", None) or []):
+                    operations = list(getattr(node, "irs", None) or [])
+                    kinds = _classify_v10_call_kinds(operations)
+                    if unclassified_call_ir is not None:
+                        for operation_type in _unclassified_v10_call_ir(operations):
+                            unclassified_call_ir.append(
+                                {
+                                    "function": str(func_key),
+                                    "node": str(getattr(node, "node_id", "")),
+                                    "operation_type": operation_type,
+                                }
+                            )
+                    if classified_call_ir_counts is not None:
+                        for kind in kinds:
+                            classified_call_ir_counts[kind] += 1
+                    if call_mapping_errors is not None and kinds:
+                        call_mapping_errors.append(
+                            {
+                                "function": str(func_key),
+                                "node": str(getattr(node, "node_id", "")),
+                                "call_kinds": list(kinds),
+                                "reason": "missing_function_cfg_map",
+                            }
+                        )
             continue
 
-        # Track external call sites per function to emit at most one self-loop
-        # per CFG node (avoid duplicates when a node has multiple ext calls).
-        external_call_sites: set[int] = set()
-
         for node in (getattr(func, "nodes", None) or []):
+            operations = list(getattr(node, "irs", None) or [])
+            kinds = (
+                _classify_v10_call_kinds(operations)
+                if graph_schema.version == "v10"
+                else ()
+            )
+            if classified_call_ir_counts is not None:
+                for kind in kinds:
+                    classified_call_ir_counts[kind] += 1
+            if graph_schema.version == "v10" and unclassified_call_ir is not None:
+                for operation_type in _unclassified_v10_call_ir(operations):
+                    unclassified_call_ir.append(
+                        {
+                            "function": str(func_key),
+                            "node": str(getattr(node, "node_id", "")),
+                            "operation_type": operation_type,
+                        }
+                    )
             caller_idx = local_map.get(node)
             if caller_idx is None:
+                if call_mapping_errors is not None and kinds:
+                    call_mapping_errors.append(
+                        {
+                            "function": str(func_key),
+                            "node": str(getattr(node, "node_id", "")),
+                            "call_kinds": list(kinds),
+                            "reason": "missing_call_site_node_map",
+                        }
+                    )
                 continue
 
             for callee in sorted(
@@ -1133,21 +1315,24 @@ def _add_icfg_edges(
                         edges.append([terminal_idx, son_idx])
                         edge_types.append(_RETURN_TO)
 
-            # v9 Fix #3: EXTERNAL_CALL self-loop. node.high_level_calls and
-            # node.low_level_calls expose cross-contract call destinations.
-            # Slither's class hierarchy: LibraryCall <: HighLevelCall, so a
-            # library call counts as external for our purposes (it crosses the
-            # contract boundary at the IR level). Self-loop encoding chosen
-            # over virtual-target to avoid node-index conflicts and keep the
-            # graph structurally consistent.
-            if caller_idx in external_call_sites:
+            if graph_schema.version == "v9":
+                # Preserve accepted v9 behavior byte-for-byte: one ambiguous
+                # EXTERNAL_CALL self-loop when Slither exposes either collection.
+                high_lvl = list(getattr(node, "high_level_calls", None) or [])
+                low_lvl = list(getattr(node, "low_level_calls", None) or [])
+                if high_lvl or low_lvl:
+                    edges.append([caller_idx, caller_idx])
+                    edge_types.append(schema_edges["EXTERNAL_CALL"])
                 continue
-            high_lvl = list(getattr(node, "high_level_calls", None) or [])
-            low_lvl  = list(getattr(node, "low_level_calls",  None) or [])
-            if high_lvl or low_lvl:
+
+            if graph_schema.version != "v10":
+                raise ValueError(f"unsupported ICFG graph schema {graph_schema.version!r}")
+
+            for kind in kinds:
                 edges.append([caller_idx, caller_idx])
-                edge_types.append(_EXTERNAL_CALL)
-                external_call_sites.add(caller_idx)
+                edge_types.append(schema_edges[kind])
+                if emitted_call_edge_counts is not None:
+                    emitted_call_edge_counts[kind] += 1
 
 
 def _add_def_use_edges(
@@ -1278,6 +1463,7 @@ def _compute_has_cei_path(
     edge_index:    "torch.Tensor",
     edge_attr:     "torch.Tensor",
     max_hops:      int = 8,
+    graph_schema_version: str = "v9",
 ) -> int:
     """CEI labeler (Phase 7 / Interp-2): detect CFG_NODE_CALL → CFG_NODE_WRITE within max_hops.
 
@@ -1295,9 +1481,8 @@ def _compute_has_cei_path(
     stored as graph.has_cei_path (int, 0 or 1) and used by aux_cei_loss
     after Gate 7.5 validates label quality on v9 data.
     """
-    from sentinel_data.representation.graph_schema import EDGE_TYPES
-
-    _CF = EDGE_TYPES["CONTROL_FLOW"]  # 6
+    graph_schema = get_graph_schema(graph_schema_version)
+    _CF = graph_schema.edge_types["CONTROL_FLOW"]  # 6
 
     if edge_index.shape[1] == 0:
         return 0
@@ -1310,8 +1495,22 @@ def _compute_has_cei_path(
     for s, d in zip(cf_src, cf_dst):
         adj.setdefault(s, []).append(d)
 
-    # Find CALL and WRITE node indices.
-    call_indices  = [i for i, m in enumerate(node_metadata) if m.get("type") == "CFG_NODE_CALL"]
+    # v9 retains the historical coarse behavior.  v10 starts only from nodes
+    # carrying a true external-control-handoff edge and therefore excludes
+    # LibraryCall nodes from the CEI/reentrancy path.
+    if graph_schema.version == "v9":
+        call_indices = [
+            i for i, metadata in enumerate(node_metadata)
+            if metadata.get("type") == "CFG_NODE_CALL"
+        ]
+    else:
+        handoff_ids = set(
+            graph_schema.edge_ids(graph_schema.external_handoff_edge_names)
+        )
+        handoff_mask = torch.zeros_like(edge_attr, dtype=torch.bool)
+        for edge_id in handoff_ids:
+            handoff_mask |= edge_attr == edge_id
+        call_indices = sorted(set(edge_index[0][handoff_mask].tolist()))
     write_set     = {i for i, m in enumerate(node_metadata) if m.get("type") == "CFG_NODE_WRITE"}
 
     if not call_indices or not write_set:
@@ -1611,6 +1810,7 @@ def extract_contract_graph(
     """
     if config is None:
         config = GraphExtractionConfig()
+    graph_schema = get_graph_schema(config.graph_schema_version)
     sol_path = Path(sol_path)
 
     # ── Slither availability ───────────────────────────────────────────────
@@ -1797,6 +1997,7 @@ def extract_contract_graph(
             # PLAN-1C: record per-function maps for ICFG edge construction.
             func_key = getattr(func, "canonical_name", None) or func.name
             _func_cfg_maps[func_key] = cfg_node_map
+            _func_cfg_maps[("object", id(func))] = cfg_node_map
             try:
                 from slither.core.cfg.node import NodeType as _SNT
                 func_nodes = getattr(func, "nodes", None) or []
@@ -1837,12 +2038,32 @@ def extract_contract_graph(
             )
 
     # PLAN-1D: add ICFG-Lite cross-function edges (CALL_ENTRY + RETURN_TO).
+    unclassified_call_ir: list[dict[str, str]] = []
+    v10_call_names = (
+        "HIGH_LEVEL_CALL",
+        "LOW_LEVEL_CALL",
+        "ETHER_TRANSFER",
+        "ETHER_SEND",
+        "LIBRARY_CALL",
+        "CONTRACT_CREATION",
+    )
+    classified_call_ir_counts = {name: 0 for name in v10_call_names}
+    emitted_call_edge_counts = {name: 0 for name in v10_call_names}
+    call_mapping_errors: list[dict[str, Any]] = []
     try:
         _add_icfg_edges(
             contract, _func_entry_map, _func_terminal_map, _func_cfg_maps,
-            edges, edge_types,
+            edges, edge_types, graph_schema, unclassified_call_ir,
+            classified_call_ir_counts, emitted_call_edge_counts,
+            call_mapping_errors,
         )
     except Exception as exc:
+        if graph_schema.version == "v10":
+            # V10 is a candidate correction lineage: an unexpected ICFG/call
+            # extraction error must invalidate the contract instead of silently
+            # producing a graph with missing semantic edges. Historical v9 keeps
+            # its established best-effort behavior below for reproducibility.
+            raise
         logger.warning(
             "ICFG edge extraction failed for '%s': %s — CALL_ENTRY/RETURN_TO omitted.",
             contract.name, exc,
@@ -2051,6 +2272,16 @@ def extract_contract_graph(
         edge_index = torch.zeros((2, 0), dtype=torch.long)
         edge_attr  = torch.zeros(0,      dtype=torch.long)
 
+    if edge_attr.numel() > 0:
+        observed_min = int(edge_attr.min().item())
+        observed_max = int(edge_attr.max().item())
+        if observed_min < 0 or observed_max >= graph_schema.num_edge_types:
+            raise ValueError(
+                f"edge type out of range for {graph_schema.version}: "
+                f"min={observed_min} max={observed_max} "
+                f"expected [0,{graph_schema.num_edge_types - 1}]"
+            )
+
     graph = Data(x=x, edge_index=edge_index)
     if config.include_edge_attr:
         graph.edge_attr = edge_attr
@@ -2058,7 +2289,20 @@ def extract_contract_graph(
     # [Phase 7 / Interp-2] CEI path label — stored unconditionally so v9 cache
     # always carries this field.  0 = no CEI violation detected; 1 = present.
     # Activated in trainer.py only after Gate 7.5 passes (label quality check).
-    graph.has_cei_path = _compute_has_cei_path(node_metadata, edge_index, edge_attr)
+    graph.has_cei_path = _compute_has_cei_path(
+        node_metadata,
+        edge_index,
+        edge_attr,
+        graph_schema_version=graph_schema.version,
+    )
+
+    if graph_schema.version == "v10":
+        graph.graph_schema_version = graph_schema.version
+        graph.representation_extractor_version = graph_schema.extractor_version
+        graph.unclassified_call_ir = unclassified_call_ir
+        graph.classified_call_ir_counts = classified_call_ir_counts
+        graph.emitted_call_edge_counts = emitted_call_edge_counts
+        graph.call_mapping_errors = call_mapping_errors
 
     graph.node_metadata  = node_metadata
     graph.contract_name  = contract.name

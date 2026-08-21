@@ -1,0 +1,21 @@
+{
+  "accepted_cells": [],
+  "adjudication_schema": "sentinel-r4-confirmed-negative-adjudication-v1",
+  "adjudications_seen": 1,
+  "calibration_fit_authorized": false,
+  "confirmed_negative_cells": 0,
+  "confirmed_negative_cells_by_class": {},
+  "dataset_version": "sentinel-r4-vnext-v3",
+  "decision_counts": {
+    "NOT_CONFIRMED": 1
+  },
+  "errors": [],
+  "partition_version": "r4-vnext-roles-v3",
+  "publication_manifest_sha256": "26b0a4b103010d3f2bcbb6ca08aaec98047dfeb8a4954440aa913c4a7053400f",
+  "queue_schema": "sentinel-r4-confirmed-negative-review-queue-v1",
+  "reserved_group_ids": [],
+  "schema": "sentinel-r4-confirmed-negative-evaluation-v1",
+  "status": "PASS",
+  "threshold_fit_authorized": false,
+  "training_target_authorized": false
+}

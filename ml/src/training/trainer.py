@@ -87,6 +87,7 @@ from ml.src.training.training_logger import (
     compute_grad_stats,
     label_dist_from_tensor,
 )
+from sentinel_data.representation.graph_schema_versions import get_graph_schema
 
 # ---------------------------------------------------------------------------
 # Logging setup — module level only (handlers added per-run inside train())
@@ -207,6 +208,7 @@ class TrainConfig:
     gnn_dropout:      float = 0.2
     use_edge_attr:    bool  = True
     gnn_edge_emb_dim: int   = 64
+    graph_schema_version: str = "v9"
     # JK connections (Phase 1-A1, 2026-05-14)
     gnn_use_jk:       bool  = True
     gnn_jk_mode:      str   = 'attention'
@@ -393,6 +395,7 @@ class TrainConfig:
     use_weighted_sampler:     str   = "timestamp-size"  # align with train.py CLI default (was "positive" — mismatch with argparse caused test/prod sampler divergence)
 
     def __post_init__(self) -> None:
+        get_graph_schema(self.graph_schema_version)
         # Phase 0-A4 (2026-05-14): Relaxed hard raise to conditional guard.
         # gnn_layers < 4 is a hard error — three-phase architecture needs at least 4 layers.
         # gnn_layers > 4 is experimental (second CONTROL_FLOW hop, v5.3+); warn but allow,
@@ -1195,6 +1198,7 @@ def train(config: TrainConfig) -> dict:
         fusion_max_nodes=config.fusion_max_nodes,
         drop_complexity_feature=config.drop_complexity_feature,
         appnp_alpha=config.appnp_alpha,
+        graph_schema_version=config.graph_schema_version,
     ).to(device)
 
     # C-1: Verify GNN conv layers are float32 (BF16 global dtype pollution check).
@@ -1612,6 +1616,7 @@ def train(config: TrainConfig) -> dict:
             "gnn_dropout":                 config.gnn_dropout,
             "use_edge_attr":               config.use_edge_attr,
             "gnn_edge_emb_dim":            config.gnn_edge_emb_dim,
+            "graph_schema_version":        config.graph_schema_version,
             "aux_loss_weight":             config.aux_loss_weight,
             "aux_loss_warmup_epochs":      config.aux_loss_warmup_epochs,
             "lora_r":                      config.lora_r,

@@ -1,6 +1,24 @@
 {
   "active": "v9",
+  "candidate": "v10",
   "history": [
+    {
+      "version": "v10",
+      "date": "2026-08-21",
+      "status": "R4_D_010_REPOSITORY_CANDIDATE_NOT_PHYSICALLY_ACCEPTED",
+      "extractor_version": "v2.3-r4-call-semantics",
+      "NODE_FEATURE_DIM": 12,
+      "NUM_NODE_TYPES": 14,
+      "NUM_EDGE_TYPES": 17,
+      "_MAX_TYPE_ID": 13.0,
+      "NUM_CLASSES": 10,
+      "changes": [
+        "replaces ambiguous EXTERNAL_CALL with HIGH_LEVEL_CALL, LOW_LEVEL_CALL, ETHER_TRANSFER, ETHER_SEND, LIBRARY_CALL, and CONTRACT_CREATION",
+        "excludes LIBRARY_CALL from external-control-handoff and CallToUnknown signals",
+        "keeps accepted v9 as the active historical/default schema until protected-local v10 acceptance"
+      ],
+      "checkpoints": []
+    },
     {
       "version": "v9",
       "date": "2026-06-06",

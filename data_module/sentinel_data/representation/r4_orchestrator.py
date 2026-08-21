@@ -26,6 +26,9 @@ from sentinel_data.preprocessing.r4_completeness import (
 from sentinel_data.preprocessing.r4_versions import (
     PREPROCESSING_ARTIFACT_VERSION,
     REPAIRED_REPRESENTATION_EXTRACTOR_VERSION,
+    V10_GRAPH_SCHEMA_VERSION,
+    V10_REPRESENTATION_EXTRACTOR_VERSION,
+    V10_REPRESENTATION_ROOT_NAME,
 )
 from sentinel_data.representation.target_selector import (
     TargetSelectionError,
@@ -124,6 +127,10 @@ def _extract_one(
     sol_path: Path,
     meta: dict[str, Any],
     output_dir: Path,
+    *,
+    graph_schema_version: str = "v9",
+    extractor_version: str = EXTRACTOR_VERSION,
+    accepted_tokens_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Build one strict graph/token/sidecar triple."""
 
@@ -132,8 +139,6 @@ def _extract_one(
     from ml.src.data_extraction.windowed_tokenizer import (
         tokenize_windowed_contract_strict,
     )
-    from sentinel_data.representation.graph_schema import FEATURE_SCHEMA_VERSION
-
     sha256 = meta["sha256"]
     targets = _select_targets(sol_path, meta)
     solc_binary = _resolve_solc_binary(meta.get("solc_version", ""))
@@ -144,6 +149,7 @@ def _extract_one(
         targets,
         solc_binary=solc_binary,
         solc_version=str(meta.get("solc_version", "")),
+        graph_schema_version=graph_schema_version,
     )
     component_graphs = list(extraction.graphs)
     actual_targets = list(extraction.actual_targets)
@@ -176,10 +182,56 @@ def _extract_one(
         )
         graph.num_nodes = int(graph.x.shape[0])
         graph.num_edges = int(graph.edge_index.shape[1])
+        if graph_schema_version == V10_GRAPH_SCHEMA_VERSION:
+            graph.graph_schema_version = graph_schema_version
+            graph.representation_extractor_version = extractor_version
+            graph.unclassified_call_ir = [
+                row
+                for component in component_graphs
+                for row in list(getattr(component, "unclassified_call_ir", []) or [])
+            ]
+            call_names = (
+                "HIGH_LEVEL_CALL",
+                "LOW_LEVEL_CALL",
+                "ETHER_TRANSFER",
+                "ETHER_SEND",
+                "LIBRARY_CALL",
+                "CONTRACT_CREATION",
+            )
+            graph.classified_call_ir_counts = {
+                name: sum(
+                    int((getattr(component, "classified_call_ir_counts", {}) or {}).get(name, 0))
+                    for component in component_graphs
+                )
+                for name in call_names
+            }
+            graph.emitted_call_edge_counts = {
+                name: sum(
+                    int((getattr(component, "emitted_call_edge_counts", {}) or {}).get(name, 0))
+                    for component in component_graphs
+                )
+                for name in call_names
+            }
+            graph.call_mapping_errors = [
+                row
+                for component in component_graphs
+                for row in list(getattr(component, "call_mapping_errors", []) or [])
+            ]
 
-    # Repaired preprocessing has already performed lexical comment removal.
-    # Re-stripping here would be a second mutation seam, so it is disabled.
-    tokens = tokenize_windowed_contract_strict(str(sol_path), strip_comments=False)
+    # Initial v10 comparison reuses accepted token bytes exactly so graph-call
+    # semantics are the only changed representation dimension.
+    token_source_path: Path | None = None
+    if accepted_tokens_dir is not None:
+        token_source_path = accepted_tokens_dir / f"{sha256}.tokens.pt"
+        if not token_source_path.is_file():
+            raise FileNotFoundError(f"missing accepted token tensor {token_source_path}")
+        tokens = torch.load(token_source_path, map_location="cpu", weights_only=True)
+        if tokens.get("sha256") != sha256 or tokens.get("source") != source:
+            raise ValueError(f"accepted token identity mismatch for {source}/{sha256}")
+    else:
+        # Repaired preprocessing has already performed lexical comment removal.
+        # Re-stripping here would be a second mutation seam, so it is disabled.
+        tokens = tokenize_windowed_contract_strict(str(sol_path), strip_comments=False)
     if tuple(tokens["input_ids"].shape) != (4, 512):
         raise ValueError(
             f"frozen token shape changed for {sha256}: {tuple(tokens['input_ids'].shape)}"
@@ -190,21 +242,24 @@ def _extract_one(
     sidecar_path = output_dir / f"{sha256}.rep.json"
 
     torch.save(graph, graph_path)
-    torch.save(
-        {
-            "input_ids": tokens["input_ids"],
-            "attention_mask": tokens["attention_mask"],
-            "sha256": sha256,
-            "source": source,
-            "num_windows": tokens["num_windows"],
-            "stride": tokens["stride"],
-            "num_tokens": tokens["num_tokens"],
-            "tokenizer_name": tokens["tokenizer_name"],
-            "max_length": tokens["max_length"],
-            **_coverage_sidecar(tokens),
-        },
-        token_path,
-    )
+    if token_source_path is not None:
+        shutil.copyfile(token_source_path, token_path)
+    else:
+        torch.save(
+            {
+                "input_ids": tokens["input_ids"],
+                "attention_mask": tokens["attention_mask"],
+                "sha256": sha256,
+                "source": source,
+                "num_windows": tokens["num_windows"],
+                "stride": tokens["stride"],
+                "num_tokens": tokens["num_tokens"],
+                "tokenizer_name": tokens["tokenizer_name"],
+                "max_length": tokens["max_length"],
+                **_coverage_sidecar(tokens),
+            },
+            token_path,
+        )
 
     sidecar = {
         "sha256": sha256,
@@ -217,8 +272,8 @@ def _extract_one(
         "dedup_group_id": meta.get("dedup_group_id"),
         "leakage_family_seed": meta.get("leakage_family_seed"),
         "source_record_count": meta.get("source_record_count", 0),
-        "schema_version": FEATURE_SCHEMA_VERSION,
-        "extractor_version": EXTRACTOR_VERSION,
+        "schema_version": graph_schema_version,
+        "extractor_version": extractor_version,
         "graph_target_policy": "file_level_inheritance_leaf_union_v1",
         "graph_extraction_mode": extraction.mode,
         "graph_analysis_degraded": extraction.analysis_degraded,
@@ -237,6 +292,21 @@ def _extract_one(
         "compute_time_ms": (time.monotonic() - started) * 1000.0,
         **_coverage_sidecar(tokens),
     }
+    if graph_schema_version == V10_GRAPH_SCHEMA_VERSION:
+        sidecar["token_lineage"] = "accepted_v9_byte_copy"
+        sidecar["unclassified_call_ir"] = list(
+            getattr(graph, "unclassified_call_ir", []) or []
+        )
+        sidecar["unclassified_call_ir_count"] = len(sidecar["unclassified_call_ir"])
+        sidecar["classified_call_ir_counts"] = dict(
+            getattr(graph, "classified_call_ir_counts", {}) or {}
+        )
+        sidecar["emitted_call_edge_counts"] = dict(
+            getattr(graph, "emitted_call_edge_counts", {}) or {}
+        )
+        sidecar["call_mapping_errors"] = list(
+            getattr(graph, "call_mapping_errors", []) or []
+        )
     sidecar_path.write_text(
         json.dumps(sidecar, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -249,11 +319,11 @@ def _extract_one(
 
 
 def _represent_worker(
-    args: tuple[str, str, str, str],
+    args: tuple[str, ...],
 ) -> tuple[bool, dict[str, Any] | None, dict[str, str] | None]:
     """Process-safe one-artifact wrapper with explicit failure evidence."""
 
-    source, meta_value, preprocessed_value, output_value = args
+    source, meta_value, preprocessed_value, output_value, *lineage_values = args
     meta_path = Path(meta_value)
     preprocessed_dir = Path(preprocessed_value)
     output_dir = Path(output_value)
@@ -262,7 +332,19 @@ def _represent_worker(
         sol_path = preprocessed_dir / f"{meta['sha256']}.sol"
         if not sol_path.exists():
             raise FileNotFoundError(f"missing repaired Solidity artifact {sol_path}")
-        provenance = _extract_one(source, sol_path, meta, output_dir)
+        if lineage_values:
+            graph_schema_version, extractor_version, accepted_tokens_value = lineage_values
+            provenance = _extract_one(
+                source,
+                sol_path,
+                meta,
+                output_dir,
+                graph_schema_version=graph_schema_version,
+                extractor_version=extractor_version,
+                accepted_tokens_dir=Path(accepted_tokens_value),
+            )
+        else:
+            provenance = _extract_one(source, sol_path, meta, output_dir)
         return True, provenance, None
     except Exception as exc:
         return False, None, {
@@ -280,6 +362,9 @@ def represent_repaired_source(
     limit: int | None = None,
     verify_completeness: bool = True,
     n_workers: int = 1,
+    graph_schema_version: str = "v9",
+    extractor_version: str = EXTRACTOR_VERSION,
+    accepted_tokens_dir: Path | None = None,
 ) -> RepairedRepresentResult:
     """Build repaired representations from one versioned preprocessing source.
 
@@ -291,6 +376,22 @@ def represent_repaired_source(
         raise ValueError("n_workers must be >= 1")
     if limit is not None and limit < 1:
         raise ValueError("limit must be >= 1")
+    if graph_schema_version == "v9":
+        if extractor_version != EXTRACTOR_VERSION:
+            raise ValueError("v9 repaired generation requires its frozen extractor")
+        if accepted_tokens_dir is not None:
+            raise ValueError("v9 repaired generation cannot substitute token lineage")
+    elif graph_schema_version == V10_GRAPH_SCHEMA_VERSION:
+        if extractor_version != V10_REPRESENTATION_EXTRACTOR_VERSION:
+            raise ValueError("v10 generation requires the R4-D-010 extractor identity")
+        if output_dir.parent.name != V10_REPRESENTATION_ROOT_NAME:
+            raise ValueError(
+                f"v10 output must be under {V10_REPRESENTATION_ROOT_NAME!r}"
+            )
+        if accepted_tokens_dir is None or not accepted_tokens_dir.is_dir():
+            raise ValueError("v10 generation requires an accepted v9 token source")
+    else:
+        raise ValueError(f"unsupported graph schema {graph_schema_version!r}")
     preprocessing_manifest = (
         require_complete_preprocessed_source(source, preprocessed_dir)
         if verify_completeness
@@ -309,10 +410,24 @@ def represent_repaired_source(
 
     failures: list[dict[str, str]] = []
     started = time.monotonic()
-    worker_args = [
-        (source, str(path), str(preprocessed_dir), str(output_dir))
-        for path in meta_paths
-    ]
+    if graph_schema_version == "v9":
+        worker_args = [
+            (source, str(path), str(preprocessed_dir), str(output_dir))
+            for path in meta_paths
+        ]
+    else:
+        worker_args = [
+            (
+                source,
+                str(path),
+                str(preprocessed_dir),
+                str(output_dir),
+                graph_schema_version,
+                extractor_version,
+                str(accepted_tokens_dir),
+            )
+            for path in meta_paths
+        ]
     if n_workers == 1:
         results = map(_represent_worker, worker_args)
         results = list(results)
@@ -343,7 +458,7 @@ def represent_repaired_source(
         "status": "PHYSICAL_ACCEPTANCE_PENDING",
         "source": source,
         "preprocessing_artifact_version": PREPROCESSING_ARTIFACT_VERSION,
-        "extractor_version": EXTRACTOR_VERSION,
+        "extractor_version": extractor_version,
         "contracts_seen": len(meta_paths),
         "preprocessed_artifacts_total": len(all_meta_paths),
         "contracts_requested": len(meta_paths),
@@ -374,6 +489,16 @@ def represent_repaired_source(
             else None
         ),
     }
+    if graph_schema_version == V10_GRAPH_SCHEMA_VERSION:
+        manifest.update(
+            {
+                "graph_schema_version": graph_schema_version,
+                "representation_root": V10_REPRESENTATION_ROOT_NAME,
+                "token_lineage": "accepted_v9_byte_copy",
+                "training_authorized": False,
+                "physical_acceptance": False,
+            }
+        )
     (output_dir / "repaired_representation_manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -385,6 +510,7 @@ def represent_repaired_source(
         representations_written=written,
         representations_failed=len(failures),
         duration_s=time.monotonic() - started,
+        extractor_version=extractor_version,
     )
 
 

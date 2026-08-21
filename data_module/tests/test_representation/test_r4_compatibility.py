@@ -60,6 +60,26 @@ def test_compatibility_uses_parse_only_after_full_analysis_failure(
     assert result.fallback_errors[0]["error_type"] == "SlitherParseError"
 
 
+def test_compatibility_forwards_v10_schema(tmp_path, monkeypatch):
+    sol = tmp_path / "fixture.sol"
+    sol.write_text("contract Vault {}\n")
+    observed: list[str] = []
+
+    def fake_extract(path, config):
+        observed.append(config.graph_schema_version)
+        return SimpleNamespace(contract_name="Vault", num_nodes=1, num_edges=0)
+
+    monkeypatch.setattr(compatibility, "extract_contract_graph", fake_extract)
+    compatibility.extract_components_with_compatibility(
+        sol,
+        ("Vault",),
+        solc_binary=None,
+        solc_version="0.4.18",
+        graph_schema_version="v10",
+    )
+    assert observed == ["v10"]
+
+
 def test_compatibility_folds_not_constant_array_length(tmp_path, monkeypatch):
     sol = tmp_path / "fixture.sol"
     sol.write_text("contract Vault { uint8[20+1] values; }\n")

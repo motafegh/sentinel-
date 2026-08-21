@@ -4,13 +4,13 @@ Uses graph features from .pt files and rep.json metadata to verify that
 labeled contracts actually contain evidence for each vulnerability class.
 
 Coverage status per class:
-  Reentrancy          — has_cei_path flag (EXTERNAL_CALL edge + WRITE reachable)
+  Reentrancy          — schema-aware has_cei_path flag
   Timestamp           — feat[2] uses_block_globals fires
   IntegerUO           — pragma < 0.8 OR feat[11] unchecked_block fires
   UnusedReturn        — feat[7] return_ignored fires
   MishandledException — feat[7] return_ignored fires (low-level call)
-  CallToUnknown       — EXTERNAL_CALL edge type (edge_attr == 11) present
-  ExternalBug         — EXTERNAL_CALL edge present (weaker signal; same as CTU)
+  CallToUnknown       — v10 LOW_LEVEL_CALL / ETHER_SEND coarse signal only
+  ExternalBug         — NOT_EXTRACTABLE until a class-specific signal exists
   DenialOfService     — NOT_EXTRACTABLE (no loop-external-call feature in v9)
   GasException        — NOT_EXTRACTABLE (no unchecked-send feature in v9)
   TOD                 — NOT_EXTRACTABLE (no tx.origin feature in v9)
@@ -27,10 +27,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
+from sentinel_data.representation.graph_schema_versions import get_graph_schema
+
 log = logging.getLogger("sentinel_data.verification.semantic_checker")
 
-# Edge type IDs from v9 schema
-_EXTERNAL_CALL_EDGE = 11
+_EXTERNAL_CALL_EDGE = 11  # historical v9 helper only
 
 # Node type IDs from v9 schema (feat[0] * 13.0 = type_id)
 _MAX_TYPE_ID = 13.0
@@ -127,14 +128,54 @@ def _is_pre_08(rep: dict) -> bool:
 
 
 def _has_external_call_edge(graph) -> bool:
-    """Return True if graph has at least one EXTERNAL_CALL edge (type 11)."""
+    """Return historical v9 EXTERNAL_CALL presence; not current class truth."""
     if not hasattr(graph, "edge_attr") or graph.edge_attr is None:
         return False
     return bool((graph.edge_attr == _EXTERNAL_CALL_EDGE).any())
 
 
+def _graph_schema_version(graph, rep: Optional[dict]) -> str:
+    """Resolve an exact schema, defaulting old unannotated graphs to v9."""
+
+    graph_version = getattr(graph, "graph_schema_version", None) if graph is not None else None
+    rep_version = None
+    if rep is not None:
+        rep_version = rep.get("schema_version") or rep.get("graph_schema_version")
+    graph_version = graph_version if isinstance(graph_version, str) and graph_version else None
+    rep_version = rep_version if isinstance(rep_version, str) and rep_version else None
+    if graph_version and rep_version and graph_version != rep_version:
+        raise ValueError(
+            f"graph/sidecar schema mismatch: {graph_version!r} != {rep_version!r}"
+        )
+    resolved = graph_version or rep_version or "v9"
+    get_graph_schema(resolved)
+    return resolved
+
+
+def _has_edge_kinds(graph, *, schema_version: str, edge_names: tuple[str, ...]) -> bool:
+    """Return whether a graph contains any requested edge kind, fail closed."""
+
+    if graph is None or not hasattr(graph, "edge_attr") or graph.edge_attr is None:
+        return False
+    schema = get_graph_schema(schema_version)
+    edge_ids = schema.edge_ids(edge_names)
+    return any(bool((graph.edge_attr == edge_id).any()) for edge_id in edge_ids)
+
+
 def _check_class(class_name: str, graph, rep: Optional[dict]) -> tuple[CheckVerdict, str]:
     """Return (verdict, note) for one (class, contract) pair."""
+    schema_version = _graph_schema_version(graph, rep)
+    graph_schema = get_graph_schema(schema_version)
+    if (
+        schema_version == "v10"
+        and rep is not None
+        and rep.get("graph_analysis_degraded") is True
+    ):
+        return (
+            CheckVerdict.NOT_EXTRACTABLE,
+            "v10 graph uses degraded parse-only analysis; IR semantics unavailable",
+        )
+
     if class_name == "Reentrancy":
         if graph is None:
             return CheckVerdict.SKIP, "no graph rep"
@@ -172,17 +213,40 @@ def _check_class(class_name: str, graph, rep: Optional[dict]) -> tuple[CheckVerd
             CheckVerdict.FAIL, "feat[7]=0 on all nodes — no ignored return detected"
         )
 
-    if class_name in ("CallToUnknown", "ExternalBug"):
+    if class_name == "CallToUnknown":
         if graph is None:
             return CheckVerdict.SKIP, "no graph rep"
+        if schema_version == "v9":
+            return (
+                CheckVerdict.NOT_EXTRACTABLE,
+                "v9 EXTERNAL_CALL conflates library calls and omits call kinds",
+            )
+        signal_names = graph_schema.call_to_unknown_signal_edge_names
+        if _has_edge_kinds(
+            graph,
+            schema_version=schema_version,
+            edge_names=signal_names,
+        ):
+            return (
+                CheckVerdict.PASS,
+                "v10 LOW_LEVEL_CALL/ETHER_SEND coarse signal present",
+            )
         return (
-            (CheckVerdict.PASS, "EXTERNAL_CALL edge present") if _has_external_call_edge(graph)
-            else (CheckVerdict.FAIL, "no EXTERNAL_CALL edge (type 11) detected")
+            CheckVerdict.FAIL,
+            "no v10 LOW_LEVEL_CALL/ETHER_SEND coarse signal detected",
+        )
+
+    if class_name == "ExternalBug":
+        return (
+            CheckVerdict.NOT_EXTRACTABLE,
+            "no class-specific source-backed graph signal is defined",
         )
 
     # DenialOfService, GasException, TransactionOrderDependence
     # — no dedicated v9 feature for these; cannot verify from graph alone
-    return CheckVerdict.NOT_EXTRACTABLE, "no v9 feature covers this class"
+    return CheckVerdict.NOT_EXTRACTABLE, (
+        f"no {schema_version} feature covers this class"
+    )
 
 
 def run_semantic_check(
