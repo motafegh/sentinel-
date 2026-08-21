@@ -18,7 +18,7 @@ Do not treat a stale comment, docstring, README, old plan, old test count, or hi
 
 ### Current stable technical baseline
 
-As of the 2026-08-16 hardened V3 evidence-snapshot closeout:
+As of the 2026-08-21 R4-GAP-007 local handoff, with the 2026-08-16 hardened V3 evidence-snapshot closeout retained as the accepted pre-pilot baseline:
 
 - canonical `main` has passed historical R4 G0–G7 and remains the active Phase-8 execution line;
 - Phase 8 is `IN_PROGRESS`, not G8-passed;
@@ -40,10 +40,12 @@ As of the 2026-08-16 hardened V3 evidence-snapshot closeout:
 - snapshotting fails closed on cross-report manifest/version/binding/queue/selector/GPU/source-commit coherence and writes `snapshot_coherence_v1.json` only after a coherent tranche passes;
 - hardened CPU selector evidence reproduced 1,018 analyzed records / 737 over-cap / 476 improved / 261 equal / 0 regressed / 0 failures;
 - hardened CUDA selector evidence completed identical initialization and 4/4 required worst-case probes, with no Run12 weights, no checkpoint, no selector promotion, and no full-training authorization;
-- the hardened V3 confirmed-negative queue now contains 200 `PENDING_REVIEW` cells across 200 globally unique leakage groups, all target `None`, all `TRAIN_UNLABELED`, `negative_truth_claim=false`;
-- R4-GAP-007 remains the approved confirmed-negative pilot gap and the committed hardened queue is now ready for pilot adjudication; do not use the pre-hardening queue;
-- no confirmed-negative target exists yet; target `0` remains forbidden without class-specific confirmed-negative evidence plus independent agreeing verification;
+- the hardened V3 confirmed-negative queue contains 200 `PENDING_REVIEW` cells across 200 globally unique leakage groups, all target `None`, all `TRAIN_UNLABELED`, `negative_truth_claim=false`;
+- R4-GAP-007 is now `IN_PROGRESS`: pilot review started from the committed hardened queue. Candidate #1 is `CallToUnknown` / `r4neg-f6a71e420a116cb4b9a334ba961ba1b6` / contract `defe4690028dc863df4611176a4c35f0ffd0bbc90f61db2bd4f25f5ad7f2a384`; only a partial primary review exists, with no verdict, no target change, and no independent verification;
+- candidate #1 remains `UNKNOWN`, `PENDING_REVIEW`, target `None`; no confirmed-negative target exists yet;
+- target `0` remains forbidden without complete class-specific confirmed-negative evidence plus independent agreeing verification;
 - accepted confirmed negatives are evaluation-only unless a later versioned policy grants optimizer authority;
+- Positive–Unlabeled (PU) learning is a future objective-design candidate, not current implementation authority; do not implement it during the candidate review, and keep queued/accepted evaluation groups outside any future PU/unlabeled optimizer population until a versioned role/objective decision reconciles the reservation;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
 - the guarded selector remains unpromoted. Before promotion, add/execute full-population verification that the historical control selector reproduces the currently bound representation token tensors exactly;
 - graph schema remains `v9`, token tensor contract `[4,512]`, architecture `four_eye_v8` / `v8.1`;
@@ -57,13 +59,15 @@ As of the 2026-08-16 hardened V3 evidence-snapshot closeout:
 For the exact current DATA/ML restart boundary, read in order:
 
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
-2. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`;
-3. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md`, `docs/plan/ml-R4/DECISION_REGISTER.md`, and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`;
-4. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md` only as the **completed historical regeneration procedure**;
-5. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md` as the **pre-hardening historical checkpoint**;
-6. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` for the physical repaired-v2 acceptance boundary.
+2. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` for the accepted pre-pilot evidence boundary;
+3. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md`;
+4. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md` for the exact current execution point;
+5. `docs/plan/ml-R4/DECISION_REGISTER.md` and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`;
+6. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md` only as the **completed historical regeneration procedure**;
+7. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md` as the **pre-hardening historical checkpoint**;
+8. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` for the physical repaired-v2 acceptance boundary.
 
-Current controlled work starts **after** the coherent V3 snapshot. Primary next track: R4-GAP-007 confirmed-negative pilot adjudication using only the committed hardened queue. Secondary independent track: full-population control-selector → bound-token equivalence evidence before any guarded-selector promotion ADR. Do not infer negatives, silently promote the selector, fit unsupported threshold/calibration roles, reuse Run12 state, or launch full training.
+Current controlled work is R4-GAP-007 candidate #1 **complete primary review** on the protected local worktree, followed by a genuinely independent verification only if the primary evidence supports `CONFIRMED_NEGATIVE`. The candidate remains UNKNOWN/PENDING_REVIEW until that process passes. Secondary independent track: full-population control-selector → bound-token equivalence evidence before any guarded-selector promotion ADR. Objective/evaluation design, including any PU-learning decision, follows new negative evidence; it is not part of the current candidate-review implementation. Do not infer negatives, silently promote the selector, fit unsupported threshold/calibration roles, reuse Run12 state, or launch full training.
 
 ## Approval model
 
@@ -92,7 +96,7 @@ In Ali's primary Claude Code setup, project memory may exist under:
 
 When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
 
-For the current Phase-8 boundary, committed restart authority is `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`, governed by accepted R4-D-009 / ADR-R4-009. R4-D-008 remains the physical-data reproducibility root. R4-GAP-007 governs confirmed-negative review. If private/local memory is maintained, it should point to these committed boundaries rather than duplicate transient generated counts.
+For the current Phase-8 boundary, committed current-execution handoff is `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`; the accepted pre-pilot evidence boundary remains `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`, governed by R4-D-009 / ADR-R4-009. R4-D-008 remains the physical-data reproducibility root. R4-GAP-007 governs confirmed-negative review. If private/local memory is maintained, update it to point to the 2026-08-21 handoff rather than duplicating transient generated counts or relying on conversation history.
 
 For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 
@@ -174,6 +178,9 @@ Dated audits, experimental reports, `docs/learning/`, and handbook exercises may
 - V3 acceptance proved unchanged semantic counts and the exact same repaired-v2 physical binding digest;
 - hardened post-acceptance V3 research reports have been regenerated coherently and committed in the final Git-safe evidence snapshot;
 - R4-GAP-007 queue membership is review reservation only, not negative truth or optimizer supervision; use only the committed hardened queue for pilot review;
+- R4-GAP-007 is now in progress at candidate #1 partial primary review; continue from the 2026-08-21 local handoff and do not fabricate a completed review or independent verifier;
+- accepted confirmed negatives remain evaluation-only unless a later versioned decision grants optimizer authority;
+- PU learning remains a later objective-design candidate, not current implementation authority;
 - selector promotion requires a separate ADR/versioned extractor decision and bound-token control-equivalence evidence;
 - full Phase-8 training remains prohibited until explicit later governance re-authorizes it.
 
