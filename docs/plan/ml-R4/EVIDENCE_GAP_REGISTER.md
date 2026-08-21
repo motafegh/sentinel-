@@ -10,7 +10,7 @@ No new contract review is permitted without an approved gap entry.
 | R4-GAP-004 | BCCC/all classes | 2-tool consensus baseline | skeleton exists; results absent | Tool intersection is not ground truth | Execute only if later benchmark decision requires it | Tier-C benchmark baseline | PROPOSED | Non-blocking |
 | R4-GAP-005 | All classes | Echidna/fuzzing precision estimates | no retained fuzzing evidence | complementary, not required for current DATA source roles | targeted future fuzzing only | Complementary fuzz evidence | PROPOSED | Non-blocking |
 | R4-GAP-006 | All classes | Exploit-reproduction PoC tests | no retained PoC corpus | useful for outcome validation but not smallest current evidence | targeted future PoCs only | Outcome validation/case study | PROPOSED | Non-blocking |
-| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **committed hardened V3 queue**: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | APPROVED / PILOT READY | 2026-08-16 — hardened queue regenerated, coherence-validated, and committed in snapshot `44fbb9c1d...`; pilot review may begin under the stop lines below |
+| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **committed hardened V3 queue**: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-08-21 — pilot started from the hardened queue; candidate #1 (`CallToUnknown`) is under partial primary review only, with no verdict/target change. Current handoff: `runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md` |
 
 ## R4-GAP-002 closure evidence
 
@@ -47,15 +47,36 @@ Current durable queue invariants:
 - `negative_truth_claim=false`;
 - queue bound to the accepted V3 publication manifest and hardened source commit.
 
-The old/pre-hardening queue is obsolete for review. **R4-GAP-007 pilot adjudication may now begin only from the committed hardened queue.**
+The old/pre-hardening queue is obsolete for review. **R4-GAP-007 pilot adjudication may proceed only from the committed hardened queue.**
 
 Queue membership is review reservation only. Do not convert source absence, unlabeled state, static-tool silence, or failed/ambiguous review into target `0`. Any `CONFIRMED_NEGATIVE` requires class-specific primary review plus an independent reviewer that agrees from sufficient evidence.
 
 Accepted confirmed negatives remain `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY` unless a later versioned decision explicitly grants optimizer authority.
 
+### Pilot progress — 2026-08-21
+
+The pilot has started with the first deterministic `CallToUnknown` queue candidate:
+
+```text
+candidate_id = r4neg-f6a71e420a116cb4b9a334ba961ba1b6
+contract_id  = defe4690028dc863df4611176a4c35f0ffd0bbc90f61db2bd4f25f5ad7f2a384
+group_id     = r4grp-91091daa51a561493045bd21a5d321fa
+source       = dive
+state        = UNKNOWN / PENDING_REVIEW
+target       = None
+```
+
+Partial primary review has identified a typed callback `spender.receiveApproval(...)` to a caller-supplied address and a legacy Solidity `msg.sender.transfer(...)` value transfer. Neither establishes class truth by itself. No adjudication verdict has been made, no independent verification has started, and the confirmed-negative count remains zero.
+
+Continue from the complete primary review described in:
+
+`runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
+
 Current restart record:
 
-`runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`
+`runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
+
+The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilot baseline and must still be read before this handoff.
 
 ## Approval delegation note
 

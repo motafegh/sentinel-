@@ -16,7 +16,7 @@ R4-D-009 accepts corrected logical V3 after V2 address-literal grouping produced
 
 A later protected-local audit found five post-acceptance research/reporting defects. Repository hardening fixed them, the affected acceptance/sensitivity/selector/queue/CUDA reports were regenerated under source commit `83bd566b9c4f4f653e530c2c0f5c990858dd759d`, and the final Git-safe V3 evidence snapshot completed with `coherence=PASS` and verified SHA-256 checksums. The durable snapshot was committed at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`.
 
-There are still **zero confirmed-negative examples**. R4-GAP-007 is approved and its hardened 200-cell / 200-group queue is now ready for pilot adjudication, but queue membership is not negative truth. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch Phase-8 run remain unauthorized.
+There are still **zero confirmed-negative examples**. R4-GAP-007 has moved from pilot-ready to **pilot in progress** using the hardened 200-cell / 200-group queue. Candidate #1 (`CallToUnknown`) has only a partial primary review and remains `UNKNOWN` / `PENDING_REVIEW` with target `None`; no independent verification or negative verdict exists. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch Phase-8 run remain unauthorized.
 
 ## Just-enough mental model
 
@@ -47,7 +47,7 @@ coherence-gated final snapshot
   PASS / COMMITTED
         ↓
 R4-GAP-007 negative pilot
-  NEXT PRIMARY TRACK
+  IN PROGRESS / candidate #1 partial primary review
         ↓
 separate selector-promotion decision / objective design
         ↓
@@ -71,7 +71,7 @@ valid physical DATA
 | Phase | State | Current meaning |
 |---:|---|---|
 | 0–7 | PASSED | historical G0–G7 remain immutable/reproducible |
-| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 accepted; evidence hardening/regeneration closed with a coherent committed snapshot; confirmed-negative pilot is next; full training unauthorized |
+| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 accepted; evidence hardening/regeneration closed with a coherent committed snapshot; R4-GAP-007 pilot started and candidate #1 is under partial primary review; full training unauthorized |
 | 9–10 | WAITING | evaluation/calibration/promotion remain gated by G8 and missing evidence |
 
 ### Historical G7 validation anchors
@@ -227,7 +227,7 @@ Before any promotion ADR, verify across the relevant full population that the hi
 
 Current source authority still contains zero confirmed negatives.
 
-R4-GAP-007 authorizes class-specific dual-review negative evaluation work. The committed hardened queue now contains:
+R4-GAP-007 authorizes class-specific dual-review negative evaluation work. The committed hardened queue contains:
 
 - 200 `PENDING_REVIEW` cells;
 - 25 candidates for each of eight enabled classes;
@@ -237,7 +237,7 @@ R4-GAP-007 authorizes class-specific dual-review negative evaluation work. The c
 - all roles `TRAIN_UNLABELED`;
 - `negative_truth_claim=false`.
 
-The queue is now ready for pilot adjudication. The pre-hardening queue is obsolete.
+The pilot has now started with deterministic candidate #1 for `CallToUnknown`. Partial primary review found a typed callback to a caller-supplied `_spender` (`spender.receiveApproval(...)`) and a legacy Solidity Ether transfer (`msg.sender.transfer(...)`). Neither interaction establishes positive or negative class truth by itself. Candidate #1 remains `UNKNOWN` / `PENDING_REVIEW`; complete source/representation review and any genuinely independent verification are still pending.
 
 Queue membership remains review reservation only. Never infer negative truth from historical zero, unlabeled state, source silence, static-tool silence, or queue membership. Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY` and requires class-specific primary review plus independent agreeing verification.
 
@@ -252,8 +252,8 @@ Queue membership remains review reservation only. Never infer negative truth fro
 | physical DATA root | R4-D-008 / repaired-v2 |
 | logical grouping/role authority | R4-D-009 / accepted V3 |
 | durable research evidence | coherent snapshot `44fbb9c1d...` under `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` |
-| current execution restart | `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` |
-| confirmed-negative review | R4-GAP-007 / hardened queue ready / adjudication not started |
+| current execution restart | `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md` |
+| confirmed-negative review | R4-GAP-007 / pilot IN_PROGRESS / candidate #1 partial primary review |
 | selector | historical control remains bound; guarded candidate unpromoted |
 | training authorization | HOLD / none |
 
@@ -316,13 +316,13 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 For the current Phase-8 boundary:
 
 1. synchronize local `main`;
-2. read `PLAN_STATUS_MATRIX.md` and `runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`;
+2. read `PLAN_STATUS_MATRIX.md`, the 2026-08-16 hardened snapshot closeout, and `runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`;
 3. preserve repaired-v2 physical roots, accepted V3 publication/grouping, and the committed coherent evidence snapshot;
-4. begin R4-GAP-007 pilot adjudication from the committed hardened queue only;
+4. continue candidate #1 complete primary review from the committed hardened queue only;
 5. keep every candidate UNKNOWN/PENDING_REVIEW until class-specific primary review plus independent agreeing verification establishes negative evidence;
 6. keep any accepted negative evaluation-only unless later policy explicitly grants optimizer authority;
 7. separately design/execute the full-population control-selector → bound-token equivalence check before any guarded-selector promotion ADR;
-8. revisit objective/evaluation/training authorization only after new evidence supports it.
+8. revisit objective/evaluation/training authorization, including any PU-learning decision, only after new evidence supports it.
 
 Never fix generated parquet/JSON evidence by hand.
 
@@ -353,6 +353,7 @@ python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 - [R4 evidence gap register](../plan/ml-R4/EVIDENCE_GAP_REGISTER.md)
 - [ADR-R4-008 repaired-v2 physical DATA acceptance](../plan/ml-R4/adrs/ADR-R4-008-repaired-v2-data-acceptance-and-phase8-no-launch.md)
 - [ADR-R4-009 logical V3 grouping correction](../plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md)
+- [Current GAP-007 candidate #1 local handoff](../plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md)
 - [Hardened V3 evidence snapshot closeout](../plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md)
 - [Completed V3 evidence-hardening procedure](../plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md)
 - [Pre-hardening V3 research checkpoint](../plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md)
@@ -390,12 +391,13 @@ Current reading order:
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`
 2. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`
 3. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md`
-4. `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`
-5. `docs/plan/ml-R4/CLAIM_STATUS_MATRIX.md`
-6. `data_module/sentinel_data/vnext/confirmed_negative_evaluation.py`
-7. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/snapshot_coherence_v1.json`
-8. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/confirmed_negative_review_queue_v1.json`
-9. `ml/src/data_extraction/bounded_window_selector.py`
+4. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
+5. `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`
+6. `docs/plan/ml-R4/CLAIM_STATUS_MATRIX.md`
+7. `data_module/sentinel_data/vnext/confirmed_negative_evaluation.py`
+8. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/snapshot_coherence_v1.json`
+9. `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/confirmed_negative_review_queue_v1.json`
+10. `ml/src/data_extraction/bounded_window_selector.py`
 
 ## Execution trace and worked example
 
@@ -428,4 +430,4 @@ Before proceeding, be able to answer:
 - Why can positive-only selector CUDA evidence not establish false-positive discrimination?
 - What evidence is still missing before G8 can authorize full training?
 
-If any answer is unclear, use the hardened V3 evidence snapshot closeout as the restart point rather than guessing from historical pre-hardening reports.
+If any answer is unclear, use the 2026-08-16 hardened V3 evidence snapshot closeout for the accepted pre-pilot baseline and the 2026-08-21 GAP-007 candidate #1 handoff for the current execution point rather than guessing from historical pre-hardening reports.
