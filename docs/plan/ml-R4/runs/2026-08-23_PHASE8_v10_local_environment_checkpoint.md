@@ -1,7 +1,7 @@
 # Phase-8 V10 local environment checkpoint
 
 Date: 2026-08-23
-Status: LOCAL RUNTIME VERIFICATION REQUIRED; PHYSICAL ACCEPTANCE REMAINS BLOCKED
+Status: PRIMARY ML RUNTIME VERIFICATION REQUIRED; PHYSICAL ACCEPTANCE REMAINS BLOCKED
 Scope: R4-B008 structural-drift investigation only; no training or model-quality authority
 
 ## Reusable protected-local paths now resolved
@@ -29,18 +29,39 @@ A retained pre-ICFG-fix v2.4 root also exists locally at:
 
 It is historical evidence only and is not the structural reference for the current repeat probe.
 
-## Local launcher issue discovered
+## Local environment split confirmed
+
+The repository working plan already distinguishes the two relevant Slither environments:
+
+- the locked DATA environment uses Slither 0.11.5;
+- the ML environment / structurally stable V9/V10 baseline uses Slither 0.10.0 and is the required primary runtime for the 20-contract repeat investigation.
+
+The local bounded check confirmed that `data_module/.venv/bin/python` is Python 3.12.3 and currently contains:
+
+- `slither-analyzer = 0.11.5`
+- `crytic-compile = 0.3.11`
+- importable `slither` at `data_module/.venv/lib/python3.12/site-packages/slither/__init__.py`.
+
+Therefore `data_module/.venv` must not be downgraded or repurposed for the primary 0.10.0 repeat generation.
+
+## DATA launcher issue confirmed
 
 Direct execution of:
 
 `data_module/.venv/bin/slither --version`
 
-currently fails because the generated console-script shebang points to the obsolete interpreter path:
+fails because the generated console-script shebang points to the obsolete interpreter path:
 
 `/home/motafeq/projects/sentinel/Data/.venv/bin/python`
 
-The present repository path is `data_module`, so this launcher cannot be used as evidence that the DATA Python environment itself is invalid. The next step is to verify the actual `data_module/.venv/bin/python` interpreter and query the installed `slither-analyzer` package version through Python. Do not recreate or mutate the environment until that bounded verification is complete.
+while the current repository path is `data_module`. This launcher defect is real but secondary: the underlying DATA Python environment is healthy and intentionally carries Slither 0.11.5. It is not the primary runtime required by this structural-drift tranche.
+
+## Next bounded runtime check
+
+The next step is to inspect the known project ML environment at `ml/.venv/bin/python` without mutating any environment. Confirm its Python executable, `slither-analyzer`, `crytic-compile`, and Slither import path. If it proves exact Slither 0.10.0, use that interpreter for the bounded 20-contract repeated generation while retaining `data_module` on `PYTHONPATH`.
+
+Do not install, downgrade, rebuild, or repair either environment until that check is complete.
 
 ## Investigation boundary
 
-Do not restart the completed 26-contract parse-only repair. Do not launch training. Once the underlying DATA Python environment and exact Slither 0.10.0 package are confirmed, regenerate only the 20 unexpected structural-drift identities and compare them against the frozen reference above with `p8_probe_v10_structural_drift.py`.
+Do not restart the completed 26-contract parse-only repair. Do not launch training. Once the exact primary Slither 0.10.0 interpreter is confirmed, regenerate only the 20 unexpected structural-drift identities and compare them against the frozen reference above with `p8_probe_v10_structural_drift.py`.
