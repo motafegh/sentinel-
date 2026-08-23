@@ -1,8 +1,8 @@
 """Version-aware graph-schema definitions for immutable v9 and candidate v10.
 
-``graph_schema.py`` remains the historical/default v9 import surface.  New
+``graph_schema.py`` remains the historical/default v9 import surface. New
 representation lineages must select a schema explicitly through this module so
-that adding v10 cannot silently reinterpret accepted v9 edge IDs.
+that adding or refining v10 cannot silently reinterpret accepted v9 edge IDs.
 """
 
 from __future__ import annotations
@@ -84,7 +84,7 @@ V9_SCHEMA = GraphSchemaDefinition(
 
 V10_SCHEMA = GraphSchemaDefinition(
     version="v10",
-    extractor_version="v2.4-r4-call-semantics-compat",
+    extractor_version="v2.5-r4-call-semantics-deterministic-cfg",
     edge_types=V10_EDGE_TYPES,
     external_handoff_edge_names=(
         "HIGH_LEVEL_CALL",
