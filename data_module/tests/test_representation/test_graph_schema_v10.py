@@ -268,7 +268,7 @@ contract CallKinds {
         ),
     )
     assert graph.graph_schema_version == "v10"
-    assert graph.representation_extractor_version == "v2.4-r4-call-semantics-compat"
+    assert graph.representation_extractor_version == V10_SCHEMA.extractor_version
     assert graph.unclassified_call_ir == []
     assert graph.call_mapping_errors == []
     assert graph.classified_call_ir_counts == graph.emitted_call_edge_counts
