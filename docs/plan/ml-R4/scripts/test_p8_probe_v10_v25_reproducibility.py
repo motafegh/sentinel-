@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 import torch
@@ -8,6 +9,9 @@ from torch_geometric.data import Data
 
 
 SCRIPT = Path(__file__).with_name("p8_probe_v10_v25_reproducibility.py")
+SCRIPT_DIR = str(SCRIPT.parent.resolve())
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
 SPEC = importlib.util.spec_from_file_location("p8_probe_v10_v25_reproducibility", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 probe = importlib.util.module_from_spec(SPEC)
