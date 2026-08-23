@@ -1,18 +1,16 @@
-"""representation — thin adapters over `ml/src/preprocessing/`.
+"""representation — canonical Solidity graph extraction and schema surfaces.
 
 Stage 0 (2026-06-08): shipped a stub with hard-coded v9 constants + 3 latent
 bugs (dict direction reversed, list instead of tuple). The stub is replaced
-in Stage 2 (2026-06-10) by thin-adapter re-exports from `ml/`. The Stage 0
-`STUB = True` flag is gone.
+in Stage 2 (2026-06-10) by thin-adapter re-exports. Stage 7 completed the seam
+swap so ``sentinel_data.representation`` is the canonical implementation used
+by ML consumers.
 
-Stage 2: thin-adapter ports of `graph_schema.py` and `graph_extractor.py`.
-The byte-identical regression test gates the port.
-Stage 7: seam swap — sentinel-ml rebinds its import to this package;
-        `ml/src/preprocessing/` is removed from the import path.
-
-The thin-adapter pattern means there is ONE source of truth (`ml/`) and TWO
-import names (`ml.src.preprocessing.X` and `sentinel_data.representation.X`).
-Both resolve to the same Python object. Bug fixes apply once, in `ml/`.
+R4 Phase-8 keeps historical v9 extraction immutable while V10 evolves through
+explicit extractor identities. The V10 extraction guard installed here is
+version-aware: it activates deterministic CFG WRITE supplementation only when
+``GraphExtractionConfig.graph_schema_version == "v10"`` and leaves v9 calls on
+the historical classifier.
 """
 
 from sentinel_data.representation.graph_schema import (
@@ -30,14 +28,21 @@ from sentinel_data.representation.graph_schema import (
     NodeType,
     STRUCTURAL_PREFIX_TYPES,
 )
-from sentinel_data.representation.graph_extractor import (
-    extract_contract_graph,
-    GraphExtractionConfig,
-    GraphExtractionError,
-    SolcCompilationError,
-    SlitherParseError,
-    EmptyGraphError,
+from sentinel_data.representation import graph_extractor as _graph_extractor
+from sentinel_data.representation.v10_cfg_determinism import (
+    install_v10_extraction_guard,
 )
+
+# Install once after the canonical extractor module has loaded. The wrapper is
+# inert for v9 and restores the underlying CFG classifier after each V10 call.
+install_v10_extraction_guard()
+
+extract_contract_graph = _graph_extractor.extract_contract_graph
+GraphExtractionConfig = _graph_extractor.GraphExtractionConfig
+GraphExtractionError = _graph_extractor.GraphExtractionError
+SolcCompilationError = _graph_extractor.SolcCompilationError
+SlitherParseError = _graph_extractor.SlitherParseError
+EmptyGraphError = _graph_extractor.EmptyGraphError
 
 __all__ = [
     # Schema
