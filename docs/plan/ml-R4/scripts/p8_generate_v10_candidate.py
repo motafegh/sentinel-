@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.metadata
 import json
 from pathlib import Path
 from typing import Any
@@ -19,8 +20,10 @@ import torch
 
 from sentinel_data.preprocessing.r4_versions import (
     V10_GRAPH_SCHEMA_VERSION,
+    V10_PRIMARY_SLITHER_VERSION,
     V10_REPRESENTATION_EXTRACTOR_VERSION,
     V10_REPRESENTATION_ROOT_NAME,
+    V10_SLITHER_RUNTIME_EXCEPTIONS,
 )
 from sentinel_data.representation.graph_schema_versions import get_graph_schema
 from sentinel_data.representation.r4_orchestrator import (
@@ -36,6 +39,42 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _require_slither_runtime(required_version: str) -> dict[str, str]:
+    try:
+        slither_version = importlib.metadata.version("slither-analyzer")
+        crytic_compile_version = importlib.metadata.version("crytic-compile")
+    except importlib.metadata.PackageNotFoundError as exc:
+        raise RuntimeError("V10 generation requires the bound Slither runtime") from exc
+    if slither_version != required_version:
+        raise RuntimeError(
+            "V10 generation requires exact slither-analyzer "
+            f"{required_version}; found {slither_version}"
+        )
+    return {
+        "slither_analyzer": slither_version,
+        "crytic_compile": crytic_compile_version,
+        "required_slither_analyzer": required_version,
+    }
+
+
+def _required_generation_slither(args: argparse.Namespace) -> str:
+    if args.mode != "regression":
+        return V10_PRIMARY_SLITHER_VERSION
+    exception_versions = {
+        V10_SLITHER_RUNTIME_EXCEPTIONS[contract_id]
+        for contract_id in args.contract_id
+        if contract_id in V10_SLITHER_RUNTIME_EXCEPTIONS
+    }
+    normal_contracts = set(args.contract_id) - set(V10_SLITHER_RUNTIME_EXCEPTIONS)
+    if exception_versions and normal_contracts:
+        raise ValueError(
+            "one regression process cannot mix primary and exception Slither runtimes"
+        )
+    if len(exception_versions) > 1:
+        raise ValueError("one regression process cannot mix exception Slither runtimes")
+    return next(iter(exception_versions), V10_PRIMARY_SLITHER_VERSION)
 
 
 def _require_candidate_root(root: Path) -> None:
@@ -228,6 +267,11 @@ def main() -> int:
     args = parse_args()
     if args.workers < 1:
         raise ValueError("workers must be >= 1")
+    runtime = (
+        None
+        if args.mode == "bind"
+        else _require_slither_runtime(_required_generation_slither(args))
+    )
     if args.mode == "regression":
         report = _regression(args)
     elif args.mode == "full":
@@ -240,6 +284,8 @@ def main() -> int:
             accepted_v9_root=args.accepted_v9_root,
             report_path=args.report,
         )
+    if runtime is not None:
+        report["slither_runtime"] = runtime
     if args.report is not None and args.mode != "bind":
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")

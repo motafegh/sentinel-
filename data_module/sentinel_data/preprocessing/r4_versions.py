@@ -19,8 +19,15 @@ REPAIRED_REPRESENTATION_EXTRACTOR_VERSION = "v2.2-r4-repaired"
 # R4-D-010 repository candidate.  These identifiers do not claim physical
 # generation or acceptance; accepted v9 constants below remain unchanged.
 V10_GRAPH_SCHEMA_VERSION = "v10"
-V10_REPRESENTATION_EXTRACTOR_VERSION = "v2.3-r4-call-semantics"
+V10_REPRESENTATION_EXTRACTOR_VERSION = "v2.4-r4-call-semantics-compat"
 V10_REPRESENTATION_ROOT_NAME = "representations-r4-v3-candidate"
+V10_PRIMARY_SLITHER_VERSION = "0.10.0"
+V10_SLITHER_RUNTIME_EXCEPTIONS = {
+    # Slither 0.10.0 fails full analysis for this exact accepted source, while
+    # 0.11.5 succeeds. Applying 0.11.5 population-wide is prohibited because
+    # it materially changes otherwise-frozen node and edge structure.
+    "caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9": "0.11.5",
+}
 
 # Graph node/feature semantics and model tensor shape are intentionally frozen.
 GRAPH_SCHEMA_VERSION = "v9"

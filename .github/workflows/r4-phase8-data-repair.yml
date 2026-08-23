@@ -135,6 +135,7 @@ jobs:
             docs/plan/ml-R4/scripts/p8_verify_committed_logical_v3_snapshot.py \
             docs/plan/ml-R4/scripts/p8_generate_v10_candidate.py \
             docs/plan/ml-R4/scripts/p8_audit_v10_transition.py \
+            docs/plan/ml-R4/scripts/test_p8_generate_v10_candidate.py \
             docs/plan/ml-R4/scripts/test_p8_audit_v10_transition.py
 
       - name: Run repaired and Phase-8 research regression suite
@@ -168,6 +169,7 @@ jobs:
             data_module/tests/test_vnext/test_confirmed_negative_evaluation.py \
             data_module/tests/test_vnext/test_v3_evidence_snapshot.py \
             data_module/tests/test_verification/test_semantic_checker.py \
+            docs/plan/ml-R4/scripts/test_p8_generate_v10_candidate.py \
             docs/plan/ml-R4/scripts/test_p8_audit_v10_transition.py
 
           # These focused unit tests do not use ml/tests/conftest.py's API

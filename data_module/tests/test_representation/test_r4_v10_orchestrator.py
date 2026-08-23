@@ -11,7 +11,38 @@ from torch_geometric.data import Data
 
 from sentinel_data.preprocessing.r4_versions import (
     V10_REPRESENTATION_EXTRACTOR_VERSION,
+    V10_SLITHER_RUNTIME_EXCEPTIONS,
 )
+
+
+def test_v10_runtime_rejects_population_wide_exception_version(monkeypatch) -> None:
+    versions = {"slither-analyzer": "0.11.5", "crytic-compile": "0.3.11"}
+    monkeypatch.setattr(
+        orchestrator.importlib.metadata, "version", lambda name: versions[name]
+    )
+    orchestrator._v10_slither_runtime.cache_clear()
+    with pytest.raises(RuntimeError, match=r"allowed=\['0.10.0'\]"):
+        orchestrator._v10_slither_runtime("a" * 64)
+    orchestrator._v10_slither_runtime.cache_clear()
+
+
+def test_v10_runtime_accepts_exact_identity_bound_exception(monkeypatch) -> None:
+    contract_id, exception_version = next(iter(V10_SLITHER_RUNTIME_EXCEPTIONS.items()))
+    versions = {
+        "slither-analyzer": exception_version,
+        "crytic-compile": "0.3.11",
+    }
+    monkeypatch.setattr(
+        orchestrator.importlib.metadata, "version", lambda name: versions[name]
+    )
+    orchestrator._v10_slither_runtime.cache_clear()
+    assert orchestrator._v10_slither_runtime(contract_id) == {
+        "slither_analyzer": exception_version,
+        "crytic_compile": "0.3.11",
+        "runtime_role": "identity_bound_exception",
+        "required_for_physical_acceptance": exception_version,
+    }
+    orchestrator._v10_slither_runtime.cache_clear()
 from sentinel_data.representation import r4_orchestrator as orchestrator
 from sentinel_data.representation.r4_compatibility import (
     CompatibilityExtraction,
@@ -104,6 +135,16 @@ def test_v10_extract_copies_accepted_token_bytes(
     monkeypatch.setattr(orchestrator, "_resolve_solc_binary", lambda *_: None)
     monkeypatch.setattr(
         orchestrator,
+        "_v10_slither_runtime",
+        lambda _contract_id: {
+            "slither_analyzer": "0.10.0",
+            "crytic_compile": "0.3.11",
+            "runtime_role": "primary",
+            "required_for_physical_acceptance": "0.10.0",
+        },
+    )
+    monkeypatch.setattr(
+        orchestrator,
         "extract_components_with_compatibility",
         lambda *args, **kwargs: CompatibilityExtraction(
             graphs=(graph,),
@@ -134,5 +175,6 @@ def test_v10_extract_copies_accepted_token_bytes(
     assert sidecar["schema_version"] == "v10"
     assert sidecar["extractor_version"] == V10_REPRESENTATION_EXTRACTOR_VERSION
     assert sidecar["token_lineage"] == "accepted_v9_byte_copy"
+    assert sidecar["slither_runtime"]["slither_analyzer"] == "0.10.0"
     assert sidecar["unclassified_call_ir_count"] == 0
     assert sidecar["classified_call_ir_counts"] == sidecar["emitted_call_edge_counts"]

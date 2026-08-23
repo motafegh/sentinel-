@@ -84,7 +84,7 @@ V9_SCHEMA = GraphSchemaDefinition(
 
 V10_SCHEMA = GraphSchemaDefinition(
     version="v10",
-    extractor_version="v2.3-r4-call-semantics",
+    extractor_version="v2.4-r4-call-semantics-compat",
     edge_types=V10_EDGE_TYPES,
     external_handoff_edge_names=(
         "HIGH_LEVEL_CALL",

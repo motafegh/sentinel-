@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
+
+import torch
 
 
 SCRIPT = Path(__file__).with_name("p8_audit_v10_transition.py")
@@ -46,3 +49,18 @@ def test_historical_v9_normal_mode_defaults_to_full_analysis() -> None:
         )
         == "slither_parse_only"
     )
+
+
+def test_unchanged_edge_topology_comparison_is_order_independent() -> None:
+    left = SimpleNamespace(
+        edge_attr=torch.tensor([8, 6, 8, 12]),
+        edge_index=torch.tensor([[1, 0, 1, 3], [2, 1, 2, 3]]),
+    )
+    right = SimpleNamespace(
+        edge_attr=torch.tensor([12, 8, 6, 8]),
+        edge_index=torch.tensor([[3, 1, 0, 1], [3, 2, 1, 2]]),
+    )
+
+    assert MODULE._edge_topology_equal_through(left, right, 10) is True
+    right.edge_index[1, 3] = 4
+    assert MODULE._edge_topology_equal_through(left, right, 10) is False

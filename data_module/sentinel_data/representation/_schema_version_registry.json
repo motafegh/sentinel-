@@ -6,7 +6,7 @@
       "version": "v10",
       "date": "2026-08-21",
       "status": "R4_D_010_REPOSITORY_CANDIDATE_NOT_PHYSICALLY_ACCEPTED",
-      "extractor_version": "v2.3-r4-call-semantics",
+      "extractor_version": "v2.4-r4-call-semantics-compat",
       "NODE_FEATURE_DIM": 12,
       "NUM_NODE_TYPES": 14,
       "NUM_EDGE_TYPES": 17,
@@ -15,6 +15,7 @@
       "changes": [
         "replaces ambiguous EXTERNAL_CALL with HIGH_LEVEL_CALL, LOW_LEVEL_CALL, ETHER_TRANSFER, ETHER_SEND, LIBRARY_CALL, and CONTRACT_CREATION",
         "excludes LIBRARY_CALL from external-control-handoff and CallToUnknown signals",
+        "repairs the pre-acceptance parse-only tail with a versioned Slither compatibility lineage",
         "keeps accepted v9 as the active historical/default schema until protected-local v10 acceptance"
       ],
       "checkpoints": []

@@ -9,6 +9,7 @@ ambiguous/wrong graph targets while retaining the frozen graph schema and
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import logging
 import os
@@ -17,6 +18,7 @@ import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +29,10 @@ from sentinel_data.preprocessing.r4_versions import (
     PREPROCESSING_ARTIFACT_VERSION,
     REPAIRED_REPRESENTATION_EXTRACTOR_VERSION,
     V10_GRAPH_SCHEMA_VERSION,
+    V10_PRIMARY_SLITHER_VERSION,
     V10_REPRESENTATION_EXTRACTOR_VERSION,
     V10_REPRESENTATION_ROOT_NAME,
+    V10_SLITHER_RUNTIME_EXCEPTIONS,
 )
 from sentinel_data.representation.target_selector import (
     TargetSelectionError,
@@ -41,6 +45,36 @@ from sentinel_data.representation.r4_compatibility import (
 
 log = logging.getLogger("sentinel_data.r4_orchestrator")
 EXTRACTOR_VERSION = REPAIRED_REPRESENTATION_EXTRACTOR_VERSION
+
+
+@lru_cache(maxsize=None)
+def _v10_slither_runtime(contract_id: str) -> dict[str, str]:
+    try:
+        slither_version = importlib.metadata.version("slither-analyzer")
+        crytic_compile_version = importlib.metadata.version("crytic-compile")
+    except importlib.metadata.PackageNotFoundError as exc:
+        raise RuntimeError("V10 extraction requires the bound Slither runtime") from exc
+    exception_version = V10_SLITHER_RUNTIME_EXCEPTIONS.get(contract_id)
+    allowed_versions = {V10_PRIMARY_SLITHER_VERSION}
+    if exception_version is not None:
+        allowed_versions.add(exception_version)
+    if slither_version not in allowed_versions:
+        raise RuntimeError(
+            "V10 extraction requires an identity-bound Slither runtime; "
+            f"contract={contract_id}, allowed={sorted(allowed_versions)}, "
+            f"found={slither_version}"
+        )
+    accepted_version = exception_version or V10_PRIMARY_SLITHER_VERSION
+    return {
+        "slither_analyzer": slither_version,
+        "crytic_compile": crytic_compile_version,
+        "runtime_role": (
+            "identity_bound_exception"
+            if exception_version is not None and slither_version == exception_version
+            else "primary"
+        ),
+        "required_for_physical_acceptance": accepted_version,
+    }
 
 
 @dataclass(frozen=True)
@@ -140,6 +174,11 @@ def _extract_one(
         tokenize_windowed_contract_strict,
     )
     sha256 = meta["sha256"]
+    slither_runtime = (
+        _v10_slither_runtime(sha256)
+        if graph_schema_version == V10_GRAPH_SCHEMA_VERSION
+        else None
+    )
     targets = _select_targets(sol_path, meta)
     solc_binary = _resolve_solc_binary(meta.get("solc_version", ""))
 
@@ -279,6 +318,7 @@ def _extract_one(
         "graph_analysis_degraded": extraction.analysis_degraded,
         "graph_extraction_fallback_errors": list(extraction.fallback_errors),
         "graph_source_transform": extraction.source_transform,
+        "graph_analyzer_repair": extraction.analyzer_repair,
         "requested_contract_names": list(targets),
         "actual_contract_names": actual_targets,
         "requested_contract_name": targets[0] if len(targets) == 1 else None,
@@ -293,6 +333,7 @@ def _extract_one(
         **_coverage_sidecar(tokens),
     }
     if graph_schema_version == V10_GRAPH_SCHEMA_VERSION:
+        sidecar["slither_runtime"] = slither_runtime
         sidecar["token_lineage"] = "accepted_v9_byte_copy"
         sidecar["unclassified_call_ir"] = list(
             getattr(graph, "unclassified_call_ir", []) or []
@@ -315,6 +356,7 @@ def _extract_one(
         "graph_extraction_mode": extraction.mode,
         "graph_analysis_degraded": extraction.analysis_degraded,
         "graph_source_transform_applied": extraction.source_transform is not None,
+        "graph_analyzer_repair_applied": extraction.analyzer_repair is not None,
     }
 
 
@@ -479,6 +521,11 @@ def represent_repaired_source(
         ),
         "graph_source_transform_total": sum(
             bool(provenance.get("graph_source_transform_applied"))
+            for passed, provenance, _ in results
+            if passed and provenance
+        ),
+        "graph_analyzer_repair_total": sum(
+            bool(provenance.get("graph_analyzer_repair_applied"))
             for passed, provenance, _ in results
             if passed and provenance
         ),

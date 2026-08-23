@@ -52,6 +52,30 @@ def _graph_call_counts(graph: Any, edge_types: dict[str, int]) -> dict[str, int]
     }
 
 
+def _edge_topology_equal_through(
+    left: Any, right: Any, max_edge_type: int
+) -> bool:
+    """Compare edge multisets through an unchanged type ID, ignoring order."""
+
+    def topology(graph: Any) -> tuple[torch.Tensor, torch.Tensor]:
+        mask = graph.edge_attr <= max_edge_type
+        triples = torch.stack(
+            (
+                graph.edge_attr[mask],
+                graph.edge_index[0, mask],
+                graph.edge_index[1, mask],
+            ),
+            dim=1,
+        )
+        return torch.unique(triples, dim=0, sorted=True, return_counts=True)
+
+    left_unique, left_counts = topology(left)
+    right_unique, right_counts = topology(right)
+    return torch.equal(left_unique, right_unique) and torch.equal(
+        left_counts, right_counts
+    )
+
+
 _PARSE_ONLY_SOURCE_PATTERNS = {
     "raw_low_level": re.compile(
         r"\.(?:call|callcode|delegatecall|staticcall)\b"
@@ -92,21 +116,44 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("candidate binding unexpectedly claims physical acceptance")
     if binding.get("training_authorized") is not False:
         raise ValueError("candidate binding unexpectedly authorizes training")
+    reference_binding_path = args.reference_v10_root / "v10_candidate_binding_report.json"
+    if not reference_binding_path.is_file():
+        raise FileNotFoundError(reference_binding_path)
+    reference_binding = json.loads(reference_binding_path.read_text(encoding="utf-8"))
+    if reference_binding.get("passed") is not True:
+        raise ValueError("transition audit requires a passing structural reference")
 
     accepted = _inventory(args.accepted_v9_root)
     candidate = _inventory(args.candidate_root)
+    reference = _inventory(args.reference_v10_root)
     accepted_keys = set(accepted)
     candidate_keys = set(candidate)
+    reference_keys = set(reference)
     schema = get_graph_schema(V10_GRAPH_SCHEMA_VERSION)
     errors: list[dict[str, str]] = []
     totals: Counter[str] = Counter()
     by_source: dict[str, Counter[str]] = {}
     compatibility_contracts: list[dict[str, Any]] = []
+    structural_drift_contracts: list[dict[str, Any]] = []
 
     for source, contract_id in sorted(accepted_keys - candidate_keys):
         errors.append({"contract": f"{source}/{contract_id}", "detail": "missing v10 identity"})
     for source, contract_id in sorted(candidate_keys - accepted_keys):
         errors.append({"contract": f"{source}/{contract_id}", "detail": "extra v10 identity"})
+    for source, contract_id in sorted(accepted_keys - reference_keys):
+        errors.append(
+            {
+                "contract": f"{source}/{contract_id}",
+                "detail": "missing structural-reference identity",
+            }
+        )
+    for source, contract_id in sorted(reference_keys - accepted_keys):
+        errors.append(
+            {
+                "contract": f"{source}/{contract_id}",
+                "detail": "extra structural-reference identity",
+            }
+        )
 
     for ordinal, (source, contract_id) in enumerate(
         sorted(accepted_keys & candidate_keys), start=1
@@ -121,12 +168,27 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             v10_graph = torch.load(
                 v10_dir / f"{contract_id}.pt", map_location="cpu", weights_only=False
             )
+            reference_dir = reference[(source, contract_id)].parent
+            reference_graph = torch.load(
+                reference_dir / f"{contract_id}.pt",
+                map_location="cpu",
+                weights_only=False,
+            )
             sidecar = json.loads(
                 (v10_dir / f"{contract_id}.rep.json").read_text(encoding="utf-8")
             )
             v9_sidecar = json.loads(
                 (v9_dir / f"{contract_id}.rep.json").read_text(encoding="utf-8")
             )
+            reference_sidecar = json.loads(
+                (reference_dir / f"{contract_id}.rep.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            if reference_sidecar.get("schema_version") != V10_GRAPH_SCHEMA_VERSION:
+                raise ValueError("structural-reference graph schema mismatch")
+            if reference_sidecar.get("extractor_version") != "v2.3-r4-call-semantics":
+                raise ValueError("structural-reference extractor mismatch")
             if sidecar.get("schema_version") != V10_GRAPH_SCHEMA_VERSION:
                 raise ValueError("sidecar schema mismatch")
             if sidecar.get("extractor_version") != V10_REPRESENTATION_EXTRACTOR_VERSION:
@@ -165,6 +227,71 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             # means the normal full-analysis path, not missing provenance.
             v9_mode = _historical_v9_extraction_mode(v9_sidecar)
             v10_mode = str(sidecar.get("graph_extraction_mode") or "MISSING")
+            v9_parse_only = v9_mode.startswith("slither_parse_only")
+
+            v9_call_entry = int((v9_graph.edge_attr == 8).sum())
+            v10_call_entry = int((v10_graph.edge_attr == 8).sum())
+            v9_return_to = int((v9_graph.edge_attr == 9).sum())
+            v10_return_to = int((v10_graph.edge_attr == 9).sum())
+            for label, value in (
+                ("v9_call_entry_edges", v9_call_entry),
+                ("v10_call_entry_edges", v10_call_entry),
+                ("v9_return_to_edges", v9_return_to),
+                ("v10_return_to_edges", v10_return_to),
+            ):
+                totals[label] += value
+                source_totals[label] += value
+            for label, value in (
+                ("graphs_with_v9_call_entry", v9_call_entry),
+                ("graphs_with_v10_call_entry", v10_call_entry),
+                ("graphs_with_v9_return_to", v9_return_to),
+                ("graphs_with_v10_return_to", v10_return_to),
+            ):
+                totals[label] += bool(value)
+                source_totals[label] += bool(value)
+
+            node_features_equal = torch.equal(reference_graph.x, v10_graph.x)
+            node_metadata_equal = getattr(
+                reference_graph, "node_metadata", None
+            ) == getattr(
+                v10_graph, "node_metadata", None
+            )
+            non_call_topology_equal = _edge_topology_equal_through(
+                reference_graph, v10_graph, 10
+            )
+            structural_drift = not (
+                node_features_equal
+                and node_metadata_equal
+                and non_call_topology_equal
+            )
+            if structural_drift:
+                totals[
+                    "graphs_with_structural_drift_from_reference_through_edge_10"
+                ] += 1
+                source_totals[
+                    "graphs_with_structural_drift_from_reference_through_edge_10"
+                ] += 1
+                if not v9_parse_only:
+                    totals[
+                        "graphs_with_unexpected_structural_drift_from_reference_through_edge_10"
+                    ] += 1
+                    source_totals[
+                        "graphs_with_unexpected_structural_drift_from_reference_through_edge_10"
+                    ] += 1
+                if len(structural_drift_contracts) < args.max_errors:
+                    structural_drift_contracts.append(
+                        {
+                            "contract": logical,
+                            "v9_parse_only": v9_parse_only,
+                            "node_features_equal": node_features_equal,
+                            "node_metadata_equal": node_metadata_equal,
+                            "non_call_edge_topology_equal": non_call_topology_equal,
+                            "v9_call_entry_edges": v9_call_entry,
+                            "v10_call_entry_edges": v10_call_entry,
+                            "v9_return_to_edges": v9_return_to,
+                            "v10_return_to_edges": v10_return_to,
+                        }
+                    )
             totals[f"v9_extraction_mode_{v9_mode}"] += 1
             totals[f"v10_extraction_mode_{v10_mode}"] += 1
             source_totals[f"v9_extraction_mode_{v9_mode}"] += 1
@@ -173,16 +300,30 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
                 totals["graphs_with_changed_extraction_mode"] += 1
                 source_totals["graphs_with_changed_extraction_mode"] += 1
             if v10_mode != "slither_full_analysis":
+                if v10_mode.startswith("slither_parse_only"):
+                    semantic_completeness = "IR_CALL_EDGES_NOT_COMPLETE"
+                elif sidecar.get("graph_analyzer_repair") is not None:
+                    semantic_completeness = (
+                        "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR"
+                    )
+                elif sidecar.get("graph_source_transform") is not None:
+                    semantic_completeness = (
+                        "FULL_ANALYSIS_WITH_RECORDED_SOURCE_TRANSFORM"
+                    )
+                else:
+                    semantic_completeness = "FULL_ANALYSIS_COMPATIBILITY_MODE"
                 compatibility_record = {
-                        "contract": logical,
-                        "v9_extraction_mode": v9_mode,
-                        "v10_extraction_mode": v10_mode,
-                        "semantic_completeness": (
-                            "IR_CALL_EDGES_NOT_COMPLETE"
-                            if v10_mode.startswith("slither_parse_only")
-                            else "FULL_ANALYSIS_WITH_RECORDED_SOURCE_TRANSFORM"
-                        ),
-                    }
+                    "contract": logical,
+                    "v9_extraction_mode": v9_mode,
+                    "v10_extraction_mode": v10_mode,
+                    "semantic_completeness": semantic_completeness,
+                    "graph_analyzer_repair": sidecar.get(
+                        "graph_analyzer_repair"
+                    ),
+                    "graph_source_transform": sidecar.get(
+                        "graph_source_transform"
+                    ),
+                }
                 if v10_mode.startswith("slither_parse_only"):
                     source_path = args.preprocessed_root / source / f"{contract_id}.sol"
                     if not source_path.is_file():
@@ -219,9 +360,16 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         and totals["graphs_checked"] == len(accepted)
         and int(binding.get("checked_contracts", -1)) == len(accepted)
     )
+    structural_blocked = bool(
+        totals[
+            "graphs_with_unexpected_structural_drift_from_reference_through_edge_10"
+        ]
+    )
     script_path = Path(__file__).resolve()
     repo_root = script_path.parents[4]
     implementation_paths = (
+        Path("data_module/sentinel_data/preprocessing/r4_versions.py"),
+        Path("data_module/sentinel_data/representation/_schema_version_registry.json"),
         Path("data_module/sentinel_data/representation/graph_schema_versions.py"),
         Path("data_module/sentinel_data/representation/graph_extractor.py"),
         Path("data_module/sentinel_data/representation/r4_compatibility.py"),
@@ -235,15 +383,24 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         Path("docs/plan/ml-R4/scripts/p8_audit_v10_transition.py"),
     )
     return {
-        "schema": "sentinel-r4-v9-to-v10-transition-audit-v1",
+        "schema": "sentinel-r4-v9-to-v10-transition-audit-v2",
         "passed": passed,
         "status": (
             "PASS_DIAGNOSTIC_WITH_COMPATIBILITY_BLOCKER"
             if passed and totals["v10_parse_only_contracts"]
+            else "PASS_DIAGNOSTIC_WITH_STRUCTURAL_BLOCKER"
+            if passed and structural_blocked
             else "PASS_DIAGNOSTIC_ONLY" if passed else "FAIL"
         ),
         "accepted_v9_contracts": len(accepted),
         "candidate_v10_contracts": len(candidate),
+        "structural_reference_v10_contracts": len(reference),
+        "structural_reference_binding_report_sha256": _sha256(
+            reference_binding_path
+        ),
+        "structural_reference_binding_digest_sha256": reference_binding.get(
+            "binding_digest_sha256"
+        ),
         "candidate_binding_report_sha256": _sha256(binding_path),
         "candidate_binding_digest_sha256": binding.get("binding_digest_sha256"),
         "repository_head": subprocess.check_output(
@@ -268,6 +425,12 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         "errors": errors[: args.max_errors],
         "errors_truncated": max(0, len(errors) - args.max_errors),
         "compatibility_contracts": compatibility_contracts,
+        "structural_drift_contracts": structural_drift_contracts,
+        "structural_drift_records_truncated": max(
+            0,
+            totals["graphs_with_structural_drift_from_reference_through_edge_10"]
+            - len(structural_drift_contracts),
+        ),
         "physical_acceptance_blockers": (
             [
                 "parse-only compatibility graphs lack complete Slither IR call edges; "
@@ -276,12 +439,32 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             ]
             if totals["v10_parse_only_contracts"]
             else []
+        )
+        + (
+            [
+                "node features, metadata, or edge topology through unchanged edge type 10 drifted from the passing Slither-0.10 V10 structural reference outside historical v9 parse-only contracts"
+            ]
+            if structural_blocked
+            else []
         ),
         "physical_acceptance": False,
         "training_authorized": False,
         "limitations": [
             "This proves representation mechanics and Slither-IR-to-edge reconciliation, not vulnerability labels.",
-            "Parse-only compatibility graphs cannot prove complete IR call semantics and block physical acceptance until explicitly resolved.",
+            *(
+                [
+                    "Parse-only compatibility graphs cannot prove complete IR call semantics and block physical acceptance until explicitly resolved."
+                ]
+                if totals["v10_parse_only_contracts"]
+                else []
+            ),
+            *(
+                [
+                    "Structural drift from the passing Slither-0.10 V10 reference outside historical parse-only contracts blocks physical acceptance even when call-kind reconciliation passes."
+                ]
+                if structural_blocked
+                else []
+            ),
             "Physical acceptance still requires review of this report, bounded source regressions, tests, and an explicit decision record.",
         ],
     }
@@ -291,6 +474,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--accepted-v9-root", type=Path, default=Path("data_module/data/representations-r4-v2"))
     parser.add_argument("--candidate-root", type=Path, default=Path("data_module/data/representations-r4-v3-candidate"))
+    parser.add_argument("--reference-v10-root", type=Path, required=True)
     parser.add_argument("--preprocessed-root", type=Path, default=Path("data_module/data/sentinel-preprocessed-r4-v2"))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--progress-every", type=int, default=1000)

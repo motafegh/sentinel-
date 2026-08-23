@@ -15,13 +15,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from sentinel_data.preprocessing.r4_versions import (
     V10_GRAPH_SCHEMA_VERSION,
+    V10_PRIMARY_SLITHER_VERSION,
     V10_REPRESENTATION_EXTRACTOR_VERSION,
     V10_REPRESENTATION_ROOT_NAME,
+    V10_SLITHER_RUNTIME_EXCEPTIONS,
 )
 from sentinel_data.representation.graph_schema_versions import get_graph_schema
 from sentinel_data.vnext.r4_binding import _validate_graph, _validate_tokens
@@ -107,6 +110,7 @@ def bind_v10_candidate(
 
     records: list[dict[str, Any]] = []
     token_byte_matches = 0
+    slither_runtimes: Counter[tuple[str, str, str]] = Counter()
     for source, contract_id in sorted(candidate_keys & accepted_keys):
         logical = f"{source}/{contract_id}"
         candidate_dir = candidate[(source, contract_id)].parent
@@ -144,6 +148,31 @@ def bind_v10_candidate(
                 raise ValueError("candidate extractor version mismatch")
             if sidecar.get("token_lineage") != "accepted_v9_byte_copy":
                 raise ValueError("candidate token lineage is not accepted-v9 byte copy")
+            runtime = dict(sidecar.get("slither_runtime") or {})
+            slither_version = str(runtime.get("slither_analyzer") or "")
+            crytic_compile_version = str(runtime.get("crytic_compile") or "")
+            if not slither_version or not crytic_compile_version:
+                raise ValueError("candidate Slither runtime binding is missing")
+            required_slither = V10_SLITHER_RUNTIME_EXCEPTIONS.get(
+                contract_id, V10_PRIMARY_SLITHER_VERSION
+            )
+            required_role = (
+                "identity_bound_exception"
+                if contract_id in V10_SLITHER_RUNTIME_EXCEPTIONS
+                else "primary"
+            )
+            if slither_version != required_slither:
+                raise ValueError("candidate Slither identity binding mismatch")
+            if runtime.get("required_for_physical_acceptance") != required_slither:
+                raise ValueError("candidate required Slither binding mismatch")
+            if runtime.get("runtime_role") != required_role:
+                raise ValueError("candidate Slither runtime role mismatch")
+            slither_runtimes[(slither_version, crytic_compile_version, required_role)] += 1
+            extraction_mode = str(sidecar.get("graph_extraction_mode") or "")
+            if extraction_mode.startswith("slither_parse_only") or bool(
+                sidecar.get("graph_analysis_degraded")
+            ):
+                raise ValueError("candidate contains degraded parse-only analysis")
             if sidecar.get("unclassified_call_ir") not in (None, []):
                 raise ValueError("candidate contains unclassified call IR")
             if int(sidecar.get("unclassified_call_ir_count", 0)) != 0:
@@ -225,6 +254,17 @@ def bind_v10_candidate(
         "binding_digest_sha256": _binding_digest(records) if passed else None,
         "graph_schema_version": V10_GRAPH_SCHEMA_VERSION,
         "extractor_version": V10_REPRESENTATION_EXTRACTOR_VERSION,
+        "slither_runtime_distribution": [
+            {
+                "slither_analyzer": slither_version,
+                "crytic_compile": crytic_version,
+                "runtime_role": role,
+                "contracts": count,
+            }
+            for (slither_version, crytic_version, role), count in sorted(
+                slither_runtimes.items()
+            )
+        ],
         "physical_acceptance": False,
         "training_authorized": False,
         "remaining_stop_lines": [

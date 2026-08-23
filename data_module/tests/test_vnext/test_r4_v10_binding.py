@@ -10,15 +10,24 @@ import torch
 from torch_geometric.data import Data
 
 from sentinel_data.preprocessing.r4_versions import (
+    V10_PRIMARY_SLITHER_VERSION,
     V10_REPRESENTATION_EXTRACTOR_VERSION,
     V10_REPRESENTATION_ROOT_NAME,
+    V10_SLITHER_RUNTIME_EXCEPTIONS,
 )
 from sentinel_data.vnext.r4_v10_binding import bind_v10_candidate
 
 
-def _write_representation(root: Path, *, schema: str, token_bytes_from: Path | None = None) -> None:
+def _write_representation(
+    root: Path,
+    *,
+    schema: str,
+    token_bytes_from: Path | None = None,
+    contract_id: str = "a" * 64,
+    slither_version: str = V10_PRIMARY_SLITHER_VERSION,
+    runtime_role: str = "primary",
+) -> None:
     source = "fixture"
-    contract_id = "a" * 64
     directory = root / source
     directory.mkdir(parents=True)
     graph = Data(
@@ -91,6 +100,12 @@ def _write_representation(root: Path, *, schema: str, token_bytes_from: Path | N
         "coverage_interpretation": "diagnostic_only_no_adequacy_threshold",
     }
     if schema == "v10":
+        sidecar["slither_runtime"] = {
+            "slither_analyzer": slither_version,
+            "crytic_compile": "0.3.11",
+            "runtime_role": runtime_role,
+            "required_for_physical_acceptance": slither_version,
+        }
         sidecar["token_lineage"] = "accepted_v9_byte_copy"
         sidecar["unclassified_call_ir"] = []
         sidecar["unclassified_call_ir_count"] = 0
@@ -133,6 +148,52 @@ def test_v10_binding_rejects_token_drift(tmp_path: Path) -> None:
     report = bind_v10_candidate(candidate_root=candidate, accepted_v9_root=accepted)
     assert report["passed"] is False
     assert "token bytes differ" in report["errors"][0]["detail"]
+
+
+def test_v10_binding_rejects_parse_only_candidate(tmp_path: Path) -> None:
+    accepted = tmp_path / "representations-r4-v2"
+    candidate = tmp_path / V10_REPRESENTATION_ROOT_NAME
+    _write_representation(accepted, schema="v9")
+    accepted_token = accepted / "fixture" / f"{'a' * 64}.tokens.pt"
+    _write_representation(candidate, schema="v10", token_bytes_from=accepted_token)
+    sidecar_path = candidate / "fixture" / f"{'a' * 64}.rep.json"
+    sidecar = json.loads(sidecar_path.read_text())
+    sidecar["graph_extraction_mode"] = "slither_parse_only"
+    sidecar["graph_analysis_degraded"] = True
+    sidecar_path.write_text(json.dumps(sidecar))
+
+    report = bind_v10_candidate(candidate_root=candidate, accepted_v9_root=accepted)
+    assert report["passed"] is False
+    assert "degraded parse-only" in report["errors"][0]["detail"]
+
+
+def test_v10_binding_accepts_only_identity_bound_runtime_exception(
+    tmp_path: Path,
+) -> None:
+    contract_id, exception_version = next(iter(V10_SLITHER_RUNTIME_EXCEPTIONS.items()))
+    accepted = tmp_path / "representations-r4-v2"
+    candidate = tmp_path / V10_REPRESENTATION_ROOT_NAME
+    _write_representation(accepted, schema="v9", contract_id=contract_id)
+    accepted_token = accepted / "fixture" / f"{contract_id}.tokens.pt"
+    _write_representation(
+        candidate,
+        schema="v10",
+        token_bytes_from=accepted_token,
+        contract_id=contract_id,
+        slither_version=exception_version,
+        runtime_role="identity_bound_exception",
+    )
+
+    report = bind_v10_candidate(candidate_root=candidate, accepted_v9_root=accepted)
+    assert report["passed"] is True
+    assert report["slither_runtime_distribution"] == [
+        {
+            "slither_analyzer": exception_version,
+            "crytic_compile": "0.3.11",
+            "runtime_role": "identity_bound_exception",
+            "contracts": 1,
+        }
+    ]
 
 
 def test_v10_binding_rejects_wrong_candidate_root_name(tmp_path: Path) -> None:

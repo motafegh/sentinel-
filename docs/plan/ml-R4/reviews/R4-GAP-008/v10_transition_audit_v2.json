@@ -1,0 +1,1368 @@
+{
+  "accepted_v9_contracts": 22540,
+  "by_source": {
+    "dive": {
+      "graphs_checked": 22054,
+      "graphs_with_changed_extraction_mode": 26,
+      "graphs_with_changed_total_call_edges": 14851,
+      "graphs_with_structural_drift_from_reference_through_edge_10": 46,
+      "graphs_with_unexpected_structural_drift_from_reference_through_edge_10": 20,
+      "graphs_with_v10_call_entry": 18960,
+      "graphs_with_v10_contract_creation": 441,
+      "graphs_with_v10_ether_send": 707,
+      "graphs_with_v10_ether_transfer": 10073,
+      "graphs_with_v10_high_level_call": 15424,
+      "graphs_with_v10_library_call": 14756,
+      "graphs_with_v10_low_level_call": 4130,
+      "graphs_with_v10_return_to": 18062,
+      "graphs_with_v9_call_entry": 18367,
+      "graphs_with_v9_return_to": 17276,
+      "v10_call_entry_edges": 534742,
+      "v10_contract_creation_edges": 545,
+      "v10_ether_send_edges": 1309,
+      "v10_ether_transfer_edges": 15648,
+      "v10_extraction_mode_slither_full_analysis": 22027,
+      "v10_extraction_mode_slither_full_analysis_constant_array_fold_v1": 2,
+      "v10_extraction_mode_slither_full_analysis_known_state_initializer_ternary_fold_v1": 1,
+      "v10_extraction_mode_slither_full_analysis_singleton_call_type_v1": 24,
+      "v10_high_level_call_edges": 77144,
+      "v10_library_call_edges": 182036,
+      "v10_low_level_call_edges": 6986,
+      "v10_return_to_edges": 494627,
+      "v9_call_entry_edges": 340893,
+      "v9_external_call_edges": 215052,
+      "v9_extraction_mode_slither_full_analysis": 22026,
+      "v9_extraction_mode_slither_full_analysis_constant_array_fold_v1": 2,
+      "v9_extraction_mode_slither_parse_only": 26,
+      "v9_return_to_edges": 333691
+    },
+    "smartbugs_curated": {
+      "graphs_checked": 143,
+      "graphs_with_changed_total_call_edges": 76,
+      "graphs_with_v10_call_entry": 50,
+      "graphs_with_v10_contract_creation": 2,
+      "graphs_with_v10_ether_send": 19,
+      "graphs_with_v10_ether_transfer": 51,
+      "graphs_with_v10_high_level_call": 29,
+      "graphs_with_v10_library_call": 6,
+      "graphs_with_v10_low_level_call": 80,
+      "graphs_with_v10_return_to": 30,
+      "graphs_with_v9_call_entry": 49,
+      "graphs_with_v9_return_to": 30,
+      "v10_call_entry_edges": 300,
+      "v10_contract_creation_edges": 2,
+      "v10_ether_send_edges": 53,
+      "v10_ether_transfer_edges": 99,
+      "v10_extraction_mode_slither_full_analysis": 143,
+      "v10_high_level_call_edges": 99,
+      "v10_library_call_edges": 37,
+      "v10_low_level_call_edges": 103,
+      "v10_return_to_edges": 289,
+      "v9_call_entry_edges": 185,
+      "v9_external_call_edges": 179,
+      "v9_extraction_mode_slither_full_analysis": 143,
+      "v9_return_to_edges": 187
+    },
+    "solidifi": {
+      "graphs_checked": 343,
+      "graphs_with_changed_total_call_edges": 341,
+      "graphs_with_v10_call_entry": 266,
+      "graphs_with_v10_ether_send": 98,
+      "graphs_with_v10_ether_transfer": 305,
+      "graphs_with_v10_high_level_call": 147,
+      "graphs_with_v10_library_call": 175,
+      "graphs_with_v10_low_level_call": 101,
+      "graphs_with_v10_return_to": 231,
+      "graphs_with_v9_call_entry": 245,
+      "graphs_with_v9_return_to": 224,
+      "v10_call_entry_edges": 1827,
+      "v10_contract_creation_edges": 0,
+      "v10_ether_send_edges": 1852,
+      "v10_ether_transfer_edges": 4817,
+      "v10_extraction_mode_slither_full_analysis": 343,
+      "v10_high_level_call_edges": 364,
+      "v10_library_call_edges": 2121,
+      "v10_low_level_call_edges": 472,
+      "v10_return_to_edges": 1477,
+      "v9_call_entry_edges": 1190,
+      "v9_external_call_edges": 2259,
+      "v9_extraction_mode_slither_full_analysis": 343,
+      "v9_return_to_edges": 1113
+    }
+  },
+  "candidate_binding_digest_sha256": "bd907531a3e22b15d7b91552d15ef1f60c5fd59a109c4ef144ca62f3abab6950",
+  "candidate_binding_report_sha256": "e7ef90c9ce16c17bc1d364643fcc116486dad459c96459db3bc96de5bfe512e4",
+  "candidate_v10_contracts": 22540,
+  "compatibility_contracts": [
+    {
+      "contract": "dive/02e09fbc663a9cebb8806a884798a8fdc2048d88462789cd753cf7f703ca4b46",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 4,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/06b39e44f8d5a7cbf0b5b6b3d5361a2273acf3523db487d6651a646d486fd297",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "createTokens",
+            "node": "NEW VARIABLE securityWei = this.balance.mul(securityPercent).div(PERCENT_RATE)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "createTokens",
+            "node": "NEW VARIABLE securityWei = this.balance.mul(securityPercent).div(PERCENT_RATE)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/198c19c9ff82cfdc2352bd44cc26a017bc5170b972a9c498eca725673bf27d5c",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "fallback",
+            "node": "EXPRESSION refund = this.balance.sub(hardcapInEther)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 1,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/27c52b949585d14c7cca8b8b699b35b83576b0e2031d8fdb6bd4a685392a72ee",
+      "graph_analyzer_repair": null,
+      "graph_source_transform": {
+        "byte_length_preserved": true,
+        "kind": "constant_array_length_fold",
+        "line_count_preserved": true,
+        "original_sha256": "27c52b949585d14c7cca8b8b699b35b83576b0e2031d8fdb6bd4a685392a72ee",
+        "replacements": [
+          {
+            "expression": "20+1",
+            "line": 61,
+            "value": 21
+          }
+        ],
+        "schema": "r4-graph-source-compatibility-v1",
+        "transformed_sha256": "07e78435c03f805a2309c5825c61bbe6926becae2f2f3e45b706ad267a24569c"
+      },
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_SOURCE_TRANSFORM",
+      "v10_extraction_mode": "slither_full_analysis_constant_array_fold_v1",
+      "v9_extraction_mode": "slither_full_analysis_constant_array_fold_v1"
+    },
+    {
+      "contract": "dive/3194e53a9cb3aa1f7e604a4ab08c6e883089b7eaf85f7bbd2c2d149d32c34fb3",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "adminWithdraw",
+            "node": "NEW VARIABLE totalAvailable = this.balance.sub(totalOffer)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 1,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/49c343edfe2b15f40eecb0d97048244d018f4989f0f5b5980770bb4b17eb1c17",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 4,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/4f0ccb71e6f4c526352d0d9d8905ec5291e2d0878e66a329bac35d4e0375fc22",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "refund",
+            "node": "NEW VARIABLE valueOfAssets = this.balance.mul(balances[msg.sender]).div(totalSupply.sub(balances[owner]))",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "refund",
+            "node": "NEW VARIABLE valueOfAssets = this.balance.mul(balances[msg.sender]).div(totalSupply.sub(balances[owner]))",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/58e753c30a37b0d3adf3514060a9f3ff20ee8cb3f63bffca9c6bf92c55e1e579",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "close",
+            "node": "NEW VARIABLE wingsReward = this.balance.div(100)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "close",
+            "node": "NEW VARIABLE wingsReward = this.balance.div(100)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "close",
+            "node": "NEW VARIABLE wingsReward = this.balance.div(100)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 3,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/5e1d708aa3e28fe84d0da119ecaba88272acbbe21ce208f799a907b660d8e5e1",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "refund",
+            "node": "NEW VARIABLE valueOfInvestment = this.balance.mul(balances[msg.sender]).div(totalSupply)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "refund",
+            "node": "NEW VARIABLE valueOfInvestment = this.balance.mul(balances[msg.sender]).div(totalSupply)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/6809fdf4e636aa5fb3f180b237cb123d9ebe160ce630581055f08f7650ac24be",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 4,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/74ba0bb543d57f91e75da6c0e0720802d9c107350c52cd8a7778aa53fe89f248",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "withdrawFreeBalance",
+            "node": "NEW VARIABLE freeBalance = this.balance.sub(totalPayments).sub(prizePool).sub(wagerPool)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 4,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/85c69a9be9e4fedbd987bb360c5673cb4a48596b2165b0521c1d4dcecdaaf62d",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "claim",
+            "node": "NEW VARIABLE totalReceived = this.balance.add(totalReleased)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 1,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/871775b6b86ebb343ab762c90588f6b054bcd47e39fe8fb480ad0625fd30e4a1",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "saveToCW",
+            "node": "EXPRESSION coldWalletAddress.transfer(this.balance.mul(percentageCW).div(100))",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "saveToCW",
+            "node": "EXPRESSION coldWalletAddress.transfer(this.balance.mul(percentageCW).div(100))",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/930836f863156f6c2744979bd561c1bf7e2ff5d0b02eddc67339f8720cba7906",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "saveToCW",
+            "node": "EXPRESSION coldWalletAddress.transfer(this.balance.mul(percentageCW).div(100))",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "saveToCW",
+            "node": "EXPRESSION coldWalletAddress.transfer(this.balance.mul(percentageCW).div(100))",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/9703409b36b5e3bf0fe83d25c3f3377c6fd618e07c343b8a4f70b846dc80c235",
+      "graph_analyzer_repair": null,
+      "graph_source_transform": {
+        "byte_length_preserved": true,
+        "kind": "known_state_initializer_ternary_fold",
+        "line_count_preserved": true,
+        "original_sha256": "9703409b36b5e3bf0fe83d25c3f3377c6fd618e07c343b8a4f70b846dc80c235",
+        "replacements": [
+          {
+            "expression": "maxPerWallet < 50 ? maxPerWallet : 50",
+            "line": 1566,
+            "precondition": "uint256 public maxPerWallet = 10;",
+            "value": 10
+          }
+        ],
+        "schema": "r4-graph-source-compatibility-v2",
+        "transformed_sha256": "424a57411f52e9673f307350c631f4d3e066eaabf8925264c42121f5ed611c91"
+      },
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_SOURCE_TRANSFORM",
+      "v10_extraction_mode": "slither_full_analysis_known_state_initializer_ternary_fold_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/9930859ba5572e723badb03d16fad872b477ae65ed223720466c375120d9878a",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "depositLRC",
+            "node": "NEW VARIABLE lrcAmount = this.balance.mul(RATE).min256(lrcToken.balanceOf(msg.sender)).min256(lrcToken.allowance(msg.sender,address(this))).min256(MAX_LRC_DEPOSIT_PER_ADDRESS - record.lrcAmount)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "depositLRC",
+            "node": "NEW VARIABLE lrcAmount = this.balance.mul(RATE).min256(lrcToken.balanceOf(msg.sender)).min256(lrcToken.allowance(msg.sender,address(this))).min256(MAX_LRC_DEPOSIT_PER_ADDRESS - record.lrcAmount)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/ae742409f7f42a933c9ea3b666b403328101fb1e6ff3efbc249d5d17fe3fb86d",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "betPool",
+            "node": "RETURN this.balance.sub(ethBalanceOf(_customerAddress)).sub(devFeeBalance)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 1,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/c397d94d056e4d5ed4620ee6284cd2cf11ce6c126f223b0b8cde71e2eb213e3c",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "saveToCW",
+            "node": "EXPRESSION coldWalletAddress.transfer(this.balance.mul(percentageCW).div(100))",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "saveToCW",
+            "node": "EXPRESSION coldWalletAddress.transfer(this.balance.mul(percentageCW).div(100))",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/c5d98739f0088155cfed4599550b8addf8a1e22b960ef49a601d2b8f4b8f2b83",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "forwardFunds",
+            "node": "IF supply.div(1000000000000000000).mul(itemReturn).add(runningDebt).add(additionalDebt) > (this.balance.sub(totalExcessEth))",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "forwardFunds",
+            "node": "IF supply.div(1000000000000000000).mul(itemReturn).add(runningDebt).add(additionalDebt) > (this.balance.sub(totalExcessEth))",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/cc7fddffc286c29c7bd0585190f4291f2f62f94315f34b2a45bce5600a9d6291",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "bid",
+            "node": "NEW VARIABLE lastRoundPotBalance = this.balance.sub(msg.value)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "estimateNextPotSeedAmount",
+            "node": "RETURN this.balance.mul(100 - devFeePercent).div(100).mul(rolloverPercent).div(100)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/d5045358a8134786d44c6d76346868dda8701612b870fd7350ea46bb9df0ac57",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "buyTokens",
+            "node": "EXPRESSION periodITO_wei = this.balance.sub(odd_ethers)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "buyTokens",
+            "node": "EXPRESSION periodITO_wei = this.balance.sub(odd_ethers)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/db68f561fe5744531020e6c839e9b84b0cf073542f4844fe49a53c2f841c7a67",
+      "graph_analyzer_repair": null,
+      "graph_source_transform": {
+        "byte_length_preserved": true,
+        "kind": "constant_array_length_fold",
+        "line_count_preserved": true,
+        "original_sha256": "db68f561fe5744531020e6c839e9b84b0cf073542f4844fe49a53c2f841c7a67",
+        "replacements": [
+          {
+            "expression": "stageTotal",
+            "line": 60,
+            "value": 3
+          },
+          {
+            "expression": "stageTotal * 3",
+            "line": 66,
+            "value": 9
+          }
+        ],
+        "schema": "r4-graph-source-compatibility-v1",
+        "transformed_sha256": "72355f5fa287e8d6ce6401d7549c063a42e57abbaf3999fb1d3db27b1c91fa70"
+      },
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_SOURCE_TRANSFORM",
+      "v10_extraction_mode": "slither_full_analysis_constant_array_fold_v1",
+      "v9_extraction_mode": "slither_full_analysis_constant_array_fold_v1"
+    },
+    {
+      "contract": "dive/dd3b0a070faeaf34e17fe536dc5f272fb7f381250168c5df3f923d84a95f4329",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "close",
+            "node": "NEW VARIABLE fees = this.balance.mul(25).div(10000)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "close",
+            "node": "NEW VARIABLE fees = this.balance.mul(25).div(10000)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "close",
+            "node": "NEW VARIABLE fees = this.balance.mul(25).div(10000)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 3,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/e512fc64c5b1f6cabf1d1cc7f8ce4e1e574051e8c747186740096951f6e17a75",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "bid",
+            "node": "NEW VARIABLE lastRoundPotBalance = this.balance.sub(msg.value)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "estimateNextPotSeedAmount",
+            "node": "RETURN this.balance.mul(100 - devFeePercent).div(100).mul(rolloverPercent).div(100)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/ee8772aa8f228b3406c611ae0a7f5356afe781c5e4faf930a95a5b023a7101c5",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "betPool",
+            "node": "RETURN this.balance.sub(ethBalanceOf(_customerAddress)).sub(devFeeBalance)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 1,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/f74805ca3bb2a74d99ecfa683d7012754c723495103f2189d7183518488f9a60",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "bid",
+            "node": "NEW VARIABLE lastRoundPotBalance = this.balance.sub(msg.value)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "estimateNextPotSeedAmount",
+            "node": "RETURN this.balance.mul(100 - devFeePercent).div(100).mul(rolloverPercent).div(100)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 2,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    },
+    {
+      "contract": "dive/f8b2252dcea61c773adb83996fbfbcdeea41a76ac19f93bf73f492a882a18cc0",
+      "graph_analyzer_repair": {
+        "kind": "singleton_high_level_call_destination_type_unwrap",
+        "records": [
+          {
+            "function": "claim",
+            "node": "NEW VARIABLE totalReceived = this.balance.add(totalReleased)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "claim",
+            "node": "NEW VARIABLE totalReceived = this.balance.add(totalReleased)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "claim",
+            "node": "NEW VARIABLE totalReceived = this.balance.add(totalReleased)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "claim",
+            "node": "NEW VARIABLE totalReceived = this.balance.add(totalReleased)",
+            "unwrapped_type": "uint256"
+          },
+          {
+            "function": "claim",
+            "node": "NEW VARIABLE totalReceived = this.balance.add(totalReleased)",
+            "unwrapped_type": "uint256"
+          }
+        ],
+        "repair_count": 5,
+        "schema": "r4-slither-analyzer-compatibility-v1"
+      },
+      "graph_source_transform": null,
+      "semantic_completeness": "FULL_ANALYSIS_WITH_RECORDED_ANALYZER_REPAIR",
+      "v10_extraction_mode": "slither_full_analysis_singleton_call_type_v1",
+      "v9_extraction_mode": "slither_parse_only"
+    }
+  ],
+  "errors": [],
+  "errors_total": 0,
+  "errors_truncated": 0,
+  "extractor_version": "v2.4-r4-call-semantics-compat",
+  "graph_schema_version": "v10",
+  "implementation_sha256": {
+    "data_module/sentinel_data/preprocessing/r4_versions.py": "64b9401dc55ccac9fc03d07bcb566b4bedc7440445f86adaa119e927aea9b92d",
+    "data_module/sentinel_data/representation/_schema_version_registry.json": "17c898bf656166376ae3cb0c74eabbecf541b02e3fa16ce4c5081187753678a2",
+    "data_module/sentinel_data/representation/graph_extractor.py": "9283d8313bafc02d593ae79a64564be9ec975dc51a70dc572de3c1a2bb8494be",
+    "data_module/sentinel_data/representation/graph_schema_versions.py": "ae5caa30636f7637f7883c91650ca0de1582c09116e2cf20b84dc27322c4e539",
+    "data_module/sentinel_data/representation/r4_compatibility.py": "d08c5b1a2bd5a07d230a22509d8afebabc9ef2edd1cb988aa0a9325a01ea4bc3",
+    "data_module/sentinel_data/representation/r4_orchestrator.py": "439a5950fcc79c050c1a893d3f6eeaf3bc13eff6e3b4668dba5f55ae0bc335ba",
+    "data_module/sentinel_data/vnext/r4_v10_binding.py": "390fc654ba09ff48571904cc6c7cf8d02768ace94e7e79dccb162bb437c2dbb6",
+    "docs/plan/ml-R4/scripts/p8_audit_v10_transition.py": "be76b10c9f691ee7340216cf5b35e66c958083d3afbc26c955a2c98a2a8ecf56",
+    "docs/plan/ml-R4/scripts/p8_generate_v10_candidate.py": "e2a3baf606eb66dd7ede3d8798f99a43befa47f2e3956fd49e5162bf2436b081",
+    "ml/src/datasets/vnext_logical_v3_v10_dataset.py": "affa0567662f1a07f76c7804d1336bc4e318aa28708e515004126a4242263a06",
+    "ml/src/models/gnn_encoder.py": "5bb03ef263e9d42a4a70fec65b48e0ffe36d8c69e7d71da06c6c120766ba08c2",
+    "ml/src/models/sentinel_model.py": "6dfca83fed81d5cb93d7eb21596c82708db4746a6eebf8f2401bab90e4746b29",
+    "ml/src/training/vnext_binding.py": "e8750a57cac78818884318ba210934c376ca9afa0f8400268f848918b1da7e99"
+  },
+  "limitations": [
+    "This proves representation mechanics and Slither-IR-to-edge reconciliation, not vulnerability labels.",
+    "Structural drift from the passing Slither-0.10 V10 reference outside historical parse-only contracts blocks physical acceptance even when call-kind reconciliation passes.",
+    "Physical acceptance still requires review of this report, bounded source regressions, tests, and an explicit decision record."
+  ],
+  "passed": true,
+  "physical_acceptance": false,
+  "physical_acceptance_blockers": [
+    "node features, metadata, or edge topology through unchanged edge type 10 drifted from the passing Slither-0.10 V10 structural reference outside historical v9 parse-only contracts"
+  ],
+  "repository_head": "1144df48caf2ceff38628c57b98974d74971c743",
+  "repository_worktree_dirty": true,
+  "schema": "sentinel-r4-v9-to-v10-transition-audit-v2",
+  "status": "PASS_DIAGNOSTIC_WITH_STRUCTURAL_BLOCKER",
+  "structural_drift_contracts": [
+    {
+      "contract": "dive/02e09fbc663a9cebb8806a884798a8fdc2048d88462789cd753cf7f703ca4b46",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 5,
+      "v10_return_to_edges": 6,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/047f9d7c2db3d6ba43b62e9c1b35adb1ed5a6bd36d68da46e0f877b0974b73e4",
+      "node_features_equal": true,
+      "node_metadata_equal": true,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 22,
+      "v10_return_to_edges": 15,
+      "v9_call_entry_edges": 7,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 5
+    },
+    {
+      "contract": "dive/06b39e44f8d5a7cbf0b5b6b3d5361a2273acf3523db487d6651a646d486fd297",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 38,
+      "v10_return_to_edges": 31,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/198c19c9ff82cfdc2352bd44cc26a017bc5170b972a9c498eca725673bf27d5c",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 1,
+      "v10_return_to_edges": 1,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/1d9ce79b93c3a1bd7597a76204ae65027fc0471517b2a247c1e536a260c296fd",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 5,
+      "v10_return_to_edges": 3,
+      "v9_call_entry_edges": 5,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 3
+    },
+    {
+      "contract": "dive/3194e53a9cb3aa1f7e604a4ab08c6e883089b7eaf85f7bbd2c2d149d32c34fb3",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 2,
+      "v10_return_to_edges": 6,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/42489184f712d85f392a47db45110b4406436bc8b648524300a18319111ab350",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 169,
+      "v10_return_to_edges": 136,
+      "v9_call_entry_edges": 125,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 116
+    },
+    {
+      "contract": "dive/48beaa23f916dfd3acbc86a799b0859709b29defa3796450693bab13f8e6e777",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 13,
+      "v10_return_to_edges": 12,
+      "v9_call_entry_edges": 13,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 12
+    },
+    {
+      "contract": "dive/49c343edfe2b15f40eecb0d97048244d018f4989f0f5b5980770bb4b17eb1c17",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 6,
+      "v10_return_to_edges": 8,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/4f0ccb71e6f4c526352d0d9d8905ec5291e2d0878e66a329bac35d4e0375fc22",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 2,
+      "v10_return_to_edges": 13,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/58e753c30a37b0d3adf3514060a9f3ff20ee8cb3f63bffca9c6bf92c55e1e579",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 12,
+      "v10_return_to_edges": 17,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/5a626b8baef72b243f1812118862af26ea796462c38e900f2f595ba73b55495e",
+      "node_features_equal": true,
+      "node_metadata_equal": true,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 46,
+      "v10_return_to_edges": 35,
+      "v9_call_entry_edges": 17,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 13
+    },
+    {
+      "contract": "dive/5e1d708aa3e28fe84d0da119ecaba88272acbbe21ce208f799a907b660d8e5e1",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 8,
+      "v10_return_to_edges": 21,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/6376d572b974fb2ba2c074bf7d43972b241a1000731563b44ee09ef72eeaca3e",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 71,
+      "v10_return_to_edges": 81,
+      "v9_call_entry_edges": 71,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 81
+    },
+    {
+      "contract": "dive/6809fdf4e636aa5fb3f180b237cb123d9ebe160ce630581055f08f7650ac24be",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 7,
+      "v10_return_to_edges": 12,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/73cbc254caad8a7a6b8674125c029a530973459c294c6897dca01d219307c669",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 40,
+      "v10_return_to_edges": 37,
+      "v9_call_entry_edges": 40,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 37
+    },
+    {
+      "contract": "dive/74ba0bb543d57f91e75da6c0e0720802d9c107350c52cd8a7778aa53fe89f248",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 6,
+      "v10_return_to_edges": 8,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/7e9bfccd7d3ed5076b7ea61fe444f33b50deb78c27582bcc413b7303422dc551",
+      "node_features_equal": true,
+      "node_metadata_equal": true,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 49,
+      "v10_return_to_edges": 29,
+      "v9_call_entry_edges": 12,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 7
+    },
+    {
+      "contract": "dive/83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 40,
+      "v10_return_to_edges": 58,
+      "v9_call_entry_edges": 37,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 55
+    },
+    {
+      "contract": "dive/85c5c0d173dbaed126f4bc5165c7453262b6ff50c89c52a458034f322a06a714",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 34,
+      "v10_return_to_edges": 38,
+      "v9_call_entry_edges": 34,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 38
+    },
+    {
+      "contract": "dive/85c69a9be9e4fedbd987bb360c5673cb4a48596b2165b0521c1d4dcecdaaf62d",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 1,
+      "v10_return_to_edges": 1,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/871775b6b86ebb343ab762c90588f6b054bcd47e39fe8fb480ad0625fd30e4a1",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 17,
+      "v10_return_to_edges": 14,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/8b1792cb3c0a40a4ebeec72ffe69d00920c80203213f24ec3e2d5a867eeae3d5",
+      "node_features_equal": true,
+      "node_metadata_equal": true,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 28,
+      "v10_return_to_edges": 17,
+      "v9_call_entry_edges": 8,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 5
+    },
+    {
+      "contract": "dive/930836f863156f6c2744979bd561c1bf7e2ff5d0b02eddc67339f8720cba7906",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 15,
+      "v10_return_to_edges": 13,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/95f7d52dff443cc825e20477a62de371cc4bbc31b6ba5aae653ff51caaaf974c",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 167,
+      "v10_return_to_edges": 137,
+      "v9_call_entry_edges": 128,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 122
+    },
+    {
+      "contract": "dive/9703409b36b5e3bf0fe83d25c3f3377c6fd618e07c343b8a4f70b846dc80c235",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 86,
+      "v10_return_to_edges": 84,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/9930859ba5572e723badb03d16fad872b477ae65ed223720466c375120d9878a",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 2,
+      "v10_return_to_edges": 2,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/a4068383ed30b56a39771e1dcbe835726242c164d125908207b4e616030aaa8c",
+      "node_features_equal": true,
+      "node_metadata_equal": true,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 28,
+      "v10_return_to_edges": 23,
+      "v9_call_entry_edges": 7,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 5
+    },
+    {
+      "contract": "dive/a7faec46ab38dbf5b87b1e1ef0e56fc5da743ac450535b1cc09f12922c86f46c",
+      "node_features_equal": true,
+      "node_metadata_equal": true,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 28,
+      "v10_return_to_edges": 23,
+      "v9_call_entry_edges": 7,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 5
+    },
+    {
+      "contract": "dive/ae742409f7f42a933c9ea3b666b403328101fb1e6ff3efbc249d5d17fe3fb86d",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 28,
+      "v10_return_to_edges": 27,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/af947a2b1a6d7c6fa500f5604bc7b3d3e8bbab6711c30b54f601b6db5db19464",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 103,
+      "v10_return_to_edges": 140,
+      "v9_call_entry_edges": 99,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 136
+    },
+    {
+      "contract": "dive/beaa4d742f0b52b301fc2f143072b57ef8170540cdaaa096cdd2f51b047ab1ca",
+      "node_features_equal": true,
+      "node_metadata_equal": true,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 28,
+      "v10_return_to_edges": 23,
+      "v9_call_entry_edges": 7,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 5
+    },
+    {
+      "contract": "dive/c159c57b830cb77686cb5a2a7b40f1452cae516ec688b55331adb61b1669064d",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 10,
+      "v10_return_to_edges": 18,
+      "v9_call_entry_edges": 9,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 18
+    },
+    {
+      "contract": "dive/c1d21cda50fb1f0c1194392080a2c7a21b3baed5edbe140caaec8c3f257f756b",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 74,
+      "v10_return_to_edges": 89,
+      "v9_call_entry_edges": 74,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 89
+    },
+    {
+      "contract": "dive/c397d94d056e4d5ed4620ee6284cd2cf11ce6c126f223b0b8cde71e2eb213e3c",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 17,
+      "v10_return_to_edges": 14,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/c5d98739f0088155cfed4599550b8addf8a1e22b960ef49a601d2b8f4b8f2b83",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 8,
+      "v10_return_to_edges": 6,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 8,
+      "v10_return_to_edges": 18,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/cc7fddffc286c29c7bd0585190f4291f2f62f94315f34b2a45bce5600a9d6291",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 9,
+      "v10_return_to_edges": 11,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/d5045358a8134786d44c6d76346868dda8701612b870fd7350ea46bb9df0ac57",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 12,
+      "v10_return_to_edges": 7,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/dcf66533d7ee72d2a59ab07fd4117f03ea035489f53ac9184e1dcb4d82c6d823",
+      "node_features_equal": true,
+      "node_metadata_equal": true,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 67,
+      "v10_return_to_edges": 42,
+      "v9_call_entry_edges": 11,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 6
+    },
+    {
+      "contract": "dive/dd3b0a070faeaf34e17fe536dc5f272fb7f381250168c5df3f923d84a95f4329",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 24,
+      "v10_return_to_edges": 12,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/e512fc64c5b1f6cabf1d1cc7f8ce4e1e574051e8c747186740096951f6e17a75",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 9,
+      "v10_return_to_edges": 11,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/ee8772aa8f228b3406c611ae0a7f5356afe781c5e4faf930a95a5b023a7101c5",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 26,
+      "v10_return_to_edges": 25,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/f74805ca3bb2a74d99ecfa683d7012754c723495103f2189d7183518488f9a60",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 9,
+      "v10_return_to_edges": 11,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/f8b2252dcea61c773adb83996fbfbcdeea41a76ac19f93bf73f492a882a18cc0",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": false,
+      "v10_call_entry_edges": 23,
+      "v10_return_to_edges": 24,
+      "v9_call_entry_edges": 0,
+      "v9_parse_only": true,
+      "v9_return_to_edges": 0
+    },
+    {
+      "contract": "dive/f8cd4abd34d1aa1ca5d3293ee286bfedfa39d0cab550a547ba22e798d5439b35",
+      "node_features_equal": false,
+      "node_metadata_equal": false,
+      "non_call_edge_topology_equal": true,
+      "v10_call_entry_edges": 49,
+      "v10_return_to_edges": 53,
+      "v9_call_entry_edges": 49,
+      "v9_parse_only": false,
+      "v9_return_to_edges": 53
+    }
+  ],
+  "structural_drift_records_truncated": 0,
+  "structural_reference_binding_digest_sha256": "6087dc6d76d781efbefe0c4984458d291790c38b1c55d852f48fd796222b0260",
+  "structural_reference_binding_report_sha256": "bc8fdfd4b0e62ce76fef331c9eaebf8da5b45aa0966fcb91cc096f05c6fcefcd",
+  "structural_reference_v10_contracts": 22540,
+  "totals": {
+    "graphs_checked": 22540,
+    "graphs_with_changed_extraction_mode": 26,
+    "graphs_with_changed_total_call_edges": 15268,
+    "graphs_with_structural_drift_from_reference_through_edge_10": 46,
+    "graphs_with_unexpected_structural_drift_from_reference_through_edge_10": 20,
+    "graphs_with_v10_call_entry": 19276,
+    "graphs_with_v10_contract_creation": 443,
+    "graphs_with_v10_ether_send": 824,
+    "graphs_with_v10_ether_transfer": 10429,
+    "graphs_with_v10_high_level_call": 15600,
+    "graphs_with_v10_library_call": 14937,
+    "graphs_with_v10_low_level_call": 4311,
+    "graphs_with_v10_return_to": 18323,
+    "graphs_with_v9_call_entry": 18661,
+    "graphs_with_v9_return_to": 17530,
+    "v10_call_entry_edges": 536869,
+    "v10_contract_creation_edges": 547,
+    "v10_ether_send_edges": 3214,
+    "v10_ether_transfer_edges": 20564,
+    "v10_extraction_mode_slither_full_analysis": 22513,
+    "v10_extraction_mode_slither_full_analysis_constant_array_fold_v1": 2,
+    "v10_extraction_mode_slither_full_analysis_known_state_initializer_ternary_fold_v1": 1,
+    "v10_extraction_mode_slither_full_analysis_singleton_call_type_v1": 24,
+    "v10_high_level_call_edges": 77607,
+    "v10_library_call_edges": 184194,
+    "v10_low_level_call_edges": 7561,
+    "v10_return_to_edges": 496393,
+    "v9_call_entry_edges": 342268,
+    "v9_external_call_edges": 217490,
+    "v9_extraction_mode_slither_full_analysis": 22512,
+    "v9_extraction_mode_slither_full_analysis_constant_array_fold_v1": 2,
+    "v9_extraction_mode_slither_parse_only": 26,
+    "v9_return_to_edges": 334991
+  },
+  "training_authorized": false
+}

@@ -1176,6 +1176,15 @@ def _unclassified_v10_call_ir(
     return tuple(sorted(unknown))
 
 
+def _internal_call_callee(call: Any) -> Any | None:
+    """Resolve both historical Function calls and newer Slither InternalCall IR."""
+
+    if getattr(call, "canonical_name", None):
+        return call
+    callee = getattr(call, "function", None)
+    return callee if getattr(callee, "canonical_name", None) else None
+
+
 def _add_icfg_edges(
     contract: Any,
     func_entry_map: dict,
@@ -1288,13 +1297,16 @@ def _add_icfg_edges(
                     )
                 continue
 
-            for callee in sorted(
+            for call in sorted(
                 (getattr(node, "internal_calls", None) or []),
-                key=lambda c: getattr(c, "canonical_name", None) or "",
+                key=lambda c: getattr(
+                    _internal_call_callee(c), "canonical_name", ""
+                ),
             ):
-                callee_key = getattr(callee, "canonical_name", None)
-                if not callee_key:
+                callee = _internal_call_callee(call)
+                if callee is None:
                     continue
+                callee_key = getattr(callee, "canonical_name", None)
 
                 # CALL_ENTRY: caller node → callee ENTRYPOINT
                 callee_entry = func_entry_map.get(callee_key)
@@ -2184,10 +2196,13 @@ def extract_contract_graph(
 
         for call in sorted(
             (getattr(func, "internal_calls", None) or []),
-            key=lambda c: getattr(c, "canonical_name", None) or "",
+            key=lambda c: getattr(
+                _internal_call_callee(c), "canonical_name", ""
+            ),
         ):
-            if hasattr(call, "canonical_name"):
-                _add_edge(fn, call.canonical_name, EDGE_TYPES["CALLS"])
+            callee = _internal_call_callee(call)
+            if callee is not None:
+                _add_edge(fn, callee.canonical_name, EDGE_TYPES["CALLS"])
 
         for var in sorted(
             (getattr(func, "state_variables_read", None) or []),
