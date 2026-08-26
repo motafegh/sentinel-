@@ -96,8 +96,8 @@ def test_adapter_rejects_difference_outside_write_correction() -> None:
         probe._derive_adapter_report(_report(right_type="CFG_NODE_READ"))
 
 
-def test_storage_proof_requires_positive_storage_root() -> None:
-    report = {
+def _semantic_report(root: dict) -> dict:
+    return {
         "contracts": [
             {
                 "contract": "dive/fixture",
@@ -105,27 +105,52 @@ def test_storage_proof_requires_positive_storage_root() -> None:
                     {
                         "name": "EXPRESSION alias.field = 1",
                         "source_lines": [10],
-                        "expression_writes": [
-                            {
-                                "root_variable": {
-                                    "location": "storage",
-                                    "is_storage": True,
-                                }
-                            }
-                        ],
+                        "expression_writes": [{"root_variable": root}],
                     }
                 ],
             }
         ]
     }
-    passed, failures = probe._storage_write_proof(report)
+
+
+def test_storage_proof_accepts_storage_local_root() -> None:
+    passed, failures = probe._storage_write_proof(
+        _semantic_report(
+            {
+                "class": "LocalVariable",
+                "location": "storage",
+                "is_storage": True,
+            }
+        )
+    )
     assert passed is True
     assert failures == []
 
-    report["contracts"][0]["nodes"][0]["expression_writes"][0][
-        "root_variable"
-    ] = {"location": "memory", "is_storage": False}
-    passed, failures = probe._storage_write_proof(report)
+
+def test_storage_proof_accepts_direct_state_variable_root() -> None:
+    passed, failures = probe._storage_write_proof(
+        _semantic_report(
+            {
+                "class": "StateVariable",
+                "location": None,
+                "is_storage": None,
+            }
+        )
+    )
+    assert passed is True
+    assert failures == []
+
+
+def test_storage_proof_rejects_memory_root() -> None:
+    passed, failures = probe._storage_write_proof(
+        _semantic_report(
+            {
+                "class": "LocalVariable",
+                "location": "memory",
+                "is_storage": False,
+            }
+        )
+    )
     assert passed is False
     assert failures == [
         {
