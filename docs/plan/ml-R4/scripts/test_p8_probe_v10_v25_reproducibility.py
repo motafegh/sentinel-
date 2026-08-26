@@ -34,6 +34,19 @@ def _graph(node_type: str, type_id: int, *, other_feature: float = 0.0) -> Data:
     return graph
 
 
+def test_persistent_write_root_matches_classifier_evidence_rule() -> None:
+    assert probe._is_persistent_write_root(
+        {"class": "StateVariable", "location": None, "is_storage": None}
+    ) is True
+    assert probe._is_persistent_write_root(
+        {"class": "LocalVariable", "location": "storage", "is_storage": True}
+    ) is True
+    assert probe._is_persistent_write_root(
+        {"class": "LocalVariable", "location": "memory", "is_storage": False}
+    ) is False
+    assert probe._is_persistent_write_root(None) is False
+
+
 def test_expected_storage_write_canonicalization_restores_exact_equivalence() -> None:
     target = {("EXPRESSION alias.field = 1", (10,))}
     reference = _graph("CFG_NODE_OTHER", 12)
