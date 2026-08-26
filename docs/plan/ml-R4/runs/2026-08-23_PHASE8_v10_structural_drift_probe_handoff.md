@@ -1,7 +1,7 @@
 # Phase-8 V10 structural-drift probe handoff
 
 Date: 2026-08-23
-Status: PROTECTED-LOCAL REPEAT EVIDENCE COMPLETE; DETERMINISTIC CFG REPAIR IN PROGRESS
+Status: V2.5 BOUNDED REPRODUCIBILITY 19/20 PROVEN; ONE SEMANTIC-EVIDENCE EXPANSION PENDING
 Scope: R4-B008 structural blocker only; no label, selector, objective, threshold,
 checkpoint, training, or model-quality authority
 
@@ -188,25 +188,96 @@ legitimately differ from the deterministic v2.5 result. Any such difference must
 be explicitly enumerated and justified after regenerated v2.5 evidence; it must
 not be silently ignored by the transition audit.
 
+## 2026-08-26 V2.5 bounded reproducibility checkpoint
+
+The deterministic CFG guard was implemented under extractor identity
+`v2.5-r4-call-semantics-deterministic-cfg`. Focused representation tests passed
+27 / 27 under the primary ML environment, including negative controls proving
+that memory-member writes and bare storage-reference declarations/rebindings are
+not promoted to state writes.
+
+The first semantic evidence pass re-parsed the twelve previously drifting
+contracts under exact Slither 0.10.0. Every requested drifting node had positive
+persistent-storage evidence: its relevant expression lvalue was rooted in a
+`LocalVariable` with `location = storage` and `is_storage = true`. Therefore the
+semantic direction is WRITE, not a memory-side false positive.
+
+Three fresh V2.5 generations of all twenty unexpected identities then completed
+cleanly: 20 / 20 records, all `slither_full_analysis`, under the exact primary
+runtime. The bounded V2.5 verifier reported:
+
+| Decision | Identities |
+|---|---:|
+| `V25_NODE_ORDER_INDEX_EQUIVALENCE_REPRODUCED` | 8 |
+| `V25_DETERMINISTIC_STORAGE_WRITE_CORRECTION_PROVEN` | 11 |
+| `BLOCKED_V25_STORAGE_WRITE_REPRODUCIBILITY` | 1 |
+
+Thus 19 / 20 identities are fully resolved in the bounded V2.5 tranche.
+
+The sole remaining identity is:
+
+`dive/83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d`
+
+Crucially, this identity is **not** repeat-nondeterministic under V2.5. All three
+fresh V2.5 outputs are raw-structure equal to one another: exact node features,
+metadata, and unchanged-edge topology all match. The five nodes already covered
+by the first semantic-evidence pass are WRITE in every repeat, with zero semantic
+write failures.
+
+The remaining block is evidence coverage relative to the frozen v2.3 reference.
+After canonicalizing the five already-proven storage-write nodes, all three V2.5
+repeats expose the same eight additional lower-class -> WRITE differences:
+
+1. line 469: `NEW VARIABLE newCheckPoint = checkpoints[checkpoints.length ++]`
+   (`CFG_NODE_ARITH -> CFG_NODE_WRITE`)
+2. line 470: `EXPRESSION newCheckPoint.fromBlock = uint128(block.number)`
+   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
+3. line 471: `EXPRESSION newCheckPoint.value = uint128(_value)`
+   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
+4. line 474: `EXPRESSION oldCheckPoint.value = uint128(_value)`
+   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
+5. line 1085: `EXPRESSION voteCounter.voteCount[_ruling] += _draws.length`
+   (`CFG_NODE_ARITH -> CFG_NODE_WRITE`)
+6. line 1087: `EXPRESSION voteCounter.winningCount = voteCounter.voteCount[_ruling]`
+   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
+7. line 1088: `EXPRESSION voteCounter.winningChoice = _ruling`
+   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
+8. line 1090: `EXPRESSION voteCounter.winningChoice = 0`
+   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
+
+The unchanged-edge topology is identical; only CFG-node class / feature 0 differs
+for these nodes. Because the three V2.5 repeats agree exactly, this is not another
+nondeterminism bug. The remaining question is whether all eight nodes have the
+same positive persistent-storage lvalue evidence as the previously reviewed
+nodes. Do not widen the semantic acceptance set merely because V2.5 is stable.
+
+`p8_probe_v10_v25_blocker_write_evidence.py` now derives these nodes directly
+from the fail-closed V2.5 reproducibility report. It refuses to inspect them
+unless repeat-to-repeat exact equivalence is already proven, previous semantic
+WRITE failures are empty, all three reference-diff sets are identical, and every
+remaining difference is specifically a lower CFG class moving to
+`CFG_NODE_WRITE`. It then reuses the exact Slither-0.10 expression/storage probe.
+
+If all eight nodes independently prove a storage-rooted lvalue, merge that new
+semantic evidence with the first pass and rerun the V2.5 bounded verifier. If any
+node lacks such evidence, leave `83c9d2...` blocked and investigate that node
+rather than changing the classifier or acceptance rule.
+
 ## Next evidence sequence
 
-After the v2.5 source/tests are committed:
-
-1. regenerate the same 20 identities at least three times under exact primary
-   Slither 0.10.0 into disposable roots using `ml/.venv/bin/python` and
-   `PYTHONPATH=.:data_module`;
-2. use one v2.5 repeat as the candidate and the other repeats as reproducibility
-   evidence against the same frozen v2.3 reference;
-3. require zero unexplained repeat-to-repeat semantic drift;
-4. explicitly enumerate any deterministic v2.5 correction relative to the
-   frozen reference and bind it to source-level classification evidence;
-5. then strengthen the complete transition audit to consume exact
+1. run the focused V2.5 blocker-write evidence probe for the eight newly exposed
+   nodes in `83c9d2...` under exact primary Slither 0.10.0;
+2. if all eight prove persistent-storage writes, extend the semantic-evidence
+   record without weakening its positive-evidence requirement;
+3. rerun the bounded V2.5 verifier and require 20 / 20 resolved with zero
+   unexplained drift;
+4. then strengthen the complete transition audit to consume exact
    node-index-invariant graph equivalence for the eight proven permutation-only
-   cases and the explicitly reviewed v2.5 classification correction rule;
-6. regenerate only the affected protected candidate lineage as required, then
+   cases and the explicitly reviewed V2.5 classification correction set;
+5. regenerate only the affected protected candidate lineage as required, then
    rerun the complete 22,540-identity transition audit against the same frozen
    reference;
-7. create a physical-acceptance decision record only after zero unexplained
+6. create a physical-acceptance decision record only after zero unexplained
    drift remains.
 
 Training and model-quality claims remain unauthorized throughout this sequence.
