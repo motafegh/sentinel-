@@ -8,7 +8,8 @@ established evidence classes without weakening the graph comparison:
 1. eight identities whose frozen-reference drift was proven to be node-index
    permutation only; and
 2. twelve identities whose drifting CFG statements were independently proven
-   to mutate persistent storage through expression-level lvalues rooted in
+   to mutate persistent storage through expression-level lvalues rooted either
+   directly in a ``StateVariable`` or in a
    ``LocalVariable(location='storage', is_storage=True)``.
 
 For the second class, the tool canonicalizes only those explicitly evidenced
@@ -57,6 +58,19 @@ def _node_key(metadata: dict[str, Any]) -> tuple[str, tuple[int, ...]]:
     )
 
 
+def _is_persistent_write_root(root: Any) -> bool:
+    """Match the V2.5 classifier's positive persistent-storage evidence rule."""
+
+    if not isinstance(root, dict):
+        return False
+    if root.get("class") == "StateVariable":
+        return True
+    return (
+        root.get("location") == "storage"
+        and root.get("is_storage") is True
+    )
+
+
 def _semantic_targets(report: dict[str, Any]) -> dict[str, set[tuple[str, tuple[int, ...]]]]:
     if report.get("schema") != "sentinel-r4-v10-cfg-write-evidence-v1":
         raise ValueError("unexpected CFG write semantic-evidence schema")
@@ -92,19 +106,18 @@ def _semantic_targets(report: dict[str, Any]) -> dict[str, set[tuple[str, tuple[
             raise ValueError(f"duplicate semantic-evidence node identity for {logical}")
 
         # Re-prove the evidence direction from the report itself instead of
-        # trusting only its contract membership.
+        # trusting only its contract membership. This intentionally mirrors the
+        # V2.5 classifier's positive persistent-write rule.
         for row in rows:
             expression_writes = list(row.get("expression_writes") or [])
             persistent_roots = [
                 expression.get("root_variable")
                 for expression in expression_writes
-                if isinstance(expression.get("root_variable"), dict)
-                and expression["root_variable"].get("location") == "storage"
-                and expression["root_variable"].get("is_storage") is True
+                if _is_persistent_write_root(expression.get("root_variable"))
             ]
             if not persistent_roots:
                 raise ValueError(
-                    f"semantic evidence does not prove a storage-rooted write for "
+                    f"semantic evidence does not prove a persistent-storage write for "
                     f"{logical} node {row.get('name')!r}"
                 )
 
@@ -334,7 +347,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         "training_authorized": False,
         "limitations": [
             "This is a bounded 20-identity V2.5 reproducibility decision, not full-population physical acceptance.",
-            "Only node identities independently proven as storage-rooted writes are canonicalized to CFG_NODE_WRITE.",
+            "Only node identities independently proven as persistent-storage writes are canonicalized to CFG_NODE_WRITE.",
             "After that explicit correction, exact labelled directed-multigraph isomorphism through edge type 10 is still required.",
             "Any additional feature, metadata, topology, runtime, extractor, or missing-node difference remains blocking.",
         ],
