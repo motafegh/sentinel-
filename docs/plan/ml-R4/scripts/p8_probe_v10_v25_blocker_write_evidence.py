@@ -16,6 +16,11 @@ Only after those fail-closed prerequisites hold does the script re-parse the
 protected source under exact Slither 0.10.0 and collect the same expression-level
 lvalue/storage evidence used by ``p8_probe_v10_cfg_write_evidence.py``.
 
+Persistent-write proof mirrors the V2.5 classifier seam: either a direct
+``StateVariable`` lvalue root or a ``LocalVariable`` root with
+``location='storage'`` and ``is_storage=True`` is sufficient. Memory/calldata
+roots and unproven roots remain blocking.
+
 It does not modify representations, change physical acceptance, or authorize
 training.
 """
@@ -175,20 +180,24 @@ def _derive_adapter_report(
     return adapter, provenance
 
 
+def _root_proves_persistent_storage(root: Any) -> bool:
+    if not isinstance(root, dict):
+        return False
+    if root.get("class") == "StateVariable":
+        return True
+    return root.get("location") == "storage" and root.get("is_storage") is True
+
+
 def _storage_write_proof(report: dict[str, Any]) -> tuple[bool, list[dict[str, Any]]]:
     failures: list[dict[str, Any]] = []
     for contract in report.get("contracts") or []:
         logical = str(contract.get("contract") or "")
         for node in contract.get("nodes") or []:
-            persistent = []
-            for expression in node.get("expression_writes") or []:
-                root = expression.get("root_variable")
-                if (
-                    isinstance(root, dict)
-                    and root.get("location") == "storage"
-                    and root.get("is_storage") is True
-                ):
-                    persistent.append(root)
+            persistent = [
+                expression.get("root_variable")
+                for expression in (node.get("expression_writes") or [])
+                if _root_proves_persistent_storage(expression.get("root_variable"))
+            ]
             if not persistent:
                 failures.append(
                     {
