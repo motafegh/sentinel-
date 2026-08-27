@@ -1,7 +1,7 @@
 # Phase-8 V10 V2.5 full-candidate staging protocol
 
 Date: 2026-08-26
-Status: READY FOR PROTECTED-LOCAL VALIDATION
+Status: READY FOR PROTECTED-LOCAL PRIMARY ATTEMPT
 Scope: R4-B008 V10 physical candidate construction only; no physical acceptance or training authority
 
 ## Starting authority
@@ -24,6 +24,14 @@ The full-gate code and evidence chain have also passed protected-local validatio
 - merged semantic evidence SHA-256:
   `483012e384661ae015c39f42c686ead982d9fc016c8f80f386de8ca70dbc654b`.
 
+The protected-local staging/runtime preflight also passed on 2026-08-27:
+
+- primary environment: Slither 0.10.0 / crytic-compile 0.3.11;
+- identity-bound exception environment: Slither 0.11.5 / crytic-compile 0.3.11;
+- the declared exception resolves to exactly one repaired-preprocessing identity;
+- the protected V2.4 candidate and frozen V2.3 structural-reference roots are present;
+- staging-tool focused tests pass.
+
 Physical acceptance and training authorization remain false.
 
 ## Why full generation must be staged
@@ -36,28 +44,42 @@ The required runtime distribution is intentionally heterogeneous:
 
 `p8_generate_v10_candidate.py --mode full` executes in one Python environment.
 It therefore cannot by itself produce the final required 22,539 + 1 runtime
-split. The binder correctly rejects a runtime-exception identity produced under
-the primary runtime.
+split. In addition, the V10 compatibility layer may emit parse-only diagnostic
+output after a full-analysis failure, so a primary-runtime attempt must not rely
+on the exception naturally failing before artifact emission.
 
 The full build must not work around that invariant by relabelling sidecars,
 mutating graph payload version fields, or upgrading the population to 0.11.5.
 
 ## Approved staged construction
 
-### Stage A — primary attempt
+### Stage A — explicit primary attempt
 
-Run the ordinary full generator in a fresh disposable/protected attempt root
+Run `p8_generate_v10_v25_primary_attempt.py` in a fresh protected attempt root
 under `ml/.venv/bin/python`, exact Slither 0.10.0, with
 `PYTHONPATH=.:data_module`.
 
-This attempt is expected to be incomplete only at the declared runtime-exception
-identity. It is not itself a candidate and its nonzero full-generation result is
-not treated as acceptance evidence.
+The Stage-A driver first requires exact accepted-V9 / repaired-preprocessing
+population equality. It then partitions that complete population using
+`V10_SLITHER_RUNTIME_EXCEPTIONS`:
+
+- every ordinary identity is sent through the normal V10 V2.5 extraction path;
+- every declared runtime-exception identity is **not invoked at all** in the
+  primary process and is recorded as a structured
+  `IdentityBoundRuntimeDeferred` failure row.
+
+The attempt passes only when all ordinary identities are written successfully,
+no unexpected ordinary failure exists, the physical sidecar inventory equals
+accepted V9 minus exactly the declared exception set, and every declared
+exception is represented by its deferred-runtime record.
+
+This root is an attempt, not a bound candidate. No exception triple may be
+present in it.
 
 ### Stage B — fail-closed primary staging
 
-Run `p8_stage_v10_v25_primary_attempt.py` with the failed/incomplete primary
-attempt and a second fresh candidate root.
+Run `p8_stage_v10_v25_primary_attempt.py` with the Stage-A attempt and a second
+fresh candidate root.
 
 The staging tool must refuse transfer unless all of the following hold:
 
@@ -126,9 +148,11 @@ structural difference.
   while building this lineage.
 - Do not use a population-wide Slither 0.11.5 generation.
 - Do not manually edit runtime/version fields in artifacts.
-- Do not treat the expected primary-stage exception as a waived failure; it must
-  be isolated, recorded, filled under its required runtime, and then proven by
-  the ordinary binder.
+- Do not invoke a declared identity-bound exception in the Stage-A primary
+  extraction process; it must remain physically absent until Stage C.
+- Do not treat the deferred exception as a waived failure; it must be isolated,
+  recorded, filled under its required runtime, and then proven by the ordinary
+  binder.
 - Do not declare physical acceptance from a passing binder or V3 report alone;
   explicit report review and a physical-acceptance decision record remain
   required.
