@@ -1,75 +1,185 @@
 # Phase 8 — Existing Architecture Retraining
 
-**Status:** IN_PROGRESS — G7 SATISFIED  
+**Status:** `IN_PROGRESS` — historical G7 satisfied; **full training not authorized**  
 **Gate:** G8
 
 ## Objective
 
-Retrain the existing architecture on DATA vNext.
+Produce a reproducible checkpoint of the existing frozen architecture **only after** the current DATA/representation, supervision/evaluation, selector, and run-control evidence gates justify a full run.
 
-## Allowed code changes
+Phase 8 is not permission to train merely because executable training code exists. The current work is still upstream of full training.
 
-Only changes required for:
+## Current authority — 2026-08-27
 
-- export-schema compatibility;
+Historical G0–G7 remain passed and immutable. Later accepted decisions refine the Phase-8 execution boundary:
+
+- **R4-D-008:** repaired-v2 physical DATA is accepted immutable reproducibility evidence, but the full run remained withheld because supervision/evaluation and selector adequacy were unresolved;
+- **R4-D-009:** corrected logical V3 grouping/roles/publication is accepted current logical authority; hardened V3 evidence is the accepted pre-pilot research baseline;
+- **R4-D-010:** graph schema v9 remains historical/reproducibility evidence but is **not eligible for the new full training run**. A separately versioned, physically accepted V10 representation lineage is required first.
+
+Current V10 state:
+
+- V2.3 is the frozen structural-reference diagnostic lineage;
+- protected V2.4 completed the former 26-contract parse-only remediation and remains diagnostic history;
+- current future-candidate extractor is `v2.5-r4-call-semantics-deterministic-cfg`;
+- the bounded V2.5 structural investigation is closed 20/20: 8 exact node-index-invariant graph-equivalence identities + 12 deterministic persistent-storage WRITE corrections; zero unexplained drift; no blockers;
+- evidence-chain/full-gate/staging preflights pass;
+- the required full-candidate runtime split is 22,539 ordinary Slither-0.10 identities + one declared Slither-0.11.5 exception;
+- Stage-A driver/staging tests pass 9/9 and the 22,540 = 22,539 + 1 population partition is proven;
+- **Stage A primary generation has not yet executed**;
+- physical V10 acceptance remains false.
+
+Current supervision/evaluation limitations:
+
+- confirmed-negative targets remain zero;
+- candidate #1 is `NOT_CONFIRMED`;
+- candidate #2 primary review supports a negative but genuinely independent agreeing verification is still pending;
+- `THRESHOLD_FIT = UNSUPPORTED_EMPTY`;
+- `CALIBRATION_FIT = UNSUPPORTED_EMPTY`;
+- `UNTOUCHED_ACCEPTANCE = UNSUPPORTED_EMPTY_FROZEN`;
+- no current class has discrimination/specificity/FPR/calibration/production-quality authority.
+
+Current selector limitation:
+
+- `target_aware_guarded_v1` has promising bounded CPU/CUDA evidence but is not promoted;
+- promotion remains a separate versioned decision requiring full-population bound-token control-equivalence evidence.
+
+Therefore the 100-epoch/full-horizon training run remains explicitly unauthorized.
+
+## Current Phase-8 execution order
+
+### A. Complete V10 physical candidate construction and acceptance evidence
+
+Follow:
+
+- `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
+- `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
+- R4-D-010 / ADR-R4-010.
+
+Required sequence:
+
+1. Stage A — generate exactly 22,539 ordinary V2.5 identities under exact Slither 0.10.0, with the declared exception deferred without extraction;
+2. Stage B — fail-closed stage only validated primary triples into a fresh final-lineage root;
+3. Stage C — fill exactly the declared runtime exception under Slither 0.11.5;
+4. Stage D — bind all 22,540 identities, exact token bytes, schema/extractor identity, call semantics, and runtime distribution;
+5. Stage E — run the complete V3 transition audit, re-proving the exact bounded 8+12 structural evidence classes and rejecting any new unexplained non-parse-only drift;
+6. explicitly review the complete V3 report;
+7. only then consider a separate physical-acceptance decision record.
+
+A passing bounded probe, Stage A, binder, or transition audit alone does not grant physical acceptance.
+
+### B. Complete the evidence-honest evaluation/objective decision
+
+R4-GAP-007 remains separate from V10 construction.
+
+- Do not infer target `0` from unlabeled/source/tool absence.
+- Do not self-verify candidate #2.
+- Any accepted confirmed negative is initially evaluation-only unless a later versioned policy explicitly grants optimizer authority.
+- Positive–Unlabeled (PU) learning remains a design candidate only, not implementation authority.
+- Do not invent threshold/calibration populations that do not exist.
+
+The eventual training objective and model-selection interpretation must be explicitly versioned once evidence supports them.
+
+### C. Resolve selector promotion separately
+
+The guarded target-aware selector must not be silently coupled to the V10 physical candidate.
+
+Before promotion, prove full-population historical-control → currently bound-token equivalence for the relevant baseline and record a separate promotion decision if warranted.
+
+### D. Re-authorize training explicitly
+
+Only after the above gates are resolved may Phase 8 freeze:
+
+- exact physically accepted V10 candidate binding/digest;
+- exact logical V3 role/publication authority;
+- objective and masking semantics;
+- evaluation/model-selection semantics;
+- selector identity;
+- sampler population;
+- batch size / gradient accumulation;
+- optimizer/scheduler configuration;
+- seed;
+- mixed precision;
+- environment/dependency provenance;
+- planned horizon derived from the **then-current actual sampler**, not from historical arithmetic.
+
+Do not reuse the old 703-group / 88-micro-batch / 11-step / 1,100-step planning numbers as current authority. Those belonged to an earlier lineage. Any future horizon must be recomputed from the final accepted population/config and bound into the run manifest.
+
+## Allowed code changes after training authorization
+
+Only changes required for the accepted run contract, such as:
+
+- export/representation compatibility;
 - class masks;
-- weak/strong role handling;
+- approved weak/strong role handling;
 - grouped samplers;
 - correct metric masking;
 - artifact binding;
 - deterministic logging;
-- raw probability output.
+- raw probability output;
+- fail-closed resume/provenance handling.
 
-## Training sequence
+Architecture search remains outside normal R4 Phase-8 authority.
 
-1. reproduce the historical bundle where feasible;
-2. create a DATA vNext compatibility test;
-3. train the unchanged architecture;
-4. use only training/model-selection roles;
-5. bind checkpoint to code, export, split, seed, and config;
-6. preserve logs and intermediate checkpoints;
-7. analyze failures without touching acceptance.
+## Durable run-control requirements once authorized
 
-## Durable full-run control — 2026-08-14
+The existing architecture remains frozen unless a separate architecture decision changes it.
 
-The Phase-8 compatibility path and committed GPU micro-smoke have established that DATA vNext can execute end-to-end through the frozen model, masked optimizer path, and positive-only MODEL_SELECTION path. The remaining Phase-8 work is therefore run control and reproducibility, not another training-path redesign.
+Historical Run12 mechanics may be reused only where their semantics survive the final current lineage. The eventual authorized run must:
 
-Historical Run12 mechanics are retained only where their meaning survives the repaired label semantics:
+- bind model, optimizer, scheduler, epoch/global-step, and Python/NumPy/Torch/CUDA RNG state for exact resume;
+- write checkpoints atomically and fail closed on binding mismatch;
+- preserve deterministic epoch metrics and raw model-selection records;
+- derive scheduler progress from the actual accepted grouped sampler;
+- bind the exact source commit, physical V10 candidate digest, logical role/publication identity, selector, objective, seed, optimizer/scheduler, mixed precision, environment, and planned step horizon;
+- fail closed unless the local `microsoft/graphcodebert-base` dependency resolves to the accepted snapshot `2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d` or a later explicitly accepted dependency decision supersedes it;
+- record effective Python, PyTorch/CUDA/cuDNN, Transformers, PEFT, PyTorch Geometric, NumPy, Pandas, and PyArrow versions.
 
-- retain AdamW parameter-group learning-rate multipliers and the historical OneCycleLR/cosine schedule shape;
-- compute scheduler progress from the actual grouped Phase-8 sampler, not from all optimizer-bearing contract rows;
-- restore model, optimizer, scheduler, epoch/global-step, and Python/NumPy/Torch/CUDA RNG state on resume;
-- write checkpoints atomically and fail closed when checkpoint/run binding differs;
-- preserve deterministic epoch metrics and raw MODEL_SELECTION probability records.
-
-With the frozen Phase-8 baseline, the grouped sampler emits one rotating contract from each of 703 training groups per epoch. At batch size 8 and gradient accumulation 8 this is 88 micro-batches and 11 optimizer/scheduler steps per full epoch, for 1,100 planned optimizer steps over 100 epochs. These counts are derived at runtime and are included in the run binding; a population/config change must not silently reuse the old schedule horizon.
-
-The historical Run12 model-selection policy does **not** survive R4. Phase 8 therefore:
-
-- does not use historical binary-label F1, AUC, Brier, ECE, tuned thresholds, or historical calibration for checkpoint selection;
-- does not early-stop on MODEL_SELECTION because the role contains positive-only limited support and cannot measure false-positive discrimination;
-- runs the predetermined training horizon unless a runtime safety failure aborts the run;
-- preserves a `best_positive_nll` companion checkpoint using minimum MODEL_SELECTION positive NLL as a **limited positive-fit diagnostic only**;
-- treats the fixed-horizon `final` checkpoint as the primary G8 completion artifact; `best_positive_nll` must not be described as a generally best or promotion-ready model.
-
-Checkpoint/run identity must include the exact source commit, G7 DATA manifest and representation binding, Phase-6 role/partition identity, seed, weak-positive weight, optimizer/scheduler configuration, mixed-precision mode, sampler population, and planned optimizer-step horizon. Resume is permitted only when this binding matches exactly.
-
-The pretrained transformer dependency is also part of reproducibility. Before the full retrain begins, Phase 8 must fail closed unless the local `microsoft/graphcodebert-base` name resolves to the accepted Hugging Face snapshot `2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d`. The run binding must record that exact snapshot together with the effective Python, PyTorch/CUDA/cuDNN, Transformers, PEFT, PyTorch Geometric, NumPy, Pandas, and PyArrow versions used by the training process. This is runtime provenance only; it does not change the frozen architecture or authorize dependency upgrades during the run.
-
-Durable runtime outputs are local run artifacts rather than DATA truth: an immutable run binding inside the manifest/checkpoints, deterministic JSONL epoch metrics, deterministic raw MODEL_SELECTION records, an atomic latest checkpoint, periodic intermediate recovery checkpoints, the limited `best_positive_nll` checkpoint, and the final checkpoint. Threshold fitting, calibration fitting, acceptance access, and pseudo-negative construction remain unavailable.
+No historical Run12 thresholds, calibration, learned weights, optimizer state, scheduler state, or model-quality claims become current Phase-8 truth merely because the architecture is unchanged.
 
 ## Prohibited
 
-- architecture search;
-- acceptance-set inspection;
-- threshold tuning on model-selection metrics;
+- full training before explicit re-authorization;
+- training from graph schema v9 for the new R4 full run;
+- architecture search without a separate decision;
+- acceptance-set inspection or leakage;
+- threshold tuning on unsupported/model-selection-only evidence;
 - silent fallback to historical zeros;
-- selecting a checkpoint using historical corrupted-target scores alone.
+- pseudo-negative construction without explicit authority;
+- treating unlabeled/tool-silent/source-absent contracts as negatives;
+- silently promoting the target-aware selector;
+- reusing Run12 learned state as current truth;
+- treating bounded V2.5 or a physical binder as proof of model quality;
+- overwriting accepted repaired-v2, accepted logical V3, frozen V2.3 structural reference, protected V2.4 diagnostic history, or other protected evidence roots.
 
 ## G8 pass criteria
 
-A reproducible current-architecture checkpoint is bound to DATA vNext and developed without acceptance leakage.
+G8 may pass only when a full authorized run has actually produced a reproducible current-architecture checkpoint that is:
 
-## Phase-7 handoff
+1. bound to the physically accepted current V10 candidate and accepted logical V3 authority;
+2. trained under the explicitly accepted objective/selector/evaluation contract;
+3. free of acceptance leakage;
+4. reproducibly bound to source/config/environment/seed/sampler/horizon;
+5. accompanied by truthful limitations that do not overclaim discrimination, calibration, thresholds, or production acceptance beyond the available evidence.
 
-Training input authority is `sentinel-r4-vnext-v1` with local representation binding digest `7637461f6643d398c7a0446412fedd8877914c7b9ed41309dab45f18ed96f420`. Phase 8 must preserve class order/schema, Phase-6 roles, nullable target semantics, STRONG/WEAK distinction, disabled-class masking, and the unsupported threshold/calibration/acceptance boundaries.
+A repository-ready training path, micro-smoke, positive-fit checkpoint, V10 candidate, or physically valid dataset is not by itself a G8 pass.
+
+## Current handoff
+
+Current restart authority:
+
+`runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`
+
+Current V10 full-candidate protocol:
+
+`runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`
+
+Bounded V2.5 closure:
+
+`reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`
+
+Separate negative-evidence track:
+
+`runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`
+
+Historical `sentinel-r4-vnext-v1` and Run12 artifacts remain reproducibility anchors only; they are not the current Phase-8 full-run input authority.
