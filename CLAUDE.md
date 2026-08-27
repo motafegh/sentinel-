@@ -18,7 +18,7 @@ Do not treat a stale comment, docstring, README, old plan, old test count, or hi
 
 ### Current stable technical baseline
 
-As of the 2026-08-21 R4-GAP-008 external-call semantics audit and R4-D-010, with the 2026-08-16 hardened V3 evidence-snapshot closeout retained as the accepted pre-pilot baseline:
+As of the 2026-08-27 V10 V2.5 restart checkpoint, with R4-D-010 governing representation semantics and the 2026-08-16 hardened V3 evidence snapshot retained as the accepted pre-pilot logical baseline:
 
 - canonical `main` has passed historical R4 G0–G7 and remains the active Phase-8 execution line;
 - Phase 8 is `IN_PROGRESS`, not G8-passed;
@@ -32,28 +32,31 @@ As of the 2026-08-21 R4-GAP-008 external-call semantics audit and R4-D-010, with
 - V3 family authority is hardened: normalized-code identity is global; exact artifact identity is global; explicit source-native family/project IDs are source-namespaced as `<source>:<field>:<value>`; arbitrary Ethereum address literals remain diagnostic-only;
 - the accepted V3 population had zero explicit-family edges, so source-namespacing hardening does not invalidate the accepted V3 grouping artifact;
 - V3 active optimizer supervision remains 932 positive-only effective loss cells;
-- hardened acceptance now durably establishes **143 contracts / 142 unique groups as the combined outcome-metric population across `MODEL_SELECTION` + `INTERNAL_AUDIT`, not the MODEL_SELECTION population**;
+- hardened acceptance durably establishes **143 contracts / 142 unique groups as the combined outcome-metric population across `MODEL_SELECTION` + `INTERNAL_AUDIT`, not the MODEL_SELECTION population**;
 - active `MODEL_SELECTION = 71 contracts / 71 groups`; active `INTERNAL_AUDIT = 72 contracts / 71 groups`;
 - the ML dataset adapter allows `MODEL_SELECTION` only for model-selection loading and does not load `INTERNAL_AUDIT`; the old defect was governance/reporting and research-population labeling, not trainer leakage;
 - the post-acceptance V3 evidence-hardening tranche is complete: acceptance, sensitivity, CPU selector, negative-review queue, and CUDA comparison were regenerated under source commit `83bd566b9c4f4f653e530c2c0f5c990858dd759d`;
 - the final Git-safe evidence snapshot at `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` passed `coherence=PASS`, all listed JSON SHA-256 checks verified `OK`, and was committed at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`;
-- snapshotting fails closed on cross-report manifest/version/binding/queue/selector/GPU/source-commit coherence and writes `snapshot_coherence_v1.json` only after a coherent tranche passes;
 - hardened CPU selector evidence reproduced 1,018 analyzed records / 737 over-cap / 476 improved / 261 equal / 0 regressed / 0 failures;
 - hardened CUDA selector evidence completed identical initialization and 4/4 required worst-case probes, with no Run12 weights, no checkpoint, no selector promotion, and no full-training authorization;
 - the hardened V3 confirmed-negative queue contains 200 `PENDING_REVIEW` cells across 200 globally unique leakage groups, all target `None`, all `TRAIN_UNLABELED`, `negative_truth_claim=false`;
-- R4-GAP-007 is `IN_PROGRESS`: pilot review uses the committed hardened queue. Candidate #1 is `CallToUnknown` / `r4neg-f6a71e420a116cb4b9a334ba961ba1b6` / contract `defe4690028dc863df4611176a4c35f0ffd0bbc90f61db2bd4f25f5ad7f2a384`; complete primary review found a caller-selected typed callback conflicting with the taxonomy's unverified-address clause and adjudicated the candidate `NOT_CONFIRMED`;
-- candidate #1 remains `UNKNOWN`, `PENDING_REVIEW`, target `None`; its explicit-path evaluation validator passed with zero accepted negatives and all training/threshold/calibration authorizations false. A non-confirmed decision requires no independent verifier;
-- confirmed negatives remain zero; candidate #2 (`r4neg-bfe90ef82e33a324d612256a5d4053c6`) completed a source-first primary review that supports `CONFIRMED_NEGATIVE`, but target `None` / UNKNOWN / PENDING_REVIEW remain authoritative until a genuinely independent verifier agrees;
-- candidate #2 also exposed R4-GAP-008: all 30 of its v9 type-11 `EXTERNAL_CALL` edges are same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge;
-- the read-only full-population audit confirmed material v9 distortion across 22,540 graphs: at least 11,702 / 217,490 type-11 edges are provable same-file declared-library calls, while only 52.613% of raw-low-level nodes, 0.949% of send nodes, and 8.102% of transfer nodes receive type 11;
-- R4-D-010 preserves v9/repaired-v2 as immutable historical and physical-reproducibility evidence but withdraws it from eligibility for the new full training run; G8 now requires a separately versioned graph-schema-v10 / extractor `v2.3-r4-call-semantics` / `representations-r4-v3-candidate` lineage and full local acceptance;
-- the v10 repository implementation, source-reviewed regressions, full 22,540-identity generation/binding, and independent transition mechanics pass with digest `6087dc6d...b0260`; six explicit call kinds total 293,183 edges. Physical acceptance is rejected for now because 26 parse-only contracts (7 `TRAIN_WEAK`, 19 `TRAIN_UNLABELED`) have incomplete call IR despite material transfer/send/creation syntax. Training remains unauthorized;
+- R4-GAP-007 is `IN_PROGRESS`: candidate #1 is durably `NOT_CONFIRMED`; candidate #2 primary review supports `CONFIRMED_NEGATIVE`, but target `None` / UNKNOWN / PENDING_REVIEW remain authoritative until a genuinely independent verifier agrees; confirmed negatives remain zero;
+- candidate #2 exposed R4-GAP-008: v9 type-11 external-call semantics materially conflated library calls and omitted substantial Transfer/Send/low-level-call behavior;
+- R4-D-010 preserves v9/repaired-v2 as immutable historical and physical-reproducibility evidence but withdraws v9 from eligibility for the new full training run; graph schema v10 is the required future physical lineage;
+- the original V10 `v2.3-r4-call-semantics` lineage is now a frozen structural-reference diagnostic, not the current future-candidate extractor;
+- the 26-contract parse-only remediation is complete in the later compatibility lineage. The protected V2.4 diagnostic candidate has 22,540 identities, exact accepted-V9 token bytes, zero parse-only outputs, zero unclassified call IR, and the required 22,539 primary Slither-0.10 + one identity-bound Slither-0.11.5 runtime split;
+- the later V2.5 structural correction uses extractor `v2.5-r4-call-semantics-deterministic-cfg`. Three fresh bounded generations closed all 20 previously unexpected structural-drift identities: 8 exact node-index-invariant labelled graph-equivalence identities and 12 deterministic persistent-storage `CFG_NODE_WRITE` corrections; the final bounded verifier reports zero unexplained drift and no blockers;
+- the V2.5 evidence chain is SHA-bound to the original transition audit and merged semantic evidence; full-gate compile/tests and evidence-chain preflight pass;
+- heterogeneous-runtime full-candidate staging is approved and preflighted. Exact partition is 22,539 ordinary identities under Slither 0.10.0 plus one declared exception `dive/caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9` under Slither 0.11.5;
+- Stage-A driver/staging tests pass and accepted-V9/repaired-preprocessed population equality is 22,540/22,540; **Stage A primary generation itself has not yet been executed**;
+- the next permitted R4-B008 action is Stage A via `docs/plan/ml-R4/scripts/p8_generate_v10_v25_primary_attempt.py` in a fresh non-canonical attempt root. Do not claim 22,539 V2.5 primary artifacts exist until that report passes;
+- physical V10 acceptance remains false. A passing Stage A, staging, exception fill, binder, and complete V3 transition audit are still required before a separate physical-acceptance decision can even be considered;
 - target `0` remains forbidden without complete class-specific confirmed-negative evidence plus independent agreeing verification;
 - accepted confirmed negatives are evaluation-only unless a later versioned policy grants optimizer authority;
-- Positive–Unlabeled (PU) learning is a future objective-design candidate, not current implementation authority; do not implement it during the candidate review, and keep queued/accepted evaluation groups outside any future PU/unlabeled optimizer population until a versioned role/objective decision reconciles the reservation;
+- Positive–Unlabeled (PU) learning is a future objective-design candidate, not current implementation authority;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
-- the guarded selector remains unpromoted. Before promotion, add/execute full-population verification that the historical control selector reproduces the currently bound representation token tensors exactly;
-- accepted historical/repaired representations remain graph schema `v9`; the required future-training candidate is graph schema `v10`. The accepted token tensor contract remains `[4,512]`, and architecture remains `four_eye_v8` / `v8.1` unless a later explicit decision changes it;
+- the guarded selector remains unpromoted and requires separate full-population bound-token control-equivalence evidence plus a promotion decision;
+- accepted historical/repaired representations remain graph schema `v9`; the future candidate is graph schema `v10` / extractor V2.5. The accepted token tensor contract remains `[4,512]`, and architecture remains `four_eye_v8` / `v8.1` unless a later explicit decision changes it;
 - Run12 is the historical operational ML baseline, not repaired-v2/V3 truth; do not reuse its learned weights, optimizer/scheduler state, thresholds, or calibration as current Phase-8 truth;
 - the 100-epoch Phase-8 run remains unauthorized; no model-quality improvement is claimed;
 - V3 is the current registry submission protocol; V1/V2 are historical compatibility;
@@ -64,20 +67,15 @@ As of the 2026-08-21 R4-GAP-008 external-call semantics audit and R4-D-010, with
 For the exact current DATA/ML restart boundary, read in order:
 
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
-2. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` for the accepted pre-pilot evidence boundary;
-3. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md`;
-4. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md` for the exact current representation stop line;
-5. `docs/plan/ml-R4/adrs/ADR-R4-010-versioned-external-call-representation-correction.md` for the accepted remediation contract;
-6. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md` for implemented source, bounded evidence, and the current local stop line;
-7. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md` for the original remote/local implementation contract;
-8. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md` for the primary-review result that still needs independent verification;
-9. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_primary_review.md` for candidate #1 closeout;
-10. `docs/plan/ml-R4/DECISION_REGISTER.md` and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md`;
-11. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md` only as the **completed historical regeneration procedure**;
-12. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md` as the **pre-hardening historical checkpoint**;
-13. `docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` for the physical repaired-v2 acceptance boundary.
+2. `docs/plan/ml-R4/runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
+3. `docs/plan/ml-R4/reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
+4. `docs/plan/ml-R4/runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
+5. `docs/plan/ml-R4/adrs/ADR-R4-010-versioned-external-call-representation-correction.md` for the accepted semantic decision;
+6. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` for the accepted pre-pilot evidence boundary;
+7. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md` for the separate negative-evidence track;
+8. `docs/plan/ml-R4/DECISION_REGISTER.md` and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md` as decision context.
 
-Candidate #1 is durably closed `NOT_CONFIRMED`; do not repeat it. Candidate #2 primary review supports a class-specific negative, but the assistant that performed that review must not self-verify it. Use the blind bundle under `docs/plan/ml-R4/review_bundles/` for a genuinely independent review. R4-D-010 v10 full diagnostics are complete and must not be rerun unchanged. Continue by resolving the 26 parse-only contracts through a versioned extraction repair, explicit exclusion/role decision, or complete source reconciliation; then rerun only the affected acceptance evidence. Selector promotion and objective/evaluation design remain separate later tracks. Do not infer negatives, silently promote the selector, fit unsupported threshold/calibration roles, reuse Run12 state, or launch full training.
+The August 21 V10 implementation records, the August 23 parse-only plan, and the August 23 structural-drift handoff are historical execution records and must not be used as the current restart boundary when they describe blockers already closed. Candidate #1 is durably closed `NOT_CONFIRMED`; do not repeat it. Candidate #2 primary review supports a class-specific negative, but the primary reviewer must not self-verify it. Selector promotion and objective/evaluation design remain separate later tracks. Do not infer negatives, silently promote the selector, fit unsupported threshold/calibration roles, reuse Run12 state, overwrite protected V10 history/reference roots, or launch full training.
 
 ## Approval model
 
@@ -106,7 +104,7 @@ In Ali's primary Claude Code setup, project memory may exist under:
 
 When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
 
-For the current Phase-8 boundary, start with `docs/plan/ml-R4/runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md`, then the R4-GAP-008 audit and ADR-R4-010. Candidate #2's separate review state is recorded in `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`. The accepted pre-pilot evidence boundary remains `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`, governed by R4-D-009 / ADR-R4-009. R4-D-008 remains the physical-data reproducibility root. If private/local memory is maintained, point it to these committed records rather than duplicating transient counts or relying on conversation history.
+For the current Phase-8 boundary, point private/local memory first to `docs/plan/ml-R4/runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`, then the bounded structural closure and full-candidate staging protocol. The accepted pre-pilot V3 boundary remains `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`, governed by R4-D-009 / ADR-R4-009. R4-D-008 remains the physical-data reproducibility root. Do not duplicate transient Stage-A counts in private memory before the Stage-A report exists.
 
 For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 
@@ -189,7 +187,7 @@ Dated audits, experimental reports, `docs/learning/`, and handbook exercises may
 - hardened post-acceptance V3 research reports have been regenerated coherently and committed in the final Git-safe evidence snapshot;
 - R4-GAP-007 queue membership is review reservation only, not negative truth or optimizer supervision; use only the committed hardened queue for pilot review;
 - R4-GAP-007 is in progress; candidate #1 is durably `NOT_CONFIRMED`. Candidate #2 primary review supports `CONFIRMED_NEGATIVE`, but it remains UNKNOWN/target `None` pending genuinely independent agreement; do not fabricate that verification;
-- R4-GAP-008 is evidence-resolved by the full-population audit and R4-D-010. V10 full diagnostic mechanics pass, while physical acceptance is rejected for now under R4-B008 because 26 parse-only contracts lack complete call IR; never patch v9 in place;
+- R4-GAP-008 root-cause evidence is resolved under R4-D-010. The 26 parse-only repair and later 20-identity structural-drift tranche are complete; current work is fresh V2.5 physical-candidate construction beginning at Stage A. Physical acceptance remains false and v9 must never be patched in place;
 - accepted confirmed negatives remain evaluation-only unless a later versioned decision grants optimizer authority;
 - PU learning remains a later objective-design candidate, not current implementation authority;
 - selector promotion requires a separate ADR/versioned extractor decision and bound-token control-equivalence evidence;
