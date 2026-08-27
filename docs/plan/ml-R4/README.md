@@ -2,28 +2,41 @@
 
 This directory governs the R4 repair of SENTINEL's DATA/ML training and evaluation foundation.
 
-## Current restart — 2026-08-15
+## Current restart — 2026-08-27
 
-Do **not** restart R4 from Phase 0. Historical G0–G7 are complete and retained as reproducibility evidence. The current boundary is Phase 8:
+Do **not** restart R4 from Phase 0 or from the August 15/21/23 intermediate Phase-8 handoffs. Historical G0–G7 are complete and retained as reproducibility evidence. Phase 8 remains `IN_PROGRESS`; G8 is not passed and the 100-epoch run is **NOT AUTHORIZED**.
 
-- repaired-v2 physical DATA is accepted for bounded research under R4-D-008 / ADR-R4-008;
-- accepted repaired-v2 publication: 22,540 contracts / 225,400 contract×class rows;
-- physical representations: 22,540 / 22,540 contracts and 67,620 / 67,620 files validated;
-- all 899 effective supervised cells are target `1`; confirmed-negative support is zero;
+Current boundary:
+
+- repaired-v2 physical DATA remains accepted immutable reproducibility evidence under R4-D-008;
+- logical V3 grouping/roles/publication remains accepted under R4-D-009 and the hardened V3 evidence snapshot remains the accepted pre-pilot logical baseline;
+- R4-D-010 prohibits the new full run from using graph schema v9 and requires a separately versioned V10 physical representation lineage;
+- the former 26-contract V10 parse-only remediation is complete in the protected V2.4 diagnostic lineage;
+- the later V2.5 bounded structural-drift investigation is complete **20/20**, with 8 exact node-index-invariant graph-equivalence identities and 12 deterministic persistent-storage `CFG_NODE_WRITE` corrections, zero unexplained drift, and no blockers;
+- the V2.5 evidence-chain/full-gate and heterogeneous-runtime staging preflights pass;
+- exact final runtime partition is 22,539 ordinary identities under Slither 0.10.0 plus one declared identity-bound exception under Slither 0.11.5;
+- the Stage-A driver/staging tests pass 9/9 and population partition is 22,540 = 22,539 + 1;
+- **Stage A primary generation has not yet been executed**;
+- physical V10 acceptance remains false;
+- confirmed-negative support remains zero; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review still requires genuinely independent agreement;
 - threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty;
-- historical four-window token selection is not accepted as adequate; a target-aware candidate is promising but unpromoted;
-- the 100-epoch Phase-8 run is **NOT AUTHORIZED** and G8 remains open.
+- the target-aware token selector remains promising but unpromoted;
+- full training remains unauthorized.
 
 For current work, read in this order:
 
 1. applicable repository/module `CLAUDE.md` files;
 2. `PLAN_STATUS_MATRIX.md`;
-3. `DECISION_REGISTER.md` and `adrs/ADR-R4-008-repaired-v2-data-acceptance-and-phase8-no-launch.md`;
-4. `RISK_AND_BLOCKER_REGISTER.md`;
-5. `runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md`;
-6. the exact source/tests for the objective, selector, evaluation, or representation work being changed.
+3. `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
+4. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
+5. `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
+6. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
+7. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
+8. exact source/tests for the V10 physical-candidate stage being executed.
 
-The next authorized work is an evidence-honest objective/evaluation contract (confirmed-negative evidence or a formally bounded positive-unlabeled design), versioned selector diagnostics, compatibility/grouping sensitivity checks, and a credible quality gate. Any changed objective/selector/representation/role lineage must be versioned and rebound before full-training authorization.
+The next permitted R4-B008 action is **Stage A**: run `scripts/p8_generate_v10_v25_primary_attempt.py` under exact Slither 0.10.0 in a fresh non-canonical attempt root. It must produce exactly 22,539 ordinary V2.5 identities and defer the one declared runtime exception without invoking extraction for it. Do not claim those artifacts exist before the Stage-A report passes.
+
+The negative-evidence, selector-promotion, objective/evaluation, calibration, and training-authorization tracks remain separate later gates. Do not combine them with V10 physical-candidate construction.
 
 ## What R4 is solving
 
@@ -51,7 +64,7 @@ A versioned DATA/ML bundle containing:
 - Reuse prior DIVE, BCCC, manual, tool-assisted, and source-level work before creating new reviews.
 - A new contract review requires a registered evidence gap.
 - Do not repeat a previous review merely to obtain a cleaner-looking artifact.
-- Preserve historical labels/exports and accepted repaired-v2 evidence; create versioned replacements.
+- Preserve historical labels/exports, accepted repaired-v2 evidence, accepted logical V3, the frozen V2.3 structural reference, and protected V2.4 diagnostic evidence; create versioned replacements.
 - Do not redesign the architecture during the normal R4 path without a separate decision.
 - Historical zero does not automatically mean confirmed negative.
 - Tools are evidence, not ground truth.
@@ -59,6 +72,8 @@ A versioned DATA/ML bundle containing:
 - Every conclusion must link to retained evidence or be marked unsupported.
 - Repository tests do not substitute for protected local physical DATA binding.
 - A physically valid dataset does not by itself prove model discrimination quality.
+- Bounded V2.5 structural success does not equal physical V10 acceptance.
+- Do not launch training from V10 until the staged full candidate, binding, V3 transition audit, explicit review, and separate training governance all pass.
 
 ## Authority order
 
@@ -67,16 +82,26 @@ When files conflict, follow this order:
 1. Repository/module agent instructions such as `CLAUDE.md`.
 2. Executable source/config/tests for actual behavior.
 3. `00_MASTER_PLAN.md` and accepted machine-readable policy/artifacts.
-4. Approved decision records / ADRs, including R4-D-008 for repaired-v2 physical authority.
-5. `PLAN_STATUS_MATRIX.md`, `RISK_AND_BLOCKER_REGISTER.md`, and active run/decision records.
+4. Approved decision records / ADRs, including R4-D-008, R4-D-009, and R4-D-010.
+5. `PLAN_STATUS_MATRIX.md`, `RISK_AND_BLOCKER_REGISTER.md`, and the current restart checkpoint/staging records.
 6. Canonical handbook/current-status documentation.
-7. Historical plans, bootstrap instructions, and reports.
+7. Historical plans, bootstrap instructions, and dated intermediate reports.
 
 An active phase or decision may refine execution detail but may not weaken the master evidence rules.
 
-## Historical bootstrap
+## Historical bootstrap and intermediate handoffs
 
-`START_HERE_AGENT.md` records the original Phase-0 bootstrap assignment. That assignment is complete and historical; it must not be replayed as the current task simply because the file remains in the repository.
+`START_HERE_AGENT.md` retains the original Phase-0 bootstrap assignment for provenance but now redirects to the current Phase-8 boundary.
+
+These dated V10 records are historical execution context, not current restart authority:
+
+- `runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`;
+- `runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`;
+- `runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md`;
+- `runs/2026-08-23_PHASE8_v10_parse_only_resolution_working_plan.md`;
+- `runs/2026-08-23_PHASE8_v10_structural_drift_probe_handoff.md`.
+
+Do not replay their completed blockers merely because the files remain in the repository.
 
 ## Directory map
 
