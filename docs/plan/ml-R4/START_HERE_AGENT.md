@@ -1,6 +1,44 @@
 # START HERE — AI Implementation Agent Instruction
 
-> **Historical bootstrap notice (2026-08-15):** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7, repaired-v2 physical DATA is accepted for bounded research under R4-D-008 / ADR-R4-008, Phase 8 remains `IN_PROGRESS`, and the 100-epoch run is not authorized. For current work, read `PLAN_STATUS_MATRIX.md`, `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, and `runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` before acting. Current next work is the evidence-honest objective/evaluation contract and versioned token-selector diagnostics—not Phase 0 replay.
+> **Historical bootstrap notice, current redirect updated 2026-08-27:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-010 requires a V10 physical lineage for any new full run; the 26-contract parse-only repair and later 20-contract V2.5 structural investigation are complete. Phase 8 remains `IN_PROGRESS`, physical V10 acceptance is false, and full training is unauthorized. The next permitted physical-representation action is **Stage A V2.5 primary generation**, which has not yet executed.
+
+## Current restart — read this before the historical bootstrap
+
+Current agents must read in this order:
+
+1. applicable repository/module `CLAUDE.md` files;
+2. `PLAN_STATUS_MATRIX.md`;
+3. `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
+4. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
+5. `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
+6. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
+7. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
+8. the exact V10 source/tests/scripts for the stage being executed.
+
+Current state that must not be lost:
+
+- historical G7/v1 remains immutable reproducibility evidence;
+- repaired-v2 physical DATA remains accepted immutable evidence under R4-D-008;
+- logical V3 remains accepted under R4-D-009 and the hardened V3 snapshot remains the accepted pre-pilot logical baseline;
+- graph schema v9 is not eligible for the new full training run under R4-D-010;
+- V2.3 V10 is the frozen structural-reference diagnostic lineage;
+- protected V2.4 completed the former 26-contract parse-only repair and remains diagnostic history, not physical acceptance;
+- current future-candidate extractor is `v2.5-r4-call-semantics-deterministic-cfg`;
+- the final bounded V2.5 structural result is **20/20 resolved**: 8 exact node-index-invariant graph-equivalence identities + 12 deterministic persistent-storage WRITE corrections; zero unexplained drift; no blockers;
+- evidence-chain/full-gate/staging preflights pass;
+- final heterogeneous runtime partition is 22,539 ordinary Slither-0.10 identities + one declared Slither-0.11.5 exception;
+- Stage-A driver + staging tests pass 9/9 and population partition is 22,540 = 22,539 + 1;
+- **Stage A itself has not run**;
+- confirmed negatives remain zero; candidate #2 still needs genuinely independent verification;
+- threshold/calibration/untouched acceptance remain unsupported/empty;
+- selector promotion remains separate and unauthorized;
+- no 100-epoch run is authorized.
+
+The next permitted R4-B008 action is to run `scripts/p8_generate_v10_v25_primary_attempt.py` under exact Slither 0.10.0 in a fresh non-canonical attempt root. That attempt must generate exactly 22,539 ordinary V2.5 identities and record the one runtime exception as deferred without invoking its extraction. Do not claim the attempt exists before its report passes.
+
+The August 15 launch decision, August 21 V10 implementation records, August 23 parse-only working plan, and August 23 structural-drift handoff are historical context. Do not resume their already-closed blockers.
+
+---
 
 You are implementing the SENTINEL ML R4 trustworthy-label recovery and retraining program.
 
@@ -18,8 +56,8 @@ Your job is to:
 4. create an evidence ledger with explicit positive, negative, unknown, not-applicable, conflicting, and not-reviewed states;
 5. conduct only targeted gap-filling reviews;
 6. build a versioned trustworthy DATA vNext;
-7. retrain the existing model architecture;
-8. evaluate, calibrate, threshold, and promote it using leakage-safe evidence-qualified populations.
+7. retrain the existing model architecture only after current physical/evaluation/training gates authorize it;
+8. evaluate, calibrate, threshold, and promote only using leakage-safe evidence-qualified populations that actually exist.
 
 ## Historical Phase-0 read order
 
@@ -86,16 +124,12 @@ Historical updates included:
 - `RISK_AND_BLOCKER_REGISTER.md`
 - `PLAN_STATUS_MATRIX.md`
 
-## Current restart boundary
+## Permanent Phase-8 stop lines
 
-Current Phase-8 work must instead preserve these facts:
-
-- historical G7/v1 is immutable reproducibility evidence;
-- `sentinel-r4-vnext-v2` is physically accepted for bounded research under R4-D-008;
-- all 899 current effective loss cells are positive target `1` and zero confirmed negatives exist;
-- threshold fit, calibration fit, and untouched acceptance remain unsupported/empty;
-- the historical four-window selector is not accepted as adequate and the target-aware candidate is not yet promoted;
-- no 100-epoch run is authorized;
-- objective, selector, role, or representation changes must be versioned rather than reverse-editing accepted repaired-v2 evidence.
-
-The single current restart document is `runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md` together with ADR-R4-008 and the current registers.
+- Do not overwrite accepted repaired-v2/V9 artifacts, accepted logical V3, the frozen V2.3 structural reference, or the protected V2.4 diagnostic candidate.
+- Do not use population-wide Slither 0.11.5.
+- Do not manually relabel graph/sidecar runtime or extractor identities.
+- Do not convert unknown/source absence/tool silence into target `0`.
+- Do not promote the target-aware selector as part of V10 construction.
+- Do not treat bounded V2.5 structural success as physical acceptance.
+- Do not launch full training until a later explicit training-authorization decision exists.
