@@ -1,162 +1,93 @@
 # Phase-8 V10 parse-only resolution working plan
 
 Date: 2026-08-23
-Status: IN PROGRESS
-Scope: R4-B008 only; no label, selector, objective, threshold, checkpoint, or
-training authorization
+Status: **CLOSED — HISTORICAL EXECUTION PLAN; SUPERSEDED AS RESTART AUTHORITY**
+Scope: R4-B008 parse-only remediation tranche only; no label, selector, objective, threshold, checkpoint, training, or physical-acceptance authority
 
-## Accepted starting boundary
+> **Current-state pointer (2026-08-27):** Do not resume work from this plan. The 26-contract parse-only remediation described here is complete. The later V2.5 20-identity structural-drift investigation is also complete. The current restart authority is `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`, followed by `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`.
 
-The committed V10 diagnostic candidate contains all 22,540 accepted logical-V3
-identities and passes population, token-byte, schema, and call-count binding.
-Physical acceptance is rejected because 26 DIVE contracts use
-`slither_parse_only`, including 7 `TRAIN_WEAK` and 19 `TRAIN_UNLABELED`
-contracts. Their missing IR is material: the sources contain 85 transfer, 14
-send, and 14 contract-creation lexical hits.
+## Historical starting problem
 
-The existing V10 candidate and its committed transition report remain
-diagnostic history. This tranche must not mutate accepted repaired-v2/V9
-artifacts or reinterpret parse-only absence as a clean semantic result.
+The V10 diagnostic lineage originally contained 26 DIVE contracts using `slither_parse_only`, including 7 `TRAIN_WEAK` and 19 `TRAIN_UNLABELED` contracts. Their missing IR was material because the sources contained transfer/send/contract-creation syntax.
 
-## Read-only root-cause inventory
+Root-cause analysis split those identities into:
 
-All 26 identities are compile-valid accepted preprocessed artifacts and all are
-unique normalized-code groups.
+- 24 contracts affected by Slither's singleton high-level-call destination type defect;
+- one contract, `caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9`, that requires the identity-bound Slither 0.11.5 runtime because primary Slither 0.10.0 cannot complete its full analysis;
+- one state-initializer ternary case requiring an exact hash-bound, byte/line-preserving graph-only reconciliation.
 
-| Full-analysis failure subgroup | Contracts | Finding |
-|---|---:|---|
-| Slither singleton destination type | 24 | Slither 0.10.0 and 0.11.5 represent a chained high-level-call destination as a singleton type list (for example `[uint256]`) and then use the list as a `using_for` dictionary key, raising `TypeError: unhashable type: 'list'`. |
-| Stale Slither runtime only | 1 | `caa35c...ec9` fails in the generation runtime's Slither 0.10.0 but completes full analysis in the locked DATA runtime's Slither 0.11.5. |
-| State-initializer ternary | 1 | `970340...235` triggers Slither's unsupported ternary IR conversion for `maxPerWallet < 50 ? maxPerWallet : 50`; the preceding construction-time initializer fixes `maxPerWallet` to `10`. |
+Population-wide Slither 0.11.5 was rejected because it materially changed otherwise-stable graph structure. The accepted remediation direction therefore kept Slither 0.10.0 as the primary runtime and isolated the exact 0.11.5 exception.
 
-The first full Slither-0.11.5 population regeneration exposed two additional
-fail-closed findings before acceptance:
+## Historical remediation contract
 
-- three previously full-analysis contracts regressed to parse-only because
-  Slither asserts while lowering `(bool success, ) = call.value(v)("")`;
-  an exact hash-bound, byte/line-preserving LHS reconciliation recovered their
-  full low-level-call IR;
-- Slither 0.11.5 exposes internal calls as `InternalCall` operations whose
-  `.function` points to the callee, while the extractor expected the historical
-  direct `Function` object. The first candidate therefore had zero
-  `CALL_ENTRY`/`RETURN_TO` edges versus 342,268/334,991 in accepted V9. Physical
-  acceptance remains blocked until a fresh full candidate is generated with
-  both representations supported and the lower edge kinds are reconciled.
-- after that API repair, a 300-contract comparison still found unexpected
-  structural drift in 284 contracts: 249 node-feature changes, 153 metadata
-  changes, and 268 topology changes through unchanged edge type 10. The same
-  sample against the Slither-0.10 V10 candidate had zero feature/metadata
-  drift; its 180 topology differences were limited to the already-intended V10
-  ICFG correction. A blanket 0.11.5 population upgrade is therefore rejected.
+The tranche required a new extractor identity rather than changing graph bytes under `v2.3-r4-call-semantics`. The V10-only recovery preserved accepted V9 token bytes and historical artifacts while adding narrowly recorded analyzer/source repairs. Parse-only remained diagnostic fallback only and could not satisfy physical acceptance.
 
-The root repository lock and DATA environment specify Slither 0.11.5, while the
-ML environment and the structurally stable V9/V10 baseline use Slither 0.10.0.
-Neither version alone repairs every contract without materially changing the
-rest of the population.
+Required invariants were:
 
-Exploratory full-analysis evidence under Slither 0.11.5 established:
-
-- exact singleton-list unwrapping recovered full SlithIR for all 24 matching
-  contracts, with 1-5 recorded repairs per contract;
-- `caa35c...ec9` completed full analysis without an analyzer repair;
-- a graph-only replacement of the exact initializer ternary with its proven
-  construction-time value `10`, padded to the same byte length, retained the
-  line count and completed full analysis for `970340...235`.
-
-These probes did not write canonical artifacts and do not constitute physical
-acceptance.
-
-## Versioned remediation decision
-
-Keep graph schema V10 and its 17 edge kinds unchanged. Advance the extractor
-identity from `v2.3-r4-call-semantics` to a new compatibility-repaired identity;
-do not emit different graph bytes under the old extractor identity.
-
-Implement the following ordered V10-only recovery:
-
-1. require and record exact Slither 0.10.0 for the primary population so node,
-   metadata, and unchanged-edge structure remain bound to the accepted
-   baseline;
-2. attempt normal full analysis;
-3. only after the exact singleton-list failure, retry under a process-local,
-   restored-after-use analyzer guard that unwraps only a one-element Solidity
-   type list on `HighLevelCall.destination.type`; record every repair;
-4. only for the exact accepted source hash `970340...235`, reconcile the exact
-   initializer expression to `10` with byte- and line-preserving padding and
-   record both source hashes and the replacement;
-5. regenerate exact source `caa35c...ec9` alone under Slither 0.11.5, record it
-   as the only identity-bound runtime exception, and fail binding if any other
-   contract uses that runtime or if this contract remains on 0.10.0;
-6. understand both historical direct-function and newer `InternalCall.function`
-   internal-call representations, while requiring transition-audit structural
-   preservation outside the historical 26 parse-only contracts;
-7. retain parse-only as an explicit diagnostic fallback, never as accepted
-   complete IR.
-
-Historical V9 ordering and bytes remain unchanged.
-
-## Required implementation evidence
-
-- unit tests for exact failure gating, singleton-only repair, restoration of
-  Slither globals, transform hash binding, byte/line preservation, and refusal
-  of near-match sources;
-- real-Slither bounded regeneration of all 26 identities under the new
-  extractor identity;
-- zero parse-only results, zero unclassified call IR, zero call-mapping errors,
-  and exact classified/emitted/observed call-edge equality for all 26;
+- exact primary Slither 0.10.0 for ordinary identities;
+- exact identity-bound Slither 0.11.5 for `caa35c...ec9` only;
+- zero accepted parse-only outputs;
+- zero unclassified call IR;
+- zero call-mapping errors;
+- classified/emitted/observed call-edge reconciliation;
 - exact accepted-V9 token-byte equality;
-- exact runtime distribution: 22,539 primary Slither-0.10.0 contracts and one
-  identity-bound Slither-0.11.5 exception;
-- full candidate binding and V9-to-V10 transition audit after the affected
-  artifacts are incorporated into a fresh protected candidate lineage;
-- population preservation of internal-call `CALL_ENTRY`/`RETURN_TO` semantics
-  under the bound Slither runtime;
-- expanded DATA/representation/ML/handbook regression and workflow validation.
+- no mutation of accepted V9/repaired-v2 artifacts.
 
-## Stop lines
+## Closure result
 
-Do not declare physical acceptance merely because all 26 contracts reach full
-analysis. The refreshed transition report and explicit review must pass first.
-Even physical acceptance would not authorize training: R4-GAP-007,
-selector/objective design, and training authorization remain separate gates.
+This plan's remediation goal **passed** in the V2.4 compatibility lineage:
 
-## 2026-08-23 local stop checkpoint
+- protected candidate population: 22,540 identities;
+- exact accepted-V9 token bytes;
+- zero parse-only outputs;
+- zero unclassified call IR;
+- required runtime split: 22,539 primary Slither-0.10.0 + one identity-bound Slither-0.11.5 exception;
+- V2.4 binding digest: `bd907531a3e22b15d7b91552d15ef1f60c5fd59a109c4ef144ca62f3abab6950`.
 
-The v2.4 protected candidate now binds all 22,540 identities with exact V9
-token bytes, zero parse-only outputs, zero unclassified call IR, and the exact
-runtime split required above: 22,539 Slither-0.10.0 primary artifacts plus the
-single identity-bound Slither-0.11.5 exception. Its binding digest is
-`bd907531a3e22b15d7b91552d15ef1f60c5fd59a109c4ef144ca62f3abab6950`.
+The complete transition audit then exposed a **different** blocker: 20 unexpected structural-drift identities outside the historical parse-only-origin set. That later investigation must not be confused with failure of the 26-contract repair.
 
-Physical acceptance is nevertheless still blocked. The strengthened complete
-transition audit is saved at
-`docs/plan/ml-R4/reviews/R4-GAP-008/v10_transition_audit_v2.json` (SHA-256
-`5793b059e7e5149424e10a5361a5b0e420b1f86f3630920e36344c5737fd4f9b`).
-It checked all 22,540 identities without operational errors, but reported 46
-contracts with structural differences from the frozen passing Slither-0.10 V10
-reference: the 26 historical V9 parse-only identities where recovery is
-expected, plus 20 previously full-analysis identities where it is not yet
-approved. Status is therefore
-`PASS_DIAGNOSTIC_WITH_STRUCTURAL_BLOCKER`, physical acceptance is false, and
-training authorization is false.
+## Later superseding evidence
 
-The first bounded classification of those 20 unexpected identities found:
+The 20-contract structural tranche subsequently advanced to extractor:
 
-- 10 have identical node features and metadata, identical unchanged-edge
-  counts, but different node-index endpoints. A traced example swaps edges
-  among nodes with indistinguishable metadata, so node-order nondeterminism or
-  an overly index-sensitive comparison is plausible but not yet proven for all
-  10;
-- 10 have identical node and unchanged-edge counts and identical unchanged-edge
-  topology, but one or more node feature/metadata classifications differ. A
-  traced example changes the same source expression from `CFG_NODE_OTHER` to
-  `CFG_NODE_WRITE`, which may be upstream Slither analysis nondeterminism and
-  must not be waived without repeat evidence.
+`v2.5-r4-call-semantics-deterministic-cfg`
 
-The next bounded tranche is to regenerate only these 20 identities repeatedly
-under the exact primary runtime, compare reference/candidate/repeats with a
-node-identity-aware diagnostic, and then either remove the nondeterminism or
-prove a narrowly defined semantic equivalence rule. Do not weaken the
-population audit merely to obtain a passing status. No ADR for physical
-acceptance and no authority-surface promotion should be written before this
-blocker is resolved.
+and closed 20/20 under three fresh primary-runtime generations:
+
+- 8 exact node-index-invariant labelled graph-equivalence identities;
+- 12 deterministic persistent-storage `CFG_NODE_WRITE` corrections backed by positive semantic evidence;
+- `bounded_v25_reproducibility_passed = true`;
+- `zero_unexplained_drift = true`;
+- blocking identities: none.
+
+Durable closure record:
+
+`reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`
+
+Current restart checkpoint:
+
+`runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`
+
+Current full-candidate staging protocol:
+
+`runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`
+
+## Historical evidence retained from this tranche
+
+The frozen V2.3 structural reference remains immutable at:
+
+`data_module/data/representations-r4-v3-candidate-v2.3-structural-reference-6087dc6d`
+
+with binding digest:
+
+`6087dc6d76d781efbefe0c4984458d291790c38b1c55d852f48fd796222b0260`
+
+The protected V2.4 diagnostic candidate remains historical evidence and must not be overwritten while constructing the fresh V2.5 lineage.
+
+## Current stop lines
+
+- Do **not** restart the 26-contract parse-only repair unless concrete regression evidence invalidates its closure.
+- Do **not** use this dated plan's former “next bounded tranche” as current instructions; that 20-contract work is complete.
+- Do not mutate accepted V9/repaired-v2 artifacts, the frozen V2.3 structural reference, or protected V2.4 diagnostic history.
+- Do not declare physical acceptance from this historical repair result.
+- Do not authorize training. Phase-8 full training remains a separate later gate.
