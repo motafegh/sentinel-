@@ -142,7 +142,7 @@
 | R4-P7-ADR-001 | 7 | ADR | docs/plan/ml-R4/adrs/ADR-R4-007-data-vnext-implementation-and-g7-publication.md | b3e61db0c0e7eb0f132dd35845a3f8f63fb022130877fa5399f21006a8af08aa | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Accepted G7 publication/training-input authority |
 | R4-P7-FND-001 | 7 | findings | docs/plan/ml-R4/findings/09_phase7_data_vnext_implementation_and_g7.md | 5e8ea6a0f71284de0d0e3e61d1c270b2c1a05deabfe5cb0241433479aace9e32 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Phase-7 implementation and G7 result |
 
-## Phase 8 artifacts — repaired-v2 physical acceptance and no-launch
+## Phase 8 artifacts — repaired-v2 acceptance, V10 remediation, and current V2.5 physical gate
 
 | Artifact ID | Phase | Type | Path/URI | SHA-256 / binding identity | Source commit | Historical/New | Availability | Protected | Notes |
 |---|---|---|---|---|---|---|---|---|---|
@@ -154,6 +154,24 @@
 | R4-P8-BND-001 | 8 | repaired_representation_binding | local generated `sentinel-r4-vnext-v2/representation_binding_report.json` | binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd` | local evidence source `fb31326da442` | New | LOCAL_GENERATED_VERIFIED | YES_LOCAL | 22,540/22,540 contracts; 67,620 files; zero missing/invalid; physical root not committed |
 | R4-P8-EVL-001 | 8 | token_coverage_experiment | local generated `data_module/data/r4-v2-build/bounded_window_experiment.json` | — | local evidence source `fb31326da442` | New | LOCAL_GENERATED_VERIFIED | YES_LOCAL | 11,341/11,341 role records; target-aware median target coverage 0.5119 vs 0.2760 control; candidate not promoted |
 | R4-P8-SMK-001 | 8 | cuda_micro_smoke | local generated `data_module/data/r4-v2-build/repaired_gpu_smoke.json` | — | local evidence source `fb31326da442` | New | LOCAL_GENERATED_VERIFIED | YES_LOCAL | RTX 3070 Laptop BF16; two optimizer steps; finite; no Run12 weights/checkpoint; full_training_authorized=false |
+| R4-P8-ADR-002 | 8 | ADR | adrs/ADR-R4-010-versioned-external-call-representation-correction.md | — | 2026-08-21 decision | New | AVAILABLE_VERIFIED | NO | R4-D-010: preserve v9 history, require versioned V10 call-kind lineage before new full run |
+| R4-P8-AUD-001 | 8 | transition_audit_v2 | reviews/R4-GAP-008/v10_transition_audit_v2.json | `5793b059e7e5149424e10a5361a5b0e420b1f86f3630920e36344c5737fd4f9b` | 2026-08-23 tranche | New | AVAILABLE_VERIFIED | NO | 22,540-identity V2.4 transition audit; historical source set for the later exact 20-identity structural investigation |
+| R4-P8-REV-001 | 8 | bounded_structural_closure | reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md | — | 150d2ad1fa79 | New | AVAILABLE_VERIFIED | NO | Durable closure: V2.5 bounded 20/20 resolved as 8 index-equivalence + 12 storage-WRITE corrections; zero unexplained drift |
+| R4-P8-RUN-004 | 8 | current_restart_checkpoint | runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md | — | 76ce75a106db | New | AVAILABLE_VERIFIED | NO | Canonical current restart: Stage A ready, not executed; physical acceptance/training false |
+| R4-P8-RUN-005 | 8 | full_candidate_staging_protocol | runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md | — | 1c784266b4e0 | New | AVAILABLE_VERIFIED | NO | Heterogeneous 22,539 Slither-0.10 + 1 Slither-0.11.5 staged V2.5 full-candidate protocol; 9/9 driver/staging readiness tests pass |
+| R4-P8-SCR-001 | 8 | full_transition_audit_v3 | scripts/p8_audit_v10_transition_v3.py | — | ff9f4bea4069+ | New | AVAILABLE_VERIFIED | NO | Reuses V2 mechanics and fail-closed re-proves exact bounded 8+12 evidence classes against actual full candidate |
+| R4-P8-SCR-002 | 8 | evidence_chain_preflight | scripts/p8_validate_v10_v25_evidence_chain.py | — | cafc3c475dce+ | New | AVAILABLE_VERIFIED | NO | SHA-binds original transition audit, bounded V2.5 report, and merged semantic evidence; protected-local preflight passed |
+| R4-P8-SCR-003 | 8 | primary_attempt_driver | scripts/p8_generate_v10_v25_primary_attempt.py | — | 1aa94b7c0351+ | New | AVAILABLE_VERIFIED | NO | Stage A driver; exact 22,539 ordinary primary partition; declared runtime exception never invoked in primary process |
+| R4-P8-SCR-004 | 8 | primary_stage_validator | scripts/p8_stage_v10_v25_primary_attempt.py | — | 97617eb23937+ | New | AVAILABLE_VERIFIED | NO | Stage B fail-closed validator/transfer; refuses any failure/population/runtime/token mismatch beyond declared exception set |
+
+### Current Phase-8 V10 protected-local evidence note
+
+The final V2.5 bounded reproducibility JSON and merged semantic-evidence JSON are protected-local/generated evidence and are **not committed repository artifacts** at this checkpoint. Their exact SHA-256 identities are bound by committed closure/preflight records:
+
+- bounded V2.5 report SHA-256: `cffcb74c531df47a211d2960772de8430fc2eff662ee991a617c29fa1dfe3a38`;
+- merged semantic evidence SHA-256: `483012e384661ae015c39f42c686ead982d9fc016c8f80f386de8ca70dbc654b`.
+
+Do not mark those local JSON files `AVAILABLE_VERIFIED` in this repository index unless they are deliberately published in a later versioned evidence snapshot. Stage A full primary generation has not yet executed.
 
 ## Availability
 
