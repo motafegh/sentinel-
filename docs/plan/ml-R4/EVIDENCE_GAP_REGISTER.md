@@ -11,7 +11,7 @@ No new contract review is permitted without an approved gap entry.
 | R4-GAP-005 | All classes | Echidna/fuzzing precision estimates | no retained fuzzing evidence | complementary, not required for current DATA source roles | targeted future fuzzing only | Complementary fuzz evidence | PROPOSED | Non-blocking |
 | R4-GAP-006 | All classes | Exploit-reproduction PoC tests | no retained PoC corpus | useful for outcome validation but not smallest current evidence | targeted future PoCs only | Outcome validation/case study | PROPOSED | Non-blocking |
 | R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **committed hardened V3 queue**: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-08-21 — candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary review supports a negative but awaits genuinely independent verification from the blind bundle; it remains UNKNOWN/target `None`. Confirmed negatives remain zero. |
-| R4-GAP-008 | repaired-v2 graph schema v9 / `EXTERNAL_CALL` edge / CallToUnknown, ExternalBug, Reentrancy consumers | Population impact and remediation decision for library calls emitted as external-call edges while Solidity `Transfer`/`Send` IR is not emitted by the same edge builder | Candidate #2 full source/graph inspection; graph extractor source/tests; CallToUnknown pattern/library exclusion; historical BCCC false-positive analysis | Candidate #2 has 30 type-11 edges and all 30 are same-file `SafeMath` library calls, while its real Ether `transfer` has no type-11 edge. Existing tests document library counting as known behavior, but the class pattern explicitly excludes library calls. One candidate cannot establish population impact or safe remediation lineage | Run a read-only full-population v9 edge-origin audit plus queue-focused impact analysis; preserve v9 artifacts; then decide whether a versioned extractor/schema candidate and regeneration are required before G8 | Representation semantic-integrity decision; no label, selector, or training authority | RESOLVED | 2026-08-22 — v10 full 22,540-identity generation/binding/transition mechanics pass, but physical acceptance is rejected for now because 26 parse-only contracts lack complete call IR. R4-B008 remains open. |
+| R4-GAP-008 | repaired-v2 graph schema v9 / external-call semantics / CallToUnknown, ExternalBug, Reentrancy consumers | Population impact and remediation decision for v9 call-kind distortion | Candidate #2 source/graph review; full-population v9 edge-origin audit; V10 call-kind implementation; parse-only compatibility repair; repeated structural-drift analysis; exact persistent-storage WRITE evidence; V2.5 bounded reproducibility | The original candidate-level contradiction required population evidence and a versioned remediation. Those questions are now answered; remaining work is physical-candidate construction/acceptance under R4-B008, not a new evidence-gap review. | No further R4-GAP-008 contract review is currently authorized or needed. Preserve the closed 20-identity structural result and execute the staged full V2.5 physical-candidate gate. | Representation semantic-integrity decision; no label, selector, or training authority | RESOLVED | 2026-08-27 — R4-D-010 governs. The 26-contract parse-only repair is complete; V2.5 closes all 20 later unexpected structural-drift identities as 8 exact node-index-equivalence + 12 deterministic persistent-storage WRITE corrections with zero unexplained drift. Full-gate/evidence-chain/staging preflights pass. R4-B008 remains open only for fresh V2.5 full-candidate build, complete V3 audit, review, and explicit physical-acceptance decision. |
 
 ## R4-GAP-002 closure evidence
 
@@ -98,48 +98,39 @@ SHA-256: `2e7f48c9648097624406d167266a42a31055f222a0f468a0453b2f353b343f1a`.
 
 The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilot baseline and must still be read before the current primary-review closeout.
 
-## R4-GAP-008 resolution and current stop line
+## R4-GAP-008 resolution and current physical stop line
 
-Candidate #2 primary review exposed a representation-semantic contradiction that must be quantified before treating v9 graph signals as trustworthy evaluation or future-training inputs:
+R4-GAP-008 began with the v9 representation-semantic contradiction exposed by candidate #2. The full-population audit and R4-D-010 resolved the policy question: accepted v9 remains immutable reproduction evidence but is ineligible for the new full training lineage, which must use a separately versioned V10 representation.
 
-- all 30 candidate #2 `EXTERNAL_CALL` edges point to same-file `SafeMath` library-call nodes;
-- the actual `_customerAddress.transfer(...)` node has no `EXTERNAL_CALL` edge;
-- `verification/patterns/CallToUnknown.yaml` explicitly excludes library calls;
-- `graph_extractor.py` intentionally treats `LibraryCall` as high-level/external in the type-11 edge path and does not add `Transfer`/`Send` there;
-- the semantic checker treats any type-11 edge as a positive `CallToUnknown` and `ExternalBug` signal.
+Subsequent execution has now closed both later technical sub-blockers:
 
-The full-population audit resolved the evidence question and R4-D-010 accepted the remediation boundary. Until the versioned v10 candidate passes local acceptance:
+1. **Parse-only remediation complete.** The protected V2.4 diagnostic candidate contains all 22,540 identities, exact accepted-V9 token bytes, zero parse-only outputs, zero unclassified call IR, and the exact required runtime split of 22,539 primary Slither-0.10 artifacts plus one identity-bound Slither-0.11.5 exception.
+2. **Unexpected structural drift complete.** Under extractor `v2.5-r4-call-semantics-deterministic-cfg`, three fresh bounded generations of the exact 20 identities from transition audit v2 resolved all 20 with zero unexplained drift: 8 exact node-index-invariant labelled graph-equivalence identities and 12 persistent-storage WRITE corrections backed by exact semantic evidence.
 
-- do not mutate accepted v9/repaired-v2 artifacts;
-- do not reinterpret type-11 presence or absence as class truth;
-- do not authorize G8/full training;
-- candidate review may continue from whole source, but any representation-based conclusion must carry the v9 limitation;
-- do not change extractor behavior under the same schema/extractor identity.
+The final bounded evidence is recorded at:
 
-Current audit record:
+- `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
+- `reviews/R4-GAP-008/v10_v25_reproducibility_probe_v2.json` (protected-local/generated evidence when present);
+- `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`.
 
-`runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`
+The current remaining R4-B008 work is **not more gap review**. It is physical-candidate construction and acceptance evidence:
+
+1. Stage A: generate exactly 22,539 ordinary V2.5 identities under Slither 0.10.0 while deferring the declared runtime exception without invoking it;
+2. Stage B: fail-closed stage those 22,539 triples into a fresh final-lineage root;
+3. Stage C: fill exactly the declared exception under Slither 0.11.5;
+4. Stage D: bind the complete 22,540 V2.5 candidate and exact runtime/token/schema/extractor invariants;
+5. Stage E: run the complete V3 transition audit, re-proving the exact 8+12 structural evidence classes and rejecting any new unexplained non-parse-only drift;
+6. explicitly review the complete report before any separate physical-acceptance decision record.
+
+Current construction protocol:
+
+`runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`
 
 Governing decision:
 
 `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`
 
-Repository/local implementation handoff:
-
-`runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`
-
-Repository implementation and bounded source-reviewed regression evidence:
-
-`runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md`
-
-The implementation now emits exact v10 call kinds, records unclassified IR and
-IR-to-CFG mapping failures, and fails population binding unless classified,
-emitted, and observed call counts agree. Candidate #1 reproduces one typed
-high-level callback plus one transfer; candidate #2 reproduces 30 library calls
-plus one transfer. Full generation/binding/transition mechanics pass for all
-22,540 identities with digest `6087dc6d...b0260`. Physical acceptance remains
-rejected for now under R4-B008 because 26 parse-only contracts cannot establish
-complete call IR.
+Do not mutate accepted v9/repaired-v2 artifacts, the frozen V2.3 structural reference, or the protected V2.4 diagnostic candidate. Do not reopen the completed 26-contract repair or 20-contract structural investigation without concrete regression evidence. Do not authorize G8/full training from bounded V2.5 evidence alone.
 
 ## Approval delegation note
 
