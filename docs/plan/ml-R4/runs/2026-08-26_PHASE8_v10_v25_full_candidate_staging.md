@@ -32,6 +32,19 @@ The protected-local staging/runtime preflight also passed on 2026-08-27:
 - the protected V2.4 candidate and frozen V2.3 structural-reference roots are present;
 - staging-tool focused tests pass.
 
+The final Stage-A driver/staging readiness pass also succeeded on 2026-08-27:
+
+- `p8_generate_v10_v25_primary_attempt.py` compiles;
+- primary-attempt + staging focused tests pass **9 / 9**;
+- accepted V9 population = 22,540;
+- repaired-preprocessed population = 22,540;
+- ordinary primary partition = 22,539;
+- declared runtime-exception partition = 1;
+- deferred identity = `dive/caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9`;
+- population partition preflight = PASS.
+
+**Stage A itself has not yet executed.** No fresh 22,539-artifact V2.5 primary attempt may be claimed until the Stage-A report exists and passes.
+
 Physical acceptance and training authorization remain false.
 
 ## Why full generation must be staged
