@@ -1,283 +1,129 @@
 # Phase-8 V10 structural-drift probe handoff
 
 Date: 2026-08-23
-Status: V2.5 BOUNDED REPRODUCIBILITY 19/20 PROVEN; ONE SEMANTIC-EVIDENCE EXPANSION PENDING
-Scope: R4-B008 structural blocker only; no label, selector, objective, threshold,
-checkpoint, training, or model-quality authority
+Status: **CLOSED — 20/20 RESOLVED; HISTORICAL HANDOFF; SUPERSEDED AS RESTART AUTHORITY**
+Scope: R4-B008 bounded structural-drift tranche only; no label, selector, objective, threshold, checkpoint, training, model-quality, or physical-acceptance authority
 
-## Authority and inherited boundary
+> **Current-state pointer (2026-08-27):** Do not resume the former 19/20 investigation from this file. The final bounded V2.5 result is 20/20 resolved with zero unexplained drift. Current restart authority is `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`, followed by `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`.
 
-This tranche continues the v2.4 checkpoint in
-`2026-08-23_PHASE8_v10_parse_only_resolution_working_plan.md` and the machine
-record `reviews/R4-GAP-008/v10_transition_audit_v2.json`.
+## Inherited historical boundary
 
-Do not restart the completed 26-contract parse-only repair. The protected v2.4
-candidate already has 22,540 identities, exact accepted-V9 token bytes, zero
-parse-only outputs, zero unclassified call IR, and the required runtime split.
-Training remains unauthorized.
+This tranche began after the 26-contract parse-only remediation had already completed in the V2.4 compatibility lineage. The protected V2.4 diagnostic candidate had:
 
-The exact frozen structural reference remains protected and immutable at:
+- 22,540 identities;
+- exact accepted-V9 token bytes;
+- zero parse-only outputs;
+- zero unclassified call IR;
+- required runtime split of 22,539 primary Slither-0.10 artifacts plus one identity-bound Slither-0.11.5 exception.
+
+The complete transition audit v2 then reported 20 unexpected non-parse-only structural differences relative to the immutable V2.3 structural reference. Those 20 identities became this tranche's only root-cause scope.
+
+Frozen structural reference:
 
 `data_module/data/representations-r4-v3-candidate-v2.3-structural-reference-6087dc6d`
 
-with binding digest:
+Binding digest:
 
 `6087dc6d76d781efbefe0c4984458d291790c38b1c55d852f48fd796222b0260`
 
-The current protected v2.4 candidate remains:
+Protected V2.4 diagnostic candidate:
 
 `data_module/data/representations-r4-v3-candidate`
 
-Do not overwrite either root during bounded repair evidence.
+Neither historical root may be overwritten during V2.5 construction.
 
-## Repository-side diagnostic
+## Diagnostic method established here
 
-`docs/plan/ml-R4/scripts/p8_probe_v10_structural_drift.py` is a fail-closed
-structural probe. It does not alter `p8_audit_v10_transition.py` acceptance
-semantics.
+`docs/plan/ml-R4/scripts/p8_probe_v10_structural_drift.py` compares exact labelled directed multigraphs through unchanged edge type 10. Node labels include persisted `node_metadata` plus the exact feature row; edge direction, type, and multiplicity are preserved. Search exhaustion fails closed.
 
-For edges through unchanged type 10 it compares a labelled directed multigraph
-where every node label contains the complete persisted `node_metadata` record
-and exact feature row. Edge direction, edge type, and multiplicity are preserved.
-Search-limit exhaustion is `INCONCLUSIVE_FAIL_CLOSED`, never semantic equivalence.
+The bounded diagnostic established two distinct root-cause classes rather than permitting a blanket structural waiver:
 
-The focused tests prove that the diagnostic:
+1. node order/index instability where exact labelled graph semantics remain isomorphic;
+2. CFG-node classification instability around storage mutations, requiring independent semantic evidence before any correction can be accepted.
 
-- accepts exact labelled graph isomorphism when only indistinguishable node
-  indices are permuted;
-- rejects feature/classification drift such as
-  `CFG_NODE_OTHER -> CFG_NODE_WRITE` even when raw unchanged-edge topology is
-  identical;
-- rejects genuine unchanged-edge topology changes.
+## Versioned deterministic repair
 
-## Protected-local environment facts
+The storage-classification root cause came from relying on Slither-derived alias resolution for state writes. Expression-level lvalue evidence is available earlier and can identify persistent storage through either:
 
-The primary repeat runtime is now explicitly resolved and recorded:
+- a direct `StateVariable` root; or
+- a `LocalVariable` rooted in storage (`location = storage`, `is_storage = true`).
 
-- interpreter: `ml/.venv/bin/python`;
-- `slither-analyzer = 0.10.0`;
-- `crytic-compile = 0.3.11`;
-- invocation requires `PYTHONPATH=.:data_module` because the R4 orchestrator
-  imports both `sentinel_data` and `ml.src`.
+The versioned repair therefore advanced the extractor to:
 
-`data_module/.venv` intentionally carries Slither 0.11.5 and must not be
-repurposed for the primary repeat population. Its stale `slither` console-script
-shebang is unrelated to this tranche.
+`v2.5-r4-call-semantics-deterministic-cfg`
 
-## 2026-08-23 protected-local repeat result
+The V2.5 rule preserves CALL priority and existing Slither-confirmed WRITE classification, promotes only positively evidenced persistent-storage writes, excludes storage-reference declaration/rebinding false positives, and leaves historical v9 extraction inert.
 
-The exact 20 unexpected identities from transition audit v2 were regenerated
-three independent times under `ml/.venv/bin/python`, exact Slither 0.10.0, with
-`PYTHONPATH=.:data_module`.
+Focused representation tests included negative controls for memory-member writes and bare storage-reference declaration/rebinding cases.
 
-All three runs reported:
+## Intermediate 19/20 checkpoint — historical only
 
-- 20 / 20 requested records;
-- `passed = true`;
-- 20 / 20 `slither_full_analysis`;
-- zero token-byte, unclassified-call, call-mapping, or classified/emitted-count
-  mechanical failures.
+An intermediate bounded verifier once reported:
 
-The strict node-identity-aware report was written locally to:
+- 8 `V25_NODE_ORDER_INDEX_EQUIVALENCE_REPRODUCED`;
+- 11 `V25_DETERMINISTIC_STORAGE_WRITE_CORRECTION_PROVEN`;
+- 1 blocked identity: `dive/83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d`.
 
-`docs/plan/ml-R4/reviews/R4-GAP-008/v10_structural_drift_repeat_probe_v1.json`
+That state is **not current**. The blocked identity was already repeat-deterministic; its initial semantic evidence set simply omitted eight additional lower-class → WRITE nodes exposed after the first canonicalization pass.
 
-and returned exit code 2 because semantic/classification blockers remain. Its
-classification census is:
+The fail-closed blocker-evidence probe derived those eight nodes directly from the reproducibility report and proved all eight are persistent-storage writes under exact Slither 0.10.0. After merging that evidence, the identity contains 13 positively evidenced semantic WRITE targets total.
+
+## Final closure result
+
+Three fresh V2.5 generations of all 20 identities under exact Slither 0.10.0 completed with 20/20 full-analysis records each.
+
+Final bounded verifier result:
+
+- `unexpected_identities = 20`;
+- `semantic_correction_identities = 12`;
+- `index_equivalence_identities = 8`;
+- `repeat_generations = 3`;
+- `bounded_v25_reproducibility_passed = true`;
+- `zero_unexplained_drift = true`;
+- `blocking_identities = []`.
+
+Final decision census:
 
 | Decision | Identities |
 |---|---:|
-| `NODE_ORDER_INDEX_NONDETERMINISM_PROVEN` | 8 |
-| `SLITHER_FEATURE_CLASSIFICATION_NONDETERMINISM_PROVEN` | 8 |
-| `CANDIDATE_ONE_OFF_DRIFT_REPEAT_MATCHES_REFERENCE` | 3 |
-| `UNRESOLVED_MULTIPLE_REPEAT_STATES` | 1 |
-
-The eight exact labelled-isomorphism identities are:
-
-- `047f9d7c2db3d6ba43b62e9c1b35adb1ed5a6bd36d68da46e0f877b0974b73e4`
-- `5a626b8baef72b243f1812118862af26ea796462c38e900f2f595ba73b55495e`
-- `7e9bfccd7d3ed5076b7ea61fe444f33b50deb78c27582bcc413b7303422dc551`
-- `8b1792cb3c0a40a4ebeec72ffe69d00920c80203213f24ec3e2d5a867eeae3d5`
-- `a4068383ed30b56a39771e1dcbe835726242c164d125908207b4e616030aaa8c`
-- `a7faec46ab38dbf5b87b1e1ef0e56fc5da743ac450535b1cc09f12922c86f46c`
-- `beaa4d742f0b52b301fc2f143072b57ef8170540cdaaa096cdd2f51b047ab1ca`
-- `dcf66533d7ee72d2a59ab07fd4117f03ea035489f53ac9184e1dcb4d82c6d823`
-
-For these eight, exact node semantic labels and the complete directed typed
-multigraph through edge type 10 are isomorphic despite raw index changes. This
-proves index/order nondeterminism rather than semantic graph drift. Physical
-acceptance is not yet changed; the complete audit must later consume an equally
-strict node-index-invariant rule and an explicit decision record.
-
-The remaining twelve identities contain feature/metadata classification drift:
-
-- `1d9ce79b93c3a1bd7597a76204ae65027fc0471517b2a247c1e536a260c296fd`
-- `42489184f712d85f392a47db45110b4406436bc8b648524300a18319111ab350`
-- `48beaa23f916dfd3acbc86a799b0859709b29defa3796450693bab13f8e6e777`
-- `6376d572b974fb2ba2c074bf7d43972b241a1000731563b44ee09ef72eeaca3e`
-- `73cbc254caad8a7a6b8674125c029a530973459c294c6897dca01d219307c669`
-- `83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d`
-- `85c5c0d173dbaed126f4bc5165c7453262b6ff50c89c52a458034f322a06a714`
-- `95f7d52dff443cc825e20477a62de371cc4bbc31b6ba5aae653ff51caaaf974c`
-- `af947a2b1a6d7c6fa500f5604bc7b3d3e8bbab6711c30b54f601b6db5db19464`
-- `c159c57b830cb77686cb5a2a7b40f1452cae516ec688b55331adb61b1669064d`
-- `c1d21cda50fb1f0c1194392080a2c7a21b3baed5edbe140caaec8c3f257f756b`
-- `f8cd4abd34d1aa1ca5d3293ee286bfedfa39d0cab550a547ba22e798d5439b35`
-
-The fluctuating statements are overwhelmingly assignments or updates to member
-paths such as `server.unregisterCaller`, `vpBound.timeLastUpdated`, `task.*`,
-`s.*`, `_roundID.*`, `dispute.*`, `p.*`, `result.*`, and `lot.*`. Observed
-classes alternate among `CFG_NODE_WRITE` and lower-priority
-`CFG_NODE_OTHER` / `CFG_NODE_READ` / `CFG_NODE_ARITH` states.
-
-Eight identities alternate directly between reference-like and candidate-like
-feature states. Three current-candidate drifts (`95f7d5...`, `af947a...`, and
-`f8cd4a...`) disappeared in all three repeats, proving the current v2.4 bytes are
-a one-off Slither classification state rather than a reproducible extractor
-result. `c1d21c...` produced the reference state once and additional non-reference,
-non-candidate states twice, proving more than two upstream classification states
-can occur.
-
-## Root-cause seam established from source
-
-The current `_cfg_node_type()` in
-`data_module/sentinel_data/representation/graph_extractor.py` gives WRITE
-priority when `slither_node.state_variables_written` is non-empty, with only a
-direct `StateVariable` IR-lvalue fallback.
-
-Slither 0.10.0 computes `state_variables_written` after converting member/index
-writes through mutable `ReferenceVariable.points_to_origin` chains. The repeated
-real-corpus evidence shows this derived alias result is not stable for the
-member-path statements above.
-
-Slither's earlier expression analysis independently exposes
-`variables_written_as_expression`. Its write visitor records lvalue identifiers,
-member bases, and index bases before SlithIR reference resolution. A
-`LocalVariable` also exposes `is_storage`, which distinguishes persistent-storage
-references from `memory`/`calldata` locals.
-
-This provides a source-backed deterministic repair seam: supplement, rather than
-replace, Slither's state-write result with expression-level evidence that the
-written lvalue is either a `StateVariable` or a `LocalVariable` whose
-`is_storage` is true. The node's own storage-reference declaration must be
-excluded so `Struct storage alias = stateStruct` is not falsely treated as a
-state mutation; later `alias.field = ...` mutations are state writes.
-
-## Versioned deterministic repair decision
-
-Do not change emitted graph semantics under extractor identity
-`v2.4-r4-call-semantics-compat`. The current v2.4 candidate is retained as
-protected diagnostic evidence.
-
-The next extractor identity must advance to a v2.5 deterministic-CFG revision.
-The intended change is deliberately narrow:
-
-1. preserve CALL as the highest CFG-node priority;
-2. preserve every existing Slither-confirmed state write;
-3. add a deterministic expression-level persistent-storage-write fallback;
-4. exclude the local variable being introduced by the node's own storage
-   declaration;
-5. keep READ, ARITH, CHECK, and OTHER precedence unchanged after WRITE;
-6. add focused tests for direct state writes, storage-reference member writes,
-   memory-member writes, and storage-reference declarations;
-7. do not hash-special-case the twelve corpus identities.
-
-This is a semantic correction, not an acceptance waiver. Some frozen v2.3 nodes
-may themselves be the under-classified nondeterministic state and can therefore
-legitimately differ from the deterministic v2.5 result. Any such difference must
-be explicitly enumerated and justified after regenerated v2.5 evidence; it must
-not be silently ignored by the transition audit.
-
-## 2026-08-26 V2.5 bounded reproducibility checkpoint
-
-The deterministic CFG guard was implemented under extractor identity
-`v2.5-r4-call-semantics-deterministic-cfg`. Focused representation tests passed
-27 / 27 under the primary ML environment, including negative controls proving
-that memory-member writes and bare storage-reference declarations/rebindings are
-not promoted to state writes.
-
-The first semantic evidence pass re-parsed the twelve previously drifting
-contracts under exact Slither 0.10.0. Every requested drifting node had positive
-persistent-storage evidence: its relevant expression lvalue was rooted in a
-`LocalVariable` with `location = storage` and `is_storage = true`. Therefore the
-semantic direction is WRITE, not a memory-side false positive.
-
-Three fresh V2.5 generations of all twenty unexpected identities then completed
-cleanly: 20 / 20 records, all `slither_full_analysis`, under the exact primary
-runtime. The bounded V2.5 verifier reported:
-
-| Decision | Identities |
-|---|---:|
+| `V25_DETERMINISTIC_STORAGE_WRITE_CORRECTION_PROVEN` | 12 |
 | `V25_NODE_ORDER_INDEX_EQUIVALENCE_REPRODUCED` | 8 |
-| `V25_DETERMINISTIC_STORAGE_WRITE_CORRECTION_PROVEN` | 11 |
-| `BLOCKED_V25_STORAGE_WRITE_REPRODUCIBILITY` | 1 |
 
-Thus 19 / 20 identities are fully resolved in the bounded V2.5 tranche.
+The 12 WRITE identities are not acceptance waivers: only independently evidenced persistent-storage mutation nodes are canonicalized to `CFG_NODE_WRITE`, after which exact node-index-invariant labelled multigraph equivalence is still required. The 8 index identities likewise require exact labelled graph equivalence rather than raw endpoint-index forgiveness.
 
-The sole remaining identity is:
+Durable closure record:
 
-`dive/83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d`
+`reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`
 
-Crucially, this identity is **not** repeat-nondeterministic under V2.5. All three
-fresh V2.5 outputs are raw-structure equal to one another: exact node features,
-metadata, and unchanged-edge topology all match. The five nodes already covered
-by the first semantic-evidence pass are WRITE in every repeat, with zero semantic
-write failures.
+Evidence-chain/full-population gate support:
 
-The remaining block is evidence coverage relative to the frozen v2.3 reference.
-After canonicalizing the five already-proven storage-write nodes, all three V2.5
-repeats expose the same eight additional lower-class -> WRITE differences:
+- `scripts/p8_validate_v10_v25_evidence_chain.py`;
+- `scripts/p8_audit_v10_transition_v3.py`.
 
-1. line 469: `NEW VARIABLE newCheckPoint = checkpoints[checkpoints.length ++]`
-   (`CFG_NODE_ARITH -> CFG_NODE_WRITE`)
-2. line 470: `EXPRESSION newCheckPoint.fromBlock = uint128(block.number)`
-   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
-3. line 471: `EXPRESSION newCheckPoint.value = uint128(_value)`
-   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
-4. line 474: `EXPRESSION oldCheckPoint.value = uint128(_value)`
-   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
-5. line 1085: `EXPRESSION voteCounter.voteCount[_ruling] += _draws.length`
-   (`CFG_NODE_ARITH -> CFG_NODE_WRITE`)
-6. line 1087: `EXPRESSION voteCounter.winningCount = voteCounter.voteCount[_ruling]`
-   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
-7. line 1088: `EXPRESSION voteCounter.winningChoice = _ruling`
-   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
-8. line 1090: `EXPRESSION voteCounter.winningChoice = 0`
-   (`CFG_NODE_OTHER -> CFG_NODE_WRITE`)
+## Current successor work
 
-The unchanged-edge topology is identical; only CFG-node class / feature 0 differs
-for these nodes. Because the three V2.5 repeats agree exactly, this is not another
-nondeterminism bug. The remaining question is whether all eight nodes have the
-same positive persistent-storage lvalue evidence as the previously reviewed
-nodes. Do not widen the semantic acceptance set merely because V2.5 is stable.
+The bounded root-cause tranche is finished. Current R4-B008 work is the fresh full physical V2.5 candidate:
 
-`p8_probe_v10_v25_blocker_write_evidence.py` now derives these nodes directly
-from the fail-closed V2.5 reproducibility report. It refuses to inspect them
-unless repeat-to-repeat exact equivalence is already proven, previous semantic
-WRITE failures are empty, all three reference-diff sets are identical, and every
-remaining difference is specifically a lower CFG class moving to
-`CFG_NODE_WRITE`. It then reuses the exact Slither-0.10 expression/storage probe.
+1. Stage A — generate 22,539 ordinary identities under exact Slither 0.10.0 and defer the one declared runtime exception without invoking it;
+2. Stage B — fail-closed transfer of only validated primary triples to a fresh final-lineage root;
+3. Stage C — fill exactly the declared exception under Slither 0.11.5;
+4. Stage D — bind all 22,540 candidate identities and exact runtime/token/schema/extractor invariants;
+5. Stage E — run the complete V3 transition audit and require the same exact 8+12 evidence classes with zero additional unexplained non-parse-only drift;
+6. review the complete report before any separate physical-acceptance decision.
 
-If all eight nodes independently prove a storage-rooted lvalue, merge that new
-semantic evidence with the first pass and rerun the V2.5 bounded verifier. If any
-node lacks such evidence, leave `83c9d2...` blocked and investigate that node
-rather than changing the classifier or acceptance rule.
+Current protocol:
 
-## Next evidence sequence
+`runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`
 
-1. run the focused V2.5 blocker-write evidence probe for the eight newly exposed
-   nodes in `83c9d2...` under exact primary Slither 0.10.0;
-2. if all eight prove persistent-storage writes, extend the semantic-evidence
-   record without weakening its positive-evidence requirement;
-3. rerun the bounded V2.5 verifier and require 20 / 20 resolved with zero
-   unexplained drift;
-4. then strengthen the complete transition audit to consume exact
-   node-index-invariant graph equivalence for the eight proven permutation-only
-   cases and the explicitly reviewed V2.5 classification correction set;
-5. regenerate only the affected protected candidate lineage as required, then
-   rerun the complete 22,540-identity transition audit against the same frozen
-   reference;
-6. create a physical-acceptance decision record only after zero unexplained
-   drift remains.
+Current restart checkpoint:
 
-Training and model-quality claims remain unauthorized throughout this sequence.
+`runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`
+
+## Stop lines
+
+- Do **not** resume the intermediate 19/20 state.
+- Do not restart the 26-contract parse-only repair.
+- Do not widen structural acceptance beyond the exact proven 8+12 classes.
+- Do not overwrite accepted V9/repaired-v2, frozen V2.3 reference, or protected V2.4 diagnostic history.
+- Do not treat bounded closure as physical acceptance.
+- Do not authorize full training. Training remains a separate later gate.
