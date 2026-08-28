@@ -1,6 +1,6 @@
 # Phase 8 — Existing Architecture Retraining
 
-**Status:** `IN_PROGRESS` — historical G7 satisfied; **full training not authorized**  
+**Status:** `IN_PROGRESS` — historical G7 satisfied; **full training not authorized**
 **Gate:** G8
 
 ## Objective
