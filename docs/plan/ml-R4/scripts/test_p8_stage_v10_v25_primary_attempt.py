@@ -69,7 +69,17 @@ def _fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         (accepted / "dive" / f"{normal_id}.tokens.pt").read_bytes()
     )
     (attempt / "dive" / "representation_failures.jsonl").write_text(
-        json.dumps({"meta_path": f"{exception_id}.meta.json", "error": "runtime"}) + "\n",
+        json.dumps(
+            {
+                "meta_path": f"{exception_id}.meta.json",
+                "error_type": "IdentityBoundRuntimeDeferred",
+                "error": (
+                    "V10 primary attempt intentionally deferred this identity to its "
+                    "required slither-analyzer 0.11.5 runtime"
+                ),
+            }
+        )
+        + "\n",
         encoding="utf-8",
     )
     (attempt / "dive" / "repaired_representation_manifest.json").write_text(
@@ -121,10 +131,69 @@ def test_primary_stage_rejects_failure_set_outside_declared_exception(
     normal_id, _exception_id, accepted, attempt, output = _fixture(tmp_path, monkeypatch)
     failure_file = attempt / "dive" / "representation_failures.jsonl"
     failure_file.write_text(
-        json.dumps({"meta_path": f"{normal_id}.meta.json", "error": "wrong"}) + "\n",
+        json.dumps(
+            {
+                "meta_path": f"{normal_id}.meta.json",
+                "error_type": "IdentityBoundRuntimeDeferred",
+                "error": "required slither-analyzer 0.11.5 runtime",
+            }
+        )
+        + "\n",
         encoding="utf-8",
     )
-    with pytest.raises(ValueError, match="failure set does not exactly match"):
+    with pytest.raises(ValueError, match="wrong required runtime"):
+        stage.stage_primary_attempt(
+            SimpleNamespace(
+                primary_attempt_root=attempt,
+                accepted_v9_root=accepted,
+                output_root=output,
+            )
+        )
+
+
+def test_primary_stage_rejects_non_deferred_exception_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _normal_id, exception_id, accepted, attempt, output = _fixture(tmp_path, monkeypatch)
+    failure_file = attempt / "dive" / "representation_failures.jsonl"
+    failure_file.write_text(
+        json.dumps(
+            {
+                "meta_path": f"{exception_id}.meta.json",
+                "error_type": "RuntimeError",
+                "error": "ordinary extraction failed",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="not an identity-bound runtime deferral"):
+        stage.stage_primary_attempt(
+            SimpleNamespace(
+                primary_attempt_root=attempt,
+                accepted_v9_root=accepted,
+                output_root=output,
+            )
+        )
+
+
+def test_primary_stage_rejects_wrong_deferred_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _normal_id, exception_id, accepted, attempt, output = _fixture(tmp_path, monkeypatch)
+    failure_file = attempt / "dive" / "representation_failures.jsonl"
+    failure_file.write_text(
+        json.dumps(
+            {
+                "meta_path": f"{exception_id}.meta.json",
+                "error_type": "IdentityBoundRuntimeDeferred",
+                "error": "required slither-analyzer 0.12.0 runtime",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="wrong required runtime"):
         stage.stage_primary_attempt(
             SimpleNamespace(
                 primary_attempt_root=attempt,

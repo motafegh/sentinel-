@@ -16,8 +16,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-from slither import Slither
-
 from sentinel_data.representation.graph_extractor import (
     GraphExtractionConfig,
     _build_solc_args,
@@ -76,6 +74,71 @@ def _expression_record(expression: Any) -> dict[str, Any]:
     }
 
 
+def _record_key(record: dict[str, Any]) -> str:
+    return json.dumps(record, sort_keys=True, separators=(",", ":"))
+
+
+def _canonical_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return a byte-stable, duplicate-free ordering for diagnostic records."""
+
+    unique = {_record_key(record): record for record in records}
+    return [unique[key] for key in sorted(unique)]
+
+
+def _stable_state_variables_written(
+    expression_writes: list[dict[str, Any]],
+) -> list[str]:
+    """Report only direct state-variable roots, avoiding unstable Slither IR aliases."""
+
+    return sorted(
+        {
+            str(root.get("name") or "")
+            for expression in expression_writes
+            if isinstance((root := expression.get("root_variable")), dict)
+            and root.get("class") == "StateVariable"
+            and root.get("name")
+        }
+    )
+
+
+def _merge_node_record(
+    existing: dict[str, Any],
+    candidate: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge duplicate Slither views of one semantic node deterministically."""
+
+    identity_fields = (
+        "name",
+        "source_lines",
+        "function",
+        "node_type",
+        "variable_declaration",
+    )
+    for field in identity_fields:
+        if existing.get(field) != candidate.get(field):
+            raise ValueError(
+                f"conflicting duplicate-node field {field}: "
+                f"{existing.get(field)!r} != {candidate.get(field)!r}"
+            )
+
+    merged = dict(existing)
+    for field in ("expression_writes", "ir_lvalues"):
+        merged[field] = _canonical_records(
+            list(existing.get(field) or []) + list(candidate.get(field) or [])
+        )
+    for field in ("state_variables_written", "state_variables_read"):
+        merged[field] = sorted(
+            {
+                str(value)
+                for value in (
+                    list(existing.get(field) or [])
+                    + list(candidate.get(field) or [])
+                )
+            }
+        )
+    return merged
+
+
 def _ir_lvalue_record(operation: Any) -> dict[str, Any] | None:
     lvalue = getattr(operation, "lvalue", None)
     if lvalue is None:
@@ -112,6 +175,8 @@ def _requested_nodes(report: dict[str, Any]) -> dict[str, set[tuple[str, tuple[i
 
 
 def _load_slither(source_path: Path, meta: dict[str, Any]) -> Any:
+    from slither import Slither
+
     solc_binary = _resolve_solc_binary(str(meta.get("solc_version", "")))
     config = GraphExtractionConfig(
         solc_binary=solc_binary,
@@ -150,7 +215,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         meta = _load_meta(meta_path)
         targets = set(_select_targets(source_path, meta))
         slither = _load_slither(source_path, meta)
-        observed: list[dict[str, Any]] = []
+        observed_by_key: dict[tuple[str, tuple[int, ...]], dict[str, Any]] = {}
 
         for contract in slither.contracts:
             if contract.name not in targets:
@@ -175,57 +240,63 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
                     if key not in wanted:
                         continue
 
-                    expression_writes = [
-                        _expression_record(expression)
-                        for expression in (
-                            getattr(
-                                node,
-                                "variables_written_as_expression",
-                                None,
+                    expression_writes = _canonical_records(
+                        [
+                            _expression_record(expression)
+                            for expression in (
+                                getattr(
+                                    node,
+                                    "variables_written_as_expression",
+                                    None,
+                                )
+                                or []
                             )
-                            or []
-                        )
-                    ]
-                    observed.append(
-                        {
-                            "name": str(node),
-                            "source_lines": list(lines),
-                            "function": str(
-                                getattr(function, "canonical_name", "")
-                            ),
-                            "node_type": str(getattr(node, "type", "")),
-                            "variable_declaration": _variable_record(
-                                getattr(node, "variable_declaration", None)
-                            ),
-                            "expression_writes": expression_writes,
-                            "state_variables_written": sorted(
-                                str(getattr(variable, "canonical_name", variable))
-                                for variable in (
-                                    getattr(node, "state_variables_written", None)
-                                    or []
-                                )
-                            ),
-                            "state_variables_read": sorted(
-                                str(getattr(variable, "canonical_name", variable))
-                                for variable in (
-                                    getattr(node, "state_variables_read", None)
-                                    or []
-                                )
-                            ),
-                            "ir_lvalues": [
-                                record
+                        ]
+                    )
+                    record = {
+                        "name": str(node),
+                        "source_lines": list(lines),
+                        "function": str(getattr(function, "canonical_name", "")),
+                        "node_type": str(getattr(node, "type", "")),
+                        "variable_declaration": _variable_record(
+                            getattr(node, "variable_declaration", None)
+                        ),
+                        "expression_writes": expression_writes,
+                        # Slither 0.10 may expose the same storage write either
+                        # through state_variables_written or only through an
+                        # earlier expression-level storage lvalue depending on
+                        # internal reference propagation order. The latter is
+                        # the governing evidence seam, so report only stable
+                        # direct StateVariable expression roots here.
+                        "state_variables_written": _stable_state_variables_written(
+                            expression_writes
+                        ),
+                        "state_variables_read": sorted(
+                            str(getattr(variable, "canonical_name", variable))
+                            for variable in (
+                                getattr(node, "state_variables_read", None) or []
+                            )
+                        ),
+                        "ir_lvalues": _canonical_records(
+                            [
+                                ir_record
                                 for operation in (
                                     getattr(node, "irs", None) or []
                                 )
-                                if (record := _ir_lvalue_record(operation))
+                                if (ir_record := _ir_lvalue_record(operation))
                                 is not None
-                            ],
-                        }
+                            ]
+                        ),
+                    }
+                    existing = observed_by_key.get(key)
+                    observed_by_key[key] = (
+                        record
+                        if existing is None
+                        else _merge_node_record(existing, record)
                     )
 
-        observed_keys = {
-            (row["name"], tuple(row["source_lines"])) for row in observed
-        }
+        observed = list(observed_by_key.values())
+        observed_keys = set(observed_by_key)
         missing = sorted(wanted - observed_keys)
         contracts.append(
             {

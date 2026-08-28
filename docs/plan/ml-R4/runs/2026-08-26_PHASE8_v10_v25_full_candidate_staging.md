@@ -1,7 +1,7 @@
 # Phase-8 V10 V2.5 full-candidate staging protocol
 
 Date: 2026-08-26
-Status: READY FOR PROTECTED-LOCAL PRIMARY ATTEMPT
+Status: READY FOR PROTECTED-LOCAL PRIMARY ATTEMPT AFTER DETERMINISTIC HARDENING
 Scope: R4-B008 V10 physical candidate construction only; no physical acceptance or training authority
 
 ## Starting authority
@@ -19,10 +19,10 @@ The full-gate code and evidence chain have also passed protected-local validatio
 - `p8_validate_v10_v25_evidence_chain.py` returns pass;
 - original transition-audit SHA-256:
   `5793b059e7e5149424e10a5361a5b0e420b1f86f3630920e36344c5737fd4f9b`;
-- bounded V2.5 report SHA-256:
-  `cffcb74c531df47a211d2960772de8430fc2eff662ee991a617c29fa1dfe3a38`;
-- merged semantic evidence SHA-256:
-  `483012e384661ae015c39f42c686ead982d9fc016c8f80f386de8ca70dbc654b`.
+- current deterministic bounded V2.5 report SHA-256:
+  `67192b2a81383af74f70ed3ed6e1c0dfbd50d6b9525a9a939a250653e2a53adc`;
+- current deterministic merged semantic evidence SHA-256:
+  `16e264fbed941ab16ead47dacd4e19c7a02511539e0950664e2cdc28373bfa8e`.
 
 The protected-local staging/runtime preflight also passed on 2026-08-27:
 
@@ -46,6 +46,49 @@ The final Stage-A driver/staging readiness pass also succeeded on 2026-08-27:
 **Stage A itself has not yet executed.** No fresh 22,539-artifact V2.5 primary attempt may be claimed until the Stage-A report exists and passes.
 
 Physical acceptance and training authorization remain false.
+
+## 2026-08-27 pre-execution hardening addendum
+
+A fresh restart audit found that the bounded V2.5 report was retained only as
+an untracked protected-local file while its exact merged semantic WRITE input
+was no longer present. Re-running the semantic probe also exposed byte-level
+nondeterminism in informational node fields and list ordering. Before Stage A:
+
+1. make semantic WRITE evidence aggregation deterministic and cover it with a
+   focused regression;
+2. regenerate three bounded V2.5 repeats and a newly SHA-bound bounded report;
+3. persist the complete semantic evidence and bounded report outside `/tmp`;
+4. rerun the evidence-chain preflight successfully;
+5. require Stage B to accept only exact `IdentityBoundRuntimeDeferred` records
+   for the declared source/identity/runtime set.
+
+This addendum is complete. The semantic-evidence probe now canonicalizes record
+ordering and deterministically aggregates duplicate Slither views while using
+expression-level roots rather than unstable propagated state-write aliases.
+Two independent randomized-process runs produced byte-identical base and
+expansion evidence. Stage B now rejects any failure row that is not an exact
+source/identity/runtime-bound `IdentityBoundRuntimeDeferred` record.
+
+The replacement protected-local evidence chain is persistent under
+`data_module/data/r4-v10-v25-evidence-deterministic-v2/`:
+
+- semantic base SHA-256:
+  `00503d3e2823513e88303cce17db5b23c777f8b7ee3b59a7bb8901ce1d3a6d4e`;
+- semantic expansion SHA-256:
+  `49ed42dea79250a95261949ca717b031ee6e8970329c288f7b0d481d6e22fc49`;
+- merged semantic evidence SHA-256:
+  `16e264fbed941ab16ead47dacd4e19c7a02511539e0950664e2cdc28373bfa8e`;
+- bounded V2.5 report SHA-256:
+  `67192b2a81383af74f70ed3ed6e1c0dfbd50d6b9525a9a939a250653e2a53adc`;
+- evidence-chain preflight SHA-256:
+  `1d28f9b2f4a597ff04f62052cad95713dafd6169f5d0f97de100fde452e542cb`.
+
+Three new persistent 20-identity repeats all passed under Slither 0.10.0. The
+replacement bounded report again proves exactly 8 node-index equivalence cases
+plus 12 deterministic storage-WRITE corrections, zero unexplained drift, and no
+blockers. Focused hardening/evidence tests pass 30/30. This remains evidence
+reproducibility hardening, not a change to V10 semantics, physical acceptance,
+or training authority.
 
 ## Why full generation must be staged
 
@@ -99,8 +142,9 @@ The staging tool must refuse transfer unless all of the following hold:
 1. accepted-V9 population resolves every declared runtime exception uniquely;
 2. primary-attempt sidecar inventory equals accepted V9 minus exactly those
    exception identities;
-3. structured failure records contain exactly those exception identities and no
-   others;
+3. structured failure records contain exactly those source/exception identities
+   and no others, use `IdentityBoundRuntimeDeferred`, and name the exact required
+   identity-bound Slither runtime;
 4. every transferable sidecar is graph schema V10 and extractor
    `v2.5-r4-call-semantics-deterministic-cfg`;
 5. every transferable artifact reports full non-degraded analysis, zero

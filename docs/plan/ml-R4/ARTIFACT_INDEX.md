@@ -166,10 +166,20 @@
 
 ### Current Phase-8 V10 protected-local evidence note
 
-The final V2.5 bounded reproducibility JSON and merged semantic-evidence JSON are protected-local/generated evidence and are **not committed repository artifacts** at this checkpoint. Their exact SHA-256 identities are bound by committed closure/preflight records:
+The current deterministic V2.5 bounded reproducibility JSON and merged
+semantic-evidence JSON are protected-local/generated evidence and are **not
+committed repository artifacts**. They are persistent under
+`data_module/data/r4-v10-v25-evidence-deterministic-v2/` and their exact
+SHA-256 identities are bound by the current restart/staging records:
 
-- bounded V2.5 report SHA-256: `cffcb74c531df47a211d2960772de8430fc2eff662ee991a617c29fa1dfe3a38`;
-- merged semantic evidence SHA-256: `483012e384661ae015c39f42c686ead982d9fc016c8f80f386de8ca70dbc654b`.
+- bounded V2.5 report SHA-256: `67192b2a81383af74f70ed3ed6e1c0dfbd50d6b9525a9a939a250653e2a53adc`;
+- merged semantic evidence SHA-256: `16e264fbed941ab16ead47dacd4e19c7a02511539e0950664e2cdc28373bfa8e`;
+- evidence-chain preflight SHA-256: `1d28f9b2f4a597ff04f62052cad95713dafd6169f5d0f97de100fde452e542cb`.
+
+The earlier `/tmp`-bound SHA pair `cffcb74c...` / `483012e3...` is historical
+and superseded for current execution because its exact merged semantic input
+was not durable and fresh regeneration exposed byte-level nondeterminism in
+informational probe output.
 
 Do not mark those local JSON files `AVAILABLE_VERIFIED` in this repository index unless they are deliberately published in a later versioned evidence snapshot. Stage A full primary generation has not yet executed.
 

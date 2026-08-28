@@ -20,12 +20,19 @@ The later 20-contract unexpected structural-drift investigation is also complete
 - `zero_unexplained_drift = true`;
 - blockers: none.
 
-The bounded evidence chain is cryptographically linked and validated:
+The bounded evidence chain was regenerated into persistent protected-local
+roots after the restart audit found its original merged semantic input had been
+lost with `/tmp` and exposed nondeterministic informational ordering. The
+semantic probe and Stage-B deferral validation are now hardened, and the
+replacement chain is cryptographically linked and validated:
 
 - source transition audit SHA-256: `5793b059e7e5149424e10a5361a5b0e420b1f86f3630920e36344c5737fd4f9b`;
-- bounded V2.5 report SHA-256: `cffcb74c531df47a211d2960772de8430fc2eff662ee991a617c29fa1dfe3a38`;
-- merged semantic evidence SHA-256: `483012e384661ae015c39f42c686ead982d9fc016c8f80f386de8ca70dbc654b`;
-- full-gate compile/tests and evidence-chain preflight passed.
+- bounded V2.5 report SHA-256: `67192b2a81383af74f70ed3ed6e1c0dfbd50d6b9525a9a939a250653e2a53adc`;
+- merged semantic evidence SHA-256: `16e264fbed941ab16ead47dacd4e19c7a02511539e0950664e2cdc28373bfa8e`;
+- evidence-chain preflight SHA-256: `1d28f9b2f4a597ff04f62052cad95713dafd6169f5d0f97de100fde452e542cb`;
+- persistent evidence root: `data_module/data/r4-v10-v25-evidence-deterministic-v2`;
+- persistent repeat roots: `data_module/data/r4-v10-v25-bounded-repeat-{1,2,3}`;
+- focused hardening/evidence tests and evidence-chain preflight passed.
 
 ## Current physical-candidate construction boundary
 
@@ -52,6 +59,9 @@ A single full-generation process cannot produce the required heterogeneous runti
 On 2026-08-27, before Stage A:
 
 - staging/full-gate scripts compile;
+- semantic evidence regeneration is byte-stable across independent randomized processes;
+- the persistent replacement bounded report passes 8+12 with zero blockers;
+- the replacement SHA-bound evidence-chain preflight passes;
 - full-gate focused tests pass 12/12;
 - Stage-A + staging focused tests pass 9/9;
 - accepted V9 population = 22,540;

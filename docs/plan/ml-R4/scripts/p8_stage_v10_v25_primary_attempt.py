@@ -68,8 +68,8 @@ def _exception_keys(accepted: dict[tuple[str, str], Path]) -> set[tuple[str, str
     return keys
 
 
-def _failure_ids(root: Path) -> list[str]:
-    failed: list[str] = []
+def _deferred_failure_keys(root: Path) -> set[tuple[str, str]]:
+    failed: set[tuple[str, str]] = set()
     for path in sorted(root.glob("*/representation_failures.jsonl")):
         for line in path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
@@ -78,7 +78,25 @@ def _failure_ids(root: Path) -> list[str]:
             meta_path = str(row.get("meta_path") or "")
             if not meta_path.endswith(".meta.json"):
                 raise ValueError(f"invalid primary-attempt failure row in {path}")
-            failed.append(meta_path.removesuffix(".meta.json"))
+            contract_id = meta_path.removesuffix(".meta.json")
+            if row.get("error_type") != "IdentityBoundRuntimeDeferred":
+                raise ValueError(
+                    f"primary-attempt failure is not an identity-bound runtime deferral: {path}"
+                )
+            required_runtime = V10_SLITHER_RUNTIME_EXCEPTIONS.get(contract_id)
+            expected_detail = (
+                None
+                if required_runtime is None
+                else f"required slither-analyzer {required_runtime} runtime"
+            )
+            if expected_detail is None or expected_detail not in str(row.get("error") or ""):
+                raise ValueError(
+                    f"primary-attempt deferral has the wrong required runtime: {path}"
+                )
+            key = (path.parent.name, contract_id)
+            if key in failed:
+                raise ValueError(f"duplicate primary-attempt deferral: {key}")
+            failed.add(key)
     return failed
 
 
@@ -143,12 +161,11 @@ def stage_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
             f"missing={missing[:5]} extra={extra[:5]}"
         )
 
-    failed_ids = _failure_ids(args.primary_attempt_root)
-    expected_failed_ids = sorted(key[1] for key in exception_keys)
-    if sorted(failed_ids) != expected_failed_ids:
+    failed_keys = _deferred_failure_keys(args.primary_attempt_root)
+    if failed_keys != exception_keys:
         raise ValueError(
             "primary attempt failure set does not exactly match runtime exceptions: "
-            f"observed={sorted(failed_ids)} expected={expected_failed_ids}"
+            f"observed={sorted(failed_keys)} expected={sorted(exception_keys)}"
         )
 
     args.output_root.mkdir(parents=True, exist_ok=True)

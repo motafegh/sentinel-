@@ -135,6 +135,11 @@ jobs:
             docs/plan/ml-R4/scripts/p8_verify_committed_logical_v3_snapshot.py \
             docs/plan/ml-R4/scripts/p8_generate_v10_candidate.py \
             docs/plan/ml-R4/scripts/p8_audit_v10_transition.py \
+            docs/plan/ml-R4/scripts/p8_probe_v10_cfg_write_evidence.py \
+            docs/plan/ml-R4/scripts/p8_generate_v10_v25_primary_attempt.py \
+            docs/plan/ml-R4/scripts/p8_stage_v10_v25_primary_attempt.py \
+            docs/plan/ml-R4/scripts/p8_validate_v10_v25_evidence_chain.py \
+            docs/plan/ml-R4/scripts/p8_audit_v10_transition_v3.py \
             docs/plan/ml-R4/scripts/test_p8_generate_v10_candidate.py \
             docs/plan/ml-R4/scripts/test_p8_audit_v10_transition.py
 
@@ -178,6 +183,14 @@ jobs:
           python -m pytest -q -c /dev/null --noconftest \
             ml/tests/test_gnn_encoder.py \
             ml/tests/test_vnext_v10_binding.py
+
+          # Stage-A/staging and deterministic semantic-evidence helpers are
+          # repository-safe unit tests. Protected Slither execution and
+          # physical corpus verification remain local acceptance gates.
+          python -m pytest -q -c /dev/null --noconftest \
+            docs/plan/ml-R4/scripts/test_p8_generate_v10_v25_primary_attempt.py \
+            docs/plan/ml-R4/scripts/test_p8_stage_v10_v25_primary_attempt.py \
+            docs/plan/ml-R4/scripts/test_p8_probe_v10_cfg_write_evidence.py
 
       - name: Verify committed logical-V3 snapshot from fresh clone
         run: |
