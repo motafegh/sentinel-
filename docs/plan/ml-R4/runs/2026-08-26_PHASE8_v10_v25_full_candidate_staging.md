@@ -123,6 +123,15 @@ The resumed attempt must still produce the ordinary 22,539-identity inventory,
 the exact structured deferred exception row, zero unexpected failures, and a
 passing Stage-A report before Stage B is allowed.
 
+The first resume exposed a process-start safety issue after successfully
+validating and extending the root to 15,211 complete triples.  Payload
+validation initializes PyTorch worker threads before the representation pool is
+created; Linux's default `fork` context then inherited locked thread state and
+all four children stopped on futex waits with no compiler descendants.  The
+service was stopped with zero incomplete file sets.  Resumed multiprocessing
+must therefore use Python's clean `spawn` context, never post-validation
+`fork`, and the pool-start contract is covered by a focused regression.
+
 ## Why full generation must be staged
 
 The required runtime distribution is intentionally heterogeneous:

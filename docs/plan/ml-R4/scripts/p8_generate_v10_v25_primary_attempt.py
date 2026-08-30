@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import json
+import multiprocessing
 import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
@@ -241,7 +242,13 @@ def _run_workers(
 ) -> list[tuple[bool, dict[str, Any] | None, dict[str, str] | None]]:
     if workers == 1:
         return list(map(_represent_worker, worker_args))
-    with ProcessPoolExecutor(max_workers=workers) as executor:
+    # Resume validation loads Torch payloads before this pool is created.
+    # Forking after Torch has initialized native worker threads can inherit
+    # locked futex state, so use fresh interpreters for every parallel run.
+    with ProcessPoolExecutor(
+        max_workers=workers,
+        mp_context=multiprocessing.get_context("spawn"),
+    ) as executor:
         return list(executor.map(_represent_worker, worker_args, chunksize=1))
 
 

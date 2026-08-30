@@ -22,6 +22,10 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+def _spawn_fixture_worker(row):
+    return True, {"graph_extraction_mode": row[0]}, None
+
+
 def _write_population(tmp_path: Path) -> tuple[Path, Path, str, str]:
     accepted = tmp_path / "accepted"
     preprocessed = tmp_path / "preprocessed"
@@ -64,6 +68,56 @@ def test_deferred_failure_records_required_runtime() -> None:
     assert row["meta_path"] == f"{exception_id}.meta.json"
     assert row["error_type"] == "IdentityBoundRuntimeDeferred"
     assert required in row["error"]
+
+
+def test_parallel_worker_pool_uses_spawn_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: dict[str, object] = {}
+
+    class FakeExecutor:
+        def __init__(self, *, max_workers, mp_context):
+            observed["max_workers"] = max_workers
+            observed["start_method"] = mp_context.get_start_method()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def map(self, worker, worker_args, *, chunksize):
+            observed["chunksize"] = chunksize
+            return map(worker, worker_args)
+
+    monkeypatch.setattr(MODULE, "ProcessPoolExecutor", FakeExecutor)
+    monkeypatch.setattr(
+        MODULE,
+        "_represent_worker",
+        lambda row: (True, {"graph_extraction_mode": row[0]}, None),
+    )
+
+    result = MODULE._run_workers([("fixture",)], workers=4)
+
+    assert result == [(True, {"graph_extraction_mode": "fixture"}, None)]
+    assert observed == {
+        "max_workers": 4,
+        "start_method": "spawn",
+        "chunksize": 1,
+    }
+
+
+def test_parallel_worker_pool_spawn_smoke(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(MODULE, "_represent_worker", _spawn_fixture_worker)
+
+    result = MODULE._run_workers([("one",), ("two",)], workers=2)
+
+    assert result == [
+        (True, {"graph_extraction_mode": "one"}, None),
+        (True, {"graph_extraction_mode": "two"}, None),
+    ]
 
 
 def test_primary_attempt_never_invokes_exception_worker(
