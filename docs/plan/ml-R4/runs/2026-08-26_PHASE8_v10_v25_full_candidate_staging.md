@@ -90,6 +90,39 @@ blockers. Focused hardening/evidence tests pass 30/30. This remains evidence
 reproducibility hardening, not a change to V10 semantics, physical acceptance,
 or training authority.
 
+## 2026-08-30 Stage-A interruption and fail-closed resume addendum
+
+The first population-wide Stage-A execution was cleanly stopped before host
+shutdown.  Its protected attempt root contains 13,974 apparent
+graph/token/sidecar file triples, no incomplete file set, and no final report.
+That inventory is interrupted build material only; it is not a passed Stage-A
+attempt and it grants no acceptance or training authority.
+
+Because the Stage-A artifacts are identity-isolated and the sidecar is written
+only after the graph and accepted-V9 token copy, an opt-in fail-closed resume is
+permitted for this non-canonical attempt root under these constraints:
+
+1. the default remains fresh-root-only; a nonempty root requires explicit
+   `--resume`;
+2. the accepted-V9 and repaired-preprocessing populations, exact primary
+   runtime, extractor, schema, and exception partition are revalidated before
+   reuse;
+3. every existing artifact identity must belong to the ordinary primary
+   partition; extra identities and the declared exception are rejected;
+4. every complete existing triple must pass the same sidecar/runtime/call/token
+   checks as primary staging plus graph-payload and token-payload loading and
+   schema/identity checks; any complete-but-invalid triple aborts;
+5. an incomplete file set is moved to a sibling quarantine root before that
+   identity is regenerated, so interrupted bytes are retained rather than
+   silently overwritten;
+6. only absent or quarantined-incomplete identities are sent to workers;
+7. source manifests and the final Stage-A report are recomputed over the full
+   ordinary population and record reused/generated/quarantined counts.
+
+The resumed attempt must still produce the ordinary 22,539-identity inventory,
+the exact structured deferred exception row, zero unexpected failures, and a
+passing Stage-A report before Stage B is allowed.
+
 ## Why full generation must be staged
 
 The required runtime distribution is intentionally heterogeneous:

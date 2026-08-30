@@ -191,3 +191,128 @@ def test_population_mismatch_fails_before_generation(
                 preprocessed_root=preprocessed,
             )
         )
+
+
+def test_nonempty_attempt_still_requires_explicit_resume(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    accepted, preprocessed, _, _ = _write_population(tmp_path)
+    output = tmp_path / "attempt" / MODULE.V10_REPRESENTATION_ROOT_NAME
+    output.mkdir(parents=True)
+    (output / "dive").mkdir()
+    monkeypatch.setattr(MODULE, "_require_primary_runtime", lambda: {})
+
+    with pytest.raises(FileExistsError, match="not empty"):
+        MODULE.build_primary_attempt(
+            SimpleNamespace(
+                workers=1,
+                resume=False,
+                output_root=output,
+                accepted_v9_root=accepted,
+                preprocessed_root=preprocessed,
+            )
+        )
+
+
+def test_resume_reuses_only_validated_existing_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    accepted, preprocessed, existing_id, _ = _write_population(tmp_path)
+    source = "dive"
+    missing_id = "b" * 64
+    for root, suffix, body in (
+        (accepted, ".rep.json", "{}"),
+        (preprocessed, ".meta.json", json.dumps({"sha256": missing_id})),
+        (preprocessed, ".sol", "contract Missing {}\n"),
+    ):
+        (root / source / f"{missing_id}{suffix}").write_text(body, encoding="utf-8")
+
+    output = tmp_path / "attempt" / MODULE.V10_REPRESENTATION_ROOT_NAME
+    (output / source).mkdir(parents=True)
+    (output / source / f"{existing_id}.rep.json").write_text(
+        json.dumps({"graph_extraction_mode": "slither_full_analysis"}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(MODULE, "_require_primary_runtime", lambda: {})
+    monkeypatch.setattr(
+        MODULE,
+        "_validate_resume_artifacts",
+        lambda **kwargs: ({(source, existing_id)}, {}),
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "_quarantine_incomplete_artifacts",
+        lambda **kwargs: None,
+    )
+
+    def fake_run(worker_args, workers):
+        assert workers == 4
+        assert [Path(row[1]).name for row in worker_args] == [f"{missing_id}.meta.json"]
+        output_dir = Path(worker_args[0][3])
+        (output_dir / f"{missing_id}.rep.json").write_text(
+            "{}\n", encoding="utf-8"
+        )
+        return [(True, {"graph_extraction_mode": "slither_full_analysis"}, None)]
+
+    monkeypatch.setattr(MODULE, "_run_workers", fake_run)
+    report = MODULE.build_primary_attempt(
+        SimpleNamespace(
+            workers=4,
+            resume=True,
+            output_root=output,
+            accepted_v9_root=accepted,
+            preprocessed_root=preprocessed,
+        )
+    )
+
+    assert report["passed"] is True
+    assert report["representations_written"] == 2
+    assert report["representations_reused_after_validation"] == 1
+    assert report["representations_generated_this_run"] == 1
+    assert report["incomplete_identities_quarantined"] == 0
+    assert report["source_results"][0]["ordinary_contracts_requested"] == 2
+    assert report["source_results"][0]["ordinary_contracts_scheduled_this_run"] == 1
+
+
+def test_resume_rejects_complete_invalid_sidecar(tmp_path: Path) -> None:
+    contract_id = "a" * 64
+    source = "dive"
+    accepted = tmp_path / "accepted"
+    output = tmp_path / "attempt" / MODULE.V10_REPRESENTATION_ROOT_NAME
+    (accepted / source).mkdir(parents=True)
+    (output / source).mkdir(parents=True)
+    (accepted / source / f"{contract_id}.tokens.pt").write_bytes(b"tokens")
+    (output / source / f"{contract_id}.pt").write_bytes(b"graph")
+    (output / source / f"{contract_id}.tokens.pt").write_bytes(b"tokens")
+    (output / source / f"{contract_id}.rep.json").write_text(
+        json.dumps({"schema_version": "v9"}), encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="schema mismatch"):
+        MODULE._validate_resume_artifacts(
+            output_root=output,
+            accepted_v9_root=accepted,
+            ordinary_keys={(source, contract_id)},
+        )
+
+
+def test_resume_quarantines_incomplete_artifacts(tmp_path: Path) -> None:
+    contract_id = "a" * 64
+    source = "dive"
+    output = tmp_path / "attempt" / MODULE.V10_REPRESENTATION_ROOT_NAME
+    source_dir = output / source
+    source_dir.mkdir(parents=True)
+    graph = source_dir / f"{contract_id}.pt"
+    graph.write_bytes(b"partial")
+
+    quarantine = MODULE._quarantine_incomplete_artifacts(
+        output_root=output,
+        incomplete={(source, contract_id): {"graph": graph}},
+    )
+
+    assert quarantine is not None
+    assert not graph.exists()
+    assert (quarantine / source / graph.name).read_bytes() == b"partial"

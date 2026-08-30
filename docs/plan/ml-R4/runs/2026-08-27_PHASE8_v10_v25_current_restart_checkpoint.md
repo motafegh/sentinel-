@@ -74,6 +74,18 @@ On 2026-08-27, before Stage A:
 
 **Stage A itself has not yet been executed.** Do not describe the 22,539 V2.5 primary artifacts as generated until its report exists and passes.
 
+### 2026-08-30 interrupted Stage-A continuation
+
+A four-worker Stage-A attempt was cleanly stopped for host shutdown before its
+final report.  The protected root
+`data_module/data/v10-v25-primary-attempt-2026-08-28-214ca542d-retry3-w4/representations-r4-v3-candidate`
+contains 13,974 apparent complete file triples and no incomplete set by suffix
+inventory.  This is not a passed attempt.  Continue only through the
+fail-closed opt-in resume protocol in the full-candidate staging plan: validate
+every existing payload and binding, quarantine incomplete bytes if found,
+generate only the remaining ordinary identities, and recompute the complete
+Stage-A evidence.  Stage B remains blocked until the resumed report passes.
+
 ## Current restart order
 
 Read in this order:

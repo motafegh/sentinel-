@@ -30,10 +30,26 @@ from sentinel_data.preprocessing.r4_versions import (
     V10_REPRESENTATION_ROOT_NAME,
     V10_SLITHER_RUNTIME_EXCEPTIONS,
 )
+from sentinel_data.representation.graph_schema_versions import get_graph_schema
 from sentinel_data.representation.r4_orchestrator import _represent_worker
+from sentinel_data.vnext.r4_binding import _validate_graph, _validate_tokens
+
+from p8_stage_v10_v25_primary_attempt import (
+    _sha256,
+    _validate_primary_sidecar,
+)
 
 
 SCHEMA = "sentinel-r4-v10-v25-primary-attempt-v1"
+ARTIFACT_SUFFIXES = {
+    "graph": ".pt",
+    "tokens": ".tokens.pt",
+    "sidecar": ".rep.json",
+}
+CONTROL_FILENAMES = {
+    "representation_failures.jsonl",
+    "repaired_representation_manifest.json",
+}
 
 
 def _inventory_sidecars(root: Path) -> dict[tuple[str, str], Path]:
@@ -57,6 +73,122 @@ def _inventory_preprocessed(root: Path) -> dict[tuple[str, str], Path]:
             raise FileNotFoundError(source_path)
         result[key] = path
     return result
+
+
+def _artifact_identity(path: Path) -> tuple[str, str, str] | None:
+    if path.name in CONTROL_FILENAMES:
+        return None
+    for kind in ("sidecar", "tokens", "graph"):
+        suffix = ARTIFACT_SUFFIXES[kind]
+        if path.name.endswith(suffix):
+            contract_id = path.name.removesuffix(suffix)
+            return path.parent.name, contract_id, kind
+    raise ValueError(f"unexpected primary-attempt file: {path}")
+
+
+def _inventory_attempt_artifacts(
+    root: Path,
+) -> dict[tuple[str, str], dict[str, Path]]:
+    result: dict[tuple[str, str], dict[str, Path]] = {}
+    if not root.exists():
+        return result
+    for path in sorted(root.glob("*/*")):
+        if not path.is_file():
+            continue
+        identity = _artifact_identity(path)
+        if identity is None:
+            continue
+        source, contract_id, kind = identity
+        key = (source, contract_id)
+        artifacts = result.setdefault(key, {})
+        if kind in artifacts:
+            raise ValueError(f"duplicate {kind} artifact for {source}/{contract_id}")
+        artifacts[kind] = path
+    return result
+
+
+def _validate_resume_artifacts(
+    *,
+    output_root: Path,
+    accepted_v9_root: Path,
+    ordinary_keys: set[tuple[str, str]],
+) -> tuple[set[tuple[str, str]], dict[tuple[str, str], dict[str, Path]]]:
+    try:
+        import torch
+    except ImportError as exc:  # pragma: no cover - protected runtime dependency
+        raise RuntimeError("Stage-A resume validation requires torch") from exc
+
+    artifacts = _inventory_attempt_artifacts(output_root)
+    extra = sorted(set(artifacts) - ordinary_keys)
+    if extra:
+        raise ValueError(f"resume root contains non-primary identities: {extra[:5]}")
+
+    required_kinds = set(ARTIFACT_SUFFIXES)
+    complete = {
+        key for key, paths in artifacts.items() if set(paths) == required_kinds
+    }
+    incomplete = {
+        key: paths for key, paths in artifacts.items() if set(paths) != required_kinds
+    }
+    schema = get_graph_schema(V10_GRAPH_SCHEMA_VERSION)
+
+    for source, contract_id in sorted(complete):
+        logical = f"{source}/{contract_id}"
+        paths = artifacts[(source, contract_id)]
+        sidecar = json.loads(paths["sidecar"].read_text(encoding="utf-8"))
+        _validate_primary_sidecar(logical, sidecar)
+        if sidecar.get("sha256") != contract_id or sidecar.get("source") != source:
+            raise ValueError(f"{logical} sidecar identity mismatch")
+
+        graph = torch.load(paths["graph"], map_location="cpu", weights_only=False)
+        if getattr(graph, "graph_schema_version", None) != V10_GRAPH_SCHEMA_VERSION:
+            raise ValueError(f"{logical} graph payload schema mismatch")
+        if (
+            getattr(graph, "representation_extractor_version", None)
+            != V10_REPRESENTATION_EXTRACTOR_VERSION
+        ):
+            raise ValueError(f"{logical} graph payload extractor mismatch")
+        if list(getattr(graph, "unclassified_call_ir", []) or []):
+            raise ValueError(f"{logical} graph payload contains unclassified call IR")
+        if list(getattr(graph, "call_mapping_errors", []) or []):
+            raise ValueError(f"{logical} graph payload contains call mapping errors")
+        if getattr(graph, "classified_call_ir_counts", None) != getattr(
+            graph, "emitted_call_edge_counts", None
+        ):
+            raise ValueError(f"{logical} graph payload call counts differ")
+        _validate_graph(torch, graph, sidecar, num_edge_types=schema.num_edge_types)
+
+        tokens = torch.load(paths["tokens"], map_location="cpu", weights_only=True)
+        _validate_tokens(torch, tokens, sidecar)
+        if tokens.get("sha256") != contract_id or tokens.get("source") != source:
+            raise ValueError(f"{logical} token payload identity mismatch")
+        accepted_token = accepted_v9_root / source / f"{contract_id}.tokens.pt"
+        if not accepted_token.is_file():
+            raise FileNotFoundError(accepted_token)
+        if _sha256(paths["tokens"]) != _sha256(accepted_token):
+            raise ValueError(f"{logical} token bytes changed")
+
+    return complete, incomplete
+
+
+def _quarantine_incomplete_artifacts(
+    *,
+    output_root: Path,
+    incomplete: dict[tuple[str, str], dict[str, Path]],
+) -> Path | None:
+    if not incomplete:
+        return None
+    quarantine = output_root.parent / (
+        f"{output_root.name}-resume-quarantine-{time.time_ns()}"
+    )
+    if quarantine.exists():  # pragma: no cover - nanosecond collision guard
+        raise FileExistsError(quarantine)
+    for (source, _contract_id), paths in sorted(incomplete.items()):
+        destination = quarantine / source
+        destination.mkdir(parents=True, exist_ok=True)
+        for path in paths.values():
+            path.replace(destination / path.name)
+    return quarantine
 
 
 def _require_primary_runtime() -> dict[str, str]:
@@ -118,7 +250,8 @@ def build_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("workers must be >= 1")
     if args.output_root.name != V10_REPRESENTATION_ROOT_NAME:
         raise ValueError("output root has the wrong versioned basename")
-    if args.output_root.exists() and any(args.output_root.iterdir()):
+    resume = bool(getattr(args, "resume", False))
+    if args.output_root.exists() and any(args.output_root.iterdir()) and not resume:
         raise FileExistsError(f"primary attempt root is not empty: {args.output_root}")
 
     runtime = _require_primary_runtime()
@@ -136,6 +269,20 @@ def build_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
     ordinary_keys = set(accepted) - exception_keys
     args.output_root.mkdir(parents=True, exist_ok=True)
 
+    resumed_keys: set[tuple[str, str]] = set()
+    incomplete: dict[tuple[str, str], dict[str, Path]] = {}
+    quarantine_root: Path | None = None
+    if resume:
+        resumed_keys, incomplete = _validate_resume_artifacts(
+            output_root=args.output_root,
+            accepted_v9_root=args.accepted_v9_root,
+            ordinary_keys=ordinary_keys,
+        )
+        quarantine_root = _quarantine_incomplete_artifacts(
+            output_root=args.output_root,
+            incomplete=incomplete,
+        )
+
     by_source: dict[str, list[tuple[str, str]]] = {}
     for key in sorted(accepted):
         by_source.setdefault(key[0], []).append(key)
@@ -143,6 +290,7 @@ def build_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
     source_results: list[dict[str, Any]] = []
     unexpected_failures: list[dict[str, str]] = []
     total_written = 0
+    total_generated = 0
     total_deferred = 0
     started = time.monotonic()
 
@@ -150,7 +298,13 @@ def build_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
         output_dir = args.output_root / source
         output_dir.mkdir(parents=True, exist_ok=True)
         accepted_tokens_dir = args.accepted_v9_root / source
-        ordinary_source_keys = [key for key in source_keys if key in ordinary_keys]
+        ordinary_all_source_keys = [key for key in source_keys if key in ordinary_keys]
+        ordinary_source_keys = [
+            key
+            for key in ordinary_all_source_keys
+            if key not in resumed_keys
+        ]
+        resumed_source_keys = [key for key in source_keys if key in resumed_keys]
         deferred_source_keys = [key for key in source_keys if key in exception_keys]
 
         worker_args = [
@@ -173,12 +327,15 @@ def build_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
         ]
         failures.extend(_deferred_failure(key[1]) for key in deferred_source_keys)
         failures.sort(key=lambda row: row["meta_path"])
+        failures_path = output_dir / "representation_failures.jsonl"
         if failures:
-            with (output_dir / "representation_failures.jsonl").open(
+            with failures_path.open(
                 "w", encoding="utf-8"
             ) as handle:
                 for row in failures:
                     handle.write(json.dumps(row, sort_keys=True) + "\n")
+        else:
+            failures_path.unlink(missing_ok=True)
 
         ordinary_failures = [
             row
@@ -188,14 +345,26 @@ def build_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
         unexpected_failures.extend(
             {"source": source, **row} for row in ordinary_failures
         )
-        written = sum(passed for passed, _, _ in results)
+        generated = sum(passed for passed, _, _ in results)
+        written = len(resumed_source_keys) + generated
         deferred = len(deferred_source_keys)
         total_written += written
+        total_generated += generated
         total_deferred += deferred
         mode_counts = Counter(
             str(provenance.get("graph_extraction_mode"))
             for passed, provenance, _ in results
             if passed and provenance is not None
+        )
+        mode_counts.update(
+            str(
+                json.loads(
+                    (args.output_root / source / f"{contract_id}.rep.json").read_text(
+                        encoding="utf-8"
+                    )
+                ).get("graph_extraction_mode")
+            )
+            for _source, contract_id in resumed_source_keys
         )
 
         manifest = {
@@ -205,9 +374,12 @@ def build_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
             "graph_schema_version": V10_GRAPH_SCHEMA_VERSION,
             "extractor_version": V10_REPRESENTATION_EXTRACTOR_VERSION,
             "contracts_requested": len(source_keys),
-            "ordinary_contracts_requested": len(ordinary_source_keys),
+            "ordinary_contracts_requested": len(ordinary_all_source_keys),
+            "ordinary_contracts_scheduled_this_run": len(ordinary_source_keys),
             "identity_bound_runtime_deferred": deferred,
             "representations_written": written,
+            "representations_reused_after_validation": len(resumed_source_keys),
+            "representations_generated_this_run": generated,
             "representations_failed": len(failures),
             "unexpected_failures": len(ordinary_failures),
             "representation_workers": args.workers,
@@ -246,6 +418,13 @@ def build_primary_attempt(args: argparse.Namespace) -> dict[str, Any]:
         "preprocessed_contracts": len(preprocessed),
         "ordinary_contracts_expected": len(ordinary_keys),
         "representations_written": total_written,
+        "resume_enabled": resume,
+        "representations_reused_after_validation": len(resumed_keys),
+        "representations_generated_this_run": total_generated,
+        "incomplete_identities_quarantined": len(incomplete),
+        "resume_quarantine_root": (
+            None if quarantine_root is None else str(quarantine_root)
+        ),
         "runtime_exception_contracts": len(exception_keys),
         "runtime_exception_identities": [
             f"{source}/{contract_id}" for source, contract_id in sorted(exception_keys)
@@ -277,6 +456,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "validate and reuse complete artifacts in a nonempty interrupted "
+            "attempt root; invalid artifacts fail closed"
+        ),
+    )
     parser.add_argument("--report", type=Path, required=True)
     return parser.parse_args()
 
