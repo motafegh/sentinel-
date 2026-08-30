@@ -1,0 +1,101 @@
+# Phase-8 V10 V2.5 full-population structural-evidence plan
+
+Date: 2026-08-30
+Status: IN PROGRESS; FULL PHYSICAL GATE BLOCKED
+Scope: R4-B008 full-population structural evidence only; no extractor mutation, physical acceptance, selector promotion, or training authority
+
+## Verified starting point
+
+The protected-local V2.5 candidate is fully constructed and mechanically
+bound. Stages A-D pass for 22,540 identities, with exact accepted-V9 token
+bytes, zero missing/extra/invalid artifacts, and the required 22,539 primary
+Slither-0.10 + one identity-bound Slither-0.11.5 runtime split. The Stage-D
+binding digest is
+`17c5f334c75015fdaf89b1a9f77522af5185f2485c24df4e1e64917dc944f021`.
+
+Stage E correctly fails closed with status
+`PASS_BASE_MECHANICS_WITH_STRUCTURAL_EVIDENCE_BLOCKER`. The full population has
+311 raw non-parse-only structural-drift identities. The audit re-proves the
+exact old bounded classes (8 node-index equivalence and 12 storage-WRITE
+corrections), but 298 identities remain outside those approved classes.
+Physical acceptance and training authorization are false.
+
+The diagnostic full-population probe classifies the 311 identities as:
+
+- 298 `FEATURE_OR_METADATA_CLASSIFICATION_DRIFT`;
+- 12 `NODE_ORDER_INDEX_NONDETERMINISM_PROVEN`;
+- 1 `SEMANTIC_STRUCTURE_DRIFT`:
+  `dive/bfa512a7a831999fa8140cd667e84524d3e01b09fb3cb258955f09b680863d62`.
+
+It finds 895 uniquely identifiable semantic node differences across 183
+contracts. Another 128 contracts have no uniquely matched node difference
+under the first diagnostic because duplicate semantic node identities make
+one-to-one matching ambiguous. This limitation is evidence missing, not proof
+of equivalence.
+
+## Why the old bounded closure cannot authorize this population
+
+The 20-identity closure proved facts about exactly those 20 identities under
+three exact-runtime repeats. It is not a class-wide waiver. The full audit
+shows that the V2.5 deterministic storage-write guard affects a broader
+population than the discovery sample. Expanding the decision by identity list,
+corpus hash, or similarity assertion would convert missing evidence into an
+unsupported acceptance claim.
+
+## Bounded implementation tranche
+
+1. Preserve the complete Stage A-D candidate, reports, V2.3 reference, V2.4
+   diagnostics, accepted V9 root, and old bounded evidence byte-for-byte.
+2. Implement a versioned full-population evidence collector with duplicate-safe
+   semantic node matching. Matching must use stable semantic/context identity,
+   explicit multiplicity, and graph-neighborhood constraints; it must not use
+   corpus-specific hashes or identity allowlists.
+3. Generate at least three fresh exact Slither-0.10 evidence repeats for all
+   311 raw non-parse-only primary identities. Keep generation roots distinct
+   from the candidate and structural reference.
+4. For every candidate/reference WRITE difference, record expression-level
+   lvalue evidence, persistent-storage resolution, node/contract context, and
+   repeat stability. Absence of a uniquely matched node remains unresolved.
+5. Prove candidate-repeat determinism. Classify reference-to-candidate changes
+   only as exact labelled graph equivalence, semantically proven storage-WRITE
+   correction, or unresolved semantic-structure drift.
+6. Investigate the existing semantic-structure identity separately and treat
+   any new topology/feature/metadata disagreement that lacks a proof as a
+   blocker.
+7. Define a new versioned evidence schema and validator. The validator must
+   fail on population mismatch, duplicate ambiguity, unstable repeats, missing
+   expression evidence, unexpected runtime, unexplained drift, or evidence
+   linked to the wrong candidate binding digest.
+8. Add focused synthetic tests for duplicate nodes/multiplicity plus real
+   regressions for all observed classes, then run the full Phase-8 regression
+   suite.
+9. Only after the collector and validator pass, produce a new V4 transition
+   audit. Do not modify or reinterpret the existing V3 audit report.
+
+## Exit gate
+
+This tranche exits only when a new audit is bound to the exact Stage-D candidate
+and reports all of the following:
+
+- 22,540 candidate identities and the exact Stage-D binding digest;
+- all 311 raw drift identities accounted for;
+- repeated exact-runtime evidence is stable;
+- duplicate-node ambiguity is zero;
+- every semantic change is supported by explicit evidence;
+- unexplained non-parse-only drift is zero;
+- `physical_acceptance=false` and `training_authorized=false` remain recorded
+  until a separate reviewed decision changes them.
+
+Passing this evidence tranche permits consideration of a separate physical
+acceptance decision; it does not itself accept the candidate or authorize
+training.
+
+## Stop lines
+
+- Do not overwrite or regenerate Stages A-D merely because Stage E is false.
+- Do not add identity allowlists, corpus-hash special cases, or a blanket
+  storage-WRITE waiver.
+- Do not treat duplicate matching failure as equivalence.
+- Do not patch accepted V9 or historical V10 roots.
+- Do not launch training, fit thresholds/calibration, promote the selector, or
+  introduce negative labels in this tranche.

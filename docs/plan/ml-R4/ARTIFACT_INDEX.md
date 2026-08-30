@@ -157,8 +157,9 @@
 | R4-P8-ADR-002 | 8 | ADR | adrs/ADR-R4-010-versioned-external-call-representation-correction.md | — | 2026-08-21 decision | New | AVAILABLE_VERIFIED | NO | R4-D-010: preserve v9 history, require versioned V10 call-kind lineage before new full run |
 | R4-P8-AUD-001 | 8 | transition_audit_v2 | reviews/R4-GAP-008/v10_transition_audit_v2.json | `5793b059e7e5149424e10a5361a5b0e420b1f86f3630920e36344c5737fd4f9b` | 2026-08-23 tranche | New | AVAILABLE_VERIFIED | NO | 22,540-identity V2.4 transition audit; historical source set for the later exact 20-identity structural investigation |
 | R4-P8-REV-001 | 8 | bounded_structural_closure | reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md | — | 150d2ad1fa79 | New | AVAILABLE_VERIFIED | NO | Durable closure: V2.5 bounded 20/20 resolved as 8 index-equivalence + 12 storage-WRITE corrections; zero unexplained drift |
-| R4-P8-RUN-004 | 8 | current_restart_checkpoint | runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md | — | 76ce75a106db | New | AVAILABLE_VERIFIED | NO | Canonical current restart: Stage A ready, not executed; physical acceptance/training false |
-| R4-P8-RUN-005 | 8 | full_candidate_staging_protocol | runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md | — | 1c784266b4e0 | New | AVAILABLE_VERIFIED | NO | Heterogeneous 22,539 Slither-0.10 + 1 Slither-0.11.5 staged V2.5 full-candidate protocol; 9/9 driver/staging readiness tests pass |
+| R4-P8-RUN-004 | 8 | current_restart_checkpoint | runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md | — | a9890332dbca+ | New | AVAILABLE_VERIFIED | NO | Canonical checkpoint updated with passed protected-local Stages A-D and Stage-E full-population blocker; physical acceptance/training false |
+| R4-P8-RUN-005 | 8 | full_candidate_staging_protocol | runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md | — | a9890332dbca+ | New | AVAILABLE_VERIFIED | NO | Heterogeneous 22,539 Slither-0.10 + 1 Slither-0.11.5 staged V2.5 protocol executed through Stage E; full gate blocked |
+| R4-P8-RUN-006 | 8 | full_population_structural_evidence_plan | runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md | — | a9890332dbca+ | New | AVAILABLE_VERIFIED | NO | Current bounded continuation for 298 unapproved full-population drifts and duplicate-safe semantic node evidence |
 | R4-P8-SCR-001 | 8 | full_transition_audit_v3 | scripts/p8_audit_v10_transition_v3.py | — | ff9f4bea4069+ | New | AVAILABLE_VERIFIED | NO | Reuses V2 mechanics and fail-closed re-proves exact bounded 8+12 evidence classes against actual full candidate |
 | R4-P8-SCR-002 | 8 | evidence_chain_preflight | scripts/p8_validate_v10_v25_evidence_chain.py | — | cafc3c475dce+ | New | AVAILABLE_VERIFIED | NO | SHA-binds original transition audit, bounded V2.5 report, and merged semantic evidence; protected-local preflight passed |
 | R4-P8-SCR-003 | 8 | primary_attempt_driver | scripts/p8_generate_v10_v25_primary_attempt.py | — | 1aa94b7c0351+ | New | AVAILABLE_VERIFIED | NO | Stage A driver; exact 22,539 ordinary primary partition; declared runtime exception never invoked in primary process |
@@ -181,7 +182,19 @@ and superseded for current execution because its exact merged semantic input
 was not durable and fresh regeneration exposed byte-level nondeterminism in
 informational probe output.
 
-Do not mark those local JSON files `AVAILABLE_VERIFIED` in this repository index unless they are deliberately published in a later versioned evidence snapshot. Stage A full primary generation has not yet executed.
+The protected-local full-candidate execution is also verified locally but is not
+a committed artifact publication:
+
+- Stage-A report SHA-256: `a227a3a6d2340c7f3ab3bb15687fad4002f66c29ebd05d64108f7dce13deeb76`;
+- Stage-B report SHA-256: `3f24b4b294340580cf4579cc5b7c230b6c803cabe7234aacc31f6a3d0bf4fdf0`;
+- Stage-C report SHA-256: `0994b8921905b1db82f01f5f16868a85252cc432cac615c85f73692107a301d8`;
+- Stage-D binding report SHA-256: `3cab4b19d7708b8d706699577dbfcaebf504b6ceb918c60a21956441fa238774`;
+- Stage-E audit SHA-256: `b469e63e91e22b75eea1f66432e7cbddf4461289b32c4f77ddf7bba39f82031f`;
+- full-population probe SHA-256: `d9c512015d180c67fee6dc8848952992914abed07f373ebdc7845a3398b1b3b4`.
+
+Stages A-D pass, but Stage E is false with 298 unapproved structural-drift
+identities. Do not mark these protected-local JSON files `AVAILABLE_VERIFIED`
+unless they are deliberately published in a later versioned evidence snapshot.
 
 ## Availability
 

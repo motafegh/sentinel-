@@ -1,7 +1,7 @@
 # Phase-8 V10 V2.5 full-candidate staging protocol
 
-Date: 2026-08-26
-Status: READY FOR PROTECTED-LOCAL PRIMARY ATTEMPT AFTER DETERMINISTIC HARDENING
+Date: 2026-08-26; execution result updated 2026-08-30
+Status: EXECUTED THROUGH STAGE E; FULL-POPULATION STRUCTURAL EVIDENCE BLOCKER
 Scope: R4-B008 V10 physical candidate construction only; no physical acceptance or training authority
 
 ## Starting authority
@@ -43,7 +43,7 @@ The final Stage-A driver/staging readiness pass also succeeded on 2026-08-27:
 - deferred identity = `dive/caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9`;
 - population partition preflight = PASS.
 
-**Stage A itself has not yet executed.** No fresh 22,539-artifact V2.5 primary attempt may be claimed until the Stage-A report exists and passes.
+This was the original readiness boundary. Stage A later passed through the fail-closed resume described below; current results are recorded in the 2026-08-30 completion addendum.
 
 Physical acceptance and training authorization remain false.
 
@@ -131,6 +131,27 @@ all four children stopped on futex waits with no compiler descendants.  The
 service was stopped with zero incomplete file sets.  Resumed multiprocessing
 must therefore use Python's clean `spawn` context, never post-validation
 `fork`, and the pool-start contract is covered by a focused regression.
+
+## 2026-08-30 staged-build completion and gate result
+
+The spawn-based resume completed and the protected-local staged protocol was
+executed through its required full audit:
+
+- Stage A PASS: 22,539 ordinary triples, 15,211 validated/reused, 7,328 newly
+  generated, zero quarantined incomplete identities, zero unexpected failures;
+- Stage B PASS: 22,539 primary identities, 67,617 hardlinks;
+- Stage C PASS: exactly the declared identity-bound exception under Slither
+  0.11.5;
+- Stage D PASS: 22,540/22,540 bound, token-byte identical, zero
+  missing/extra/invalid, exact heterogeneous runtime distribution;
+- Stage E BLOCKED: base mechanics pass, but 298 of 311 raw non-parse-only
+  structural drifts are not authorized by the exact old bounded evidence.
+
+The complete protected roots, hashes, and counts are recorded in
+`2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md` and
+`../ARTIFACT_INDEX.md`. The next permitted work is
+`2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`.
+This result grants no physical-acceptance or training authority.
 
 ## Why full generation must be staged
 

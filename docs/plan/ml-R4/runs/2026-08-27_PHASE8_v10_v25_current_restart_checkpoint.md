@@ -1,7 +1,7 @@
 # Phase-8 V10 V2.5 current restart checkpoint
 
-Date: 2026-08-27
-Status: STAGE A PRIMARY GENERATION READY; NOT YET EXECUTED
+Date: 2026-08-27; execution result updated 2026-08-30
+Status: STAGES A-D PASS; STAGE E FULL-POPULATION STRUCTURAL EVIDENCE BLOCKER
 Scope: current R4-B008 / V10 physical-candidate restart authority only; no physical acceptance or training authority
 
 ## Current authoritative state
@@ -72,7 +72,7 @@ On 2026-08-27, before Stage A:
 - exception environment = Slither 0.11.5;
 - protected V2.4 candidate and frozen V2.3 structural-reference roots are present.
 
-**Stage A itself has not yet been executed.** Do not describe the 22,539 V2.5 primary artifacts as generated until its report exists and passes.
+This was the pre-execution boundary. The protected-local execution result is recorded below and supersedes this sentence for current status.
 
 ### 2026-08-30 interrupted Stage-A continuation
 
@@ -84,7 +84,52 @@ inventory.  This is not a passed attempt.  Continue only through the
 fail-closed opt-in resume protocol in the full-candidate staging plan: validate
 every existing payload and binding, quarantine incomplete bytes if found,
 generate only the remaining ordinary identities, and recompute the complete
-Stage-A evidence.  Stage B remains blocked until the resumed report passes.
+Stage-A evidence.  Stage B remained blocked until the resumed report passed.
+
+### 2026-08-30 protected-local execution result
+
+The fail-closed resume and subsequent stages completed without mutating accepted
+or historical roots:
+
+- Stage A passed with 22,539/22,539 ordinary identities, 15,211 reused only
+  after full validation, 7,328 generated in the successful resume, zero
+  incomplete quarantines, one declared exception deferred, and zero unexpected
+  failures; report SHA-256
+  `a227a3a6d2340c7f3ab3bb15687fad4002f66c29ebd05d64108f7dce13deeb76`;
+- Stage B passed with 22,539 staged identities and 67,617 hardlinks; records
+  digest `a1b3ff1d00a66532076f14e72661e21e3989984f6a5e6cf0ad79c8cb8613fb8a`;
+  report SHA-256
+  `3f24b4b294340580cf4579cc5b7c230b6c803cabe7234aacc31f6a3d0bf4fdf0`;
+- Stage C filled only
+  `dive/caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9`
+  under Slither 0.11.5; report SHA-256
+  `0994b8921905b1db82f01f5f16868a85252cc432cac615c85f73692107a301d8`;
+- Stage D passed 22,540/22,540 identities, zero missing/extra/invalid, exact
+  accepted-V9 token bytes, and the 22,539 Slither-0.10 + one Slither-0.11.5
+  split; binding digest
+  `17c5f334c75015fdaf89b1a9f77522af5185f2485c24df4e1e64917dc944f021`;
+  report SHA-256
+  `3cab4b19d7708b8d706699577dbfcaebf504b6ceb918c60a21956441fa238774`.
+
+Stage E then correctly failed closed. Base mechanics passed, but the full audit
+found 311 raw non-parse-only structural drifts and only the original 8 index +
+12 storage-WRITE bounded cases were eligible for exact re-proof. The audit
+leaves 298 identities unapproved and records
+`PASS_BASE_MECHANICS_WITH_STRUCTURAL_EVIDENCE_BLOCKER`,
+`physical_acceptance=false`, and `training_authorized=false`; report SHA-256
+`b469e63e91e22b75eea1f66432e7cbddf4461289b32c4f77ddf7bba39f82031f`.
+
+A full-population diagnostic probe classified the 311 raw identities as 298
+feature/metadata classification drifts, 12 proven node-order/index cases, and
+one semantic-structure drift
+(`dive/bfa512a7a831999fa8140cd667e84524d3e01b09fb3cb258955f09b680863d62`).
+It found 895 uniquely identifiable semantic node diffs across 183 contracts;
+128 contracts require duplicate-safe node matching. Probe SHA-256:
+`d9c512015d180c67fee6dc8848952992914abed07f373ebdc7845a3398b1b3b4`.
+
+The current continuation authority is
+`2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`.
+Stages A-D must not be repeated merely to bypass the false Stage-E gate.
 
 ## Current restart order
 
@@ -92,11 +137,12 @@ Read in this order:
 
 1. `PLAN_STATUS_MATRIX.md`;
 2. this checkpoint;
-3. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
-4. `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
-5. `adrs/ADR-R4-010-versioned-external-call-representation-correction.md` for the original accepted semantic decision;
-6. `runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` for the accepted pre-pilot V3 baseline;
-7. `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md` for the separate negative-evidence track.
+3. `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
+4. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
+5. `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
+6. `adrs/ADR-R4-010-versioned-external-call-representation-correction.md` for the original accepted semantic decision;
+7. `runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` for the accepted pre-pilot V3 baseline;
+8. `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md` for the separate negative-evidence track.
 
 The August 21 V10 implementation handoffs, the parse-only working plan, and the August 23 structural-drift handoff are historical execution records. They must not be used as the current restart boundary when they describe intermediate blockers already closed.
 

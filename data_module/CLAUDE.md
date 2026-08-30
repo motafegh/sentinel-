@@ -37,13 +37,15 @@ R4-D-010 now separates physical reproducibility from future-training
 eligibility.  The accepted repaired-v2/v9 bytes remain immutable evidence, but
 the v9 call edge is semantically inadequate for a new full run.  The only
 current future-training representation candidate is graph schema `v10`,
-extractor `v2.3-r4-call-semantics`, under
-`representations-r4-v3-candidate`. Repository implementation, bounded
-source-reviewed regressions, full 22,540-identity generation/binding, and the
-transition mechanics pass with digest `6087dc6d...b0260`. Population probing
-required an explicit `CONTRACT_CREATION` kind, bringing v10 to 17 exact edge
-kinds. Physical acceptance is rejected for now because 26 parse-only contracts
-lack complete call IR. None of this authorizes training.
+extractor `v2.5-r4-call-semantics-deterministic-cfg`, under a protected-local
+`representations-r4-v3-candidate` root. The 26-contract parse-only repair and
+the original bounded 20-identity V2.5 structural tranche are complete.
+Protected-local Stages A-D now pass for all 22,540 identities with exact
+accepted-v9 token bytes and the required 22,539 Slither-0.10 + one
+Slither-0.11.5 runtime split. The complete Stage-E transition audit is blocked:
+311 raw non-parse-only structural drifts were found, 13 are covered by the
+audit's existing exact classes, and 298 require new full-population evidence.
+None of this authorizes physical acceptance or training.
 
 ## Mandatory semantics
 
@@ -60,17 +62,15 @@ lack complete call IR. None of this authorizes training.
 
 ## Current execution seam
 
-Do **not** rerun or edit repaired-v2/v9.  Use the v10 protected-local driver:
-
-```bash
-PYTHONPATH=.:data_module ./ml/.venv/bin/python \
-  docs/plan/ml-R4/scripts/p8_generate_v10_candidate.py --help
-```
-
-Required local sequence is bounded source-reviewed regressions → fresh full v10
-root → exact v9 population/token binding → v9-to-v10 transition audit → model
-consumer validation → explicit physical acceptance decision.  The candidate
-binder is diagnostic-only and always records `training_authorized=false`.
+Do **not** rerun or edit repaired-v2/v9, overwrite the protected full candidate,
+or repeat Stages A-D. Follow
+`docs/plan/ml-R4/runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`:
+build duplicate-safe semantic node matching, repeat the exact-runtime evidence
+generation across the full 311-identity drift population, prove every WRITE
+correction or index-equivalence case, and isolate genuine semantic-structure
+drift. A new versioned audit may be considered only after that evidence is
+complete. The candidate binder remains diagnostic-only and records
+`training_authorized=false`.
 
 ## Research/evaluation boundary
 
@@ -92,12 +92,13 @@ reports. Repository CI cannot substitute for local physical hash verification.
 
 Full Phase-8 training remains prohibited. Current blockers are:
 
-- v10 physical acceptance rejected for now pending explicit resolution of 26 parse-only contracts;
+- v10 physical acceptance rejected because 298 full-population structural drifts are outside the old bounded evidence classes;
 - zero confirmed-negative evaluation evidence;
 - target-aware selector not promoted;
 - threshold/calibration/untouched acceptance unavailable.
 
 **Current DATA status:** repaired-v2/v9 physical evidence is accepted and
 immutable; logical V3 is accepted; v9 is ineligible for the new full run;
-versioned v10 full diagnostic evidence passes, while physical acceptance is
-blocked by 26 parse-only contracts; G8 is open and training is unauthorized.
+versioned V2.5 Stages A-D pass locally for all 22,540 identities, while Stage E
+correctly blocks physical acceptance on unresolved full-population structural
+evidence; G8 is open and training is unauthorized.

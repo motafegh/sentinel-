@@ -18,7 +18,7 @@ A later protected-local audit found five post-acceptance research/reporting defe
 
 There are still **zero confirmed-negative examples**. R4-GAP-007 is **pilot in progress** using the hardened 200-cell / 200-group queue. Candidate #1 (`CallToUnknown`) is `NOT_CONFIRMED`. Candidate #2's source-first primary review supports `CONFIRMED_NEGATIVE`, but it remains `UNKNOWN` / `PENDING_REVIEW` with target `None` until a genuinely independent reviewer agrees.
 
-Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. V10 now passes complete 22,540-identity generation/binding and transition mechanics, but physical acceptance is rejected for now because 26 parse-only contracts lack complete call IR. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch run remain unauthorized.
+Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. The 26-contract parse-only repair and bounded 20-identity V2.5 investigation are complete. Protected-local V2.5 Stages A-D pass for all 22,540 identities, but Stage E blocks physical acceptance because 298 full-population structural drifts are outside the old bounded evidence classes. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch run remain unauthorized.
 
 ## Just-enough mental model
 
@@ -52,11 +52,14 @@ R4-GAP-007 negative pilot
   IN PROGRESS / candidate #1 NOT_CONFIRMED
   candidate #2 primary supports negative / independent review pending
         ↓
-R4-GAP-008 full-population representation audit
-  COMPLETE / v9 semantically inadequate for new training
+R4-GAP-008 v10 representation remediation
+  POLICY + BOUNDED PROOF COMPLETE
         ↓
-versioned v10 implementation + protected-local acceptance
-  REQUIRED / OPEN
+versioned V2.5 protected-local candidate
+  STAGES A-D PASS / 22,540 IDENTITIES
+        ↓
+full-population structural-evidence gate
+  BLOCKED / 298 UNAPPROVED DRIFTS
         ↓
 separate selector-promotion decision / objective design
         ↓
@@ -80,7 +83,7 @@ valid physical DATA
 | Phase | State | Current meaning |
 |---:|---|---|
 | 0–7 | PASSED | historical G0–G7 remain immutable/reproducible |
-| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 remain accepted evidence; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary supports a negative pending independent review; v10 full diagnostics pass but physical acceptance is rejected for now on 26 parse-only contracts; full training unauthorized |
+| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 remain accepted evidence; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary supports a negative pending independent review; V2.5 Stages A-D pass locally, while Stage E blocks physical acceptance on 298 unapproved full-population structural drifts; full training unauthorized |
 | 9–10 | WAITING | evaluation/calibration/promotion remain gated by G8 and missing evidence |
 
 ### Historical G7 validation anchors
@@ -268,7 +271,17 @@ Candidate #2's bound v9 graph contains 30 type-11 edges and all 30 are provable 
 
 The library classifier is conservative and can undercount imported, aliased, or `using for` libraries. Transfer/send name matching can include token-interface methods. These counts are therefore representation diagnostics and proven lower bounds, not vulnerability labels or a complete false-positive rate.
 
-R4-D-010 requires graph schema v10 / extractor `v2.3-r4-call-semantics` / root `representations-r4-v3-candidate`, with distinct typed-high-level, raw-low-level, `Transfer`, `Send`, `LibraryCall`, and contract-creation kinds. Repository implementation and bounded protected-local regression now pass. Candidate #1 emits its one typed callback plus one transfer; candidate #2 emits 30 library calls plus one transfer; both reuse accepted token bytes exactly and have zero unknown IR or call-map loss. A population probe also exposed and then verified explicit `NewContract` handling. Full generation, v9→v10 reconciliation, physical binding, and explicit acceptance still require the ignored local corpus.
+R4-D-010 requires graph schema v10 with distinct typed-high-level,
+raw-low-level, `Transfer`, `Send`, `LibraryCall`, and contract-creation kinds.
+The current candidate extractor is
+`v2.5-r4-call-semantics-deterministic-cfg`. The 26 parse-only identities are
+repaired and the original 20-identity structural tranche is closed. The full
+protected-local candidate now passes generation, heterogeneous staging,
+exception fill, binding, exact token-byte identity, and runtime reconciliation
+for all 22,540 identities. The full transition audit nevertheless rejects
+acceptance: 311 raw non-parse-only drifts exist, and 298 lack approved
+population-wide semantic evidence. The current task is duplicate-safe repeated
+evidence, not regeneration or acceptance.
 
 ## Interfaces, data shapes, and configuration
 
@@ -281,9 +294,9 @@ R4-D-010 requires graph schema v10 / extractor `v2.3-r4-call-semantics` / root `
 | physical DATA root | R4-D-008 / repaired-v2; immutable reproduction evidence, not new-full-training eligible |
 | logical grouping/role authority | R4-D-009 / accepted V3 |
 | durable research evidence | coherent snapshot `44fbb9c1d...` under `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` |
-| current execution restart | v10 implementation/bounded regression record + R4-GAP-008 audit/ADR; candidate #2 review is a separate pending-independent track |
+| current execution restart | `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`; candidate #2 review is a separate pending-independent track |
 | confirmed-negative review | R4-GAP-007 / candidate #1 `NOT_CONFIRMED` / candidate #2 primary-support only, independent pending |
-| future representation | v10 / extractor `v2.3-r4-call-semantics` / `representations-r4-v3-candidate`; implemented and bounded-regression passed, not physically accepted |
+| future representation | v10 / extractor `v2.5-r4-call-semantics-deterministic-cfg` / protected-local `representations-r4-v3-candidate`; Stages A-D pass, Stage E blocked, not physically accepted |
 | selector | historical control remains bound; guarded candidate unpromoted |
 | training authorization | HOLD / none |
 
@@ -298,7 +311,11 @@ R4-D-010 requires graph schema v10 / extractor `v2.3-r4-call-semantics` / root `
 - model outputs: 10;
 - architecture: `four_eye_v8` / `v8.1`.
 
-These describe accepted v9 artifacts. V10 has 17 exact edge kinds and a passing 22,540-identity diagnostic generation/binding/transition audit, but it is not an accepted physical population. The 26 known `slither_parse_only` compatibility graphs cannot establish complete call-IR semantics; V10 reports them `NOT_EXTRACTABLE`, and they require explicit resolution before physical acceptance.
+These describe accepted v9 artifacts. V10 has 17 exact edge kinds. Its V2.5
+candidate passes generation/binding mechanics for 22,540 identities and has no
+remaining parse-only blocker, but it is not an accepted physical population:
+Stage E found 298 full-population structural drifts outside the old bounded
+evidence classes.
 
 ### Unsupported evaluation roles
 
@@ -350,11 +367,11 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 For the current Phase-8 boundary:
 
 1. synchronize local `main`;
-2. read `PLAN_STATUS_MATRIX.md`, the R4-GAP-008 audit, ADR-R4-010, candidate #2 primary review, and the 2026-08-16 hardened snapshot closeout;
-3. preserve v9/repaired-v2 physical roots, accepted V3 publication/grouping, and the committed coherent evidence snapshot;
-4. preserve and validate v10 as a separate versioned source/test lineage; never patch v9 behavior or files in place;
+2. read `PLAN_STATUS_MATRIX.md`, the current restart checkpoint, the 2026-08-30 full-population evidence plan, ADR-R4-010, candidate #2 primary review, and the hardened snapshot closeout;
+3. preserve v9/repaired-v2 physical roots, accepted V3 publication/grouping, the committed coherent snapshot, and the passed protected-local V2.5 Stage A-D candidate;
+4. build duplicate-safe repeated semantic evidence for all 311 raw drift identities; never patch v9 or mutate the protected candidate;
 5. have a genuinely independent reviewer evaluate candidate #2 from the blind bundle; keep target `None` unless dual review agrees;
-6. run full v10 generation, v9→v10 comparison, binding, and model-consumer acceptance only where the protected local corpus exists;
+6. run a new versioned full transition audit only after the evidence validator accounts for every drift with zero duplicate ambiguity and zero unexplained change;
 7. keep any accepted negative evaluation-only unless later policy explicitly grants optimizer authority;
 8. separately execute control-selector → bound-token equivalence before any guarded-selector promotion ADR;
 9. revisit objective/evaluation/training authorization, including PU learning, only after new evidence supports it.

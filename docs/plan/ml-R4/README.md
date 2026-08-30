@@ -2,7 +2,7 @@
 
 This directory governs the R4 repair of SENTINEL's DATA/ML training and evaluation foundation.
 
-## Current restart — 2026-08-27
+## Current restart — 2026-08-30
 
 Do **not** restart R4 from Phase 0 or from the August 15/21/23 intermediate Phase-8 handoffs. Historical G0–G7 are complete and retained as reproducibility evidence. Phase 8 remains `IN_PROGRESS`; G8 is not passed and the 100-epoch run is **NOT AUTHORIZED**.
 
@@ -15,8 +15,8 @@ Current boundary:
 - the later V2.5 bounded structural-drift investigation is complete **20/20**, with 8 exact node-index-invariant graph-equivalence identities and 12 deterministic persistent-storage `CFG_NODE_WRITE` corrections, zero unexplained drift, and no blockers;
 - the V2.5 evidence-chain/full-gate and heterogeneous-runtime staging preflights pass;
 - exact final runtime partition is 22,539 ordinary identities under Slither 0.10.0 plus one declared identity-bound exception under Slither 0.11.5;
-- the Stage-A driver/staging tests pass 9/9 and population partition is 22,540 = 22,539 + 1;
-- **Stage A primary generation has not yet been executed**;
+- protected-local Stages A-D pass for all 22,540 identities with exact accepted-V9 token bytes and the required 22,539 + 1 runtime split;
+- Stage E passes base mechanics but blocks physical acceptance: 311 raw non-parse-only structural drifts were found and 298 are outside the old bounded evidence classes;
 - physical V10 acceptance remains false;
 - confirmed-negative support remains zero; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review still requires genuinely independent agreement;
 - threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty;
@@ -28,13 +28,14 @@ For current work, read in this order:
 1. applicable repository/module `CLAUDE.md` files;
 2. `PLAN_STATUS_MATRIX.md`;
 3. `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
-4. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
-5. `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
-6. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
-7. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
-8. exact source/tests for the V10 physical-candidate stage being executed.
+4. `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
+5. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
+6. `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
+7. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
+8. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
+9. exact source/tests for the V10 full-population evidence stage being executed.
 
-The next permitted R4-B008 action is **Stage A**: run `scripts/p8_generate_v10_v25_primary_attempt.py` under exact Slither 0.10.0 in a fresh non-canonical attempt root. It must produce exactly 22,539 ordinary V2.5 identities and defer the one declared runtime exception without invoking extraction for it. Do not claim those artifacts exist before the Stage-A report passes.
+The next permitted R4-B008 action is the bounded full-population structural-evidence tranche in `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`. Preserve the passed Stage A-D roots and reports; do not treat the false Stage-E gate as physical acceptance or training authority.
 
 The negative-evidence, selector-promotion, objective/evaluation, calibration, and training-authorization tracks remain separate later gates. Do not combine them with V10 physical-candidate construction.
 

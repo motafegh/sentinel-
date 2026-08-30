@@ -11,7 +11,7 @@ No new contract review is permitted without an approved gap entry.
 | R4-GAP-005 | All classes | Echidna/fuzzing precision estimates | no retained fuzzing evidence | complementary, not required for current DATA source roles | targeted future fuzzing only | Complementary fuzz evidence | PROPOSED | Non-blocking |
 | R4-GAP-006 | All classes | Exploit-reproduction PoC tests | no retained PoC corpus | useful for outcome validation but not smallest current evidence | targeted future PoCs only | Outcome validation/case study | PROPOSED | Non-blocking |
 | R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **committed hardened V3 queue**: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-08-21 — candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary review supports a negative but awaits genuinely independent verification from the blind bundle; it remains UNKNOWN/target `None`. Confirmed negatives remain zero. |
-| R4-GAP-008 | repaired-v2 graph schema v9 / external-call semantics / CallToUnknown, ExternalBug, Reentrancy consumers | Population impact and remediation decision for v9 call-kind distortion | Candidate #2 source/graph review; full-population v9 edge-origin audit; V10 call-kind implementation; parse-only compatibility repair; repeated structural-drift analysis; exact persistent-storage WRITE evidence; V2.5 bounded reproducibility | The original candidate-level contradiction required population evidence and a versioned remediation. Those questions are now answered; remaining work is physical-candidate construction/acceptance under R4-B008, not a new evidence-gap review. | No further R4-GAP-008 contract review is currently authorized or needed. Preserve the closed 20-identity structural result and execute the staged full V2.5 physical-candidate gate. | Representation semantic-integrity decision; no label, selector, or training authority | RESOLVED | 2026-08-27 — R4-D-010 governs. The 26-contract parse-only repair is complete; V2.5 closes all 20 later unexpected structural-drift identities as 8 exact node-index-equivalence + 12 deterministic persistent-storage WRITE corrections with zero unexplained drift. Full-gate/evidence-chain/staging preflights pass. R4-B008 remains open only for fresh V2.5 full-candidate build, complete V3 audit, review, and explicit physical-acceptance decision. |
+| R4-GAP-008 | repaired-v2 graph schema v9 / external-call semantics / CallToUnknown, ExternalBug, Reentrancy consumers | Population impact and remediation decision for v9 call-kind distortion | Candidate #2 source/graph review; full-population v9 edge-origin audit; V10 call-kind implementation; parse-only compatibility repair; bounded structural-drift analysis; full-candidate Stage-E audit | The original policy/root-cause questions remain resolved under R4-D-010, but the complete V2.5 candidate supplies concrete new regression evidence: 311 raw non-parse-only drifts and 298 outside the old bounded classes. Duplicate-safe repeated semantic evidence is missing for the full population. | Preserve Stages A-D and execute `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`; produce a versioned evidence schema and new audit with zero unexplained drift. | Representation semantic-integrity evidence only; no label, selector, physical-acceptance, or training authority | IN_PROGRESS | 2026-08-30 — Narrowly reopened from concrete Stage-E evidence. A-D pass for 22,540 identities; E blocks. Old 20-identity evidence remains valid but cannot be expanded as a waiver. |
 
 ## R4-GAP-002 closure evidence
 
@@ -102,7 +102,7 @@ The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilo
 
 R4-GAP-008 began with the v9 representation-semantic contradiction exposed by candidate #2. The full-population audit and R4-D-010 resolved the policy question: accepted v9 remains immutable reproduction evidence but is ineligible for the new full training lineage, which must use a separately versioned V10 representation.
 
-Subsequent execution has now closed both later technical sub-blockers:
+Subsequent execution closed both bounded technical sub-blockers:
 
 1. **Parse-only remediation complete.** The protected V2.4 diagnostic candidate contains all 22,540 identities, exact accepted-V9 token bytes, zero parse-only outputs, zero unclassified call IR, and the exact required runtime split of 22,539 primary Slither-0.10 artifacts plus one identity-bound Slither-0.11.5 exception.
 2. **Unexpected structural drift complete.** Under extractor `v2.5-r4-call-semantics-deterministic-cfg`, three fresh bounded generations of the exact 20 identities from transition audit v2 resolved all 20 with zero unexplained drift: 8 exact node-index-invariant labelled graph-equivalence identities and 12 persistent-storage WRITE corrections backed by exact semantic evidence.
@@ -113,24 +113,42 @@ The final bounded evidence is recorded at:
 - `reviews/R4-GAP-008/v10_v25_reproducibility_probe_v2.json` (protected-local/generated evidence when present);
 - `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`.
 
-The current remaining R4-B008 work is **not more gap review**. It is physical-candidate construction and acceptance evidence:
+The full-candidate execution then supplied concrete evidence that reopens this
+gap only for population-wide structural proof. Stages A-D pass for all 22,540
+identities. Stage E passes base mechanics but finds 311 raw non-parse-only
+drifts; 298 are outside the old bounded evidence classes. A diagnostic probe
+classifies 298 feature/metadata drifts, 12 node-order cases, and one semantic
+structure drift, while duplicate semantic identities prevent unique node
+matching in 128 contracts.
 
-1. Stage A: generate exactly 22,539 ordinary V2.5 identities under Slither 0.10.0 while deferring the declared runtime exception without invoking it;
-2. Stage B: fail-closed stage those 22,539 triples into a fresh final-lineage root;
-3. Stage C: fill exactly the declared exception under Slither 0.11.5;
-4. Stage D: bind the complete 22,540 V2.5 candidate and exact runtime/token/schema/extractor invariants;
-5. Stage E: run the complete V3 transition audit, re-proving the exact 8+12 structural evidence classes and rejecting any new unexplained non-parse-only drift;
-6. explicitly review the complete report before any separate physical-acceptance decision record.
+The current remaining R4-B008 work is:
+
+1. preserve the complete candidate and all Stage A-E reports;
+2. implement duplicate-safe semantic node matching without identity allowlists
+   or corpus-hash special cases;
+3. generate repeated exact-runtime evidence for all 311 raw drift identities;
+4. prove every correction/equivalence or retain it as unresolved;
+5. validate a new versioned evidence schema and run a new V4 transition audit;
+6. consider a separate physical-acceptance decision only after zero unexplained
+   drift.
 
 Current construction protocol:
 
 `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`
 
+Current structural-evidence protocol:
+
+`runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`
+
 Governing decision:
 
 `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`
 
-Do not mutate accepted v9/repaired-v2 artifacts, the frozen V2.3 structural reference, or the protected V2.4 diagnostic candidate. Do not reopen the completed 26-contract repair or 20-contract structural investigation without concrete regression evidence. Do not authorize G8/full training from bounded V2.5 evidence alone.
+Do not mutate accepted v9/repaired-v2 artifacts, the frozen V2.3 structural
+reference, the protected V2.4 diagnostic candidate, or the passed Stage A-D
+root. The completed 26-contract repair and exact 20-identity proof remain
+closed; the new tranche addresses the additional full-population identities.
+Do not authorize physical acceptance or G8/full training from bounded evidence.
 
 ## Approval delegation note
 
