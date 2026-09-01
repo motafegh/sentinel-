@@ -21,7 +21,8 @@ The decision itself explicitly requires versioning and says a failed V10 candida
 
 - `v2.3-r4-call-semantics` — frozen structural-reference diagnostic lineage;
 - `v2.4-r4-call-semantics-compat` — versioned compatibility repair that closes the 26-contract parse-only tail and preserves the required 22,539 primary + 1 identity-bound runtime split;
-- `v2.5-r4-call-semantics-deterministic-cfg` — current future-candidate extractor, adding only the evidence-backed deterministic persistent-storage CFG WRITE correction while keeping graph schema V10 and the R4-D-010 call-kind vocabulary unchanged.
+- `v2.5-r4-call-semantics-deterministic-cfg` — historical future-candidate extractor, adding only the evidence-backed deterministic persistent-storage CFG WRITE correction while keeping graph schema V10 and the R4-D-010 call-kind vocabulary unchanged.
+- `v2.6-r4-call-semantics-deterministic-cfg-mutators` — current future-candidate extractor, additionally recognizing only persistent-storage collection `push`/`pop` mutations while preserving call-node priority and the V10 call-kind vocabulary.
 
 The V2.5 bounded structural tranche is closed 20/20 as 8 exact node-index-invariant graph-equivalence identities plus 12 deterministic persistent-storage WRITE corrections, with zero unexplained drift. This is implementation/acceptance evidence under R4-D-010, **not a new policy decision and not physical acceptance**.
 
@@ -31,7 +32,7 @@ Current implementation/restart authority:
 - `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
 - `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`.
 
-A separate physical-acceptance decision record is still required after the fresh staged V2.5 full candidate, complete binding, complete V3 transition audit, and explicit review pass. Stage A has not yet executed.
+A separate physical-acceptance decision record is still required after explicit review of the passed, bound V2.6 V4 transition report. Stages A-D and the V4 diagnostic audit have executed; they do not themselves grant physical acceptance or training authority.
 
 ## Decisions requiring ADR
 

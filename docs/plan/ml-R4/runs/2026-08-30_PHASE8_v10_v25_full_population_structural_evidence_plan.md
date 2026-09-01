@@ -1,10 +1,47 @@
 # Phase-8 V10 V2.5 full-population structural-evidence plan
 
 Date: 2026-08-30
-Status: IN PROGRESS; FULL PHYSICAL GATE BLOCKED
+Status: V2.6 EVIDENCE AND V4 AUDIT PASS; PHYSICAL DECISION REMAINS
 Scope: R4-B008 full-population structural evidence only; no extractor mutation, physical acceptance, selector promotion, or training authority
 
-## Verified starting point
+## 2026-09-01 V2.6 continuation
+
+The reviewed next version recognizes only Solidity collection `push` and `pop`
+calls whose receiver resolves to persistent storage. It preserves call-node
+priority and does not promote memory collections or arbitrary member calls.
+The extractor version is
+`v2.6-r4-call-semantics-deterministic-cfg-mutators`.
+
+Fresh Stages A-D pass:
+
+- 22,539/22,539 primary Slither-0.10 artifacts with zero unexpected failures;
+- the single declared runtime exception filled under Slither 0.11.5;
+- 22,540/22,540 accepted-V9 population equality and token-byte identity;
+- binding digest
+  `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`.
+
+The initial V4 audit correctly found that the V2.6 population was not the old
+311-case V2.5 population. The exact set changed by +52/-8 to 355 identities, so
+the old proof was not reused as a waiver. Three fresh 355-case generations and
+three semantic-evidence passes produced a stable current proof:
+
+- 349 persistent-storage WRITE corrections;
+- 3,517/3,517 target groups proven, covering 6,247 occurrences;
+- 2,532 duplicate target groups handled with explicit multiplicity;
+- 6 exact node-index-invariant equivalence identities;
+- zero blockers and zero unexplained drift.
+
+The final V4 audit passes all 22,540 transition mechanics and re-proves the
+355-case evidence against the actual full candidate. Its report is
+`data_module/data/v10-v26-full-candidate-attempt-2026-09-01-a/v10-transition-audit-v4.json`,
+SHA-256
+`c6ddc61b8005a688d422f4f8de28118fa3e644b9648d070ef53972ec9f2191ce`.
+
+This completes the structural evidence tranche. It does not itself grant
+physical acceptance or training authority. The next gate is explicit review of
+the complete V4 report followed by a separate physical-acceptance decision.
+
+## Historical V2.5 starting point
 
 The protected-local V2.5 candidate is fully constructed and mechanically
 bound. Stages A-D pass for 22,540 identities, with exact accepted-V9 token
@@ -89,6 +126,42 @@ and reports all of the following:
 Passing this evidence tranche permits consideration of a separate physical
 acceptance decision; it does not itself accept the candidate or authorize
 training.
+
+## 2026-08-30 execution result
+
+The versioned collector, three exact-runtime repeat generations, and strict
+full-population validator are complete. All three 311-identity generations
+passed artifact/runtime/token validation. The three semantic-evidence reports
+are byte-identical.
+
+The duplicate-safe analysis found 3,374 changed WRITE semantic groups across
+299 contracts, representing 6,020 graph occurrences. Of those groups, 2,479
+have multiplicity greater than one. Expression-level persistent-storage roots
+prove 3,373/3,374 groups. Exact graph comparison after canonicalizing only those
+proven groups resolves 310/311 contracts:
+
+- 298 duplicate-safe storage-WRITE corrections;
+- 12 exact node-index-invariant equivalences;
+- one unresolved contract,
+  `dive/f7b02c8346e4bc62fa8797e644b42cd80edb08fb6c86d14b4219fc34c6c54ae2`.
+
+The formerly apparent semantic-structure case
+`dive/bfa512a7a831999fa8140cd667e84524d3e01b09fb3cb258955f09b680863d62`
+is resolved. Its ten duplicate semantic groups account for 20 WRITE graph
+occurrences, and the optimized exact isomorphism check proves equivalence with
+zero permutation-search states.
+
+The remaining `f7...` statement is
+`player.withdrawals.push(PlayerWitdraw(...))`. Slither 0.10 exposes no
+`variables_written_as_expression` lvalue for this method-call mutation. Its
+classification is also unstable: one fresh repeat emits WRITE while two emit
+ARITH. Therefore it cannot be admitted by the current V2.5 evidence contract.
+
+No V4 transition audit was produced because the plan's zero-unexplained-drift
+precondition is false. Physical acceptance and training authorization remain
+false. The next action requires a separate reviewed, versioned extractor/evidence
+decision for storage-mutating member calls; it is outside this evidence-only
+tranche.
 
 ## Stop lines
 

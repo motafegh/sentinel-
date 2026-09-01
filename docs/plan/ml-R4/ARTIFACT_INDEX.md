@@ -142,7 +142,7 @@
 | R4-P7-ADR-001 | 7 | ADR | docs/plan/ml-R4/adrs/ADR-R4-007-data-vnext-implementation-and-g7-publication.md | b3e61db0c0e7eb0f132dd35845a3f8f63fb022130877fa5399f21006a8af08aa | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Accepted G7 publication/training-input authority |
 | R4-P7-FND-001 | 7 | findings | docs/plan/ml-R4/findings/09_phase7_data_vnext_implementation_and_g7.md | 5e8ea6a0f71284de0d0e3e61d1c270b2c1a05deabfe5cb0241433479aace9e32 | 81d9c547d361 | New | AVAILABLE_VERIFIED | NO | Phase-7 implementation and G7 result |
 
-## Phase 8 artifacts — repaired-v2 acceptance, V10 remediation, and current V2.5 physical gate
+## Phase 8 artifacts — repaired-v2 acceptance, V10 remediation, and current V2.6 physical gate
 
 | Artifact ID | Phase | Type | Path/URI | SHA-256 / binding identity | Source commit | Historical/New | Availability | Protected | Notes |
 |---|---|---|---|---|---|---|---|---|---|
@@ -159,11 +159,16 @@
 | R4-P8-REV-001 | 8 | bounded_structural_closure | reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md | — | 150d2ad1fa79 | New | AVAILABLE_VERIFIED | NO | Durable closure: V2.5 bounded 20/20 resolved as 8 index-equivalence + 12 storage-WRITE corrections; zero unexplained drift |
 | R4-P8-RUN-004 | 8 | current_restart_checkpoint | runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md | — | a9890332dbca+ | New | AVAILABLE_VERIFIED | NO | Canonical checkpoint updated with passed protected-local Stages A-D and Stage-E full-population blocker; physical acceptance/training false |
 | R4-P8-RUN-005 | 8 | full_candidate_staging_protocol | runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md | — | a9890332dbca+ | New | AVAILABLE_VERIFIED | NO | Heterogeneous 22,539 Slither-0.10 + 1 Slither-0.11.5 staged V2.5 protocol executed through Stage E; full gate blocked |
-| R4-P8-RUN-006 | 8 | full_population_structural_evidence_plan | runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md | — | a9890332dbca+ | New | AVAILABLE_VERIFIED | NO | Current bounded continuation for 298 unapproved full-population drifts and duplicate-safe semantic node evidence |
+| R4-P8-RUN-006 | 8 | full_population_structural_evidence_plan | runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | V2.6 continuation: 355/355 drift identities reconciled as 349 WRITE + 6 index-equivalent; V4 passes pending physical decision |
+| R4-P8-RUN-007 | 8 | full_population_structural_analysis | runs/2026-08-30_PHASE8_v10_v25_full_population_structural_analysis.md | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | Preserves historical V2.5 blocker and records the complete bound V2.6 candidate/evidence/audit result |
 | R4-P8-SCR-001 | 8 | full_transition_audit_v3 | scripts/p8_audit_v10_transition_v3.py | — | ff9f4bea4069+ | New | AVAILABLE_VERIFIED | NO | Reuses V2 mechanics and fail-closed re-proves exact bounded 8+12 evidence classes against actual full candidate |
 | R4-P8-SCR-002 | 8 | evidence_chain_preflight | scripts/p8_validate_v10_v25_evidence_chain.py | — | cafc3c475dce+ | New | AVAILABLE_VERIFIED | NO | SHA-binds original transition audit, bounded V2.5 report, and merged semantic evidence; protected-local preflight passed |
 | R4-P8-SCR-003 | 8 | primary_attempt_driver | scripts/p8_generate_v10_v25_primary_attempt.py | — | 1aa94b7c0351+ | New | AVAILABLE_VERIFIED | NO | Stage A driver; exact 22,539 ordinary primary partition; declared runtime exception never invoked in primary process |
 | R4-P8-SCR-004 | 8 | primary_stage_validator | scripts/p8_stage_v10_v25_primary_attempt.py | — | 97617eb23937+ | New | AVAILABLE_VERIFIED | NO | Stage B fail-closed validator/transfer; refuses any failure/population/runtime/token mismatch beyond declared exception set |
+| R4-P8-SCR-005 | 8 | full_transition_audit_v4 | scripts/p8_audit_v10_transition_v4.py | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | Reuses complete V2 mechanics and independently re-proves the exact 355-case V2.6 evidence against the bound full candidate |
+| R4-P8-SCR-006 | 8 | full_population_write_evidence | scripts/p8_collect_v10_v25_full_population_write_evidence.py | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | Duplicate-safe persistent-storage evidence for all WRITE drift groups; exact multiplicity retained |
+| R4-P8-SCR-007 | 8 | structural_repeat_generator | scripts/p8_generate_v10_v25_structural_repeat.py | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | Exact audit-derived primary-runtime repeat generator used for three fresh 355-identity runs |
+| R4-P8-SCR-008 | 8 | full_population_probe | scripts/p8_probe_v10_v25_full_population.py | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | All-pairs exact labelled graph proof over reference, candidate, and three repeats after evidence-bounded canonicalization |
 
 ### Current Phase-8 V10 protected-local evidence note
 
@@ -195,6 +200,19 @@ a committed artifact publication:
 Stages A-D pass, but Stage E is false with 298 unapproved structural-drift
 identities. Do not mark these protected-local JSON files `AVAILABLE_VERIFIED`
 unless they are deliberately published in a later versioned evidence snapshot.
+
+That V2.5 candidate is historical. The current protected-local V2.6 lineage is:
+
+- Stage-A report SHA-256: `46f63d24ed614a6dfd427c3c6c19512578e9c5092e05300a3fb1445002e753cf`;
+- Stage-B report SHA-256: `85286706b189fa09d06e4113aeeb4168bb283a9bd0ce6bdd8e64b862ae4cb41f`;
+- Stage-C report SHA-256: `3df8583b0929086b5ef9a7d4135499fa47f2989e1115f7a8d3e0dab2ef1f15bc`;
+- Stage-D binding report SHA-256: `93a4d15e0793d7b144fc5cc98dbd29627f0d7372cb56e2431a79f8d02c761311`;
+- Stage-D binding digest: `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
+- 355-case full-population probe SHA-256: `9a1cf96465613b61fae2d10ccaa81def0548663a4c4711ca745841f6354e7a55`;
+- final V4 audit SHA-256: `c6ddc61b8005a688d422f4f8de28118fa3e644b9648d070ef53972ec9f2191ce`.
+
+The V2.6 V4 audit passes with zero unexplained drift. Physical acceptance and
+training authorization remain false pending their separate decisions.
 
 ## Availability
 

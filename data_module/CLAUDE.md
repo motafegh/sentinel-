@@ -37,15 +37,17 @@ R4-D-010 now separates physical reproducibility from future-training
 eligibility.  The accepted repaired-v2/v9 bytes remain immutable evidence, but
 the v9 call edge is semantically inadequate for a new full run.  The only
 current future-training representation candidate is graph schema `v10`,
-extractor `v2.5-r4-call-semantics-deterministic-cfg`, under a protected-local
+extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators`, under a protected-local
 `representations-r4-v3-candidate` root. The 26-contract parse-only repair and
 the original bounded 20-identity V2.5 structural tranche are complete.
-Protected-local Stages A-D now pass for all 22,540 identities with exact
-accepted-v9 token bytes and the required 22,539 Slither-0.10 + one
-Slither-0.11.5 runtime split. The complete Stage-E transition audit is blocked:
-311 raw non-parse-only structural drifts were found, 13 are covered by the
-audit's existing exact classes, and 298 require new full-population evidence.
-None of this authorizes physical acceptance or training.
+Fresh protected-local V2.6 Stages A-D pass for all 22,540 identities with exact
+accepted-v9 token bytes, binding digest
+`d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`, and
+the required 22,539 Slither-0.10 + one Slither-0.11.5 runtime split. Three fresh
+355-identity generations and three semantic-evidence passes prove 349
+persistent-storage WRITE corrections plus 6 exact index-equivalent graphs.
+The complete V4 audit passes with zero unexplained drift. None of this alone
+authorizes physical acceptance or training.
 
 ## Mandatory semantics
 
@@ -63,13 +65,10 @@ None of this authorizes physical acceptance or training.
 ## Current execution seam
 
 Do **not** rerun or edit repaired-v2/v9, overwrite the protected full candidate,
-or repeat Stages A-D. Follow
-`docs/plan/ml-R4/runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`:
-build duplicate-safe semantic node matching, repeat the exact-runtime evidence
-generation across the full 311-identity drift population, prove every WRITE
-correction or index-equivalence case, and isolate genuine semantic-structure
-drift. A new versioned audit may be considered only after that evidence is
-complete. The candidate binder remains diagnostic-only and records
+or repeat V2.6 Stages A-D. The complete V4 report is now the diagnostic
+authority for the 355-identity structural-evidence population. The next step is
+explicit report review followed by a separate physical-acceptance decision.
+The candidate binder and V4 audit remain diagnostic-only and record
 `training_authorized=false`.
 
 ## Research/evaluation boundary
@@ -90,15 +89,15 @@ reports. Repository CI cannot substitute for local physical hash verification.
 
 ## Training boundary
 
-Full Phase-8 training remains prohibited. Current blockers are:
+Full Phase-8 training remains prohibited. Current gates are:
 
-- v10 physical acceptance rejected because 298 full-population structural drifts are outside the old bounded evidence classes;
+- v10 physical acceptance remains pending a separate reviewed decision despite the passing V4 structural audit;
 - zero confirmed-negative evaluation evidence;
 - target-aware selector not promoted;
 - threshold/calibration/untouched acceptance unavailable.
 
 **Current DATA status:** repaired-v2/v9 physical evidence is accepted and
 immutable; logical V3 is accepted; v9 is ineligible for the new full run;
-versioned V2.5 Stages A-D pass locally for all 22,540 identities, while Stage E
-correctly blocks physical acceptance on unresolved full-population structural
-evidence; G8 is open and training is unauthorized.
+versioned V2.6 Stages A-D and V4 structural evidence pass locally for all
+22,540 identities, while physical acceptance remains pending its separate
+reviewed decision; G8 is open and training is unauthorized.

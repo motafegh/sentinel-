@@ -8,14 +8,16 @@ stable representation identity boundary.
 
 This module does not replace Slither's classifier and does not special-case
 corpus hashes. During V10 extraction only it supplements the existing WRITE
-classification with the earlier expression-level lvalue information that
-Slither records before SlithIR reference resolution:
+classification with stable expression-tree information recorded before
+SlithIR reference resolution:
 
 * direct ``StateVariable`` lvalues are persistent writes;
 * member/index writes rooted at a ``StateVariable`` are persistent writes;
 * member/index writes rooted at a ``LocalVariable`` whose ``is_storage`` is
   true are persistent writes;
 * declaring the storage-reference local itself is not treated as a mutation.
+* Solidity collection ``push``/``pop`` calls whose receiver is rooted at a
+  persistent-storage variable are persistent writes.
 
 Historical v9 extraction remains on the unmodified classifier. The guard is
 process-local, serialized with an ``RLock``, and restored after each V10 call.
@@ -31,7 +33,8 @@ from typing import Any, Iterator
 
 _CFG_GUARD_LOCK = threading.RLock()
 _INSTALL_LOCK = threading.RLock()
-_INSTALL_MARKER = "_sentinel_v10_deterministic_cfg_guard_v1"
+_INSTALL_MARKER = "_sentinel_v10_deterministic_cfg_guard_v2"
+_STORAGE_MUTATING_MEMBER_CALLS = frozenset({"push", "pop"})
 
 
 def _expression_root_variable(expression: Any) -> Any | None:
@@ -119,6 +122,48 @@ def _expression_writes_persistent_storage(slither_node: Any) -> bool:
     return False
 
 
+def _call_mutates_persistent_storage(slither_node: Any) -> bool:
+    """Return True for Solidity collection mutators on persistent storage.
+
+    Slither 0.10 does not populate ``variables_written_as_expression`` for
+    dynamic-array ``push``/``pop`` calls.  The call expression itself is stable:
+    its callee is a ``MemberAccess`` and the callee receiver retains the same
+    StateVariable/storage-LocalVariable root consumed by the existing lvalue
+    rule.  Restricting the name set to Solidity's two mutating collection
+    built-ins avoids treating arbitrary methods as writes.  Calls Slither
+    already classifies as external/library CALL remain protected by the caller's
+    higher-priority check.
+    """
+
+    try:
+        from slither.core.expressions.call_expression import CallExpression
+        from slither.core.expressions.member_access import MemberAccess
+        from slither.core.variables.local_variable import LocalVariable
+        from slither.core.variables.state_variable import StateVariable
+    except ImportError:
+        return False
+
+    expression = getattr(slither_node, "expression", None)
+    if not isinstance(expression, CallExpression):
+        return False
+    called = getattr(expression, "called", None)
+    if not isinstance(called, MemberAccess):
+        return False
+    if str(getattr(called, "member_name", "") or "") not in _STORAGE_MUTATING_MEMBER_CALLS:
+        return False
+
+    receiver = getattr(called, "expression", None)
+    variable = _expression_root_variable(receiver)
+    if isinstance(variable, StateVariable):
+        return True
+    if not isinstance(variable, LocalVariable):
+        return False
+    try:
+        return bool(variable.is_storage)
+    except Exception:
+        return False
+
+
 @contextmanager
 def v10_deterministic_cfg_classification() -> Iterator[None]:
     """Temporarily supplement ``_cfg_node_type`` with stable V10 WRITE evidence."""
@@ -137,7 +182,9 @@ def v10_deterministic_cfg_classification() -> Iterator[None]:
             # every state write Slither already proved remains a WRITE.
             if classified in {call_type, write_type}:
                 return classified
-            if _expression_writes_persistent_storage(slither_node):
+            if _expression_writes_persistent_storage(
+                slither_node
+            ) or _call_mutates_persistent_storage(slither_node):
                 return write_type
             return classified
 
@@ -181,6 +228,7 @@ def install_v10_extraction_guard() -> None:
 
 
 __all__ = [
+    "_call_mutates_persistent_storage",
     "install_v10_extraction_guard",
     "v10_deterministic_cfg_classification",
 ]

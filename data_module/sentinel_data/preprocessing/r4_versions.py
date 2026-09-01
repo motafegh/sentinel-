@@ -18,12 +18,13 @@ REPAIRED_REPRESENTATION_EXTRACTOR_VERSION = "v2.2-r4-repaired"
 
 # R4-D-010 repository candidate. These identifiers do not claim physical
 # generation or acceptance; accepted v9 constants below remain unchanged.
-# v2.5 keeps graph schema v10 and its call vocabulary unchanged while making
-# CFG persistent-storage WRITE classification deterministic across repeated
-# Slither-0.10 analyses.
+# v2.6 keeps graph schema v10 and its call vocabulary unchanged while extending
+# the deterministic CFG storage-WRITE seam to Solidity's storage-mutating
+# collection built-ins (array/bytes ``push`` and ``pop``).  V2.5 artifacts stay
+# immutable; this identifier applies only to fresh candidate generation.
 V10_GRAPH_SCHEMA_VERSION = "v10"
 V10_REPRESENTATION_EXTRACTOR_VERSION = (
-    "v2.5-r4-call-semantics-deterministic-cfg"
+    "v2.6-r4-call-semantics-deterministic-cfg-mutators"
 )
 V10_REPRESENTATION_ROOT_NAME = "representations-r4-v3-candidate"
 V10_PRIMARY_SLITHER_VERSION = "0.10.0"

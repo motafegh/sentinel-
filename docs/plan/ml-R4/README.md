@@ -2,7 +2,7 @@
 
 This directory governs the R4 repair of SENTINEL's DATA/ML training and evaluation foundation.
 
-## Current restart — 2026-08-30
+## Current restart — 2026-09-01
 
 Do **not** restart R4 from Phase 0 or from the August 15/21/23 intermediate Phase-8 handoffs. Historical G0–G7 are complete and retained as reproducibility evidence. Phase 8 remains `IN_PROGRESS`; G8 is not passed and the 100-epoch run is **NOT AUTHORIZED**.
 
@@ -13,10 +13,11 @@ Current boundary:
 - R4-D-010 prohibits the new full run from using graph schema v9 and requires a separately versioned V10 physical representation lineage;
 - the former 26-contract V10 parse-only remediation is complete in the protected V2.4 diagnostic lineage;
 - the later V2.5 bounded structural-drift investigation is complete **20/20**, with 8 exact node-index-invariant graph-equivalence identities and 12 deterministic persistent-storage `CFG_NODE_WRITE` corrections, zero unexplained drift, and no blockers;
-- the V2.5 evidence-chain/full-gate and heterogeneous-runtime staging preflights pass;
+- the V2.6 storage-collection mutator correction is implemented and bounded to persistent-storage `push`/`pop` receivers only;
 - exact final runtime partition is 22,539 ordinary identities under Slither 0.10.0 plus one declared identity-bound exception under Slither 0.11.5;
 - protected-local Stages A-D pass for all 22,540 identities with exact accepted-V9 token bytes and the required 22,539 + 1 runtime split;
-- Stage E passes base mechanics but blocks physical acceptance: 311 raw non-parse-only structural drifts were found and 298 are outside the old bounded evidence classes;
+- the V2.6 full candidate is bound by digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
+- Stage E V4 passes: all 355 current raw non-parse-only drifts are re-proven as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs, with zero unexplained drift;
 - physical V10 acceptance remains false;
 - confirmed-negative support remains zero; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review still requires genuinely independent agreement;
 - threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty;
@@ -74,7 +75,7 @@ A versioned DATA/ML bundle containing:
 - Repository tests do not substitute for protected local physical DATA binding.
 - A physically valid dataset does not by itself prove model discrimination quality.
 - Bounded V2.5 structural success does not equal physical V10 acceptance.
-- Do not launch training from V10 until the staged full candidate, binding, V3 transition audit, explicit review, and separate training governance all pass.
+- Do not launch training from V10 until the staged full candidate, binding, V4 transition audit, explicit review, and separate training governance all pass.
 
 ## Authority order
 

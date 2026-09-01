@@ -9,7 +9,7 @@ Produce a reproducible checkpoint of the existing frozen architecture **only aft
 
 Phase 8 is not permission to train merely because executable training code exists. The current work is still upstream of full training.
 
-## Current authority — 2026-08-27
+## Current authority — 2026-09-01
 
 Historical G0–G7 remain passed and immutable. Later accepted decisions refine the Phase-8 execution boundary:
 
@@ -21,12 +21,12 @@ Current V10 state:
 
 - V2.3 is the frozen structural-reference diagnostic lineage;
 - protected V2.4 completed the former 26-contract parse-only remediation and remains diagnostic history;
-- current future-candidate extractor is `v2.5-r4-call-semantics-deterministic-cfg`;
+- current future-candidate extractor is `v2.6-r4-call-semantics-deterministic-cfg-mutators`;
 - the bounded V2.5 structural investigation is closed 20/20: 8 exact node-index-invariant graph-equivalence identities + 12 deterministic persistent-storage WRITE corrections; zero unexplained drift; no blockers;
 - evidence-chain/full-gate/staging preflights pass;
 - the required full-candidate runtime split is 22,539 ordinary Slither-0.10 identities + one declared Slither-0.11.5 exception;
-- Stage-A driver/staging tests pass 9/9 and the 22,540 = 22,539 + 1 population partition is proven;
-- **Stage A primary generation has not yet executed**;
+- Stages A-D pass for the exact 22,540 = 22,539 + 1 runtime partition, with candidate binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
+- Stage E V4 passes all 22,540 mechanics and reconciles the exact current 355-case drift population as 349 persistent-storage WRITE corrections plus 6 index-equivalent graphs with zero unexplained drift;
 - physical V10 acceptance remains false.
 
 Current supervision/evaluation limitations:
@@ -58,12 +58,12 @@ Follow:
 
 Required sequence:
 
-1. Stage A — generate exactly 22,539 ordinary V2.5 identities under exact Slither 0.10.0, with the declared exception deferred without extraction;
+1. Stage A — generate exactly 22,539 ordinary V2.6 identities under exact Slither 0.10.0, with the declared exception deferred without extraction;
 2. Stage B — fail-closed stage only validated primary triples into a fresh final-lineage root;
 3. Stage C — fill exactly the declared runtime exception under Slither 0.11.5;
 4. Stage D — bind all 22,540 identities, exact token bytes, schema/extractor identity, call semantics, and runtime distribution;
-5. Stage E — run the complete V3 transition audit, re-proving the exact bounded 8+12 structural evidence classes and rejecting any new unexplained non-parse-only drift;
-6. explicitly review the complete V3 report;
+5. Stage E — run the complete V4 transition audit, re-proving the exact current 349+6 structural evidence classes and rejecting any new unexplained non-parse-only drift;
+6. explicitly review the complete V4 report;
 7. only then consider a separate physical-acceptance decision record.
 
 A passing bounded probe, Stage A, binder, or transition audit alone does not grant physical acceptance.

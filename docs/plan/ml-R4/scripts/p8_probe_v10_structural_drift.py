@@ -199,12 +199,23 @@ def exact_semantic_isomorphism(
                 return False
         return True
 
-    for left_index, right_index in list(mapping.items()):
-        saved = mapping.pop(left_index)
-        if not compatible(left_index, right_index):
-            mapping[left_index] = saved
-            return IsomorphismResult(False, None, 0, "singleton_edges_differ")
-        mapping[left_index] = saved
+    # Validate the complete pre-mapped subgraph in O(E), rather than calling
+    # ``compatible`` for every singleton against every other singleton. Large
+    # contracts can have more than a thousand nodes that become uniquely
+    # identifiable after the neighbourhood signature pass; the old O(N^2)
+    # loop made those already-deterministic mappings appear to hang.
+    mapped_left_edges = Counter(
+        (mapping[src], mapping[dst], edge_type, count)
+        for (src, dst, edge_type), count in left_edges.items()
+        if src in mapping and dst in mapping
+    )
+    mapped_right_edges = Counter(
+        (src, dst, edge_type, count)
+        for (src, dst, edge_type), count in right_edges.items()
+        if src in used_right and dst in used_right
+    )
+    if mapped_left_edges != mapped_right_edges:
+        return IsomorphismResult(False, None, 0, "singleton_edges_differ")
 
     ambiguous = [
         index
@@ -308,8 +319,21 @@ def compare_graphs(
         right, "node_metadata", None
     )
     raw_topology_equal = _edge_topology_equal_through(left, right)
-    iso = exact_semantic_isomorphism(
-        left, right, max_search_states=max_search_states
+    # Index identity is itself a complete isomorphism proof. Avoid invoking the
+    # permutation search when labels and unchanged topology already match
+    # byte-for-byte; this is especially important for repeated inherited CFG
+    # nodes with identical labels.
+    iso = (
+        IsomorphismResult(
+            True,
+            {index: index for index in range(int(left.x.shape[0]))},
+            0,
+            "raw_index_identity",
+        )
+        if raw_features_equal and raw_metadata_equal and raw_topology_equal
+        else exact_semantic_isomorphism(
+            left, right, max_search_states=max_search_states
+        )
     )
 
     if iso.equivalent is True and (

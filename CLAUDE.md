@@ -18,7 +18,7 @@ Do not treat a stale comment, docstring, README, old plan, old test count, or hi
 
 ### Current stable technical baseline
 
-As of the 2026-08-30 V10 V2.5 full-population gate, with R4-D-010 governing representation semantics and the 2026-08-16 hardened V3 evidence snapshot retained as the accepted pre-pilot logical baseline:
+As of the 2026-09-01 V10 V2.6 full-population gate, with R4-D-010 governing representation semantics and the 2026-08-16 hardened V3 evidence snapshot retained as the accepted pre-pilot logical baseline:
 
 - canonical `main` has passed historical R4 G0–G7 and remains the active Phase-8 execution line;
 - Phase 8 is `IN_PROGRESS`, not G8-passed;
@@ -45,18 +45,20 @@ As of the 2026-08-30 V10 V2.5 full-population gate, with R4-D-010 governing repr
 - R4-D-010 preserves v9/repaired-v2 as immutable historical and physical-reproducibility evidence but withdraws v9 from eligibility for the new full training run; graph schema v10 is the required future physical lineage;
 - the original V10 `v2.3-r4-call-semantics` lineage is now a frozen structural-reference diagnostic, not the current future-candidate extractor;
 - the 26-contract parse-only remediation is complete in the later compatibility lineage. The protected V2.4 diagnostic candidate has 22,540 identities, exact accepted-V9 token bytes, zero parse-only outputs, zero unclassified call IR, and the required 22,539 primary Slither-0.10 + one identity-bound Slither-0.11.5 runtime split;
-- the later V2.5 structural correction uses extractor `v2.5-r4-call-semantics-deterministic-cfg`. Three fresh bounded generations closed all 20 previously unexpected structural-drift identities: 8 exact node-index-invariant labelled graph-equivalence identities and 12 deterministic persistent-storage `CFG_NODE_WRITE` corrections; the final bounded verifier reports zero unexplained drift and no blockers;
+- the later V2.5 structural correction used extractor `v2.5-r4-call-semantics-deterministic-cfg`. Three fresh bounded generations closed all 20 previously unexpected structural-drift identities: 8 exact node-index-invariant labelled graph-equivalence identities and 12 deterministic persistent-storage `CFG_NODE_WRITE` corrections; the final bounded verifier reported zero unexplained drift and no blockers;
+- the current V2.6 correction uses extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators` and additionally recognizes only persistent-storage collection `push`/`pop` calls while preserving call-node priority; memory receivers and arbitrary member calls remain excluded;
 - the V2.5 evidence chain is SHA-bound to the original transition audit and merged semantic evidence; full-gate compile/tests and evidence-chain preflight pass;
 - heterogeneous-runtime full-candidate staging is approved and preflighted. Exact partition is 22,539 ordinary identities under Slither 0.10.0 plus one declared exception `dive/caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9` under Slither 0.11.5;
-- protected-local Stages A-D passed: the fail-closed resumed primary attempt produced all 22,539 ordinary identities (15,211 reused after full validation, 7,328 generated, zero quarantined/failed), Stage B staged 67,617 hardlinks, Stage C filled only the declared Slither-0.11.5 exception, and Stage D bound all 22,540 identities with exact accepted-V9 token bytes and the required 22,539+1 runtime split;
-- Stage E correctly rejected the complete candidate with `PASS_BASE_MECHANICS_WITH_STRUCTURAL_EVIDENCE_BLOCKER`: it found 311 raw non-parse-only drifts, re-proved the bounded 8+12 classes, and left 298 full-population identities outside those approved evidence classes;
-- the next permitted R4-B008 action is the bounded full-population structural-evidence tranche in `docs/plan/ml-R4/runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`. Physical V10 acceptance remains false; the protected candidate must not be promoted, mutated, or used for training;
+- the historical V2.5 Stages A-D passed, but Stage E correctly rejected that complete candidate with `PASS_BASE_MECHANICS_WITH_STRUCTURAL_EVIDENCE_BLOCKER`: it found 311 raw non-parse-only drifts, re-proved the bounded 8+12 classes, and left 298 full-population identities outside those approved evidence classes;
+- fresh protected-local V2.6 Stages A-D pass: Stage A produced all 22,539 ordinary Slither-0.10 identities with zero unexpected failures, Stage B staged only validated triples, Stage C filled only the declared Slither-0.11.5 exception, and Stage D bound all 22,540 identities with exact accepted-V9 token bytes and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
+- the V2.6 population changed by +52/-8 relative to the historical 311-case set, so three fresh generations and three semantic-evidence passes covered the exact current 355 identities. The final V4 audit passes all 22,540 mechanics and re-proves 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs with zero unexplained drift;
+- the next permitted R4-B008 action is explicit review of the complete V4 report followed by a separate physical-acceptance decision. Physical V10 acceptance remains false; the protected candidate must not be promoted or used for training before that decision;
 - target `0` remains forbidden without complete class-specific confirmed-negative evidence plus independent agreeing verification;
 - accepted confirmed negatives are evaluation-only unless a later versioned policy grants optimizer authority;
 - Positive–Unlabeled (PU) learning is a future objective-design candidate, not current implementation authority;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
 - the guarded selector remains unpromoted and requires separate full-population bound-token control-equivalence evidence plus a promotion decision;
-- accepted historical/repaired representations remain graph schema `v9`; the future candidate is graph schema `v10` / extractor V2.5. The accepted token tensor contract remains `[4,512]`, and architecture remains `four_eye_v8` / `v8.1` unless a later explicit decision changes it;
+- accepted historical/repaired representations remain graph schema `v9`; the future candidate is graph schema `v10` / extractor V2.6. The accepted token tensor contract remains `[4,512]`, and architecture remains `four_eye_v8` / `v8.1` unless a later explicit decision changes it;
 - Run12 is the historical operational ML baseline, not repaired-v2/V3 truth; do not reuse its learned weights, optimizer/scheduler state, thresholds, or calibration as current Phase-8 truth;
 - the 100-epoch Phase-8 run remains unauthorized; no model-quality improvement is claimed;
 - V3 is the current registry submission protocol; V1/V2 are historical compatibility;
@@ -188,7 +190,7 @@ Dated audits, experimental reports, `docs/learning/`, and handbook exercises may
 - hardened post-acceptance V3 research reports have been regenerated coherently and committed in the final Git-safe evidence snapshot;
 - R4-GAP-007 queue membership is review reservation only, not negative truth or optimizer supervision; use only the committed hardened queue for pilot review;
 - R4-GAP-007 is in progress; candidate #1 is durably `NOT_CONFIRMED`. Candidate #2 primary review supports `CONFIRMED_NEGATIVE`, but it remains UNKNOWN/target `None` pending genuinely independent agreement; do not fabricate that verification;
-- R4-GAP-008 root-cause evidence is resolved under R4-D-010. The 26 parse-only repair and bounded 20-identity structural-drift tranche are complete; protected-local V2.5 Stages A-D pass, but the complete Stage-E audit blocks on 298 additional full-population structural drifts that are not covered by the old bounded evidence. Current work is the versioned full-population evidence tranche; physical acceptance remains false and v9 must never be patched in place;
+- R4-GAP-008 root-cause evidence is resolved under R4-D-010. The 26 parse-only repair, bounded 20-identity V2.5 tranche, and complete 355-identity V2.6 structural-evidence tranche are complete. The V4 audit passes with zero unexplained drift, while physical acceptance remains false pending its separate reviewed decision; v9 must never be patched in place;
 - accepted confirmed negatives remain evaluation-only unless a later versioned decision grants optimizer authority;
 - PU learning remains a later objective-design candidate, not current implementation authority;
 - selector promotion requires a separate ADR/versioned extractor decision and bound-token control-equivalence evidence;
