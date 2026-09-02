@@ -18,7 +18,7 @@ A later protected-local audit found five post-acceptance research/reporting defe
 
 There are still **zero confirmed-negative examples**. R4-GAP-007 is **pilot in progress** using the hardened 200-cell / 200-group queue. Candidate #1 (`CallToUnknown`) is `NOT_CONFIRMED`. Candidate #2's source-first primary review supports `CONFIRMED_NEGATIVE`, but it remains `UNKNOWN` / `PENDING_REVIEW` with target `None` until a genuinely independent reviewer agrees.
 
-Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. The 26-contract parse-only repair and bounded 20-identity V2.5 investigation are complete. Protected-local V2.5 Stages A-D pass for all 22,540 identities, but Stage E blocks physical acceptance because 298 full-population structural drifts are outside the old bounded evidence classes. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch run remain unauthorized.
+Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. The later V2.6 lineage passes all 22,540 mechanics and reconciles its exact 355-identity drift population as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs. R4-D-011 physically accepts only the exact protected-local V2.6 root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch run remain unauthorized.
 
 ## Just-enough mental model
 
@@ -53,13 +53,10 @@ R4-GAP-007 negative pilot
   candidate #2 primary supports negative / independent review pending
         ↓
 R4-GAP-008 v10 representation remediation
-  POLICY + BOUNDED PROOF COMPLETE
+  POLICY + FULL-POPULATION PROOF COMPLETE
         ↓
-versioned V2.5 protected-local candidate
-  STAGES A-D PASS / 22,540 IDENTITIES
-        ↓
-full-population structural-evidence gate
-  BLOCKED / 298 UNAPPROVED DRIFTS
+versioned V2.6 protected-local candidate
+  PHYSICALLY ACCEPTED / 22,540 / DIGEST d9f925...
         ↓
 separate selector-promotion decision / objective design
         ↓
@@ -83,7 +80,7 @@ valid physical DATA
 | Phase | State | Current meaning |
 |---:|---|---|
 | 0–7 | PASSED | historical G0–G7 remain immutable/reproducible |
-| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 remain accepted evidence; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary supports a negative pending independent review; V2.5 Stages A-D pass locally, while Stage E blocks physical acceptance on 298 unapproved full-population structural drifts; full training unauthorized |
+| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 remain accepted evidence; exact V2.6 physical representation is accepted under R4-D-011; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary supports a negative pending independent review; full training unauthorized |
 | 9–10 | WAITING | evaluation/calibration/promotion remain gated by G8 and missing evidence |
 
 ### Historical G7 validation anchors
@@ -273,15 +270,15 @@ The library classifier is conservative and can undercount imported, aliased, or 
 
 R4-D-010 requires graph schema v10 with distinct typed-high-level,
 raw-low-level, `Transfer`, `Send`, `LibraryCall`, and contract-creation kinds.
-The current candidate extractor is
-`v2.5-r4-call-semantics-deterministic-cfg`. The 26 parse-only identities are
-repaired and the original 20-identity structural tranche is closed. The full
-protected-local candidate now passes generation, heterogeneous staging,
-exception fill, binding, exact token-byte identity, and runtime reconciliation
-for all 22,540 identities. The full transition audit nevertheless rejects
-acceptance: 311 raw non-parse-only drifts exist, and 298 lack approved
-population-wide semantic evidence. The current task is duplicate-safe repeated
-evidence, not regeneration or acceptance.
+The accepted extractor is
+`v2.6-r4-call-semantics-deterministic-cfg-mutators`. Its full protected-local
+candidate passes generation, heterogeneous staging, exception fill, binding,
+exact accepted-v9 token-byte identity, and runtime reconciliation for all
+22,540 identities. Three fresh generations and evidence passes cover its exact
+355-identity drift census; V4 independently re-proves 349 persistent-storage
+WRITE corrections plus 6 index-equivalent graphs with zero unexplained drift.
+R4-D-011 accepts only the recorded root/digest. Regeneration or training is not
+the current authority.
 
 ## Interfaces, data shapes, and configuration
 
@@ -294,9 +291,9 @@ evidence, not regeneration or acceptance.
 | physical DATA root | R4-D-008 / repaired-v2; immutable reproduction evidence, not new-full-training eligible |
 | logical grouping/role authority | R4-D-009 / accepted V3 |
 | durable research evidence | coherent snapshot `44fbb9c1d...` under `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` |
-| current execution restart | `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`; candidate #2 review is a separate pending-independent track |
+| current execution restart | `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`; candidate #2 review is a separate pending-independent track |
 | confirmed-negative review | R4-GAP-007 / candidate #1 `NOT_CONFIRMED` / candidate #2 primary-support only, independent pending |
-| future representation | v10 / extractor `v2.5-r4-call-semantics-deterministic-cfg` / protected-local `representations-r4-v3-candidate`; Stages A-D pass, Stage E blocked, not physically accepted |
+| physical representation for a future authorized run | R4-D-011 exact v10 / extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators` / protected-local `representations-r4-v3-candidate`; digest `d9f925...`; physically accepted, not training-authorized |
 | selector | historical control remains bound; guarded candidate unpromoted |
 | training authorization | HOLD / none |
 
@@ -311,11 +308,9 @@ evidence, not regeneration or acceptance.
 - model outputs: 10;
 - architecture: `four_eye_v8` / `v8.1`.
 
-These describe accepted v9 artifacts. V10 has 17 exact edge kinds. Its V2.5
-candidate passes generation/binding mechanics for 22,540 identities and has no
-remaining parse-only blocker, but it is not an accepted physical population:
-Stage E found 298 full-population structural drifts outside the old bounded
-evidence classes.
+These describe accepted v9 artifacts. V10 has 17 exact edge kinds. The exact
+V2.6 candidate passes all mechanics for 22,540 identities and is physically
+accepted under R4-D-011 after complete 355-identity structural reconciliation.
 
 ### Unsupported evaluation roles
 
@@ -350,7 +345,7 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 ### Representation / selector
 
 - v9 type-11 edges conflate library calls and omit most Transfer/Send nodes; v9 is prohibited for the new full run;
-- v10 full-population diagnostics pass, while protected-local acceptance is rejected for now under R4-B008 due to 26 parse-only contracts;
+- exact V2.6 protected-local physical acceptance is complete under R4-D-011; it grants no selector or training authority;
 - `[4,512]` capacity omits material code on long contracts;
 - guarded target-aware selection remains promising but unpromoted;
 - full-population bound-token equivalence remains required before promotion.
@@ -494,4 +489,4 @@ Before proceeding, be able to answer:
 - What evidence is still missing before G8 can authorize full training?
 - Why can v9 remain valid historical evidence while being ineligible for a new training run?
 
-If any answer is unclear, use the 2026-08-16 hardened V3 evidence snapshot closeout for the accepted pre-pilot baseline, then the 2026-08-21 v10 implementation/bounded-regression record, GAP-008 audit, and ADR-R4-010 for the current execution point. Use candidate #2's primary-review record only for its pending-independent review track.
+If any answer is unclear, use the 2026-08-16 hardened V3 evidence snapshot closeout for the accepted pre-pilot baseline, then the 2026-09-02 V2.6 physical-acceptance/no-launch record and ADR-R4-011 for the current execution point. Use candidate #2's primary-review record only for its pending-independent review track.

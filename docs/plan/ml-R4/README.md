@@ -2,7 +2,7 @@
 
 This directory governs the R4 repair of SENTINEL's DATA/ML training and evaluation foundation.
 
-## Current restart — 2026-09-01
+## Current restart — 2026-09-02
 
 Do **not** restart R4 from Phase 0 or from the August 15/21/23 intermediate Phase-8 handoffs. Historical G0–G7 are complete and retained as reproducibility evidence. Phase 8 remains `IN_PROGRESS`; G8 is not passed and the 100-epoch run is **NOT AUTHORIZED**.
 
@@ -18,7 +18,7 @@ Current boundary:
 - protected-local Stages A-D pass for all 22,540 identities with exact accepted-V9 token bytes and the required 22,539 + 1 runtime split;
 - the V2.6 full candidate is bound by digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
 - Stage E V4 passes: all 355 current raw non-parse-only drifts are re-proven as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs, with zero unexplained drift;
-- physical V10 acceptance remains false;
+- R4-D-011 physically accepts only the exact V2.6 protected-local root and digest above; selector promotion and training remain separate and unauthorized;
 - confirmed-negative support remains zero; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review still requires genuinely independent agreement;
 - threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty;
 - the target-aware token selector remains promising but unpromoted;
@@ -28,15 +28,15 @@ For current work, read in this order:
 
 1. applicable repository/module `CLAUDE.md` files;
 2. `PLAN_STATUS_MATRIX.md`;
-3. `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
-4. `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
-5. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
-6. `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
-7. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
-8. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
-9. exact source/tests for the V10 full-population evidence stage being executed.
+3. `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
+4. `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
+5. `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
+6. `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md` for historical staging context;
+7. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
+8. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
+9. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`.
 
-The next permitted R4-B008 action is the bounded full-population structural-evidence tranche in `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`. Preserve the passed Stage A-D roots and reports; do not treat the false Stage-E gate as physical acceptance or training authority.
+R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root and digest. Preserve that accepted root and its evidence; any regenerated or changed root must fail closed and receive a new physical decision.
 
 The negative-evidence, selector-promotion, objective/evaluation, calibration, and training-authorization tracks remain separate later gates. Do not combine them with V10 physical-candidate construction.
 
@@ -74,8 +74,8 @@ A versioned DATA/ML bundle containing:
 - Every conclusion must link to retained evidence or be marked unsupported.
 - Repository tests do not substitute for protected local physical DATA binding.
 - A physically valid dataset does not by itself prove model discrimination quality.
-- Bounded V2.5 structural success does not equal physical V10 acceptance.
-- Do not launch training from V10 until the staged full candidate, binding, V4 transition audit, explicit review, and separate training governance all pass.
+- Historical bounded V2.5 structural success did not equal physical V10 acceptance; only R4-D-011 grants authority to the exact V2.6 root/digest.
+- Do not launch training from V10 until the separate supervision/evaluation, selector, run-control, and training-governance gates pass.
 
 ## Authority order
 

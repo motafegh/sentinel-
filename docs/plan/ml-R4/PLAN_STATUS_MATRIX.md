@@ -1,6 +1,6 @@
 # R4 Plan Status Matrix
 
-**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for the immutable `sentinel-r4-vnext-v1` lineage. Phase 8 remains `IN_PROGRESS`; G8 is not passed and full training is unauthorized. Repaired-v2 physical source/representation evidence remains accepted under R4-D-008, and corrected logical V3 remains accepted under R4-D-009. The hardened 2026-08-16 Git-safe snapshot remains the accepted pre-pilot evidence boundary at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. R4-GAP-007 is separately in progress: candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review supports `CONFIRMED_NEGATIVE` but still requires genuinely independent agreement, so confirmed negatives remain zero. R4-D-010 preserves v9 for historical reproduction while prohibiting it for the new full run. The V10 parse-only remediation and bounded V2.5 20-identity investigation are complete. Protected-local Stages A-D pass for the full 22,540-identity V2.5 candidate, but Stage E rejects physical acceptance because 298 full-population structural drifts are not covered by the old bounded evidence. The next permitted R4-B008 work is the versioned full-population structural-evidence tranche. Physical V10 acceptance has not occurred.
+**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for the immutable `sentinel-r4-vnext-v1` lineage. Phase 8 remains `IN_PROGRESS`; G8 is not passed and full training is unauthorized. Repaired-v2 physical source/representation evidence remains accepted under R4-D-008, corrected logical V3 remains accepted under R4-D-009, and the exact protected-local V10 V2.6 representation root is physically accepted under R4-D-011 with binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. The hardened 2026-08-16 Git-safe snapshot remains the accepted pre-pilot logical evidence boundary at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. R4-GAP-007 is separately in progress: candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review supports `CONFIRMED_NEGATIVE` but still requires genuinely independent agreement, so confirmed negatives remain zero. R4-D-010 preserves v9 for historical reproduction while prohibiting it for the new full run. V2.6 Stages A-D and the complete V4 audit pass for 22,540 identities; all 355 current structural drifts are reconciled as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs with zero unexplained drift. Physical V10 acceptance is complete, but selector, objective/evaluation, threshold/calibration, untouched-acceptance, and explicit training authorization remain open.
 
 | Phase | File | Status | Entry condition | Exit gate | Notes |
 |---:|---|---|---|---|---|
@@ -12,7 +12,7 @@
 | 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED | G4 | G5 | `data-vnext-policy-v1`; eight classes enabled, GasException/UnusedReturn disabled; no blanket negatives; G5 PASS |
 | 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | PASSED | G5 | G6 | Historical `r4-vnext-roles-v1` frozen; threshold/calibration/untouched acceptance unsupported/empty; G6 PASS |
 | 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED | G6 | G7 | Historical `sentinel-r4-vnext-v1` / 21,657 representations / 64,971 files passed G7; immutable historical evidence |
-| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repaired-v2 physical DATA and logical V3 remain accepted evidence. R4-D-010 withdraws v9 from new-training eligibility. V10 V2.5 Stages A-D pass locally for 22,540 identities; Stage E blocks on 298 full-population structural drifts outside the old bounded classes. Selector promotion and negative-evidence work remain separate; full training is unauthorized. |
+| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repaired-v2 physical DATA, logical V3, and exact V10 V2.6 physical representations are accepted evidence. R4-D-010 keeps v9 ineligible; R4-D-011 accepts V2.6 digest `d9f925...`. Selector promotion, negative-evidence, objective/evaluation, and launch authority remain separate; full training is unauthorized. |
 | 9 | `phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md` | WAITING | G8 | G9 | Current threshold/calibration support remains unavailable |
 | 10 | `phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md` | WAITING | G9 | G10 | Untouched acceptance remains unsupported/empty/frozen |
 
@@ -29,9 +29,10 @@
 | Confirmed-negative evaluation | IN_PROGRESS | Candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary review supports `CONFIRMED_NEGATIVE`, but authoritative truth remains UNKNOWN / PENDING_REVIEW / target `None` until a genuinely independent reviewer agrees. Accepted negatives, if any, remain evaluation-only. |
 | Historical V10 V2.3/V2.4 diagnostics | PRESERVED / NOT PHYSICALLY ACCEPTED | V2.3 is the frozen structural reference. The later protected V2.4 candidate completed the 26-contract parse-only repair: 22,540 identities, exact accepted-V9 token bytes, zero parse-only artifacts, zero unclassified call IR, and the required 22,539 Slither-0.10 + 1 Slither-0.11.5 runtime split. These are diagnostic/history roots, not the current future-training candidate. |
 | V10 V2.5 bounded structural correction | PASSED / 20 OF 20 CLOSED | Extractor `v2.5-r4-call-semantics-deterministic-cfg`; three fresh 20-identity generations under exact Slither 0.10.0; 8 exact node-index-invariant graph-equivalence identities + 12 deterministic persistent-storage WRITE corrections; bounded verifier passed with zero unexplained drift and no blockers. |
-| V10 V2.5 full-candidate gate | BLOCKED AT STAGE E | Protected-local Stages A-D pass: 22,540 identities, exact token-byte equality, zero missing/invalid, and exact 22,539 Slither-0.10 + one Slither-0.11.5 runtime split. Stage E passes base mechanics but finds 311 raw non-parse-only drifts and leaves 298 outside the approved bounded evidence classes. |
+| Historical V10 V2.5 full-candidate gate | BLOCKED AT STAGE E / PRESERVED | Protected-local Stages A-D passed, but Stage E found 311 raw non-parse-only drifts and left 298 outside the approved bounded evidence classes. This historical failure motivated V2.6 and is not current physical authority. |
+| V10 V2.6 physical representation | ACCEPTED / IMMUTABLE LOCAL | R4-D-011 accepts the exact 22,540-identity root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. V4 re-proves all 355 current drifts as 349 WRITE corrections plus 6 index-equivalent graphs with zero unexplained drift. Runtime split is 22,539 Slither-0.10 + one Slither-0.11.5 exception; all tokens are byte-identical to accepted V9. |
 | Selector promotion | NOT AUTHORIZED | Guarded candidate retains promising CPU/CUDA evidence but needs full-population bound-token control-equivalence evidence plus a separate versioned promotion decision |
-| Full training / G8 | HOLD | v9 is ineligible; V2.5 is physically built and mechanically bound locally but not accepted because the full structural-evidence gate is false; no confirmed negatives; no threshold/calibration/untouched acceptance; selector unpromoted; objective/evaluation design unresolved |
+| Full training / G8 | HOLD | V10 V2.6 physical representations are accepted, but there are no confirmed negatives; threshold/calibration/untouched acceptance remain unsupported; selector is unpromoted; objective/evaluation design and explicit launch authority remain unresolved. |
 
 ## Corrected outcome-population terminology
 
@@ -154,15 +155,12 @@ Historical execution context only, not current restart authority:
 Current execution order:
 
 1. preserve v9/repaired-v2, accepted logical V3, frozen V2.3 structural reference, and protected V2.4 diagnostic candidate as immutable evidence/history;
-2. preserve the passed protected-local Stage A-D roots and their exact report hashes; do not regenerate or mutate them;
-3. execute `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md` over the complete 311-identity drift population using duplicate-safe semantic node identity and repeated exact-runtime evidence;
-4. prove or reject every candidate/reference difference without identity allowlists, corpus-hash special cases, or expansion of the old 20-identity waiver;
-5. produce a new versioned full-population evidence schema and V4 transition audit only after the evidence collector is independently repeatable;
-6. only after a new full audit has zero unexplained drift consider a separate physical-acceptance decision record;
-7. keep candidate #2 UNKNOWN/target `None` unless independent agreement completes its dual review; any accepted negative remains evaluation-only;
-8. separately design/execute control-selector → bound-token equivalence before any guarded-selector promotion ADR;
-9. revisit objective/evaluation design, including possible PU learning, only after new evidence supports a versioned decision;
-10. reconsider training authorization only after V10 physical acceptance and all remaining evidence/design gates are satisfied.
+2. preserve the R4-D-011 accepted V2.6 root, its Stage A-D reports, 355-case evidence, V4 review, and exact hashes; do not regenerate or mutate them;
+3. keep candidate #2 UNKNOWN/target `None` unless independent agreement completes its dual review; any accepted negative remains evaluation-only;
+4. separately design/execute control-selector → bound-token equivalence before any guarded-selector promotion ADR;
+5. revisit objective/evaluation design, including possible PU learning, only after new evidence supports a versioned decision;
+6. define credible threshold/calibration/untouched-acceptance support rather than inventing populations;
+7. reconsider training authorization only after all remaining evidence/design gates are satisfied and record it explicitly.
 
 Do **not** manually adjudicate the obsolete V2 queue or the pre-hardening V3 queue. Do **not** patch v9 in place, train from v9, infer target `0`, self-verify candidate #2, silently promote the selector, invent pseudo-negatives, reuse Run12 state, fit unsupported threshold/calibration roles, implement PU as an ungoverned shortcut, overwrite protected V10 diagnostic/reference roots, or launch the 100-epoch job.
 

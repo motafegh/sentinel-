@@ -1,8 +1,8 @@
 # Phase-8 V10 V2.5 full-population structural-evidence plan
 
 Date: 2026-08-30
-Status: V2.6 EVIDENCE AND V4 AUDIT PASS; PHYSICAL DECISION REMAINS
-Scope: R4-B008 full-population structural evidence only; no extractor mutation, physical acceptance, selector promotion, or training authority
+Status: COMPLETE; exact V2.6 root accepted by R4-D-011 on 2026-09-02
+Scope: R4-B008 full-population structural evidence; no selector promotion or training authority
 
 ## 2026-09-01 V2.6 continuation
 
@@ -37,9 +37,10 @@ The final V4 audit passes all 22,540 transition mechanics and re-proves the
 SHA-256
 `c6ddc61b8005a688d422f4f8de28118fa3e644b9648d070ef53972ec9f2191ce`.
 
-This completes the structural evidence tranche. It does not itself grant
-physical acceptance or training authority. The next gate is explicit review of
-the complete V4 report followed by a separate physical-acceptance decision.
+This completes the structural evidence tranche. The later refreshed binder and
+current-commit V4 review support R4-D-011 / ADR-R4-011, which physically accepts
+only the exact root and digest above. That decision grants no selector promotion
+or training authority.
 
 ## Historical V2.5 starting point
 

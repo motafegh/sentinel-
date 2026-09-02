@@ -1,0 +1,75 @@
+{
+  "accepted_lineage": {
+    "binding_digest_sha256": "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd",
+    "contracts": 22540,
+    "extractor_version": "v2.6-r4-call-semantics-deterministic-cfg-mutators",
+    "files": 67620,
+    "graph_schema_version": "v10",
+    "physical_root": "data_module/data/v10-v26-full-candidate-attempt-2026-09-01-a/representations-r4-v3-candidate",
+    "preprocessed_parent": "data_module/data/sentinel-preprocessed-r4-v2",
+    "protected_local": true,
+    "token_byte_identical_contracts": 22540,
+    "token_parent": "data_module/data/representations-r4-v2"
+  },
+  "checks": {
+    "accepted_v9_population_equal": true,
+    "all_candidate_files_deserialize_and_bind": true,
+    "all_current_audit_implementation_hashes_match": true,
+    "candidate_failure_ledgers_empty": true,
+    "candidate_population_complete": true,
+    "current_source_commit_published": true,
+    "exact_runtime_partition_proven": true,
+    "full_population_structural_evidence_stable": true,
+    "no_extra_candidate_identities": true,
+    "no_missing_candidate_identities": true,
+    "token_bytes_identical_to_accepted_v9": true,
+    "tracked_worktree_clean_at_acceptance_review": true,
+    "unexplained_structural_drift_zero": true
+  },
+  "decision": "ACCEPTED_IMMUTABLE_LOCAL_PHYSICAL_REPRESENTATION",
+  "decision_id": "R4-D-011",
+  "evidence": {
+    "acceptance_review_binding_report_sha256": "93a4d15e0793d7b144fc5cc98dbd29627f0d7372cb56e2431a79f8d02c761311",
+    "acceptance_review_v4_audit_sha256": "1e037c5d22dbe03a7b5f303ea3c3fa11facb17fcf751c9f7432197e194a2a994",
+    "exception_fill_report_sha256": "3df8583b0929086b5ef9a7d4135499fa47f2989e1115f7a8d3e0dab2ef1f15bc",
+    "full_population_probe_sha256": "9a1cf96465613b61fae2d10ccaa81def0548663a4c4711ca745841f6354e7a55",
+    "primary_attempt_report_sha256": "46f63d24ed614a6dfd427c3c6c19512578e9c5092e05300a3fb1445002e753cf",
+    "primary_stage_report_sha256": "85286706b189fa09d06e4113aeeb4168bb283a9bd0ce6bdd8e64b862ae4cb41f",
+    "semantic_evidence_sha256": "92afb95f5335226ee28c99969779af0dd5f69da4296cf400736ff4c4e75bce42",
+    "source_commit": "012a3359449865e3a8ab2a3d4a46ac4859bb6cb6"
+  },
+  "physical_acceptance": true,
+  "remaining_gates": [
+    "confirmed_negative_evaluation_evidence",
+    "target_aware_selector_promotion_decision",
+    "objective_and_evaluation_contract",
+    "threshold_calibration_and_untouched_acceptance_support",
+    "explicit_full_training_authorization"
+  ],
+  "runtime_distribution": [
+    {
+      "contracts": 22539,
+      "crytic_compile": "0.3.11",
+      "runtime_role": "primary",
+      "slither_analyzer": "0.10.0"
+    },
+    {
+      "contracts": 1,
+      "crytic_compile": "0.3.11",
+      "runtime_role": "identity_bound_exception",
+      "slither_analyzer": "0.11.5"
+    }
+  ],
+  "schema": "sentinel-r4-v10-v26-physical-acceptance-v1",
+  "selector_promoted": false,
+  "status": "PASS",
+  "structural_evidence": {
+    "exact_index_equivalence_contracts": 6,
+    "persistent_storage_write_correction_contracts": 349,
+    "repeat_generations": 3,
+    "semantic_evidence_repeats": 3,
+    "unexpected_drift_identities_reconciled": 355,
+    "unexplained_drift_identities": 0
+  },
+  "training_authorized": false
+}

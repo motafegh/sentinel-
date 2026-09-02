@@ -28,15 +28,14 @@ V3 reuses accepted repaired-v2 graph/token/sidecar bytes. Protected-local V3
 acceptance and the hardened evidence snapshot are complete.
 
 R4-D-010 preserves repaired-v2/v9 for reproduction but makes v9 ineligible for
-the new full run. The future-training representation candidate is graph schema
-`v10`, extractor `v2.3-r4-call-semantics`, root
-`representations-r4-v3-candidate`. Repository consumers support the exact v10
-edge vocabulary without OOB clamping or checkpoint resizing. Bounded
-source-reviewed regressions and full 22,540-identity transition mechanics pass;
-the finalized vocabulary has 17 edge kinds, including explicit contract
-creation discovered by population probing. Physical acceptance is rejected for
-now because 26 parse-only graphs have incomplete call IR; a later separate
-training decision remains required.
+the new full run. R4-D-011 physically accepts only the exact protected-local
+graph-schema-v10 root `representations-r4-v3-candidate`, extractor
+`v2.6-r4-call-semantics-deterministic-cfg-mutators`, binding digest
+`d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`.
+Repository consumers support the exact 17-kind v10 edge vocabulary without OOB
+clamping or checkpoint resizing. All 22,540 identities pass binding and the
+complete 355-identity structural evidence has zero unexplained drift. This
+physical acceptance does not authorize selector promotion or training.
 
 ## Compatibility boundaries
 
@@ -116,21 +115,18 @@ The earlier V2 active population of 831 groups and planning arithmetic of 104 mi
 
 Even those V3 counts remain planning-only until the final objective, selector, roles, and training configuration are explicitly authorized and bound.
 
-## Local v10 execution
+## Local v10 preservation boundary
 
 Follow:
 
-`docs/plan/ml-R4/runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`
+`docs/plan/ml-R4/runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`
 
 Order:
 
-1. pass source-reviewed GAP-007 v10 regressions;
-2. generate a fresh full v10 candidate from accepted preprocessing;
-3. prove exact population identity and byte-identical accepted tokens;
-4. reconcile every classified call IR with emitted v10 call edges;
-5. run transition/model-consumer regressions;
-6. write an explicit physical acceptance or rejection record;
-7. keep training closed pending a later objective/selector/training decision.
+1. preserve the exact R4-D-011 root and digest; do not regenerate or overwrite it;
+2. keep candidate #2 independent review separate from representation acceptance;
+3. resolve objective/evaluation evidence and selector promotion independently;
+4. keep training closed pending explicit later run-control and training authorization.
 
 ## Runtime provenance
 

@@ -1,7 +1,7 @@
 # Phase-8 V10 V2.5/V2.6 full-population structural analysis
 
-Date: 2026-08-30 through 2026-09-01
-Decision: `V26_TRANSITION_EVIDENCE_RECONCILED_PENDING_PHYSICAL_DECISION`
+Date: 2026-08-30 through 2026-09-02
+Decision: `V26_PHYSICAL_REPRESENTATION_ACCEPTED_R4_D_011`
 Scope: historical 311-case V2.5 analysis plus complete 355-case V2.6 evidence
 
 ## Current V2.6 result
@@ -46,9 +46,10 @@ Protected-local roots and authority artifacts:
 - final V4 audit SHA-256
   `c6ddc61b8005a688d422f4f8de28118fa3e644b9648d070ef53972ec9f2191ce`.
 
-This result is diagnostic evidence only. `physical_acceptance=false` and
-`training_authorized=false`; explicit report review and a separate physical
-acceptance decision remain required.
+The transition audit remains diagnostic evidence and cannot grant governance by
+itself. The later refreshed binder and current-commit V4 review support
+R4-D-011 / ADR-R4-011, which sets `physical_acceptance=true` only for the exact
+root and digest above. `training_authorized=false` remains authoritative.
 
 ## Historical V2.5 result
 

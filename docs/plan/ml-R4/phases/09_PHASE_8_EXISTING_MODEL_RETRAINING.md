@@ -9,13 +9,14 @@ Produce a reproducible checkpoint of the existing frozen architecture **only aft
 
 Phase 8 is not permission to train merely because executable training code exists. The current work is still upstream of full training.
 
-## Current authority — 2026-09-01
+## Current authority — 2026-09-02
 
 Historical G0–G7 remain passed and immutable. Later accepted decisions refine the Phase-8 execution boundary:
 
 - **R4-D-008:** repaired-v2 physical DATA is accepted immutable reproducibility evidence, but the full run remained withheld because supervision/evaluation and selector adequacy were unresolved;
 - **R4-D-009:** corrected logical V3 grouping/roles/publication is accepted current logical authority; hardened V3 evidence is the accepted pre-pilot research baseline;
 - **R4-D-010:** graph schema v9 remains historical/reproducibility evidence but is **not eligible for the new full training run**. A separately versioned, physically accepted V10 representation lineage is required first.
+- **R4-D-011:** the exact protected-local V2.6 root with digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd` is physically accepted; no selector or training authority follows from that decision.
 
 Current V10 state:
 
@@ -27,7 +28,7 @@ Current V10 state:
 - the required full-candidate runtime split is 22,539 ordinary Slither-0.10 identities + one declared Slither-0.11.5 exception;
 - Stages A-D pass for the exact 22,540 = 22,539 + 1 runtime partition, with candidate binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
 - Stage E V4 passes all 22,540 mechanics and reconciles the exact current 355-case drift population as 349 persistent-storage WRITE corrections plus 6 index-equivalent graphs with zero unexplained drift;
-- physical V10 acceptance remains false.
+- exact V2.6 physical acceptance is complete under R4-D-011; any different root or digest remains unaccepted.
 
 Current supervision/evaluation limitations:
 
@@ -48,7 +49,7 @@ Therefore the 100-epoch/full-horizon training run remains explicitly unauthorize
 
 ## Current Phase-8 execution order
 
-### A. Complete V10 physical candidate construction and acceptance evidence
+### A. Preserve the accepted V10 physical candidate and evidence
 
 Follow:
 
@@ -56,7 +57,7 @@ Follow:
 - `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
 - R4-D-010 / ADR-R4-010.
 
-Required sequence:
+Completed sequence:
 
 1. Stage A — generate exactly 22,539 ordinary V2.6 identities under exact Slither 0.10.0, with the declared exception deferred without extraction;
 2. Stage B — fail-closed stage only validated primary triples into a fresh final-lineage root;
@@ -64,9 +65,9 @@ Required sequence:
 4. Stage D — bind all 22,540 identities, exact token bytes, schema/extractor identity, call semantics, and runtime distribution;
 5. Stage E — run the complete V4 transition audit, re-proving the exact current 349+6 structural evidence classes and rejecting any new unexplained non-parse-only drift;
 6. explicitly review the complete V4 report;
-7. only then consider a separate physical-acceptance decision record.
+7. R4-D-011 / ADR-R4-011 recorded the separate physical-acceptance decision after refreshed binding and current-commit V4 review.
 
-A passing bounded probe, Stage A, binder, or transition audit alone does not grant physical acceptance.
+A passing bounded probe, Stage A, binder, or transition audit alone does not grant physical acceptance; R4-D-011 grants it only to the recorded root and digest.
 
 ### B. Complete the evidence-honest evaluation/objective decision
 

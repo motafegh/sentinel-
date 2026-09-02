@@ -1,5 +1,11 @@
 # Phase-8 V10 V2.5 current restart checkpoint
 
+> Superseded current boundary (2026-09-02): retain this file as V2.5 staging
+> history. Restart from
+> `2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`; R4-D-011
+> accepts the exact V2.6 physical root/digest, while training remains
+> unauthorized.
+
 Date: 2026-08-27; execution result updated 2026-08-30
 Status: STAGES A-D PASS; STAGE E FULL-POPULATION STRUCTURAL EVIDENCE BLOCKER
 Scope: current R4-B008 / V10 physical-candidate restart authority only; no physical acceptance or training authority

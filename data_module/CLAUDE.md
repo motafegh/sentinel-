@@ -35,8 +35,9 @@ edges while preserving the repaired-v2 physical binding digest.
 
 R4-D-010 now separates physical reproducibility from future-training
 eligibility.  The accepted repaired-v2/v9 bytes remain immutable evidence, but
-the v9 call edge is semantically inadequate for a new full run.  The only
-current future-training representation candidate is graph schema `v10`,
+the v9 call edge is semantically inadequate for a new full run. The only
+physically accepted representation eligible for a future separately authorized
+run is graph schema `v10`,
 extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators`, under a protected-local
 `representations-r4-v3-candidate` root. The 26-contract parse-only repair and
 the original bounded 20-identity V2.5 structural tranche are complete.
@@ -46,8 +47,10 @@ accepted-v9 token bytes, binding digest
 the required 22,539 Slither-0.10 + one Slither-0.11.5 runtime split. Three fresh
 355-identity generations and three semantic-evidence passes prove 349
 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs.
-The complete V4 audit passes with zero unexplained drift. None of this alone
-authorizes physical acceptance or training.
+The complete V4 audit passes with zero unexplained drift. R4-D-011 / ADR-R4-011
+now physically accepts only this exact root and binding digest after refreshed
+binding and current-commit V4 review. It does not authorize selector promotion
+or training.
 
 ## Mandatory semantics
 
@@ -65,11 +68,10 @@ authorizes physical acceptance or training.
 ## Current execution seam
 
 Do **not** rerun or edit repaired-v2/v9, overwrite the protected full candidate,
-or repeat V2.6 Stages A-D. The complete V4 report is now the diagnostic
-authority for the 355-identity structural-evidence population. The next step is
-explicit report review followed by a separate physical-acceptance decision.
-The candidate binder and V4 audit remain diagnostic-only and record
-`training_authorized=false`.
+or repeat V2.6 Stages A-D. The complete V4 report is the diagnostic authority
+for the 355-identity structural-evidence population, and R4-D-011 is the narrow
+physical authority for the exact accepted root/digest. The candidate binder and
+V4 audit remain diagnostic reports and record `training_authorized=false`.
 
 ## Research/evaluation boundary
 
@@ -91,7 +93,7 @@ reports. Repository CI cannot substitute for local physical hash verification.
 
 Full Phase-8 training remains prohibited. Current gates are:
 
-- v10 physical acceptance remains pending a separate reviewed decision despite the passing V4 structural audit;
+- exact V2.6 physical acceptance is complete under R4-D-011; any different root or digest requires a new decision;
 - zero confirmed-negative evaluation evidence;
 - target-aware selector not promoted;
 - threshold/calibration/untouched acceptance unavailable.
@@ -99,5 +101,5 @@ Full Phase-8 training remains prohibited. Current gates are:
 **Current DATA status:** repaired-v2/v9 physical evidence is accepted and
 immutable; logical V3 is accepted; v9 is ineligible for the new full run;
 versioned V2.6 Stages A-D and V4 structural evidence pass locally for all
-22,540 identities, while physical acceptance remains pending its separate
-reviewed decision; G8 is open and training is unauthorized.
+22,540 identities, and the exact root/digest is physically accepted under
+R4-D-011; G8 is open and training is unauthorized.

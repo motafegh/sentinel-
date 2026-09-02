@@ -1,6 +1,6 @@
 # START HERE — AI Implementation Agent Instruction
 
-> **Historical bootstrap notice, current redirect updated 2026-08-30:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-010 requires a V10 physical lineage for any new full run; the 26-contract parse-only repair and bounded 20-contract V2.5 structural investigation are complete. Protected-local V2.5 Stages A-D pass, but Stage E blocks physical acceptance on 298 additional full-population structural drifts outside the old bounded evidence. Phase 8 remains `IN_PROGRESS`, physical V10 acceptance is false, and full training is unauthorized.
+> **Historical bootstrap notice, current redirect updated 2026-09-02:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-010 required a versioned V10 physical lineage and R4-D-011 now accepts the exact protected-local V2.6 root/digest after complete 355-identity evidence and refreshed current-commit review. Phase 8 remains `IN_PROGRESS`, G8 is open, and full training is unauthorized.
 
 ## Current restart — read this before the historical bootstrap
 
@@ -8,13 +8,11 @@ Current agents must read in this order:
 
 1. applicable repository/module `CLAUDE.md` files;
 2. `PLAN_STATUS_MATRIX.md`;
-3. `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
-4. `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
-5. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
-6. `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
-7. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
-8. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
-9. the exact V10 source/tests/scripts for the stage being executed.
+3. `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
+4. `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
+5. `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
+6. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
+7. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`.
 
 Current state that must not be lost:
 
@@ -24,18 +22,19 @@ Current state that must not be lost:
 - graph schema v9 is not eligible for the new full training run under R4-D-010;
 - V2.3 V10 is the frozen structural-reference diagnostic lineage;
 - protected V2.4 completed the former 26-contract parse-only repair and remains diagnostic history, not physical acceptance;
-- current future-candidate extractor is `v2.5-r4-call-semantics-deterministic-cfg`;
+- exact accepted V10 extractor is `v2.6-r4-call-semantics-deterministic-cfg-mutators`;
 - the final bounded V2.5 structural result is **20/20 resolved**: 8 exact node-index-invariant graph-equivalence identities + 12 deterministic persistent-storage WRITE corrections; zero unexplained drift; no blockers;
 - evidence-chain/full-gate/staging preflights pass;
 - final heterogeneous runtime partition is 22,539 ordinary Slither-0.10 identities + one declared Slither-0.11.5 exception;
 - protected-local Stages A-D pass for all 22,540 identities with exact accepted-V9 token bytes and the required 22,539+1 runtime split;
-- Stage E reports `PASS_BASE_MECHANICS_WITH_STRUCTURAL_EVIDENCE_BLOCKER`: 311 raw non-parse-only drifts, 298 outside the exact bounded 8+12 evidence classes;
+- the current 355-identity V2.6 population is fully reconciled as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs, with zero unexplained drift;
+- R4-D-011 physically accepts only the exact protected-local root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
 - confirmed negatives remain zero; candidate #2 still needs genuinely independent verification;
 - threshold/calibration/untouched acceptance remain unsupported/empty;
 - selector promotion remains separate and unauthorized;
 - no 100-epoch run is authorized.
 
-The next permitted R4-B008 action is the bounded full-population structural-evidence tranche in `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`. Preserve the complete candidate and reports; do not rerun Stages A-D, broaden the old 20-identity evidence by assertion, or proceed to physical acceptance/training.
+R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root/digest. Preserve the accepted candidate and reports; do not regenerate them, treat a different digest as accepted, or proceed to training without the separate remaining gates and explicit authorization.
 
 The August 15 launch decision, August 21 V10 implementation records, August 23 parse-only working plan, and August 23 structural-drift handoff are historical context. Do not resume their already-closed blockers.
 

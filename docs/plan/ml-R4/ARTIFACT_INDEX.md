@@ -159,8 +159,11 @@
 | R4-P8-REV-001 | 8 | bounded_structural_closure | reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md | — | 150d2ad1fa79 | New | AVAILABLE_VERIFIED | NO | Durable closure: V2.5 bounded 20/20 resolved as 8 index-equivalence + 12 storage-WRITE corrections; zero unexplained drift |
 | R4-P8-RUN-004 | 8 | current_restart_checkpoint | runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md | — | a9890332dbca+ | New | AVAILABLE_VERIFIED | NO | Canonical checkpoint updated with passed protected-local Stages A-D and Stage-E full-population blocker; physical acceptance/training false |
 | R4-P8-RUN-005 | 8 | full_candidate_staging_protocol | runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md | — | a9890332dbca+ | New | AVAILABLE_VERIFIED | NO | Heterogeneous 22,539 Slither-0.10 + 1 Slither-0.11.5 staged V2.5 protocol executed through Stage E; full gate blocked |
-| R4-P8-RUN-006 | 8 | full_population_structural_evidence_plan | runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | V2.6 continuation: 355/355 drift identities reconciled as 349 WRITE + 6 index-equivalent; V4 passes pending physical decision |
+| R4-P8-RUN-006 | 8 | full_population_structural_evidence_plan | runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | V2.6 continuation: 355/355 drift identities reconciled as 349 WRITE + 6 index-equivalent; later accepted by R4-D-011 |
 | R4-P8-RUN-007 | 8 | full_population_structural_analysis | runs/2026-08-30_PHASE8_v10_v25_full_population_structural_analysis.md | — | local V2.6 continuation | New | AVAILABLE_VERIFIED | NO | Preserves historical V2.5 blocker and records the complete bound V2.6 candidate/evidence/audit result |
+| R4-P8-RUN-008 | 8 | v10_v26_physical_acceptance_no_launch | runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md | — | 012a33594498 evidence source | New | AVAILABLE_VERIFIED | NO | R4-D-011 acceptance review; exact V2.6 physical root/digest accepted, selector promotion and training unauthorized |
+| R4-P8-ADR-003 | 8 | ADR | adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md | — | governance reconciliation | New | AVAILABLE_VERIFIED | NO | Formal exact-root V10 V2.6 physical acceptance and no-launch authority |
+| R4-P8-ACC-001 | 8 | physical_acceptance_manifest | evidence/2026-09-02_v10_v26_physical_acceptance/acceptance.json | `5fc83eff39d4a28db9a5b6b5255a95ad64ee75ca88a948ba99dadb2bc03ee165` | 012a33594498 evidence source | New | AVAILABLE_VERIFIED | NO | Machine-readable R4-D-011 boundary; binds protected-local root/digest, refreshed reports, runtime split, and remaining gates |
 | R4-P8-SCR-001 | 8 | full_transition_audit_v3 | scripts/p8_audit_v10_transition_v3.py | — | ff9f4bea4069+ | New | AVAILABLE_VERIFIED | NO | Reuses V2 mechanics and fail-closed re-proves exact bounded 8+12 evidence classes against actual full candidate |
 | R4-P8-SCR-002 | 8 | evidence_chain_preflight | scripts/p8_validate_v10_v25_evidence_chain.py | — | cafc3c475dce+ | New | AVAILABLE_VERIFIED | NO | SHA-binds original transition audit, bounded V2.5 report, and merged semantic evidence; protected-local preflight passed |
 | R4-P8-SCR-003 | 8 | primary_attempt_driver | scripts/p8_generate_v10_v25_primary_attempt.py | — | 1aa94b7c0351+ | New | AVAILABLE_VERIFIED | NO | Stage A driver; exact 22,539 ordinary primary partition; declared runtime exception never invoked in primary process |
@@ -211,8 +214,9 @@ That V2.5 candidate is historical. The current protected-local V2.6 lineage is:
 - 355-case full-population probe SHA-256: `9a1cf96465613b61fae2d10ccaa81def0548663a4c4711ca745841f6354e7a55`;
 - final V4 audit SHA-256: `c6ddc61b8005a688d422f4f8de28118fa3e644b9648d070ef53972ec9f2191ce`.
 
-The V2.6 V4 audit passes with zero unexplained drift. Physical acceptance and
-training authorization remain false pending their separate decisions.
+The V2.6 V4 audit passes with zero unexplained drift. R4-D-011 physically
+accepts only the exact root and digest above. Selector promotion and training
+authorization remain false pending their separate decisions.
 
 ## Availability
 
