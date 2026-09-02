@@ -145,7 +145,8 @@ Thumbs.db
 *.tar.gz
 *.tar.bz2
 *.tar.xz
-*.tar.zstdocs/IRVLESS*.txt
+*.tar.zst
+docs/IRVLESS*.txt
 IRVLESS*.txt
 
 # ── SmartBugs Wild eval large files (regeneratable from state) ──────────────
@@ -154,7 +155,10 @@ ml/data/smartbugs_wild_eval_state.json
 # ── SmartBugs Wild eval large per-contract/contamination outputs ─────────────
 docs/reports/**/per_contract*.json
 docs/reports/**/contamination_index.json
+
+# DVC cache/runtime state
 .dvc/cache/
+.dvc/tmp/
 
 # Runtime cruft
 tmp_*.py
