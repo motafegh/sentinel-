@@ -8,18 +8,25 @@
 
 ## 30-second summary
 
-This handbook is the canonical current learning/navigation layer for SENTINEL. The stable system is now defined by the V3 registry/read-only analysis boundary and the R4 DATA/ML repair program through G6. Historical Run12/v1/V2 behavior is still preserved for reproducibility, but it must not be confused with the repaired DATA vNext policy or the current V3 trust model. Volatile state belongs in [current status](16_current_status.md).
+This handbook is the canonical current learning/navigation layer for SENTINEL. Historical R4 G0–G7 remain PASSED and immutable; Phase 8 is IN_PROGRESS and G8/full training remain unauthorized. The current DATA/ML authority includes accepted repaired-v2 physical DATA, accepted logical V3 grouping/roles, and the R4-D-011 V10 V2.6 physical representation lineage. R4-D-012 permits guarded selection only for a fresh versioned candidate that has not yet been physically accepted. Historical Run12/v1/v9 behavior is still preserved for reproducibility, but it must not be confused with current R4 training truth or the current V3 trust model. Volatile state belongs in [current status](16_current_status.md).
 
 ## Just-enough mental model
 
 ```text
 Solidity/data
    ↓
-DATA + R4 evidence/policy/role controls
+repaired physical DATA + R4 evidence/policy controls
    ↓
-current historical representations + DATA vNext semantic repair
+accepted logical V3 grouping / roles
    ↓
-Four-eye teacher / ML API
+accepted V10 V2.6 physical representation (R4-D-011)
+   ↓
+[next pending] fresh guarded-selector token lineage + separate acceptance
+   ↓
+[later, only if authorized] repaired teacher retraining / evaluation
+
+historical operational runtime today:
+Four-eye Run12 teacher / ML API
    ↓
 AGENTS 14-node off-chain audit → gateway report
 
@@ -27,25 +34,26 @@ separate trust/protocol boundary:
 ML fusion[128] → retained proxy/EZKL proof → V3 context-attested registry protocol
 ```
 
-The live audit MCP is read-only. V3 submission signing/broadcast is outside the analysis MCP security domain. The retained proof proves the proxy computation only; the V3 policy signature separately binds context/provenance.
+The live audit MCP is read-only. V3 submission signing/broadcast is outside the analysis MCP security domain. The retained proof proves the proxy computation only; the V3 policy signature separately binds context/provenance. Retained EZKL settings still use `check_mode="UNSAFE"`.
 
 ### Authority rules
 
 1. Executable `.py`, `.sol`, `.sh`, configuration, and committed machine-readable policy/manifests are behavioral truth.
-2. This handbook is the canonical current explanatory/navigation layer.
-3. `docs/plan/ml-R4/` is the controlling DATA/ML repair record for evidence, decisions, roles, risks, and gate state.
-4. ADRs explain decisions; historical plans/reports/experiments remain evidence/history unless explicitly active.
-5. Historical DATA v1 labels, Run12 thresholds, V1/V2 registry writes, and old submission code remain reproducibility artifacts—not current authority for new work.
-6. A local file is not a fresh-clone artifact unless Git tracks it.
-7. A passing test proves the checked behavior, not product quality or end-to-end security.
-8. No `.env`, RPC credential, private key, mnemonic, or private endpoint value belongs in documentation.
+2. Current machine-readable R4 governance/evidence controls DATA/ML semantic and gate state.
+3. This handbook is the canonical current explanatory/navigation layer.
+4. `docs/plan/ml-R4/` is the controlling DATA/ML repair record for evidence, decisions, roles, risks, and gate state.
+5. ADRs explain decisions; historical plans/reports/experiments remain evidence/history unless explicitly active.
+6. Historical DATA v1 labels, Run12 thresholds, V1/V2 registry writes, v9 representations, and old submission code remain reproducibility artifacts—not current authority for new work.
+7. A local file is not a fresh-clone artifact unless Git tracks it.
+8. A passing test proves the checked behavior, not product quality or end-to-end security.
+9. No `.env`, RPC credential, private key, mnemonic, or private endpoint value belongs in documentation.
 
 ## Actual runtime/source walkthrough
 
 Start with architecture and current status. Then choose one of the two important tracks:
 
 - **runtime/audit track:** gateway → LangGraph → evidence/report, plus read-only V1/V2/V3 registry observation;
-- **DATA/ML repair track:** historical evidence → R4 ledger/policy/roles → DATA vNext → later retraining/evaluation.
+- **DATA/ML repair track:** historical evidence → repaired-v2 physical DATA → accepted logical V3 → accepted V10 V2.6 physical representation → guarded-candidate construction/acceptance → only later, if authorized, retraining/evaluation.
 
 ### Page index
 
@@ -54,14 +62,14 @@ Start with architecture and current status. Then choose one of the two important
 | [01 Architecture](01_architecture.md) | topology, processes, ports, V3 trust boundaries |
 | [02 Runtime flows](02_runtime_flows.md) | off-chain report, read-only registry observation, V3 protocol boundary, feedback |
 | [03 DATA pipeline](03_data_pipeline.md) | historical lifecycle plus R4/DATA vNext authority |
-| [04 DATA artifacts](04_data_artifacts.md) | v1 vs v2 semantics, representations, frozen roles, ML seam |
+| [04 DATA artifacts](04_data_artifacts.md) | historical vs current DATA/representation semantics, roles, ML seam |
 | [05 ML model/inference](05_ml_model_inference.md) | four-eye teacher and current Run12 inference status |
 | [06 ML training/quality](06_ml_training_quality.md) | historical training mechanics and repaired-retrain constraints |
 | [07 ZKML](07_zkml.md) | retained proxy proof scope and V3 context binding |
 | [08 Contracts](08_contracts.md) | token, V1/V2 history, V3 protocol, verifier, UUPS |
 | [09 AGENTS orchestration](09_agents_orchestration.md) | state, 14-node graph, evidence/verdicts |
 | [10 AGENTS services](10_agents_services.md) | five MCPs, read-only audit MCP, RAG, gateway, feedback |
-| [11 Cross-module contracts](11_cross_module_contracts.md) | DATA vNext/ML/ZK/V3 compatibility boundaries |
+| [11 Cross-module contracts](11_cross_module_contracts.md) | DATA/ML/ZK/V3 compatibility boundaries |
 | [12 Security and trust](12_security_and_trust.md) | injection, Rule 5C, proof/attestation/signing boundaries |
 | [13 Evaluation](13_evaluation.md) | R4 role limitations, ML/AGENTS evidence and gates |
 | [14 Operations](14_operations.md) | safe startup, verification, artifact/local-only boundaries |
@@ -87,9 +95,11 @@ Technical guides and labs remain useful for code-reading/practice, but they are 
 
 - Static documentation checks cannot prove every semantic claim.
 - Historical material can remain valuable while being operationally superseded.
-- The stable main branch is through R4 G6; Phase 7 DATA vNext implementation is candidate work until local representation binding and G7 completion.
+- Phase 8 remains IN_PROGRESS; the accepted V10 V2.6 physical lineage does not authorize full training.
+- R4-D-012's guarded selector still lacks a separately accepted physical token lineage.
+- Confirmed negatives remain zero; candidate #2 still requires genuinely independent agreement.
 - Run12 remains the historical operational teacher; no repaired retrain has been promoted yet.
-- The recovered vNext evidence has no trustworthy confirmed-negative population, so threshold/calibration/untouched-acceptance roles are intentionally unsupported for the first repaired baseline.
+- Threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty.
 
 ## Common change recipe
 
@@ -123,12 +133,12 @@ Read current status before acting on an older guide. For implementation work, fo
 
 ### Execution trace and worked example
 
-A current DATA/ML trace is: historical contract/evidence → contract×class ledger → accepted source/class policy → leakage-safe role → DATA vNext semantic target/mask → later trainer compatibility/retrain. A current chain trace is: proxy proof artifacts + fully bound V3 request → isolated policy attestation → `AuditRegistry.submitAuditV3`; the analysis MCP itself only reads registry state.
+A current DATA/ML trace is: historical evidence → repaired-v2 physical DATA → accepted logical V3 role/group authority → accepted V10 V2.6 physical representation → fresh guarded-selector candidate → separate physical acceptance → only then later objective/evaluation/training authorization work. A current chain trace is: proxy proof artifacts + fully bound V3 request → isolated policy attestation → `AuditRegistry.submitAuditV3`; the analysis MCP itself only reads registry state.
 
 ### Implementation practice
 
-Before editing, identify whether you are changing historical compatibility, the repaired vNext path, live analysis runtime, or the V3 submission protocol. Preserve old artifacts in place and introduce versioned new behavior unless an approved migration says otherwise.
+Before editing, identify whether you are changing historical compatibility, the repaired R4 path, live analysis runtime, or the V3 submission protocol. Preserve old artifacts in place and introduce versioned new behavior unless an approved migration says otherwise.
 
 ### Review and ownership check
 
-Can you distinguish historical v1/Run12/V2 compatibility from the current R4/V3 direction, name which components are canonical today, and identify what remains blocked before retraining/promotion?
+Can you distinguish historical v1/Run12/v9/V1-V2 compatibility from the current R4/V3 direction, name which components are canonical today, and identify what remains blocked before retraining/promotion?
