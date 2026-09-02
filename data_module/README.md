@@ -24,7 +24,7 @@ Historical R4 **G0–G7 remain PASSED and immutable**. **Phase 8 is IN_PROGRESS.
 
 ### Historical v1 / G7 compatibility
 
-The existing ingestion/labeling/merger/split/export stack and binary `class_0..class_9` artifacts are preserved so Run12 and historical findings can be reproduced/audited.
+The existing ingestion/labeling/merger/split/export stack and binary `class_0..class_9` artifacts are preserved so Run12 and historical findings can be reproduced/audited. Historical G7 role authority was `r4-vnext-roles-v1`; it remains an immutable historical identifier, not the current logical V3 role authority.
 
 Do **not** infer current truth from legacy behavior such as:
 
